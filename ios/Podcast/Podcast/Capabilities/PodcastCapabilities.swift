@@ -7,8 +7,11 @@ import Foundation
 /// implementations are constructed and started, mirroring the thin-bridge
 /// pattern in `Bridge/KernelBridge.swift`.
 ///
-/// It owns the `KeychainCapability` (at-rest secret storage) and the
-/// `HttpCapability` (host HTTP transport).
+/// It owns:
+///   - `KeychainCapability`    — generic NMP keyring (`nmp.keyring.capability`)
+///   - `PcstIdentityCapability` — podcast-app identity/BYOK slots (`pcst.identity.capability`)
+///   - `HttpCapability`        — host HTTP transport
+///
 /// Rust decides when and what to call; Swift only executes the request and
 /// reports the raw result (D7).
 ///
@@ -17,13 +20,16 @@ import Foundation
 /// see [`handleJSON(_:)`].
 final class PodcastCapabilities {
     let keyring: KeychainCapability
+    let identity: PcstIdentityCapability
     let http: HttpCapability
 
     init(
         keyring: KeychainCapability = KeychainCapability(),
+        identity: PcstIdentityCapability = PcstIdentityCapability(),
         http: HttpCapability = HttpCapability()
     ) {
         self.keyring = keyring
+        self.identity = identity
         self.http = http
     }
 
@@ -31,12 +37,14 @@ final class PodcastCapabilities {
     /// foreground.
     func start() {
         keyring.start()
+        identity.start()
         http.start()
     }
 
     /// Idempotent: mark capabilities inactive. Does not erase stored secrets.
     func stop() {
         keyring.stop()
+        identity.stop()
         http.stop()
     }
 
@@ -62,6 +70,8 @@ final class PodcastCapabilities {
         switch request.namespace {
         case KeychainCapability.namespace:
             return keyring.handleJSON(requestJSON)
+        case PcstIdentityCapability.namespace:
+            return identity.handleJSON(requestJSON)
         case HttpCapability.namespace:
             return http.handleJSON(requestJSON)
         default:
