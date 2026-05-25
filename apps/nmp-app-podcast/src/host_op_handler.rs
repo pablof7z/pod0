@@ -1,18 +1,7 @@
-//! `PodcastHostOpHandler` — runs podcast and player actions on the actor thread.
+//! Actor-thread handler for podcast/player host operations.
 //!
-//! Installed by `nmp_app_podcast_register` via
-//! `NmpApp::set_host_op_handler`. The actor dispatches
-//! `ActorCommand::DispatchHostOp { action_json, correlation_id }` here
-//! after `PodcastActionModule` or `PlayerActionModule::execute` routes the action.
-//!
-//! Each `handle` call receives the JSON-encoded action and returns a
-//! `{"ok":true}` or `{"ok":false,"error":"..."}` envelope.
-//!
-//! ## Lock discipline
-//!
-//! MUST release ALL `PodcastStore` / `PlayerActor` locks BEFORE calling
-//! `NmpApp::dispatch_capability` to prevent deadlock with the snapshot
-//! path on the main thread.
+//! Lock discipline: release `PodcastStore` / `PlayerActor` locks before
+//! calling `NmpApp::dispatch_capability` so snapshot reads cannot deadlock.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -26,7 +15,9 @@ use uuid::Uuid;
 use podcast_feeds::client::{build_feed_request, handle_feed_response, FeedResult};
 use podcast_feeds::http::{HttpRequest, HttpResult, HTTP_CAPABILITY_NAMESPACE};
 
-use crate::capability::{AudioCommand, AUDIO_CAPABILITY_NAMESPACE};
+use crate::capability::{
+    AudioCommand, DownloadCommand, AUDIO_CAPABILITY_NAMESPACE, DOWNLOAD_CAPABILITY_NAMESPACE,
+};
 use crate::ffi::actions::player_module::PlayerAction;
 use crate::ffi::actions::podcast_module::PodcastAction;
 use crate::ffi::projections::{EpisodeSummary, PodcastSummary};
@@ -58,8 +49,6 @@ impl PodcastHostOpHandler {
         Self { app, store, player_actor, search_results, rev }
     }
 
-    // ── HTTP dispatch helper ─────────────────────────────────────────────────
-
     fn dispatch_http(&self, req: &HttpRequest, correlation_id: &str) -> Result<HttpResult, String> {
         let payload_json = serde_json::to_string(req).map_err(|e| e.to_string())?;
         let cap_req = CapabilityRequest {
@@ -71,8 +60,6 @@ impl PodcastHostOpHandler {
         serde_json::from_str::<HttpResult>(&envelope.result_json)
             .map_err(|e| format!("decode http result: {e}"))
     }
-
-    // ── Podcast action handlers ──────────────────────────────────────────────
 
     fn handle_subscribe(&self, feed_url: String, correlation_id: &str) -> serde_json::Value {
         let url = match url::Url::parse(&feed_url) {
@@ -206,18 +193,11 @@ impl PodcastHostOpHandler {
     }
 
     fn handle_import_opml(&self, content: String, correlation_id: &str) -> serde_json::Value {
-        // Parse via the shared `podcast-feeds` parser — same code path used by
-        // unit tests and (eventually) other platforms. Empty / non-OPML payloads
-        // surface as `MalformedXml` errors; degenerate-but-valid OPML
-        // (no `<outline xmlUrl=...>` rows) parses to `Vec::new()`.
         let parsed = match podcast_feeds::import_opml(&content) {
             Ok(p) => p,
             Err(e) => return serde_json::json!({"ok": false, "error": e.to_string()}),
         };
 
-        // Skip feeds the user is already subscribed to (matched on feed URL
-        // string). Without this, re-importing the same OPML would re-fetch
-        // every feed and clobber position data via `subscribe` replacement.
         let existing_feed_urls: std::collections::HashSet<String> =
             match self.store.lock() {
                 Ok(s) => s
@@ -290,8 +270,6 @@ impl PodcastHostOpHandler {
         }
     }
 
-    // ── Audio command dispatch ───────────────────────────────────────────────
-
     fn dispatch_audio(&self, cmd: &AudioCommand, correlation_id: &str) -> Result<(), String> {
         let payload_json = serde_json::to_string(cmd).map_err(|e| e.to_string())?;
         let req = CapabilityRequest {
@@ -303,7 +281,53 @@ impl PodcastHostOpHandler {
         Ok(())
     }
 
-    // ── Player action handlers ───────────────────────────────────────────────
+    fn dispatch_download(&self, cmd: &DownloadCommand, correlation_id: &str) -> Result<(), String> {
+        let payload_json = serde_json::to_string(cmd).map_err(|e| e.to_string())?;
+        let req = CapabilityRequest {
+            namespace: DOWNLOAD_CAPABILITY_NAMESPACE.to_owned(),
+            correlation_id: correlation_id.to_owned(),
+            payload_json,
+        };
+        let _ = unsafe { &*self.app }.dispatch_capability(&req);
+        Ok(())
+    }
+
+    fn handle_download(&self, episode_id_str: String, correlation_id: &str) -> serde_json::Value {
+        let url = {
+            match self.store.lock() {
+                Ok(s) => match s.episode_enclosure_url(&episode_id_str) {
+                    Some((_id, url)) => url,
+                    None => return serde_json::json!({
+                        "ok": false,
+                        "error": format!("episode not found: {episode_id_str}")
+                    }),
+                },
+                Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+            }
+        };
+        let cmd = DownloadCommand::start(url, episode_id_str, None);
+        if let Err(e) = self.dispatch_download(&cmd, correlation_id) {
+            return serde_json::json!({"ok": false, "error": e});
+        }
+        serde_json::json!({"ok": true})
+    }
+
+    fn handle_delete_download(&self, episode_id_str: String) -> serde_json::Value {
+        let removed_path = {
+            match self.store.lock() {
+                Ok(mut s) => match s.episode_enclosure_url(&episode_id_str) {
+                    Some((ep_id, _url)) => s.clear_local_path(&ep_id),
+                    None => None,
+                },
+                Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+            }
+        };
+        if let Some(path) = removed_path {
+            let _ = std::fs::remove_file(&path);
+            self.rev.fetch_add(1, Ordering::Relaxed);
+        }
+        serde_json::json!({"ok": true})
+    }
 
     fn handle_play(&self, episode_id: String, correlation_id: &str) -> serde_json::Value {
         let (podcast_id, url, position_secs) = {
@@ -395,6 +419,8 @@ impl HostOpHandler for PodcastHostOpHandler {
                 PodcastAction::RefreshAll => self.handle_refresh_all(correlation_id),
                 PodcastAction::SearchItunes { query } => self.handle_search_itunes(query, correlation_id),
                 PodcastAction::ImportOpml { content } => self.handle_import_opml(content, correlation_id),
+                PodcastAction::Download { episode_id } => self.handle_download(episode_id, correlation_id),
+                PodcastAction::DeleteDownload { episode_id } => self.handle_delete_download(episode_id),
             };
         }
         if let Ok(action) = serde_json::from_str::<PlayerAction>(action_json) {
@@ -404,10 +430,6 @@ impl HostOpHandler for PodcastHostOpHandler {
     }
 }
 
-// ── Free functions ───────────────────────────────────────────────────────────
-
-/// Merge refreshed episodes with existing ones, preserving `position_secs` for
-/// episodes already present so playback progress survives a feed refresh.
 fn merge_episodes(fresh: Vec<Episode>, existing: Vec<Episode>) -> Vec<Episode> {
     fresh
         .into_iter()
@@ -420,7 +442,6 @@ fn merge_episodes(fresh: Vec<Episode>, existing: Vec<Episode>) -> Vec<Episode> {
         .collect()
 }
 
-/// Percent-encode a query string for use in a URL parameter value.
 fn url_encode(s: &str) -> String {
     s.chars()
         .flat_map(|c| match c {

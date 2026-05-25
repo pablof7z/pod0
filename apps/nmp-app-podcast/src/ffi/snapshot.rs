@@ -181,6 +181,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
                         duration_secs: ep.duration_secs,
                         artwork_url: ep.image_url.as_ref().map(|u| u.to_string()),
                         published_at: Some(ep.pub_date.timestamp()),
+                        download_path: s.local_path_for(&ep.id).map(str::to_owned),
                     })
                     .collect(),
             })

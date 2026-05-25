@@ -5,9 +5,11 @@ import SwiftUI
 /// Episode list inside `ShowDetailView`. Renders a `ForEach` of NMP-native
 /// episode rows driven by `EpisodeSummary` from the kernel snapshot.
 ///
-/// Play is dispatched directly to the `player` namespace — no `PlaybackState`,
-/// no `AppStateStore`. Swipe actions, downloads, and episode-detail navigation
-/// arrive in later PRs once those capabilities are ported to Rust.
+/// Play and Download dispatch directly to the `podcast.player` /
+/// `podcast` namespaces — no `PlaybackState`, no `AppStateStore`. Download
+/// progress UI lands in a follow-up PR once the `DownloadReport` back-channel
+/// is wired; until then the snapshot's `downloadPath` flips from `nil` to a
+/// path on `Completed`.
 struct ShowDetailEpisodeList: View {
     let episodes: [EpisodeSummary]
     let podcast: PodcastSummary
@@ -26,7 +28,14 @@ struct ShowDetailEpisodeList: View {
                         body: ["op": "play", "episode_id": ep.id]
                     )
                     NotificationCenter.default.post(name: .openPlayerRequested, object: nil)
-                }
+                },
+                onDownload: ep.downloadPath == nil ? {
+                    Haptics.light()
+                    model.dispatch(
+                        namespace: "podcast",
+                        body: ["op": "download", "episode_id": ep.id]
+                    )
+                } : nil
             )
             .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets(
@@ -47,6 +56,9 @@ private struct KernelEpisodeRow: View {
     let episode: EpisodeSummary
     var fallbackArtworkUrl: String? = nil
     let onPlay: () -> Void
+    /// `nil` when the episode is already downloaded (renders a check); a
+    /// non-nil closure when it isn't (renders a download button).
+    let onDownload: (() -> Void)?
 
     private static let thumbnailSize: CGFloat = 56
 
@@ -63,6 +75,8 @@ private struct KernelEpisodeRow: View {
             }
 
             Spacer()
+
+            downloadIndicator
 
             Button {
                 onPlay()
@@ -82,6 +96,32 @@ private struct KernelEpisodeRow: View {
         .accessibilityLabel(accessibilityLabel)
         .accessibilityAddTraits(.isButton)
         .onTapGesture { onPlay() }
+    }
+
+    // MARK: - Download indicator
+
+    @ViewBuilder
+    private var downloadIndicator: some View {
+        if let onDownload {
+            Button {
+                onDownload()
+            } label: {
+                Image(systemName: "arrow.down.circle")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 36, height: 36)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Download \(episode.title)")
+        } else {
+            // Already downloaded — show a calm checkmark, no tap target.
+            Image(systemName: "checkmark.circle.fill")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+                .frame(width: 36, height: 36)
+                .accessibilityLabel("Downloaded")
+        }
     }
 
     // MARK: - Artwork

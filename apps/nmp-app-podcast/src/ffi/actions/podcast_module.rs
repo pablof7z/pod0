@@ -33,6 +33,18 @@ pub enum PodcastAction {
     /// The handler parses entries via `podcast_feeds::import_opml`, then
     /// fans out to `handle_subscribe` for each unique feed URL.
     ImportOpml { content: String },
+    /// Begin downloading the episode's enclosure to local storage.
+    ///
+    /// The host op handler looks up the episode's `enclosure_url` from the
+    /// `PodcastStore`, then dispatches `DownloadCommand::StartDownload` to
+    /// the iOS `DownloadCapability`. The capability owns the
+    /// `URLSessionDownloadTask`; once the report path wires up, `Completed`
+    /// reports stamp `local_path` into the store, which the snapshot
+    /// surfaces as `EpisodeSummary.download_path`.
+    Download { episode_id: String },
+    /// Remove a previously downloaded episode from disk and clear the
+    /// kernel-side `local_path` mapping.
+    DeleteDownload { episode_id: String },
 }
 
 /// Single action module for the whole `"podcast"` namespace.
@@ -91,6 +103,30 @@ mod tests {
         let json = serde_json::to_string(&action).expect("encode");
         assert!(json.contains(r#""op":"import_opml""#));
         assert!(json.contains(r#""content""#));
+        let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, action);
+    }
+
+    #[test]
+    fn download_action_round_trips() {
+        let action = PodcastAction::Download {
+            episode_id: "ep-7".into(),
+        };
+        let json = serde_json::to_string(&action).expect("encode");
+        assert!(json.contains(r#""op":"download""#));
+        assert!(json.contains(r#""episode_id":"ep-7""#));
+        let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, action);
+    }
+
+    #[test]
+    fn delete_download_action_round_trips() {
+        let action = PodcastAction::DeleteDownload {
+            episode_id: "ep-7".into(),
+        };
+        let json = serde_json::to_string(&action).expect("encode");
+        assert!(json.contains(r#""op":"delete_download""#));
+        assert!(json.contains(r#""episode_id":"ep-7""#));
         let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
         assert_eq!(decoded, action);
     }

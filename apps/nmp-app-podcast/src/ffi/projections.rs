@@ -257,6 +257,15 @@ pub struct EpisodeSummary {
     /// Unix seconds from `Episode::pub_date`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub published_at: Option<i64>,
+    /// On-disk path to the downloaded enclosure, when one exists.
+    ///
+    /// `None` means the episode has not been downloaded (or its download was
+    /// deleted). The host renders a download button in this state; once the
+    /// path is `Some`, it renders a "downloaded" indicator instead. Populated
+    /// by [`super::snapshot::build_snapshot_payload`] from
+    /// `PodcastStore::local_path_for`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub download_path: Option<String>,
 }
 
 /// Narrow identity projection surfaced via
@@ -298,6 +307,32 @@ mod tests {
         assert!(json.contains("\"is_playing\":false"));
         assert!(json.contains("\"position_fraction\":0.0"));
         assert!(json.contains("\"unplayed_count\":0"));
+    }
+
+    #[test]
+    fn episode_summary_omits_none_download_path() {
+        let ep = EpisodeSummary {
+            id: "ep-1".into(),
+            title: "Pilot".into(),
+            ..EpisodeSummary::default()
+        };
+        let json = serde_json::to_string(&ep).expect("encode");
+        // No download yet — field must not appear on the wire.
+        assert!(!json.contains("download_path"));
+    }
+
+    #[test]
+    fn episode_summary_round_trips_with_download_path() {
+        let ep = EpisodeSummary {
+            id: "ep-1".into(),
+            title: "Pilot".into(),
+            download_path: Some("/var/mobile/Containers/Downloads/ep-1.mp3".into()),
+            ..EpisodeSummary::default()
+        };
+        let json = serde_json::to_string(&ep).expect("encode");
+        assert!(json.contains("download_path"));
+        let decoded: EpisodeSummary = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, ep);
     }
 
     #[test]

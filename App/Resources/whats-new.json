@@ -8,6 +8,12 @@
       ]
     },
     {
+      "shipped_at": "2026-05-25T22:33:00Z",
+      "lines": [
+        "Episodes can now be downloaded for offline listening"
+      ]
+    },
+    {
       "shipped_at": "2026-05-25T22:32:00Z",
       "lines": [
         "Import podcasts from an OPML file and export your library"

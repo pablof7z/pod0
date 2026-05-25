@@ -45,6 +45,10 @@ struct EpisodeSummary: Codable, Identifiable, Equatable, Hashable {
     var artworkUrl: String? = nil
     /// Unix seconds from `Episode::pub_date`.
     var publishedAt: Int? = nil
+    /// On-disk path to the downloaded enclosure when one exists. `nil`
+    /// means the episode has not been downloaded yet. Populated by the
+    /// Rust `PodcastStore::local_path_for` on each snapshot tick.
+    var downloadPath: String? = nil
 }
 
 /// Active player state (present only when an episode is loaded).

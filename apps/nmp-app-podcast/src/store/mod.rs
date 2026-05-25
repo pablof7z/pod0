@@ -22,7 +22,7 @@ use std::path::PathBuf;
 #[cfg(test)]
 use std::path::Path;
 
-use podcast_core::{Episode, Podcast, PodcastId};
+use podcast_core::{Episode, EpisodeId, Podcast, PodcastId};
 
 mod persistence;
 
@@ -37,6 +37,13 @@ use persistence::{PersistedPodcast, PersistedStore, PERSIST_SCHEMA_VERSION};
 pub struct PodcastStore {
     podcasts: HashMap<PodcastId, Podcast>,
     episodes: HashMap<PodcastId, Vec<Episode>>,
+    /// Per-episode on-disk path for downloaded enclosures. Populated when an
+    /// iOS `DownloadCapability` reports `Completed`; cleared by
+    /// [`PodcastStore::clear_local_path`] when the user deletes the file.
+    ///
+    /// Lives in a side-map so refreshing a feed, which replaces the episode
+    /// list wholesale, does not wipe download state.
+    local_paths: HashMap<EpisodeId, String>,
     data_dir: Option<PathBuf>,
 }
 
@@ -45,6 +52,7 @@ impl PodcastStore {
         Self {
             podcasts: HashMap::new(),
             episodes: HashMap::new(),
+            local_paths: HashMap::new(),
             data_dir: None,
         }
     }
@@ -78,6 +86,7 @@ impl PodcastStore {
         };
         self.podcasts.clear();
         self.episodes.clear();
+        self.local_paths.clear();
         for row in loaded.podcasts {
             let id = row.podcast.id;
             self.podcasts.insert(id, row.podcast);
@@ -210,6 +219,35 @@ impl PodcastStore {
         None
     }
 
+    /// Resolve an episode UUID string to its `EpisodeId` + enclosure URL.
+    ///
+    /// Used by the download handler to translate a wire-format episode id into
+    /// the typed key and the URL the download capability should fetch.
+    pub fn episode_enclosure_url(&self, id_str: &str) -> Option<(EpisodeId, String)> {
+        for episodes in self.episodes.values() {
+            if let Some(ep) = episodes.iter().find(|e| e.id.0.to_string() == id_str) {
+                return Some((ep.id, ep.enclosure_url.to_string()));
+            }
+        }
+        None
+    }
+
+    /// Record the on-disk path of a successfully downloaded enclosure.
+    pub fn set_local_path(&mut self, episode_id: EpisodeId, path: String) {
+        self.local_paths.insert(episode_id, path);
+    }
+
+    /// Look up the on-disk path of a downloaded enclosure, if any.
+    pub fn local_path_for(&self, episode_id: &EpisodeId) -> Option<&str> {
+        self.local_paths.get(episode_id).map(String::as_str)
+    }
+
+    /// Remove the local-path mapping for an episode and return the path that
+    /// was previously stored so the caller can remove the file.
+    pub fn clear_local_path(&mut self, episode_id: &EpisodeId) -> Option<String> {
+        self.local_paths.remove(episode_id)
+    }
+
     /// Test-only accessor for the currently-bound data dir.
     #[cfg(test)]
     pub(crate) fn data_dir(&self) -> Option<&Path> {
@@ -301,6 +339,26 @@ mod tests {
         store.subscribe(p2, vec![]);
         assert_eq!(store.podcast_count(), 1);
         assert_eq!(store.podcast(id).map(|p| p.title.as_str()), Some("Updated Title"));
+    }
+
+    #[test]
+    fn set_and_get_local_path() {
+        let mut store = PodcastStore::new();
+        let ep_id = EpisodeId::generate();
+        assert!(store.local_path_for(&ep_id).is_none());
+        store.set_local_path(ep_id, "/tmp/ep.mp3".into());
+        assert_eq!(store.local_path_for(&ep_id), Some("/tmp/ep.mp3"));
+    }
+
+    #[test]
+    fn clear_local_path_returns_previous_and_unsets() {
+        let mut store = PodcastStore::new();
+        let ep_id = EpisodeId::generate();
+        store.set_local_path(ep_id, "/tmp/ep.mp3".into());
+        let prev = store.clear_local_path(&ep_id);
+        assert_eq!(prev.as_deref(), Some("/tmp/ep.mp3"));
+        assert!(store.local_path_for(&ep_id).is_none());
+        assert!(store.clear_local_path(&ep_id).is_none());
     }
 
     // ── Persistence integration tests ────────────────────────────────────
