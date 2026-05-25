@@ -9,17 +9,26 @@
 //! shape).
 //!
 //! For M3.A the only new field is `now_playing: Option<PlayerState>`. M4.A
-//! adds `downloads: Option<DownloadQueueSnapshot>`. Every other field stays
-//! unset until its milestone lands — the empty defaults are deliberately
-//! byte-compatible with the legacy stub payload
-//! (`{"running":true,"rev":0,"schema_version":1}`) so existing decoders don't
-//! break before each projection's milestone wires it up.
+//! adds `downloads: Option<DownloadQueueSnapshot>`. M7.A adds
+//! `agent: Option<ConversationsSnapshot>`. M8.A adds
+//! `voice: Option<VoiceState>`. M9.A adds
+//! `briefing: Option<BriefingSnapshot>`. Every other field stays unset until
+//! its milestone lands — the empty defaults are deliberately byte-compatible
+//! with the legacy stub payload (`{"running":true,"rev":0,"schema_version":1}`)
+//! so existing decoders don't break before each projection's milestone wires
+//! it up.
+//!
+//! Per-projection field definitions live in [`super::projections`] to keep
+//! this file focused on the typed root + the C-ABI entry points.
 
 use std::ffi::{c_char, CString};
 
 use serde::{Deserialize, Serialize};
 
 use super::handle::PodcastHandle;
+use super::projections::{
+    BriefingSnapshot, ConversationsSnapshot, DownloadQueueSnapshot, VoiceState,
+};
 use crate::player::PlayerState;
 
 /// Typed root of the snapshot JSON.
@@ -64,6 +73,18 @@ pub struct PodcastUpdate {
     /// The shape is defined alongside [`ConversationsSnapshot`].
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent: Option<ConversationsSnapshot>,
+    /// Voice projection: whether TTS is currently speaking and (when
+    /// it is) the in-flight request id + active voice id.
+    ///
+    /// `None` while no voice session is active — preserves byte-
+    /// identity with the legacy stub for non-voice-mode snapshots.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub voice: Option<VoiceState>,
+    /// Briefing projection: lifecycle status of the current briefing
+    /// (if any) + segment count + minutes until the next scheduled
+    /// slot. `None` when the scheduler has never been touched.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub briefing: Option<BriefingSnapshot>,
 }
 
 impl Default for PodcastUpdate {
@@ -75,102 +96,10 @@ impl Default for PodcastUpdate {
             now_playing: None,
             downloads: None,
             agent: None,
+            voice: None,
+            briefing: None,
         }
     }
-}
-
-/// Snapshot of the [`crate::download::DownloadQueue`] surfaced to the iOS
-/// shell via `PodcastUpdate.downloads`.
-///
-/// Designed so the UI can render the Downloads section (Settings →
-/// Downloads, EpisodeRow capsule) directly from this payload without
-/// reaching back into Rust:
-///
-/// * `active` — every item that holds a slot (Active or Paused) plus
-///   any item still in `Queued` state, with progress + state surfaced.
-/// * `queued_count` — number of items in `Queued` state (subset of
-///   `active.len()` with `state == "queued"`); provided as a sugar so
-///   the UI doesn't need to filter.
-/// * `completed_today` — the number of items that completed in the
-///   current wall-clock day. Computed by the projection layer that
-///   builds this snapshot (it has access to the wall clock that the
-///   queue itself doesn't); the queue itself doesn't track timestamps
-///   in M4.A. M4.B will refine this once auto-download policy lands.
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-pub struct DownloadQueueSnapshot {
-    /// Items currently visible to the user (Active, Paused, Queued, or
-    /// most-recent Failed). The ordering is the projection's choice —
-    /// the queue itself uses a FIFO `queue_order`, but the snapshot
-    /// builder can re-order for UI grouping.
-    pub active: Vec<DownloadItemSnapshot>,
-    /// Number of items still in `Queued` state.
-    pub queued_count: usize,
-    /// Number of items that transitioned to `Completed` today
-    /// (wall-clock). Zero in M4.A — wired in M4.B where the policy
-    /// layer has a clock.
-    pub completed_today: usize,
-}
-
-/// One row in [`DownloadQueueSnapshot::active`].
-///
-/// `state` is a string (`"active"` / `"queued"` / `"paused"` /
-/// `"failed"`) rather than the [`crate::download::DownloadItemState`]
-/// enum because the snapshot is consumed by Swift `Codable` decoders
-/// that prefer string discriminators over enum variants when the
-/// downstream view model only switches on a handful of states.
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-pub struct DownloadItemSnapshot {
-    pub episode_id: String,
-    /// `0.0..=1.0`, or `0.0` when `total_bytes` is unknown.
-    pub progress: f32,
-    /// One of `"active"`, `"queued"`, `"paused"`, `"failed"`. Successful
-    /// completions and explicit cancellations drop out of `active` (the
-    /// projection layer decides whether to retain a brief "just
-    /// finished" banner).
-    pub state: String,
-    /// Most recent failure diagnostic, when `state == "failed"`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
-}
-
-/// Snapshot of the agent-chat projection surfaced via
-/// [`PodcastUpdate::agent`].
-///
-/// Built by the future M7.B action-module wiring from a
-/// [`podcast_agent_core::ConversationActor`]. Kept narrow on purpose:
-/// the UI needs the active count + the pending-approvals queue + the
-/// id of the most recently touched conversation; the rest of the
-/// conversation rows are paged in by separate accessors.
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
-pub struct ConversationsSnapshot {
-    /// Number of conversations the actor is currently tracking.
-    pub active_count: usize,
-    /// Outstanding approvals the user still has to decide on.
-    ///
-    /// Sorted oldest-first by the projection layer
-    /// (`podcast_agent_core::sorted_active_approvals`) so the UI can
-    /// render the queue without re-sorting.
-    pub pending_approvals: Vec<PendingApprovalSnapshot>,
-    /// Most recently touched conversation id (UUID rendered as the
-    /// canonical hyphenated string), or `None` when the actor is
-    /// empty. Surfaced as `String` rather than typed `Uuid` so the
-    /// iOS shell's Codable decoder can treat it as a plain id.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub latest_conversation_id: Option<String>,
-}
-
-/// One row in [`ConversationsSnapshot::pending_approvals`].
-///
-/// `requested_at` is surfaced as a Unix timestamp (seconds since
-/// epoch) rather than ISO-8601 so the iOS view model can compare
-/// against `Date()` without a formatter round-trip — matches the
-/// pattern the legacy `NostrPendingApproval` view code already uses.
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
-pub struct PendingApprovalSnapshot {
-    pub id: String,
-    pub description: String,
-    /// Unix seconds — see struct-level comment.
-    pub requested_at: i64,
 }
 
 /// Build the JSON payload the FFI snapshot function returns. Extracted so
@@ -249,6 +178,9 @@ pub extern "C" fn nmp_app_podcast_unregister(handle: *mut PodcastHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::projections::{
+        DownloadItemSnapshot, PendingApprovalSnapshot,
+    };
 
     #[test]
     fn default_snapshot_omits_now_playing() {
@@ -293,6 +225,8 @@ mod tests {
         assert!(decoded.now_playing.is_none());
         assert!(decoded.downloads.is_none());
         assert!(decoded.agent.is_none());
+        assert!(decoded.voice.is_none());
+        assert!(decoded.briefing.is_none());
     }
 
     #[test]
@@ -363,5 +297,67 @@ mod tests {
         assert!(!json.contains("error"));
         let decoded: DownloadItemSnapshot = serde_json::from_str(&json).expect("decode");
         assert_eq!(decoded, item);
+    }
+
+    // ── Voice / briefing snapshot wiring (M8.A + M9.A) ───────────────
+
+    #[test]
+    fn snapshot_with_voice_round_trips() {
+        let voice = VoiceState {
+            is_speaking: true,
+            current_request_id: Some("req-1".into()),
+            current_voice_id: Some("rachel".into()),
+        };
+        let snap = PodcastUpdate {
+            voice: Some(voice.clone()),
+            ..PodcastUpdate::default()
+        };
+        let json = serde_json::to_string(&snap).expect("encode");
+        let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded.voice, Some(voice));
+    }
+
+    #[test]
+    fn voice_state_omits_none_fields() {
+        let v = VoiceState {
+            is_speaking: false,
+            current_request_id: None,
+            current_voice_id: None,
+        };
+        let json = serde_json::to_string(&v).expect("encode");
+        assert!(!json.contains("current_request_id"));
+        assert!(!json.contains("current_voice_id"));
+        assert!(json.contains("\"is_speaking\":false"));
+        let decoded: VoiceState = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, v);
+    }
+
+    #[test]
+    fn snapshot_with_briefing_round_trips() {
+        let b = BriefingSnapshot {
+            status: "generating".into(),
+            segment_count: 0,
+            next_scheduled_minutes: Some(45),
+        };
+        let snap = PodcastUpdate {
+            briefing: Some(b.clone()),
+            ..PodcastUpdate::default()
+        };
+        let json = serde_json::to_string(&snap).expect("encode");
+        let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded.briefing, Some(b));
+    }
+
+    #[test]
+    fn briefing_snapshot_omits_none_next_scheduled() {
+        let b = BriefingSnapshot {
+            status: "pending".into(),
+            segment_count: 0,
+            next_scheduled_minutes: None,
+        };
+        let json = serde_json::to_string(&b).expect("encode");
+        assert!(!json.contains("next_scheduled_minutes"));
+        let decoded: BriefingSnapshot = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, b);
     }
 }

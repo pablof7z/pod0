@@ -16,7 +16,7 @@
 //!
 //! ## Wire shape
 //!
-//! Every player action carries a stable string id Swift can match on:
+//! Every action carries a stable string id Swift can match on:
 //!
 //! ```text
 //! podcast.player.play                  — PlayAction              { episode_id: String }
@@ -31,15 +31,40 @@
 //! podcast.player.pause_download        — PauseDownloadAction     { episode_id }
 //! podcast.player.resume_download       — ResumeDownloadAction    { episode_id }
 //! podcast.player.cancel_all_downloads  — CancelAllDownloadsAction
+//! podcast.voice.speak                  — SpeakAction             { text, voice_id? }
+//! podcast.voice.stop                   — StopVoiceAction
+//! podcast.voice.set_voice              — SetVoiceAction          { voice_id }
+//! podcast.briefing.request             — RequestBriefingAction
+//! podcast.briefing.schedule            — ScheduleBriefingAction  { schedule }
+//! podcast.briefing.cancel              — CancelBriefingAction
+//! podcast.agent.send                   — SendAgentMessageAction  { conversation_id?, message }
+//! podcast.agent.approve                — ApproveAction           { approval_id }
+//! podcast.agent.deny                   — DenyAction              { approval_id, reason? }
+//! podcast.agent.clear                  — ClearConversationAction { conversation_id }
 //! ```
 //!
 //! Each id is exposed as a `pub const` so the iOS shell, the lint gate,
 //! and the future `ActionModule::action_id` impls reference one string.
+//!
+//! ## Module layout
+//!
+//! Player actions live in this `mod.rs`. Voice actions live in
+//! [`voice`]. Briefing actions are re-exported from `podcast-briefings`;
+//! agent actions are re-exported from `podcast-agent-core`. Each domain
+//! owns its wire format; this module is the single import path the
+//! iOS shell links against.
+
+pub mod voice;
 
 use serde::{Deserialize, Serialize};
 
+pub use voice::{
+    SetVoiceAction, SpeakAction, StopVoiceAction, ACTION_VOICE_SET_VOICE, ACTION_VOICE_SPEAK,
+    ACTION_VOICE_STOP,
+};
+
 // ---------------------------------------------------------------------------
-// Action id constants (kernel ↔ shell contract)
+// Player action id constants (kernel ↔ shell contract)
 // ---------------------------------------------------------------------------
 
 /// `podcast.player.play` — begin playback of `episode_id`.
@@ -68,7 +93,7 @@ pub const ACTION_PLAYER_RESUME_DOWNLOAD: &str = "podcast.player.resume_download"
 pub const ACTION_PLAYER_CANCEL_ALL_DOWNLOADS: &str = "podcast.player.cancel_all_downloads";
 
 // ---------------------------------------------------------------------------
-// Action payloads
+// Player action payloads
 // ---------------------------------------------------------------------------
 
 /// Payload for [`ACTION_PLAYER_PLAY`].
@@ -161,6 +186,21 @@ pub struct ResumeDownloadAction {
 pub struct CancelAllDownloadsAction;
 
 // ---------------------------------------------------------------------------
+// Briefing actions (re-exported from `podcast-briefings` for M9.A)
+// ---------------------------------------------------------------------------
+//
+// The briefing action ids + payloads live in `podcast-briefings` so the
+// crate that owns the briefing/scheduler domain also owns its wire
+// format. Re-exported through this module so the iOS shell links against
+// `nmp_app_podcast::ffi::actions::ACTION_BRIEFING_*` exactly like the
+// player / agent / voice actions — one import path for every action
+// contract.
+pub use podcast_briefings::{
+    CancelBriefingAction, RequestBriefingAction, ScheduleBriefingAction, ACTION_BRIEFING_CANCEL,
+    ACTION_BRIEFING_REQUEST, ACTION_BRIEFING_SCHEDULE,
+};
+
+// ---------------------------------------------------------------------------
 // Agent actions (re-exported from `podcast-agent-core` for M7.A)
 // ---------------------------------------------------------------------------
 //
@@ -169,15 +209,6 @@ pub struct CancelAllDownloadsAction;
 // format. Re-exported through this module so the iOS shell links against
 // `nmp_app_podcast::ffi::actions::ACTION_AGENT_*` exactly like the player
 // actions above — one import path for every action contract.
-//
-// Mapped surface:
-//
-// ```text
-// podcast.agent.send    — SendAgentMessageAction { conversation_id?, message }
-// podcast.agent.approve — ApproveAction          { approval_id }
-// podcast.agent.deny    — DenyAction             { approval_id, reason? }
-// podcast.agent.clear   — ClearConversationAction{ conversation_id }
-// ```
 pub use podcast_agent_core::{
     ApproveAction as AgentApproveAction, ClearConversationAction as AgentClearConversationAction,
     DenyAction as AgentDenyAction, SendAgentMessageAction, ACTION_AGENT_APPROVE,
@@ -320,30 +351,29 @@ mod tests {
         let decoded: SendAgentMessageAction = serde_json::from_str(&json).expect("decode");
         assert_eq!(decoded, a);
     }
+
+    // ── Briefing actions (M9.A — re-exports) ─────────────────────────
+
+    #[test]
+    fn briefing_action_ids_match_documented_strings() {
+        assert_eq!(ACTION_BRIEFING_REQUEST, "podcast.briefing.request");
+        assert_eq!(ACTION_BRIEFING_SCHEDULE, "podcast.briefing.schedule");
+        assert_eq!(ACTION_BRIEFING_CANCEL, "podcast.briefing.cancel");
+    }
+
+    #[test]
+    fn briefing_request_action_round_trips_through_reexport() {
+        let a = RequestBriefingAction;
+        let json = serde_json::to_string(&a).expect("encode");
+        let decoded: RequestBriefingAction = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, a);
+    }
+
+    #[test]
+    fn briefing_cancel_action_round_trips_through_reexport() {
+        let a = CancelBriefingAction;
+        let json = serde_json::to_string(&a).expect("encode");
+        let decoded: CancelBriefingAction = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, a);
+    }
 }
-// This is a placeholder for M0. Podcast-domain action modules will be added
-// here in subsequent milestones as the corresponding NIP crates are
-// implemented.
-//
-// ## M2.D — legacy migration wiring (TODO)
-//
-// The `pcst.legacy_io.capability` (iOS-side `LegacyIOCapability.swift`,
-// domain logic in `podcast_core::migration`) needs a kernel-side caller
-// that, on first launch:
-//
-// 1. Issues a `migration_done_read` request. If `done == true`, stop —
-//    migration is a no-op (idempotence, per M2.D quality gate).
-// 2. Issues `read_state_json`. Base64-decodes the payload and hands it to
-//    `podcast_core::migration::from_state_json`.
-// 3. Issues `read_episode_db` (stub — `from_episode_db` currently returns
-//    `EpisodeDbUnsupported`; the kernel logs and proceeds).
-// 4. Folds the resulting `MigrationResult` into the snapshot's podcasts +
-//    subscriptions stores.
-// 5. Issues `migration_done_set`. Per D6, any error along the way leaves
-//    the sentinel UNSET and surfaces a `toast: Option<String>` on the
-//    snapshot — the next launch retries.
-//
-// This wiring lands when the kernel-side `nmp-store` integration plus the
-// podcast-projection observer arrive in M2.E. Until then, the capability
-// is dormant on the iOS side: started during app boot, never invoked by
-// Rust, no behaviour change observable to the user.

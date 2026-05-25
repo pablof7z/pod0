@@ -15,13 +15,16 @@
 //!   was implemented before the Rust contract existed). The types here are
 //!   re-exported from `podcast-feeds::http`; see that module for the wire
 //!   format.
+//! - [`voice`] — `nmp.voice.capability` (M8.A; iOS executor in M8.C).
 
 pub mod audio;
 pub mod dispatch;
 pub mod download;
 pub mod http;
+pub mod voice;
 
 pub use audio::{AudioCommand, AudioReport, AUDIO_CAPABILITY_NAMESPACE};
 pub use dispatch::{dispatch_audio_report_json, encode_audio_command, DispatchOutcome};
 pub use download::{DownloadCommand, DownloadReport, DOWNLOAD_CAPABILITY_NAMESPACE};
 pub use http::{HttpMethod, HttpRequest, HttpResult, HTTP_CAPABILITY_NAMESPACE};
+pub use voice::{VoiceCommand, VoiceReport, VOICE_CAPABILITY_NAMESPACE};

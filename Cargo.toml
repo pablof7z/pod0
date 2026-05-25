@@ -2,6 +2,7 @@
 members = [
     "apps/nmp-app-podcast",
     "apps/podcast-agent-core",
+    "apps/podcast-briefings",
     "apps/podcast-core",
     "apps/podcast-discovery",
     "apps/podcast-feeds",

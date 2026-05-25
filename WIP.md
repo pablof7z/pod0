@@ -10,8 +10,8 @@ Related files:
 
 ## Active
 
-- M8+M9: voice capability schema + podcast-briefings crate — branch `m8m9/voice-briefings`
-- M11+M12: platform integrations + deletion sweep — branch `m11m12/platform-deletion`
+- M8+M9: voice capability schema + podcast-briefings crate — branch `m8m9/voice-briefings` worktree `/Users/pablofernandez/Work/podcast-player-m8m9`.
+- M11+M12: platform integrations + deletion sweep — branch `m11m12/platform-deletion`.
 
 ## Recent History
 
