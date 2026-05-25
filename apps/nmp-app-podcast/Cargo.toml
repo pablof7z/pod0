@@ -37,6 +37,10 @@ nmp-app-template = { path = "../../../nostrmultiplatform/crates/nmp-app-template
 # `nostr` reconstructs typed `Event` / `Keys` / `PublicKey` / `RelayUrl`
 # values from C-ABI JSON. Pinned to 0.44.
 nostr = { version = "0.44", default-features = false, features = ["std"] }
+# Domain types + projections live in `podcast-core`; the per-app FFI crate
+# consumes them when composing the snapshot. M2.A wires the dep so later
+# milestones can publish actions and observe projections without churn.
+podcast-core = { path = "../podcast-core" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 zeroize = { version = "1", features = ["derive"] }

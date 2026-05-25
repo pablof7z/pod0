@@ -10,7 +10,7 @@ Related files:
 
 ## Active
 
-_(M0 and M1 complete — M2 planning next)_
+- 2026-05-25 - M2.A: create `apps/podcast-core/` Rust crate with domain types + projections skeleton — branch `m2a/podcast-core` worktree `/Users/pablofernandez/Work/podcast-player-m2a`.
 
 ## Recent History
 
