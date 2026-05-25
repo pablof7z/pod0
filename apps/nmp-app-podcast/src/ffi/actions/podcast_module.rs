@@ -28,6 +28,11 @@ pub enum PodcastAction {
     Refresh { podcast_id: String },
     RefreshAll,
     SearchItunes { query: String },
+    /// Import an OPML 2.0 subscription list. `content` is the raw XML string
+    /// (Swift reads the file on the platform side and forwards the text).
+    /// The handler parses entries via `podcast_feeds::import_opml`, then
+    /// fans out to `handle_subscribe` for each unique feed URL.
+    ImportOpml { content: String },
 }
 
 /// Single action module for the whole `"podcast"` namespace.
@@ -75,6 +80,17 @@ mod tests {
         let json = serde_json::to_string(&action).expect("encode");
         assert!(json.contains(r#""op":"subscribe""#));
         assert!(json.contains(r#""feed_url""#));
+        let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, action);
+    }
+
+    #[test]
+    fn import_opml_action_round_trips() {
+        let xml = "<opml version=\"2.0\"><body/></opml>".to_string();
+        let action = PodcastAction::ImportOpml { content: xml.clone() };
+        let json = serde_json::to_string(&action).expect("encode");
+        assert!(json.contains(r#""op":"import_opml""#));
+        assert!(json.contains(r#""content""#));
         let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
         assert_eq!(decoded, action);
     }

@@ -205,6 +205,64 @@ impl PodcastHostOpHandler {
         }
     }
 
+    fn handle_import_opml(&self, content: String, correlation_id: &str) -> serde_json::Value {
+        // Parse via the shared `podcast-feeds` parser — same code path used by
+        // unit tests and (eventually) other platforms. Empty / non-OPML payloads
+        // surface as `MalformedXml` errors; degenerate-but-valid OPML
+        // (no `<outline xmlUrl=...>` rows) parses to `Vec::new()`.
+        let parsed = match podcast_feeds::import_opml(&content) {
+            Ok(p) => p,
+            Err(e) => return serde_json::json!({"ok": false, "error": e.to_string()}),
+        };
+
+        // Skip feeds the user is already subscribed to (matched on feed URL
+        // string). Without this, re-importing the same OPML would re-fetch
+        // every feed and clobber position data via `subscribe` replacement.
+        let existing_feed_urls: std::collections::HashSet<String> =
+            match self.store.lock() {
+                Ok(s) => s
+                    .all_feed_infos()
+                    .into_iter()
+                    .map(|(_, url, _, _)| url.to_string())
+                    .collect(),
+                Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+            };
+
+        let mut imported: usize = 0;
+        let mut skipped: usize = 0;
+        let mut errors: Vec<serde_json::Value> = Vec::new();
+
+        for podcast in parsed.iter() {
+            let Some(feed_url) = podcast.feed_url.as_ref() else {
+                continue; // import_opml only emits feed-URL-bearing entries, but guard anyway
+            };
+            let feed_url_str = feed_url.to_string();
+            if existing_feed_urls.contains(&feed_url_str) {
+                skipped += 1;
+                continue;
+            }
+            let result = self.handle_subscribe(feed_url_str.clone(), correlation_id);
+            if result["ok"] == true {
+                imported += 1;
+            } else {
+                let error_msg = result["error"].as_str().unwrap_or("unknown error").to_string();
+                errors.push(serde_json::json!({
+                    "feed_url": feed_url_str,
+                    "title": podcast.title.clone(),
+                    "error": error_msg,
+                }));
+            }
+        }
+
+        serde_json::json!({
+            "ok": true,
+            "imported": imported,
+            "skipped": skipped,
+            "errors": errors,
+            "total": parsed.len(),
+        })
+    }
+
     fn handle_search_itunes(&self, query: String, correlation_id: &str) -> serde_json::Value {
         let encoded = url_encode(&query);
         let search_url = format!(
@@ -336,6 +394,7 @@ impl HostOpHandler for PodcastHostOpHandler {
                 PodcastAction::Refresh { podcast_id } => self.handle_refresh(podcast_id, correlation_id),
                 PodcastAction::RefreshAll => self.handle_refresh_all(correlation_id),
                 PodcastAction::SearchItunes { query } => self.handle_search_itunes(query, correlation_id),
+                PodcastAction::ImportOpml { content } => self.handle_import_opml(content, correlation_id),
             };
         }
         if let Ok(action) = serde_json::from_str::<PlayerAction>(action_json) {

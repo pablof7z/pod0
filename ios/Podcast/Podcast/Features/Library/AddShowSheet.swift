@@ -2,19 +2,20 @@ import SwiftUI
 
 // MARK: - AddShowSheet
 
-/// Modal "+ Add Show" sheet for the Library tab. Two segments:
+/// Modal "+ Add Show" sheet for the Library tab. Three segments:
 ///
 ///   - **Search**   — Apple Podcasts directory search → one-tap subscribe,
 ///                    dispatched through the NMP `podcast.search_itunes` action.
 ///   - **From URL** — paste / type a feed URL → `podcast.subscribe` dispatch.
-///
-/// OPML import and Nostr discovery arrive in later PRs once those capabilities
-/// are implemented in the Rust kernel (Nostr uses NIP-F4, not NIP-74).
+///   - **OPML**     — pick an OPML file → `podcast.import_opml` dispatch;
+///                    also surfaces a `ShareLink` over the current library
+///                    rendered as an OPML 2.0 document.
 struct AddShowSheet: View {
 
     enum Mode: String, CaseIterable, Identifiable {
         case search = "Search"
         case url = "From URL"
+        case opml = "OPML"
         var id: String { rawValue }
     }
 
@@ -39,6 +40,8 @@ struct AddShowSheet: View {
                         DiscoverSearchForm(onAdded: handleAdded)
                     case .url:
                         AddByURLForm(onAdded: handleAddedFromURL)
+                    case .opml:
+                        OPMLTab(onImported: handleAdded)
                     }
                 }
 

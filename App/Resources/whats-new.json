@@ -8,6 +8,12 @@
       ]
     },
     {
+      "shipped_at": "2026-05-25T22:32:00Z",
+      "lines": [
+        "Import podcasts from an OPML file and export your library"
+      ]
+    },
+    {
       "shipped_at": "2026-05-25T22:31:00Z",
       "lines": [
         "Your podcast library now survives app restarts — subscriptions, episodes, and refresh state persist across launches."
