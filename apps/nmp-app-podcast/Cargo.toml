@@ -68,6 +68,11 @@ podcast-briefings = { path = "../podcast-briefings" }
 # and store the plain text on a per-episode slot in `PodcastStore`.
 podcast-transcripts = { path = "../podcast-transcripts" }
 # NIP-F4 (`kind:10154`) parser + action constants for Nostr discovery.
+# Discovery + publish layer. NIP-F4 tag builders (`podcast_to_show_tags`,
+# `episode_to_episode_tags`, `show_content`) and kind constants
+# (`KIND_SHOW`, `KIND_EPISODE`, `KIND_AUTHOR_CLAIM`) live here. The
+# `podcast.publish` host-op handler reaches for the build layer when
+# constructing per-podcast NIP-F4 events (features #27/#28).
 podcast-discovery = { path = "../podcast-discovery" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

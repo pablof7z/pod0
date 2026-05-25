@@ -55,6 +55,8 @@ pub mod download;
 pub mod ffi;
 pub(crate) mod host_op_handler;
 pub(crate) mod itunes;
+pub(crate) mod host_op_itunes;
+pub(crate) mod host_op_publish;
 pub mod player;
 pub(crate) mod social_handler;
 pub(crate) mod host_op_handler_itunes;

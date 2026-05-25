@@ -66,6 +66,8 @@ mod tests {
     use crate::store::PodcastStore;
     use std::collections::HashMap;
     use std::collections::HashSet;
+    use crate::store::{PodcastKeyStore, PodcastStore};
+    use std::collections::HashMap;
     use std::ffi::CString;
     use std::sync::atomic::AtomicU64;
     use std::sync::{Arc, Mutex};
@@ -92,6 +94,8 @@ mod tests {
             clips: Arc::new(Mutex::new(Vec::new())),
             transcripts: Arc::new(Mutex::new(HashMap::new())),
             dismissed_episode_ids: Arc::new(Mutex::new(HashSet::new())),
+            podcast_keys: Arc::new(Mutex::new(PodcastKeyStore::new())),
+            publish_state: Arc::new(Mutex::new(HashMap::new())),
         })
     }
 

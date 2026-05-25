@@ -72,10 +72,17 @@ use crate::host_op_helpers::{merge_episodes, parse_itunes_results, url_encode};
 use crate::player::PlayerActor;
 use crate::store::PodcastStore;
 use crate::tts::TtsEpisodeHandler;
+use crate::ffi::actions::publish_module::PublishAction;
+use crate::ffi::handle::OwnedPublishState;
+use crate::ffi::projections::{EpisodeSummary, PodcastSummary};
+use crate::host_op_itunes::{parse_itunes_results, url_encode};
+use crate::host_op_publish::handle_publish_action;
+use crate::player::PlayerActor;
+use crate::store::{PodcastKeyStore, PodcastStore};
 
 pub struct PodcastHostOpHandler {
     app: *mut NmpApp,
-    store: Arc<Mutex<PodcastStore>>,
+    pub(crate) store: Arc<Mutex<PodcastStore>>,
     player_actor: Arc<Mutex<PlayerActor>>,
     search_results: Arc<Mutex<Vec<PodcastSummary>>>,
     nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
@@ -91,6 +98,14 @@ pub struct PodcastHostOpHandler {
     transcripts: Arc<Mutex<HashMap<String, Vec<TranscriptEntry>>>>,
     dismissed_episode_ids: Arc<Mutex<HashSet<String>>>,
     rev: Arc<AtomicU64>,
+    pub(crate) rev: Arc<AtomicU64>,
+    /// Per-podcast Nostr keypairs for NIP-F4 owned podcasts (features
+    /// #27/#28). Shared with `PodcastHandle.podcast_keys` so the snapshot
+    /// reader sees the same data.
+    pub(crate) podcast_keys: Arc<Mutex<PodcastKeyStore>>,
+    /// Diagnostic publish state per podcast (last show event JSON +
+    /// last-published timestamp). Shared with `PodcastHandle.publish_state`.
+    pub(crate) publish_state: Arc<Mutex<HashMap<String, OwnedPublishState>>>,
 }
 
 unsafe impl Send for PodcastHostOpHandler {}
@@ -107,6 +122,8 @@ impl PodcastHostOpHandler {
         briefing: Arc<Mutex<Option<BriefingSnapshot>>>,
         queue: Arc<Mutex<PlaybackQueue>>,
         rev: Arc<AtomicU64>,
+        podcast_keys: Arc<Mutex<PodcastKeyStore>>,
+        publish_state: Arc<Mutex<HashMap<String, OwnedPublishState>>>,
     ) -> Self {
         Self { app, store, player_actor, search_results, nostr_results, briefing, queue, rev }
         wiki_articles: Arc<Mutex<Vec<WikiArticle>>>,
@@ -147,6 +164,9 @@ impl PodcastHostOpHandler {
         Self { app, store, player_actor, search_results, nostr_results, transcripts, rev }
             dismissed_episode_ids,
             rev,
+            rev,
+            podcast_keys,
+            publish_state,
         }
     }
         knowledge_search_results: Arc<Mutex<Vec<KnowledgeSearchResult>>>,
@@ -783,6 +803,9 @@ impl HostOpHandler for PodcastHostOpHandler {
                 PodcastAction::FetchContacts => crate::social_handler::handle_fetch_contacts(),
             };
         }
+        if let Ok(action) = serde_json::from_str::<PublishAction>(action_json) {
+            return handle_publish_action(self, action);
+        }
         if let Ok(action) = serde_json::from_str::<PlayerAction>(action_json) {
             return crate::player_handler::handle_player_action(
                 action,
@@ -890,3 +913,5 @@ fn parse_itunes_results(body: &str) -> Vec<PodcastSummary> {
         })
         .collect()
 }
+// `url_encode` + `parse_itunes_results` live in `crate::host_op_itunes`
+// so this module stays under the 500-LOC hard limit.

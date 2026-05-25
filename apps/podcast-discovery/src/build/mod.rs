@@ -6,8 +6,8 @@
 //! module pure means it's trivially testable and can be reused on both
 //! the iOS publish path and the eventual NIP-F4 cutover.
 
-mod episode;
-mod show;
+pub mod episode;
+pub mod show;
 
 pub use episode::episode_to_episode_tags;
 pub use show::{podcast_to_show_tags, show_content};

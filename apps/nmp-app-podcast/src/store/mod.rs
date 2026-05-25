@@ -29,6 +29,11 @@ pub mod auto_download;
 mod persistence;
 mod transcripts;
 use crate::ffi::projections::MemoryFact;
+mod owned_ext;
+mod persistence;
+pub mod podcast_keys;
+
+pub use podcast_keys::PodcastKeyStore;
 
 mod persistence;
 #[cfg(test)]
@@ -44,8 +49,8 @@ use persistence::{PersistedPodcast, PersistedStore, PERSIST_SCHEMA_VERSION};
 /// dir the store stays in memory — useful for unit tests and the very first
 /// run before iOS calls `nmp_app_podcast_set_data_dir`.
 pub struct PodcastStore {
-    podcasts: HashMap<PodcastId, Podcast>,
-    episodes: HashMap<PodcastId, Vec<Episode>>,
+    pub(super) podcasts: HashMap<PodcastId, Podcast>,
+    pub(super) episodes: HashMap<PodcastId, Vec<Episode>>,
     /// Per-episode on-disk path for downloaded enclosures. Populated when an
     /// iOS `DownloadCapability` reports `Completed`; cleared by
     /// [`PodcastStore::clear_local_path`] when the user deletes the file.
@@ -162,7 +167,7 @@ impl PodcastStore {
     /// Flush the current in-memory state to `data_dir/podcasts.json`. Silent
     /// no-op when no data dir is set. Errors are intentionally swallowed
     /// (D6) — the in-memory store stays authoritative.
-    fn persist(&self) {
+    pub(super) fn persist(&self) {
         let Some(dir) = self.data_dir.as_ref() else { return; };
         let payload = self.to_persisted();
         let _ = persistence::save(dir, &payload);

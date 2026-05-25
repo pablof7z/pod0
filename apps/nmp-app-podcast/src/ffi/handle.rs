@@ -20,6 +20,18 @@ use crate::ffi::projections::{NostrShowSummary, PodcastSummary, TranscriptEntry}
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::store::PodcastStore;
+use crate::store::{PodcastKeyStore, PodcastStore};
+
+/// Diagnostic publish state retained per-podcast across snapshot ticks.
+///
+/// `show_event_json` is the most recently-built unsigned `kind:10154`
+/// event JSON (debug surface — relay publishing is still pending the
+/// broader Nostr infrastructure). `last_published_at` is Unix seconds.
+#[derive(Clone, Debug, Default)]
+pub struct OwnedPublishState {
+    pub show_event_json: Option<String>,
+    pub last_published_at: Option<i64>,
+}
 
 /// Opaque handle returned by [`super::nmp_app_podcast_register`]. Boxed on the
 /// heap so the address is stable; the Swift consumer holds the raw pointer
@@ -100,6 +112,16 @@ pub struct PodcastHandle {
     /// re-surfaces everything so the user can re-triage. Written by the
     /// inbox handler's `Dismiss` op; read by the inbox projection builder.
     pub(super) dismissed_episode_ids: Arc<Mutex<HashSet<String>>>,
+    /// Per-podcast Nostr keypairs for NIP-F4 owned podcasts (features
+    /// #27/#28). Written by `podcast.publish.create_owned_podcast` and
+    /// cleared by `remove_owned_podcast`; read by every other publish op.
+    pub(super) podcast_keys: Arc<Mutex<PodcastKeyStore>>,
+    /// Diagnostic publish state per podcast (last show event JSON +
+    /// last-published timestamp). Surfaced via `OwnedPodcastInfo` so the
+    /// iOS shell can render "last published at …" without a separate
+    /// FFI accessor. Keyed by `podcast_id` UUID string (matching the
+    /// FFI projection).
+    pub(super) publish_state: Arc<Mutex<HashMap<String, OwnedPublishState>>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the

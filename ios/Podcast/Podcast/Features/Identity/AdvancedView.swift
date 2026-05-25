@@ -70,6 +70,15 @@ struct AdvancedView: View {
             }
             Section {
                 NavigationLink {
+                    OwnedPodcastsView()
+                } label: {
+                    advancedRow(
+                        title: "Your Podcasts (NIP-F4)",
+                        subtitle: "Create per-podcast keypairs and publish shows",
+                        systemImage: "antenna.radiowaves.left.and.right"
+                    )
+                }
+                NavigationLink {
                     AccountDetailsView()
                 } label: {
                     advancedRow(

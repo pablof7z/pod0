@@ -136,6 +136,26 @@ struct InboxItem: Codable, Identifiable, Equatable, Hashable {
     var priorityReason: String? = nil
 
     var id: String { episodeId }
+    /// NIP-F4 owned podcasts (features #27/#28). Empty until the user
+    /// dispatches `podcast.publish.create_owned_podcast` for at least
+    /// one podcast.
+    var ownedPodcasts: [OwnedPodcastInfo] = []
+}
+
+/// Snapshot row for a podcast the user owns (has generated a NIP-F4
+/// per-podcast keypair for). `showEventJson` is the most recently
+/// constructed unsigned `kind:10154` event JSON (debug surface); the
+/// relay-publish path is `relay_pending` until the broader Nostr
+/// publishing infrastructure is wired through.
+struct OwnedPodcastInfo: Codable, Identifiable, Equatable, Hashable {
+    var podcastId: String
+    var podcastPubkeyHex: String
+    var showEventJson: String? = nil
+    /// Unix seconds — when the most recent `publish_show` ran for this podcast.
+    var lastPublishedAt: Int? = nil
+
+    /// `Identifiable` conformance — the podcast id is the natural row key.
+    var id: String { podcastId }
 }
 
 /// Narrow projection for a subscribed podcast (one library grid/list cell).

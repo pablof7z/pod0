@@ -33,6 +33,7 @@ mod audio_report;
 mod data_dir;
 mod download_report;
 mod handle;
+pub(crate) mod handle;
 mod helpers;
 pub mod projections;
 #[cfg(test)]
@@ -42,6 +43,7 @@ mod snapshot;
 #[cfg(test)]
 mod snapshot_tests;
 mod snapshot_queue;
+mod snapshot_owned;
 
 pub use actions::{
     CancelAllDownloadsAction, CancelDownloadAction, DownloadEpisodeAction, PauseAction,

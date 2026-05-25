@@ -1,8 +1,6 @@
 //! Snapshot + unregister entry points the host calls against a
 //! [`PodcastHandle`] returned by [`super::register::nmp_app_podcast_register`].
 //!
-//! ## `PodcastUpdate`
-//!
 //! [`PodcastUpdate`] is the typed root of the JSON the kernel emits on every
 //! tick. The iOS shell decodes it via `Codable`. Fields are added milestone by
 //! milestone. The struct below is the source of truth for the emitted wire
@@ -28,6 +26,11 @@
 //! existing decoders don't break before each projection's milestone
 //! wires it up. Per-projection field definitions live in
 //! [`super::projections`].
+//! tick. Per-milestone fields (`now_playing`, `downloads`, `agent`, `voice`,
+//! `briefing`, `widget`, `owned_podcasts`, …) stay `Option`/`Vec`-default so
+//! empty payloads remain byte-compatible with the legacy stub
+//! `{"running":true,"rev":0,"schema_version":1}`. Per-projection field
+//! definitions live in [`super::projections`].
 
 use std::ffi::{c_char, CString};
 use std::sync::atomic::Ordering;
@@ -55,6 +58,9 @@ use super::snapshot_queue::resolve_queue_rows;
     EpisodeSummary, InboxItem, PodcastSummary, VoiceState, WidgetSnapshot,
 };
 use crate::inbox_handler::build_inbox;
+    OwnedPodcastInfo, PodcastSummary, VoiceState, WidgetSnapshot,
+};
+use super::snapshot_owned::collect_owned_podcasts;
 use crate::player::PlayerState;
 
 /// Typed root of the snapshot JSON.
@@ -240,6 +246,11 @@ pub struct PodcastUpdate {
     /// to show; omitted from the wire payload then (D5 byte-identity).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub inbox: Vec<InboxItem>,
+    /// User-owned podcasts (NIP-F4): rows for every podcast with a
+    /// per-podcast keypair generated via `podcast.publish.create_owned_podcast`.
+    /// Empty until the first `create_owned_podcast` action fires.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub owned_podcasts: Vec<OwnedPodcastInfo>,
 }
 
 impl Default for PodcastUpdate {
@@ -273,6 +284,7 @@ impl Default for PodcastUpdate {
             tts_episodes: Vec::new(),
             clips: Vec::new(),
             inbox: Vec::new(),
+            owned_podcasts: Vec::new(),
         }
     }
 }
@@ -493,6 +505,8 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
 
     let inbox = build_inbox(&handle.store, &handle.dismissed_episode_ids);
 
+    let owned_podcasts = collect_owned_podcasts(handle);
+
     let update = PodcastUpdate {
         rev,
         now_playing,
@@ -512,6 +526,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         tts_episodes,
         clips,
         inbox,
+        owned_podcasts,
         ..PodcastUpdate::default()
     };
     let json = serde_json::to_string(&update)
