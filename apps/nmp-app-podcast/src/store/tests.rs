@@ -187,6 +187,95 @@ fn set_episode_position_does_not_persist_until_flush() {
     let mut store3 = PodcastStore::new();
     store3.set_data_dir(dir.path.clone());
     assert_eq!(store3.position_for(&ep_id_str), Some(36.0));
+// ── Auto-download flag ──────────────────────────────────────────────────
+
+#[test]
+fn auto_download_defaults_to_false() {
+    let store = PodcastStore::new();
+    let id = PodcastId::generate();
+    assert!(!store.is_auto_download_enabled(id));
+}
+
+#[test]
+fn set_auto_download_toggles_flag() {
+    let mut store = PodcastStore::new();
+    let id = PodcastId::generate();
+    store.set_auto_download(id, true);
+    assert!(store.is_auto_download_enabled(id));
+    store.set_auto_download(id, false);
+    assert!(!store.is_auto_download_enabled(id));
+}
+
+#[test]
+fn set_auto_download_is_idempotent() {
+    let mut store = PodcastStore::new();
+    let id = PodcastId::generate();
+    store.set_auto_download(id, true);
+    store.set_auto_download(id, true);
+    assert!(store.is_auto_download_enabled(id));
+}
+
+#[test]
+fn unsubscribe_clears_auto_download_flag() {
+    let mut store = PodcastStore::new();
+    let podcast = make_podcast("Toggled");
+    let id = podcast.id;
+    store.subscribe(podcast, vec![]);
+    store.set_auto_download(id, true);
+    assert!(store.is_auto_download_enabled(id));
+
+    store.unsubscribe(id);
+    assert!(!store.is_auto_download_enabled(id));
+}
+
+#[test]
+fn is_auto_download_enabled_str_handles_invalid_uuid() {
+    let store = PodcastStore::new();
+    assert!(!store.is_auto_download_enabled_str("not-a-uuid"));
+}
+
+#[test]
+fn is_auto_download_enabled_str_matches_set_state() {
+    let mut store = PodcastStore::new();
+    let podcast = make_podcast("Show");
+    let id = podcast.id;
+    store.subscribe(podcast, vec![]);
+    store.set_auto_download(id, true);
+    assert!(store.is_auto_download_enabled_str(&id.0.to_string()));
+}
+
+#[test]
+fn auto_download_flag_persists_across_reload() {
+    let dir = TempDir::new();
+    let podcast_id;
+    {
+        let mut store = PodcastStore::new();
+        store.set_data_dir(dir.path.clone());
+        let podcast = make_podcast("Persistent Auto");
+        podcast_id = podcast.id;
+        store.subscribe(podcast, vec![]);
+        store.set_auto_download(podcast_id, true);
+    }
+    let mut store2 = PodcastStore::new();
+    store2.set_data_dir(dir.path.clone());
+    assert!(store2.is_auto_download_enabled(podcast_id));
+}
+
+#[test]
+fn auto_download_off_state_persists_across_reload() {
+    let dir = TempDir::new();
+    let podcast_id;
+    {
+        let mut store = PodcastStore::new();
+        store.set_data_dir(dir.path.clone());
+        let podcast = make_podcast("Default Off");
+        podcast_id = podcast.id;
+        store.subscribe(podcast, vec![]);
+        // Never toggled — flag stays false.
+    }
+    let mut store2 = PodcastStore::new();
+    store2.set_data_dir(dir.path.clone());
+    assert!(!store2.is_auto_download_enabled(podcast_id));
 }
 
 // ── Persistence integration tests ────────────────────────────────────

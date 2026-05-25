@@ -69,6 +69,13 @@ struct PodcastSummary: Codable, Identifiable, Equatable, Hashable {
     var artworkUrl: String? = nil
     var feedUrl: String? = nil
     var author: String? = nil
+    /// Per-podcast auto-download policy state. `true` ⇒ the Rust kernel
+    /// will auto-queue freshly-discovered episodes on the next feed
+    /// refresh. The ShowDetailView toolbar reads this for the toggle's
+    /// rendered state and dispatches `set_auto_download` to flip it.
+    /// Defaults to `false`; iTunes search rows never set it (they have
+    /// no real `PodcastId` server-side).
+    var autoDownload: Bool = false
     var episodes: [EpisodeSummary] = []
 }
 

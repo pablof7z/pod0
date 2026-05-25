@@ -155,6 +155,7 @@ struct ShowDetailView: View {
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 if isInLibrary {
+                    autoDownloadToggleButton
                     Button(role: .destructive) {
                         Haptics.warning()
                         showUnsubscribeConfirm = true
@@ -178,6 +179,38 @@ struct ShowDetailView: View {
                 Image(systemName: "ellipsis.circle").font(.title3)
             }
             .accessibilityLabel("Show options")
+        }
+    }
+
+    /// Menu item that toggles the per-show auto-download policy. The
+    /// rendered state comes from the live snapshot
+    /// (`livePodcast.autoDownload`) so a toggle dispatched here flips the
+    /// next time the kernel pushes a `rev` bump. Per D0 the decision lives
+    /// in Rust; iOS only renders the boolean.
+    ///
+    /// Note: `JSONSerialization` bridges Swift `Bool` correctly as JSON
+    /// `true`/`false` via `__NSCFBoolean` (not the numeric NSNumber
+    /// fast path), so a literal `Bool` in `[String: Any]` deserializes
+    /// against Rust `serde::Deserialize for bool` without ceremony.
+    @ViewBuilder
+    private var autoDownloadToggleButton: some View {
+        let nextValue = !livePodcast.autoDownload
+        Button {
+            Haptics.light()
+            model.dispatch(
+                namespace: "podcast",
+                body: [
+                    "op": "set_auto_download",
+                    "podcast_id": podcast.id,
+                    "enabled": nextValue,
+                ]
+            )
+        } label: {
+            if livePodcast.autoDownload {
+                Label("Auto-download on", systemImage: "checkmark.circle.fill")
+            } else {
+                Label("Auto-download new episodes", systemImage: "arrow.down.circle")
+            }
         }
     }
 

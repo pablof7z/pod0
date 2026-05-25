@@ -98,6 +98,16 @@ pub enum PodcastAction {
         episode_id: String,
         content: String,
     },
+    /// Toggle the per-podcast auto-download policy. When `enabled` is
+    /// `true`, subsequent `handle_refresh` calls will dispatch
+    /// `DownloadCommand::StartDownload` for every freshly-discovered
+    /// episode (matched by `guid` against the previously-known set).
+    /// When `false`, the policy is removed and refreshes go back to
+    /// only surfacing new episodes in the snapshot.
+    ///
+    /// Per D0: Rust owns the decision; iOS only renders the toggle
+    /// state from the projection.
+    SetAutoDownload { podcast_id: String, enabled: bool },
 }
 
 /// Single action module for the whole `"podcast"` namespace.
@@ -180,6 +190,15 @@ mod tests {
         let json = serde_json::to_string(&action).expect("encode");
         assert!(json.contains(r#""op":"update_settings""#));
         assert!(json.contains(r#""has_completed_onboarding":true"#));
+    fn set_auto_download_action_round_trips() {
+        let action = PodcastAction::SetAutoDownload {
+            podcast_id: "abc-123".into(),
+            enabled: true,
+        };
+        let json = serde_json::to_string(&action).expect("encode");
+        assert!(json.contains(r#""op":"set_auto_download""#));
+        assert!(json.contains(r#""podcast_id":"abc-123""#));
+        assert!(json.contains(r#""enabled":true"#));
         let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
         assert_eq!(decoded, action);
     }

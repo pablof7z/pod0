@@ -104,6 +104,12 @@
       ]
     },
     {
+      "shipped_at": "2026-05-26T00:16:00Z",
+      "lines": [
+        "Per-show auto-download — open any show, tap the ••• menu, and turn on Auto-download to have new episodes queued for offline listening automatically on the next feed refresh."
+      ]
+    },
+    {
       "shipped_at": "2026-05-25T23:01:00Z",
       "lines": [
         "Onboarding subscribe step now dispatches through the Rust kernel — first-run subscriptions feed the live library snapshot just like in-app subscribes"

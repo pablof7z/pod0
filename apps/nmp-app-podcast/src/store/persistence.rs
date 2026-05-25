@@ -47,6 +47,14 @@ pub(super) struct PersistedPodcast {
     pub podcast: Podcast,
     #[serde(default)]
     pub episodes: Vec<Episode>,
+    /// Per-podcast auto-download opt-in flag. `#[serde(default)]` lets the
+    /// load path tolerate older `podcasts.json` files written before this
+    /// field shipped: missing key ⇒ `false` (auto-download off). We
+    /// deliberately do NOT bump `PERSIST_SCHEMA_VERSION` for this addition
+    /// — bumping wipes the user's library because `load()` treats unknown
+    /// schemas as empty (see this file, line ~60).
+    #[serde(default)]
+    pub auto_download: bool,
 }
 
 /// Resolve the path of `podcasts.json` inside `data_dir`.
@@ -178,6 +186,7 @@ mod tests {
             podcasts: vec![PersistedPodcast {
                 podcast: podcast.clone(),
                 episodes: episodes.clone(),
+                auto_download: false,
             }],
             has_completed_onboarding: false,
         };
@@ -261,5 +270,28 @@ mod tests {
         let dir = TempDir::new();
         std::fs::write(podcasts_path(&dir.path), b"not valid json").unwrap();
         assert!(load(&dir.path).is_err());
+    }
+
+    #[test]
+    fn load_tolerates_missing_auto_download_field() {
+        // Backward-compat: a `podcasts.json` written before the auto_download
+        // field shipped must load with auto_download = false (the field
+        // default) — never panic and never bump schema_version (which would
+        // wipe the library, see load() schema_version branch).
+        let dir = TempDir::new();
+        let podcast = make_podcast("Legacy Show");
+        // Build the payload WITHOUT the `auto_download` key — mirrors an
+        // older app version's on-disk format.
+        let raw = serde_json::json!({
+            "schema_version": PERSIST_SCHEMA_VERSION,
+            "podcasts": [{
+                "podcast": podcast,
+                "episodes": []
+            }]
+        });
+        std::fs::write(podcasts_path(&dir.path), serde_json::to_vec(&raw).unwrap()).unwrap();
+        let loaded = load(&dir.path).unwrap().expect("file present");
+        assert_eq!(loaded.podcasts.len(), 1);
+        assert!(!loaded.podcasts[0].auto_download);
     }
 }

@@ -17,7 +17,7 @@
 //! D6: persistence failures degrade silently — the in-memory store remains
 //! authoritative and the next mutation will try to write again.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 #[cfg(test)]
 use std::path::Path;
@@ -25,11 +25,13 @@ use std::path::Path;
 use podcast_core::{Episode, EpisodeId, Podcast, PodcastId};
 
 mod chapters;
+pub mod auto_download;
 mod persistence;
 mod transcripts;
 #[cfg(test)]
 mod tests;
 
+pub use auto_download::episodes_to_auto_download;
 use persistence::{PersistedPodcast, PersistedStore, PERSIST_SCHEMA_VERSION};
 
 /// Backing store for subscribed podcasts and their episode lists.
@@ -63,6 +65,13 @@ pub struct PodcastStore {
     /// whether to present `OnboardingView`. Mirrored to disk under the same
     /// `podcasts.json` envelope as the library so the flag survives restart.
     has_completed_onboarding: bool,
+    /// Podcasts the user has opted into auto-download for.
+    ///
+    /// Membership is the policy: present ⇒ `handle_refresh` will queue
+    /// freshly-discovered episodes via the download capability; absent ⇒
+    /// new episodes are surfaced in the snapshot but not downloaded.
+    /// Cleared by `unsubscribe` so a later re-subscribe starts fresh.
+    auto_download_enabled: HashSet<PodcastId>,
     data_dir: Option<PathBuf>,
 }
 
@@ -75,6 +84,7 @@ impl PodcastStore {
             transcripts: HashMap::new(),
             last_flushed_positions: HashMap::new(),
             has_completed_onboarding: false,
+            auto_download_enabled: HashSet::new(),
             data_dir: None,
         }
     }
@@ -114,6 +124,7 @@ impl PodcastStore {
         // checkpoint: seed the throttling marker so the writeback layer
         // doesn't immediately re-flush on the next `Playing` tick.
         self.last_flushed_positions.clear();
+        self.auto_download_enabled.clear();
         for row in loaded.podcasts {
             let id = row.podcast.id;
             for ep in &row.episodes {
@@ -124,6 +135,9 @@ impl PodcastStore {
             }
             self.podcasts.insert(id, row.podcast);
             self.episodes.insert(id, row.episodes);
+            if row.auto_download {
+                self.auto_download_enabled.insert(id);
+            }
         }
         // Settings are stored in the same envelope so onboarding completion
         // survives restart without a second file. `serde(default)` keeps
@@ -148,6 +162,7 @@ impl PodcastStore {
             .map(|(id, podcast)| PersistedPodcast {
                 podcast: podcast.clone(),
                 episodes: self.episodes.get(id).cloned().unwrap_or_default(),
+                auto_download: self.auto_download_enabled.contains(id),
             })
             .collect();
         // Stable order so two consecutive saves produce identical bytes —
@@ -196,10 +211,15 @@ impl PodcastStore {
 
     /// Remove a podcast and all its episodes, flushing to disk if a data dir
     /// is registered. Silent no-op when not found.
+    ///
+    /// Also clears the per-podcast auto-download flag so a later
+    /// re-subscribe starts from "off" — otherwise stale policy from
+    /// a previous lifetime of the show would silently keep firing.
     pub fn unsubscribe(&mut self, podcast_id: PodcastId) {
         let removed_p = self.podcasts.remove(&podcast_id).is_some();
         let removed_e = self.episodes.remove(&podcast_id).is_some();
-        if removed_p || removed_e {
+        let removed_a = self.auto_download_enabled.remove(&podcast_id);
+        if removed_p || removed_e || removed_a {
             self.persist();
         }
     }
@@ -387,6 +407,44 @@ impl PodcastStore {
     }
 
 
+    /// Set the auto-download opt-in flag for a podcast. Idempotent and
+    /// silent when the podcast isn't subscribed (the flag will just
+    /// hang around in the set; `unsubscribe` clears it). Flushes to
+    /// disk when a data dir is bound so the preference survives
+    /// app relaunches.
+    pub fn set_auto_download(&mut self, podcast_id: PodcastId, enabled: bool) {
+        let changed = if enabled {
+            self.auto_download_enabled.insert(podcast_id)
+        } else {
+            self.auto_download_enabled.remove(&podcast_id)
+        };
+        if changed {
+            self.persist();
+        }
+    }
+
+    /// Read the auto-download opt-in flag for a podcast. Defaults to
+    /// `false` for unknown / never-toggled podcasts.
+    pub fn is_auto_download_enabled(&self, podcast_id: PodcastId) -> bool {
+        self.auto_download_enabled.contains(&podcast_id)
+    }
+
+    /// Look up the auto-download flag by the string form of a podcast id.
+    /// Helper for the FFI action handlers, which receive UUIDs as strings.
+    pub fn is_auto_download_enabled_str(&self, id_str: &str) -> bool {
+        match id_str.parse::<uuid::Uuid>() {
+            Ok(uuid) => self.is_auto_download_enabled(PodcastId::new(uuid)),
+            Err(_) => false,
+        }
+    }
+
+    /// Read-only access to the on-disk path side-map. Used by the
+    /// auto-download policy helper so a "freshly discovered" episode
+    /// already known to be on disk is not re-queued.
+    pub fn local_paths(&self) -> &HashMap<EpisodeId, String> {
+        &self.local_paths
+    }
+
     /// Test-only accessor for the currently-bound data dir.
     #[cfg(test)]
     pub(crate) fn data_dir(&self) -> Option<&Path> {
@@ -399,3 +457,6 @@ impl Default for PodcastStore {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests;

@@ -1,12 +1,14 @@
 //! Actor-thread handler for podcast/player host operations.
 
+use std::collections::HashSet;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use chrono::Utc;
 use nmp_core::substrate::{CapabilityRequest, HostOpHandler};
 use nmp_ffi::NmpApp;
-use podcast_core::{Episode, PodcastId};
+use podcast_core::{Episode, EpisodeId, PodcastId};
+use uuid::Uuid;
 use podcast_feeds::client::{build_feed_request, handle_feed_response, FeedResult};
 use podcast_feeds::http::{HttpRequest, HttpResult, HTTP_CAPABILITY_NAMESPACE};
 
@@ -26,6 +28,10 @@ use crate::store::PodcastStore;
 use crate::transcript::handle_fetch_transcript;
 
 mod player_actions;
+use crate::ffi::projections::PodcastSummary;
+use crate::host_op_helpers::{merge_episodes, parse_itunes_results, url_encode};
+use crate::player::PlayerActor;
+use crate::store::{episodes_to_auto_download, PodcastStore};
 
 pub struct PodcastHostOpHandler {
     app: *mut NmpApp,
@@ -205,11 +211,39 @@ impl PodcastHostOpHandler {
                 let etag_out = http_result.header("etag").map(str::to_owned);
                 let lm_out = http_result.header("last-modified").map(str::to_owned);
                 let subscribe_outcome = match self.store.lock() {
+                // Single lock window: snapshot existing guids + auto-download
+                // flag + local-paths map, then merge position data forward.
+                // We compute the set of new episodes to auto-queue *before*
+                // releasing the lock so a concurrent unsubscribe can't race
+                // a stale dispatch through.
+                let (episodes, to_auto_download) = match self.store.lock() {
+                    Ok(s) => {
+                        let existing: Vec<Episode> = s.episodes_for(podcast_id).to_vec();
+                        let existing_guids: HashSet<String> =
+                            existing.iter().map(|e| e.guid.clone()).collect();
+                        let auto_on = s.is_auto_download_enabled(podcast_id);
+                        let new_eps = episodes_to_auto_download(
+                            &parsed.episodes,
+                            &existing_guids,
+                            s.local_paths(),
+                            auto_on,
+                        );
+                        let merged = merge_episodes(parsed.episodes, existing);
+                        (merged, new_eps)
+                    }
+                    Err(_) => (parsed.episodes, Vec::new()),
+                };
+                let etag_out = http_result.header("etag").map(str::to_owned);
+                let lm_out = http_result.header("last-modified").map(str::to_owned);
+                // Second lock window: commit the merged episode list + refresh
+                // metadata. Kept narrow so the auto-download dispatches below
+                // never run with the store locked (lock discipline at the top
+                // of this file).
+                match self.store.lock() {
                     Ok(mut s) => {
                         s.subscribe(parsed.podcast, episodes);
                         s.update_refresh_metadata(podcast_id, etag_out, lm_out);
                         self.rev.fetch_add(1, Ordering::Relaxed);
-                        serde_json::json!({"ok": true})
                     }
                     Err(_) => serde_json::json!({"ok": false, "error": "store poisoned"}),
                 };
@@ -228,9 +262,36 @@ impl PodcastHostOpHandler {
                     }
                 }
                 subscribe_outcome
+                    Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+                }
+                // Lock released — safe to dispatch download commands. D7:
+                // the iOS capability owns the actual fetch; the kernel only
+                // tells it what to start.
+                self.dispatch_auto_downloads(&to_auto_download, correlation_id);
+                serde_json::json!({"ok": true})
             }
             Ok(FeedResult::NotModified { .. }) => serde_json::json!({"ok": true, "not_modified": true}),
             Err(e) => serde_json::json!({"ok": false, "error": format!("{e:?}")}),
+        }
+    }
+
+    /// Dispatch one `DownloadCommand::StartDownload` per item, swallowing
+    /// per-item failures so a single bad URL doesn't drop the rest of the
+    /// batch. Used by `refresh_one` after auto-download policy returns a
+    /// list of fresh episodes to queue.
+    fn dispatch_auto_downloads(
+        &self,
+        items: &[(EpisodeId, String)],
+        correlation_id: &str,
+    ) {
+        for (episode_id, url) in items {
+            let cmd = DownloadCommand::start(
+                url.clone(),
+                episode_id.0.to_string(),
+                None,
+            );
+            // D6 — errors degrade silently; the next refresh will retry.
+            let _ = self.dispatch_download(&cmd, correlation_id);
         }
     }
 
@@ -396,6 +457,24 @@ impl PodcastHostOpHandler {
             self.rev.fetch_add(1, Ordering::Relaxed);
         }
         serde_json::json!({"ok": true})
+    fn handle_set_auto_download(
+        &self,
+        podcast_id_str: String,
+        enabled: bool,
+    ) -> serde_json::Value {
+        let uuid = match podcast_id_str.parse::<Uuid>() {
+            Ok(u) => u,
+            Err(_) => return serde_json::json!({"ok": false, "error": "invalid podcast_id"}),
+        };
+        let podcast_id = PodcastId::new(uuid);
+        match self.store.lock() {
+            Ok(mut s) => {
+                s.set_auto_download(podcast_id, enabled);
+                self.rev.fetch_add(1, Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            Err(_) => serde_json::json!({"ok": false, "error": "store poisoned"}),
+        }
     }
 
     fn handle_delete_download(&self, episode_id_str: String) -> serde_json::Value {
@@ -438,6 +517,9 @@ impl HostOpHandler for PodcastHostOpHandler {
                 PodcastAction::GenerateBriefing => crate::briefings_handler::handle_generate_briefing(&self.briefing, &self.rev),
                 PodcastAction::FetchComments { episode_id } => crate::comments_handler::handle_fetch_comments(&episode_id),
                 PodcastAction::PostComment { episode_id, content } => crate::comments_handler::handle_post_comment(&episode_id, &content),
+                PodcastAction::SetAutoDownload { podcast_id, enabled } => {
+                    self.handle_set_auto_download(podcast_id, enabled)
+                }
             };
         }
         if let Ok(action) = serde_json::from_str::<PlayerAction>(action_json) {

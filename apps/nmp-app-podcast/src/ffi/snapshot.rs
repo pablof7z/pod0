@@ -286,6 +286,34 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
             (library, settings)
         })
         .unwrap_or_default();
+    let library = handle.store.lock().ok().map(|s| {
+        s.all_podcasts()
+            .into_iter()
+            .map(|(podcast, episodes)| PodcastSummary {
+                id: podcast.id.0.to_string(),
+                title: podcast.title.clone(),
+                episode_count: episodes.len(),
+                unplayed_count: 0,
+                artwork_url: podcast.image_url.as_ref().map(|u| u.to_string()),
+                feed_url: podcast.feed_url.as_ref().map(|u| u.to_string()),
+                author: if podcast.author.is_empty() { None } else { Some(podcast.author.clone()) },
+                auto_download: s.is_auto_download_enabled(podcast.id),
+                episodes: episodes
+                    .iter()
+                    .map(|ep| EpisodeSummary {
+                        id: ep.id.0.to_string(),
+                        title: ep.title.clone(),
+                        podcast_id: Some(podcast.id.0.to_string()),
+                        podcast_title: Some(podcast.title.clone()),
+                        duration_secs: ep.duration_secs,
+                        artwork_url: ep.image_url.as_ref().map(|u| u.to_string()),
+                        published_at: Some(ep.pub_date.timestamp()),
+                        download_path: s.local_path_for(&ep.id).map(str::to_owned),
+                    })
+                    .collect(),
+            })
+            .collect()
+    }).unwrap_or_default();
 
     let search_results = handle.search_results.lock().ok()
         .map(|r| r.clone())

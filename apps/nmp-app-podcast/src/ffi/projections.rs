@@ -286,6 +286,14 @@ pub struct PodcastSummary {
     /// Podcast author / host name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub author: Option<String>,
+    /// Per-podcast auto-download policy state. Mirrors
+    /// `PodcastStore::is_auto_download_enabled`. The iOS toolbar toggle
+    /// reads this to render its check mark; it dispatches
+    /// `PodcastAction::SetAutoDownload` to flip the bit. Defaults to
+    /// `false` so the field is omitted from the wire payload (and from
+    /// iTunes search rows, which never have a real `PodcastId`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub auto_download: bool,
     /// Recent episodes — ordered newest-first by the projection layer.
     pub episodes: Vec<EpisodeSummary>,
 }
