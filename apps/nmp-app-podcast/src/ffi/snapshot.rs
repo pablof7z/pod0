@@ -307,7 +307,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
                 id: podcast.id.0.to_string(),
                 title: podcast.title.clone(),
                 episode_count: episodes.len(),
-                unplayed_count: 0,
+                unplayed_count: episodes.iter().filter(|e| !e.played).count(),
                 artwork_url: podcast.image_url.as_ref().map(|u| u.to_string()),
                 feed_url: podcast.feed_url.as_ref().map(|u| u.to_string()),
                 author: if podcast.author.is_empty() {
@@ -365,6 +365,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
                             playback_position_secs: s.position_for(&ep_id),
                             ai_categories,
                             ad_segments,
+                            played: ep.played,
                         }
                     })
                     .collect(),

@@ -168,6 +168,11 @@ pub enum AudioReport {
     /// The system-level sleep timer the executor was holding fired.
     /// The player decides whether to stop, fade, or extend.
     SleepTimerFired,
+    /// AVPlayer played the current item to its natural end
+    /// (`AVPlayerItemDidPlayToEndTime`). Distinct from `Stopped`
+    /// (user/command-initiated). The kernel uses this to mark the
+    /// episode `played = true` and to auto-advance the queue.
+    ItemEnd { url: String },
 }
 
 #[cfg(test)]

@@ -137,6 +137,13 @@ fn apply_writeback(store: &mut PodcastStore, report: &AudioReport, episode_id: &
             // survives a hard kill.
             store.flush_positions();
         }
+        AudioReport::ItemEnd { .. } => {
+            // Natural play-to-completion: mark the episode as listened and
+            // flush so the state survives a restart. The position is already
+            // up-to-date from the last `Playing` tick.
+            store.mark_episode_played(episode_id);
+            store.flush_positions();
+        }
         AudioReport::Failed { .. } | AudioReport::BufferingProgress { .. } => {}
     }
 }
@@ -361,5 +368,62 @@ mod tests {
             on_disk >= 30.0,
             "expected an on-disk checkpoint past 30 s, got {on_disk}"
         );
+    }
+
+    #[test]
+    fn item_end_marks_episode_played_and_flushes() {
+        let dir = TempDir::new("item-end");
+        let mut store = PodcastStore::new();
+        store.set_data_dir(dir.path.clone());
+        let podcast = Podcast::new("Finish Show");
+        let pid = podcast.id;
+        let ep = make_episode(pid, "Episode");
+        let ep_id = ep.id.0.to_string();
+        store.subscribe(podcast, vec![ep]);
+
+        // Simulate a Playing tick just before the end.
+        apply_writeback(
+            &mut store,
+            &AudioReport::Playing { url: "u".into(), position_secs: 59.5, duration_secs: 60.0 },
+            &ep_id,
+        );
+
+        // ItemEnd fires: episode must be marked played.
+        apply_writeback(
+            &mut store,
+            &AudioReport::ItemEnd { url: "u".into() },
+            &ep_id,
+        );
+
+        // Verify in-memory state.
+        let played_in_memory = store
+            .all_podcasts()
+            .iter()
+            .flat_map(|(_, eps)| eps.iter())
+            .find(|e| e.id.0.to_string() == ep_id)
+            .map(|e| e.played)
+            .expect("episode present");
+        assert!(played_in_memory, "episode must be marked played after ItemEnd");
+
+        // Verify the played flag survives a reload from disk.
+        let mut reloaded = PodcastStore::new();
+        reloaded.set_data_dir(dir.path.clone());
+        let played_on_disk = reloaded
+            .all_podcasts()
+            .iter()
+            .flat_map(|(_, eps)| eps.iter())
+            .find(|e| e.id.0.to_string() == ep_id)
+            .map(|e| e.played)
+            .expect("episode present after reload");
+        assert!(played_on_disk, "played flag must persist across restart");
+    }
+
+    #[test]
+    fn item_end_serde_round_trips() {
+        let report = AudioReport::ItemEnd { url: "https://ex.com/ep.mp3".into() };
+        let json = serde_json::to_string(&report).expect("encode");
+        assert!(json.contains("\"type\":\"item_end\""));
+        let decoded: AudioReport = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, report);
     }
 }

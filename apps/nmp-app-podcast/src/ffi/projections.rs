@@ -457,6 +457,12 @@ pub struct EpisodeSummary {
     /// Ad-break intervals for this episode. Per D5 omitted when empty.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub ad_segments: Vec<AdSegment>,
+    /// Whether the user has listened to this episode to completion.
+    /// Set by the kernel when `AudioReport::ItemEnd` arrives or when
+    /// `podcast.inbox.mark_listened` is dispatched. Omitted from the
+    /// wire payload when `false` (the common case) per D5.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub played: bool,
 }
 
 /// One time-stamped transcript row surfaced to the iOS shell.
@@ -1595,5 +1601,26 @@ mod tests {
         assert!(json.contains("\"podcast_count\":3"));
         let decoded: CategoryBrowseItem = serde_json::from_str(&json).expect("decode");
         assert_eq!(decoded, item);
+    }
+
+    #[test]
+    fn episode_summary_played_omitted_when_false() {
+        let ep = EpisodeSummary { id: "ep-1".into(), title: "Ep".into(), ..EpisodeSummary::default() };
+        let json = serde_json::to_string(&ep).expect("encode");
+        assert!(!json.contains("played"), "played=false must be omitted per D5");
+    }
+
+    #[test]
+    fn episode_summary_played_present_when_true() {
+        let ep = EpisodeSummary {
+            id: "ep-1".into(),
+            title: "Ep".into(),
+            played: true,
+            ..EpisodeSummary::default()
+        };
+        let json = serde_json::to_string(&ep).expect("encode");
+        assert!(json.contains("\"played\":true"));
+        let decoded: EpisodeSummary = serde_json::from_str(&json).expect("decode");
+        assert!(decoded.played);
     }
 }
