@@ -1,6 +1,7 @@
 //! Opaque handle returned by `nmp_app_podcast_register` and consumed by
 //! `nmp_app_podcast_snapshot` / `nmp_app_podcast_unregister`.
 
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicU64;
 
@@ -14,6 +15,7 @@ use crate::ffi::projections::{KnowledgeSearchResult, PodcastSummary};
 use crate::ffi::projections::{PodcastSummary, TtsEpisodeSummary};
 use crate::clip_handler::ClipRecord;
 use crate::ffi::projections::PodcastSummary;
+use crate::ffi::projections::{NostrShowSummary, PodcastSummary, TranscriptEntry};
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::store::PodcastStore;
@@ -83,6 +85,15 @@ pub struct PodcastHandle {
     /// In-memory only — clips evaporate on app restart (persistence is
     /// a follow-up).
     pub(crate) clips: Arc<Mutex<Vec<ClipRecord>>>,
+    /// Parsed transcript entries keyed by the string form of `EpisodeId`.
+    ///
+    /// Lives on the handle (not the persisted `PodcastStore`) because
+    /// transcripts are per-session, lazy-fetched state — re-fetching on the
+    /// next launch is a cheap network hit and avoids growing
+    /// `podcasts.json`. Written by `handle_fetch_transcript` on the actor
+    /// thread after parsing publisher bytes; read by
+    /// `build_snapshot_payload` on every snapshot tick.
+    pub(super) transcripts: Arc<Mutex<HashMap<String, Vec<TranscriptEntry>>>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the

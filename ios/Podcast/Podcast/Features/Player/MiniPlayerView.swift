@@ -33,6 +33,14 @@ struct MiniPlayerView: View {
         return model.library.flatMap { $0.episodes }.first { $0.id == epId }
     }
 
+    /// Find the show that contains the currently-playing episode so the
+    /// transcript sheet can render its header. Returns `nil` when the
+    /// episode is unknown (e.g. mid-unsubscribe).
+    private var podcast: PodcastSummary? {
+        guard let epId = nowPlaying?.episodeId else { return nil }
+        return model.library.first { $0.episodes.contains(where: { $0.id == epId }) }
+    }
+
     var body: some View {
         if let player = nowPlaying {
             bar(player: player)
@@ -50,8 +58,8 @@ struct MiniPlayerView: View {
                         .presentationDragIndicator(.visible)
                 }
                 .sheet(isPresented: $showTranscript) {
-                    if let episode {
-                        TranscriptSheet(episode: episode)
+                    if let episode, let podcast {
+                        TranscriptView(episode: episode, podcast: podcast)
                             .environment(model)
                     }
                 }

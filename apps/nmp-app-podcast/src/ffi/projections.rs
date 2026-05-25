@@ -332,17 +332,27 @@ pub struct EpisodeSummary {
     /// `Episode::description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    /// Plain-text transcript for the episode, when one has been fetched.
-    ///
-    /// Populated by the snapshot builder from `PodcastStore::transcript_for`.
-    /// `None` when the user has not yet dispatched `podcast.fetch_transcript`
-    /// for this episode, or when the most recent fetch produced no usable
-    /// text (no publisher URL, parse failure, HTTP error). The iOS shell
-    /// renders the "not available" state in those cases. Per D5 we skip
-    /// serializing `None` so the wire payload stays byte-compatible with
-    /// snapshots that predate this field.
+    /// Publisher-provided transcript URL, when the RSS feed advertises one
+    /// via the Podcasting 2.0 `<podcast:transcript>` tag. Surfaced so the iOS
+    /// shell can render a "Load Transcript" CTA on episodes that have a
+    /// source but have not yet been fetched. Populated by
+    /// [`super::snapshot::build_snapshot_payload`] from
+    /// `Episode::publisher_transcript_url`. Per D5 skipped when `None` to
+    /// preserve byte-compat with snapshots that predate the field.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub transcript: Option<String>,
+    pub transcript_url: Option<String>,
+    /// Parsed transcript entries (speaker + start/end + text) for the episode,
+    /// when one has been fetched via `podcast.fetch_transcript`.
+    ///
+    /// Populated by the snapshot builder from the per-episode transcript cache
+    /// on `PodcastHandle`. Empty when the user has not yet dispatched
+    /// `podcast.fetch_transcript`, or when the most recent fetch produced no
+    /// usable entries (parse failure, HTTP error). The iOS shell renders the
+    /// "Load Transcript" CTA in those cases when `transcript_url` is set.
+    /// Per D5 we skip serializing an empty Vec so the wire payload stays
+    /// byte-compatible with snapshots that predate this field.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub transcript_entries: Vec<TranscriptEntry>,
     /// Narrow chapter rows projected from `podcast_core::Episode::chapters`
     /// after a `podcast.fetch_chapters` action lands. Empty when the episode
     /// has no chapter markers, or when chapters have not been fetched yet.
@@ -358,6 +368,26 @@ pub struct EpisodeSummary {
     /// counts as "started"; the host only renders.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub playback_position_secs: Option<f64>,
+}
+
+/// One time-stamped transcript row surfaced to the iOS shell.
+///
+/// Narrow projection of `podcast_transcripts::TranscriptEntry`. The full
+/// domain type carries optional per-word timestamps for karaoke-style
+/// highlighting; the FFI projection drops them because the M14 iOS viewer
+/// renders segment-level only. `end_secs` is `Option<f64>` here (the source
+/// type is required `f64`) so future ingestors that don't emit an end
+/// timestamp can still surface entries without inventing a value — the
+/// viewer falls back to "the entry whose `start_secs` is the largest
+/// `<= position`" in that case.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+pub struct TranscriptEntry {
+    pub start_secs: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_secs: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speaker: Option<String>,
+    pub text: String,
 }
 
 /// Narrow chapter projection for the player rail. Mirrors the relevant

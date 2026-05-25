@@ -366,6 +366,13 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
             (library, settings)
         })
         .unwrap_or_default();
+    // Snapshot the transcript cache once so the per-episode loop below can
+    // do plain `HashMap::get` lookups without re-locking. Clone is cheap
+    // (transcripts only populate for episodes the user has actively opened).
+    let transcripts = handle.transcripts.lock().ok()
+        .map(|t| t.clone())
+        .unwrap_or_default();
+
     let library = handle.store.lock().ok().map(|s| {
     let library: Vec<PodcastSummary> = handle.store.lock().ok().map(|s| {
         s.all_podcasts()
@@ -394,7 +401,10 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
                         download_path: s.local_path_for(&ep.id).map(str::to_owned),
                     .map(|ep| {
                         let ep_id = ep.id.0.to_string();
-                        let transcript = s.transcript_for(&ep_id).map(str::to_owned);
+                        let transcript_entries = transcripts
+                            .get(&ep_id)
+                            .cloned()
+                            .unwrap_or_default();
                         EpisodeSummary {
                             id: ep_id,
                             title: ep.title.clone(),
@@ -405,6 +415,11 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
                             published_at: Some(ep.pub_date.timestamp()),
                             download_path: s.local_path_for(&ep.id).map(str::to_owned),
                             transcript,
+                            description: Some(ep.description.clone()).filter(|s| !s.is_empty()),
+                            transcript_url: ep.publisher_transcript_url
+                                .as_ref()
+                                .map(|u| u.to_string()),
+                            transcript_entries,
                             chapters: ep
                                 .chapters
                                 .as_ref()

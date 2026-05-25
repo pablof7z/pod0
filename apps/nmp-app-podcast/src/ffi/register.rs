@@ -1,6 +1,7 @@
 //! The `pub extern "C"` registration entry point Swift links against to wire
 //! Podcast projections and action namespaces into an [`NmpApp`].
 
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicU64;
 
@@ -102,6 +103,7 @@ pub extern "C" fn nmp_app_podcast_register(
     let knowledge_search_results = Arc::new(Mutex::new(Vec::new()));
     let tts_episodes = Arc::new(Mutex::new(Vec::new()));
     let clips = Arc::new(Mutex::new(Vec::new()));
+    let transcripts = Arc::new(Mutex::new(HashMap::new()));
     // Start at 1 so the first snapshot poll always triggers an iOS update
     // (guard is `update.rev > last_seen_rev`; last_seen_rev starts at 0).
     // Subsequent increments happen in PodcastHostOpHandler on store writes.
@@ -125,6 +127,7 @@ pub extern "C" fn nmp_app_podcast_register(
         knowledge_search_results.clone(),
         tts_episodes.clone(),
         clips.clone(),
+        transcripts.clone(),
         rev.clone(),
     )));
 
@@ -145,5 +148,6 @@ pub extern "C" fn nmp_app_podcast_register(
         knowledge_search_results,
         tts_episodes,
         clips,
+        transcripts,
     }))
 }

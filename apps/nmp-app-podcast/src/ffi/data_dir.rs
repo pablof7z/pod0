@@ -64,6 +64,7 @@ mod tests {
     use crate::player::PlayerActor;
     use crate::queue::PlaybackQueue;
     use crate::store::PodcastStore;
+    use std::collections::HashMap;
     use std::ffi::CString;
     use std::sync::atomic::AtomicU64;
     use std::sync::{Arc, Mutex};
@@ -88,6 +89,7 @@ mod tests {
             knowledge_search_results: Arc::new(Mutex::new(Vec::new())),
             tts_episodes: Arc::new(Mutex::new(Vec::new())),
             clips: Arc::new(Mutex::new(Vec::new())),
+            transcripts: Arc::new(Mutex::new(HashMap::new())),
         })
     }
 

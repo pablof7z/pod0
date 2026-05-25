@@ -1,6 +1,7 @@
 //! Actor-thread handler for podcast/player host operations.
 
 use std::collections::HashSet;
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -29,6 +30,7 @@ use crate::host_op_handler_helpers::merge_episodes;
 use crate::host_op_handler_queue::handle_queue_action;
 use crate::ffi::actions::wiki_module::WikiAction;
 use crate::ffi::projections::{PodcastSummary, WikiArticle};
+use crate::ffi::projections::{NostrShowSummary, PodcastSummary, TranscriptEntry};
 use crate::itunes_search::{parse_itunes_results, url_encode};
 use crate::ffi::actions::picks_module::PicksAction;
 use crate::ffi::actions::player_module::PlayerAction;
@@ -84,6 +86,7 @@ pub struct PodcastHostOpHandler {
     knowledge_search_results: Arc<Mutex<Vec<KnowledgeSearchResult>>>,
     tts: TtsEpisodeHandler,
     clips: Arc<Mutex<Vec<ClipRecord>>>,
+    transcripts: Arc<Mutex<HashMap<String, Vec<TranscriptEntry>>>>,
     rev: Arc<AtomicU64>,
 }
 
@@ -132,6 +135,10 @@ impl PodcastHostOpHandler {
         rev: Arc<AtomicU64>,
     ) -> Self {
         Self { app, store, player_actor, search_results, clips, rev }
+        transcripts: Arc<Mutex<HashMap<String, Vec<TranscriptEntry>>>>,
+        rev: Arc<AtomicU64>,
+    ) -> Self {
+        Self { app, store, player_actor, search_results, nostr_results, transcripts, rev }
     }
         knowledge_search_results: Arc<Mutex<Vec<KnowledgeSearchResult>>>,
         rev: Arc<AtomicU64>,
@@ -746,7 +753,7 @@ impl HostOpHandler for PodcastHostOpHandler {
                 PodcastAction::ImportOpml { content } => self.handle_import_opml(content, correlation_id),
                 PodcastAction::Download { episode_id } => self.handle_download(episode_id, correlation_id),
                 PodcastAction::DeleteDownload { episode_id } => self.handle_delete_download(episode_id),
-                PodcastAction::FetchTranscript { episode_id } => handle_fetch_transcript(&self.store, &self.rev, episode_id, |req| self.dispatch_http(req, correlation_id)),
+                PodcastAction::FetchTranscript { episode_id } => handle_fetch_transcript(&self.store, &self.transcripts, &self.rev, episode_id, |req| self.dispatch_http(req, correlation_id)),
                 PodcastAction::FetchChapters { episode_id } => handle_fetch_chapters(&self.store, &self.rev, episode_id, |req| self.dispatch_http(req, correlation_id)),
                 PodcastAction::DiscoverNostr { query, relay_url } => discover_nostr::handle_discover_nostr(query, relay_url, &self.nostr_results, &self.rev, |req| self.dispatch_http(req, correlation_id)),
                 PodcastAction::UpdateSettings { has_completed_onboarding } => {

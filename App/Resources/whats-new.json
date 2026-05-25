@@ -53,6 +53,9 @@
       "shipped_at": "2026-05-26T00:35:00Z",
       "lines": [
         "Fixed: the 2.5× and 3.0× playback-speed chips now actually apply — they were silently capped at 2.0× by the player kernel."
+      "shipped_at": "2026-05-26T02:00:00Z",
+      "lines": [
+        "Episode transcripts: tap the speech-bubble in the episode detail toolbar to read a time-synced transcript, with the current segment highlighted and tap-to-seek on every row."
       ]
     },
     {

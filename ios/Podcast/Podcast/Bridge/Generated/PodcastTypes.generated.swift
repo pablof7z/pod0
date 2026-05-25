@@ -153,10 +153,14 @@ struct EpisodeSummary: Codable, Identifiable, Equatable, Hashable {
     /// the underlying `Episode::description` is empty so the host can
     /// hide the show-notes section without rendering an empty container.
     var description: String? = nil
-    /// Plain-text transcript. Populated after a successful
-    /// `podcast.fetch_transcript` dispatch; `nil` when not yet fetched
-    /// or when no publisher transcript is available for this episode.
-    var transcript: String? = nil
+    /// Publisher-advertised transcript URL (Podcasting 2.0
+    /// `<podcast:transcript>` tag). When non-nil and `transcriptEntries`
+    /// is empty, the viewer renders a "Load Transcript" CTA.
+    var transcriptUrl: String? = nil
+    /// Parsed transcript rows (speaker / start / end / text). Populated by
+    /// the Rust `podcast.fetch_transcript` action after a successful
+    /// publisher fetch + parse. Empty until then.
+    var transcriptEntries: [TranscriptEntry]? = nil
     /// Chapter markers projected after a successful `podcast.fetch_chapters`.
     var chapters: [ChapterSummary]? = nil
     /// Persisted playback position in seconds. `nil` when the episode has
@@ -164,6 +168,17 @@ struct EpisodeSummary: Codable, Identifiable, Equatable, Hashable {
     /// Rust `PodcastStore::position_for` on each snapshot tick; drives the
     /// "Resume at X:XX" indicator in the iOS shell.
     var playbackPositionSecs: Double? = nil
+}
+
+/// One time-stamped transcript row surfaced by the kernel for a single
+/// episode. `endSecs` is optional because some sources (publisher plain-text
+/// fallbacks, future ingestors) don't emit an end timestamp; the viewer
+/// falls back to "largest `startSecs <= position`" in that case.
+struct TranscriptEntry: Codable, Equatable, Hashable {
+    var startSecs: Double
+    var endSecs: Double? = nil
+    var speaker: String? = nil
+    var text: String
 }
 
 /// Narrow chapter projection for full-player chapter rail rendering.

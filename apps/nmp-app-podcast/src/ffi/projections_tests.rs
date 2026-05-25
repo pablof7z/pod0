@@ -1,5 +1,10 @@
+//! Round-trip + omit-empty tests for [`super::projections`].
+//!
+//! Kept in a sibling file so `projections.rs` itself stays inside the
+//! AGENTS.md 500-line hard limit.
+
 use super::projections::{
-    ChapterSummary, EpisodeSummary, NostrShowSummary, WidgetSnapshot,
+    ChapterSummary, EpisodeSummary, NostrShowSummary, TranscriptEntry, WidgetSnapshot,
 };
 
 #[test]
@@ -107,6 +112,66 @@ fn episode_summary_round_trips_with_description() {
     assert!(json.contains("description"));
     let decoded: EpisodeSummary = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded, ep);
+}
+
+#[test]
+fn episode_summary_omits_empty_transcript_fields() {
+    let ep = EpisodeSummary {
+        id: "ep-1".into(),
+        title: "Pilot".into(),
+        ..EpisodeSummary::default()
+    };
+    let json = serde_json::to_string(&ep).expect("encode");
+    // No transcript URL and no entries yet — neither field should appear
+    // so the wire payload stays byte-compatible with older snapshots.
+    assert!(!json.contains("transcript_url"));
+    assert!(!json.contains("transcript_entries"));
+}
+
+#[test]
+fn episode_summary_round_trips_with_transcript_fields() {
+    let ep = EpisodeSummary {
+        id: "ep-1".into(),
+        title: "Pilot".into(),
+        transcript_url: Some("https://ex.com/t.vtt".into()),
+        transcript_entries: vec![
+            TranscriptEntry {
+                start_secs: 0.0,
+                end_secs: Some(1.5),
+                speaker: Some("Host".into()),
+                text: "Hello".into(),
+            },
+            TranscriptEntry {
+                start_secs: 1.5,
+                end_secs: Some(3.0),
+                speaker: None,
+                text: "world.".into(),
+            },
+        ],
+        ..EpisodeSummary::default()
+    };
+    let json = serde_json::to_string(&ep).expect("encode");
+    assert!(json.contains("transcript_url"));
+    assert!(json.contains("transcript_entries"));
+    let decoded: EpisodeSummary = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, ep);
+}
+
+#[test]
+fn transcript_entry_omits_none_fields() {
+    let entry = TranscriptEntry {
+        start_secs: 12.0,
+        end_secs: None,
+        speaker: None,
+        text: "hi".into(),
+    };
+    let json = serde_json::to_string(&entry).expect("encode");
+    assert!(!json.contains("end_secs"));
+    assert!(!json.contains("speaker"));
+    assert!(json.contains("\"start_secs\":12.0"));
+    assert!(json.contains("\"text\":\"hi\""));
+    let decoded: TranscriptEntry = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, entry);
 }
 
 #[test]

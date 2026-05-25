@@ -32,6 +32,26 @@ struct EpisodeDetailView: View {
 
     /// Controls presentation of the `ChaptersView` sheet.
     @State private var showChaptersSheet: Bool = false
+    @State private var isTranscriptPresented = false
+
+    /// Re-read the episode from the kernel snapshot so the transcript
+    /// toolbar button reflects fresh `transcriptUrl` / `transcriptEntries`
+    /// fields without re-opening the screen.
+    private var liveEpisode: EpisodeSummary {
+        model.podcastSnapshot?.library
+            .flatMap { $0.episodes }
+            .first { $0.id == episode.id }
+            ?? episode
+    }
+
+    /// Transcript availability: either entries have already been fetched, or
+    /// the publisher advertises a transcript URL (so the viewer can dispatch
+    /// `fetch_transcript`). Hide the toolbar item entirely when neither
+    /// holds — there's nothing the user can do.
+    private var hasTranscript: Bool {
+        if let entries = liveEpisode.transcriptEntries, !entries.isEmpty { return true }
+        return liveEpisode.transcriptUrl != nil
+    }
 
     var body: some View {
         ScrollView {
@@ -105,6 +125,22 @@ struct EpisodeDetailView: View {
             guard isCompilingChapters else { return }
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             if isCompilingChapters { isCompilingChapters = false }
+        }
+            if hasTranscript {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Haptics.light()
+                        isTranscriptPresented = true
+                    } label: {
+                        Image(systemName: "text.bubble")
+                    }
+                    .accessibilityLabel("Transcript")
+                }
+            }
+        }
+        .sheet(isPresented: $isTranscriptPresented) {
+            TranscriptView(episode: liveEpisode, podcast: podcast)
+                .environment(model)
         }
     }
 
