@@ -91,4 +91,11 @@ void nmp_app_podcast_set_data_dir(void *handle, const char *path);
 // NULL when no follow-up is needed. Caller MUST free via `nmp_app_free_string`.
 char *nmp_app_podcast_audio_report(void *handle, const char *report_json);
 
+// Deliver a JSON-encoded DownloadReport to the Rust PodcastStore.
+// Returns a malloc-allocated JSON DownloadCommand the caller should execute,
+// or NULL when no follow-up is needed (today: always NULL — see
+// `apps/nmp-app-podcast/src/ffi/download_report.rs`). Caller MUST free via
+// `nmp_app_free_string`.
+char *nmp_app_podcast_download_report(void *handle, const char *report_json);
+
 #endif

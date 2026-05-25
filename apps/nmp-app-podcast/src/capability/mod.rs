@@ -24,7 +24,10 @@ pub mod http;
 pub mod voice;
 
 pub use audio::{AudioCommand, AudioReport, AUDIO_CAPABILITY_NAMESPACE};
-pub use dispatch::{dispatch_audio_report_json, encode_audio_command, DispatchOutcome};
+pub use dispatch::{
+    dispatch_audio_report_json, dispatch_download_report_json, encode_audio_command,
+    DispatchOutcome,
+};
 pub use download::{DownloadCommand, DownloadReport, DOWNLOAD_CAPABILITY_NAMESPACE};
 pub use http::{HttpMethod, HttpRequest, HttpResult, HTTP_CAPABILITY_NAMESPACE};
 pub use voice::{VoiceCommand, VoiceReport, VOICE_CAPABILITY_NAMESPACE};

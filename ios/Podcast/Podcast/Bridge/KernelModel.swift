@@ -73,6 +73,7 @@ final class KernelModel {
             }
         })
         kernel.attachAudioReportChannel()
+        kernel.attachDownloadReportChannel()
     }
 
     private func markKernelDead() {

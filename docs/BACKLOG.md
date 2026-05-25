@@ -54,6 +54,13 @@ The M2.F PR landed a working Rust→JNI→Compose proof; the items below are dow
 - **m2f-jni-shim-location** — once `apps/nmp-app-podcast/src/android.rs` grows beyond ~500 LOC or a sibling crate (e.g. a separate Android app) needs to consume the JNI, split it into `nmp-app-podcast-android-ffi` mirroring NMP's `nmp-android-ffi` pattern. Not blocking M3; defer until pain hits.
 - **m2f-real-signin-sheet** — replace the stub `signinNsec` button in `MainActivity.kt` with a real nsec entry sheet that routes through the Keychain capability (mirror of `ios/Podcast/Features/Identity/`). Blocked on Android Keychain capability impl.
 
+## NMP Migration — M4.B iOS DownloadCapability follow-ups
+
+The M4.B PR landed the iOS `DownloadCapability` (`URLSession` background downloads). PR 17 wired the `DownloadReport` back-channel so completed downloads populate `EpisodeSummary.downloadPath`. The items below were observed during PR 17 validation.
+
+- **m4b-downloadcapabilitywiretests-actor-isolation** — `ios/Podcast/PodcastTests/DownloadCapabilityWireTests.swift:132,139` references `DownloadCapability.namespace` / `DownloadCapability.sessionIdentifier` from a nonisolated `XCTAssertEqual` autoclosure; the host class is `@MainActor`, so the test fails to compile under Swift 6 strict concurrency. Predates PR 17 (verified by `git stash` + retry on the base commit). Two fixes: (a) mark the test methods `@MainActor`, or (b) make the two static properties `nonisolated`. Not blocking PR 17 (Rust dispatch tests cover the wire shape); fix before re-enabling the iOS test target in CI.
+- **m4b-downloadreport-queue-projection** — PR 17 projects only `DownloadReport::Completed` (and defensively `Cancelled`) onto `PodcastStore::local_paths`. `Progress` / `Failed` / `Paused` decode cleanly and no-op; the richer `DownloadQueueSnapshot` projection (per-item state, bytes-downloaded, total-bytes) needs to be wired in a follow-up PR alongside the `DownloadQueue` writes already present in `apps/nmp-app-podcast/src/download/`.
+
 ## NMP Migration — M5 HTTP capability follow-ups
 
 The M5 PR landed the Rust `HttpRequest`/`HttpResult` schema mirroring the iOS executor, plus `FeedClient` request/response bridge in `podcast-feeds`. The items below were deferred to keep that PR tight.

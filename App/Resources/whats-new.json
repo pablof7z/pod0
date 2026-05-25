@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-25T23:03:00Z",
+      "lines": [
+        "Downloaded episodes now show as downloaded in the library — completed downloads report their on-disk path back to the kernel."
+      ]
+    },
+    {
       "shipped_at": "2026-05-25T23:02:00Z",
       "lines": [
         "Up Next: build a playback queue from any show — swipe right on an episode (or long-press) to add it, then tap the new queue button on the mini-player to play next or remove items."

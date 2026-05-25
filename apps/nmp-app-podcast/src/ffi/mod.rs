@@ -31,6 +31,7 @@
 pub mod actions;
 mod audio_report;
 mod data_dir;
+mod download_report;
 mod handle;
 mod helpers;
 pub mod projections;
@@ -52,6 +53,7 @@ pub use actions::{
 };
 pub use audio_report::nmp_app_podcast_audio_report;
 pub use data_dir::nmp_app_podcast_set_data_dir;
+pub use download_report::nmp_app_podcast_download_report;
 pub use handle::PodcastHandle;
 pub use projections::{
     AccountSummary, BriefingSnapshot, ConversationsSnapshot, DownloadItemSnapshot,

@@ -101,6 +101,38 @@ extension PodcastHandle {
         }
     }
 
+    /// Wire the async iOS→Rust download report channel.
+    ///
+    /// Mirrors `attachAudioReportChannel()`. Must be called from a
+    /// `@MainActor` context (e.g. `KernelModel.init()`) after
+    /// `registerPodcastProjection()` has run. `DownloadCapability` fires the
+    /// `sendReport` closure from its own `@MainActor` methods; the closure
+    /// uses `MainActor.assumeIsolated` to safely reach back into
+    /// `PodcastCapabilities.shared` from the non-isolated closure type.
+    ///
+    /// Today the FFI return is always NULL (the Rust side projects the
+    /// report into `PodcastStore.local_paths` and does not synthesise a
+    /// follow-up command). The follow-up plumbing exists so a future
+    /// `DownloadQueue` projection can drive "start the next queued item"
+    /// without an ABI change.
+    @MainActor
+    func attachDownloadReportChannel() {
+        PodcastCapabilities.shared.download.attach { [weak self] reportJSON in
+            MainActor.assumeIsolated {
+                guard let handle = self?.podcastHandle else { return }
+                guard let result = nmp_app_podcast_download_report(handle, reportJSON)
+                else { return }
+                defer { nmp_app_free_string(result) }
+                let followUpJSON = String(cString: result)
+                guard
+                    let data = followUpJSON.data(using: .utf8),
+                    let command = try? JSONDecoder().decode(DownloadCommand.self, from: data)
+                else { return }
+                PodcastCapabilities.shared.download.execute(command)
+            }
+        }
+    }
+
     func unregisterPodcastProjectionIfNeeded() {
         guard let handle = podcastHandle else { return }
         nmp_app_podcast_unregister(handle)
