@@ -30,6 +30,17 @@ pub enum PlayerAction {
         secs: Option<u64>,
     },
     Stop,
+    /// Append `episode_id` to the end of the playback queue if not
+    /// already present (dedup by id). Kernel-owned ordered list of
+    /// episode ids surfaced via `PodcastUpdate.queue`.
+    Enqueue { episode_id: String },
+    /// Remove the first occurrence of `episode_id` from the queue.
+    Dequeue { episode_id: String },
+    /// Empty the entire playback queue.
+    ClearQueue,
+    /// Pop the front of the queue and `Play` it. No-op when the queue
+    /// is empty.
+    PlayNext,
 }
 
 /// Action module for the `"podcast.player"` namespace.
@@ -114,6 +125,33 @@ mod tests {
         let cancel_json = serde_json::to_string(&cancel).expect("encode");
         let decoded_cancel: PlayerAction = serde_json::from_str(&cancel_json).expect("decode");
         assert_eq!(decoded_cancel, cancel);
+    }
+
+    #[test]
+    fn enqueue_dequeue_round_trip() {
+        for (action, expected_op) in [
+            (PlayerAction::Enqueue { episode_id: "ep-1".into() }, "enqueue"),
+            (PlayerAction::Dequeue { episode_id: "ep-1".into() }, "dequeue"),
+        ] {
+            let json = serde_json::to_string(&action).expect("encode");
+            assert!(json.contains(&format!(r#""op":"{expected_op}""#)));
+            assert!(json.contains(r#""episode_id":"ep-1""#));
+            let decoded: PlayerAction = serde_json::from_str(&json).expect("decode");
+            assert_eq!(decoded, action);
+        }
+    }
+
+    #[test]
+    fn clear_queue_and_play_next_are_unit_variants() {
+        for (action, expected_op) in [
+            (PlayerAction::ClearQueue, "clear_queue"),
+            (PlayerAction::PlayNext, "play_next"),
+        ] {
+            let json = serde_json::to_string(&action).expect("encode");
+            assert_eq!(json, format!(r#"{{"op":"{expected_op}"}}"#));
+            let decoded: PlayerAction = serde_json::from_str(&json).expect("decode");
+            assert_eq!(decoded, action);
+        }
     }
 
     #[test]

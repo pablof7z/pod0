@@ -48,6 +48,12 @@ pub struct PlayerActor {
     /// Wall-clock instant at which the sleep timer should fire, when
     /// armed. `None` outside of timer mode.
     sleep_deadline: Option<SystemTime>,
+    /// Ordered list of queued episode ids ("Up Next"). The kernel
+    /// owns this — the iOS shell only renders it from the snapshot
+    /// projection and dispatches `enqueue`/`dequeue`/`clear_queue`/
+    /// `play_next` actions to mutate it. Dedup is by id (an episode
+    /// already present is not appended again).
+    queue: Vec<String>,
 }
 
 impl PlayerActor {
@@ -57,6 +63,7 @@ impl PlayerActor {
         Self {
             state: PlayerState::idle(),
             sleep_deadline: None,
+            queue: Vec::new(),
         }
     }
 
@@ -116,6 +123,49 @@ impl PlayerActor {
     /// Project a `set_volume` action into state. Clamped to `0.0..=1.0`.
     pub fn set_volume(&mut self, volume: f32) {
         self.state.volume = volume.clamp(0.0, 1.0);
+    }
+
+    // ---- Queue ("Up Next") -----------------------------------------------
+
+    /// Snapshot of the current playback queue (ordered episode ids).
+    /// Cheap clone; the snapshot builder copies this into
+    /// `PodcastUpdate.queue`.
+    #[must_use]
+    pub fn queue(&self) -> &[String] {
+        &self.queue
+    }
+
+    /// Append `episode_id` to the queue if it isn't already present.
+    /// Dedup is by id only; this does not check against the currently
+    /// playing episode (callers may legitimately want to queue the
+    /// current episode for replay).
+    pub fn enqueue(&mut self, episode_id: &str) {
+        if !self.queue.iter().any(|id| id == episode_id) {
+            self.queue.push(episode_id.to_owned());
+        }
+    }
+
+    /// Remove the first occurrence of `episode_id` from the queue.
+    /// Silent no-op when not present.
+    pub fn dequeue(&mut self, episode_id: &str) {
+        if let Some(idx) = self.queue.iter().position(|id| id == episode_id) {
+            self.queue.remove(idx);
+        }
+    }
+
+    /// Empty the queue.
+    pub fn clear_queue(&mut self) {
+        self.queue.clear();
+    }
+
+    /// Pop and return the front of the queue, or `None` when empty.
+    /// Callers (the host-op handler) load + play the returned id.
+    pub fn pop_next(&mut self) -> Option<String> {
+        if self.queue.is_empty() {
+            None
+        } else {
+            Some(self.queue.remove(0))
+        }
     }
 
     /// Handle an inbound report from the iOS audio capability.

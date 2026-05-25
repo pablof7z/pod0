@@ -45,7 +45,33 @@ struct ShowDetailEpisodeList: View {
                 trailing: AppTheme.Spacing.lg
             ))
             .listRowBackground(Color(.systemBackground))
+            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                Button {
+                    enqueue(ep)
+                } label: {
+                    Label("Up Next", systemImage: "text.line.first.and.arrowtriangle.forward")
+                }
+                .tint(.accentColor)
+            }
+            .contextMenu {
+                Button {
+                    enqueue(ep)
+                } label: {
+                    Label("Add to Up Next", systemImage: "text.line.first.and.arrowtriangle.forward")
+                }
+            }
         }
+    }
+
+    /// Dispatch `podcast.player.enqueue` — kernel dedups by id and
+    /// surfaces the updated queue via `PodcastUpdate.queue` on the
+    /// next snapshot tick (D7).
+    private func enqueue(_ ep: EpisodeSummary) {
+        Haptics.selection()
+        model.dispatch(
+            namespace: "podcast.player",
+            body: ["op": "enqueue", "episode_id": ep.id]
+        )
     }
 }
 

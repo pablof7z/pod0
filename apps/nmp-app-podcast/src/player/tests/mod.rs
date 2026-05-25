@@ -9,10 +9,13 @@
 //!   (arming, expiry mid-Playing, `SleepTimerFired`, cancel).
 //! * [`mutators`] — Direct state mutators
 //!   (`stage_load`, `set_speed`, `set_volume`) and default constructors.
+//! * [`queue`] — Playback queue ("Up Next") mutators
+//!   (`enqueue`, `dequeue`, `clear_queue`, `pop_next`).
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 mod mutators;
+mod queue;
 mod reports;
 mod sleep_timer;
 

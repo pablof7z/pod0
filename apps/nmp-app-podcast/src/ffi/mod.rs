@@ -36,6 +36,8 @@ mod helpers;
 pub mod projections;
 mod register;
 mod snapshot;
+#[cfg(test)]
+mod snapshot_tests;
 
 pub use actions::{
     CancelAllDownloadsAction, CancelDownloadAction, DownloadEpisodeAction, PauseAction,

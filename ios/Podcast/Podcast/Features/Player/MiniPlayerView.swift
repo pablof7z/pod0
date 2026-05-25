@@ -16,9 +16,17 @@ struct MiniPlayerView: View {
     @Environment(KernelModel.self) private var model
 
     @State private var showPlayer = false
+    /// Drives the `UpNextSheet` presentation. Local to the view because
+    /// the sheet has no kernel-side state of its own — open/closed lives
+    /// purely in the UI layer.
+    @State private var isUpNextPresented = false
 
     private var nowPlaying: PlayerState? {
         model.podcastSnapshot?.nowPlaying
+    }
+
+    private var queueCount: Int {
+        model.podcastSnapshot?.queue.count ?? 0
     }
 
     /// Find episode metadata by matching `episodeId` against the library.
@@ -37,6 +45,11 @@ struct MiniPlayerView: View {
                 }
                 .fullScreenCover(isPresented: $showPlayer) {
                     PlayerView()
+                }
+                .sheet(isPresented: $isUpNextPresented) {
+                    UpNextSheet()
+                        .presentationDetents([.medium, .large])
+                        .presentationDragIndicator(.visible)
                 }
         }
     }
@@ -130,9 +143,38 @@ struct MiniPlayerView: View {
 
     private func controls(player: PlayerState) -> some View {
         HStack(spacing: PodcastSpace.s) {
+            upNextButton
             playPauseButton(isPlaying: player.isPlaying)
             skipForwardButton
         }
+    }
+
+    /// Up-next button — opens the playback queue sheet. The count
+    /// badge only renders when the queue is non-empty; visibility is
+    /// driven purely by the kernel snapshot.
+    private var upNextButton: some View {
+        Button {
+            isUpNextPresented = true
+        } label: {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: "text.line.first.and.arrowtriangle.forward")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(PodcastColor.textPrimary)
+                    .frame(width: 36, height: 36)
+                if queueCount > 0 {
+                    Text("\(queueCount)")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 4)
+                        .frame(minWidth: 14, minHeight: 14)
+                        .background(Capsule().fill(PodcastColor.accent))
+                        .offset(x: 4, y: -2)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Up Next")
+        .accessibilityValue("\(queueCount) episode\(queueCount == 1 ? "" : "s") queued")
     }
 
     private func playPauseButton(isPlaying: Bool) -> some View {

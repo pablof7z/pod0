@@ -1,7 +1,4 @@
 //! Actor-thread handler for podcast/player host operations.
-//!
-//! Lock discipline: release `PodcastStore` / `PlayerActor` locks before
-//! calling `NmpApp::dispatch_capability` so snapshot reads cannot deadlock.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -11,7 +8,6 @@ use chrono::Utc;
 use nmp_core::substrate::{CapabilityRequest, HostOpHandler};
 use nmp_ffi::NmpApp;
 use podcast_core::{Episode, PodcastId};
-use uuid::Uuid;
 use podcast_feeds::client::{build_feed_request, handle_feed_response, FeedResult};
 use podcast_feeds::http::{HttpRequest, HttpResult, HTTP_CAPABILITY_NAMESPACE};
 
@@ -20,7 +16,8 @@ use crate::capability::{
 };
 use crate::ffi::actions::player_module::PlayerAction;
 use crate::ffi::actions::podcast_module::PodcastAction;
-use crate::ffi::projections::{EpisodeSummary, PodcastSummary};
+use crate::ffi::projections::PodcastSummary;
+use crate::itunes_search::{parse_itunes_results, url_encode};
 use crate::player::PlayerActor;
 use crate::store::PodcastStore;
 
@@ -32,9 +29,6 @@ pub struct PodcastHostOpHandler {
     rev: Arc<AtomicU64>,
 }
 
-// SAFETY: `app` is never mutated through this pointer (only read via
-// `dispatch_capability(&self, ...)`). `PodcastHostOpHandler` is dropped only
-// after `nmp_app_free` joins the actor thread, fencing any in-flight call.
 unsafe impl Send for PodcastHostOpHandler {}
 unsafe impl Sync for PodcastHostOpHandler {}
 
@@ -405,6 +399,68 @@ impl PodcastHostOpHandler {
                     Err(e) => serde_json::json!({"ok": false, "error": e}),
                 }
             }
+            PlayerAction::Enqueue { episode_id } => self.handle_enqueue(episode_id),
+            PlayerAction::Dequeue { episode_id } => self.handle_dequeue(episode_id),
+            PlayerAction::ClearQueue => self.handle_clear_queue(),
+            PlayerAction::PlayNext => self.handle_play_next(correlation_id),
+        }
+    }
+
+    // ── Queue ("Up Next") handlers ───────────────────────────────────────────
+
+    fn handle_enqueue(&self, episode_id: String) -> serde_json::Value {
+        // Pre-flight: verify the episode exists in the library so we
+        // don't poison the queue with dangling ids.
+        let exists = match self.store.lock() {
+            Ok(s) => s.episode_playback_info(&episode_id).is_some(),
+            Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+        };
+        if !exists {
+            return serde_json::json!({"ok": false, "error": format!("episode not found: {episode_id}")});
+        }
+        match self.player_actor.lock() {
+            Ok(mut a) => {
+                a.enqueue(&episode_id);
+                self.rev.fetch_add(1, Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            Err(_) => serde_json::json!({"ok": false, "error": "player_actor poisoned"}),
+        }
+    }
+
+    fn handle_dequeue(&self, episode_id: String) -> serde_json::Value {
+        match self.player_actor.lock() {
+            Ok(mut a) => {
+                a.dequeue(&episode_id);
+                self.rev.fetch_add(1, Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            Err(_) => serde_json::json!({"ok": false, "error": "player_actor poisoned"}),
+        }
+    }
+
+    fn handle_clear_queue(&self) -> serde_json::Value {
+        match self.player_actor.lock() {
+            Ok(mut a) => {
+                a.clear_queue();
+                self.rev.fetch_add(1, Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            Err(_) => serde_json::json!({"ok": false, "error": "player_actor poisoned"}),
+        }
+    }
+
+    fn handle_play_next(&self, correlation_id: &str) -> serde_json::Value {
+        // Lock discipline: pop the queue head under the actor lock,
+        // release before calling `handle_play` (which dispatches to
+        // the audio capability).
+        let next_id = match self.player_actor.lock() {
+            Ok(mut a) => a.pop_next(),
+            Err(_) => return serde_json::json!({"ok": false, "error": "player_actor poisoned"}),
+        };
+        match next_id {
+            Some(id) => self.handle_play(id, correlation_id),
+            None => serde_json::json!({"ok": false, "error": "queue is empty"}),
         }
     }
 }
@@ -438,62 +494,6 @@ fn merge_episodes(fresh: Vec<Episode>, existing: Vec<Episode>) -> Vec<Episode> {
                 ep.position_secs = prev.position_secs;
             }
             ep
-        })
-        .collect()
-}
-
-fn url_encode(s: &str) -> String {
-    s.chars()
-        .flat_map(|c| match c {
-            'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_' | '.' | '~' => {
-                vec![c]
-            }
-            ' ' => vec!['+'],
-            other => {
-                let mut buf = [0u8; 4];
-                let bytes = other.encode_utf8(&mut buf);
-                bytes.bytes().flat_map(|b| {
-                    let hi = char::from_digit((b >> 4) as u32, 16).unwrap_or('0');
-                    let lo = char::from_digit((b & 0xf) as u32, 16).unwrap_or('0');
-                    vec!['%', hi.to_ascii_uppercase(), lo.to_ascii_uppercase()]
-                }).collect()
-            }
-        })
-        .collect()
-}
-
-/// Parse the iTunes Search API JSON payload into `PodcastSummary` rows.
-/// Returns an empty Vec on any decode failure (D6).
-fn parse_itunes_results(body: &str) -> Vec<PodcastSummary> {
-    #[derive(serde::Deserialize)]
-    struct ItunesResponse {
-        results: Vec<ItunesResult>,
-    }
-    #[derive(serde::Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct ItunesResult {
-        collection_id: Option<i64>,
-        collection_name: Option<String>,
-        feed_url: Option<String>,
-        artwork_url600: Option<String>,
-        artist_name: Option<String>,
-    }
-    let Ok(resp) = serde_json::from_str::<ItunesResponse>(body) else {
-        return vec![];
-    };
-    resp.results
-        .into_iter()
-        .filter_map(|r| {
-            Some(PodcastSummary {
-                id: r.collection_id?.to_string(),
-                title: r.collection_name.unwrap_or_default(),
-                episode_count: 0,
-                unplayed_count: 0,
-                artwork_url: r.artwork_url600,
-                feed_url: r.feed_url,
-                author: r.artist_name,
-                episodes: vec![],
-            })
         })
         .collect()
 }

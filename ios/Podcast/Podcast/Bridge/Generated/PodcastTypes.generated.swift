@@ -20,6 +20,10 @@ struct PodcastUpdate: Codable {
     var activeAccount: AccountSummary? = nil
     var toast: String? = nil
     var searchResults: [PodcastSummary] = []
+    /// Ordered list of episode ids waiting in the playback queue
+    /// ("Up Next"). Mutated kernel-side via `podcast.player.enqueue`,
+    /// `dequeue`, `clear_queue`, and `play_next`.
+    var queue: [String] = []
 }
 
 /// Narrow projection for a subscribed podcast (one library grid/list cell).
