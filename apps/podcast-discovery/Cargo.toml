@@ -1,0 +1,25 @@
+[package]
+name = "podcast-discovery"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "NIP-74 podcast discovery: parses Nostr kind:30074 / kind:30075 events into podcast-core domain types and builds tag sets for publishing. Pure data layer — no FFI, no kernel deps, no network."
+
+[lib]
+name = "podcast_discovery"
+
+[dependencies]
+# Domain types this crate parses *into* and builds *from*. Tag-shape mapping
+# is owned here so `podcast-core::Podcast`/`Episode` stay free of any NIP-74
+# wire knowledge. Pulled in via path so the workspace stays in lock-step with
+# the M2.A schema; no version churn on schema-only changes.
+podcast-core = { path = "../podcast-core" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.0", features = ["v4", "v5", "serde"] }
+url = { version = "2.0", features = ["serde"] }
+# Needed at the mapping seam to lift `published_at` unix-seconds onto the
+# `DateTime<Utc>` field on `podcast_core::Episode`. Re-exported only via
+# the existing types `podcast-core` already depends on — no transitive
+# version skew.
+chrono = { version = "0.4", default-features = false, features = ["serde", "clock"] }
