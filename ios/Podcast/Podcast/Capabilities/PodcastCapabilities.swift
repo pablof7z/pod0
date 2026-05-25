@@ -28,6 +28,14 @@ import Foundation
 ///                                **not** routed through `handleJSON(_:)`,
 ///                                but it shares the start/stop lifecycle of
 ///                                the other capabilities.
+///   - `SpotlightCapability`   — passive CoreSpotlight indexer
+///                                (`pcst.spotlight.capability`). Driven by
+///                                `KernelModel.library` deltas in the
+///                                snapshot poll; same passive shape as
+///                                `PlatformCapability`. Held via
+///                                `SpotlightCapability.shared` so the
+///                                deep-link router can reach it from
+///                                `PodcastApp` without re-injecting it.
 ///
 /// Rust decides when and what to call; Swift only executes the request and
 /// reports the raw result (D7).
@@ -67,6 +75,7 @@ final class PodcastCapabilities {
     /// the inbound dispatch path needs a `KernelModel` reference; see
     /// `startICloudSync(kernel:)`.
     let iCloudSync: iCloudSyncCapability
+    let spotlight: SpotlightCapability
 
     init(
         keyring: KeychainCapability = KeychainCapability(),
@@ -77,7 +86,8 @@ final class PodcastCapabilities {
         download: DownloadCapability = DownloadCapability(),
         notification: NotificationCapability = NotificationCapability(),
         platform: PlatformCapability = PlatformCapability(),
-        iCloudSync: iCloudSyncCapability = iCloudSyncCapability()
+        iCloudSync: iCloudSyncCapability = iCloudSyncCapability(),
+        spotlight: SpotlightCapability = SpotlightCapability.shared
     ) {
         self.keyring = keyring
         self.identity = identity
@@ -88,6 +98,7 @@ final class PodcastCapabilities {
         self.notification = notification
         self.platform = platform
         self.iCloudSync = iCloudSync
+        self.spotlight = spotlight
     }
 
     /// Idempotent: start all owned capabilities. Safe to call on every app
@@ -106,6 +117,7 @@ final class PodcastCapabilities {
         download.start()
         notification.start()
         platform.start()
+        spotlight.start()
     }
 
     /// Bring the iCloud sync capability online. Idempotent. Separated
@@ -126,6 +138,7 @@ final class PodcastCapabilities {
         notification.stop()
         platform.stop()
         iCloudSync.stop()
+        spotlight.stop()
     }
 
     /// Single capability-callback entry point. Routes the raw kernel

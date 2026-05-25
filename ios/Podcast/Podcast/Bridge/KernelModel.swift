@@ -164,6 +164,13 @@ final class KernelModel {
                         PodcastCapabilities.shared.iCloudSync.applySettingsSnapshot(
                             SettingsKVSnapshot.from(podcastUpdate: update))
                         kmLog.info("podcast snapshot updated rev=\(update.rev) library=\(update.library.count)")
+                        // Spotlight re-index. The capability does its
+                        // own equality check against its cached copy,
+                        // so feeding it the new library on every rev
+                        // bump is safe — a player-tick rev that didn't
+                        // touch the library short-circuits inside
+                        // `indexLibrary(_:)` without a disk write.
+                        PodcastCapabilities.shared.spotlight.indexLibrary(update.library)
                     }
                 }
             }

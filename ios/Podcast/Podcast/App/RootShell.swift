@@ -29,6 +29,7 @@ enum PodcastTab: Hashable { case library, downloads, identity }
 
 struct RootShell: View {
     @Environment(KernelModel.self) private var model
+    @Environment(SpotlightDeepLinkRouter.self) private var deepLinkRouter
 
     @State private var tab: PodcastTab = .library
 
@@ -39,6 +40,15 @@ struct RootShell: View {
             // D7 actor-death banner — rendered on top of everything,
             // non-dismissible. See kernelDeadBanner for full rationale.
             .overlay(alignment: .top) { kernelDeadBanner }
+            // Spotlight tap → switch to library tab. The actual
+            // `NavigationStack` push happens inside `LibraryView`,
+            // which observes the same router and consumes the
+            // pending deep link after pushing. We only own the tab
+            // dimension here; the navigation stack is per-tab.
+            .onChange(of: deepLinkRouter.pendingDeepLink) { _, newValue in
+                guard newValue != nil else { return }
+                tab = .library
+            }
     }
 
     private var mainTabs: some View {

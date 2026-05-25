@@ -1,4 +1,5 @@
 import AppIntents
+import CoreSpotlight
 import SwiftUI
 import UIKit
 
@@ -6,6 +7,16 @@ import UIKit
 struct PodcastApp: App {
     // `@State` (not `@StateObject`) because KernelModel is now `@Observable`.
     @State private var model = KernelModel()
+
+    // Compat shim — bridges legacy Identity views' `@Environment(UserIdentityStore.self)`
+    // injection. Replaced when functional sign-in lands at M1 exit.
+    @State private var identityStore = UserIdentityStore()
+
+    // Spotlight (and future deep-link) router. Owned at the app root
+    // so both `RootShell` (tab switch) and `LibraryView` (path push)
+    // can read from the same one-slot mailbox.
+    @State private var deepLinkRouter = SpotlightDeepLinkRouter()
+
 
     // UIKit app delegate is the only surface that receives
     // `application(_:handleEventsForBackgroundURLSession:completionHandler:)`,
@@ -25,6 +36,8 @@ struct PodcastApp: App {
         WindowGroup {
             RootShell()
                 .environment(model)
+                .environment(identityStore)
+                .environment(deepLinkRouter)
                 .tint(PodcastColor.accent)
                 .task {
                     model.start()
@@ -38,6 +51,14 @@ struct PodcastApp: App {
                     // install or upgrade. iOS caches the provider's output
                     // until this call (or a fresh install) refreshes it.
                     PodcastAppShortcuts.updateAppShortcutParameters()
+                }
+                // Spotlight tap → deep-link router. `RootShell` /
+                // `LibraryView` watch the router's mailbox to flip
+                // tabs and push the corresponding `NavigationStack`
+                // destination. The handler is non-throwing — an
+                // unrecognised activity is dropped (D6).
+                .onContinueUserActivity(CSSearchableItemActionType) { activity in
+                    deepLinkRouter.handle(activity)
                 }
         }
         .onChange(of: scenePhase) { _, newPhase in
