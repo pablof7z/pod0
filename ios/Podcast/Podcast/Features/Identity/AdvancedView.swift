@@ -42,6 +42,17 @@ struct AdvancedView: View {
                     )
                 }
             }
+            Section("Agent") {
+                NavigationLink {
+                    AgentTasksView()
+                } label: {
+                    advancedRow(
+                        title: "Scheduled Tasks",
+                        subtitle: "Recurring jobs the agent runs for you",
+                        systemImage: "calendar.badge.clock"
+                    )
+                }
+            }
             Section {
                 NavigationLink {
                     AccountDetailsView()

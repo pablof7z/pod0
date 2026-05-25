@@ -36,6 +36,7 @@ use super::projections::{
     AccountSummary, BriefingSnapshot, ChapterSummary, ConversationsSnapshot, DownloadQueueSnapshot,
     EpisodeSummary, PodcastSummary, VoiceState, WidgetSnapshot, WikiArticle,
     AccountSummary, AgentPickSummary, BriefingSnapshot, ConversationsSnapshot,
+    AccountSummary, AgentTaskSummary, BriefingSnapshot, ConversationsSnapshot,
     DownloadQueueSnapshot, EpisodeSummary, PodcastSummary, VoiceState, WidgetSnapshot,
 };
 use super::snapshot_queue::resolve_queue_rows;
@@ -195,6 +196,12 @@ pub struct PodcastUpdate {
     /// Empty until the first refresh has run. See [`AgentPickSummary`].
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub picks: Vec<AgentPickSummary>,
+    /// Agent-scheduled-tasks projection — see [`AgentTaskSummary`].
+    /// Seeded with two defaults on first kernel launch; mutated by
+    /// `podcast.tasks.*` ops. Empty vec serializes as missing for D5
+    /// byte-identity.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub agent_tasks: Vec<AgentTaskSummary>,
 }
 
 impl Default for PodcastUpdate {
@@ -222,6 +229,7 @@ impl Default for PodcastUpdate {
             wiki_articles: Vec::new(),
             wiki_search_results: Vec::new(),
             picks: Vec::new(),
+            agent_tasks: Vec::new(),
         }
     }
 }
@@ -410,6 +418,10 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         .map(|p| p.clone())
         .unwrap_or_default();
 
+    let agent_tasks = handle.agent_tasks.lock().ok()
+        .map(|t| t.clone())
+        .unwrap_or_default();
+
     let update = PodcastUpdate {
         rev,
         now_playing,
@@ -423,6 +435,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         wiki_articles,
         wiki_search_results,
         picks,
+        agent_tasks,
         ..PodcastUpdate::default()
     };
     let json = serde_json::to_string(&update)
@@ -760,3 +773,6 @@ mod tests {
 #[cfg(test)]
 #[path = "snapshot_tests.rs"]
 mod tests;
+// Tests live in `super::snapshot_tests` (a sibling `#[cfg(test)] mod`
+// in `ffi/mod.rs`) so this file stays under the 500-LOC hard ceiling
+// as new projections land.

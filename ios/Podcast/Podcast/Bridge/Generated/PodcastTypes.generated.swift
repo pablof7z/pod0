@@ -67,6 +67,35 @@ struct SettingsSnapshot: Codable, Equatable, Hashable {
     /// `podcast.picks.refresh` lands (or an implicit refresh fired
     /// at the end of `podcast.refresh_all`).
     var picks: [AgentPickSummary]? = nil
+    /// Agent-scheduled tasks projection. Mirrors Rust
+    /// `PodcastUpdate.agent_tasks` (see `ffi::projections::AgentTaskSummary`).
+    /// Optional so missing-field snapshots decode as `nil` rather than
+    /// an empty array.
+    var agentTasks: [AgentTaskSummary]? = nil
+}
+
+/// One agent-scheduled task surfaced via `PodcastUpdate.agentTasks`.
+/// Mirrors Rust `AgentTaskSummary`. Carried as a narrow projection;
+/// the iOS view renders directly and mutation flows back through the
+/// `podcast.tasks.*` action dispatches.
+struct AgentTaskSummary: Codable, Identifiable, Equatable, Hashable {
+    var id: String
+    var title: String
+    var description: String? = nil
+    var actionNamespace: String
+    var actionBody: String
+    var schedule: String
+    /// Unix seconds — next scheduled run, when the scheduler has
+    /// computed one. `nil` for newly-created tasks.
+    var nextRunAt: Int? = nil
+    /// Unix seconds — last completed (or failed) run. `nil` until the
+    /// task has run at least once.
+    var lastRunAt: Int? = nil
+    /// One of `"pending"`, `"running"`, `"completed"`, `"failed"`.
+    var status: String
+    /// `true` when the scheduler should consider this task; toggled
+    /// via `enable` / `disable` ops.
+    var isEnabled: Bool
 }
 
 /// Narrow projection for a subscribed podcast (one library grid/list cell).

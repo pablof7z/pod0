@@ -84,6 +84,7 @@ mod tests {
             wiki_articles: Arc::new(Mutex::new(Vec::new())),
             wiki_search_results: Arc::new(Mutex::new(Vec::new())),
             picks: Arc::new(Mutex::new(Vec::<AgentPickSummary>::new())),
+            agent_tasks: Arc::new(Mutex::new(Vec::new())),
         })
     }
 

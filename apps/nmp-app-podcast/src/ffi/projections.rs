@@ -503,6 +503,69 @@ pub struct AgentPickSummary {
     pub pick_score: f32,
 }
 
+/// One row in the agent-tasks projection surfaced via
+/// [`super::snapshot::PodcastUpdate::agent_tasks`].
+///
+/// Mirrors a recurring or one-shot action the agent has scheduled on
+/// the user's behalf (e.g. "fetch new episodes every morning",
+/// "generate a briefing at 7am", "research topic X").
+///
+/// Per D5/D7 this is pure data: the projection is consumed by the
+/// `AgentTasksView` SwiftUI list and rendered without any client-side
+/// logic. The kernel-side `AgentTasksModule` owns mutation; the iOS
+/// shell only dispatches actions and re-renders.
+///
+/// `action_namespace` + `action_body` carry the dispatch payload the
+/// task should fire (e.g. `"podcast.briefings.generate"` + `"{}"`).
+/// Carrying them as opaque string fields keeps the projection
+/// open-ended — new agent capabilities show up as new namespace
+/// strings without changing this struct.
+///
+/// `schedule` is a free-form string (`"daily"`, `"weekly"`, `"once"`,
+/// or a cron-like expression) — interpreted by the future scheduler
+/// runtime, not by the projection layer.
+///
+/// `next_run_at` / `last_run_at` are surfaced as optional Unix
+/// timestamps (seconds since epoch). `None` means the slot is
+/// undefined (not-yet-scheduled / not-yet-run). The iOS view uses
+/// these to render a relative-time chip.
+///
+/// `status` is one of `"pending"` / `"running"` / `"completed"` /
+/// `"failed"`; carried as a string for the same string-discriminator
+/// reason as [`DownloadItemSnapshot::state`].
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
+pub struct AgentTaskSummary {
+    /// Stable UUID (hyphenated string) minted by `AgentTasksModule::create`.
+    pub id: String,
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// e.g. `"podcast.briefings.generate"` — the action namespace
+    /// `run_now` would (in a future scheduler) dispatch.
+    pub action_namespace: String,
+    /// JSON payload (already-encoded). Keeps the projection
+    /// schema-agnostic to the receiver's action shape.
+    pub action_body: String,
+    /// Free-form schedule label (`"daily"`, `"weekly"`, `"once"`, or
+    /// a cron-like expression). The future scheduler runtime parses
+    /// this; the projection layer treats it as opaque.
+    pub schedule: String,
+    /// Unix seconds — next scheduled run. `None` until the scheduler
+    /// computes one or for `"once"` schedules that have already run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_run_at: Option<i64>,
+    /// Unix seconds — last completed (or failed) run. `None` until
+    /// the task has run at least once.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_run_at: Option<i64>,
+    /// Lifecycle label: `"pending"` / `"running"` / `"completed"` /
+    /// `"failed"`. Defaults to `"pending"` on `create`.
+    pub status: String,
+    /// `true` when the scheduler should consider this task; user can
+    /// toggle via `enable` / `disable` ops without losing the row.
+    pub is_enabled: bool,
+}
+
 /// Narrow identity projection surfaced via
 /// [`super::snapshot::PodcastUpdate::active_account`].
 ///
@@ -793,6 +856,45 @@ mod tests {
         let json = r#"{"start_secs":0.0,"title":"Intro"}"#;
         let decoded: ChapterSummary = serde_json::from_str(json).expect("decode");
         assert!(!decoded.is_ai_generated);
+    fn agent_task_summary_round_trips_with_all_fields() {
+        let task = AgentTaskSummary {
+            id: "task-1".into(),
+            title: "Morning Briefing".into(),
+            description: Some("Generate a briefing every morning".into()),
+            action_namespace: "podcast.briefings.generate".into(),
+            action_body: "{}".into(),
+            schedule: "daily".into(),
+            next_run_at: Some(1_700_000_000),
+            last_run_at: Some(1_699_900_000),
+            status: "completed".into(),
+            is_enabled: true,
+        };
+        let json = serde_json::to_string(&task).expect("encode");
+        let decoded: AgentTaskSummary = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, task);
+    }
+
+    #[test]
+    fn agent_task_summary_omits_none_optionals() {
+        let task = AgentTaskSummary {
+            id: "task-1".into(),
+            title: "Inbox Triage".into(),
+            description: None,
+            action_namespace: "podcast.inbox.triage".into(),
+            action_body: "{}".into(),
+            schedule: "daily".into(),
+            next_run_at: None,
+            last_run_at: None,
+            status: "pending".into(),
+            is_enabled: true,
+        };
+        let json = serde_json::to_string(&task).expect("encode");
+        assert!(!json.contains("description"));
+        assert!(!json.contains("next_run_at"));
+        assert!(!json.contains("last_run_at"));
+        // Round-trip survives the elided optionals.
+        let decoded: AgentTaskSummary = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, task);
     }
 
     #[test]

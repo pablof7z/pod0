@@ -9,6 +9,7 @@ use nmp_ffi::NmpApp;
 use crate::ffi::projections::{BriefingSnapshot, NostrShowSummary, PodcastSummary};
 use crate::ffi::projections::{PodcastSummary, WikiArticle};
 use crate::ffi::projections::{AgentPickSummary, PodcastSummary};
+use crate::ffi::projections::{AgentTaskSummary, PodcastSummary};
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::store::PodcastStore;
@@ -56,6 +57,11 @@ pub struct PodcastHandle {
     /// `build_snapshot_payload` on each tick. See `picks_handler` for the
     /// compute path.
     pub(super) picks: Arc<Mutex<Vec<AgentPickSummary>>>,
+    /// Agent-scheduled tasks. Mutated by `podcast.tasks.*` action ops
+    /// (see `tasks_handler.rs`); read by `build_snapshot_payload`.
+    /// Seeded with two defaults in `register.rs` so the iOS UI has
+    /// rows to render on first launch.
+    pub(super) agent_tasks: Arc<Mutex<Vec<AgentTaskSummary>>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the

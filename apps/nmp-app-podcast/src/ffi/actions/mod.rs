@@ -64,6 +64,7 @@ pub mod picks_module;
 pub mod player_module;
 pub mod podcast_module;
 pub mod queue_module;
+pub mod tasks_module;
 pub mod voice;
 pub mod wiki_module;
 
@@ -73,6 +74,7 @@ pub use player_module::{PlayerAction, PlayerActionModule};
 pub use podcast_module::{PodcastAction, PodcastActionModule};
 pub use queue_module::{QueueAction, QueueActionModule};
 pub use wiki_module::{WikiAction, WikiActionModule};
+pub use tasks_module::{AgentTasksAction, AgentTasksModule};
 
 use serde::{Deserialize, Serialize};
 

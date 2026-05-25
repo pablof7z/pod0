@@ -12,11 +12,13 @@ use super::actions::player_module::PlayerActionModule;
 use super::actions::podcast_module::PodcastActionModule;
 use super::actions::queue_module::QueueActionModule;
 use super::actions::wiki_module::WikiActionModule;
+use super::actions::tasks_module::AgentTasksModule;
 use super::handle::PodcastHandle;
 use crate::host_op_handler::PodcastHostOpHandler;
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::store::PodcastStore;
+use crate::tasks_handler;
 
 /// Register Podcast projections and action namespaces against `app`. Returns a
 /// non-null `*mut PodcastHandle` on success; `null` on any failure (null
@@ -58,6 +60,10 @@ pub extern "C" fn nmp_app_podcast_register(
     app_mut.register_action::<PodcastActionModule>();
     app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<AgentPicksModule>();
+    // (playback), and "podcast.tasks" (agent-scheduled tasks).
+    app_mut.register_action::<PodcastActionModule>();
+    app_mut.register_action::<PlayerActionModule>();
+    app_mut.register_action::<AgentTasksModule>();
 
     // Shared state between the handle (snapshot reader) and the handler (writer).
     let store = Arc::new(Mutex::new(PodcastStore::new()));
@@ -69,6 +75,10 @@ pub extern "C" fn nmp_app_podcast_register(
     let wiki_articles = Arc::new(Mutex::new(Vec::new()));
     let wiki_search_results = Arc::new(Mutex::new(Vec::new()));
     let picks = Arc::new(Mutex::new(Vec::new()));
+    // Seed the tasks slot with the two defaults so the iOS UI has rows
+    // to render before the user has scheduled anything (see
+    // `tasks_handler::default_seed`).
+    let agent_tasks = Arc::new(Mutex::new(tasks_handler::default_seed()));
     // Start at 1 so the first snapshot poll always triggers an iOS update
     // (guard is `update.rev > last_seen_rev`; last_seen_rev starts at 0).
     // Subsequent increments happen in PodcastHostOpHandler on store writes.
@@ -88,6 +98,7 @@ pub extern "C" fn nmp_app_podcast_register(
         wiki_articles.clone(),
         wiki_search_results.clone(),
         picks.clone(),
+        agent_tasks.clone(),
         rev.clone(),
     )));
 
@@ -104,5 +115,6 @@ pub extern "C" fn nmp_app_podcast_register(
         wiki_articles,
         wiki_search_results,
         picks,
+        agent_tasks,
     }))
 }

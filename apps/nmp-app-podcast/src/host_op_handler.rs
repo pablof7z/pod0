@@ -43,6 +43,11 @@ use crate::transcript::handle_fetch_transcript;
 use crate::wiki::handle_wiki_action;
 
 mod player_actions;
+use crate::ffi::actions::tasks_module::AgentTasksAction;
+use crate::ffi::projections::{AgentTaskSummary, PodcastSummary};
+use crate::player::PlayerActor;
+use crate::store::PodcastStore;
+use crate::tasks_handler;
 
 pub struct PodcastHostOpHandler {
     app: *mut NmpApp,
@@ -55,6 +60,7 @@ pub struct PodcastHostOpHandler {
     wiki_articles: Arc<Mutex<Vec<WikiArticle>>>,
     wiki_search_results: Arc<Mutex<Vec<WikiArticle>>>,
     picks: Arc<Mutex<Vec<AgentPickSummary>>>,
+    agent_tasks: Arc<Mutex<Vec<AgentTaskSummary>>>,
     rev: Arc<AtomicU64>,
 }
 
@@ -83,6 +89,10 @@ impl PodcastHostOpHandler {
         rev: Arc<AtomicU64>,
     ) -> Self {
         Self { app, store, player_actor, search_results, picks, rev }
+        agent_tasks: Arc<Mutex<Vec<AgentTaskSummary>>>,
+        rev: Arc<AtomicU64>,
+    ) -> Self {
+        Self { app, store, player_actor, search_results, agent_tasks, rev }
     }
     fn dispatch_http(&self, req: &HttpRequest, correlation_id: &str) -> Result<HttpResult, String> {
         let payload_json = serde_json::to_string(req).map_err(|e| e.to_string())?;
@@ -723,22 +733,72 @@ impl HostOpHandler for PodcastHostOpHandler {
             return handle_wiki_action(&self.wiki_articles, &self.wiki_search_results, &self.rev, action);
         if let Ok(PicksAction::Refresh) = serde_json::from_str::<PicksAction>(action_json) {
             return picks_handle_refresh(&self.store, &self.picks, &self.rev);
+        if let Ok(action) = serde_json::from_str::<AgentTasksAction>(action_json) {
+            return tasks_handler::handle_tasks_action(action, &self.agent_tasks, &self.rev);
         }
         serde_json::json!({"ok": false, "error": format!("unknown action: {action_json}")})
     }
 }
 
 fn merge_episodes(fresh: Vec<Episode>, existing: Vec<Episode>) -> Vec<Episode> {
-    fresh
-        .into_iter()
-        .map(|mut ep| {
-            if let Some(prev) = existing.iter().find(|e| e.id == ep.id) {
-                ep.position_secs = prev.position_secs;
-            }
-            ep
-        })
-        .collect()
+    fresh.into_iter().map(|mut ep| {
+        if let Some(prev) = existing.iter().find(|e| e.id == ep.id) {
+            ep.position_secs = prev.position_secs;
+        }
+        ep
+    }).collect()
 }
 // `merge_episodes`, `url_encode`, and `parse_itunes_results` are pure helpers
 // now defined in `crate::host_op_helpers` so this file stays under the
 // 500-line hard cap.
+
+fn url_encode(s: &str) -> String {
+    s.chars()
+        .flat_map(|c| match c {
+            'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_' | '.' | '~' => vec![c],
+            ' ' => vec!['+'],
+            other => {
+                let mut buf = [0u8; 4];
+                other.encode_utf8(&mut buf).bytes().flat_map(|b| {
+                    let hi = char::from_digit((b >> 4) as u32, 16).unwrap_or('0');
+                    let lo = char::from_digit((b & 0xf) as u32, 16).unwrap_or('0');
+                    vec!['%', hi.to_ascii_uppercase(), lo.to_ascii_uppercase()]
+                }).collect()
+            }
+        })
+        .collect()
+}
+
+/// Parse the iTunes Search API JSON payload into `PodcastSummary` rows.
+/// Returns an empty Vec on any decode failure (D6).
+fn parse_itunes_results(body: &str) -> Vec<PodcastSummary> {
+    #[derive(serde::Deserialize)]
+    struct ItunesResponse { results: Vec<ItunesResult> }
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct ItunesResult {
+        collection_id: Option<i64>,
+        collection_name: Option<String>,
+        feed_url: Option<String>,
+        artwork_url600: Option<String>,
+        artist_name: Option<String>,
+    }
+    let Ok(resp) = serde_json::from_str::<ItunesResponse>(body) else {
+        return vec![];
+    };
+    resp.results
+        .into_iter()
+        .filter_map(|r| {
+            Some(PodcastSummary {
+                id: r.collection_id?.to_string(),
+                title: r.collection_name.unwrap_or_default(),
+                episode_count: 0,
+                unplayed_count: 0,
+                artwork_url: r.artwork_url600,
+                feed_url: r.feed_url,
+                author: r.artist_name,
+                episodes: vec![],
+            })
+        })
+        .collect()
+}

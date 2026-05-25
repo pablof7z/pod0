@@ -20,6 +20,21 @@ use super::*;
 use super::super::projections::{
     AgentPickSummary, DownloadItemSnapshot, PendingApprovalSnapshot,
 };
+//! Tests for [`super::snapshot`]. Lives in its own file so
+//! `snapshot.rs` stays under the 500-line hard limit as new
+//! projections land.
+//!
+//! Included from `snapshot.rs` via `#[cfg(test)] #[path = "snapshot_tests.rs"]
+//! mod tests;` — there is no `mod snapshot_tests;` in `ffi/mod.rs` and
+//! none is wanted. The `#[path]` attribute makes this file act as the
+//! `tests` submodule of `snapshot`, so it inherits `super::*`.
+
+use super::snapshot::*;
+use super::projections::{
+    AgentTaskSummary, BriefingSnapshot, ConversationsSnapshot, DownloadItemSnapshot,
+    DownloadQueueSnapshot, PendingApprovalSnapshot, VoiceState, WidgetSnapshot,
+};
+use crate::player::PlayerState;
 
 #[test]
 fn default_snapshot_omits_now_playing() {
@@ -94,6 +109,37 @@ fn snapshot_omits_default_settings() {
     let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
     assert!(!json.contains("settings"));
     assert!(decoded.comments.is_empty());
+    assert!(decoded.agent_tasks.is_empty());
+}
+
+#[test]
+fn default_snapshot_omits_agent_tasks() {
+    let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
+    assert!(!json.contains("agent_tasks"));
+}
+
+#[test]
+fn snapshot_with_agent_tasks_round_trips() {
+    let tasks = vec![AgentTaskSummary {
+        id: "task-1".into(),
+        title: "Morning Briefing".into(),
+        description: Some("Daily digest".into()),
+        action_namespace: "podcast.briefings.generate".into(),
+        action_body: "{}".into(),
+        schedule: "daily".into(),
+        next_run_at: Some(1_700_000_000),
+        last_run_at: None,
+        status: "pending".into(),
+        is_enabled: true,
+    }];
+    let snap = PodcastUpdate {
+        agent_tasks: tasks.clone(),
+        ..PodcastUpdate::default()
+    };
+    let json = serde_json::to_string(&snap).expect("encode");
+    assert!(json.contains("\"agent_tasks\":["));
+    let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded.agent_tasks, tasks);
 }
 
 #[test]
@@ -439,4 +485,7 @@ fn snapshot_picks_round_trips_and_default_omits_field() {
         serde_json::from_str(&serde_json::to_string(&snap).expect("encode"))
             .expect("decode");
     assert_eq!(decoded.picks, vec![pick]);
+}
+    let decoded: BriefingSnapshot = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, b);
 }
