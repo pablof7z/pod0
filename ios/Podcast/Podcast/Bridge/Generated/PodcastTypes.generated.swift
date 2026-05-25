@@ -57,6 +57,17 @@ struct EpisodeSummary: Codable, Identifiable, Equatable, Hashable {
     /// `podcast.fetch_transcript` dispatch; `nil` when not yet fetched
     /// or when no publisher transcript is available for this episode.
     var transcript: String? = nil
+    /// Chapter markers projected after a successful `podcast.fetch_chapters`.
+    var chapters: [ChapterSummary]? = nil
+}
+
+/// Narrow chapter projection for full-player chapter rail rendering.
+struct ChapterSummary: Codable, Equatable, Hashable {
+    var startSecs: Double
+    var endSecs: Double? = nil
+    var title: String
+    var imageUrl: String? = nil
+    var url: String? = nil
 }
 
 /// Active player state (present only when an episode is loaded).

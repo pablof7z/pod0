@@ -30,8 +30,8 @@ use super::handle::PodcastHandle;
 use std::sync::atomic::Ordering;
 
 use super::projections::{
-    AccountSummary, BriefingSnapshot, ConversationsSnapshot, DownloadQueueSnapshot, EpisodeSummary,
-    PodcastSummary, VoiceState, WidgetSnapshot,
+    AccountSummary, BriefingSnapshot, ChapterSummary, ConversationsSnapshot, DownloadQueueSnapshot,
+    EpisodeSummary, PodcastSummary, VoiceState, WidgetSnapshot,
 };
 use crate::player::PlayerState;
 
@@ -202,6 +202,21 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
                             published_at: Some(ep.pub_date.timestamp()),
                             download_path: s.local_path_for(&ep.id).map(str::to_owned),
                             transcript,
+                            chapters: ep
+                                .chapters
+                                .as_ref()
+                                .map(|cs| {
+                                    cs.iter()
+                                        .map(|c| ChapterSummary {
+                                            start_secs: c.start_secs,
+                                            end_secs: c.end_secs,
+                                            title: c.title.clone(),
+                                            image_url: c.image_url.as_ref().map(|u| u.to_string()),
+                                            url: c.link_url.as_ref().map(|u| u.to_string()),
+                                        })
+                                        .collect()
+                                })
+                                .unwrap_or_default(),
                         }
                     })
                     .collect(),

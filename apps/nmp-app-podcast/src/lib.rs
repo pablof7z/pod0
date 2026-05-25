@@ -32,6 +32,7 @@
 //!   per-projection actors under [`player`] et al.
 
 pub mod capability;
+pub(crate) mod chapter;
 pub mod download;
 pub mod ffi;
 pub(crate) mod host_op_handler;

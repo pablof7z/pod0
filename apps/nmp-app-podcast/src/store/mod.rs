@@ -24,6 +24,7 @@ use std::path::Path;
 
 use podcast_core::{Episode, EpisodeId, Podcast, PodcastId};
 
+mod chapters;
 mod persistence;
 mod transcripts;
 

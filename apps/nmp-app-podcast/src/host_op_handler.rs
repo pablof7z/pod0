@@ -14,13 +14,14 @@ use podcast_feeds::http::{HttpRequest, HttpResult, HTTP_CAPABILITY_NAMESPACE};
 use crate::capability::{
     AudioCommand, DownloadCommand, AUDIO_CAPABILITY_NAMESPACE, DOWNLOAD_CAPABILITY_NAMESPACE,
 };
+use crate::chapter::handle_fetch_chapters;
 use crate::ffi::actions::player_module::PlayerAction;
 use crate::ffi::actions::podcast_module::PodcastAction;
 use crate::ffi::projections::PodcastSummary;
 use crate::itunes_search::{parse_itunes_results, url_encode};
 use crate::player::PlayerActor;
 use crate::store::PodcastStore;
-use crate::transcript::{fetch_and_store_transcript, FetchTranscriptOutcome};
+use crate::transcript::handle_fetch_transcript;
 
 pub struct PodcastHostOpHandler {
     app: *mut NmpApp,
@@ -463,20 +464,8 @@ impl HostOpHandler for PodcastHostOpHandler {
                 PodcastAction::ImportOpml { content } => self.handle_import_opml(content, correlation_id),
                 PodcastAction::Download { episode_id } => self.handle_download(episode_id, correlation_id),
                 PodcastAction::DeleteDownload { episode_id } => self.handle_delete_download(episode_id),
-                PodcastAction::FetchTranscript { episode_id } => match fetch_and_store_transcript(
-                    &self.store,
-                    episode_id,
-                    |req| self.dispatch_http(req, correlation_id),
-                ) {
-                    Ok(FetchTranscriptOutcome::Stored) => {
-                        self.rev.fetch_add(1, Ordering::Relaxed);
-                        serde_json::json!({"ok": true})
-                    }
-                    Ok(FetchTranscriptOutcome::NotAvailable) => {
-                        serde_json::json!({"ok": true, "not_available": true})
-                    }
-                    Err(e) => serde_json::json!({"ok": false, "error": e}),
-                },
+                PodcastAction::FetchTranscript { episode_id } => handle_fetch_transcript(&self.store, &self.rev, episode_id, |req| self.dispatch_http(req, correlation_id)),
+                PodcastAction::FetchChapters { episode_id } => handle_fetch_chapters(&self.store, &self.rev, episode_id, |req| self.dispatch_http(req, correlation_id)),
             };
         }
         if let Ok(action) = serde_json::from_str::<PlayerAction>(action_json) {

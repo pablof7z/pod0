@@ -95,7 +95,9 @@ struct PlayerView: View {
                 artworkCard
                 Spacer(minLength: PodcastSpace.l)
                 metadata
-                Spacer(minLength: PodcastSpace.l)
+                Spacer(minLength: PodcastSpace.m)
+                chapterRail(player: player)
+                Spacer(minLength: PodcastSpace.m)
                 PlayerControls(
                     player: player,
                     scrubbingPosition: $scrubbingPosition,
@@ -105,9 +107,43 @@ struct PlayerView: View {
                 .padding(.horizontal, PodcastSpace.l)
                 .padding(.bottom, PodcastSpace.l)
             }
+            .task { dispatchFetchChaptersIfNeeded(for: player.episodeId) }
+            .onChange(of: player.episodeId) { _, newId in
+                dispatchFetchChaptersIfNeeded(for: newId)
+            }
         } else {
             emptyState
         }
+    }
+
+    // MARK: - Chapter rail
+
+    @ViewBuilder
+    private func chapterRail(player: PlayerState) -> some View {
+        if let chapters = episode?.chapters, !chapters.isEmpty {
+            ChapterRailView(
+                chapters: chapters,
+                currentPositionSecs: scrubbingPosition ?? player.positionSecs,
+                onSeek: { seconds in
+                    model.dispatch(namespace: "podcast.player", body: [
+                        "op": "seek",
+                        "position_secs": seconds
+                    ])
+                }
+            )
+        }
+    }
+
+    private func dispatchFetchChaptersIfNeeded(for episodeId: String?) {
+        guard let episodeId else { return }
+        // Self-gating lives in Rust (`handle_fetch_chapters` short-circuits on
+        // missing chapters_url or already-loaded chapters). The view fires the
+        // dispatch unconditionally on every episode change — D7, no policy in
+        // the shell.
+        model.dispatch(namespace: "podcast", body: [
+            "op": "fetch_chapters",
+            "episode_id": episodeId
+        ])
     }
 
     // MARK: - Top bar

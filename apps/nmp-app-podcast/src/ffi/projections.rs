@@ -277,6 +277,25 @@ pub struct EpisodeSummary {
     /// snapshots that predate this field.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transcript: Option<String>,
+    /// Narrow chapter rows projected from `podcast_core::Episode::chapters`
+    /// after a `podcast.fetch_chapters` action lands. Empty when the episode
+    /// has no chapter markers, or when chapters have not been fetched yet.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub chapters: Vec<ChapterSummary>,
+}
+
+/// Narrow chapter projection for the player rail. Mirrors the relevant
+/// fields of `podcast_core::Chapter` for UI rendering.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+pub struct ChapterSummary {
+    pub start_secs: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_secs: Option<f64>,
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
 }
 
 /// Narrow identity projection surfaced via
@@ -344,6 +363,44 @@ mod tests {
         assert!(json.contains("download_path"));
         let decoded: EpisodeSummary = serde_json::from_str(&json).expect("decode");
         assert_eq!(decoded, ep);
+    }
+
+    #[test]
+    fn episode_summary_omits_empty_chapters() {
+        let ep = EpisodeSummary {
+            id: "ep-1".into(),
+            title: "Pilot".into(),
+            ..EpisodeSummary::default()
+        };
+        let json = serde_json::to_string(&ep).expect("encode");
+        assert!(!json.contains("chapters"));
+    }
+
+    #[test]
+    fn episode_summary_round_trips_with_chapters() {
+        let ep = EpisodeSummary {
+            id: "ep-1".into(),
+            title: "Pilot".into(),
+            chapters: vec![
+                ChapterSummary {
+                    start_secs: 0.0,
+                    end_secs: Some(60.0),
+                    title: "Intro".into(),
+                    image_url: Some("https://ex.com/intro.png".into()),
+                    url: None,
+                },
+                ChapterSummary {
+                    start_secs: 60.0,
+                    title: "Main".into(),
+                    ..ChapterSummary::default()
+                },
+            ],
+            ..EpisodeSummary::default()
+        };
+        let json = serde_json::to_string(&ep).expect("encode");
+        let decoded: EpisodeSummary = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, ep);
+        assert!(!json.contains("\"url\":null"));
     }
 
     #[test]

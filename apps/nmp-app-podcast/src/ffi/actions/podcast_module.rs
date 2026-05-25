@@ -46,6 +46,11 @@ pub enum PodcastAction {
     /// kernel-side `local_path` mapping.
     DeleteDownload { episode_id: String },
     FetchTranscript { episode_id: String },
+    /// Fetch and parse the Podcasting 2.0 chapters JSON for an episode.
+    ///
+    /// Self-gating in the handler: if the episode has no `chapters_url` or
+    /// already has chapters loaded, the action is a `{"ok":true}` no-op.
+    FetchChapters { episode_id: String },
 }
 
 /// Single action module for the whole `"podcast"` namespace.
@@ -160,6 +165,18 @@ mod tests {
         let json = serde_json::to_string(&action).expect("encode");
         assert!(json.contains(r#""op":"fetch_transcript""#));
         assert!(json.contains(r#""episode_id":"ep-1""#));
+        let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, action);
+    }
+
+    #[test]
+    fn fetch_chapters_action_round_trips() {
+        let action = PodcastAction::FetchChapters {
+            episode_id: "11111111-2222-3333-4444-555555555555".into(),
+        };
+        let json = serde_json::to_string(&action).expect("encode");
+        assert!(json.contains(r#""op":"fetch_chapters""#));
+        assert!(json.contains(r#""episode_id""#));
         let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
         assert_eq!(decoded, action);
     }

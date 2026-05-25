@@ -11,6 +11,7 @@
 //!   [`TranscriptKind`], plus how to collapse the parsed `Transcript` into
 //!   the single plain-text blob the iOS sheet renders.
 
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use podcast_core::TranscriptKind;
@@ -21,12 +22,30 @@ use podcast_transcripts::{
 
 use crate::store::PodcastStore;
 
-pub(crate) enum FetchTranscriptOutcome {
+enum FetchTranscriptOutcome {
     Stored,
     NotAvailable,
 }
 
-pub(crate) fn fetch_and_store_transcript(
+pub(crate) fn handle_fetch_transcript(
+    store: &Arc<Mutex<PodcastStore>>,
+    rev: &AtomicU64,
+    episode_id: String,
+    fetch: impl FnOnce(&HttpRequest) -> Result<HttpResult, String>,
+) -> serde_json::Value {
+    match fetch_and_store_transcript(store, episode_id, fetch) {
+        Ok(FetchTranscriptOutcome::Stored) => {
+            rev.fetch_add(1, Ordering::Relaxed);
+            serde_json::json!({"ok": true})
+        }
+        Ok(FetchTranscriptOutcome::NotAvailable) => {
+            serde_json::json!({"ok": true, "not_available": true})
+        }
+        Err(e) => serde_json::json!({"ok": false, "error": e}),
+    }
+}
+
+fn fetch_and_store_transcript(
     store: &Arc<Mutex<PodcastStore>>,
     episode_id: String,
     fetch: impl FnOnce(&HttpRequest) -> Result<HttpResult, String>,

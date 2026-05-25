@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-25T23:06:00Z",
+      "lines": [
+        "Full-screen playback now shows episode chapter markers when a show publishes them, with one-tap seeking between chapters."
+      ]
+    },
+    {
       "shipped_at": "2026-05-25T23:05:00Z",
       "lines": [
         "Transcripts: tap the speech-bubble button on the mini-player to open the episode transcript — fetched and parsed entirely by the Rust kernel."
