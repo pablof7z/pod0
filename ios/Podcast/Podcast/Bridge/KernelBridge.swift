@@ -14,6 +14,8 @@ final class PodcastHandle {
     private var updateSink: KernelUpdateSink?
     /// Opaque handle returned by `nmp_app_podcast_register`.
     var podcastHandle: UnsafeMutableRawPointer?
+    /// Retained bridge passed as `context` to `nmp_app_set_capability_callback`.
+    var syncBridge: SyncCapabilityBridge?
 
     init() {
         raw = nmp_app_new()

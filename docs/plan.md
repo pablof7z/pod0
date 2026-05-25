@@ -8,7 +8,7 @@ are reference material, not the active planning surface.
 
 | Work | State | Source |
 |---|---|---|
-| NMP migration — M0 Bootstrap: Rust crate skeleton, iOS project skeleton, capabilities scaffolding, migration tooling. | **In progress** | `Plans/NMP_MIGRATION_PLAN.md` |
+| NMP feature parity — PR 1: subscribe → library snapshot (PR #29 open). | **In progress** | `docs/plan/nmp-feature-parity.md` |
 | Pod0 app rename (PR #2 open). | In progress | `docs/BACKLOG.md` |
 | Migrate owned podcast Nostr publishing/discovery from NIP-74 to NIP-F4 (PR #2 open). | In progress | `docs/plan/pod0-nostr-publishing.md` |
 
@@ -18,6 +18,8 @@ are reference material, not the active planning surface.
 - `docs/BACKLOG.md` - tactical queue and follow-ups.
 - `WIP.md` - active branches/worktrees only.
 - `docs/plan/` - detailed implementation plans linked from this file.
+  - `docs/plan/nmp-feature-parity.md` — full NMP feature-parity plan: 74 features, PR sequence, guiding principles, exit criteria.
+  - `docs/plan/pod0-nostr-publishing.md` — NIP-F4 podcast publishing plan.
 - `Plans/NMP_MIGRATION_PLAN.md` + `Plans/nmp-migration/` - NMP migration plan (M0–M13).
 
 ## NMP Migration Milestones (M0–M13)

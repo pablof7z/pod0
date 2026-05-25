@@ -41,6 +41,15 @@ final class KernelModel {
     var visibleLimit: UInt32 = 80
     var emitHz: UInt32 = 4
 
+    // ── Podcast projection (polled separately from NMP kernel snapshot) ───
+
+    /// Latest podcast library decoded from `nmp_app_podcast_snapshot`.
+    private(set) var library: [PodcastSummary] = []
+    /// Latest full podcast snapshot (library, player, account …).
+    private(set) var podcastSnapshot: PodcastUpdate?
+    /// Cancellable for the 500ms poll Task.
+    private var snapshotPollTask: Task<Void, Never>?
+
     // ── Computed projections ───────────────────────────────────────────────
 
     var isRunning: Bool { snapshot?.running ?? false }
@@ -63,6 +72,7 @@ final class KernelModel {
                 MainActor.assumeIsolated { self.markKernelDead() }
             }
         })
+        kernel.attachAudioReportChannel()
     }
 
     private func markKernelDead() {
@@ -86,20 +96,46 @@ final class KernelModel {
         guard !startedKernel else { return }
         startedKernel = true
         kernel.start(visibleLimit: visibleLimit, emitHz: emitHz)
+        startSnapshotPoll()
     }
 
     func stop() {
+        snapshotPollTask?.cancel()
+        snapshotPollTask = nil
         kernel.stop()
         startedKernel = false
     }
 
     func resetAndRestart() {
+        snapshotPollTask?.cancel()
+        snapshotPollTask = nil
         kernel.reset()
         snapshot = nil
+        podcastSnapshot = nil
+        library = []
         kernel.reregisterPodcastProjection()
         lastErrorToast = nil
         kernel.start(visibleLimit: visibleLimit, emitHz: emitHz)
         startedKernel = true
+        startSnapshotPoll()
+    }
+
+    private func startSnapshotPoll() {
+        snapshotPollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(500))
+                guard !Task.isCancelled else { break }
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
+                    let update = self.kernel.podcastSnapshot()
+                    if update.rev > (self.podcastSnapshot?.rev ?? 0) {
+                        self.podcastSnapshot = update
+                        self.library = update.library
+                        kmLog.info("podcast snapshot updated rev=\(update.rev) library=\(update.library.count)")
+                    }
+                }
+            }
+        }
     }
 
     func applyConfiguration() {
@@ -108,7 +144,10 @@ final class KernelModel {
 
     // ── scenePhase pass-through ────────────────────────────────────────────
 
-    func lifecycleForeground() { kernel.lifecycleForeground() }
+    func lifecycleForeground() {
+        kernel.lifecycleForeground()
+        dispatch(namespace: "podcast", body: ["op": "refresh_all"])
+    }
     func lifecycleBackground() { kernel.lifecycleBackground() }
 
     // ── Toast ──────────────────────────────────────────────────────────────

@@ -2,21 +2,19 @@ import SwiftUI
 
 // MARK: - LibraryView
 
-/// Top-level Library tab. Shows a podcast grid; tapping a cell pushes
-/// `ShowDetailView` through the NavigationStack.
+/// Top-level Library tab. Shows a podcast grid from the NMP kernel snapshot;
+/// tapping a cell pushes `ShowDetailView` through the NavigationStack.
 struct LibraryView: View {
-    @Environment(AppStateStore.self) private var store
-    @Environment(PlaybackState.self) private var playback
+    @Environment(KernelModel.self) private var model
 
     @State private var showAddSheet = false
-    @State private var voiceOverDetailRoute: LibraryEpisodeRoute?
 
     private let columns = [GridItem(.adaptive(minimum: 140), spacing: AppTheme.Spacing.md)]
 
     var body: some View {
         NavigationStack {
             Group {
-                if store.allPodcasts.isEmpty {
+                if model.library.isEmpty {
                     emptyState
                 } else {
                     podcastGrid
@@ -30,18 +28,15 @@ struct LibraryView: View {
                     }
                 }
             }
-            .navigationDestination(for: Podcast.self) { podcast in
+            .navigationDestination(for: PodcastSummary.self) { podcast in
                 ShowDetailView(podcast: podcast)
             }
-            .navigationDestination(for: LibraryEpisodeRoute.self) { route in
-                LibraryEpisodePlaceholder(route: route)
-            }
-            .navigationDestination(item: $voiceOverDetailRoute) { route in
-                LibraryEpisodePlaceholder(route: route)
+            .refreshable {
+                model.dispatch(namespace: "podcast", body: ["op": "refresh_all"])
             }
         }
         .sheet(isPresented: $showAddSheet) {
-            AddShowSheet(store: store, onDismiss: { showAddSheet = false })
+            AddShowSheet(onDismiss: { showAddSheet = false })
         }
     }
 
@@ -56,12 +51,9 @@ struct LibraryView: View {
     private var podcastGrid: some View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: AppTheme.Spacing.md) {
-                ForEach(store.allPodcasts) { podcast in
+                ForEach(model.library) { podcast in
                     NavigationLink(value: podcast) {
-                        LibraryGridCell(
-                            podcast: podcast,
-                            unplayedCount: store.unplayedCount(forPodcast: podcast.id)
-                        )
+                        LibraryGridCell(podcast: podcast)
                     }
                     .buttonStyle(.plain)
                 }

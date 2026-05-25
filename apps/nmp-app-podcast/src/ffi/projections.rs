@@ -214,6 +214,67 @@ pub struct WidgetSnapshot {
     pub unplayed_count: usize,
 }
 
+/// One row in the library projection surfaced via
+/// [`super::snapshot::PodcastUpdate::library`].
+///
+/// Narrow enough for the grid/list cells the iOS shell renders; episode
+/// rows are embedded so the show-detail view doesn't need a second pull.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+pub struct PodcastSummary {
+    /// `PodcastId` as a hyphenated UUID string. For iTunes search results this
+    /// is the `collectionId` stringified (no UUID — the feed_url is the key).
+    pub id: String,
+    pub title: String,
+    pub episode_count: usize,
+    pub unplayed_count: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub artwork_url: Option<String>,
+    /// RSS feed URL. Present for library rows and iTunes search results;
+    /// used by `AddShowSheet` to subscribe from a search result.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub feed_url: Option<String>,
+    /// Podcast author / host name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author: Option<String>,
+    /// Recent episodes — ordered newest-first by the projection layer.
+    pub episodes: Vec<EpisodeSummary>,
+}
+
+/// One episode row embedded in [`PodcastSummary::episodes`].
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+pub struct EpisodeSummary {
+    /// `EpisodeId` as a hyphenated UUID string.
+    pub id: String,
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub podcast_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub podcast_title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration_secs: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub artwork_url: Option<String>,
+    /// Unix seconds from `Episode::pub_date`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub published_at: Option<i64>,
+}
+
+/// Narrow identity projection surfaced via
+/// [`super::snapshot::PodcastUpdate::active_account`].
+///
+/// Present when an identity is loaded; `None` while the kernel hasn't yet
+/// resolved the active account (pre-sign-in or between identity switch and
+/// the first snapshot tick).
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
+pub struct AccountSummary {
+    pub npub: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    pub mode: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub picture_url: Option<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

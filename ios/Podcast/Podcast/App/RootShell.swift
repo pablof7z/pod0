@@ -55,6 +55,9 @@ struct RootShell: View {
         }
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarBackground(.regularMaterial, for: .tabBar)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            MiniPlayerView()
+        }
     }
 
     @ViewBuilder

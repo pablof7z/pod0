@@ -56,7 +56,12 @@
 //! owns its wire format; this module is the single import path the
 //! iOS shell links against.
 
+pub mod player_module;
+pub mod podcast_module;
 pub mod voice;
+
+pub use player_module::{PlayerAction, PlayerActionModule};
+pub use podcast_module::{PodcastAction, PodcastActionModule};
 
 use serde::{Deserialize, Serialize};
 

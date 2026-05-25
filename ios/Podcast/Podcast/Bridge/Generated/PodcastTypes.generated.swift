@@ -9,9 +9,61 @@
 
 import Foundation
 
-/// Top-level snapshot emitted by the Rust podcast kernel on every tick.
-/// M0 stub — fields will grow as Rust projection modules are implemented.
+/// Top-level snapshot emitted by the Rust podcast kernel on every podcast
+/// projection tick (pulled via `nmp_app_podcast_snapshot`).
 struct PodcastUpdate: Codable {
     var running: Bool = false
     var rev: Int = 0
+    var schemaVersion: Int = 0
+    var library: [PodcastSummary] = []
+    var nowPlaying: PlayerState? = nil
+    var activeAccount: AccountSummary? = nil
+    var toast: String? = nil
+    var searchResults: [PodcastSummary] = []
+}
+
+/// Narrow projection for a subscribed podcast (one library grid/list cell).
+/// Episode rows are embedded so the show-detail view doesn't need a second pull.
+struct PodcastSummary: Codable, Identifiable, Equatable, Hashable {
+    var id: String
+    var title: String
+    var episodeCount: Int = 0
+    var unplayedCount: Int = 0
+    var artworkUrl: String? = nil
+    var feedUrl: String? = nil
+    var author: String? = nil
+    var episodes: [EpisodeSummary] = []
+}
+
+/// One episode row embedded in `PodcastSummary.episodes`.
+struct EpisodeSummary: Codable, Identifiable, Equatable, Hashable {
+    var id: String
+    var title: String
+    var podcastId: String? = nil
+    var podcastTitle: String? = nil
+    var durationSecs: Double? = nil
+    var artworkUrl: String? = nil
+    /// Unix seconds from `Episode::pub_date`.
+    var publishedAt: Int? = nil
+}
+
+/// Active player state (present only when an episode is loaded).
+struct PlayerState: Codable {
+    var episodeId: String? = nil
+    var url: String? = nil
+    var positionSecs: Double = 0
+    var durationSecs: Double? = nil
+    var isPlaying: Bool = false
+    var isBuffering: Bool = false
+    var bufferingFraction: Double = 0
+    var speed: Double = 1
+    var volume: Double = 1
+}
+
+/// Active Nostr identity (present only when an account is loaded).
+struct AccountSummary: Codable {
+    var npub: String
+    var displayName: String? = nil
+    var mode: String
+    var pictureUrl: String? = nil
 }

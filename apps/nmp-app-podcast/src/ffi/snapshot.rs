@@ -27,8 +27,11 @@ use std::ffi::{c_char, CString};
 use serde::{Deserialize, Serialize};
 
 use super::handle::PodcastHandle;
+use std::sync::atomic::Ordering;
+
 use super::projections::{
-    BriefingSnapshot, ConversationsSnapshot, DownloadQueueSnapshot, VoiceState, WidgetSnapshot,
+    AccountSummary, BriefingSnapshot, ConversationsSnapshot, DownloadQueueSnapshot, EpisodeSummary,
+    PodcastSummary, VoiceState, WidgetSnapshot,
 };
 use crate::player::PlayerState;
 
@@ -86,6 +89,14 @@ pub struct PodcastUpdate {
     /// slot. `None` when the scheduler has never been touched.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub briefing: Option<BriefingSnapshot>,
+    /// Subscribed-podcast library projection. Each entry is a narrow
+    /// [`PodcastSummary`] with embedded episode rows (newest-first).
+    /// Empty until the first successful `podcast.subscribe` action.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub library: Vec<PodcastSummary>,
+    /// Active Nostr identity, or `None` when no account is loaded.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub active_account: Option<AccountSummary>,
     /// Platform-integration projection: the narrow slice the iOS
     /// widget extension, Live Activity, Handoff, and Siri-shortcut
     /// executors need to render "now playing" + queue summary
@@ -108,6 +119,10 @@ pub struct PodcastUpdate {
     /// only renders.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub toast: Option<String>,
+    /// iTunes search results, populated after a `podcast.search_itunes` action.
+    /// Empty when no search has been performed or after the results are consumed.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub search_results: Vec<PodcastSummary>,
 }
 
 impl Default for PodcastUpdate {
@@ -121,21 +136,69 @@ impl Default for PodcastUpdate {
             agent: None,
             voice: None,
             briefing: None,
+            library: Vec::new(),
+            active_account: None,
             widget: None,
             toast: None,
+            search_results: Vec::new(),
         }
     }
 }
 
-/// Build the JSON payload the FFI snapshot function returns. Extracted so
-/// future milestones can hook into the same `PodcastUpdate` value (set
-/// `now_playing` from `PlayerActor::state()`, populate `podcasts`, etc.)
-/// without re-touching the C-ABI boundary.
-fn build_snapshot_payload() -> String {
-    // Build via the typed struct so renames stay one-and-done. Falls back
-    // to the byte-compatible legacy stub on the (impossible) serde failure,
-    // preserving D6.
-    serde_json::to_string(&PodcastUpdate::default())
+/// Build the JSON payload for one snapshot tick.
+///
+/// Reads `player_actor`, `store`, and `rev` from `handle` under their
+/// respective short-duration locks, assembles the typed [`PodcastUpdate`],
+/// and serializes it. Failures degrade to the byte-compatible legacy stub
+/// (D6).
+fn build_snapshot_payload(handle: &PodcastHandle) -> String {
+    // Read rev without modifying it — writes bump rev in PodcastHostOpHandler.
+    let rev = handle.rev.load(Ordering::Relaxed);
+
+    let now_playing = handle.player_actor.lock().ok().and_then(|a| {
+        let s = a.state().clone();
+        if s.episode_id.is_some() { Some(s) } else { None }
+    });
+
+    let library = handle.store.lock().ok().map(|s| {
+        s.all_podcasts()
+            .into_iter()
+            .map(|(podcast, episodes)| PodcastSummary {
+                id: podcast.id.0.to_string(),
+                title: podcast.title.clone(),
+                episode_count: episodes.len(),
+                unplayed_count: 0,
+                artwork_url: podcast.image_url.as_ref().map(|u| u.to_string()),
+                feed_url: podcast.feed_url.as_ref().map(|u| u.to_string()),
+                author: if podcast.author.is_empty() { None } else { Some(podcast.author.clone()) },
+                episodes: episodes
+                    .iter()
+                    .map(|ep| EpisodeSummary {
+                        id: ep.id.0.to_string(),
+                        title: ep.title.clone(),
+                        podcast_id: Some(podcast.id.0.to_string()),
+                        podcast_title: Some(podcast.title.clone()),
+                        duration_secs: ep.duration_secs,
+                        artwork_url: ep.image_url.as_ref().map(|u| u.to_string()),
+                        published_at: Some(ep.pub_date.timestamp()),
+                    })
+                    .collect(),
+            })
+            .collect()
+    }).unwrap_or_default();
+
+    let search_results = handle.search_results.lock().ok()
+        .map(|r| r.clone())
+        .unwrap_or_default();
+
+    let update = PodcastUpdate {
+        rev,
+        now_playing,
+        library,
+        search_results,
+        ..PodcastUpdate::default()
+    };
+    serde_json::to_string(&update)
         .unwrap_or_else(|_| r#"{"running":true,"rev":0,"schema_version":1}"#.to_owned())
 }
 
@@ -156,9 +219,9 @@ pub extern "C" fn nmp_app_podcast_snapshot(handle: *mut PodcastHandle) -> *mut c
     }
     // SAFETY: caller guarantees `handle` is a valid pointer returned by
     // `nmp_app_podcast_register` and not yet freed.
-    let _handle = unsafe { &*handle };
+    let handle = unsafe { &*handle };
 
-    let payload = build_snapshot_payload();
+    let payload = build_snapshot_payload(handle);
     let Ok(cstr) = CString::new(payload) else {
         return std::ptr::null_mut();
     };
@@ -235,8 +298,8 @@ mod tests {
     }
 
     #[test]
-    fn build_snapshot_payload_is_valid_json() {
-        let payload = build_snapshot_payload();
+    fn default_update_serializes_to_valid_json() {
+        let payload = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
         let _decoded: PodcastUpdate = serde_json::from_str(&payload).expect("decode");
     }
 

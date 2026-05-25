@@ -84,6 +84,16 @@ for p in "${APPROVED_PATTERNS[@]}"; do
   fi
 done
 
+# ── NMP root guard ───────────────────────────────────────────────────────────
+# When the NMP repo is not checked out (e.g. CI without the optional NMP
+# checkout step), exit 0 trivially — there is nothing to verify against.
+
+NMP_FEATURES="$NMP_ROOT/ios/Podcast/Podcast/Features"
+if [[ ! -d "$NMP_FEATURES" ]]; then
+  echo "NMP Features directory not found at $NMP_FEATURES — trivial pass (NMP repo not checked out)."
+  exit 0
+fi
+
 # ── Process manifest ─────────────────────────────────────────────────────────
 
 if [[ ! -f "$MANIFEST" ]]; then

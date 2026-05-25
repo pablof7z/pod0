@@ -2,27 +2,19 @@ import SwiftUI
 
 // MARK: - DiscoverResultRow
 
-/// Row in the directory search results. Artwork left, title + author + meta
-/// in the middle, subscribe button right.
+/// Row in the iTunes search results list. Artwork left, title + author right,
+/// subscribe button trailing.
 ///
-/// **Tap behaviour:**
-///   - Tapping anywhere on the row body triggers `onSubscribe` (so the
-///     whole row reads as a tap target). The trailing ⊕ button does the
-///     same thing — it's mostly a visual affordance.
-///   - When a previous subscribe attempt failed for this row, a red ⚠
-///     chip replaces the ⊕. Tapping the chip toggles a one-line error
-///     caption directly underneath the row.
-///   - When already subscribed, both surfaces become a non-interactive
-///     checkmark.
+/// - Tapping anywhere on the row body calls `onSubscribe`.
+/// - When already subscribed, a checkmark replaces the ⊕ button.
+/// - When a previous subscribe attempt failed, ⚠ replaces ⊕; tapping the
+///   ⚠ toggles an inline error caption.
 struct DiscoverResultRow: View {
 
-    let result: ITunesSearchClient.Result
+    let result: PodcastSummary
     let isSubscribing: Bool
     let isAlreadySubscribed: Bool
-    /// Last per-row subscribe failure for this result, or `nil` when the
-    /// row is in a normal / success state.
     let rowError: String?
-    /// Whether the inline error caption is currently expanded.
     let isErrorExpanded: Bool
     let onSubscribe: () -> Void
     let onToggleErrorExpansion: () -> Void
@@ -38,30 +30,23 @@ struct DiscoverResultRow: View {
         .animation(AppTheme.Animation.springFast, value: isErrorExpanded)
     }
 
-    // MARK: - Subviews
+    // MARK: - Row body
 
     private var rowBody: some View {
-        // Plain HStack + onTapGesture rather than a wrapping Button, so the
-        // trailing chip (which is itself a Button when an error is shown)
-        // doesn't have to compete with an outer Button for the tap. The
-        // trailing chip's Button always wins for taps on its hit area; the
-        // surrounding row receives taps everywhere else.
         HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
             artwork
             VStack(alignment: .leading, spacing: 2) {
-                Text(result.collectionName)
+                Text(result.title)
                     .font(AppTheme.Typography.headline)
                     .foregroundStyle(.primary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                if let artist = result.artistName, !artist.isEmpty {
-                    Text(artist)
+                if let author = result.author, !author.isEmpty {
+                    Text(author)
                         .font(AppTheme.Typography.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
-                metaRow
-                    .padding(.top, 2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -71,54 +56,37 @@ struct DiscoverResultRow: View {
         .padding(.vertical, AppTheme.Spacing.sm)
         .contentShape(Rectangle())
         .onTapGesture { handleRowTap() }
-        .opacity(isRowTapDisabled ? 0.65 : 1)
-        .allowsHitTesting(true)
+        .opacity(isRowDisabled ? 0.65 : 1)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityAddTraits(.isButton)
     }
 
-    /// Whether the row body itself should dim / no-op when tapped.
-    /// (The trailing chip remains tappable in error / subscribed states
-    /// for retry / accessibility purposes.)
-    private var isRowTapDisabled: Bool {
-        isSubscribing || isAlreadySubscribed
-    }
+    private var isRowDisabled: Bool { isSubscribing || isAlreadySubscribed }
 
     private var artwork: some View {
-        CachedAsyncImage(url: result.artworkURL, targetSize: CGSize(width: 64, height: 64)) { phase in
-            switch phase {
-            case .success(let image):
-                image.resizable().aspectRatio(contentMode: .fill)
-            case .empty, .failure:
-                ZStack {
-                    Color(.tertiarySystemFill)
-                    Image(systemName: "waveform")
-                        .foregroundStyle(.secondary)
+        Group {
+            if let urlStr = result.artworkUrl, let url = URL(string: urlStr) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().scaledToFill()
+                    default:
+                        artworkPlaceholder
+                    }
                 }
-            @unknown default:
-                Color(.tertiarySystemFill)
+            } else {
+                artworkPlaceholder
             }
         }
         .frame(width: 64, height: 64)
         .clipShape(RoundedRectangle(cornerRadius: AppTheme.Corner.md, style: .continuous))
     }
 
-    @ViewBuilder
-    private var metaRow: some View {
-        let bits: [String] = {
-            var parts: [String] = []
-            if let g = result.primaryGenreName, !g.isEmpty { parts.append(g) }
-            if let count = result.trackCount, count > 0 {
-                parts.append("\(count) episode\(count == 1 ? "" : "s")")
-            }
-            return parts
-        }()
-        if !bits.isEmpty {
-            Text(bits.joined(separator: " · "))
-                .font(AppTheme.Typography.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+    private var artworkPlaceholder: some View {
+        ZStack {
+            Color(.tertiarySystemFill)
+            Image(systemName: "waveform").foregroundStyle(.secondary)
         }
     }
 
@@ -134,9 +102,6 @@ struct DiscoverResultRow: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 32, height: 32)
         } else if rowError != nil {
-            // Wrap the chip in its own button so the gesture doesn't
-            // bubble to the row-level subscribe action — tapping the
-            // ⚠ should expand the error, not retry.
             Button(action: onToggleErrorExpansion) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.title3)
@@ -145,7 +110,7 @@ struct DiscoverResultRow: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Show error for \(result.collectionName)")
+            .accessibilityLabel("Show error for \(result.title)")
         } else {
             Image(systemName: "plus.circle.fill")
                 .font(.title3)
@@ -166,25 +131,14 @@ struct DiscoverResultRow: View {
     // MARK: - Actions
 
     private func handleRowTap() {
-        // No-op when subscribing or already subscribed — those states
-        // dim the row visually and the trailing control communicates
-        // them. Otherwise the row body acts as the primary subscribe
-        // target. If the row currently shows an error, this retries
-        // the subscribe (the ⚠ chip toggles the caption instead).
-        guard !isRowTapDisabled else { return }
+        guard !isRowDisabled else { return }
         onSubscribe()
     }
 
     private var accessibilityLabel: String {
-        if isAlreadySubscribed {
-            return "Already subscribed to \(result.collectionName)"
-        }
-        if isSubscribing {
-            return "Subscribing to \(result.collectionName)"
-        }
-        if let rowError {
-            return "Subscribe to \(result.collectionName). Last attempt failed: \(rowError)"
-        }
-        return "Subscribe to \(result.collectionName)"
+        if isAlreadySubscribed { return "Already subscribed to \(result.title)" }
+        if isSubscribing { return "Subscribing to \(result.title)" }
+        if let rowError { return "Subscribe to \(result.title). Last attempt failed: \(rowError)" }
+        return "Subscribe to \(result.title)"
     }
 }

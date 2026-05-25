@@ -40,6 +40,15 @@ struct PodcastApp: App {
                 .environment(playback)
                 .tint(PodcastColor.accent)
                 .task { model.start() }
+                .onChange(of: model.library) { _, newLibrary in
+                    appStore.allPodcasts = newLibrary.map { summary in
+                        var p = Podcast()
+                        p.id = UUID(uuidString: summary.id) ?? UUID()
+                        p.title = summary.title
+                        if let urlStr = summary.artworkUrl { p.imageURL = URL(string: urlStr) }
+                        return p
+                    }
+                }
         }
         .onChange(of: scenePhase) { _, newPhase in
             // D7: Swift reports the fact; the kernel decides what each

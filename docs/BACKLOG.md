@@ -11,6 +11,12 @@ worktrees currently in flight.
 - **P0 - NIP-F4 discovery.** Update discovery parsing and episode fetches for kind `10154`/`54`, no `d` tags, and stable UUID derivation from `10154:<podcast-pubkey>`.
 - **P1 - Planning cleanup.** Treat existing tracked files under `Plans/` as historical reference. Promote any active future work into `docs/plan.md`, `docs/BACKLOG.md`, or a linked `docs/plan/` detail file instead of adding new files under `Plans/`.
 
+## NMP Feature Parity — PR 1 follow-ups
+
+- **pr1-store-persistence** — `PodcastStore` is in-memory only; app restart clears the library. Persist to sled or SQLite. Must happen before any milestone that depends on durable subscription state (feed refresh, playback position, downloads). Owner: PR 2 or whichever agent picks up feed refresh.
+- **pr1-500ms-poll-to-push** — The podcast snapshot uses a 500ms Task poll in `KernelModel`. Replace with push-style delivery via the NMP `KernelUpdateSink` callback once the podcast projection is wired into `nmp-ffi`'s push surface. Tracked here; not blocking PR 2.
+- **pr1-capability-bridge-unify** — `SyncCapabilityBridge` (synchronous, actor-thread) and `PodcastCapabilities.shared.handleJSON()` (async, main-thread) are two parallel routers. Each capability should decide its own threading model internally; the bridge should be the single router. Resolve before audio wiring (PR 3).
+
 ## NMP Migration — Cross-cutting backlog items
 
 These items are prerequisites or follow-up work for specific milestones in `Plans/nmp-migration/`. Each is blocked until its milestone starts, then becomes Active.
