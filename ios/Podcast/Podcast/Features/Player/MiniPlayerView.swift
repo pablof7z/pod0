@@ -15,6 +15,8 @@ import SwiftUI
 struct MiniPlayerView: View {
     @Environment(KernelModel.self) private var model
 
+    @State private var showPlayer = false
+
     private var nowPlaying: PlayerState? {
         model.podcastSnapshot?.nowPlaying
     }
@@ -29,6 +31,13 @@ struct MiniPlayerView: View {
         if let player = nowPlaying {
             bar(player: player)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
+                .onTapGesture { showPlayer = true }
+                .onReceive(NotificationCenter.default.publisher(for: .openPlayerRequested)) { _ in
+                    showPlayer = true
+                }
+                .fullScreenCover(isPresented: $showPlayer) {
+                    PlayerView()
+                }
         }
     }
 
@@ -75,7 +84,7 @@ struct MiniPlayerView: View {
 
     private var artwork: some View {
         Group {
-            if let urlStr = episode?.artworkUrl ?? nowPlaying?.url,
+            if let urlStr = episode?.artworkUrl,
                let url = URL(string: urlStr) {
                 AsyncImage(url: url) { image in
                     image.resizable().scaledToFill()
