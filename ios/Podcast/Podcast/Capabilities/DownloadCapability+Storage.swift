@@ -21,7 +21,7 @@ import os.log
 extension DownloadCapability {
     /// Canonical downloads directory:
     /// `<Application Support>/Downloads/`.
-    static func downloadsDirectory() -> URL {
+    nonisolated static func downloadsDirectory() -> URL {
         let appSupport: URL
         do {
             appSupport = try FileManager.default.url(
@@ -44,7 +44,7 @@ extension DownloadCapability {
 
     /// Resume-blob directory:
     /// `<Application Support>/Downloads/.resume/`.
-    static func resumeDataDirectory() -> URL {
+    nonisolated static func resumeDataDirectory() -> URL {
         let dir = downloadsDirectory().appendingPathComponent(".resume", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
@@ -54,7 +54,7 @@ extension DownloadCapability {
     /// the URL's extension when present (so `.m4a` / `.mp3` survive the
     /// move); falls back to `.mp3` because the vast majority of podcast
     /// enclosures are MP3.
-    static func destinationURL(for episodeID: String, sourceURL: URL?) -> URL {
+    nonisolated static func destinationURL(for episodeID: String, sourceURL: URL?) -> URL {
         let dir = downloadsDirectory()
         let ext: String = {
             guard let raw = sourceURL?.pathExtension, !raw.isEmpty else { return "mp3" }
@@ -72,7 +72,7 @@ extension DownloadCapability {
     /// Path the executor uses for resume data persistence. Keyed by
     /// `episode_id` so `PauseDownload` → app suspension → app launch →
     /// `ResumeDownload` survives a kill cleanly.
-    static func resumeDataURL(for episodeID: String) -> URL {
+    nonisolated static func resumeDataURL(for episodeID: String) -> URL {
         let safeID = episodeID.replacingOccurrences(of: "/", with: "_")
         return resumeDataDirectory().appendingPathComponent("\(safeID).data")
     }
@@ -80,13 +80,13 @@ extension DownloadCapability {
     /// Persist resume data for a paused download. Quiet on I/O failure
     /// — Rust will surface a `Failed` next `ResumeDownload` if the blob
     /// disappears.
-    static func writeResumeData(_ data: Data, for episodeID: String) {
+    nonisolated static func writeResumeData(_ data: Data, for episodeID: String) {
         let url = resumeDataURL(for: episodeID)
         try? data.write(to: url, options: .atomic)
     }
 
     /// Load resume data for an episode if one was previously stashed.
-    static func loadResumeData(for episodeID: String) -> Data? {
+    nonisolated static func loadResumeData(for episodeID: String) -> Data? {
         let url = resumeDataURL(for: episodeID)
         return try? Data(contentsOf: url)
     }
@@ -94,7 +94,7 @@ extension DownloadCapability {
     /// Drop a previously-stashed resume blob. Called on cancel and on
     /// successful completion so the directory doesn't accumulate stale
     /// blobs across kill/relaunch cycles.
-    static func clearResumeData(for episodeID: String) {
+    nonisolated static func clearResumeData(for episodeID: String) {
         let url = resumeDataURL(for: episodeID)
         try? FileManager.default.removeItem(at: url)
     }
@@ -104,7 +104,7 @@ extension DownloadCapability {
     /// the `didFinishDownloadingTo` delegate so the temp URL is still
     /// valid. Returns the destination URL on success, `nil` on I/O
     /// failure (caller emits `Failed` from the resulting `nil`).
-    static func moveFinishedDownload(
+    nonisolated static func moveFinishedDownload(
         from tempURL: URL,
         episodeID: String,
         sourceURL: URL?

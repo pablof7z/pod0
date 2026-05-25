@@ -91,23 +91,58 @@ enum OpenRouterCredentialStore {
 /// Compat shim — replaced when the subscription projection lands.
 @MainActor
 struct SubscriptionService {
-    let store: KernelModel
+    let store: AppStateStore
 
     enum AddError: LocalizedError {
         case notImplemented
+        case alreadySubscribed
+        case transport(String)
 
         var errorDescription: String? {
             switch self {
             case .notImplemented:
                 return "Adding subscriptions is not yet wired in the M1.E compat shim."
+            case .alreadySubscribed:
+                return "You are already subscribed to this podcast."
+            case .transport(let msg):
+                return msg
             }
         }
     }
 
-    init(store: KernelModel) { self.store = store }
+    init(store: AppStateStore) { self.store = store }
+    init(store: KernelModel) { self.store = AppStateStore() }
 
     func addSubscription(feedURLString: String) async throws -> Podcast {
         throw AddError.notImplemented
+    }
+
+    func refresh(_ podcast: Podcast) async {}
+    func fetchForAdoption(opmlEntry: Podcast) async throws -> SubscriptionImportPayload? { nil }
+}
+
+// MARK: - LiquidGlassSegmentedPicker (compat stub)
+
+/// Compat shim — the real Liquid Glass segmented picker is a custom Design
+/// component. For M1.E we render a plain SwiftUI Picker so Library views compile.
+struct LiquidGlassSegmentedPicker<V: Hashable>: View {
+    let label: String
+    @Binding var selection: V
+    let segments: [(V, String)]
+
+    init(_ label: String, selection: Binding<V>, segments: [(V, String)]) {
+        self.label = label
+        self._selection = selection
+        self.segments = segments
+    }
+
+    var body: some View {
+        Picker(label, selection: $selection) {
+            ForEach(segments, id: \.0.hashValue) { (value, title) in
+                Text(title).tag(value)
+            }
+        }
+        .pickerStyle(.segmented)
     }
 }
 

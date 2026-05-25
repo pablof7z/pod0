@@ -141,8 +141,7 @@ final class PlatformCapability {
             defaults.set(data, forKey: Self.widgetSnapshotKey)
         } else {
             Self.logger.error(
-                "app group \(Self.appGroupID, privacy: .public) unreachable; "
-                + "widget snapshot dropped")
+                "app group \(Self.appGroupID, privacy: .public) unreachable; widget snapshot dropped")
         }
         return data
     }
@@ -170,8 +169,7 @@ final class PlatformCapability {
     func donateHandoff(_ state: HandoffState) {
         guard state.isKnownActivityType else {
             Self.logger.debug(
-                "dropping handoff with unknown activity type "
-                + "\(state.activityType, privacy: .public)")
+                "dropping handoff with unknown activity type \(state.activityType, privacy: .public)")
             return
         }
         currentActivity?.invalidate()

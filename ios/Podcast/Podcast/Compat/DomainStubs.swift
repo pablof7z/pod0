@@ -14,7 +14,10 @@ struct Podcast: Identifiable, Hashable, Sendable {
     var id: UUID = UUID()
     var title: String = ""
     var author: String = ""
+    var description: String = ""
     var feedURL: URL?
+    var imageURL: URL?
+    var lastRefreshedAt: Date?
 }
 
 // MARK: - Nostr conversation history
