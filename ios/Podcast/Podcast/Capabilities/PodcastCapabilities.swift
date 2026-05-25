@@ -15,6 +15,7 @@ import Foundation
 ///                                Used only on first launch to migrate data
 ///                                from the pre-NMP Swift app; idle thereafter.
 ///                                iOS-only — Android/web targets stub this out.
+///   - `AudioCapability`       — AVPlayer-backed audio (`nmp.audio.capability`)
 ///
 /// Rust decides when and what to call; Swift only executes the request and
 /// reports the raw result (D7).
@@ -22,22 +23,26 @@ import Foundation
 /// There is a single C capability callback (`nmp_app_set_capability_callback`);
 /// it routes by the `namespace` field of the incoming `CapabilityRequest` —
 /// see [`handleJSON(_:)`].
+@MainActor
 final class PodcastCapabilities {
     let keyring: KeychainCapability
     let identity: PcstIdentityCapability
     let http: HttpCapability
     let legacyIO: LegacyIOCapability
+    let audio: AudioCapability
 
     init(
         keyring: KeychainCapability = KeychainCapability(),
         identity: PcstIdentityCapability = PcstIdentityCapability(),
         http: HttpCapability = HttpCapability(),
         legacyIO: LegacyIOCapability = LegacyIOCapability()
+        audio: AudioCapability = AudioCapability()
     ) {
         self.keyring = keyring
         self.identity = identity
         self.http = http
         self.legacyIO = legacyIO
+        self.audio = audio
     }
 
     /// Idempotent: start all owned capabilities. Safe to call on every app
@@ -47,6 +52,7 @@ final class PodcastCapabilities {
         identity.start()
         http.start()
         legacyIO.start()
+        audio.start()
     }
 
     /// Idempotent: mark capabilities inactive. Does not erase stored secrets.
@@ -55,6 +61,7 @@ final class PodcastCapabilities {
         identity.stop()
         http.stop()
         legacyIO.stop()
+        audio.stop()
     }
 
     /// Single capability-callback entry point. Routes the raw kernel
@@ -85,6 +92,8 @@ final class PodcastCapabilities {
             return http.handleJSON(requestJSON)
         case LegacyIOCapability.namespace:
             return legacyIO.handleJSON(requestJSON)
+        case AudioCapability.namespace:
+            return audio.handleJSON(requestJSON)
         default:
             // D6 — an unknown namespace is data, not a crash. Echo the
             // correlation id so the issuing kernel module can still correlate.

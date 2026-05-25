@@ -17,6 +17,7 @@ Related files:
 - 2026-05-25 - M3.A: audio capability Rust skeleton — `AudioCommand`/`AudioReport` contract + `PlayerActor` + player action types in `apps/nmp-app-podcast/`. Branch `m3a/audio-capability` worktree `/Users/pablofernandez/Work/podcast-player-m3a`.
 - 2026-05-25 - M2.D: persistence migration — `pcst.legacy_io.capability` (iOS) + Rust `podcast-core::migration::from_state_json` — branch `m2d/persistence-migration` worktree `/Users/pablofernandez/Work/podcast-player-m2d`.
 - 2026-05-25 - M2.F: Android Compose stub + JNI shim as second-platform proof — branch `m2f/android-proof`, worktree `/Users/pablofernandez/Work/podcast-player-m2f`.
+- 2026-05-25 - M3.B/C: iOS `AudioCapability` executor — AVPlayer wiring + `MPNowPlayingInfoCenter` + `MPRemoteCommandCenter` + audio-session setup against the M3.A `AudioCommand`/`AudioReport` contract. Branch `m3b/ios-audio-capability` worktree `/Users/pablofernandez/Work/podcast-player-m3b`.
 
 ## Recent History
 

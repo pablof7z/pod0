@@ -41,8 +41,25 @@ targets:
         OTHER_LDFLAGS: "$(inherited) -lnmp_app_podcast"
         ENABLE_USER_SCRIPT_SANDBOXING: NO
 
+  PodcastTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: PodcastTests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: io.f7z.podcast.tests
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Pod0.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Pod0"
+    dependencies:
+      - target: Podcast
+
 schemes:
   Podcast:
     build:
       targets:
         Podcast: all
+    test:
+      targets:
+        - PodcastTests
