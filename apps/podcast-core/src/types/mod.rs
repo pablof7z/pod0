@@ -7,6 +7,7 @@ pub mod clip;
 pub mod download;
 pub mod episode;
 pub mod generation_source;
+pub mod handoff;
 pub mod person;
 pub mod podcast;
 pub mod settings;
@@ -24,6 +25,7 @@ pub use clip::{Clip, ClipBoundary, ClipSource};
 pub use download::DownloadState;
 pub use episode::{Episode, EpisodeId};
 pub use generation_source::GenerationSource;
+pub use handoff::{HandoffState, HANDOFF_ACTIVITY_BROWSING, HANDOFF_ACTIVITY_PLAYING};
 pub use person::Person;
 pub use podcast::{NostrVisibility, Podcast, PodcastId, PodcastKind};
 pub use settings::{

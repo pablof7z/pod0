@@ -99,6 +99,63 @@ migrated view re-wired) before the milestone it is anchored to closes.
   proper design-system module (`ios/Podcast/Podcast/Design/`) when the
   M2+ design-system work begins.
 
+## NMP Migration — M12 deletion sweep deferral
+
+M12's nominal job is `git rm -r App/Sources/` once every Swift file
+under it has either been migrated to `ios/Podcast/Podcast/` or is
+explicitly named in an earlier milestone's deletion list. Auditing
+the tree on 2026-05-25 against the M1 + M2 exit checklists shows
+both milestones are still in flight (per `WIP.md`: M2.A/B/C/D/E
+remain on branches; M1.E build-compat is still active). Every file
+named for deletion is still imported by ≥1 file inside
+`App/Sources/`, so none of them can be removed yet without breaking
+the legacy build.
+
+Status: M12 is **blocked on M1+M2 fully landing**. The audit + the
+specific blockers are recorded below so the next agent that picks up
+the deletion sweep doesn't redo the cross-reference work.
+
+- **m12-defer-m1-identity-files.** The M1 exit checklist lists
+  `App/Sources/Services/{NIP19,Bech32,NIP65RelayFetcher,
+  UserIdentityStore,UserIdentityStore+NIP46,
+  UserIdentityStore+ProfileFetch,UserIdentityStore+Publishing,
+  NostrCredentialStore,NostrKeyPair,NostrProfileFetcher}.swift` and
+  `App/Sources/Services/Nip46/*.swift` (9 files). Every file is
+  still referenced by ≥1 site in `App/Sources/`:
+    - `UserIdentityStore` referenced in `AppMain.swift`,
+      `App/RootView.swift`, `App/AppSidebarView.swift`, all of
+      `Features/Identity/*.swift`, `Features/Feedback/*.swift`,
+      `Features/Settings/Agent/*.swift`, `Agent/*.swift`,
+      `State/AppStateStore+*.swift` (~30 files total).
+    - `NostrKeyPair` / `NostrCredentialStore` / `NIP65RelayFetcher`:
+      same shape, used pervasively.
+  Removable only after the legacy `App/` target no longer compiles
+  against them — i.e. once `ios/Podcast/` becomes the sole source.
+  Owner: whichever agent closes M1.E + the eventual M12.B unit.
+
+- **m12-defer-m2-domain-files.** The M2 exit checklist lists
+  `App/Sources/Podcast/*.swift` (20 files), several `App/Sources/
+  Domain/*.swift`, all of `App/Sources/State/*.swift` (27 files),
+  and `App/Sources/Services/{SubscriptionRefreshService,
+  SubscriptionService,ITunesSearchClient,EpisodeMetadataIndexer,
+  EpisodeAuditLogStore,NowPlayingSnapshotStore}.swift`. Every one
+  is still imported by feature views in `App/Sources/Features/`
+  and/or by the `AppMain.swift` boot path. Same defer rule as
+  above. Owner: whichever agent closes M2.E + M12.B.
+
+- **m12-codegen-widget-snapshot.** The M11 stubs added a
+  `WidgetSnapshot` to the Rust `PodcastUpdate`, but
+  `ios/Podcast/Podcast/Bridge/Generated/PodcastTypes.generated.swift`
+  is a hand-trimmed M0 placeholder (`running` + `rev` only). When
+  the projection-schema codegen lands
+  (`cargo run -p nmp-app-podcast --features codegen-schema --bin
+  dump_projection_schemas | cargo run -p nmp-codegen -- gen swift`),
+  the iOS-side `PlatformCapability` will be able to read
+  `update.widget` directly off the typed decoder instead of going
+  through the hand-mirrored `WidgetSnapshot` Codable in
+  `Capabilities/PlatformCapability.swift`. Track + delete the
+  hand-mirror once codegen is wired.
+
 ## Pending Decisions
 
 - None currently. If a change would alter bundle IDs, App Group identifiers, URL schemes, persisted state keys, or relay/event compatibility beyond the active plan, add the decision here before implementation.

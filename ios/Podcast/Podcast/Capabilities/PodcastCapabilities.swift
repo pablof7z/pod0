@@ -18,6 +18,13 @@ import Foundation
 ///   - `AudioCapability`       — AVPlayer-backed audio (`nmp.audio.capability`)
 ///   - `DownloadCapability`    — URLSession background downloads
 ///                                (`nmp.download.capability`)
+///   - `PlatformCapability`    — passive platform-integration executor
+///                                (widget App Group writes, NSUserActivity
+///                                donations, …). Driven by snapshot ticks,
+///                                not by kernel request/response — so it is
+///                                **not** routed through `handleJSON(_:)`,
+///                                but it shares the start/stop lifecycle of
+///                                the other capabilities.
 ///
 /// Rust decides when and what to call; Swift only executes the request and
 /// reports the raw result (D7).
@@ -49,6 +56,7 @@ final class PodcastCapabilities {
     let legacyIO: LegacyIOCapability
     let audio: AudioCapability
     let download: DownloadCapability
+    let platform: PlatformCapability
 
     init(
         keyring: KeychainCapability = KeychainCapability(),
@@ -56,7 +64,8 @@ final class PodcastCapabilities {
         http: HttpCapability = HttpCapability(),
         legacyIO: LegacyIOCapability = LegacyIOCapability(),
         audio: AudioCapability = AudioCapability(),
-        download: DownloadCapability = DownloadCapability()
+        download: DownloadCapability = DownloadCapability(),
+        platform: PlatformCapability = PlatformCapability()
     ) {
         self.keyring = keyring
         self.identity = identity
@@ -64,6 +73,7 @@ final class PodcastCapabilities {
         self.legacyIO = legacyIO
         self.audio = audio
         self.download = download
+        self.platform = platform
     }
 
     /// Idempotent: start all owned capabilities. Safe to call on every app
@@ -75,6 +85,7 @@ final class PodcastCapabilities {
         legacyIO.start()
         audio.start()
         download.start()
+        platform.start()
     }
 
     /// Idempotent: mark capabilities inactive. Does not erase stored secrets.
@@ -85,6 +96,7 @@ final class PodcastCapabilities {
         legacyIO.stop()
         audio.stop()
         download.stop()
+        platform.stop()
     }
 
     /// Single capability-callback entry point. Routes the raw kernel

@@ -12,7 +12,8 @@
 //! adds `downloads: Option<DownloadQueueSnapshot>`. M7.A adds
 //! `agent: Option<ConversationsSnapshot>`. M8.A adds
 //! `voice: Option<VoiceState>`. M9.A adds
-//! `briefing: Option<BriefingSnapshot>`. Every other field stays unset until
+//! `briefing: Option<BriefingSnapshot>`. M11 adds
+//! `widget: Option<WidgetSnapshot>`. Every other field stays unset until
 //! its milestone lands — the empty defaults are deliberately byte-compatible
 //! with the legacy stub payload (`{"running":true,"rev":0,"schema_version":1}`)
 //! so existing decoders don't break before each projection's milestone wires
@@ -27,7 +28,7 @@ use serde::{Deserialize, Serialize};
 
 use super::handle::PodcastHandle;
 use super::projections::{
-    BriefingSnapshot, ConversationsSnapshot, DownloadQueueSnapshot, VoiceState,
+    BriefingSnapshot, ConversationsSnapshot, DownloadQueueSnapshot, VoiceState, WidgetSnapshot,
 };
 use crate::player::PlayerState;
 
@@ -85,6 +86,17 @@ pub struct PodcastUpdate {
     /// slot. `None` when the scheduler has never been touched.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub briefing: Option<BriefingSnapshot>,
+    /// Platform-integration projection: the narrow slice the iOS
+    /// widget extension, Live Activity, Handoff, and Siri-shortcut
+    /// executors need to render "now playing" + queue summary
+    /// without re-reading the rest of the snapshot.
+    ///
+    /// `None` until the M11 platform capability lands; the field
+    /// is the kernel's policy hand-off to the host (D7 — Rust
+    /// decides *what* the widget surfaces; iOS only serializes).
+    /// Defined alongside [`WidgetSnapshot`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub widget: Option<WidgetSnapshot>,
 }
 
 impl Default for PodcastUpdate {
@@ -98,6 +110,7 @@ impl Default for PodcastUpdate {
             agent: None,
             voice: None,
             briefing: None,
+            widget: None,
         }
     }
 }
@@ -227,6 +240,26 @@ mod tests {
         assert!(decoded.agent.is_none());
         assert!(decoded.voice.is_none());
         assert!(decoded.briefing.is_none());
+        assert!(decoded.widget.is_none());
+    }
+
+    #[test]
+    fn snapshot_with_widget_round_trips() {
+        let widget = WidgetSnapshot {
+            now_playing_episode_title: Some("Ep 42".into()),
+            now_playing_podcast_title: Some("Some Show".into()),
+            now_playing_artwork_url: Some("https://ex.com/art.png".into()),
+            is_playing: true,
+            position_fraction: 0.42,
+            unplayed_count: 7,
+        };
+        let snap = PodcastUpdate {
+            widget: Some(widget.clone()),
+            ..PodcastUpdate::default()
+        };
+        let json = serde_json::to_string(&snap).expect("encode");
+        let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded.widget, Some(widget));
     }
 
     #[test]

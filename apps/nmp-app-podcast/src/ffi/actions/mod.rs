@@ -41,6 +41,8 @@
 //! podcast.agent.approve                — ApproveAction           { approval_id }
 //! podcast.agent.deny                   — DenyAction              { approval_id, reason? }
 //! podcast.agent.clear                  — ClearConversationAction { conversation_id }
+//! podcast.siri.play_latest             — SiriPlayLatestAction    { podcast_id? }
+//! podcast.siri.resume                  — SiriResumeAction
 //! ```
 //!
 //! Each id is exposed as a `pub const` so the iOS shell, the lint gate,
@@ -91,6 +93,26 @@ pub const ACTION_PLAYER_PAUSE_DOWNLOAD: &str = "podcast.player.pause_download";
 pub const ACTION_PLAYER_RESUME_DOWNLOAD: &str = "podcast.player.resume_download";
 /// `podcast.player.cancel_all_downloads` — cancel every in-flight + queued download.
 pub const ACTION_PLAYER_CANCEL_ALL_DOWNLOADS: &str = "podcast.player.cancel_all_downloads";
+
+// Siri / AppIntents action ids (M11 platform-integration contract)
+// ---------------------------------------------------------------------------
+//
+// These ids are dispatched by iOS `AppIntents` performers (e.g. the
+// `StartVoiceModeIntent` ⇒ `play_latest`) and by Siri shortcut donations.
+// Per D7 the iOS side only **dispatches** the intent; the kernel decides
+// what "play latest" actually means (which podcast, which episode, what to
+// do if nothing is queued). The intent performers carry no policy.
+
+/// `podcast.siri.play_latest` — play the latest episode for the
+/// optionally-supplied podcast (or, when omitted, across the user's
+/// whole library). Dispatched from a Siri shortcut donation or an
+/// AppIntent invocation.
+pub const ACTION_SIRI_PLAY_LATEST: &str = "podcast.siri.play_latest";
+
+/// `podcast.siri.resume` — resume whatever was last playing. The
+/// kernel looks up the previously-active episode + position and
+/// dispatches the equivalent `AudioCommand::Load` + `Play` pair.
+pub const ACTION_SIRI_RESUME: &str = "podcast.siri.resume";
 
 // ---------------------------------------------------------------------------
 // Player action payloads
@@ -184,6 +206,28 @@ pub struct ResumeDownloadAction {
 /// nothing to target beyond "all in-flight + queued".
 #[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
 pub struct CancelAllDownloadsAction;
+
+/// Payload for [`ACTION_SIRI_PLAY_LATEST`].
+///
+/// `podcast_id` is optional: when set, the kernel plays the latest
+/// episode for that podcast; when omitted, the kernel picks across
+/// the whole library (typically the most recently published episode
+/// from any subscribed show).
+///
+/// Carried as `Option<String>` (not typed `PodcastId`) so Siri's
+/// shortcut donor can pass either a hand-picked id or no id at all
+/// without round-tripping through a domain-typed encoder.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
+pub struct SiriPlayLatestAction {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub podcast_id: Option<String>,
+}
+
+/// Payload for [`ACTION_SIRI_RESUME`]. Empty — resume always targets
+/// the most-recently-active episode; if there isn't one, the kernel
+/// emits a `toast` on the snapshot and does nothing else.
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
+pub struct SiriResumeAction;
 
 // ---------------------------------------------------------------------------
 // Briefing actions (re-exported from `podcast-briefings` for M9.A)
@@ -329,6 +373,42 @@ mod tests {
         let json = serde_json::to_string(&a).expect("encode");
         let decoded: SeekAction = serde_json::from_str(&json).expect("decode");
         assert_eq!(decoded, a);
+    }
+
+    // ── Siri / AppIntents action contract (M11) ─────────────────────
+
+    #[test]
+    fn siri_action_ids_match_documented_strings() {
+        assert_eq!(ACTION_SIRI_PLAY_LATEST, "podcast.siri.play_latest");
+        assert_eq!(ACTION_SIRI_RESUME, "podcast.siri.resume");
+    }
+
+    #[test]
+    fn siri_play_latest_action_round_trips_with_podcast_id() {
+        let a = SiriPlayLatestAction {
+            podcast_id: Some("pod-1".into()),
+        };
+        let json = serde_json::to_string(&a).expect("encode");
+        assert_eq!(json, r#"{"podcast_id":"pod-1"}"#);
+        let decoded: SiriPlayLatestAction = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, a);
+    }
+
+    #[test]
+    fn siri_play_latest_action_omits_none_podcast_id() {
+        let a = SiriPlayLatestAction::default();
+        let json = serde_json::to_string(&a).expect("encode");
+        assert_eq!(json, "{}");
+        // Bare `{}` decodes as the unset variant.
+        let decoded: SiriPlayLatestAction = serde_json::from_str("{}").expect("decode");
+        assert!(decoded.podcast_id.is_none());
+    }
+
+    #[test]
+    fn siri_resume_action_is_unit_struct() {
+        let a = SiriResumeAction;
+        let json = serde_json::to_string(&a).expect("encode");
+        assert_eq!(json, "null");
     }
 
     // ── Agent action re-export contract (M7.A) ──────────────────────

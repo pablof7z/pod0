@@ -10,7 +10,7 @@ Related files:
 
 ## Active
 
-- M11+M12: platform integrations + deletion sweep — branch `m11m12/platform-deletion`.
+- M11+M12: platform integration stubs (widget snapshot, handoff activity types, Siri shortcut action ids, iOS `PlatformCapability`) + M1/M2 deletion sweep audit (no deletions yet — legacy `App/Sources/` still has live references; documented in `docs/BACKLOG.md`) — branch `m11m12/platform-deletion`.
 
 ## Recent History
 
