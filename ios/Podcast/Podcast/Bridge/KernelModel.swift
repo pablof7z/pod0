@@ -19,20 +19,23 @@ private let kmLog = Logger(subsystem: "io.f7z.podcast", category: "KernelModel")
 @Observable
 final class KernelModel {
 
-    // ── AppIntents / Siri shared handle ────────────────────────────────────
+    // ── External-scene shared handle ───────────────────────────────────────
 
-    /// Process-wide weak handle to the live `KernelModel`. iOS `AppIntent`
-    /// performers cannot resolve a SwiftUI `@Environment` — they execute on
-    /// the OS-driven extension queue with no view tree attached. This static
-    /// gives intent code a stable pointer to the same model the UI is reading
-    /// without forcing a singleton lifetime (the property is `weak`, so the
-    /// model still goes away when the scene tears down).
+    /// Process-wide weak handle to the live `KernelModel`. Used by surfaces
+    /// that execute outside the SwiftUI environment chain — today that means
+    /// iOS `AppIntent` performers (Siri/Shortcuts) and `CarPlaySceneDelegate`
+    /// (a `UIResponder` instantiated by the OS for the
+    /// `CPTemplateApplicationScene` role). Gives intent and scene code a
+    /// stable pointer to the same model the UI is reading without forcing a
+    /// singleton lifetime.
+    ///
+    /// `weak` so the model still deallocates on scene teardown; the next
+    /// `KernelModel.init` re-publishes from its own initializer.
     ///
     /// `nonisolated(unsafe)` is required because `@MainActor`-isolated stored
-    /// properties cannot be `static`; the lone writer is `KernelModel.init`
-    /// (which runs on `@MainActor` per the class isolation) and the lone
-    /// reader is the AppIntent performer (also `@MainActor`). The pointer is
-    /// never published off the main thread.
+    /// properties cannot be `static`. The lone writer is `KernelModel.init`
+    /// (which runs on `@MainActor` per the class isolation); the readers are
+    /// also `@MainActor`. The pointer is never published off the main thread.
     nonisolated(unsafe) static weak var shared: KernelModel?
 
     // ── Snapshot slot ──────────────────────────────────────────────────────
@@ -90,9 +93,9 @@ final class KernelModel {
         })
         kernel.attachAudioReportChannel()
         kernel.attachDownloadReportChannel()
-        // Publish to the AppIntents handle. The static is `weak`, so the
-        // model still deallocates on scene teardown; the next instance
-        // re-publishes from its own `init`.
+        // Publish to the shared handle for external scenes (CarPlay, AppIntents,
+        // …). The static is `weak`, so the model still deallocates on scene
+        // teardown; the next instance re-publishes from its own `init`.
         Self.shared = self
     }
 

@@ -29,6 +29,18 @@ targets:
         NSUserActivityTypes:
           - io.f7z.podcast.playing
           - io.f7z.podcast.browsing
+        # CarPlay scene wiring. The OS instantiates
+        # `CarPlaySceneDelegate` (in `Features/Platform/`) on head-unit
+        # connect via the `CPTemplateApplicationScene` role. Multiple
+        # scenes are required so the iPhone window scene and the
+        # CarPlay scene can coexist.
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+          UISceneConfigurations:
+            CPTemplateApplicationSceneSessionRoleApplication:
+              - UISceneClassName: CPTemplateApplicationScene
+                UISceneConfigurationName: CarPlay
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).CarPlaySceneDelegate
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.f7z.podcast
