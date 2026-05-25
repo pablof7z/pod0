@@ -11,7 +11,6 @@ Related files:
 ## Active
 
 - M8+M9: voice capability schema + podcast-briefings crate — branch `m8m9/voice-briefings`
-- M10.A: NIP-74 podcast-discovery crate — branch `m10a/nip74-discovery`
 - M11+M12: platform integrations + deletion sweep — branch `m11m12/platform-deletion`
 
 ## Recent History
@@ -37,4 +36,5 @@ Related files:
 - 2026-05-25 - M5: HTTP capability schema + FeedClient request/response bridge — merged PR #23.
 - 2026-05-25 - M6.A: podcast-transcripts + podcast-knowledge crates — merged PR #20.
 - 2026-05-25 - M7.A: podcast-agent-core — conversation, approval, and task types — merged PR #21.
+- 2026-05-25 - M10.A: podcast-discovery NIP-74 parse+build crate (45 tests) — merged PR #24.
 - 2026-05-25 - Adopted the NMP-derived coordination protocol for future feature, fix, and refactor work.
