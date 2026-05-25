@@ -130,14 +130,21 @@ impl PodcastHostOpHandler {
         match podcast_id_str.parse::<uuid::Uuid>() {
             Ok(uuid) => {
                 let id = PodcastId::new(uuid);
-                match self.store.lock() {
+                let ok = match self.store.lock() {
                     Ok(mut s) => {
                         s.unsubscribe(id);
                         self.rev.fetch_add(1, Ordering::Relaxed);
-                        serde_json::json!({"ok": true})
+                        true
                     }
-                    Err(_) => serde_json::json!({"ok": false, "error": "store poisoned"}),
+                    Err(_) => false,
+                };
+                if !ok {
+                    return serde_json::json!({"ok": false, "error": "store poisoned"});
                 }
+                // Picks may reference episodes from the removed show — recompute
+                // so the Home rail doesn't surface dangling rows.
+                refresh_picks_into_slot(&self.store, &self.picks, &self.rev);
+                serde_json::json!({"ok": true})
             }
             Err(_) => serde_json::json!({"ok": false, "error": "invalid podcast_id"}),
         }
