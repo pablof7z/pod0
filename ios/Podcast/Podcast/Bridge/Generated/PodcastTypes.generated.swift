@@ -39,6 +39,14 @@ struct PodcastUpdate: Codable {
     /// without an optional-chained `if let`. The Rust side omits the key when
     /// it equals the default, so legacy payloads decode cleanly.
     var settings: SettingsSnapshot = SettingsSnapshot()
+    /// Daily briefing projection — `nil` until the scheduler has been
+    /// touched at least once.
+    var briefing: BriefingSnapshot? = nil
+    /// NIP-22 (kind 1111) comments for the currently-playing episode.
+    var comments: [CommentSummary] = []
+    /// Nostr social graph projection — the active account's NIP-02 (kind:3)
+    /// follow list.
+    var social: SocialSnapshot? = nil
 }
 
 /// App-settings projection emitted alongside `PodcastUpdate`.
@@ -48,19 +56,6 @@ struct PodcastUpdate: Codable {
 /// snapshot — older binaries on `Codable` decode see this as a fresh install.
 struct SettingsSnapshot: Codable, Equatable, Hashable {
     var hasCompletedOnboarding: Bool = false
-    /// Daily briefing projection — `nil` until the scheduler has been
-    /// touched at least once (i.e. the first `podcast.generate_briefing`
-    /// or scheduled slot tick). M9.A stub: the field exists so the iOS
-    /// Briefings tab can read it; live population lands in M9.B.
-    var briefing: BriefingSnapshot? = nil
-    /// NIP-22 (kind 1111) comments for the currently-playing episode.
-    /// Populated by the Rust projection after a `podcast.fetch_comments`
-    /// dispatch lands; empty otherwise.
-    var comments: [CommentSummary] = []
-    /// Nostr social graph projection — the active account's NIP-02 (kind:3)
-    /// follow list. `nil` until the projection layer is wired into the NMP
-    /// substrate contact store.
-    var social: SocialSnapshot? = nil
 }
 
 /// Narrow projection for a subscribed podcast (one library grid/list cell).

@@ -44,6 +44,9 @@ pub(crate) mod itunes_search;
 pub(crate) mod host_op_helpers;
 pub mod player;
 pub(crate) mod social_handler;
+pub(crate) mod host_op_handler_itunes;
+pub(crate) mod host_op_handler_queue;
+pub mod queue;
 pub mod store;
 pub(crate) mod transcript;
 
@@ -69,3 +72,4 @@ pub use nmp_signer_broker::{
     nmp_signer_broker_init,
 };
 pub use player::{PlayerActor, PlayerState};
+pub use queue::PlaybackQueue;

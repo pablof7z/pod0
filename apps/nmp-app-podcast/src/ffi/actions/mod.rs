@@ -58,10 +58,12 @@
 
 pub mod player_module;
 pub mod podcast_module;
+pub mod queue_module;
 pub mod voice;
 
 pub use player_module::{PlayerAction, PlayerActionModule};
 pub use podcast_module::{PodcastAction, PodcastActionModule};
+pub use queue_module::{QueueAction, QueueActionModule};
 
 use serde::{Deserialize, Serialize};
 

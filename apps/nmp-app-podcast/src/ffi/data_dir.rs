@@ -61,6 +61,7 @@ mod tests {
     use crate::ffi::handle::PodcastHandle;
     use crate::ffi::projections::{NostrShowSummary, PodcastSummary};
     use crate::player::PlayerActor;
+    use crate::queue::PlaybackQueue;
     use crate::store::PodcastStore;
     use std::ffi::CString;
     use std::sync::atomic::AtomicU64;
@@ -78,6 +79,7 @@ mod tests {
             nostr_results: Arc::new(Mutex::new(Vec::<NostrShowSummary>::new())),
             snapshot_cache: Arc::new(Mutex::new(None)),
             briefing: Arc::new(Mutex::new(None)),
+            queue: Arc::new(Mutex::new(PlaybackQueue::new())),
         })
     }
 

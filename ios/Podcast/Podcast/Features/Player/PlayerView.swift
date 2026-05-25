@@ -22,6 +22,7 @@ struct PlayerView: View {
     @State private var scrubbingPosition: Double?
     @State private var showSpeedSheet = false
     @State private var showSleepSheet = false
+    @State private var showUpNextSheet = false
 
     private var nowPlaying: PlayerState? {
         model.podcastSnapshot?.nowPlaying
@@ -50,6 +51,9 @@ struct PlayerView: View {
             content
         }
         .preferredColorScheme(.dark)
+        .sheet(isPresented: $showUpNextSheet) {
+            UpNextSheet()
+        }
     }
 
     // MARK: - Background
@@ -163,6 +167,18 @@ struct PlayerView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Close player")
             Spacer()
+            Button {
+                showUpNextSheet = true
+            } label: {
+                Image(systemName: "list.bullet")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Up Next queue")
         }
         .padding(.horizontal, PodcastSpace.l)
         .padding(.top, PodcastSpace.s)

@@ -8,6 +8,7 @@ use nmp_ffi::NmpApp;
 
 use crate::ffi::projections::{BriefingSnapshot, NostrShowSummary, PodcastSummary};
 use crate::player::PlayerActor;
+use crate::queue::PlaybackQueue;
 use crate::store::PodcastStore;
 
 /// Opaque handle returned by [`super::nmp_app_podcast_register`]. Boxed on the
@@ -35,6 +36,9 @@ pub struct PodcastHandle {
     /// composer is in flight. Full lifecycle (segments, last_generated_at)
     /// lands in M9.B when the composer + scheduler wire up.
     pub(super) briefing: Arc<Mutex<Option<BriefingSnapshot>>>,
+    /// Playback "Up Next" queue. Mutated by the queue action handler on the
+    /// actor thread; read by the snapshot projection on the main thread.
+    pub(super) queue: Arc<Mutex<PlaybackQueue>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the

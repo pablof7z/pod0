@@ -20,18 +20,17 @@ use crate::chapter::handle_fetch_chapters;
 use crate::discover_nostr;
 use crate::ffi::actions::player_module::PlayerAction;
 use crate::ffi::actions::podcast_module::PodcastAction;
+use crate::ffi::actions::queue_module::QueueAction;
 use crate::ffi::projections::{BriefingSnapshot, NostrShowSummary, PodcastSummary};
 use crate::host_op_handler_helpers::merge_episodes;
+use crate::host_op_handler_queue::handle_queue_action;
 use crate::itunes_search::{parse_itunes_results, url_encode};
 use crate::player::PlayerActor;
-use crate::store::PodcastStore;
+use crate::queue::PlaybackQueue;
+use crate::store::{episodes_to_auto_download, PodcastStore};
 use crate::transcript::handle_fetch_transcript;
 
 mod player_actions;
-use crate::ffi::projections::PodcastSummary;
-use crate::host_op_helpers::{merge_episodes, parse_itunes_results, url_encode};
-use crate::player::PlayerActor;
-use crate::store::{episodes_to_auto_download, PodcastStore};
 
 pub struct PodcastHostOpHandler {
     app: *mut NmpApp,
@@ -40,6 +39,7 @@ pub struct PodcastHostOpHandler {
     search_results: Arc<Mutex<Vec<PodcastSummary>>>,
     nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
     briefing: Arc<Mutex<Option<BriefingSnapshot>>>,
+    queue: Arc<Mutex<PlaybackQueue>>,
     rev: Arc<AtomicU64>,
 }
 
@@ -55,9 +55,10 @@ impl PodcastHostOpHandler {
         search_results: Arc<Mutex<Vec<PodcastSummary>>>,
         nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
         briefing: Arc<Mutex<Option<BriefingSnapshot>>>,
+        queue: Arc<Mutex<PlaybackQueue>>,
         rev: Arc<AtomicU64>,
     ) -> Self {
-        Self { app, store, player_actor, search_results, nostr_results, briefing, rev }
+        Self { app, store, player_actor, search_results, nostr_results, briefing, queue, rev }
     }
     fn dispatch_http(&self, req: &HttpRequest, correlation_id: &str) -> Result<HttpResult, String> {
         let payload_json = serde_json::to_string(req).map_err(|e| e.to_string())?;
@@ -526,6 +527,21 @@ impl HostOpHandler for PodcastHostOpHandler {
         if let Ok(action) = serde_json::from_str::<PlayerAction>(action_json) {
             return self.handle_player_action(action, correlation_id);
         }
+        if let Ok(action) = serde_json::from_str::<QueueAction>(action_json) {
+            return handle_queue_action(&self.queue, &self.rev, action);
+        }
         serde_json::json!({"ok": false, "error": format!("unknown action: {action_json}")})
     }
+}
+
+fn merge_episodes(fresh: Vec<Episode>, existing: Vec<Episode>) -> Vec<Episode> {
+    fresh
+        .into_iter()
+        .map(|mut ep| {
+            if let Some(prev) = existing.iter().find(|e| e.id == ep.id) {
+                ep.position_secs = prev.position_secs;
+            }
+            ep
+        })
+        .collect()
 }

@@ -8,9 +8,11 @@ use nmp_ffi::NmpApp;
 
 use super::actions::player_module::PlayerActionModule;
 use super::actions::podcast_module::PodcastActionModule;
+use super::actions::queue_module::QueueActionModule;
 use super::handle::PodcastHandle;
 use crate::host_op_handler::PodcastHostOpHandler;
 use crate::player::PlayerActor;
+use crate::queue::PlaybackQueue;
 use crate::store::PodcastStore;
 
 /// Register Podcast projections and action namespaces against `app`. Returns a
@@ -38,9 +40,11 @@ pub extern "C" fn nmp_app_podcast_register(
     let app_mut = unsafe { &mut *app };
     nmp_app_template::register_defaults(app_mut);
 
-    // Register action modules: "podcast" (subscribe/refresh) and "podcast.player" (playback).
+    // Register action modules: "podcast" (subscribe/refresh), "podcast.player"
+    // (playback), and "podcast.queue" (Up Next list).
     app_mut.register_action::<PodcastActionModule>();
     app_mut.register_action::<PlayerActionModule>();
+    app_mut.register_action::<QueueActionModule>();
 
     // Shared state between the handle (snapshot reader) and the handler (writer).
     let store = Arc::new(Mutex::new(PodcastStore::new()));
@@ -48,6 +52,7 @@ pub extern "C" fn nmp_app_podcast_register(
     let search_results = Arc::new(Mutex::new(Vec::new()));
     let nostr_results = Arc::new(Mutex::new(Vec::new()));
     let briefing = Arc::new(Mutex::new(None));
+    let queue = Arc::new(Mutex::new(PlaybackQueue::new()));
     // Start at 1 so the first snapshot poll always triggers an iOS update
     // (guard is `update.rev > last_seen_rev`; last_seen_rev starts at 0).
     // Subsequent increments happen in PodcastHostOpHandler on store writes.
@@ -63,6 +68,7 @@ pub extern "C" fn nmp_app_podcast_register(
         search_results.clone(),
         nostr_results.clone(),
         briefing.clone(),
+        queue.clone(),
         rev.clone(),
     )));
 
@@ -75,5 +81,6 @@ pub extern "C" fn nmp_app_podcast_register(
         nostr_results,
         snapshot_cache: Arc::new(Mutex::new(None)),
         briefing,
+        queue,
     }))
 }

@@ -37,6 +37,26 @@ struct ShowDetailEpisodeList: View {
                     )
                 } : nil
             )
+            .contextMenu {
+                Button {
+                    Haptics.light()
+                    model.dispatch(
+                        namespace: "podcast.queue",
+                        body: ["op": "add_next", "episode_id": ep.id]
+                    )
+                } label: {
+                    Label("Play Next", systemImage: "text.insert")
+                }
+                Button {
+                    Haptics.light()
+                    model.dispatch(
+                        namespace: "podcast.queue",
+                        body: ["op": "add_last", "episode_id": ep.id]
+                    )
+                } label: {
+                    Label("Add to Queue", systemImage: "text.append")
+                }
+            }
             .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets(
                 top: AppTheme.Spacing.xs,

@@ -32,10 +32,9 @@ use std::sync::atomic::Ordering;
 use super::projections::{
     AccountSummary, BriefingSnapshot, ChapterSummary, CommentSummary, ConversationsSnapshot,
     DownloadQueueSnapshot, EpisodeSummary, NostrShowSummary, PodcastSummary, SettingsSnapshot,
-    VoiceState, WidgetSnapshot,
-    AccountSummary, BriefingSnapshot, ConversationsSnapshot, DownloadQueueSnapshot, EpisodeSummary,
-    PodcastSummary, SocialSnapshot, VoiceState, WidgetSnapshot,
+    SocialSnapshot, VoiceState, WidgetSnapshot,
 };
+use super::snapshot_queue::resolve_queue_rows;
 use crate::player::PlayerState;
 
 /// Typed root of the snapshot JSON.
@@ -170,6 +169,10 @@ pub struct PodcastUpdate {
     /// renders the empty-state copy.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub comments: Vec<CommentSummary>,
+    /// Playback "Up Next" queue, front-first. Each entry is an
+    /// [`EpisodeSummary`] resolved against the library at projection time.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub queue: Vec<EpisodeSummary>,
 }
 
 impl Default for PodcastUpdate {
@@ -193,6 +196,7 @@ impl Default for PodcastUpdate {
             queue: Vec::new(),
             settings: SettingsSnapshot::default(),
             comments: Vec::new(),
+            queue: Vec::new(),
         }
     }
 }
@@ -297,6 +301,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         })
         .unwrap_or_default();
     let library = handle.store.lock().ok().map(|s| {
+    let library: Vec<PodcastSummary> = handle.store.lock().ok().map(|s| {
         s.all_podcasts()
             .into_iter()
             .map(|(podcast, episodes)| PodcastSummary {
@@ -334,6 +339,10 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
 
     let briefing = handle.briefing.lock().ok().and_then(|b| b.clone());
 
+    let queue_ids: Vec<String> = handle.queue.lock().ok()
+        .map(|q| q.items().to_vec()).unwrap_or_default();
+    let queue = resolve_queue_rows(&queue_ids, &library);
+
     let update = PodcastUpdate {
         rev,
         now_playing,
@@ -343,6 +352,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         queue,
         settings,
         briefing,
+        queue,
         ..PodcastUpdate::default()
     };
     let json = serde_json::to_string(&update)
@@ -435,6 +445,8 @@ mod tests {
         // `skip_serializing_if = "Option::is_none"` keeps the empty
         // payload byte-identical to the legacy stub.
         assert_eq!(json, r#"{"running":true,"rev":0,"schema_version":1}"#);
+        // Round-trip decode succeeds.
+        let _decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
     }
 
     #[test]
@@ -454,12 +466,6 @@ mod tests {
         assert_eq!(decoded.now_playing, Some(state));
         assert!(decoded.running);
         assert_eq!(decoded.schema_version, 1);
-    }
-
-    #[test]
-    fn default_update_serializes_to_valid_json() {
-        let payload = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
-        let _decoded: PodcastUpdate = serde_json::from_str(&payload).expect("decode");
     }
 
     #[test]

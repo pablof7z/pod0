@@ -41,6 +41,7 @@ mod register;
 mod snapshot;
 #[cfg(test)]
 mod snapshot_tests;
+mod snapshot_queue;
 
 pub use actions::{
     CancelAllDownloadsAction, CancelDownloadAction, DownloadEpisodeAction, PauseAction,
