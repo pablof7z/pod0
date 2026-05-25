@@ -69,6 +69,16 @@ pub enum PodcastAction {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         has_completed_onboarding: Option<bool>,
     },
+    /// Compose a fresh daily briefing on demand. No fields — the handler
+    /// reads the current library snapshot and the configured schedule to
+    /// pick source episodes.
+    ///
+    /// M9.A stub: the handler currently flips a `generating` status into
+    /// the snapshot and returns `{"ok":true,"status":"generating"}`. The
+    /// LLM composer + audio stitching wiring lands in M9.B; this variant
+    /// reserves the action-dispatch path so the iOS button can be wired
+    /// against a stable contract today.
+    GenerateBriefing,
 }
 
 /// Single action module for the whole `"podcast"` namespace.
@@ -188,6 +198,10 @@ mod tests {
         let json = serde_json::to_string(&action).expect("encode");
         assert!(json.contains(r#""op":"discover_nostr""#));
         assert!(json.contains(r#""query":"rust""#));
+    fn generate_briefing_action_round_trips() {
+        let action = PodcastAction::GenerateBriefing;
+        let json = serde_json::to_string(&action).expect("encode");
+        assert!(json.contains(r#""op":"generate_briefing""#));
         let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
         assert_eq!(decoded, action);
     }

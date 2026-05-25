@@ -6,7 +6,7 @@ use std::sync::atomic::AtomicU64;
 
 use nmp_ffi::NmpApp;
 
-use crate::ffi::projections::{NostrShowSummary, PodcastSummary};
+use crate::ffi::projections::{BriefingSnapshot, NostrShowSummary, PodcastSummary};
 use crate::player::PlayerActor;
 use crate::store::PodcastStore;
 
@@ -29,6 +29,12 @@ pub struct PodcastHandle {
     /// here after every rebuild; the next poll hit with the same `rev` returns
     /// the cached string without re-serializing the entire library.
     pub(super) snapshot_cache: Arc<Mutex<Option<(u64, String)>>>,
+    /// Active briefing projection. M9.A stub: written by
+    /// `briefings_handler::handle_generate_briefing` to flip
+    /// `is_generating = true` so the iOS Briefings tab sees the
+    /// composer is in flight. Full lifecycle (segments, last_generated_at)
+    /// lands in M9.B when the composer + scheduler wire up.
+    pub(super) briefing: Arc<Mutex<Option<BriefingSnapshot>>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the

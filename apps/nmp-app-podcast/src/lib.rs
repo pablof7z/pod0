@@ -31,6 +31,7 @@
 //!   (sleep-timer expiry, end-of-episode policy, retry behaviour) lives in
 //!   per-projection actors under [`player`] et al.
 
+pub(crate) mod briefings_handler;
 pub mod capability;
 pub(crate) mod chapter;
 pub(crate) mod discover_nostr;

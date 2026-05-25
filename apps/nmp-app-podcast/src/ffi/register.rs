@@ -47,6 +47,7 @@ pub extern "C" fn nmp_app_podcast_register(
     let player_actor = Arc::new(Mutex::new(PlayerActor::new()));
     let search_results = Arc::new(Mutex::new(Vec::new()));
     let nostr_results = Arc::new(Mutex::new(Vec::new()));
+    let briefing = Arc::new(Mutex::new(None));
     // Start at 1 so the first snapshot poll always triggers an iOS update
     // (guard is `update.rev > last_seen_rev`; last_seen_rev starts at 0).
     // Subsequent increments happen in PodcastHostOpHandler on store writes.
@@ -61,6 +62,7 @@ pub extern "C" fn nmp_app_podcast_register(
         player_actor.clone(),
         search_results.clone(),
         nostr_results.clone(),
+        briefing.clone(),
         rev.clone(),
     )));
 
@@ -72,5 +74,6 @@ pub extern "C" fn nmp_app_podcast_register(
         search_results,
         nostr_results,
         snapshot_cache: Arc::new(Mutex::new(None)),
+        briefing,
     }))
 }

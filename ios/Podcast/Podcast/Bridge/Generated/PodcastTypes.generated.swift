@@ -48,6 +48,11 @@ struct PodcastUpdate: Codable {
 /// snapshot — older binaries on `Codable` decode see this as a fresh install.
 struct SettingsSnapshot: Codable, Equatable, Hashable {
     var hasCompletedOnboarding: Bool = false
+    /// Daily briefing projection — `nil` until the scheduler has been
+    /// touched at least once (i.e. the first `podcast.generate_briefing`
+    /// or scheduled slot tick). M9.A stub: the field exists so the iOS
+    /// Briefings tab can read it; live population lands in M9.B.
+    var briefing: BriefingSnapshot? = nil
 }
 
 /// Narrow projection for a subscribed podcast (one library grid/list cell).
@@ -135,4 +140,49 @@ struct AccountSummary: Codable {
     var displayName: String? = nil
     var mode: String
     var pictureUrl: String? = nil
+}
+
+/// Daily briefing projection — mirrors `BriefingSnapshot` in
+/// `apps/nmp-app-podcast/src/ffi/projections.rs`. Present when the
+/// scheduler has been touched at least once; the iOS Briefings tab
+/// reads it to decide between the empty state (no `briefing` field
+/// at all) and a rendered list of segment cards.
+struct BriefingSnapshot: Codable, Equatable, Hashable {
+    /// One of `"pending"`, `"generating"`, `"ready"`, `"delivered"`,
+    /// `"failed"`.
+    var status: String = "pending"
+    /// `true` while the briefing is being composed. Convenience flag
+    /// equivalent to `status == "generating"`.
+    var isGenerating: Bool = false
+    /// Number of editorial segments in the active briefing.
+    var segmentCount: Int = 0
+    /// Editorial segments in playback order. Empty until the composer
+    /// completes.
+    var segments: [BriefingSegmentSummary] = []
+    /// Unix seconds the most recent briefing was composed/delivered.
+    var lastGeneratedAt: Int? = nil
+    /// Minutes until the next scheduled briefing slot on the current
+    /// calendar day, when one is configured.
+    var nextScheduledMinutes: Int? = nil
+}
+
+/// One row in `BriefingSnapshot.segments`.
+struct BriefingSegmentSummary: Codable, Equatable, Hashable, Identifiable {
+    /// Snake_case label from `podcast_briefings::SegmentKind`:
+    /// `"intro"`, `"episode_summary"`, `"new_episode_alert"`,
+    /// `"weather_update"`, `"outro_call_to_action"`.
+    var kind: String
+    /// TTS-narrated body text, plain.
+    var text: String
+    /// Source podcast title for attribution, when applicable.
+    var podcastTitle: String? = nil
+    /// Source episode title for attribution, when applicable.
+    var episodeTitle: String? = nil
+
+    /// Stable per-render id. Segment order is the projection's order;
+    /// combining position + kind + text prefix yields a deterministic
+    /// id without needing the composer to mint one.
+    var id: String {
+        "\(kind)|\(text.prefix(40))"
+    }
 }

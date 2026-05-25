@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-26T01:05:00Z",
+      "lines": [
+        "Daily Briefings: AI-generated summaries of your podcast queue."
+      ]
+    },
+    {
       "shipped_at": "2026-05-26T01:00:00Z",
       "lines": [
         "Edit your Nostr profile and publish it to the network."

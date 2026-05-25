@@ -26,6 +26,7 @@ final class PodcastRouter: ObservableObject {
 }
 
 enum PodcastTab: Hashable { case library, downloads, identity }
+enum PodcastTab: Hashable { case library, briefings, identity }
 
 struct RootShell: View {
     @Environment(KernelModel.self) private var model
@@ -60,6 +61,9 @@ struct RootShell: View {
             DownloadsView()
                 .tabItem { Label("Downloads", systemImage: "arrow.down.circle") }
                 .tag(PodcastTab.downloads)
+            BriefingsView()
+                .tabItem { Label("Briefings", systemImage: "newspaper") }
+                .tag(PodcastTab.briefings)
 
             IdentityRootView()
                 .tabItem { Label("Identity", systemImage: "person.circle") }

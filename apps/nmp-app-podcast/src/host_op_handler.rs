@@ -18,7 +18,7 @@ use crate::chapter::handle_fetch_chapters;
 use crate::discover_nostr;
 use crate::ffi::actions::player_module::PlayerAction;
 use crate::ffi::actions::podcast_module::PodcastAction;
-use crate::ffi::projections::{NostrShowSummary, PodcastSummary};
+use crate::ffi::projections::{BriefingSnapshot, NostrShowSummary, PodcastSummary};
 use crate::host_op_handler_helpers::merge_episodes;
 use crate::itunes_search::{parse_itunes_results, url_encode};
 use crate::player::PlayerActor;
@@ -33,6 +33,7 @@ pub struct PodcastHostOpHandler {
     player_actor: Arc<Mutex<PlayerActor>>,
     search_results: Arc<Mutex<Vec<PodcastSummary>>>,
     nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
+    briefing: Arc<Mutex<Option<BriefingSnapshot>>>,
     rev: Arc<AtomicU64>,
 }
 
@@ -40,15 +41,17 @@ unsafe impl Send for PodcastHostOpHandler {}
 unsafe impl Sync for PodcastHostOpHandler {}
 
 impl PodcastHostOpHandler {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         app: *mut NmpApp,
         store: Arc<Mutex<PodcastStore>>,
         player_actor: Arc<Mutex<PlayerActor>>,
         search_results: Arc<Mutex<Vec<PodcastSummary>>>,
         nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
+        briefing: Arc<Mutex<Option<BriefingSnapshot>>>,
         rev: Arc<AtomicU64>,
     ) -> Self {
-        Self { app, store, player_actor, search_results, nostr_results, rev }
+        Self { app, store, player_actor, search_results, nostr_results, briefing, rev }
     }
     fn dispatch_http(&self, req: &HttpRequest, correlation_id: &str) -> Result<HttpResult, String> {
         let payload_json = serde_json::to_string(req).map_err(|e| e.to_string())?;
@@ -432,6 +435,7 @@ impl HostOpHandler for PodcastHostOpHandler {
                 PodcastAction::UpdateSettings { has_completed_onboarding } => {
                     self.handle_update_settings(has_completed_onboarding)
                 }
+                PodcastAction::GenerateBriefing => crate::briefings_handler::handle_generate_briefing(&self.briefing, &self.rev),
             };
         }
         if let Ok(action) = serde_json::from_str::<PlayerAction>(action_json) {

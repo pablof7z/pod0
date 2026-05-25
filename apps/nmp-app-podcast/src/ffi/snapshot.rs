@@ -278,6 +278,8 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         .map(|r| r.clone())
         .unwrap_or_default();
 
+    let briefing = handle.briefing.lock().ok().and_then(|b| b.clone());
+
     let update = PodcastUpdate {
         rev,
         now_playing,
@@ -286,6 +288,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         nostr_results,
         queue,
         settings,
+        briefing,
         ..PodcastUpdate::default()
     };
     let json = serde_json::to_string(&update)

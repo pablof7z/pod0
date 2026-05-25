@@ -58,8 +58,9 @@ pub use data_dir::nmp_app_podcast_set_data_dir;
 pub use download_report::nmp_app_podcast_download_report;
 pub use handle::PodcastHandle;
 pub use projections::{
-    AccountSummary, BriefingSnapshot, ConversationsSnapshot, DownloadItemSnapshot,
-    DownloadQueueSnapshot, EpisodeSummary, PendingApprovalSnapshot, PodcastSummary, VoiceState,
+    AccountSummary, BriefingSegmentSummary, BriefingSnapshot, ConversationsSnapshot,
+    DownloadItemSnapshot, DownloadQueueSnapshot, EpisodeSummary, PendingApprovalSnapshot,
+    PodcastSummary, VoiceState,
 };
 pub use register::nmp_app_podcast_register;
 pub use snapshot::{
