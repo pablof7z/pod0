@@ -43,6 +43,11 @@ struct LibraryView: View {
                             Image(systemName: "magnifyingglass")
                         }
                         .accessibilityLabel("Search Library")
+                            CategoriesView()
+                        } label: {
+                            Image(systemName: "square.grid.2x2")
+                        }
+                        .accessibilityLabel("Browse by Topic")
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -63,6 +68,9 @@ struct LibraryView: View {
             }
             .navigationDestination(for: EpisodeRoute.self) { route in
                 EpisodeDetailView(episode: route.episode, podcast: route.podcast)
+            }
+            .navigationDestination(for: CategoryRoute.self) { route in
+                CategoryEpisodesView(category: route.category)
             }
             .refreshable {
                 model.dispatch(namespace: "podcast", body: ["op": "refresh_all"])

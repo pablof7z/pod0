@@ -15,6 +15,7 @@ use super::actions::memory_module::MemoryActionModule;
 use super::actions::clip_module::ClipActionModule;
 use super::actions::inbox_module::InboxActionModule;
 use super::actions::agent_module::AgentActionModule;
+use super::actions::categorization_module::CategorizationModule;
 use super::actions::player_module::PlayerActionModule;
 use super::actions::podcast_module::PodcastActionModule;
 use super::actions::queue_module::QueueActionModule;
@@ -112,6 +113,10 @@ pub extern "C" fn nmp_app_podcast_register(
     app_mut.register_action::<PodcastActionModule>();
     app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<AgentActionModule>();
+    // (playback), and "podcast.categorize" (heuristic topic categorizer).
+    app_mut.register_action::<PodcastActionModule>();
+    app_mut.register_action::<PlayerActionModule>();
+    app_mut.register_action::<CategorizationModule>();
 
     // Shared state between the handle (snapshot reader) and the handler (writer).
     let store = Arc::new(Mutex::new(PodcastStore::new()));
@@ -138,6 +143,8 @@ pub extern "C" fn nmp_app_podcast_register(
     let conversation = Arc::new(Mutex::new(Vec::new()));
     let agent_busy = Arc::new(AtomicBool::new(false));
     let agent_touched = Arc::new(AtomicBool::new(false));
+    let categories: Arc<Mutex<HashMap<String, Vec<String>>>> =
+        Arc::new(Mutex::new(HashMap::new()));
     // Start at 1 so the first snapshot poll always triggers an iOS update
     // (guard is `update.rev > last_seen_rev`; last_seen_rev starts at 0).
     // Subsequent increments happen in PodcastHostOpHandler on store writes.
@@ -171,6 +178,7 @@ pub extern "C" fn nmp_app_podcast_register(
         transcripts.clone(),
         dismissed_episode_ids.clone(),
         voice_state.clone(),
+        categories.clone(),
         rev.clone(),
         podcast_keys.clone(),
         publish_state.clone(),
@@ -202,5 +210,6 @@ pub extern "C" fn nmp_app_podcast_register(
         conversation,
         agent_busy,
         agent_touched,
+        categories,
     }))
 }

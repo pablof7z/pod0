@@ -20,6 +20,7 @@ use crate::capability::{
     notification_command_json, AudioCommand, DownloadCommand, NotificationCommand,
     AUDIO_CAPABILITY_NAMESPACE, DOWNLOAD_CAPABILITY_NAMESPACE, NOTIFICATION_CAPABILITY_NAMESPACE,
 };
+use crate::categorization::{handle_categorize_episode, handle_run as categorization_run};
 use crate::chapter::handle_fetch_chapters;
 use crate::discover_nostr;
 use crate::ffi::actions::chapters_module::ChaptersAction;
@@ -55,6 +56,9 @@ use crate::ffi::actions::{knowledge_module::KnowledgeAction, player_module::Play
 use crate::ffi::projections::{KnowledgeSearchResult, PodcastSummary};
 use crate::ffi::actions::memory_module::MemoryAction;
 use crate::ffi::actions::inbox_module::InboxAction;
+use crate::merge::merge_episodes;
+use crate::queue as queue_ops;
+use crate::ffi::actions::categorization_module::CategorizationAction;
 use crate::ffi::actions::player_module::PlayerAction;
 use crate::ffi::actions::podcast_module::PodcastAction;
 use crate::ffi::projections::PodcastSummary;
@@ -124,6 +128,12 @@ pub struct PodcastHostOpHandler {
     pub(crate) voice_state: Arc<Mutex<VoiceState>>,
     pub(crate) rev: Arc<AtomicU64>,
     agent_chat: AgentChatHandler,
+    /// Heuristic categorizer cache — shared with
+    /// [`crate::ffi::handle::PodcastHandle::categories`]. Mutated by
+    /// `handle_categorize_*` + auto-triggered at the end of every
+    /// successful feed refresh.
+    categories: Arc<Mutex<HashMap<String, Vec<String>>>>,
+    rev: Arc<AtomicU64>,
 }
 
 unsafe impl Send for PodcastHostOpHandler {}
@@ -192,6 +202,16 @@ impl PodcastHostOpHandler {
     ) -> Self {
         Self { app, store, player_actor, search_results, voice_state, rev }
         Self { app, store, player_actor, search_results, nostr_results, rev, agent_chat }
+        categories: Arc<Mutex<HashMap<String, Vec<String>>>>,
+        rev: Arc<AtomicU64>,
+    ) -> Self {
+        Self { app, store, player_actor, search_results, categories, rev }
+    }
+
+    /// Re-run the categorizer after a successful refresh so newly-
+    /// arrived episodes pick up labels automatically.
+    fn auto_categorize(&self) {
+        let _ = categorization_run(&self.store, &self.categories, &self.rev);
     }
         knowledge_search_results: Arc<Mutex<Vec<KnowledgeSearchResult>>>,
         rev: Arc<AtomicU64>,
@@ -231,13 +251,23 @@ impl PodcastHostOpHandler {
                 };
                 if !ok {
                     return serde_json::json!({"ok": false, "error": "store poisoned"});
+        let result = match handle_feed_response(&url, podcast_id, &http_result, None, Utc::now()) {
+            Ok(FeedResult::Parsed { parsed, .. }) => match self.store.lock() {
+                Ok(mut s) => {
+                    s.subscribe(parsed.podcast, parsed.episodes);
+                    self.rev.fetch_add(1, Ordering::Relaxed);
+                    serde_json::json!({"ok": true})
                 }
                 refresh_picks_into_slot(&self.store, &self.picks, &self.rev);
                 serde_json::json!({"ok": true})
             }
             Ok(FeedResult::NotModified { .. }) => serde_json::json!({"ok": true, "not_modified": true}),
             Err(e) => serde_json::json!({"ok": false, "error": format!("{e:?}")}),
+        };
+        if result["ok"] == true {
+            self.auto_categorize();
         }
+        result
     }
     fn handle_unsubscribe(&self, podcast_id_str: String) -> serde_json::Value {
         match podcast_id_str.parse::<uuid::Uuid>() {
@@ -275,7 +305,11 @@ impl PodcastHostOpHandler {
                 Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
             }
         };
-        self.refresh_one(podcast_id, &url, etag.as_deref(), last_modified.as_deref(), correlation_id)
+        let result = self.refresh_one(podcast_id, &url, etag.as_deref(), last_modified.as_deref(), correlation_id);
+        if result["ok"] == true {
+            self.auto_categorize();
+        }
+        result
     }
     fn handle_refresh_all(&self, correlation_id: &str) -> serde_json::Value {
         let infos = match self.store.lock() {
@@ -283,12 +317,13 @@ impl PodcastHostOpHandler {
             Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
         };
         let mut errors = Vec::new();
+        let mut any_succeeded = false;
         for (id, url, etag, last_modified) in infos {
             let result = self.refresh_one(id, &url, etag.as_deref(), last_modified.as_deref(), correlation_id);
-            if result["ok"] != true {
-                if let Some(e) = result["error"].as_str() {
-                    errors.push(format!("{}: {}", url, e));
-                }
+            if result["ok"] == true {
+                any_succeeded = true;
+            } else if let Some(e) = result["error"].as_str() {
+                errors.push(format!("{}: {}", url, e));
             }
         }
         // Feature #31 auto-trigger: after refresh_all bump rev so the next
@@ -297,6 +332,11 @@ impl PodcastHostOpHandler {
         // basis when episodes actually change; this extra bump guarantees a
         // tick even when every feed returned 304 Not Modified.
         self.rev.fetch_add(1, Ordering::Relaxed);
+        // Re-run the categorizer once at the tail when at least one
+        // feed succeeded — see auto_categorize doc-comment.
+        if any_succeeded {
+            self.auto_categorize();
+        }
         if errors.is_empty() {
             serde_json::json!({"ok": true})
         } else {
@@ -740,50 +780,14 @@ impl PodcastHostOpHandler {
                     Err(e) => serde_json::json!({"ok": false, "error": e}),
                 }
             }
-            PlayerAction::Enqueue { episode_id } => self.handle_enqueue(episode_id),
-            PlayerAction::Dequeue { episode_id } => self.handle_dequeue(episode_id),
-            PlayerAction::ClearQueue => self.handle_clear_queue(),
+            PlayerAction::Enqueue { episode_id } => {
+                queue_ops::handle_enqueue(&self.store, &self.player_actor, &self.rev, episode_id)
+            }
+            PlayerAction::Dequeue { episode_id } => {
+                queue_ops::handle_dequeue(&self.player_actor, &self.rev, episode_id)
+            }
+            PlayerAction::ClearQueue => queue_ops::handle_clear_queue(&self.player_actor, &self.rev),
             PlayerAction::PlayNext => self.handle_play_next(correlation_id),
-        }
-    }
-
-    fn handle_enqueue(&self, episode_id: String) -> serde_json::Value {
-        let exists = match self.store.lock() {
-            Ok(s) => s.episode_playback_info(&episode_id).is_some(),
-            Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
-        };
-        if !exists {
-            return serde_json::json!({"ok": false, "error": format!("episode not found: {episode_id}")});
-        }
-        match self.player_actor.lock() {
-            Ok(mut a) => {
-                a.enqueue(&episode_id);
-                self.rev.fetch_add(1, Ordering::Relaxed);
-                serde_json::json!({"ok": true})
-            }
-            Err(_) => serde_json::json!({"ok": false, "error": "player_actor poisoned"}),
-        }
-    }
-
-    fn handle_dequeue(&self, episode_id: String) -> serde_json::Value {
-        match self.player_actor.lock() {
-            Ok(mut a) => {
-                a.dequeue(&episode_id);
-                self.rev.fetch_add(1, Ordering::Relaxed);
-                serde_json::json!({"ok": true})
-            }
-            Err(_) => serde_json::json!({"ok": false, "error": "player_actor poisoned"}),
-        }
-    }
-
-    fn handle_clear_queue(&self) -> serde_json::Value {
-        match self.player_actor.lock() {
-            Ok(mut a) => {
-                a.clear_queue();
-                self.rev.fetch_add(1, Ordering::Relaxed);
-                serde_json::json!({"ok": true})
-            }
-            Err(_) => serde_json::json!({"ok": false, "error": "player_actor poisoned"}),
         }
     }
 
@@ -802,6 +806,14 @@ impl PodcastHostOpHandler {
 
 impl HostOpHandler for PodcastHostOpHandler {
     fn handle(&self, action_json: &str, correlation_id: &str) -> serde_json::Value {
+        if let Ok(action) = serde_json::from_str::<CategorizationAction>(action_json) {
+            return match action {
+                CategorizationAction::Run => categorization_run(&self.store, &self.categories, &self.rev),
+                CategorizationAction::CategorizeEpisode { episode_id } => {
+                    handle_categorize_episode(&self.store, &self.categories, &self.rev, episode_id)
+                }
+            };
+        }
         if let Ok(action) = serde_json::from_str::<PodcastAction>(action_json) {
             return match action {
                 PodcastAction::Subscribe { feed_url } => self.handle_subscribe(feed_url, correlation_id),

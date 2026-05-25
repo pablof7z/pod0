@@ -198,6 +198,10 @@ struct AgentMessageSummary: Codable, Identifiable, Equatable, Hashable {
     /// `true` while the assistant is still composing this message
     /// (placeholder bubble with typing indicator).
     var isGenerating: Bool = false
+    /// Browse-by-topic aggregate built by the Rust categorizer. Empty
+    /// until the first auto-trigger lands (end of every successful feed
+    /// refresh) or the iOS shell dispatches `podcast.categorize.run`.
+    var categories: [CategoryBrowseItem]? = nil
 }
 
 /// Narrow projection for a subscribed podcast (one library grid/list cell).
@@ -264,6 +268,22 @@ struct TranscriptEntry: Codable, Equatable, Hashable {
     var endSecs: Double? = nil
     var speaker: String? = nil
     var text: String
+    /// Heuristic topic labels assigned by the Rust categorizer
+    /// (`podcast.categorize.run`). Empty until the first run lands;
+    /// at most three entries, strongest match first.
+    var aiCategories: [String]? = nil
+}
+
+/// One row in `PodcastUpdate.categories`. Backs the iOS "Browse by Topic"
+/// grid card with category name, episode + podcast counts, and up to
+/// three episode ids for the artwork preview stack.
+struct CategoryBrowseItem: Codable, Identifiable, Equatable, Hashable {
+    var category: String
+    var episodeCount: Int = 0
+    var podcastCount: Int = 0
+    var topEpisodeIds: [String] = []
+
+    var id: String { category }
 }
 
 /// Narrow chapter projection for full-player chapter rail rendering.

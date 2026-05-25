@@ -484,6 +484,42 @@ pub struct InboxItem {
     pub priority_score: f32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub priority_reason: Option<String>,
+    /// Topic labels the agent's heuristic categorizer assigned to this
+    /// episode. Empty until
+    /// [`super::actions::CategorizationModule`](super::actions::categorization_module::CategorizationModule)
+    /// runs (auto-triggered after every successful feed refresh).
+    ///
+    /// At most three entries, ordered by keyword-match strength (strongest
+    /// first). Wire field is omitted when empty so the byte-compatible
+    /// legacy stub is preserved for cold-start snapshots (D5 / D6).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ai_categories: Vec<String>,
+}
+
+/// Aggregate row consumed by the iOS "Browse by Topic" grid surfaced via
+/// [`super::snapshot::PodcastUpdate::categories`].
+///
+/// Built by [`super::snapshot::build_snapshot_payload`] from the
+/// kernel-side categorizer cache (`PodcastHandle::categories`) cross-
+/// referenced against the library:
+///
+/// * `category` — display label (e.g. `"Technology"`).
+/// * `episode_count` — number of episodes tagged with this category.
+/// * `podcast_count` — number of distinct podcasts contributing episodes.
+/// * `top_episode_ids` — up to three episode ids the iOS shell can use
+///   to look up thumbnail artwork without re-scanning the library.
+///
+/// The list is ordered newest-first by the projection layer so the
+/// category whose most recent episode published latest renders first.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
+pub struct CategoryBrowseItem {
+    pub category: String,
+    pub episode_count: usize,
+    pub podcast_count: usize,
+    /// Up to three episode ids, newest-first by `pub_date`. The iOS
+    /// shell looks each id up in `library[*].episodes` to render the
+    /// preview artwork stack on the category card.
+    pub top_episode_ids: Vec<String>,
 }
 
 /// Narrow chapter projection for the player rail. Mirrors the relevant
@@ -1430,6 +1466,28 @@ mod tests {
         };
         let json = serde_json::to_string(&ep).expect("encode");
         let decoded: TtsEpisodeSummary = serde_json::from_str(&json).expect("decode");
+    fn episode_summary_omits_empty_ai_categories() {
+        let ep = EpisodeSummary {
+            id: "ep-1".into(),
+            title: "Pilot".into(),
+            ..EpisodeSummary::default()
+        };
+        let json = serde_json::to_string(&ep).expect("encode");
+        // No categories assigned — field must not appear on the wire.
+        assert!(!json.contains("ai_categories"));
+    }
+
+    #[test]
+    fn episode_summary_round_trips_with_ai_categories() {
+        let ep = EpisodeSummary {
+            id: "ep-1".into(),
+            title: "Pilot".into(),
+            ai_categories: vec!["Technology".into(), "Science".into()],
+            ..EpisodeSummary::default()
+        };
+        let json = serde_json::to_string(&ep).expect("encode");
+        assert!(json.contains("\"ai_categories\":[\"Technology\",\"Science\"]"));
+        let decoded: EpisodeSummary = serde_json::from_str(&json).expect("decode");
         assert_eq!(decoded, ep);
     }
 
@@ -1452,4 +1510,18 @@ mod tests {
     // InboxItem round-trip / wire-shape tests live next to
     // `inbox_handler::build_inbox` in `crate::inbox_handler::tests` so
     // they stay near the projection layer that builds them.
+    fn category_browse_item_round_trips() {
+        let item = CategoryBrowseItem {
+            category: "Technology".into(),
+            episode_count: 12,
+            podcast_count: 3,
+            top_episode_ids: vec!["ep-1".into(), "ep-2".into(), "ep-3".into()],
+        };
+        let json = serde_json::to_string(&item).expect("encode");
+        assert!(json.contains("\"category\":\"Technology\""));
+        assert!(json.contains("\"episode_count\":12"));
+        assert!(json.contains("\"podcast_count\":3"));
+        let decoded: CategoryBrowseItem = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, item);
+    }
 }

@@ -76,6 +76,7 @@ mod tests {
     /// Build a `PodcastHandle` with a NULL `app` pointer — these tests only
     /// exercise the data-dir path, which never touches `app`.
     fn make_handle(store: Arc<Mutex<PodcastStore>>, rev: Arc<AtomicU64>) -> Box<PodcastHandle> {
+        use std::collections::HashMap;
         Box::new(PodcastHandle {
             app: std::ptr::null_mut(),
             player_actor: Arc::new(Mutex::new(PlayerActor::new())),
@@ -101,6 +102,7 @@ mod tests {
             conversation: Arc::new(Mutex::new(Vec::new())),
             agent_busy: Arc::new(AtomicBool::new(false)),
             agent_touched: Arc::new(AtomicBool::new(false)),
+            categories: Arc::new(Mutex::new(HashMap::new())),
         })
     }
 

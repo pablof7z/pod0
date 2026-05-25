@@ -55,6 +55,8 @@ use super::projections::{
     EpisodeSummary, PodcastSummary, VoiceState, WidgetSnapshot,
     AccountSummary, AgentSnapshot, BriefingSnapshot, ChapterSummary, DownloadQueueSnapshot,
     EpisodeSummary, NostrShowSummary, PodcastSummary, VoiceState, WidgetSnapshot,
+    AccountSummary, BriefingSnapshot, CategoryBrowseItem, ChapterSummary, ConversationsSnapshot,
+    DownloadQueueSnapshot, EpisodeSummary, PodcastSummary, VoiceState, WidgetSnapshot,
 };
 use super::snapshot_queue::resolve_queue_rows;
     EpisodeSummary, InboxItem, PodcastSummary, VoiceState, WidgetSnapshot,
@@ -257,6 +259,16 @@ pub struct PodcastUpdate {
     /// Empty until the first `create_owned_podcast` action fires.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub owned_podcasts: Vec<OwnedPodcastInfo>,
+    /// Browse-by-topic aggregation surfaced via the iOS Library tab.
+    ///
+    /// Built by [`build_snapshot_payload`] from the kernel-side
+    /// categorizer cache (`PodcastHandle::categories`) cross-referenced
+    /// against the library. Empty until the first
+    /// `podcast.categorize.run` action lands (auto-triggered after every
+    /// successful feed refresh, so the first non-empty snapshot is the
+    /// one that follows the very first subscription's refresh).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub categories: Vec<CategoryBrowseItem>,
 }
 
 impl Default for PodcastUpdate {
@@ -291,6 +303,7 @@ impl Default for PodcastUpdate {
             clips: Vec::new(),
             inbox: Vec::new(),
             owned_podcasts: Vec::new(),
+            categories: Vec::new(),
         }
     }
 }
@@ -402,6 +415,13 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         .unwrap_or_default();
 
     let library = handle.store.lock().ok().map(|s| {
+    // Snapshot the categorizer cache once so every episode row + the
+    // browse aggregate see the same labels (a refresh that lands mid-
+    // build would otherwise pull labels for one show and miss them on
+    // another).
+    let categories_cache: std::collections::HashMap<String, Vec<String>> =
+        handle.categories.lock().ok().map(|c| c.clone()).unwrap_or_default();
+
     let library: Vec<PodcastSummary> = handle.store.lock().ok().map(|s| {
         s.all_podcasts()
     let (library, memory_facts) = handle.store.lock().ok().map(|s| {
@@ -433,6 +453,8 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
                             .get(&ep_id)
                             .cloned()
                             .unwrap_or_default();
+                        let transcript = s.transcript_for(&ep_id).map(str::to_owned);
+                        let ai_categories = categories_cache.get(&ep_id).cloned().unwrap_or_default();
                         EpisodeSummary {
                             id: ep_id,
                             title: ep.title.clone(),
@@ -464,6 +486,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
                                         .collect()
                                 })
                                 .unwrap_or_default(),
+                            ai_categories,
                         }
                     })
                     .collect(),
@@ -471,6 +494,8 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
             .collect();
         (lib, s.all_memory_facts())
     }).unwrap_or_default();
+
+    let categories = build_category_aggregate(&library);
 
     let search_results = handle.search_results.lock().ok()
         .map(|r| r.clone())
@@ -556,6 +581,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         owned_podcasts,
         voice,
         agent,
+        categories,
         ..PodcastUpdate::default()
     };
     let json = serde_json::to_string(&update)
@@ -566,6 +592,73 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         *cache = Some((rev, json.clone()));
     }
     json
+}
+
+/// Roll the per-episode `ai_categories` labels up into one
+/// [`CategoryBrowseItem`] per category, ordered by the most recent
+/// contribution (so the category whose newest episode is freshest
+/// renders first in the iOS grid).
+///
+/// `top_episode_ids` holds the three most recently-published episode ids
+/// for the category, newest-first by `published_at`. Tied timestamps
+/// fall back to library iteration order, which is stable across ticks
+/// for the same store contents.
+fn build_category_aggregate(library: &[PodcastSummary]) -> Vec<CategoryBrowseItem> {
+    use std::collections::{BTreeSet, HashMap};
+
+    struct Bucket {
+        episode_ids_by_recency: Vec<(i64, String)>,
+        podcast_ids: BTreeSet<String>,
+        latest: i64,
+    }
+    let mut buckets: HashMap<String, Bucket> = HashMap::new();
+
+    for podcast in library {
+        for ep in &podcast.episodes {
+            let published = ep.published_at.unwrap_or(0);
+            for cat in &ep.ai_categories {
+                let entry = buckets.entry(cat.clone()).or_insert_with(|| Bucket {
+                    episode_ids_by_recency: Vec::new(),
+                    podcast_ids: BTreeSet::new(),
+                    latest: i64::MIN,
+                });
+                entry.episode_ids_by_recency.push((published, ep.id.clone()));
+                entry.podcast_ids.insert(podcast.id.clone());
+                if published > entry.latest {
+                    entry.latest = published;
+                }
+            }
+        }
+    }
+
+    let mut items: Vec<(i64, CategoryBrowseItem)> = buckets
+        .into_iter()
+        .map(|(category, mut bucket)| {
+            // Newest-first; tie-break by insertion order via stable sort.
+            bucket
+                .episode_ids_by_recency
+                .sort_by(|a, b| b.0.cmp(&a.0));
+            let top_episode_ids = bucket
+                .episode_ids_by_recency
+                .iter()
+                .take(3)
+                .map(|(_, id)| id.clone())
+                .collect();
+            let item = CategoryBrowseItem {
+                category,
+                episode_count: bucket.episode_ids_by_recency.len(),
+                podcast_count: bucket.podcast_ids.len(),
+                top_episode_ids,
+            };
+            (bucket.latest, item)
+        })
+        .collect();
+
+    // Category-level order: newest contributing episode first; ties by
+    // category name so the snapshot is deterministic for the same store.
+    items.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.category.cmp(&b.1.category)));
+
+    items.into_iter().map(|(_, item)| item).collect()
 }
 
 /// Serialize the current app state into a JSON C string.

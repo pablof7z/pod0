@@ -66,6 +66,8 @@ pub mod memory_module;
 pub mod clip_module;
 pub mod inbox_module;
 pub mod agent_module;
+pub(crate) mod categorization_keywords;
+pub mod categorization_module;
 pub mod player_module;
 pub mod podcast_module;
 pub mod queue_module;
@@ -88,6 +90,10 @@ pub use clip_module::{
 };
 pub use inbox_module::{InboxAction, InboxActionModule};
 pub use agent_module::{AgentActionModule, AgentChatAction};
+pub use categorization_module::{
+    categorize_text, CategorizationAction, CategorizationModule, ACTION_CATEGORIZE_EPISODE,
+    ACTION_CATEGORIZE_RUN, CATEGORY_KEYWORDS, MAX_CATEGORIES_PER_EPISODE,
+};
 pub use player_module::{PlayerAction, PlayerActionModule};
 pub use podcast_module::{PodcastAction, PodcastActionModule};
 pub use queue_module::{QueueAction, QueueActionModule};
