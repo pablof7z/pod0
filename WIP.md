@@ -10,7 +10,7 @@ Related files:
 
 ## Active
 
-_(M0–M11 complete — M13 second-platform proof starting)_
+- 2026-05-25 - M13.C+D: Android Compose UI screens — Home, Library, Player, Identity, Settings + bottom-tab navigation. Branch `m13cd/android-ui`, worktree `/Users/pablofernandez/Work/podcast-player-m13cd`.
 
 ## Recent History
 
