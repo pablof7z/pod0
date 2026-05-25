@@ -26,9 +26,16 @@
 //!   future `nmp-nip-*` podcast protocol crates, never in `nmp-core`.
 //! * **D6** — every FFI symbol degrades silently on null pointers, lock
 //!   poisoning, or serialization failure.
+//! * **D7** — capabilities report, never decide. The contracts in
+//!   [`capability`] are the request/event vocabularies; decision-making
+//!   (sleep-timer expiry, end-of-episode policy, retry behaviour) lives in
+//!   per-projection actors under [`player`] et al.
 
+pub mod capability;
 pub mod ffi;
+pub mod player;
 
+pub use capability::{AudioCommand, AudioReport, AUDIO_CAPABILITY_NAMESPACE};
 pub use ffi::{
     nmp_app_podcast_register, nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free,
     nmp_app_podcast_unregister, PodcastHandle,
@@ -37,3 +44,4 @@ pub use nmp_signer_broker::{
     nmp_app_cancel_bunker_handshake, nmp_app_nostrconnect_uri, nmp_broker_free_string,
     nmp_signer_broker_init,
 };
+pub use player::{PlayerActor, PlayerState};

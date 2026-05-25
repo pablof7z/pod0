@@ -14,6 +14,7 @@ Related files:
 - 2026-05-25 - M1.E: Design + compat layer to make ios/Podcast/Features/ compile - branch `m1e/build-compat` - worktree `/Users/pablofernandez/Work/podcast-player-m1e`. (M1.C / M1.D landed the verbatim view copies but left the project non-compiling against the new target; this PR adds the missing AppTheme + compat shims so the build is green.)
 - 2026-05-25 - M2.E: migrate Library views to `ios/Podcast/Features/Library/` (file-copy half) — branch `m2e/ui-library` worktree `/Users/pablofernandez/Work/podcast-player-m2e`.
 - 2026-05-25 - M2.B+C: `apps/podcast-feeds/` Rust crate (RSS streaming parser, Podcasting 2.0 chapters, OPML import/export, subscription refresh policy) — branch `m2bc/podcast-feeds` worktree `/Users/pablofernandez/Work/podcast-player-m2bc`.
+- 2026-05-25 - M3.A: audio capability Rust skeleton — `AudioCommand`/`AudioReport` contract + `PlayerActor` + player action types in `apps/nmp-app-podcast/`. Branch `m3a/audio-capability` worktree `/Users/pablofernandez/Work/podcast-player-m3a`.
 
 ## Recent History
 

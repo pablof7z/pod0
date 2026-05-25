@@ -28,14 +28,21 @@
 //! Split across sub-modules to keep each file under the 500-LOC hard ceiling.
 //! Every `pub extern "C"` symbol Swift links against is re-exported below.
 
-mod actions;
+pub mod actions;
 mod handle;
 mod helpers;
 mod register;
 mod snapshot;
 
+pub use actions::{
+    PauseAction, PlayAction, SeekAction, SetSleepTimerAction, SetSpeedAction, SetVolumeAction,
+    StopAction, ACTION_PLAYER_PAUSE, ACTION_PLAYER_PLAY, ACTION_PLAYER_SEEK,
+    ACTION_PLAYER_SET_SLEEP_TIMER, ACTION_PLAYER_SET_SPEED, ACTION_PLAYER_SET_VOLUME,
+    ACTION_PLAYER_STOP,
+};
 pub use handle::PodcastHandle;
 pub use register::nmp_app_podcast_register;
 pub use snapshot::{
     nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free, nmp_app_podcast_unregister,
+    PodcastUpdate,
 };
