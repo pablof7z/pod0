@@ -40,7 +40,17 @@ pub fn episode_to_episode(ep: &NIP74Episode, podcast_id: PodcastId) -> Episode {
         ep.title.clone()
     };
 
-    let mut episode = Episode::new(podcast_id, ep.d_tag.clone(), title, audio_url, pub_date);
+    // `Episode::new` derives a UUIDv5 from `(feed_url, guid)`; we immediately
+    // override `episode.id` with the NIP-74 d-tag-derived id below, so the
+    // placeholder `"nip74"` namespace string is a stable but unused input.
+    let mut episode = Episode::new(
+        podcast_id,
+        "nip74",
+        ep.d_tag.clone(),
+        title,
+        audio_url,
+        pub_date,
+    );
     episode.id = EpisodeId::new(episode_id_from_d_tag(&ep.d_tag));
     episode.description = ep.summary.clone();
     episode.duration_secs = ep.duration_secs;

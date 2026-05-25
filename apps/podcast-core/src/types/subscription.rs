@@ -104,6 +104,7 @@ mod tests {
     fn fixture_episode() -> Episode {
         Episode::new(
             PodcastId::generate(),
+            "https://example.com/feed.xml",
             "guid-1",
             "Pilot",
             Url::parse("https://example.com/audio.mp3").unwrap(),

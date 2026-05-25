@@ -45,7 +45,12 @@ impl RssItemAccumulator {
 
     /// Returns `None` when the item lacks an `<enclosure>` URL — common in
     /// hybrid blog/podcast feeds and not playable.
-    pub fn make_episode(self, podcast_id: PodcastId) -> Option<Episode> {
+    ///
+    /// `feed_url` is threaded all the way down from `parse_feed` so the
+    /// resulting [`Episode`]'s id is the same UUIDv5 every time we re-parse
+    /// the same item from the same feed (see
+    /// [`podcast_core::types::episode::EpisodeId::from_feed_and_guid`]).
+    pub fn make_episode(self, podcast_id: PodcastId, feed_url: &str) -> Option<Episode> {
         let enclosure_url = self.enclosure_url.clone()?;
 
         let resolved_guid = match self.guid.as_ref() {
@@ -61,6 +66,7 @@ impl RssItemAccumulator {
 
         let mut episode = Episode::new(
             podcast_id,
+            feed_url,
             resolved_guid,
             self.title.trim().to_string(),
             enclosure_url,

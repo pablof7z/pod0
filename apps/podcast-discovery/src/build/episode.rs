@@ -143,11 +143,15 @@ mod tests {
     fn fixture() -> Episode {
         let mut ep = Episode::new(
             PodcastId::generate(),
+            "https://media.example/feed.xml",
             "publisher-guid",
             "Pilot",
             Url::parse("https://media.example/ep.m4a").unwrap(),
             Utc.timestamp_opt(1_700_000_000, 0).unwrap(),
         );
+        // Pinned id so the d-tag assertions below stay stable. Real callers
+        // either let `Episode::new` derive the id from `(feed_url, guid)` or
+        // override it with a source-specific derivation (NIP-74 d-tag).
         ep.id = EpisodeId::new(
             Uuid::parse_str("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee").unwrap(),
         );

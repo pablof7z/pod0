@@ -173,6 +173,40 @@ fn malformed_xml_errors() {
 }
 
 #[test]
+fn episode_ids_are_stable_across_reparses_of_the_same_feed() {
+    // P0 regression guard: a fresh parse of the same feed bytes against the
+    // same `feed_url` must produce the same episode ids. If this ever fails,
+    // playback positions / download paths / auto-download dedup all break.
+    let a = parse_feed(MINIMAL_FEED.as_bytes(), &feed_url(), PodcastId::generate()).unwrap();
+    let b = parse_feed(MINIMAL_FEED.as_bytes(), &feed_url(), PodcastId::generate()).unwrap();
+    assert_eq!(a.episodes.len(), b.episodes.len());
+    for (lhs, rhs) in a.episodes.iter().zip(b.episodes.iter()) {
+        assert_eq!(lhs.guid, rhs.guid, "guid drifted across parses");
+        assert_eq!(
+            lhs.id, rhs.id,
+            "EpisodeId drifted across parses (guid {})",
+            lhs.guid
+        );
+    }
+}
+
+#[test]
+fn episode_ids_differ_across_different_feed_urls() {
+    let url_a = Url::parse("https://feed-a.example/rss").unwrap();
+    let url_b = Url::parse("https://feed-b.example/rss").unwrap();
+    let a = parse_feed(MINIMAL_FEED.as_bytes(), &url_a, PodcastId::generate()).unwrap();
+    let b = parse_feed(MINIMAL_FEED.as_bytes(), &url_b, PodcastId::generate()).unwrap();
+    assert_eq!(a.episodes.len(), b.episodes.len());
+    for (lhs, rhs) in a.episodes.iter().zip(b.episodes.iter()) {
+        assert_eq!(lhs.guid, rhs.guid);
+        assert_ne!(
+            lhs.id, rhs.id,
+            "same guid across two feed urls should yield distinct ids"
+        );
+    }
+}
+
+#[test]
 fn malformed_pub_date_falls_back_to_epoch() {
     let xml = r#"<?xml version="1.0"?>
 <rss version="2.0">

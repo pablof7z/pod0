@@ -121,7 +121,7 @@ impl ParserState {
             "podcast:soundbite" if self.in_item => self.end_soundbite(trimmed),
             "item" => {
                 let item = std::mem::take(&mut self.item);
-                if let Some(episode) = item.make_episode(self.podcast_id) {
+                if let Some(episode) = item.make_episode(self.podcast_id, self.feed_url.as_str()) {
                     self.episodes.push(episode);
                 }
                 self.in_item = false;

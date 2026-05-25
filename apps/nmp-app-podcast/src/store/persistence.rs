@@ -126,8 +126,12 @@ mod tests {
     }
 
     fn make_episode(podcast_id: PodcastId, title: &str) -> Episode {
+        // Random guid so two `make_episode` calls produce distinct episode
+        // ids (the store dedupes by id). With `Episode::new` now deriving the
+        // id from `(feed_url, guid)`, randomness lives in the guid.
         Episode::new(
             podcast_id,
+            "https://example.com/feed.xml",
             format!("guid-{}", Uuid::new_v4()),
             title,
             url::Url::parse("https://example.com/audio.mp3").unwrap(),
