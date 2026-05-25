@@ -181,6 +181,17 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
     // Read rev without modifying it — writes bump rev in PodcastHostOpHandler.
     let rev = handle.rev.load(Ordering::Relaxed);
 
+    // Fast path: return the cached JSON if rev hasn't changed. This avoids
+    // re-serializing the entire library on every 500ms poll when nothing
+    // has changed — critical for large libraries.
+    if let Ok(cache) = handle.snapshot_cache.lock() {
+        if let Some((cached_rev, ref cached_json)) = *cache {
+            if cached_rev == rev {
+                return cached_json.clone();
+            }
+        }
+    }
+
     // Single lock acquisition for both projections so the queue and
     // `now_playing` are read from the same actor state without a gap
     // a concurrent mutation could slip through.
@@ -277,8 +288,14 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         settings,
         ..PodcastUpdate::default()
     };
-    serde_json::to_string(&update)
-        .unwrap_or_else(|_| r#"{"running":true,"rev":0,"schema_version":1}"#.to_owned())
+    let json = serde_json::to_string(&update)
+        .unwrap_or_else(|_| r#"{"running":true,"rev":0,"schema_version":1}"#.to_owned());
+
+    // Update the cache so the next poll at the same rev skips this work.
+    if let Ok(mut cache) = handle.snapshot_cache.lock() {
+        *cache = Some((rev, json.clone()));
+    }
+    json
 }
 
 /// Serialize the current app state into a JSON C string.

@@ -125,6 +125,7 @@ final class KernelModel {
         snapshotPollTask = nil
         kernel.stop()
         startedKernel = false
+        cleanupCompatState()
     }
 
     func resetAndRestart() {
@@ -152,25 +153,10 @@ final class KernelModel {
                     if update.rev > (self.podcastSnapshot?.rev ?? 0) {
                         self.podcastSnapshot = update
                         self.library = update.library
-                        // Outbound iCloud-settings writeback. The
-                        // capability holds its own "lastWritten" diff
-                        // cache so calling this on every snapshot tick
-                        // is cheap when nothing changed. The snapshot
-                        // is constructed via the bridge below so this
-                        // file does not have to know which fields the
-                        // settings projection currently exposes — the
-                        // bridge returns `nil` for any field the
-                        // projection has not yet adopted.
                         PodcastCapabilities.shared.iCloudSync.applySettingsSnapshot(
                             SettingsKVSnapshot.from(podcastUpdate: update))
-                        kmLog.info("podcast snapshot updated rev=\(update.rev) library=\(update.library.count)")
-                        // Spotlight re-index. The capability does its
-                        // own equality check against its cached copy,
-                        // so feeding it the new library on every rev
-                        // bump is safe — a player-tick rev that didn't
-                        // touch the library short-circuits inside
-                        // `indexLibrary(_:)` without a disk write.
                         PodcastCapabilities.shared.spotlight.indexLibrary(update.library)
+                        kmLog.debug("podcast snapshot updated rev=\(update.rev) library=\(update.library.count)")
                     }
                 }
             }
@@ -253,6 +239,6 @@ final class KernelModel {
         snapshot = update
         snapshotCount &+= 1
         lastSnapshotAt = Date()
-        kmLog.info("apply rev=\(update.rev) running=\(update.running)")
+        kmLog.debug("apply rev=\(update.rev) running=\(update.running)")
     }
 }

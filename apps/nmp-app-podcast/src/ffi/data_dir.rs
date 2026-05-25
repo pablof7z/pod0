@@ -76,6 +76,7 @@ mod tests {
             rev,
             search_results: Arc::new(Mutex::new(Vec::<PodcastSummary>::new())),
             nostr_results: Arc::new(Mutex::new(Vec::<NostrShowSummary>::new())),
+            snapshot_cache: Arc::new(Mutex::new(None)),
         })
     }
 

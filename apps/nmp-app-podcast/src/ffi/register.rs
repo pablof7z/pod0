@@ -71,5 +71,6 @@ pub extern "C" fn nmp_app_podcast_register(
         rev,
         search_results,
         nostr_results,
+        snapshot_cache: Arc::new(Mutex::new(None)),
     }))
 }

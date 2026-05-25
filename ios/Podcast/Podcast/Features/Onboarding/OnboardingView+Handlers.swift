@@ -89,10 +89,6 @@ extension OnboardingView {
     }
 
     func finishOnboarding() {
-        // Mark onboarding complete on the kernel side so the flag survives
-        // launches. The handler bumps `rev`; the next snapshot tick re-emits
-        // `settings.hasCompletedOnboarding = true` and any UI that reads
-        // `model.snapshot?.settings.hasCompletedOnboarding` flips accordingly.
         model.dispatch(
             namespace: "podcast",
             body: [

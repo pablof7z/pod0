@@ -25,6 +25,10 @@ pub struct PodcastHandle {
     /// `handle_discover_nostr` on the actor thread; read by
     /// `build_snapshot_payload` on the main thread.
     pub(super) nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
+    /// Rev-keyed snapshot cache. `build_snapshot_payload` writes `(rev, json)`
+    /// here after every rebuild; the next poll hit with the same `rev` returns
+    /// the cached string without re-serializing the entire library.
+    pub(super) snapshot_cache: Arc<Mutex<Option<(u64, String)>>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the

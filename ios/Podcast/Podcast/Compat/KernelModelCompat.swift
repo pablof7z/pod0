@@ -33,7 +33,7 @@ extension KernelModel {
     /// each `KernelModel` instance owns its own copy without leaking across
     /// previews/tests.
     @MainActor
-    private static var compatStates: [ObjectIdentifier: KernelState] = [:]
+    fileprivate static var compatStates: [ObjectIdentifier: KernelState] = [:]
 
     /// Legacy `state` accessor. Returns the in-memory compat state; never
     /// nil. Each `KernelModel` instance is keyed by identity so multiple
@@ -51,6 +51,15 @@ extension KernelModel {
             Self.compatStates[ObjectIdentifier(self)] = newValue
         }
     }
+
+    /// Called from `KernelModel.stop()` to remove the entry so the dictionary
+    /// does not grow indefinitely when multiple instances are created (e.g.
+    /// SwiftUI previews).
+    @MainActor
+    func cleanupCompatState() {
+        Self.compatStates.removeValue(forKey: ObjectIdentifier(self))
+    }
+
 
     /// Legacy podcast-lookup-by-feed. Compat: always returns nil. The
     /// onboarding subscribe flow will re-acquire this when the Rust kernel
