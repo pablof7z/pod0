@@ -60,6 +60,20 @@ struct PodcastApp: App {
                 .onContinueUserActivity(CSSearchableItemActionType) { activity in
                     deepLinkRouter.handle(activity)
                 }
+                // Feature #51 — Handoff. Donate / invalidate
+                // `NSUserActivity(activityType: "io.f7z.podcast.playing")`
+                // as the now-playing episode changes; receive on the
+                // other end and dispatch the same playback action so the
+                // user picks up where they left off. The observed key is
+                // `episodeId` (not the entire `PlayerState`) so we don't
+                // re-donate on every tick of position drift.
+                .onChange(of: model.podcastSnapshot?.nowPlaying?.episodeId,
+                          initial: true) { _, newID in
+                    handleNowPlayingChange(episodeID: newID)
+                }
+                .onContinueUserActivity(HandoffState.activityPlaying) { activity in
+                    handleIncomingHandoff(activity)
+                }
         }
         .onChange(of: scenePhase) { _, newPhase in
             // D7: Swift reports the fact; the kernel decides what each
@@ -77,6 +91,52 @@ struct PodcastApp: App {
             @unknown default:
                 break
             }
+        }
+    }
+
+    // MARK: - Handoff
+
+    /// Donate or invalidate the playback `NSUserActivity` in response to a
+    /// now-playing episode change. The kernel doesn't carry display strings
+    /// on `PlayerState`, so we look the title up from the library at
+    /// donation time and pass it through.
+    @MainActor
+    private func handleNowPlayingChange(episodeID: String?) {
+        let platform = PodcastCapabilities.shared.platform
+        guard let episodeID, !episodeID.isEmpty else {
+            platform.clearHandoff()
+            return
+        }
+        let player = model.podcastSnapshot?.nowPlaying
+        let show = model.library.first { $0.episodes.contains { $0.id == episodeID } }
+        let episode = show?.episodes.first { $0.id == episodeID }
+        platform.donatePlayback(
+            episodeID: episodeID,
+            podcastID: show?.id,
+            episodeTitle: episode?.title,
+            positionSecs: player?.positionSecs)
+    }
+
+    /// Receive a Handoff continuation. Extract the episode id + recorded
+    /// position from `userInfo` and dispatch `podcast.player.play` followed
+    /// by `podcast.player.seek` so the receiving device picks up where the
+    /// donating device left off.
+    @MainActor
+    private func handleIncomingHandoff(_ activity: NSUserActivity) {
+        guard
+            let info = activity.userInfo,
+            let episodeID = info[HandoffUserInfoKey.episodeID] as? String,
+            !episodeID.isEmpty
+        else { return }
+        model.dispatch(namespace: "podcast.player", body: [
+            "op": "play",
+            "episode_id": episodeID,
+        ])
+        if let position = info[HandoffUserInfoKey.positionSecs] as? Double, position > 0 {
+            model.dispatch(namespace: "podcast.player", body: [
+                "op": "seek",
+                "position_secs": position,
+            ])
         }
     }
 }

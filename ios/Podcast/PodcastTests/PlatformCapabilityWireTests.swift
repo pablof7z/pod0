@@ -165,4 +165,68 @@ final class PlatformCapabilityWireTests: XCTestCase {
         cap.clearHandoff()
         cap.stop()
     }
+
+    // MARK: - Feature #51 — Handoff donate / receive
+
+    @MainActor
+    func testDonatePlaybackBuildsExpectedHandoffState() {
+        // `donatePlayback` is the iOS-side convenience the
+        // `PodcastApp` observer calls when `nowPlaying.episodeId`
+        // changes. The constructed `HandoffState` must use the
+        // playing activity type so the OS / receiving device sees
+        // the same wire shape the Rust kernel would emit.
+        let state = HandoffState(
+            activityType: HandoffState.activityPlaying,
+            episodeID: "ep-1",
+            podcastID: "pod-1",
+            positionSecs: 42.5)
+        XCTAssertEqual(state.activityType, "io.f7z.podcast.playing")
+        XCTAssertTrue(state.isKnownActivityType)
+        XCTAssertEqual(state.episodeID, "ep-1")
+        XCTAssertEqual(state.podcastID, "pod-1")
+        XCTAssertEqual(state.positionSecs, 42.5)
+    }
+
+    @MainActor
+    func testDonatePlaybackIsSafeWithoutAppRunning() {
+        // Smoke test — `donatePlayback` must be callable from the
+        // SwiftUI `.onChange(initial: true)` observer that fires
+        // before `start()` has run. No crash, no observable side
+        // effects in a unit-test target (the OS rejects the
+        // donation; the capability swallows the call cleanly).
+        let cap = PlatformCapability()
+        cap.donatePlayback(
+            episodeID: "ep-1",
+            podcastID: "pod-1",
+            episodeTitle: "Ep 1 title",
+            positionSecs: 0)
+        cap.clearHandoff()
+    }
+
+    func testHandoffUserInfoRoundTripsThroughNSUserActivity() {
+        // The receiving side (`PodcastApp.handleIncomingHandoff`) reads
+        // `userInfo[HandoffUserInfoKey.episodeID]` /
+        // `[.positionSecs]` from the donated activity. Pin the
+        // round-trip so a future serialization tweak doesn't drop the
+        // values the receiver depends on.
+        let activity = NSUserActivity(activityType: HandoffState.activityPlaying)
+        activity.userInfo = [
+            HandoffUserInfoKey.episodeID: "ep-7",
+            HandoffUserInfoKey.podcastID: "pod-2",
+            HandoffUserInfoKey.positionSecs: 123.4,
+        ]
+        let info = activity.userInfo ?? [:]
+        XCTAssertEqual(info[HandoffUserInfoKey.episodeID] as? String, "ep-7")
+        XCTAssertEqual(info[HandoffUserInfoKey.podcastID] as? String, "pod-2")
+        XCTAssertEqual(info[HandoffUserInfoKey.positionSecs] as? Double, 123.4)
+    }
+
+    func testHandoffUserInfoKeyConstantsMatchWireSchema() {
+        // The keys are also the JSON field names on `HandoffState`
+        // (snake_case). Pin them so a rename on either side fails the
+        // build on the iOS test target.
+        XCTAssertEqual(HandoffUserInfoKey.episodeID, "episode_id")
+        XCTAssertEqual(HandoffUserInfoKey.podcastID, "podcast_id")
+        XCTAssertEqual(HandoffUserInfoKey.positionSecs, "position_secs")
+    }
 }

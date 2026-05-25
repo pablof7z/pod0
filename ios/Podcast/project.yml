@@ -23,6 +23,12 @@ targets:
         UILaunchScreen: {}
         CFBundleDisplayName: Pod0
         UIApplicationSupportsIndirectInputEvents: true
+        # Handoff (NSUserActivity) — keep in lock-step with
+        # `HandoffState.activityPlaying` / `activityBrowsing` in
+        # `Podcast/Capabilities/PlatformCapability.swift`.
+        NSUserActivityTypes:
+          - io.f7z.podcast.playing
+          - io.f7z.podcast.browsing
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.f7z.podcast

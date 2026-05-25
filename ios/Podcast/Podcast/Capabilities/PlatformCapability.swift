@@ -166,7 +166,15 @@ final class PlatformCapability {
     /// unknown `activity_type` (e.g. a future activity id the
     /// kernel started emitting that this binary doesn't know
     /// about) is dropped — D6.
-    func donateHandoff(_ state: HandoffState) {
+    ///
+    /// `title` populates `NSUserActivity.title`, which Handoff
+    /// renders on the receiving device's lock-screen banner and
+    /// the Mac Dock badge. The kernel `HandoffState` carries
+    /// transport identifiers only (episode/podcast/position) —
+    /// display strings are looked up from the library at donation
+    /// time by the iOS caller and passed in here so the wire
+    /// shape stays narrow.
+    func donateHandoff(_ state: HandoffState, title: String? = nil) {
         guard state.isKnownActivityType else {
             Self.logger.debug(
                 "dropping handoff with unknown activity type \(state.activityType, privacy: .public)")
@@ -175,6 +183,9 @@ final class PlatformCapability {
         currentActivity?.invalidate()
         let activity = NSUserActivity(activityType: state.activityType)
         activity.isEligibleForHandoff = true
+        if let title, !title.isEmpty {
+            activity.title = title
+        }
         var userInfo: [String: Any] = [:]
         if let id = state.episodeID {
             userInfo[HandoffUserInfoKey.episodeID] = id
@@ -188,8 +199,33 @@ final class PlatformCapability {
         if !userInfo.isEmpty {
             activity.userInfo = userInfo
         }
+        activity.needsSave = true
         activity.becomeCurrent()
         currentActivity = activity
+    }
+
+    /// Convenience wrapper for the playback activity. Builds a
+    /// `HandoffState(activityType: activityPlaying, ...)` and
+    /// delegates to `donateHandoff` so the activity-type /
+    /// userInfo encoding stays in one place.
+    ///
+    /// Used by the snapshot observer in `PodcastApp` while the
+    /// kernel projection is still iOS-driven (M11 stub). Once
+    /// the kernel begins emitting `HandoffState` directly, the
+    /// observer can switch to calling `donateHandoff` with the
+    /// emitted state.
+    func donatePlayback(
+        episodeID: String,
+        podcastID: String? = nil,
+        episodeTitle: String? = nil,
+        positionSecs: Double? = nil
+    ) {
+        let state = HandoffState(
+            activityType: HandoffState.activityPlaying,
+            episodeID: episodeID,
+            podcastID: podcastID,
+            positionSecs: positionSecs)
+        donateHandoff(state, title: episodeTitle)
     }
 
     /// Invalidate the currently-donated activity. Called when the
@@ -200,76 +236,6 @@ final class PlatformCapability {
     }
 }
 
-// MARK: - Wire types (Swift mirror of the Rust schema)
-
-/// Swift mirror of `apps/nmp-app-podcast/src/ffi/snapshot.rs`
-/// `WidgetSnapshot`. Hand-mirrored (not generated) until the
-/// `dump_projection_schemas` codegen catches up — keep the field
-/// names + `Codable` semantics in lock-step with the Rust source.
-///
-/// The widget extension decodes the JSON payload this struct
-/// encodes; the extension defines its own copy of the type because
-/// the two targets don't share Swift sources.
-struct WidgetSnapshot: Codable, Equatable {
-    var nowPlayingEpisodeTitle: String?
-    var nowPlayingPodcastTitle: String?
-    var nowPlayingArtworkURL: String?
-    var isPlaying: Bool
-    /// `0.0..=1.0`; pre-computed by Rust so the widget can render
-    /// a ring without dividing by a possibly-zero duration.
-    var positionFraction: Float
-    var unplayedCount: Int
-
-    enum CodingKeys: String, CodingKey {
-        case nowPlayingEpisodeTitle = "now_playing_episode_title"
-        case nowPlayingPodcastTitle = "now_playing_podcast_title"
-        case nowPlayingArtworkURL = "now_playing_artwork_url"
-        case isPlaying = "is_playing"
-        case positionFraction = "position_fraction"
-        case unplayedCount = "unplayed_count"
-    }
-}
-
-/// Swift mirror of `apps/podcast-core/src/types/handoff.rs`
-/// `HandoffState`. The Rust side guarantees `activityType` is
-/// one of the known string ids; `isKnownActivityType` performs
-/// the defensive check on the iOS side (D6 — unknown wire data
-/// is dropped, not thrown).
-struct HandoffState: Codable, Equatable {
-    /// `io.f7z.podcast.playing` — playback in progress.
-    static let activityPlaying = "io.f7z.podcast.playing"
-    /// `io.f7z.podcast.browsing` — non-player surface foregrounded.
-    static let activityBrowsing = "io.f7z.podcast.browsing"
-
-    var activityType: String
-    var episodeID: String?
-    var podcastID: String?
-    var positionSecs: Double?
-
-    enum CodingKeys: String, CodingKey {
-        case activityType = "activity_type"
-        case episodeID = "episode_id"
-        case podcastID = "podcast_id"
-        case positionSecs = "position_secs"
-    }
-
-    /// `true` when `activityType` matches one of the platform
-    /// capability's known activity ids.
-    var isKnownActivityType: Bool {
-        switch activityType {
-        case Self.activityPlaying, Self.activityBrowsing:
-            return true
-        default:
-            return false
-        }
-    }
-}
-
-/// `userInfo` keys the iOS executor populates on a donated
-/// `NSUserActivity`. The receiving side (the same app on another
-/// device) reads back via these keys.
-enum HandoffUserInfoKey {
-    static let episodeID = "episode_id"
-    static let podcastID = "podcast_id"
-    static let positionSecs = "position_secs"
-}
+// Wire types (`WidgetSnapshot`, `HandoffState`, `HandoffUserInfoKey`)
+// live in `PlatformCapability+WireTypes.swift` so this capability file
+// stays under the soft 300-line limit per AGENTS.md.
