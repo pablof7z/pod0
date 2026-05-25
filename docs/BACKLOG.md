@@ -6,9 +6,22 @@ worktrees currently in flight.
 
 ## Active
 
-- **P0 - Pod0 rename.** Rename the working app identity from Podcastr to Pod0 where users or generated project surfaces see the app name. Preserve stable identifiers unless an explicit migration plan says otherwise: `io.f7z.podcast`, `io.f7z.podcast.widget`, `group.com.podcastr.app`, URL scheme/data identifiers, and existing Keychain/data continuity should not be changed as part of the display-name rename.
+- **P0 - Pod0 rename.** ~~Rename the working app identity from Podcastr to Pod0 where users or generated project surfaces see the app name.~~ Done via PR #52 — stable identifiers preserved.
 - **P0 - NIP-F4 owned podcast publishing.** Implement `docs/plan/pod0-nostr-publishing.md`: per-podcast keys, kind `10154` show events, kind `54` episode events, kind `10064` author claims, and deletion cleanup.
 - **P0 - NIP-F4 discovery.** Update discovery parsing and episode fetches for kind `10154`/`54`, no `d` tags, and stable UUID derivation from `10154:<podcast-pubkey>`.
+
+## AppIntents / Siri follow-ups
+
+- **appintents-siri-rust-policy** — `PodcastAppIntents.swift` currently selects "latest unplayed episode" in iOS; per D7, policy belongs in Rust. Register `SiriActionModule` in `nmp_app_podcast_register` and add a `podcast.siri.play_latest` action that resolves the episode server-side. iOS intent then dispatches `podcast.siri.play_latest` with no args.
+- **appintents-skip-forward-op** — Skip-forward intent hard-codes 30s. Add a `podcast.player.skip_forward { secs: f64 }` Rust action (rather than client-side seek offset math) so the skip interval can come from user settings and be shared with CarPlay/HW remotes.
+
+## Player follow-ups
+
+- **speed-chip-clamp-mismatch** — ~~Fixed via PR #55: raised PlayerActor clamp + AudioCapability clamp to 3.0×.~~
+
+## Episode ID stability (P0 bug)
+
+- **episode-id-stability** — `Episode::new` generates a fresh random `EpisodeId` (UUID) on every RSS parse. This means the same episode gets a new ID on every feed refresh, which breaks: (1) playback position persistence (`position_secs` keyed by ID), (2) download path lookups (`local_paths` in the store), (3) auto-download deduplication (must match by `guid` as a workaround). **Fix**: derive `EpisodeId` deterministically from the feed URL + episode GUID, e.g. `UUIDv5(namespace=PODCAST_NS, name="<feed_url>:<episode_guid>")`. Update `Episode::new` in `podcast-core`, add a roundtrip test, and remove the `guid`-based workaround in `store/auto_download.rs`. High priority — affects every feature that stores per-episode state.
 
 ## NMP Feature Parity — PR 1 follow-ups
 

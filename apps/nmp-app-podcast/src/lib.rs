@@ -40,7 +40,6 @@ pub mod ffi;
 pub(crate) mod host_op_handler;
 pub(crate) mod host_op_handler_helpers;
 pub(crate) mod itunes_search;
-pub(crate) mod itunes;
 pub mod player;
 pub mod store;
 pub(crate) mod transcript;

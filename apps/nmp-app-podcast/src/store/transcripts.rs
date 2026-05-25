@@ -34,6 +34,7 @@ mod tests {
         let podcast = Podcast::new("Transcript Show");
         let mut episode = Episode::new(
             podcast.id,
+            "https://example.com/feed.xml",
             "guid-transcript",
             "Transcript Episode",
             url::Url::parse("https://example.com/audio.mp3").unwrap(),

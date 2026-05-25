@@ -205,6 +205,7 @@ mod tests {
         let podcast = Podcast::new("Show");
         let ep = Episode::new(
             podcast.id,
+            "https://ex.com/feed.xml",
             "guid-1",
             "Title",
             Url::parse("https://ex.com/ep.mp3").expect("url"),

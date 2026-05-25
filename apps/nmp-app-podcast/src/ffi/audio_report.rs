@@ -176,9 +176,11 @@ mod tests {
     }
 
     fn make_episode(podcast_id: PodcastId, title: &str) -> Episode {
+        let guid = format!("guid-{}", Uuid::new_v4());
         Episode::new(
             podcast_id,
-            format!("guid-{}", Uuid::new_v4()),
+            "https://example.com/feed.xml",
+            guid,
             title,
             Url::parse("https://example.com/audio.mp3").unwrap(),
             chrono::Utc::now(),
