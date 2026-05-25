@@ -2,7 +2,12 @@ import SwiftUI
 
 @main
 struct PodcastApp: App {
-    @StateObject private var model = KernelModel()
+    // `@State` (not `@StateObject`) because KernelModel is now `@Observable`.
+    @State private var model = KernelModel()
+
+    // Compat shim — bridges legacy Identity views' `@Environment(UserIdentityStore.self)`
+    // injection. Replaced when functional sign-in lands at M1 exit.
+    @State private var identityStore = UserIdentityStore()
 
     // T118 / G3 — iOS scenePhase observer. Routes `.active` / `.background`
     // to the kernel; silently drops `.inactive` (app-switcher interstitial —
@@ -13,7 +18,8 @@ struct PodcastApp: App {
     var body: some Scene {
         WindowGroup {
             RootShell()
-                .environmentObject(model)
+                .environment(model)
+                .environment(identityStore)
                 .tint(PodcastColor.accent)
                 .task { model.start() }
         }

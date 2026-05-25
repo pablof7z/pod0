@@ -28,7 +28,7 @@ final class PodcastRouter: ObservableObject {
 enum PodcastTab: Hashable { case home }
 
 struct RootShell: View {
-    @EnvironmentObject private var model: KernelModel
+    @Environment(KernelModel.self) private var model
 
     @State private var tab: PodcastTab = .home
 

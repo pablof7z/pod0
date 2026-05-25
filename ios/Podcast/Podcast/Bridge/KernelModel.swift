@@ -1,39 +1,45 @@
 import Foundation
+import Observation
 import SwiftUI
 import os.log
 
 private let kmLog = Logger(subsystem: "io.f7z.podcast", category: "KernelModel")
 
-/// `ObservableObject` mirror of the kernel snapshot. The Rust actor pushes
+/// `@Observable` mirror of the kernel snapshot. The Rust actor pushes
 /// JSON updates via the C callback; this class decodes them and republishes
 /// for SwiftUI consumption.
 ///
 /// Thin-shell: all state lives in `snapshot`. No business logic. No derived
 /// caches. Every accessor is a pure read of the kernel snapshot (D2, D4, D8).
+///
+/// `@Observable` (not `ObservableObject`) so the migrated Identity / Agent /
+/// Onboarding views can use `@Environment(KernelModel.self)`. Observation is
+/// emitted automatically for plain stored properties.
 @MainActor
-final class KernelModel: ObservableObject {
+@Observable
+final class KernelModel {
 
     // ── Snapshot slot ──────────────────────────────────────────────────────
 
     /// Latest decoded snapshot. `nil` before the first tick lands.
-    @Published private(set) var snapshot: PodcastUpdate?
+    private(set) var snapshot: PodcastUpdate?
 
     // ── Local counters ─────────────────────────────────────────────────────
 
-    @Published private(set) var snapshotCount: UInt64 = 0
-    @Published private(set) var lastSnapshotAt: Date?
+    private(set) var snapshotCount: UInt64 = 0
+    private(set) var lastSnapshotAt: Date?
 
     /// Clearable toast text sourced from snapshot or synchronous dispatch
     /// rejections.
-    @Published private(set) var lastErrorToast: String?
+    private(set) var lastErrorToast: String?
 
     /// D7 actor-death surface — flips to `true` exactly once when the Rust
     /// supervisor emits a panic frame or the foreground-resume probe detects
     /// the actor gone. Terminal: only a process restart recovers.
-    @Published private(set) var kernelIsDead: Bool = false
+    private(set) var kernelIsDead: Bool = false
 
-    @Published var visibleLimit: UInt32 = 80
-    @Published var emitHz: UInt32 = 4
+    var visibleLimit: UInt32 = 80
+    var emitHz: UInt32 = 4
 
     // ── Computed projections ───────────────────────────────────────────────
 

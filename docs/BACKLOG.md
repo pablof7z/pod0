@@ -38,6 +38,50 @@ These items are prerequisites or follow-up work for specific milestones in `Plan
 - **per-view-emit-rate** — extend `nmp-core` tick loop to support per-view emit rates so agent streaming tokens can hit 30 Hz. Required before M7. File NMP BACKLOG entry when M7 starts.
 - **threading-podcast-peer** — confirm `nmp-threading` exposes the API `podcast-peer` needs; extend if not. Pre-M10.
 
+## NMP Migration — M1.E compat shims to remove
+
+The M1.E build-compat layer at `ios/Podcast/Podcast/Compat/` is staging
+scaffolding. Every entry below is a placeholder type with a no-op or
+throwing implementation; each must be deleted (and the corresponding
+migrated view re-wired) before the milestone it is anchored to closes.
+
+- **M1 exit — `UserIdentityStore` shim.** Delete `Compat/UserIdentityStoreCompat.swift`
+  and inject a real identity store backed by `nmp-signer-broker` via the
+  KernelModel snapshot. Re-wire `.environment(UserIdentityStore())` in
+  `PodcastApp.swift` to whatever the M1 exit deliverable lands.
+- **M1 exit — Keychain-backed credential stubs.** Delete the
+  `NostrCredentialStore`, `NostrKeyPair`, and `Bech32` shims in
+  `Compat/ServiceStubs.swift` + `Compat/UtilityStubs.swift`. Replace with
+  the real BYOK Keychain capability + `nmp-keys` Swift bindings.
+- **M2 — `Podcast` + `SubscriptionService` shims.** Delete from
+  `Compat/DomainStubs.swift` and `Compat/ServiceStubs.swift` once the
+  podcast / subscription projections land in `nmp-app-podcast`. Re-wire
+  `KernelModel.podcast(feedURL:)` and `KernelModel.subscription(podcastID:)`
+  in `Compat/KernelModelCompat.swift` to pure snapshot reads.
+- **M3 — `Settings` projection.** Delete `Compat/SettingsCompat.swift` and
+  the `state` / `updateSettings` extensions in `Compat/KernelModelCompat.swift`.
+  Settings should be a real kernel projection emitted by `nmp-app-podcast`.
+  Also delete the `OpenRouterCredentialStore` + `BYOKConnectService` shims
+  in `Compat/ServiceStubs.swift` and replace with the LLM-provider credential
+  capability.
+- **M7 — Agent / Nostr conversation projections.** Delete the
+  `NostrConversationRecord/Turn/ProfileMetadata/PendingApproval` stubs in
+  `Compat/DomainStubs.swift`, plus the agent surface (`nostrConversations`,
+  `nostrProfileCache`, `pendingNostrApprovals`, `allowNostrPubkey`,
+  `blockNostrPubkey`) in `Compat/KernelModelCompat.swift`. Delete the
+  `Nip46ConnectCard` + `AgentConnectionSettingsView` stubs in
+  `Compat/ServiceStubs.swift`.
+- **M10 — Blossom + image cache.** Delete `BlossomUploading` + `BlossomUploader`
+  stubs in `Compat/ServiceStubs.swift`. Delete `CachedAsyncImage` shim in
+  `Compat/UtilityStubs.swift` and replace with the disk + memory cache
+  served from the HTTP capability.
+- **Design system → Capabilities.** `Compat/UtilityStubs.swift` houses
+  view helpers (`Haptics`, `glassSurface`, `dismissKeyboardToolbar`,
+  `copyToClipboard`, `SystemShareSheet`, `DeepLinkHandler`, `String.trimmed/isBlank`,
+  `Data(hexString:)`). These are pure UI utilities — promote them to a
+  proper design-system module (`ios/Podcast/Podcast/Design/`) when the
+  M2+ design-system work begins.
+
 ## Pending Decisions
 
 - None currently. If a change would alter bundle IDs, App Group identifiers, URL schemes, persisted state keys, or relay/event compatibility beyond the active plan, add the decision here before implementation.

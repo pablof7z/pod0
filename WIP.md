@@ -11,6 +11,7 @@ Related files:
 ## Active
 
 - 2026-05-25 - M2.A: create `apps/podcast-core/` Rust crate with domain types + projections skeleton — branch `m2a/podcast-core` worktree `/Users/pablofernandez/Work/podcast-player-m2a`.
+- 2026-05-25 - M1.E: Design + compat layer to make ios/Podcast/Features/ compile - branch `m1e/build-compat` - worktree `/Users/pablofernandez/Work/podcast-player-m1e`. (M1.C / M1.D landed the verbatim view copies but left the project non-compiling against the new target; this PR adds the missing AppTheme + compat shims so the build is green.)
 
 ## Recent History
 
