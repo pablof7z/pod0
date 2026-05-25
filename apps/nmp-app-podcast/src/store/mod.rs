@@ -50,6 +50,14 @@ pub struct PodcastStore {
     local_paths: HashMap<EpisodeId, String>,
     /// Plain-text transcripts keyed by the string form of `EpisodeId`.
     transcripts: HashMap<String, String>,
+    /// Last position (seconds) committed to disk for each episode, keyed by
+    /// the string form of `EpisodeId`. Used by the writeback layer to decide
+    /// whether the live playhead has drifted enough from the on-disk
+    /// checkpoint to warrant another `persist()`. Cleared on `set_data_dir`
+    /// since a freshly-bound store hasn't flushed anything yet — the
+    /// hydrated values from disk are themselves the most-recent checkpoint.
+    /// Not persisted: this is a runtime throttling marker, not durable state.
+    last_flushed_positions: HashMap<String, f64>,
     data_dir: Option<PathBuf>,
 }
 
@@ -60,6 +68,7 @@ impl PodcastStore {
             episodes: HashMap::new(),
             local_paths: HashMap::new(),
             transcripts: HashMap::new(),
+            last_flushed_positions: HashMap::new(),
             data_dir: None,
         }
     }
@@ -95,8 +104,18 @@ impl PodcastStore {
         self.episodes.clear();
         self.local_paths.clear();
         self.transcripts.clear();
+        // Hydrated episode positions are themselves the most-recent flushed
+        // checkpoint: seed the throttling marker so the writeback layer
+        // doesn't immediately re-flush on the next `Playing` tick.
+        self.last_flushed_positions.clear();
         for row in loaded.podcasts {
             let id = row.podcast.id;
+            for ep in &row.episodes {
+                if ep.position_secs > 0.0 {
+                    self.last_flushed_positions
+                        .insert(ep.id.0.to_string(), ep.position_secs);
+                }
+            }
             self.podcasts.insert(id, row.podcast);
             self.episodes.insert(id, row.episodes);
         }
@@ -304,9 +323,38 @@ impl PodcastStore {
     /// (pause, stop, app background, periodic interval) so the in-memory
     /// position deltas survive a hard kill.
     ///
-    /// Silent no-op when no data dir has been bound (D6).
-    pub fn flush_positions(&self) {
+    /// Side-effect: snapshots the current `Episode.position_secs` for every
+    /// known episode into the in-memory "last flushed" marker so subsequent
+    /// `Playing` ticks can throttle off the on-disk state, not the previous
+    /// in-memory tick. Silent no-op when no data dir has been bound (D6).
+    pub fn flush_positions(&mut self) {
+        // Take the snapshot of what we're about to persist before the rename
+        // races, so the marker is consistent with what is now on disk.
+        for episodes in self.episodes.values() {
+            for ep in episodes {
+                let key = ep.id.0.to_string();
+                if ep.position_secs > 0.0 {
+                    self.last_flushed_positions.insert(key, ep.position_secs);
+                } else {
+                    // A reset to 0 should clear the marker so the next
+                    // forward-playing tick is treated as fresh.
+                    self.last_flushed_positions.remove(&key);
+                }
+            }
+        }
         self.persist();
+    }
+
+    /// Look up the most recently persisted position for an episode, or
+    /// `None` when nothing has been flushed for it this session (and the
+    /// initial hydration didn't seed a value). Used by the FFI writeback
+    /// layer to decide whether the live playhead has drifted enough from
+    /// the on-disk checkpoint to warrant another flush — the throttling
+    /// MUST compare against the last *flushed* position rather than the
+    /// previous tick's in-memory value, otherwise an uninterrupted stream
+    /// of small ≤4 Hz `Playing` deltas never crosses the threshold.
+    pub fn last_flushed_position(&self, id_str: &str) -> Option<f64> {
+        self.last_flushed_positions.get(id_str).copied()
     }
 
     /// Test-only accessor for the currently-bound data dir.

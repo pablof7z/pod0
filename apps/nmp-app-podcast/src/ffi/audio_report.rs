@@ -109,14 +109,20 @@ pub extern "C" fn nmp_app_podcast_audio_report(
 /// `episode_id`. Flushes to disk on terminal events (Paused / Stopped /
 /// SleepTimerFired) and on a coarse position-delta threshold during
 /// `Playing` so a long uninterrupted stream still checkpoints.
+///
+/// The throttling threshold compares against the most-recent **flushed**
+/// position (`store.last_flushed_position`), not the previous tick's
+/// in-memory value. Comparing against the previous tick would never
+/// trigger during a real ≤4 Hz playback stream (each tick advances ~0.25 s
+/// and the diff stays tiny forever).
 fn apply_writeback(store: &mut PodcastStore, report: &AudioReport, episode_id: &str) {
     match report {
         AudioReport::Playing { position_secs, .. } => {
-            let prev = store.position_for(episode_id).unwrap_or(0.0);
+            let last_flushed = store.last_flushed_position(episode_id).unwrap_or(0.0);
             if !store.set_episode_position(episode_id, *position_secs) {
                 return; // no matching episode — nothing to flush
             }
-            if (*position_secs - prev).abs() >= POSITION_FLUSH_DELTA_SECS {
+            if (*position_secs - last_flushed).abs() >= POSITION_FLUSH_DELTA_SECS {
                 store.flush_positions();
             }
         }
@@ -310,5 +316,48 @@ mod tests {
             &ep_id,
         );
         assert_eq!(store.position_for(&ep_id), Some(12.0));
+    }
+
+    /// Regression for the throttling bug: 200 small ≤4 Hz ticks (typical of a
+    /// real playback stream, each advancing ~0.25 s) must still produce at
+    /// least one mid-stream flush so a hard kill loses at most one delta of
+    /// position. The earlier `prev = position_for(...)` comparison made this
+    /// loop never flush — the fix anchors the throttle to the last
+    /// **flushed** position instead.
+    #[test]
+    fn continuous_playback_checkpoints_periodically() {
+        let dir = TempDir::new("continuous");
+        let mut store = PodcastStore::new();
+        store.set_data_dir(dir.path.clone());
+        let podcast = Podcast::new("Continuous");
+        let pid = podcast.id;
+        let ep = make_episode(pid, "Ep");
+        let ep_id = ep.id.0.to_string();
+        store.subscribe(podcast, vec![ep]);
+
+        // 200 ticks at 0.25 s each = 50 s of playback. At a 30 s flush
+        // threshold the stream should checkpoint at least once mid-stream.
+        for i in 1..=200 {
+            apply_writeback(
+                &mut store,
+                &AudioReport::Playing {
+                    url: "u".into(),
+                    position_secs: (i as f64) * 0.25,
+                    duration_secs: 3600.0,
+                },
+                &ep_id,
+            );
+        }
+
+        // Reload from disk without flushing — the on-disk position must be
+        // past the first 30 s threshold (so a kill mid-stream loses at most
+        // ~30 s, not the entire 50 s).
+        let mut reloaded = PodcastStore::new();
+        reloaded.set_data_dir(dir.path.clone());
+        let on_disk = reloaded.position_for(&ep_id).expect("checkpointed");
+        assert!(
+            on_disk >= 30.0,
+            "expected an on-disk checkpoint past 30 s, got {on_disk}"
+        );
     }
 }
