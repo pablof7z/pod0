@@ -189,15 +189,20 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
                 author: if podcast.author.is_empty() { None } else { Some(podcast.author.clone()) },
                 episodes: episodes
                     .iter()
-                    .map(|ep| EpisodeSummary {
-                        id: ep.id.0.to_string(),
-                        title: ep.title.clone(),
-                        podcast_id: Some(podcast.id.0.to_string()),
-                        podcast_title: Some(podcast.title.clone()),
-                        duration_secs: ep.duration_secs,
-                        artwork_url: ep.image_url.as_ref().map(|u| u.to_string()),
-                        published_at: Some(ep.pub_date.timestamp()),
-                        download_path: s.local_path_for(&ep.id).map(str::to_owned),
+                    .map(|ep| {
+                        let ep_id = ep.id.0.to_string();
+                        let transcript = s.transcript_for(&ep_id).map(str::to_owned);
+                        EpisodeSummary {
+                            id: ep_id,
+                            title: ep.title.clone(),
+                            podcast_id: Some(podcast.id.0.to_string()),
+                            podcast_title: Some(podcast.title.clone()),
+                            duration_secs: ep.duration_secs,
+                            artwork_url: ep.image_url.as_ref().map(|u| u.to_string()),
+                            published_at: Some(ep.pub_date.timestamp()),
+                            download_path: s.local_path_for(&ep.id).map(str::to_owned),
+                            transcript,
+                        }
                     })
                     .collect(),
             })

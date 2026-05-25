@@ -16,10 +16,8 @@ struct MiniPlayerView: View {
     @Environment(KernelModel.self) private var model
 
     @State private var showPlayer = false
-    /// Drives the `UpNextSheet` presentation. Local to the view because
-    /// the sheet has no kernel-side state of its own — open/closed lives
-    /// purely in the UI layer.
     @State private var isUpNextPresented = false
+    @State private var showTranscript = false
 
     private var nowPlaying: PlayerState? {
         model.podcastSnapshot?.nowPlaying
@@ -50,6 +48,12 @@ struct MiniPlayerView: View {
                     UpNextSheet()
                         .presentationDetents([.medium, .large])
                         .presentationDragIndicator(.visible)
+                }
+                .sheet(isPresented: $showTranscript) {
+                    if let episode {
+                        TranscriptSheet(episode: episode)
+                            .environment(model)
+                    }
                 }
         }
     }
@@ -143,15 +147,28 @@ struct MiniPlayerView: View {
 
     private func controls(player: PlayerState) -> some View {
         HStack(spacing: PodcastSpace.s) {
+            transcriptButton
             upNextButton
             playPauseButton(isPlaying: player.isPlaying)
             skipForwardButton
         }
     }
 
-    /// Up-next button — opens the playback queue sheet. The count
-    /// badge only renders when the queue is non-empty; visibility is
-    /// driven purely by the kernel snapshot.
+    private var transcriptButton: some View {
+        Button {
+            guard episode != nil else { return }
+            showTranscript = true
+        } label: {
+            Image(systemName: "text.bubble")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(PodcastColor.textPrimary)
+                .frame(width: 36, height: 36)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Show transcript")
+        .disabled(episode == nil)
+    }
+
     private var upNextButton: some View {
         Button {
             isUpNextPresented = true

@@ -266,6 +266,17 @@ pub struct EpisodeSummary {
     /// `PodcastStore::local_path_for`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub download_path: Option<String>,
+    /// Plain-text transcript for the episode, when one has been fetched.
+    ///
+    /// Populated by the snapshot builder from `PodcastStore::transcript_for`.
+    /// `None` when the user has not yet dispatched `podcast.fetch_transcript`
+    /// for this episode, or when the most recent fetch produced no usable
+    /// text (no publisher URL, parse failure, HTTP error). The iOS shell
+    /// renders the "not available" state in those cases. Per D5 we skip
+    /// serializing `None` so the wire payload stays byte-compatible with
+    /// snapshots that predate this field.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transcript: Option<String>,
 }
 
 /// Narrow identity projection surfaced via

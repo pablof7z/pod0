@@ -25,6 +25,7 @@ use std::path::Path;
 use podcast_core::{Episode, EpisodeId, Podcast, PodcastId};
 
 mod persistence;
+mod transcripts;
 
 use persistence::{PersistedPodcast, PersistedStore, PERSIST_SCHEMA_VERSION};
 
@@ -44,6 +45,8 @@ pub struct PodcastStore {
     /// Lives in a side-map so refreshing a feed, which replaces the episode
     /// list wholesale, does not wipe download state.
     local_paths: HashMap<EpisodeId, String>,
+    /// Plain-text transcripts keyed by the string form of `EpisodeId`.
+    transcripts: HashMap<String, String>,
     data_dir: Option<PathBuf>,
 }
 
@@ -53,6 +56,7 @@ impl PodcastStore {
             podcasts: HashMap::new(),
             episodes: HashMap::new(),
             local_paths: HashMap::new(),
+            transcripts: HashMap::new(),
             data_dir: None,
         }
     }
@@ -87,6 +91,7 @@ impl PodcastStore {
         self.podcasts.clear();
         self.episodes.clear();
         self.local_paths.clear();
+        self.transcripts.clear();
         for row in loaded.podcasts {
             let id = row.podcast.id;
             self.podcasts.insert(id, row.podcast);

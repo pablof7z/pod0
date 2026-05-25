@@ -62,6 +62,11 @@ podcast-feeds = { path = "../podcast-feeds" }
 # the `podcast.briefing.*` action ids alongside the player/agent ones;
 # the kernel-side action modules arrive in M9.B.
 podcast-briefings = { path = "../podcast-briefings" }
+# Transcript parsers (VTT / SRT / Podcasting 2.0 JSON). PR 14 wires the
+# dep so the `podcast.fetch_transcript` action can pull publisher transcript
+# bytes via the HTTP capability, parse them with these pure-Rust parsers,
+# and store the plain text on a per-episode slot in `PodcastStore`.
+podcast-transcripts = { path = "../podcast-transcripts" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 zeroize = { version = "1", features = ["derive"] }

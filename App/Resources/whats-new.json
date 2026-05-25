@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-25T23:05:00Z",
+      "lines": [
+        "Transcripts: tap the speech-bubble button on the mini-player to open the episode transcript — fetched and parsed entirely by the Rust kernel."
+      ]
+    },
+    {
       "shipped_at": "2026-05-25T23:03:00Z",
       "lines": [
         "Downloaded episodes now show as downloaded in the library — completed downloads report their on-disk path back to the kernel."

@@ -20,6 +20,7 @@ use crate::ffi::projections::PodcastSummary;
 use crate::itunes_search::{parse_itunes_results, url_encode};
 use crate::player::PlayerActor;
 use crate::store::PodcastStore;
+use crate::transcript::{fetch_and_store_transcript, FetchTranscriptOutcome};
 
 pub struct PodcastHostOpHandler {
     app: *mut NmpApp,
@@ -42,7 +43,6 @@ impl PodcastHostOpHandler {
     ) -> Self {
         Self { app, store, player_actor, search_results, rev }
     }
-
     fn dispatch_http(&self, req: &HttpRequest, correlation_id: &str) -> Result<HttpResult, String> {
         let payload_json = serde_json::to_string(req).map_err(|e| e.to_string())?;
         let cap_req = CapabilityRequest {
@@ -54,14 +54,12 @@ impl PodcastHostOpHandler {
         serde_json::from_str::<HttpResult>(&envelope.result_json)
             .map_err(|e| format!("decode http result: {e}"))
     }
-
     fn handle_subscribe(&self, feed_url: String, correlation_id: &str) -> serde_json::Value {
         let url = match url::Url::parse(&feed_url) {
             Ok(u) => u,
             Err(e) => return serde_json::json!({"ok": false, "error": format!("bad url: {e}")}),
         };
         let req = build_feed_request(&url, None);
-        // ALL locks released before dispatch_capability (lock discipline).
         let http_result = match self.dispatch_http(&req, correlation_id) {
             Ok(r) => r,
             Err(e) => return serde_json::json!({"ok": false, "error": e}),
@@ -80,7 +78,6 @@ impl PodcastHostOpHandler {
             Err(e) => serde_json::json!({"ok": false, "error": format!("{e:?}")}),
         }
     }
-
     fn handle_unsubscribe(&self, podcast_id_str: String) -> serde_json::Value {
         match podcast_id_str.parse::<uuid::Uuid>() {
             Ok(uuid) => {
@@ -97,9 +94,7 @@ impl PodcastHostOpHandler {
             Err(_) => serde_json::json!({"ok": false, "error": "invalid podcast_id"}),
         }
     }
-
     fn handle_refresh(&self, podcast_id_str: String, correlation_id: &str) -> serde_json::Value {
-        // Read feed info; release lock before HTTP dispatch.
         let (podcast_id, url, etag, last_modified) = {
             match self.store.lock() {
                 Ok(s) => match s.podcast_by_id_str(&podcast_id_str) {
@@ -114,7 +109,6 @@ impl PodcastHostOpHandler {
         };
         self.refresh_one(podcast_id, &url, etag.as_deref(), last_modified.as_deref(), correlation_id)
     }
-
     fn handle_refresh_all(&self, correlation_id: &str) -> serde_json::Value {
         let infos = match self.store.lock() {
             Ok(s) => s.all_feed_infos(),
@@ -161,7 +155,6 @@ impl PodcastHostOpHandler {
         };
         match handle_feed_response(url, podcast_id, &http_result, None, Utc::now()) {
             Ok(FeedResult::Parsed { parsed, .. }) => {
-                // Preserve existing episodes' position data by merging.
                 let episodes = match self.store.lock() {
                     Ok(s) => {
                         let existing: Vec<Episode> = s.episodes_for(podcast_id).to_vec();
@@ -208,7 +201,7 @@ impl PodcastHostOpHandler {
 
         for podcast in parsed.iter() {
             let Some(feed_url) = podcast.feed_url.as_ref() else {
-                continue; // import_opml only emits feed-URL-bearing entries, but guard anyway
+                continue;
             };
             let feed_url_str = feed_url.to_string();
             if existing_feed_urls.contains(&feed_url_str) {
@@ -406,11 +399,7 @@ impl PodcastHostOpHandler {
         }
     }
 
-    // ── Queue ("Up Next") handlers ───────────────────────────────────────────
-
     fn handle_enqueue(&self, episode_id: String) -> serde_json::Value {
-        // Pre-flight: verify the episode exists in the library so we
-        // don't poison the queue with dangling ids.
         let exists = match self.store.lock() {
             Ok(s) => s.episode_playback_info(&episode_id).is_some(),
             Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
@@ -451,9 +440,6 @@ impl PodcastHostOpHandler {
     }
 
     fn handle_play_next(&self, correlation_id: &str) -> serde_json::Value {
-        // Lock discipline: pop the queue head under the actor lock,
-        // release before calling `handle_play` (which dispatches to
-        // the audio capability).
         let next_id = match self.player_actor.lock() {
             Ok(mut a) => a.pop_next(),
             Err(_) => return serde_json::json!({"ok": false, "error": "player_actor poisoned"}),
@@ -477,6 +463,20 @@ impl HostOpHandler for PodcastHostOpHandler {
                 PodcastAction::ImportOpml { content } => self.handle_import_opml(content, correlation_id),
                 PodcastAction::Download { episode_id } => self.handle_download(episode_id, correlation_id),
                 PodcastAction::DeleteDownload { episode_id } => self.handle_delete_download(episode_id),
+                PodcastAction::FetchTranscript { episode_id } => match fetch_and_store_transcript(
+                    &self.store,
+                    episode_id,
+                    |req| self.dispatch_http(req, correlation_id),
+                ) {
+                    Ok(FetchTranscriptOutcome::Stored) => {
+                        self.rev.fetch_add(1, Ordering::Relaxed);
+                        serde_json::json!({"ok": true})
+                    }
+                    Ok(FetchTranscriptOutcome::NotAvailable) => {
+                        serde_json::json!({"ok": true, "not_available": true})
+                    }
+                    Err(e) => serde_json::json!({"ok": false, "error": e}),
+                },
             };
         }
         if let Ok(action) = serde_json::from_str::<PlayerAction>(action_json) {

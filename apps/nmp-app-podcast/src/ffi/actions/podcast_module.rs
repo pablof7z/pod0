@@ -45,6 +45,7 @@ pub enum PodcastAction {
     /// Remove a previously downloaded episode from disk and clear the
     /// kernel-side `local_path` mapping.
     DeleteDownload { episode_id: String },
+    FetchTranscript { episode_id: String },
 }
 
 /// Single action module for the whole `"podcast"` namespace.
@@ -149,5 +150,17 @@ mod tests {
         assert_eq!(correlation_id, "corr-1");
         let v: serde_json::Value = serde_json::from_str(action_json).expect("json");
         assert_eq!(v["op"], "subscribe");
+    }
+
+    #[test]
+    fn fetch_transcript_action_round_trips() {
+        let action = PodcastAction::FetchTranscript {
+            episode_id: "ep-1".into(),
+        };
+        let json = serde_json::to_string(&action).expect("encode");
+        assert!(json.contains(r#""op":"fetch_transcript""#));
+        assert!(json.contains(r#""episode_id":"ep-1""#));
+        let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, action);
     }
 }
