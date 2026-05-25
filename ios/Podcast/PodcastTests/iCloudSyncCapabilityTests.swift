@@ -40,18 +40,18 @@ final class iCloudSyncCapabilityTests: XCTestCase {
 
     // MARK: - PodcastUpdate bridge
 
-    func testBridgeReadsSpeedFromNowPlaying() {
+    func testBridgeReturnsEmptyUntilSettingsProjectionLands() {
+        // The bridge is intentionally an `.empty` no-op until the
+        // settings projection lands the preference fields on
+        // `SettingsSnapshot`. Sourcing `speed` from `nowPlaying.speed`
+        // would push the live player rate (which defaults to `1.0` at
+        // every episode load) back to iCloud and clobber the user's
+        // persisted preference — see the comment on the extension.
         var update = PodcastUpdate()
         update.nowPlaying = PlayerState(speed: 1.75)
         let s = SettingsKVSnapshot.from(podcastUpdate: update)
-        XCTAssertEqual(s.speed, 1.75)
-        XCTAssertNil(s.skipForwardSecs)
-    }
-
-    func testBridgeReturnsNilSpeedWhenNothingPlaying() {
-        let update = PodcastUpdate()
-        let s = SettingsKVSnapshot.from(podcastUpdate: update)
-        XCTAssertNil(s.speed)
+        XCTAssertEqual(s, .empty,
+                       "bridge must not source playback rate from `nowPlaying.speed`")
     }
 
     // MARK: - Outbound — applySettingsSnapshot

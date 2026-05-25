@@ -50,32 +50,38 @@ struct SettingsKVSnapshot: Equatable {
 // MARK: - PodcastUpdate bridge
 //
 // Maps the current kernel `PodcastUpdate` into the subset of fields this
-// capability mirrors to iCloud. Today the snapshot only exposes playback
-// speed (via `nowPlaying.speed`, which is the live player rate). The other
-// three fields — skip intervals, auto-skip-ads, streaming-only — land on
-// the `SettingsSnapshot` projection in `pr-settings-projection`; until
-// that PR merges this extension returns `nil` for them, which the
-// capability's outbound path skips.
+// capability mirrors to iCloud. Every field is sourced from the
+// kernel-owned **settings preference** (not from transient state like
+// `nowPlaying.speed`, which is the *currently playing* rate and defaults
+// to `1.0` every time a new episode loads — pushing it back to iCloud
+// would clobber the user's persisted preference).
 //
-// When the settings projection lands, expand the bridge with the
-// projection fields (e.g. `update.settings.skipForwardSecs`). The
-// capability itself is already wired — this is the single site that
-// needs to change.
+// The settings-projection work lands the four scalar fields on
+// `SettingsSnapshot` in `pr-settings-projection`. Until those fields
+// exist on the generated type this extension returns `.empty` so the
+// outbound path is a guaranteed no-op. When the projection lands, this
+// extension is the **only** site that needs to change — the capability
+// itself is already wired.
 
 extension SettingsKVSnapshot {
-    /// Build a snapshot from the current kernel `PodcastUpdate`. The
-    /// playback speed comes from the live player state, which is the
-    /// authoritative value the user just selected via the speed chip.
-    /// Fields the snapshot does not yet carry stay `nil`; the
-    /// capability's outbound path treats `nil` as "skip this key".
-    static func from(podcastUpdate update: PodcastUpdate) -> SettingsKVSnapshot {
-        SettingsKVSnapshot(
-            speed: update.nowPlaying?.speed,
-            // The next three are projected via `SettingsSnapshot` once
-            // `pr-settings-projection` lands the fields.
-            skipForwardSecs: nil,
-            skipBackwardSecs: nil,
-            autoSkipAds: nil,
-            streamingOnly: nil)
+    /// Build a snapshot from the current kernel `PodcastUpdate`. Returns
+    /// `.empty` when the active `PodcastUpdate` does not yet carry the
+    /// playback-rate / skip-interval / auto-skip-ads / streaming-only
+    /// fields on `settings` (the pre-`pr-settings-projection` shape).
+    ///
+    /// When the projection lands, replace the body with explicit reads
+    /// from the **preference** fields (not from `nowPlaying.speed` —
+    /// see the explanation above):
+    ///
+    /// ```swift
+    /// SettingsKVSnapshot(
+    ///     speed: update.settings.playbackSpeed,
+    ///     skipForwardSecs: update.settings.skipForwardSecs,
+    ///     skipBackwardSecs: update.settings.skipBackwardSecs,
+    ///     autoSkipAds: update.settings.autoSkipAds,
+    ///     streamingOnly: update.settings.streamingOnly)
+    /// ```
+    static func from(podcastUpdate _: PodcastUpdate) -> SettingsKVSnapshot {
+        .empty
     }
 }
