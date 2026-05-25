@@ -10,12 +10,16 @@ Related files:
 
 ## Active
 
-- 2026-05-25 12:54 EEST - docs: import NMP-style worktree, PR, WIP, and planning protocol; start Pod0/NIP-F4 implementation coordination - branch `main` bootstrap in `/Users/pablofernandez/Work/podcast-player`.
-- 2026-05-25 - M0.A: create nmp-app-podcast Rust crate skeleton - branch `m0a/nmp-app-podcast` worktree `/Users/pablofernandez/Work/podcast-player-m0a`.
-- 2026-05-25 - M0.B: create ios/Podcast xcodegen skeleton + bridge + model - branch `m0b/ios-podcast-skeleton` worktree `/Users/pablofernandez/Work/podcast-player-m0b`.
-- 2026-05-25 - M1.C: migrate Identity + Onboarding views to ios/Podcast/Podcast/Features/ - branch `m1c/ui-identity-onboarding` worktree `/Users/pablofernandez/Work/podcast-player-m1c`.
-- 2026-05-25 - M1.D: migrate Settings Identity/Nostr views to ios/Podcast - branch `m1d/ui-settings-identity` worktree `/Users/pablofernandez/Work/podcast-player-m1d`.
+_(M0 and M1 complete — M2 planning next)_
 
 ## Recent History
 
+- 2026-05-25 - M0.A: nmp-app-podcast Rust crate skeleton — merged PR #4.
+- 2026-05-25 - M0.B: ios/Podcast xcodegen skeleton + bridge + model — merged PR #6.
+- 2026-05-25 - M0.C: ios/Podcast capabilities scaffolding — merged PR #7.
+- 2026-05-25 - M0.D: migration tooling and lint gates — merged PR #3.
+- 2026-05-25 - M1.A: identity Rust foundation in nmp-app-podcast — merged PR #10.
+- 2026-05-25 - M1.B: Keychain capability with podcast identity namespaces — merged PR #9.
+- 2026-05-25 - M1.C: Identity + Onboarding views migrated to ios/Podcast/Features/ — merged PR #5.
+- 2026-05-25 - M1.D: Settings Identity/Nostr views migrated to ios/Podcast/Features/ — merged PR #8.
 - 2026-05-25 - Adopted the NMP-derived coordination protocol for future feature, fix, and refactor work.
