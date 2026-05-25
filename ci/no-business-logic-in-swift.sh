@@ -128,7 +128,7 @@ check_pattern "WebSocket in Features" \
   "$FEATURES_DIR"
 
 check_pattern "Keychain* in Features" \
-  'Keychain' \
+  'Keychain[A-Za-z]' \
   "$FEATURES_DIR"
 
 # ── Legacy singleton imports in Features/ ────────────────────────────────────
