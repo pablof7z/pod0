@@ -50,6 +50,10 @@
 			</array>
 		</dict>
 	</dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Pod0 listens to your voice so you can drive the player and the agent hands-free.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Pod0 transcribes your voice on-device to power voice mode.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchScreen</key>

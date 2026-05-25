@@ -53,6 +53,8 @@ targets:
         # lock screen without being throttled.
         NSSupportsLiveActivities: true
         NSSupportsLiveActivitiesFrequentUpdates: true
+        NSMicrophoneUsageDescription: Pod0 listens to your voice so you can drive the player and the agent hands-free.
+        NSSpeechRecognitionUsageDescription: Pod0 transcribes your voice on-device to power voice mode.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.f7z.podcast

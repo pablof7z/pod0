@@ -61,6 +61,7 @@ mod tests {
     use crate::ffi::handle::PodcastHandle;
     use crate::ffi::projections::{NostrShowSummary, PodcastSummary};
     use crate::ffi::projections::{AgentPickSummary, PodcastSummary};
+    use crate::ffi::projections::{PodcastSummary, VoiceState};
     use crate::player::PlayerActor;
     use crate::queue::PlaybackQueue;
     use crate::store::PodcastStore;
@@ -96,6 +97,7 @@ mod tests {
             dismissed_episode_ids: Arc::new(Mutex::new(HashSet::new())),
             podcast_keys: Arc::new(Mutex::new(PodcastKeyStore::new())),
             publish_state: Arc::new(Mutex::new(HashMap::new())),
+            voice_state: Arc::new(Mutex::new(VoiceState::default())),
         })
     }
 

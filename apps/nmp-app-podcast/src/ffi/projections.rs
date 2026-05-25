@@ -131,6 +131,11 @@ pub struct VoiceState {
     /// `true` while a `Speak` is in flight (between `Started` and the
     /// terminal `Finished` / `Failed` / `Stopped`).
     pub is_speaking: bool,
+    /// `true` while on-device speech recognition is running (between
+    /// `ListeningStarted` and `ListeningStopped`). Drives the
+    /// pulsing-microphone affordance in `VoiceModeView`.
+    #[serde(default)]
+    pub is_listening: bool,
     /// Correlation id of the in-flight `Speak`, mirrored from the
     /// `VoiceCommand::Speak.request_id`. `None` when nothing is in
     /// flight.
@@ -141,6 +146,20 @@ pub struct VoiceState {
     /// `voice_id` on a `Speak`. `None` until the user picks one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub current_voice_id: Option<String>,
+    /// Streaming best-guess transcript while `is_listening == true`.
+    /// Updated on every [`crate::capability::VoiceReport::TranscriptPartial`]
+    /// report; cleared back to `None` on `TranscriptFinal` /
+    /// `ListeningStopped`. The UI binds the voice-mode caption to this
+    /// field so chunked recognition results render with no extra
+    /// buffering on the Swift side.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub partial_transcript: Option<String>,
+    /// Most recent committed transcript or assistant reply the UI
+    /// surfaces under the voice-mode orb. Updated by the kernel on
+    /// `TranscriptFinal` (the user said this) or on a `Speak` action
+    /// (the assistant said this). `None` between sessions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_response: Option<String>,
 }
 
 /// Snapshot of the briefing scheduler surfaced via

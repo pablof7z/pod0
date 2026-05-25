@@ -114,6 +114,23 @@ pub enum VoiceCommand {
     /// specify their own `voice_id`. The executor stores the id and
     /// uses it on the next synthesis call.
     SetVoice { voice_id: String },
+    /// Begin on-device speech recognition. The executor configures its
+    /// audio engine + `SFSpeechRecognizer` and emits
+    /// [`VoiceReport::ListeningStarted`] once the microphone is live.
+    /// Recognition chunks arrive as [`VoiceReport::TranscriptPartial`];
+    /// the final transcript on silence/stop is
+    /// [`VoiceReport::TranscriptFinal`]. Idempotent — a no-op when
+    /// recognition is already running.
+    ///
+    /// **D7:** the kernel decides *when* to start listening (voice-mode
+    /// activate, end of turn, …); the executor just translates the
+    /// command into an `AVAudioEngine` start.
+    StartListening,
+    /// Stop on-device speech recognition. The executor tears down the
+    /// recognition request, flushes the buffered transcript as a final
+    /// [`VoiceReport::TranscriptFinal`] (when non-empty), and emits
+    /// [`VoiceReport::ListeningStopped`]. Idempotent.
+    StopListening,
 }
 
 impl VoiceCommand {
@@ -171,6 +188,32 @@ pub enum VoiceReport {
     /// synthesis. No `request_id` here — `Stop` is one-shot and the
     /// kernel already knows which request was live.
     Stopped,
+    /// On-device speech recognition has begun: the microphone is live
+    /// and the executor is forwarding audio frames to
+    /// `SFSpeechRecognizer`. The kernel flips `voice.is_listening` to
+    /// `true` on receipt.
+    ListeningStarted,
+    /// On-device speech recognition has stopped — either because the
+    /// kernel sent `StopListening`, the recognizer emitted a final
+    /// result, or an error tore the session down. The kernel flips
+    /// `voice.is_listening` to `false` and clears any leftover partial
+    /// transcript on receipt.
+    ListeningStopped,
+    /// Streaming partial recognition result. Fires every recognition
+    /// chunk while listening. `text` is the *cumulative* best-guess so
+    /// far (`SFSpeechRecognitionResult.bestTranscription`), not a delta
+    /// — the kernel can render it directly without buffering.
+    TranscriptPartial { text: String },
+    /// Final transcript for the listening turn. Fires once on silence
+    /// detection or an explicit `StopListening`. `text` is the
+    /// committed best transcription; the kernel stores it (and clears
+    /// the partial slot) before any follow-up action.
+    TranscriptFinal { text: String },
+    /// Capability-level error not tied to a specific `Speak` request
+    /// (permission denial, audio-session preempt, recognizer unavailable
+    /// in this locale, …). `message` is the human-readable diagnostic
+    /// the kernel surfaces; retry policy lives in Rust.
+    Error { message: String },
 }
 
 #[cfg(test)]
@@ -279,5 +322,77 @@ mod tests {
                 request_id: "req-1".into()
             }
         );
+    }
+
+    // ── STT + voice-mode extension (feature #42) ─────────────────────
+
+    #[test]
+    fn voice_command_start_listening_serializes_as_unit() {
+        assert_eq!(
+            serde_json::to_string(&VoiceCommand::StartListening).expect("encode"),
+            r#"{"type":"start_listening"}"#
+        );
+        let decoded: VoiceCommand =
+            serde_json::from_str(r#"{"type":"start_listening"}"#).expect("decode");
+        assert_eq!(decoded, VoiceCommand::StartListening);
+    }
+
+    #[test]
+    fn voice_command_stop_listening_serializes_as_unit() {
+        assert_eq!(
+            serde_json::to_string(&VoiceCommand::StopListening).expect("encode"),
+            r#"{"type":"stop_listening"}"#
+        );
+        let decoded: VoiceCommand =
+            serde_json::from_str(r#"{"type":"stop_listening"}"#).expect("decode");
+        assert_eq!(decoded, VoiceCommand::StopListening);
+    }
+
+    #[test]
+    fn voice_report_listening_started_stopped_round_trip() {
+        for (variant, tag) in [
+            (VoiceReport::ListeningStarted, "listening_started"),
+            (VoiceReport::ListeningStopped, "listening_stopped"),
+        ] {
+            let json = serde_json::to_string(&variant).expect("encode");
+            assert_eq!(json, format!(r#"{{"type":"{tag}"}}"#));
+            let decoded: VoiceReport = serde_json::from_str(&json).expect("decode");
+            assert_eq!(decoded, variant);
+        }
+    }
+
+    #[test]
+    fn voice_report_transcript_partial_round_trips() {
+        let rep = VoiceReport::TranscriptPartial {
+            text: "hello world".into(),
+        };
+        let json = serde_json::to_string(&rep).expect("encode");
+        assert!(json.contains("\"type\":\"transcript_partial\""));
+        assert!(json.contains("\"text\":\"hello world\""));
+        let decoded: VoiceReport = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, rep);
+    }
+
+    #[test]
+    fn voice_report_transcript_final_round_trips() {
+        let rep = VoiceReport::TranscriptFinal {
+            text: "play the latest episode".into(),
+        };
+        let json = serde_json::to_string(&rep).expect("encode");
+        assert!(json.contains("\"type\":\"transcript_final\""));
+        let decoded: VoiceReport = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, rep);
+    }
+
+    #[test]
+    fn voice_report_error_carries_message() {
+        let rep = VoiceReport::Error {
+            message: "speech recognition denied".into(),
+        };
+        let json = serde_json::to_string(&rep).expect("encode");
+        assert!(json.contains("\"type\":\"error\""));
+        assert!(json.contains("speech recognition denied"));
+        let decoded: VoiceReport = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, rep);
     }
 }

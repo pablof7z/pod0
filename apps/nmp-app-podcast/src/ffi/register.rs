@@ -20,7 +20,9 @@ use super::actions::queue_module::QueueActionModule;
 use super::actions::wiki_module::WikiActionModule;
 use super::actions::tasks_module::AgentTasksModule;
 use super::actions::tts_module::TtsEpisodeModule;
+use super::actions::voice_module::VoiceActionModule;
 use super::handle::PodcastHandle;
+use super::projections::VoiceState;
 use crate::host_op_handler::PodcastHostOpHandler;
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
@@ -100,6 +102,10 @@ pub extern "C" fn nmp_app_podcast_register(
     app_mut.register_action::<PodcastActionModule>();
     app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<NipF4PublishModule>();
+    // (playback), and "podcast.voice" (STT/TTS — feature #42).
+    app_mut.register_action::<PodcastActionModule>();
+    app_mut.register_action::<PlayerActionModule>();
+    app_mut.register_action::<VoiceActionModule>();
 
     // Shared state between the handle (snapshot reader) and the handler (writer).
     let store = Arc::new(Mutex::new(PodcastStore::new()));
@@ -122,6 +128,7 @@ pub extern "C" fn nmp_app_podcast_register(
     let dismissed_episode_ids = Arc::new(Mutex::new(HashSet::new()));
     let podcast_keys = Arc::new(Mutex::new(PodcastKeyStore::new()));
     let publish_state = Arc::new(Mutex::new(HashMap::new()));
+    let voice_state = Arc::new(Mutex::new(VoiceState::default()));
     // Start at 1 so the first snapshot poll always triggers an iOS update
     // (guard is `update.rev > last_seen_rev`; last_seen_rev starts at 0).
     // Subsequent increments happen in PodcastHostOpHandler on store writes.
@@ -147,6 +154,7 @@ pub extern "C" fn nmp_app_podcast_register(
         clips.clone(),
         transcripts.clone(),
         dismissed_episode_ids.clone(),
+        voice_state.clone(),
         rev.clone(),
         podcast_keys.clone(),
         publish_state.clone(),
@@ -173,5 +181,6 @@ pub extern "C" fn nmp_app_podcast_register(
         dismissed_episode_ids,
         podcast_keys,
         publish_state,
+        voice_state,
     }))
 }

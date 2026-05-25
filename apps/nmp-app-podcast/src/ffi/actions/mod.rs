@@ -73,6 +73,7 @@ pub mod tts_module;
 pub mod publish_module;
 pub mod voice;
 pub mod wiki_module;
+pub mod voice_module;
 
 pub use chapters_module::{ChaptersAction, ChaptersActionModule};
 pub use picks_module::{AgentPicksModule, PicksAction, PICKS_LIMIT, PICKS_PER_SHOW_CAP};
@@ -98,6 +99,7 @@ pub use publish_module::{
     ACTION_PUBLISH_PUBLISH_AUTHOR_CLAIM, ACTION_PUBLISH_PUBLISH_EPISODE,
     ACTION_PUBLISH_PUBLISH_SHOW, ACTION_PUBLISH_REMOVE_OWNED,
 };
+pub use voice_module::{VoiceAction, VoiceActionModule};
 
 use serde::{Deserialize, Serialize};
 
@@ -105,6 +107,11 @@ pub use voice::{
     SetVoiceAction, SpeakAction, StopVoiceAction, ACTION_VOICE_SET_VOICE, ACTION_VOICE_SPEAK,
     ACTION_VOICE_STOP,
 };
+
+/// `podcast.voice.activate` — enter voice mode (begin STT).
+pub const ACTION_VOICE_ACTIVATE: &str = "podcast.voice.activate";
+/// `podcast.voice.deactivate` — exit voice mode (stop STT).
+pub const ACTION_VOICE_DEACTIVATE: &str = "podcast.voice.deactivate";
 
 // ---------------------------------------------------------------------------
 // Player action id constants (kernel ↔ shell contract)

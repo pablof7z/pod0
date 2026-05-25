@@ -17,6 +17,7 @@ use crate::ffi::projections::{PodcastSummary, TtsEpisodeSummary};
 use crate::clip_handler::ClipRecord;
 use crate::ffi::projections::PodcastSummary;
 use crate::ffi::projections::{NostrShowSummary, PodcastSummary, TranscriptEntry};
+use crate::ffi::projections::{PodcastSummary, VoiceState};
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::store::PodcastStore;
@@ -122,6 +123,12 @@ pub struct PodcastHandle {
     /// FFI accessor. Keyed by `podcast_id` UUID string (matching the
     /// FFI projection).
     pub(super) publish_state: Arc<Mutex<HashMap<String, OwnedPublishState>>>,
+    /// Voice-mode projection state. Mutated by the `podcast.voice.*`
+    /// action handler (when the kernel dispatches `VoiceCommand` to the
+    /// iOS executor) and by `nmp_app_podcast_voice_report` (when iOS
+    /// reports translate back into projection updates). Read by the
+    /// snapshot builder on each tick.
+    pub(super) voice_state: Arc<Mutex<VoiceState>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the

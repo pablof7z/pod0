@@ -10,6 +10,7 @@ struct LibraryView: View {
 
     @State private var showAddSheet = false
     @State private var path = NavigationPath()
+    @State private var showVoiceMode = false
 
     private let columns = [GridItem(.adaptive(minimum: 140), spacing: AppTheme.Spacing.md)]
 
@@ -45,8 +46,15 @@ struct LibraryView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showAddSheet = true } label: {
-                        Image(systemName: "plus")
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        Button { showVoiceMode = true } label: {
+                            Image(systemName: "mic.circle.fill")
+                        }
+                        .accessibilityLabel("Voice mode")
+                        .accessibilityIdentifier("library-voice-mode-button")
+                        Button { showAddSheet = true } label: {
+                            Image(systemName: "plus")
+                        }
                     }
                 }
             }
@@ -97,6 +105,8 @@ struct LibraryView: View {
                     return
                 }
             }
+        .sheet(isPresented: $showVoiceMode) {
+            VoiceModeView()
         }
     }
 

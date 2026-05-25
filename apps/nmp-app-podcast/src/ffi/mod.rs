@@ -44,6 +44,7 @@ mod snapshot;
 mod snapshot_tests;
 mod snapshot_queue;
 mod snapshot_owned;
+mod voice_report;
 
 pub use actions::{
     CancelAllDownloadsAction, CancelDownloadAction, DownloadEpisodeAction, PauseAction,
@@ -77,8 +78,16 @@ pub use actions::{
     ACTION_PLAYER_SET_SPEED, ACTION_PLAYER_SET_VOLUME, ACTION_PLAYER_STOP, ACTION_TTS_DELETE,
     ACTION_TTS_GENERATE, ACTION_TTS_PLAY, ACTION_VOICE_SET_VOICE, ACTION_VOICE_SPEAK,
     ACTION_VOICE_STOP, TTS_NAMESPACE,
+    SetVoiceAction, SetVolumeAction, SpeakAction, StopAction, StopVoiceAction, VoiceAction,
+    VoiceActionModule, ACTION_PLAYER_CANCEL_ALL_DOWNLOADS, ACTION_PLAYER_CANCEL_DOWNLOAD,
+    ACTION_PLAYER_DOWNLOAD, ACTION_PLAYER_PAUSE, ACTION_PLAYER_PAUSE_DOWNLOAD,
+    ACTION_PLAYER_PLAY, ACTION_PLAYER_RESUME_DOWNLOAD, ACTION_PLAYER_SEEK,
+    ACTION_PLAYER_SET_SLEEP_TIMER, ACTION_PLAYER_SET_SPEED, ACTION_PLAYER_SET_VOLUME,
+    ACTION_PLAYER_STOP, ACTION_VOICE_ACTIVATE, ACTION_VOICE_DEACTIVATE, ACTION_VOICE_SET_VOICE,
+    ACTION_VOICE_SPEAK, ACTION_VOICE_STOP,
 };
 pub use audio_report::nmp_app_podcast_audio_report;
+pub use voice_report::nmp_app_podcast_voice_report;
 pub use data_dir::nmp_app_podcast_set_data_dir;
 pub use download_report::nmp_app_podcast_download_report;
 pub use handle::PodcastHandle;

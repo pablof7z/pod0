@@ -156,6 +156,22 @@ struct OwnedPodcastInfo: Codable, Identifiable, Equatable, Hashable {
 
     /// `Identifiable` conformance — the podcast id is the natural row key.
     var id: String { podcastId }
+    /// Voice-mode projection — `nil` while no voice session is active.
+    /// Mirrors `crate::ffi::projections::VoiceState`.
+    var voice: VoiceSnapshot? = nil
+}
+
+/// Voice-mode projection mirroring Rust `VoiceState`. Surfaces both
+/// listening (STT) and speaking (TTS) status, the streaming partial
+/// transcript while listening, and the most recent assistant reply or
+/// committed user utterance under the orb.
+struct VoiceSnapshot: Codable, Equatable {
+    var isSpeaking: Bool = false
+    var isListening: Bool = false
+    var currentRequestId: String? = nil
+    var currentVoiceId: String? = nil
+    var partialTranscript: String? = nil
+    var lastResponse: String? = nil
 }
 
 /// Narrow projection for a subscribed podcast (one library grid/list cell).

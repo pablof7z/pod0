@@ -507,6 +507,13 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
 
     let owned_podcasts = collect_owned_podcasts(handle);
 
+    // Voice projection — `None` when state is default (preserves
+    // legacy-stub byte identity for non-voice-mode snapshots).
+    let voice = handle.voice_state.lock().ok().and_then(|v| {
+        let snap = v.clone();
+        (snap != VoiceState::default()).then_some(snap)
+    });
+
     let update = PodcastUpdate {
         rev,
         now_playing,
@@ -527,6 +534,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         clips,
         inbox,
         owned_podcasts,
+        voice,
         ..PodcastUpdate::default()
     };
     let json = serde_json::to_string(&update)
@@ -802,11 +810,11 @@ mod tests {
             is_speaking: true,
             current_request_id: Some("req-1".into()),
             current_voice_id: Some("rachel".into()),
+            is_listening: true,
+            partial_transcript: Some("play the latest…".into()),
+            last_response: Some("Sure thing.".into()),
         };
-        let snap = PodcastUpdate {
-            voice: Some(voice.clone()),
-            ..PodcastUpdate::default()
-        };
+        let snap = PodcastUpdate { voice: Some(voice.clone()), ..PodcastUpdate::default() };
         let json = serde_json::to_string(&snap).expect("encode");
         let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
         assert_eq!(decoded.voice, Some(voice));
@@ -814,17 +822,14 @@ mod tests {
 
     #[test]
     fn voice_state_omits_none_fields() {
-        let v = VoiceState {
-            is_speaking: false,
-            current_request_id: None,
-            current_voice_id: None,
-        };
+        let v = VoiceState::default();
         let json = serde_json::to_string(&v).expect("encode");
-        assert!(!json.contains("current_request_id"));
-        assert!(!json.contains("current_voice_id"));
+        for absent in ["current_request_id", "current_voice_id", "partial_transcript", "last_response"] {
+            assert!(!json.contains(absent), "default voice state should omit {absent}");
+        }
         assert!(json.contains("\"is_speaking\":false"));
-        let decoded: VoiceState = serde_json::from_str(&json).expect("decode");
-        assert_eq!(decoded, v);
+        assert!(json.contains("\"is_listening\":false"));
+        assert_eq!(serde_json::from_str::<VoiceState>(&json).expect("decode"), v);
     }
 
     #[test]

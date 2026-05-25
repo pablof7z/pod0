@@ -106,6 +106,20 @@ pub struct PodcastHostOpHandler {
     /// Diagnostic publish state per podcast (last show event JSON +
     /// last-published timestamp). Shared with `PodcastHandle.publish_state`.
     pub(crate) publish_state: Arc<Mutex<HashMap<String, OwnedPublishState>>>,
+use crate::ffi::actions::voice_module::VoiceAction;
+use crate::ffi::projections::{PodcastSummary, VoiceState};
+use crate::player::PlayerActor;
+use crate::store::PodcastStore;
+use crate::voice_handler;
+use crate::itunes_helpers::{parse_itunes_results, url_encode};
+
+pub struct PodcastHostOpHandler {
+    pub(crate) app: *mut NmpApp,
+    store: Arc<Mutex<PodcastStore>>,
+    player_actor: Arc<Mutex<PlayerActor>>,
+    search_results: Arc<Mutex<Vec<PodcastSummary>>>,
+    pub(crate) voice_state: Arc<Mutex<VoiceState>>,
+    pub(crate) rev: Arc<AtomicU64>,
 }
 
 unsafe impl Send for PodcastHostOpHandler {}
@@ -168,6 +182,10 @@ impl PodcastHostOpHandler {
             podcast_keys,
             publish_state,
         }
+        voice_state: Arc<Mutex<VoiceState>>,
+        rev: Arc<AtomicU64>,
+    ) -> Self {
+        Self { app, store, player_actor, search_results, voice_state, rev }
     }
         knowledge_search_results: Arc<Mutex<Vec<KnowledgeSearchResult>>>,
         rev: Arc<AtomicU64>,
@@ -847,6 +865,9 @@ impl HostOpHandler for PodcastHostOpHandler {
             return ClipHandler::new(self.clips.clone(), self.store.clone(), self.rev.clone())
                 .handle(action);
         }
+        if let Ok(action) = serde_json::from_str::<VoiceAction>(action_json) {
+            return voice_handler::handle(self, action, correlation_id);
+        }
         serde_json::json!({"ok": false, "error": format!("unknown action: {action_json}")})
     }
 }
@@ -915,3 +936,5 @@ fn parse_itunes_results(body: &str) -> Vec<PodcastSummary> {
 }
 // `url_encode` + `parse_itunes_results` live in `crate::host_op_itunes`
 // so this module stays under the 500-LOC hard limit.
+// `url_encode` + `parse_itunes_results` live in `crate::itunes_helpers` to
+// keep this file under the 500-LOC hard ceiling (AGENTS.md).

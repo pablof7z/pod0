@@ -134,5 +134,12 @@ void nmp_broker_free_string(char *ptr);
 // supplied identity id (hex pubkey). The actor drops the row + invalidates
 // any cached keys; the next snapshot tick reflects the change.
 void nmp_app_remove_account(void *app, const char *identity_id);
+// Deliver a JSON-encoded VoiceReport (STT partial/final, listening
+// started/stopped, speak started/finished, error) to the Rust voice
+// projection. Currently always returns NULL — voice mode has no
+// synchronous follow-up command surface yet. Reserved as `char*` so
+// future milestones can return a follow-up `VoiceCommand` without an
+// ABI break; caller MUST free a non-NULL result via `nmp_app_free_string`.
+char *nmp_app_podcast_voice_report(void *handle, const char *report_json);
 
 #endif

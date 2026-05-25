@@ -76,6 +76,7 @@ final class PodcastCapabilities {
     /// `startICloudSync(kernel:)`.
     let iCloudSync: iCloudSyncCapability
     let spotlight: SpotlightCapability
+    let voice: VoiceCapability
 
     init(
         keyring: KeychainCapability = KeychainCapability(),
@@ -88,6 +89,8 @@ final class PodcastCapabilities {
         platform: PlatformCapability = PlatformCapability(),
         iCloudSync: iCloudSyncCapability = iCloudSyncCapability(),
         spotlight: SpotlightCapability = SpotlightCapability.shared
+        platform: PlatformCapability = PlatformCapability(),
+        voice: VoiceCapability = VoiceCapability()
     ) {
         self.keyring = keyring
         self.identity = identity
@@ -99,6 +102,7 @@ final class PodcastCapabilities {
         self.platform = platform
         self.iCloudSync = iCloudSync
         self.spotlight = spotlight
+        self.voice = voice
     }
 
     /// Idempotent: start all owned capabilities. Safe to call on every app
@@ -125,6 +129,7 @@ final class PodcastCapabilities {
     /// booted and the capability has somewhere to dispatch.
     func startICloudSync(kernel: KernelModel) {
         iCloudSync.start(kernel: kernel)
+        voice.start()
     }
 
     /// Idempotent: mark capabilities inactive. Does not erase stored secrets.
@@ -139,6 +144,7 @@ final class PodcastCapabilities {
         platform.stop()
         iCloudSync.stop()
         spotlight.stop()
+        voice.stop()
     }
 
     /// Single capability-callback entry point. Routes the raw kernel
@@ -175,6 +181,8 @@ final class PodcastCapabilities {
             return download.handleJSON(requestJSON)
         case NotificationCapability.namespace:
             return notification.handleJSON(requestJSON)
+        case VoiceCapability.namespace:
+            return voice.handleJSON(requestJSON)
         default:
             // D6 — an unknown namespace is data, not a crash. Echo the
             // correlation id so the issuing kernel module can still correlate.

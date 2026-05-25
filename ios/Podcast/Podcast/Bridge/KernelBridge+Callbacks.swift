@@ -129,6 +129,23 @@ extension PodcastHandle {
                     let command = try? JSONDecoder().decode(DownloadCommand.self, from: data)
                 else { return }
                 PodcastCapabilities.shared.download.execute(command)
+    /// Wire the async iOS→Rust voice report channel. Mirrors
+    /// `attachAudioReportChannel()`. Voice has no synchronous follow-up
+    /// command surface yet — `nmp_app_podcast_voice_report` always
+    /// returns NULL — but the call is still routed through Rust so the
+    /// `voice_state` projection updates and the next snapshot tick
+    /// surfaces the change.
+    @MainActor
+    func attachVoiceReportChannel() {
+        PodcastCapabilities.shared.voice.attach { [weak self] reportJSON in
+            MainActor.assumeIsolated {
+                guard let handle = self?.podcastHandle else { return }
+                guard let result = nmp_app_podcast_voice_report(handle, reportJSON)
+                else { return }
+                // Reserved: when Rust starts returning a follow-up
+                // `VoiceCommand`, decode + execute it here. For the
+                // capability scaffold the symbol always returns NULL.
+                nmp_app_free_string(result)
             }
         }
     }

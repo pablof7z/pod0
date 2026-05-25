@@ -103,6 +103,7 @@ final class KernelModel {
         // …). The static is `weak`, so the model still deallocates on scene
         // teardown; the next instance re-publishes from its own `init`.
         Self.shared = self
+        kernel.attachVoiceReportChannel()
     }
 
     private func markKernelDead() {

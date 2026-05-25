@@ -57,6 +57,7 @@ pub(crate) mod host_op_handler;
 pub(crate) mod itunes;
 pub(crate) mod host_op_itunes;
 pub(crate) mod host_op_publish;
+pub(crate) mod itunes_helpers;
 pub mod player;
 pub(crate) mod social_handler;
 pub(crate) mod host_op_handler_itunes;
@@ -68,6 +69,7 @@ pub(crate) mod transcript;
 pub(crate) mod wiki;
 pub(crate) mod tasks_handler;
 pub(crate) mod tts;
+pub(crate) mod voice_handler;
 
 // M2.F — Android JNI shim. Gated `target_os = "android"` so iOS/macOS builds
 // remain unaffected. The shim exports `Java_io_f7z_podcast_KernelBridge_*`
@@ -84,7 +86,7 @@ pub use ffi::{
     nmp_app_podcast_audio_report, nmp_app_podcast_register, nmp_app_podcast_set_data_dir,
     nmp_app_podcast_download_report,
     nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free, nmp_app_podcast_unregister,
-    PodcastHandle,
+    nmp_app_podcast_voice_report, PodcastHandle,
 };
 pub use nmp_signer_broker::{
     nmp_app_cancel_bunker_handshake, nmp_app_nostrconnect_uri, nmp_broker_free_string,
