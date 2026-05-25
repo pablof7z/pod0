@@ -155,6 +155,18 @@ final class KernelModel {
 
     func clearErrorToast() { lastErrorToast = nil }
 
+    /// Set the toast surface from outside this file. Used by features
+    /// (notably `Features/Identity/IdentityViewModel.swift`) that need to
+    /// route a staged-action notice through the same banner channel as
+    /// synchronous dispatch failures.
+    ///
+    /// `private(set)` on `lastErrorToast` restricts writes to this file;
+    /// callers in other files use this entry point instead of touching
+    /// the property directly.
+    func setErrorToast(_ message: String?) {
+        lastErrorToast = message
+    }
+
     // ── Dispatch ───────────────────────────────────────────────────────────
 
     /// Fire-and-forget generic dispatch. Surfaces synchronous rejections as a

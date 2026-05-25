@@ -37,7 +37,7 @@ struct ModeBadge: View {
         case plain
     }
 
-    let mode: UserIdentityStore.Mode
+    let mode: IdentityMode
     var variant: Variant = .capsule
 
     var body: some View {

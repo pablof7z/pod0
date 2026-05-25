@@ -1,26 +1,36 @@
 import SwiftUI
-import CryptoKit
 
 // MARK: - AccountDetailsView
 //
 // Per identity-05-synthesis §4.8. Power users go here for hex, fingerprint,
 // mode, and (eventually) relay status. MVP defers the audit log + per-relay
 // RTT table — the page is sized to grow into them.
+//
+// NMP migration note: the kernel's `AccountSummary` projection currently
+// carries only `npub`. The hex pubkey and SHA-256 fingerprint rows render
+// as `"—"` until the kernel surfaces them via the same projection — see
+// `docs/BACKLOG.md` (M1-exit "identity actions + projection fields").
 
 struct AccountDetailsView: View {
 
-    @Environment(UserIdentityStore.self) private var identity
+    @Environment(KernelModel.self) private var model
     @State private var npubCopied = false
     @State private var hexCopied = false
     @State private var fpCopied = false
     @State private var qrPresented = false
 
+    private var identity: IdentityViewModel { model.identity }
+
     var body: some View {
         Form {
             Section("Public key") {
                 kvRow(label: "npub", value: identity.npub ?? "—", isCopied: $npubCopied)
-                kvRow(label: "hex", value: identity.publicKeyHex ?? "—", isCopied: $hexCopied)
-                kvRow(label: "fp", value: fingerprintLine, isCopied: $fpCopied)
+                // hex + fingerprint require a `pubkey_hex` field on
+                // `AccountSummary` that the kernel doesn't expose yet.
+                // Rendered as "—" so the row layout is preserved for
+                // when the projection is widened in a follow-up.
+                kvRow(label: "hex", value: "—", isCopied: $hexCopied)
+                kvRow(label: "fp",  value: "—", isCopied: $fpCopied)
             }
             Section("Signer") {
                 detailLine(label: "mode", value: modeLabel)
@@ -111,22 +121,4 @@ struct AccountDetailsView: View {
         }
     }
 
-    /// First 16 hex chars of SHA-256(pubkey-bytes). Stable, short, useful
-    /// for distinguishing accounts when multi-account lands in v2.
-    ///
-    /// Hashes the **decoded byte payload**, not the hex string's UTF-8.
-    /// Hashing the ASCII hex (the previous behaviour) meant the
-    /// fingerprint depended on the case of the hex characters — two
-    /// callers that surface the same pubkey in different case would
-    /// see different fingerprints. The decoded-bytes path is also what
-    /// any other Nostr client computing a key fingerprint will agree
-    /// with, in case we ever surface this for cross-app verification.
-    private var fingerprintLine: String {
-        guard let hex = identity.publicKeyHex,
-              let bytes = Data(hexString: hex)
-        else { return "—" }
-        let digest = SHA256.hash(data: bytes)
-        let prefix = digest.prefix(8).map { String(format: "%02x", $0) }.joined()
-        return "sha256:\(prefix)"
-    }
 }

@@ -13,18 +13,22 @@ struct UserProfileDisplay {
     let about: String
     let pictureURLString: String
 
-    /// Derive a generated profile purely from the pubkey.
-    init(publicKeyHex: String) {
-        let seed = String(publicKeyHex.prefix(16))
-        let index = Self.stableIndex(seed)
+    /// Derive a generated profile purely from an identity seed. The seed
+    /// is whatever stable bytes the caller has — historically the kind-1
+    /// hex pubkey; post-NMP migration the npub itself (its first 16
+    /// characters carry the same entropy for hashing purposes). The
+    /// generated values are stable for a given seed.
+    init(seed: String) {
+        let trimmedSeed = String(seed.prefix(16))
+        let index = Self.stableIndex(trimmedSeed)
         let adjectives = ["Bright", "Quiet", "Swift", "Kind", "Clear", "North"]
         let nouns = ["Signal", "Notebook", "Harbor", "Lantern", "Thread", "Field"]
         let adjective = adjectives[index % adjectives.count]
         let noun = nouns[(index / adjectives.count) % nouns.count]
         self.displayName = "\(adjective) \(noun)"
-        self.slug = "\(adjective.lowercased())-\(noun.lowercased())-\(publicKeyHex.prefix(4))"
+        self.slug = "\(adjective.lowercased())-\(noun.lowercased())-\(seed.prefix(4))"
         self.about = ""
-        self.pictureURLString = "https://api.dicebear.com/9.x/personas/svg?seed=\(seed)"
+        self.pictureURLString = "https://api.dicebear.com/9.x/personas/svg?seed=\(trimmedSeed)"
     }
 
     init(displayName: String, slug: String, about: String, pictureURLString: String) {
@@ -34,29 +38,24 @@ struct UserProfileDisplay {
         self.pictureURLString = pictureURLString
     }
 
-    /// Prefers real kind-0 fields from the identity store; falls back to
-    /// the deterministic generated profile when the fetch hasn't completed.
-    @MainActor
-    static func from(identity: UserIdentityStore) -> UserProfileDisplay? {
-        guard let hex = identity.publicKeyHex, !hex.isEmpty else { return nil }
-        let generated = UserProfileDisplay(publicKeyHex: hex)
-        guard identity.profileDisplayName != nil
-           || identity.profileName != nil
-           || identity.profileAbout != nil
-           || identity.profilePicture != nil
+    /// Prefers real kind-0 fields from the identity projection; falls back
+    /// to the deterministic generated profile when only the npub is known.
+    /// Returns `nil` when no identity is loaded yet.
+    static func from(identity: IdentityViewModel) -> UserProfileDisplay? {
+        guard let npub = identity.npub, !npub.isEmpty else { return nil }
+        let generated = UserProfileDisplay(seed: npub)
+        // Kind-0 may be partially populated — display name and picture
+        // arrive together with the relay fetch. When the projection has
+        // nothing yet, fall through to the generated profile so the UI
+        // always shows *something* tied to the pubkey.
+        guard identity.displayName != nil || identity.pictureURLString != nil
         else { return generated }
         return UserProfileDisplay(
-            displayName:     identity.profileDisplayName ?? generated.displayName,
-            slug:            identity.profileName        ?? generated.slug,
-            about:           identity.profileAbout       ?? generated.about,
-            pictureURLString: identity.profilePicture    ?? generated.pictureURLString
+            displayName:     identity.displayName       ?? generated.displayName,
+            slug:            generated.slug,
+            about:           generated.about,
+            pictureURLString: identity.pictureURLString ?? generated.pictureURLString
         )
-    }
-
-    /// Convenience: returns `nil` when no identity exists yet.
-    static func from(publicKeyHex: String?) -> UserProfileDisplay? {
-        guard let hex = publicKeyHex, !hex.isEmpty else { return nil }
-        return UserProfileDisplay(publicKeyHex: hex)
     }
 
     var pictureURL: URL? {
@@ -69,8 +68,10 @@ struct UserProfileDisplay {
 
     // MARK: - Hash helper
 
-    /// Mirrors `UserIdentityStore.stableProfileIndex` so the picked
-    /// adjective/noun pair stays stable between store and UI.
+    /// Stable 31-multiplicative hash over the seed's UTF-8 bytes. Used to
+    /// pick the adjective/noun pair so the generated profile is
+    /// deterministic for a given identity (same npub always lands on the
+    /// same generated display name).
     private static func stableIndex(_ seed: String) -> Int {
         seed.utf8.reduce(0) { partial, byte in
             (partial &* 31 &+ Int(byte)) & 0x7fffffff

@@ -9,10 +9,12 @@ import SwiftUI
 
 struct RemoteSignerView: View {
 
-    @Environment(UserIdentityStore.self) private var identity
+    @Environment(KernelModel.self) private var model
     @State private var bunkerInput = ""
     @State private var isConnecting = false
     @State private var showNostrConnect = false
+
+    private var identity: IdentityViewModel { model.identity }
 
     var body: some View {
         ScrollView {
@@ -27,7 +29,7 @@ struct RemoteSignerView: View {
                     bunkerInput: $bunkerInput,
                     isConnectingRemote: $isConnecting,
                     connect: { await connect() },
-                    disconnect: { await identity.disconnectRemoteSigner() },
+                    disconnect: { await disconnect() },
                     presentation: .primary
                 )
 
@@ -92,17 +94,24 @@ struct RemoteSignerView: View {
 
     // MARK: - Connect
 
+    /// Connect via NIP-46 bunker URI. The kernel's
+    /// `identity.connect_remote_signer` action lands at M1 exit; until
+    /// then this surfaces the staged-action banner so the user knows
+    /// the input was received but no pairing happened.
     private func connect() async {
         let trimmed = bunkerInput.trimmed
         guard !trimmed.isEmpty else { return }
         isConnecting = true
-        await identity.connectRemoteSigner(uri: trimmed)
+        model.surfaceStagedIdentityAction("identity.connect_remote_signer")
+        // Hold the "connecting" beat briefly so the spinner is visible
+        // before we resolve to the error toast — matches the previous
+        // flow's visible UX.
+        try? await Task.sleep(for: .milliseconds(400))
         isConnecting = false
-        if identity.isRemoteSigner {
-            bunkerInput = ""
-            Haptics.success()
-        } else {
-            Haptics.error()
-        }
+        Haptics.error()
+    }
+
+    private func disconnect() async {
+        model.surfaceStagedIdentityAction("identity.disconnect_remote_signer")
     }
 }

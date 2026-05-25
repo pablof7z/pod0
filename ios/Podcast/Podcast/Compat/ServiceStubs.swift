@@ -9,6 +9,36 @@ import Foundation
 import Observation
 import SwiftUI
 
+// MARK: - Signer marker protocol
+
+/// Marker protocol — `NostrSigner` is referenced as a type by
+/// `BlossomUploading.upload(data:contentType:signer:)` and historically by
+/// the legacy `UserIdentityStore.signer` accessor. No methods are called on
+/// it in the migrated views, so an empty marker protocol is sufficient.
+///
+/// Declared `Sendable` so view-side code can pass it across a `Task`
+/// boundary into `BlossomUploading.upload`.
+///
+/// Moved here (from the deleted `UserIdentityStoreCompat.swift`) as part of
+/// PR 16 so the M10 Blossom cluster stays self-contained.
+protocol NostrSigner: AnyObject, Sendable {}
+
+// MARK: - Compat error
+
+/// Shared error type for the remaining `Compat/` stubs (Blossom upload,
+/// `NostrKeyPair`, BYOK connect, etc.). Surfaces a "not yet implemented"
+/// message that calling views can display verbatim.
+enum CompatError: LocalizedError {
+    case notImplemented(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .notImplemented(let symbol):
+            return "\(symbol) is not yet implemented in the compat shim."
+        }
+    }
+}
+
 // MARK: - Blossom upload (M10 stub)
 
 /// Image-upload protocol. M1.E compat — replaced when the Blossom Capability

@@ -6,10 +6,6 @@ struct PodcastApp: App {
     // `@State` (not `@StateObject`) because KernelModel is now `@Observable`.
     @State private var model = KernelModel()
 
-    // Compat shim — bridges legacy Identity views' `@Environment(UserIdentityStore.self)`
-    // injection. Replaced when functional sign-in lands at M1 exit.
-    @State private var identityStore = UserIdentityStore()
-
     // UIKit app delegate is the only surface that receives
     // `application(_:handleEventsForBackgroundURLSession:completionHandler:)`,
     // which the OS calls when it relaunches the app to drain a
@@ -28,7 +24,6 @@ struct PodcastApp: App {
         WindowGroup {
             RootShell()
                 .environment(model)
-                .environment(identityStore)
                 .tint(PodcastColor.accent)
                 .task { model.start() }
         }

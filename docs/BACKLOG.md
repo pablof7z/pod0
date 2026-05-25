@@ -76,10 +76,26 @@ scaffolding. Every entry below is a placeholder type with a no-op or
 throwing implementation; each must be deleted (and the corresponding
 migrated view re-wired) before the milestone it is anchored to closes.
 
-- **M1 exit — `UserIdentityStore` shim.** Delete `Compat/UserIdentityStoreCompat.swift`
-  and inject a real identity store backed by `nmp-signer-broker` via the
-  KernelModel snapshot. Re-wire `.environment(UserIdentityStore())` in
-  `PodcastApp.swift` to whatever the M1 exit deliverable lands.
+- **M1 exit — kernel-side identity actions.** PR 16 deleted
+  `Compat/UserIdentityStoreCompat.swift` and migrated every Identity view
+  to read from `IdentityViewModel` (a projection of
+  `PodcastUpdate.activeAccount`). The Rust kernel currently exposes the
+  `active_account` projection field but no identity actions; all mutation
+  views (`EditProfileView`, `UseMyOwnKeyView`, `RemoteSignerView`,
+  `NostrConnectView`, `AdvancedView`, `ChangePhotoSheet`) surface a stable
+  "actions land later" toast via `KernelModel.surfaceStagedIdentityAction`.
+  Land the following actions in `apps/nmp-app-podcast/src/ffi/actions/`
+  to close the loop:
+    - `identity.import_nsec { nsec: String }`
+    - `identity.generate` (silently regenerates a local key)
+    - `identity.clear`
+    - `identity.publish_profile { name, display_name, about, picture }`
+    - `identity.connect_remote_signer { uri: String }`
+    - `identity.disconnect_remote_signer`
+    - `identity.connect_via_nostrconnect` (NIP-46 nostrconnect:// pairing)
+  Also widen `AccountSummary` to carry the raw hex pubkey so
+  `AccountDetailsView` can render its hex + SHA-256 fingerprint rows
+  (currently `"—"`) without a Bech32 decode on the iOS side.
 - **M1 exit — Keychain-backed credential stubs.** Delete the
   `NostrCredentialStore`, `NostrKeyPair`, and `Bech32` shims in
   `Compat/ServiceStubs.swift` + `Compat/UtilityStubs.swift`. Replace with

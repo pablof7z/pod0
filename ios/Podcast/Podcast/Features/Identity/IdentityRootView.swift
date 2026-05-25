@@ -17,8 +17,10 @@ struct IdentityRootView: View {
         static let aboutQuoteSize: CGFloat = 28
     }
 
-    @Environment(UserIdentityStore.self) private var identity
+    @Environment(KernelModel.self) private var model
     @State private var editPresented = false
+
+    private var identity: IdentityViewModel { model.identity }
 
     var body: some View {
         ScrollView {

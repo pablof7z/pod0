@@ -8,31 +8,47 @@ import UIKit
 //
 // Shows a QR code the user scans in a signer app (Amber, nsec.app, etc.)
 // or quick-launch buttons for detected installed signers.
-// Fires `connectViaNostrConnect` on the identity store; the in-flight
-// state is reflected by `remoteSignerState` on the environment store.
+//
+// NMP migration note: the kernel's `identity.connect_via_nostrconnect`
+// action hasn't shipped yet (M1 exit). The visual flow is preserved end-
+// to-end — a placeholder URI is rendered as a QR code and the state
+// machine sits in `.setup` until the user cancels. Tracked in
+// `docs/BACKLOG.md` under the identity-actions follow-up.
 
 struct NostrConnectView: View {
 
-    @Environment(UserIdentityStore.self) private var identity
+    /// Local mirror of the pairing lifecycle. Replaces the kernel-driven
+    /// `remoteSignerState` enum the legacy stub exposed. Once the kernel
+    /// ships `identity.connect_via_nostrconnect`, this enum can be
+    /// derived from `IdentityViewModel` instead of held locally.
+    private enum PairingState: Equatable {
+        case setup
+        case connecting
+        case connected
+        case failed(String)
+    }
+
+    @Environment(KernelModel.self) private var model
     @Environment(\.dismiss) private var dismiss
 
     @State private var nostrConnectURI: String = ""
     @State private var qrImage: UIImage?
     @State private var detectedSigners: [KnownSigner] = []
     @State private var pairingTask: Task<Void, Never>?
+    @State private var pairingState: PairingState = .setup
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
                 preface
-                switch identity.remoteSignerState {
+                switch pairingState {
                 case .connecting:
                     waitingSection
                 case .connected:
                     connectedSection
                 case .failed(let msg):
                     errorSection(msg)
-                default:
+                case .setup:
                     setupSection
                 }
             }
@@ -192,36 +208,32 @@ struct NostrConnectView: View {
             .foregroundStyle(.tertiary)
     }
 
-    private var isPaired: Bool {
-        if case .connected = identity.remoteSignerState { return true }
-        return false
-    }
+    private var isPaired: Bool { pairingState == .connected }
 
     // MARK: - Actions
 
+    /// Render the QR + signer-app rail without dispatching anything to
+    /// the kernel. The kernel's `identity.connect_via_nostrconnect` action
+    /// will replace this stub flow at M1 exit — at which point the
+    /// `pairingState` enum becomes a projection from `IdentityViewModel`.
     private func beginPairing() {
         pairingTask?.cancel()
-        nostrConnectURI = ""
-        qrImage = nil
         detectSignerApps()
-        pairingTask = Task {
-            await identity.connectViaNostrConnect { [self] uri in
-                Task { @MainActor in
-                    self.nostrConnectURI = uri
-                    self.qrImage = makeQR(from: uri)
-                }
-            }
-            if case .connected = identity.remoteSignerState {
-                Haptics.success()
-                try? await Task.sleep(for: .seconds(0.8))
-                await MainActor.run { dismiss() }
-            }
-        }
+        pairingState = .setup
+        // Placeholder URI matches the legacy compat-stub shape so the
+        // QR view renders something the user can visibly scan. The
+        // pairing handshake won't complete until the kernel action
+        // lands; the user lands on the staged-action banner if they
+        // tap any connect surface elsewhere in the flow.
+        let placeholderURI =
+            "nostrconnect://placeholder?relay=&secret=&perms=&name=Podcastr"
+        nostrConnectURI = placeholderURI
+        qrImage = makeQR(from: placeholderURI)
+        model.surfaceStagedIdentityAction("identity.connect_via_nostrconnect")
     }
 
     private func cancelAndDismiss() {
         pairingTask?.cancel()
-        Task { await identity.disconnectRemoteSigner() }
         dismiss()
     }
 

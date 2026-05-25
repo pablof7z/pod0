@@ -15,7 +15,7 @@ struct UseMyOwnKeyView: View {
     /// Identity root rather than stranding them on AdvancedView.
     var onImportComplete: () -> Void = {}
 
-    @Environment(UserIdentityStore.self) private var identity
+    @Environment(KernelModel.self) private var model
     @State private var nsec = ""
     @State private var revealed = false
     @State private var hasBackup = false
@@ -195,20 +195,23 @@ struct UseMyOwnKeyView: View {
         Haptics.light()
     }
 
+    /// Import an nsec into the kernel. The `identity.import_nsec` action
+    /// hasn't shipped yet (M1 exit), so this stages the user's intent and
+    /// surfaces the staged-action banner via inline-error UX. The visible
+    /// flow matches the legacy stub: spinner → error inline. The flow
+    /// will become a `model.dispatch(namespace: "identity", body:
+    /// ["op": "import_nsec", "nsec": trimmedKey])` once the action lands.
     private func importNsec() async {
         guard canSubmit else { return }
         importing = true
         defer { importing = false }
         inlineError = nil
-        do {
-            try identity.importNsec(nsec.trimmed)
-            Haptics.success()
-            onImportComplete()
-        } catch {
-            // Translation of the existing `loginError` copy per §4.6.
-            inlineError = "That key doesn't look right. Check the start (it should begin with nsec1) and try again."
-            Haptics.error()
-        }
+        model.surfaceStagedIdentityAction("identity.import_nsec")
+        // Hold the spinner long enough that the user sees it before
+        // landing on the inline-error surface.
+        try? await Task.sleep(for: .milliseconds(400))
+        inlineError = IdentityViewModel.stagedActionToast
+        Haptics.error()
     }
 
     // MARK: - Section helper

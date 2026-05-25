@@ -14,7 +14,9 @@ struct IdentitySettingsRow: View {
         static let labelSpacing: CGFloat = 4
     }
 
-    @Environment(UserIdentityStore.self) private var identity
+    @Environment(KernelModel.self) private var model
+
+    private var identity: IdentityViewModel { model.identity }
 
     var body: some View {
         NavigationLink {

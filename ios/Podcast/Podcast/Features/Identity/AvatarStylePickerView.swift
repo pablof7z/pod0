@@ -16,9 +16,11 @@ struct AvatarStylePickerView: View {
     }
 
     @Binding var pictureURL: String
-    @Environment(UserIdentityStore.self) private var identity
+    @Environment(KernelModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var preview: DicebearStyle?
+
+    private var identity: IdentityViewModel { model.identity }
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
@@ -114,8 +116,11 @@ struct AvatarStylePickerView: View {
     // MARK: - Helpers
 
     private func previewURL(for style: DicebearStyle) -> URL? {
-        guard let hex = identity.publicKeyHex else { return nil }
-        let seed = String(hex.prefix(16))
+        // Seed previews off the npub since the kernel projection doesn't
+        // expose the raw hex pubkey (yet). First 16 chars carry enough
+        // entropy for a stable per-style dicebear avatar.
+        guard let npub = identity.npub, !npub.isEmpty else { return nil }
+        let seed = String(npub.prefix(16))
         return style.url(seed: seed)
     }
 

@@ -2,13 +2,17 @@ import SwiftUI
 
 // MARK: - EditProfileView
 //
-// Push from `IdentityRootView`. Per identity-05-synthesis §4.3. Save signs and
-// publishes a kind-0 profile event via `UserIdentityStore.publishProfile`.
+// Push from `IdentityRootView`. Per identity-05-synthesis §4.3. Save will
+// sign and publish a kind-0 profile event via the kernel's
+// `identity.publish_profile` action once that lands (M1 exit). For now the
+// in-flight UX is preserved end-to-end but the Save call short-circuits
+// to the staged-action banner — no kernel dispatch happens.
 //
-// In-flight UX: Save flips to a `ProgressView` in the toolbar and Cancel
-// disables so a double-tap can't queue two publishes. On success the dirty
-// snapshot advances and the view dismisses after a 900 ms banner beat. On
-// failure the view stays open with a "Tap Save to retry" warning — Save stays
+// Original in-flight UX (still intact for when the action wires up):
+// Save flips to a `ProgressView` in the toolbar and Cancel disables so a
+// double-tap can't queue two publishes. On success the dirty snapshot
+// advances and the view dismisses after a 900 ms banner beat. On failure
+// the view stays open with a "Tap Save to retry" warning — Save stays
 // enabled because the snapshot didn't advance.
 //
 // Field rules from §4.3:
@@ -28,8 +32,10 @@ struct EditProfileView: View {
         static let aboutCounterThreshold = 50
     }
 
-    @Environment(UserIdentityStore.self) private var identity
+    @Environment(KernelModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+
+    private var identity: IdentityViewModel { model.identity }
 
     @State private var displayName: String = ""
     @State private var username: String = ""
@@ -111,7 +117,11 @@ struct EditProfileView: View {
             ChangePhotoSheet(pictureURL: $pictureURL)
         }
         .onAppear { hydrateFromIdentity() }
-        .onChange(of: identity.profileDisplayName) { _, _ in hydrateFromIdentity() }
+        // Rehydrate when the kernel's active-account projection changes —
+        // covers the kind-0 fetch arriving after the view first appeared
+        // as well as the user switching identities.
+        .onChange(of: identity.displayName) { _, _ in hydrateFromIdentity() }
+        .onChange(of: identity.pictureURLString) { _, _ in hydrateFromIdentity() }
     }
 
     // MARK: - Hero
@@ -266,38 +276,29 @@ struct EditProfileView: View {
         }
     }
 
-    /// Sign + publish the kind-0 profile. Two-outcome flow:
-    ///   - **Success**: clear-dirty (so a second tap doesn't republish), show
-    ///     a success banner long enough to read (≈900 ms), then dismiss.
-    ///   - **Failure**: keep the view open, surface a warning banner with the
-    ///     reason so the user can fix and retry. We do NOT move
-    ///     `initialSnapshot` forward on failure — Save stays enabled.
-    /// Haptic fires AFTER the publish attempt so the user's wrist feedback
-    /// matches the actual outcome.
+    /// Stage the kind-0 publish. The kernel's `identity.publish_profile`
+    /// action hasn't shipped yet, so this preserves the original two-
+    /// outcome flow's visible UX (in-flight spinner → banner) but always
+    /// resolves to the warning banner with the staged-action copy. The
+    /// `initialSnapshot` does NOT advance, so Save stays enabled — exactly
+    /// the legacy stub's behaviour, just with stable copy.
+    ///
+    /// When the kernel action lands, this becomes a real `model.dispatch(
+    /// namespace: "identity", body: ["op": "publish_profile", …])` call.
     private func save() async {
-        let snapshot = currentSnapshot
         isPublishing = true
         saveBanner = SaveBanner(message: "Publishing…", isWarning: false)
         defer { isPublishing = false }
-        do {
-            _ = try await identity.publishProfile(
-                name: snapshot.username,
-                displayName: snapshot.displayName,
-                about: snapshot.about,
-                picture: snapshot.pictureURL
-            )
-            initialSnapshot = snapshot
-            Haptics.success()
-            saveBanner = SaveBanner(message: "Profile published.", isWarning: false)
-            try? await Task.sleep(for: .milliseconds(900))
-            dismiss()
-        } catch {
-            Haptics.warning()
-            saveBanner = SaveBanner(
-                message: "Couldn't reach the relay. Tap Save to retry.",
-                isWarning: true
-            )
-        }
+        // Stage-and-toast: route through `KernelModel` so the staged
+        // banner shows up via the same channel as real dispatch failures.
+        model.surfaceStagedIdentityAction("identity.publish_profile")
+        // Hold the "publishing" beat briefly so the spinner is visible.
+        try? await Task.sleep(for: .milliseconds(400))
+        Haptics.warning()
+        saveBanner = SaveBanner(
+            message: IdentityViewModel.stagedActionToast,
+            isWarning: true
+        )
     }
 }
 
