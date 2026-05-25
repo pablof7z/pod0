@@ -10,18 +10,9 @@ Related files:
 
 ## Active
 
-- 2026-05-25 - M2.A: create `apps/podcast-core/` Rust crate with domain types + projections skeleton — branch `m2a/podcast-core` worktree `/Users/pablofernandez/Work/podcast-player-m2a`.
-- 2026-05-25 - M1.E: Design + compat layer to make ios/Podcast/Features/ compile - branch `m1e/build-compat` - worktree `/Users/pablofernandez/Work/podcast-player-m1e`. (M1.C / M1.D landed the verbatim view copies but left the project non-compiling against the new target; this PR adds the missing AppTheme + compat shims so the build is green.)
-- 2026-05-25 - M2.E: migrate Library views to `ios/Podcast/Features/Library/` (file-copy half) — branch `m2e/ui-library` worktree `/Users/pablofernandez/Work/podcast-player-m2e`.
-- 2026-05-25 - M2.B+C: `apps/podcast-feeds/` Rust crate (RSS streaming parser, Podcasting 2.0 chapters, OPML import/export, subscription refresh policy) — branch `m2bc/podcast-feeds` worktree `/Users/pablofernandez/Work/podcast-player-m2bc`.
-- 2026-05-25 - M3.A: audio capability Rust skeleton — `AudioCommand`/`AudioReport` contract + `PlayerActor` + player action types in `apps/nmp-app-podcast/`. Branch `m3a/audio-capability` worktree `/Users/pablofernandez/Work/podcast-player-m3a`.
-- 2026-05-25 - M2.D: persistence migration — `pcst.legacy_io.capability` (iOS) + Rust `podcast-core::migration::from_state_json` — branch `m2d/persistence-migration` worktree `/Users/pablofernandez/Work/podcast-player-m2d`.
-- 2026-05-25 - M2.F: Android Compose stub + JNI shim as second-platform proof — branch `m2f/android-proof`, worktree `/Users/pablofernandez/Work/podcast-player-m2f`.
-- 2026-05-25 - M3.B/C: iOS `AudioCapability` executor — AVPlayer wiring + `MPNowPlayingInfoCenter` + `MPRemoteCommandCenter` + audio-session setup against the M3.A `AudioCommand`/`AudioReport` contract. Branch `m3b/ios-audio-capability` worktree `/Users/pablofernandez/Work/podcast-player-m3b`.
-- 2026-05-25 - M6.A: add `apps/podcast-transcripts/` + `apps/podcast-knowledge/` Rust crates (VTT/SRT/JSON parsers, chunker, in-memory knowledge store + cosine search) — branch `m6/transcripts-knowledge` worktree `/Users/pablofernandez/Work/podcast-player-m6`. Stacked on `m2a/podcast-core`.
-- 2026-05-25 - M7.A: `apps/podcast-agent-core/` Rust crate skeleton — agent-chat conversation + approval + task + memory domain types, conversation state machine projection, and agent action constants wired into `nmp-app-podcast`. Branch `m7a/podcast-agent` worktree `/Users/pablofernandez/Work/podcast-player-m7`.
-- 2026-05-25 - M4.B: iOS `DownloadCapability` executor — `URLSessionDownloadDelegate` background-session wiring against the M4.A `DownloadCommand`/`DownloadReport` contract (`nmp.download.capability`). Branch `m4b/ios-download-capability` worktree `/Users/pablofernandez/Work/podcast-player-m4b`.
-- 2026-05-25 - M5: HTTP capability — Rust `HttpRequest`/`HttpResult` schema mirroring the existing Swift wire format, FeedClient request/response bridge in `podcast-feeds`, and additive response-headers extension on `HttpCapability.swift` so `If-None-Match`/`If-Modified-Since` round-trips work. Branch `m5/http-capability` worktree `/Users/pablofernandez/Work/podcast-player-m5`.
+- M8+M9: voice capability schema + podcast-briefings crate — branch `m8m9/voice-briefings`
+- M10.A: NIP-74 podcast-discovery crate — branch `m10a/nip74-discovery`
+- M11+M12: platform integrations + deletion sweep — branch `m11m12/platform-deletion`
 
 ## Recent History
 
@@ -33,4 +24,17 @@ Related files:
 - 2026-05-25 - M1.B: Keychain capability with podcast identity namespaces — merged PR #9.
 - 2026-05-25 - M1.C: Identity + Onboarding views migrated to ios/Podcast/Features/ — merged PR #5.
 - 2026-05-25 - M1.D: Settings Identity/Nostr views migrated to ios/Podcast/Features/ — merged PR #8.
+- 2026-05-25 - M1.E: compat stubs, Design/ copies, iOS 26 deployment target — merged PR #11.
+- 2026-05-25 - M2.A: podcast-core domain types (17 type modules + projections) — merged PR #12.
+- 2026-05-25 - M2.B+C: podcast-feeds — RSS parser, OPML, refresh policy — merged PR #14.
+- 2026-05-25 - M2.D: persistence migration — legacy_io capability + Rust from_state_json — merged PR #16.
+- 2026-05-25 - M2.E: Library views migrated to ios/Podcast/Features/ — merged PR #13.
+- 2026-05-25 - M2.F: Android Compose stub — second-platform proof-of-concept — merged PR #17.
+- 2026-05-25 - M3.A: audio capability contract — AudioCommand/AudioReport + PlayerActor — merged PR #15.
+- 2026-05-25 - M3.B: iOS audio capability — AVFoundation + MPNowPlayingInfoCenter — merged PR #19.
+- 2026-05-25 - M4.A: download capability — DownloadCommand/DownloadReport + queue state machine — merged PR #18.
+- 2026-05-25 - M4.B: iOS DownloadCapability — URLSession background downloads — merged PR #22.
+- 2026-05-25 - M5: HTTP capability schema + FeedClient request/response bridge — merged PR #23.
+- 2026-05-25 - M6.A: podcast-transcripts + podcast-knowledge crates — merged PR #20.
+- 2026-05-25 - M7.A: podcast-agent-core — conversation, approval, and task types — merged PR #21.
 - 2026-05-25 - Adopted the NMP-derived coordination protocol for future feature, fix, and refactor work.
