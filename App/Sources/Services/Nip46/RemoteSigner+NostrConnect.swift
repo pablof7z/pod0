@@ -46,7 +46,7 @@ extension RemoteSigner {
     static func nostrConnect(
         relayURL: URL = nostrConnectDefaultRelay,
         sessionKeyPair: NostrKeyPair,
-        appName: String = "Podcastr",
+        appName: String = "Pod0",
         permsString: String? = nil,
         onURI: @escaping @Sendable (String) -> Void,
         timeout: Duration = .seconds(300),

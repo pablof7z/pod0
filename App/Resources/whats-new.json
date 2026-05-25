@@ -8,6 +8,12 @@
       ]
     },
     {
+      "shipped_at": "2026-05-26T00:10:00Z",
+      "lines": [
+        "We're now Pod0 — the app's display name has changed from Podcastr; your library, account, and downloads carry over untouched."
+      ]
+    },
+    {
       "shipped_at": "2026-05-25T23:10:00Z",
       "lines": [
         "Episode detail now shows show notes — the description from the RSS feed appears below the play button so you can read what the episode is about before pressing play."

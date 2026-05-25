@@ -138,7 +138,7 @@ final class NostrRelayService {
         let name = settings.nostrProfileName.trimmed
         let about = settings.nostrProfileAbout.trimmed
         let picture = settings.nostrProfilePicture.trimmed
-        let effectiveName = name.isEmpty ? "Podcastr Agent" : name
+        let effectiveName = name.isEmpty ? "Pod0 Agent" : name
         let deviceName = UIDevice.current.name
 
         Task {
@@ -148,7 +148,7 @@ final class NostrRelayService {
             if !picture.isEmpty { metadata["picture"] = picture }
             guard let data = try? JSONSerialization.data(withJSONObject: metadata, options: [.sortedKeys]),
                   let content = String(data: data, encoding: .utf8) else { return }
-            let draft = NostrEventDraft(kind: 0, content: content, tags: [["backend", "Podcastr App in \(deviceName)"]])
+            let draft = NostrEventDraft(kind: 0, content: content, tags: [["backend", "Pod0 App in \(deviceName)"]])
             guard let event = try? await LocalKeySigner(keyPair: pair).sign(draft) else { return }
             let publisher = NostrWebSocketEventPublisher()
             try? await publisher.publish(event: event, relayURL: relayURL)

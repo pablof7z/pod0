@@ -58,7 +58,7 @@ struct WhatsNewSheet: View {
     }
 
     private var subtitle: some View {
-        Text("SINCE YOU LAST OPENED PODCASTR")
+        Text("SINCE YOU LAST OPENED POD0")
             .font(AppTheme.Typography.caption2.weight(.semibold))
             .tracking(0.5)
             .foregroundStyle(.secondary)

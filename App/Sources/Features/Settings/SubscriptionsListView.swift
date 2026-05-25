@@ -119,9 +119,9 @@ struct SubscriptionsListView: View {
             if let opmlURL, !store.sortedFollowedPodcasts.isEmpty {
                 ShareLink(
                     item: opmlURL,
-                    subject: Text("Podcastr Subscriptions"),
+                    subject: Text("Pod0 Subscriptions"),
                     preview: SharePreview(
-                        "Podcastr Subscriptions (\(store.sortedFollowedPodcasts.count) shows)",
+                        "Pod0 Subscriptions (\(store.sortedFollowedPodcasts.count) shows)",
                         image: Image(systemName: "list.bullet.rectangle")
                     )
                 ) {
@@ -273,7 +273,7 @@ struct SubscriptionsListView: View {
         let subs = store.sortedFollowedPodcasts
         let exporter = OPMLExport()
         let data = exporter.exportOPML(podcasts: subs)
-        let filename = "Podcastr-Subscriptions-\(Self.dateStamp()).opml"
+        let filename = "Pod0-Subscriptions-\(Self.dateStamp()).opml"
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
         do {
             try data.write(to: url, options: [.atomic])

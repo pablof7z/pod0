@@ -293,6 +293,6 @@ struct SettingsView: View {
     private static let cachedVersionFooter: String = {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
-        return "Podcastr  \(version)  (build \(build))"
+        return "Pod0  \(version)  (build \(build))"
     }()
 }

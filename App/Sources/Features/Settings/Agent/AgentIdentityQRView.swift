@@ -229,7 +229,7 @@ struct AgentIdentityQRView: View {
 
     private var sharePreviewTitle: String {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmedName.isEmpty ? "Podcastr invite" : "\(trimmedName) on Podcastr"
+        return trimmedName.isEmpty ? "Pod0 invite" : "\(trimmedName) on Pod0"
     }
 
     // MARK: - Actions

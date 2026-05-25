@@ -147,7 +147,7 @@ private fun AboutRow() {
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(
-            text = "Podcastr (Android)",
+            text = "Pod0 (Android)",
             style = MaterialTheme.typography.bodyLarge,
         )
         Text(

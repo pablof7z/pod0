@@ -11,12 +11,12 @@ struct OPMLExport: Sendable {
     ///
     /// - Parameters:
     ///   - podcasts: The list to export. Order is preserved.
-    ///   - title: Title written into `<head><title>`. Defaults to *Podcastr Subscriptions*.
+    ///   - title: Title written into `<head><title>`. Defaults to *Pod0 Subscriptions*.
     ///   - dateCreated: Optional override for `<head><dateCreated>`. Defaults to now.
     /// - Returns: UTF-8 OPML bytes suitable for sharing or writing to disk.
     func exportOPML(
         podcasts: [Podcast],
-        title: String = "Podcastr Subscriptions",
+        title: String = "Pod0 Subscriptions",
         dateCreated: Date = Date()
     ) -> Data {
         var lines: [String] = []

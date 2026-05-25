@@ -159,7 +159,7 @@ private struct NowPlayingEmptyView: View {
             Image(systemName: "headphones")
                 .font(WidgetTheme.Typography.emptyIcon)
                 .foregroundStyle(WidgetTheme.Colors.brandGradient)
-            Text("Tap to open Podcastr")
+            Text("Tap to open Pod0")
                 .font(WidgetTheme.Typography.emptyTitle)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.primary)

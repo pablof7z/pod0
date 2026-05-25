@@ -76,9 +76,9 @@ enum DataExport {
         try encoder.encode(payload)
     }
 
-    /// Suggested filename, e.g. `Podcastr-Export-2026-05-05-1430.json`.
+    /// Suggested filename, e.g. `Pod0-Export-2026-05-05-1430.json`.
     static func suggestedFilename(at date: Date = Date()) -> String {
-        "Podcastr-Export-\(filenameDateFormatter.string(from: date)).json"
+        "Pod0-Export-\(filenameDateFormatter.string(from: date)).json"
     }
 
     // MARK: - Write

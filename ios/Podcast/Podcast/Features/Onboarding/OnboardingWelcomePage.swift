@@ -11,7 +11,7 @@ struct OnboardingWelcomePage: View {
             Spacer()
             sparkleMedallion
             VStack(spacing: AppTheme.Spacing.sm) {
-                Text("Podcastr")
+                Text("Pod0")
                     .font(AppTheme.Typography.largeTitle)
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)

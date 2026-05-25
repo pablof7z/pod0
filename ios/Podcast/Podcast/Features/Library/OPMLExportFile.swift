@@ -40,7 +40,7 @@ struct OPMLExportFile: Transferable {
         lines.append(#"<?xml version="1.0" encoding="UTF-8"?>"#)
         lines.append(#"<opml version="2.0">"#)
         lines.append("  <head>")
-        lines.append("    <title>\(escape("Podcastr Subscriptions"))</title>")
+        lines.append("    <title>\(escape("Pod0 Subscriptions"))</title>")
         lines.append("    <dateCreated>\(rfc822(dateCreated))</dateCreated>")
         lines.append("  </head>")
         lines.append("  <body>")

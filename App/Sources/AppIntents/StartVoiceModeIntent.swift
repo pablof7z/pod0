@@ -25,7 +25,7 @@ struct StartVoiceModeIntent: AppIntent {
     static let title: LocalizedStringResource = "Talk to my podcasts"
 
     static let description = IntentDescription(
-        "Open Podcastr and start a hands-free conversation with the agent. Ask about anything you've listened to.",
+        "Open Pod0 and start a hands-free conversation with the agent. Ask about anything you've listened to.",
         categoryName: "Voice"
     )
 

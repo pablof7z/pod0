@@ -80,7 +80,7 @@ struct UseMyOwnKeyView: View {
     // MARK: - Preface
 
     private var preface: some View {
-        Text("If you already use an app like Damus, Amethyst, or Primal, you have a private key — it usually starts with `nsec1`. Paste it here and Podcastr will use the same account everywhere.")
+        Text("If you already use an app like Damus, Amethyst, or Primal, you have a private key — it usually starts with `nsec1`. Paste it here and Pod0 will use the same account everywhere.")
             .font(AppTheme.Typography.body)
             .foregroundStyle(.primary)
     }

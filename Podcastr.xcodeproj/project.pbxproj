@@ -3447,7 +3447,7 @@
 				APP_GROUP_IDENTIFIER = group.com.podcastr.app;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CFBundleDisplayName = Podcastr;
+				CFBundleDisplayName = Pod0;
 				CODE_SIGN_ENTITLEMENTS = App/Resources/Podcastr.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_PREVIEWS = YES;
@@ -3476,7 +3476,7 @@
 			buildSettings = {
 				APP_BUNDLE_IDENTIFIER = io.f7z.podcast.widget;
 				APP_GROUP_IDENTIFIER = group.com.podcastr.app;
-				CFBundleDisplayName = Podcastr;
+				CFBundleDisplayName = Pod0;
 				CODE_SIGN_ENTITLEMENTS = App/Widget/Resources/PodcastrWidget.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = NO;
@@ -3513,7 +3513,7 @@
 				APP_GROUP_IDENTIFIER = group.com.podcastr.app;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CFBundleDisplayName = Podcastr;
+				CFBundleDisplayName = Pod0;
 				CODE_SIGN_ENTITLEMENTS = App/Resources/Podcastr.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_PREVIEWS = YES;
@@ -3726,7 +3726,7 @@
 			buildSettings = {
 				APP_BUNDLE_IDENTIFIER = io.f7z.podcast.widget;
 				APP_GROUP_IDENTIFIER = group.com.podcastr.app;
-				CFBundleDisplayName = Podcastr;
+				CFBundleDisplayName = Pod0;
 				CODE_SIGN_ENTITLEMENTS = App/Widget/Resources/PodcastrWidget.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = NO;

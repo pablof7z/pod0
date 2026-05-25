@@ -59,7 +59,7 @@ struct SubscriptionService {
         private static func humanizeHTTPStatus(_ status: Int) -> String {
             switch status {
             case 401, 403:
-                return "This feed needs sign-in or isn't public — Podcastr can't subscribe to it."
+                return "This feed needs sign-in or isn't public — Pod0 can't subscribe to it."
             case 404, 410:
                 return "We couldn't find a feed at that URL. Double-check it and try again."
             case 408, 504:

@@ -226,7 +226,7 @@ struct AgentIdentityView: View {
             name: name.isEmpty ? nil : name
         )
         var items: [Any] = [
-            "Add \(displayedName) on Podcastr: \(npubFull)"
+            "Add \(displayedName) on Pod0: \(npubFull)"
         ]
         if let url = inviteURL { items.append(url) }
         return items

@@ -1,8 +1,8 @@
-# Podcastr
+# Pod0
 
 A next-generation iOS podcast player built around an embedded AI agent that has perfect knowledge of every podcast the user is subscribed to — including episodes they have not listened to yet.
 
-> Bootstrapped from [`ios-app-template`](https://github.com/pablofernandez/ios-app-template). The sections below describe the inherited template foundations (shake-to-feedback, agent loop, friends, TestFlight CI). Podcast-specific modules live under `App/Sources/{Audio,Podcast,Transcript,Knowledge,Voice,Briefing}` and the new feature folders under `App/Sources/Features/`.
+> Bootstrapped from [`ios-app-template`](https://github.com/pablofernandez/ios-app-template). The sections below describe the inherited template foundations (shake-to-feedback, agent loop, friends, TestFlight CI). Podcast-specific modules live under `App/Sources/{Audio,Podcast,Transcript,Knowledge,Voice,Briefing}` and the new feature folders under `App/Sources/Features/`. The working title "Podcastr" persists in code identifiers (Xcode target/scheme names, paths, entitlements filenames); the user-visible display name is "Pod0".
 
 See [`docs/spec/PRODUCT_SPEC.md`](docs/spec/PRODUCT_SPEC.md) for the product spec entry point, or [`docs/spec/PROJECT_CONTEXT.md`](docs/spec/PROJECT_CONTEXT.md) for the vision summary. Engineering guidelines (file-size limits, etc.) in [`AGENTS.md`](AGENTS.md).
 

@@ -3,7 +3,7 @@ import ProjectDescription
 // MARK: - Configure these before running `tuist generate`
 
 let appName = "Podcastr"
-let appDisplayName = "Podcastr"
+let appDisplayName = "Pod0"
 let appleTeamID = "456SHKPP26"
 let deploymentTarget: DeploymentTargets = .iOS("26.0")
 

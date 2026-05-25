@@ -74,7 +74,7 @@ struct RemoteSignerView: View {
 
     private var preface: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            Text("Some people prefer to keep their key in a separate signing app — like Amber or nsec.app — and let other apps ask permission to post. Podcastr supports this.")
+            Text("Some people prefer to keep their key in a separate signing app — like Amber or nsec.app — and let other apps ask permission to post. Pod0 supports this.")
                 .font(AppTheme.Typography.body)
                 .foregroundStyle(.primary)
 

@@ -158,7 +158,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private func makeWaitingTemplate() -> CPTemplate {
         let item = CPListItem(text: "Loading your podcasts…", detailText: nil)
         let section = CPListSection(items: [item])
-        let template = CPListTemplate(title: "Podcastr", sections: [section])
+        let template = CPListTemplate(title: "Pod0", sections: [section])
         return template
     }
 
