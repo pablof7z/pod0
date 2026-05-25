@@ -1,3 +1,9 @@
 [workspace]
-members = ["apps/nmp-app-podcast", "apps/podcast-core", "apps/podcast-feeds"]
+members = [
+    "apps/nmp-app-podcast",
+    "apps/podcast-core",
+    "apps/podcast-feeds",
+    "apps/podcast-transcripts",
+    "apps/podcast-knowledge",
+]
 resolver = "2"

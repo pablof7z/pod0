@@ -1,0 +1,15 @@
+[package]
+name = "podcast-transcripts"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Transcript parsing (WebVTT, SRT, Podcasting 2.0 JSON), chunking, and STT-provider orchestration action types for the podcast app. Pure parsing/decision logic — no HTTP (that's a capability)."
+
+[lib]
+name = "podcast_transcripts"
+
+[dependencies]
+podcast-core = { path = "../podcast-core" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", default-features = false, features = ["serde", "clock"] }
