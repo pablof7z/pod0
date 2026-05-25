@@ -33,6 +33,8 @@ use super::projections::{
     AccountSummary, BriefingSnapshot, ChapterSummary, CommentSummary, ConversationsSnapshot,
     DownloadQueueSnapshot, EpisodeSummary, NostrShowSummary, PodcastSummary, SettingsSnapshot,
     SocialSnapshot, VoiceState, WidgetSnapshot,
+    AccountSummary, BriefingSnapshot, ChapterSummary, ConversationsSnapshot, DownloadQueueSnapshot,
+    EpisodeSummary, PodcastSummary, VoiceState, WidgetSnapshot, WikiArticle,
 };
 use super::snapshot_queue::resolve_queue_rows;
 use crate::player::PlayerState;
@@ -173,6 +175,19 @@ pub struct PodcastUpdate {
     /// [`EpisodeSummary`] resolved against the library at projection time.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub queue: Vec<EpisodeSummary>,
+    /// AI-wiki articles surfaced to the iOS reader. One entry per
+    /// `(podcast_id, topic)` pair the user has asked for; the iOS
+    /// `WikiView` filters down to the current show. Empty until the
+    /// first `podcast.wiki.generate` lands during a kernel lifetime.
+    /// Per D5 we omit the empty vec from the wire payload.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub wiki_articles: Vec<WikiArticle>,
+    /// Filtered result of the most recent `podcast.wiki.search` dispatch.
+    /// Empty when no search is active or after the iOS shell consumes
+    /// the result. Lives at the snapshot root (not inside `wiki_articles`)
+    /// so the full library stays visible while a search overlay is open.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub wiki_search_results: Vec<WikiArticle>,
 }
 
 impl Default for PodcastUpdate {
@@ -197,6 +212,8 @@ impl Default for PodcastUpdate {
             settings: SettingsSnapshot::default(),
             comments: Vec::new(),
             queue: Vec::new(),
+            wiki_articles: Vec::new(),
+            wiki_search_results: Vec::new(),
         }
     }
 }
@@ -373,6 +390,14 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         .map(|q| q.items().to_vec()).unwrap_or_default();
     let queue = resolve_queue_rows(&queue_ids, &library);
 
+    let wiki_articles = handle.wiki_articles.lock().ok()
+        .map(|w| w.clone())
+        .unwrap_or_default();
+
+    let wiki_search_results = handle.wiki_search_results.lock().ok()
+        .map(|w| w.clone())
+        .unwrap_or_default();
+
     let update = PodcastUpdate {
         rev,
         now_playing,
@@ -383,6 +408,8 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         settings,
         briefing,
         queue,
+        wiki_articles,
+        wiki_search_results,
         ..PodcastUpdate::default()
     };
     let json = serde_json::to_string(&update)

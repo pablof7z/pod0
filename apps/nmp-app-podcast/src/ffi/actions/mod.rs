@@ -43,6 +43,9 @@
 //! podcast.agent.clear                  — ClearConversationAction { conversation_id }
 //! podcast.siri.play_latest             — SiriPlayLatestAction    { podcast_id? }
 //! podcast.siri.resume                  — SiriResumeAction
+//! podcast.wiki.generate                — WikiAction::Generate     { podcast_id, topic }
+//! podcast.wiki.delete                  — WikiAction::Delete       { article_id }
+//! podcast.wiki.search                  — WikiAction::Search       { query }
 //! ```
 //!
 //! Each id is exposed as a `pub const` so the iOS shell, the lint gate,
@@ -61,11 +64,13 @@ pub mod player_module;
 pub mod podcast_module;
 pub mod queue_module;
 pub mod voice;
+pub mod wiki_module;
 
 pub use chapters_module::{ChaptersAction, ChaptersActionModule};
 pub use player_module::{PlayerAction, PlayerActionModule};
 pub use podcast_module::{PodcastAction, PodcastActionModule};
 pub use queue_module::{QueueAction, QueueActionModule};
+pub use wiki_module::{WikiAction, WikiActionModule};
 
 use serde::{Deserialize, Serialize};
 

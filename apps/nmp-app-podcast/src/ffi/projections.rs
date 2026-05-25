@@ -528,6 +528,46 @@ pub struct SocialSnapshot {
     /// `following.len()` for now; surfaced separately so paged variants
     /// of `following` keep working without a second snapshot field.
     pub following_count: usize,
+/// One row in [`super::snapshot::PodcastUpdate::wiki_articles`].
+///
+/// A `WikiArticle` is the AI-synthesised, per-podcast knowledge entry the user
+/// builds up over time. Each article is keyed by `id` (UUID) and scoped to a
+/// single `podcast_id`; `topic` is the user-supplied subject line and
+/// `summary` is the LLM-rendered body (1-2 paragraphs in the scaffold; real
+/// synthesis is a follow-up).
+///
+/// `source_episode_ids` lists the episode ids the synthesis drew from, so the
+/// iOS reader can render tappable provenance rows that jump to the relevant
+/// episode detail screen. `last_updated_at` is unix seconds — Swift can
+/// compare against `Date()` without a formatter round-trip, mirroring the
+/// pattern used by [`PendingApprovalSnapshot::requested_at`].
+///
+/// `is_generating` is the lifecycle flag the UI flips on while a generation
+/// is in flight. In the scaffold the action handler completes synchronously
+/// (`is_generating = false`); the field exists so the LLM-backed follow-up
+/// can mutate it without renegotiating the wire shape.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
+pub struct WikiArticle {
+    /// Stable UUID for the article (hyphenated). The iOS reader uses this
+    /// as the `Identifiable.id` and as the argument to
+    /// `podcast.wiki.delete`.
+    pub id: String,
+    /// Owning podcast id (matches [`PodcastSummary::id`]). Used to filter
+    /// the article list down to the current show on the iOS side.
+    pub podcast_id: String,
+    /// User-supplied subject — what the article is *about*.
+    pub topic: String,
+    /// Rendered body (1-2 paragraph summary in the scaffold).
+    pub summary: String,
+    /// Episode ids the synthesis drew from. Empty in the scaffold —
+    /// populated once the LLM follow-up wires real retrieval.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub source_episode_ids: Vec<String>,
+    /// Unix seconds — see struct-level comment.
+    pub last_updated_at: i64,
+    /// `true` while a generation is in flight; `false` once the article is
+    /// readable. Lets the UI render a progress indicator without polling.
+    pub is_generating: bool,
 }
 
 #[cfg(test)]
@@ -786,5 +826,25 @@ mod tests {
         let json = serde_json::to_string(&snap).expect("encode");
         assert!(json.contains("\"following\":[]"));
         assert!(json.contains("\"following_count\":0"));
+    // ── Wiki article (#39 — AI wiki scaffold) ────────────────────────
+    //
+    // Round-trip coverage lives in `super::super::snapshot_tests` because
+    // the WikiArticle is only ever encountered via `PodcastUpdate`. The
+    // assertion that an empty `source_episode_ids` is omitted from the
+    // wire payload (D5) is co-located here to keep the contract close to
+    // the struct definition.
+    #[test]
+    fn wiki_article_omits_empty_sources_on_wire() {
+        let article = WikiArticle {
+            id: "art-1".into(),
+            podcast_id: "pod-1".into(),
+            topic: "Bitcoin halvings".into(),
+            summary: "Stub summary.".into(),
+            source_episode_ids: vec![],
+            last_updated_at: 1_700_000_000,
+            is_generating: false,
+        };
+        let json = serde_json::to_string(&article).expect("encode");
+        assert!(!json.contains("source_episode_ids"));
     }
 }

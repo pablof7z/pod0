@@ -8,6 +8,8 @@ use super::projections::{
     BriefingSegmentSummary, BriefingSnapshot, CommentSummary, ConversationsSnapshot,
     DownloadItemSnapshot, DownloadQueueSnapshot, PendingApprovalSnapshot, SettingsSnapshot,
     VoiceState, WidgetSnapshot,
+    BriefingSnapshot, ConversationsSnapshot, DownloadItemSnapshot, DownloadQueueSnapshot,
+    PendingApprovalSnapshot, VoiceState, WidgetSnapshot, WikiArticle,
 };
 use super::snapshot::PodcastUpdate;
 use crate::player::PlayerState;
@@ -357,4 +359,53 @@ fn snapshot_with_queue_round_trips() {
 }
     let decoded: BriefingSnapshot = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded, b);
+
+// ── Wiki article snapshot wiring (#39 — AI wiki scaffold) ────────────────
+
+#[test]
+fn snapshot_with_wiki_articles_round_trips() {
+    let snap = PodcastUpdate {
+        wiki_articles: vec![WikiArticle {
+            id: "art-1".into(),
+            podcast_id: "pod-1".into(),
+            topic: "Halving cycles".into(),
+            summary: "Summary body.".into(),
+            source_episode_ids: vec!["ep-1".into()],
+            last_updated_at: 1_700_000_000,
+            is_generating: false,
+        }],
+        ..PodcastUpdate::default()
+    };
+    let json = serde_json::to_string(&snap).expect("encode");
+    assert!(json.contains(r#""wiki_articles""#));
+    let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded.wiki_articles, snap.wiki_articles);
+}
+
+#[test]
+fn snapshot_omits_empty_wiki_articles() {
+    // D5 byte-identity: empty wiki list must not bloat the wire payload.
+    let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
+    assert!(!json.contains("wiki_articles"));
+    assert!(!json.contains("wiki_search_results"));
+}
+
+#[test]
+fn snapshot_with_wiki_search_results_round_trips() {
+    let snap = PodcastUpdate {
+        wiki_search_results: vec![WikiArticle {
+            id: "art-2".into(),
+            podcast_id: "pod-1".into(),
+            topic: "Lightning routing".into(),
+            summary: "Summary.".into(),
+            source_episode_ids: vec![],
+            last_updated_at: 1_700_000_100,
+            is_generating: false,
+        }],
+        ..PodcastUpdate::default()
+    };
+    let json = serde_json::to_string(&snap).expect("encode");
+    assert!(json.contains(r#""wiki_search_results""#));
+    let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded.wiki_search_results, snap.wiki_search_results);
 }

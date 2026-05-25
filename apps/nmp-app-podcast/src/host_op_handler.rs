@@ -26,11 +26,14 @@ use crate::ffi::actions::queue_module::QueueAction;
 use crate::ffi::projections::{BriefingSnapshot, NostrShowSummary, PodcastSummary};
 use crate::host_op_handler_helpers::merge_episodes;
 use crate::host_op_handler_queue::handle_queue_action;
+use crate::ffi::actions::wiki_module::WikiAction;
+use crate::ffi::projections::{PodcastSummary, WikiArticle};
 use crate::itunes_search::{parse_itunes_results, url_encode};
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::store::{episodes_to_auto_download, PodcastStore};
 use crate::transcript::handle_fetch_transcript;
+use crate::wiki::handle_wiki_action;
 
 mod player_actions;
 
@@ -42,6 +45,8 @@ pub struct PodcastHostOpHandler {
     nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
     briefing: Arc<Mutex<Option<BriefingSnapshot>>>,
     queue: Arc<Mutex<PlaybackQueue>>,
+    wiki_articles: Arc<Mutex<Vec<WikiArticle>>>,
+    wiki_search_results: Arc<Mutex<Vec<WikiArticle>>>,
     rev: Arc<AtomicU64>,
 }
 
@@ -61,6 +66,11 @@ impl PodcastHostOpHandler {
         rev: Arc<AtomicU64>,
     ) -> Self {
         Self { app, store, player_actor, search_results, nostr_results, briefing, queue, rev }
+        wiki_articles: Arc<Mutex<Vec<WikiArticle>>>,
+        wiki_search_results: Arc<Mutex<Vec<WikiArticle>>>,
+        rev: Arc<AtomicU64>,
+    ) -> Self {
+        Self { app, store, player_actor, search_results, wiki_articles, wiki_search_results, rev }
     }
     fn dispatch_http(&self, req: &HttpRequest, correlation_id: &str) -> Result<HttpResult, String> {
         let payload_json = serde_json::to_string(req).map_err(|e| e.to_string())?;
@@ -497,6 +507,140 @@ impl PodcastHostOpHandler {
         serde_json::json!({"ok": true})
     }
 
+    fn handle_play(&self, episode_id: String, correlation_id: &str) -> serde_json::Value {
+        let (podcast_id, url, position_secs) = {
+            match self.store.lock() {
+                Ok(s) => match s.episode_playback_info(&episode_id) {
+                    Some(info) => info,
+                    None => return serde_json::json!({"ok": false, "error": format!("episode not found: {episode_id}")}),
+                },
+                Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+            }
+        };
+        {
+            if let Ok(mut actor) = self.player_actor.lock() {
+                actor.stage_load(&episode_id, Some(podcast_id), &url, position_secs);
+            }
+        }
+        self.rev.fetch_add(1, Ordering::Relaxed);
+        let load_cmd = AudioCommand::load(&url, position_secs);
+        if let Err(e) = self.dispatch_audio(&load_cmd, correlation_id) {
+            return serde_json::json!({"ok": false, "error": e});
+        }
+        if let Err(e) = self.dispatch_audio(&AudioCommand::Play, correlation_id) {
+            return serde_json::json!({"ok": false, "error": e});
+        }
+        serde_json::json!({"ok": true})
+    }
+
+    fn handle_player_action(&self, action: PlayerAction, correlation_id: &str) -> serde_json::Value {
+        match action {
+            PlayerAction::Play { episode_id } => self.handle_play(episode_id, correlation_id),
+            PlayerAction::Pause => {
+                match self.dispatch_audio(&AudioCommand::Pause, correlation_id) {
+                    Ok(_) => serde_json::json!({"ok": true}),
+                    Err(e) => serde_json::json!({"ok": false, "error": e}),
+                }
+            }
+            PlayerAction::Seek { position_secs } => {
+                match self.dispatch_audio(&AudioCommand::seek(position_secs), correlation_id) {
+                    Ok(_) => serde_json::json!({"ok": true}),
+                    Err(e) => serde_json::json!({"ok": false, "error": e}),
+                }
+            }
+            PlayerAction::SetSpeed { speed } => {
+                if let Ok(mut a) = self.player_actor.lock() { a.set_speed(speed); }
+                self.rev.fetch_add(1, Ordering::Relaxed);
+                match self.dispatch_audio(&AudioCommand::SetSpeed { speed }, correlation_id) {
+                    Ok(_) => serde_json::json!({"ok": true}),
+                    Err(e) => serde_json::json!({"ok": false, "error": e}),
+                }
+            }
+            PlayerAction::SetVolume { volume } => {
+                if let Ok(mut a) = self.player_actor.lock() { a.set_volume(volume); }
+                self.rev.fetch_add(1, Ordering::Relaxed);
+                match self.dispatch_audio(&AudioCommand::SetVolume { volume }, correlation_id) {
+                    Ok(_) => serde_json::json!({"ok": true}),
+                    Err(e) => serde_json::json!({"ok": false, "error": e}),
+                }
+            }
+            PlayerAction::SetSleepTimer { secs } => {
+                if let Ok(mut a) = self.player_actor.lock() {
+                    match secs {
+                        Some(s) if s > 0 => a.arm_sleep_timer(Duration::from_secs(s), SystemTime::now()),
+                        _ => a.cancel_sleep_timer(),
+                    }
+                }
+                self.rev.fetch_add(1, Ordering::Relaxed);
+                match self.dispatch_audio(&AudioCommand::SetSleepTimer { secs }, correlation_id) {
+                    Ok(_) => serde_json::json!({"ok": true}),
+                    Err(e) => serde_json::json!({"ok": false, "error": e}),
+                }
+            }
+            PlayerAction::Stop => {
+                match self.dispatch_audio(&AudioCommand::Stop, correlation_id) {
+                    Ok(_) => serde_json::json!({"ok": true}),
+                    Err(e) => serde_json::json!({"ok": false, "error": e}),
+                }
+            }
+            PlayerAction::Enqueue { episode_id } => self.handle_enqueue(episode_id),
+            PlayerAction::Dequeue { episode_id } => self.handle_dequeue(episode_id),
+            PlayerAction::ClearQueue => self.handle_clear_queue(),
+            PlayerAction::PlayNext => self.handle_play_next(correlation_id),
+        }
+    }
+
+    fn handle_enqueue(&self, episode_id: String) -> serde_json::Value {
+        let exists = match self.store.lock() {
+            Ok(s) => s.episode_playback_info(&episode_id).is_some(),
+            Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+        };
+        if !exists {
+            return serde_json::json!({"ok": false, "error": format!("episode not found: {episode_id}")});
+        }
+        match self.player_actor.lock() {
+            Ok(mut a) => {
+                a.enqueue(&episode_id);
+                self.rev.fetch_add(1, Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            Err(_) => serde_json::json!({"ok": false, "error": "player_actor poisoned"}),
+        }
+    }
+
+    fn handle_dequeue(&self, episode_id: String) -> serde_json::Value {
+        match self.player_actor.lock() {
+            Ok(mut a) => {
+                a.dequeue(&episode_id);
+                self.rev.fetch_add(1, Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            Err(_) => serde_json::json!({"ok": false, "error": "player_actor poisoned"}),
+        }
+    }
+
+    fn handle_clear_queue(&self) -> serde_json::Value {
+        match self.player_actor.lock() {
+            Ok(mut a) => {
+                a.clear_queue();
+                self.rev.fetch_add(1, Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            Err(_) => serde_json::json!({"ok": false, "error": "player_actor poisoned"}),
+        }
+    }
+
+    fn handle_play_next(&self, correlation_id: &str) -> serde_json::Value {
+        let next_id = match self.player_actor.lock() {
+            Ok(mut a) => a.pop_next(),
+            Err(_) => return serde_json::json!({"ok": false, "error": "player_actor poisoned"}),
+        };
+        match next_id {
+            Some(id) => self.handle_play(id, correlation_id),
+            None => serde_json::json!({"ok": false, "error": "queue is empty"}),
+        }
+    }
+
 }
 
 impl HostOpHandler for PodcastHostOpHandler {
@@ -537,6 +681,8 @@ impl HostOpHandler for PodcastHostOpHandler {
                     handle_compile_chapters(&self.store, &self.rev, episode_id)
                 }
             };
+        if let Ok(action) = serde_json::from_str::<WikiAction>(action_json) {
+            return handle_wiki_action(&self.wiki_articles, &self.wiki_search_results, &self.rev, action);
         }
         serde_json::json!({"ok": false, "error": format!("unknown action: {action_json}")})
     }

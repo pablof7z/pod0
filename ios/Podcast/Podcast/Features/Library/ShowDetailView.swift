@@ -55,6 +55,9 @@ struct ShowDetailView: View {
         .refreshable {
             model.dispatch(namespace: "podcast", body: ["op": "refresh", "podcast_id": podcast.id])
         }
+        .navigationDestination(for: WikiShowRoute.self) { route in
+            WikiView(podcastId: route.podcastId)
+        }
         .alert(
             "Unsubscribe from \(livePodcast.title)?",
             isPresented: $showUnsubscribeConfirm
@@ -144,6 +147,12 @@ struct ShowDetailView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
+            NavigationLink(value: WikiShowRoute(podcastId: podcast.id)) {
+                Image(systemName: "book.closed").font(.title3)
+            }
+            .accessibilityLabel("Wiki for this show")
+        }
+        ToolbarItem(placement: .topBarTrailing) {
             Button {
                 Haptics.light()
                 isSearchActive = true
@@ -220,4 +229,14 @@ struct ShowDetailView: View {
         model.dispatch(namespace: "podcast", body: ["op": "unsubscribe", "podcast_id": podcast.id])
         dismiss()
     }
+}
+
+// MARK: - WikiShowRoute
+
+/// Navigation value pushed onto the surrounding `NavigationStack` to open
+/// `WikiView` for the given podcast. Defined here (rather than in
+/// `WikiView.swift`) because `ShowDetailView` is the owner of the
+/// `navigationDestination(for:)` modifier that consumes it.
+struct WikiShowRoute: Hashable {
+    let podcastId: String
 }

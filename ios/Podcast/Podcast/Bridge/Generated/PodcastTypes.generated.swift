@@ -56,6 +56,13 @@ struct PodcastUpdate: Codable {
 /// snapshot — older binaries on `Codable` decode see this as a fresh install.
 struct SettingsSnapshot: Codable, Equatable, Hashable {
     var hasCompletedOnboarding: Bool = false
+    /// AI-wiki articles surfaced to the per-podcast reader. Mutated
+    /// kernel-side via `podcast.wiki.generate` / `delete`. Filtered by
+    /// `podcastId` on the iOS side.
+    var wikiArticles: [WikiArticle]? = nil
+    /// Result of the most recent `podcast.wiki.search`. `nil` until the
+    /// first search lands; an empty array means a search with no hits.
+    var wikiSearchResults: [WikiArticle]? = nil
 }
 
 /// Narrow projection for a subscribed podcast (one library grid/list cell).
@@ -242,4 +249,16 @@ struct SocialSnapshot: Codable, Equatable, Hashable {
     /// today; surfaced separately so paged variants of `following` keep
     /// working without a second snapshot field.
     var followingCount: Int = 0
+/// One row in `PodcastUpdate.wikiArticles` — an AI-synthesised, per-podcast
+/// knowledge entry. The scaffold ships with a placeholder `summary`; the
+/// LLM-backed follow-up swaps the body in without renegotiating the shape.
+struct WikiArticle: Codable, Identifiable, Equatable, Hashable {
+    var id: String
+    var podcastId: String
+    var topic: String
+    var summary: String
+    var sourceEpisodeIds: [String]? = nil
+    /// Unix seconds. Mirrors `WikiArticle::last_updated_at` in Rust.
+    var lastUpdatedAt: Int = 0
+    var isGenerating: Bool = false
 }

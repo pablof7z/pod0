@@ -7,6 +7,7 @@ use std::sync::atomic::AtomicU64;
 use nmp_ffi::NmpApp;
 
 use crate::ffi::projections::{BriefingSnapshot, NostrShowSummary, PodcastSummary};
+use crate::ffi::projections::{PodcastSummary, WikiArticle};
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::store::PodcastStore;
@@ -39,6 +40,16 @@ pub struct PodcastHandle {
     /// Playback "Up Next" queue. Mutated by the queue action handler on the
     /// actor thread; read by the snapshot projection on the main thread.
     pub(super) queue: Arc<Mutex<PlaybackQueue>>,
+    /// All AI-wiki articles the user has generated. Written by the
+    /// `podcast.wiki.{generate,delete}` ops on the actor thread; read by
+    /// `build_snapshot_payload` on the main thread.
+    pub(super) wiki_articles: Arc<Mutex<Vec<WikiArticle>>>,
+    /// Transient result of the most recent `podcast.wiki.search`. Written
+    /// by the search op; cleared by a subsequent search that returns
+    /// nothing (or by `podcast.wiki.delete` of a referenced article — the
+    /// scaffold only mutates `wiki_articles` so search results may go
+    /// stale; that's tracked as a follow-up alongside real LLM synthesis).
+    pub(super) wiki_search_results: Arc<Mutex<Vec<WikiArticle>>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the

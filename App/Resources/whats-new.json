@@ -95,6 +95,9 @@
       "shipped_at": "2026-05-25T23:07:00Z",
       "lines": [
         "Experimental: the Add Show sheet can now search Nostr NIP-F4 podcast events and subscribe via their RSS feed tags."
+      "shipped_at": "2026-05-26T01:35:00Z",
+      "lines": [
+        "AI wiki: open any show and tap the new book icon to start building a topic-by-topic knowledge base — full LLM synthesis is a follow-up, but you can generate, browse, and delete articles today."
       ]
     },
     {

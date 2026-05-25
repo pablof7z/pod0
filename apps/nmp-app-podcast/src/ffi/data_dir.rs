@@ -80,6 +80,8 @@ mod tests {
             snapshot_cache: Arc::new(Mutex::new(None)),
             briefing: Arc::new(Mutex::new(None)),
             queue: Arc::new(Mutex::new(PlaybackQueue::new())),
+            wiki_articles: Arc::new(Mutex::new(Vec::new())),
+            wiki_search_results: Arc::new(Mutex::new(Vec::new())),
         })
     }
 

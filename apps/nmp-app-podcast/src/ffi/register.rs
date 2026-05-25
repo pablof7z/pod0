@@ -10,6 +10,7 @@ use super::actions::chapters_module::ChaptersActionModule;
 use super::actions::player_module::PlayerActionModule;
 use super::actions::podcast_module::PodcastActionModule;
 use super::actions::queue_module::QueueActionModule;
+use super::actions::wiki_module::WikiActionModule;
 use super::handle::PodcastHandle;
 use crate::host_op_handler::PodcastHostOpHandler;
 use crate::player::PlayerActor;
@@ -48,6 +49,10 @@ pub extern "C" fn nmp_app_podcast_register(
     app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<QueueActionModule>();
     app_mut.register_action::<ChaptersActionModule>();
+    // (playback), and "podcast.wiki" (AI wiki scaffold — PR #39).
+    app_mut.register_action::<PodcastActionModule>();
+    app_mut.register_action::<PlayerActionModule>();
+    app_mut.register_action::<WikiActionModule>();
 
     // Shared state between the handle (snapshot reader) and the handler (writer).
     let store = Arc::new(Mutex::new(PodcastStore::new()));
@@ -56,6 +61,8 @@ pub extern "C" fn nmp_app_podcast_register(
     let nostr_results = Arc::new(Mutex::new(Vec::new()));
     let briefing = Arc::new(Mutex::new(None));
     let queue = Arc::new(Mutex::new(PlaybackQueue::new()));
+    let wiki_articles = Arc::new(Mutex::new(Vec::new()));
+    let wiki_search_results = Arc::new(Mutex::new(Vec::new()));
     // Start at 1 so the first snapshot poll always triggers an iOS update
     // (guard is `update.rev > last_seen_rev`; last_seen_rev starts at 0).
     // Subsequent increments happen in PodcastHostOpHandler on store writes.
@@ -72,6 +79,8 @@ pub extern "C" fn nmp_app_podcast_register(
         nostr_results.clone(),
         briefing.clone(),
         queue.clone(),
+        wiki_articles.clone(),
+        wiki_search_results.clone(),
         rev.clone(),
     )));
 
@@ -85,5 +94,7 @@ pub extern "C" fn nmp_app_podcast_register(
         snapshot_cache: Arc::new(Mutex::new(None)),
         briefing,
         queue,
+        wiki_articles,
+        wiki_search_results,
     }))
 }
