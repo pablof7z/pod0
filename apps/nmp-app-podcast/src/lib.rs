@@ -32,6 +32,7 @@
 //!   per-projection actors under [`player`] et al.
 
 pub mod capability;
+pub mod download;
 pub mod ffi;
 pub mod player;
 
@@ -41,7 +42,11 @@ pub mod player;
 #[cfg(target_os = "android")]
 pub mod android;
 
-pub use capability::{AudioCommand, AudioReport, AUDIO_CAPABILITY_NAMESPACE};
+pub use capability::{
+    AudioCommand, AudioReport, DownloadCommand, DownloadReport, AUDIO_CAPABILITY_NAMESPACE,
+    DOWNLOAD_CAPABILITY_NAMESPACE,
+};
+pub use download::{DownloadItem, DownloadItemState, DownloadQueue, DEFAULT_MAX_CONCURRENT};
 pub use ffi::{
     nmp_app_podcast_register, nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free,
     nmp_app_podcast_unregister, PodcastHandle,

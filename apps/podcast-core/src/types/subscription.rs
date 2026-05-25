@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::types::episode::Episode;
 use crate::types::podcast::PodcastId;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -27,6 +28,37 @@ impl AutoDownloadPolicy {
         Self {
             mode: AutoDownloadMode::AllNew,
             wifi_only: true,
+        }
+    }
+
+    /// First-pass decision: should the per-subscription policy auto-download
+    /// `episode`?
+    ///
+    /// This is the M4.A skeleton: it only inspects the [`AutoDownloadMode`]
+    /// variant. Real policy — storage cap, network-type guard (`wifi_only`),
+    /// per-subscription "newest N already downloaded" counting, time-of-day
+    /// window — lives in `podcast-feeds::refresh::policy` and lands in
+    /// M4.B (see `Plans/nmp-migration/milestones/M04-download-capability.md`
+    /// §M4.B). Callers in M4.A use this for the action-emission decision; M4.B
+    /// will refine the policy site without breaking this signature.
+    ///
+    /// Behaviour today:
+    /// * `Off` → `false`.
+    /// * `AllNew` → `true`.
+    /// * `LatestN { count }` → `true` when `count > 0`. The newest-first cap
+    ///   (e.g. "only the latest 5 episodes") requires counting how many are
+    ///   already downloaded for this subscription, which this signature
+    ///   doesn't carry. M4.B refines.
+    ///
+    /// `wifi_only` is intentionally **not** checked here — the network type
+    /// isn't an input. M4.B's policy site has access to the path monitor and
+    /// will gate the action emission accordingly.
+    #[must_use]
+    pub fn should_auto_download(&self, _episode: &Episode) -> bool {
+        match self.mode {
+            AutoDownloadMode::Off => false,
+            AutoDownloadMode::AllNew => true,
+            AutoDownloadMode::LatestN { count } => count > 0,
         }
     }
 }
@@ -66,7 +98,18 @@ impl PodcastSubscription {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use url::Url;
     use uuid::Uuid;
+
+    fn fixture_episode() -> Episode {
+        Episode::new(
+            PodcastId::generate(),
+            "guid-1",
+            "Pilot",
+            Url::parse("https://example.com/audio.mp3").unwrap(),
+            Utc::now(),
+        )
+    }
 
     #[test]
     fn policy_round_trip() {
@@ -85,5 +128,42 @@ mod tests {
         let json = serde_json::to_string(&value).unwrap();
         let back: PodcastSubscription = serde_json::from_str(&json).unwrap();
         assert_eq!(value, back);
+    }
+
+    #[test]
+    fn should_auto_download_off_returns_false() {
+        let policy = AutoDownloadPolicy::new(AutoDownloadMode::Off, true);
+        assert!(!policy.should_auto_download(&fixture_episode()));
+    }
+
+    #[test]
+    fn should_auto_download_all_new_returns_true() {
+        let policy = AutoDownloadPolicy::new(AutoDownloadMode::AllNew, true);
+        assert!(policy.should_auto_download(&fixture_episode()));
+    }
+
+    #[test]
+    fn should_auto_download_latest_n_with_positive_count_returns_true() {
+        let policy =
+            AutoDownloadPolicy::new(AutoDownloadMode::LatestN { count: 5 }, true);
+        assert!(policy.should_auto_download(&fixture_episode()));
+    }
+
+    #[test]
+    fn should_auto_download_latest_n_zero_returns_false() {
+        let policy =
+            AutoDownloadPolicy::new(AutoDownloadMode::LatestN { count: 0 }, true);
+        assert!(!policy.should_auto_download(&fixture_episode()));
+    }
+
+    #[test]
+    fn should_auto_download_ignores_wifi_only_in_m4a() {
+        // M4.A doesn't see the network type; M4.B's policy layer does.
+        // Document the simplification with a regression test so a future
+        // edit doesn't quietly add a wifi check here.
+        let policy = AutoDownloadPolicy::new(AutoDownloadMode::AllNew, true);
+        assert!(policy.should_auto_download(&fixture_episode()));
+        let policy = AutoDownloadPolicy::new(AutoDownloadMode::AllNew, false);
+        assert!(policy.should_auto_download(&fixture_episode()));
     }
 }

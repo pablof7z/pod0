@@ -19,13 +19,18 @@
 //! Every player action carries a stable string id Swift can match on:
 //!
 //! ```text
-//! podcast.player.play             — PlayAction      { episode_id: String }
-//! podcast.player.pause            — PauseAction
-//! podcast.player.seek             — SeekAction      { position_secs: f64 }
-//! podcast.player.set_speed        — SetSpeedAction  { speed: f32 }
-//! podcast.player.set_volume       — SetVolumeAction { volume: f32 }
-//! podcast.player.set_sleep_timer  — SetSleepTimerAction { secs: Option<u64> }
-//! podcast.player.stop             — StopAction
+//! podcast.player.play                  — PlayAction              { episode_id: String }
+//! podcast.player.pause                 — PauseAction
+//! podcast.player.seek                  — SeekAction              { position_secs: f64 }
+//! podcast.player.set_speed             — SetSpeedAction          { speed: f32 }
+//! podcast.player.set_volume            — SetVolumeAction         { volume: f32 }
+//! podcast.player.set_sleep_timer       — SetSleepTimerAction     { secs: Option<u64> }
+//! podcast.player.stop                  — StopAction
+//! podcast.player.download              — DownloadEpisodeAction   { episode_id, url }
+//! podcast.player.cancel_download       — CancelDownloadAction    { episode_id }
+//! podcast.player.pause_download        — PauseDownloadAction     { episode_id }
+//! podcast.player.resume_download       — ResumeDownloadAction    { episode_id }
+//! podcast.player.cancel_all_downloads  — CancelAllDownloadsAction
 //! ```
 //!
 //! Each id is exposed as a `pub const` so the iOS shell, the lint gate,
@@ -51,6 +56,16 @@ pub const ACTION_PLAYER_SET_VOLUME: &str = "podcast.player.set_volume";
 pub const ACTION_PLAYER_SET_SLEEP_TIMER: &str = "podcast.player.set_sleep_timer";
 /// `podcast.player.stop` — tear down the active episode.
 pub const ACTION_PLAYER_STOP: &str = "podcast.player.stop";
+/// `podcast.player.download` — enqueue an episode for background download.
+pub const ACTION_PLAYER_DOWNLOAD: &str = "podcast.player.download";
+/// `podcast.player.cancel_download` — cancel an active or queued download.
+pub const ACTION_PLAYER_CANCEL_DOWNLOAD: &str = "podcast.player.cancel_download";
+/// `podcast.player.pause_download` — pause an active download.
+pub const ACTION_PLAYER_PAUSE_DOWNLOAD: &str = "podcast.player.pause_download";
+/// `podcast.player.resume_download` — resume a paused download.
+pub const ACTION_PLAYER_RESUME_DOWNLOAD: &str = "podcast.player.resume_download";
+/// `podcast.player.cancel_all_downloads` — cancel every in-flight + queued download.
+pub const ACTION_PLAYER_CANCEL_ALL_DOWNLOADS: &str = "podcast.player.cancel_all_downloads";
 
 // ---------------------------------------------------------------------------
 // Action payloads
@@ -105,6 +120,46 @@ pub struct SetSleepTimerAction {
 #[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct StopAction;
 
+/// Payload for [`ACTION_PLAYER_DOWNLOAD`].
+///
+/// `episode_id` resolves to an episode the user wants downloaded; `url`
+/// is the enclosure to fetch. The kernel routes this to
+/// [`crate::download::DownloadQueue::enqueue`] and (when slot-available)
+/// dispatches `DownloadCommand::StartDownload` to the iOS executor.
+///
+/// `url` is carried in the action rather than re-derived in the kernel
+/// so the action remains pure data (no implicit episode-store lookup
+/// from the action module). M4.B's auto-download policy fills both
+/// fields from the episode record it iterates over.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+pub struct DownloadEpisodeAction {
+    pub episode_id: String,
+    pub url: String,
+}
+
+/// Payload for [`ACTION_PLAYER_CANCEL_DOWNLOAD`].
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+pub struct CancelDownloadAction {
+    pub episode_id: String,
+}
+
+/// Payload for [`ACTION_PLAYER_PAUSE_DOWNLOAD`].
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+pub struct PauseDownloadAction {
+    pub episode_id: String,
+}
+
+/// Payload for [`ACTION_PLAYER_RESUME_DOWNLOAD`].
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+pub struct ResumeDownloadAction {
+    pub episode_id: String,
+}
+
+/// Payload for [`ACTION_PLAYER_CANCEL_ALL_DOWNLOADS`]. Empty — there is
+/// nothing to target beyond "all in-flight + queued".
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
+pub struct CancelAllDownloadsAction;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -121,6 +176,68 @@ mod tests {
             "podcast.player.set_sleep_timer"
         );
         assert_eq!(ACTION_PLAYER_STOP, "podcast.player.stop");
+        assert_eq!(ACTION_PLAYER_DOWNLOAD, "podcast.player.download");
+        assert_eq!(
+            ACTION_PLAYER_CANCEL_DOWNLOAD,
+            "podcast.player.cancel_download"
+        );
+        assert_eq!(
+            ACTION_PLAYER_PAUSE_DOWNLOAD,
+            "podcast.player.pause_download"
+        );
+        assert_eq!(
+            ACTION_PLAYER_RESUME_DOWNLOAD,
+            "podcast.player.resume_download"
+        );
+        assert_eq!(
+            ACTION_PLAYER_CANCEL_ALL_DOWNLOADS,
+            "podcast.player.cancel_all_downloads"
+        );
+    }
+
+    #[test]
+    fn download_episode_action_serde_roundtrips() {
+        let a = DownloadEpisodeAction {
+            episode_id: "ep-7".into(),
+            url: "https://ex.com/7.mp3".into(),
+        };
+        let json = serde_json::to_string(&a).expect("encode");
+        let decoded: DownloadEpisodeAction = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, a);
+    }
+
+    #[test]
+    fn cancel_download_action_serde_roundtrips() {
+        let a = CancelDownloadAction {
+            episode_id: "ep-7".into(),
+        };
+        let json = serde_json::to_string(&a).expect("encode");
+        assert_eq!(json, r#"{"episode_id":"ep-7"}"#);
+        let decoded: CancelDownloadAction = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, a);
+    }
+
+    #[test]
+    fn pause_resume_download_actions_round_trip() {
+        let pause = PauseDownloadAction {
+            episode_id: "ep-7".into(),
+        };
+        let resume = ResumeDownloadAction {
+            episode_id: "ep-7".into(),
+        };
+        let pj = serde_json::to_string(&pause).expect("encode");
+        let rj = serde_json::to_string(&resume).expect("encode");
+        let pd: PauseDownloadAction = serde_json::from_str(&pj).expect("decode");
+        let rd: ResumeDownloadAction = serde_json::from_str(&rj).expect("decode");
+        assert_eq!(pd, pause);
+        assert_eq!(rd, resume);
+    }
+
+    #[test]
+    fn cancel_all_downloads_action_is_unit_struct() {
+        let a = CancelAllDownloadsAction;
+        let json = serde_json::to_string(&a).expect("encode");
+        assert_eq!(json, "null");
     }
 
     #[test]

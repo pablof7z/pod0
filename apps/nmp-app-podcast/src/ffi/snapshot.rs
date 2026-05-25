@@ -8,11 +8,12 @@
 //! milestone (see `Plans/nmp-migration/04-snapshot.md` for the full target
 //! shape).
 //!
-//! For M3.A the only new field is `now_playing: Option<PlayerState>`. Every
-//! other field stays unset until its milestone lands — the empty defaults are
-//! deliberately byte-compatible with the legacy stub payload
+//! For M3.A the only new field is `now_playing: Option<PlayerState>`. M4.A
+//! adds `downloads: Option<DownloadQueueSnapshot>`. Every other field stays
+//! unset until its milestone lands — the empty defaults are deliberately
+//! byte-compatible with the legacy stub payload
 //! (`{"running":true,"rev":0,"schema_version":1}`) so existing decoders don't
-//! break before M3.B wires the player projection.
+//! break before each projection's milestone wires it up.
 
 use std::ffi::{c_char, CString};
 
@@ -47,6 +48,14 @@ pub struct PodcastUpdate {
     /// iOS decoder doesn't render a hero with default zeros.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub now_playing: Option<PlayerState>,
+    /// Active download-queue projection, or `None` when no downloads
+    /// have ever been enqueued during this kernel lifetime.
+    ///
+    /// Per D5 we serialize `None` (not an empty struct) when there is
+    /// nothing to show — keeps the byte-compatible legacy stub for
+    /// "no-op snapshot" intact.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub downloads: Option<DownloadQueueSnapshot>,
 }
 
 impl Default for PodcastUpdate {
@@ -56,8 +65,63 @@ impl Default for PodcastUpdate {
             rev: 0,
             schema_version: 1,
             now_playing: None,
+            downloads: None,
         }
     }
+}
+
+/// Snapshot of the [`crate::download::DownloadQueue`] surfaced to the iOS
+/// shell via `PodcastUpdate.downloads`.
+///
+/// Designed so the UI can render the Downloads section (Settings →
+/// Downloads, EpisodeRow capsule) directly from this payload without
+/// reaching back into Rust:
+///
+/// * `active` — every item that holds a slot (Active or Paused) plus
+///   any item still in `Queued` state, with progress + state surfaced.
+/// * `queued_count` — number of items in `Queued` state (subset of
+///   `active.len()` with `state == "queued"`); provided as a sugar so
+///   the UI doesn't need to filter.
+/// * `completed_today` — the number of items that completed in the
+///   current wall-clock day. Computed by the projection layer that
+///   builds this snapshot (it has access to the wall clock that the
+///   queue itself doesn't); the queue itself doesn't track timestamps
+///   in M4.A. M4.B will refine this once auto-download policy lands.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+pub struct DownloadQueueSnapshot {
+    /// Items currently visible to the user (Active, Paused, Queued, or
+    /// most-recent Failed). The ordering is the projection's choice —
+    /// the queue itself uses a FIFO `queue_order`, but the snapshot
+    /// builder can re-order for UI grouping.
+    pub active: Vec<DownloadItemSnapshot>,
+    /// Number of items still in `Queued` state.
+    pub queued_count: usize,
+    /// Number of items that transitioned to `Completed` today
+    /// (wall-clock). Zero in M4.A — wired in M4.B where the policy
+    /// layer has a clock.
+    pub completed_today: usize,
+}
+
+/// One row in [`DownloadQueueSnapshot::active`].
+///
+/// `state` is a string (`"active"` / `"queued"` / `"paused"` /
+/// `"failed"`) rather than the [`crate::download::DownloadItemState`]
+/// enum because the snapshot is consumed by Swift `Codable` decoders
+/// that prefer string discriminators over enum variants when the
+/// downstream view model only switches on a handful of states.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+pub struct DownloadItemSnapshot {
+    pub episode_id: String,
+    /// `0.0..=1.0`, or `0.0` when `total_bytes` is unknown.
+    pub progress: f32,
+    /// One of `"active"`, `"queued"`, `"paused"`, `"failed"`. Successful
+    /// completions and explicit cancellations drop out of `active` (the
+    /// projection layer decides whether to retain a brief "just
+    /// finished" banner).
+    pub state: String,
+    /// Most recent failure diagnostic, when `state == "failed"`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
 }
 
 /// Build the JSON payload the FFI snapshot function returns. Extracted so
@@ -178,5 +242,41 @@ mod tests {
         let decoded: PodcastUpdate = serde_json::from_str(payload).expect("decode");
         assert_eq!(decoded.rev, 7);
         assert!(decoded.now_playing.is_none());
+        assert!(decoded.downloads.is_none());
+    }
+
+    #[test]
+    fn snapshot_with_downloads_round_trips() {
+        let downloads = DownloadQueueSnapshot {
+            active: vec![DownloadItemSnapshot {
+                episode_id: "ep-1".into(),
+                progress: 0.5,
+                state: "active".into(),
+                error: None,
+            }],
+            queued_count: 2,
+            completed_today: 0,
+        };
+        let snap = PodcastUpdate {
+            downloads: Some(downloads.clone()),
+            ..PodcastUpdate::default()
+        };
+        let json = serde_json::to_string(&snap).expect("encode");
+        let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded.downloads, Some(downloads));
+    }
+
+    #[test]
+    fn download_item_snapshot_omits_none_error() {
+        let item = DownloadItemSnapshot {
+            episode_id: "ep-1".into(),
+            progress: 0.0,
+            state: "queued".into(),
+            error: None,
+        };
+        let json = serde_json::to_string(&item).expect("encode");
+        assert!(!json.contains("error"));
+        let decoded: DownloadItemSnapshot = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, item);
     }
 }

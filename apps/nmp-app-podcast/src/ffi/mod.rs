@@ -35,14 +35,17 @@ mod register;
 mod snapshot;
 
 pub use actions::{
-    PauseAction, PlayAction, SeekAction, SetSleepTimerAction, SetSpeedAction, SetVolumeAction,
-    StopAction, ACTION_PLAYER_PAUSE, ACTION_PLAYER_PLAY, ACTION_PLAYER_SEEK,
-    ACTION_PLAYER_SET_SLEEP_TIMER, ACTION_PLAYER_SET_SPEED, ACTION_PLAYER_SET_VOLUME,
-    ACTION_PLAYER_STOP,
+    CancelAllDownloadsAction, CancelDownloadAction, DownloadEpisodeAction, PauseAction,
+    PauseDownloadAction, PlayAction, ResumeDownloadAction, SeekAction, SetSleepTimerAction,
+    SetSpeedAction, SetVolumeAction, StopAction, ACTION_PLAYER_CANCEL_ALL_DOWNLOADS,
+    ACTION_PLAYER_CANCEL_DOWNLOAD, ACTION_PLAYER_DOWNLOAD, ACTION_PLAYER_PAUSE,
+    ACTION_PLAYER_PAUSE_DOWNLOAD, ACTION_PLAYER_PLAY, ACTION_PLAYER_RESUME_DOWNLOAD,
+    ACTION_PLAYER_SEEK, ACTION_PLAYER_SET_SLEEP_TIMER, ACTION_PLAYER_SET_SPEED,
+    ACTION_PLAYER_SET_VOLUME, ACTION_PLAYER_STOP,
 };
 pub use handle::PodcastHandle;
 pub use register::nmp_app_podcast_register;
 pub use snapshot::{
     nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free, nmp_app_podcast_unregister,
-    PodcastUpdate,
+    DownloadItemSnapshot, DownloadQueueSnapshot, PodcastUpdate,
 };
