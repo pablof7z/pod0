@@ -424,6 +424,23 @@ impl PodcastStore {
         false
     }
 
+    /// Set or toggle the `is_starred` flag for an episode.
+    ///
+    /// When `starred` is `Some(value)` the flag is set explicitly; when `None`
+    /// the current value is flipped. Returns the new value, or `None` when the
+    /// episode id is unknown. Persists immediately.
+    pub fn set_episode_starred(&mut self, id_str: &str, starred: Option<bool>) -> Option<bool> {
+        for episodes in self.episodes.values_mut() {
+            if let Some(ep) = episodes.iter_mut().find(|e| e.id.0.to_string() == id_str) {
+                let new_value = starred.unwrap_or(!ep.is_starred);
+                ep.is_starred = new_value;
+                self.persist();
+                return Some(new_value);
+            }
+        }
+        None
+    }
+
     /// Force-flush the in-memory state to disk. Companion to
     /// [`set_episode_position`] — call when a natural checkpoint is reached
     /// (pause, stop, app background, periodic interval) so the in-memory

@@ -463,6 +463,10 @@ pub struct EpisodeSummary {
     /// wire payload when `false` (the common case) per D5.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub played: bool,
+    /// Whether the user has starred (bookmarked) this episode.
+    /// Toggled via `podcast.star_episode`. Omitted when `false` per D5.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub starred: bool,
 }
 
 /// One time-stamped transcript row surfaced to the iOS shell.

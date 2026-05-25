@@ -10,6 +10,10 @@ worktrees currently in flight.
 - **P0 - NIP-F4 owned podcast publishing.** Implement `docs/plan/pod0-nostr-publishing.md`: per-podcast keys, kind `10154` show events, kind `54` episode events, kind `10064` author claims, and deletion cleanup.
 - **P0 - NIP-F4 discovery.** Update discovery parsing and episode fetches for kind `10154`/`54`, no `d` tags, and stable UUID derivation from `10154:<podcast-pubkey>`.
 
+## File size violations (AGENTS.md hard limit: 500 LOC)
+
+- **projections-rs-split** — `apps/nmp-app-podcast/src/ffi/projections.rs` is ~1630 LOC, 3× the hard limit. The inline `mod tests { ... }` block (~560 LOC) must be moved to `ffi/projections_tests.rs` (already exists, declared in `ffi/mod.rs`). After that, the remaining ~1070 LOC of struct definitions must be split into logical sibling files (e.g. `ffi/projections/episode.rs`, `ffi/projections/agent.rs`, `ffi/projections/inbox.rs`) with a thin re-exporting `ffi/projections.rs` facade. Owner: whichever agent next adds a field to a projection struct.
+
 ## AppIntents / Siri follow-ups
 
 - **appintents-siri-rust-policy** — `PodcastAppIntents.swift` currently selects "latest unplayed episode" in iOS; per D7, policy belongs in Rust. Register `SiriActionModule` in `nmp_app_podcast_register` and add a `podcast.siri.play_latest` action that resolves the episode server-side. iOS intent then dispatches `podcast.siri.play_latest` with no args.

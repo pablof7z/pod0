@@ -117,6 +117,18 @@ pub enum PodcastAction {
     /// into the projection layer in a follow-up
     /// (`pr-social-graph-nmp-store-wiring` in `docs/BACKLOG.md`).
     FetchContacts,
+    /// Toggle or set the "starred" / bookmarked flag on an episode.
+    ///
+    /// When `starred` is `None` the kernel flips the current value;
+    /// when `Some(true|false)` it sets it explicitly. Persists alongside
+    /// the subscription list in `podcasts.json` so bookmarks survive a
+    /// restart. The updated flag surfaces on the next snapshot tick via
+    /// `EpisodeSummary.starred`.
+    StarEpisode {
+        episode_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        starred: Option<bool>,
+    },
 }
 
 /// Single action module for the whole `"podcast"` namespace.

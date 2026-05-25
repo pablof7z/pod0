@@ -366,6 +366,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
                             ai_categories,
                             ad_segments,
                             played: ep.played,
+                            starred: ep.is_starred,
                         }
                     })
                     .collect(),
