@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-25T22:45:00Z",
+      "lines": [
+        "Library is now fully powered by the Rust kernel — legacy compat stores removed, episode list backed entirely by real-time NMP snapshots"
+      ]
+    },
+    {
       "shipped_at": "2026-05-25T22:30:00Z",
       "lines": [
         "Tap the mini-player to open a full-screen now-playing view with a scrubber, skip-back-15 / skip-forward-30 transport, playback speed, sleep timer, and AirPlay routing."

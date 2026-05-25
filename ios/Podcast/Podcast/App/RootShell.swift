@@ -29,8 +29,6 @@ enum PodcastTab: Hashable { case library, identity }
 
 struct RootShell: View {
     @Environment(KernelModel.self) private var model
-    @Environment(AppStateStore.self) private var store
-    @Environment(PlaybackState.self) private var playback
 
     @State private var tab: PodcastTab = .library
 
