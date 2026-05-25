@@ -108,6 +108,15 @@ pub enum PodcastAction {
     /// Per D0: Rust owns the decision; iOS only renders the toggle
     /// state from the projection.
     SetAutoDownload { podcast_id: String, enabled: bool },
+    /// Fetch the active account's NIP-02 (kind:3) follow list and surface
+    /// the result on `PodcastUpdate.social`.
+    ///
+    /// Stub for this PR — the handler returns
+    /// `{"ok":true,"status":"nostr_pending"}` so iOS can render a
+    /// loading state while the NMP substrate contact store is wired
+    /// into the projection layer in a follow-up
+    /// (`pr-social-graph-nmp-store-wiring` in `docs/BACKLOG.md`).
+    FetchContacts,
 }
 
 /// Single action module for the whole `"podcast"` namespace.
@@ -268,6 +277,11 @@ mod tests {
         assert!(json.contains(r#""op":"post_comment""#));
         assert!(json.contains(r#""episode_id":"ep-7""#));
         assert!(json.contains(r#""content":"loved it""#));
+    fn fetch_contacts_action_round_trips() {
+        let action = PodcastAction::FetchContacts;
+        let json = serde_json::to_string(&action).expect("encode");
+        // No data fields — just the discriminator.
+        assert_eq!(json, r#"{"op":"fetch_contacts"}"#);
         let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
         assert_eq!(decoded, action);
     }

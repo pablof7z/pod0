@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-26T01:15:00Z",
+      "lines": [
+        "Social: see who you're following on Nostr."
+      ]
+    },
+    {
       "shipped_at": "2026-05-26T01:11:00Z",
       "lines": [
         "CarPlay support — your library and per-show episodes now appear on the head unit, with one-tap play that hands off to the standard Now Playing controls."

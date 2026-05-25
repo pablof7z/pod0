@@ -57,6 +57,10 @@ struct SettingsSnapshot: Codable, Equatable, Hashable {
     /// Populated by the Rust projection after a `podcast.fetch_comments`
     /// dispatch lands; empty otherwise.
     var comments: [CommentSummary] = []
+    /// Nostr social graph projection — the active account's NIP-02 (kind:3)
+    /// follow list. `nil` until the projection layer is wired into the NMP
+    /// substrate contact store.
+    var social: SocialSnapshot? = nil
 }
 
 /// Narrow projection for a subscribed podcast (one library grid/list cell).
@@ -210,4 +214,30 @@ struct CommentSummary: Codable, Identifiable, Equatable, Hashable {
     var authorName: String? = nil
     var content: String
     var createdAt: Int
+/// One contact in the active account's NIP-02 (kind:3) follow list, surfaced
+/// via `SocialSnapshot.following` for the iOS "Social" tab.
+struct ContactSummary: Codable, Identifiable, Equatable, Hashable {
+    /// Bech32 (`npub1…`); doubles as the SwiftUI `Identifiable` id.
+    var npub: String
+    /// Cached display name from NIP-01 metadata, when known. `nil` means the
+    /// grid renders the truncated npub instead.
+    var displayName: String? = nil
+    /// Cached avatar URL from NIP-01 metadata, when known. `nil` means the
+    /// grid renders the initial / fallback avatar.
+    var pictureUrl: String? = nil
+
+    var id: String { npub }
+}
+
+/// Snapshot of the user's Nostr social graph (NIP-02 / kind:3 follows).
+struct SocialSnapshot: Codable, Equatable, Hashable {
+    /// Contacts the active account is following. Empty when the contact list
+    /// has been fetched but is genuinely empty; the parent `PodcastUpdate.social`
+    /// is `nil` (not this struct with an empty `following`) until the
+    /// projection layer has populated anything yet.
+    var following: [ContactSummary] = []
+    /// Number of contacts on the active follow list. Equal to `following.count`
+    /// today; surfaced separately so paged variants of `following` keep
+    /// working without a second snapshot field.
+    var followingCount: Int = 0
 }

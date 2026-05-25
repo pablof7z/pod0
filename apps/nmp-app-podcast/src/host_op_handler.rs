@@ -520,6 +520,7 @@ impl HostOpHandler for PodcastHostOpHandler {
                 PodcastAction::SetAutoDownload { podcast_id, enabled } => {
                     self.handle_set_auto_download(podcast_id, enabled)
                 }
+                PodcastAction::FetchContacts => crate::social_handler::handle_fetch_contacts(),
             };
         }
         if let Ok(action) = serde_json::from_str::<PlayerAction>(action_json) {

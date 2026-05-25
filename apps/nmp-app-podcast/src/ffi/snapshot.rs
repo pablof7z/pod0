@@ -33,6 +33,8 @@ use super::projections::{
     AccountSummary, BriefingSnapshot, ChapterSummary, CommentSummary, ConversationsSnapshot,
     DownloadQueueSnapshot, EpisodeSummary, NostrShowSummary, PodcastSummary, SettingsSnapshot,
     VoiceState, WidgetSnapshot,
+    AccountSummary, BriefingSnapshot, ConversationsSnapshot, DownloadQueueSnapshot, EpisodeSummary,
+    PodcastSummary, SocialSnapshot, VoiceState, WidgetSnapshot,
 };
 use crate::player::PlayerState;
 
@@ -90,6 +92,13 @@ pub struct PodcastUpdate {
     /// slot. `None` when the scheduler has never been touched.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub briefing: Option<BriefingSnapshot>,
+    /// Social projection: the active account's NIP-02 (kind:3) follow
+    /// list, surfaced as a flat `following` list + count for the iOS
+    /// "Social" tab. `None` until the NMP substrate contact store is
+    /// wired into the projection layer — tracked in
+    /// `docs/BACKLOG.md` (`pr-social-graph-nmp-store-wiring`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub social: Option<SocialSnapshot>,
     /// Subscribed-podcast library projection. Each entry is a narrow
     /// [`PodcastSummary`] with embedded episode rows (newest-first).
     /// Empty until the first successful `podcast.subscribe` action.
@@ -174,6 +183,7 @@ impl Default for PodcastUpdate {
             agent: None,
             voice: None,
             briefing: None,
+            social: None,
             library: Vec::new(),
             active_account: None,
             widget: None,
@@ -413,3 +423,259 @@ pub extern "C" fn nmp_app_podcast_unregister(handle: *mut PodcastHandle) {
 #[cfg(test)]
 #[path = "snapshot_tests.rs"]
 mod tests;
+mod tests {
+    use super::*;
+    use super::super::projections::{
+        ContactSummary, DownloadItemSnapshot, PendingApprovalSnapshot,
+    };
+
+    #[test]
+    fn default_snapshot_omits_now_playing() {
+        let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
+        // `skip_serializing_if = "Option::is_none"` keeps the empty
+        // payload byte-identical to the legacy stub.
+        assert_eq!(json, r#"{"running":true,"rev":0,"schema_version":1}"#);
+    }
+
+    #[test]
+    fn snapshot_with_now_playing_round_trips() {
+        let mut state = PlayerState::idle();
+        state.episode_id = Some("ep-1".into());
+        state.url = Some("https://ex.com/ep-1.mp3".into());
+        state.position_secs = 12.0;
+        state.is_playing = true;
+
+        let snap = PodcastUpdate {
+            now_playing: Some(state.clone()),
+            ..PodcastUpdate::default()
+        };
+        let json = serde_json::to_string(&snap).expect("encode");
+        let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded.now_playing, Some(state));
+        assert!(decoded.running);
+        assert_eq!(decoded.schema_version, 1);
+    }
+
+    #[test]
+    fn default_update_serializes_to_valid_json() {
+        let payload = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
+        let _decoded: PodcastUpdate = serde_json::from_str(&payload).expect("decode");
+    }
+
+    #[test]
+    fn snapshot_decoder_tolerates_unknown_fields() {
+        // Forward-compat: an older binary decoding a newer snapshot ignores
+        // fields it doesn't know about (Codable parity).
+        let payload = r#"{"running":true,"rev":7,"schema_version":1,"future_field":"ignored"}"#;
+        let decoded: PodcastUpdate = serde_json::from_str(payload).expect("decode");
+        assert_eq!(decoded.rev, 7);
+        assert!(decoded.now_playing.is_none());
+        assert!(decoded.downloads.is_none());
+        assert!(decoded.agent.is_none());
+        assert!(decoded.voice.is_none());
+        assert!(decoded.briefing.is_none());
+        assert!(decoded.social.is_none());
+        assert!(decoded.widget.is_none());
+        assert!(decoded.toast.is_none());
+    }
+
+    #[test]
+    fn snapshot_with_toast_round_trips() {
+        let snap = PodcastUpdate {
+            toast: Some("Nothing to resume".into()),
+            ..PodcastUpdate::default()
+        };
+        let json = serde_json::to_string(&snap).expect("encode");
+        assert!(json.contains("\"toast\":\"Nothing to resume\""));
+        let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded.toast, Some("Nothing to resume".to_owned()));
+    }
+
+    #[test]
+    fn snapshot_omits_none_toast() {
+        // D5 byte-identity: empty toast must not bloat the wire payload.
+        let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
+        assert!(!json.contains("toast"));
+    }
+
+    #[test]
+    fn snapshot_with_widget_round_trips() {
+        let widget = WidgetSnapshot {
+            now_playing_episode_title: Some("Ep 42".into()),
+            now_playing_podcast_title: Some("Some Show".into()),
+            now_playing_artwork_url: Some("https://ex.com/art.png".into()),
+            is_playing: true,
+            position_fraction: 0.42,
+            unplayed_count: 7,
+        };
+        let snap = PodcastUpdate {
+            widget: Some(widget.clone()),
+            ..PodcastUpdate::default()
+        };
+        let json = serde_json::to_string(&snap).expect("encode");
+        let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded.widget, Some(widget));
+    }
+
+    #[test]
+    fn snapshot_with_agent_round_trips() {
+        let agent = ConversationsSnapshot {
+            active_count: 2,
+            pending_approvals: vec![PendingApprovalSnapshot {
+                id: "ap-1".into(),
+                description: "publish".into(),
+                requested_at: 1_700_000_000,
+            }],
+            latest_conversation_id: Some("conv-1".into()),
+        };
+        let snap = PodcastUpdate {
+            agent: Some(agent.clone()),
+            ..PodcastUpdate::default()
+        };
+        let json = serde_json::to_string(&snap).expect("encode");
+        let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded.agent, Some(agent));
+    }
+
+    #[test]
+    fn pending_approval_snapshot_omits_unset_fields() {
+        let agent = ConversationsSnapshot {
+            active_count: 0,
+            pending_approvals: vec![],
+            latest_conversation_id: None,
+        };
+        let json = serde_json::to_string(&agent).expect("encode");
+        // `latest_conversation_id: None` should be skipped; the other
+        // fields are always present.
+        assert!(!json.contains("latest_conversation_id"));
+        assert!(json.contains("\"active_count\":0"));
+        assert!(json.contains("\"pending_approvals\":[]"));
+    }
+
+    #[test]
+    fn snapshot_with_downloads_round_trips() {
+        let downloads = DownloadQueueSnapshot {
+            active: vec![DownloadItemSnapshot {
+                episode_id: "ep-1".into(),
+                progress: 0.5,
+                state: "active".into(),
+                error: None,
+            }],
+            queued_count: 2,
+            completed_today: 0,
+        };
+        let snap = PodcastUpdate {
+            downloads: Some(downloads.clone()),
+            ..PodcastUpdate::default()
+        };
+        let json = serde_json::to_string(&snap).expect("encode");
+        let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded.downloads, Some(downloads));
+    }
+
+    #[test]
+    fn download_item_snapshot_omits_none_error() {
+        let item = DownloadItemSnapshot {
+            episode_id: "ep-1".into(),
+            progress: 0.0,
+            state: "queued".into(),
+            error: None,
+        };
+        let json = serde_json::to_string(&item).expect("encode");
+        assert!(!json.contains("error"));
+        let decoded: DownloadItemSnapshot = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, item);
+    }
+
+    // ── Voice / briefing snapshot wiring (M8.A + M9.A) ───────────────
+
+    #[test]
+    fn snapshot_with_voice_round_trips() {
+        let voice = VoiceState {
+            is_speaking: true,
+            current_request_id: Some("req-1".into()),
+            current_voice_id: Some("rachel".into()),
+        };
+        let snap = PodcastUpdate {
+            voice: Some(voice.clone()),
+            ..PodcastUpdate::default()
+        };
+        let json = serde_json::to_string(&snap).expect("encode");
+        let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded.voice, Some(voice));
+    }
+
+    #[test]
+    fn voice_state_omits_none_fields() {
+        let v = VoiceState {
+            is_speaking: false,
+            current_request_id: None,
+            current_voice_id: None,
+        };
+        let json = serde_json::to_string(&v).expect("encode");
+        assert!(!json.contains("current_request_id"));
+        assert!(!json.contains("current_voice_id"));
+        assert!(json.contains("\"is_speaking\":false"));
+        let decoded: VoiceState = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, v);
+    }
+
+    #[test]
+    fn snapshot_with_briefing_round_trips() {
+        let b = BriefingSnapshot {
+            status: "generating".into(),
+            segment_count: 0,
+            next_scheduled_minutes: Some(45),
+        };
+        let snap = PodcastUpdate {
+            briefing: Some(b.clone()),
+            ..PodcastUpdate::default()
+        };
+        let json = serde_json::to_string(&snap).expect("encode");
+        let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded.briefing, Some(b));
+    }
+
+    #[test]
+    fn briefing_snapshot_omits_none_next_scheduled() {
+        let b = BriefingSnapshot {
+            status: "pending".into(),
+            segment_count: 0,
+            next_scheduled_minutes: None,
+        };
+        let json = serde_json::to_string(&b).expect("encode");
+        assert!(!json.contains("next_scheduled_minutes"));
+        let decoded: BriefingSnapshot = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, b);
+    }
+
+    // ── Social projection wiring ─────────────────────────────────────
+
+    #[test]
+    fn snapshot_with_social_round_trips() {
+        let social = SocialSnapshot {
+            following: vec![ContactSummary {
+                npub: "npub1aaa".into(),
+                display_name: Some("Alice".into()),
+                picture_url: Some("https://ex.com/a.png".into()),
+            }],
+            following_count: 1,
+        };
+        let snap = PodcastUpdate {
+            social: Some(social.clone()),
+            ..PodcastUpdate::default()
+        };
+        let json = serde_json::to_string(&snap).expect("encode");
+        assert!(json.contains("\"social\""));
+        let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded.social, Some(social));
+    }
+
+    #[test]
+    fn snapshot_omits_none_social() {
+        // D5 byte-identity: a pre-fetch snapshot (no contact list yet)
+        // must not bloat the wire payload with an empty `social` object.
+        let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
+        assert!(!json.contains("social"));
+    }
+}

@@ -465,6 +465,59 @@ pub struct AccountSummary {
     pub picture_url: Option<String>,
 }
 
+/// One contact row in [`SocialSnapshot::following`] — the user's NIP-02
+/// (kind:3) follow list, projected for the iOS "Social" tab.
+///
+/// The shape is intentionally narrow: an avatar grid only needs the bech32
+/// pubkey, a display name to surface under the avatar, and the picture URL.
+/// Richer profile fields (NIP-05, NIP-39 external identities, lud16, …)
+/// belong on a separate profile-detail projection so the grid stays cheap
+/// to decode.
+///
+/// `npub` is pre-encoded so the iOS shell doesn't need a bech32 dependency
+/// just to render the avatar fallback (truncated key).
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
+pub struct ContactSummary {
+    /// Author bech32 (`npub1…`) — pre-encoded so iOS can render the
+    /// truncated-key fallback without a bech32 dep.
+    pub npub: String,
+    /// Cached display name from the contact's NIP-01 metadata, when
+    /// known. `None` means the grid renders the truncated npub instead.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    /// Cached avatar URL from the contact's NIP-01 metadata, when known.
+    /// `None` means the grid renders the initial / fallback avatar.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub picture_url: Option<String>,
+}
+
+/// Snapshot of the user's Nostr social graph surfaced via
+/// [`super::snapshot::PodcastUpdate::social`].
+///
+/// Mirrors the NIP-02 contact list (kind:3 follows) that the underlying
+/// NMP substrate registers via `register_defaults`. For this PR the
+/// projection layer still emits `None` — the contact store hook-up is
+/// tracked in `docs/BACKLOG.md` (`pr-social-graph-nmp-store-wiring`) —
+/// but the shape is fixed so the iOS shell can render against it as soon
+/// as the data lands.
+///
+/// `following_count` is provided as a sugar so the UI can render the tab
+/// badge without iterating `following`; it equals `following.len()` when
+/// the projection is freshly built but stays correct even when callers
+/// page through `following`.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
+pub struct SocialSnapshot {
+    /// Contacts the active account is following (NIP-02 kind:3 `p` tags).
+    /// Empty when the contact list has been fetched but is genuinely
+    /// empty; the field is `None` (not `Some([])`) when the projection
+    /// layer hasn't fetched yet — see [`super::snapshot::PodcastUpdate`].
+    pub following: Vec<ContactSummary>,
+    /// Number of contacts on the active follow list. Equal to
+    /// `following.len()` for now; surfaced separately so paged variants
+    /// of `following` keep working without a second snapshot field.
+    pub following_count: usize,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -641,5 +694,65 @@ mod tests {
         let json = serde_json::to_string(&widget).expect("encode");
         let decoded: WidgetSnapshot = serde_json::from_str(&json).expect("decode");
         assert_eq!(decoded, widget);
+    }
+
+    #[test]
+    fn contact_summary_omits_none_optionals() {
+        // Pre-fetch contact rows may only have the npub — the optional
+        // metadata fields must not pollute the wire payload.
+        let c = ContactSummary {
+            npub: "npub1example".into(),
+            display_name: None,
+            picture_url: None,
+        };
+        let json = serde_json::to_string(&c).expect("encode");
+        assert!(!json.contains("display_name"));
+        assert!(!json.contains("picture_url"));
+        let decoded: ContactSummary = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, c);
+    }
+
+    #[test]
+    fn contact_summary_round_trips_with_metadata() {
+        let c = ContactSummary {
+            npub: "npub1example".into(),
+            display_name: Some("Satoshi".into()),
+            picture_url: Some("https://ex.com/avatar.png".into()),
+        };
+        let json = serde_json::to_string(&c).expect("encode");
+        let decoded: ContactSummary = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, c);
+    }
+
+    #[test]
+    fn social_snapshot_round_trips_with_contacts() {
+        let snap = SocialSnapshot {
+            following: vec![
+                ContactSummary {
+                    npub: "npub1aaa".into(),
+                    display_name: Some("Alice".into()),
+                    picture_url: None,
+                },
+                ContactSummary {
+                    npub: "npub1bbb".into(),
+                    display_name: None,
+                    picture_url: Some("https://ex.com/b.png".into()),
+                },
+            ],
+            following_count: 2,
+        };
+        let json = serde_json::to_string(&snap).expect("encode");
+        let decoded: SocialSnapshot = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, snap);
+    }
+
+    #[test]
+    fn social_snapshot_default_is_empty() {
+        // Default projection (post-fetch but genuinely empty follow list)
+        // must serialize cleanly without optional bloat.
+        let snap = SocialSnapshot::default();
+        let json = serde_json::to_string(&snap).expect("encode");
+        assert!(json.contains("\"following\":[]"));
+        assert!(json.contains("\"following_count\":0"));
     }
 }

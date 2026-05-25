@@ -43,6 +43,7 @@ pub(crate) mod host_op_handler_helpers;
 pub(crate) mod itunes_search;
 pub(crate) mod host_op_helpers;
 pub mod player;
+pub(crate) mod social_handler;
 pub mod store;
 pub(crate) mod transcript;
 
