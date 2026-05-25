@@ -49,9 +49,10 @@ pub enum TranscriptSource {
     Other,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "state", rename_all = "snake_case")]
 pub enum TranscriptState {
+    #[default]
     None,
     Queued,
     FetchingPublisher,
@@ -60,11 +61,6 @@ pub enum TranscriptState {
     Failed { message: String },
 }
 
-impl Default for TranscriptState {
-    fn default() -> Self {
-        Self::None
-    }
-}
 
 #[cfg(test)]
 mod tests {

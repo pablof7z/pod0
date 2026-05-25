@@ -9,7 +9,6 @@ impl PodcastStore {
                 let url = ep.publisher_transcript_url.as_ref()?;
                 let kind = ep
                     .publisher_transcript_type
-                    .clone()
                     .unwrap_or(TranscriptKind::Json);
                 return Some((url.to_string(), kind));
             }

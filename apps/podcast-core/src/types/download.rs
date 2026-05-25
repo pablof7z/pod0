@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "state", rename_all = "snake_case")]
 pub enum DownloadState {
+    #[default]
     NotDownloaded,
     Queued,
     Downloading {
@@ -20,11 +21,6 @@ pub enum DownloadState {
     },
 }
 
-impl Default for DownloadState {
-    fn default() -> Self {
-        Self::NotDownloaded
-    }
-}
 
 #[cfg(test)]
 mod tests {

@@ -195,7 +195,7 @@ impl BriefingSchedule {
     /// `true` when `day` is one of the enabled days AND `enabled` is on.
     #[must_use]
     pub fn covers(&self, day: u8) -> bool {
-        self.enabled && self.days.iter().any(|d| *d == day)
+        self.enabled && self.days.contains(&day)
     }
 }
 
