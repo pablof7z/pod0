@@ -1,0 +1,16 @@
+# Migration Manifest
+#
+# Schema (tab-separated, one row per copied file):
+#   legacy_path   - path to the original .swift file in the podcast-player repo
+#                   (relative to the repo root, e.g. App/Sources/Features/Home/HomeView.swift)
+#   copied_path   - path to the destination .swift file in the NMP repo
+#                   (relative to the NMP repo root,
+#                    e.g. ios/Podcast/Podcast/Features/Home/HomeView.swift)
+#   sha256        - SHA-256 hex digest of the copied file at the time of copy,
+#                   used to detect drift between legacy and migrated versions
+#
+# Columns are separated by a single TAB character.
+# Lines beginning with '#' are comments and are ignored by tooling.
+# The header row (below) uses literal column names.
+#
+legacy_path	copied_path	sha256

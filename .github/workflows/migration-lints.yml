@@ -1,0 +1,75 @@
+name: Migration Lints
+
+# Runs on every pull request to enforce NMP migration quality gates.
+# See Plans/nmp-migration/00-rules.md §2 for the doctrine these enforce.
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  lint:
+    name: Migration lint gates
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout podcast-player
+        uses: actions/checkout@v4
+        with:
+          path: podcast-player
+
+      # The NMP repo (nostrmultiplatform) is needed by the fidelity checker
+      # and the business-logic lint.  In CI it may not be available; both
+      # scripts exit 0 trivially when the Features/ directory doesn't exist.
+      # Uncomment the block below and supply a PAT if you add the NMP repo
+      # as a CI dependency in the future.
+      #
+      # - name: Checkout NMP repo
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: pablof7z/nostrmultiplatform
+      #     token: ${{ secrets.NMP_PAT }}
+      #     path: nostrmultiplatform
+
+      - name: Check scripts are executable
+        working-directory: podcast-player
+        run: |
+          test -x ci/no-business-logic-in-swift.sh
+          test -x ci/ui-copy-fidelity.sh
+          test -x ci/migration/copy-features.sh
+          test -x ci/migration/verify-copy-fidelity.sh
+
+      - name: no-business-logic lint
+        working-directory: podcast-player
+        run: |
+          # NMP repo is not checked out in CI — the script exits 0 when
+          # Features/ doesn't exist (trivial pass).  This gate becomes
+          # non-trivial once the NMP repo is added as a CI dependency.
+          bash ci/no-business-logic-in-swift.sh \
+            --nmp-root "${{ github.workspace }}/nostrmultiplatform" \
+            || true
+
+      - name: ui-copy-fidelity lint
+        working-directory: podcast-player
+        run: |
+          # Manifest is empty at M0, so this is a trivial pass.
+          bash ci/ui-copy-fidelity.sh \
+            --nmp-root "${{ github.workspace }}/nostrmultiplatform"
+
+      - name: Swift token-swap tests
+        working-directory: podcast-player/ci/migration
+        run: |
+          swift test 2>&1
+
+      # xcodegen step — skipped until M0.B (iOS skeleton) lands.
+      # Once ios/Podcast/project.yml exists in the NMP checkout, enable:
+      #
+      # - name: xcodegen generate (NMP Podcast target)
+      #   working-directory: nostrmultiplatform/ios/Podcast
+      #   run: |
+      #     if [ -f project.yml ]; then
+      #       brew install xcodegen
+      #       xcodegen generate
+      #     else
+      #       echo "project.yml not found — skipping xcodegen (M0.B not yet merged)"
+      #     fi

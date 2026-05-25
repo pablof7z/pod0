@@ -1,0 +1,79 @@
+# Token-swap table for NMP migration.
+#
+# Source: Plans/nmp-migration/05-migration-map.md §A
+#
+# Each [[swap]] entry describes one mechanical replacement that
+# apply-token-swap.swift performs at the AST level.
+#
+# Fields:
+#   from        - legacy Swift token / pattern being replaced
+#   to          - replacement Swift token / pattern
+#   kind        - "identifier"   : simple identifier rename
+#               - "member_call"  : member-access call site rewrite
+#               - "import_remove": strip a whole import declaration
+#
+# Patterns that require per-field knowledge (e.g. store.appState.<field>
+# → model.snapshot?.<field> ?? <default>) are NOT listed here; they are
+# handled via per-milestone manual Edit operations documented in each
+# milestone page.  The generic Service.shared.X() catch-all is likewise
+# deferred — each service's concrete call sites are added to this file
+# as their milestone is claimed.
+
+# ── Identifier renames ──────────────────────────────────────────────────────
+
+[[swap]]
+kind = "identifier"
+from = "AppStateStore"
+to = "KernelModel"
+
+# ── Import removals ──────────────────────────────────────────────────────────
+
+[[swap]]
+kind = "import_remove"
+from = "AppStateStore"
+to = ""
+
+[[swap]]
+kind = "import_remove"
+from = "NostrRelayService"
+to = ""
+
+[[swap]]
+kind = "import_remove"
+from = "UserIdentityStore"
+to = ""
+
+[[swap]]
+kind = "import_remove"
+from = "RAGService"
+to = ""
+
+[[swap]]
+kind = "import_remove"
+from = "AgentSession"
+to = ""
+
+[[swap]]
+kind = "import_remove"
+from = "AudioEngine"
+to = ""
+
+# ── Member-call rewrites ─────────────────────────────────────────────────────
+
+[[swap]]
+kind = "member_call"
+from = "AudioEngine.shared.play"
+to = "model.playEpisode"
+# Argument transform: play(episode) → playEpisode(episode.id)
+# apply-token-swap.swift appends ".id" to the first argument.
+arg_transform = "first_arg_dot_id"
+
+[[swap]]
+kind = "member_call"
+from = "AgentSession.shared.send"
+to = "model.sendAgentTurn"
+
+[[swap]]
+kind = "member_call"
+from = "RAGService.shared.search"
+to = "model.searchTranscripts"
