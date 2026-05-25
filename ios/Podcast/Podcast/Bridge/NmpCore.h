@@ -97,5 +97,42 @@ char *nmp_app_podcast_audio_report(void *handle, const char *report_json);
 // `apps/nmp-app-podcast/src/ffi/download_report.rs`). Caller MUST free via
 // `nmp_app_free_string`.
 char *nmp_app_podcast_download_report(void *handle, const char *report_json);
+// ── Identity / NIP-46 remote-signer FFI ───────────────────────────────────
+//
+// `nmp_app_signin_nsec` / `nmp_app_signin_bunker` enqueue the matching
+// `ActorCommand` on the NMP-core actor (declared in
+// `crates/nmp-ffi/src/identity.rs`). `secret` for `nmp_app_signin_nsec` is the
+// user's bech32 `nsec1…` (or hex) string; the actor wraps it in `Zeroizing`
+// immediately. Hosts MUST NOT log the secret value at any point.
+//
+// `nmp_app_signin_bunker` accepts a `bunker://` URI and is a silent no-op
+// (D6) unless `nmp_signer_broker_init` has been called first.
+//
+// `nmp_signer_broker_init` registers the bunker hook + relay listener with
+// `nmp-core`. Idempotent — second and later calls do nothing. MUST be called
+// once after `nmp_app_new()` and before any `bunker://` / `nostrconnect://`
+// sign-in attempt.
+//
+// `nmp_app_cancel_bunker_handshake` aborts the in-flight handshake (if any).
+// Idempotent / safe when no handshake is in flight.
+//
+// `nmp_app_nostrconnect_uri` returns a freshly minted client-initiated
+// `nostrconnect://` URI string. The caller MUST free the returned pointer via
+// `nmp_broker_free_string`. `relay_url` may be NULL — Rust selects the first
+// write-capable relay from the kernel relay-edit projection in that case.
+// `callback_scheme` may be NULL — when non-null Rust appends a percent-encoded
+// `&callback=<scheme>` query parameter so the signer app can deep-link back.
+// Pass NULL when the host scheme is not registered with the OS.
+void nmp_app_signin_nsec(void *app, const char *secret);
+void nmp_app_signin_bunker(void *app, const char *uri);
+void nmp_signer_broker_init(void *app);
+void nmp_app_cancel_bunker_handshake(void *app);
+char *nmp_app_nostrconnect_uri(void *app, const char *relay_url, const char *callback_scheme);
+void nmp_broker_free_string(char *ptr);
+
+// `nmp_app_remove_account` enqueues `ActorCommand::RemoveAccount` for the
+// supplied identity id (hex pubkey). The actor drops the row + invalidates
+// any cached keys; the next snapshot tick reflects the change.
+void nmp_app_remove_account(void *app, const char *identity_id);
 
 #endif

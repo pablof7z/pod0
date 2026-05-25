@@ -19,6 +19,11 @@ final class PodcastHandle {
 
     init() {
         raw = nmp_app_new()
+        // Register the NIP-46 bunker hook BEFORE any sign-in attempt routes
+        // through `nmp_app_signin_bunker`. The broker captures the actor
+        // sender immediately; subsequent `bunker://` URIs are silently
+        // dropped without this call (D6).
+        nmp_signer_broker_init(raw)
         Self.configureStoragePath(for: raw)
         registerPodcastProjection()
     }
@@ -128,10 +133,18 @@ final class PodcastHandle {
                 return nil
             }
             let update = envelope.v
+            // Second decode pass: extract the identity projection slice
+            // (`projections.active_account`, `projections.accounts`,
+            // `projections.bunker_handshake`) from the raw envelope. The
+            // `PodcastUpdate` typed decode above intentionally ignores
+            // `projections` — see `KernelIdentityProjection`'s module
+            // doc-comment for the rationale.
+            let identity = KernelIdentityProjection.decode(envelopePayload: data)
             let duration = start.duration(to: .now)
             kbLog.info("decoded ok rev=\(update.rev)")
             return KernelUpdateResult(
                 update: update,
+                identity: identity,
                 payloadBytes: data.count,
                 callbackReceivedAt: start,
                 decodeMicros: duration.microseconds)
@@ -179,6 +192,10 @@ private let nmpUpdateCallback: NmpUpdateCallback = { context, pointer in
 
 struct KernelUpdateResult {
     let update: PodcastUpdate
+    /// Identity slice of the kernel snapshot — `active_account` /
+    /// `accounts` / `bunker_handshake` per
+    /// `KernelIdentityProjection.decode`.
+    let identity: KernelIdentityProjection
     let payloadBytes: Int
     let callbackReceivedAt: ContinuousClock.Instant
     let decodeMicros: Int

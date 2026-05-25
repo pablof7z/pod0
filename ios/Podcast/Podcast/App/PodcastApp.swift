@@ -73,6 +73,10 @@ struct PodcastApp: App {
                 }
                 .onContinueUserActivity(HandoffState.activityPlaying) { activity in
                     handleIncomingHandoff(activity)
+                    // Wire the identity store to the kernel snapshot so
+                    // `publicKeyHex` / `mode` / `remoteSignerState` track
+                    // `projections.{active_account,accounts,bunker_handshake}`.
+                    identityStore.bind(kernel: model)
                 }
         }
         .onChange(of: scenePhase) { _, newPhase in

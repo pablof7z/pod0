@@ -52,6 +52,12 @@ final class KernelModel {
     /// rejections.
     private(set) var lastErrorToast: String?
 
+    /// Identity projection slice (`active_account` / `accounts` /
+    /// `bunker_handshake`) pulled out of the NMP-core kernel snapshot on
+    /// every tick. Read-only — the kernel actor is the sole writer.
+    /// `UserIdentityStore` mirrors its observable state from this field.
+    private(set) var identity: KernelIdentityProjection = .empty
+
     /// D7 actor-death surface — flips to `true` exactly once when the Rust
     /// supervisor emits a panic frame or the foreground-resume probe detects
     /// the actor gone. Terminal: only a process restart recovers.
@@ -303,6 +309,51 @@ final class KernelModel {
             kmLog.error("dispatch_action (silent) rejected: \(message, privacy: .public)")
         }
         return result
+    // ── Identity / NIP-46 ────────────────────────────────────────────────
+    //
+    // Typed wrappers around the NMP-core identity FFI. `UserIdentityStore`
+    // calls these instead of touching the raw `PodcastHandle`. The actor
+    // confirms the resulting state on the next snapshot tick via
+    // `KernelIdentityProjection` — no synchronous return.
+
+    /// Begin a `bunker://` sign-in. Fire-and-forget — observe
+    /// `identity.bunkerHandshake` / `identity.activeAccount` for outcome.
+    /// Silent no-op (D6) if `nmp_signer_broker_init` was never called.
+    func signInBunker(uri: String) {
+        kernel.signInBunker(uri: uri)
+    }
+
+    /// Begin an nsec sign-in. The secret crosses the FFI boundary as raw
+    /// bytes (it has to be imported somehow) and is wrapped in `Zeroizing`
+    /// the instant the actor receives it (see
+    /// `crates/nmp-ffi/src/identity.rs::nmp_app_signin_nsec`). The Rust
+    /// `ActorCommand::SignInNsec` handler validates and persists the key
+    /// via the kernel keyring path — DO NOT also write to
+    /// `PcstIdentityCapability` here. Single source of truth.
+    func signInNsec(_ nsec: String) {
+        kernel.signInNsec(nsec)
+    }
+
+    /// Cancel the in-flight bunker handshake. Safe / idempotent when nothing
+    /// is in flight.
+    func cancelBunkerHandshake() {
+        kernel.cancelBunkerHandshake()
+    }
+
+    /// Generate a fresh `nostrconnect://` URI for client-initiated NIP-46
+    /// pairing. The broker is already listening for the signer app's
+    /// response on the embedded relay — handing the URI to the user (QR or
+    /// deep-link) is the only host responsibility. `callbackScheme` should
+    /// be `nil` when the host URL scheme is not registered with the OS.
+    func nostrconnectURI(relayURL: String? = nil, callbackScheme: String? = nil) -> String? {
+        kernel.nostrconnectURI(relayURL: relayURL, callbackScheme: callbackScheme)
+    }
+
+    /// Remove the active account from the kernel. Mirrored on the next
+    /// snapshot tick via `identity.activeAccount` flipping to `nil`.
+    func removeActiveAccount() {
+        guard let active = identity.activeAccount else { return }
+        kernel.removeAccount(identityId: active)
     }
 
     // ── Snapshot apply ─────────────────────────────────────────────────────
@@ -311,6 +362,11 @@ final class KernelModel {
         let update = result.update
         guard update.rev > rev else { return }
         snapshot = update
+        // Mirror the identity slice on every accepted tick — the actor is
+        // the single writer, and even a tick with no podcast-projection
+        // delta may carry fresh identity state (e.g. handshake stage
+        // transitions are emitted via the same kernel update loop).
+        identity = result.identity
         snapshotCount &+= 1
         lastSnapshotAt = Date()
         kmLog.debug("apply rev=\(update.rev) running=\(update.running)")
