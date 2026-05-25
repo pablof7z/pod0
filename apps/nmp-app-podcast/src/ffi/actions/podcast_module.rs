@@ -51,6 +51,13 @@ pub enum PodcastAction {
     /// Self-gating in the handler: if the episode has no `chapters_url` or
     /// already has chapters loaded, the action is a `{"ok":true}` no-op.
     FetchChapters { episode_id: String },
+    /// NIP-F4 (`kind:10154`) podcast discovery from a Nostr relay HTTP gateway.
+    DiscoverNostr {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        query: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        relay_url: Option<String>,
+    },
 }
 
 /// Single action module for the whole `"podcast"` namespace.
@@ -135,6 +142,29 @@ mod tests {
         assert!(json.contains(r#""episode_id":"ep-7""#));
         let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
         assert_eq!(decoded, action);
+    }
+
+    #[test]
+    fn discover_nostr_action_round_trips() {
+        let action = PodcastAction::DiscoverNostr {
+            query: Some("rust".into()),
+            relay_url: Some("https://api.nostr.band".into()),
+        };
+        let json = serde_json::to_string(&action).expect("encode");
+        assert!(json.contains(r#""op":"discover_nostr""#));
+        assert!(json.contains(r#""query":"rust""#));
+        let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, action);
+    }
+
+    #[test]
+    fn discover_nostr_action_omits_none_fields() {
+        let action = PodcastAction::DiscoverNostr {
+            query: None,
+            relay_url: None,
+        };
+        let json = serde_json::to_string(&action).expect("encode");
+        assert_eq!(json, r#"{"op":"discover_nostr"}"#);
     }
 
     #[test]

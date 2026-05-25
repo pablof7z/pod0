@@ -43,6 +43,7 @@
 pub mod actions;
 pub mod build;
 pub mod kinds;
+pub mod nip_f4;
 pub mod parse;
 pub mod types;
 
@@ -52,6 +53,10 @@ pub use actions::{
 };
 pub use build::{episode_to_episode_tags, podcast_to_show_tags, show_content};
 pub use kinds::{KIND_AUTHOR_CLAIM, KIND_EPISODE, KIND_SHOW};
+pub use nip_f4::{
+    parse_event_json as parse_nip_f4_event_json, parse_kind_10154, NipF4Show,
+    KIND_NIP_F4_AUTHOR_CLAIM, KIND_NIP_F4_EPISODE, KIND_NIP_F4_SHOW,
+};
 pub use parse::{episode_to_episode, parse_episode_event, parse_show_event, show_to_podcast};
 pub use types::{NIP74Episode, NIP74Show, ParseError, ShowReference};
 

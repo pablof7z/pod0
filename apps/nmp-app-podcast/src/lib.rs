@@ -33,6 +33,7 @@
 
 pub mod capability;
 pub(crate) mod chapter;
+pub(crate) mod discover_nostr;
 pub mod download;
 pub mod ffi;
 pub(crate) mod host_op_handler;

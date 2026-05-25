@@ -31,7 +31,7 @@ use std::sync::atomic::Ordering;
 
 use super::projections::{
     AccountSummary, BriefingSnapshot, ChapterSummary, ConversationsSnapshot, DownloadQueueSnapshot,
-    EpisodeSummary, PodcastSummary, VoiceState, WidgetSnapshot,
+    EpisodeSummary, NostrShowSummary, PodcastSummary, VoiceState, WidgetSnapshot,
 };
 use crate::player::PlayerState;
 
@@ -123,6 +123,9 @@ pub struct PodcastUpdate {
     /// Empty when no search has been performed or after the results are consumed.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub search_results: Vec<PodcastSummary>,
+    /// NIP-F4 discovery results, populated after `podcast.discover_nostr`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub nostr_results: Vec<NostrShowSummary>,
     /// Playback queue ("Up Next") — ordered list of episode ids the
     /// player will pick up after `now_playing` finishes (manually via
     /// `play_next`, or on natural completion once auto-advance lands).
@@ -152,6 +155,7 @@ impl Default for PodcastUpdate {
             widget: None,
             toast: None,
             search_results: Vec::new(),
+            nostr_results: Vec::new(),
             queue: Vec::new(),
         }
     }
@@ -227,12 +231,16 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
     let search_results = handle.search_results.lock().ok()
         .map(|r| r.clone())
         .unwrap_or_default();
+    let nostr_results = handle.nostr_results.lock().ok()
+        .map(|r| r.clone())
+        .unwrap_or_default();
 
     let update = PodcastUpdate {
         rev,
         now_playing,
         library,
         search_results,
+        nostr_results,
         queue,
         ..PodcastUpdate::default()
     };

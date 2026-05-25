@@ -15,9 +15,10 @@ use crate::capability::{
     AudioCommand, DownloadCommand, AUDIO_CAPABILITY_NAMESPACE, DOWNLOAD_CAPABILITY_NAMESPACE,
 };
 use crate::chapter::handle_fetch_chapters;
+use crate::discover_nostr;
 use crate::ffi::actions::player_module::PlayerAction;
 use crate::ffi::actions::podcast_module::PodcastAction;
-use crate::ffi::projections::PodcastSummary;
+use crate::ffi::projections::{NostrShowSummary, PodcastSummary};
 use crate::itunes_search::{parse_itunes_results, url_encode};
 use crate::player::PlayerActor;
 use crate::store::PodcastStore;
@@ -28,6 +29,7 @@ pub struct PodcastHostOpHandler {
     store: Arc<Mutex<PodcastStore>>,
     player_actor: Arc<Mutex<PlayerActor>>,
     search_results: Arc<Mutex<Vec<PodcastSummary>>>,
+    nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
     rev: Arc<AtomicU64>,
 }
 
@@ -40,9 +42,10 @@ impl PodcastHostOpHandler {
         store: Arc<Mutex<PodcastStore>>,
         player_actor: Arc<Mutex<PlayerActor>>,
         search_results: Arc<Mutex<Vec<PodcastSummary>>>,
+        nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
         rev: Arc<AtomicU64>,
     ) -> Self {
-        Self { app, store, player_actor, search_results, rev }
+        Self { app, store, player_actor, search_results, nostr_results, rev }
     }
     fn dispatch_http(&self, req: &HttpRequest, correlation_id: &str) -> Result<HttpResult, String> {
         let payload_json = serde_json::to_string(req).map_err(|e| e.to_string())?;
@@ -466,6 +469,7 @@ impl HostOpHandler for PodcastHostOpHandler {
                 PodcastAction::DeleteDownload { episode_id } => self.handle_delete_download(episode_id),
                 PodcastAction::FetchTranscript { episode_id } => handle_fetch_transcript(&self.store, &self.rev, episode_id, |req| self.dispatch_http(req, correlation_id)),
                 PodcastAction::FetchChapters { episode_id } => handle_fetch_chapters(&self.store, &self.rev, episode_id, |req| self.dispatch_http(req, correlation_id)),
+                PodcastAction::DiscoverNostr { query, relay_url } => discover_nostr::handle_discover_nostr(query, relay_url, &self.nostr_results, &self.rev, |req| self.dispatch_http(req, correlation_id)),
             };
         }
         if let Ok(action) = serde_json::from_str::<PlayerAction>(action_json) {

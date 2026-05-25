@@ -2,10 +2,12 @@ import SwiftUI
 
 // MARK: - AddShowSheet
 
-/// Modal "+ Add Show" sheet for the Library tab. Three segments:
+/// Modal "+ Add Show" sheet for the Library tab. Four segments:
 ///
 ///   - **Search**   — Apple Podcasts directory search → one-tap subscribe,
 ///                    dispatched through the NMP `podcast.search_itunes` action.
+///   - **Nostr**    — NIP-F4 podcast discovery → one-tap subscribe via the
+///                    embedded RSS feed URL.
 ///   - **From URL** — paste / type a feed URL → `podcast.subscribe` dispatch.
 ///   - **OPML**     — pick an OPML file → `podcast.import_opml` dispatch;
 ///                    also surfaces a `ShareLink` over the current library
@@ -14,6 +16,7 @@ struct AddShowSheet: View {
 
     enum Mode: String, CaseIterable, Identifiable {
         case search = "Search"
+        case nostr = "Nostr"
         case url = "From URL"
         case opml = "OPML"
         var id: String { rawValue }
@@ -38,6 +41,8 @@ struct AddShowSheet: View {
                     switch mode {
                     case .search:
                         DiscoverSearchForm(onAdded: handleAdded)
+                    case .nostr:
+                        NostrDiscoverForm(onAdded: handleAdded)
                     case .url:
                         AddByURLForm(onAdded: handleAddedFromURL)
                     case .opml:

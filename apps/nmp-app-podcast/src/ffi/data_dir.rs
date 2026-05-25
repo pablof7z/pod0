@@ -59,7 +59,7 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(
 mod tests {
     use super::*;
     use crate::ffi::handle::PodcastHandle;
-    use crate::ffi::projections::PodcastSummary;
+    use crate::ffi::projections::{NostrShowSummary, PodcastSummary};
     use crate::player::PlayerActor;
     use crate::store::PodcastStore;
     use std::ffi::CString;
@@ -75,6 +75,7 @@ mod tests {
             store,
             rev,
             search_results: Arc::new(Mutex::new(Vec::<PodcastSummary>::new())),
+            nostr_results: Arc::new(Mutex::new(Vec::<NostrShowSummary>::new())),
         })
     }
 

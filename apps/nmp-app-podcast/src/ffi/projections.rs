@@ -298,6 +298,22 @@ pub struct ChapterSummary {
     pub url: Option<String>,
 }
 
+/// NIP-F4 podcast discovery result projected into the iOS Add Show sheet.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
+pub struct NostrShowSummary {
+    pub event_id: String,
+    pub author_pubkey: String,
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub feed_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub artwork_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub categories: Vec<String>,
+}
+
 /// Narrow identity projection surfaced via
 /// [`super::snapshot::PodcastUpdate::active_account`].
 ///
@@ -401,6 +417,52 @@ mod tests {
         let decoded: EpisodeSummary = serde_json::from_str(&json).expect("decode");
         assert_eq!(decoded, ep);
         assert!(!json.contains("\"url\":null"));
+    }
+
+    #[test]
+    fn nostr_show_summary_omits_none_optionals() {
+        let row = NostrShowSummary {
+            event_id: "ev".into(),
+            author_pubkey: "pk".into(),
+            title: "Bare".into(),
+            ..NostrShowSummary::default()
+        };
+        let json = serde_json::to_string(&row).expect("encode");
+        assert!(!json.contains("description"));
+        assert!(!json.contains("feed_url"));
+        assert!(!json.contains("artwork_url"));
+        assert!(!json.contains("categories"));
+        let decoded: NostrShowSummary = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, row);
+    }
+
+    #[test]
+    fn nostr_show_summary_round_trips_with_all_fields() {
+        let row = NostrShowSummary {
+            event_id: "ev-1".into(),
+            author_pubkey: "pk-1".into(),
+            title: "T".into(),
+            description: Some("D".into()),
+            feed_url: Some("https://x.example/rss".into()),
+            artwork_url: Some("https://img.example/c.jpg".into()),
+            categories: vec!["Tech".into(), "News".into()],
+        };
+        let json = serde_json::to_string(&row).expect("encode");
+        let decoded: NostrShowSummary = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, row);
+    }
+
+    #[test]
+    fn nostr_show_summary_decodes_camel_case_wire_for_swift() {
+        let row = NostrShowSummary {
+            event_id: "ev".into(),
+            author_pubkey: "pk".into(),
+            title: "T".into(),
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&row).expect("encode");
+        assert!(json.contains(r#""event_id":"ev""#));
+        assert!(json.contains(r#""author_pubkey":"pk""#));
     }
 
     #[test]

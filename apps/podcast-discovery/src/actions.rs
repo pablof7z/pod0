@@ -14,6 +14,13 @@
 //! podcast.nip74.discover         — DiscoverPodcastsAction
 //!                                  { query?, limit?, relay_url? }
 //! ```
+//!
+//! NIP-F4 discovery (`podcast.discover_nostr`) is routed via the
+//! `PodcastAction::DiscoverNostr` variant in `nmp-app-podcast` — it
+//! reuses the kernel's existing podcast namespace rather than declaring
+//! a parallel set of `podcast.nip_f4.*` ids here, because the AddShowSheet
+//! flow ultimately resolves to the existing `podcast.subscribe` RSS
+//! pipeline (no separate publish path is required).
 
 use serde::{Deserialize, Serialize};
 

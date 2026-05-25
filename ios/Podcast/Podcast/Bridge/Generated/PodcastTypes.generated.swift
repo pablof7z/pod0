@@ -20,6 +20,8 @@ struct PodcastUpdate: Codable {
     var activeAccount: AccountSummary? = nil
     var toast: String? = nil
     var searchResults: [PodcastSummary] = []
+    /// NIP-F4 Nostr podcast discovery results.
+    var nostrResults: [NostrShowSummary]? = nil
     /// Ordered list of episode ids waiting in the playback queue
     /// ("Up Next"). Mutated kernel-side via `podcast.player.enqueue`,
     /// `dequeue`, `clear_queue`, and `play_next`.
@@ -68,6 +70,19 @@ struct ChapterSummary: Codable, Equatable, Hashable {
     var title: String
     var imageUrl: String? = nil
     var url: String? = nil
+}
+
+/// NIP-F4 podcast discovery result row.
+struct NostrShowSummary: Codable, Identifiable, Equatable, Hashable {
+    var eventId: String
+    var authorPubkey: String
+    var title: String
+    var description: String? = nil
+    var feedUrl: String? = nil
+    var artworkUrl: String? = nil
+    var categories: [String]? = nil
+
+    var id: String { eventId }
 }
 
 /// Active player state (present only when an episode is loaded).

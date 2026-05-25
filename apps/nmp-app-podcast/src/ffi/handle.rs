@@ -6,7 +6,7 @@ use std::sync::atomic::AtomicU64;
 
 use nmp_ffi::NmpApp;
 
-use crate::ffi::projections::PodcastSummary;
+use crate::ffi::projections::{NostrShowSummary, PodcastSummary};
 use crate::player::PlayerActor;
 use crate::store::PodcastStore;
 
@@ -21,6 +21,10 @@ pub struct PodcastHandle {
     /// Transient iTunes search results. Written by `handle_search_itunes` on
     /// the actor thread; read by `build_snapshot_payload` on the main thread.
     pub(super) search_results: Arc<Mutex<Vec<PodcastSummary>>>,
+    /// Transient NIP-F4 (`kind:10154`) Nostr discovery results. Written by
+    /// `handle_discover_nostr` on the actor thread; read by
+    /// `build_snapshot_payload` on the main thread.
+    pub(super) nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the

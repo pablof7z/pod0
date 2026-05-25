@@ -3,7 +3,7 @@ name = "podcast-discovery"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "NIP-74 podcast discovery: parses Nostr kind:30074 / kind:30075 events into podcast-core domain types and builds tag sets for publishing. Pure data layer — no FFI, no kernel deps, no network."
+description = "Nostr podcast discovery: parses NIP-74 (kind:30074/30075) and NIP-F4 (kind:10154) events into typed views and builds NIP-74 tag sets for publishing. Pure data layer — no FFI, no kernel deps, no network."
 
 [lib]
 name = "podcast_discovery"
