@@ -4,6 +4,7 @@
 //! `nmp-core` integration arrives in later milestones when projections need
 //! a kernel observer.
 
+pub mod migration;
 pub mod projections;
 pub mod types;
 

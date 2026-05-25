@@ -15,6 +15,7 @@ Related files:
 - 2026-05-25 - M2.E: migrate Library views to `ios/Podcast/Features/Library/` (file-copy half) — branch `m2e/ui-library` worktree `/Users/pablofernandez/Work/podcast-player-m2e`.
 - 2026-05-25 - M2.B+C: `apps/podcast-feeds/` Rust crate (RSS streaming parser, Podcasting 2.0 chapters, OPML import/export, subscription refresh policy) — branch `m2bc/podcast-feeds` worktree `/Users/pablofernandez/Work/podcast-player-m2bc`.
 - 2026-05-25 - M3.A: audio capability Rust skeleton — `AudioCommand`/`AudioReport` contract + `PlayerActor` + player action types in `apps/nmp-app-podcast/`. Branch `m3a/audio-capability` worktree `/Users/pablofernandez/Work/podcast-player-m3a`.
+- 2026-05-25 - M2.D: persistence migration — `pcst.legacy_io.capability` (iOS) + Rust `podcast-core::migration::from_state_json` — branch `m2d/persistence-migration` worktree `/Users/pablofernandez/Work/podcast-player-m2d`.
 
 ## Recent History
 

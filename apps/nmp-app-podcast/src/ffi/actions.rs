@@ -159,3 +159,29 @@ mod tests {
         assert_eq!(decoded, a);
     }
 }
+// This is a placeholder for M0. Podcast-domain action modules will be added
+// here in subsequent milestones as the corresponding NIP crates are
+// implemented.
+//
+// ## M2.D — legacy migration wiring (TODO)
+//
+// The `pcst.legacy_io.capability` (iOS-side `LegacyIOCapability.swift`,
+// domain logic in `podcast_core::migration`) needs a kernel-side caller
+// that, on first launch:
+//
+// 1. Issues a `migration_done_read` request. If `done == true`, stop —
+//    migration is a no-op (idempotence, per M2.D quality gate).
+// 2. Issues `read_state_json`. Base64-decodes the payload and hands it to
+//    `podcast_core::migration::from_state_json`.
+// 3. Issues `read_episode_db` (stub — `from_episode_db` currently returns
+//    `EpisodeDbUnsupported`; the kernel logs and proceeds).
+// 4. Folds the resulting `MigrationResult` into the snapshot's podcasts +
+//    subscriptions stores.
+// 5. Issues `migration_done_set`. Per D6, any error along the way leaves
+//    the sentinel UNSET and surfaces a `toast: Option<String>` on the
+//    snapshot — the next launch retries.
+//
+// This wiring lands when the kernel-side `nmp-store` integration plus the
+// podcast-projection observer arrive in M2.E. Until then, the capability
+// is dormant on the iOS side: started during app boot, never invoked by
+// Rust, no behaviour change observable to the user.
