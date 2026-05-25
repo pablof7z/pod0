@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-26T00:35:00Z",
+      "lines": [
+        "Fixed: the 2.5× and 3.0× playback-speed chips now actually apply — they were silently capped at 2.0× by the player kernel."
+      ]
+    },
+    {
       "shipped_at": "2026-05-26T00:20:00Z",
       "lines": [
         "Downloads: manage all your saved episodes in one place."

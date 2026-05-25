@@ -31,7 +31,7 @@ pub struct PlayerState {
     pub duration_secs: f64,
     /// `true` iff the most recent `AudioReport` was `Playing`.
     pub is_playing: bool,
-    /// Playback rate in `0.5..=2.0`. Defaults to `1.0`.
+    /// Playback rate in `0.5..=3.0`. Defaults to `1.0`.
     pub speed: f32,
     /// Engine-level volume in `0.0..=1.0`. Defaults to `1.0`.
     pub volume: f32,

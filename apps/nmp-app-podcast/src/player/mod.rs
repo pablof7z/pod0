@@ -115,9 +115,9 @@ impl PlayerActor {
         self.state.buffering_fraction = None;
     }
 
-    /// Project a `set_speed` action into state. Clamped to `0.5..=2.0`.
+    /// Project a `set_speed` action into state. Clamped to `0.5..=3.0`.
     pub fn set_speed(&mut self, speed: f32) {
-        self.state.speed = speed.clamp(0.5, 2.0);
+        self.state.speed = speed.clamp(0.5, 3.0);
     }
 
     /// Project a `set_volume` action into state. Clamped to `0.0..=1.0`.

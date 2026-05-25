@@ -148,7 +148,7 @@ final class AudioCapability: NSObject {
         case let .setVolume(volume):
             player.volume = clamp(volume, min: 0, max: 1)
         case let .setSpeed(speed):
-            let rate = clamp(speed, min: 0.5, max: 2.0)
+            let rate = clamp(speed, min: 0.5, max: 3.0)
             if player.timeControlStatus == .playing {
                 player.rate = rate
             }

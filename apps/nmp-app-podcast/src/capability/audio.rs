@@ -91,7 +91,7 @@ pub enum AudioCommand {
     /// Set output volume (engine-level, not system-level). Clamped to
     /// `0.0..=1.0` by the executor.
     SetVolume { volume: f32 },
-    /// Set playback rate. Clamped to `0.5..=2.0` by the executor.
+    /// Set playback rate. Clamped to `0.5..=3.0` by the executor.
     SetSpeed { speed: f32 },
     /// Arm or cancel a sleep timer.
     ///

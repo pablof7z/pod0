@@ -62,8 +62,13 @@ fn next_load_clears_prior_error() {
 #[test]
 fn set_speed_clamps_to_valid_range() {
     let mut actor = PlayerActor::new();
+    // 3.0 is the upper bound — accepted unchanged so the UI's 3.0×
+    // chip actually applies (regression guard: this used to clamp to 2.0).
     actor.set_speed(3.0);
-    assert_eq!(actor.state().speed, 2.0);
+    assert_eq!(actor.state().speed, 3.0);
+    // Above the upper bound still clamps to 3.0.
+    actor.set_speed(4.0);
+    assert_eq!(actor.state().speed, 3.0);
     actor.set_speed(0.1);
     assert_eq!(actor.state().speed, 0.5);
     actor.set_speed(1.25);

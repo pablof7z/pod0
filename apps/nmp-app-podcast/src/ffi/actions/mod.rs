@@ -145,7 +145,7 @@ pub struct SeekAction {
     pub position_secs: f64,
 }
 
-/// Payload for [`ACTION_PLAYER_SET_SPEED`]. Clamped to `0.5..=2.0` by
+/// Payload for [`ACTION_PLAYER_SET_SPEED`]. Clamped to `0.5..=3.0` by
 /// [`crate::player::PlayerActor::set_speed`].
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 pub struct SetSpeedAction {
