@@ -92,7 +92,8 @@ $NDK_HOST/bin/llvm-nm -D \
   | grep Java_io_f7z_podcast
 ```
 
-You should see 11 `T Java_io_f7z_podcast_KernelBridge_<native>` entries.
+You should see 13 `T Java_io_f7z_podcast_KernelBridge_<native>` entries
+(11 from M2.F + `nmpActionDispatch` and `nmpCapabilityReport` from M13.A).
 
 ### 2. Gradle-driven (what `assembleDebug` does)
 

@@ -5,13 +5,12 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /**
- * Mirror of the JSON the Rust `nmp_app_podcast_snapshot` entry point emits.
+ * Kotlin mirror of `apps/nmp-app-podcast/src/ffi/snapshot.rs::PodcastUpdate`.
  *
- * Today (post-M2.F) the legacy stub payload is still
- *
- *   ```json
- *   {"running":true,"rev":0,"schema_version":1}
- *   ```
+ * Every field on the Rust struct has a matching property here so the Compose
+ * shell can render any state the kernel projects. New fields land on both
+ * sides simultaneously — see `Plans/nmp-migration/04-snapshot.md` for the
+ * canonical wire shape and `nmp-migration-m13.md` for the M13.A scope.
  *
  * Every field below this line is optional / defaulted so the existing payload
  * still decodes. As later milestones (M1, M2.A, M3.A, M9.A, …) extend
@@ -23,12 +22,34 @@ import kotlinx.serialization.json.Json
  *
  * Wire-shape source of truth: `apps/nmp-app-podcast/src/ffi/snapshot.rs`
  * (`PodcastUpdate`) + `apps/nmp-app-podcast/src/ffi/projections.rs`.
+ *
+ * **Doctrine — D5 / D7:**
+ *  * The kernel decides what to surface; this struct is pure decode +
+ *    render scaffolding. No Kotlin-side derivations beyond `null` checks.
+ *  * `Option<T>` on the Rust side becomes nullable here, with `null`
+ *    defaults so missing JSON fields decode cleanly (forward compat).
  */
 @Serializable
 data class PodcastSnapshot(
     val running: Boolean = false,
     val rev: Long = 0,
     @SerialName("schema_version") val schemaVersion: Int = 0,
+    /** Active player projection, `null` when no episode is loaded. */
+    @SerialName("now_playing") val nowPlaying: NowPlayingState? = null,
+    /** Active download queue, `null` until the first enqueue. */
+    val downloads: DownloadQueueSnapshot? = null,
+    /** Agent-chat projection, `null` until the first turn. */
+    val agent: AgentSnapshot? = null,
+    /** Briefing scheduler state, `null` until first scheduler touch. */
+    val briefing: BriefingSnapshot? = null,
+    /** Voice/TTS session state, `null` while idle. */
+    val voice: VoiceStateSnapshot? = null,
+    /** Widget/Live-Activity projection, `null` until populated. */
+    val widget: WidgetSnapshot? = null,
+    /** Transient toast the kernel wants the host to surface, or `null`. */
+    val toast: String? = null,
+    /** Active identity (M1.A — `active_account` snapshot field). `null` when nobody is signed in. */
+    @SerialName("active_account") val activeAccount: AccountSummary? = null,
     /**
      * Library rows. Emitted by the kernel under the `library` wire key today
      * (M2.F stub) and will migrate to `podcasts` in M2.A. The Compose UI reads
@@ -41,12 +62,6 @@ data class PodcastSnapshot(
      * which transparently falls back to [library].
      */
     @SerialName("podcasts") val podcasts: List<PodcastSummary> = emptyList(),
-    /** Currently-loaded player projection (M3.A); `null` when nothing is playing. */
-    @SerialName("now_playing") val nowPlaying: NowPlayingState? = null,
-    /** Briefing scheduler state (M9.A); `null` when the scheduler has never been touched. */
-    val briefing: BriefingSnapshot? = null,
-    /** Active identity (M1.A — `active_account` snapshot field). `null` when nobody is signed in. */
-    @SerialName("active_account") val activeAccount: AccountSummary? = null,
 ) {
     /**
      * Effective subscription list — prefer the new `podcasts` projection, fall
@@ -57,47 +72,11 @@ data class PodcastSnapshot(
 }
 
 /**
- * One row of the future library projection. Matches the shape the iOS shell
- * already decodes from `LibraryDisplayProjection`. Kept here so the Compose
- * UI compiles against a stable contract even though the Rust serializer is
- * still emitting stubs.
+ * Mirror of `apps/nmp-app-podcast/src/player/state.rs::PlayerState` (M13.C+D name).
  *
- * `artworkUrl` and `episodes` are forward-compatible: empty / null today,
- * populated as M2.A / M2.B projections ship.
- */
-@Serializable
-data class PodcastSummary(
-    val id: String,
-    val title: String,
-    @SerialName("episode_count") val episodeCount: Int = 0,
-    @SerialName("unplayed_count") val unplayedCount: Int = 0,
-    @SerialName("artwork_url") val artworkUrl: String? = null,
-    /** Recent episodes for this show (M2.A windowed projection). Empty today. */
-    val episodes: List<EpisodeSummary> = emptyList(),
-)
-
-/**
- * Narrow episode row consumed by the Home "Recent Episodes" carousel and the
- * Show-detail list. Mirrors the iOS `EpisodeSummary` Codable shape. Optional
- * fields are skipped on the wire when absent (`serde::skip_serializing_if`).
- */
-@Serializable
-data class EpisodeSummary(
-    val id: String,
-    val title: String,
-    @SerialName("podcast_id") val podcastId: String? = null,
-    @SerialName("podcast_title") val podcastTitle: String? = null,
-    @SerialName("duration_secs") val durationSecs: Double? = null,
-    @SerialName("artwork_url") val artworkUrl: String? = null,
-    @SerialName("published_at") val publishedAt: Long? = null,
-)
-
-/**
- * Mirror of the Rust `crate::player::PlayerState` projection (M3.A).
- *
- * Every field is optional / defaulted because today's kernel emits `null`
- * for the whole `now_playing` slot when nothing is loaded — the struct only
- * appears in the snapshot when an episode has been queued.
+ * Used by `HomeScreen.NowPlayingCard` and `PlayerScreen`. Fields use snake_case
+ * on the wire because the iOS `Codable` decoder — and the Rust struct itself —
+ * speaks snake_case JSON.
  */
 @Serializable
 data class NowPlayingState(
@@ -111,11 +90,67 @@ data class NowPlayingState(
     @SerialName("is_playing") val isPlaying: Boolean = false,
     val speed: Float = 1.0f,
     val volume: Float = 1.0f,
+    @SerialName("sleep_timer_remaining_secs") val sleepTimerRemainingSecs: Long? = null,
+    @SerialName("buffering_fraction") val bufferingFraction: Float? = null,
+    @SerialName("last_error") val lastError: String? = null,
 )
 
 /**
- * Mirror of `nmp_app_podcast::ffi::projections::BriefingSnapshot`. M9.A wires
- * the producer side; the UI renders the next-scheduled slot + status badge.
+ * Mirror of `apps/nmp-app-podcast/src/ffi/projections.rs::DownloadQueueSnapshot`.
+ */
+@Serializable
+data class DownloadQueueSnapshot(
+    val active: List<DownloadItemSnapshot> = emptyList(),
+    @SerialName("queued_count") val queuedCount: Int = 0,
+    @SerialName("completed_today") val completedToday: Int = 0,
+)
+
+/**
+ * Mirror of `DownloadItemSnapshot`. `state` is a string discriminator
+ * (`"active"` / `"queued"` / `"paused"` / `"failed"`).
+ */
+@Serializable
+data class DownloadItemSnapshot(
+    @SerialName("episode_id") val episodeId: String,
+    val progress: Float = 0.0f,
+    val state: String,
+    val error: String? = null,
+)
+
+/**
+ * Mirror of `ConversationsSnapshot` (named `AgentSnapshot` here to match
+ * the field name `agent: AgentSnapshot?` used in `PodcastSnapshot`).
+ */
+@Serializable
+data class AgentSnapshot(
+    @SerialName("active_count") val activeCount: Int = 0,
+    @SerialName("pending_approvals") val pendingApprovals: List<PendingApprovalSnapshot> = emptyList(),
+    @SerialName("latest_conversation_id") val latestConversationId: String? = null,
+)
+
+/**
+ * Mirror of `PendingApprovalSnapshot`. `requestedAt` is Unix seconds.
+ */
+@Serializable
+data class PendingApprovalSnapshot(
+    val id: String,
+    val description: String,
+    @SerialName("requested_at") val requestedAt: Long,
+)
+
+/**
+ * Mirror of `VoiceState` (named `VoiceStateSnapshot` on the Kotlin side).
+ */
+@Serializable
+data class VoiceStateSnapshot(
+    @SerialName("is_speaking") val isSpeaking: Boolean = false,
+    @SerialName("current_request_id") val currentRequestId: String? = null,
+    @SerialName("current_voice_id") val currentVoiceId: String? = null,
+)
+
+/**
+ * Mirror of `BriefingSnapshot`. `status` is one of `"pending"`,
+ * `"generating"`, `"ready"`, `"delivered"`, `"failed"`.
  */
 @Serializable
 data class BriefingSnapshot(
@@ -127,13 +162,23 @@ data class BriefingSnapshot(
 )
 
 /**
+ * Mirror of `WidgetSnapshot`. Per D7 the kernel decides what to surface;
+ * the widget renders the empty state when fields are `null`.
+ */
+@Serializable
+data class WidgetSnapshot(
+    @SerialName("now_playing_episode_title") val nowPlayingEpisodeTitle: String? = null,
+    @SerialName("now_playing_podcast_title") val nowPlayingPodcastTitle: String? = null,
+    @SerialName("now_playing_artwork_url") val nowPlayingArtworkUrl: String? = null,
+    @SerialName("is_playing") val isPlaying: Boolean = false,
+    @SerialName("position_fraction") val positionFraction: Float = 0.0f,
+    @SerialName("unplayed_count") val unplayedCount: Int = 0,
+)
+
+/**
  * Identity projection mirrored from `PodcastUpdate.active_account` (M1.A wire
- * target — see `Plans/nmp-migration/04-snapshot.md`). The Kotlin side carries
- * a forward-compatible shape so M13.C/D can render an Identity screen even
- * before the Rust serializer emits the field.
- *
- * `mode` is the auth mode the user is currently in (`"local_key"` /
- * `"bunker"`); the Compose `ModeBadge` switches on this string.
+ * target). The Kotlin side carries a forward-compatible shape so M13.C/D can
+ * render an Identity screen even before the Rust serializer emits the field.
  */
 @Serializable
 data class AccountSummary(
@@ -141,6 +186,36 @@ data class AccountSummary(
     @SerialName("display_name") val displayName: String? = null,
     val mode: String = "local_key",
     @SerialName("picture_url") val pictureUrl: String? = null,
+)
+
+/**
+ * One row of the library projection. Kept as the stable contract the
+ * Compose UI compiles against even though the Rust serializer is still
+ * on the M2.F stub.
+ */
+@Serializable
+data class PodcastSummary(
+    val id: String,
+    val title: String,
+    @SerialName("episode_count") val episodeCount: Int = 0,
+    @SerialName("unplayed_count") val unplayedCount: Int = 0,
+    @SerialName("artwork_url") val artworkUrl: String? = null,
+    val episodes: List<EpisodeSummary> = emptyList(),
+)
+
+/**
+ * Narrow episode row consumed by the Home "Recent Episodes" carousel and the
+ * Show-detail list.
+ */
+@Serializable
+data class EpisodeSummary(
+    val id: String,
+    val title: String,
+    @SerialName("podcast_id") val podcastId: String? = null,
+    @SerialName("podcast_title") val podcastTitle: String? = null,
+    @SerialName("duration_secs") val durationSecs: Double? = null,
+    @SerialName("artwork_url") val artworkUrl: String? = null,
+    @SerialName("published_at") val publishedAt: Long? = null,
 )
 
 /** Lazy JSON parser shared by the snapshot consumer. */

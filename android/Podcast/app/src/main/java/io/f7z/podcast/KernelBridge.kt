@@ -64,6 +64,33 @@ class KernelBridge {
         if (handle != 0L) nativeDispatchAction(handle, namespace, payloadJson) else null
 
     /**
+     * Namespace-agnostic action dispatch (M13.A stub). The action envelope
+     * is `{"id":"podcast.player.play","payload":{...}}`; the Rust side
+     * parses the id and (in M13.B) routes through the kernel action router.
+     *
+     * Returns `0` on success, `-1` on any parse/FFI failure (D6 — never
+     * throws). The Kotlin call site treats both as "the kernel will tell
+     * us what happened on the next snapshot tick".
+     *
+     * Unlike `dispatchAction`, this entry point is handle-agnostic — the
+     * kernel state lives in Rust statics keyed by the namespace, which is
+     * how the M13.B router will look up the destination actor.
+     */
+    external fun nmpActionDispatch(actionJson: String): Int
+
+    /**
+     * Host → kernel capability-report channel (M13.A stub). The Kotlin
+     * capability stubs in `capabilities/` call this with the namespace
+     * (`"nmp.audio.capability"`, `"nmp.download.capability"`, …) and the
+     * JSON-encoded report (`AudioReport::Playing`, …).
+     *
+     * Returns `0` on success, `-1` on input failure. Mirrors the iOS
+     * `attach(sendReport:)` closure's wire shape: the host reports, the
+     * kernel decides (D7).
+     */
+    external fun nmpCapabilityReport(namespace: String, reportJson: String): Int
+
+    /**
      * One-shot sign-in via local nsec. Demonstrates a single capability hop
      * the milestone exit checklist calls for. The PoC UI passes a stub value;
      * a real implementation would prompt for the nsec and route through the

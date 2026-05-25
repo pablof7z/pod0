@@ -97,6 +97,17 @@ pub struct PodcastUpdate {
     /// Defined alongside [`WidgetSnapshot`].
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub widget: Option<WidgetSnapshot>,
+    /// Transient toast message the kernel wants the host to surface
+    /// (e.g. "nothing to resume" after a Siri `Resume` with no active
+    /// episode — see `ffi::actions::SiriResumeAction` doc-comment).
+    ///
+    /// `None` on every tick that doesn't have a fresh message;
+    /// preserves byte-identity with the legacy stub. The host clears
+    /// its surfaced banner when the field flips back to `None`.
+    /// Per D7 the kernel decides whether to emit a toast; the host
+    /// only renders.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub toast: Option<String>,
 }
 
 impl Default for PodcastUpdate {
@@ -111,6 +122,7 @@ impl Default for PodcastUpdate {
             voice: None,
             briefing: None,
             widget: None,
+            toast: None,
         }
     }
 }
@@ -241,6 +253,26 @@ mod tests {
         assert!(decoded.voice.is_none());
         assert!(decoded.briefing.is_none());
         assert!(decoded.widget.is_none());
+        assert!(decoded.toast.is_none());
+    }
+
+    #[test]
+    fn snapshot_with_toast_round_trips() {
+        let snap = PodcastUpdate {
+            toast: Some("Nothing to resume".into()),
+            ..PodcastUpdate::default()
+        };
+        let json = serde_json::to_string(&snap).expect("encode");
+        assert!(json.contains("\"toast\":\"Nothing to resume\""));
+        let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded.toast, Some("Nothing to resume".to_owned()));
+    }
+
+    #[test]
+    fn snapshot_omits_none_toast() {
+        // D5 byte-identity: empty toast must not bloat the wire payload.
+        let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
+        assert!(!json.contains("toast"));
     }
 
     #[test]

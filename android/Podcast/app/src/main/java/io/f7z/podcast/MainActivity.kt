@@ -1,6 +1,7 @@
 package io.f7z.podcast
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
@@ -11,13 +12,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import io.f7z.podcast.capabilities.AudioCapabilityStub
 import io.f7z.podcast.ui.AppNavigation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /**
- * Single-Activity Compose host for the M13.C+D Android surface.
+ * Single-Activity Compose host for the M13 Android surface.
  *
  * The activity itself is a thin owner of the [`KernelBridge`] lifecycle:
  * it starts the Rust actor on composition, polls the snapshot at ~2 Hz,
@@ -28,10 +31,9 @@ import kotlinx.coroutines.withContext
  * go through `bridge.dispatchAction(...)` in each screen, never through
  * the activity.
  *
- * The M2.F single-screen `PodcastRoot` has been replaced by
- * [`AppNavigation`] which composes the four-tab bottom-bar surface; the
- * M2.F "Sign in (stub)" CTA + status card are subsumed by the new
- * Identity + Home screens respectively.
+ * M13.A extensions:
+ *  - `AudioCapabilityStub` is instantiated here and retained for M13.B routing.
+ *  - Toast surface for `PodcastSnapshot.toast` via `LaunchedEffect`.
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,6 +58,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun PodcastRoot() {
     val bridge = remember { KernelBridge() }
+    // M13.A — instantiate the audio capability stub so its `handleCommand`
+    // receiver is in place for the M13.B kernel command channel. `remember`
+    // retains it for the lifetime of the composition; no further wiring
+    // exists yet (the kernel router lands in M13.B).
+    @Suppress("UNUSED_VARIABLE")
+    val audio = remember(bridge) { AudioCapabilityStub(bridge) }
     var snapshot by remember { mutableStateOf<PodcastSnapshot?>(null) }
 
     DisposableEffect(bridge) {
@@ -71,6 +79,18 @@ private fun PodcastRoot() {
             val raw = withContext(Dispatchers.IO) { bridge.podcastSnapshot() }
             snapshot = SnapshotCodec.decode(raw)
             delay(SNAPSHOT_POLL_INTERVAL_MS)
+        }
+    }
+
+    // Toast — drives off the snapshot's `toast` field. `LaunchedEffect`
+    // re-fires whenever the message text changes so back-to-back toasts
+    // with the same text still surface (the kernel sends a fresh value
+    // even when the body matches).
+    val context = LocalContext.current
+    val toastMessage = snapshot?.toast
+    LaunchedEffect(toastMessage) {
+        if (!toastMessage.isNullOrBlank()) {
+            Toast.makeText(context, toastMessage, Toast.LENGTH_SHORT).show()
         }
     }
 

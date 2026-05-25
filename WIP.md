@@ -10,7 +10,8 @@ Related files:
 
 ## Active
 
-- 2026-05-25 - M13.C+D: Android Compose UI screens — Home, Library, Player, Identity, Settings + bottom-tab navigation. Branch `m13cd/android-ui`, worktree `/Users/pablofernandez/Work/podcast-player-m13cd`.
+- 2026-05-25 - M13.A: Android shell — full snapshot types + action dispatch + audio stub — branch `m13a/android-shell` — worktree `/Users/pablofernandez/Work/podcast-player-m13a`.
+- 2026-05-25 - M13.C+D: Android Compose UI screens — Home, Library, Player, Identity, Settings + bottom-tab navigation — merged PR #27.
 
 ## Recent History
 

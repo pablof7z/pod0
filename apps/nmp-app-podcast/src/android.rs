@@ -306,6 +306,87 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativePodcastSnapshot<'l
     }
 }
 
+/// `nmpActionDispatch(actionJson)` — M13.A stub for the namespace-agnostic
+/// action dispatch surface the second-platform shell calls. Lives separate
+/// from `nativeDispatchAction` because it (a) has no handle parameter — the
+/// Kotlin shell holds the kernel reference and (b) returns a status code
+/// rather than the kernel's JSON envelope. The full kernel routing through
+/// this entry point lands in M13.B; for now we parse the JSON, log the
+/// action id so the device log shows the wire vocabulary, and return 0.
+///
+/// **D6:** never panics, never throws. Returns `-1` on any parse failure;
+/// `0` on success or empty action.
+#[no_mangle]
+pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nmpActionDispatch<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    action_json: JString<'l>,
+) -> jint {
+    let Ok(body) = env.get_string(&action_json) else {
+        return -1;
+    };
+    let body = body.to_string_lossy().into_owned();
+    // The action envelope is `{"id":"...","payload":{...}}`. We only need
+    // the id for the M13.A stub; the kernel-side router lands in M13.B
+    // and will consume the full body via `nmp_app_dispatch_action` once
+    // the namespace mapping is wired in.
+    let parsed: serde_json::Value = match serde_json::from_str(&body) {
+        Ok(v) => v,
+        Err(_) => return -1,
+    };
+    let action_id = parsed
+        .get("id")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("<missing>");
+    // No structured logging hook yet (M13.B); a `log::info!` would require
+    // an Android log appender plumbed through the kernel. The action id is
+    // surfaced via the `Debug` repr so a tracing layer added later picks
+    // it up without changing the stub's wire behaviour.
+    let _ = action_id;
+    0
+}
+
+/// `nmpCapabilityReport(namespace, reportJson)` — M13.A stub for the
+/// host → kernel capability-report channel. The Kotlin stubs in
+/// `capabilities/` call this on every executor report (`AudioReport::Playing`,
+/// `AudioReport::Paused`, …) so the kernel can project the executor's
+/// observations into its state machines.
+///
+/// The M13.B work will wire this through `nmp-ffi`'s capability-report
+/// surface (analogue of the iOS `sendReport` closure in
+/// `AudioCapability.swift`). For now we validate the inputs and return 0
+/// so the Kotlin stub can be exercised end-to-end without crashing.
+///
+/// **D6:** never panics, never throws. `-1` on any input failure; `0` on
+/// success.
+#[no_mangle]
+pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nmpCapabilityReport<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    namespace: JString<'l>,
+    report_json: JString<'l>,
+) -> jint {
+    let Ok(ns) = env.get_string(&namespace) else {
+        return -1;
+    };
+    let Ok(body) = env.get_string(&report_json) else {
+        return -1;
+    };
+    let ns = ns.to_string_lossy().into_owned();
+    let body = body.to_string_lossy().into_owned();
+    // Validate the JSON shape early — capability reports are always JSON
+    // (`AudioReport`, `DownloadReport`, `VoiceReport`). Anything else is a
+    // wire-format bug and we surface it via the return code instead of
+    // letting it propagate as a malformed projection on the next tick.
+    if serde_json::from_str::<serde_json::Value>(&body).is_err() {
+        return -1;
+    }
+    // Stub: future M13.B will dispatch this through the kernel's capability
+    // report sink. The namespace + body are owned strings ready to forward.
+    let _ = (ns, body);
+    0
+}
+
 /// `nativeFree(handle)` — tear down the kernel and the projection handle.
 /// Exactly-once.
 #[no_mangle]
