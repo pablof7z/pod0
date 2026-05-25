@@ -56,6 +56,7 @@ use super::projections::{
     AgentMessageSummary, AgentSnapshot, BriefingSnapshot, ConversationsSnapshot,
     DownloadItemSnapshot, DownloadQueueSnapshot, PendingApprovalSnapshot, VoiceState,
     WidgetSnapshot,
+    PendingApprovalSnapshot, SettingsSnapshot, VoiceState, WidgetSnapshot,
 };
 use super::snapshot::PodcastUpdate;
 use crate::player::PlayerState;
@@ -167,6 +168,29 @@ fn snapshot_with_agent_tasks_round_trips() {
     let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded.agent_tasks, tasks);
     assert!(decoded.memory_facts.is_empty());
+}
+
+#[test]
+fn snapshot_with_settings_round_trips() {
+    let settings = SettingsSnapshot {
+        auto_skip_ads_enabled: true,
+    };
+    let snap = PodcastUpdate {
+        settings: Some(settings.clone()),
+        ..PodcastUpdate::default()
+    };
+    let json = serde_json::to_string(&snap).expect("encode");
+    assert!(json.contains("\"auto_skip_ads_enabled\":true"));
+    let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded.settings, Some(settings));
+}
+
+#[test]
+fn default_snapshot_omits_settings() {
+    // D5 byte-identity: a snapshot with no settings projection must
+    // not bloat the wire payload with `"settings":null`.
+    let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
+    assert!(!json.contains("settings"));
 }
 
 #[test]

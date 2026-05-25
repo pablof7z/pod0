@@ -18,6 +18,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::player::AdSegment;
+
 /// Snapshot of the [`crate::download::DownloadQueue`] surfaced to the iOS
 /// shell via `PodcastUpdate.downloads`.
 ///
@@ -520,6 +522,19 @@ pub struct CategoryBrowseItem {
     /// shell looks each id up in `library[*].episodes` to render the
     /// preview artwork stack on the category card.
     pub top_episode_ids: Vec<String>,
+    /// Ad-break intervals annotated by the upstream ingest pipeline
+    /// (publisher feed markers, LLM detector, manual user flags). The
+    /// player actor reads them at every `Playing` tick and seeks past
+    /// each one once when the user has `auto_skip_ads_enabled` on.
+    ///
+    /// Empty when no ingest has annotated this episode — which today
+    /// is *every* episode, since the detection pipeline isn't wired
+    /// in yet. The field exists so the iOS shell can render skip
+    /// indicators the moment an upstream pipeline populates it.
+    /// Per D5 we skip an empty vec on the wire to preserve byte
+    /// identity with snapshots that predate this field.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ad_segments: Vec<AdSegment>,
 }
 
 /// Narrow chapter projection for the player rail. Mirrors the relevant
@@ -820,6 +835,25 @@ pub struct OwnedPodcastInfo {
     pub show_event_json: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_published_at: Option<i64>,
+/// User-facing playback / behaviour preferences surfaced via
+/// [`super::snapshot::PodcastUpdate::settings`].
+///
+/// Kept narrow on purpose — only fields the iOS shell reads to render
+/// settings UI live here. Per D7 the kernel owns the canonical
+/// values; iOS only displays them and dispatches
+/// `podcast.settings.*` actions to mutate.
+///
+/// Fields default to "neutral / off" so a stale snapshot decoded by a
+/// newer binary doesn't accidentally surface enabled prefs the user
+/// never opted into.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
+pub struct SettingsSnapshot {
+    /// When `true`, the player actor seeks past each
+    /// [`crate::player::AdSegment`] in the currently-loaded episode
+    /// (once per id per playback session). Mirrored from
+    /// `PodcastStore::auto_skip_ads_enabled`. Defaults to `false`.
+    #[serde(default)]
+    pub auto_skip_ads_enabled: bool,
 }
 
 /// Narrow identity projection surfaced via

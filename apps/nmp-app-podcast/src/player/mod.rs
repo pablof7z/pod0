@@ -29,11 +29,15 @@
 //!   lock-screen volume, but the authoritative "are we past the
 //!   deadline?" answer comes from this module.
 
+use std::collections::HashSet;
 use std::time::{Duration, SystemTime};
 
 use crate::capability::{AudioCommand, AudioReport};
 
+mod ad_segments;
 mod state;
+pub use ad_segments::AdSegment;
+use ad_segments::contains as ad_segment_contains;
 pub use state::PlayerState;
 
 /// Pure projector over [`PlayerState`].
@@ -54,6 +58,20 @@ pub struct PlayerActor {
     /// `play_next` actions to mutate it. Dedup is by id (an episode
     /// already present is not appended again).
     queue: Vec<String>,
+    /// Ad-break intervals for the currently-loaded episode. Set by
+    /// the FFI layer at `play` time (and via `set_ad_segments`); empty
+    /// when the upstream ingest hasn't annotated this episode.
+    ad_segments: Vec<AdSegment>,
+    /// User toggle for `auto_skip_ads`. When `true` and the playhead
+    /// falls inside an [`AdSegment`] not yet in `skipped_ad_ids`, the
+    /// `Playing` handler emits an `AudioCommand::Seek` past it.
+    auto_skip_ads: bool,
+    /// Ad ids the actor has auto-skipped during the current playback
+    /// session. Cleared on `AudioReport::Stopped` (the actor's
+    /// authoritative end-of-session signal). A user who scrubs back
+    /// into a previously-skipped ad won't be auto-yanked forward — we
+    /// treat scrub-back as "I want to hear this".
+    skipped_ad_ids: HashSet<uuid::Uuid>,
 }
 
 impl PlayerActor {
@@ -64,7 +82,42 @@ impl PlayerActor {
             state: PlayerState::idle(),
             sleep_deadline: None,
             queue: Vec::new(),
+            ad_segments: Vec::new(),
+            auto_skip_ads: false,
+            skipped_ad_ids: HashSet::new(),
         }
+    }
+
+    /// Replace the active episode's ad-break intervals. Resets the
+    /// per-session "already skipped" set so the new segment list is
+    /// fully eligible. Callers should invoke this at `play` time and
+    /// whenever an upstream ingest pipeline refreshes annotations.
+    pub fn set_ad_segments(&mut self, segments: Vec<AdSegment>) {
+        self.ad_segments = segments;
+        self.skipped_ad_ids.clear();
+    }
+
+    /// Read-only view of the current episode's ad-break list. Used by
+    /// the snapshot builder to surface segments on `EpisodeSummary`.
+    #[must_use]
+    pub fn ad_segments(&self) -> &[AdSegment] {
+        &self.ad_segments
+    }
+
+    /// Flip the user's auto-skip toggle. Does not retroactively skip
+    /// past a segment the playhead is currently inside — the next
+    /// `Playing` report decides. Disabling does **not** clear the
+    /// `skipped_ad_ids` set so a re-enable mid-session doesn't replay
+    /// dismissed skips.
+    pub fn set_auto_skip_ads(&mut self, enabled: bool) {
+        self.auto_skip_ads = enabled;
+    }
+
+    /// Read-only view of the auto-skip toggle. Mirrored into the
+    /// settings projection.
+    #[must_use]
+    pub fn auto_skip_ads(&self) -> bool {
+        self.auto_skip_ads
     }
 
     /// Read-only view of the projected state. The FFI layer copies this
@@ -244,7 +297,30 @@ impl PlayerActor {
             }
         }
         self.refresh_sleep_remaining(now);
+        // Auto ad-skip after the sleep-timer check so a sleep expiry
+        // takes precedence over a seek (don't seek past an ad just to
+        // immediately stop).
+        if let Some(cmd) = self.maybe_skip_ad(self.state.position_secs) {
+            return Some(cmd);
+        }
         None
+    }
+
+    /// If `auto_skip_ads` is on and `position_secs` falls inside an
+    /// unseen `AdSegment`, mark the id as skipped and emit a `Seek` to
+    /// its `end_secs`. Returns `None` otherwise. Pure: no state read
+    /// beyond the actor's own fields, no clock reference.
+    fn maybe_skip_ad(&mut self, position_secs: f64) -> Option<AudioCommand> {
+        if !self.auto_skip_ads || self.ad_segments.is_empty() {
+            return None;
+        }
+        let segment = self
+            .ad_segments
+            .iter()
+            .find(|s| ad_segment_contains(s, position_secs) && !self.skipped_ad_ids.contains(&s.id))?;
+        let target = segment.end_secs;
+        self.skipped_ad_ids.insert(segment.id);
+        Some(AudioCommand::seek(target))
     }
 
     fn on_paused(&mut self, url: &str, position_secs: f64, now: SystemTime) {
@@ -263,6 +339,9 @@ impl PlayerActor {
         // Clear the timer on a hard stop so re-arming is required.
         self.sleep_deadline = None;
         self.state.sleep_timer_remaining_secs = None;
+        // End-of-session: forget which ads we already auto-skipped so
+        // a re-listen of the same episode starts with a clean slate.
+        self.skipped_ad_ids.clear();
     }
 
     fn on_failed(&mut self, url: &str, error: String) {

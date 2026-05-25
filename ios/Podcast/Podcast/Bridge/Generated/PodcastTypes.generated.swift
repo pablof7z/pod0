@@ -202,6 +202,10 @@ struct AgentMessageSummary: Codable, Identifiable, Equatable, Hashable {
     /// until the first auto-trigger lands (end of every successful feed
     /// refresh) or the iOS shell dispatches `podcast.categorize.run`.
     var categories: [CategoryBrowseItem]? = nil
+    /// User-facing playback / behaviour preferences. `nil` while the
+    /// kernel hasn't surfaced a settings snapshot yet (e.g. very early
+    /// boot). Mutated kernel-side via `podcast.settings.*` actions.
+    var settings: SettingsSnapshot? = nil
 }
 
 /// Narrow projection for a subscribed podcast (one library grid/list cell).
@@ -284,6 +288,11 @@ struct CategoryBrowseItem: Codable, Identifiable, Equatable, Hashable {
     var topEpisodeIds: [String] = []
 
     var id: String { category }
+    /// Ad-break intervals annotated by the upstream ingest pipeline.
+    /// The player actor seeks past each one once when the user has
+    /// `settings.autoSkipAdsEnabled` on. Empty until an upstream
+    /// pipeline populates it.
+    var adSegments: [AdSegment]? = nil
 }
 
 /// Narrow chapter projection for full-player chapter rail rendering.
@@ -313,6 +322,24 @@ struct NostrShowSummary: Codable, Identifiable, Equatable, Hashable {
     var categories: [String]? = nil
 
     var id: String { eventId }
+}
+
+/// One advertisement interval inside an episode's audio track. Mirrors
+/// `nmp_app_podcast::player::AdSegment`. `[startSecs, endSecs)`
+/// half-open interval.
+struct AdSegment: Codable, Identifiable, Equatable, Hashable {
+    var id: String
+    var startSecs: Double
+    var endSecs: Double
+}
+
+/// User-facing playback preferences mirrored from
+/// `nmp_app_podcast::ffi::projections::SettingsSnapshot`. Defaults to
+/// "neutral / off" so a stale snapshot decoded by a newer binary
+/// doesn't accidentally surface enabled prefs the user never opted
+/// into.
+struct SettingsSnapshot: Codable, Equatable, Hashable {
+    var autoSkipAdsEnabled: Bool = false
 }
 
 /// Active player state (present only when an episode is loaded).

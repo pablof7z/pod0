@@ -74,6 +74,7 @@ pub mod queue_module;
 pub mod tasks_module;
 pub mod tts_module;
 pub mod publish_module;
+pub mod settings_module;
 pub mod voice;
 pub mod wiki_module;
 pub mod voice_module;
@@ -108,6 +109,7 @@ pub use publish_module::{
     ACTION_PUBLISH_PUBLISH_SHOW, ACTION_PUBLISH_REMOVE_OWNED,
 };
 pub use voice_module::{VoiceAction, VoiceActionModule};
+pub use settings_module::{SettingsAction, SettingsActionModule};
 
 use serde::{Deserialize, Serialize};
 

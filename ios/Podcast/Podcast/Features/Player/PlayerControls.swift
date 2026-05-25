@@ -26,6 +26,7 @@ struct PlayerControls: View {
     var body: some View {
         VStack(spacing: PodcastSpace.l) {
             scrubber
+            adSkipBar
             transport
             actionRow
         }
@@ -34,6 +35,21 @@ struct PlayerControls: View {
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: PodcastSpace.radius, style: .continuous))
         .shadow(color: .black.opacity(0.25), radius: 14, y: 6)
+    }
+
+    /// Render the skip-ad pill only while the playhead is inside one
+    /// of the active episode's ad segments. Collapses to an empty
+    /// view (zero footprint) otherwise so the transport row doesn't
+    /// jump between ad and non-ad regions.
+    @ViewBuilder
+    private var adSkipBar: some View {
+        if let segment = player.activeAdSegment(in: model.library) {
+            HStack {
+                AdSkipPill(segment: segment)
+                Spacer()
+            }
+            .transition(.opacity)
+        }
     }
 
     // MARK: - Scrubber

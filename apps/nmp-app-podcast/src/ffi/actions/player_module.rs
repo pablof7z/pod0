@@ -12,6 +12,8 @@ use serde::{Deserialize, Serialize};
 use nmp_core::substrate::ActionModule;
 use nmp_core::ActorCommand;
 
+use crate::player::AdSegment;
+
 /// Wire enum for all `"podcast.player"` namespace actions.
 ///
 /// `#[serde(tag = "op", rename_all = "snake_case")]` makes the JSON
@@ -41,6 +43,19 @@ pub enum PlayerAction {
     /// Pop the front of the queue and `Play` it. No-op when the queue
     /// is empty.
     PlayNext,
+    /// Set the ad-break list for `episode_id`. Stored in the side-map
+    /// on `PodcastStore` and (when the episode is the one currently
+    /// loaded) pushed into the player actor so auto-skip can fire on
+    /// the next `Playing` tick.
+    ///
+    /// Carries the full vec rather than incrementally adding so the
+    /// caller (an ingest pipeline upstream) is the single owner of
+    /// the segment list — re-running detection always emits the
+    /// canonical replacement, never a diff.
+    SetAdSegments {
+        episode_id: String,
+        segments: Vec<AdSegment>,
+    },
 }
 
 /// Action module for the `"podcast.player"` namespace.
@@ -152,6 +167,20 @@ mod tests {
             let decoded: PlayerAction = serde_json::from_str(&json).expect("decode");
             assert_eq!(decoded, action);
         }
+    }
+
+    #[test]
+    fn set_ad_segments_round_trips() {
+        use podcast_core::AdKind;
+        let action = PlayerAction::SetAdSegments {
+            episode_id: "ep-1".into(),
+            segments: vec![AdSegment::new(30.0, 60.0, AdKind::Midroll)],
+        };
+        let json = serde_json::to_string(&action).expect("encode");
+        assert!(json.contains(r#""op":"set_ad_segments""#));
+        assert!(json.contains(r#""episode_id":"ep-1""#));
+        let decoded: PlayerAction = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, action);
     }
 
     #[test]

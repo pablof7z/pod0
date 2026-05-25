@@ -23,6 +23,7 @@ use super::actions::wiki_module::WikiActionModule;
 use super::actions::tasks_module::AgentTasksModule;
 use super::actions::tts_module::TtsEpisodeModule;
 use super::actions::voice_module::VoiceActionModule;
+use super::actions::settings_module::SettingsActionModule;
 use super::handle::PodcastHandle;
 use super::projections::VoiceState;
 use crate::host_op_handler::PodcastHostOpHandler;
@@ -117,6 +118,10 @@ pub extern "C" fn nmp_app_podcast_register(
     app_mut.register_action::<PodcastActionModule>();
     app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<CategorizationModule>();
+    // (playback), and "podcast.settings" (user-facing toggles).
+    app_mut.register_action::<PodcastActionModule>();
+    app_mut.register_action::<PlayerActionModule>();
+    app_mut.register_action::<SettingsActionModule>();
 
     // Shared state between the handle (snapshot reader) and the handler (writer).
     let store = Arc::new(Mutex::new(PodcastStore::new()));

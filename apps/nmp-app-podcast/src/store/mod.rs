@@ -24,6 +24,7 @@ use std::path::Path;
 
 use podcast_core::{Episode, EpisodeId, Podcast, PodcastId};
 
+mod ad_segments;
 mod chapters;
 pub mod auto_download;
 mod persistence;
@@ -41,6 +42,8 @@ mod tests;
 
 pub use auto_download::episodes_to_auto_download;
 use persistence::{PersistedPodcast, PersistedStore, PERSIST_SCHEMA_VERSION};
+use persistence::{PersistedPodcast, PersistedSettings, PersistedStore, PERSIST_SCHEMA_VERSION};
+use crate::player::AdSegment;
 
 /// Backing store for subscribed podcasts and their episode lists.
 ///
@@ -85,6 +88,11 @@ pub struct PodcastStore {
     /// alongside `podcasts` in `podcasts.json` so both projections share
     /// one persistence pass.
     memory_facts: HashMap<String, MemoryFact>,
+    /// Per-episode ad-break intervals keyed by the string form of
+    /// `EpisodeId`. See [`mod@ad_segments`] for the accessor surface.
+    pub(super) ad_segments: HashMap<String, Vec<AdSegment>>,
+    /// User toggle: auto-skip ads when the playhead enters one.
+    pub(super) auto_skip_ads_enabled: bool,
     data_dir: Option<PathBuf>,
 }
 
@@ -99,6 +107,8 @@ impl PodcastStore {
             has_completed_onboarding: false,
             auto_download_enabled: HashSet::new(),
             memory_facts: HashMap::new(),
+            ad_segments: HashMap::new(),
+            auto_skip_ads_enabled: false,
             data_dir: None,
         }
     }
@@ -140,6 +150,7 @@ impl PodcastStore {
         self.last_flushed_positions.clear();
         self.auto_download_enabled.clear();
         self.memory_facts.clear();
+        self.ad_segments.clear();
         for row in loaded.podcasts {
             let id = row.podcast.id;
             for ep in &row.episodes {
@@ -161,6 +172,10 @@ impl PodcastStore {
         for fact in loaded.memory_facts {
             self.memory_facts.insert(fact.key.clone(), fact);
         }
+        for (ep_id, segs) in loaded.ad_segments {
+            self.ad_segments.insert(ep_id, segs);
+        }
+        self.auto_skip_ads_enabled = loaded.settings.auto_skip_ads_enabled;
         self.podcasts.len()
     }
 
@@ -194,6 +209,20 @@ impl PodcastStore {
             podcasts: rows,
             has_completed_onboarding: self.has_completed_onboarding,
             memory_facts: facts,
+        let mut rows: Vec<PersistedPodcast> = self.podcasts.iter().map(|(id, podcast)| PersistedPodcast {
+            podcast: podcast.clone(),
+            episodes: self.episodes.get(id).cloned().unwrap_or_default(),
+        }).collect();
+        // Stable order so two consecutive saves produce identical bytes — same
+        // BTreeMap rationale applies to the ad_segments side-map below.
+        rows.sort_by(|a, b| a.podcast.id.0.cmp(&b.podcast.id.0));
+        let ad_segments: std::collections::BTreeMap<String, Vec<AdSegment>> = self.ad_segments.iter()
+            .filter(|(_, v)| !v.is_empty()).map(|(k, v)| (k.clone(), v.clone())).collect();
+        PersistedStore {
+            schema_version: PERSIST_SCHEMA_VERSION,
+            podcasts: rows,
+            ad_segments: ad_segments.into_iter().collect(),
+            settings: PersistedSettings { auto_skip_ads_enabled: self.auto_skip_ads_enabled },
         }
     }
 

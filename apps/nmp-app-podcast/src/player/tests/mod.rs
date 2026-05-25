@@ -11,9 +11,11 @@
 //!   (`stage_load`, `set_speed`, `set_volume`) and default constructors.
 //! * [`queue`] — Playback queue ("Up Next") mutators
 //!   (`enqueue`, `dequeue`, `clear_queue`, `pop_next`).
+//! * [`ad_skip`] — Auto ad-skip session bookkeeping.
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+mod ad_skip;
 mod mutators;
 mod queue;
 mod reports;

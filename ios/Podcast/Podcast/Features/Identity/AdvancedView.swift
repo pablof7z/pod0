@@ -76,6 +76,12 @@ struct AdvancedView: View {
                         title: "Your Podcasts (NIP-F4)",
                         subtitle: "Create per-podcast keypairs and publish shows",
                         systemImage: "antenna.radiowaves.left.and.right"
+                    PlaybackSettingsView()
+                } label: {
+                    advancedRow(
+                        title: "Playback",
+                        subtitle: "Auto-skip ads and other player preferences",
+                        systemImage: "play.circle"
                     )
                 }
                 NavigationLink {

@@ -57,6 +57,7 @@ use super::projections::{
     EpisodeSummary, NostrShowSummary, PodcastSummary, VoiceState, WidgetSnapshot,
     AccountSummary, BriefingSnapshot, CategoryBrowseItem, ChapterSummary, ConversationsSnapshot,
     DownloadQueueSnapshot, EpisodeSummary, PodcastSummary, VoiceState, WidgetSnapshot,
+    EpisodeSummary, NostrShowSummary, PodcastSummary, SettingsSnapshot, VoiceState, WidgetSnapshot,
 };
 use super::snapshot_queue::resolve_queue_rows;
     EpisodeSummary, InboxItem, PodcastSummary, VoiceState, WidgetSnapshot,
@@ -269,6 +270,13 @@ pub struct PodcastUpdate {
     /// one that follows the very first subscription's refresh).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub categories: Vec<CategoryBrowseItem>,
+    /// User-facing playback / behaviour preferences. `None` until the
+    /// kernel has resolved at least one setting — for now this is
+    /// always populated since `auto_skip_ads_enabled` defaults to
+    /// `false` and is read on every tick. Per D7 the iOS shell only
+    /// renders this; mutations go through `podcast.settings.*`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settings: Option<SettingsSnapshot>,
 }
 
 impl Default for PodcastUpdate {
@@ -304,6 +312,7 @@ impl Default for PodcastUpdate {
             inbox: Vec::new(),
             owned_podcasts: Vec::new(),
             categories: Vec::new(),
+            settings: None,
         }
     }
 }
@@ -426,6 +435,8 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         s.all_podcasts()
     let (library, memory_facts) = handle.store.lock().ok().map(|s| {
         let lib = s.all_podcasts()
+    let (library, settings) = handle.store.lock().ok().map(|s| {
+        let library: Vec<PodcastSummary> = s.all_podcasts()
             .into_iter()
             .map(|(podcast, episodes)| PodcastSummary {
                 id: podcast.id.0.to_string(),
@@ -455,6 +466,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
                             .unwrap_or_default();
                         let transcript = s.transcript_for(&ep_id).map(str::to_owned);
                         let ai_categories = categories_cache.get(&ep_id).cloned().unwrap_or_default();
+                        let ad_segments = s.ad_segments_for(&ep_id).to_vec();
                         EpisodeSummary {
                             id: ep_id,
                             title: ep.title.clone(),
@@ -487,6 +499,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
                                 })
                                 .unwrap_or_default(),
                             ai_categories,
+                            ad_segments,
                         }
                     })
                     .collect(),
@@ -494,6 +507,11 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
             .collect();
         (lib, s.all_memory_facts())
     }).unwrap_or_default();
+        let settings = SettingsSnapshot {
+            auto_skip_ads_enabled: s.auto_skip_ads_enabled(),
+        };
+        (library, Some(settings))
+    }).unwrap_or((Vec::new(), None));
 
     let categories = build_category_aggregate(&library);
 

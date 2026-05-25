@@ -26,6 +26,7 @@ use podcast_core::{Episode, Podcast};
 use serde::{Deserialize, Serialize};
 
 use crate::ffi::projections::MemoryFact;
+use crate::player::AdSegment;
 
 /// Schema marker for `podcasts.json`. Bump on incompatible format changes.
 pub const PERSIST_SCHEMA_VERSION: u32 = 1;
@@ -50,6 +51,28 @@ pub(super) struct PersistedStore {
     /// (written before feature #33) decode without losing podcasts.
     #[serde(default)]
     pub memory_facts: Vec<MemoryFact>,
+/// `ad_segments` and `settings` are `#[serde(default)]` so payloads written
+/// before this PR landed (no ad-skip support) still load cleanly into a
+/// store with auto-skip-ads off and no per-episode segments.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(super) struct PersistedStore {
+    pub schema_version: u32,
+    pub podcasts: Vec<PersistedPodcast>,
+    /// `episode_id` (UUID string) → ad-break intervals. Sorted on
+    /// write for deterministic on-disk bytes.
+    #[serde(default)]
+    pub ad_segments: Vec<(String, Vec<AdSegment>)>,
+    #[serde(default)]
+    pub settings: PersistedSettings,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(super) struct PersistedSettings {
+    /// Mirrors `PodcastStore::auto_skip_ads_enabled`. Defaults to
+    /// `false` so an old payload (no settings block) hydrates with
+    /// the toggle off — never accidentally enabled.
+    #[serde(default)]
+    pub auto_skip_ads_enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -178,6 +201,7 @@ mod tests {
             podcasts: vec![],
             has_completed_onboarding: false,
             memory_facts: vec![],
+            ..PersistedStore::default()
         };
         save(&dir.path, &payload).unwrap();
         let loaded = load(&dir.path).unwrap().expect("file present");
@@ -201,6 +225,7 @@ mod tests {
             }],
             has_completed_onboarding: false,
             memory_facts: vec![],
+            ..PersistedStore::default()
         };
         save(&dir.path, &payload).unwrap();
         let loaded = load(&dir.path).unwrap().expect("file present");
@@ -219,6 +244,7 @@ mod tests {
             podcasts: vec![],
             has_completed_onboarding: false,
             memory_facts: vec![],
+            ..PersistedStore::default()
         };
         save(&nested, &payload).unwrap();
         assert!(nested.join(PODCASTS_FILE).exists());
@@ -232,6 +258,7 @@ mod tests {
             podcasts: vec![],
             has_completed_onboarding: false,
             memory_facts: vec![],
+            ..PersistedStore::default()
         };
         save(&dir.path, &payload).unwrap();
         // After a successful save the .tmp file must be gone (renamed).
@@ -284,6 +311,34 @@ mod tests {
         // A v1 file written before feature #33 has no `memory_facts` field;
         // it must still load (with an empty bag) so users don't lose their
         // subscriptions on upgrade.
+    fn round_trip_preserves_ad_segments_and_settings() {
+        use podcast_core::AdKind;
+        let dir = TempDir::new();
+        let payload = PersistedStore {
+            schema_version: PERSIST_SCHEMA_VERSION,
+            podcasts: vec![],
+            ad_segments: vec![(
+                "ep-1".into(),
+                vec![AdSegment::new(30.0, 60.0, AdKind::Midroll)],
+            )],
+            settings: PersistedSettings {
+                auto_skip_ads_enabled: true,
+            },
+        };
+        save(&dir.path, &payload).unwrap();
+        let loaded = load(&dir.path).unwrap().expect("file present");
+        assert_eq!(loaded.ad_segments.len(), 1);
+        assert_eq!(loaded.ad_segments[0].0, "ep-1");
+        assert_eq!(loaded.ad_segments[0].1[0].start_secs, 30.0);
+        assert!(loaded.settings.auto_skip_ads_enabled);
+    }
+
+    #[test]
+    fn pre_ad_skip_payload_loads_with_defaults() {
+        // An on-disk file written before this PR landed has no
+        // `ad_segments` or `settings` fields. The decoder must hydrate
+        // them as empty/false so the user doesn't get the toggle
+        // surprise-enabled.
         let dir = TempDir::new();
         let raw = serde_json::json!({
             "schema_version": PERSIST_SCHEMA_VERSION,
@@ -314,6 +369,8 @@ mod tests {
         assert_eq!(loaded.memory_facts.len(), 1);
         assert_eq!(loaded.memory_facts[0].key, "preferred_genre");
         assert_eq!(loaded.memory_facts[0].value, "technology");
+        assert!(loaded.ad_segments.is_empty());
+        assert!(!loaded.settings.auto_skip_ads_enabled);
     }
 
     #[test]

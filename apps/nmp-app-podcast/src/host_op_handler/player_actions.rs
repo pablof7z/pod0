@@ -1,6 +1,7 @@
 use std::sync::atomic::Ordering;
 use std::time::{Duration, SystemTime};
 
+use crate::ad_skip_handler::{handle_set_ad_segments, hydrate_actor_for_play};
 use crate::capability::AudioCommand;
 use crate::ffi::actions::player_module::PlayerAction;
 use crate::host_op_handler::PodcastHostOpHandler;
@@ -24,6 +25,10 @@ impl PodcastHostOpHandler {
         if let Ok(mut actor) = self.player_actor.lock() {
             actor.stage_load(&episode_id, Some(podcast_id), &url, position_secs);
         }
+        // Push the persisted ad segments + global toggle into the
+        // freshly-staged actor so auto-skip can fire on the very first
+        // `Playing` report (no extra round-trip via iOS).
+        hydrate_actor_for_play(&self.store, &self.player_actor, &episode_id);
         self.rev.fetch_add(1, Ordering::Relaxed);
         if let Err(e) = self.dispatch_audio(&AudioCommand::load(&url, position_secs), correlation_id) {
             return serde_json::json!({"ok": false, "error": e});
@@ -74,6 +79,9 @@ impl PodcastHostOpHandler {
             PlayerAction::Dequeue { episode_id } => self.handle_dequeue(episode_id),
             PlayerAction::ClearQueue => self.handle_clear_queue(),
             PlayerAction::PlayNext => self.handle_play_next(correlation_id),
+            PlayerAction::SetAdSegments { episode_id, segments } => {
+                handle_set_ad_segments(&self.store, &self.player_actor, &self.rev, episode_id, segments)
+            }
         }
     }
 

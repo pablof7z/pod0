@@ -16,6 +16,7 @@ use podcast_feeds::http::{HttpRequest, HttpResult, HTTP_CAPABILITY_NAMESPACE};
 
 use crate::ai_chapters::handle_compile_chapters;
 use crate::agent_handler::AgentChatHandler;
+use crate::ad_skip_handler::handle_set_auto_skip_ads;
 use crate::capability::{
     notification_command_json, AudioCommand, DownloadCommand, NotificationCommand,
     AUDIO_CAPABILITY_NAMESPACE, DOWNLOAD_CAPABILITY_NAMESPACE, NOTIFICATION_CAPABILITY_NAMESPACE,
@@ -30,6 +31,8 @@ use crate::ffi::actions::player_module::PlayerAction;
 use crate::ffi::actions::podcast_module::PodcastAction;
 use crate::ffi::actions::queue_module::QueueAction;
 use crate::ffi::projections::{BriefingSnapshot, NostrShowSummary, PodcastSummary};
+use crate::ffi::actions::settings_module::SettingsAction;
+use crate::ffi::projections::{NostrShowSummary, PodcastSummary};
 use crate::host_op_handler_helpers::merge_episodes;
 use crate::host_op_handler_queue::handle_queue_action;
 use crate::ffi::actions::wiki_module::WikiAction;
@@ -802,6 +805,13 @@ impl PodcastHostOpHandler {
         }
     }
 
+    pub(crate) fn handle_settings_action(&self, action: SettingsAction) -> serde_json::Value {
+        match action {
+            SettingsAction::SetAutoSkipAds { enabled } => {
+                handle_set_auto_skip_ads(&self.store, &self.player_actor, &self.rev, enabled)
+            }
+        }
+    }
 }
 
 impl HostOpHandler for PodcastHostOpHandler {
@@ -888,6 +898,9 @@ impl HostOpHandler for PodcastHostOpHandler {
         }
         if let Ok(action) = serde_json::from_str::<AgentChatAction>(action_json) {
             return self.agent_chat.handle(action);
+        }
+        if let Ok(action) = serde_json::from_str::<SettingsAction>(action_json) {
+            return self.handle_settings_action(action);
         }
         serde_json::json!({"ok": false, "error": format!("unknown action: {action_json}")})
     }

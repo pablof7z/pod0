@@ -8,6 +8,34 @@ use super::projections::{
     AgentMessageSummary, AgentSnapshot, ChapterSummary, EpisodeSummary, NostrShowSummary,
     WidgetSnapshot,
 };
+use crate::player::AdSegment;
+
+#[test]
+fn episode_summary_omits_empty_ad_segments() {
+    let ep = EpisodeSummary {
+        id: "ep-1".into(),
+        title: "Pilot".into(),
+        ..EpisodeSummary::default()
+    };
+    let json = serde_json::to_string(&ep).expect("encode");
+    assert!(!json.contains("ad_segments"));
+}
+
+#[test]
+fn episode_summary_round_trips_with_ad_segments() {
+    use podcast_core::AdKind;
+    let ep = EpisodeSummary {
+        id: "ep-1".into(),
+        title: "Pilot".into(),
+        ad_segments: vec![AdSegment::new(30.0, 60.0, AdKind::Midroll)],
+        ..EpisodeSummary::default()
+    };
+    let json = serde_json::to_string(&ep).expect("encode");
+    assert!(json.contains("ad_segments"));
+    assert!(json.contains(r#""start_secs":30"#));
+    let decoded: EpisodeSummary = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, ep);
+}
 
 #[test]
 fn widget_snapshot_omits_none_optionals() {
