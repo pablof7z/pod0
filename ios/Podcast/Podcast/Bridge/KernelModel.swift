@@ -145,8 +145,18 @@ final class KernelModel {
 
     // ── scenePhase pass-through ────────────────────────────────────────────
 
+    /// True until the first `.active` scenePhase has been observed. Cold
+    /// start already drives a fresh snapshot through `start()`, so the
+    /// initial activation must NOT pile a `refresh_all` on top of it —
+    /// only subsequent foreground returns trigger a feed sync.
+    private var hasObservedForeground = false
+
     func lifecycleForeground() {
         kernel.lifecycleForeground()
+        guard hasObservedForeground else {
+            hasObservedForeground = true
+            return
+        }
         dispatch(namespace: "podcast", body: ["op": "refresh_all"])
     }
     func lifecycleBackground() { kernel.lifecycleBackground() }

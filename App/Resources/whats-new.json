@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-25T23:08:00Z",
+      "lines": [
+        "Pull-to-refresh keeps your podcast feeds up to date."
+      ]
+    },
+    {
       "shipped_at": "2026-05-25T23:07:00Z",
       "lines": [
         "Experimental: the Add Show sheet can now search Nostr NIP-F4 podcast events and subscribe via their RSS feed tags."
