@@ -11,6 +11,7 @@ mod capability_host;
 mod fixtures;
 mod harness;
 mod mock_feed;
+mod relay_client;
 mod scenarios;
 
 use std::ffi::CString;

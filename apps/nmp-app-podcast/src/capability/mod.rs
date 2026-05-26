@@ -17,6 +17,8 @@
 //!   format.
 //! - [`notification`] — `nmp.notification.capability` (feature #20; iOS
 //!   executor in `ios/Podcast/Podcast/Capabilities/NotificationCapability.swift`).
+//! - [`nostr_relay`] — `nostr_relay` capability (PR 7; headless executor in
+//!   `bin/headless/relay_client.rs`; iOS executor arrives in PR 8+).
 //! - [`voice`] — `nmp.voice.capability` (M8.A; iOS executor in M8.C).
 
 pub mod audio;
@@ -24,6 +26,7 @@ pub mod dispatch;
 pub mod download;
 pub mod http;
 pub mod notification;
+pub mod nostr_relay;
 pub mod voice;
 
 pub use audio::{AudioCommand, AudioReport, AUDIO_CAPABILITY_NAMESPACE};
@@ -35,5 +38,8 @@ pub use download::{DownloadCommand, DownloadReport, DOWNLOAD_CAPABILITY_NAMESPAC
 pub use http::{HttpMethod, HttpRequest, HttpResult, HTTP_CAPABILITY_NAMESPACE};
 pub use notification::{
     notification_command_json, NotificationCommand, NOTIFICATION_CAPABILITY_NAMESPACE,
+};
+pub use nostr_relay::{
+    NostrRelayRequest, NostrRelayResult, NOSTR_RELAY_CAPABILITY_NAMESPACE,
 };
 pub use voice::{VoiceCommand, VoiceReport, VOICE_CAPABILITY_NAMESPACE};

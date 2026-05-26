@@ -4,6 +4,7 @@ use nmp_app_podcast::PodcastHandle;
 use nmp_ffi::NmpApp;
 
 mod identity;
+mod relay_smoke;
 mod rss_subscribe;
 
 /// Per-scenario outcome.
@@ -32,13 +33,8 @@ pub fn run_all(
     handle: *mut PodcastHandle,
 ) -> Vec<(&'static str, ScenarioResult)> {
     vec![
-        (
-            "rss_subscribe",
-            rss_subscribe::run(app, handle),
-        ),
-        (
-            "identity_import",
-            identity::run(app, handle),
-        ),
+        ("rss_subscribe", rss_subscribe::run(app, handle)),
+        ("identity_import", identity::run(app, handle)),
+        ("relay_smoke", relay_smoke::run(app, handle)),
     ]
 }
