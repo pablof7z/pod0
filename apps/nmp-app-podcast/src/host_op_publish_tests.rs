@@ -21,7 +21,7 @@ use std::sync::{Arc, Mutex};
 /// exercised here.
 fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
     let rev = Arc::new(AtomicU64::new(1));
-    let agent_chat = AgentChatHandler::new(
+    let agent_chat = AgentChatHandler::new_without_runtime(
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(AtomicBool::new(false)),
         Arc::new(AtomicBool::new(false)),

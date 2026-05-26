@@ -113,13 +113,6 @@ pub extern "C" fn nmp_app_podcast_register(
     // Subsequent increments happen in PodcastHostOpHandler on store writes.
     let rev = Arc::new(AtomicU64::new(1));
 
-    let agent_chat = AgentChatHandler::new(
-        conversation.clone(),
-        agent_busy.clone(),
-        agent_touched.clone(),
-        rev.clone(),
-    );
-
     // Shared Tokio runtime — multi-thread scheduler so async LLM/relay
     // work in future PRs can `.spawn` without a per-handler executor.
     let runtime = Arc::new(
@@ -128,6 +121,14 @@ pub extern "C" fn nmp_app_podcast_register(
             .enable_all()
             .build()
             .expect("tokio runtime"),
+    );
+
+    let agent_chat = AgentChatHandler::new(
+        conversation.clone(),
+        agent_busy.clone(),
+        agent_touched.clone(),
+        rev.clone(),
+        runtime.clone(),
     );
 
     // Install the host-op handler (requires &self, so take the ref AFTER the

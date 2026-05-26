@@ -82,6 +82,25 @@ pub fn snapshot(handle: *mut PodcastHandle) -> Option<PodcastUpdate> {
     serde_json::from_str::<PodcastUpdate>(&json).ok()
 }
 
+/// Returns `true` if a TCP connection to `host:port` can be established within 2 seconds.
+/// Used by scenarios to gate on optional external services (e.g. Ollama).
+///
+/// Resolves the hostname via DNS first (using `std::net::ToSocketAddrs`), then uses
+/// `connect_timeout` on the first resolved address.
+pub fn probe_tcp(host: &str, port: u16) -> bool {
+    use std::net::{TcpStream, ToSocketAddrs};
+    use std::time::Duration;
+    let timeout = Duration::from_secs(2);
+    let addr_str = format!("{host}:{port}");
+    match addr_str.to_socket_addrs() {
+        Ok(mut addrs) => match addrs.next() {
+            Some(addr) => TcpStream::connect_timeout(&addr, timeout).is_ok(),
+            None => false,
+        },
+        Err(_) => false,
+    }
+}
+
 /// Poll the snapshot every 100 ms until `pred` returns `true` or `timeout_ms`
 /// elapses. Returns `Ok(update)` on success, `Err(msg)` on timeout.
 ///

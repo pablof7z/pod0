@@ -3,6 +3,7 @@
 use nmp_app_podcast::PodcastHandle;
 use nmp_ffi::NmpApp;
 
+mod agent_chat;
 mod rss_subscribe;
 
 /// Per-scenario outcome.
@@ -31,9 +32,7 @@ pub fn run_all(
     handle: *mut PodcastHandle,
 ) -> Vec<(&'static str, ScenarioResult)> {
     vec![
-        (
-            "rss_subscribe",
-            rss_subscribe::run(app, handle),
-        ),
+        ("rss_subscribe", rss_subscribe::run(app, handle)),
+        ("agent_chat", agent_chat::run(app, handle)),
     ]
 }
