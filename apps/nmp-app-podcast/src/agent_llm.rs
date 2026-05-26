@@ -29,8 +29,8 @@ pub const OLLAMA_BASE_URL: &str = "http://localhost:11434";
 /// message. The caller is responsible for building this slice from the in-memory
 /// transcript; this function does not own or mutate the stored conversation.
 ///
-/// Returns the assistant reply string on success. Returns `Err(reason)` if Ollama
-/// is unreachable, the model refuses, or any other transport/protocol error fires.
+/// Tries [`THINKING_MODEL`] first; on any error falls back to [`FAST_MODEL`].
+/// Returns `Err` only when both models fail, typically meaning Ollama is offline.
 ///
 /// # Panics
 /// Does not panic. The caller falls back to the scaffold reply on any `Err`.
@@ -47,27 +47,39 @@ pub fn chat_sync(
             .build()
             .map_err(|e| e.to_string())?;
 
-        let agent = client
-            .agent(THINKING_MODEL)
-            .preamble(system_prompt)
-            .build();
+        // Convert stored (role, content) pairs into rig-core chat history.
+        // The Chat trait prepends the user turn itself — we only pass prior turns.
+        let make_history = |pairs: &[(String, String)]| -> Vec<Message> {
+            pairs
+                .iter()
+                .map(|(role, content)| {
+                    if role == "user" {
+                        Message::user(content.as_str())
+                    } else {
+                        Message::assistant(content.as_str())
+                    }
+                })
+                .collect()
+        };
 
-        // Build the rig-core chat history from our (role, content) slice.
-        // The Chat trait will prepend the user turn internally — we only pass prior turns.
-        let mut chat_history: Vec<Message> = history
-            .iter()
-            .map(|(role, content)| {
-                if role == "user" {
-                    Message::user(content.as_str())
-                } else {
-                    Message::assistant(content.as_str())
-                }
-            })
-            .collect();
+        // Try the thinking model first (reasoning mode for richer answers).
+        let thinking_agent = client.agent(THINKING_MODEL).preamble(system_prompt).build();
+        let mut h1 = make_history(history);
+        match thinking_agent.chat(user_message, &mut h1).await {
+            Ok(reply) => return Ok(reply),
+            Err(thinking_err) => {
+                eprintln!(
+                    "agent_llm: {THINKING_MODEL} failed ({thinking_err}), retrying with {FAST_MODEL}"
+                );
+            }
+        }
 
-        agent
-            .chat(user_message, &mut chat_history)
+        // Fall back to the fast model.
+        let fast_agent = client.agent(FAST_MODEL).preamble(system_prompt).build();
+        let mut h2 = make_history(history);
+        fast_agent
+            .chat(user_message, &mut h2)
             .await
-            .map_err(|e| e.to_string())
+            .map_err(|e| format!("{FAST_MODEL} also failed: {e}"))
     })
 }
