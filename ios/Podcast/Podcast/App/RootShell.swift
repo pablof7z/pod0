@@ -1,30 +1,5 @@
 import SwiftUI
 
-// ─────────────────────────────────────────────────────────────────────────
-// NAVIGATION CONTRACT — M0.B skeleton.
-//
-// Single placeholder tab (Pod0) until Feature views migrate in later
-// milestones. The toast overlay and kernel-dead banner are wired now so
-// every future feature screen inherits them without modification.
-//
-// Navigation: one NavigationStack per tab. Typed `PodcastRoute` destinations
-// are resolved centrally here so Profile/Episode/Show work identically from
-// any tab without cross-file coupling.
-// ─────────────────────────────────────────────────────────────────────────
-
-/// Typed navigation routes for the Podcast shell.
-enum PodcastRoute: Hashable {
-    // Populated with episode, show, and feed routes in later milestones.
-}
-
-/// Per-tab navigation path holder injected into the environment.
-@MainActor
-final class PodcastRouter: ObservableObject {
-    @Published var path = NavigationPath()
-    func push(_ r: PodcastRoute) { path.append(r) }
-    func popToRoot() { path = NavigationPath() }
-}
-
 enum PodcastTab: Hashable { case home, library, downloads, briefings, social, inbox, agent, identity }
 
 struct RootShell: View {
@@ -90,11 +65,6 @@ struct RootShell: View {
     }
 
     @ViewBuilder
-    private func tabStack<Root: View>(@ViewBuilder _ root: () -> Root) -> some View {
-        TabStack(root: root())
-    }
-
-    @ViewBuilder
     private var toast: some View {
         if let msg = model.lastErrorToast {
             Text(msg)
@@ -143,20 +113,5 @@ struct RootShell: View {
             .background(PodcastColor.errorBannerBackground)
             .accessibilityIdentifier("kernel-dead-banner")
         }
-    }
-}
-
-private struct TabStack<Root: View>: View {
-    let root: Root
-    @StateObject private var router = PodcastRouter()
-    var body: some View {
-        NavigationStack(path: $router.path) {
-            root
-                .navigationDestination(for: PodcastRoute.self) { _ in
-                    // Destinations wired in later milestones.
-                    EmptyView()
-                }
-        }
-        .environmentObject(router)
     }
 }

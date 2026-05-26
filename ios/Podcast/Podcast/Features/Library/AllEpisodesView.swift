@@ -125,9 +125,8 @@ struct AllEpisodesView: View {
 /// Single episode row for `AllEpisodesView`. Shows artwork, episode title,
 /// podcast title (cross-show context), and a meta strip with duration + date.
 ///
-/// This is a deliberate tailored copy of `KernelEpisodeRow` (which is private
-/// to `ShowDetailEpisodeList.swift`); duplication is preferred here over
-/// reaching across PR boundaries while PR 8 is still open.
+/// Differs from `KernelEpisodeRow` (single-show context): shows the podcast
+/// title, omits the download indicator and resume marker, and doesn't tap-play.
 private struct AllEpisodesRow: View {
     let episode: EpisodeSummary
     let podcast: PodcastSummary
@@ -140,9 +139,17 @@ private struct AllEpisodesRow: View {
             thumbnail
 
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
-                Text(episode.title)
-                    .font(AppTheme.Typography.headline)
-                    .lineLimit(2)
+                HStack(spacing: AppTheme.Spacing.xs) {
+                    Text(episode.title)
+                        .font(AppTheme.Typography.headline)
+                        .lineLimit(2)
+                        .foregroundStyle(episode.played ? Color.secondary : Color.primary)
+                    if episode.starred {
+                        Image(systemName: "bookmark.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                    }
+                }
 
                 Text(podcast.title)
                     .font(AppTheme.Typography.caption)
