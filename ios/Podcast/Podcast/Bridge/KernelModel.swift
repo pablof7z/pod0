@@ -386,9 +386,5 @@ final class KernelModel {
         snapshotCount &+= 1
         lastSnapshotAt = Date()
         kmLog.debug("apply rev=\(update.rev) running=\(update.running)")
-        // Piggyback the podcast snapshot check on every NMP kernel tick so
-        // autonomous changes (playback position, download progress) are seen
-        // at 4Hz rather than waiting for the 500ms fallback poll.
-        pullPodcastSnapshotIfChanged()
     }
 }
