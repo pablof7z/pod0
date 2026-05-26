@@ -45,7 +45,7 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(
 
     let (loaded, loaded_queue) = match handle.store.lock() {
         Ok(mut s) => {
-            let count = s.set_data_dir(PathBuf::from(path_str));
+            let count = s.set_data_dir(PathBuf::from(path_str.clone()));
             let queue = s.take_loaded_queue();
             (count, queue)
         }
@@ -62,9 +62,21 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(
         }
     }
 
-    if loaded > 0 || !loaded_queue.is_empty() {
-        // Force the next snapshot poll to pick up the restored library
-        // and/or the restored queue even though no write happened here.
+    // Bind the identity store to the same directory. If `identity.json` exists
+    // this loads the saved secret key and derives `pubkey_hex` + `npub` so
+    // the next snapshot poll surfaces `active_account` without a write.
+    let identity_loaded = if let Ok(mut id) = handle.identity.lock() {
+        let had_key = id.secret_hex.is_none();
+        id.set_data_dir(&PathBuf::from(&path_str));
+        // Return true if we just loaded a key that wasn't there before.
+        had_key && id.secret_hex.is_some()
+    } else {
+        false
+    };
+
+    if loaded > 0 || !loaded_queue.is_empty() || identity_loaded {
+        // Force the next snapshot poll to pick up the restored library,
+        // queue, and/or identity even though no write happened here.
         handle.rev.fetch_add(1, Ordering::Relaxed);
     }
 }

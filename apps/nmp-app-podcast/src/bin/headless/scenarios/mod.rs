@@ -3,6 +3,7 @@
 use nmp_app_podcast::PodcastHandle;
 use nmp_ffi::NmpApp;
 
+mod identity;
 mod rss_subscribe;
 
 /// Per-scenario outcome.
@@ -34,6 +35,10 @@ pub fn run_all(
         (
             "rss_subscribe",
             rss_subscribe::run(app, handle),
+        ),
+        (
+            "identity_import",
+            identity::run(app, handle),
         ),
     ]
 }

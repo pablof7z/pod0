@@ -4,6 +4,7 @@ use crate::ffi::handle::PodcastHandle;
 use crate::ffi::projections::{AgentPickSummary, NostrShowSummary, PodcastSummary, VoiceState};
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
+use crate::store::identity::IdentityStore;
 use crate::store::{PodcastKeyStore, PodcastStore};
 use std::collections::HashSet;
 use std::ffi::CString;
@@ -17,6 +18,7 @@ fn make_handle(store: Arc<Mutex<PodcastStore>>, rev: Arc<AtomicU64>) -> Box<Podc
         app: std::ptr::null_mut(),
         player_actor: Arc::new(Mutex::new(PlayerActor::new())),
         store,
+        identity: Arc::new(Mutex::new(IdentityStore::new())),
         rev,
         search_results: Arc::new(Mutex::new(Vec::<PodcastSummary>::new())),
         nostr_results: Arc::new(Mutex::new(Vec::<NostrShowSummary>::new())),

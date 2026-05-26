@@ -16,6 +16,7 @@ use crate::ffi::projections::{
 use crate::download::DownloadQueue;
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
+use crate::store::identity::IdentityStore;
 use crate::store::{PodcastKeyStore, PodcastStore};
 
 /// Diagnostic publish state retained per-podcast across snapshot ticks.
@@ -36,6 +37,7 @@ pub struct PodcastHandle {
     pub(super) app: *mut NmpApp,
     pub(super) player_actor: Arc<Mutex<PlayerActor>>,
     pub(super) store: Arc<Mutex<PodcastStore>>,
+    pub(super) identity: Arc<Mutex<IdentityStore>>,
     pub(super) rev: Arc<AtomicU64>,
     /// Transient iTunes search results. Written by `handle_search_itunes` on
     /// the actor thread; read by `build_snapshot_payload` on the main thread.

@@ -34,6 +34,7 @@ use crate::ffi::actions::agent_module::AgentChatAction;
 use crate::ffi::actions::categorization_module::CategorizationAction;
 use crate::ffi::actions::chapters_module::ChaptersAction;
 use crate::ffi::actions::clip_module::ClipAction;
+use crate::ffi::actions::identity_module::IdentityAction;
 use crate::ffi::actions::inbox_module::InboxAction;
 use crate::ffi::actions::knowledge_module::KnowledgeAction;
 use crate::ffi::actions::memory_module::MemoryAction;
@@ -55,7 +56,9 @@ use crate::ffi::projections::{
 };
 use crate::host_op_handler_queue::handle_queue_action;
 use crate::host_op_publish::handle_publish_action;
+use crate::identity_handler::IdentityHandler;
 use crate::inbox_handler::handle_inbox_action;
+use crate::store::identity::IdentityStore;
 use crate::memory_handler;
 use crate::picks_handler::handle_refresh as picks_handle_refresh;
 use crate::player::PlayerActor;
@@ -85,6 +88,7 @@ mod siri_actions;
 pub struct PodcastHostOpHandler {
     pub(crate) app: *mut NmpApp,
     pub(crate) store: Arc<Mutex<PodcastStore>>,
+    pub(crate) identity: Arc<Mutex<IdentityStore>>,
     pub(crate) player_actor: Arc<Mutex<PlayerActor>>,
     pub(crate) search_results: Arc<Mutex<Vec<PodcastSummary>>>,
     pub(crate) nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
@@ -135,6 +139,7 @@ impl PodcastHostOpHandler {
     pub fn new(
         app: *mut NmpApp,
         store: Arc<Mutex<PodcastStore>>,
+        identity: Arc<Mutex<IdentityStore>>,
         player_actor: Arc<Mutex<PlayerActor>>,
         search_results: Arc<Mutex<Vec<PodcastSummary>>>,
         nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
@@ -162,6 +167,7 @@ impl PodcastHostOpHandler {
         Self {
             app,
             store,
+            identity,
             player_actor,
             search_results,
             nostr_results,
@@ -275,6 +281,9 @@ impl PodcastHostOpHandler {
 
 impl HostOpHandler for PodcastHostOpHandler {
     fn handle(&self, action_json: &str, correlation_id: &str) -> serde_json::Value {
+        if let Ok(action) = serde_json::from_str::<IdentityAction>(action_json) {
+            return IdentityHandler::new(self.identity.clone(), self.rev.clone()).handle(action);
+        }
         if let Ok(action) = serde_json::from_str::<CategorizationAction>(action_json) {
             return match action {
                 CategorizationAction::Run => {

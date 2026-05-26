@@ -33,6 +33,7 @@
 
 pub(crate) mod ad_skip_handler;
 pub(crate) mod agent_handler;
+pub(crate) mod identity_handler;
 pub(crate) mod ai_chapters;
 pub(crate) mod briefings_handler;
 pub mod capability;

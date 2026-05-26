@@ -12,7 +12,7 @@ use std::sync::atomic::Ordering;
 use super::handle::PodcastHandle;
 use super::helpers::strip_html;
 use super::projections::{
-    AgentSnapshot, ChapterSummary, EpisodeSummary, PodcastSummary,
+    AccountSummary, AgentSnapshot, ChapterSummary, EpisodeSummary, PodcastSummary,
     SettingsSnapshot, VoiceState,
 };
 use super::snapshot_categories::build_category_aggregate;
@@ -155,6 +155,15 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
     let downloads = handle.download_queue.lock().ok()
         .and_then(|q| build_downloads_snapshot(&q));
 
+    let active_account = handle.identity.lock().ok().and_then(|id| {
+        id.npub.as_ref().map(|npub| AccountSummary {
+            npub: npub.clone(),
+            mode: "local_key".into(),
+            display_name: id.display_name.clone(),
+            picture_url: id.picture_url.clone(),
+        })
+    });
+
     let voice = handle.voice_state.lock().ok().and_then(|v| {
         let snap = v.clone();
         (snap != VoiceState::default()).then_some(snap)
@@ -175,6 +184,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         rev,
         now_playing,
         library,
+        active_account,
         search_results,
         nostr_results,
         settings,

@@ -13,3 +13,14 @@ pub const HEADLESS_TEST_SECRET_HEX: &str =
 #[allow(dead_code)]
 pub const HEADLESS_TEST_PUBKEY_HEX: &str =
     "c7f5c9fc41894086a2fd8c3e542c1d6e6beeb2175ba41813de38bd02936bd4ff";
+
+/// bech32-encoded `nsec1…` form of `HEADLESS_TEST_SECRET_HEX`.
+/// Generated with `nak encode nsec c34df03f…`.
+#[allow(dead_code)]
+pub const HEADLESS_TEST_NSEC: &str =
+    "nsec1cdxlq0ckkqeuauhzqaduugmrjpwuk3cgwq37ef2nvzje8at26lwqapk9us";
+
+/// Expected bech32 `npub1…` for the headless test pubkey.
+#[allow(dead_code)]
+pub const HEADLESS_TEST_NPUB: &str =
+    "npub1cl6unlzp39qgdgha3sl9gtqade47avshtwjpsy778z7s9ymt6nls2thmtl";

@@ -7,6 +7,7 @@ use crate::agent_handler::AgentChatHandler;
 use crate::download::DownloadQueue;
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
+use crate::store::identity::IdentityStore;
 use crate::store::{PodcastKeyStore, PodcastStore};
 use podcast_core::Podcast;
 use std::collections::{HashMap, HashSet};
@@ -30,6 +31,7 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
     PodcastHostOpHandler::new(
         std::ptr::null_mut(),
         store,
+        Arc::new(Mutex::new(IdentityStore::new())),
         Arc::new(Mutex::new(PlayerActor::new())),
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(Vec::new())),

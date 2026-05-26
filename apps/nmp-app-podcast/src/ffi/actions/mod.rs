@@ -61,6 +61,7 @@
 
 pub mod chapters_module;
 pub mod picks_module;
+pub mod identity_module;
 pub mod knowledge_module;
 pub mod memory_module;
 pub mod clip_module;
@@ -81,6 +82,7 @@ pub mod siri_module;
 pub mod voice_module;
 
 pub use chapters_module::{ChaptersAction, ChaptersActionModule};
+pub use identity_module::{IdentityAction, IdentityActionModule};
 pub use picks_module::{AgentPicksModule, PicksAction, PICKS_LIMIT, PICKS_PER_SHOW_CAP};
 pub use knowledge_module::{
     KnowledgeAction, KnowledgeActionModule, ACTION_KNOWLEDGE_CLEAR_RESULTS,
