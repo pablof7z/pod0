@@ -296,6 +296,13 @@ impl PodcastStore {
         self.podcasts.values().find(|p| p.id.0.to_string() == id_str)
     }
 
+    /// Return `true` when a podcast with the given RSS feed URL is already
+    /// subscribed. Used to reject duplicate `subscribe` actions before
+    /// the HTTP fetch fires.
+    pub fn has_feed_url(&self, url: &url::Url) -> bool {
+        self.podcasts.values().any(|p| p.feed_url.as_ref() == Some(url))
+    }
+
     /// Return `(id, feed_url, etag, last_modified)` for every podcast that has
     /// an RSS feed URL. Used by `refresh_all`.
     pub fn all_feed_infos(&self) -> Vec<(PodcastId, url::Url, Option<String>, Option<String>)> {

@@ -191,6 +191,35 @@ fn set_episode_position_does_not_persist_until_flush() {
     assert_eq!(store3.position_for(&ep_id_str), Some(36.0));
 }
 
+// ── Duplicate-subscribe guard ───────────────────────────────────────────
+
+#[test]
+fn has_feed_url_returns_true_for_subscribed_feed() {
+    let mut store = PodcastStore::new();
+    let url = url::Url::parse("https://example.com/feed.rss").unwrap();
+    let mut podcast = make_podcast("Show");
+    podcast.feed_url = Some(url.clone());
+    store.subscribe(podcast, vec![]);
+    assert!(store.has_feed_url(&url));
+}
+
+#[test]
+fn has_feed_url_returns_false_when_not_subscribed() {
+    let store = PodcastStore::new();
+    let url = url::Url::parse("https://example.com/feed.rss").unwrap();
+    assert!(!store.has_feed_url(&url));
+}
+
+#[test]
+fn has_feed_url_ignores_podcasts_without_feed_url() {
+    let mut store = PodcastStore::new();
+    let podcast = make_podcast("No Feed URL Show");
+    // feed_url is None by default
+    store.subscribe(podcast, vec![]);
+    let url = url::Url::parse("https://example.com/feed.rss").unwrap();
+    assert!(!store.has_feed_url(&url));
+}
+
 // ── Auto-download flag ──────────────────────────────────────────────────
 
 #[test]

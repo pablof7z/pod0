@@ -31,6 +31,11 @@ impl PodcastHostOpHandler {
             Ok(u) => u,
             Err(e) => return serde_json::json!({"ok": false, "error": format!("bad url: {e}")}),
         };
+        if let Ok(s) = self.store.lock() {
+            if s.has_feed_url(&url) {
+                return serde_json::json!({"ok": false, "error": "already subscribed"});
+            }
+        }
         let req = podcast_feeds::client::build_feed_request(&url, None);
         let http_result = match self.dispatch_http(&req, correlation_id) {
             Ok(r) => r,
