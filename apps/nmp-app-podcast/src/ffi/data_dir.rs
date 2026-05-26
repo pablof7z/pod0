@@ -43,7 +43,7 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(
     // `nmp_app_podcast_register` and not yet freed.
     let handle = unsafe { &*handle };
 
-    let path_buf = PathBuf::from(path_str);
+    let path_buf = PathBuf::from(path_str.clone());
 
     let (loaded, loaded_queue) = match handle.store.lock() {
         Ok(mut s) => {
