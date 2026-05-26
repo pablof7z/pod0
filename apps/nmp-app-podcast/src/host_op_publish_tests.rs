@@ -82,10 +82,11 @@ fn create_owned_then_publish_show_round_trip() {
         .expect("owner pubkey stamped");
     assert_eq!(stored_pk, pubkey);
 
-    // Step 2: publish_show → returns a kind:10154 event with the same pubkey.
+    // Step 2: publish_show → returns a signed kind:10154 event with the same pubkey.
+    // With a null app pointer relay dispatch is skipped, so status is "signed".
     let out2 = publish_show(&handler, podcast_id.clone());
     assert_eq!(out2["ok"], true);
-    assert_eq!(out2["status"], "relay_pending");
+    assert_eq!(out2["status"], "signed", "null-app pointer must yield status=signed");
     let tags = out2["event_tags"].as_array().expect("event_tags array");
     // NIP-F4 shows have no `d` tag — first tag is the title.
     assert_eq!(tags[0][0], "title");
@@ -94,6 +95,13 @@ fn create_owned_then_publish_show_round_trip() {
         serde_json::from_str(out2["event_json"].as_str().unwrap()).unwrap();
     assert_eq!(event["kind"], 10154);
     assert_eq!(event["pubkey"], pubkey);
+    // Real secp256k1 signing: id and sig must be non-null 64-char hex strings.
+    let event_id = out2["event_id"].as_str().expect("event_id field present");
+    assert_eq!(event_id.len(), 64, "event_id must be 64-char hex");
+    let sig = event["sig"].as_str().expect("event.sig present");
+    assert_eq!(sig.len(), 128, "sig must be 128-char hex");
+    let id_in_event = event["id"].as_str().expect("event.id present");
+    assert_eq!(id_in_event, event_id, "event_id in envelope matches event.id field");
 }
 
 #[test]

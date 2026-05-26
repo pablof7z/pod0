@@ -7,6 +7,7 @@ mod agent_chat;
 mod identity;
 mod inbox_triage;
 mod key_persistence;
+mod nipf4_publish;
 mod relay_smoke;
 mod rss_subscribe;
 mod wiki;
@@ -56,5 +57,6 @@ pub fn run_all(
         ),
         ("inbox_triage", inbox_triage::run(app, handle)),
         ("agent_chat", agent_chat::run(app, handle)),
+        ("nipf4_publish", nipf4_publish::run(app, handle)),
     ]
 }
