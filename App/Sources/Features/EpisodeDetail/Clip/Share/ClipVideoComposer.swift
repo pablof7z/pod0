@@ -147,7 +147,7 @@ enum ClipVideoComposer {
             ]
         )
         label.alignmentMode = .center
-        label.contentsScale = UIScreen.main.scale
+        label.contentsScale = 2
         label.frame = CGRect(
             x: 0,
             y: size.height * 0.06,

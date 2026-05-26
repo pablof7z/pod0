@@ -69,7 +69,7 @@ enum ClipVideoOverlayLayer {
         let layer = CATextLayer()
         layer.string = attributedString(for: cue.text, config: config)
         layer.alignmentMode = .center
-        layer.contentsScale = UIScreen.main.scale
+        layer.contentsScale = 2
         layer.isWrapped = true
         layer.allowsFontSubpixelQuantization = true
         layer.frame = subtitleFrame(in: config)
@@ -88,7 +88,7 @@ enum ClipVideoOverlayLayer {
         ]
         layer.string = NSAttributedString(string: name.uppercased(), attributes: attrs)
         layer.alignmentMode = .center
-        layer.contentsScale = UIScreen.main.scale
+        layer.contentsScale = 2
         // Sit just above the subtitle band; height is a single-line slot.
         let h = config.fontSize * 0.9
         let y = config.bottomInset + (config.fontSize * 4) + 12

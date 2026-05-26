@@ -36,6 +36,7 @@ struct CachedAsyncImage<Content: View>: View {
 
     @State private var phase: AsyncImagePhase = .empty
     @State private var task: DownloadTask?
+    @Environment(\.displayScale) private var displayScale
 
     init(
         url: URL?,
@@ -90,10 +91,9 @@ struct CachedAsyncImage<Content: View>: View {
         ]
         if let targetSize {
             // Kingfisher's processor expects pixels; convert from points.
-            let screenScale = UIScreen.main.scale
             let pixelSize = CGSize(
-                width: targetSize.width * screenScale,
-                height: targetSize.height * screenScale
+                width: targetSize.width * displayScale,
+                height: targetSize.height * displayScale
             )
             options.append(.processor(DownsamplingImageProcessor(size: pixelSize)))
             options.append(.cacheOriginalImage)
@@ -104,17 +104,19 @@ struct CachedAsyncImage<Content: View>: View {
             with: url,
             options: options
         ) { result in
-            switch result {
-            case .success(let value):
-                phase = .success(Image(uiImage: value.image))
-            case .failure(let error):
-                // `.cancelled` happens any time the URL changes mid-load
-                // (scrolling); collapse it to `.empty` rather than surfacing
-                // it as a failure to the caller's switch.
-                if error.isTaskCancelled || error.isNotCurrentTask {
-                    return
+            Task { @MainActor in
+                switch result {
+                case .success(let value):
+                    phase = .success(Image(uiImage: value.image))
+                case .failure(let error):
+                    // `.cancelled` happens any time the URL changes mid-load
+                    // (scrolling); collapse it to `.empty` rather than surfacing
+                    // it as a failure to the caller's switch.
+                    if error.isTaskCancelled || error.isNotCurrentTask {
+                        return
+                    }
+                    phase = .failure(error)
                 }
-                phase = .failure(error)
             }
         }
     }
