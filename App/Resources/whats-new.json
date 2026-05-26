@@ -20,6 +20,12 @@
       ]
     },
     {
+      "shipped_at": "2026-05-26T07:33:00Z",
+      "lines": [
+        "Fixed: restored mini-player episodes wait until you press play before starting the background download."
+      ]
+    },
+    {
       "shipped_at": "2026-05-26T07:27:00Z",
       "lines": [
         "Local Ollama endpoints now work without an API key, and model discovery uses your configured Ollama host."
@@ -620,7 +626,7 @@
       ]
     },
     {
-      "shipped_at": "2026-05-13T12:00:00Z",
+      "shipped_at": "2026-05-13T12:01:00Z",
       "lines": [
         "Episode titles in the player are no longer displayed in all-caps."
       ]
@@ -772,7 +778,7 @@
       ]
     },
     {
-      "shipped_at": "2026-05-12T18:00:00Z",
+      "shipped_at": "2026-05-12T18:01:00Z",
       "lines": [
         "Home now always shows your podcasts as a list — the grid option has been removed."
       ]
@@ -808,7 +814,7 @@
       ]
     },
     {
-      "shipped_at": "2026-05-12T12:00:00Z",
+      "shipped_at": "2026-05-12T12:01:00Z",
       "lines": [
         "Your profile now shows your real Nostr display name and picture after signing in with your nsec — no more auto-generated placeholders."
       ]
@@ -844,49 +850,49 @@
       ]
     },
     {
-      "shipped_at": "2026-05-12T00:00:00Z",
+      "shipped_at": "2026-05-12T00:01:00Z",
       "lines": [
         "Wiki citation chips now peek the cited moment on tap — long-press to commit and play the full clip. Failed compiles show a Retry button, and the auto-refresh toggle finally does something: enable it and your wiki pages update as new transcripts land."
       ]
     },
     {
-      "shipped_at": "2026-05-11T23:30:00Z",
+      "shipped_at": "2026-05-11T23:31:00Z",
       "lines": [
         "Ask the agent to generate a custom audio episode — it can narrate a TLDR in any voice, weave in clips from your podcasts, or produce a multi-speaker fake interview — and the episode appears in your library ready to play."
       ]
     },
     {
-      "shipped_at": "2026-05-11T23:00:00Z",
+      "shipped_at": "2026-05-11T23:01:00Z",
       "lines": [
         "The agent can now download and transcribe an episode in one step — ask it to transcribe something and it will wait until the transcript is ready before answering."
       ]
     },
     {
-      "shipped_at": "2026-05-11T22:30:00Z",
+      "shipped_at": "2026-05-11T22:31:00Z",
       "lines": [
         "Episode pages now have a comments section powered by Nostr — replies appear under every episode and are shared across podcast apps that support Podcasting 2.0."
       ]
     },
     {
-      "shipped_at": "2026-05-11T22:00:00Z",
+      "shipped_at": "2026-05-11T22:01:00Z",
       "lines": [
         "Tap targets fixed on all glass buttons. Speed now lives in the top-bar trailing cluster. Voice note mic anchors the left side of the transport row."
       ]
     },
     {
-      "shipped_at": "2026-05-11T21:00:00Z",
+      "shipped_at": "2026-05-11T21:01:00Z",
       "lines": [
         "Ask the agent to play specific sections of an episode — it queues them in order with a subtle sound cue between each, so you can hear just the parts you care about."
       ]
     },
     {
-      "shipped_at": "2026-05-11T20:00:00Z",
+      "shipped_at": "2026-05-11T20:01:00Z",
       "lines": [
         "The scrubber now shows your clips as highlights on the timeline — tap one to jump straight to it. Chapter breaks appear as faint tick marks. A new '< Jump back' button lets you return to where you were before any seek, like browser back."
       ]
     },
     {
-      "shipped_at": "2026-05-11T19:00:00Z",
+      "shipped_at": "2026-05-11T19:01:00Z",
       "lines": [
         "AI-compiled chapters and ad-skip markers now survive feed refreshes — no more \"Compiling chapters\" flicker every time you reopen a podcast."
       ]
@@ -898,7 +904,7 @@
       ]
     },
     {
-      "shipped_at": "2026-05-11T15:00:00Z",
+      "shipped_at": "2026-05-11T15:01:00Z",
       "lines": [
         "The in-app assistant can now save clips for you — just ask it to clip a moment and it'll appear in your Clippings tab."
       ]
@@ -1018,13 +1024,13 @@
       ]
     },
     {
-      "shipped_at": "2026-05-11T15:00:00Z",
+      "shipped_at": "2026-05-11T15:02:00Z",
       "lines": [
         "Home screen is cleaner — removed unplayed count badges on artwork, the date header, and filter chips."
       ]
     },
     {
-      "shipped_at": "2026-05-11T15:00:00Z",
+      "shipped_at": "2026-05-11T15:03:00Z",
       "lines": [
         "Perplexity online search now works with just your OpenRouter key — no separate Perplexity account required."
       ]
@@ -1036,13 +1042,13 @@
       ]
     },
     {
-      "shipped_at": "2026-05-11T14:00:00Z",
+      "shipped_at": "2026-05-11T14:01:00Z",
       "lines": [
         "Removed the filter and layout menu from the home toolbar for a cleaner look."
       ]
     },
     {
-      "shipped_at": "2026-05-11T14:00:00Z",
+      "shipped_at": "2026-05-11T14:02:00Z",
       "lines": [
         "The full-screen player now shows clearly readable elapsed and remaining times (e.g. 12:34 / -47:26) under the waveform scrubber."
       ]
@@ -1054,13 +1060,13 @@
       ]
     },
     {
-      "shipped_at": "2026-05-11T13:00:00Z",
+      "shipped_at": "2026-05-11T13:01:00Z",
       "lines": [
         "Episode rows now use a slim 2 px progress bar instead of text pills: primary-colored while downloading, accent-colored while transcribing. Not-yet-downloaded episodes are subtly dimmed so you can tell at a glance which ones are ready offline."
       ]
     },
     {
-      "shipped_at": "2026-05-11T12:00:00Z",
+      "shipped_at": "2026-05-11T12:01:00Z",
       "lines": [
         "Tap the Home title to browse categories — each category shows podcast artwork, a description, and your unplayed count. Tap the gear on any category to set its transcription, wiki, and briefings preferences independently. Selecting a category scopes the whole feed to that section."
       ]

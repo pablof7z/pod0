@@ -52,6 +52,22 @@ final class PlaybackStateAutoDownloadTests: XCTestCase {
         XCTAssertEqual(calls, [episode.id])
     }
 
+    func testSuppressedRestoreLoadDefersDownloadUntilPlayback() {
+        let state = PlaybackState()
+        var calls: [UUID] = []
+        state.onEnsureDownloadEnqueued = { calls.append($0) }
+
+        let episode = makeEpisode(downloadState: .notDownloaded)
+        state.setEpisode(episode, enqueueDownloadIfNeeded: false)
+
+        XCTAssertTrue(calls.isEmpty)
+
+        state.play()
+        state.play()
+
+        XCTAssertEqual(calls, [episode.id])
+    }
+
     func testDownloadedEpisodeDoesNotFireDownload() {
         let state = PlaybackState()
         var calls: [UUID] = []

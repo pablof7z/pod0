@@ -85,7 +85,7 @@ extension RootView {
         if playbackState.episode == nil,
            let lastID = store.state.lastPlayedEpisodeID,
            let episode = store.episode(id: lastID) {
-            playbackState.setEpisode(episode)
+            playbackState.setEpisode(episode, enqueueDownloadIfNeeded: false)
         }
     }
 

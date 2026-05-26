@@ -221,6 +221,7 @@ final class PlaybackState {
     /// same episode sees ads skipped again. Not persisted — purely
     /// throttling state for the 1-second tick loop.
     var skippedAdSegmentIDs: Set<UUID> = []
+    private var downloadEnqueueRequestedForEpisodeID: UUID?
 
     // MARK: - Init
 
@@ -242,7 +243,7 @@ final class PlaybackState {
     /// hero "Play/Resume" button, chapter-row taps, deep-links). The
     /// metadata refresh + snapshot write still run so any post-hydrate
     /// changes (chapters, title) flush to the widget.
-    func setEpisode(_ newEpisode: Episode) {
+    func setEpisode(_ newEpisode: Episode, enqueueDownloadIfNeeded: Bool = true) {
         let isSameEpisode = (episode?.id == newEpisode.id)
         if !isSameEpisode {
             // Drain any cached position for the previous episode before
@@ -256,6 +257,7 @@ final class PlaybackState {
             // episode should re-skip the same ads; a brand-new episode
             // starts with an empty set.
             skippedAdSegmentIDs = []
+            downloadEnqueueRequestedForEpisodeID = nil
         } else {
             // Same-id reload (Play/Resume tap, deep-link, chapter-row).
             // Clear the finished-flag so a user replaying an already-
@@ -299,20 +301,18 @@ final class PlaybackState {
         writeNowPlayingSnapshot(force: true)
         if !isSameEpisode {
             startPersistenceLoop()
-            // Kick off the background download → transcription → chapters
-            // pipeline for any episode the user streams that isn't yet on
-            // disk. Gated on `!isSameEpisode` because same-episode reloads
-            // (Play/Resume taps, deep-link replays, chapter-row taps) fire
-            // on every gesture and would otherwise spam the queue. The
-            // receiver (RootView → EpisodeDownloadService) early-returns
-            // for `.downloading` / `.queued` / `.downloaded` so the
-            // common case after the first play is a cheap no-op.
-            switch newEpisode.downloadState {
-            case .notDownloaded, .failed:
-                onEnsureDownloadEnqueued(newEpisode.id)
-            case .downloading, .queued, .downloaded:
-                break
-            }
+            if enqueueDownloadIfNeeded { ensureDownloadEnqueuedIfNeeded(for: newEpisode) }
+        }
+    }
+
+    private func ensureDownloadEnqueuedIfNeeded(for episode: Episode) {
+        guard downloadEnqueueRequestedForEpisodeID != episode.id else { return }
+        switch episode.downloadState {
+        case .notDownloaded, .failed:
+            downloadEnqueueRequestedForEpisodeID = episode.id
+            onEnsureDownloadEnqueued(episode.id)
+        case .downloading, .queued, .downloaded:
+            break
         }
     }
 
@@ -327,9 +327,10 @@ final class PlaybackState {
     }
 
     func play() {
-        guard episode != nil else { return }
+        guard let episode else { return }
         Haptics.medium()
         engine.play()
+        ensureDownloadEnqueuedIfNeeded(for: episode)
         startPersistenceLoop()
         // Force-write the snapshot so the widget's play/pause glyph
         // flips immediately — the throttled persistence-loop write would
