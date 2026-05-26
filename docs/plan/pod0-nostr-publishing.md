@@ -1,183 +1,111 @@
-# Plan: Pod0 Nostr Publishing Migration from NIP-74 to NIP-F4
+# Plan: Pod0 Nostr Publishing Migration From NIP-74 To NIP-F4
 
 Canonical status: tracked from `docs/plan.md` and `docs/BACKLOG.md`.
 
-## Context
+## Current Status - 2026-05-26
 
-The app currently publishes podcast feeds using NIP-74 (`kind:30074` show, `kind:30075` episode) — parameterised replaceable events where a single agent key signs all podcasts, distinguished by `d` tags.
+This migration is **not complete**. The repository has merged NIP-F4 discovery
+and owned-podcast publishing scaffolds, but the current wire/build path still
+contains NIP-74-era assumptions. Treat this as a P0 protocol-correction plan,
+not a finished implementation note.
 
-NIP-F4 (`F4.md` on the `podcasts` branch of nostr-protocol/nips) redesigns this around per-podcast keypairs:
-- Each podcast IS its own Nostr identity (keypair)
-- Show metadata: `kind:10154` replaceable event signed by the podcast key
-- Episodes: `kind:54` regular events signed by the podcast key
-- Agent claims ownership via `kind:10064` replaceable event listing all podcast pubkeys
+## Required NIP-F4 Contract
 
-Key consequence: no `d` tags on either event; shows are identified by pubkey alone; episodes are discovered by filtering `kind:54` authored by the podcast pubkey.
+| Concept | Required NIP-F4 Shape |
+|---|---|
+| Show event | `kind:10154`, signed by the podcast key, no `d` tag |
+| Episode event | `kind:54`, signed by the podcast key, no `d` tag |
+| Author claim | `kind:10064`, signed by the agent key, `p` tags for podcast pubkeys |
+| Show coordinate | `10154:<podcast-pubkey-hex>` |
+| Episode identity | Event id, scoped under podcast pubkey |
+| Show description | `["description", "..."]` plus content fallback |
+| Episode audio | `["audio", "<url>", "<mime>"]` |
+| Episode-to-show link | Implicit by author pubkey; no `a` tag |
+| Published time | Event `created_at`; no `published_at` tag |
+| Key storage | Real secp256k1 private key per podcast, persisted securely |
 
----
+## Current Wrong Or Scaffolded Behavior
 
-## Event Structure Mapping
+- `apps/podcast-discovery/src/build/show.rs` still emits a show `d` tag.
+- `apps/podcast-discovery/src/build/show.rs` still emits `summary` instead of
+  `description`.
+- `apps/podcast-discovery/src/build/episode.rs` still emits an episode `d` tag.
+- `apps/podcast-discovery/src/build/episode.rs` still emits `published_at`.
+- `apps/podcast-discovery/src/build/episode.rs` still emits an `a` tag linking
+  to a show coordinate.
+- `apps/podcast-discovery/src/build/episode.rs` still emits `summary` instead
+  of `description`.
+- `apps/podcast-discovery/src/build/episode.rs` still emits `imeta` instead of
+  the required `audio` tag.
+- `apps/podcast-discovery/src/types.rs` still names parsed views
+  `NIP74Show`/`NIP74Episode` and carries `d_tag`/`show_a_tag` fields.
+- `apps/podcast-discovery/src/parse/show.rs` still requires a `d` tag and
+  computes `10154:<pubkey>:<d-tag>` coordinates.
+- `apps/podcast-discovery/src/parse/episode.rs` still requires a `d` tag and
+  parses an `a` show reference.
+- `apps/nmp-app-podcast/src/store/podcast_keys.rs` uses in-memory keys and
+  placeholder FNV-style public-key derivation.
+- `apps/nmp-app-podcast/src/host_op_publish.rs` builds unsigned diagnostic
+  JSON with `id: null` and `sig: null`.
+- `apps/nmp-app-podcast/src/host_op_publish.rs` returns `relay_pending`; no
+  signed event is published to relays.
+- `podcast.discover_nostr` currently uses an HTTP gateway search path, not a
+  first-class relay subscription path.
+- Pure-Nostr subscription to a show/episode set is incomplete; discovery still
+  leans on `feed` when present and RSS subscribe for the durable path.
 
-| Concept | NIP-74 (old) | NIP-F4 (new) |
-|---|---|---|
-| Show | `kind:30074`, d-tag: `podcast:guid:<uuid>` | `kind:10154`, no d-tag |
-| Episode | `kind:30075`, d-tag: `podcast:item:guid:<uuid>` | `kind:54`, no d-tag |
-| Author claim | — | `kind:10064` from agent key |
-| Show description tag | `summary` | `description` |
-| Episode audio | `imeta url … m … x … size …` | `["audio", "<url>", "<mime>"]` |
-| Episode-to-show link | `a` tag on episode | implicit: same podcast pubkey |
-| Show coordinate | `30074:<agent-pubkey>:<d-tag>` | `10154:<podcast-pubkey>` |
-| Signer for show/episode | agent key | per-podcast key |
+## P0 Implementation Plan
 
-Episode `content` field: markdown show notes (same value as description for now).
+1. Rename the typed raw views away from `NIP74Show`/`NIP74Episode`.
+   Use `NipF4Show` and `NipF4Episode` consistently across parse/build/tests.
+2. Correct show parsing/building.
+   Remove required `d`; coordinate from event pubkey only; read/write
+   `description`; keep `title`, `image`, `language`, category tags, and
+   optional feed URL if supported.
+3. Correct episode parsing/building.
+   Remove required `d`; remove `a`; remove `published_at`; read/write
+   `description`; read/write `audio`; identify episodes by event id under the
+   podcast pubkey.
+4. Update tests to fail on NIP-74 tags.
+   Add negative assertions that `d`, `a`, `summary`, `published_at`, and
+   `imeta` are absent from NIP-F4 show/episode output.
+5. Replace placeholder per-podcast key derivation.
+   Use the same secp256k1/signing stack as the rest of NMP. Persist each
+   podcast private key in the proper Keychain/native secure store slot, not
+   only in memory.
+6. Sign events in Rust.
+   Build full Nostr events with valid `id`, `pubkey`, `sig`, `created_at`,
+   content, and tags before returning success.
+7. Publish events to relays.
+   Use the configured relay list/NIP-65 write relays. `relay_pending` may only
+   remain as an intermediate queue state if a durable queue exists.
+8. Publish and maintain author claims.
+   After create/update/delete of owned podcasts, publish kind `10064` from the
+   agent key with the current set of podcast pubkeys.
+9. Implement relay-backed discovery and episode fetch.
+   Query kind `10154` for shows and kind `54` by podcast pubkey for episodes.
+   HTTP gateway search can remain a convenience wrapper, but the canonical
+   path must be relay/substrate-backed.
+10. Update iOS/Android UI semantics.
+   Owned-podcast UI must not tell users a show/episode is published until a
+   signed event has been accepted or queued durably for relay publish.
+11. Add migration handling for existing NIP-74-derived local data.
+   Existing `nostr_coordinate` and `owner_pubkey_hex` rows must either be
+   migrated to NIP-F4 coordinates or explicitly treated as legacy read-only
+   entries.
+12. Validate against relays.
+   Publish a show, publish an episode, fetch both back from relay data, verify
+   author claim, delete/cleanup key material, and confirm restart behavior.
 
----
+## Done Criteria
 
-## New: `PodcastKeyStore.swift`
-
-New file: `App/Sources/Services/PodcastKeyStore.swift`
-
-Stores per-podcast private keys in Keychain, keyed by podcast UUID.
-
-```swift
-enum PodcastKeyStore {
-    static func savePrivateKey(_ hex: String, podcastID: UUID) throws
-    static func privateKey(podcastID: UUID) throws -> String?
-    static func deletePrivateKey(podcastID: UUID) throws
-    // Keychain account: "podcast-privkey-<uuid-lowercased>"
-    // Keychain service: same as NostrCredentialStore.service
-}
-```
-
-Key generation in `LiveAgentOwnedPodcastManager` when a podcast is first published:
-```swift
-// If no key stored yet, generate one and save it
-if try PodcastKeyStore.privateKey(podcastID: podcast.id) == nil {
-    let generated = try NDKPrivateKeySigner.generate()
-    try PodcastKeyStore.savePrivateKey(generated.privateKeyHex, podcastID: podcast.id)
-}
-let privkey = try PodcastKeyStore.privateKey(podcastID: podcast.id)!
-let podcastSigner = try LocalKeySigner(privateKeyHex: privkey)
-```
-
-`podcast.ownerPubkeyHex` stores the **podcast's** pubkey (derived from the podcast key), not the agent's pubkey. This is set on first publish and stored on the `Podcast` model.
-
----
-
-## Changes: `NostrPodcastPublisher.swift`
-
-**`publishShow(podcast:signer:)`**
-- Kind: `30074` → `10154`
-- Remove `["d", ...]` tag
-- Tag `summary` → `description`
-- Keep `title`, `image`, `language`, `t`, `p` tags
-- `p` tag uses the podcast pubkey (from `signer.publicKey()`)
-
-**`publishEpisode(episode:podcast:audioURL:audioData:chaptersURL:transcriptURL:signer:)`**
-- Kind: `30075` → `54`
-- Remove `["d", ...]` tag
-- Remove `["a", "30074:..."]` tag (no more show reference)
-- Remove `published_at` tag (use `created_at`)
-- Replace `imeta` block with: `["audio", audioURL.absoluteString, "audio/mp4"]`
-- Keep `title`, `image`, `description`, `duration`, `chapters`, `transcript` tags
-- Set `content` = episode description (markdown)
-
-**Add `publishAuthorClaim(podcastPubkeys:[String], agentSigner:)`**
-- Kind: `10064` (replaceable, no d-tag)
-- Tags: one `["p", podcastPubkey]` per owned podcast
-- Signed by the **agent** key
-- Called after any create/update to keep the claim list current
-
-**Remove** the `publisher: any NostrEventPublishing` init parameter (already vestigial).
-
----
-
-## Changes: `NostrPodcastDiscoveryService.swift`
-
-**Wire constants:**
-```swift
-static let kindShow = 10154
-static let kindEpisode = 54
-```
-
-**`ShowResult`:** remove `dTag` field; `coordinate` = `"10154:<pubkey>"`.
-
-**`fetchShows()`:** filter `kinds: [10154]`; coordinate = `"10154:\(pubkey)"`.
-
-**`fetchEpisodes(for:relayURL:podcastID:)`:**
-- Filter: `authors: [show.pubkey], kinds: [54]` — no `a` tag filter needed
-- Dedup by event `id` (no d-tag; each episode is a unique event)
-
-**`podcastID(for:)`:** unchanged in logic; coordinate now `"10154:<pubkey>"` → still produces a stable UUID.
-
-**`parseShow(from:)`:**
-- No d-tag parsing; use `pubkey` as sole identifier
-- `summary` tag → `description` tag (fall back to content)
-
-**`parseEpisode(from:podcastID:)`:**
-- Audio: parse `["audio", url, mime?]` tag instead of `imeta`
-- guid: use `event.id` (hex)
-- Description: `description` tag, fall back to `content`
-- Remove `published_at` — use `event.createdAt` for `pubDate`
-
-**`subscribe(to:store:relayURL:)`:** no d-tag reference; coordinate = `"10154:\(show.pubkey)"`.
-
----
-
-## Changes: `LiveAgentOwnedPodcastManager.swift`
-
-**`createPodcast()`:**
-1. If `visibility == .public`: generate podcast keypair via `PodcastKeyStore`, derive podcast pubkey
-2. Set `ownerPubkeyHex` = podcast pubkey (not agent pubkey)
-3. After publishing show, also call `publishAuthorClaim()` with agent signer
-
-**`publishShowEvent(podcast:settings:)`:**
-- Retrieve/generate podcast private key from `PodcastKeyStore`
-- Create `podcastSigner = LocalKeySigner(privateKeyHex: podcastPrivkey)`
-- Pass `podcastSigner` to `publisher.publishShow()`
-- Call `publisher.publishAuthorClaim(podcastPubkeys: allOwnedPubkeys, agentSigner: agentSigner)`
-
-**`publishEpisodeRecord(_:podcast:settings:)`:**
-- Retrieve podcast private key from `PodcastKeyStore`
-- Pass `podcastSigner` to all `blossom.upload` calls and `publisher.publishEpisode`
-
-**`nostrAddr(for:eventID:)`:**
-- kind:10154 is a regular replaceable event — no naddr (which is for parameterised replaceable 30000-39999)
-- Return `NIP19.npub(pubkeyHex: podcastPubkeyHex)` or the pubkey hex directly
-- Update `AgentOwnedPodcastInfo.nostrAddr` comment accordingly
-
-**`publishEpisodeToNostr(episodeID:)`:**
-- Remove the naddr construction (no d-tag); return event ID directly
-
-**`deletePodcast()`:**
-- Call `PodcastKeyStore.deletePrivateKey(podcastID:)` to clean up stored key
-
----
-
-## Changes: `Podcast.swift`
-
-Comments only:
-- `nostrVisibility`: update reference from NIP-74 kinds to NIP-F4 kinds (10154/54)
-- `nostrCoordinate`: update format description to `"10154:<podcast-pubkey-hex>"`
-- `ownerPubkeyHex`: clarify it now stores the podcast's own pubkey (not the agent's)
-
----
-
-## Files NOT changed
-
-- `Episode.swift` — no Nostr-specific fields
-- `KeychainStore.swift` — reused as-is by PodcastKeyStore
-- `NIP19.swift` — npub encoding already exists
-- `NostrStack.swift`, `NIP65RelayFetcher.swift` — unchanged
-- `NostrDiscoverForm.swift` — no kind numbers; queries through the service
-
----
-
-## Verification
-
-1. **Build**: no compile errors (kind numbers are `Int` literals, tag names are `String` — no type changes required beyond removing d-tag parameters)
-2. **Publish a new podcast**: confirm `kind:10154` event published to relay with correct tags (no d-tag, `description` present)
-3. **Publish an episode**: confirm `kind:54` event with `["audio", url, mime]` tag and no `a`/`d` tags
-4. **Discover via NostrDiscoverForm**: confirm shows loaded from `kind:10154` events; episodes fetched by author pubkey
-5. **Author claim**: confirm `kind:10064` event published from agent key after create/update
-6. **Delete podcast**: confirm `PodcastKeyStore` key removed from Keychain
+- No active NIP-F4 publish/build test expects `d`, `a`, `summary`,
+  `published_at`, or `imeta`.
+- `KIND_SHOW == 10154`, `KIND_EPISODE == 54`, and
+  `KIND_AUTHOR_CLAIM == 10064` are still pinned in one canonical module.
+- Per-podcast keys survive restart and derive real secp256k1 pubkeys.
+- `publish_show`, `publish_episode`, and `publish_author_claim` produce signed
+  events and publish them to relays.
+- Discovery can subscribe to a Nostr-only podcast without relying on RSS.
+- Docs, tests, UI copy, and `whats-new.json` no longer describe NIP-74 as the
+  current publish/discovery protocol.
