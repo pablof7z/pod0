@@ -7,39 +7,104 @@
 
 extension KernelModel {
 
-    /// Hash of the snapshot fields visible to non-player views. Omits
-    /// `nowPlaying.positionSecs`, `nowPlaying.bufferingFraction`, and
-    /// `nowPlaying.isBuffering` so views like HomeView and InboxView don't
-    /// re-render at 4 Hz during active playback.
+    /// Hash of the snapshot fields visible to non-player views.
+    ///
+    /// **Excluded** (volatile at 4 Hz during playback, never cause UI change):
+    ///   - `nowPlaying.positionSecs`
+    ///   - `nowPlaying.bufferingFraction`
+    ///   - `nowPlaying.isBuffering`
+    ///   - `widget.positionFraction`
+    ///   - `library[*].playbackPositionSecs`  (library has its own hash gate)
+    ///
+    /// Everything else in `PodcastUpdate` is hashed so any real content change
+    /// triggers a `podcastSnapshot` update on the next poll.
     func snapshotContentHash(for update: PodcastUpdate) -> Int {
         var h = Hasher()
+
+        // Player state (position excluded — too volatile)
         h.combine(update.nowPlaying?.episodeId)
         h.combine(update.nowPlaying?.isPlaying)
         h.combine(update.nowPlaying?.speed)
         h.combine(update.nowPlaying?.durationSecs)
         h.combine(update.nowPlaying?.url)
+        h.combine(update.nowPlaying?.volume)
+
+        // Settings
         h.combine(update.settings.skipForwardSecs)
         h.combine(update.settings.skipBackwardSecs)
         h.combine(update.settings.autoSkipAdsEnabled)
         h.combine(update.settings.hasCompletedOnboarding)
+
+        // Misc
         h.combine(update.toast)
         h.combine(update.activeAccount?.npub)
+
+        // Downloads (state, not progress)
         h.combine(update.downloads?.active.count)
         h.combine(update.downloads?.queuedCount)
-        for d in update.downloads?.active ?? [] { h.combine(d.episodeId); h.combine(d.state) }
+        h.combine(update.downloads?.completedToday)
+        for d in update.downloads?.active ?? [] {
+            h.combine(d.episodeId)
+            h.combine(d.state)
+            // d.progress excluded (volatile, changes during download)
+        }
+
+        // Picks, queue, inbox, tasks
         for p in update.picks { h.combine(p.id) }
         for q in update.queue { h.combine(q.id) }
         for i in update.inbox { h.combine(i.id) }
         for t in update.agentTasks { h.combine(t.id); h.combine(t.status) }
-        for w in update.wikiArticles { h.combine(w.id) }
+
+        // Wiki / knowledge
+        for w in update.wikiArticles { h.combine(w.id); h.combine(w.isGenerating) }
+        for w in update.wikiSearchResults { h.combine(w.id) }
+        for k in update.knowledgeSearchResults { h.combine(k.id) }
+
+        // Categories (include topEpisodeIds — their order/content can change)
+        for cat in update.categories {
+            h.combine(cat.id)
+            h.combine(cat.episodeCount)
+            for epId in cat.topEpisodeIds { h.combine(epId) }
+        }
+
+        // Memory, TTS, clips
+        for m in update.memoryFacts { h.combine(m.id); h.combine(m.value) }
+        for t in update.ttsEpisodes { h.combine(t.id); h.combine(t.status) }
         for c in update.clips { h.combine(c.id) }
-        for cat in update.categories { h.combine(cat.id); h.combine(cat.episodeCount) }
-        for m in update.memoryFacts { h.combine(m.id) }
+
+        // Ownership, search
         for o in update.ownedPodcasts { h.combine(o.id) }
         for s in update.searchResults { h.combine(s.id) }
         for n in update.nostrResults { h.combine(n.id) }
+
+        // Comments
+        for c in update.comments { h.combine(c.id) }
+
+        // Agent
         h.combine(update.agent?.messages.count)
         h.combine(update.agent?.isBusy)
+
+        // Voice (state transitions that matter for UI)
+        h.combine(update.voice?.isSpeaking)
+        h.combine(update.voice?.isListening)
+        h.combine(update.voice?.currentRequestId)
+        h.combine(update.voice?.lastResponse)
+
+        // Briefing
+        h.combine(update.briefing?.status)
+        h.combine(update.briefing?.segmentCount)
+        h.combine(update.briefing?.isGenerating)
+        h.combine(update.briefing?.lastGeneratedAt)
+
+        // Social
+        h.combine(update.social?.followingCount)
+
+        // Widget (positionFraction excluded — too volatile)
+        h.combine(update.widget?.nowPlayingEpisodeTitle)
+        h.combine(update.widget?.nowPlayingPodcastTitle)
+        h.combine(update.widget?.isPlaying)
+        h.combine(update.widget?.unplayedCount)
+
         return h.finalize()
     }
 
