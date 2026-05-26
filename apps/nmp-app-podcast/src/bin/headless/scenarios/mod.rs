@@ -7,6 +7,7 @@ mod identity;
 mod key_persistence;
 mod relay_smoke;
 mod rss_subscribe;
+mod wiki;
 
 /// Per-scenario outcome.
 #[derive(Debug)]
@@ -47,5 +48,9 @@ pub fn run_all(
             identity::run(app, handle),
         ),
         ("relay_smoke", relay_smoke::run(app, handle)),
+        (
+            "wiki_generate",
+            wiki::run(app, handle),
+        ),
     ]
 }

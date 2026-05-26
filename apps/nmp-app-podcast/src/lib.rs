@@ -62,6 +62,7 @@ pub(crate) mod transcript;
 pub(crate) mod tts;
 pub(crate) mod voice_handler;
 pub(crate) mod wiki;
+pub(crate) mod wiki_llm;
 
 // M2.F — Android JNI shim. Gated `target_os = "android"` so iOS/macOS builds
 // remain unaffected. The shim exports `Java_io_f7z_podcast_KernelBridge_*`
