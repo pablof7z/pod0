@@ -4,6 +4,7 @@ use nmp_app_podcast::PodcastHandle;
 use nmp_ffi::NmpApp;
 
 mod key_persistence;
+mod relay_smoke;
 mod rss_subscribe;
 
 /// Per-scenario outcome.
@@ -40,5 +41,6 @@ pub fn run_all(
             "key_persistence",
             key_persistence::run(app, handle),
         ),
+        ("relay_smoke", relay_smoke::run(app, handle)),
     ]
 }
