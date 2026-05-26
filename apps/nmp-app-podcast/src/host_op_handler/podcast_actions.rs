@@ -82,7 +82,7 @@ impl PodcastHostOpHandler {
             PodcastAction::SetAutoDownload { podcast_id, enabled } => {
                 self.handle_set_auto_download(podcast_id, enabled)
             }
-            PodcastAction::FetchContacts => crate::social_handler::handle_fetch_contacts(),
+            PodcastAction::FetchContacts => crate::social_handler::handle_fetch_contacts(self),
             PodcastAction::StarEpisode { episode_id, starred } => {
                 match self.store.lock() {
                     Ok(mut s) => match s.set_episode_starred(&episode_id, starred) {

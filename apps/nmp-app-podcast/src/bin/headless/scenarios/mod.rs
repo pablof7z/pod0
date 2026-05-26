@@ -6,6 +6,7 @@ use nmp_ffi::NmpApp;
 mod identity;
 mod relay_smoke;
 mod rss_subscribe;
+mod social;
 
 /// Per-scenario outcome.
 #[derive(Debug)]
@@ -36,5 +37,6 @@ pub fn run_all(
         ("rss_subscribe", rss_subscribe::run(app, handle)),
         ("identity_import", identity::run(app, handle)),
         ("relay_smoke", relay_smoke::run(app, handle)),
+        ("social", social::run(app, handle)),
     ]
 }

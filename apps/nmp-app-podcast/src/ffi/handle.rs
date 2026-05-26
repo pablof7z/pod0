@@ -10,8 +10,8 @@ use nmp_ffi::NmpApp;
 use crate::clip_handler::ClipRecord;
 use crate::ffi::projections::{
     AgentMessageSummary, AgentPickSummary, AgentTaskSummary, BriefingSnapshot,
-    KnowledgeSearchResult, NostrShowSummary, PodcastSummary, TranscriptEntry, TtsEpisodeSummary,
-    VoiceState, WikiArticle,
+    KnowledgeSearchResult, NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry,
+    TtsEpisodeSummary, VoiceState, WikiArticle,
 };
 use crate::download::DownloadQueue;
 use crate::player::PlayerActor;
@@ -155,6 +155,11 @@ pub struct PodcastHandle {
     /// `build_snapshot_payload` to populate
     /// `EpisodeSummary.ai_categories` + the `categories` aggregate.
     pub(super) categories: Arc<Mutex<HashMap<String, Vec<String>>>>,
+    /// NIP-02 social graph snapshot. `None` until the first
+    /// `FetchContacts` dispatch completes. Written by
+    /// `social_handler::handle_fetch_contacts` on the actor thread; read
+    /// by `build_snapshot_payload` on each tick.
+    pub(super) social: Arc<Mutex<Option<SocialSnapshot>>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the

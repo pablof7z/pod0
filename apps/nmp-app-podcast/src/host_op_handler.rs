@@ -52,7 +52,7 @@ use crate::ffi::actions::wiki_module::WikiAction;
 use crate::ffi::handle::OwnedPublishState;
 use crate::ffi::projections::{
     AgentPickSummary, AgentTaskSummary, BriefingSnapshot, KnowledgeSearchResult, NostrShowSummary,
-    PodcastSummary, TranscriptEntry, TtsEpisodeSummary, VoiceState, WikiArticle,
+    PodcastSummary, SocialSnapshot, TranscriptEntry, TtsEpisodeSummary, VoiceState, WikiArticle,
 };
 use crate::host_op_handler_queue::handle_queue_action;
 use crate::host_op_publish::handle_publish_action;
@@ -122,8 +122,11 @@ pub struct PodcastHostOpHandler {
     /// Shared Tokio runtime for async LLM / relay work. Seeded in
     /// `ffi::register` so all host-op handlers in future PRs share one
     /// multi-thread scheduler.
-    #[allow(dead_code)]
     pub(crate) runtime: Arc<Runtime>,
+    /// Active social-graph snapshot, populated by `FetchContacts`. Shared
+    /// with `PodcastHandle.social` so the snapshot reader projects it on
+    /// every tick after the first fetch.
+    pub(crate) social: Arc<Mutex<Option<SocialSnapshot>>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the
@@ -162,6 +165,7 @@ impl PodcastHostOpHandler {
         publish_state: Arc<Mutex<HashMap<String, OwnedPublishState>>>,
         agent_chat: AgentChatHandler,
         runtime: Arc<Runtime>,
+        social: Arc<Mutex<Option<SocialSnapshot>>>,
     ) -> Self {
         let tts = TtsEpisodeHandler::new(app, tts_episodes, rev.clone());
         Self {
@@ -190,6 +194,7 @@ impl PodcastHostOpHandler {
             publish_state,
             agent_chat,
             runtime,
+            social,
         }
     }
 

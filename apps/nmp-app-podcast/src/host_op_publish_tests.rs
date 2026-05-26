@@ -54,6 +54,7 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
         Arc::new(Mutex::new(HashMap::new())),
         agent_chat,
         Arc::new(tokio::runtime::Runtime::new().unwrap()),
+        Arc::new(Mutex::new(None)),
     )
 }
 
