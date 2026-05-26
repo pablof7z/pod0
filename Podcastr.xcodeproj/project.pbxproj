@@ -669,6 +669,7 @@
 		F7C86112F84F937B801D24DA /* NostrPendingApproval.swift in Sources */ = {isa = PBXBuildFile; fileRef = F446D2523A0686D044F5ED5F /* NostrPendingApproval.swift */; };
 		F8B443F616555BE2EADD8678 /* AssemblyAISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB700211550DA4FE9D8A7C77 /* AssemblyAISettingsView.swift */; };
 		FA8E896E9B45192EA98FE69A /* AsyncButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E7382E62AF7C4571F4B5511 /* AsyncButton.swift */; };
+		FADF427A29ED99BFD0A00703 /* VoiceNoteRealtimeSTT+Support.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ADECD9617551B942A2D26B3 /* VoiceNoteRealtimeSTT+Support.swift */; };
 		FAE8E222FD59220E95FADD79 /* PodcastAgentToolDeps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76FF1CBA3F84D3FF36B06CAA /* PodcastAgentToolDeps.swift */; };
 		FB7C15147AC581D98285F12D /* ElevenLabsHeroCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78B392F3A48AF766BAE55289 /* ElevenLabsHeroCard.swift */; };
 		FC6A9DF0ECB27C24D6C1E857 /* LiveYouTubeIngestionAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54A97C210A0D240E47E7BB25 /* LiveYouTubeIngestionAdapter.swift */; };
@@ -1176,6 +1177,7 @@
 		9A5C71BEB7CB9908E8F4D917 /* OnboardingPages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingPages.swift; sourceTree = "<group>"; };
 		9A5D45F30673832A40C2EF7A /* WikiResponseParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikiResponseParser.swift; sourceTree = "<group>"; };
 		9A742DCE89B39F3ED96D3330 /* ClipExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipExporter.swift; sourceTree = "<group>"; };
+		9ADECD9617551B942A2D26B3 /* VoiceNoteRealtimeSTT+Support.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "VoiceNoteRealtimeSTT+Support.swift"; sourceTree = "<group>"; };
 		9AEA03C43AECDFCE885BF7FD /* ChatConversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatConversation.swift; sourceTree = "<group>"; };
 		9AEA38DEEC256DA20EA66547 /* PodcastrWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PodcastrWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		9B6878A00045AF65BAE84954 /* NumberExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NumberExtensions.swift; sourceTree = "<group>"; };
@@ -2429,6 +2431,7 @@
 			isa = PBXGroup;
 			children = (
 				8C535A1C52D31D1F84DA41CE /* VoiceNoteRealtimeSTT.swift */,
+				9ADECD9617551B942A2D26B3 /* VoiceNoteRealtimeSTT+Support.swift */,
 				A07B87C15E98C7F3A7F93ED7 /* VoiceNoteRecordingSheet.swift */,
 			);
 			path = VoiceNote;
@@ -3080,6 +3083,7 @@
 				546B168A4DCE2887287A9E30 /* PlayerTranscriptScrollView.swift in Sources */,
 				4C6E9615B7981D8440C3FD78 /* PlayerView.swift in Sources */,
 				FD93DA02408FAB556AB905E3 /* RoutePickerView.swift in Sources */,
+				FADF427A29ED99BFD0A00703 /* VoiceNoteRealtimeSTT+Support.swift in Sources */,
 				562B9C3AE0D723B606A01A4D /* VoiceNoteRealtimeSTT.swift in Sources */,
 				3C6587F61908F2AB024BFEE6 /* VoiceNoteRecordingSheet.swift in Sources */,
 				A6FEE32582E1556C45CCF86A /* PodcastSearchEmptyState.swift in Sources */,
