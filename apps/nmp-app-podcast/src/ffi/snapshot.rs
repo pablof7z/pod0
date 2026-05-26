@@ -150,7 +150,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         .map(|r| r.clone()).unwrap_or_default();
     let tts_episodes = handle.tts_episodes.lock().ok().map(|r| r.clone()).unwrap_or_default();
     let clips = crate::clip_handler::project_clips(&handle.clips, &library);
-    let inbox = build_inbox(&handle.store, &handle.dismissed_episode_ids);
+    let inbox = build_inbox(&handle.store, &handle.dismissed_episode_ids, &handle.inbox_triage_cache);
     let owned_podcasts = collect_owned_podcasts(handle);
     let downloads = handle.download_queue.lock().ok()
         .and_then(|q| build_downloads_snapshot(&q));

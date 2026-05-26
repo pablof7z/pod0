@@ -113,6 +113,8 @@ pub extern "C" fn nmp_app_podcast_register(
     // Subsequent increments happen in PodcastHostOpHandler on store writes.
     let rev = Arc::new(AtomicU64::new(1));
 
+    let inbox_triage_cache = Arc::new(Mutex::new(HashMap::new()));
+
     let agent_chat = AgentChatHandler::new(
         conversation.clone(),
         agent_busy.clone(),
@@ -158,6 +160,7 @@ pub extern "C" fn nmp_app_podcast_register(
         publish_state.clone(),
         agent_chat,
         runtime,
+        inbox_triage_cache.clone(),
     )));
 
     Box::into_raw(Box::new(PodcastHandle {
@@ -187,5 +190,6 @@ pub extern "C" fn nmp_app_podcast_register(
         agent_busy,
         agent_touched,
         categories,
+        inbox_triage_cache,
     }))
 }

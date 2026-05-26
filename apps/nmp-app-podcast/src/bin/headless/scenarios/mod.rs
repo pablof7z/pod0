@@ -3,6 +3,7 @@
 use nmp_app_podcast::PodcastHandle;
 use nmp_ffi::NmpApp;
 
+mod inbox_triage;
 mod rss_subscribe;
 
 /// Per-scenario outcome.
@@ -31,9 +32,7 @@ pub fn run_all(
     handle: *mut PodcastHandle,
 ) -> Vec<(&'static str, ScenarioResult)> {
     vec![
-        (
-            "rss_subscribe",
-            rss_subscribe::run(app, handle),
-        ),
+        ("rss_subscribe", rss_subscribe::run(app, handle)),
+        ("inbox_triage", inbox_triage::run(app, handle)),
     ]
 }

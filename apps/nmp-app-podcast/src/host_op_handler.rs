@@ -21,6 +21,7 @@ use tokio::runtime::Runtime;
 use nmp_core::substrate::{CapabilityRequest, HostOpHandler};
 use nmp_ffi::NmpApp;
 
+use crate::inbox_llm::TriageResult;
 use crate::ad_skip_handler::handle_set_auto_skip_ads;
 use crate::agent_handler::AgentChatHandler;
 use crate::ai_chapters::handle_compile_chapters;
@@ -116,10 +117,16 @@ pub struct PodcastHostOpHandler {
     pub(crate) publish_state: Arc<Mutex<HashMap<String, OwnedPublishState>>>,
     pub(crate) agent_chat: AgentChatHandler,
     /// Shared Tokio runtime for async LLM / relay work. Seeded in
-    /// `ffi::register` so all host-op handlers in future PRs share one
-    /// multi-thread scheduler.
-    #[allow(dead_code)]
+    /// `ffi::register` so all host-op handlers share one multi-thread scheduler.
     pub(crate) runtime: Arc<Runtime>,
+    /// In-memory triage cache: `episode_id -> TriageResult`.
+    ///
+    /// Populated by `InboxAction::Triage` on the actor thread (running LLM
+    /// triage for each unlistened episode) and read by `build_inbox` to
+    /// overlay LLM scores over the recency-bucket fallback. Shared with
+    /// `PodcastHandle.inbox_triage_cache` so the snapshot reader sees
+    /// results without holding the handler lock.
+    pub(crate) inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the
@@ -157,6 +164,7 @@ impl PodcastHostOpHandler {
         publish_state: Arc<Mutex<HashMap<String, OwnedPublishState>>>,
         agent_chat: AgentChatHandler,
         runtime: Arc<Runtime>,
+        inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
     ) -> Self {
         let tts = TtsEpisodeHandler::new(app, tts_episodes, rev.clone());
         Self {
@@ -184,6 +192,7 @@ impl PodcastHostOpHandler {
             publish_state,
             agent_chat,
             runtime,
+            inbox_triage_cache,
         }
     }
 
@@ -300,6 +309,8 @@ impl HostOpHandler for PodcastHostOpHandler {
                 &self.store,
                 &self.dismissed_episode_ids,
                 &self.rev,
+                &self.inbox_triage_cache,
+                &self.runtime,
             );
         }
         if let Ok(action) = serde_json::from_str::<QueueAction>(action_json) {
