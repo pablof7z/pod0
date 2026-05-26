@@ -428,4 +428,23 @@ mod tests {
         assert_eq!(loaded.podcasts.len(), 1);
         assert!(!loaded.podcasts[0].auto_download);
     }
+
+    #[test]
+    fn skip_intervals_persist_and_reload() {
+        let dir = TempDir::new();
+        let persisted = PersistedStore {
+            schema_version: PERSIST_SCHEMA_VERSION,
+            podcasts: vec![],
+            settings: PersistedSettings {
+                skip_forward_secs: 45.0,
+                skip_backward_secs: 10.0,
+                ..PersistedSettings::default()
+            },
+            ..PersistedStore::default()
+        };
+        save(&dir.path, &persisted).unwrap();
+        let loaded = load(&dir.path).unwrap().expect("file present");
+        assert!((loaded.settings.skip_forward_secs - 45.0).abs() < f64::EPSILON);
+        assert!((loaded.settings.skip_backward_secs - 10.0).abs() < f64::EPSILON);
+    }
 }
