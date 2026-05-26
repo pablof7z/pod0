@@ -74,6 +74,10 @@ final class KernelModel {
     private(set) var podcastSnapshot: PodcastUpdate?
     /// Cancellable for the 500ms poll Task.
     private var snapshotPollTask: Task<Void, Never>?
+    /// Hash of the library fields that matter to list views. Excludes
+    /// `playbackPositionSecs` so list views don't re-render at 4 Hz
+    /// during playback (the position is only needed by the player row).
+    private var lastLibraryMetaHash: Int = 0
 
     // ── Computed projections ───────────────────────────────────────────────
 
@@ -182,7 +186,15 @@ final class KernelModel {
         guard update.rev > (podcastSnapshot?.rev ?? 0) else { return }
         let previousNowPlaying = podcastSnapshot?.nowPlaying
         podcastSnapshot = update
-        library = update.library
+        // Only reassign `library` when metadata the list views care about
+        // actually changed. `playbackPositionSecs` updates at ~4 Hz during
+        // playback but is only needed by the mini-player row — excluding it
+        // from the hash prevents every list view from re-rendering 4× per second.
+        let newHash = libraryMetaHash(for: update.library)
+        if newHash != lastLibraryMetaHash {
+            lastLibraryMetaHash = newHash
+            library = update.library
+        }
         PodcastCapabilities.shared.iCloudSync.applySettingsSnapshot(
             SettingsKVSnapshot.from(podcastUpdate: update))
         PodcastCapabilities.shared.spotlight.indexLibrary(update.library)
@@ -405,6 +417,36 @@ final class KernelModel {
     func removeActiveAccount() {
         guard let active = kernelIdentity.activeAccount else { return }
         kernel.removeAccount(identityId: active)
+    }
+
+    // ── Library meta hash ──────────────────────────────────────────────────
+
+    /// Hash only the fields that list views render. Excludes
+    /// `playbackPositionSecs` (and other volatile playback state) so the
+    /// `library` property stays stable during active playback.
+    private func libraryMetaHash(for library: [PodcastSummary]) -> Int {
+        var hasher = Hasher()
+        for podcast in library {
+            hasher.combine(podcast.id)
+            hasher.combine(podcast.title)
+            hasher.combine(podcast.episodeCount)
+            hasher.combine(podcast.artworkUrl)
+            hasher.combine(podcast.author)
+            for episode in podcast.episodes {
+                hasher.combine(episode.id)
+                hasher.combine(episode.title)
+                hasher.combine(episode.artworkUrl)
+                hasher.combine(episode.played)
+                hasher.combine(episode.starred)
+                hasher.combine(episode.downloadPath)
+                hasher.combine(episode.durationSecs)
+                hasher.combine(episode.publishedAt)
+                for cat in episode.aiCategories {
+                    hasher.combine(cat)
+                }
+            }
+        }
+        return hasher.finalize()
     }
 
     // ── Snapshot apply ─────────────────────────────────────────────────────
