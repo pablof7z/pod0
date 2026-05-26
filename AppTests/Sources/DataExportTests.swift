@@ -56,7 +56,7 @@ final class DataExportTests: XCTestCase {
         let date = f.date(from: "2026-05-05-1430")!
 
         let name = DataExport.suggestedFilename(at: date)
-        XCTAssertEqual(name, "Podcastr-Export-2026-05-05-1430.json")
+        XCTAssertEqual(name, "Pod0-Export-2026-05-05-1430.json")
     }
 
     func testDataExportWriteCreatesReadableFile() throws {

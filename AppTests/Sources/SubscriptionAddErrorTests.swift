@@ -69,7 +69,7 @@ final class SubscriptionAddErrorTests: XCTestCase {
         let error = SubscriptionService.AddError.http(403)
         XCTAssertEqual(
             error.errorDescription,
-            "This feed needs sign-in or isn't public — Podcastr can't subscribe to it."
+            "This feed needs sign-in or isn't public — Pod0 can't subscribe to it."
         )
     }
 
