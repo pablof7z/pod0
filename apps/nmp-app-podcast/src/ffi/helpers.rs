@@ -35,7 +35,7 @@ fn strip_tags(input: &str) -> String {
         match c {
             '<' => {
                 in_tag = true;
-                if out.chars().last() != Some(' ') {
+                if !out.ends_with(' ') {
                     out.push(' ');
                 }
             }

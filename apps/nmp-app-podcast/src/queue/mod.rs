@@ -68,6 +68,7 @@ impl PlaybackQueue {
     /// Used by the auto-advance path: when the active episode reports
     /// `Finished`, the kernel pops the next id and dispatches
     /// `AudioCommand::Load` + `Play` for it.
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Option<String> {
         if self.order.is_empty() {
             None

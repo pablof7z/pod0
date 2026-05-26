@@ -3,9 +3,9 @@
 //! Sibling of [`crate::host_op_handler`]; lives in its own file so
 //! `host_op_handler.rs` stays under the 500-line hard cap. The handler
 //! owns no state of its own — it borrows the shared `Arc<Mutex<PodcastStore>>`
-//! + `rev` counter from the existing `PodcastHostOpHandler`, so the snapshot
-//! reader and the memory writer share the same lock discipline as every
-//! other host op.
+//! and `rev` counter from the existing `PodcastHostOpHandler`. The snapshot
+//! reader and memory writer share the same lock discipline as every other
+//! host op.
 //!
 //! Each handler returns a `serde_json::Value` envelope (`{"ok":true}` /
 //! `{"ok":false,"error":...}`) matching the rest of the host-op responses.

@@ -99,7 +99,7 @@ impl ClipHandler {
             });
         };
         let (start, end) = normalize_range(start_secs, end_secs);
-        if !(end > start) {
+        if end <= start {
             return serde_json::json!({
                 "ok": false,
                 "error": "clip end must be greater than start"

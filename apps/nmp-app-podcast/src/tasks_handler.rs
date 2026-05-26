@@ -125,7 +125,7 @@ pub fn handle_tasks_action(
 }
 
 fn set_enabled(
-    guard: &mut Vec<AgentTaskSummary>,
+    guard: &mut [AgentTaskSummary],
     task_id: &str,
     enabled: bool,
     rev: &Arc<AtomicU64>,
