@@ -97,6 +97,8 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 # can spin up a real `NmpApp` rather than mocking the slot.
 nmp-core = { path = "../../../nostrmultiplatform/crates/nmp-core", features = ["test-support"] }
 nmp-ffi = { path = "../../../nostrmultiplatform/crates/nmp-ffi", features = ["test-support"] }
+# Temporary directory support for PodcastKeyStore round-trip tests.
+tempfile = "3"
 
 # ── Android JNI shim ──────────────────────────────────────────────────────
 #

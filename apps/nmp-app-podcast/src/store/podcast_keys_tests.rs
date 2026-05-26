@@ -1,4 +1,90 @@
 use super::*;
+
+#[test]
+fn keys_persist_and_reload() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = PodcastKeyStore::new();
+    store.set_data_dir(dir.path());
+    store.generate_key("pod-1");
+    let pk = store.pubkey_hex("pod-1").unwrap();
+    store.save_to_disk();
+
+    // A second store instance bound to the same dir should load the key.
+    let mut store2 = PodcastKeyStore::new();
+    store2.set_data_dir(dir.path()); // load_from_disk_if_present called here
+    assert_eq!(store2.pubkey_hex("pod-1").unwrap(), pk);
+}
+
+#[test]
+fn load_does_not_overwrite_in_memory_keys() {
+    let dir = tempfile::tempdir().unwrap();
+
+    // Store1: generate key and persist.
+    let mut store1 = PodcastKeyStore::new();
+    store1.set_data_dir(dir.path());
+    store1.generate_key("pod-1");
+    let pk1_original = store1.pubkey_hex("pod-1").unwrap();
+    store1.save_to_disk();
+
+    // Store2: generate a different key for the same podcast_id, then
+    // bind the data dir. The in-memory key must NOT be overwritten.
+    let mut store2 = PodcastKeyStore::new();
+    store2.generate_key("pod-1");
+    let pk1_different = store2.pubkey_hex("pod-1").unwrap();
+    // Sanity: the two independently-generated keys should differ.
+    assert_ne!(pk1_original, pk1_different);
+    // Now bind — load must NOT overwrite the in-memory key.
+    store2.set_data_dir(dir.path());
+    assert_eq!(store2.pubkey_hex("pod-1").unwrap(), pk1_different);
+}
+
+#[test]
+fn missing_file_is_a_silent_noop() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = PodcastKeyStore::new();
+    // No file written — set_data_dir should not panic or error.
+    store.set_data_dir(dir.path());
+    assert!(store.get_key("pod-1").is_none());
+}
+
+#[test]
+fn save_noop_when_no_data_dir() {
+    let mut store = PodcastKeyStore::new();
+    store.generate_key("pod-1");
+    // Must not panic — save is a silent no-op without a data dir.
+    store.save_to_disk();
+}
+
+#[test]
+fn save_noop_when_empty_map() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = PodcastKeyStore::new();
+    store.set_data_dir(dir.path());
+    // Empty map — save is a no-op; no file should be written.
+    store.save_to_disk();
+    assert!(!dir.path().join(PODCAST_KEYS_FILE).exists());
+}
+
+#[test]
+fn multiple_keys_round_trip() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = PodcastKeyStore::new();
+    store.set_data_dir(dir.path());
+    store.generate_key("pod-a");
+    store.generate_key("pod-b");
+    store.generate_key("pod-c");
+    let pk_a = store.pubkey_hex("pod-a").unwrap();
+    let pk_b = store.pubkey_hex("pod-b").unwrap();
+    let pk_c = store.pubkey_hex("pod-c").unwrap();
+    store.save_to_disk();
+
+    let mut store2 = PodcastKeyStore::new();
+    store2.set_data_dir(dir.path());
+    assert_eq!(store2.pubkey_hex("pod-a").unwrap(), pk_a);
+    assert_eq!(store2.pubkey_hex("pod-b").unwrap(), pk_b);
+    assert_eq!(store2.pubkey_hex("pod-c").unwrap(), pk_c);
+}
+
 #[test]
 fn generate_key_returns_32_bytes_and_stores_them() {
     let mut store = PodcastKeyStore::new();

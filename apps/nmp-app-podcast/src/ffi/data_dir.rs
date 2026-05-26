@@ -43,14 +43,23 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(
     // `nmp_app_podcast_register` and not yet freed.
     let handle = unsafe { &*handle };
 
+    let path_buf = PathBuf::from(path_str);
+
     let (loaded, loaded_queue) = match handle.store.lock() {
         Ok(mut s) => {
-            let count = s.set_data_dir(PathBuf::from(path_str));
+            let count = s.set_data_dir(path_buf.clone());
             let queue = s.take_loaded_queue();
             (count, queue)
         }
         Err(_) => return, // poisoned mutex — degrade silently (D6)
     };
+
+    // Wire the key store to the same data dir so per-podcast keypairs
+    // survive app restarts. Called after the store lock is released to
+    // avoid holding two mutexes simultaneously.
+    if let Ok(mut keys) = handle.podcast_keys.lock() {
+        keys.set_data_dir(&path_buf);
+    }
 
     // Restore the "Up Next" queue from disk. Even an empty persisted queue
     // is fine — the shared PlaybackQueue starts empty and we just skip.
