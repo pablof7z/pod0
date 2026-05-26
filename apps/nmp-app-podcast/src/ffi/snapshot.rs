@@ -38,6 +38,7 @@ use std::sync::atomic::Ordering;
 use serde::{Deserialize, Serialize};
 
 use super::handle::PodcastHandle;
+use super::helpers::strip_html;
 use super::projections::{
     AccountSummary, AgentPickSummary, AgentSnapshot, AgentTaskSummary, BriefingSnapshot,
     CategoryBrowseItem, ChapterSummary, ClipSummary, CommentSummary, ConversationsSnapshot,
@@ -335,7 +336,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
                             artwork_url: ep.image_url.as_ref().map(|u| u.to_string()),
                             published_at: Some(ep.pub_date.timestamp()),
                             download_path: s.local_path_for(&ep.id).map(str::to_owned),
-                            description: Some(ep.description.clone())
+                            description: Some(strip_html(&ep.description))
                                 .filter(|d| !d.is_empty()),
                             transcript,
                             transcript_url: ep
