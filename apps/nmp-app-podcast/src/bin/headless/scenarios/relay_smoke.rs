@@ -9,7 +9,7 @@
 //! - `relay.primal.net:443` is unreachable (no network / CI without relay)
 //! - the `nak` binary is not found at the expected path (env without nak)
 
-use std::net::TcpStream;
+use std::net::{TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
 use nmp_app_podcast::PodcastHandle;
@@ -23,16 +23,19 @@ const NAK_BIN: &str = "/Users/pablofernandez/go/bin/nak";
 const RELAY_HOST: &str = "relay.primal.net";
 const RELAY_PORT: u16 = 443;
 
-/// TCP-level reachability probe. Returns `true` if a connection can be
-/// established within 3 seconds (does not validate TLS or the WebSocket
-/// upgrade — just confirms the host is routable).
+/// TCP-level reachability probe. Resolves the hostname via DNS, then attempts
+/// a TCP connection to each resolved address. Returns `true` if any address
+/// can be connected to within 3 seconds.
+///
+/// `SocketAddr::from_str` only accepts numeric IPs, so we must use
+/// `ToSocketAddrs` to perform DNS resolution before connecting.
 fn probe_tcp(host: &str, port: u16) -> bool {
-    let addr = format!("{host}:{port}");
-    TcpStream::connect_timeout(
-        &addr.parse().unwrap_or_else(|_| "0.0.0.0:0".parse().unwrap()),
-        Duration::from_secs(3),
-    )
-    .is_ok()
+    let Ok(addrs) = (host, port).to_socket_addrs() else {
+        return false;
+    };
+    addrs.into_iter().any(|addr| {
+        TcpStream::connect_timeout(&addr, Duration::from_secs(3)).is_ok()
+    })
 }
 
 #[allow(unused_variables)]
