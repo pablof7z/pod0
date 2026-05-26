@@ -10,7 +10,7 @@
 //! `nmp-core`, the NIP-46 signer broker, and the Podcast projection in one
 //! Rust archive gives the process exactly one copy of `nmp-core` static state.
 //!
-//! The shell calls [`nmp_signer_broker_init`] once after `nmp_app_new`, then
+//! The shell calls `nmp_signer_broker_init` (from `nmp-ffi`) once after `nmp_app_new`, then
 //! calls [`ffi::nmp_app_podcast_register`]. The registration:
 //!
 //! 1. Wires the canonical NMP defaults via `nmp_app_template::register_defaults`.
@@ -79,7 +79,7 @@ pub use ffi::{
     nmp_app_podcast_snapshot_rev,
     nmp_app_podcast_unregister, nmp_app_podcast_voice_report, PodcastHandle,
 };
-pub use nmp_signer_broker::{
+pub use nmp_ffi::{
     nmp_app_cancel_bunker_handshake, nmp_app_nostrconnect_uri, nmp_broker_free_string,
     nmp_signer_broker_init,
 };

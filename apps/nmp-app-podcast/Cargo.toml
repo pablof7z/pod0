@@ -31,7 +31,7 @@ nmp-core = { path = "../../../nostrmultiplatform/crates/nmp-core" }
 # `nmp_app_podcast_register` takes `*mut NmpApp`; the per-app crate names
 # the handle + FFI symbols (`nmp_app_dispatch_action`, etc.) through this
 # dep.
-nmp-ffi = { path = "../../../nostrmultiplatform/crates/nmp-ffi" }
+nmp-ffi = { path = "../../../nostrmultiplatform/crates/nmp-ffi", features = ["signer-broker"] }
 nmp-signer-broker = { path = "../../../nostrmultiplatform/crates/nmp-signer-broker" }
 # Canonical NMP composition root. One call wires the default action modules
 # (NIP-02 / NIP-17 / NIP-57 / NIP-65), the kind:10050 ingest parser, the
