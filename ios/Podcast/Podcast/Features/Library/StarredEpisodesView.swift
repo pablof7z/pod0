@@ -54,6 +54,7 @@ struct StarredEpisodesView: View {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
                 Text(ep.title)
                     .font(AppTheme.Typography.headline)
+                    .foregroundStyle(ep.played ? Color.secondary : Color.primary)
                     .lineLimit(2)
 
                 Text(ep.podcastTitle ?? podcast.title)

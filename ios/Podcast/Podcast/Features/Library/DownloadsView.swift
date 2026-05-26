@@ -149,9 +149,17 @@ private struct DownloadedEpisodeRow: View {
             thumbnail
 
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
-                Text(episode.title)
-                    .font(AppTheme.Typography.headline)
-                    .lineLimit(2)
+                HStack(spacing: AppTheme.Spacing.xs) {
+                    Text(episode.title)
+                        .font(AppTheme.Typography.headline)
+                        .foregroundStyle(episode.played ? Color.secondary : Color.primary)
+                        .lineLimit(2)
+                    if episode.starred {
+                        Image(systemName: "bookmark.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                    }
+                }
 
                 Text(podcast.title)
                     .font(AppTheme.Typography.caption)
