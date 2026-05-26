@@ -165,6 +165,14 @@ extension PodcastHandle {
         registerPodcastProjection()
     }
 
+    /// Cheap rev check — reads the Rust atomic counter without serializing
+    /// the full snapshot. Use this to skip `podcastSnapshot()` when the
+    /// rev hasn't advanced since the last decoded snapshot.
+    func podcastSnapshotRev() -> UInt64 {
+        guard let handle = podcastHandle else { return 0 }
+        return nmp_app_podcast_snapshot_rev(handle)
+    }
+
     /// Pull the latest snapshot from the podcast projection. Returns `.empty`
     /// when the handle is not registered or the projection serialization fails
     /// (D6 — never crashes, degrades to placeholder).

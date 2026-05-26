@@ -96,7 +96,7 @@ pub use projections::{
 };
 pub use register::nmp_app_podcast_register;
 pub use snapshot::{
-    nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free, nmp_app_podcast_unregister,
-    PodcastUpdate,
+    nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free, nmp_app_podcast_snapshot_rev,
+    nmp_app_podcast_unregister, PodcastUpdate,
 };
 pub use voice_report::nmp_app_podcast_voice_report;

@@ -174,6 +174,10 @@ final class KernelModel {
     /// `dispatch` / `dispatchSilent` call so user actions are reflected in
     /// the UI within the same runloop pass rather than after up to 500ms.
     private func pullPodcastSnapshotIfChanged() {
+        // Cheap rev-check before the full JSON decode. nmp_app_podcast_snapshot_rev
+        // reads a single atomic u64 — no serialization cost.
+        let currentRev = kernel.podcastSnapshotRev()
+        guard currentRev > UInt64(podcastSnapshot?.rev ?? 0) else { return }
         let update = kernel.podcastSnapshot()
         guard update.rev > (podcastSnapshot?.rev ?? 0) else { return }
         let previousNowPlaying = podcastSnapshot?.nowPlaying

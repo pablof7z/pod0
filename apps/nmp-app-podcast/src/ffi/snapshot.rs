@@ -1,16 +1,8 @@
-//! Snapshot + unregister entry points the host calls against a
-//! [`PodcastHandle`] returned by [`super::register::nmp_app_podcast_register`].
+//! Snapshot entry points the host calls against a [`PodcastHandle`].
 //!
-//! [`PodcastUpdate`] is the typed root of the JSON the kernel emits on every
-//! tick. The iOS shell decodes it via `Codable`. Fields are added milestone by
-//! milestone; the empty defaults are byte-compatible with the legacy stub
-//! payload (`{"running":true,"rev":0,"schema_version":1}`) so existing
-//! decoders don't break before each projection's milestone wires it up.
-//!
-//! Per-projection field definitions live in [`super::projections`] to keep
-//! this file focused on the typed root + the C-ABI entry points. Build helpers
-//! for the queue, owned-podcast list, and category aggregate live in the
-//! `snapshot_queue`, `snapshot_owned`, and `snapshot_categories` siblings.
+//! [`PodcastUpdate`] is the JSON root emitted on every tick; `Codable`-decoded
+//! by iOS. Per-projection types live in [`super::projections`]; queue, owned-podcast,
+//! and category build helpers live in `snapshot_queue/owned/categories` siblings.
 
 use std::ffi::{c_char, CString};
 use std::sync::atomic::Ordering;
@@ -454,6 +446,17 @@ pub extern "C" fn nmp_app_podcast_snapshot(handle: *mut PodcastHandle) -> *mut c
     cstr.into_raw()
 }
 
+/// Cheap rev probe: reads the atomic counter without serializing the payload.
+/// Returns `0` on null handle. Use before `nmp_app_podcast_snapshot` to skip
+/// the full JSON round-trip when nothing has changed.
+#[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub extern "C" fn nmp_app_podcast_snapshot_rev(handle: *mut PodcastHandle) -> u64 {
+    if handle.is_null() { return 0; }
+    let handle = unsafe { &*handle };
+    handle.rev.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 /// Free a snapshot string previously returned by [`nmp_app_podcast_snapshot`].
 /// Null pointer is a silent no-op.
 #[no_mangle]
@@ -481,12 +484,8 @@ pub extern "C" fn nmp_app_podcast_unregister(handle: *mut PodcastHandle) {
     // SAFETY: caller guarantees `handle` came from `nmp_app_podcast_register`
     // and has not already been freed.
     let boxed = unsafe { Box::from_raw(handle) };
-    // Future milestones will use `boxed.app` to call
-    // `app_ref.unregister_event_observer(observer_id)` for each registered
-    // projection. For now the handle carries the `app` pointer so subsequent
-    // milestones can add unregister logic here without changing the FFI type.
+    // `boxed.app` retained for future unregister_event_observer calls (no-op now).
     let _ = boxed.app;
-    // boxed dropped here.
 }
 
 // Tests split into snapshot_tests.rs + snapshot_tests_ext.rs; #[path] keeps private items in scope.
