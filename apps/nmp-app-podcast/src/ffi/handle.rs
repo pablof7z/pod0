@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 use nmp_ffi::NmpApp;
 
 use crate::clip_handler::ClipRecord;
+use crate::inbox_llm::TriageResult;
 use crate::ffi::projections::{
     AgentMessageSummary, AgentPickSummary, AgentTaskSummary, BriefingSnapshot,
     KnowledgeSearchResult, NostrShowSummary, PodcastSummary, TranscriptEntry, TtsEpisodeSummary,
@@ -155,6 +156,13 @@ pub struct PodcastHandle {
     /// `build_snapshot_payload` to populate
     /// `EpisodeSummary.ai_categories` + the `categories` aggregate.
     pub(super) categories: Arc<Mutex<HashMap<String, Vec<String>>>>,
+    /// LLM triage cache: `episode_id -> TriageResult`.
+    ///
+    /// Populated by `InboxAction::Triage` on the actor thread (running LLM
+    /// classification for each unlistened episode). Read by `build_inbox`
+    /// to overlay LLM scores and categories over the recency-bucket fallback.
+    /// In-memory only — results are recomputed on each explicit Triage action.
+    pub(super) inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the

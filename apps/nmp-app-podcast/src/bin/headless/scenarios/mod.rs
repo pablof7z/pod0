@@ -4,6 +4,7 @@ use nmp_app_podcast::PodcastHandle;
 use nmp_ffi::NmpApp;
 
 mod identity;
+mod inbox_triage;
 mod key_persistence;
 mod relay_smoke;
 mod rss_subscribe;
@@ -52,5 +53,6 @@ pub fn run_all(
             "wiki_generate",
             wiki::run(app, handle),
         ),
+        ("inbox_triage", inbox_triage::run(app, handle)),
     ]
 }

@@ -40,13 +40,18 @@ fn fixture_store(now_unix: i64) -> Arc<Mutex<PodcastStore>> {
     Arc::new(Mutex::new(store))
 }
 
+fn empty_triage_cache() -> Arc<Mutex<HashMap<String, TriageResult>>> {
+    Arc::new(Mutex::new(HashMap::new()))
+}
+
 #[test]
 fn build_inbox_returns_unlistened_episodes_sorted_by_score() {
     let now = Utc::now().timestamp();
     let store = fixture_store(now);
     let dismissed = Arc::new(Mutex::new(HashSet::<String>::new()));
+    let cache = empty_triage_cache();
 
-    let items = build_inbox(&store, &dismissed);
+    let items = build_inbox(&store, &dismissed, &cache);
     assert_eq!(items.len(), 3);
 
     // Just-published first, long-tail last.
@@ -61,6 +66,7 @@ fn build_inbox_skips_dismissed_episodes() {
     let now = Utc::now().timestamp();
     let store = fixture_store(now);
     let dismissed = Arc::new(Mutex::new(HashSet::<String>::new()));
+    let cache = empty_triage_cache();
 
     // Dismiss the freshest episode.
     let fresh_id = {
@@ -70,7 +76,7 @@ fn build_inbox_skips_dismissed_episodes() {
     };
     dismissed.lock().unwrap().insert(fresh_id);
 
-    let items = build_inbox(&store, &dismissed);
+    let items = build_inbox(&store, &dismissed, &cache);
     assert_eq!(items.len(), 2);
     assert!(items.iter().all(|i| i.episode_title != "Fresh"));
 }
@@ -80,6 +86,7 @@ fn build_inbox_skips_played_episodes() {
     let now = Utc::now().timestamp();
     let store = fixture_store(now);
     let dismissed = Arc::new(Mutex::new(HashSet::<String>::new()));
+    let cache = empty_triage_cache();
 
     // Mark "Fresh" as played in the store.
     let fresh_id = {
@@ -89,9 +96,46 @@ fn build_inbox_skips_played_episodes() {
     };
     store.lock().unwrap().mark_episode_played(&fresh_id);
 
-    let items = build_inbox(&store, &dismissed);
+    let items = build_inbox(&store, &dismissed, &cache);
     assert_eq!(items.len(), 2);
     assert!(items.iter().all(|i| i.episode_title != "Fresh"));
+}
+
+#[test]
+fn build_inbox_uses_llm_score_when_cache_hit() {
+    let now = Utc::now().timestamp();
+    let store = fixture_store(now);
+    let dismissed = Arc::new(Mutex::new(HashSet::<String>::new()));
+    let cache = empty_triage_cache();
+
+    // Grab the "Old" episode id (heuristic score ~0.15) and inject a high
+    // LLM score for it. The score won't override "Fresh" (heuristic = 1.0)
+    // positionally, but the LLM reason + categories should be visible on the
+    // "Old" item wherever it lands.
+    let old_id = {
+        let s = store.lock().unwrap();
+        let (_, eps) = s.all_podcasts()[0];
+        eps.iter().find(|e| e.title == "Old").unwrap().id.0.to_string()
+    };
+    cache.lock().unwrap().insert(old_id.clone(), TriageResult {
+        priority_score: 0.99,
+        priority_reason: "Exceptional episode".to_owned(),
+        categories: vec!["tech".to_owned()],
+    });
+
+    let items = build_inbox(&store, &dismissed, &cache);
+    assert_eq!(items.len(), 3);
+
+    // The "Old" item should carry LLM-sourced reason and categories.
+    let old_item = items.iter().find(|i| i.episode_id == old_id)
+        .expect("Old episode should be in inbox");
+    assert_eq!(old_item.priority_reason.as_deref(), Some("Exceptional episode"));
+    assert_eq!(old_item.ai_categories, vec!["tech"]);
+    assert!((old_item.priority_score - 0.99).abs() < 0.001);
+
+    // Heuristic-only items must not have ai_categories.
+    let heuristic_items: Vec<_> = items.iter().filter(|i| i.episode_id != old_id).collect();
+    assert!(heuristic_items.iter().all(|i| i.ai_categories.is_empty()));
 }
 
 #[test]
@@ -100,14 +144,20 @@ fn handle_dismiss_records_in_set_and_bumps_rev() {
     let store = fixture_store(now);
     let dismissed = Arc::new(Mutex::new(HashSet::<String>::new()));
     let rev = Arc::new(AtomicU64::new(0));
+    let cache = empty_triage_cache();
+    let runtime = Arc::new(
+        tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap(),
+    );
 
     let result = handle_inbox_action(
-        InboxAction::Dismiss {
-            episode_id: "ep-7".into(),
-        },
+        InboxAction::Dismiss { episode_id: "ep-7".into() },
         &store,
         &dismissed,
         &rev,
+        &cache,
+        &runtime,
     );
     assert_eq!(result["ok"], true);
     assert!(dismissed.lock().unwrap().contains("ep-7"));
@@ -115,13 +165,23 @@ fn handle_dismiss_records_in_set_and_bumps_rev() {
 }
 
 #[test]
-fn handle_triage_only_bumps_rev() {
+fn handle_triage_bumps_rev() {
     let now = Utc::now().timestamp();
     let store = fixture_store(now);
     let dismissed = Arc::new(Mutex::new(HashSet::<String>::new()));
     let rev = Arc::new(AtomicU64::new(0));
+    let cache = empty_triage_cache();
+    let runtime = Arc::new(
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap(),
+    );
 
-    let result = handle_inbox_action(InboxAction::Triage, &store, &dismissed, &rev);
+    // Triage will attempt LLM calls that fail (Ollama likely not running in
+    // unit test environment). The rev must still be bumped regardless of
+    // whether LLM calls succeed.
+    let result = handle_inbox_action(InboxAction::Triage, &store, &dismissed, &rev, &cache, &runtime);
     assert_eq!(result["ok"], true);
     assert_eq!(rev.load(Ordering::Relaxed), 1);
     // No dismissed entries added.
@@ -134,6 +194,12 @@ fn handle_mark_listened_flips_store_flag() {
     let store = fixture_store(now);
     let dismissed = Arc::new(Mutex::new(HashSet::<String>::new()));
     let rev = Arc::new(AtomicU64::new(0));
+    let cache = empty_triage_cache();
+    let runtime = Arc::new(
+        tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap(),
+    );
 
     let fresh_id = {
         let s = store.lock().unwrap();
@@ -142,12 +208,12 @@ fn handle_mark_listened_flips_store_flag() {
     };
 
     let result = handle_inbox_action(
-        InboxAction::MarkListened {
-            episode_id: fresh_id.clone(),
-        },
+        InboxAction::MarkListened { episode_id: fresh_id.clone() },
         &store,
         &dismissed,
         &rev,
+        &cache,
+        &runtime,
     );
     assert_eq!(result["ok"], true);
     assert_eq!(rev.load(Ordering::Relaxed), 1);
