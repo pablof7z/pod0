@@ -18,6 +18,8 @@ fn action_ids_match_documented_strings() {
     assert_eq!(ACTION_PLAYER_PAUSE_DOWNLOAD, "podcast.player.pause_download");
     assert_eq!(ACTION_PLAYER_RESUME_DOWNLOAD, "podcast.player.resume_download");
     assert_eq!(ACTION_PLAYER_CANCEL_ALL_DOWNLOADS, "podcast.player.cancel_all_downloads");
+    assert_eq!(ACTION_PLAYER_SKIP_FORWARD, "podcast.player.skip_forward");
+    assert_eq!(ACTION_PLAYER_SKIP_BACKWARD, "podcast.player.skip_backward");
 }
 
 #[test]
