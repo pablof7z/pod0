@@ -1,31 +1,57 @@
-//! Headless capability host: handles `nmp.http.capability` requests with
-//! real `reqwest::blocking` HTTP; returns no-op stubs for audio, download,
-//! notification, and keyring namespaces.
+//! Headless capability host: handles `nmp.http.capability` with real
+//! `reqwest::blocking` HTTP and `nostr_relay` capability with a real
+//! `tokio-tungstenite` WebSocket client. Returns no-op stubs for audio,
+//! download, notification, and keyring namespaces.
 //!
 //! The callback is an `extern "C"` function pointer — all unsafe FFI is
 //! contained here, matching the D6 "errors as data" contract used by the
 //! kernel's `mock_handler` reference implementation.
+//!
+//! ## Tokio runtime lifetime
+//!
+//! A `tokio::runtime::Runtime` is stored in a `OnceLock` so the async relay
+//! client (`relay_client`) can be driven from the synchronous `extern "C"`
+//! callback via `Runtime::block_on`. The runtime is initialised once in
+//! `install` and lives for the process lifetime (the `OnceLock` never drops).
 
 use std::ffi::{c_char, c_void, CStr, CString};
+use std::sync::OnceLock;
 
 use nmp_core::substrate::{CapabilityEnvelope, CapabilityRequest};
 use nmp_ffi::{nmp_app_set_capability_callback, NmpApp};
+use nmp_app_podcast::capability::{
+    NostrRelayRequest, NostrRelayResult, NOSTR_RELAY_CAPABILITY_NAMESPACE,
+};
 use podcast_feeds::http::{HttpMethod, HttpRequest, HttpResult, HTTP_CAPABILITY_NAMESPACE};
 use reqwest::header::{HeaderName, HeaderValue};
 
+use super::relay_client;
+
+/// Tokio runtime used solely for the Nostr relay capability executor.
+/// Initialised once in `install`; lives for the process lifetime.
+static RELAY_RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+
 /// Install the headless capability callback on `app`. Must be called before
-/// `nmp_app_start`.
+/// `nmp_app_start`. Also initialises the Tokio relay runtime.
 pub fn install(app: *mut NmpApp) {
+    // Ensure the Tokio runtime is ready before the first capability call.
+    RELAY_RUNTIME.get_or_init(|| {
+        tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .expect("relay runtime")
+    });
+
     nmp_app_set_capability_callback(
         app,
-        std::ptr::null_mut(), // context unused
+        std::ptr::null_mut(), // context unused — runtime is in the static
         Some(capability_handler),
     );
 }
 
-/// The C-ABI capability handler. Receives a `CapabilityRequest` JSON, routes
-/// by namespace, and returns a `CapabilityEnvelope` JSON pointer. The caller
-/// (kernel) owns and frees the returned pointer.
+/// C-ABI capability handler. Receives `CapabilityRequest` JSON, routes by
+/// namespace, and returns a `CapabilityEnvelope` JSON pointer.
 ///
 /// D6: never returns null; every failure is data in the envelope.
 extern "C" fn capability_handler(
@@ -43,7 +69,6 @@ extern "C" fn capability_handler(
     };
 
     let result_json = handle_request(request_str);
-    // serde_json output never contains interior NUL bytes (D6 fallback).
     CString::new(result_json)
         .unwrap_or_else(|_| CString::new("{}").unwrap())
         .into_raw()
@@ -58,26 +83,19 @@ fn handle_request(request_str: &str) -> String {
 
     let result_json = match req.namespace.as_str() {
         HTTP_CAPABILITY_NAMESPACE => handle_http(&req.payload_json),
+        NOSTR_RELAY_CAPABILITY_NAMESPACE => handle_nostr_relay(&req.payload_json),
         "nmp.keyring.capability" => {
-            // Keyring: headless has no real keyring. Return "not found" for
-            // Retrieve (so the kernel treats no stored identity as a clean
-            // slate); return ok(None) for Store/Delete (no-ops).
             use nmp_core::substrate::KeyringRequest;
             match serde_json::from_str::<KeyringRequest>(&req.payload_json) {
-                Ok(KeyringRequest::Retrieve { .. }) => {
-                    serde_json::to_string(
-                        &nmp_core::substrate::KeyringResult::not_found()
-                    ).unwrap_or_else(|_| "{}".into())
-                }
-                _ => {
-                    serde_json::to_string(
-                        &nmp_core::substrate::KeyringResult::ok(None)
-                    ).unwrap_or_else(|_| "{}".into())
-                }
+                Ok(KeyringRequest::Retrieve { .. }) => serde_json::to_string(
+                    &nmp_core::substrate::KeyringResult::not_found(),
+                )
+                .unwrap_or_else(|_| "{}".into()),
+                _ => serde_json::to_string(&nmp_core::substrate::KeyringResult::ok(None))
+                    .unwrap_or_else(|_| "{}".into()),
             }
         }
         ns => {
-            // Stub for audio, download, notification, etc.
             eprintln!("[headless] stub capability: {ns}");
             serde_json::json!({"ok": false, "error": format!("stub: {ns}")}).to_string()
         }
@@ -87,7 +105,55 @@ fn handle_request(request_str: &str) -> String {
         namespace: req.namespace,
         correlation_id: req.correlation_id,
         result_json,
-    }).unwrap_or_else(|_| "{}".into())
+    })
+    .unwrap_or_else(|_| "{}".into())
+}
+
+/// Execute a real WebSocket Nostr relay operation (publish or subscribe).
+fn handle_nostr_relay(payload_json: &str) -> String {
+    let relay_req: NostrRelayRequest = match serde_json::from_str(payload_json) {
+        Ok(r) => r,
+        Err(e) => {
+            let res = NostrRelayResult::Error {
+                message: format!("decode: {e}"),
+            };
+            return serde_json::to_string(&res).unwrap_or_else(|_| "{}".into());
+        }
+    };
+
+    let rt = match RELAY_RUNTIME.get() {
+        Some(rt) => rt,
+        None => {
+            let res = NostrRelayResult::Error {
+                message: "relay runtime not initialised".into(),
+            };
+            return serde_json::to_string(&res).unwrap_or_else(|_| "{}".into());
+        }
+    };
+
+    let result = match relay_req {
+        NostrRelayRequest::Publish { event_json, relay_urls } => {
+            let timeout = std::time::Duration::from_secs(15);
+            let (accepted, errors) =
+                rt.block_on(relay_client::publish_event(&event_json, &relay_urls, timeout));
+            NostrRelayResult::Published {
+                ok: !accepted.is_empty(),
+                accepted_relays: accepted,
+                errors,
+            }
+        }
+        NostrRelayRequest::Subscribe { sub_id, filter, relay_urls, timeout_ms } => {
+            let timeout = std::time::Duration::from_millis(timeout_ms);
+            let events =
+                rt.block_on(relay_client::subscribe_until_eose(&sub_id, &filter, &relay_urls, timeout));
+            NostrRelayResult::Events {
+                eose: true, // best-effort; we always return after EOSE or timeout
+                events,
+            }
+        }
+    };
+
+    serde_json::to_string(&result).unwrap_or_else(|_| "{}".into())
 }
 
 /// Execute a real HTTP request using `reqwest::blocking`.
@@ -131,12 +197,7 @@ fn handle_http(payload_json: &str) -> String {
             let headers: Vec<Vec<String>> = resp
                 .headers()
                 .iter()
-                .map(|(k, v)| {
-                    vec![
-                        k.as_str().to_owned(),
-                        v.to_str().unwrap_or("").to_owned(),
-                    ]
-                })
+                .map(|(k, v)| vec![k.as_str().to_owned(), v.to_str().unwrap_or("").to_owned()])
                 .collect();
             match resp.text() {
                 Ok(body) => {

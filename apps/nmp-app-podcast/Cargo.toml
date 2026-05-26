@@ -24,9 +24,10 @@ crate-type = ["staticlib", "rlib", "cdylib"]
 [features]
 # Persistent local cache / publish-intent ledger for offline-first Podcast.
 lmdb-backend = ["nmp-core/lmdb-backend"]
-# Headless scenario test binary: real HTTP via reqwest, temp dirs via tempfile.
+# Headless scenario test binary: real HTTP via reqwest, temp dirs via tempfile,
+# and WebSocket Nostr relay client via tokio-tungstenite + futures-util.
 # Gated so the staticlib iOS build never pulls in these deps.
-headless = ["dep:reqwest", "dep:tempfile", "nmp-core/test-support", "nmp-ffi/test-support"]
+headless = ["dep:reqwest", "dep:tempfile", "dep:tokio-tungstenite", "dep:futures-util", "nmp-core/test-support", "nmp-ffi/test-support"]
 
 [[bin]]
 name = "headless"
@@ -36,6 +37,8 @@ required-features = ["headless"]
 [dependencies]
 reqwest = { version = "0.12", features = ["blocking", "rustls-tls"], optional = true }
 tempfile = { version = "3", optional = true }
+tokio-tungstenite = { version = "0.26", features = ["rustls-tls-native-roots"], optional = true }
+futures-util = { version = "0.3", optional = true }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 nmp-core = { path = "../../../nostrmultiplatform/crates/nmp-core" }
 # `nmp-ffi` owns the `NmpApp` C-ABI handle. Podcast's
