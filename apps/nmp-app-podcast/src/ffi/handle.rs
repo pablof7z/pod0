@@ -11,8 +11,8 @@ use crate::clip_handler::ClipRecord;
 use crate::inbox_llm::TriageResult;
 use crate::ffi::projections::{
     AgentMessageSummary, AgentPickSummary, AgentTaskSummary, BriefingSnapshot, CommentSummary,
-    KnowledgeSearchResult, NostrShowSummary, PodcastSummary, TranscriptEntry, TtsEpisodeSummary,
-    VoiceState, WikiArticle,
+    KnowledgeSearchResult, NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry,
+    TtsEpisodeSummary, VoiceState, WikiArticle,
 };
 use crate::download::DownloadQueue;
 use crate::player::PlayerActor;
@@ -167,6 +167,11 @@ pub struct PodcastHandle {
     /// Written by `handle_fetch_comments` / `handle_post_comment` on the
     /// actor thread; read by `build_snapshot_payload` on the main thread.
     pub(crate) comments_cache: Arc<Mutex<HashMap<String, Vec<CommentSummary>>>>,
+    /// NIP-02 social graph snapshot. `None` until the first
+    /// `FetchContacts` dispatch completes. Written by
+    /// `social_handler::handle_fetch_contacts` on the actor thread; read
+    /// by `build_snapshot_payload` on each tick.
+    pub(super) social: Arc<Mutex<Option<SocialSnapshot>>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the

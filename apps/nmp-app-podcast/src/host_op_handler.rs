@@ -53,7 +53,8 @@ use crate::ffi::actions::wiki_module::WikiAction;
 use crate::ffi::handle::OwnedPublishState;
 use crate::ffi::projections::{
     AgentPickSummary, AgentTaskSummary, BriefingSnapshot, CommentSummary, KnowledgeSearchResult,
-    NostrShowSummary, PodcastSummary, TranscriptEntry, TtsEpisodeSummary, VoiceState, WikiArticle,
+    NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry, TtsEpisodeSummary,
+    VoiceState, WikiArticle,
 };
 use crate::host_op_handler_queue::handle_queue_action;
 use crate::host_op_publish::handle_publish_action;
@@ -130,7 +131,7 @@ pub struct PodcastHostOpHandler {
     pub(crate) comments_cache: Arc<Mutex<HashMap<String, Vec<CommentSummary>>>>,
     /// Shared Tokio runtime for async LLM / relay work. Seeded in
     /// `ffi::register` so all host-op handlers share one multi-thread scheduler.
-    /// Used by wiki synthesis, agent chat, and inbox triage.
+    /// Used by wiki synthesis, agent chat, inbox triage, and social graph fetches.
     pub(crate) runtime: Arc<Runtime>,
     /// In-memory triage cache: `episode_id -> TriageResult`.
     ///
@@ -140,6 +141,10 @@ pub struct PodcastHostOpHandler {
     /// `PodcastHandle.inbox_triage_cache` so the snapshot reader sees
     /// results without holding the handler lock.
     pub(crate) inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
+    /// Active social-graph snapshot, populated by `FetchContacts`. Shared
+    /// with `PodcastHandle.social` so the snapshot reader projects it on
+    /// every tick after the first fetch.
+    pub(crate) social: Arc<Mutex<Option<SocialSnapshot>>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the
@@ -180,6 +185,7 @@ impl PodcastHostOpHandler {
         comments_cache: Arc<Mutex<HashMap<String, Vec<CommentSummary>>>>,
         runtime: Arc<Runtime>,
         inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
+        social: Arc<Mutex<Option<SocialSnapshot>>>,
     ) -> Self {
         let tts = TtsEpisodeHandler::new(app, tts_episodes, rev.clone());
         Self {
@@ -210,6 +216,7 @@ impl PodcastHostOpHandler {
             comments_cache,
             runtime,
             inbox_triage_cache,
+            social,
         }
     }
 

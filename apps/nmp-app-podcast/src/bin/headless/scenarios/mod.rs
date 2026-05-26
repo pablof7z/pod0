@@ -12,6 +12,7 @@ mod key_persistence;
 mod nipf4_publish;
 mod relay_smoke;
 mod rss_subscribe;
+mod social;
 mod wiki;
 
 /// Per-scenario outcome.
@@ -62,5 +63,6 @@ pub fn run_all(
         ("nipf4_publish", nipf4_publish::run(app, handle)),
         ("discover_nostr", discover_nostr::run(app, handle)),
         ("comments", comments::run(app, handle)),
+        ("social", social::run(app, handle)),
     ]
 }

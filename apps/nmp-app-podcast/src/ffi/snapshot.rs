@@ -177,6 +177,8 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         })
     });
 
+    let social = handle.social.lock().ok().and_then(|s| s.clone());
+
     let voice = handle.voice_state.lock().ok().and_then(|v| {
         let snap = v.clone();
         (snap != VoiceState::default()).then_some(snap)
@@ -218,6 +220,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         agent,
         categories,
         briefing,
+        social,
         ..PodcastUpdate::default()
     };
     let json = serde_json::to_string(&update)
