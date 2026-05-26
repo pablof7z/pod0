@@ -82,6 +82,8 @@ impl PodcastHostOpHandler {
             PlayerAction::SetAdSegments { episode_id, segments } => {
                 handle_set_ad_segments(&self.store, &self.player_actor, &self.rev, episode_id, segments)
             }
+            PlayerAction::SkipForward { secs } => self.handle_skip(secs, correlation_id),
+            PlayerAction::SkipBackward { secs } => self.handle_skip(-secs, correlation_id),
         }
     }
 
@@ -141,5 +143,17 @@ impl PodcastHostOpHandler {
             Some(id) => self.handle_play(id, correlation_id),
             None => serde_json::json!({"ok": false, "error": "queue is empty"}),
         }
+    }
+
+    /// Relative seek by `delta_secs` (positive = forward, negative = backward).
+    /// Reads the current position from the live actor state so the shell never
+    /// needs to track position client-side (D0).
+    fn handle_skip(&self, delta_secs: f64, correlation_id: &str) -> serde_json::Value {
+        let current = match self.player_actor.lock() {
+            Ok(a) => a.state().position_secs,
+            Err(_) => return serde_json::json!({"ok": false, "error": "player_actor poisoned"}),
+        };
+        let target = (current + delta_secs).max(0.0);
+        self.dispatch_audio_json(AudioCommand::seek(target), correlation_id)
     }
 }

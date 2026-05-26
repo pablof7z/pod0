@@ -163,11 +163,10 @@ struct ResumePlaybackIntent: AppIntent {
 
 // MARK: - SkipForwardIntent
 
-/// "Skip forward 30 seconds" — dispatches `podcast.player.seek` with
-/// `position_secs + 30`. The Rust contract has no `skip_forward` op
-/// (see `ios/Podcast/Podcast/Features/Player/MiniPlayerView.swift`
-/// for the same pattern in the UI button); we read the live
-/// `nowPlaying.positionSecs` and dispatch an absolute seek.
+/// "Skip forward 30 seconds" — dispatches `podcast.player.skip_forward`
+/// with `secs: 30`. The Rust kernel reads the live `PlayerActor` position
+/// and emits an absolute seek, so iOS never needs to know the current time
+/// (D0 — policy in Rust).
 struct SkipForwardIntent: AppIntent {
 
     static let title: LocalizedStringResource = "Skip forward 30 seconds"
@@ -179,26 +178,21 @@ struct SkipForwardIntent: AppIntent {
 
     static let openAppWhenRun: Bool = false
 
-    /// Skip increment, in seconds. Matches `MiniPlayerView.skipForwardButton`
-    /// and the (yet-to-be-surfaced) `Settings::skip_forward_secs` default.
-    static let skipSeconds: Double = 30
-
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard let model = KernelModel.shared else {
             intentLog.error("SkipForwardIntent: KernelModel.shared is nil")
             return .result(dialog: "Podcastr isn't ready yet.")
         }
-        guard let pos = model.podcastSnapshot?.nowPlaying?.positionSecs else {
+        guard model.podcastSnapshot?.nowPlaying != nil else {
             intentLog.info("SkipForwardIntent: no active episode; dropping skip")
             return .result(dialog: "Nothing is playing.")
         }
-        let target = pos + Self.skipSeconds
         model.dispatch(
             namespace: "podcast.player",
-            body: ["op": "seek", "position_secs": target]
+            body: ["op": "skip_forward", "secs": 30.0]
         )
-        intentLog.info("SkipForwardIntent: dispatched seek from=\(pos) to=\(target)")
+        intentLog.info("SkipForwardIntent: dispatched skip_forward 30s")
         return .result(dialog: "Skipped forward.")
     }
 }

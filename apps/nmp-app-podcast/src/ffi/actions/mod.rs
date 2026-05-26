@@ -152,6 +152,10 @@ pub const ACTION_PLAYER_PAUSE_DOWNLOAD: &str = "podcast.player.pause_download";
 pub const ACTION_PLAYER_RESUME_DOWNLOAD: &str = "podcast.player.resume_download";
 /// `podcast.player.cancel_all_downloads` — cancel every in-flight + queued download.
 pub const ACTION_PLAYER_CANCEL_ALL_DOWNLOADS: &str = "podcast.player.cancel_all_downloads";
+/// `podcast.player.skip_forward` — relative seek forward by `secs` seconds.
+pub const ACTION_PLAYER_SKIP_FORWARD: &str = "podcast.player.skip_forward";
+/// `podcast.player.skip_backward` — relative seek back by `secs` seconds (clamped to 0).
+pub const ACTION_PLAYER_SKIP_BACKWARD: &str = "podcast.player.skip_backward";
 
 // ---------------------------------------------------------------------------
 // Inbox action id constants (kernel ↔ shell contract — feature #31)
