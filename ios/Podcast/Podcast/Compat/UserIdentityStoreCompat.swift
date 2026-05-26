@@ -87,14 +87,14 @@ final class UserIdentityStore {
             // Prefer the kernel-sourced value so a NIP-46 sign-in that
             // synced the user's kind:0 immediately shows their name; fall
             // back to the EditProfile-set override (and finally `nil`).
-            kernel?.identity.activeAccountRow?.displayName ?? storedProfileDisplayName
+            kernel?.kernelIdentity.activeAccountRow?.displayName ?? storedProfileDisplayName
         }
         set { storedProfileDisplayName = newValue }
     }
 
     var profilePicture: String? {
         get {
-            kernel?.identity.activeAccountRow?.pictureUrl ?? storedProfilePicture
+            kernel?.kernelIdentity.activeAccountRow?.pictureUrl ?? storedProfilePicture
         }
         set { storedProfilePicture = newValue }
     }
@@ -103,7 +103,7 @@ final class UserIdentityStore {
 
     /// Weak handle to the `KernelModel` whose snapshot drives this store.
     /// Stored via `@ObservationIgnored` so Observation doesn't track the
-    /// back-reference itself — only the reads of `kernel?.identity.*` get
+    /// back-reference itself — only the reads of `kernel?.kernelIdentity.*` get
     /// recorded as dependencies, which is exactly the dependency edge SwiftUI
     /// needs.
     @ObservationIgnored private weak var kernel: KernelModel?
@@ -133,14 +133,14 @@ final class UserIdentityStore {
 
     /// Hex pubkey of the active identity, or `nil` when none is loaded.
     var publicKeyHex: String? {
-        kernel?.identity.activeAccount
+        kernel?.kernelIdentity.activeAccount
     }
 
     /// `local` / `remoteSigner` derived from `signer_is_remote` on the
     /// active account row (per NMP doctrine — never string-match
     /// `signer_kind`). `.none` when no account is active.
     var mode: Mode {
-        guard let row = kernel?.identity.activeAccountRow else { return .none }
+        guard let row = kernel?.kernelIdentity.activeAccountRow else { return .none }
         return row.signerIsRemote ? .remoteSigner : .localKey
     }
 
@@ -150,7 +150,7 @@ final class UserIdentityStore {
     /// Bech32 `npub1…` if the active account is loaded, otherwise the raw
     /// hex (for crash-safety on pre-snapshot renders).
     var npub: String? {
-        kernel?.identity.activeAccountRow?.npub ?? publicKeyHex
+        kernel?.kernelIdentity.activeAccountRow?.npub ?? publicKeyHex
     }
 
     var npubShort: String? {
@@ -171,8 +171,8 @@ final class UserIdentityStore {
     /// flag + the locally-tracked optimistic in-flight bit.
     var remoteSignerState: RemoteSignerState {
         Self.derive(
-            handshake: kernel?.identity.bunkerHandshake,
-            isRemoteSigner: kernel?.identity.isRemoteSigner ?? false,
+            handshake: kernel?.kernelIdentity.bunkerHandshake,
+            isRemoteSigner: kernel?.kernelIdentity.isRemoteSigner ?? false,
             localInFlight: localHandshakeInFlight)
     }
 
@@ -366,17 +366,3 @@ enum IdentityError: LocalizedError {
     }
 }
 
-// MARK: - Compat error retention
-
-/// Retained for any callers that still reference the legacy `CompatError`
-/// thrown by the M1.E shim. New code should use `IdentityError` instead.
-enum CompatError: LocalizedError {
-    case notImplemented(String)
-
-    var errorDescription: String? {
-        switch self {
-        case .notImplemented(let symbol):
-            return "\(symbol) is not yet implemented."
-        }
-    }
-}

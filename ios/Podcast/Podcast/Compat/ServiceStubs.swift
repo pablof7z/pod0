@@ -69,7 +69,7 @@ struct BYOKToken: Hashable, Sendable {
 /// provider strings the caller treats as "imported".
 enum PodcastBYOKCredentialImporter {
     @discardableResult
-    static func apply(_ tokens: [BYOKToken], to settings: inout Settings) throws -> [String] {
+    static func apply(_ tokens: [BYOKToken], to settings: inout SettingsSnapshot) throws -> [String] {
         // Compat: no-op import, returns empty so the caller's "noProviderKeysReturned"
         // guard fires and surfaces an error banner instead of silently advancing.
         []

@@ -23,56 +23,34 @@ struct PodcastUpdate: Codable {
     var running: Bool = false
     var rev: Int = 0
     var schemaVersion: Int = 0
-    var library: [PodcastSummary] = []
     var nowPlaying: PlayerState? = nil
+    var downloads: DownloadQueueSnapshot? = nil
+    var agent: AgentSnapshot? = nil
+    var voice: VoiceSnapshot? = nil
+    var briefing: BriefingSnapshot? = nil
+    var social: SocialSnapshot? = nil
+    var library: [PodcastSummary] = []
     var activeAccount: AccountSummary? = nil
+    var widget: WidgetSnapshot? = nil
     var toast: String? = nil
     var searchResults: [PodcastSummary] = []
-    /// NIP-F4 Nostr podcast discovery results.
-    var nostrResults: [NostrShowSummary]? = nil
-    /// Ordered list of episode ids waiting in the playback queue
-    /// ("Up Next"). Mutated kernel-side via `podcast.player.enqueue`,
-    /// `dequeue`, `clear_queue`, and `play_next`.
-    var queue: [String] = []
-    /// App-settings projection. Defaults to the fresh-install state so the
-    /// iOS shell can read `snapshot.settings.hasCompletedOnboarding` directly
-    /// without an optional-chained `if let`. The Rust side omits the key when
-    /// it equals the default, so legacy payloads decode cleanly.
+    var nostrResults: [NostrShowSummary] = []
     var settings: SettingsSnapshot = SettingsSnapshot()
-    /// Daily briefing projection — `nil` until the scheduler has been
-    /// touched at least once.
-    var briefing: BriefingSnapshot? = nil
-    /// NIP-22 (kind 1111) comments for the currently-playing episode.
     var comments: [CommentSummary] = []
-    /// Nostr social graph projection — the active account's NIP-02 (kind:3)
-    /// follow list.
-    var social: SocialSnapshot? = nil
+    var queue: [EpisodeSummary] = []
+    var wikiArticles: [WikiArticle] = []
+    var wikiSearchResults: [WikiArticle] = []
+    var picks: [AgentPickSummary] = []
+    var agentTasks: [AgentTaskSummary] = []
+    var knowledgeSearchResults: [KnowledgeSearchResult] = []
+    var memoryFacts: [MemoryFact] = []
+    var ttsEpisodes: [TtsEpisodeSummary] = []
+    var clips: [ClipSummary] = []
+    var inbox: [InboxItem] = []
+    var ownedPodcasts: [OwnedPodcastInfo] = []
+    var categories: [CategoryBrowseItem] = []
 }
 
-/// App-settings projection emitted alongside `PodcastUpdate`.
-///
-/// The default value (`hasCompletedOnboarding == false`) is what the wire
-/// payload encodes when the Rust kernel skip-serializes an empty settings
-/// snapshot — older binaries on `Codable` decode see this as a fresh install.
-struct SettingsSnapshot: Codable, Equatable, Hashable {
-    var hasCompletedOnboarding: Bool = false
-    /// AI-wiki articles surfaced to the per-podcast reader. Mutated
-    /// kernel-side via `podcast.wiki.generate` / `delete`. Filtered by
-    /// `podcastId` on the iOS side.
-    var wikiArticles: [WikiArticle]? = nil
-    /// Result of the most recent `podcast.wiki.search`. `nil` until the
-    /// first search lands; an empty array means a search with no hits.
-    var wikiSearchResults: [WikiArticle]? = nil
-    /// AI agent picks for the Home rail. Empty until the first
-    /// `podcast.picks.refresh` lands (or an implicit refresh fired
-    /// at the end of `podcast.refresh_all`).
-    var picks: [AgentPickSummary]? = nil
-    /// Agent-scheduled tasks projection. Mirrors Rust
-    /// `PodcastUpdate.agent_tasks` (see `ffi::projections::AgentTaskSummary`).
-    /// Optional so missing-field snapshots decode as `nil` rather than
-    /// an empty array.
-    var agentTasks: [AgentTaskSummary]? = nil
-}
 
 /// One agent-scheduled task surfaced via `PodcastUpdate.agentTasks`.
 /// Mirrors Rust `AgentTaskSummary`. Carried as a narrow projection;
@@ -96,26 +74,6 @@ struct AgentTaskSummary: Codable, Identifiable, Equatable, Hashable {
     /// `true` when the scheduler should consider this task; toggled
     /// via `enable` / `disable` ops.
     var isEnabled: Bool
-    /// RAG / knowledge-base search results, populated after a
-    /// `podcast.knowledge.search` action and cleared by
-    /// `podcast.knowledge.clear_results`.
-    var knowledgeSearchResults: [KnowledgeSearchResult] = []
-    /// Agent-memory bag (feature #33). `nil` on the wire (the kernel
-    /// omits empty `Vec` payloads); call sites read `memoryFacts ?? []`.
-    var memoryFacts: [MemoryFact]? = nil
-    /// Agent-generated TTS episodes (feature #43). Empty when the user
-    /// hasn't generated any yet — the Rust kernel omits the field in
-    /// that case, so the optional decode degrades to `[]`.
-    var ttsEpisodes: [TtsEpisodeSummary]? = nil
-    /// User-saved audio clips across all episodes (newest-first).
-    /// Populated by `podcast.clip.create` / `auto_snip`; emptied by
-    /// `podcast.clip.delete`. Absent (`nil`) when no clips exist —
-    /// the Rust side skips serializing an empty Vec to preserve the
-    /// byte-compatible legacy stub payload.
-    var clips: [ClipSummary]? = nil
-    /// AI-triaged inbox — unlistened-not-dismissed episodes ranked by a
-    /// kernel-side heuristic. Empty when there is nothing to surface.
-    var inbox: [InboxItem]? = nil
 }
 
 /// One row in the AI-triaged inbox surfaced via `PodcastUpdate.inbox`.
@@ -134,12 +92,9 @@ struct InboxItem: Codable, Identifiable, Equatable, Hashable {
     /// Short caption ("Just published", "Recent", …). `nil` when the
     /// kernel has nothing distinctive to say.
     var priorityReason: String? = nil
+    var aiCategories: [String] = []
 
     var id: String { episodeId }
-    /// NIP-F4 owned podcasts (features #27/#28). Empty until the user
-    /// dispatches `podcast.publish.create_owned_podcast` for at least
-    /// one podcast.
-    var ownedPodcasts: [OwnedPodcastInfo] = []
 }
 
 /// Snapshot row for a podcast the user owns (has generated a NIP-F4
@@ -154,11 +109,7 @@ struct OwnedPodcastInfo: Codable, Identifiable, Equatable, Hashable {
     /// Unix seconds — when the most recent `publish_show` ran for this podcast.
     var lastPublishedAt: Int? = nil
 
-    /// `Identifiable` conformance — the podcast id is the natural row key.
     var id: String { podcastId }
-    /// Voice-mode projection — `nil` while no voice session is active.
-    /// Mirrors `crate::ffi::projections::VoiceState`.
-    var voice: VoiceSnapshot? = nil
 }
 
 /// Voice-mode projection mirroring Rust `VoiceState`. Surfaces both
@@ -172,11 +123,6 @@ struct VoiceSnapshot: Codable, Equatable {
     var currentVoiceId: String? = nil
     var partialTranscript: String? = nil
     var lastResponse: String? = nil
-    /// Agent-chat transcript + busy flag. `nil` until the user has sent
-    /// their first message during the kernel lifetime; stays non-nil
-    /// (with `messages == []`) after a `podcast.agent.clear` so the UI
-    /// can distinguish "cleared" from "never opened".
-    var agent: AgentSnapshot? = nil
 }
 
 /// Agent-chat conversation surfaced via `PodcastUpdate.agent`.
@@ -198,14 +144,6 @@ struct AgentMessageSummary: Codable, Identifiable, Equatable, Hashable {
     /// `true` while the assistant is still composing this message
     /// (placeholder bubble with typing indicator).
     var isGenerating: Bool = false
-    /// Browse-by-topic aggregate built by the Rust categorizer. Empty
-    /// until the first auto-trigger lands (end of every successful feed
-    /// refresh) or the iOS shell dispatches `podcast.categorize.run`.
-    var categories: [CategoryBrowseItem]? = nil
-    /// User-facing playback / behaviour preferences. `nil` while the
-    /// kernel hasn't surfaced a settings snapshot yet (e.g. very early
-    /// boot). Mutated kernel-side via `podcast.settings.*` actions.
-    var settings: SettingsSnapshot? = nil
 }
 
 /// Narrow projection for a subscribed podcast (one library grid/list cell).
@@ -261,6 +199,11 @@ struct EpisodeSummary: Codable, Identifiable, Equatable, Hashable {
     /// Rust `PodcastStore::position_for` on each snapshot tick; drives the
     /// "Resume at X:XX" indicator in the iOS shell.
     var playbackPositionSecs: Double? = nil
+    var transcript: String? = nil
+    var aiCategories: [String] = []
+    var adSegments: [AdSegment] = []
+    var played: Bool = false
+    var starred: Bool = false
 }
 
 /// One time-stamped transcript row surfaced by the kernel for a single
@@ -333,12 +276,9 @@ struct AdSegment: Codable, Identifiable, Equatable, Hashable {
     var endSecs: Double
 }
 
-/// User-facing playback preferences mirrored from
-/// `nmp_app_podcast::ffi::projections::SettingsSnapshot`. Defaults to
-/// "neutral / off" so a stale snapshot decoded by a newer binary
-/// doesn't accidentally surface enabled prefs the user never opted
-/// into.
+/// App-settings projection. Mirrors `ffi::projections::SettingsSnapshot`.
 struct SettingsSnapshot: Codable, Equatable, Hashable {
+    var hasCompletedOnboarding: Bool = false
     var autoSkipAdsEnabled: Bool = false
 }
 
@@ -552,3 +492,21 @@ struct ClipSummary: Codable, Identifiable, Equatable, Hashable {
     var title: String? = nil
     var createdAt: Int
 }
+
+/// Active download-queue projection surfaced via `PodcastUpdate.downloads`.
+struct DownloadQueueSnapshot: Codable, Equatable {
+    var active: [DownloadItemSnapshot] = []
+    var queuedCount: Int = 0
+    var completedToday: Int = 0
+}
+
+/// One row in `DownloadQueueSnapshot.active`.
+struct DownloadItemSnapshot: Codable, Identifiable, Equatable {
+    var episodeId: String
+    var progress: Double = 0
+    var state: String
+    var error: String? = nil
+
+    var id: String { episodeId }
+}
+

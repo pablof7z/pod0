@@ -25,12 +25,7 @@ final class PodcastRouter: ObservableObject {
     func popToRoot() { path = NavigationPath() }
 }
 
-enum PodcastTab: Hashable { case library, downloads, identity }
-enum PodcastTab: Hashable { case library, briefings, identity }
-enum PodcastTab: Hashable { case library, social, identity }
-enum PodcastTab: Hashable { case home, library, identity }
-enum PodcastTab: Hashable { case library, inbox, identity }
-enum PodcastTab: Hashable { case library, downloads, agent, identity }
+enum PodcastTab: Hashable { case home, library, downloads, briefings, social, inbox, agent, identity }
 
 struct RootShell: View {
     @Environment(KernelModel.self) private var model

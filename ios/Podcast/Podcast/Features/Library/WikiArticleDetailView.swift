@@ -44,7 +44,7 @@ struct WikiArticleDetailView: View {
     // MARK: - Snapshot derivation
 
     private var article: WikiArticle? {
-        model.podcastSnapshot?.wikiArticles?.first(where: { $0.id == articleId })
+        model.podcastSnapshot?.wikiArticles.first(where: { $0.id == articleId })
     }
 
     private var podcast: PodcastSummary? {

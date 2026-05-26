@@ -43,6 +43,7 @@ struct LibraryView: View {
                             Image(systemName: "magnifyingglass")
                         }
                         .accessibilityLabel("Search Library")
+                        NavigationLink {
                             CategoriesView()
                         } label: {
                             Image(systemName: "square.grid.2x2")
@@ -87,6 +88,9 @@ struct LibraryView: View {
         .onChange(of: deepLinkRouter.pendingDeepLink) { _, _ in resolvePendingDeepLink() }
         .onChange(of: model.library) { _, _ in resolvePendingDeepLink() }
         .onAppear { resolvePendingDeepLink() }
+        .sheet(isPresented: $showVoiceMode) {
+            VoiceModeView()
+        }
     }
 
     /// Attempt to satisfy `deepLinkRouter.pendingDeepLink` against the
@@ -113,8 +117,6 @@ struct LibraryView: View {
                     return
                 }
             }
-        .sheet(isPresented: $showVoiceMode) {
-            VoiceModeView()
         }
     }
 

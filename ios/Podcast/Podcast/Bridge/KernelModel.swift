@@ -56,7 +56,7 @@ final class KernelModel {
     /// `bunker_handshake`) pulled out of the NMP-core kernel snapshot on
     /// every tick. Read-only — the kernel actor is the sole writer.
     /// `UserIdentityStore` mirrors its observable state from this field.
-    private(set) var identity: KernelIdentityProjection = .empty
+    private(set) var kernelIdentity: KernelIdentityProjection = .empty
 
     /// D7 actor-death surface — flips to `true` exactly once when the Rust
     /// supervisor emits a panic frame or the foreground-resume probe detects
@@ -364,7 +364,7 @@ final class KernelModel {
     /// Remove the active account from the kernel. Mirrored on the next
     /// snapshot tick via `identity.activeAccount` flipping to `nil`.
     func removeActiveAccount() {
-        guard let active = identity.activeAccount else { return }
+        guard let active = kernelIdentity.activeAccount else { return }
         kernel.removeAccount(identityId: active)
     }
 
@@ -378,7 +378,7 @@ final class KernelModel {
         // the single writer, and even a tick with no podcast-projection
         // delta may carry fresh identity state (e.g. handshake stage
         // transitions are emitted via the same kernel update loop).
-        identity = result.identity
+        kernelIdentity = result.identity
         snapshotCount &+= 1
         lastSnapshotAt = Date()
         kmLog.debug("apply rev=\(update.rev) running=\(update.running)")

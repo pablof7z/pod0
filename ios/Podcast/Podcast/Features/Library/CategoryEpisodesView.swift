@@ -38,7 +38,7 @@ struct CategoryEpisodesView: View {
         model.library
             .flatMap { podcast in
                 podcast.episodes
-                    .filter { ($0.aiCategories ?? []).contains(category) }
+                    .filter { $0.aiCategories.contains(category) }
                     .map { EpisodeWithShow(episode: $0, podcast: podcast) }
             }
             .sorted { ($0.episode.publishedAt ?? 0) > ($1.episode.publishedAt ?? 0) }

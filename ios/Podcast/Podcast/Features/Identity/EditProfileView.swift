@@ -242,7 +242,7 @@ struct EditProfileView: View {
     }
 
     private var identityProfile: UserProfileDisplay? {
-        UserProfileDisplay.from(identity: identity)
+        UserProfileDisplay.from(identity: model.identity)
     }
 
     /// Username field's placeholder. Falls back to a generic slug shape

@@ -99,33 +99,6 @@ struct EpisodeDetailView: View {
                 }
                 .accessibilityLabel("Comments")
             }
-        }
-        .sheet(isPresented: $isCommentsSheetPresented) {
-            EpisodeCommentsSheet(
-                episodeId: episode.id,
-                onDismiss: { isCommentsSheetPresented = false }
-            )
-        .sheet(isPresented: $showChaptersSheet) {
-            ChaptersView(episodeId: episode.id, podcastId: podcast.id)
-                .environment(model)
-        }
-        .onChange(of: liveChapters.isEmpty) { _, isEmpty in
-            // Snapshot landed with chapters — clear the in-flight indicator.
-            if !isEmpty { isCompilingChapters = false }
-        }
-        .task(id: isCompilingChapters) {
-            // Bound the spinner: the `compile` host-op runs synchronously on
-            // the actor thread, so a successful result lands in the very next
-            // snapshot tick (≤1s). If the action failed (no_transcript /
-            // no_duration / poisoned store) we'd otherwise spin forever — the
-            // failure envelope isn't surfaced through `DispatchResult` (which
-            // only carries pre-dispatch rejections). Three seconds is well
-            // past a normal snapshot interval but short enough that the user
-            // isn't staring at a fake spinner.
-            guard isCompilingChapters else { return }
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            if isCompilingChapters { isCompilingChapters = false }
-        }
             if hasTranscript {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -137,6 +110,24 @@ struct EpisodeDetailView: View {
                     .accessibilityLabel("Transcript")
                 }
             }
+        }
+        .sheet(isPresented: $isCommentsSheetPresented) {
+            EpisodeCommentsSheet(
+                episodeId: episode.id,
+                onDismiss: { isCommentsSheetPresented = false }
+            )
+        }
+        .sheet(isPresented: $showChaptersSheet) {
+            ChaptersView(episodeId: episode.id, podcastId: podcast.id)
+                .environment(model)
+        }
+        .onChange(of: liveChapters.isEmpty) { _, isEmpty in
+            if !isEmpty { isCompilingChapters = false }
+        }
+        .task(id: isCompilingChapters) {
+            guard isCompilingChapters else { return }
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            if isCompilingChapters { isCompilingChapters = false }
         }
         .sheet(isPresented: $isTranscriptPresented) {
             TranscriptView(episode: liveEpisode, podcast: podcast)
@@ -302,8 +293,8 @@ struct EpisodeDetailView: View {
         return ep.chapters ?? []
     }
 
-    /// Live transcript readiness — same liveness reasoning as `liveChapters`.
-    private var hasTranscript: Bool {
+    /// Whether a raw transcript is available for chapter generation.
+    private var hasRawTranscript: Bool {
         guard let library = model.podcastSnapshot?.library,
               let show = library.first(where: { $0.id == podcast.id }),
               let ep = show.episodes.first(where: { $0.id == episode.id }) else {
@@ -317,7 +308,7 @@ struct EpisodeDetailView: View {
         let chapters = liveChapters
         if !chapters.isEmpty {
             chaptersAvailableRow(count: chapters.count, hasAI: chapters.contains(where: \.isAiGenerated))
-        } else if hasTranscript {
+        } else if hasRawTranscript {
             generateChaptersButton
         }
         // No transcript + no chapters: render nothing. iOS surfaces the

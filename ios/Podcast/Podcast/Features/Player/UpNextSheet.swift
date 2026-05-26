@@ -20,23 +20,20 @@ struct UpNextSheet: View {
     @Environment(KernelModel.self) private var model
     @Environment(\.dismiss) private var dismiss
 
-    /// Resolved queue rows: the snapshot stores episode ids, so we
-    /// look up the matching `EpisodeSummary` + parent `PodcastSummary`
-    /// from `model.library`. Episodes that have since been unsubscribed
-    /// (and thus aren't in the library anymore) are dropped silently —
-    /// the kernel still holds the id but the UI has nothing to render.
+    /// Resolved queue rows. The snapshot already contains full `EpisodeSummary`
+    /// rows so we only need a podcast-id → `PodcastSummary` index for artwork.
+    /// Episodes whose parent podcast has been unsubscribed are dropped silently.
     private var rows: [QueueRow] {
-        let ids = model.podcastSnapshot?.queue ?? []
-        guard !ids.isEmpty else { return [] }
-        var index: [String: (EpisodeSummary, PodcastSummary)] = [:]
+        let episodes = model.podcastSnapshot?.queue ?? []
+        guard !episodes.isEmpty else { return [] }
+        var podcastIndex: [String: PodcastSummary] = [:]
         for podcast in model.library {
-            for ep in podcast.episodes {
-                index[ep.id] = (ep, podcast)
-            }
+            podcastIndex[podcast.id] = podcast
         }
-        return ids.compactMap { id in
-            guard let pair = index[id] else { return nil }
-            return QueueRow(episode: pair.0, podcast: pair.1)
+        return episodes.compactMap { episode in
+            guard let podcastId = episode.podcastId,
+                  let podcast = podcastIndex[podcastId] else { return nil }
+            return QueueRow(episode: episode, podcast: podcast)
         }
     }
 
