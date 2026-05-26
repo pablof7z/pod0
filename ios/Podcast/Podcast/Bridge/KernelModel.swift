@@ -79,6 +79,10 @@ final class KernelModel {
 
     var isRunning: Bool { snapshot?.running ?? false }
     var rev: Int { snapshot?.rev ?? 0 }
+    /// Non-optional convenience for the podcast settings projection.
+    /// Falls back to `SettingsSnapshot()` (default values) before the
+    /// first podcast snapshot tick — all callers get a coherent value.
+    var settings: SettingsSnapshot { podcastSnapshot?.settings ?? SettingsSnapshot() }
 
     // ── Implementation ─────────────────────────────────────────────────────
 

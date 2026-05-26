@@ -18,7 +18,7 @@ struct PlaybackSettingsView: View {
     @Environment(KernelModel.self) private var model
 
     private var autoSkipAdsEnabled: Bool {
-        model.podcastSnapshot?.settings.autoSkipAdsEnabled ?? false
+        model.settings.autoSkipAdsEnabled
     }
 
     private var autoSkipBinding: Binding<Bool> {

@@ -131,22 +131,22 @@ struct PlayerControls: View {
             transportButton(
                 systemName: "gobackward.15",
                 size: 30,
-                accessibility: "Skip back \(Int(model.snapshot.settings.skipBackwardSecs)) seconds"
+                accessibility: "Skip back \(Int(model.settings.skipBackwardSecs)) seconds"
             ) {
                 model.dispatch(namespace: "podcast.player", body: [
                     "op": "skip_backward",
-                    "secs": model.snapshot.settings.skipBackwardSecs
+                    "secs": model.settings.skipBackwardSecs
                 ])
             }
             playPauseButton
             transportButton(
                 systemName: "goforward.30",
                 size: 30,
-                accessibility: "Skip forward \(Int(model.snapshot.settings.skipForwardSecs)) seconds"
+                accessibility: "Skip forward \(Int(model.settings.skipForwardSecs)) seconds"
             ) {
                 model.dispatch(namespace: "podcast.player", body: [
                     "op": "skip_forward",
-                    "secs": model.snapshot.settings.skipForwardSecs
+                    "secs": model.settings.skipForwardSecs
                 ])
             }
         }
