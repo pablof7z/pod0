@@ -83,6 +83,10 @@ final class KernelModel {
     /// `playbackPositionSecs` so list views don't re-render at 4 Hz
     /// during playback (the position is only needed by the player row).
     private var lastLibraryMetaHash: Int = 0
+    /// Hash of the snapshot fields that matter to non-player UI. Excludes
+    /// `nowPlaying.positionSecs` and `nowPlaying.bufferingFraction` so
+    /// views like HomeView, InboxView, etc. don't re-render at 4 Hz.
+    private var lastSnapshotContentHash: Int = 0
 
     // ── Computed projections ───────────────────────────────────────────────
 
@@ -192,14 +196,17 @@ final class KernelModel {
         let previousNowPlaying = nowPlaying
         // `nowPlaying` is always updated so the player views get live position.
         nowPlaying = update.nowPlaying
-        podcastSnapshot = update
-        // Only reassign `library` when metadata the list views care about
-        // actually changed. `playbackPositionSecs` updates at ~4 Hz during
-        // playback but is only needed by the mini-player row — excluding it
-        // from the hash prevents every list view from re-rendering 4× per second.
-        let newHash = libraryMetaHash(for: update.library)
-        if newHash != lastLibraryMetaHash {
-            lastLibraryMetaHash = newHash
+        // Gate `podcastSnapshot` (and `library`) on content hashes that exclude
+        // volatile position/buffering fields. `podcastSnapshot` feeds views like
+        // HomeView (picks) and InboxView — they must not re-render at 4 Hz.
+        let newSnapHash = snapshotContentHash(for: update)
+        if newSnapHash != lastSnapshotContentHash {
+            lastSnapshotContentHash = newSnapHash
+            podcastSnapshot = update
+        }
+        let newLibHash = libraryMetaHash(for: update.library)
+        if newLibHash != lastLibraryMetaHash {
+            lastLibraryMetaHash = newLibHash
             library = update.library
         }
         PodcastCapabilities.shared.iCloudSync.applySettingsSnapshot(
@@ -424,36 +431,6 @@ final class KernelModel {
     func removeActiveAccount() {
         guard let active = kernelIdentity.activeAccount else { return }
         kernel.removeAccount(identityId: active)
-    }
-
-    // ── Library meta hash ──────────────────────────────────────────────────
-
-    /// Hash only the fields that list views render. Excludes
-    /// `playbackPositionSecs` (and other volatile playback state) so the
-    /// `library` property stays stable during active playback.
-    private func libraryMetaHash(for library: [PodcastSummary]) -> Int {
-        var hasher = Hasher()
-        for podcast in library {
-            hasher.combine(podcast.id)
-            hasher.combine(podcast.title)
-            hasher.combine(podcast.episodeCount)
-            hasher.combine(podcast.artworkUrl)
-            hasher.combine(podcast.author)
-            for episode in podcast.episodes {
-                hasher.combine(episode.id)
-                hasher.combine(episode.title)
-                hasher.combine(episode.artworkUrl)
-                hasher.combine(episode.played)
-                hasher.combine(episode.starred)
-                hasher.combine(episode.downloadPath)
-                hasher.combine(episode.durationSecs)
-                hasher.combine(episode.publishedAt)
-                for cat in episode.aiCategories {
-                    hasher.combine(cat)
-                }
-            }
-        }
-        return hasher.finalize()
     }
 
     // ── Snapshot apply ─────────────────────────────────────────────────────
