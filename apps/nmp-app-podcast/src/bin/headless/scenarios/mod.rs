@@ -3,6 +3,7 @@
 use nmp_app_podcast::PodcastHandle;
 use nmp_ffi::NmpApp;
 
+mod comments;
 mod identity;
 mod relay_smoke;
 mod rss_subscribe;
@@ -36,5 +37,6 @@ pub fn run_all(
         ("rss_subscribe", rss_subscribe::run(app, handle)),
         ("identity_import", identity::run(app, handle)),
         ("relay_smoke", relay_smoke::run(app, handle)),
+        ("comments", comments::run(app, handle)),
     ]
 }

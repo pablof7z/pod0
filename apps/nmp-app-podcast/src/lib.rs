@@ -40,6 +40,7 @@ pub mod capability;
 pub(crate) mod categorization;
 pub(crate) mod chapter;
 pub(crate) mod clip_handler;
+pub(crate) mod comments_anchor;
 pub(crate) mod comments_handler;
 pub(crate) mod discover_nostr;
 pub mod download;

@@ -155,6 +155,19 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
     let downloads = handle.download_queue.lock().ok()
         .and_then(|q| build_downloads_snapshot(&q));
 
+    // Project comments for the now-playing episode from the cache.
+    let comments = handle
+        .comments_cache
+        .lock()
+        .ok()
+        .and_then(|cache| {
+            now_playing
+                .as_ref()
+                .and_then(|np| np.episode_id.as_deref())
+                .and_then(|ep_id| cache.get(ep_id).cloned())
+        })
+        .unwrap_or_default();
+
     let active_account = handle.identity.lock().ok().and_then(|id| {
         id.npub.as_ref().map(|npub| AccountSummary {
             npub: npub.clone(),
@@ -188,6 +201,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         search_results,
         nostr_results,
         settings,
+        comments,
         queue,
         wiki_articles,
         wiki_search_results,

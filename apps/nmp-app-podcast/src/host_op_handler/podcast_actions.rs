@@ -74,10 +74,26 @@ impl PodcastHostOpHandler {
                 crate::briefings_handler::handle_generate_briefing(&self.briefing, &self.rev)
             }
             PodcastAction::FetchComments { episode_id } => {
-                crate::comments_handler::handle_fetch_comments(&episode_id)
+                crate::comments_handler::handle_fetch_comments(
+                    self.app,
+                    &self.store,
+                    &self.comments_cache,
+                    &self.rev,
+                    &episode_id,
+                    correlation_id,
+                )
             }
             PodcastAction::PostComment { episode_id, content } => {
-                crate::comments_handler::handle_post_comment(&episode_id, &content)
+                crate::comments_handler::handle_post_comment(
+                    self.app,
+                    &self.store,
+                    &self.identity,
+                    &self.comments_cache,
+                    &self.rev,
+                    &episode_id,
+                    &content,
+                    correlation_id,
+                )
             }
             PodcastAction::SetAutoDownload { podcast_id, enabled } => {
                 self.handle_set_auto_download(podcast_id, enabled)
