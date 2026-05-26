@@ -14,12 +14,12 @@
 //!
 //! ## Identity
 //!
-//! Episodes are matched against the previously-known set by `guid`,
-//! **not** `EpisodeId`. The latter is a fresh `Uuid::new_v4()` on
-//! every parse (see `Episode::new`), so id-based diffing would mark
-//! every episode as "new" on every refresh. The accumulator
-//! (`podcast-feeds::rss::accumulator`) explicitly notes that `guid`
-//! is the load-bearing stable identity.
+//! Episodes are matched against the previously-known set by `guid` in the
+//! first filter, with a belt-and-suspenders `EpisodeId` check in the second.
+//! Both are now stable across refreshes: `Episode::new` derives the id via
+//! UUIDv5 from `(feed_url, guid)`, and `guid` is the RSS-canonical stable key.
+//! The accumulator (`podcast-feeds::rss::accumulator`) records all guids so
+//! the first filter accurately reflects what the store already contains.
 
 use std::collections::{HashMap, HashSet};
 

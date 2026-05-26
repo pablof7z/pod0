@@ -25,7 +25,7 @@ worktrees currently in flight.
 
 ## Episode ID stability (P0 bug)
 
-- **episode-id-stability** — `Episode::new` generates a fresh random `EpisodeId` (UUID) on every RSS parse. This means the same episode gets a new ID on every feed refresh, which breaks: (1) playback position persistence (`position_secs` keyed by ID), (2) download path lookups (`local_paths` in the store), (3) auto-download deduplication (must match by `guid` as a workaround). **Fix**: derive `EpisodeId` deterministically from the feed URL + episode GUID, e.g. `UUIDv5(namespace=PODCAST_NS, name="<feed_url>:<episode_guid>")`. Update `Episode::new` in `podcast-core`, add a roundtrip test, and remove the `guid`-based workaround in `store/auto_download.rs`. High priority — affects every feature that stores per-episode state.
+- ~~**episode-id-stability**~~ — Done: `EpisodeId::from_feed_and_guid` derives a stable UUIDv5 from `(feed_url, guid)`; `Episode::new` uses it exclusively. `auto_download.rs` comment updated. Tests confirm stability across refreshes.
 
 ## NMP Feature Parity — PR 1 follow-ups
 
@@ -77,7 +77,7 @@ The M2.F PR landed a working Rust→JNI→Compose proof; the items below are dow
 
 The M4.B PR landed the iOS `DownloadCapability` (`URLSession` background downloads). PR 17 wired the `DownloadReport` back-channel so completed downloads populate `EpisodeSummary.downloadPath`. The items below were observed during PR 17 validation.
 
-- **m4b-downloadcapabilitywiretests-actor-isolation** — `ios/Podcast/PodcastTests/DownloadCapabilityWireTests.swift:132,139` references `DownloadCapability.namespace` / `DownloadCapability.sessionIdentifier` from a nonisolated `XCTAssertEqual` autoclosure; the host class is `@MainActor`, so the test fails to compile under Swift 6 strict concurrency. Predates PR 17 (verified by `git stash` + retry on the base commit). Two fixes: (a) mark the test methods `@MainActor`, or (b) make the two static properties `nonisolated`. Not blocking PR 17 (Rust dispatch tests cover the wire shape); fix before re-enabling the iOS test target in CI.
+- ~~**m4b-downloadcapabilitywiretests-actor-isolation**~~ — Done: `DownloadCapability.namespace` and `sessionIdentifier` marked `nonisolated` (pure string constants, no actor-isolated state). Tests now compile under Swift 6 strict concurrency.
 - **m4b-downloadreport-queue-projection** — PR 17 projects only `DownloadReport::Completed` (and defensively `Cancelled`) onto `PodcastStore::local_paths`. `Progress` / `Failed` / `Paused` decode cleanly and no-op; the richer `DownloadQueueSnapshot` projection (per-item state, bytes-downloaded, total-bytes) needs to be wired in a follow-up PR alongside the `DownloadQueue` writes already present in `apps/nmp-app-podcast/src/download/`.
 
 ## NMP Migration — M5 HTTP capability follow-ups
