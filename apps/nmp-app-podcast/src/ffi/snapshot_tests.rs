@@ -317,4 +317,3 @@ fn settings_snapshot_missing_skip_fields_use_defaults() {
     assert!((s.skip_forward_secs - 30.0).abs() < f64::EPSILON);
     assert!((s.skip_backward_secs - 15.0).abs() < f64::EPSILON);
 }
-
