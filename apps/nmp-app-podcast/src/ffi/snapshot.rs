@@ -41,7 +41,7 @@ use super::handle::PodcastHandle;
 use super::helpers::strip_html;
 use super::projections::{
     AccountSummary, AgentPickSummary, AgentSnapshot, AgentTaskSummary, BriefingSnapshot,
-    CategoryBrowseItem, ChapterSummary, ClipSummary, CommentSummary, ConversationsSnapshot,
+    CategoryBrowseItem, ChapterSummary, ClipSummary, CommentSummary,
     DownloadQueueSnapshot, EpisodeSummary, InboxItem, KnowledgeSearchResult, MemoryFact,
     NostrShowSummary, OwnedPodcastInfo, PodcastSummary, SettingsSnapshot, SocialSnapshot,
     TtsEpisodeSummary, VoiceState, WidgetSnapshot, WikiArticle,

@@ -27,9 +27,7 @@ use crate::capability::{
     AUDIO_CAPABILITY_NAMESPACE, DOWNLOAD_CAPABILITY_NAMESPACE, NOTIFICATION_CAPABILITY_NAMESPACE,
 };
 use crate::categorization::{handle_categorize_episode, handle_run as categorization_run};
-use crate::chapter::handle_fetch_chapters;
 use crate::clip_handler::{ClipHandler, ClipRecord};
-use crate::discover_nostr;
 use crate::ffi::actions::agent_module::AgentChatAction;
 use crate::ffi::actions::categorization_module::CategorizationAction;
 use crate::ffi::actions::chapters_module::ChaptersAction;
@@ -61,7 +59,6 @@ use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::store::{PodcastKeyStore, PodcastStore};
 use crate::tasks_handler;
-use crate::transcript::handle_fetch_transcript;
 use crate::tts::TtsEpisodeHandler;
 use crate::voice_handler;
 use crate::wiki::handle_wiki_action;
