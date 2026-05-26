@@ -59,6 +59,16 @@ mod tests {
     use super::*;
 
     #[test]
+    fn set_skip_intervals_round_trips() {
+        let action = SettingsAction::SetSkipIntervals { forward_secs: 45.0, backward_secs: 10.0 };
+        let json = serde_json::to_string(&action).expect("encode");
+        assert!(json.contains(r#""op":"set_skip_intervals""#));
+        assert!(json.contains(r#""forward_secs":45.0"#) || json.contains(r#""forward_secs":45"#));
+        let decoded: SettingsAction = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, action);
+    }
+
+    #[test]
     fn set_auto_skip_ads_round_trips() {
         let action = SettingsAction::SetAutoSkipAds { enabled: true };
         let json = serde_json::to_string(&action).expect("encode");
