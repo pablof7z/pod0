@@ -24,8 +24,18 @@ crate-type = ["staticlib", "rlib", "cdylib"]
 [features]
 # Persistent local cache / publish-intent ledger for offline-first Podcast.
 lmdb-backend = ["nmp-core/lmdb-backend"]
+# Headless scenario test binary: real HTTP via reqwest, temp dirs via tempfile.
+# Gated so the staticlib iOS build never pulls in these deps.
+headless = ["dep:reqwest", "dep:tempfile", "nmp-core/test-support", "nmp-ffi/test-support"]
+
+[[bin]]
+name = "headless"
+path = "src/bin/headless/main.rs"
+required-features = ["headless"]
 
 [dependencies]
+reqwest = { version = "0.12", features = ["blocking", "rustls-tls"], optional = true }
+tempfile = { version = "3", optional = true }
 nmp-core = { path = "../../../nostrmultiplatform/crates/nmp-core" }
 # `nmp-ffi` owns the `NmpApp` C-ABI handle. Podcast's
 # `nmp_app_podcast_register` takes `*mut NmpApp`; the per-app crate names
