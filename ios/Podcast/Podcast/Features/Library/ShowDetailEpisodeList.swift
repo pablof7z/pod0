@@ -65,6 +65,16 @@ struct ShowDetailEpisodeList: View {
                 trailing: AppTheme.Spacing.lg
             ))
             .listRowBackground(Color(.systemBackground))
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                if !ep.played {
+                    Button {
+                        markPlayed(ep)
+                    } label: {
+                        Label("Played", systemImage: "checkmark.circle.fill")
+                    }
+                    .tint(.green)
+                }
+            }
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 Button {
                     toggleStar(ep)
@@ -92,6 +102,13 @@ struct ShowDetailEpisodeList: View {
                     Label(ep.starred ? "Remove Bookmark" : "Bookmark",
                           systemImage: ep.starred ? "bookmark.slash" : "bookmark")
                 }
+                if !ep.played {
+                    Button {
+                        markPlayed(ep)
+                    } label: {
+                        Label("Mark as Played", systemImage: "checkmark.circle")
+                    }
+                }
             }
         }
     }
@@ -104,6 +121,14 @@ struct ShowDetailEpisodeList: View {
         model.dispatch(
             namespace: "podcast.player",
             body: ["op": "enqueue", "episode_id": ep.id]
+        )
+    }
+
+    private func markPlayed(_ ep: EpisodeSummary) {
+        Haptics.light()
+        model.dispatch(
+            namespace: "podcast.inbox",
+            body: ["op": "mark_listened", "episode_id": ep.id]
         )
     }
 
