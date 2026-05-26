@@ -238,6 +238,7 @@ fn wiki_article_omits_empty_sources_on_wire() {
         source_episode_ids: vec![],
         last_updated_at: 1_700_000_000,
         is_generating: false,
+        generation_error: None,
     };
     let json = serde_json::to_string(&article).expect("encode");
     assert!(!json.contains("source_episode_ids"));

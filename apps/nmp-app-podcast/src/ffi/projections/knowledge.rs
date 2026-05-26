@@ -76,6 +76,12 @@ pub struct WikiArticle {
     /// `true` while a generation is in flight; `false` once the article is
     /// readable. Lets the UI render a progress indicator without polling.
     pub is_generating: bool,
+    /// Set when the LLM call fails (e.g. Ollama offline). The article is
+    /// still committed to the snapshot with the placeholder summary so the
+    /// user can retry later; the iOS shell can surface this as an inline
+    /// error banner on the article detail screen.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub generation_error: Option<String>,
 }
 
 /// One row in the agent-memory projection surfaced via

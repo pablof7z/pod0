@@ -2,27 +2,45 @@
 //!
 //! Extracted from `wiki.rs` to keep that file under the 500-line hard limit.
 
+use std::sync::Arc;
+use tokio::runtime::Runtime;
+
 use super::*;
 
 fn make_slots() -> (
     Arc<Mutex<Vec<WikiArticle>>>,
     Arc<Mutex<Vec<WikiArticle>>>,
+    Arc<Mutex<crate::store::PodcastStore>>,
     Arc<AtomicU64>,
+    Arc<Runtime>,
 ) {
+    let rt = Arc::new(
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap(),
+    );
     (
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(Vec::new())),
+        Arc::new(Mutex::new(crate::store::PodcastStore::new())),
         Arc::new(AtomicU64::new(0)),
+        rt,
     )
 }
 
 #[test]
 fn generate_creates_article_with_placeholder_summary() {
-    let (articles, results, rev) = make_slots();
+    let (articles, results, store, rev, rt) = make_slots();
+    // Ollama is not running in unit tests — the LLM call will fail and the
+    // placeholder summary is committed instead. The test only checks that an
+    // article record was created; it does not assert on LLM content.
     let envelope = handle_wiki_action(
         &articles,
         &results,
+        &store,
         &rev,
+        &rt,
         WikiAction::Generate {
             podcast_id: "pod-1".into(),
             topic: "Bitcoin halvings".into(),
@@ -37,18 +55,20 @@ fn generate_creates_article_with_placeholder_summary() {
     assert_eq!(stored[0].topic, "Bitcoin halvings");
     assert_eq!(stored[0].podcast_id, "pod-1");
     assert!(!stored[0].is_generating);
-    assert!(stored[0].summary.contains("LLM synthesis is a follow-up"));
-    assert!(stored[0].summary.contains("Bitcoin halvings"));
+    // Either the LLM succeeded (long text) or fell back to the placeholder.
+    assert!(!stored[0].summary.is_empty());
     assert_eq!(rev.load(Ordering::Relaxed), 1);
 }
 
 #[test]
 fn generate_rejects_empty_topic() {
-    let (articles, results, rev) = make_slots();
+    let (articles, results, store, rev, rt) = make_slots();
     let envelope = handle_wiki_action(
         &articles,
         &results,
+        &store,
         &rev,
+        &rt,
         WikiAction::Generate {
             podcast_id: "pod-1".into(),
             topic: "   ".into(),
@@ -61,11 +81,13 @@ fn generate_rejects_empty_topic() {
 
 #[test]
 fn generate_rejects_empty_podcast_id() {
-    let (articles, results, rev) = make_slots();
+    let (articles, results, store, rev, rt) = make_slots();
     let envelope = handle_wiki_action(
         &articles,
         &results,
+        &store,
         &rev,
+        &rt,
         WikiAction::Generate {
             podcast_id: "".into(),
             topic: "Topic".into(),
@@ -77,11 +99,13 @@ fn generate_rejects_empty_podcast_id() {
 
 #[test]
 fn delete_removes_article_and_clears_search_row() {
-    let (articles, results, rev) = make_slots();
+    let (articles, results, store, rev, rt) = make_slots();
     let envelope = handle_wiki_action(
         &articles,
         &results,
+        &store,
         &rev,
+        &rt,
         WikiAction::Generate {
             podcast_id: "pod-1".into(),
             topic: "Topic".into(),
@@ -98,7 +122,9 @@ fn delete_removes_article_and_clears_search_row() {
     let envelope = handle_wiki_action(
         &articles,
         &results,
+        &store,
         &rev,
+        &rt,
         WikiAction::Delete {
             article_id: article_id.clone(),
         },
@@ -111,12 +137,14 @@ fn delete_removes_article_and_clears_search_row() {
 
 #[test]
 fn delete_unknown_id_does_not_bump_rev() {
-    let (articles, results, rev) = make_slots();
+    let (articles, results, store, rev, rt) = make_slots();
     let rev_before = rev.load(Ordering::Relaxed);
     let envelope = handle_wiki_action(
         &articles,
         &results,
+        &store,
         &rev,
+        &rt,
         WikiAction::Delete {
             article_id: "does-not-exist".into(),
         },
@@ -127,11 +155,13 @@ fn delete_unknown_id_does_not_bump_rev() {
 
 #[test]
 fn search_filters_by_topic_substring_case_insensitive() {
-    let (articles, results, rev) = make_slots();
+    let (articles, results, store, rev, rt) = make_slots();
     handle_wiki_action(
         &articles,
         &results,
+        &store,
         &rev,
+        &rt,
         WikiAction::Generate {
             podcast_id: "pod-1".into(),
             topic: "Bitcoin Halvings".into(),
@@ -140,7 +170,9 @@ fn search_filters_by_topic_substring_case_insensitive() {
     handle_wiki_action(
         &articles,
         &results,
+        &store,
         &rev,
+        &rt,
         WikiAction::Generate {
             podcast_id: "pod-1".into(),
             topic: "Lightning Network".into(),
@@ -149,7 +181,9 @@ fn search_filters_by_topic_substring_case_insensitive() {
     let envelope = handle_wiki_action(
         &articles,
         &results,
+        &store,
         &rev,
+        &rt,
         WikiAction::Search {
             query: "lightning".into(),
         },
@@ -162,11 +196,13 @@ fn search_filters_by_topic_substring_case_insensitive() {
 
 #[test]
 fn search_with_empty_query_clears_results() {
-    let (articles, results, rev) = make_slots();
+    let (articles, results, store, rev, rt) = make_slots();
     handle_wiki_action(
         &articles,
         &results,
+        &store,
         &rev,
+        &rt,
         WikiAction::Generate {
             podcast_id: "pod-1".into(),
             topic: "Topic".into(),
@@ -175,14 +211,18 @@ fn search_with_empty_query_clears_results() {
     handle_wiki_action(
         &articles,
         &results,
+        &store,
         &rev,
+        &rt,
         WikiAction::Search { query: "to".into() },
     );
     assert_eq!(results.lock().unwrap().len(), 1);
     handle_wiki_action(
         &articles,
         &results,
+        &store,
         &rev,
+        &rt,
         WikiAction::Search { query: "  ".into() },
     );
     assert!(results.lock().unwrap().is_empty());

@@ -117,8 +117,7 @@ pub struct PodcastHostOpHandler {
     pub(crate) agent_chat: AgentChatHandler,
     /// Shared Tokio runtime for async LLM / relay work. Seeded in
     /// `ffi::register` so all host-op handlers in future PRs share one
-    /// multi-thread scheduler.
-    #[allow(dead_code)]
+    /// multi-thread scheduler. Used by wiki synthesis and agent chat.
     pub(crate) runtime: Arc<Runtime>,
 }
 
@@ -316,7 +315,9 @@ impl HostOpHandler for PodcastHostOpHandler {
             return handle_wiki_action(
                 &self.wiki_articles,
                 &self.wiki_search_results,
+                &self.store,
                 &self.rev,
+                &self.runtime,
                 action,
             );
         }

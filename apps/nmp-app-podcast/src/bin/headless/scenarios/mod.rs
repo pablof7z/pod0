@@ -4,6 +4,7 @@ use nmp_app_podcast::PodcastHandle;
 use nmp_ffi::NmpApp;
 
 mod rss_subscribe;
+mod wiki;
 
 /// Per-scenario outcome.
 #[derive(Debug)]
@@ -34,6 +35,10 @@ pub fn run_all(
         (
             "rss_subscribe",
             rss_subscribe::run(app, handle),
+        ),
+        (
+            "wiki_generate",
+            wiki::run(app, handle),
         ),
     ]
 }
