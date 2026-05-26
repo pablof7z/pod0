@@ -44,6 +44,7 @@ use crate::ffi::actions::settings_module::SettingsAction;
 use crate::ffi::actions::tasks_module::AgentTasksAction;
 use crate::ffi::actions::tts_module::TtsEpisodeAction;
 use crate::ffi::actions::voice_module::VoiceAction;
+use crate::ffi::actions::siri_module::SiriAction;
 use crate::ffi::actions::wiki_module::WikiAction;
 use crate::ffi::handle::OwnedPublishState;
 use crate::ffi::projections::{
@@ -66,6 +67,7 @@ use podcast_feeds::http::{HttpRequest, HttpResult, HTTP_CAPABILITY_NAMESPACE};
 
 mod player_actions;
 mod podcast_actions;
+mod siri_actions;
 
 /// Kernel-side handler owning every `Arc`d state slot the snapshot reader
 /// (in `ffi::handle::PodcastHandle`) projects, plus the `*mut NmpApp` used
@@ -329,6 +331,9 @@ impl HostOpHandler for PodcastHostOpHandler {
         }
         if let Ok(action) = serde_json::from_str::<SettingsAction>(action_json) {
             return self.handle_settings_action(action);
+        }
+        if let Ok(action) = serde_json::from_str::<SiriAction>(action_json) {
+            return self.handle_siri_action(action, correlation_id);
         }
         serde_json::json!({"ok": false, "error": format!("unknown action: {action_json}")})
     }

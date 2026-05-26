@@ -133,10 +133,7 @@ struct PlayerControls: View {
                 size: 30,
                 accessibility: "Skip back 15 seconds"
             ) {
-                model.dispatch(namespace: "podcast.player", body: [
-                    "op": "seek",
-                    "position_secs": max(0, player.positionSecs - 15),
-                ])
+                model.dispatch(namespace: "podcast.player", body: ["op": "skip_backward", "secs": 15.0])
             }
             playPauseButton
             transportButton(
@@ -144,13 +141,7 @@ struct PlayerControls: View {
                 size: 30,
                 accessibility: "Skip forward 30 seconds"
             ) {
-                let target = duration > 0
-                    ? min(duration, player.positionSecs + 30)
-                    : player.positionSecs + 30
-                model.dispatch(namespace: "podcast.player", body: [
-                    "op": "seek",
-                    "position_secs": target,
-                ])
+                model.dispatch(namespace: "podcast.player", body: ["op": "skip_forward", "secs": 30.0])
             }
         }
         .frame(maxWidth: .infinity)

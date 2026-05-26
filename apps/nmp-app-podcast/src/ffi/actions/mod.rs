@@ -77,6 +77,7 @@ pub mod publish_module;
 pub mod settings_module;
 pub mod voice;
 pub mod wiki_module;
+pub mod siri_module;
 pub mod voice_module;
 
 pub use chapters_module::{ChaptersAction, ChaptersActionModule};
@@ -111,6 +112,7 @@ pub use publish_module::{
 };
 pub use voice_module::{VoiceAction, VoiceActionModule};
 pub use settings_module::{SettingsAction, SettingsActionModule};
+pub use siri_module::{SiriAction, SiriActionModule};
 
 use serde::{Deserialize, Serialize};
 
