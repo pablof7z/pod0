@@ -161,4 +161,22 @@ mod tests {
     fn plain_text_passes_through() {
         assert_eq!(strip_html("No tags here."), "No tags here.");
     }
+
+    #[test]
+    fn strips_anchor_and_list_tags() {
+        let input = r#"<ul><li>Point A</li><li>Point B</li></ul>"#;
+        assert_eq!(strip_html(input), "Point A Point B");
+    }
+
+    #[test]
+    fn mixed_entities_and_tags() {
+        let input = "<p>Subscribe at <a href=\"https://ex.com\">our site</a> &amp; enjoy!</p>";
+        assert_eq!(strip_html(input), "Subscribe at our site & enjoy!");
+    }
+
+    #[test]
+    fn newlines_and_tabs_collapsed() {
+        let input = "Line 1\n\nLine 2\t\tLine 3";
+        assert_eq!(strip_html(input), "Line 1 Line 2 Line 3");
+    }
 }
