@@ -123,10 +123,20 @@ extension RootView {
 /// Shortcuts / CarPlay). Extracted into a `ViewModifier` so the main
 /// `RootView` body stays below the Swift type-checker expression limit.
 struct PlaybackIntentObserver: ViewModifier {
+    @Environment(AppStateStore.self) private var store
     let playbackState: PlaybackState
 
     func body(content: Content) -> some View {
         content
+            .onReceive(NotificationCenter.default.publisher(for: .playLatestRequested)) { _ in
+                if let episode = store.state.episodes
+                    .filter({ !$0.played })
+                    .sorted(by: { $0.pubDate > $1.pubDate })
+                    .first {
+                    playbackState.setEpisode(episode)
+                    playbackState.play()
+                }
+            }
             .onReceive(NotificationCenter.default.publisher(for: .pausePlaybackRequested)) { _ in
                 playbackState.pause()
             }

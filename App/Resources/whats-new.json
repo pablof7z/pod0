@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-26T09:01:00Z",
+      "lines": [
+        "Play Latest is now included in the restored Siri and Shortcuts playback actions."
+      ]
+    },
+    {
       "shipped_at": "2026-05-26T08:45:00Z",
       "lines": [
         "Siri and Shortcuts can now play, pause, resume, and skip podcast playback."
