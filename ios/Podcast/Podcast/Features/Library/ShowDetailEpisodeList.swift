@@ -37,6 +37,39 @@ struct ShowDetailEpisodeList: View {
                     )
                 } : nil
             )
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(
+                top: AppTheme.Spacing.xs,
+                leading: AppTheme.Spacing.lg,
+                bottom: AppTheme.Spacing.xs,
+                trailing: AppTheme.Spacing.lg
+            ))
+            .listRowBackground(Color(.systemBackground))
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                if !ep.played {
+                    Button {
+                        markPlayed(ep)
+                    } label: {
+                        Label("Played", systemImage: "checkmark.circle.fill")
+                    }
+                    .tint(.green)
+                }
+            }
+            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                Button {
+                    toggleStar(ep)
+                } label: {
+                    Label(ep.starred ? "Unbookmark" : "Bookmark",
+                          systemImage: ep.starred ? "bookmark.slash" : "bookmark")
+                }
+                .tint(ep.starred ? .gray : .orange)
+                Button {
+                    enqueue(ep)
+                } label: {
+                    Label("Up Next", systemImage: "text.line.first.and.arrowtriangle.forward")
+                }
+                .tint(.accentColor)
+            }
             .contextMenu {
                 Button {
                     Haptics.light()
@@ -48,6 +81,11 @@ struct ShowDetailEpisodeList: View {
                     Label("Play Next", systemImage: "text.insert")
                 }
                 Button {
+                    enqueue(ep)
+                } label: {
+                    Label("Add to Up Next", systemImage: "text.line.first.and.arrowtriangle.forward")
+                }
+                Button {
                     Haptics.light()
                     model.dispatch(
                         namespace: "podcast.queue",
@@ -56,28 +94,19 @@ struct ShowDetailEpisodeList: View {
                 } label: {
                     Label("Add to Queue", systemImage: "text.append")
                 }
-            }
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(
-                top: AppTheme.Spacing.xs,
-                leading: AppTheme.Spacing.lg,
-                bottom: AppTheme.Spacing.xs,
-                trailing: AppTheme.Spacing.lg
-            ))
-            .listRowBackground(Color(.systemBackground))
-            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                Divider()
                 Button {
-                    enqueue(ep)
+                    toggleStar(ep)
                 } label: {
-                    Label("Up Next", systemImage: "text.line.first.and.arrowtriangle.forward")
+                    Label(ep.starred ? "Remove Bookmark" : "Bookmark",
+                          systemImage: ep.starred ? "bookmark.slash" : "bookmark")
                 }
-                .tint(.accentColor)
-            }
-            .contextMenu {
-                Button {
-                    enqueue(ep)
-                } label: {
-                    Label("Add to Up Next", systemImage: "text.line.first.and.arrowtriangle.forward")
+                if !ep.played {
+                    Button {
+                        markPlayed(ep)
+                    } label: {
+                        Label("Mark as Played", systemImage: "checkmark.circle")
+                    }
                 }
             }
         }
@@ -93,182 +122,20 @@ struct ShowDetailEpisodeList: View {
             body: ["op": "enqueue", "episode_id": ep.id]
         )
     }
-}
 
-// MARK: - KernelEpisodeRow
-
-/// Single-episode row backed by `EpisodeSummary`. Used by `ShowDetailEpisodeList`.
-private struct KernelEpisodeRow: View {
-    let episode: EpisodeSummary
-    var fallbackArtworkUrl: String? = nil
-    let onPlay: () -> Void
-    /// `nil` when the episode is already downloaded (renders a check); a
-    /// non-nil closure when it isn't (renders a download button).
-    let onDownload: (() -> Void)?
-
-    private static let thumbnailSize: CGFloat = 56
-
-    var body: some View {
-        HStack(alignment: .center, spacing: AppTheme.Spacing.md) {
-            thumbnail
-
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
-                Text(episode.title)
-                    .font(AppTheme.Typography.headline)
-                    .lineLimit(2)
-
-                metaRow
-            }
-
-            Spacer()
-
-            downloadIndicator
-
-            Button {
-                onPlay()
-            } label: {
-                Image(systemName: "play.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(Color.accentColor)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Play \(episode.title)")
-        }
-        .padding(.vertical, AppTheme.Spacing.sm)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityAddTraits(.isButton)
-        .onTapGesture { onPlay() }
+    private func markPlayed(_ ep: EpisodeSummary) {
+        Haptics.light()
+        model.dispatch(
+            namespace: "podcast.inbox",
+            body: ["op": "mark_listened", "episode_id": ep.id]
+        )
     }
 
-    // MARK: - Download indicator
-
-    @ViewBuilder
-    private var downloadIndicator: some View {
-        if let onDownload {
-            Button {
-                onDownload()
-            } label: {
-                Image(systemName: "arrow.down.circle")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 36, height: 36)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Download \(episode.title)")
-        } else {
-            // Already downloaded — show a calm checkmark, no tap target.
-            Image(systemName: "checkmark.circle.fill")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-                .frame(width: 36, height: 36)
-                .accessibilityLabel("Downloaded")
-        }
-    }
-
-    // MARK: - Artwork
-
-    private var artworkURL: URL? {
-        if let s = episode.artworkUrl, let url = URL(string: s) { return url }
-        if let s = fallbackArtworkUrl, let url = URL(string: s) { return url }
-        return nil
-    }
-
-    @ViewBuilder
-    private var thumbnail: some View {
-        let shape = RoundedRectangle(cornerRadius: AppTheme.Corner.md, style: .continuous)
-        Group {
-            if let url = artworkURL {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image): image.resizable().scaledToFill()
-                    default: thumbnailPlaceholder
-                    }
-                }
-            } else {
-                thumbnailPlaceholder
-            }
-        }
-        .frame(width: Self.thumbnailSize, height: Self.thumbnailSize)
-        .clipShape(shape)
-        .accessibilityHidden(true)
-    }
-
-    private var thumbnailPlaceholder: some View {
-        ZStack {
-            Color.secondary.opacity(0.18)
-            Image(systemName: "waveform")
-                .font(.system(size: 20, weight: .light))
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    // MARK: - Meta
-
-    @ViewBuilder
-    private var metaRow: some View {
-        let hasDuration = episode.durationSecs != nil
-        let hasDate = episode.publishedAt != nil
-        let resumeSecs = episode.playbackPositionSecs
-        if hasDuration || hasDate || resumeSecs != nil {
-            HStack(spacing: AppTheme.Spacing.sm) {
-                if let secs = episode.durationSecs {
-                    Text(formatDuration(secs))
-                        .font(AppTheme.Typography.monoCaption)
-                        .foregroundStyle(.secondary)
-                }
-                if hasDuration && hasDate {
-                    Text("·")
-                        .font(AppTheme.Typography.caption)
-                        .foregroundStyle(.tertiary)
-                }
-                if let ts = episode.publishedAt {
-                    Text(relativeDate(from: ts))
-                        .font(AppTheme.Typography.caption)
-                        .foregroundStyle(.secondary)
-                }
-                if let resumeSecs {
-                    if hasDuration || hasDate {
-                        Text("·")
-                            .font(AppTheme.Typography.caption)
-                            .foregroundStyle(.tertiary)
-                    }
-                    Text("Resume \(formatDuration(resumeSecs))")
-                        .font(AppTheme.Typography.monoCaption)
-                        .foregroundStyle(Color.accentColor)
-                }
-            }
-        }
-    }
-
-    private func formatDuration(_ secs: Double) -> String {
-        let total = Int(secs)
-        let h = total / 3600
-        let m = (total % 3600) / 60
-        let s = total % 60
-        if h > 0 { return String(format: "%d:%02d:%02d", h, m, s) }
-        return String(format: "%d:%02d", m, s)
-    }
-
-    private func relativeDate(from unixSeconds: Int) -> String {
-        let date = Date(timeIntervalSince1970: TimeInterval(unixSeconds))
-        return Self.relativeFormatter.localizedString(for: date, relativeTo: Date())
-    }
-
-    private static let relativeFormatter: RelativeDateTimeFormatter = {
-        let f = RelativeDateTimeFormatter()
-        f.unitsStyle = .abbreviated
-        return f
-    }()
-
-    private var accessibilityLabel: String {
-        var parts = [episode.title]
-        if let secs = episode.durationSecs { parts.append(formatDuration(secs)) }
-        if let ts = episode.publishedAt { parts.append(relativeDate(from: ts)) }
-        return parts.joined(separator: ", ")
+    private func toggleStar(_ ep: EpisodeSummary) {
+        Haptics.selection()
+        model.dispatch(
+            namespace: "podcast",
+            body: ["op": "star_episode", "episode_id": ep.id]
+        )
     }
 }

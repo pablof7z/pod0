@@ -40,7 +40,7 @@ struct TranscriptRowView: View {
     // MARK: - Subviews
 
     private var timestamp: some View {
-        Text(Self.formatTimestamp(entry.startSecs))
+        Text(formatDuration(entry.startSecs))
             .font(AppTheme.Typography.caption.monospacedDigit())
             .foregroundStyle(isActive ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.tertiary))
             .frame(minWidth: 44, alignment: .leading)
@@ -48,22 +48,7 @@ struct TranscriptRowView: View {
 
     private var accessibilityLabel: String {
         let prefix = entry.speaker.map { "\($0) at " } ?? "At "
-        return "\(prefix)\(Self.formatTimestamp(entry.startSecs)): \(entry.text)"
+        return "\(prefix)\(formatDuration(entry.startSecs)): \(entry.text)"
     }
 
-    // MARK: - Helpers
-
-    /// Format `secs` as `mm:ss` (or `h:mm:ss` for hour-plus). Mirrors the
-    /// formatter used elsewhere in the player surface so timestamps line up
-    /// visually across views.
-    static func formatTimestamp(_ secs: Double) -> String {
-        let total = max(0, Int(secs))
-        let h = total / 3600
-        let m = (total % 3600) / 60
-        let s = total % 60
-        if h > 0 {
-            return String(format: "%d:%02d:%02d", h, m, s)
-        }
-        return String(format: "%d:%02d", m, s)
-    }
 }

@@ -84,15 +84,15 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// and let `refreshLoop` reinstall on the next tick.
     private func installRootTemplate() {
         guard let interfaceController else { return }
-        guard let model = KernelModel.shared, let snapshot = model.podcastSnapshot else {
+        guard let model = KernelModel.shared, model.podcastSnapshot != nil else {
             interfaceController.setRootTemplate(
                 makeWaitingTemplate(), animated: false, completion: { _, _ in })
             return
         }
-        let tabBar = makeTabBar(library: snapshot.library)
+        let tabBar = makeTabBar(library: model.library)
         interfaceController.setRootTemplate(tabBar, animated: false, completion: { _, _ in })
         CarPlayNowPlayingConfig.configure(interfaceController: interfaceController)
-        lastBuiltLibraryRev = snapshot.rev
+        lastBuiltLibraryRev = model.podcastSnapshot?.rev ?? 0
     }
 
     private func makeTabBar(library: [PodcastSummary]) -> CPTabBarTemplate {

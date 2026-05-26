@@ -128,7 +128,8 @@ private struct CategoryCard: View {
     }
 
     private var previewArtworkURLs: [URL] {
-        guard let library = model.podcastSnapshot?.library else { return [] }
+        guard !model.library.isEmpty else { return [] }
+        let library = model.library
         let lookup: [String: EpisodeSummary] = library.reduce(into: [:]) { acc, podcast in
             for ep in podcast.episodes { acc[ep.id] = ep }
         }

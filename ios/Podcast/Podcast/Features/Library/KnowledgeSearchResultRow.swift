@@ -69,7 +69,7 @@ struct KnowledgeSearchResultRow: View {
             HStack(spacing: AppTheme.Spacing.xs) {
                 Image(systemName: "play.fill")
                 if let secs = result.startSecs {
-                    Text(formatTimestamp(secs)).font(AppTheme.Typography.monoCaption)
+                    Text(formatDuration(secs)).font(AppTheme.Typography.monoCaption)
                 }
             }
             .padding(.horizontal, AppTheme.Spacing.sm)
@@ -78,18 +78,7 @@ struct KnowledgeSearchResultRow: View {
             .foregroundStyle(Color.accentColor)
         }
         .buttonStyle(.borderless)
-        .accessibilityLabel("Play from \(formatTimestamp(result.startSecs ?? 0))")
-    }
-
-    // MARK: - Helpers
-
-    private func formatTimestamp(_ secs: Double) -> String {
-        let total = Int(secs)
-        let h = total / 3600
-        let m = (total % 3600) / 60
-        let s = total % 60
-        if h > 0 { return String(format: "%d:%02d:%02d", h, m, s) }
-        return String(format: "%d:%02d", m, s)
+        .accessibilityLabel("Play from \(formatDuration(result.startSecs ?? 0))")
     }
 
     private var accessibilityLabel: String {

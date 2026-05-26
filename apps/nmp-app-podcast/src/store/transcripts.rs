@@ -20,6 +20,18 @@ impl PodcastStore {
     /// `TranscriptKind::Json` (Podcasting 2.0) when the publisher URL is
     /// present but the `type` attribute is missing — that's the most common
     /// shape in the wild.
+    /// Return the cached raw-text transcript for `id_str`, if one has been
+    /// stored via the transcript write path.
+    pub fn transcript_for(&self, id_str: &str) -> Option<&str> {
+        self.transcripts.get(id_str).map(String::as_str)
+    }
+
+    /// Store a raw-text transcript for `episode_id_str`. Overwrites any
+    /// previously cached transcript for the same id.
+    pub fn set_transcript(&mut self, episode_id_str: String, text: String) {
+        self.transcripts.insert(episode_id_str, text);
+    }
+
     pub fn episode_publisher_transcript(&self, id_str: &str) -> Option<(String, TranscriptKind)> {
         for episodes in self.episodes.values() {
             if let Some(ep) = episodes.iter().find(|e| e.id.0.to_string() == id_str) {
@@ -41,9 +53,8 @@ mod tests {
 
     fn make_episode(podcast_id: podcast_core::PodcastId) -> Episode {
         let mut episode = Episode::new(
-            podcast.id,
-            "https://example.com/feed.xml",
             podcast_id,
+            "https://example.com/feed.xml",
             "guid-transcript",
             "Transcript Episode",
             url::Url::parse("https://example.com/audio.mp3").unwrap(),
@@ -74,6 +85,7 @@ mod tests {
         let podcast = Podcast::new("No Transcript Show");
         let episode = Episode::new(
             podcast.id,
+            "https://example.com/feed.xml",
             "guid",
             "Episode",
             url::Url::parse("https://example.com/audio.mp3").unwrap(),
@@ -91,6 +103,7 @@ mod tests {
         let podcast = Podcast::new("Show");
         let mut episode = Episode::new(
             podcast.id,
+            "https://example.com/feed.xml",
             "guid",
             "Episode",
             url::Url::parse("https://example.com/audio.mp3").unwrap(),

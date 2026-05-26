@@ -67,7 +67,7 @@ struct PlayerControls: View {
         VStack(spacing: PodcastSpace.xs) {
             scrubberTrack
             HStack {
-                Text(formatTime(displayPosition))
+                Text(formatDuration(displayPosition))
                 Spacer()
                 Text(remainingLabel)
             }
@@ -121,7 +121,7 @@ struct PlayerControls: View {
     private var remainingLabel: String {
         guard duration > 0 else { return "--:--" }
         let remaining = max(0, duration - displayPosition)
-        return "-" + formatTime(remaining)
+        return "-" + formatDuration(remaining)
     }
 
     // MARK: - Transport
@@ -131,25 +131,22 @@ struct PlayerControls: View {
             transportButton(
                 systemName: "gobackward.15",
                 size: 30,
-                accessibility: "Skip back 15 seconds"
+                accessibility: "Skip back \(Int(model.settings.skipBackwardSecs)) seconds"
             ) {
                 model.dispatch(namespace: "podcast.player", body: [
-                    "op": "seek",
-                    "position_secs": max(0, player.positionSecs - 15),
+                    "op": "skip_backward",
+                    "secs": model.settings.skipBackwardSecs
                 ])
             }
             playPauseButton
             transportButton(
                 systemName: "goforward.30",
                 size: 30,
-                accessibility: "Skip forward 30 seconds"
+                accessibility: "Skip forward \(Int(model.settings.skipForwardSecs)) seconds"
             ) {
-                let target = duration > 0
-                    ? min(duration, player.positionSecs + 30)
-                    : player.positionSecs + 30
                 model.dispatch(namespace: "podcast.player", body: [
-                    "op": "seek",
-                    "position_secs": target,
+                    "op": "skip_forward",
+                    "secs": model.settings.skipForwardSecs
                 ])
             }
         }
@@ -292,18 +289,6 @@ struct PlayerControls: View {
     }
 
     // MARK: - Formatting
-
-    private func formatTime(_ seconds: Double) -> String {
-        guard seconds.isFinite, seconds >= 0 else { return "--:--" }
-        let total = Int(seconds.rounded())
-        let h = total / 3600
-        let m = (total % 3600) / 60
-        let s = total % 60
-        if h > 0 {
-            return String(format: "%d:%02d:%02d", h, m, s)
-        }
-        return String(format: "%d:%02d", m, s)
-    }
 
     private func formatSpeed(_ speed: Double) -> String {
         if abs(speed - speed.rounded()) < 0.01 {

@@ -14,7 +14,7 @@ use nmp_core::substrate::ActionModule;
 use nmp_core::ActorCommand;
 
 /// Wire enum for all `"podcast.settings"` namespace actions.
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum SettingsAction {
     /// Set the user-facing auto-skip-ads toggle. The store persists
@@ -22,6 +22,9 @@ pub enum SettingsAction {
     /// the next `Playing` report sees the new value without waiting
     /// for a `play` action.
     SetAutoSkipAds { enabled: bool },
+    /// Update both skip intervals. Clamped server-side to `[1, 120]` seconds.
+    /// iOS dispatches this when the user changes the skip interval in Settings.
+    SetSkipIntervals { forward_secs: f64, backward_secs: f64 },
 }
 
 /// Action module for the `"podcast.settings"` namespace.
@@ -54,6 +57,16 @@ impl ActionModule for SettingsActionModule {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn set_skip_intervals_round_trips() {
+        let action = SettingsAction::SetSkipIntervals { forward_secs: 45.0, backward_secs: 10.0 };
+        let json = serde_json::to_string(&action).expect("encode");
+        assert!(json.contains(r#""op":"set_skip_intervals""#));
+        assert!(json.contains(r#""forward_secs":45.0"#) || json.contains(r#""forward_secs":45"#));
+        let decoded: SettingsAction = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, action);
+    }
 
     #[test]
     fn set_auto_skip_ads_round_trips() {

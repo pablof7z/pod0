@@ -226,9 +226,9 @@ final class iCloudSyncCapability {
              || lastWritten[Key.skipBackwardSecs] != AnyHashable(backward) {
             isApplyingRemoteChange = true
             kernel?.dispatchSilent(namespace: "podcast.settings", body: [
-                "op": "set_skip_interval",
-                "forward": forward,
-                "backward": backward,
+                "op": "set_skip_intervals",
+                "forward_secs": Double(forward),
+                "backward_secs": Double(backward),
             ])
             lastWritten[Key.skipForwardSecs] = AnyHashable(forward)
             lastWritten[Key.skipBackwardSecs] = AnyHashable(backward)

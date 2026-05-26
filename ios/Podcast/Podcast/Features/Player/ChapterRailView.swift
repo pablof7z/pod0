@@ -94,7 +94,7 @@ private struct ChapterChip: View {
                     .font(PodcastFont.callout.weight(isCurrent ? .semibold : .regular))
                     .foregroundStyle(isCurrent ? Color.white : Color.white.opacity(0.75))
                     .lineLimit(1)
-                Text(formatTimestamp(chapter.startSecs))
+                Text(formatDuration(chapter.startSecs))
                     .font(PodcastFont.caption.monospacedDigit())
                     .foregroundStyle(Color.white.opacity(0.55))
             }
@@ -115,17 +115,7 @@ private struct ChapterChip: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Chapter \(index + 1): \(chapter.title)")
-        .accessibilityHint("Seek to \(formatTimestamp(chapter.startSecs))")
+        .accessibilityHint("Seek to \(formatDuration(chapter.startSecs))")
     }
 
-    private func formatTimestamp(_ secs: Double) -> String {
-        let total = max(0, Int(secs.rounded()))
-        let h = total / 3600
-        let m = (total % 3600) / 60
-        let s = total % 60
-        if h > 0 {
-            return String(format: "%d:%02d:%02d", h, m, s)
-        }
-        return String(format: "%d:%02d", m, s)
-    }
 }

@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - MiniPlayerView
 //
 // Persistent mini-player bar rendered above the tab bar. Visible when
-// `model.podcastSnapshot?.nowPlaying` is non-nil (i.e. an episode is loaded).
+// `model.nowPlaying` is non-nil (i.e. an episode is loaded).
 //
 // Doctrine:
 //   D7 — all play/pause decisions are Rust-side. The view only dispatches
@@ -20,7 +20,7 @@ struct MiniPlayerView: View {
     @State private var showTranscript = false
 
     private var nowPlaying: PlayerState? {
-        model.podcastSnapshot?.nowPlaying
+        model.nowPlaying
     }
 
     private var queueCount: Int {
@@ -226,10 +226,9 @@ struct MiniPlayerView: View {
 
     private var skipForwardButton: some View {
         Button {
-            guard let pos = nowPlaying?.positionSecs else { return }
             model.dispatch(namespace: "podcast.player", body: [
-                "op": "seek",
-                "position_secs": pos + 30
+                "op": "skip_forward",
+                "secs": model.settings.skipForwardSecs
             ])
         } label: {
             Image(systemName: "goforward.30")

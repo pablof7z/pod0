@@ -56,7 +56,7 @@ final class KernelModel {
     /// `bunker_handshake`) pulled out of the NMP-core kernel snapshot on
     /// every tick. Read-only — the kernel actor is the sole writer.
     /// `UserIdentityStore` mirrors its observable state from this field.
-    private(set) var identity: KernelIdentityProjection = .empty
+    private(set) var kernelIdentity: KernelIdentityProjection = .empty
 
     /// D7 actor-death surface — flips to `true` exactly once when the Rust
     /// supervisor emits a panic frame or the foreground-resume probe detects
@@ -72,13 +72,35 @@ final class KernelModel {
     private(set) var library: [PodcastSummary] = []
     /// Latest full podcast snapshot (library, player, account …).
     private(set) var podcastSnapshot: PodcastUpdate?
+    /// Live player state — updated on every snapshot tick (4 Hz during playback).
+    /// Views that only need player position should observe this instead of
+    /// `podcastSnapshot?.nowPlaying` so they don't hold a reference to the
+    /// full snapshot struct. All other views should use `podcastSnapshot`.
+    private(set) var nowPlaying: PlayerState?
     /// Cancellable for the 500ms poll Task.
     private var snapshotPollTask: Task<Void, Never>?
+    /// Hash of the library fields that matter to list views. Excludes
+    /// `playbackPositionSecs` so list views don't re-render at 4 Hz
+    /// during playback (the position is only needed by the player row).
+    private var lastLibraryMetaHash: Int = 0
+    /// Hash of the snapshot fields that matter to non-player UI. Excludes
+    /// `nowPlaying.positionSecs` and `nowPlaying.bufferingFraction` so
+    /// views like HomeView, InboxView, etc. don't re-render at 4 Hz.
+    private var lastSnapshotContentHash: Int = 0
+    /// Rev of the last snapshot we decoded from the kernel. Unlike
+    /// `podcastSnapshot?.rev` (which only advances on content changes),
+    /// this tracks every processed tick so the short-circuit guards stay
+    /// accurate.
+    private var lastProcessedRev: UInt64 = 0
 
     // ── Computed projections ───────────────────────────────────────────────
 
     var isRunning: Bool { snapshot?.running ?? false }
     var rev: Int { snapshot?.rev ?? 0 }
+    /// Non-optional convenience for the podcast settings projection.
+    /// Falls back to `SettingsSnapshot()` (default values) before the
+    /// first podcast snapshot tick — all callers get a coherent value.
+    var settings: SettingsSnapshot { podcastSnapshot?.settings ?? SettingsSnapshot() }
 
     // ── Implementation ─────────────────────────────────────────────────────
 
@@ -158,90 +180,49 @@ final class KernelModel {
                 try? await Task.sleep(for: .milliseconds(500))
                 guard !Task.isCancelled else { break }
                 await MainActor.run { [weak self] in
-                    guard let self else { return }
-                    let update = self.kernel.podcastSnapshot()
-                    if update.rev > (self.podcastSnapshot?.rev ?? 0) {
-                        let previousNowPlaying = self.podcastSnapshot?.nowPlaying
-                        self.podcastSnapshot = update
-                        self.library = update.library
-                        PodcastCapabilities.shared.iCloudSync.applySettingsSnapshot(
-                            SettingsKVSnapshot.from(podcastUpdate: update))
-                        PodcastCapabilities.shared.spotlight.indexLibrary(update.library)
-                        self.reconcileLiveActivity(
-                            previous: previousNowPlaying, next: update.nowPlaying, library: update.library)
-                        kmLog.debug("podcast snapshot updated rev=\(update.rev) library=\(update.library.count)")
-                    }
+                    self?.pullPodcastSnapshotIfChanged()
                 }
             }
         }
     }
 
-    /// Translate `PlayerState` transitions into Live Activity lifecycle
-    /// calls. Driven exclusively by `startSnapshotPoll` — every kernel
-    /// snapshot advance is the one place that can change the now-playing
-    /// surface, so this is the single funnel that mirrors that state out
-    /// to ActivityKit (D7 — kernel is the source of truth, executor only
-    /// translates).
-    ///
-    /// Transitions handled:
-    ///   - nil → non-nil: `start(...)` with episode metadata pulled from
-    ///     the embedded library (titles + artwork live on `EpisodeSummary`
-    ///     and `PodcastSummary`, not on `PlayerState`).
-    ///   - non-nil → non-nil (same episode): `update(positionSecs:isPlaying:)`,
-    ///     which the manager already throttles to ~1 Hz.
-    ///   - non-nil → non-nil (different episode): the manager's `start`
-    ///     handles the end → request roundtrip itself.
-    ///   - non-nil → nil: `stop()`.
-    private func reconcileLiveActivity(
-        previous: PlayerState?, next: PlayerState?, library: [PodcastSummary]
-    ) {
-        switch (previous, next) {
-        case (nil, nil):
-            return
-        case (_, nil):
-            LiveActivityManager.shared.stop()
-        case let (nil, .some(state)):
-            startLiveActivity(for: state, library: library)
-        case let (.some(prev), .some(state)):
-            if prev.episodeId != state.episodeId {
-                startLiveActivity(for: state, library: library)
-            } else {
-                LiveActivityManager.shared.update(
-                    positionSecs: state.positionSecs, isPlaying: state.isPlaying)
-            }
+    /// Pull the podcast snapshot and apply it if the rev has advanced.
+    /// Called both by the 500ms background poll (for autonomous changes like
+    /// download progress and playback position) and immediately after every
+    /// `dispatch` / `dispatchSilent` call so user actions are reflected in
+    /// the UI within the same runloop pass rather than after up to 500ms.
+    private func pullPodcastSnapshotIfChanged() {
+        // Cheap rev-check before the full JSON decode. nmp_app_podcast_snapshot_rev
+        // reads a single atomic u64 — no serialization cost.
+        let currentRev = kernel.podcastSnapshotRev()
+        guard currentRev > lastProcessedRev else { return }
+        let update = kernel.podcastSnapshot()
+        guard update.rev > lastProcessedRev else { return }
+        lastProcessedRev = UInt64(update.rev)
+        let previousNowPlaying = nowPlaying
+        // `nowPlaying` is always updated so the player views get live position.
+        nowPlaying = update.nowPlaying
+        // Gate `podcastSnapshot` (and `library`) on content hashes that exclude
+        // volatile position/buffering fields. `podcastSnapshot` feeds views like
+        // HomeView (picks) and InboxView — they must not re-render at 4 Hz.
+        let newSnapHash = snapshotContentHash(for: update)
+        if newSnapHash != lastSnapshotContentHash {
+            lastSnapshotContentHash = newSnapHash
+            podcastSnapshot = update
         }
-    }
-
-    /// Resolve episode/podcast metadata from the library snapshot and
-    /// hand the manager a fully-populated start payload. The library is
-    /// the only place titles/artwork live — `PlayerState` itself is
-    /// metadata-poor by design (it carries only what the audio engine
-    /// needs).
-    private func startLiveActivity(for state: PlayerState, library: [PodcastSummary]) {
-        guard let episodeId = state.episodeId else { return }
-        var episodeTitle = ""
-        var podcastTitle = ""
-        var artworkURL: URL?
-
-        outer: for show in library {
-            for episode in show.episodes where episode.id == episodeId {
-                episodeTitle = episode.title
-                podcastTitle = episode.podcastTitle ?? show.title
-                let artworkString = episode.artworkUrl ?? show.artworkUrl
-                if let artworkString { artworkURL = URL(string: artworkString) }
-                break outer
-            }
+        let newLibHash = libraryMetaHash(for: update.library)
+        if newLibHash != lastLibraryMetaHash {
+            lastLibraryMetaHash = newLibHash
+            library = update.library
         }
-        if episodeTitle.isEmpty { episodeTitle = "Now Playing" }
-
-        LiveActivityManager.shared.start(
-            episodeID: episodeId,
-            episodeTitle: episodeTitle,
-            podcastTitle: podcastTitle,
-            positionSecs: state.positionSecs,
-            durationSecs: state.durationSecs ?? 0,
-            isPlaying: state.isPlaying,
-            artworkURL: artworkURL)
+        PodcastCapabilities.shared.iCloudSync.applySettingsSnapshot(
+            SettingsKVSnapshot.from(podcastUpdate: update))
+        PodcastCapabilities.shared.spotlight.indexLibrary(update.library)
+        reconcileLiveActivity(
+            previous: previousNowPlaying, next: update.nowPlaying, library: update.library)
+        reconcileNowPlayingMetadata(
+            previous: previousNowPlaying, next: update.nowPlaying, library: update.library)
+        kmLog.debug("podcast snapshot updated rev=\(update.rev) library=\(update.library.count)")
     }
 
     func applyConfiguration() {
@@ -293,6 +274,7 @@ final class KernelModel {
             kmLog.error("dispatch_action rejected: \(message, privacy: .public)")
             lastErrorToast = message
         }
+        pullPodcastSnapshotIfChanged()
         return result
     }
 
@@ -309,7 +291,10 @@ final class KernelModel {
         if case let .failure(message) = result {
             kmLog.error("dispatch_action (silent) rejected: \(message, privacy: .public)")
         }
+        pullPodcastSnapshotIfChanged()
         return result
+    }
+
     // ── Identity / NIP-46 ────────────────────────────────────────────────
     //
     // Typed wrappers around the NMP-core identity FFI. `UserIdentityStore`
@@ -353,7 +338,7 @@ final class KernelModel {
     /// Remove the active account from the kernel. Mirrored on the next
     /// snapshot tick via `identity.activeAccount` flipping to `nil`.
     func removeActiveAccount() {
-        guard let active = identity.activeAccount else { return }
+        guard let active = kernelIdentity.activeAccount else { return }
         kernel.removeAccount(identityId: active)
     }
 
@@ -367,7 +352,7 @@ final class KernelModel {
         // the single writer, and even a tick with no podcast-projection
         // delta may carry fresh identity state (e.g. handshake stage
         // transitions are emitted via the same kernel update loop).
-        identity = result.identity
+        kernelIdentity = result.identity
         snapshotCount &+= 1
         lastSnapshotAt = Date()
         kmLog.debug("apply rev=\(update.rev) running=\(update.running)")

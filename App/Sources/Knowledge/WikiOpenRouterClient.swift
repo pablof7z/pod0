@@ -25,7 +25,7 @@ struct WikiOpenRouterClient: Sendable {
     /// the previous shape allocated one per wiki compile, on top of the
     /// already-expensive LLM round-trip. Tiny win individually; matches
     /// the pattern other clients in the codebase already follow.
-    nonisolated(unsafe) private static let usageDecoder = JSONDecoder()
+    private static let usageDecoder = JSONDecoder()
 
 
     // MARK: - Modes

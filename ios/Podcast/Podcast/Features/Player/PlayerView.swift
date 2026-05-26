@@ -11,7 +11,7 @@ import SwiftUI
 //   - Center: square artwork card, episode title, podcast name
 //   - Bottom glass island (PlayerControls): scrubber, transport, speed/sleep/AirPlay
 //
-// Doctrine: every read comes from `model.podcastSnapshot?.nowPlaying`.
+// Doctrine: player state reads come from `model.nowPlaying`; episode + podcast
 // Episode + podcast metadata are resolved by scanning the library; no
 // derived state, no caches.
 
@@ -26,7 +26,7 @@ struct PlayerView: View {
     @State private var showClipComposer = false
 
     private var nowPlaying: PlayerState? {
-        model.podcastSnapshot?.nowPlaying
+        model.nowPlaying
     }
 
     private var episode: EpisodeSummary? {
@@ -116,6 +116,7 @@ struct PlayerView: View {
             .task { dispatchFetchChaptersIfNeeded(for: player.episodeId) }
             .onChange(of: player.episodeId) { _, newId in
                 dispatchFetchChaptersIfNeeded(for: newId)
+            }
             .sheet(isPresented: $showClipComposer) {
                 ClipComposerView(
                     player: player,
@@ -233,20 +234,41 @@ struct PlayerView: View {
     // MARK: - Metadata
 
     private var metadata: some View {
-        VStack(spacing: PodcastSpace.xs) {
-            Text(episode?.title ?? "Now Playing")
-                .font(PodcastFont.title)
-                .foregroundStyle(.white)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-            if let title = podcastTitle ?? episode?.podcastTitle {
-                Text(title)
-                    .font(PodcastFont.callout)
-                    .foregroundStyle(Color.white.opacity(0.75))
-                    .lineLimit(1)
+        HStack(alignment: .center, spacing: PodcastSpace.m) {
+            Spacer()
+            VStack(spacing: PodcastSpace.xs) {
+                Text(episode?.title ?? "Now Playing")
+                    .font(PodcastFont.title)
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                if let title = podcastTitle ?? episode?.podcastTitle {
+                    Text(title)
+                        .font(PodcastFont.callout)
+                        .foregroundStyle(Color.white.opacity(0.75))
+                        .lineLimit(1)
+                }
             }
+            .frame(maxWidth: .infinity)
+
+            Button {
+                guard let ep = episode else { return }
+                Haptics.light()
+                model.dispatch(
+                    namespace: "podcast",
+                    body: ["op": "star_episode", "episode_id": ep.id]
+                )
+            } label: {
+                Image(systemName: episode?.starred == true ? "bookmark.fill" : "bookmark")
+                    .font(.system(size: 20, weight: .regular))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(episode?.starred == true ? "Remove bookmark" : "Bookmark episode")
         }
-        .padding(.horizontal, PodcastSpace.xl)
+        .padding(.horizontal, PodcastSpace.l)
     }
 
     // MARK: - Empty state

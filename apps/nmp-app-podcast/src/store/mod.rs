@@ -27,23 +27,23 @@ use podcast_core::{Episode, EpisodeId, Podcast, PodcastId};
 mod ad_segments;
 mod chapters;
 pub mod auto_download;
-mod persistence;
-mod transcripts;
-use crate::ffi::projections::MemoryFact;
+mod memory;
 mod owned_ext;
+mod playback;
 mod persistence;
 pub mod podcast_keys;
-
-pub use podcast_keys::PodcastKeyStore;
-
-mod persistence;
+mod settings;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_ext;
+mod transcripts;
 
-pub use auto_download::episodes_to_auto_download;
-use persistence::{PersistedPodcast, PersistedStore, PERSIST_SCHEMA_VERSION};
-use persistence::{PersistedPodcast, PersistedSettings, PersistedStore, PERSIST_SCHEMA_VERSION};
+use crate::ffi::projections::MemoryFact;
 use crate::player::AdSegment;
+pub use auto_download::episodes_to_auto_download;
+pub use podcast_keys::PodcastKeyStore;
+use persistence::{PersistedPodcast, PersistedSettings, PersistedStore, PERSIST_SCHEMA_VERSION};
 
 /// Backing store for subscribed podcasts and their episode lists.
 ///
@@ -93,6 +93,10 @@ pub struct PodcastStore {
     pub(super) ad_segments: HashMap<String, Vec<AdSegment>>,
     /// User toggle: auto-skip ads when the playhead enters one.
     pub(super) auto_skip_ads_enabled: bool,
+    /// Skip-forward interval (seconds). Default 30.0; user-configurable.
+    pub(super) skip_forward_secs: f64,
+    /// Skip-backward interval (seconds). Default 15.0; user-configurable.
+    pub(super) skip_backward_secs: f64,
     data_dir: Option<PathBuf>,
 }
 
@@ -109,6 +113,8 @@ impl PodcastStore {
             memory_facts: HashMap::new(),
             ad_segments: HashMap::new(),
             auto_skip_ads_enabled: false,
+            skip_forward_secs: 30.0,
+            skip_backward_secs: 15.0,
             data_dir: None,
         }
     }
@@ -176,6 +182,18 @@ impl PodcastStore {
             self.ad_segments.insert(ep_id, segs);
         }
         self.auto_skip_ads_enabled = loaded.settings.auto_skip_ads_enabled;
+        // On-disk value of 0.0 means "field absent in old file" — replace
+        // with the semantic default so the UI gets a usable value.
+        self.skip_forward_secs = if loaded.settings.skip_forward_secs > 0.0 {
+            loaded.settings.skip_forward_secs
+        } else {
+            30.0
+        };
+        self.skip_backward_secs = if loaded.settings.skip_backward_secs > 0.0 {
+            loaded.settings.skip_backward_secs
+        } else {
+            15.0
+        };
         self.podcasts.len()
     }
 
@@ -204,25 +222,23 @@ impl PodcastStore {
         let mut facts: Vec<MemoryFact> = self.memory_facts.values().cloned().collect();
         // Same stable-order rationale as podcasts: keep saves byte-stable.
         facts.sort_by(|a, b| a.key.cmp(&b.key));
+        let ad_segments: std::collections::BTreeMap<String, Vec<AdSegment>> = self
+            .ad_segments
+            .iter()
+            .filter(|(_, v)| !v.is_empty())
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
         PersistedStore {
             schema_version: PERSIST_SCHEMA_VERSION,
             podcasts: rows,
             has_completed_onboarding: self.has_completed_onboarding,
             memory_facts: facts,
-        let mut rows: Vec<PersistedPodcast> = self.podcasts.iter().map(|(id, podcast)| PersistedPodcast {
-            podcast: podcast.clone(),
-            episodes: self.episodes.get(id).cloned().unwrap_or_default(),
-        }).collect();
-        // Stable order so two consecutive saves produce identical bytes — same
-        // BTreeMap rationale applies to the ad_segments side-map below.
-        rows.sort_by(|a, b| a.podcast.id.0.cmp(&b.podcast.id.0));
-        let ad_segments: std::collections::BTreeMap<String, Vec<AdSegment>> = self.ad_segments.iter()
-            .filter(|(_, v)| !v.is_empty()).map(|(k, v)| (k.clone(), v.clone())).collect();
-        PersistedStore {
-            schema_version: PERSIST_SCHEMA_VERSION,
-            podcasts: rows,
             ad_segments: ad_segments.into_iter().collect(),
-            settings: PersistedSettings { auto_skip_ads_enabled: self.auto_skip_ads_enabled },
+            settings: PersistedSettings {
+                auto_skip_ads_enabled: self.auto_skip_ads_enabled,
+                skip_forward_secs: self.skip_forward_secs,
+                skip_backward_secs: self.skip_backward_secs,
+            },
         }
     }
 
@@ -375,211 +391,11 @@ impl PodcastStore {
         self.local_paths.remove(episode_id)
     }
 
-    /// Read the persisted playback position for an episode keyed by the string
-    /// form of its UUID. Returns `None` when no episode with that id is found
-    /// or when its position is at the start (`0.0`).
-    ///
-    /// Used by the snapshot projection so iOS can render a "Resume at X:XX"
-    /// indicator without having to keep its own copy of the position. The Play
-    /// path itself reads position directly via [`episode_playback_info`].
-    pub fn position_for(&self, id_str: &str) -> Option<f64> {
-        for episodes in self.episodes.values() {
-            if let Some(ep) = episodes.iter().find(|e| e.id.0.to_string() == id_str) {
-                return if ep.position_secs > 0.0 {
-                    Some(ep.position_secs)
-                } else {
-                    None
-                };
-            }
-        }
-        None
-    }
-
-    /// Update an episode's playback position in memory. **Does not** persist;
-    /// call [`flush_positions`] (or any other persisting mutation) to write
-    /// through to disk.
-    ///
-    /// Returns `true` when the episode was found and updated, `false`
-    /// otherwise. `Playing` reports arrive at ≤4 Hz (`AudioReport` D8); writing
-    /// the entire `podcasts.json` on every tick would burn disk bandwidth and
-    /// shorten flash life, so the writeback path stays in-memory and the FFI
-    /// layer batches disk flushes on terminal events (pause / stop) and on a
-    /// coarse interval. The "every durable concept has one canonical
-    /// representation" rule (AGENTS.md) keeps position on `Episode.position_secs`
-    /// rather than a parallel side-map.
-    pub fn set_episode_position(&mut self, id_str: &str, position_secs: f64) -> bool {
-        let pos = position_secs.max(0.0);
-        for episodes in self.episodes.values_mut() {
-            if let Some(ep) = episodes.iter_mut().find(|e| e.id.0.to_string() == id_str) {
-                ep.position_secs = pos;
-    /// Mark an episode (by stringified `EpisodeId`) as listened. Returns
-    /// `true` only when the flag actually flipped (unknown id and
-    /// already-played both return `false`). Flushes to disk when bound.
-    pub fn mark_episode_played(&mut self, id_str: &str) -> bool {
-        for episodes in self.episodes.values_mut() {
-            if let Some(ep) = episodes.iter_mut().find(|e| e.id.0.to_string() == id_str) {
-                if ep.played {
-                    return false;
-                }
-                ep.played = true;
-                self.persist();
-                return true;
-            }
-        }
-        false
-    }
-
-    /// Force-flush the in-memory state to disk. Companion to
-    /// [`set_episode_position`] — call when a natural checkpoint is reached
-    /// (pause, stop, app background, periodic interval) so the in-memory
-    /// position deltas survive a hard kill.
-    ///
-    /// Side-effect: snapshots the current `Episode.position_secs` for every
-    /// known episode into the in-memory "last flushed" marker so subsequent
-    /// `Playing` ticks can throttle off the on-disk state, not the previous
-    /// in-memory tick. Silent no-op when no data dir has been bound (D6).
-    pub fn flush_positions(&mut self) {
-        // Take the snapshot of what we're about to persist before the rename
-        // races, so the marker is consistent with what is now on disk.
-        for episodes in self.episodes.values() {
-            for ep in episodes {
-                let key = ep.id.0.to_string();
-                if ep.position_secs > 0.0 {
-                    self.last_flushed_positions.insert(key, ep.position_secs);
-                } else {
-                    // A reset to 0 should clear the marker so the next
-                    // forward-playing tick is treated as fresh.
-                    self.last_flushed_positions.remove(&key);
-                }
-            }
-        }
-        self.persist();
-    }
-
-    /// Look up the most recently persisted position for an episode, or
-    /// `None` when nothing has been flushed for it this session (and the
-    /// initial hydration didn't seed a value). Used by the FFI writeback
-    /// layer to decide whether the live playhead has drifted enough from
-    /// the on-disk checkpoint to warrant another flush — the throttling
-    /// MUST compare against the last *flushed* position rather than the
-    /// previous tick's in-memory value, otherwise an uninterrupted stream
-    /// of small ≤4 Hz `Playing` deltas never crosses the threshold.
-    pub fn last_flushed_position(&self, id_str: &str) -> Option<f64> {
-        self.last_flushed_positions.get(id_str).copied()
-    }
-
-    /// Whether the user has finished iOS onboarding. The iOS shell reads this
-    /// from the `settings` snapshot to gate `OnboardingView`. Defaults to
-    /// `false` for fresh installs.
-    pub fn has_completed_onboarding(&self) -> bool {
-        self.has_completed_onboarding
-    }
-
-    /// Update the onboarding-complete flag and flush to disk when a data dir
-    /// is registered. Idempotent: writing the same value is a no-op for the
-    /// disk file (the bytes are unchanged) and for the in-memory flag.
-    pub fn set_onboarding_complete(&mut self, value: bool) {
-        if self.has_completed_onboarding == value {
-            return;
-        }
-        self.has_completed_onboarding = value;
-        self.persist();
-    }
-
-
-    /// Set the auto-download opt-in flag for a podcast. Idempotent and
-    /// silent when the podcast isn't subscribed (the flag will just
-    /// hang around in the set; `unsubscribe` clears it). Flushes to
-    /// disk when a data dir is bound so the preference survives
-    /// app relaunches.
-    pub fn set_auto_download(&mut self, podcast_id: PodcastId, enabled: bool) {
-        let changed = if enabled {
-            self.auto_download_enabled.insert(podcast_id)
-        } else {
-            self.auto_download_enabled.remove(&podcast_id)
-        };
-        if changed {
-            self.persist();
-        }
-    }
-
-    /// Read the auto-download opt-in flag for a podcast. Defaults to
-    /// `false` for unknown / never-toggled podcasts.
-    pub fn is_auto_download_enabled(&self, podcast_id: PodcastId) -> bool {
-        self.auto_download_enabled.contains(&podcast_id)
-    }
-
-    /// Look up the auto-download flag by the string form of a podcast id.
-    /// Helper for the FFI action handlers, which receive UUIDs as strings.
-    pub fn is_auto_download_enabled_str(&self, id_str: &str) -> bool {
-        match id_str.parse::<uuid::Uuid>() {
-            Ok(uuid) => self.is_auto_download_enabled(PodcastId::new(uuid)),
-            Err(_) => false,
-        }
-    }
-
     /// Read-only access to the on-disk path side-map. Used by the
     /// auto-download policy helper so a "freshly discovered" episode
     /// already known to be on disk is not re-queued.
     pub fn local_paths(&self) -> &HashMap<EpisodeId, String> {
         &self.local_paths
-    // ── Agent memory (feature #33) ────────────────────────────────────────
-
-    /// Upsert a memory fact keyed on `key`. When a fact with the same key
-    /// already exists, only the value and source change — the original
-    /// `created_at` and `id` are preserved so the UI sees stable identity
-    /// across edits.
-    ///
-    /// `source` is taken verbatim; the action handler is responsible for
-    /// defaulting it (typically to `"user"`).
-    pub fn set_memory_fact(&mut self, key: String, value: String, source: String, now_unix: i64) {
-        let fact = match self.memory_facts.get(&key) {
-            Some(existing) => MemoryFact {
-                id: existing.id.clone(),
-                key: existing.key.clone(),
-                value,
-                source,
-                created_at: existing.created_at,
-            },
-            None => MemoryFact {
-                id: key.clone(),
-                key: key.clone(),
-                value,
-                source,
-                created_at: now_unix,
-            },
-        };
-        self.memory_facts.insert(key, fact);
-        self.persist();
-    }
-
-    /// Delete a memory fact by key. Returns `true` when a row was removed
-    /// so the caller can decide whether to bump `rev`.
-    pub fn remove_memory_fact(&mut self, key: &str) -> bool {
-        let removed = self.memory_facts.remove(key).is_some();
-        if removed {
-            self.persist();
-        }
-        removed
-    }
-
-    /// Wipe the entire memory bag. Returns the number of facts that were
-    /// removed so the caller can decide whether to bump `rev`.
-    pub fn clear_memory(&mut self) -> usize {
-        let n = self.memory_facts.len();
-        if n > 0 {
-            self.memory_facts.clear();
-            self.persist();
-        }
-        n
-    }
-
-    /// Snapshot of every memory fact, sorted by `key` so the iOS list is
-    /// stable across re-renders without a client-side sort.
-    pub fn all_memory_facts(&self) -> Vec<MemoryFact> {
-        let mut facts: Vec<MemoryFact> = self.memory_facts.values().cloned().collect();
-        facts.sort_by(|a, b| a.key.cmp(&b.key));
-        facts
     }
 
     /// Test-only accessor for the currently-bound data dir.
@@ -592,245 +408,5 @@ impl PodcastStore {
 impl Default for PodcastStore {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-#[cfg(test)]
-mod tests;
-mod tests {
-    use super::*;
-    use podcast_core::{Episode, Podcast, PodcastId};
-    use std::sync::atomic::{AtomicU64, Ordering};
-    use uuid::Uuid;
-
-    /// RAII tempdir for store integration tests. Same pattern as
-    /// `persistence::tests::TempDir`; duplicated so the two test modules
-    /// can be reordered independently.
-    struct TempDir {
-        path: PathBuf,
-    }
-
-    impl TempDir {
-        fn new() -> Self {
-            static SEQ: AtomicU64 = AtomicU64::new(0);
-            let n = SEQ.fetch_add(1, Ordering::Relaxed);
-            let path = std::env::temp_dir().join(format!(
-                "nmp-podcast-store-{}-{}",
-                std::process::id(),
-                n,
-            ));
-            std::fs::create_dir_all(&path).expect("create temp dir");
-            Self { path }
-        }
-    }
-
-    impl Drop for TempDir {
-        fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.path);
-        }
-    }
-
-    fn make_podcast(title: &str) -> Podcast {
-        Podcast::new(title)
-    }
-
-    fn make_episode(podcast_id: PodcastId, title: &str) -> Episode {
-        Episode::new(
-            podcast_id,
-            format!("guid-{}", Uuid::new_v4()),
-            title,
-            url::Url::parse("https://example.com/audio.mp3").unwrap(),
-            chrono::Utc::now(),
-        )
-    }
-
-    #[test]
-    fn subscribe_and_retrieve() {
-        let mut store = PodcastStore::new();
-        let podcast = make_podcast("Test Show");
-        let id = podcast.id;
-        store.subscribe(podcast, vec![]);
-        assert_eq!(store.podcast_count(), 1);
-        assert!(store.podcast(id).is_some());
-    }
-
-    #[test]
-    fn all_podcasts_returns_all() {
-        let mut store = PodcastStore::new();
-        store.subscribe(make_podcast("Show A"), vec![]);
-        store.subscribe(make_podcast("Show B"), vec![]);
-        assert_eq!(store.all_podcasts().len(), 2);
-    }
-
-    #[test]
-    fn resubscribe_replaces_existing() {
-        let mut store = PodcastStore::new();
-        let p1 = make_podcast("Original Title");
-        let id = p1.id;
-        store.subscribe(p1, vec![]);
-
-        let mut p2 = make_podcast("Updated Title");
-        p2.id = id; // same id — should replace
-        store.subscribe(p2, vec![]);
-        assert_eq!(store.podcast_count(), 1);
-        assert_eq!(store.podcast(id).map(|p| p.title.as_str()), Some("Updated Title"));
-    }
-
-    #[test]
-    fn set_and_get_local_path() {
-        let mut store = PodcastStore::new();
-        let ep_id = EpisodeId::generate();
-        assert!(store.local_path_for(&ep_id).is_none());
-        store.set_local_path(ep_id, "/tmp/ep.mp3".into());
-        assert_eq!(store.local_path_for(&ep_id), Some("/tmp/ep.mp3"));
-    }
-
-    #[test]
-    fn clear_local_path_returns_previous_and_unsets() {
-        let mut store = PodcastStore::new();
-        let ep_id = EpisodeId::generate();
-        store.set_local_path(ep_id, "/tmp/ep.mp3".into());
-        let prev = store.clear_local_path(&ep_id);
-        assert_eq!(prev.as_deref(), Some("/tmp/ep.mp3"));
-        assert!(store.local_path_for(&ep_id).is_none());
-        assert!(store.clear_local_path(&ep_id).is_none());
-    }
-
-    // ── Persistence integration tests ────────────────────────────────────
-
-    #[test]
-    fn set_data_dir_on_empty_dir_returns_zero() {
-        let dir = TempDir::new();
-        let mut store = PodcastStore::new();
-        let loaded = store.set_data_dir(dir.path.clone());
-        assert_eq!(loaded, 0);
-        assert_eq!(store.podcast_count(), 0);
-        assert_eq!(store.data_dir(), Some(dir.path.as_path()));
-    }
-
-    #[test]
-    fn subscribe_writes_to_disk_when_bound() {
-        let dir = TempDir::new();
-        let mut store = PodcastStore::new();
-        store.set_data_dir(dir.path.clone());
-        store.subscribe(make_podcast("Disk Show"), vec![]);
-        assert!(dir.path.join("podcasts.json").exists());
-    }
-
-    #[test]
-    fn fresh_store_can_reload_after_subscribe() {
-        let dir = TempDir::new();
-        let podcast_id;
-        let episodes;
-        {
-            let mut store = PodcastStore::new();
-            store.set_data_dir(dir.path.clone());
-            let podcast = make_podcast("Persistent Show");
-            podcast_id = podcast.id;
-            episodes = vec![make_episode(podcast_id, "Ep 1"), make_episode(podcast_id, "Ep 2")];
-            store.subscribe(podcast, episodes.clone());
-        }
-        // New store, same dir — should rehydrate.
-        let mut store2 = PodcastStore::new();
-        let loaded = store2.set_data_dir(dir.path.clone());
-        assert_eq!(loaded, 1);
-        assert_eq!(store2.podcast_count(), 1);
-        let restored = store2.podcast(podcast_id).expect("podcast restored");
-        assert_eq!(restored.title, "Persistent Show");
-        assert_eq!(store2.episodes_for(podcast_id).len(), 2);
-        assert_eq!(store2.episodes_for(podcast_id), episodes.as_slice());
-    }
-
-    #[test]
-    fn unsubscribe_writes_to_disk_when_bound() {
-        let dir = TempDir::new();
-        let mut store = PodcastStore::new();
-        store.set_data_dir(dir.path.clone());
-        let podcast = make_podcast("Doomed");
-        let id = podcast.id;
-        store.subscribe(podcast, vec![]);
-        store.unsubscribe(id);
-
-        // Reload — should be empty.
-        let mut store2 = PodcastStore::new();
-        let loaded = store2.set_data_dir(dir.path.clone());
-        assert_eq!(loaded, 0);
-        assert_eq!(store2.podcast_count(), 0);
-    }
-
-    #[test]
-    fn update_refresh_metadata_writes_to_disk_when_bound() {
-        let dir = TempDir::new();
-        let mut store = PodcastStore::new();
-        store.set_data_dir(dir.path.clone());
-        let podcast = make_podcast("Etag Show");
-        let id = podcast.id;
-        store.subscribe(podcast, vec![]);
-        store.update_refresh_metadata(id, Some("W/\"abc\"".into()), Some("Mon, 25 May".into()));
-
-        let mut store2 = PodcastStore::new();
-        store2.set_data_dir(dir.path.clone());
-        let restored = store2.podcast(id).expect("podcast restored");
-        assert_eq!(restored.etag.as_deref(), Some("W/\"abc\""));
-        assert_eq!(restored.last_modified.as_deref(), Some("Mon, 25 May"));
-        assert!(restored.last_refreshed_at.is_some());
-    }
-
-    #[test]
-    fn set_data_dir_replaces_in_memory_state() {
-        // If the store already has content in memory and a different data dir
-        // is bound, the on-disk state from that dir wins (replaces in-mem).
-        let dir = TempDir::new();
-        // Pre-populate dir from store A.
-        {
-            let mut store_a = PodcastStore::new();
-            store_a.set_data_dir(dir.path.clone());
-            store_a.subscribe(make_podcast("From Disk"), vec![]);
-        }
-        // Store B starts with a different in-memory podcast, then binds.
-        let mut store_b = PodcastStore::new();
-        store_b.subscribe(make_podcast("Transient"), vec![]);
-        assert_eq!(store_b.podcast_count(), 1);
-
-        let loaded = store_b.set_data_dir(dir.path.clone());
-        assert_eq!(loaded, 1);
-        // The transient podcast was replaced by the one on disk.
-        let titles: Vec<&str> = store_b.all_podcasts().iter().map(|(p, _)| p.title.as_str()).collect();
-        assert_eq!(titles, vec!["From Disk"]);
-    }
-
-    #[test]
-    fn store_without_data_dir_never_touches_disk() {
-        // Sanity: in-memory only mode is the default and does not panic.
-        let mut store = PodcastStore::new();
-        store.subscribe(make_podcast("Memory Only"), vec![]);
-        store.unsubscribe(PodcastId::generate()); // no-op
-        assert_eq!(store.podcast_count(), 1);
-        assert!(store.data_dir().is_none());
-    }
-
-    #[test]
-    fn episode_titles_and_duration_returns_none_for_unknown_id() {
-        let store = PodcastStore::new();
-        assert!(store
-            .episode_titles_and_duration("00000000-0000-0000-0000-000000000000")
-            .is_none());
-    }
-
-    #[test]
-    fn episode_titles_and_duration_returns_show_and_episode_titles() {
-        let mut store = PodcastStore::new();
-        let podcast = make_podcast("The Big Show");
-        let podcast_id = podcast.id;
-        let mut episode = make_episode(podcast_id, "Episode One");
-        episode.duration_secs = Some(1800.0);
-        let episode_id_str = episode.id.0.to_string();
-        store.subscribe(podcast, vec![episode]);
-        let (ep_title, pod_title, duration) = store
-            .episode_titles_and_duration(&episode_id_str)
-            .expect("episode found");
-        assert_eq!(ep_title, "Episode One");
-        assert_eq!(pod_title, "The Big Show");
-        assert_eq!(duration, Some(1800.0));
     }
 }

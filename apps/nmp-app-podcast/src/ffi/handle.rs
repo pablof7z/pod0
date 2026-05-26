@@ -1,27 +1,20 @@
 //! Opaque handle returned by `nmp_app_podcast_register` and consumed by
 //! `nmp_app_podcast_snapshot` / `nmp_app_podcast_unregister`.
 
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::sync::{Arc, Mutex};
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicU64};
+use std::sync::{Arc, Mutex};
 
 use nmp_ffi::NmpApp;
 
-use crate::ffi::projections::{BriefingSnapshot, NostrShowSummary, PodcastSummary};
-use crate::ffi::projections::{PodcastSummary, WikiArticle};
-use crate::ffi::projections::{AgentPickSummary, PodcastSummary};
-use crate::ffi::projections::{AgentTaskSummary, PodcastSummary};
-use crate::ffi::projections::{KnowledgeSearchResult, PodcastSummary};
-use crate::ffi::projections::{PodcastSummary, TtsEpisodeSummary};
 use crate::clip_handler::ClipRecord;
-use crate::ffi::projections::PodcastSummary;
-use crate::ffi::projections::{NostrShowSummary, PodcastSummary, TranscriptEntry};
-use crate::ffi::projections::{PodcastSummary, VoiceState};
-use crate::ffi::projections::{AgentMessageSummary, NostrShowSummary, PodcastSummary};
+use crate::ffi::projections::{
+    AgentMessageSummary, AgentPickSummary, AgentTaskSummary, BriefingSnapshot,
+    KnowledgeSearchResult, NostrShowSummary, PodcastSummary, TranscriptEntry, TtsEpisodeSummary,
+    VoiceState, WikiArticle,
+};
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
-use crate::store::PodcastStore;
 use crate::store::{PodcastKeyStore, PodcastStore};
 
 /// Diagnostic publish state retained per-podcast across snapshot ticks.

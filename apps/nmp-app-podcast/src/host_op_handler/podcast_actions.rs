@@ -1,0 +1,206 @@
+//! `PodcastAction` dispatch (subscribe / refresh / search / download /
+//! settings) extracted from `host_op_handler.rs` to keep that file under
+//! the 500-LOC hard ceiling (AGENTS.md). The methods stay on
+//! `PodcastHostOpHandler` via `impl` blocks in this sibling module and
+//! its `podcast_actions_feed` sub-sibling.
+//!
+//! Lock discipline (inherited from the parent module):
+//! * Never hold a `PodcastStore` lock across a capability dispatch.
+//! * Notifications + auto-downloads fire AFTER the store lock is released.
+
+use std::sync::atomic::Ordering;
+
+use podcast_feeds::http::{HttpRequest, HttpResult};
+use uuid::Uuid;
+
+use crate::capability::DownloadCommand;
+use crate::chapter::handle_fetch_chapters;
+use crate::discover_nostr;
+use crate::ffi::actions::podcast_module::PodcastAction;
+use crate::host_op_handler::PodcastHostOpHandler;
+use crate::transcript::handle_fetch_transcript;
+
+impl PodcastHostOpHandler {
+    pub(super) fn handle_podcast_action(
+        &self,
+        action: PodcastAction,
+        correlation_id: &str,
+    ) -> serde_json::Value {
+        match action {
+            PodcastAction::Subscribe { feed_url } => {
+                self.handle_subscribe(feed_url, correlation_id)
+            }
+            PodcastAction::Unsubscribe { podcast_id } => self.handle_unsubscribe(podcast_id),
+            PodcastAction::Refresh { podcast_id } => {
+                self.handle_refresh(podcast_id, correlation_id)
+            }
+            PodcastAction::RefreshAll => self.handle_refresh_all(correlation_id),
+            PodcastAction::SearchItunes { query } => {
+                self.handle_search_itunes(query, correlation_id)
+            }
+            PodcastAction::ImportOpml { content } => {
+                self.handle_import_opml(content, correlation_id)
+            }
+            PodcastAction::Download { episode_id } => {
+                self.handle_download(episode_id, correlation_id)
+            }
+            PodcastAction::DeleteDownload { episode_id } => {
+                self.handle_delete_download(episode_id)
+            }
+            PodcastAction::FetchTranscript { episode_id } => handle_fetch_transcript(
+                &self.store,
+                &self.transcripts,
+                &self.rev,
+                episode_id,
+                |req| self.dispatch_http(req, correlation_id),
+            ),
+            PodcastAction::FetchChapters { episode_id } => {
+                handle_fetch_chapters(&self.store, &self.rev, episode_id, |req| {
+                    self.dispatch_http(req, correlation_id)
+                })
+            }
+            PodcastAction::DiscoverNostr { query, relay_url } => {
+                discover_nostr::handle_discover_nostr(
+                    query,
+                    relay_url,
+                    &self.nostr_results,
+                    &self.rev,
+                    |req| self.dispatch_http(req, correlation_id),
+                )
+            }
+            PodcastAction::UpdateSettings { has_completed_onboarding } => {
+                self.handle_update_settings(has_completed_onboarding)
+            }
+            PodcastAction::GenerateBriefing => {
+                crate::briefings_handler::handle_generate_briefing(&self.briefing, &self.rev)
+            }
+            PodcastAction::FetchComments { episode_id } => {
+                crate::comments_handler::handle_fetch_comments(&episode_id)
+            }
+            PodcastAction::PostComment { episode_id, content } => {
+                crate::comments_handler::handle_post_comment(&episode_id, &content)
+            }
+            PodcastAction::SetAutoDownload { podcast_id, enabled } => {
+                self.handle_set_auto_download(podcast_id, enabled)
+            }
+            PodcastAction::FetchContacts => crate::social_handler::handle_fetch_contacts(),
+            PodcastAction::StarEpisode { episode_id, starred } => {
+                match self.store.lock() {
+                    Ok(mut s) => match s.set_episode_starred(&episode_id, starred) {
+                        Some(new_value) => {
+                            self.rev.fetch_add(1, Ordering::Relaxed);
+                            serde_json::json!({"ok": true, "starred": new_value})
+                        }
+                        None => serde_json::json!({"ok": false, "error": format!("episode not found: {episode_id}")}),
+                    },
+                    Err(_) => serde_json::json!({"ok": false, "error": "store poisoned"}),
+                }
+            }
+        }
+    }
+
+    fn handle_search_itunes(&self, query: String, correlation_id: &str) -> serde_json::Value {
+        let encoded = crate::itunes::url_encode(&query);
+        let search_url = format!(
+            "https://itunes.apple.com/search?media=podcast&entity=podcast&limit=25&term={encoded}"
+        );
+        let req = HttpRequest::get(search_url, [("Accept", "application/json")]);
+        let http_result = match self.dispatch_http(&req, correlation_id) {
+            Ok(r) => r,
+            Err(e) => return serde_json::json!({"ok": false, "error": e}),
+        };
+        let body = match &http_result {
+            HttpResult::Ok { body, .. } => body.as_str(),
+            HttpResult::Error { message } => {
+                return serde_json::json!({"ok": false, "error": message})
+            }
+        };
+        let results = crate::itunes::parse_itunes_results(body);
+        match self.search_results.lock() {
+            Ok(mut r) => {
+                *r = results;
+                self.rev.fetch_add(1, Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            Err(_) => serde_json::json!({"ok": false, "error": "search_results poisoned"}),
+        }
+    }
+
+    fn handle_download(&self, episode_id_str: String, correlation_id: &str) -> serde_json::Value {
+        let url = {
+            match self.store.lock() {
+                Ok(s) => match s.episode_enclosure_url(&episode_id_str) {
+                    Some((_id, url)) => url,
+                    None => {
+                        return serde_json::json!({
+                            "ok": false,
+                            "error": format!("episode not found: {episode_id_str}")
+                        })
+                    }
+                },
+                Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+            }
+        };
+        let cmd = DownloadCommand::start(url, episode_id_str, None);
+        if let Err(e) = self.dispatch_download(&cmd, correlation_id) {
+            return serde_json::json!({"ok": false, "error": e});
+        }
+        serde_json::json!({"ok": true})
+    }
+
+    fn handle_update_settings(&self, has_completed_onboarding: Option<bool>) -> serde_json::Value {
+        let mut mutated = false;
+        match self.store.lock() {
+            Ok(mut s) => {
+                if let Some(value) = has_completed_onboarding {
+                    if s.has_completed_onboarding() != value {
+                        s.set_onboarding_complete(value);
+                        mutated = true;
+                    }
+                }
+            }
+            Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+        }
+        if mutated {
+            self.rev.fetch_add(1, Ordering::Relaxed);
+        }
+        serde_json::json!({"ok": true})
+    }
+
+    fn handle_set_auto_download(
+        &self,
+        podcast_id_str: String,
+        enabled: bool,
+    ) -> serde_json::Value {
+        let uuid = match podcast_id_str.parse::<Uuid>() {
+            Ok(u) => u,
+            Err(_) => return serde_json::json!({"ok": false, "error": "invalid podcast_id"}),
+        };
+        let podcast_id = podcast_core::PodcastId::new(uuid);
+        match self.store.lock() {
+            Ok(mut s) => {
+                s.set_auto_download(podcast_id, enabled);
+                self.rev.fetch_add(1, Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            Err(_) => serde_json::json!({"ok": false, "error": "store poisoned"}),
+        }
+    }
+
+    fn handle_delete_download(&self, episode_id_str: String) -> serde_json::Value {
+        let removed_path = {
+            match self.store.lock() {
+                Ok(mut s) => match s.episode_enclosure_url(&episode_id_str) {
+                    Some((ep_id, _url)) => s.clear_local_path(&ep_id),
+                    None => None,
+                },
+                Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+            }
+        };
+        if let Some(path) = removed_path {
+            let _ = std::fs::remove_file(&path);
+            self.rev.fetch_add(1, Ordering::Relaxed);
+        }
+        serde_json::json!({"ok": true})
+    }
+}

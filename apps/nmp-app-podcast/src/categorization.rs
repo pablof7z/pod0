@@ -136,6 +136,7 @@ mod tests {
         let podcast = podcast_core::Podcast::new("Show");
         let mut episode = Episode::new(
             podcast.id,
+            "https://example.com/feed.xml",
             "guid-1",
             title,
             Url::parse("https://example.com/audio.mp3").unwrap(),

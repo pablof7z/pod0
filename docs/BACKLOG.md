@@ -10,10 +10,16 @@ worktrees currently in flight.
 - **P0 - NIP-F4 owned podcast publishing.** Implement `docs/plan/pod0-nostr-publishing.md`: per-podcast keys, kind `10154` show events, kind `54` episode events, kind `10064` author claims, and deletion cleanup.
 - **P0 - NIP-F4 discovery.** Update discovery parsing and episode fetches for kind `10154`/`54`, no `d` tags, and stable UUID derivation from `10154:<podcast-pubkey>`.
 
+## File size violations (AGENTS.md hard limit: 500 LOC)
+
+- ~~**projections-rs-split**~~ — Done: `ffi/projections.rs` split into 13 focused files under `ffi/projections/` with a thin re-exporting `mod.rs` facade. All existing import paths preserved.
+- ~~**store-mod-split**~~ — Done: `store/mod.rs` (610 LOC) split: playback → `playback.rs`, memory → `memory.rs`, settings → `settings.rs`. Now 388 LOC.
+- ~~**test-file-ceiling**~~ — Done: `projections_tests.rs` (758 LOC) → 371+399, `snapshot_tests.rs` (571 LOC) → 287+295, `store/tests.rs` (500 LOC) → 266+246 (`tests.rs` + `tests_ext.rs`). `podcast_actions.rs` (496 LOC) split to 206+305 (`podcast_actions.rs` + `podcast_actions_feed.rs`). `snapshot.rs` (499 LOC) → `snapshot.rs` + `snapshot_update.rs`. All 654 tests pass.
+
 ## AppIntents / Siri follow-ups
 
-- **appintents-siri-rust-policy** — `PodcastAppIntents.swift` currently selects "latest unplayed episode" in iOS; per D7, policy belongs in Rust. Register `SiriActionModule` in `nmp_app_podcast_register` and add a `podcast.siri.play_latest` action that resolves the episode server-side. iOS intent then dispatches `podcast.siri.play_latest` with no args.
-- **appintents-skip-forward-op** — Skip-forward intent hard-codes 30s. Add a `podcast.player.skip_forward { secs: f64 }` Rust action (rather than client-side seek offset math) so the skip interval can come from user settings and be shared with CarPlay/HW remotes.
+- ~~**appintents-siri-rust-policy**~~ — Done: `SiriActionModule` registered in `nmp_app_podcast_register`, `siri_play_latest` policy lives in Rust (`host_op_handler/siri_actions.rs`), iOS `SiriIntent` dispatches `podcast.siri.play_latest` with no args.
+- ~~**appintents-skip-forward-op**~~ — Done: `SettingsSnapshot` carries `skip_forward_secs`/`skip_backward_secs` (persisted, defaults 30/15, clamped 1–120 server-side). All skip surfaces (PlayerControls, MiniPlayerView, AppIntents) now read from the snapshot.
 
 ## Player follow-ups
 
@@ -21,15 +27,15 @@ worktrees currently in flight.
 
 ## Episode ID stability (P0 bug)
 
-- **episode-id-stability** — `Episode::new` generates a fresh random `EpisodeId` (UUID) on every RSS parse. This means the same episode gets a new ID on every feed refresh, which breaks: (1) playback position persistence (`position_secs` keyed by ID), (2) download path lookups (`local_paths` in the store), (3) auto-download deduplication (must match by `guid` as a workaround). **Fix**: derive `EpisodeId` deterministically from the feed URL + episode GUID, e.g. `UUIDv5(namespace=PODCAST_NS, name="<feed_url>:<episode_guid>")`. Update `Episode::new` in `podcast-core`, add a roundtrip test, and remove the `guid`-based workaround in `store/auto_download.rs`. High priority — affects every feature that stores per-episode state.
+- ~~**episode-id-stability**~~ — Done: `EpisodeId::from_feed_and_guid` derives a stable UUIDv5 from `(feed_url, guid)`; `Episode::new` uses it exclusively. `auto_download.rs` comment updated. Tests confirm stability across refreshes.
 
 ## NMP Feature Parity — PR 1 follow-ups
 
 - **pr1-store-persistence** — `PodcastStore` is in-memory only; app restart clears the library. Persist to sled or SQLite. Must happen before any milestone that depends on durable subscription state (feed refresh, playback position, downloads). Owner: PR 2 or whichever agent picks up feed refresh.
 - **pr1-500ms-poll-to-push** — The podcast snapshot uses a 500ms Task poll in `KernelModel`. Replace with push-style delivery via the NMP `KernelUpdateSink` callback once the podcast projection is wired into `nmp-ffi`'s push surface. Tracked here; not blocking PR 2.
 - **pr1-capability-bridge-unify** — `SyncCapabilityBridge` (synchronous, actor-thread) and `PodcastCapabilities.shared.handleJSON()` (async, main-thread) are two parallel routers. Each capability should decide its own threading model internally; the bridge should be the single router. Resolve before audio wiring (PR 3).
-- **pr10-episode-description-htmlstrip** — `EpisodeSummary.description` is now projected and rendered, but RSS `<description>` is frequently HTML. `EpisodeDetailView` renders it raw, so users can see literal tags. Strip / convert to plain text (the legacy `EpisodeShowNotesFormatter.plainText(from:)` did this) before rendering, or use an attributed-string renderer. Tracked separately from the original `pr10-episode-description-projection` item which has been resolved.
-- **pr10-episode-description-projection** — `EpisodeSummary` projection (`apps/nmp-app-podcast/src/ffi/projections.rs`) does not include the episode description / show notes. `EpisodeDetailView` currently omits its show-notes section because the field is absent. Add `description: Option<String>` to `EpisodeSummary`, regenerate `PodcastTypes.generated.swift`, then render the show notes in `EpisodeDetailView` via `EpisodeShowNotesFormatter.plainText(from:)` (or a non-compat equivalent).
+- ~~**pr10-episode-description-htmlstrip**~~ — Done: `strip_html` applied at `ffi/snapshot.rs:339` before projecting to `EpisodeSummary.description`. `EpisodeDetailView` renders plain text via `Text(notes)`.
+- ~~**pr10-episode-description-projection**~~ — Done: `description: Option<String>` added to `EpisodeSummary`; `EpisodeDetailView` renders it in `showNotes` section.
 - **pr-episode-comments-relay-wiring** — feature #29 (NIP-22 episode comments) shipped with `apps/nmp-app-podcast/src/comments_handler.rs` as a stub: `handle_fetch_comments` returns `{"ok":true}` without opening a relay subscription, and `handle_post_comment` returns `{"ok":true,"status":"nostr_relay_pending"}` without publishing. The follow-up needs to wire the real Nostr relay subscription/publish path against the user's configured relay (`App/Sources/Services/NostrCommentService.swift` is the legacy reference implementation), populate `PodcastUpdate.comments` from the subscription stream, and publish drafts as kind-1111 events. Note the `episode_id` on the actions is the local `EpisodeId` UUID; the legacy `NostrCommentService` anchors via NIP-73 `i podcast:item:guid:<guid>` from the Podcasting 2.0 `<podcast:guid>` rather than raw `["E", ...]` tags — mapping `EpisodeId` → guid → tag set is part of the follow-up.
 - **pr-social-graph-nmp-store-wiring** — `PodcastUpdate.social` projection shape (`SocialSnapshot { following, following_count }`) and the `podcast.fetch_contacts` action stub landed in feature #30, but the projection layer in `apps/nmp-app-podcast/src/ffi/snapshot.rs::build_snapshot_payload` still emits `social: None`. Wire the NMP substrate kind:3 contact-list store (registered via `register_defaults`) through to the snapshot builder, hydrate `ContactSummary.display_name` / `picture_url` from the cached kind:0 metadata, and replace the `social_handler` stub with a real subscription kick that surfaces contacts on the next snapshot tick. Owner: whichever agent picks up the NMP contact-store hook-up.
 
@@ -73,7 +79,7 @@ The M2.F PR landed a working Rust→JNI→Compose proof; the items below are dow
 
 The M4.B PR landed the iOS `DownloadCapability` (`URLSession` background downloads). PR 17 wired the `DownloadReport` back-channel so completed downloads populate `EpisodeSummary.downloadPath`. The items below were observed during PR 17 validation.
 
-- **m4b-downloadcapabilitywiretests-actor-isolation** — `ios/Podcast/PodcastTests/DownloadCapabilityWireTests.swift:132,139` references `DownloadCapability.namespace` / `DownloadCapability.sessionIdentifier` from a nonisolated `XCTAssertEqual` autoclosure; the host class is `@MainActor`, so the test fails to compile under Swift 6 strict concurrency. Predates PR 17 (verified by `git stash` + retry on the base commit). Two fixes: (a) mark the test methods `@MainActor`, or (b) make the two static properties `nonisolated`. Not blocking PR 17 (Rust dispatch tests cover the wire shape); fix before re-enabling the iOS test target in CI.
+- ~~**m4b-downloadcapabilitywiretests-actor-isolation**~~ — Done: `DownloadCapability.namespace` and `sessionIdentifier` marked `nonisolated` (pure string constants, no actor-isolated state). Tests now compile under Swift 6 strict concurrency.
 - **m4b-downloadreport-queue-projection** — PR 17 projects only `DownloadReport::Completed` (and defensively `Cancelled`) onto `PodcastStore::local_paths`. `Progress` / `Failed` / `Paused` decode cleanly and no-op; the richer `DownloadQueueSnapshot` projection (per-item state, bytes-downloaded, total-bytes) needs to be wired in a follow-up PR alongside the `DownloadQueue` writes already present in `apps/nmp-app-podcast/src/download/`.
 
 ## NMP Migration — M5 HTTP capability follow-ups
@@ -81,7 +87,7 @@ The M4.B PR landed the iOS `DownloadCapability` (`URLSession` background downloa
 The M5 PR landed the Rust `HttpRequest`/`HttpResult` schema mirroring the iOS executor, plus `FeedClient` request/response bridge in `podcast-feeds`. The items below were deferred to keep that PR tight.
 
 - **m5-non-utf8-feed-bodies** — `HttpCapability.swift` lossy-converts response bytes to a UTF-8 string via `String(data:encoding:.utf8)` before the bytes cross FFI. RSS feeds declared as Windows-1252 / ISO-8859-1 lose their original bytes here, so `quick_xml::Reader::from_reader` can't honour their `<?xml encoding=...?>` declaration. Pre-existing limitation also present in the legacy Swift `RSSParser`. Fix path: widen the HTTP capability wire to carry body bytes (base64 or a length-prefixed binary channel) and update both Swift + Rust to skip the lossy string round-trip. Track impact via feed-refresh telemetry once that exists. Not blocking M5–M13.
-- **m5-podcastcapabilities-syntax-fix** — the iOS `PodcastCapabilities.swift:38` initializer is missing a `,` between `legacyIO` and `audio` parameters (introduced by M3.B `aae317c`). Independent of M5; tracked here so the next iOS-touching PR sweeps it.
+- ~~**m5-podcastcapabilities-syntax-fix**~~ — Done: missing comma in `PodcastCapabilities.swift` init fixed in commit `1072279`.
 - **m5-chirp-headers-parity** — `HttpResult.ok` now carries a `headers: [[String]]` field in podcast-player's executor; Chirp's `ios/Chirp/Chirp/Capabilities/HttpCapability.swift` does not. When the canonical `nmp-core::capability::http` lands upstream, reconcile both implementations against the canonical schema (likely lifting the header round-trip into the shared shape).
 
 ## NMP Migration — M1.E compat shims to remove

@@ -75,6 +75,7 @@ void nmp_app_set_capability_callback(void *app, void *context, NmpCapabilityCall
 // poisoned mutexes, or serialization failure (D6).
 void *nmp_app_podcast_register(void *app);
 char *nmp_app_podcast_snapshot(void *handle);
+uint64_t nmp_app_podcast_snapshot_rev(void *handle);
 void nmp_app_podcast_snapshot_free(char *ptr);
 void nmp_app_podcast_unregister(void *handle);
 

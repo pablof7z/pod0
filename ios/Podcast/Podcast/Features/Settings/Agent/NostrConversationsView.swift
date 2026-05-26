@@ -95,7 +95,7 @@ private struct NostrConversationRow: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                     Spacer(minLength: AppTheme.Spacing.sm)
-                    Text(relative(conv.lastTouched))
+                    Text(relativeDate(from: conv.lastTouched))
                         .font(AppTheme.Typography.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -137,15 +137,6 @@ private struct NostrConversationRow: View {
     private var incoming: Int { conv.turns.filter { $0.direction == .incoming }.count }
     private var outgoing: Int { conv.turns.filter { $0.direction == .outgoing }.count }
 
-    private static let relativeFormatter: RelativeDateTimeFormatter = {
-        let f = RelativeDateTimeFormatter()
-        f.unitsStyle = .abbreviated
-        return f
-    }()
-
-    private func relative(_ date: Date) -> String {
-        Self.relativeFormatter.localizedString(for: date, relativeTo: Date())
-    }
 }
 
 // MARK: - Avatar

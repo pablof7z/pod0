@@ -171,10 +171,7 @@ private struct WikiArticleRow: View {
 
     static func dateLabel(unix: Int) -> String {
         guard unix > 0 else { return "—" }
-        let date = Date(timeIntervalSince1970: TimeInterval(unix))
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .short
-        return formatter.localizedString(for: date, relativeTo: Date())
+        return relativeDate(from: unix)
     }
 }
 

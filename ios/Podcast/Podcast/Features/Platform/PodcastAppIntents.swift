@@ -36,18 +36,8 @@ private let intentLog = Logger(subsystem: "io.f7z.podcast", category: "AppIntent
 
 // MARK: - PlayLatestEpisodeIntent
 
-/// "Play the latest podcast episode" — selects the most recently published
-/// episode across all subscribed podcasts that still have an unplayed
-/// backlog and dispatches `podcast.player.play` with its id.
-///
-/// Selection policy (iOS-side, because no Rust action carries it yet):
-///   1. Filter `snapshot.library` to podcasts with `unplayedCount > 0`.
-///   2. Flatten their episode rows.
-///   3. Pick the episode with the highest `publishedAt`.
-///
-/// If nothing matches (empty library, every show fully played, kernel
-/// snapshot not yet ticked) the intent reports a no-op result — Siri
-/// reads back the dialog and stops. D6: never throws.
+/// "Play the latest podcast episode" — dispatches `podcast.siri.play_latest`
+/// and lets the Rust kernel pick the episode (D0, D7: policy in Rust).
 struct PlayLatestEpisodeIntent: AppIntent {
 
     static let title: LocalizedStringResource = "Play latest episode"
@@ -65,26 +55,9 @@ struct PlayLatestEpisodeIntent: AppIntent {
             intentLog.error("PlayLatestEpisodeIntent: KernelModel.shared is nil")
             return .result(dialog: "Podcastr isn't ready yet. Try again in a moment.")
         }
-        guard let episode = Self.selectLatestUnplayedEpisode(in: model.library) else {
-            intentLog.info("PlayLatestEpisodeIntent: no unplayed episodes in library")
-            return .result(dialog: "You're all caught up — no new episodes to play.")
-        }
-        model.dispatch(
-            namespace: "podcast.player",
-            body: ["op": "play", "episode_id": episode.id]
-        )
-        intentLog.info("PlayLatestEpisodeIntent: dispatched play for episode_id=\(episode.id, privacy: .public)")
-        let title = episode.title
-        return .result(dialog: "Playing \(title).")
-    }
-
-    /// Latest-published episode across podcasts with an unplayed backlog.
-    /// Tied published-at values fall back to the kernel's natural order.
-    static func selectLatestUnplayedEpisode(in library: [PodcastSummary]) -> EpisodeSummary? {
-        library
-            .filter { $0.unplayedCount > 0 }
-            .flatMap { $0.episodes }
-            .max(by: { ($0.publishedAt ?? 0) < ($1.publishedAt ?? 0) })
+        model.dispatch(namespace: "podcast.siri", body: ["op": "play_latest"])
+        intentLog.info("PlayLatestEpisodeIntent: dispatched podcast.siri.play_latest")
+        return .result(dialog: "Playing the latest episode.")
     }
 }
 
@@ -117,11 +90,10 @@ struct PausePlaybackIntent: AppIntent {
 
 // MARK: - ResumePlaybackIntent
 
-/// "Resume podcast" — re-dispatches `podcast.player.play` for the
-/// episode id currently held in `nowPlaying`. If no episode is loaded
-/// (cold start, kernel snapshot not yet ticked) the intent falls back
-/// to the same selection used by `PlayLatestEpisodeIntent` — matching
-/// what a user expects from "resume" on a fresh device.
+/// "Resume podcast" — dispatches `podcast.siri.resume` and lets the Rust
+/// kernel decide which episode to resume (D0, D7: policy in Rust). The
+/// kernel replays the last-staged episode, or falls back to the latest
+/// unplayed if nothing was staged.
 struct ResumePlaybackIntent: AppIntent {
 
     static let title: LocalizedStringResource = "Resume podcast"
@@ -139,35 +111,18 @@ struct ResumePlaybackIntent: AppIntent {
             intentLog.error("ResumePlaybackIntent: KernelModel.shared is nil")
             return .result(dialog: "Podcastr isn't ready yet.")
         }
-        if let epId = model.podcastSnapshot?.nowPlaying?.episodeId {
-            model.dispatch(
-                namespace: "podcast.player",
-                body: ["op": "play", "episode_id": epId]
-            )
-            intentLog.info("ResumePlaybackIntent: dispatched play for active episode_id=\(epId, privacy: .public)")
-            return .result(dialog: "Resuming.")
-        }
-        if let episode = PlayLatestEpisodeIntent.selectLatestUnplayedEpisode(in: model.library) {
-            model.dispatch(
-                namespace: "podcast.player",
-                body: ["op": "play", "episode_id": episode.id]
-            )
-            intentLog.info("ResumePlaybackIntent: no active episode; fell back to latest=\(episode.id, privacy: .public)")
-            let title = episode.title
-            return .result(dialog: "Playing \(title).")
-        }
-        intentLog.info("ResumePlaybackIntent: nothing to resume and library is empty")
-        return .result(dialog: "Nothing to resume.")
+        model.dispatch(namespace: "podcast.siri", body: ["op": "resume"])
+        intentLog.info("ResumePlaybackIntent: dispatched podcast.siri.resume")
+        return .result(dialog: "Resuming.")
     }
 }
 
 // MARK: - SkipForwardIntent
 
-/// "Skip forward 30 seconds" — dispatches `podcast.player.seek` with
-/// `position_secs + 30`. The Rust contract has no `skip_forward` op
-/// (see `ios/Podcast/Podcast/Features/Player/MiniPlayerView.swift`
-/// for the same pattern in the UI button); we read the live
-/// `nowPlaying.positionSecs` and dispatch an absolute seek.
+/// "Skip forward 30 seconds" — dispatches `podcast.player.skip_forward`
+/// with `secs: 30`. The Rust kernel reads the live `PlayerActor` position
+/// and emits an absolute seek, so iOS never needs to know the current time
+/// (D0 — policy in Rust).
 struct SkipForwardIntent: AppIntent {
 
     static let title: LocalizedStringResource = "Skip forward 30 seconds"
@@ -179,26 +134,22 @@ struct SkipForwardIntent: AppIntent {
 
     static let openAppWhenRun: Bool = false
 
-    /// Skip increment, in seconds. Matches `MiniPlayerView.skipForwardButton`
-    /// and the (yet-to-be-surfaced) `Settings::skip_forward_secs` default.
-    static let skipSeconds: Double = 30
-
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard let model = KernelModel.shared else {
             intentLog.error("SkipForwardIntent: KernelModel.shared is nil")
             return .result(dialog: "Podcastr isn't ready yet.")
         }
-        guard let pos = model.podcastSnapshot?.nowPlaying?.positionSecs else {
+        guard model.nowPlaying != nil else {
             intentLog.info("SkipForwardIntent: no active episode; dropping skip")
             return .result(dialog: "Nothing is playing.")
         }
-        let target = pos + Self.skipSeconds
+        let secs = model.settings.skipForwardSecs
         model.dispatch(
             namespace: "podcast.player",
-            body: ["op": "seek", "position_secs": target]
+            body: ["op": "skip_forward", "secs": secs]
         )
-        intentLog.info("SkipForwardIntent: dispatched seek from=\(pos) to=\(target)")
+        intentLog.info("SkipForwardIntent: dispatched skip_forward \(secs)s")
         return .result(dialog: "Skipped forward.")
     }
 }

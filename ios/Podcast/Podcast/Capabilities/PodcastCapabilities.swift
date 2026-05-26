@@ -88,8 +88,7 @@ final class PodcastCapabilities {
         notification: NotificationCapability = NotificationCapability(),
         platform: PlatformCapability = PlatformCapability(),
         iCloudSync: iCloudSyncCapability = iCloudSyncCapability(),
-        spotlight: SpotlightCapability = SpotlightCapability.shared
-        platform: PlatformCapability = PlatformCapability(),
+        spotlight: SpotlightCapability = SpotlightCapability.shared,
         voice: VoiceCapability = VoiceCapability()
     ) {
         self.keyring = keyring

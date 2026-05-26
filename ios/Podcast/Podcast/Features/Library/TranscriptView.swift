@@ -34,7 +34,7 @@ struct TranscriptView: View {
     /// back to the caller-supplied row when the episode disappears from the
     /// library (e.g. the user unsubscribed mid-sheet).
     private var liveEpisode: EpisodeSummary {
-        model.podcastSnapshot?.library
+        model.library
             .flatMap { $0.episodes }
             .first { $0.id == episode.id }
             ?? episode
@@ -45,7 +45,7 @@ struct TranscriptView: View {
     }
 
     private var nowPlaying: PlayerState? {
-        model.podcastSnapshot?.nowPlaying
+        model.nowPlaying
     }
 
     private var isThisEpisodePlaying: Bool {

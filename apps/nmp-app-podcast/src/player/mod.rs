@@ -264,6 +264,14 @@ impl PlayerActor {
                 self.state.sleep_timer_remaining_secs = None;
                 Some(AudioCommand::Stop)
             }
+            AudioReport::ItemEnd { .. } => {
+                // Natural play-to-completion: transition to stopped state
+                // (same housekeeping as an explicit Stop) without emitting
+                // an AudioCommand. The writeback layer in `ffi/audio_report`
+                // marks the episode `played = true` on this variant.
+                self.on_stopped();
+                None
+            }
         }
     }
 

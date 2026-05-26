@@ -67,7 +67,7 @@ enum AgentOpenRouterClient {
     /// decoding once per usage-bearing chunk — over a long agent run with
     /// multiple turns and a streaming model that fires usage chunks
     /// per-segment, that adds up. Reentrant for `decode` after construction.
-    nonisolated(unsafe) private static let usageDecoder = JSONDecoder()
+    private static let usageDecoder = JSONDecoder()
 
     /// Streams a chat-completion request and returns the accumulated result.
     ///

@@ -81,7 +81,13 @@ extension SettingsKVSnapshot {
     ///     autoSkipAds: update.settings.autoSkipAds,
     ///     streamingOnly: update.settings.streamingOnly)
     /// ```
-    static func from(podcastUpdate _: PodcastUpdate) -> SettingsKVSnapshot {
-        .empty
+    static func from(podcastUpdate update: PodcastUpdate) -> SettingsKVSnapshot {
+        let s = update.settings
+        return SettingsKVSnapshot(
+            speed: nil,
+            skipForwardSecs: Int(s.skipForwardSecs),
+            skipBackwardSecs: Int(s.skipBackwardSecs),
+            autoSkipAds: s.autoSkipAdsEnabled,
+            streamingOnly: nil)
     }
 }

@@ -129,6 +129,10 @@ extension PodcastHandle {
                     let command = try? JSONDecoder().decode(DownloadCommand.self, from: data)
                 else { return }
                 PodcastCapabilities.shared.download.execute(command)
+            }
+        }
+    }
+
     /// Wire the async iOS→Rust voice report channel. Mirrors
     /// `attachAudioReportChannel()`. Voice has no synchronous follow-up
     /// command surface yet — `nmp_app_podcast_voice_report` always
@@ -159,6 +163,14 @@ extension PodcastHandle {
     func reregisterPodcastProjection() {
         unregisterPodcastProjectionIfNeeded()
         registerPodcastProjection()
+    }
+
+    /// Cheap rev check — reads the Rust atomic counter without serializing
+    /// the full snapshot. Use this to skip `podcastSnapshot()` when the
+    /// rev hasn't advanced since the last decoded snapshot.
+    func podcastSnapshotRev() -> UInt64 {
+        guard let handle = podcastHandle else { return 0 }
+        return nmp_app_podcast_snapshot_rev(handle)
     }
 
     /// Pull the latest snapshot from the podcast projection. Returns `.empty`

@@ -22,23 +22,21 @@ struct EpisodeDetailView: View {
 
     @Environment(KernelModel.self) private var model
     @State private var isCommentsSheetPresented: Bool = false
-
-    /// `true` between the moment the user taps "Generate Chapters" and the
-    /// first snapshot tick that surfaces non-empty `chapters` for this
-    /// episode. The Rust handler is synchronous (returns immediately after
-    /// persisting), but iOS needs the next snapshot poll to see the result;
-    /// this flag drives the in-flight progress indicator across that gap.
-    @State private var isCompilingChapters: Bool = false
-
-    /// Controls presentation of the `ChaptersView` sheet.
-    @State private var showChaptersSheet: Bool = false
     @State private var isTranscriptPresented = false
+
+    private var liveStarred: Bool {
+        model.library
+            .flatMap { $0.episodes }
+            .first { $0.id == episode.id }
+            .map(\.starred)
+            ?? episode.starred
+    }
 
     /// Re-read the episode from the kernel snapshot so the transcript
     /// toolbar button reflects fresh `transcriptUrl` / `transcriptEntries`
     /// fields without re-opening the screen.
     private var liveEpisode: EpisodeSummary {
-        model.podcastSnapshot?.library
+        model.library
             .flatMap { $0.episodes }
             .first { $0.id == episode.id }
             ?? episode
@@ -80,8 +78,8 @@ struct EpisodeDetailView: View {
 
                 playButton
 
-                showNotes
-                chaptersSection
+                EpisodeShowNotes(notes: episode.description)
+                EpisodeChaptersSection(episode: liveEpisode, podcast: podcast)
             }
             .padding(.horizontal, AppTheme.Spacing.lg)
             .padding(.vertical, AppTheme.Spacing.lg)
@@ -93,39 +91,24 @@ struct EpisodeDetailView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     Haptics.light()
+                    model.dispatch(
+                        namespace: "podcast",
+                        body: ["op": "star_episode", "episode_id": episode.id]
+                    )
+                } label: {
+                    Image(systemName: liveStarred ? "bookmark.fill" : "bookmark")
+                }
+                .accessibilityLabel(liveStarred ? "Remove bookmark" : "Bookmark episode")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    Haptics.light()
                     isCommentsSheetPresented = true
                 } label: {
                     Image(systemName: "bubble.left.and.text.bubble.right")
                 }
                 .accessibilityLabel("Comments")
             }
-        }
-        .sheet(isPresented: $isCommentsSheetPresented) {
-            EpisodeCommentsSheet(
-                episodeId: episode.id,
-                onDismiss: { isCommentsSheetPresented = false }
-            )
-        .sheet(isPresented: $showChaptersSheet) {
-            ChaptersView(episodeId: episode.id, podcastId: podcast.id)
-                .environment(model)
-        }
-        .onChange(of: liveChapters.isEmpty) { _, isEmpty in
-            // Snapshot landed with chapters — clear the in-flight indicator.
-            if !isEmpty { isCompilingChapters = false }
-        }
-        .task(id: isCompilingChapters) {
-            // Bound the spinner: the `compile` host-op runs synchronously on
-            // the actor thread, so a successful result lands in the very next
-            // snapshot tick (≤1s). If the action failed (no_transcript /
-            // no_duration / poisoned store) we'd otherwise spin forever — the
-            // failure envelope isn't surfaced through `DispatchResult` (which
-            // only carries pre-dispatch rejections). Three seconds is well
-            // past a normal snapshot interval but short enough that the user
-            // isn't staring at a fake spinner.
-            guard isCompilingChapters else { return }
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            if isCompilingChapters { isCompilingChapters = false }
-        }
             if hasTranscript {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -138,6 +121,12 @@ struct EpisodeDetailView: View {
                 }
             }
         }
+        .sheet(isPresented: $isCommentsSheetPresented) {
+            EpisodeCommentsSheet(
+                episodeId: episode.id,
+                onDismiss: { isCommentsSheetPresented = false }
+            )
+        }
         .sheet(isPresented: $isTranscriptPresented) {
             TranscriptView(episode: liveEpisode, podcast: podcast)
                 .environment(model)
@@ -147,7 +136,7 @@ struct EpisodeDetailView: View {
     // MARK: - Live snapshot
 
     /// Re-read the player state so the play/pause label tracks transport.
-    private var nowPlaying: PlayerState? { model.podcastSnapshot?.nowPlaying }
+    private var nowPlaying: PlayerState? { model.nowPlaying }
 
     private var isThisEpisodePlaying: Bool {
         nowPlaying?.episodeId == episode.id && nowPlaying?.isPlaying == true
@@ -261,150 +250,6 @@ struct EpisodeDetailView: View {
     private var playButtonLabel: String {
         if isThisEpisodePlaying { return "Pause" }
         return episode.playbackPositionSecs != nil ? "Resume" : "Play episode"
-    }
-
-    // MARK: - Show notes
-
-    /// Renders `episode.description` when present. The Rust projection
-    /// drops empty strings to `None`, so a non-nil value here always
-    /// has content. System font only per AGENTS.md typography rules.
-    @ViewBuilder
-    private var showNotes: some View {
-        if let notes = episode.description, !notes.isEmpty {
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-                Text("Show notes")
-                    .font(AppTheme.Typography.headline)
-                    .foregroundStyle(.primary)
-
-                Text(notes)
-                    .font(AppTheme.Typography.body)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    // MARK: - Chapters section
-
-    /// Live chapter list resolved from the snapshot (not the cached
-    /// `episode` parameter) so a `podcast.chapters.compile` dispatch that
-    /// lands new chapters mid-presentation flips the UI without the caller
-    /// re-pushing the navigation route.
-    private var liveChapters: [ChapterSummary] {
-        guard let library = model.podcastSnapshot?.library,
-              let show = library.first(where: { $0.id == podcast.id }),
-              let ep = show.episodes.first(where: { $0.id == episode.id }) else {
-            return episode.chapters ?? []
-        }
-        return ep.chapters ?? []
-    }
-
-    /// Live transcript readiness — same liveness reasoning as `liveChapters`.
-    private var hasTranscript: Bool {
-        guard let library = model.podcastSnapshot?.library,
-              let show = library.first(where: { $0.id == podcast.id }),
-              let ep = show.episodes.first(where: { $0.id == episode.id }) else {
-            return (episode.transcript ?? "").isEmpty == false
-        }
-        return (ep.transcript ?? "").isEmpty == false
-    }
-
-    @ViewBuilder
-    private var chaptersSection: some View {
-        let chapters = liveChapters
-        if !chapters.isEmpty {
-            chaptersAvailableRow(count: chapters.count, hasAI: chapters.contains(where: \.isAiGenerated))
-        } else if hasTranscript {
-            generateChaptersButton
-        }
-        // No transcript + no chapters: render nothing. iOS surfaces the
-        // "fetch transcript" CTA elsewhere; chapters are downstream of that.
-    }
-
-    private func chaptersAvailableRow(count: Int, hasAI: Bool) -> some View {
-        Button {
-            Haptics.light()
-            showChaptersSheet = true
-        } label: {
-            HStack(spacing: AppTheme.Spacing.sm) {
-                Image(systemName: "list.bullet.rectangle")
-                    .font(.system(size: 16, weight: .semibold))
-                Text("\(count) chapter\(count == 1 ? "" : "s")")
-                    .font(AppTheme.Typography.headline)
-                if hasAI {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.purple)
-                        .accessibilityLabel("AI generated")
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.vertical, AppTheme.Spacing.md)
-            .padding(.horizontal, AppTheme.Spacing.md)
-            .background(
-                RoundedRectangle(cornerRadius: AppTheme.Corner.md, style: .continuous)
-                    .fill(Color.secondary.opacity(0.12))
-            )
-            .foregroundStyle(.primary)
-        }
-        .buttonStyle(.plain)
-    }
-
-    @ViewBuilder
-    private var generateChaptersButton: some View {
-        Button {
-            Haptics.medium()
-            isCompilingChapters = true
-            model.dispatch(
-                namespace: "podcast.chapters",
-                body: ["op": "compile", "episode_id": episode.id]
-            )
-        } label: {
-            HStack(spacing: AppTheme.Spacing.sm) {
-                if isCompilingChapters {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(.purple)
-                } else {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 16, weight: .semibold))
-                }
-                Text(isCompilingChapters ? "Generating chapters…" : "Generate chapters")
-                    .font(AppTheme.Typography.headline)
-                Spacer()
-            }
-            .padding(.vertical, AppTheme.Spacing.md)
-            .padding(.horizontal, AppTheme.Spacing.md)
-            .background(
-                RoundedRectangle(cornerRadius: AppTheme.Corner.md, style: .continuous)
-                    .stroke(Color.purple.opacity(0.55), lineWidth: 1)
-                    .background(
-                        RoundedRectangle(cornerRadius: AppTheme.Corner.md, style: .continuous)
-                            .fill(Color.purple.opacity(0.08))
-                    )
-            )
-            .foregroundStyle(.primary)
-        }
-        .buttonStyle(.plain)
-        .disabled(isCompilingChapters)
-        .accessibilityLabel(isCompilingChapters ? "Generating chapters" : "Generate chapters from transcript")
-    }
-
-    // MARK: - Formatting
-
-    private func formatDuration(_ secs: Double) -> String {
-        let total = Int(secs)
-        let h = total / 3600
-        let m = (total % 3600) / 60
-        let s = total % 60
-        if h > 0 { return String(format: "%d:%02d:%02d", h, m, s) }
-        return String(format: "%d:%02d", m, s)
     }
 
     private func absoluteDate(from unixSeconds: Int) -> String {

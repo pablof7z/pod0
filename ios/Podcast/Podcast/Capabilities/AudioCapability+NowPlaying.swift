@@ -1,5 +1,6 @@
 import Foundation
 import MediaPlayer
+import UIKit
 
 // MARK: - MPNowPlayingInfoCenter integration
 //
@@ -27,7 +28,11 @@ extension AudioCapability {
         switch report {
         case let .playing(url, position, duration):
             var info = center.nowPlayingInfo ?? [:]
-            info[MPMediaItemPropertyTitle] = placeholderTitle(for: url)
+            // Preserve episode/podcast title set by updateNowPlayingMetadata;
+            // fall back to URL stem only when none has been applied yet.
+            if info[MPMediaItemPropertyTitle] == nil {
+                info[MPMediaItemPropertyTitle] = placeholderTitle(for: url)
+            }
             if duration > 0 {
                 info[MPMediaItemPropertyPlaybackDuration] = duration
             }
@@ -36,7 +41,9 @@ extension AudioCapability {
             center.nowPlayingInfo = info
         case let .paused(url, position):
             var info = center.nowPlayingInfo ?? [:]
-            info[MPMediaItemPropertyTitle] = placeholderTitle(for: url)
+            if info[MPMediaItemPropertyTitle] == nil {
+                info[MPMediaItemPropertyTitle] = placeholderTitle(for: url)
+            }
             info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = position
             info[MPNowPlayingInfoPropertyPlaybackRate] = 0.0
             center.nowPlayingInfo = info
@@ -44,6 +51,34 @@ extension AudioCapability {
             center.nowPlayingInfo = nil
         case .bufferingProgress, .sleepTimerFired:
             break
+        }
+    }
+
+    /// Apply episode/podcast metadata from the kernel snapshot to the
+    /// lock screen / Control Center. Call this whenever `nowPlaying`
+    /// transitions to a new episode. Metadata persists in the dictionary
+    /// until the next episode switch or `stopped`/`failed` clears it.
+    func updateNowPlayingMetadata(
+        episodeTitle: String,
+        podcastTitle: String,
+        artworkURL: URL?
+    ) {
+        let center = MPNowPlayingInfoCenter.default()
+        var info = center.nowPlayingInfo ?? [:]
+        info[MPMediaItemPropertyTitle] = episodeTitle
+        info[MPMediaItemPropertyArtist] = podcastTitle
+        center.nowPlayingInfo = info
+        if let url = artworkURL {
+            Task {
+                guard let (data, _) = try? await URLSession.shared.data(from: url),
+                      let uiImage = UIImage(data: data) else { return }
+                await MainActor.run {
+                    var current = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+                    let artwork = MPMediaItemArtwork(boundsSize: uiImage.size) { _ in uiImage }
+                    current[MPMediaItemPropertyArtwork] = artwork
+                    MPNowPlayingInfoCenter.default().nowPlayingInfo = current
+                }
+            }
         }
     }
 

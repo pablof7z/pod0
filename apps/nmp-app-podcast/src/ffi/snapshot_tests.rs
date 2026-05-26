@@ -1,64 +1,16 @@
 //! Tests for [`super::snapshot`] — `PodcastUpdate` round-trip + per-field
-//! byte-identity coverage.
+//! byte-identity coverage (part 1/2).
 //!
 //! Split out of `snapshot.rs` to keep that file under the 500-line hard
-//! limit as new projections (queue, …) accrete onto the typed root.
+//! limit. Briefing, comments, queue, wiki, picks, memory, clips, and inbox
+//! tests live in `snapshot_tests_ext.rs`.
 
-use super::projections::{
-    BriefingSegmentSummary, BriefingSnapshot, CommentSummary, ConversationsSnapshot,
-    DownloadItemSnapshot, DownloadQueueSnapshot, PendingApprovalSnapshot, SettingsSnapshot,
-    VoiceState, WidgetSnapshot,
-    BriefingSnapshot, ConversationsSnapshot, DownloadItemSnapshot, DownloadQueueSnapshot,
-    PendingApprovalSnapshot, VoiceState, WidgetSnapshot, WikiArticle,
-};
-use super::snapshot::PodcastUpdate;
-use crate::player::PlayerState;
-//! Tests for `super::snapshot::PodcastUpdate` round-trips. Lives in a sibling
-//! file so [`super::snapshot`] stays under the 500-line hard cap.
-
-use super::*;
-use super::super::projections::{
-    AgentPickSummary, DownloadItemSnapshot, PendingApprovalSnapshot,
-};
-//! Tests for [`super::snapshot`]. Lives in its own file so
-//! `snapshot.rs` stays under the 500-line hard limit as new
-//! projections land.
-//!
-//! Included from `snapshot.rs` via `#[cfg(test)] #[path = "snapshot_tests.rs"]
-//! mod tests;` — there is no `mod snapshot_tests;` in `ffi/mod.rs` and
-//! none is wanted. The `#[path]` attribute makes this file act as the
-//! `tests` submodule of `snapshot`, so it inherits `super::*`.
-
-use super::snapshot::*;
-use super::projections::{
-    AgentTaskSummary, BriefingSnapshot, ConversationsSnapshot, DownloadItemSnapshot,
-    DownloadQueueSnapshot, PendingApprovalSnapshot, VoiceState, WidgetSnapshot,
-};
-use crate::player::PlayerState;
-//! Snapshot round-trip + byte-identity tests for [`super::snapshot`].
-//!
-//! Lifted out of `snapshot.rs` so the production module stays under the
-//! 500-LOC hard cap. Wired in via `#[cfg(test)] mod snapshot_tests;` from
-//! `super::mod`.
-
-use super::projections::{
-    BriefingSnapshot, ConversationsSnapshot, DownloadItemSnapshot, DownloadQueueSnapshot,
-    MemoryFact, PendingApprovalSnapshot, VoiceState, WidgetSnapshot,
-};
-//! Snapshot tests — pulled into a sibling file with `#[path]` to keep
-//! `snapshot.rs` under the 500-LOC hard ceiling. The test module
-//! semantics are unchanged (it's still `mod tests` inside `snapshot.rs`).
-
-use super::projections::{
-    BriefingSnapshot, ClipSummary, ConversationsSnapshot, DownloadItemSnapshot,
-    DownloadQueueSnapshot, PendingApprovalSnapshot, VoiceState, WidgetSnapshot,
-    InboxItem, PendingApprovalSnapshot, VoiceState, WidgetSnapshot,
-    AgentMessageSummary, AgentSnapshot, BriefingSnapshot, ConversationsSnapshot,
-    DownloadItemSnapshot, DownloadQueueSnapshot, PendingApprovalSnapshot, VoiceState,
-    WidgetSnapshot,
+use crate::ffi::projections::{
+    AgentMessageSummary, AgentSnapshot, AgentTaskSummary,
+    ConversationsSnapshot, DownloadItemSnapshot, DownloadQueueSnapshot,
     PendingApprovalSnapshot, SettingsSnapshot, VoiceState, WidgetSnapshot,
 };
-use super::snapshot::PodcastUpdate;
+use super::PodcastUpdate;
 use crate::player::PlayerState;
 
 #[test]
@@ -118,7 +70,7 @@ fn snapshot_decoder_tolerates_unknown_fields() {
 #[test]
 fn snapshot_with_settings_round_trips() {
     let snap = PodcastUpdate {
-        settings: SettingsSnapshot { has_completed_onboarding: true },
+        settings: SettingsSnapshot { has_completed_onboarding: true, ..SettingsSnapshot::default() },
         ..PodcastUpdate::default()
     };
     let json = serde_json::to_string(&snap).expect("encode");
@@ -130,13 +82,8 @@ fn snapshot_with_settings_round_trips() {
 
 #[test]
 fn snapshot_omits_default_settings() {
-    // D6 byte-identity: a fresh-install snapshot must not emit the
-    // `settings` key at all so the empty payload stays identical to
-    // the legacy stub.
     let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
     assert!(!json.contains("settings"));
-    assert!(decoded.comments.is_empty());
-    assert!(decoded.agent_tasks.is_empty());
 }
 
 #[test]
@@ -171,26 +118,15 @@ fn snapshot_with_agent_tasks_round_trips() {
 }
 
 #[test]
-fn snapshot_with_settings_round_trips() {
-    let settings = SettingsSnapshot {
-        auto_skip_ads_enabled: true,
-    };
+fn snapshot_with_auto_skip_ads_round_trips() {
     let snap = PodcastUpdate {
-        settings: Some(settings.clone()),
+        settings: SettingsSnapshot { auto_skip_ads_enabled: true, ..SettingsSnapshot::default() },
         ..PodcastUpdate::default()
     };
     let json = serde_json::to_string(&snap).expect("encode");
     assert!(json.contains("\"auto_skip_ads_enabled\":true"));
     let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded.settings, Some(settings));
-}
-
-#[test]
-fn default_snapshot_omits_settings() {
-    // D5 byte-identity: a snapshot with no settings projection must
-    // not bloat the wire payload with `"settings":null`.
-    let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
-    assert!(!json.contains("settings"));
+    assert!(decoded.settings.auto_skip_ads_enabled);
 }
 
 #[test]
@@ -324,6 +260,7 @@ fn snapshot_with_voice_round_trips() {
         is_speaking: true,
         current_request_id: Some("req-1".into()),
         current_voice_id: Some("rachel".into()),
+        ..VoiceState::default()
     };
     let snap = PodcastUpdate {
         voice: Some(voice.clone()),
@@ -338,8 +275,7 @@ fn snapshot_with_voice_round_trips() {
 fn voice_state_omits_none_fields() {
     let v = VoiceState {
         is_speaking: false,
-        current_request_id: None,
-        current_voice_id: None,
+        ..VoiceState::default()
     };
     let json = serde_json::to_string(&v).expect("encode");
     assert!(!json.contains("current_request_id"));
@@ -350,294 +286,34 @@ fn voice_state_omits_none_fields() {
 }
 
 #[test]
-fn snapshot_with_briefing_round_trips() {
-    let b = BriefingSnapshot {
-        status: "generating".into(),
-        is_generating: true,
-        segment_count: 0,
-        segments: vec![],
-        last_generated_at: None,
-        segment_count: 0,
-        next_scheduled_minutes: Some(45),
-    };
-    let snap = PodcastUpdate {
-        briefing: Some(b.clone()),
-        ..PodcastUpdate::default()
-    };
-    let json = serde_json::to_string(&snap).expect("encode");
-    let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded.briefing, Some(b));
+fn settings_snapshot_defaults_are_30_and_15() {
+    let s = SettingsSnapshot::default();
+    assert!((s.skip_forward_secs - 30.0).abs() < f64::EPSILON);
+    assert!((s.skip_backward_secs - 15.0).abs() < f64::EPSILON);
 }
 
 #[test]
-fn briefing_snapshot_omits_none_next_scheduled() {
-    let b = BriefingSnapshot {
-        status: "pending".into(),
-        is_generating: false,
-        segment_count: 0,
-        segments: vec![],
-        last_generated_at: None,
-fn snapshot_with_comments_round_trips() {
-    let comments = vec![
-        CommentSummary {
-            id: "a".repeat(64),
-            author_npub: "npub1example".into(),
-            author_name: Some("Satoshi".into()),
-            content: "Great episode!".into(),
-            created_at: 1_700_000_100,
+fn settings_snapshot_skip_intervals_round_trip() {
+    let snap = PodcastUpdate {
+        settings: SettingsSnapshot {
+            skip_forward_secs: 45.0,
+            skip_backward_secs: 10.0,
+            ..SettingsSnapshot::default()
         },
-        CommentSummary {
-            id: "b".repeat(64),
-            author_npub: "npub1other".into(),
-            author_name: None,
-            content: "Agreed.".into(),
-            created_at: 1_700_000_050,
-        },
-    ];
-    let snap = PodcastUpdate {
-        comments: comments.clone(),
         ..PodcastUpdate::default()
     };
     let json = serde_json::to_string(&snap).expect("encode");
+    assert!(json.contains("\"skip_forward_secs\":45.0") || json.contains("\"skip_forward_secs\":45"));
     let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded.comments, comments);
+    assert!((decoded.settings.skip_forward_secs - 45.0).abs() < f64::EPSILON);
+    assert!((decoded.settings.skip_backward_secs - 10.0).abs() < f64::EPSILON);
 }
 
 #[test]
-fn default_snapshot_omits_empty_comments() {
-    // D5 byte-identity: empty comments must not bloat the wire payload.
-    let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
-    assert!(!json.contains("\"comments\""));
-}
-
-#[test]
-fn briefing_snapshot_omits_none_next_scheduled() {
-    let b = BriefingSnapshot {
-        status: "pending".into(),
-        segment_count: 0,
-        next_scheduled_minutes: None,
-    };
-    let json = serde_json::to_string(&b).expect("encode");
-    assert!(!json.contains("next_scheduled_minutes"));
-    assert!(!json.contains("last_generated_at"));
-    assert!(!json.contains("\"segments\""));
-    let decoded: BriefingSnapshot = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded, b);
-}
-
-#[test]
-fn briefing_snapshot_with_segments_round_trips() {
-    let b = BriefingSnapshot {
-        status: "ready".into(),
-        is_generating: false,
-        segment_count: 2,
-        segments: vec![
-            BriefingSegmentSummary {
-                kind: "intro".into(),
-                text: "Good morning.".into(),
-                podcast_title: None,
-                episode_title: None,
-            },
-            BriefingSegmentSummary {
-                kind: "episode_summary".into(),
-                text: "Today on Hard Fork…".into(),
-                podcast_title: Some("Hard Fork".into()),
-                episode_title: Some("Ep 42".into()),
-            },
-        ],
-        last_generated_at: Some(1_700_000_000),
-        next_scheduled_minutes: None,
-    };
-    let json = serde_json::to_string(&b).expect("encode");
-    assert!(json.contains("\"kind\":\"intro\""));
-    assert!(json.contains("\"podcast_title\":\"Hard Fork\""));
-    assert!(json.contains("\"last_generated_at\":1700000000"));
-    let decoded: BriefingSnapshot = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded, b);
-}
-
-// ── Queue projection (M12 / PR 12) ───────────────────────────────
-
-#[test]
-fn empty_queue_is_omitted_from_wire_payload() {
-    // D5 byte-identity: an empty queue must not bloat the snapshot.
-    let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
-    assert!(!json.contains("queue"));
-}
-
-#[test]
-fn snapshot_with_queue_round_trips() {
-    let snap = PodcastUpdate {
-        queue: vec!["ep-1".into(), "ep-2".into(), "ep-3".into()],
-        ..PodcastUpdate::default()
-    };
-    let json = serde_json::to_string(&snap).expect("encode");
-    assert!(json.contains(r#""queue":["ep-1","ep-2","ep-3"]"#));
-    let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded.queue, snap.queue);
-}
-    let decoded: BriefingSnapshot = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded, b);
-
-// ── Wiki article snapshot wiring (#39 — AI wiki scaffold) ────────────────
-
-#[test]
-fn snapshot_with_wiki_articles_round_trips() {
-    let snap = PodcastUpdate {
-        wiki_articles: vec![WikiArticle {
-            id: "art-1".into(),
-            podcast_id: "pod-1".into(),
-            topic: "Halving cycles".into(),
-            summary: "Summary body.".into(),
-            source_episode_ids: vec!["ep-1".into()],
-            last_updated_at: 1_700_000_000,
-            is_generating: false,
-        }],
-        ..PodcastUpdate::default()
-    };
-    let json = serde_json::to_string(&snap).expect("encode");
-    assert!(json.contains(r#""wiki_articles""#));
-    let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded.wiki_articles, snap.wiki_articles);
-}
-
-#[test]
-fn snapshot_omits_empty_wiki_articles() {
-    // D5 byte-identity: empty wiki list must not bloat the wire payload.
-    let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
-    assert!(!json.contains("wiki_articles"));
-    assert!(!json.contains("wiki_search_results"));
-}
-
-#[test]
-fn snapshot_with_wiki_search_results_round_trips() {
-    let snap = PodcastUpdate {
-        wiki_search_results: vec![WikiArticle {
-            id: "art-2".into(),
-            podcast_id: "pod-1".into(),
-            topic: "Lightning routing".into(),
-            summary: "Summary.".into(),
-            source_episode_ids: vec![],
-            last_updated_at: 1_700_000_100,
-            is_generating: false,
-        }],
-        ..PodcastUpdate::default()
-    };
-    let json = serde_json::to_string(&snap).expect("encode");
-    assert!(json.contains(r#""wiki_search_results""#));
-    let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded.wiki_search_results, snap.wiki_search_results);
-// ── AgentPickSummary snapshot wiring (feature #46) ───────────────
-//
-// Picks-field-on-PodcastUpdate round-tripping is covered together with
-// the default-omit byte-compat guarantee.
-
-#[test]
-fn snapshot_picks_round_trips_and_default_omits_field() {
-    let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
-    assert!(!json.contains("picks"));
-    let pick = AgentPickSummary {
-        episode_id: "ep-1".into(),
-        episode_title: "Pilot".into(),
-        podcast_id: "pod-1".into(),
-        podcast_title: "Show".into(),
-        published_at: 1_700_000_000,
-        pick_reason: "New from Show".into(),
-        pick_score: 1.0,
-        ..AgentPickSummary::default()
-    };
-    let snap = PodcastUpdate { picks: vec![pick.clone()], ..PodcastUpdate::default() };
-    let decoded: PodcastUpdate =
-        serde_json::from_str(&serde_json::to_string(&snap).expect("encode"))
-            .expect("decode");
-    assert_eq!(decoded.picks, vec![pick]);
-}
-    let decoded: BriefingSnapshot = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded, b);
-// ── Agent memory (feature #33) ───────────────────────────────────
-
-#[test]
-fn snapshot_omits_empty_memory_facts() {
-    // D5 byte-identity: empty memory bag must not pollute the wire.
-    let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
-    assert!(!json.contains("memory_facts"));
-}
-
-#[test]
-fn snapshot_with_memory_facts_round_trips() {
-    let facts = vec![
-        MemoryFact {
-            id: "k1".into(),
-            key: "k1".into(),
-            value: "v1".into(),
-            source: "user".into(),
-            created_at: 1_700_000_000,
-        },
-        MemoryFact {
-            id: "k2".into(),
-            key: "k2".into(),
-            value: "v2".into(),
-            source: "agent".into(),
-            created_at: 1_700_000_500,
-        },
-    ];
-    let snap = PodcastUpdate {
-        memory_facts: facts.clone(),
-        ..PodcastUpdate::default()
-    };
-    let json = serde_json::to_string(&snap).expect("encode");
-    let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded.memory_facts, facts);
-fn snapshot_with_clips_round_trips() {
-    let clip = ClipSummary {
-        id: "clip-1".into(),
-        episode_id: "ep-1".into(),
-        episode_title: "Pilot".into(),
-        podcast_title: "Some Show".into(),
-        start_secs: 10.0,
-        end_secs: 70.0,
-        title: Some("Marcus on retrieval".into()),
-        created_at: 1_700_000_000,
-    };
-    let snap = PodcastUpdate {
-        clips: vec![clip.clone()],
-        ..PodcastUpdate::default()
-    };
-    let json = serde_json::to_string(&snap).expect("encode");
-    assert!(json.contains("\"clips\":["));
-    let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded.clips, vec![clip]);
-}
-
-#[test]
-fn default_snapshot_omits_empty_clips() {
-    // D5 byte-identity: empty clips list must not show up on the wire.
-    let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
-    assert!(!json.contains("clips"));
-
-#[test]
-fn snapshot_with_inbox_round_trips_and_empty_is_omitted() {
-    // Empty inbox stays off the wire (D5 byte-identity).
-    let empty_json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
-    assert!(!empty_json.contains("inbox"));
-
-    let item = InboxItem {
-        episode_id: "ep-1".into(),
-        episode_title: "Pilot".into(),
-        podcast_id: "pod-1".into(),
-        podcast_title: "Some Show".into(),
-        artwork_url: None,
-        published_at: 1_700_000_000,
-        duration_secs: None,
-        priority_score: 0.9,
-        priority_reason: Some("Just published".into()),
-    };
-    let snap = PodcastUpdate {
-        inbox: vec![item.clone()],
-        ..PodcastUpdate::default()
-    };
-    let json = serde_json::to_string(&snap).expect("encode");
-    assert!(json.contains(r#""inbox":["#));
-    let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded.inbox, vec![item]);
+fn settings_snapshot_missing_skip_fields_use_defaults() {
+    // Simulate an old on-disk JSON without skip fields
+    let json = r#"{"has_completed_onboarding":false,"auto_skip_ads_enabled":false}"#;
+    let s: SettingsSnapshot = serde_json::from_str(json).expect("decode");
+    assert!((s.skip_forward_secs - 30.0).abs() < f64::EPSILON);
+    assert!((s.skip_backward_secs - 15.0).abs() < f64::EPSILON);
 }

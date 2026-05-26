@@ -77,6 +77,12 @@ struct InboxView: View {
                             Label("Listened", systemImage: "checkmark.circle.fill")
                         }
                         .tint(.green)
+                        Button {
+                            star(item)
+                        } label: {
+                            Label("Bookmark", systemImage: "bookmark")
+                        }
+                        .tint(.orange)
                     }
             }
         }
@@ -116,6 +122,14 @@ struct InboxView: View {
         model.dispatch(
             namespace: "podcast.inbox",
             body: ["op": "mark_listened", "episode_id": item.episodeId]
+        )
+    }
+
+    private func star(_ item: InboxItem) {
+        Haptics.selection()
+        model.dispatch(
+            namespace: "podcast",
+            body: ["op": "star_episode", "episode_id": item.episodeId]
         )
     }
 

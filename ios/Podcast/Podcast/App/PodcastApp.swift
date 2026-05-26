@@ -17,6 +17,7 @@ struct PodcastApp: App {
     // can read from the same one-slot mailbox.
     @State private var deepLinkRouter = SpotlightDeepLinkRouter()
 
+    @State private var whatsNewEntries: [WhatsNewEntry] = []
 
     // UIKit app delegate is the only surface that receives
     // `application(_:handleEventsForBackgroundURLSession:completionHandler:)`,
@@ -39,6 +40,17 @@ struct PodcastApp: App {
                 .environment(identityStore)
                 .environment(deepLinkRouter)
                 .tint(PodcastColor.accent)
+                .task {
+                    WhatsNewService.seedIfNeeded()
+                    let unseen = WhatsNewService.unseenEntries(lastSeenAt: WhatsNewService.lastSeenAt)
+                    if !unseen.isEmpty { whatsNewEntries = unseen }
+                }
+                .sheet(isPresented: Binding(
+                    get: { !whatsNewEntries.isEmpty },
+                    set: { if !$0 { whatsNewEntries = [] } }
+                )) {
+                    WhatsNewSheet(entries: whatsNewEntries)
+                }
                 .task {
                     model.start()
                     // iCloud settings sync attaches *after* the kernel is
@@ -67,7 +79,7 @@ struct PodcastApp: App {
                 // user picks up where they left off. The observed key is
                 // `episodeId` (not the entire `PlayerState`) so we don't
                 // re-donate on every tick of position drift.
-                .onChange(of: model.podcastSnapshot?.nowPlaying?.episodeId,
+                .onChange(of: model.nowPlaying?.episodeId,
                           initial: true) { _, newID in
                     handleNowPlayingChange(episodeID: newID)
                 }
@@ -111,7 +123,7 @@ struct PodcastApp: App {
             platform.clearHandoff()
             return
         }
-        let player = model.podcastSnapshot?.nowPlaying
+        let player = model.nowPlaying
         let show = model.library.first { $0.episodes.contains { $0.id == episodeID } }
         let episode = show?.episodes.first { $0.id == episodeID }
         platform.donatePlayback(

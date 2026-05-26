@@ -175,7 +175,7 @@ struct HomeView: View {
     }
 
     private var libraryIsEmpty: Bool {
-        model.podcastSnapshot?.library.isEmpty ?? true
+        model.library.isEmpty
     }
 
     /// Resolve a pick's episode-id back to an `EpisodeRoute` by walking
@@ -183,8 +183,7 @@ struct HomeView: View {
     /// has fallen out of the snapshot between pick computation and
     /// render — defensive, should never happen in practice.
     private func route(forPickEpisodeId episodeId: String) -> EpisodeRoute? {
-        guard let snapshot = model.podcastSnapshot else { return nil }
-        for podcast in snapshot.library {
+        for podcast in model.library {
             if let episode = podcast.episodes.first(where: { $0.id == episodeId }) {
                 return EpisodeRoute(episode: episode, podcast: podcast)
             }
@@ -196,11 +195,10 @@ struct HomeView: View {
     /// player state. Returns `nil` when no episode is loaded or the
     /// active episode isn't in the library snapshot.
     private var resumeContext: ResumeContext? {
-        guard let snapshot = model.podcastSnapshot,
-              let player = snapshot.nowPlaying,
+        guard let player = model.nowPlaying,
               let episodeId = player.episodeId
         else { return nil }
-        for podcast in snapshot.library {
+        for podcast in model.library {
             if let episode = podcast.episodes.first(where: { $0.id == episodeId }) {
                 return ResumeContext(
                     episode: episode,
@@ -217,14 +215,14 @@ struct HomeView: View {
     /// [`newEpisodesLimit`]. Sort key is `publishedAt` descending so
     /// undated episodes (rare; legacy feeds) drop to the bottom.
     private var newEpisodes: [LibraryEpisode] {
-        let snapshot = model.podcastSnapshot
-        guard let library = snapshot?.library else { return [] }
+        let library = model.library
+        guard !library.isEmpty else { return [] }
         // Skip the currently-playing episode so it doesn't appear in both
         // Continue Listening and New Episodes.
-        let nowPlayingId = snapshot?.nowPlaying?.episodeId
+        let nowPlayingId = model.nowPlaying?.episodeId
         var flat: [LibraryEpisode] = []
         for podcast in library {
-            for ep in podcast.episodes where ep.id != nowPlayingId {
+            for ep in podcast.episodes where ep.id != nowPlayingId && !ep.played {
                 flat.append(LibraryEpisode(episode: ep, podcast: podcast))
             }
         }

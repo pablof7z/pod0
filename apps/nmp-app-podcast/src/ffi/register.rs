@@ -1,42 +1,38 @@
 //! The `pub extern "C"` registration entry point Swift links against to wire
 //! Podcast projections and action namespaces into an [`NmpApp`].
 
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::sync::{Arc, Mutex};
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicU64};
+use std::sync::{Arc, Mutex};
 
 use nmp_ffi::NmpApp;
 
-use super::actions::chapters_module::ChaptersActionModule;
-use super::actions::picks_module::AgentPicksModule;
-use super::actions::knowledge_module::KnowledgeActionModule;
-use super::actions::memory_module::MemoryActionModule;
-use super::actions::clip_module::ClipActionModule;
-use super::actions::inbox_module::InboxActionModule;
 use super::actions::agent_module::AgentActionModule;
 use super::actions::categorization_module::CategorizationModule;
+use super::actions::chapters_module::ChaptersActionModule;
+use super::actions::clip_module::ClipActionModule;
+use super::actions::inbox_module::InboxActionModule;
+use super::actions::knowledge_module::KnowledgeActionModule;
+use super::actions::memory_module::MemoryActionModule;
+use super::actions::picks_module::AgentPicksModule;
 use super::actions::player_module::PlayerActionModule;
 use super::actions::podcast_module::PodcastActionModule;
+use super::actions::publish_module::NipF4PublishModule;
 use super::actions::queue_module::QueueActionModule;
-use super::actions::wiki_module::WikiActionModule;
+use super::actions::settings_module::SettingsActionModule;
+use super::actions::siri_module::SiriActionModule;
 use super::actions::tasks_module::AgentTasksModule;
 use super::actions::tts_module::TtsEpisodeModule;
 use super::actions::voice_module::VoiceActionModule;
-use super::actions::settings_module::SettingsActionModule;
+use super::actions::wiki_module::WikiActionModule;
 use super::handle::PodcastHandle;
 use super::projections::VoiceState;
-use crate::host_op_handler::PodcastHostOpHandler;
-use crate::player::PlayerActor;
-use crate::queue::PlaybackQueue;
-use crate::store::PodcastStore;
-use crate::tasks_handler;
-use super::actions::publish_module::NipF4PublishModule;
-use super::handle::PodcastHandle;
 use crate::agent_handler::AgentChatHandler;
 use crate::host_op_handler::PodcastHostOpHandler;
 use crate::player::PlayerActor;
+use crate::queue::PlaybackQueue;
 use crate::store::{PodcastKeyStore, PodcastStore};
+use crate::tasks_handler;
 
 /// Register Podcast projections and action namespaces against `app`. Returns a
 /// non-null `*mut PodcastHandle` on success; `null` on any failure (null
@@ -63,65 +59,24 @@ pub extern "C" fn nmp_app_podcast_register(
     let app_mut = unsafe { &mut *app };
     nmp_app_template::register_defaults(app_mut);
 
-    // Register action modules: "podcast" (subscribe/refresh), "podcast.player"
-    // (playback), "podcast.queue" (Up Next list), and "podcast.chapters"
-    // (AI chapter compile).
     app_mut.register_action::<PodcastActionModule>();
     app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<QueueActionModule>();
     app_mut.register_action::<ChaptersActionModule>();
-    // (playback), and "podcast.wiki" (AI wiki scaffold — PR #39).
-    app_mut.register_action::<PodcastActionModule>();
-    app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<WikiActionModule>();
-    // (playback) and "podcast.picks" (AI agent picks).
-    app_mut.register_action::<PodcastActionModule>();
-    app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<AgentPicksModule>();
-    // (playback), and "podcast.tasks" (agent-scheduled tasks).
-    app_mut.register_action::<PodcastActionModule>();
-    app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<AgentTasksModule>();
-    // (playback), "podcast.knowledge" (RAG / search stub).
-    app_mut.register_action::<PodcastActionModule>();
-    app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<KnowledgeActionModule>();
-    // (playback), and "podcast.memory" (agent memory bag — feature #33).
-    app_mut.register_action::<PodcastActionModule>();
-    app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<MemoryActionModule>();
-    // (playback), and "podcast.tts" (agent-generated TTS episodes, feature #43).
-    app_mut.register_action::<PodcastActionModule>();
-    app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<TtsEpisodeModule>();
-    // (playback), and "podcast.clip" (AutoSnip / clip composer).
-    app_mut.register_action::<PodcastActionModule>();
-    app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<ClipActionModule>();
-    // (playback), and "podcast.inbox" (triage/dismiss/mark_listened).
-    app_mut.register_action::<PodcastActionModule>();
-    app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<InboxActionModule>();
-    // (playback), and "podcast.publish" (NIP-F4 owned podcast publishing).
-    app_mut.register_action::<PodcastActionModule>();
-    app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<NipF4PublishModule>();
-    // (playback), and "podcast.voice" (STT/TTS — feature #42).
-    app_mut.register_action::<PodcastActionModule>();
-    app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<VoiceActionModule>();
-    // (playback), and "podcast.agent" (single-thread chat scaffold).
-    app_mut.register_action::<PodcastActionModule>();
-    app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<AgentActionModule>();
-    // (playback), and "podcast.categorize" (heuristic topic categorizer).
-    app_mut.register_action::<PodcastActionModule>();
-    app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<CategorizationModule>();
-    // (playback), and "podcast.settings" (user-facing toggles).
-    app_mut.register_action::<PodcastActionModule>();
-    app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<SettingsActionModule>();
+    app_mut.register_action::<SiriActionModule>();
 
     // Shared state between the handle (snapshot reader) and the handler (writer).
     let store = Arc::new(Mutex::new(PodcastStore::new()));

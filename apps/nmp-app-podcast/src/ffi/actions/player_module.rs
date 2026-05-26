@@ -56,6 +56,12 @@ pub enum PlayerAction {
         episode_id: String,
         segments: Vec<AdSegment>,
     },
+    /// Advance the playhead by `secs` seconds from the current position.
+    /// The kernel reads the live `PlayerActor` position so the iOS/Android
+    /// shell never needs to know the current time (D0 — policy in Rust).
+    SkipForward { secs: f64 },
+    /// Step the playhead back by `secs` seconds (clamped to 0).
+    SkipBackward { secs: f64 },
 }
 
 /// Action module for the `"podcast.player"` namespace.
@@ -202,5 +208,23 @@ mod tests {
         let v: serde_json::Value = serde_json::from_str(action_json).expect("json");
         assert_eq!(v["op"], "play");
         assert_eq!(v["episode_id"], "ep-7");
+    }
+
+    #[test]
+    fn skip_forward_round_trips() {
+        let action = PlayerAction::SkipForward { secs: 30.0 };
+        let json = serde_json::to_string(&action).expect("encode");
+        assert_eq!(json, r#"{"op":"skip_forward","secs":30.0}"#);
+        let decoded: PlayerAction = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, action);
+    }
+
+    #[test]
+    fn skip_backward_round_trips() {
+        let action = PlayerAction::SkipBackward { secs: 15.0 };
+        let json = serde_json::to_string(&action).expect("encode");
+        assert_eq!(json, r#"{"op":"skip_backward","secs":15.0}"#);
+        let decoded: PlayerAction = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, action);
     }
 }

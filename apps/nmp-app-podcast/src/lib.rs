@@ -31,53 +31,36 @@
 //!   (sleep-timer expiry, end-of-episode policy, retry behaviour) lives in
 //!   per-projection actors under [`player`] et al.
 
-pub(crate) mod briefings_handler;
-pub(crate) mod ai_chapters;
-pub(crate) mod agent_handler;
 pub(crate) mod ad_skip_handler;
+pub(crate) mod agent_handler;
+pub(crate) mod ai_chapters;
+pub(crate) mod briefings_handler;
 pub mod capability;
 pub(crate) mod categorization;
 pub(crate) mod chapter;
-pub(crate) mod discover_nostr;
+pub(crate) mod clip_handler;
 pub(crate) mod comments_handler;
+pub(crate) mod discover_nostr;
 pub mod download;
-pub(crate) mod episode_merge;
 pub mod ffi;
 pub(crate) mod host_op_handler;
 pub(crate) mod host_op_handler_helpers;
-pub(crate) mod inbox_handler;
-pub(crate) mod itunes_search;
-pub(crate) mod host_op_helpers;
-pub(crate) mod host_op_helpers;
-pub(crate) mod picks_handler;
-pub mod knowledge;
-pub(crate) mod itunes_search;
-pub(crate) mod memory_handler;
-pub(crate) mod host_op_helpers;
-pub(crate) mod clip_handler;
-pub mod download;
-pub mod ffi;
-pub(crate) mod host_op_handler;
-pub(crate) mod itunes;
-pub(crate) mod host_op_itunes;
-pub(crate) mod host_op_publish;
-pub(crate) mod itunes_helpers;
-pub mod player;
-pub(crate) mod social_handler;
-pub(crate) mod host_op_handler_itunes;
 pub(crate) mod host_op_handler_queue;
-pub mod queue;
-pub(crate) mod player_handler;
-pub(crate) mod itunes_search;
-pub(crate) mod merge;
+pub(crate) mod host_op_publish;
+pub(crate) mod inbox_handler;
+pub(crate) mod itunes;
+pub mod knowledge;
+pub(crate) mod memory_handler;
+pub(crate) mod picks_handler;
 pub mod player;
-pub(crate) mod queue;
+pub mod queue;
+pub(crate) mod social_handler;
 pub mod store;
-pub(crate) mod transcript;
-pub(crate) mod wiki;
 pub(crate) mod tasks_handler;
+pub(crate) mod transcript;
 pub(crate) mod tts;
 pub(crate) mod voice_handler;
+pub(crate) mod wiki;
 
 // M2.F — Android JNI shim. Gated `target_os = "android"` so iOS/macOS builds
 // remain unaffected. The shim exports `Java_io_f7z_podcast_KernelBridge_*`
@@ -91,10 +74,10 @@ pub use capability::{
 };
 pub use download::{DownloadItem, DownloadItemState, DownloadQueue, DEFAULT_MAX_CONCURRENT};
 pub use ffi::{
-    nmp_app_podcast_audio_report, nmp_app_podcast_register, nmp_app_podcast_set_data_dir,
-    nmp_app_podcast_download_report,
-    nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free, nmp_app_podcast_unregister,
-    nmp_app_podcast_voice_report, PodcastHandle,
+    nmp_app_podcast_audio_report, nmp_app_podcast_download_report, nmp_app_podcast_register,
+    nmp_app_podcast_set_data_dir, nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free,
+    nmp_app_podcast_snapshot_rev,
+    nmp_app_podcast_unregister, nmp_app_podcast_voice_report, PodcastHandle,
 };
 pub use nmp_signer_broker::{
     nmp_app_cancel_bunker_handshake, nmp_app_nostrconnect_uri, nmp_broker_free_string,

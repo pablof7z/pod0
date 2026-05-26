@@ -72,6 +72,7 @@ mod tests {
     fn fixture_episode(podcast_id: PodcastId, title: &str) -> Episode {
         Episode::new(
             podcast_id,
+            "https://example.com/feed.xml",
             format!("guid-{}", Uuid::new_v4()),
             title,
             Url::parse("https://example.com/audio.mp3").unwrap(),

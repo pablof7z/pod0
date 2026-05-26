@@ -41,7 +41,7 @@ enum DateParsing {
     /// were re-allocating seven formatters per pubDate during parsing —
     /// ~700 allocations per feed refresh. `DateFormatter.date(from:)` is
     /// reentrant once configured.
-    nonisolated(unsafe) private static let rfc822Formatters: [DateFormatter] = {
+    private static let rfc822Formatters: [DateFormatter] = {
         let locale = Locale(identifier: "en_US_POSIX")
         let timeZone = TimeZone(identifier: "GMT")
         return rfc822Formats.map { fmt in

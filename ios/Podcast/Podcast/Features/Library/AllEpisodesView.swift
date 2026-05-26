@@ -10,21 +10,25 @@ import SwiftUI
 /// are registered by the enclosing `LibraryView`'s `NavigationStack`.
 struct AllEpisodesView: View {
     @Environment(KernelModel.self) private var model
+    @State private var searchText = ""
 
     var body: some View {
         Group {
-            if allEpisodes.isEmpty {
+            if allEpisodes.isEmpty && searchText.isEmpty {
                 ContentUnavailableView(
                     "No Episodes Yet",
                     systemImage: "waveform",
                     description: Text("Subscribe to a podcast to see episodes here.")
                 )
+            } else if filteredEpisodes.isEmpty {
+                ContentUnavailableView.search(text: searchText)
             } else {
                 episodeList
             }
         }
         .navigationTitle("All Episodes")
         .navigationBarTitleDisplayMode(.inline)
+        .searchable(text: $searchText, prompt: "Episode or podcast")
         .refreshable {
             model.dispatch(namespace: "podcast", body: ["op": "refresh_all"])
         }
@@ -48,11 +52,20 @@ struct AllEpisodesView: View {
             }
     }
 
+    private var filteredEpisodes: [EpisodeWithShow] {
+        guard !searchText.isEmpty else { return allEpisodes }
+        let q = searchText.lowercased()
+        return allEpisodes.filter {
+            $0.episode.title.lowercased().contains(q)
+            || $0.podcast.title.lowercased().contains(q)
+        }
+    }
+
     // MARK: - List
 
     private var episodeList: some View {
         List {
-            ForEach(allEpisodes) { item in
+            ForEach(filteredEpisodes) { item in
                 NavigationLink(value: EpisodeRoute(episode: item.episode, podcast: item.podcast)) {
                     AllEpisodesRow(
                         episode: item.episode,
@@ -69,6 +82,27 @@ struct AllEpisodesView: View {
                     trailing: AppTheme.Spacing.lg
                 ))
                 .listRowBackground(Color(.systemBackground))
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    if !item.episode.played {
+                        Button {
+                            model.dispatch(namespace: "podcast.inbox",
+                                           body: ["op": "mark_listened", "episode_id": item.episode.id])
+                        } label: {
+                            Label("Played", systemImage: "checkmark.circle.fill")
+                        }
+                        .tint(.green)
+                    }
+                }
+                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                    Button {
+                        model.dispatch(namespace: "podcast",
+                                       body: ["op": "star_episode", "episode_id": item.episode.id])
+                    } label: {
+                        Label(item.episode.starred ? "Unbookmark" : "Bookmark",
+                              systemImage: item.episode.starred ? "bookmark.slash" : "bookmark")
+                    }
+                    .tint(item.episode.starred ? .gray : .orange)
+                }
             }
         }
         .listStyle(.plain)
@@ -91,9 +125,8 @@ struct AllEpisodesView: View {
 /// Single episode row for `AllEpisodesView`. Shows artwork, episode title,
 /// podcast title (cross-show context), and a meta strip with duration + date.
 ///
-/// This is a deliberate tailored copy of `KernelEpisodeRow` (which is private
-/// to `ShowDetailEpisodeList.swift`); duplication is preferred here over
-/// reaching across PR boundaries while PR 8 is still open.
+/// Differs from `KernelEpisodeRow` (single-show context): shows the podcast
+/// title, omits the download indicator and resume marker, and doesn't tap-play.
 private struct AllEpisodesRow: View {
     let episode: EpisodeSummary
     let podcast: PodcastSummary
@@ -106,9 +139,17 @@ private struct AllEpisodesRow: View {
             thumbnail
 
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
-                Text(episode.title)
-                    .font(AppTheme.Typography.headline)
-                    .lineLimit(2)
+                HStack(spacing: AppTheme.Spacing.xs) {
+                    Text(episode.title)
+                        .font(AppTheme.Typography.headline)
+                        .lineLimit(2)
+                        .foregroundStyle(episode.played ? Color.secondary : Color.primary)
+                    if episode.starred {
+                        Image(systemName: "bookmark.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                    }
+                }
 
                 Text(podcast.title)
                     .font(AppTheme.Typography.caption)
@@ -204,26 +245,6 @@ private struct AllEpisodesRow: View {
             }
         }
     }
-
-    private func formatDuration(_ secs: Double) -> String {
-        let total = Int(secs)
-        let h = total / 3600
-        let m = (total % 3600) / 60
-        let s = total % 60
-        if h > 0 { return String(format: "%d:%02d:%02d", h, m, s) }
-        return String(format: "%d:%02d", m, s)
-    }
-
-    private func relativeDate(from unixSeconds: Int) -> String {
-        let date = Date(timeIntervalSince1970: TimeInterval(unixSeconds))
-        return Self.relativeFormatter.localizedString(for: date, relativeTo: Date())
-    }
-
-    private static let relativeFormatter: RelativeDateTimeFormatter = {
-        let f = RelativeDateTimeFormatter()
-        f.unitsStyle = .abbreviated
-        return f
-    }()
 
     private var accessibilityLabel: String {
         var parts = [episode.title, podcast.title]

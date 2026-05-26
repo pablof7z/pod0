@@ -75,7 +75,7 @@ impl PodcastKeyStore {
     /// "different secret → different pubkey" without pulling in a
     /// heavy crypto dependency just for this stub.
     pub fn pubkey_hex(&self, podcast_id: &str) -> Option<String> {
-        self.keys.get(podcast_id).map(|sk| derive_pubkey_hex(sk))
+        self.keys.get(podcast_id).map(derive_pubkey_hex)
     }
 
     /// Iterator over `(podcast_id, pubkey_hex)` for every key currently

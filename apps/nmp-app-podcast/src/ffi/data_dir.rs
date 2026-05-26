@@ -59,16 +59,11 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(
 mod tests {
     use super::*;
     use crate::ffi::handle::PodcastHandle;
-    use crate::ffi::projections::{NostrShowSummary, PodcastSummary};
-    use crate::ffi::projections::{AgentPickSummary, PodcastSummary};
-    use crate::ffi::projections::{PodcastSummary, VoiceState};
+    use crate::ffi::projections::{AgentPickSummary, NostrShowSummary, PodcastSummary, VoiceState};
     use crate::player::PlayerActor;
     use crate::queue::PlaybackQueue;
-    use crate::store::PodcastStore;
-    use std::collections::HashMap;
-    use std::collections::HashSet;
     use crate::store::{PodcastKeyStore, PodcastStore};
-    use std::collections::HashMap;
+    use std::collections::HashSet;
     use std::ffi::CString;
     use std::sync::atomic::{AtomicBool, AtomicU64};
     use std::sync::{Arc, Mutex};

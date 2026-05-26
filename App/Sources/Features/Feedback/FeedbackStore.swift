@@ -336,7 +336,7 @@ actor FeedbackRelayClient {
     /// Shared. `decodeEvent` runs for every Nostr event the relay
     /// streams (text notes + metadata for the feedback project), so
     /// a busy session reallocated a `JSONDecoder` per event.
-    nonisolated(unsafe) private static let eventDecoder = JSONDecoder()
+    private static let eventDecoder = JSONDecoder()
 
     private enum RelayMessage {
         case event(String, SignedNostrEvent)

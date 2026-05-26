@@ -50,6 +50,9 @@ struct AdvancedView: View {
                         title: "Scheduled Tasks",
                         subtitle: "Recurring jobs the agent runs for you",
                         systemImage: "calendar.badge.clock"
+                    )
+                }
+                NavigationLink {
                     AgentMemoryView()
                 } label: {
                     advancedRow(
@@ -58,6 +61,7 @@ struct AdvancedView: View {
                         systemImage: "brain"
                     )
                 }
+                NavigationLink {
                     TtsEpisodesView()
                 } label: {
                     advancedRow(
@@ -76,6 +80,9 @@ struct AdvancedView: View {
                         title: "Your Podcasts (NIP-F4)",
                         subtitle: "Create per-podcast keypairs and publish shows",
                         systemImage: "antenna.radiowaves.left.and.right"
+                    )
+                }
+                NavigationLink {
                     PlaybackSettingsView()
                 } label: {
                     advancedRow(

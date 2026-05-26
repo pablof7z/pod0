@@ -223,9 +223,6 @@ private struct OwnedPodcastRow: View {
 
     private var lastPublishedText: String? {
         guard let ts = info.lastPublishedAt else { return nil }
-        let date = Date(timeIntervalSince1970: TimeInterval(ts))
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: date, relativeTo: Date())
+        return relativeDate(from: Date(timeIntervalSince1970: TimeInterval(ts)))
     }
 }

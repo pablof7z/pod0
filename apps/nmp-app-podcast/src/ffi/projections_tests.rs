@@ -1,12 +1,12 @@
-//! Round-trip + omit-empty tests for [`super::projections`].
+//! Round-trip + omit-empty tests for [`super::projections`] (part 1/2).
 //!
 //! Kept in a sibling file so `projections.rs` itself stays inside the
-//! AGENTS.md 500-line hard limit.
+//! AGENTS.md 500-line hard limit. Tests for remaining types live in
+//! `projections_tests_ext.rs`.
 
 use super::projections::{
-    ChapterSummary, EpisodeSummary, NostrShowSummary, TranscriptEntry, WidgetSnapshot,
-    AgentMessageSummary, AgentSnapshot, ChapterSummary, EpisodeSummary, NostrShowSummary,
-    WidgetSnapshot,
+    AgentMessageSummary, AgentSnapshot, ChapterSummary, EpisodeSummary,
+    NostrShowSummary, SettingsSnapshot, TranscriptEntry, WidgetSnapshot,
 };
 use crate::player::AdSegment;
 
@@ -115,6 +115,7 @@ fn episode_summary_round_trips_with_chapters() {
                 title: "Intro".into(),
                 image_url: Some("https://ex.com/intro.png".into()),
                 url: None,
+                is_ai_generated: false,
             },
             ChapterSummary {
                 start_secs: 60.0,
@@ -325,4 +326,46 @@ fn agent_snapshot_default_has_empty_transcript() {
     // Swift decoder doesn't have to handle a missing key.
     assert!(json.contains("\"messages\":[]"));
     assert!(json.contains("\"is_busy\":false"));
+}
+
+#[test]
+fn episode_summary_omits_none_playback_position() {
+    let ep = EpisodeSummary {
+        id: "ep-1".into(),
+        title: "Pilot".into(),
+        ..EpisodeSummary::default()
+    };
+    let json = serde_json::to_string(&ep).expect("encode");
+    assert!(!json.contains("playback_position_secs"));
+}
+
+#[test]
+fn episode_summary_round_trips_with_playback_position() {
+    let ep = EpisodeSummary {
+        id: "ep-1".into(),
+        title: "Pilot".into(),
+        playback_position_secs: Some(123.5),
+        ..EpisodeSummary::default()
+    };
+    let json = serde_json::to_string(&ep).expect("encode");
+    assert!(json.contains("\"playback_position_secs\":123.5"));
+    let decoded: EpisodeSummary = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, ep);
+}
+
+#[test]
+fn settings_snapshot_round_trips() {
+    let s = SettingsSnapshot { has_completed_onboarding: true, ..SettingsSnapshot::default() };
+    let json = serde_json::to_string(&s).expect("encode");
+    assert!(json.contains("\"has_completed_onboarding\":true"));
+    let decoded: SettingsSnapshot = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, s);
+}
+
+#[test]
+fn settings_snapshot_default_is_fresh_install() {
+    let s = SettingsSnapshot::default();
+    assert!(!s.has_completed_onboarding);
+    let json = serde_json::to_string(&s).expect("encode");
+    assert!(json.contains("\"has_completed_onboarding\":false"));
 }

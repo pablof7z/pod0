@@ -218,14 +218,4 @@ struct EpisodeCommentsSheet: View {
         return "\(prefix)…\(suffix)"
     }
 
-    private func relativeDate(from unixSeconds: Int) -> String {
-        let date = Date(timeIntervalSince1970: TimeInterval(unixSeconds))
-        return Self.relativeFormatter.localizedString(for: date, relativeTo: Date())
-    }
-
-    private static let relativeFormatter: RelativeDateTimeFormatter = {
-        let f = RelativeDateTimeFormatter()
-        f.unitsStyle = .abbreviated
-        return f
-    }()
 }

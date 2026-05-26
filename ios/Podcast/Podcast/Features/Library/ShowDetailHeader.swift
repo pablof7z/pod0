@@ -10,26 +10,38 @@ struct ShowDetailHeader: View {
     private static let artworkSize: CGFloat = 116
 
     var body: some View {
-        HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
-            artwork
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
+                artwork
 
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
-                Text(podcast.title)
-                    .font(AppTheme.Typography.title)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                    Text(podcast.title)
+                        .font(AppTheme.Typography.title)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                if let author = podcast.author, !author.isEmpty {
-                    Text(author)
-                        .font(AppTheme.Typography.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    if let author = podcast.author, !author.isEmpty {
+                        Text(author)
+                            .font(AppTheme.Typography.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    metaRow
+                        .padding(.top, AppTheme.Spacing.xs)
                 }
-
-                metaRow
-                    .padding(.top, AppTheme.Spacing.xs)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let desc = podcast.description, !desc.isEmpty {
+                Text(desc)
+                    .font(AppTheme.Typography.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(4)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+            }
         }
         .padding(.horizontal, AppTheme.Spacing.lg)
         .padding(.top, AppTheme.Spacing.lg)

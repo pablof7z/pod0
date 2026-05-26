@@ -91,13 +91,14 @@ final class SpotlightCapability {
 
     // MARK: - State
 
-    private static let logger = Logger(subsystem: "io.f7z.podcast", category: "Spotlight")
+    nonisolated private static let logger = Logger(subsystem: "io.f7z.podcast", category: "Spotlight")
 
-    /// Cached copy of the library the index was last built against.
-    /// Used by `indexLibrary(_:)` to skip work when the caller hands
-    /// us the same snapshot twice (the snapshot poll fires every
-    /// 500ms even when only the player-tick fields changed).
+    /// Episode/podcast roster, kept for `deindex(podcastId:)` look-ups only.
     private var lastIndexedLibrary: [PodcastSummary] = []
+    /// Hash of the Spotlight-relevant fields from the last indexed library.
+    /// Excludes volatile fields (playbackPositionSecs, played, starred, …)
+    /// that change at 4 Hz during playback but are irrelevant to search.
+    private var lastIndexedHash: Int = 0
 
     private var started: Bool = false
 
@@ -118,6 +119,7 @@ final class SpotlightCapability {
     func stop() {
         started = false
         lastIndexedLibrary = []
+        lastIndexedHash = 0
     }
 
     var isStarted: Bool { started }
@@ -134,11 +136,13 @@ final class SpotlightCapability {
     /// bookkeeping a per-row incremental indexer would need to track
     /// what is present in the OS index.
     func indexLibrary(_ library: [PodcastSummary]) {
-        // Library-delta throttle: the snapshot poll runs at 2 Hz, but
-        // most ticks only update player position, not the library.
-        // Equatable comparison is cheap (struct-of-strings) and saves
-        // a disk write per tick.
-        if library == lastIndexedLibrary { return }
+        // Hash only the fields Spotlight actually indexes. This avoids
+        // re-indexing on every 4 Hz position tick — `playbackPositionSecs`,
+        // `played`, `starred`, etc. change constantly during playback but
+        // are irrelevant to search.
+        let hash = spotlightContentHash(for: library)
+        guard hash != lastIndexedHash else { return }
+        lastIndexedHash = hash
         lastIndexedLibrary = library
 
         let items = buildItems(for: library)
@@ -195,6 +199,7 @@ final class SpotlightCapability {
     /// test suite calls it.
     func clearAll() {
         lastIndexedLibrary = []
+        lastIndexedHash = 0
         CSSearchableIndex.default().deleteSearchableItems(
             withDomainIdentifiers: [Self.domainIdentifier]
         ) { error in
@@ -202,6 +207,27 @@ final class SpotlightCapability {
                 Self.logger.error("spotlight: clearAll failed: \(error, privacy: .public)")
             }
         }
+    }
+
+    // MARK: - Content hash
+
+    private func spotlightContentHash(for library: [PodcastSummary]) -> Int {
+        var hasher = Hasher()
+        for podcast in library {
+            hasher.combine(podcast.id)
+            hasher.combine(podcast.title)
+            hasher.combine(podcast.author)
+            hasher.combine(podcast.artworkUrl)
+            hasher.combine(podcast.episodeCount)
+            for episode in podcast.episodes {
+                hasher.combine(episode.id)
+                hasher.combine(episode.title)
+                hasher.combine(episode.artworkUrl)
+                hasher.combine(episode.publishedAt)
+                hasher.combine(episode.durationSecs)
+            }
+        }
+        return hasher.finalize()
     }
 
     // MARK: - Item builders

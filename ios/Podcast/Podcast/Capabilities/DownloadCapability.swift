@@ -48,13 +48,13 @@ import os.log
 /// lives in Rust.
 @MainActor
 final class DownloadCapability {
-    static let namespace = "nmp.download.capability"
+    nonisolated static let namespace = "nmp.download.capability"
 
     /// Background `URLSession` identifier. Matches the legacy app's
     /// identifier on purpose: a stable identifier lets the OS reattach
     /// pending downloads from the previous launch (or from the legacy
     /// Swift app on the first NMP launch) without losing progress.
-    static let sessionIdentifier = "io.f7z.podcast.downloads"
+    nonisolated static let sessionIdentifier = "io.f7z.podcast.downloads"
 
     private let logger = Logger(subsystem: "io.f7z.podcast", category: "DownloadCapability")
 
