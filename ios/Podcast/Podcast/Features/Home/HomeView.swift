@@ -224,7 +224,7 @@ struct HomeView: View {
         let nowPlayingId = snapshot?.nowPlaying?.episodeId
         var flat: [LibraryEpisode] = []
         for podcast in library {
-            for ep in podcast.episodes where ep.id != nowPlayingId {
+            for ep in podcast.episodes where ep.id != nowPlayingId && !ep.played {
                 flat.append(LibraryEpisode(episode: ep, podcast: podcast))
             }
         }
