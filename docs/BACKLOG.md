@@ -19,7 +19,7 @@ worktrees currently in flight.
 ## AppIntents / Siri follow-ups
 
 - ~~**appintents-siri-rust-policy**~~ — Done: `SiriActionModule` registered in `nmp_app_podcast_register`, `siri_play_latest` policy lives in Rust (`host_op_handler/siri_actions.rs`), iOS `SiriIntent` dispatches `podcast.siri.play_latest` with no args.
-- **appintents-skip-forward-op** — Skip-forward intent hard-codes 30s. Add a `podcast.player.skip_forward { secs: f64 }` Rust action (rather than client-side seek offset math) so the skip interval can come from user settings and be shared with CarPlay/HW remotes.
+- ~~**appintents-skip-forward-op**~~ — Done: `SettingsSnapshot` carries `skip_forward_secs`/`skip_backward_secs` (persisted, defaults 30/15, clamped 1–120 server-side). All skip surfaces (PlayerControls, MiniPlayerView, AppIntents) now read from the snapshot.
 
 ## Player follow-ups
 

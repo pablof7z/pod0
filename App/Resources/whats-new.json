@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-26T05:30:00Z",
+      "lines": [
+        "Skip intervals are now user-configurable — set your preferred skip-forward and skip-back durations from Settings"
+      ]
+    },
+    {
       "shipped_at": "2026-05-26T05:02:00Z",
       "lines": [
         "Siri Skip Forward now works even when the app is backgrounded — position arithmetic moved to the Rust kernel."
