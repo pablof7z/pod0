@@ -46,7 +46,7 @@ This is the canonical project plan. Detailed implementation plans live under
 ## Next Execution Order
 
 1. Finish NIP-F4 key persistence, signed relay publish, relay-backed discovery, author claims, deletion cleanup, and legacy-data behavior.
-2. Fix the iOS validation gate so focused `xcodebuild test` runs are not blocked by unrelated compile errors.
+2. Broaden the iOS validation gate now that the known focused-test compile blockers have been cleared.
 3. Burn down `ios/Podcast/Podcast/Compat/` by replacing each shim with Rust-backed snapshot/action behavior.
 4. Replace AI/platform scaffolds with real logic feature by feature, keeping each PR tied to a backlog item.
 5. Re-run full validation and only then update the feature-parity status to done.

@@ -20,7 +20,7 @@ delete it until all exit criteria at the bottom of this file pass.
 ## Current Snapshot - 2026-05-26
 
 The large PR stack has merged, but it does not equal feature parity. GitHub
-reported zero open PRs after PR #96. Many branches created screens,
+reported zero open PRs after PR #105. Many branches created screens,
 projections, action namespaces, and local heuristics; several still need real
 logic, relay/provider integration, or removal of compat shims.
 
@@ -29,9 +29,12 @@ PR #89 fixed the current NIP-F4 wire builders/parsers, PR #93 replaced fake
 pubkey derivation with real secp256k1 derivation, PR #95 landed local Ollama
 provider support, and PR #96 fixed restored-playback auto-download behavior.
 PR #101 finished the Rust download queue projection/report loop, and PR #102
-restored the active App target's playback AppIntents through a Notification
-bridge. The remaining NIP-F4 work is persistence, signing, relay publication,
-relay-backed discovery, author claims, deletion cleanup, and legacy data.
+cleared the known iOS focused-test compile blockers. PR #103 briefly restored
+Play Latest, then PR #104 reconciled the AppIntents state by hiding Play
+Latest until it can route through Rust-owned `podcast.siri.play_latest`; PR
+#105 aligned the remaining Pod0 brand test assertions. The remaining NIP-F4
+work is persistence, signing, relay publication, relay-backed discovery,
+author claims, deletion cleanup, and legacy data.
 
 The stale PR-1 status from the original plan is no longer true: `PodcastHandle`
 has state, snapshot fields exist, actions are registered, and iOS generated

@@ -241,5 +241,6 @@ worktrees currently in flight.
   user presses play.
 - **file-size-initial-splits.** Done for the known projection/store/test/action
   overages identified before this pass; continue auditing new changes.
-- **wip-reconciliation.** Done for 2026-05-26; `WIP.md` now reflects zero open
-  PRs and only the active docs reconciliation worktree.
+- **wip-reconciliation.** Done for 2026-05-26; `WIP.md` is the live source for
+  active worktrees, stale PR-stack entries were removed, and it should return
+  to `Active` = `_None._` after each agent-owned PR merges.
