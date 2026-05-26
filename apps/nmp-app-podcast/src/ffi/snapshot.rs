@@ -487,10 +487,13 @@ pub extern "C" fn nmp_app_podcast_unregister(handle: *mut PodcastHandle) {
     // boxed dropped here.
 }
 
-// Snapshot tests live in `snapshot_tests.rs` to keep this file under
-// the 500-line hard limit (AGENTS.md). Behaviour identical — the
-// `#[path]` attribute re-attaches the file as the canonical `tests`
-// submodule of this module.
+// Snapshot tests live in `snapshot_tests.rs` and `snapshot_tests_ext.rs`
+// to keep this file under the 500-line hard limit (AGENTS.md). The
+// `#[path]` attribute re-attaches each file as a submodule of this module
+// so tests can see the private items in scope here.
 #[cfg(test)]
 #[path = "snapshot_tests.rs"]
 mod tests;
+#[cfg(test)]
+#[path = "snapshot_tests_ext.rs"]
+mod tests_ext;

@@ -3,7 +3,6 @@
 //! Lives in a sibling file so the implementation in `store/mod.rs` stays
 //! under the AGENTS.md 500-line hard limit. Persistence-layer tests
 //! remain colocated with their implementation in `store/persistence.rs`.
-
 use super::*;
 use podcast_core::{Episode, Podcast, PodcastId};
 use std::path::PathBuf;

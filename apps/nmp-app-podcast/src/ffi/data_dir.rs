@@ -63,7 +63,7 @@ mod tests {
     use crate::player::PlayerActor;
     use crate::queue::PlaybackQueue;
     use crate::store::{PodcastKeyStore, PodcastStore};
-    use std::collections::{HashMap, HashSet};
+    use std::collections::HashSet;
     use std::ffi::CString;
     use std::sync::atomic::{AtomicBool, AtomicU64};
     use std::sync::{Arc, Mutex};

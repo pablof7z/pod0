@@ -37,6 +37,8 @@ mod helpers;
 pub mod projections;
 #[cfg(test)]
 mod projections_tests;
+#[cfg(test)]
+mod projections_tests_ext;
 mod register;
 pub(crate) mod snapshot;
 mod snapshot_categories;
@@ -44,6 +46,8 @@ mod snapshot_owned;
 mod snapshot_queue;
 #[cfg(test)]
 mod snapshot_tests;
+#[cfg(test)]
+mod snapshot_tests_ext;
 mod voice_report;
 
 pub use actions::{
