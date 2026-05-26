@@ -151,4 +151,3 @@ pub(super) fn save(data_dir: &Path, payload: &PersistedStore) -> std::io::Result
 #[cfg(test)]
 #[path = "persistence_tests.rs"]
 mod tests;
-
