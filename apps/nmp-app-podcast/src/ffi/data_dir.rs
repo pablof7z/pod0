@@ -43,14 +43,28 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(
     // `nmp_app_podcast_register` and not yet freed.
     let handle = unsafe { &*handle };
 
-    let loaded = match handle.store.lock() {
-        Ok(mut s) => s.set_data_dir(PathBuf::from(path_str)),
+    let (loaded, loaded_queue) = match handle.store.lock() {
+        Ok(mut s) => {
+            let count = s.set_data_dir(PathBuf::from(path_str));
+            let queue = s.take_loaded_queue();
+            (count, queue)
+        }
         Err(_) => return, // poisoned mutex — degrade silently (D6)
     };
 
-    if loaded > 0 {
+    // Restore the "Up Next" queue from disk. Even an empty persisted queue
+    // is fine — the shared PlaybackQueue starts empty and we just skip.
+    if !loaded_queue.is_empty() {
+        if let Ok(mut q) = handle.queue.lock() {
+            for id in &loaded_queue {
+                q.add_to_end(id);
+            }
+        }
+    }
+
+    if loaded > 0 || !loaded_queue.is_empty() {
         // Force the next snapshot poll to pick up the restored library
-        // even though no write happened during this call.
+        // and/or the restored queue even though no write happened here.
         handle.rev.fetch_add(1, Ordering::Relaxed);
     }
 }

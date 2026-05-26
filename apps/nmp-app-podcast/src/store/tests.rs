@@ -220,6 +220,28 @@ fn has_feed_url_ignores_podcasts_without_feed_url() {
     assert!(!store.has_feed_url(&url));
 }
 
+// ── Queue-persistence cross-contamination guard ─────────────────────────
+
+#[test]
+fn queue_survives_unrelated_persist() {
+    // Regression: ordinary persist() calls (subscribe, settings) must NOT
+    // wipe the "Up Next" queue written by persist_with_queue.
+    let dir = TempDir::new();
+    let mut store = PodcastStore::new();
+    store.set_data_dir(dir.path.clone());
+
+    store.persist_with_queue(&["ep-1".to_owned(), "ep-2".to_owned()]);
+    // subscribe triggers an internal persist() — must not erase the queue
+    store.subscribe(make_podcast("Side Show"), vec![]);
+
+    let mut store2 = PodcastStore::new();
+    store2.set_data_dir(dir.path.clone());
+    assert_eq!(
+        store2.take_loaded_queue(),
+        vec!["ep-1".to_owned(), "ep-2".to_owned()]
+    );
+}
+
 // ── Auto-download flag ──────────────────────────────────────────────────
 
 #[test]

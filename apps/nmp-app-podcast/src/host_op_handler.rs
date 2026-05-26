@@ -294,7 +294,7 @@ impl HostOpHandler for PodcastHostOpHandler {
             );
         }
         if let Ok(action) = serde_json::from_str::<QueueAction>(action_json) {
-            return handle_queue_action(&self.queue, &self.rev, action);
+            return handle_queue_action(&self.queue, &self.store, &self.rev, action);
         }
         if let Ok(action) = serde_json::from_str::<ChaptersAction>(action_json) {
             return match action {

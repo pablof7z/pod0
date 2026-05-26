@@ -57,6 +57,10 @@ pub(super) struct PersistedStore {
     pub ad_segments: Vec<(String, Vec<AdSegment>)>,
     #[serde(default)]
     pub settings: PersistedSettings,
+    /// "Up Next" queue — episode ids in play order. `#[serde(default)]` keeps
+    /// pre-existing files (before queue persistence shipped) loading as empty.
+    #[serde(default)]
+    pub queue: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

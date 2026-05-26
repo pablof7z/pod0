@@ -98,6 +98,15 @@ pub struct PodcastStore {
     /// Skip-backward interval (seconds). Default 15.0; user-configurable.
     pub(super) skip_backward_secs: f64,
     data_dir: Option<PathBuf>,
+    /// Episode ids loaded from disk during `set_data_dir`. Drained exactly
+    /// once by `take_loaded_queue`; the FFI layer seeds the shared
+    /// `PlaybackQueue` from this value after load completes.
+    loaded_queue: Vec<String>,
+    /// Current "Up Next" queue, mirrored here so that ordinary `persist()`
+    /// calls (triggered by subscription changes, settings tweaks, etc.) write
+    /// the real queue rather than an empty slice.  Updated by every
+    /// `persist_with_queue` call and seeded from disk on `load_from_disk`.
+    cached_queue: Vec<String>,
 }
 
 impl PodcastStore {
@@ -116,6 +125,8 @@ impl PodcastStore {
             skip_forward_secs: 30.0,
             skip_backward_secs: 15.0,
             data_dir: None,
+            loaded_queue: Vec::new(),
+            cached_queue: Vec::new(),
         }
     }
 
@@ -194,7 +205,17 @@ impl PodcastStore {
         } else {
             15.0
         };
+        self.cached_queue = loaded.queue.clone();
+        self.loaded_queue = loaded.queue;
         self.podcasts.len()
+    }
+
+    /// Drain the queue snapshot that was hydrated by the most recent
+    /// `set_data_dir` call. Returns an empty vec on all subsequent calls
+    /// (and before any load). The FFI layer seeds `PlaybackQueue` from this
+    /// value immediately after `set_data_dir` returns.
+    pub fn take_loaded_queue(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.loaded_queue)
     }
 
     /// Flush the current in-memory state to `data_dir/podcasts.json`. Silent
@@ -202,8 +223,17 @@ impl PodcastStore {
     /// (D6) — the in-memory store stays authoritative.
     pub(super) fn persist(&self) {
         let Some(dir) = self.data_dir.as_ref() else { return; };
-        let payload = self.to_persisted();
+        let mut payload = self.to_persisted();
+        payload.queue = self.cached_queue.clone();
         let _ = persistence::save(dir, &payload);
+    }
+
+    /// Update the cached queue and flush to `data_dir/podcasts.json`. Called
+    /// by the queue action handler after every mutation so the queue survives
+    /// app restart. Silent no-op when no data dir is set (D6).
+    pub(crate) fn persist_with_queue(&mut self, queue_items: &[String]) {
+        self.cached_queue = queue_items.to_vec();
+        self.persist();
     }
 
     fn to_persisted(&self) -> PersistedStore {
@@ -239,6 +269,7 @@ impl PodcastStore {
                 skip_forward_secs: self.skip_forward_secs,
                 skip_backward_secs: self.skip_backward_secs,
             },
+            queue: Vec::new(), // filled by persist() from self.cached_queue after return
         }
     }
 
