@@ -234,20 +234,41 @@ struct PlayerView: View {
     // MARK: - Metadata
 
     private var metadata: some View {
-        VStack(spacing: PodcastSpace.xs) {
-            Text(episode?.title ?? "Now Playing")
-                .font(PodcastFont.title)
-                .foregroundStyle(.white)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-            if let title = podcastTitle ?? episode?.podcastTitle {
-                Text(title)
-                    .font(PodcastFont.callout)
-                    .foregroundStyle(Color.white.opacity(0.75))
-                    .lineLimit(1)
+        HStack(alignment: .center, spacing: PodcastSpace.m) {
+            Spacer()
+            VStack(spacing: PodcastSpace.xs) {
+                Text(episode?.title ?? "Now Playing")
+                    .font(PodcastFont.title)
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                if let title = podcastTitle ?? episode?.podcastTitle {
+                    Text(title)
+                        .font(PodcastFont.callout)
+                        .foregroundStyle(Color.white.opacity(0.75))
+                        .lineLimit(1)
+                }
             }
+            .frame(maxWidth: .infinity)
+
+            Button {
+                guard let ep = episode else { return }
+                Haptics.light()
+                model.dispatch(
+                    namespace: "podcast",
+                    body: ["op": "star_episode", "episode_id": ep.id]
+                )
+            } label: {
+                Image(systemName: episode?.starred == true ? "bookmark.fill" : "bookmark")
+                    .font(.system(size: 20, weight: .regular))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(episode?.starred == true ? "Remove bookmark" : "Bookmark episode")
         }
-        .padding(.horizontal, PodcastSpace.xl)
+        .padding(.horizontal, PodcastSpace.l)
     }
 
     // MARK: - Empty state
