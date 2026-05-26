@@ -82,6 +82,27 @@ struct AllEpisodesView: View {
                     trailing: AppTheme.Spacing.lg
                 ))
                 .listRowBackground(Color(.systemBackground))
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    if !item.episode.played {
+                        Button {
+                            model.dispatch(namespace: "podcast.inbox",
+                                           body: ["op": "mark_listened", "episode_id": item.episode.id])
+                        } label: {
+                            Label("Played", systemImage: "checkmark.circle.fill")
+                        }
+                        .tint(.green)
+                    }
+                }
+                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                    Button {
+                        model.dispatch(namespace: "podcast",
+                                       body: ["op": "star_episode", "episode_id": item.episode.id])
+                    } label: {
+                        Label(item.episode.starred ? "Unbookmark" : "Bookmark",
+                              systemImage: item.episode.starred ? "bookmark.slash" : "bookmark")
+                    }
+                    .tint(item.episode.starred ? .gray : .orange)
+                }
             }
         }
         .listStyle(.plain)
