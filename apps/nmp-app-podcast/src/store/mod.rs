@@ -35,6 +35,8 @@ pub mod podcast_keys;
 mod settings;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_ext;
 mod transcripts;
 
 use crate::ffi::projections::MemoryFact;
