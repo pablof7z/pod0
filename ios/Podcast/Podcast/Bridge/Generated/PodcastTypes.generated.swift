@@ -277,9 +277,14 @@ struct AdSegment: Codable, Identifiable, Equatable, Hashable {
 }
 
 /// App-settings projection. Mirrors `ffi::projections::SettingsSnapshot`.
-struct SettingsSnapshot: Codable, Equatable, Hashable {
+struct SettingsSnapshot: Codable, Equatable {
     var hasCompletedOnboarding: Bool = false
     var autoSkipAdsEnabled: Bool = false
+    /// Skip-forward interval in seconds. Default 30. Set via
+    /// `podcast.settings.set_skip_intervals`.
+    var skipForwardSecs: Double = 30
+    /// Skip-backward interval in seconds. Default 15.
+    var skipBackwardSecs: Double = 15
 }
 
 /// Active player state (present only when an episode is loaded).

@@ -13,10 +13,12 @@ worktrees currently in flight.
 ## File size violations (AGENTS.md hard limit: 500 LOC)
 
 - ~~**projections-rs-split**~~ — Done: `ffi/projections.rs` split into 13 focused files under `ffi/projections/` with a thin re-exporting `mod.rs` facade. All existing import paths preserved.
+- ~~**store-mod-split**~~ — Done: `store/mod.rs` (610 LOC) split: playback → `playback.rs`, memory → `memory.rs`, settings → `settings.rs`. Now 388 LOC.
+- ~~**test-file-ceiling**~~ — Done: `projections_tests.rs` (758 LOC) → 371+399, `snapshot_tests.rs` (571 LOC) → 287+295, `store/tests.rs` trimmed to 500. All 639 tests pass.
 
 ## AppIntents / Siri follow-ups
 
-- **appintents-siri-rust-policy** — `PodcastAppIntents.swift` currently selects "latest unplayed episode" in iOS; per D7, policy belongs in Rust. Register `SiriActionModule` in `nmp_app_podcast_register` and add a `podcast.siri.play_latest` action that resolves the episode server-side. iOS intent then dispatches `podcast.siri.play_latest` with no args.
+- ~~**appintents-siri-rust-policy**~~ — Done: `SiriActionModule` registered in `nmp_app_podcast_register`, `siri_play_latest` policy lives in Rust (`host_op_handler/siri_actions.rs`), iOS `SiriIntent` dispatches `podcast.siri.play_latest` with no args.
 - **appintents-skip-forward-op** — Skip-forward intent hard-codes 30s. Add a `podcast.player.skip_forward { secs: f64 }` Rust action (rather than client-side seek offset math) so the skip interval can come from user settings and be shared with CarPlay/HW remotes.
 
 ## Player follow-ups
@@ -85,7 +87,7 @@ The M4.B PR landed the iOS `DownloadCapability` (`URLSession` background downloa
 The M5 PR landed the Rust `HttpRequest`/`HttpResult` schema mirroring the iOS executor, plus `FeedClient` request/response bridge in `podcast-feeds`. The items below were deferred to keep that PR tight.
 
 - **m5-non-utf8-feed-bodies** — `HttpCapability.swift` lossy-converts response bytes to a UTF-8 string via `String(data:encoding:.utf8)` before the bytes cross FFI. RSS feeds declared as Windows-1252 / ISO-8859-1 lose their original bytes here, so `quick_xml::Reader::from_reader` can't honour their `<?xml encoding=...?>` declaration. Pre-existing limitation also present in the legacy Swift `RSSParser`. Fix path: widen the HTTP capability wire to carry body bytes (base64 or a length-prefixed binary channel) and update both Swift + Rust to skip the lossy string round-trip. Track impact via feed-refresh telemetry once that exists. Not blocking M5–M13.
-- **m5-podcastcapabilities-syntax-fix** — the iOS `PodcastCapabilities.swift:38` initializer is missing a `,` between `legacyIO` and `audio` parameters (introduced by M3.B `aae317c`). Independent of M5; tracked here so the next iOS-touching PR sweeps it.
+- ~~**m5-podcastcapabilities-syntax-fix**~~ — Done: missing comma in `PodcastCapabilities.swift` init fixed in commit `1072279`.
 - **m5-chirp-headers-parity** — `HttpResult.ok` now carries a `headers: [[String]]` field in podcast-player's executor; Chirp's `ios/Chirp/Chirp/Capabilities/HttpCapability.swift` does not. When the canonical `nmp-core::capability::http` lands upstream, reconcile both implementations against the canonical schema (likely lifting the header round-trip into the shared shape).
 
 ## NMP Migration — M1.E compat shims to remove

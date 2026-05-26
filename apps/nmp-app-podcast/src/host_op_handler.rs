@@ -248,6 +248,13 @@ impl PodcastHostOpHandler {
             SettingsAction::SetAutoSkipAds { enabled } => {
                 handle_set_auto_skip_ads(&self.store, &self.player_actor, &self.rev, enabled)
             }
+            SettingsAction::SetSkipIntervals { forward_secs, backward_secs } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_skip_intervals(forward_secs, backward_secs);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
         }
     }
 }

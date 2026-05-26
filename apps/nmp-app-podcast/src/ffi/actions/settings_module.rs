@@ -14,7 +14,7 @@ use nmp_core::substrate::ActionModule;
 use nmp_core::ActorCommand;
 
 /// Wire enum for all `"podcast.settings"` namespace actions.
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum SettingsAction {
     /// Set the user-facing auto-skip-ads toggle. The store persists
@@ -22,6 +22,9 @@ pub enum SettingsAction {
     /// the next `Playing` report sees the new value without waiting
     /// for a `play` action.
     SetAutoSkipAds { enabled: bool },
+    /// Update both skip intervals. Clamped server-side to `[1, 120]` seconds.
+    /// iOS dispatches this when the user changes the skip interval in Settings.
+    SetSkipIntervals { forward_secs: f64, backward_secs: f64 },
 }
 
 /// Action module for the `"podcast.settings"` namespace.

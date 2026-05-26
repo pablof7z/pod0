@@ -91,6 +91,10 @@ pub struct PodcastStore {
     pub(super) ad_segments: HashMap<String, Vec<AdSegment>>,
     /// User toggle: auto-skip ads when the playhead enters one.
     pub(super) auto_skip_ads_enabled: bool,
+    /// Skip-forward interval (seconds). Default 30.0; user-configurable.
+    pub(super) skip_forward_secs: f64,
+    /// Skip-backward interval (seconds). Default 15.0; user-configurable.
+    pub(super) skip_backward_secs: f64,
     data_dir: Option<PathBuf>,
 }
 
@@ -107,6 +111,8 @@ impl PodcastStore {
             memory_facts: HashMap::new(),
             ad_segments: HashMap::new(),
             auto_skip_ads_enabled: false,
+            skip_forward_secs: 30.0,
+            skip_backward_secs: 15.0,
             data_dir: None,
         }
     }
@@ -174,6 +180,18 @@ impl PodcastStore {
             self.ad_segments.insert(ep_id, segs);
         }
         self.auto_skip_ads_enabled = loaded.settings.auto_skip_ads_enabled;
+        // On-disk value of 0.0 means "field absent in old file" — replace
+        // with the semantic default so the UI gets a usable value.
+        self.skip_forward_secs = if loaded.settings.skip_forward_secs > 0.0 {
+            loaded.settings.skip_forward_secs
+        } else {
+            30.0
+        };
+        self.skip_backward_secs = if loaded.settings.skip_backward_secs > 0.0 {
+            loaded.settings.skip_backward_secs
+        } else {
+            15.0
+        };
         self.podcasts.len()
     }
 
@@ -214,7 +232,11 @@ impl PodcastStore {
             has_completed_onboarding: self.has_completed_onboarding,
             memory_facts: facts,
             ad_segments: ad_segments.into_iter().collect(),
-            settings: PersistedSettings { auto_skip_ads_enabled: self.auto_skip_ads_enabled },
+            settings: PersistedSettings {
+                auto_skip_ads_enabled: self.auto_skip_ads_enabled,
+                skip_forward_secs: self.skip_forward_secs,
+                skip_backward_secs: self.skip_backward_secs,
+            },
         }
     }
 

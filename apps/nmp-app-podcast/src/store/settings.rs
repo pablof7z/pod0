@@ -59,4 +59,31 @@ impl PodcastStore {
             Err(_) => false,
         }
     }
+
+    /// Skip-forward interval in seconds. Default 30.0; user-configurable via
+    /// `podcast.settings.set_skip_intervals`.
+    pub fn skip_forward_secs(&self) -> f64 {
+        self.skip_forward_secs
+    }
+
+    /// Skip-backward interval in seconds. Default 15.0; user-configurable via
+    /// `podcast.settings.set_skip_intervals`.
+    pub fn skip_backward_secs(&self) -> f64 {
+        self.skip_backward_secs
+    }
+
+    /// Update both skip intervals. Clamps each value to `[1.0, 120.0]`
+    /// seconds and persists when either value changes.
+    pub fn set_skip_intervals(&mut self, forward_secs: f64, backward_secs: f64) {
+        let fwd = forward_secs.clamp(1.0, 120.0);
+        let bwd = backward_secs.clamp(1.0, 120.0);
+        if (self.skip_forward_secs - fwd).abs() < f64::EPSILON
+            && (self.skip_backward_secs - bwd).abs() < f64::EPSILON
+        {
+            return;
+        }
+        self.skip_forward_secs = fwd;
+        self.skip_backward_secs = bwd;
+        self.persist();
+    }
 }

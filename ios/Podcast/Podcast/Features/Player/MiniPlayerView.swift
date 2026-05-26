@@ -226,7 +226,10 @@ struct MiniPlayerView: View {
 
     private var skipForwardButton: some View {
         Button {
-            model.dispatch(namespace: "podcast.player", body: ["op": "skip_forward", "secs": 30.0])
+            model.dispatch(namespace: "podcast.player", body: [
+                "op": "skip_forward",
+                "secs": model.snapshot.settings.skipForwardSecs
+            ])
         } label: {
             Image(systemName: "goforward.30")
                 .font(.system(size: 20, weight: .medium))

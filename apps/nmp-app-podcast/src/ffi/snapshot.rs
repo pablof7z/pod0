@@ -357,6 +357,8 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         let settings = SettingsSnapshot {
             has_completed_onboarding: s.has_completed_onboarding(),
             auto_skip_ads_enabled: s.auto_skip_ads_enabled(),
+            skip_forward_secs: s.skip_forward_secs(),
+            skip_backward_secs: s.skip_backward_secs(),
         };
         (library, s.all_memory_facts(), settings)
     })

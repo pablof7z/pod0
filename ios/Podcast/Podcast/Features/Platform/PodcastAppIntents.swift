@@ -144,11 +144,12 @@ struct SkipForwardIntent: AppIntent {
             intentLog.info("SkipForwardIntent: no active episode; dropping skip")
             return .result(dialog: "Nothing is playing.")
         }
+        let secs = model.snapshot.settings.skipForwardSecs
         model.dispatch(
             namespace: "podcast.player",
-            body: ["op": "skip_forward", "secs": 30.0]
+            body: ["op": "skip_forward", "secs": secs]
         )
-        intentLog.info("SkipForwardIntent: dispatched skip_forward 30s")
+        intentLog.info("SkipForwardIntent: dispatched skip_forward \(secs)s")
         return .result(dialog: "Skipped forward.")
     }
 }

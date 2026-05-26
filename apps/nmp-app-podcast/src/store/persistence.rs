@@ -59,13 +59,31 @@ pub(super) struct PersistedStore {
     pub settings: PersistedSettings,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub(super) struct PersistedSettings {
     /// Mirrors `PodcastStore::auto_skip_ads_enabled`. Defaults to
     /// `false` so an old payload (no settings block) hydrates with
     /// the toggle off — never accidentally enabled.
     #[serde(default)]
     pub auto_skip_ads_enabled: bool,
+    /// Skip-forward interval in seconds. `serde(default)` loads pre-existing
+    /// files (that lack this field) as 0.0; the store replaces 0.0 with the
+    /// semantic default (30.0) during hydration.
+    #[serde(default)]
+    pub skip_forward_secs: f64,
+    /// Skip-backward interval in seconds. Same 0.0 → 15.0 sentinel logic.
+    #[serde(default)]
+    pub skip_backward_secs: f64,
+}
+
+impl Default for PersistedSettings {
+    fn default() -> Self {
+        Self {
+            auto_skip_ads_enabled: false,
+            skip_forward_secs: 30.0,
+            skip_backward_secs: 15.0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -328,6 +346,7 @@ mod tests {
             )],
             settings: PersistedSettings {
                 auto_skip_ads_enabled: true,
+                ..PersistedSettings::default()
             },
             ..PersistedStore::default()
         };
