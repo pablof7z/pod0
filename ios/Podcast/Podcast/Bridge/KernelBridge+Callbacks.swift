@@ -129,6 +129,10 @@ extension PodcastHandle {
                     let command = try? JSONDecoder().decode(DownloadCommand.self, from: data)
                 else { return }
                 PodcastCapabilities.shared.download.execute(command)
+            }
+        }
+    }
+
     /// Wire the async iOS→Rust voice report channel. Mirrors
     /// `attachAudioReportChannel()`. Voice has no synchronous follow-up
     /// command surface yet — `nmp_app_podcast_voice_report` always
