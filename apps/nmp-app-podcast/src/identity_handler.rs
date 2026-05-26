@@ -14,7 +14,7 @@ use crate::store::identity::IdentityStore;
 /// The `#[serde(tag = "type")]` discriminator matches the JSON `"type"` field
 /// so the headless scenario can dispatch e.g.
 /// `{"type":"ImportNsec","nsec":"nsec1..."}`.
-#[derive(Clone, serde::Deserialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(tag = "type")]
 pub enum IdentityAction {
     /// Import a secret key from a bech32 `nsec1…` or raw 64-char hex string.

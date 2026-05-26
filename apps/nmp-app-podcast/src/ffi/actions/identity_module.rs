@@ -35,39 +35,3 @@ impl ActionModule for IdentityActionModule {
         Ok(())
     }
 }
-
-// ---------------------------------------------------------------------------
-// IdentityAction must impl Serialize for the ActionModule's execute body.
-// We add a minimal Serialize derive-compatible impl via a newtype or manually.
-// ---------------------------------------------------------------------------
-
-// We need IdentityAction to be Serialize so ActionModule::execute can
-// re-encode it. Add a custom Serialize impl here.
-impl serde::Serialize for IdentityAction {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        use serde::ser::SerializeMap;
-        match self {
-            IdentityAction::ImportNsec { nsec } => {
-                let mut map = serializer.serialize_map(Some(2))?;
-                map.serialize_entry("type", "ImportNsec")?;
-                map.serialize_entry("nsec", nsec)?;
-                map.end()
-            }
-            IdentityAction::Generate => {
-                let mut map = serializer.serialize_map(Some(1))?;
-                map.serialize_entry("type", "Generate")?;
-                map.end()
-            }
-            IdentityAction::Clear => {
-                let mut map = serializer.serialize_map(Some(1))?;
-                map.serialize_entry("type", "Clear")?;
-                map.end()
-            }
-            IdentityAction::FetchProfile => {
-                let mut map = serializer.serialize_map(Some(1))?;
-                map.serialize_entry("type", "FetchProfile")?;
-                map.end()
-            }
-        }
-    }
-}

@@ -66,10 +66,10 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(
     // this loads the saved secret key and derives `pubkey_hex` + `npub` so
     // the next snapshot poll surfaces `active_account` without a write.
     let identity_loaded = if let Ok(mut id) = handle.identity.lock() {
-        let had_key = id.secret_hex.is_none();
+        let was_empty = id.secret_hex.is_none();
         id.set_data_dir(&PathBuf::from(&path_str));
-        // Return true if we just loaded a key that wasn't there before.
-        had_key && id.secret_hex.is_some()
+        // Only bump rev if we just loaded a key that wasn't present before.
+        was_empty && id.secret_hex.is_some()
     } else {
         false
     };
