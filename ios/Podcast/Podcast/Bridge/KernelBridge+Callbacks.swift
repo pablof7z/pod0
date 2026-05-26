@@ -110,11 +110,9 @@ extension PodcastHandle {
     /// uses `MainActor.assumeIsolated` to safely reach back into
     /// `PodcastCapabilities.shared` from the non-isolated closure type.
     ///
-    /// Today the FFI return is always NULL (the Rust side projects the
-    /// report into `PodcastStore.local_paths` and does not synthesise a
-    /// follow-up command). The follow-up plumbing exists so a future
-    /// `DownloadQueue` projection can drive "start the next queued item"
-    /// without an ABI change.
+    /// The FFI return is NULL when no follow-up is needed. When a report
+    /// frees a queue slot, Rust may return the next `DownloadCommand` for
+    /// the capability to execute immediately.
     @MainActor
     func attachDownloadReportChannel() {
         PodcastCapabilities.shared.download.attach { [weak self] reportJSON in

@@ -1,4 +1,5 @@
 use super::*;
+use crate::download::DownloadQueue;
 use crate::ffi::handle::PodcastHandle;
 use crate::ffi::projections::{AgentPickSummary, NostrShowSummary, PodcastSummary, VoiceState};
 use crate::player::PlayerActor;
@@ -22,6 +23,7 @@ fn make_handle(store: Arc<Mutex<PodcastStore>>, rev: Arc<AtomicU64>) -> Box<Podc
         snapshot_cache: Arc::new(Mutex::new(None)),
         briefing: Arc::new(Mutex::new(None)),
         queue: Arc::new(Mutex::new(PlaybackQueue::new())),
+        download_queue: Arc::new(Mutex::new(DownloadQueue::new())),
         wiki_articles: Arc::new(Mutex::new(Vec::new())),
         wiki_search_results: Arc::new(Mutex::new(Vec::new())),
         picks: Arc::new(Mutex::new(Vec::<AgentPickSummary>::new())),
@@ -108,4 +110,3 @@ fn loading_existing_library_bumps_rev_so_ios_re_polls() {
     assert_eq!(rev.load(Ordering::Relaxed), 1);
     let _ = unsafe { Box::from_raw(ptr) };
 }
-

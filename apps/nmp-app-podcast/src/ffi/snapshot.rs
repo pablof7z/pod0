@@ -16,6 +16,7 @@ use super::projections::{
     SettingsSnapshot, VoiceState,
 };
 use super::snapshot_categories::build_category_aggregate;
+use super::snapshot_downloads::build_downloads_snapshot;
 use super::snapshot_owned::collect_owned_podcasts;
 use super::snapshot_queue::resolve_queue_rows;
 use crate::inbox_handler::build_inbox;
@@ -151,6 +152,8 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
     let clips = crate::clip_handler::project_clips(&handle.clips, &library);
     let inbox = build_inbox(&handle.store, &handle.dismissed_episode_ids);
     let owned_podcasts = collect_owned_podcasts(handle);
+    let downloads = handle.download_queue.lock().ok()
+        .and_then(|q| build_downloads_snapshot(&q));
 
     let voice = handle.voice_state.lock().ok().and_then(|v| {
         let snap = v.clone();
@@ -186,6 +189,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         clips,
         inbox,
         owned_podcasts,
+        downloads,
         voice,
         agent,
         categories,

@@ -42,6 +42,7 @@ mod projections_tests_ext;
 mod register;
 pub(crate) mod snapshot;
 mod snapshot_categories;
+mod snapshot_downloads;
 mod snapshot_owned;
 mod snapshot_queue;
 mod snapshot_update;

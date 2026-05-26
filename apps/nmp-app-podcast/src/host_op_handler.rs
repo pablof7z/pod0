@@ -57,6 +57,7 @@ use crate::inbox_handler::handle_inbox_action;
 use crate::memory_handler;
 use crate::picks_handler::handle_refresh as picks_handle_refresh;
 use crate::player::PlayerActor;
+use crate::download::DownloadQueue;
 use crate::queue::PlaybackQueue;
 use crate::store::{PodcastKeyStore, PodcastStore};
 use crate::tasks_handler;
@@ -87,6 +88,7 @@ pub struct PodcastHostOpHandler {
     pub(crate) nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
     pub(crate) briefing: Arc<Mutex<Option<BriefingSnapshot>>>,
     pub(crate) queue: Arc<Mutex<PlaybackQueue>>,
+    pub(crate) download_queue: Arc<Mutex<DownloadQueue>>,
     pub(crate) wiki_articles: Arc<Mutex<Vec<WikiArticle>>>,
     pub(crate) wiki_search_results: Arc<Mutex<Vec<WikiArticle>>>,
     pub(crate) picks: Arc<Mutex<Vec<AgentPickSummary>>>,
@@ -131,6 +133,7 @@ impl PodcastHostOpHandler {
         nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
         briefing: Arc<Mutex<Option<BriefingSnapshot>>>,
         queue: Arc<Mutex<PlaybackQueue>>,
+        download_queue: Arc<Mutex<DownloadQueue>>,
         wiki_articles: Arc<Mutex<Vec<WikiArticle>>>,
         wiki_search_results: Arc<Mutex<Vec<WikiArticle>>>,
         picks: Arc<Mutex<Vec<AgentPickSummary>>>,
@@ -156,6 +159,7 @@ impl PodcastHostOpHandler {
             nostr_results,
             briefing,
             queue,
+            download_queue,
             wiki_articles,
             wiki_search_results,
             picks,

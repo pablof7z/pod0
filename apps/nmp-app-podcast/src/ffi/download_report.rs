@@ -3,7 +3,7 @@
 //! The iOS `DownloadCapability` fires this FFI entry point whenever its
 //! background `URLSession` delegate has a new `DownloadReport` to deliver
 //! (`Completed`, `Cancelled`, …). Rust projects the report onto
-//! [`crate::store::PodcastStore`] and returns any follow-up
+//! [`crate::store::PodcastStore`] / [`crate::download::DownloadQueue`] and returns any follow-up
 //! [`crate::capability::DownloadCommand`] the iOS side should execute.
 //!
 //! Mirrors the audio-report shim at `audio_report.rs` so the iOS bridge
@@ -17,19 +17,15 @@
 //! * **Response**: heap-allocated nul-terminated JSON of a
 //!   [`crate::capability::DownloadCommand`], or `NULL` when no follow-up is
 //!   needed. The caller MUST free the returned pointer via
-//!   `nmp_app_free_string`. Today the channel always returns `NULL` —
-//!   queue-driven follow-ups (e.g. "start the next queued item once a slot
-//!   frees up") are projected from the kernel's own tick, not synthesised
-//!   here. The return shape exists so the iOS bridge can be wired once and
-//!   the Rust side can grow into it without an ABI break (mirrors the audio
-//!   channel, which started the same way).
+//!   `nmp_app_free_string`. This is how the Rust queue starts the next
+//!   waiting item after iOS reports `Completed`, `Failed`, or `Cancelled`.
 //!
 //! ## Lock discipline
 //!
-//! Acquires the `PodcastStore` lock, dispatches the projection, drops the
-//! lock, then bumps `rev` so the next snapshot poll sees the mutation.
-//! Matches the audio shim's discipline — never hold a store lock across
-//! the rev bump, never panic across the FFI.
+//! Acquires the `PodcastStore` and `DownloadQueue` locks, dispatches the
+//! projection, drops both locks, then bumps `rev` so the next snapshot poll
+//! sees the mutation. Matches the audio shim's discipline — never hold locks
+//! across the rev bump, never panic across the FFI.
 //!
 //! ## D6 — degrade silently
 //!
@@ -40,7 +36,7 @@
 use std::ffi::{c_char, CStr, CString};
 
 use super::handle::PodcastHandle;
-use crate::capability::dispatch::dispatch_download_report_json;
+use crate::capability::dispatch::dispatch_download_report_json_with_queue;
 use crate::capability::dispatch::DispatchOutcome;
 
 /// Deliver a JSON-encoded `DownloadReport` to the Rust `PodcastStore` and
@@ -70,11 +66,18 @@ pub extern "C" fn nmp_app_podcast_download_report(
             Ok(s) => s,
             Err(_) => return std::ptr::null_mut(),
         };
-        let outcome = dispatch_download_report_json(&mut store, report_str);
+        let mut queue = match handle_ref.download_queue.lock() {
+            Ok(q) => q,
+            Err(_) => return std::ptr::null_mut(),
+        };
+        let outcome = dispatch_download_report_json_with_queue(&mut store, &mut queue, report_str);
         match outcome {
             DispatchOutcome::Ok { follow_up_json } => {
-                drop(store); // release lock before rev bump
-                handle_ref.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                drop(queue);
+                drop(store);
+                handle_ref
+                    .rev
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 follow_up_json
             }
             DispatchOutcome::DecodeFailed { .. } => None,

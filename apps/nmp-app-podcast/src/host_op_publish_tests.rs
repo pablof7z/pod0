@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::agent_handler::AgentChatHandler;
+use crate::download::DownloadQueue;
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::store::{PodcastKeyStore, PodcastStore};
@@ -34,6 +35,7 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(None)),
         Arc::new(Mutex::new(PlaybackQueue::new())),
+        Arc::new(Mutex::new(DownloadQueue::new())),
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(Vec::new())),

@@ -13,6 +13,7 @@ use crate::ffi::projections::{
     KnowledgeSearchResult, NostrShowSummary, PodcastSummary, TranscriptEntry, TtsEpisodeSummary,
     VoiceState, WikiArticle,
 };
+use crate::download::DownloadQueue;
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::store::{PodcastKeyStore, PodcastStore};
@@ -56,6 +57,10 @@ pub struct PodcastHandle {
     /// Playback "Up Next" queue. Mutated by the queue action handler on the
     /// actor thread; read by the snapshot projection on the main thread.
     pub(super) queue: Arc<Mutex<PlaybackQueue>>,
+    /// Per-episode download queue state machine. Written by the download
+    /// action handler and the download-report FFI entry point; read by
+    /// `build_snapshot_payload` to populate `PodcastUpdate.downloads`.
+    pub(super) download_queue: Arc<Mutex<DownloadQueue>>,
     /// All AI-wiki articles the user has generated. Written by the
     /// `podcast.wiki.{generate,delete}` ops on the actor thread; read by
     /// `build_snapshot_payload` on the main thread.

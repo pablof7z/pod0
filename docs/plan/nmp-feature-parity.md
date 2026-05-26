@@ -62,7 +62,7 @@ completion, not absence of all infrastructure.
 | PR 2 - Library UX | Partial | Verify subscribe, refresh, OPML import/export, iTunes search, show detail, and empty/error states on device and simulator. Remove remaining `SubscriptionService` compat paths once every view reads snapshots/dispatches actions directly. |
 | PR 3 - Full player | Partial | Validate lock-screen metadata, remote commands, queue transitions, sleep timer, speed, position persistence, download-local playback, and AirPlay/route behavior. Fix any remaining iOS-side policy decisions. |
 | PR 4 - Identity | Partial | Finish Rust-owned identity actions, raw pubkey projection, Keychain-backed credential replacement, NIP-46 pairing state, profile publishing, and removal of `UserIdentityStore` compat surfaces. |
-| PR 5 - Downloads/auto-download | Partial | Project progress/failed/paused queue state, make offline-first playback explicit, validate background URLSession restore, and add deletion/auto-download regression coverage. |
+| PR 5 - Downloads/auto-download | Partial | Rust now projects active/queued/paused/failed queue state and starts the next queued item from reports. Remaining: make offline-first playback explicit, validate background URLSession restore, and add deletion/auto-download regression coverage. |
 | PR 6 - NIP-F4 | Partial/Scaffold | Wire tags and real pubkey derivation are corrected. Still implement persisted per-podcast secrets, signing, relay publish, relay-backed episode fetch, author claims, legacy-data behavior, and deletion cleanup. See `docs/plan/pod0-nostr-publishing.md`. |
 | PRs 7-N - AI/platform | Scaffold/Partial | Treat each merged surface as a starting point. Replace heuristics/placeholders with real provider, knowledge, relay, scheduling, and platform logic before marking any feature done. |
 
@@ -81,7 +81,7 @@ completion, not absence of all infrastructure.
 | 7 | Audio playback | Partial | Validate play/pause/seek/end-of-item/report loops on device; ensure no iOS-side queue/policy decisions remain. |
 | 8 | Variable speed | Mostly done | Speed clamp matches 3.0x; still needs device validation through Rust action, audio executor, remote surfaces, and persisted settings. |
 | 9 | Sleep timer | Partial | Confirm timer lifecycle, cancellation, background behavior, and sleep-report follow-up command path. |
-| 10 | Episode download | Partial | Start/delete exists; progress/failed/paused projection and robust background restore remain. |
+| 10 | Episode download | Partial | Start/delete plus Rust progress/failed/paused projection exist; robust background restore, deletion failures, and offline-first playback validation remain. |
 | 11 | Auto-download policy | Partial | Policy exists; validate after refresh, persistence, per-show UI, deletion interaction, and duplicate prevention. |
 | 12 | Playback position persistence | Mostly done | Deterministic episode IDs and writeback exist; validate seek/resume after refresh, restart, and downloaded playback. |
 | 13 | Playback queue | Partial | Queue actions/UI exist; validate item-ended advancement, persistence expectations, duplicate handling, reorder/remove semantics. |
@@ -89,7 +89,7 @@ completion, not absence of all infrastructure.
 | 15 | Chapters | Partial | Fetch/display exists; validate Podcasting 2.0 JSON/VTT edge cases, persistence, and chapter seek behavior. |
 | 16 | Mini player | Partial | Snapshot rendering exists; validate all now-playing transitions and remove any legacy playback state dependency. |
 | 17 | Full player | Partial | UI exists; validate scrubber, speed, sleep, route picker, queue, chapters, transcript links, and accessibility. |
-| 18 | Downloads manager | Partial | UI filters downloaded episodes; needs richer download state, offline playback, deletion failure handling, and empty/error states. |
+| 18 | Downloads manager | Partial | UI filters downloaded episodes and the kernel now exposes active/queued/paused/failed download state; offline playback, deletion failure handling, and empty/error states still need validation. |
 | 19 | Playback settings | Partial | Some settings project/persist; finish OpenRouter/provider/settings surfaces and eliminate settings compat shims. |
 | 20 | New-episode notifications | Partial | Notification command/capability exists; validate permission flow, quiet failure, dedup, deep link, and background delivery assumptions. |
 
@@ -135,7 +135,7 @@ completion, not absence of all infrastructure.
 |---|---|---|---|
 | 47 | CarPlay | Partial | Library/playback templates exist; validate on simulator/head unit, now-playing sync, entitlement behavior, and cold-connect placeholder. |
 | 48 | Widgets/Live Activity | Partial | Live Activity exists; wire durable widget snapshot from kernel/codegen, validate activity lifecycle and App Group data. |
-| 49 | AppIntents/Siri | Partial | Playback intents dispatch Rust actions; add full shortcut validation, missing-model errors, localized phrases, and no iOS policy. |
+| 49 | AppIntents/Siri | Partial | Legacy App target now compiles with only the voice shortcut; decide target ownership for the `KernelModel`-backed playback intents under `ios/Podcast/Podcast/Features/Platform`, then add full shortcut validation, missing-model errors, localized phrases, and no iOS policy. |
 | 50 | Spotlight indexing | Partial | Indexing exists; validate throttling, deletion/update behavior, deep links, and no playback-position reindex churn. |
 | 51 | Handoff | Partial | NSUserActivity donation exists; validate continue path, stale activity invalidation, and cross-device behavior. |
 | 52 | iCloud settings sync | Partial | KVS bridge exists; confirm Rust owns settings policy, conflict handling, opt-in/availability, and echo suppression. |
@@ -153,7 +153,7 @@ completion, not absence of all infrastructure.
 ## Immediate Priority Order
 
 1. NIP-F4 secret persistence, signing, relay publish/discovery, author claims, and legacy-data behavior.
-2. iOS validation gate: fix current `Nip46RemoteSignerTests` optional-string compile failures and AppIntents/project membership drift.
+2. iOS validation gate: broaden Swift test coverage now that the focused NIP-46 test and legacy AppIntents compile blockers are cleared.
 3. Remaining compat shims and identity/settings ownership.
 4. Capability push/routing cleanup and validation gate.
 5. Tier 1 device-level usability validation.

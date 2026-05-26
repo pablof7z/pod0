@@ -62,6 +62,16 @@ pub enum PlayerAction {
     SkipForward { secs: f64 },
     /// Step the playhead back by `secs` seconds (clamped to 0).
     SkipBackward { secs: f64 },
+    /// Enqueue an episode audio file for offline download.
+    Download { episode_id: String, url: String },
+    /// Cancel an active, paused, or queued download.
+    CancelDownload { episode_id: String },
+    /// Pause an active download while retaining resume data.
+    PauseDownload { episode_id: String },
+    /// Resume a paused download.
+    ResumeDownload { episode_id: String },
+    /// Cancel every active, paused, and queued download.
+    CancelAllDownloads,
 }
 
 /// Action module for the `"podcast.player"` namespace.

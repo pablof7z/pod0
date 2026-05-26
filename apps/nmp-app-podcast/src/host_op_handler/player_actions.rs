@@ -2,7 +2,7 @@ use std::sync::atomic::Ordering;
 use std::time::{Duration, SystemTime};
 
 use crate::ad_skip_handler::{handle_set_ad_segments, hydrate_actor_for_play};
-use crate::capability::AudioCommand;
+use crate::capability::{AudioCommand, DownloadCommand};
 use crate::ffi::actions::player_module::PlayerAction;
 use crate::host_op_handler::PodcastHostOpHandler;
 
@@ -84,11 +84,37 @@ impl PodcastHostOpHandler {
             }
             PlayerAction::SkipForward { secs } => self.handle_skip(secs, correlation_id),
             PlayerAction::SkipBackward { secs } => self.handle_skip(-secs, correlation_id),
+            PlayerAction::Download { episode_id, url } => {
+                self.handle_player_download(episode_id, url, correlation_id)
+            }
+            PlayerAction::CancelDownload { episode_id } => {
+                self.handle_download_command(|q| q.cancel(&episode_id), correlation_id)
+            }
+            PlayerAction::PauseDownload { episode_id } => {
+                self.handle_download_command(|q| q.pause(&episode_id), correlation_id)
+            }
+            PlayerAction::ResumeDownload { episode_id } => {
+                self.handle_download_command(|q| q.resume(&episode_id), correlation_id)
+            }
+            PlayerAction::CancelAllDownloads => {
+                self.handle_download_command(|q| q.cancel_all(), correlation_id)
+            }
         }
     }
 
     fn dispatch_audio_json(&self, cmd: AudioCommand, correlation_id: &str) -> serde_json::Value {
         match self.dispatch_audio(&cmd, correlation_id) {
+            Ok(_) => serde_json::json!({"ok": true}),
+            Err(e) => serde_json::json!({"ok": false, "error": e}),
+        }
+    }
+
+    fn dispatch_download_json(
+        &self,
+        cmd: DownloadCommand,
+        correlation_id: &str,
+    ) -> serde_json::Value {
+        match self.dispatch_download(&cmd, correlation_id) {
             Ok(_) => serde_json::json!({"ok": true}),
             Err(e) => serde_json::json!({"ok": false, "error": e}),
         }
@@ -155,5 +181,41 @@ impl PodcastHostOpHandler {
         };
         let target = (current + delta_secs).max(0.0);
         self.dispatch_audio_json(AudioCommand::seek(target), correlation_id)
+    }
+
+    fn handle_player_download(
+        &self,
+        episode_id: String,
+        url: String,
+        correlation_id: &str,
+    ) -> serde_json::Value {
+        let exists = match self.store.lock() {
+            Ok(s) => s.episode_enclosure_url(&episode_id).is_some(),
+            Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+        };
+        if !exists {
+            return serde_json::json!({
+                "ok": false,
+                "error": format!("episode not found: {episode_id}")
+            });
+        }
+
+        self.handle_download_command(|q| q.enqueue(episode_id, url), correlation_id)
+    }
+
+    fn handle_download_command(
+        &self,
+        f: impl FnOnce(&mut crate::download::DownloadQueue) -> Option<DownloadCommand>,
+        correlation_id: &str,
+    ) -> serde_json::Value {
+        let command = match self.download_queue.lock() {
+            Ok(mut q) => f(&mut q),
+            Err(_) => return serde_json::json!({"ok": false, "error": "download_queue poisoned"}),
+        };
+        self.rev.fetch_add(1, Ordering::Relaxed);
+        match command {
+            Some(cmd) => self.dispatch_download_json(cmd, correlation_id),
+            None => serde_json::json!({"ok": true}),
+        }
     }
 }

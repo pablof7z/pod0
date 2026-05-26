@@ -28,6 +28,7 @@ use super::actions::wiki_module::WikiActionModule;
 use super::handle::PodcastHandle;
 use super::projections::VoiceState;
 use crate::agent_handler::AgentChatHandler;
+use crate::download::DownloadQueue;
 use crate::host_op_handler::PodcastHostOpHandler;
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
@@ -85,6 +86,7 @@ pub extern "C" fn nmp_app_podcast_register(
     let nostr_results = Arc::new(Mutex::new(Vec::new()));
     let briefing = Arc::new(Mutex::new(None));
     let queue = Arc::new(Mutex::new(PlaybackQueue::new()));
+    let download_queue = Arc::new(Mutex::new(DownloadQueue::new()));
     let wiki_articles = Arc::new(Mutex::new(Vec::new()));
     let wiki_search_results = Arc::new(Mutex::new(Vec::new()));
     let picks = Arc::new(Mutex::new(Vec::new()));
@@ -128,6 +130,7 @@ pub extern "C" fn nmp_app_podcast_register(
         nostr_results.clone(),
         briefing.clone(),
         queue.clone(),
+        download_queue.clone(),
         wiki_articles.clone(),
         wiki_search_results.clone(),
         picks.clone(),
@@ -155,6 +158,7 @@ pub extern "C" fn nmp_app_podcast_register(
         snapshot_cache: Arc::new(Mutex::new(None)),
         briefing,
         queue,
+        download_queue,
         wiki_articles,
         wiki_search_results,
         picks,

@@ -360,7 +360,7 @@ final class MockHolder: @unchecked Sendable {
 final actor MockRemoteSignerTransport: RemoteSignerTransport {
     let relayURL: URL
     let sessionPubkeyHex: String
-    let bunkerPubkeyHex: String
+    let bunkerPubkeyHex: String?
     private let onEvent: @Sendable (_ senderPubkey: String, _ encryptedContent: String) async -> Void
 
     private(set) var publishCount: Int = 0
@@ -370,7 +370,7 @@ final actor MockRemoteSignerTransport: RemoteSignerTransport {
     init(
         relayURL: URL,
         sessionPubkeyHex: String,
-        bunkerPubkeyHex: String,
+        bunkerPubkeyHex: String?,
         onEvent: @escaping @Sendable (_ senderPubkey: String, _ encryptedContent: String) async -> Void,
         initialOnPublish: (@Sendable (SignedNostrEvent) async throws -> Void)? = nil
     ) {

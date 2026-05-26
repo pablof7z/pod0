@@ -19,7 +19,8 @@
 
 use std::time::SystemTime;
 
-use crate::capability::{AudioCommand, AudioReport, DownloadReport};
+use crate::capability::{AudioCommand, AudioReport, DownloadCommand, DownloadReport};
+use crate::download::DownloadQueue;
 use crate::player::PlayerActor;
 use crate::store::PodcastStore;
 
@@ -77,20 +78,17 @@ pub fn encode_audio_command(cmd: &AudioCommand) -> Option<String> {
 ///
 /// **D7:** the report is an *observation* of what the iOS background
 /// `URLSession` did — never an invitation for Rust to decide something.
-/// The kernel projects the report into [`PodcastStore::local_paths`]
-/// (and, in a follow-up, into `crate::download::DownloadQueue`); any
-/// resulting follow-up [`crate::capability::DownloadCommand`] (e.g.
-/// "start the next queued item") will be driven by the queue state
-/// machine, not synthesised here.
+/// The kernel projects the report into [`PodcastStore::local_paths`].
 ///
 /// Today the projection is narrowly scoped:
 ///   * `Completed { local_path }` — records the on-disk path so
 ///     [`crate::ffi::EpisodeSummary::download_path`] becomes non-null
 ///     on the next snapshot.
-///   * Every other variant (`Progress`, `Failed`, `Cancelled`, `Paused`)
-///     decodes cleanly and resolves to `DispatchOutcome::Ok` with no
-///     store mutation — the richer queue projection lands in a later
-///     PR alongside `DownloadQueueSnapshot` writes.
+///   * `Cancelled` — clears the local path.
+///   * Every other variant (`Progress`, `Failed`, `Paused`) decodes
+///     cleanly and resolves to `DispatchOutcome::Ok` with no store
+///     mutation. Use [`dispatch_download_report_json_with_queue`] when
+///     the caller also owns the runtime [`DownloadQueue`].
 ///
 /// The return shape mirrors [`dispatch_audio_report_json`] so the FFI
 /// shim can stay symmetric; `follow_up_json` is always `None` today.
@@ -108,17 +106,47 @@ pub fn dispatch_download_report_json(
             }
         }
     };
-    apply_download_report(store, report);
-    DispatchOutcome::Ok { follow_up_json: None }
+    apply_download_report(store, &report);
+    DispatchOutcome::Ok {
+        follow_up_json: None,
+    }
+}
+
+/// Decode a JSON-encoded [`DownloadReport`], project it into both
+/// `store` and `queue`, and return the next queued
+/// [`DownloadCommand`] when the report frees a slot.
+pub fn dispatch_download_report_json_with_queue(
+    store: &mut PodcastStore,
+    queue: &mut DownloadQueue,
+    report_json: &str,
+) -> DispatchOutcome {
+    let report: DownloadReport = match serde_json::from_str(report_json) {
+        Ok(r) => r,
+        Err(err) => {
+            return DispatchOutcome::DecodeFailed {
+                error: err.to_string(),
+            }
+        }
+    };
+    apply_download_report(store, &report);
+    let follow_up_json = queue
+        .handle_report(report)
+        .into_iter()
+        .next()
+        .and_then(|cmd: DownloadCommand| serde_json::to_string(&cmd).ok());
+    DispatchOutcome::Ok { follow_up_json }
 }
 
 /// Pure projection of a typed [`DownloadReport`] onto `store`. Split out
 /// so unit tests don't have to round-trip through JSON.
-fn apply_download_report(store: &mut PodcastStore, report: DownloadReport) {
+fn apply_download_report(store: &mut PodcastStore, report: &DownloadReport) {
     match report {
-        DownloadReport::Completed { episode_id, local_path } => {
+        DownloadReport::Completed {
+            episode_id,
+            local_path,
+        } => {
             if let Some((typed_id, _url)) = store.episode_enclosure_url(&episode_id) {
-                store.set_local_path(typed_id, local_path);
+                store.set_local_path(typed_id, local_path.clone());
             }
             // Episode not in the store (e.g. unsubscribed mid-flight):
             // drop the report on the floor. D6 — data, not exception.
@@ -130,11 +158,7 @@ fn apply_download_report(store: &mut PodcastStore, report: DownloadReport) {
         }
         DownloadReport::Failed { .. }
         | DownloadReport::Paused { .. }
-        | DownloadReport::Progress { .. } => {
-            // M4.C scope: queue projection lands in a follow-up PR.
-            // We decode cleanly so future schema additions (new variants)
-            // don't drop reports silently before the queue is wired.
-        }
+        | DownloadReport::Progress { .. } => {}
     }
 }
 

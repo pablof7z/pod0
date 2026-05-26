@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-26T08:16:00Z",
+      "lines": [
+        "Downloads now report live queued, paused, active, and failed states from the Rust kernel."
+      ]
+    },
+    {
       "shipped_at": "2026-05-26T07:54:00Z",
       "lines": [
         "Show pages now explain why Follow failed instead of silently dismissing the error."

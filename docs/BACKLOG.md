@@ -33,11 +33,13 @@ worktrees currently in flight.
   focused Swift/iOS tests for touched targets, and full-suite validation before
   declaring feature parity.
 - **p0-ios-test-target-compile.** Fix the current Swift validation blockers so
-  focused iOS tests can run again. Known blockers from PR #95/#96 validation:
-  `AppTests/Sources/Nip46RemoteSignerTests.swift` passes optional `String?`
-  values to non-optional relay/session/bunker parameters, and the generated
-  project/AppIntents membership still needs reconciliation around
-  `PlaybackAppIntents.swift`, `StartVoiceModeIntent.swift`, and `KernelModel`.
+  focused iOS tests can run again. The `Nip46RemoteSignerTests` optional
+  bunker-pubkey mismatch is fixed, and the legacy App target no longer
+  references the dead duplicate `App/Sources/AppIntents/PlaybackAppIntents.swift`.
+  Remaining: decide where the real `KernelModel`-backed playback intents in
+  `ios/Podcast/Podcast/Features/Platform/PodcastAppIntents.swift` belong,
+  then run broader Swift test slices and clean up the remaining strict
+  concurrency warnings surfaced by Xcode.
 
 ## Active P1 - Compat And Ownership Burn-Down
 
@@ -88,9 +90,12 @@ worktrees currently in flight.
   behavior on simulator and device.
 - **queue-hardening.** Validate item-ended advancement, duplicate handling,
   remove/clear, persistence expectations, and UI sync.
-- **download-state-projection.** Project progress/paused/failed states, not
-  only completed local paths. Validate background URLSession restore,
-  deletion failure, and offline-first playback.
+- **download-state-projection.** Runtime queue projection is now wired:
+  player download actions mutate `DownloadQueue`, download reports update
+  progress/paused/failed/completed state, and snapshots expose active/queued/
+  paused/failed rows instead of only completed local paths. Remaining:
+  validate background URLSession restore, deletion failure, and offline-first
+  playback on device.
 - **settings-completion.** Finish playback/settings projection parity:
   skip intervals, auto-skip ads, streaming/offline preferences, onboarding
   gate, provider settings, and persistence migration.

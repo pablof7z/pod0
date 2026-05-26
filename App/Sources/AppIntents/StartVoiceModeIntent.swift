@@ -72,42 +72,5 @@ struct PodcastrShortcuts: AppShortcutsProvider {
             shortTitle: "Talk to podcasts",
             systemImageName: "waveform.circle.fill"
         )
-        AppShortcut(
-            intent: PlayLatestEpisodeIntent(),
-            phrases: [
-                "Play my podcasts in \(.applicationName)",
-                "Play latest podcast in \(.applicationName)",
-                "Play \(.applicationName)"
-            ],
-            shortTitle: "Play latest episode",
-            systemImageName: "play.fill"
-        )
-        AppShortcut(
-            intent: PausePlaybackIntent(),
-            phrases: [
-                "Pause \(.applicationName)",
-                "Pause podcast in \(.applicationName)"
-            ],
-            shortTitle: "Pause podcast",
-            systemImageName: "pause.fill"
-        )
-        AppShortcut(
-            intent: ResumePlaybackIntent(),
-            phrases: [
-                "Resume \(.applicationName)",
-                "Resume podcast in \(.applicationName)"
-            ],
-            shortTitle: "Resume podcast",
-            systemImageName: "play.fill"
-        )
-        AppShortcut(
-            intent: SkipForwardIntent(),
-            phrases: [
-                "Skip forward in \(.applicationName)",
-                "Skip ahead in \(.applicationName)"
-            ],
-            shortTitle: "Skip forward",
-            systemImageName: "goforward"
-        )
     }
 }

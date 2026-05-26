@@ -3,6 +3,7 @@ use std::time::{Duration, UNIX_EPOCH};
 use super::*;
 
 use chrono::Utc;
+use crate::download::{DownloadItemState, DownloadQueue};
 use podcast_core::{Episode, Podcast};
 use url::Url;
 
@@ -149,4 +150,52 @@ fn malformed_download_report_returns_decode_failed() {
     let (mut store, _) = store_with_one_episode();
     let outcome = dispatch_download_report_json(&mut store, "not-json");
     assert!(matches!(outcome, DispatchOutcome::DecodeFailed { .. }));
+}
+
+#[test]
+fn progress_report_updates_download_queue() {
+    let (mut store, id_str) = store_with_one_episode();
+    let mut queue = DownloadQueue::new();
+    let _ = queue.enqueue(id_str.clone(), "https://ex.com/ep.mp3");
+
+    let report = format!(
+        r#"{{"type":"progress","episode_id":"{id_str}","bytes_downloaded":4096,"total_bytes":8192}}"#
+    );
+    let outcome = dispatch_download_report_json_with_queue(&mut store, &mut queue, &report);
+    assert!(matches!(outcome, DispatchOutcome::Ok { follow_up_json: None }));
+    let item = queue.get(&id_str).expect("queued item");
+    assert_eq!(item.state, DownloadItemState::Active);
+    assert_eq!(item.bytes_downloaded, 4096);
+    assert_eq!(item.total_bytes, Some(8192));
+}
+
+#[test]
+fn completed_report_updates_store_queue_and_returns_next_start() {
+    let (mut store, id_str) = store_with_one_episode();
+    let mut queue = DownloadQueue::with_capacity(1);
+    let _ = queue.enqueue(id_str.clone(), "https://ex.com/ep.mp3");
+    assert!(queue.enqueue("ep-2", "https://ex.com/ep-2.mp3").is_none());
+
+    let report = format!(
+        r#"{{"type":"completed","episode_id":"{id_str}","local_path":"/var/mobile/Downloads/{id_str}.mp3"}}"#
+    );
+    let outcome = dispatch_download_report_json_with_queue(&mut store, &mut queue, &report);
+    let DispatchOutcome::Ok { follow_up_json } = outcome else {
+        panic!("expected ok");
+    };
+    assert_eq!(
+        follow_up_json.as_deref(),
+        Some(r#"{"type":"start_download","url":"https://ex.com/ep-2.mp3","episode_id":"ep-2"}"#)
+    );
+
+    let typed_id = store
+        .episode_enclosure_url(&id_str)
+        .map(|(id, _)| id)
+        .expect("episode present");
+    assert_eq!(
+        store.local_path_for(&typed_id),
+        Some(&*format!("/var/mobile/Downloads/{id_str}.mp3"))
+    );
+    assert_eq!(queue.get(&id_str).unwrap().state, DownloadItemState::Completed);
+    assert_eq!(queue.get("ep-2").unwrap().state, DownloadItemState::Active);
 }

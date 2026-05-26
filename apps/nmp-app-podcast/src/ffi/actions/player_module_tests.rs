@@ -117,3 +117,40 @@ fn skip_backward_round_trips() {
     assert_eq!(decoded, action);
 }
 
+#[test]
+fn download_action_round_trips() {
+    let action = PlayerAction::Download {
+        episode_id: "ep-1".into(),
+        url: "https://ex.com/ep.mp3".into(),
+    };
+    let json = serde_json::to_string(&action).expect("encode");
+    assert_eq!(
+        json,
+        r#"{"op":"download","episode_id":"ep-1","url":"https://ex.com/ep.mp3"}"#
+    );
+    let decoded: PlayerAction = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, action);
+}
+
+#[test]
+fn download_control_actions_round_trip() {
+    for (action, expected_op) in [
+        (PlayerAction::CancelDownload { episode_id: "ep-1".into() }, "cancel_download"),
+        (PlayerAction::PauseDownload { episode_id: "ep-1".into() }, "pause_download"),
+        (PlayerAction::ResumeDownload { episode_id: "ep-1".into() }, "resume_download"),
+    ] {
+        let json = serde_json::to_string(&action).expect("encode");
+        assert!(json.contains(&format!(r#""op":"{expected_op}""#)));
+        assert!(json.contains(r#""episode_id":"ep-1""#));
+        let decoded: PlayerAction = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, action);
+    }
+}
+
+#[test]
+fn cancel_all_downloads_is_unit_variant() {
+    let json = serde_json::to_string(&PlayerAction::CancelAllDownloads).expect("encode");
+    assert_eq!(json, r#"{"op":"cancel_all_downloads"}"#);
+    let decoded: PlayerAction = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, PlayerAction::CancelAllDownloads);
+}
