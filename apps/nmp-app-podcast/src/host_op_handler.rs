@@ -52,8 +52,8 @@ use crate::ffi::actions::siri_module::SiriAction;
 use crate::ffi::actions::wiki_module::WikiAction;
 use crate::ffi::handle::OwnedPublishState;
 use crate::ffi::projections::{
-    AgentPickSummary, AgentTaskSummary, BriefingSnapshot, KnowledgeSearchResult, NostrShowSummary,
-    PodcastSummary, TranscriptEntry, TtsEpisodeSummary, VoiceState, WikiArticle,
+    AgentPickSummary, AgentTaskSummary, BriefingSnapshot, CommentSummary, KnowledgeSearchResult,
+    NostrShowSummary, PodcastSummary, TranscriptEntry, TtsEpisodeSummary, VoiceState, WikiArticle,
 };
 use crate::host_op_handler_queue::handle_queue_action;
 use crate::host_op_publish::handle_publish_action;
@@ -123,6 +123,11 @@ pub struct PodcastHostOpHandler {
     /// last-published timestamp). Shared with `PodcastHandle.publish_state`.
     pub(crate) publish_state: Arc<Mutex<HashMap<String, OwnedPublishState>>>,
     pub(crate) agent_chat: AgentChatHandler,
+    /// NIP-22 (kind 1111) comment cache, keyed by episode_id string.
+    /// Written by `handle_fetch_comments` / `handle_post_comment` on the
+    /// actor thread; read by `build_snapshot_payload` on the main thread.
+    /// In-memory only — comments re-fetch on next `FetchComments` dispatch.
+    pub(crate) comments_cache: Arc<Mutex<HashMap<String, Vec<CommentSummary>>>>,
     /// Shared Tokio runtime for async LLM / relay work. Seeded in
     /// `ffi::register` so all host-op handlers share one multi-thread scheduler.
     /// Used by wiki synthesis, agent chat, and inbox triage.
@@ -172,6 +177,7 @@ impl PodcastHostOpHandler {
         podcast_keys: Arc<Mutex<PodcastKeyStore>>,
         publish_state: Arc<Mutex<HashMap<String, OwnedPublishState>>>,
         agent_chat: AgentChatHandler,
+        comments_cache: Arc<Mutex<HashMap<String, Vec<CommentSummary>>>>,
         runtime: Arc<Runtime>,
         inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
     ) -> Self {
@@ -201,6 +207,7 @@ impl PodcastHostOpHandler {
             podcast_keys,
             publish_state,
             agent_chat,
+            comments_cache,
             runtime,
             inbox_triage_cache,
         }

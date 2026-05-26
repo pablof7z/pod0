@@ -112,6 +112,8 @@ pub extern "C" fn nmp_app_podcast_register(
     let agent_touched = Arc::new(AtomicBool::new(false));
     let categories: Arc<Mutex<HashMap<String, Vec<String>>>> =
         Arc::new(Mutex::new(HashMap::new()));
+    let comments_cache: Arc<Mutex<HashMap<String, Vec<crate::ffi::projections::CommentSummary>>>> =
+        Arc::new(Mutex::new(HashMap::new()));
     // Start at 1 so the first snapshot poll always triggers an iOS update
     // (guard is `update.rev > last_seen_rev`; last_seen_rev starts at 0).
     // Subsequent increments happen in PodcastHostOpHandler on store writes.
@@ -166,6 +168,7 @@ pub extern "C" fn nmp_app_podcast_register(
         podcast_keys.clone(),
         publish_state.clone(),
         agent_chat,
+        comments_cache.clone(),
         runtime,
         inbox_triage_cache.clone(),
     )));
@@ -199,5 +202,6 @@ pub extern "C" fn nmp_app_podcast_register(
         agent_touched,
         categories,
         inbox_triage_cache,
+        comments_cache,
     }))
 }

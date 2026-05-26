@@ -10,7 +10,7 @@ use nmp_ffi::NmpApp;
 use crate::clip_handler::ClipRecord;
 use crate::inbox_llm::TriageResult;
 use crate::ffi::projections::{
-    AgentMessageSummary, AgentPickSummary, AgentTaskSummary, BriefingSnapshot,
+    AgentMessageSummary, AgentPickSummary, AgentTaskSummary, BriefingSnapshot, CommentSummary,
     KnowledgeSearchResult, NostrShowSummary, PodcastSummary, TranscriptEntry, TtsEpisodeSummary,
     VoiceState, WikiArticle,
 };
@@ -163,6 +163,10 @@ pub struct PodcastHandle {
     /// to overlay LLM scores and categories over the recency-bucket fallback.
     /// In-memory only — results are recomputed on each explicit Triage action.
     pub(super) inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
+    /// NIP-22 (kind 1111) comment cache, keyed by episode_id string.
+    /// Written by `handle_fetch_comments` / `handle_post_comment` on the
+    /// actor thread; read by `build_snapshot_payload` on the main thread.
+    pub(crate) comments_cache: Arc<Mutex<HashMap<String, Vec<CommentSummary>>>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the
