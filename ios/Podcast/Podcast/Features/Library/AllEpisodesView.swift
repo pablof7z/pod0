@@ -10,21 +10,25 @@ import SwiftUI
 /// are registered by the enclosing `LibraryView`'s `NavigationStack`.
 struct AllEpisodesView: View {
     @Environment(KernelModel.self) private var model
+    @State private var searchText = ""
 
     var body: some View {
         Group {
-            if allEpisodes.isEmpty {
+            if allEpisodes.isEmpty && searchText.isEmpty {
                 ContentUnavailableView(
                     "No Episodes Yet",
                     systemImage: "waveform",
                     description: Text("Subscribe to a podcast to see episodes here.")
                 )
+            } else if filteredEpisodes.isEmpty {
+                ContentUnavailableView.search(text: searchText)
             } else {
                 episodeList
             }
         }
         .navigationTitle("All Episodes")
         .navigationBarTitleDisplayMode(.inline)
+        .searchable(text: $searchText, prompt: "Episode or podcast")
         .refreshable {
             model.dispatch(namespace: "podcast", body: ["op": "refresh_all"])
         }
@@ -48,11 +52,20 @@ struct AllEpisodesView: View {
             }
     }
 
+    private var filteredEpisodes: [EpisodeWithShow] {
+        guard !searchText.isEmpty else { return allEpisodes }
+        let q = searchText.lowercased()
+        return allEpisodes.filter {
+            $0.episode.title.lowercased().contains(q)
+            || $0.podcast.title.lowercased().contains(q)
+        }
+    }
+
     // MARK: - List
 
     private var episodeList: some View {
         List {
-            ForEach(allEpisodes) { item in
+            ForEach(filteredEpisodes) { item in
                 NavigationLink(value: EpisodeRoute(episode: item.episode, podcast: item.podcast)) {
                     AllEpisodesRow(
                         episode: item.episode,
