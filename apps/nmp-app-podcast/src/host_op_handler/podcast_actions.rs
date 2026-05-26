@@ -64,6 +64,7 @@ impl PodcastHostOpHandler {
                     relay_url,
                     &self.nostr_results,
                     &self.rev,
+                    |req| self.dispatch_nostr_relay(req, correlation_id),
                     |req| self.dispatch_http(req, correlation_id),
                 )
             }

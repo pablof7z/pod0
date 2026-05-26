@@ -93,7 +93,7 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
     }
 
     // Full relay capability round-trip (subscribe to fetch the published event)
-    // is exercised in PR 9 (discover). For now, a successful publish is sufficient
-    // to validate relay connectivity and the nak signing path.
+    // is exercised in the discover_nostr scenario. For now, a successful
+    // publish is sufficient to validate relay connectivity and the nak signing path.
     Pass
 }
