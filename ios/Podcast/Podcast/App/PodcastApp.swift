@@ -17,6 +17,7 @@ struct PodcastApp: App {
     // can read from the same one-slot mailbox.
     @State private var deepLinkRouter = SpotlightDeepLinkRouter()
 
+    @State private var whatsNewEntries: [WhatsNewEntry] = []
 
     // UIKit app delegate is the only surface that receives
     // `application(_:handleEventsForBackgroundURLSession:completionHandler:)`,
@@ -39,6 +40,17 @@ struct PodcastApp: App {
                 .environment(identityStore)
                 .environment(deepLinkRouter)
                 .tint(PodcastColor.accent)
+                .task {
+                    WhatsNewService.seedIfNeeded()
+                    let unseen = WhatsNewService.unseenEntries(lastSeenAt: WhatsNewService.lastSeenAt)
+                    if !unseen.isEmpty { whatsNewEntries = unseen }
+                }
+                .sheet(isPresented: Binding(
+                    get: { !whatsNewEntries.isEmpty },
+                    set: { if !$0 { whatsNewEntries = [] } }
+                )) {
+                    WhatsNewSheet(entries: whatsNewEntries)
+                }
                 .task {
                     model.start()
                     // iCloud settings sync attaches *after* the kernel is

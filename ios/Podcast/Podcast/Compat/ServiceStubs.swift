@@ -7,6 +7,7 @@
 
 import Foundation
 import Observation
+import Security
 import SwiftUI
 
 // MARK: - Compat error
@@ -76,12 +77,33 @@ enum PodcastBYOKCredentialImporter {
     }
 }
 
-// MARK: - OpenRouter credential store (M3 stub)
+// MARK: - OpenRouter credential store
 
-/// Compat shim — replaced when LLM provider credential Capability lands.
+/// Persists the BYOK OpenRouter API key to the Keychain using the
+/// `PcstIdentityCapability` service/account namespace so the kernel's
+/// identity capability and the legacy-migration shim all read the same slot.
 enum OpenRouterCredentialStore {
     static func saveAPIKey(_ key: String) throws {
-        throw CompatError.notImplemented("OpenRouterCredentialStore.saveAPIKey")
+        guard let data = key.data(using: .utf8) else {
+            throw CompatError.notImplemented("OpenRouterCredentialStore: invalid UTF-8")
+        }
+        let deleteQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: PcstIdentityCapability.service,
+            kSecAttrAccount as String: PcstIdentityCapability.AccountID.byokOpenRouter,
+        ]
+        SecItemDelete(deleteQuery as CFDictionary)
+        let addAttrs: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: PcstIdentityCapability.service,
+            kSecAttrAccount as String: PcstIdentityCapability.AccountID.byokOpenRouter,
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+        ]
+        let status = SecItemAdd(addAttrs as CFDictionary, nil)
+        if status != errSecSuccess {
+            throw CompatError.notImplemented("Keychain write failed: \(status)")
+        }
     }
 }
 
