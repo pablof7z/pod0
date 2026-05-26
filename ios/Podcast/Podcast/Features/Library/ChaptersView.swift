@@ -66,7 +66,7 @@ struct ChaptersView: View {
     /// Re-resolve chapters from the snapshot so a `compile` dispatch that
     /// lands new chapters refreshes the list without re-pushing the view.
     private var liveChapters: [ChapterSummary] {
-        guard let library = model.podcastSnapshot?.library else { return [] }
+        let library = model.library
         let pool: [EpisodeSummary] = podcastId
             .flatMap { id in library.first(where: { $0.id == id })?.episodes }
             ?? library.flatMap { $0.episodes }

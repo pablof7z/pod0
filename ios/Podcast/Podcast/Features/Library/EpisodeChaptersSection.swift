@@ -29,8 +29,8 @@ struct EpisodeChaptersSection: View {
     // MARK: - Live snapshot
 
     private var liveChapters: [ChapterSummary] {
-        guard let library = model.podcastSnapshot?.library,
-              let show = library.first(where: { $0.id == podcast.id }),
+        let library = model.library
+        guard let show = library.first(where: { $0.id == podcast.id }),
               let ep = show.episodes.first(where: { $0.id == episode.id }) else {
             return episode.chapters ?? []
         }
@@ -38,8 +38,8 @@ struct EpisodeChaptersSection: View {
     }
 
     private var hasRawTranscript: Bool {
-        guard let library = model.podcastSnapshot?.library,
-              let show = library.first(where: { $0.id == podcast.id }),
+        let library = model.library
+        guard let show = library.first(where: { $0.id == podcast.id }),
               let ep = show.episodes.first(where: { $0.id == episode.id }) else {
             return (episode.transcript ?? "").isEmpty == false
         }
