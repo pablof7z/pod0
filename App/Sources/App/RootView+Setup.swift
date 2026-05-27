@@ -28,6 +28,28 @@ extension RootView {
         playbackState.onEnsureDownloadEnqueued = { [store] id in
             store.kernelDownload(id)
         }
+        playbackState.onKernelEnqueueLast = { [store] id in
+            store.kernelEnqueueLast(episodeID: id)
+        }
+        playbackState.onKernelDequeueEpisode = { [store] id in
+            store.kernelDequeueEpisode(episodeID: id)
+        }
+        playbackState.onKernelClearQueue = { [store] in
+            store.kernelClearQueue()
+        }
+        // Seed the Up Next queue from the Rust-persisted snapshot.
+        // Two cases: kernel already attached (pendingKernelQueue has data)
+        // or kernel attaches later (onQueueFromKernel callback fires it then).
+        let seedQueue: ([UUID]) -> Void = { [playbackState] ids in
+            guard playbackState.queue.isEmpty else { return }
+            playbackState.queue = ids.map { QueueItem.episode($0) }
+        }
+        if !store.pendingKernelQueue.isEmpty {
+            seedQueue(store.pendingKernelQueue)
+            store.pendingKernelQueue = []
+        } else {
+            store.onQueueFromKernel = seedQueue
+        }
         playbackState.onClearTriageDecision = { [store] id in
             store.clearTriageDecision(id)
         }

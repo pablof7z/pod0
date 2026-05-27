@@ -31,6 +31,19 @@ extension AppStateStore {
         // Apply immediately so the first render sees real data even before the
         // first observation-change fires.
         applyKernelState(library: kernel.library, snapshot: kernel.podcastSnapshot)
+        // Seed the Up Next queue from the kernel's persisted snapshot. The
+        // handler may not be wired yet (setupPlaybackHandlers runs on .onAppear
+        // which can fire after this task), so stash the IDs in pendingKernelQueue
+        // as a fallback; setupPlaybackHandlers drains it on first access.
+        let queueIDs = (kernel.podcastSnapshot?.queue ?? []).compactMap { UUID(uuidString: $0.id) }
+        if !queueIDs.isEmpty {
+            if let handler = onQueueFromKernel {
+                handler(queueIDs)
+                onQueueFromKernel = nil
+            } else {
+                pendingKernelQueue = queueIDs
+            }
+        }
         kernelObservationTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
                 // Suspend until either kernel.library or kernel.podcastSnapshot changes.

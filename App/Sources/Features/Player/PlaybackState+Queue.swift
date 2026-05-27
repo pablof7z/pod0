@@ -18,6 +18,7 @@ extension PlaybackState {
         let alreadyWhole = queue.contains { $0.episodeID == episodeID && $0.startSeconds == nil }
         guard !alreadyWhole else { return }
         queue.append(.episode(episodeID))
+        onKernelEnqueueLast(episodeID)
     }
 
     /// Append a `QueueItem` (possibly bounded) to the end of the queue.
@@ -67,6 +68,7 @@ extension PlaybackState {
     /// Remove all queue items whose `episodeID` matches. Idempotent.
     func removeFromQueue(_ episodeID: UUID) {
         queue.removeAll { $0.episodeID == episodeID }
+        onKernelDequeueEpisode(episodeID)
     }
 
     /// Remove a single queue item by its stable slot identity.
@@ -88,6 +90,7 @@ extension PlaybackState {
     func clearQueue() {
         queue.removeAll()
         currentSegmentEndTime = nil
+        onKernelClearQueue()
     }
 
     @discardableResult

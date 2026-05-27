@@ -135,6 +135,18 @@ final class AppStateStore {
     @ObservationIgnored
     var kernelObservationTask: Task<Void, Never>?
 
+    /// Episode IDs from the first kernel snapshot queue, stashed here so
+    /// `RootView+Setup` can seed `PlaybackState.queue` even if `attachKernel`
+    /// fires before the setup hook is wired. Consumed once and cleared.
+    @ObservationIgnored
+    var pendingKernelQueue: [UUID] = []
+
+    /// Fires once — when the kernel's initial snapshot arrives — with the
+    /// persisted Up Next episode IDs. Wired by `RootView+Setup` to seed
+    /// `PlaybackState.queue`. Set to nil after first call.
+    @ObservationIgnored
+    var onQueueFromKernel: (([UUID]) -> Void)?
+
     /// Retained observer token for iCloud external-change notifications.
     private var iCloudObserver: NSObjectProtocol?
 
@@ -304,7 +316,23 @@ final class AppStateStore {
     // MARK: - Settings
 
     func updateSettings(_ settings: Settings) {
+        let prior = state.settings
         state.settings = settings
+        // Mirror the Rust-owned subset of settings to the kernel so they
+        // survive across restarts (Rust persists them in podcasts.json).
+        if settings.autoSkipAds != prior.autoSkipAds {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: ["op": "set_auto_skip_ads", "enabled": settings.autoSkipAds])
+        }
+        if settings.skipForwardSeconds != prior.skipForwardSeconds
+            || settings.skipBackwardSeconds != prior.skipBackwardSeconds {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: [
+                                 "op": "set_skip_intervals",
+                                 "forward_secs": Double(settings.skipForwardSeconds),
+                                 "backward_secs": Double(settings.skipBackwardSeconds)
+                             ])
+        }
     }
 
     /// Wipes all user data while preserving API credentials and Nostr identity.

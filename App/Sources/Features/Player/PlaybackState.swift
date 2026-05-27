@@ -176,6 +176,19 @@ final class PlaybackState {
     /// found nothing.
     var adSegments: [Episode.AdSegment] = []
 
+    /// Called when a whole-episode item is added to the back of Up Next.
+    /// Wired by `RootView` to `AppStateStore.kernelEnqueueLast` so Rust
+    /// persists the queue for the next app launch.
+    var onKernelEnqueueLast: (UUID) -> Void = { _ in }
+
+    /// Called when an episode is removed from Up Next (any position).
+    /// Wired by `RootView` to `AppStateStore.kernelDequeueEpisode`.
+    var onKernelDequeueEpisode: (UUID) -> Void = { _ in }
+
+    /// Called when the queue is cleared.
+    /// Wired by `RootView` to `AppStateStore.kernelClearQueue`.
+    var onKernelClearQueue: () -> Void = { }
+
     /// Called from `setEpisode` when the user starts playback on an episode
     /// the agent had triage-archived. Receivers should clear the archive so
     /// the episode behaves normally for Continue Listening, unplayed counts,

@@ -84,6 +84,31 @@ extension AppStateStore {
                          ])
     }
 
+    // MARK: - Queue (podcast.queue namespace)
+
+    /// Push an episode to the back of the Rust-owned Up Next queue.
+    func kernelEnqueueLast(episodeID: UUID) {
+        kernel?.dispatch(namespace: "podcast.queue",
+                         body: ["op": "add_last", "episode_id": episodeID.uuidString])
+    }
+
+    /// Push an episode to the front of the Rust-owned Up Next queue (Play Next).
+    func kernelEnqueueNext(episodeID: UUID) {
+        kernel?.dispatch(namespace: "podcast.queue",
+                         body: ["op": "add_next", "episode_id": episodeID.uuidString])
+    }
+
+    /// Remove all occurrences of an episode from the Rust-owned Up Next queue.
+    func kernelDequeueEpisode(episodeID: UUID) {
+        kernel?.dispatch(namespace: "podcast.queue",
+                         body: ["op": "remove", "episode_id": episodeID.uuidString])
+    }
+
+    /// Empty the Rust-owned Up Next queue.
+    func kernelClearQueue() {
+        kernel?.dispatch(namespace: "podcast.queue", body: ["op": "clear"])
+    }
+
     // MARK: - Downloads
 
     /// Queue a download (namespace: podcast).
