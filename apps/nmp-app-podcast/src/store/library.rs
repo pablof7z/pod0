@@ -165,6 +165,18 @@ impl PodcastStore {
         self.local_paths.get(episode_id).map(String::as_str)
     }
 
+    /// Returns `true` when the episode's audio file has a locally tracked path.
+    /// Used by `handle_play` to enqueue a background download for episodes that
+    /// are streamed rather than played from local storage.
+    pub fn episode_is_downloaded(&self, id_str: &str) -> bool {
+        for episodes in self.episodes.values() {
+            if let Some(ep) = episodes.iter().find(|e| e.id.0.to_string() == id_str) {
+                return self.local_paths.contains_key(&ep.id);
+            }
+        }
+        false
+    }
+
     /// Remove the local-path mapping for an episode and return the path that
     /// was previously stored so the caller can remove the file.
     pub fn clear_local_path(&mut self, episode_id: &EpisodeId) -> Option<String> {
