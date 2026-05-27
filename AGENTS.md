@@ -34,6 +34,20 @@ This repository uses three canonical planning/status files:
 - Prefer focused `xcodebuild test` runs for the touched test bundles during development. Full-suite simulator validation is the merge/supervisor gate unless the change is broad enough to require it earlier.
 - Always run `git diff --check` before opening a PR.
 
+### xcodebuild plugin trust
+
+The `secp256k1.swift` package (version ≥ 0.23.2) ships a `SharedSourcesPlugin`
+BuildToolPlugin that requires explicit trust. Interactive Xcode builds prompt the
+user once and remember the answer; headless / CI builds must pass the flag:
+
+```
+-skipPackagePluginValidation
+```
+
+Add this flag to every `xcodebuild` invocation in CI scripts and to any MCP
+`build_sim` / `build_device` call via `extraArgs: ["-skipPackagePluginValidation"]`.
+Without it the build fails with "Validate plug-in SharedSourcesPlugin… BUILD FAILED".
+
 ## Whats-new changelog
 
 Every commit that ships a user-facing change to the iPhone MUST add an entry to `App/Resources/whats-new.json` with a one-liner the user will read. An entry needs only `shipped_at` (current UTC, ISO-8601) and `lines`. The app surfaces entries whose `shipped_at` is newer than the user's last-seen marker — no commit SHA needed. Timestamps must be unique across entries; if two land in the same minute, bump one by a minute. Skip entries for purely-internal commits (encoder caches, log line tweaks, formatting). When in doubt: would the user notice? If yes, add a line.
