@@ -56,8 +56,7 @@ struct EpisodeDetailActionsMenu: View {
         ) {
             Button("Cancel", role: .cancel) {}
             Button("Remove", role: .destructive) {
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.delete(episodeID: episode.id)
+                store.kernelDeleteDownload(episode.id)
             }
         } message: {
             Text("The local file will be deleted. You can download it again later.")
@@ -75,15 +74,13 @@ struct EpisodeDetailActionsMenu: View {
         switch episode.downloadState {
         case .notDownloaded, .queued:
             Button {
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
+                store.kernelDownload(episode.id)
             } label: {
                 Label("Download", systemImage: "arrow.down.circle")
             }
         case .downloading:
             Button {
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.cancel(episodeID: episode.id)
+                store.kernelCancelDownload(episode.id)
             } label: {
                 Label("Cancel download", systemImage: "xmark.circle")
             }
@@ -95,8 +92,7 @@ struct EpisodeDetailActionsMenu: View {
             }
         case .failed:
             Button {
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
+                store.kernelDownload(episode.id)
             } label: {
                 Label("Retry download", systemImage: "arrow.clockwise")
             }

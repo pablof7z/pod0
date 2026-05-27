@@ -5,20 +5,14 @@ import Foundation
 final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendable {
 
     weak var store: AppStateStore?
-    private let downloadService: EpisodeDownloadService
     private let transcriptService: TranscriptIngestService
-    private let refreshService: SubscriptionRefreshService
 
     init(
         store: AppStateStore,
-        downloadService: EpisodeDownloadService,
-        transcriptService: TranscriptIngestService,
-        refreshService: SubscriptionRefreshService
+        transcriptService: TranscriptIngestService
     ) {
         self.store = store
-        self.downloadService = downloadService
         self.transcriptService = transcriptService
-        self.refreshService = refreshService
     }
 
     func markEpisodePlayed(episodeID: EpisodeID) async throws -> EpisodeMutationResult {
@@ -35,8 +29,7 @@ final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendab
 
     func downloadEpisode(episodeID: EpisodeID) async throws -> EpisodeMutationResult {
         try await mutateEpisode(episodeID: episodeID, state: nil) { store, id in
-            self.downloadService.attach(appStore: store)
-            self.downloadService.download(episodeID: id)
+            store.kernelDownload(id)
         }
     }
 
@@ -94,8 +87,7 @@ final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendab
         // the download proceeds in the background; Apple-native STT
         // will pick up the local file on the post-download ingest trigger.
         await MainActor.run {
-            downloadService.attach(appStore: store)
-            downloadService.download(episodeID: uuid)
+            store.kernelDownload(uuid)
         }
         // Await the full transcription pipeline. This call blocks until the
         // transcript is persisted (.ready) or the pipeline gives up (.failed).
@@ -196,7 +188,7 @@ final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendab
             throw PodcastAgentToolAdapterError.missingPodcast(podcastID)
         }
         let priorCount = await store.episodes(forPodcast: uuid).count
-        try await refreshService.refresh(uuid, store: store)
+        await MainActor.run { store.kernelRefresh(podcastID: uuid) }
         let after = await store.podcast(id: uuid) ?? before
         let episodeCount = await store.episodes(forPodcast: uuid).count
         return FeedRefreshResult(

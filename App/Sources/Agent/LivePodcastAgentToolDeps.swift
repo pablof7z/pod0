@@ -43,9 +43,7 @@ enum LivePodcastAgentToolDeps {
             playback: LivePlaybackHostAdapter(store: store, playback: playback),
             library: LivePodcastLibraryAdapter(
                 store: store,
-                downloadService: .shared,
-                transcriptService: .shared,
-                refreshService: .shared
+                transcriptService: .shared
             ),
             inventory: inventory,
             categories: inventory,

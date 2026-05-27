@@ -31,10 +31,6 @@ struct EpisodeDetailView: View {
 
     // MARK: State
 
-    /// Live download service — observed so the toolbar's progress indicator
-    /// updates smoothly without re-persisting `AppStateStore` on every tick.
-    @State private var downloadService = EpisodeDownloadService.shared
-
     // MARK: Body
 
     var body: some View {
@@ -83,7 +79,7 @@ struct EpisodeDetailView: View {
                 playback.enqueue(episode.id)
             },
             activeChapterID: liveActiveChapterID(for: episode),
-            downloadProgress: downloadService.progress[episode.id],
+            downloadProgress: nil,
             onToggleDownload: { toggleDownload(episode: episode) }
         )
         .navigationTitle(showName)
@@ -172,14 +168,13 @@ struct EpisodeDetailView: View {
     /// primary surface — and sees a live "Downloading 42%" badge while
     /// bytes move.
     private func toggleDownload(episode: Episode) {
-        EpisodeDownloadService.shared.attach(appStore: store)
         switch episode.downloadState {
         case .notDownloaded, .queued, .failed:
             Haptics.success()
-            EpisodeDownloadService.shared.download(episodeID: episode.id)
+            store.kernelDownload(episode.id)
         case .downloading:
             Haptics.light()
-            EpisodeDownloadService.shared.cancel(episodeID: episode.id)
+            store.kernelCancelDownload(episode.id)
         case .downloaded:
             // Inline pill is non-interactive in the downloaded state; the
             // ellipsis menu handles delete confirmation.
@@ -189,18 +184,6 @@ struct EpisodeDetailView: View {
 
     @ToolbarContentBuilder
     private func actionsToolbar(episode: Episode) -> some ToolbarContent {
-        // Inline progress indicator — only present while a download is in
-        // flight. Reads `EpisodeDownloadService.progress` directly so it
-        // updates at the throttled service cadence (5% / 200ms).
-        if case .downloading = episode.downloadState {
-            ToolbarItem(placement: .topBarTrailing) {
-                let live = downloadService.progress[episode.id] ?? 0
-                ProgressView(value: live)
-                    .progressViewStyle(.circular)
-                    .controlSize(.small)
-                    .accessibilityLabel("Downloading \(Int(live * 100)) percent")
-            }
-        }
         ToolbarItem(placement: .topBarTrailing) {
             EpisodeDetailActionsMenu(episode: episode, store: store)
         }

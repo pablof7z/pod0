@@ -114,8 +114,7 @@ struct EpisodeAuditLogView: View {
                 }
             }
             Button {
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
+                store.kernelDownload(episode.id)
             } label: {
                 Label(downloadButtonLabel, systemImage: "arrow.down.circle")
             }

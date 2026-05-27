@@ -361,7 +361,7 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
                     return localURL
                 }
             }
-            EpisodeDownloadService.shared.download(episodeID: uuid)
+            store?.kernelDownload(uuid)
             return nil
         }
         if let url = alreadyReady { return url }

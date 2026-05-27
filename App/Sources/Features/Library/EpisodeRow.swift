@@ -27,10 +27,6 @@ struct EpisodeRow: View {
 
     private static let thumbnailSize: CGFloat = 56
 
-    /// Live progress map — drives the bottom progress bar without hitting
-    /// `AppStateStore` on every 5%/200 ms tick.
-    @State private var downloadService = EpisodeDownloadService.shared
-
     var body: some View {
         HStack(alignment: .center, spacing: AppTheme.Spacing.md) {
             thumbnail
@@ -196,7 +192,7 @@ struct EpisodeRow: View {
     @ViewBuilder
     private var downloadProgressBar: some View {
         if case .downloading(let persisted, _) = episode.downloadState {
-            let p = (downloadService.progress[episode.id] ?? persisted).clamped01
+            let p = persisted.clamped01
             thinProgressBar(progress: p, color: Color.primary)
         } else if case .downloaded = episode.downloadState,
                   case .transcribing(let p) = episode.transcriptState {
@@ -239,7 +235,7 @@ struct EpisodeRow: View {
         }
         switch episode.downloadState {
         case .downloading(let persisted, _):
-            let pct = Int(((downloadService.progress[episode.id] ?? persisted).clamped01 * 100).rounded())
+            let pct = Int((persisted.clamped01 * 100).rounded())
             parts.append("downloading \(pct) percent")
         case .downloaded:
             switch episode.transcriptState {

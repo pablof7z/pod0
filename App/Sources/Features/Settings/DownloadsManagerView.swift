@@ -4,7 +4,6 @@ import SwiftUI
 
 struct DownloadsManagerView: View {
     @Environment(AppStateStore.self) private var store
-    @State private var downloadService = EpisodeDownloadService.shared
     @State private var confirmCancelActive = false
     @State private var confirmDeleteDownloaded = false
 
@@ -30,9 +29,7 @@ struct DownloadsManagerView: View {
         .settingsListStyle()
         .navigationTitle("Downloads")
         .navigationBarTitleDisplayMode(.large)
-        .task {
-            downloadService.attach(appStore: store)
-        }
+        .task { }
         .alert("Cancel active downloads?", isPresented: $confirmCancelActive) {
             Button("Keep Downloads", role: .cancel) {}
             Button("Cancel Downloads", role: .destructive) {
@@ -189,9 +186,9 @@ struct DownloadsManagerView: View {
             return .queued
         case .downloading(let storedProgress, let bytesWritten):
             return .downloading(
-                progress: (downloadService.progress[episode.id] ?? storedProgress).clampedDownloadProgress,
+                progress: storedProgress.clampedDownloadProgress,
                 bytesWritten: bytesWritten,
-                expectedBytes: downloadService.expectedBytes[episode.id]
+                expectedBytes: nil
             )
         case .downloaded(_, let byteCount):
             return .downloaded(byteCount: byteCount)
@@ -203,42 +200,31 @@ struct DownloadsManagerView: View {
     // MARK: - Actions
 
     private func perform(_ action: DownloadManagerAction, row: DownloadManagerRowData) {
-        downloadService.attach(appStore: store)
         switch action {
         case .start, .retry:
             Haptics.light()
-            downloadService.download(episodeID: row.id)
+            store.kernelDownload(row.id)
         case .cancel:
             Haptics.light()
-            if row.status.isQueued {
-                store.setEpisodeDownloadState(row.id, state: .notDownloaded)
-            } else {
-                downloadService.cancel(episodeID: row.id)
-            }
+            store.kernelCancelDownload(row.id)
         case .clearFailed:
             Haptics.light()
             store.setEpisodeDownloadState(row.id, state: .notDownloaded)
         case .delete:
             Haptics.warning()
-            downloadService.delete(episodeID: row.id)
+            store.kernelDeleteDownload(row.id)
         }
     }
 
     private func cancelActiveDownloads() {
-        downloadService.attach(appStore: store)
         for row in activeRows {
-            if row.status.isQueued {
-                store.setEpisodeDownloadState(row.id, state: .notDownloaded)
-            } else {
-                downloadService.cancel(episodeID: row.id)
-            }
+            store.kernelCancelDownload(row.id)
         }
     }
 
     private func deleteDownloadedEpisodes() {
-        downloadService.attach(appStore: store)
         for row in downloadedRows {
-            downloadService.delete(episodeID: row.id)
+            store.kernelDeleteDownload(row.id)
         }
     }
 

@@ -26,8 +26,7 @@ extension RootView {
             store.flushPendingPositions()
         }
         playbackState.onEnsureDownloadEnqueued = { [store] id in
-            EpisodeDownloadService.shared.attach(appStore: store)
-            EpisodeDownloadService.shared.ensureDownloadEnqueued(episodeID: id)
+            store.kernelDownload(id)
         }
         playbackState.onClearTriageDecision = { [store] id in
             store.clearTriageDecision(id)

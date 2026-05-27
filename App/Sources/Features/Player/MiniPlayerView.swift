@@ -20,11 +20,6 @@ struct MiniPlayerView: View {
 
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
 
-    /// Observed so the inline download badge tracks the service's
-    /// `progress[id]` map without each 5%/200ms tick re-rendering through
-    /// `AppStateStore`. Mirrors the pattern used by `EpisodeRow`.
-    @State private var downloadService = EpisodeDownloadService.shared
-
     private var showName: String {
         guard let subID = state.episode?.podcastID,
               let sub = store.podcast(id: subID) else { return "" }
@@ -189,7 +184,7 @@ struct MiniPlayerView: View {
             case .downloading, .failed:
                 DownloadProgressBadge(
                     episode: resolved,
-                    liveProgress: downloadService.progress[resolved.id]
+                    liveProgress: nil
                 )
             default:
                 EmptyView()
