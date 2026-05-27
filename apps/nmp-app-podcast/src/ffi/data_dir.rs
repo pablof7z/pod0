@@ -43,14 +43,23 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(
     // `nmp_app_podcast_register` and not yet freed.
     let handle = unsafe { &*handle };
 
+    let path_buf = PathBuf::from(path_str.clone());
+
     let (loaded, loaded_queue) = match handle.store.lock() {
         Ok(mut s) => {
-            let count = s.set_data_dir(PathBuf::from(path_str));
+            let count = s.set_data_dir(path_buf.clone());
             let queue = s.take_loaded_queue();
             (count, queue)
         }
         Err(_) => return, // poisoned mutex — degrade silently (D6)
     };
+
+    // Wire the key store to the same data dir so per-podcast keypairs
+    // survive app restarts. Called after the store lock is released to
+    // avoid holding two mutexes simultaneously.
+    if let Ok(mut keys) = handle.podcast_keys.lock() {
+        keys.set_data_dir(&path_buf);
+    }
 
     // Restore the "Up Next" queue from disk. Even an empty persisted queue
     // is fine — the shared PlaybackQueue starts empty and we just skip.
@@ -62,9 +71,21 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(
         }
     }
 
-    if loaded > 0 || !loaded_queue.is_empty() {
-        // Force the next snapshot poll to pick up the restored library
-        // and/or the restored queue even though no write happened here.
+    // Bind the identity store to the same directory. If `identity.json` exists
+    // this loads the saved secret key and derives `pubkey_hex` + `npub` so
+    // the next snapshot poll surfaces `active_account` without a write.
+    let identity_loaded = if let Ok(mut id) = handle.identity.lock() {
+        let was_empty = id.secret_hex.is_none();
+        id.set_data_dir(&PathBuf::from(&path_str));
+        // Only bump rev if we just loaded a key that wasn't present before.
+        was_empty && id.secret_hex.is_some()
+    } else {
+        false
+    };
+
+    if loaded > 0 || !loaded_queue.is_empty() || identity_loaded {
+        // Force the next snapshot poll to pick up the restored library,
+        // queue, and/or identity even though no write happened here.
         handle.rev.fetch_add(1, Ordering::Relaxed);
     }
 }

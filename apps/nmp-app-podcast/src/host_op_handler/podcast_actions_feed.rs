@@ -43,15 +43,25 @@ impl PodcastHostOpHandler {
         };
         let podcast_id = PodcastId::generate();
         let result = match handle_feed_response(&url, podcast_id, &http_result, None, Utc::now()) {
-            Ok(FeedResult::Parsed { parsed, .. }) => match self.store.lock() {
-                Ok(mut s) => {
-                    s.subscribe(parsed.podcast, parsed.episodes);
-                    self.rev.fetch_add(1, Ordering::Relaxed);
+            Ok(FeedResult::Parsed { parsed, .. }) => {
+                // Lock scope ends before `refresh_picks_into_slot` so we never
+                // attempt to re-acquire a `Mutex` we already hold (which is
+                // non-reentrant on macOS and would deadlock).
+                let write_ok = match self.store.lock() {
+                    Ok(mut s) => {
+                        s.subscribe(parsed.podcast, parsed.episodes);
+                        self.rev.fetch_add(1, Ordering::Relaxed);
+                        true
+                    }
+                    Err(_) => false,
+                };
+                if write_ok {
                     refresh_picks_into_slot(&self.store, &self.picks, &self.rev);
                     serde_json::json!({"ok": true})
+                } else {
+                    serde_json::json!({"ok": false, "error": "store poisoned"})
                 }
-                Err(_) => serde_json::json!({"ok": false, "error": "store poisoned"}),
-            },
+            }
             Ok(FeedResult::NotModified { .. }) => {
                 serde_json::json!({"ok": true, "not_modified": true})
             }

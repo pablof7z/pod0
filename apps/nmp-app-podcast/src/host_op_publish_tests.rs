@@ -7,6 +7,7 @@ use crate::agent_handler::AgentChatHandler;
 use crate::download::DownloadQueue;
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
+use crate::store::identity::IdentityStore;
 use crate::store::{PodcastKeyStore, PodcastStore};
 use podcast_core::Podcast;
 use std::collections::{HashMap, HashSet};
@@ -21,7 +22,7 @@ use std::sync::{Arc, Mutex};
 /// exercised here.
 fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
     let rev = Arc::new(AtomicU64::new(1));
-    let agent_chat = AgentChatHandler::new(
+    let agent_chat = AgentChatHandler::new_without_runtime(
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(AtomicBool::new(false)),
         Arc::new(AtomicBool::new(false)),
@@ -30,6 +31,7 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
     PodcastHostOpHandler::new(
         std::ptr::null_mut(),
         store,
+        Arc::new(Mutex::new(IdentityStore::new())),
         Arc::new(Mutex::new(PlayerActor::new())),
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(Vec::new())),
@@ -51,6 +53,10 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
         Arc::new(Mutex::new(PodcastKeyStore::new())),
         Arc::new(Mutex::new(HashMap::new())),
         agent_chat,
+        Arc::new(Mutex::new(HashMap::new())),
+        Arc::new(tokio::runtime::Runtime::new().unwrap()),
+        Arc::new(Mutex::new(HashMap::new())),
+        Arc::new(Mutex::new(None)),
     )
 }
 
@@ -78,10 +84,11 @@ fn create_owned_then_publish_show_round_trip() {
         .expect("owner pubkey stamped");
     assert_eq!(stored_pk, pubkey);
 
-    // Step 2: publish_show → returns a kind:10154 event with the same pubkey.
+    // Step 2: publish_show → returns a signed kind:10154 event with the same pubkey.
+    // With a null app pointer relay dispatch is skipped, so status is "signed".
     let out2 = publish_show(&handler, podcast_id.clone());
     assert_eq!(out2["ok"], true);
-    assert_eq!(out2["status"], "relay_pending");
+    assert_eq!(out2["status"], "signed", "null-app pointer must yield status=signed");
     let tags = out2["event_tags"].as_array().expect("event_tags array");
     // NIP-F4 shows have no `d` tag — first tag is the title.
     assert_eq!(tags[0][0], "title");
@@ -90,6 +97,13 @@ fn create_owned_then_publish_show_round_trip() {
         serde_json::from_str(out2["event_json"].as_str().unwrap()).unwrap();
     assert_eq!(event["kind"], 10154);
     assert_eq!(event["pubkey"], pubkey);
+    // Real secp256k1 signing: id and sig must be non-null 64-char hex strings.
+    let event_id = out2["event_id"].as_str().expect("event_id field present");
+    assert_eq!(event_id.len(), 64, "event_id must be 64-char hex");
+    let sig = event["sig"].as_str().expect("event.sig present");
+    assert_eq!(sig.len(), 128, "sig must be 128-char hex");
+    let id_in_event = event["id"].as_str().expect("event.id present");
+    assert_eq!(id_in_event, event_id, "event_id in envelope matches event.id field");
 }
 
 #[test]

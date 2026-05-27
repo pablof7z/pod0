@@ -140,7 +140,18 @@ worktrees currently in flight.
   and persistence.
 - **inbox-triage-real-model.** Replace recency heuristic with provider-backed
   triage, persisted dismiss/listened state, explainable reasons, and user
-  correction loop.
+  correction loop. Partially done in PR #123 (rig-core + Ollama LLM scoring
+  wired; remaining items below).
+- **inbox-triage-async-streaming.** Move `run_llm_triage` off the actor thread
+  into a background Tokio task that streams scored results back incrementally
+  via the rev counter. Currently the actor thread blocks for N×LLM latency
+  while episodes are triaged sequentially; this must be fixed before triage
+  is triggered automatically (not just on explicit user action).
+- **inbox-triage-cache-persist.** Persist `inbox_triage_cache`
+  (`HashMap<String, TriageResult>`) to disk alongside the podcast store so
+  cold launches do not re-triage every episode. Use the existing data-dir
+  path convention; serialize as JSON; reload on `set_data_dir`; invalidate
+  stale entries when episode metadata changes.
 - **agent-tasks-real-scheduler.** Replace run-now completion stamps with
   actual scheduling, task execution, notifications, persistence, and retries.
 - **agent-picks-real-ranking.** Replace newest-first heuristic with

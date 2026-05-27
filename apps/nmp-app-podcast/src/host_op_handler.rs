@@ -16,9 +16,12 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
+use tokio::runtime::Runtime;
+
 use nmp_core::substrate::{CapabilityRequest, HostOpHandler};
 use nmp_ffi::NmpApp;
 
+use crate::inbox_llm::TriageResult;
 use crate::ad_skip_handler::handle_set_auto_skip_ads;
 use crate::agent_handler::AgentChatHandler;
 use crate::ai_chapters::handle_compile_chapters;
@@ -32,6 +35,7 @@ use crate::ffi::actions::agent_module::AgentChatAction;
 use crate::ffi::actions::categorization_module::CategorizationAction;
 use crate::ffi::actions::chapters_module::ChaptersAction;
 use crate::ffi::actions::clip_module::ClipAction;
+use crate::ffi::actions::identity_module::IdentityAction;
 use crate::ffi::actions::inbox_module::InboxAction;
 use crate::ffi::actions::knowledge_module::KnowledgeAction;
 use crate::ffi::actions::memory_module::MemoryAction;
@@ -48,12 +52,15 @@ use crate::ffi::actions::siri_module::SiriAction;
 use crate::ffi::actions::wiki_module::WikiAction;
 use crate::ffi::handle::OwnedPublishState;
 use crate::ffi::projections::{
-    AgentPickSummary, AgentTaskSummary, BriefingSnapshot, KnowledgeSearchResult, NostrShowSummary,
-    PodcastSummary, TranscriptEntry, TtsEpisodeSummary, VoiceState, WikiArticle,
+    AgentPickSummary, AgentTaskSummary, BriefingSnapshot, CommentSummary, KnowledgeSearchResult,
+    NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry, TtsEpisodeSummary,
+    VoiceState, WikiArticle,
 };
 use crate::host_op_handler_queue::handle_queue_action;
 use crate::host_op_publish::handle_publish_action;
+use crate::identity_handler::IdentityHandler;
 use crate::inbox_handler::handle_inbox_action;
+use crate::store::identity::IdentityStore;
 use crate::memory_handler;
 use crate::picks_handler::handle_refresh as picks_handle_refresh;
 use crate::player::PlayerActor;
@@ -64,6 +71,9 @@ use crate::tasks_handler;
 use crate::tts::TtsEpisodeHandler;
 use crate::voice_handler;
 use crate::wiki::handle_wiki_action;
+use crate::capability::nostr_relay::{
+    NostrRelayRequest, NostrRelayResult, NOSTR_RELAY_CAPABILITY_NAMESPACE,
+};
 use podcast_feeds::http::{HttpRequest, HttpResult, HTTP_CAPABILITY_NAMESPACE};
 
 mod player_actions;
@@ -83,6 +93,7 @@ mod siri_actions;
 pub struct PodcastHostOpHandler {
     pub(crate) app: *mut NmpApp,
     pub(crate) store: Arc<Mutex<PodcastStore>>,
+    pub(crate) identity: Arc<Mutex<IdentityStore>>,
     pub(crate) player_actor: Arc<Mutex<PlayerActor>>,
     pub(crate) search_results: Arc<Mutex<Vec<PodcastSummary>>>,
     pub(crate) nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
@@ -113,6 +124,27 @@ pub struct PodcastHostOpHandler {
     /// last-published timestamp). Shared with `PodcastHandle.publish_state`.
     pub(crate) publish_state: Arc<Mutex<HashMap<String, OwnedPublishState>>>,
     pub(crate) agent_chat: AgentChatHandler,
+    /// NIP-22 (kind 1111) comment cache, keyed by episode_id string.
+    /// Written by `handle_fetch_comments` / `handle_post_comment` on the
+    /// actor thread; read by `build_snapshot_payload` on the main thread.
+    /// In-memory only — comments re-fetch on next `FetchComments` dispatch.
+    pub(crate) comments_cache: Arc<Mutex<HashMap<String, Vec<CommentSummary>>>>,
+    /// Shared Tokio runtime for async LLM / relay work. Seeded in
+    /// `ffi::register` so all host-op handlers share one multi-thread scheduler.
+    /// Used by wiki synthesis, agent chat, inbox triage, and social graph fetches.
+    pub(crate) runtime: Arc<Runtime>,
+    /// In-memory triage cache: `episode_id -> TriageResult`.
+    ///
+    /// Populated by `InboxAction::Triage` on the actor thread (running LLM
+    /// triage for each unlistened episode) and read by `build_inbox` to
+    /// overlay LLM scores over the recency-bucket fallback. Shared with
+    /// `PodcastHandle.inbox_triage_cache` so the snapshot reader sees
+    /// results without holding the handler lock.
+    pub(crate) inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
+    /// Active social-graph snapshot, populated by `FetchContacts`. Shared
+    /// with `PodcastHandle.social` so the snapshot reader projects it on
+    /// every tick after the first fetch.
+    pub(crate) social: Arc<Mutex<Option<SocialSnapshot>>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the
@@ -128,6 +160,7 @@ impl PodcastHostOpHandler {
     pub fn new(
         app: *mut NmpApp,
         store: Arc<Mutex<PodcastStore>>,
+        identity: Arc<Mutex<IdentityStore>>,
         player_actor: Arc<Mutex<PlayerActor>>,
         search_results: Arc<Mutex<Vec<PodcastSummary>>>,
         nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
@@ -149,11 +182,16 @@ impl PodcastHostOpHandler {
         podcast_keys: Arc<Mutex<PodcastKeyStore>>,
         publish_state: Arc<Mutex<HashMap<String, OwnedPublishState>>>,
         agent_chat: AgentChatHandler,
+        comments_cache: Arc<Mutex<HashMap<String, Vec<CommentSummary>>>>,
+        runtime: Arc<Runtime>,
+        inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
+        social: Arc<Mutex<Option<SocialSnapshot>>>,
     ) -> Self {
         let tts = TtsEpisodeHandler::new(app, tts_episodes, rev.clone());
         Self {
             app,
             store,
+            identity,
             player_actor,
             search_results,
             nostr_results,
@@ -175,6 +213,10 @@ impl PodcastHostOpHandler {
             podcast_keys,
             publish_state,
             agent_chat,
+            comments_cache,
+            runtime,
+            inbox_triage_cache,
+            social,
         }
     }
 
@@ -198,6 +240,28 @@ impl PodcastHostOpHandler {
         let envelope = unsafe { &*self.app }.dispatch_capability(&cap_req);
         serde_json::from_str::<HttpResult>(&envelope.result_json)
             .map_err(|e| format!("decode http result: {e}"))
+    }
+
+    /// Dispatch a `nostr_relay` capability request and decode the result.
+    ///
+    /// Used by the `podcast.discover_nostr` handler (and publish handlers
+    /// once wired). Mirrors `dispatch_http` — the capability executor
+    /// (iOS shell or headless host) routes by namespace and returns a
+    /// `CapabilityEnvelope` whose `result_json` is a `NostrRelayResult`.
+    pub(crate) fn dispatch_nostr_relay(
+        &self,
+        req: &NostrRelayRequest,
+        correlation_id: &str,
+    ) -> Result<NostrRelayResult, String> {
+        let payload_json = serde_json::to_string(req).map_err(|e| e.to_string())?;
+        let cap_req = CapabilityRequest {
+            namespace: NOSTR_RELAY_CAPABILITY_NAMESPACE.to_owned(),
+            correlation_id: correlation_id.to_owned(),
+            payload_json,
+        };
+        let envelope = unsafe { &*self.app }.dispatch_capability(&cap_req);
+        serde_json::from_str::<NostrRelayResult>(&envelope.result_json)
+            .map_err(|e| format!("decode nostr_relay result: {e}"))
     }
 
     pub(crate) fn dispatch_audio(
@@ -266,6 +330,9 @@ impl PodcastHostOpHandler {
 
 impl HostOpHandler for PodcastHostOpHandler {
     fn handle(&self, action_json: &str, correlation_id: &str) -> serde_json::Value {
+        if let Ok(action) = serde_json::from_str::<IdentityAction>(action_json) {
+            return IdentityHandler::new(self.identity.clone(), self.rev.clone()).handle(action);
+        }
         if let Ok(action) = serde_json::from_str::<CategorizationAction>(action_json) {
             return match action {
                 CategorizationAction::Run => {
@@ -291,6 +358,8 @@ impl HostOpHandler for PodcastHostOpHandler {
                 &self.store,
                 &self.dismissed_episode_ids,
                 &self.rev,
+                &self.inbox_triage_cache,
+                &self.runtime,
             );
         }
         if let Ok(action) = serde_json::from_str::<QueueAction>(action_json) {
@@ -307,7 +376,9 @@ impl HostOpHandler for PodcastHostOpHandler {
             return handle_wiki_action(
                 &self.wiki_articles,
                 &self.wiki_search_results,
+                &self.store,
                 &self.rev,
+                &self.runtime,
                 action,
             );
         }

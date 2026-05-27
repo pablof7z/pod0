@@ -8,14 +8,16 @@ use std::sync::{Arc, Mutex};
 use nmp_ffi::NmpApp;
 
 use crate::clip_handler::ClipRecord;
+use crate::inbox_llm::TriageResult;
 use crate::ffi::projections::{
-    AgentMessageSummary, AgentPickSummary, AgentTaskSummary, BriefingSnapshot,
-    KnowledgeSearchResult, NostrShowSummary, PodcastSummary, TranscriptEntry, TtsEpisodeSummary,
-    VoiceState, WikiArticle,
+    AgentMessageSummary, AgentPickSummary, AgentTaskSummary, BriefingSnapshot, CommentSummary,
+    KnowledgeSearchResult, NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry,
+    TtsEpisodeSummary, VoiceState, WikiArticle,
 };
 use crate::download::DownloadQueue;
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
+use crate::store::identity::IdentityStore;
 use crate::store::{PodcastKeyStore, PodcastStore};
 
 /// Diagnostic publish state retained per-podcast across snapshot ticks.
@@ -36,6 +38,7 @@ pub struct PodcastHandle {
     pub(super) app: *mut NmpApp,
     pub(super) player_actor: Arc<Mutex<PlayerActor>>,
     pub(super) store: Arc<Mutex<PodcastStore>>,
+    pub(super) identity: Arc<Mutex<IdentityStore>>,
     pub(super) rev: Arc<AtomicU64>,
     /// Transient iTunes search results. Written by `handle_search_itunes` on
     /// the actor thread; read by `build_snapshot_payload` on the main thread.
@@ -153,6 +156,22 @@ pub struct PodcastHandle {
     /// `build_snapshot_payload` to populate
     /// `EpisodeSummary.ai_categories` + the `categories` aggregate.
     pub(super) categories: Arc<Mutex<HashMap<String, Vec<String>>>>,
+    /// LLM triage cache: `episode_id -> TriageResult`.
+    ///
+    /// Populated by `InboxAction::Triage` on the actor thread (running LLM
+    /// classification for each unlistened episode). Read by `build_inbox`
+    /// to overlay LLM scores and categories over the recency-bucket fallback.
+    /// In-memory only — results are recomputed on each explicit Triage action.
+    pub(super) inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
+    /// NIP-22 (kind 1111) comment cache, keyed by episode_id string.
+    /// Written by `handle_fetch_comments` / `handle_post_comment` on the
+    /// actor thread; read by `build_snapshot_payload` on the main thread.
+    pub(crate) comments_cache: Arc<Mutex<HashMap<String, Vec<CommentSummary>>>>,
+    /// NIP-02 social graph snapshot. `None` until the first
+    /// `FetchContacts` dispatch completes. Written by
+    /// `social_handler::handle_fetch_contacts` on the actor thread; read
+    /// by `build_snapshot_payload` on each tick.
+    pub(super) social: Arc<Mutex<Option<SocialSnapshot>>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the

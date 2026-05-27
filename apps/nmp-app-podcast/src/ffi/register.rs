@@ -5,12 +5,14 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::{Arc, Mutex};
 
+
 use nmp_ffi::NmpApp;
 
 use super::actions::agent_module::AgentActionModule;
 use super::actions::categorization_module::CategorizationModule;
 use super::actions::chapters_module::ChaptersActionModule;
 use super::actions::clip_module::ClipActionModule;
+use super::actions::identity_module::IdentityActionModule;
 use super::actions::inbox_module::InboxActionModule;
 use super::actions::knowledge_module::KnowledgeActionModule;
 use super::actions::memory_module::MemoryActionModule;
@@ -32,6 +34,7 @@ use crate::download::DownloadQueue;
 use crate::host_op_handler::PodcastHostOpHandler;
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
+use crate::store::identity::IdentityStore;
 use crate::store::{PodcastKeyStore, PodcastStore};
 use crate::tasks_handler;
 
@@ -60,6 +63,7 @@ pub extern "C" fn nmp_app_podcast_register(
     let app_mut = unsafe { &mut *app };
     nmp_app_template::register_defaults(app_mut);
 
+    app_mut.register_action::<IdentityActionModule>();
     app_mut.register_action::<PodcastActionModule>();
     app_mut.register_action::<PlayerActionModule>();
     app_mut.register_action::<QueueActionModule>();
@@ -81,6 +85,7 @@ pub extern "C" fn nmp_app_podcast_register(
 
     // Shared state between the handle (snapshot reader) and the handler (writer).
     let store = Arc::new(Mutex::new(PodcastStore::new()));
+    let identity = Arc::new(Mutex::new(IdentityStore::new()));
     let player_actor = Arc::new(Mutex::new(PlayerActor::new()));
     let search_results = Arc::new(Mutex::new(Vec::new()));
     let nostr_results = Arc::new(Mutex::new(Vec::new()));
@@ -107,16 +112,33 @@ pub extern "C" fn nmp_app_podcast_register(
     let agent_touched = Arc::new(AtomicBool::new(false));
     let categories: Arc<Mutex<HashMap<String, Vec<String>>>> =
         Arc::new(Mutex::new(HashMap::new()));
+    let comments_cache: Arc<Mutex<HashMap<String, Vec<crate::ffi::projections::CommentSummary>>>> =
+        Arc::new(Mutex::new(HashMap::new()));
+    let social = Arc::new(Mutex::new(None));
     // Start at 1 so the first snapshot poll always triggers an iOS update
     // (guard is `update.rev > last_seen_rev`; last_seen_rev starts at 0).
     // Subsequent increments happen in PodcastHostOpHandler on store writes.
     let rev = Arc::new(AtomicU64::new(1));
+
+    let inbox_triage_cache = Arc::new(Mutex::new(HashMap::new()));
+
+
+    // Shared Tokio runtime — multi-thread scheduler so async LLM/relay
+    // work in future PRs can `.spawn` without a per-handler executor.
+    let runtime = Arc::new(
+        tokio::runtime::Builder::new_multi_thread()
+            .thread_name("podcast-tokio")
+            .enable_all()
+            .build()
+            .expect("tokio runtime"),
+    );
 
     let agent_chat = AgentChatHandler::new(
         conversation.clone(),
         agent_busy.clone(),
         agent_touched.clone(),
         rev.clone(),
+        runtime.clone(),
     );
 
     // Install the host-op handler (requires &self, so take the ref AFTER the
@@ -125,6 +147,7 @@ pub extern "C" fn nmp_app_podcast_register(
     app_ref.set_host_op_handler(Arc::new(PodcastHostOpHandler::new(
         app,
         store.clone(),
+        identity.clone(),
         player_actor.clone(),
         search_results.clone(),
         nostr_results.clone(),
@@ -146,12 +169,17 @@ pub extern "C" fn nmp_app_podcast_register(
         podcast_keys.clone(),
         publish_state.clone(),
         agent_chat,
+        comments_cache.clone(),
+        runtime,
+        inbox_triage_cache.clone(),
+        social.clone(),
     )));
 
     Box::into_raw(Box::new(PodcastHandle {
         app,
         player_actor,
         store,
+        identity,
         rev,
         search_results,
         nostr_results,
@@ -175,5 +203,8 @@ pub extern "C" fn nmp_app_podcast_register(
         agent_busy,
         agent_touched,
         categories,
+        inbox_triage_cache,
+        comments_cache,
+        social,
     }))
 }

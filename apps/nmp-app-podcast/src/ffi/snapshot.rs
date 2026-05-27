@@ -12,7 +12,7 @@ use std::sync::atomic::Ordering;
 use super::handle::PodcastHandle;
 use super::helpers::strip_html;
 use super::projections::{
-    AgentSnapshot, ChapterSummary, EpisodeSummary, PodcastSummary,
+    AccountSummary, AgentSnapshot, ChapterSummary, EpisodeSummary, PodcastSummary,
     SettingsSnapshot, VoiceState,
 };
 use super::snapshot_categories::build_category_aggregate;
@@ -150,10 +150,34 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         .map(|r| r.clone()).unwrap_or_default();
     let tts_episodes = handle.tts_episodes.lock().ok().map(|r| r.clone()).unwrap_or_default();
     let clips = crate::clip_handler::project_clips(&handle.clips, &library);
-    let inbox = build_inbox(&handle.store, &handle.dismissed_episode_ids);
+    let inbox = build_inbox(&handle.store, &handle.dismissed_episode_ids, &handle.inbox_triage_cache);
     let owned_podcasts = collect_owned_podcasts(handle);
     let downloads = handle.download_queue.lock().ok()
         .and_then(|q| build_downloads_snapshot(&q));
+
+    // Project comments for the now-playing episode from the cache.
+    let comments = handle
+        .comments_cache
+        .lock()
+        .ok()
+        .and_then(|cache| {
+            now_playing
+                .as_ref()
+                .and_then(|np| np.episode_id.as_deref())
+                .and_then(|ep_id| cache.get(ep_id).cloned())
+        })
+        .unwrap_or_default();
+
+    let active_account = handle.identity.lock().ok().and_then(|id| {
+        id.npub.as_ref().map(|npub| AccountSummary {
+            npub: npub.clone(),
+            mode: "local_key".into(),
+            display_name: id.display_name.clone(),
+            picture_url: id.picture_url.clone(),
+        })
+    });
+
+    let social = handle.social.lock().ok().and_then(|s| s.clone());
 
     let voice = handle.voice_state.lock().ok().and_then(|v| {
         let snap = v.clone();
@@ -175,9 +199,11 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         rev,
         now_playing,
         library,
+        active_account,
         search_results,
         nostr_results,
         settings,
+        comments,
         queue,
         wiki_articles,
         wiki_search_results,
@@ -194,6 +220,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         agent,
         categories,
         briefing,
+        social,
         ..PodcastUpdate::default()
     };
     let json = serde_json::to_string(&update)

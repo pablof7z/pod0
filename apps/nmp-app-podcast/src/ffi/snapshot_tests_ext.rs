@@ -144,6 +144,7 @@ fn snapshot_with_wiki_articles_round_trips() {
             source_episode_ids: vec!["ep-1".into()],
             last_updated_at: 1_700_000_000,
             is_generating: false,
+            generation_error: None,
         }],
         ..PodcastUpdate::default()
     };
@@ -172,6 +173,7 @@ fn snapshot_with_wiki_search_results_round_trips() {
             source_episode_ids: vec![],
             last_updated_at: 1_700_000_100,
             is_generating: false,
+            generation_error: None,
         }],
         ..PodcastUpdate::default()
     };

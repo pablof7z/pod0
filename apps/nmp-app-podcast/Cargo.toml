@@ -24,8 +24,26 @@ crate-type = ["staticlib", "rlib", "cdylib"]
 [features]
 # Persistent local cache / publish-intent ledger for offline-first Podcast.
 lmdb-backend = ["nmp-core/lmdb-backend"]
+# Headless scenario test binary: real HTTP via reqwest, temp dirs via tempfile.
+# tokio-tungstenite and futures-util are now non-optional (production social
+# graph relay subscriptions use them). Gated deps here are only the test-only
+# build utilities; the relay client is a production dependency.
+headless = ["dep:reqwest", "dep:tempfile", "nmp-core/test-support", "nmp-ffi/test-support"]
+
+[[bin]]
+name = "headless"
+path = "src/bin/headless/main.rs"
+required-features = ["headless"]
 
 [dependencies]
+reqwest = { version = "0.12", features = ["blocking", "rustls-tls"], optional = true }
+tempfile = { version = "3", optional = true }
+# WebSocket client used by the production social-graph relay subscriptions
+# (FetchContacts → kind:3 + kind:0) and by the headless relay_client.
+# Non-optional so the iOS library also compiles with real relay support.
+tokio-tungstenite = { version = "0.26", features = ["rustls-tls-native-roots"] }
+futures-util = { version = "0.3" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 nmp-core = { path = "../../../nostrmultiplatform/crates/nmp-core" }
 # `nmp-ffi` owns the `NmpApp` C-ABI handle. Podcast's
 # `nmp_app_podcast_register` takes `*mut NmpApp`; the per-app crate names
@@ -74,6 +92,7 @@ podcast-transcripts = { path = "../podcast-transcripts" }
 # `podcast.publish` host-op handler reaches for the build layer when
 # constructing per-podcast NIP-F4 events (features #27/#28).
 podcast-discovery = { path = "../podcast-discovery" }
+rig-core = { version = "0.37", default-features = false, features = ["derive", "reqwest", "rustls"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 zeroize = { version = "1", features = ["derive"] }
@@ -86,6 +105,8 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 # can spin up a real `NmpApp` rather than mocking the slot.
 nmp-core = { path = "../../../nostrmultiplatform/crates/nmp-core", features = ["test-support"] }
 nmp-ffi = { path = "../../../nostrmultiplatform/crates/nmp-ffi", features = ["test-support"] }
+# Temporary directory support for PodcastKeyStore and identity store round-trip tests.
+tempfile = "3"
 
 # ── Android JNI shim ──────────────────────────────────────────────────────
 #

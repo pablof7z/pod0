@@ -27,6 +27,7 @@ use podcast_core::{Episode, EpisodeId, Podcast, PodcastId};
 mod ad_segments;
 mod chapters;
 pub mod auto_download;
+pub mod identity;
 mod library;
 mod memory;
 mod owned_ext;

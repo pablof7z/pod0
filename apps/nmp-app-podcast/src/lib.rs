@@ -32,13 +32,16 @@
 //!   per-projection actors under [`player`] et al.
 
 pub(crate) mod ad_skip_handler;
-pub(crate) mod agent_handler;
+pub mod agent_handler;
+pub(crate) mod agent_llm;
+pub(crate) mod identity_handler;
 pub(crate) mod ai_chapters;
 pub(crate) mod briefings_handler;
 pub mod capability;
 pub(crate) mod categorization;
 pub(crate) mod chapter;
 pub(crate) mod clip_handler;
+pub(crate) mod comments_anchor;
 pub(crate) mod comments_handler;
 pub(crate) mod discover_nostr;
 pub mod download;
@@ -48,12 +51,14 @@ pub(crate) mod host_op_handler_helpers;
 pub(crate) mod host_op_handler_queue;
 pub(crate) mod host_op_publish;
 pub(crate) mod inbox_handler;
+pub(crate) mod inbox_llm;
 pub(crate) mod itunes;
 pub mod knowledge;
 pub(crate) mod memory_handler;
 pub(crate) mod picks_handler;
 pub mod player;
 pub mod queue;
+pub(crate) mod relay;
 pub(crate) mod social_handler;
 pub mod store;
 pub(crate) mod tasks_handler;
@@ -61,6 +66,7 @@ pub(crate) mod transcript;
 pub(crate) mod tts;
 pub(crate) mod voice_handler;
 pub(crate) mod wiki;
+pub(crate) mod wiki_llm;
 
 // M2.F — Android JNI shim. Gated `target_os = "android"` so iOS/macOS builds
 // remain unaffected. The shim exports `Java_io_f7z_podcast_KernelBridge_*`
