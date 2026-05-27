@@ -90,6 +90,12 @@ final class PlatformCapability {
     /// `becomeCurrent()`).
     private var currentActivity: NSUserActivity?
 
+    // Dedup keys for `applyNowPlayingSnapshot` — skip writes when
+    // only library-metadata changed but the player state is identical.
+    private var lastNowPlayingEpisodeId: String? = nil
+    private var lastNowPlayingIsPlaying: Bool = false
+    private var lastNowPlayingChapterTitle: String? = nil
+
     /// Idempotent. Marks the capability active. Today this is a
     /// no-op besides flipping the flag — the OS resources
     /// (`NSUserActivity`, App Group `UserDefaults`) are lazily
@@ -110,6 +116,50 @@ final class PlatformCapability {
     }
 
     var isStarted: Bool { started }
+
+    // MARK: - Now-playing widget (NowPlayingSnapshot path)
+
+    /// Translate the kernel's player state into a `NowPlayingSnapshot` and
+    /// write it to the App Group so the widget picks it up. Called by the
+    /// kernel-projection observer on every `onNowPlayingSnapshot` tick.
+    ///
+    /// Deduplicates on `(episodeId, isPlaying, chapterTitle)` — the most
+    /// common ticks during live playback change only `positionSecs`, which
+    /// is excluded from `snapshotContentHash`; those ticks never reach here.
+    /// Position is kept fresh by `NowPlayingSnapshotStore.updatePosition`
+    /// called from `tickPersistence()` in `PlaybackState`.
+    func applyNowPlayingSnapshot(_ snapshot: PodcastUpdate?, library: [PodcastSummary]) {
+        guard let nowPlaying = snapshot?.nowPlaying,
+              let episodeIdStr = nowPlaying.episodeId else { return }
+        let isPlaying = nowPlaying.isPlaying
+        let chapterTitle = nowPlaying.currentChapterTitle
+        if episodeIdStr == lastNowPlayingEpisodeId,
+           isPlaying == lastNowPlayingIsPlaying,
+           chapterTitle == lastNowPlayingChapterTitle { return }
+        lastNowPlayingEpisodeId = episodeIdStr
+        lastNowPlayingIsPlaying = isPlaying
+        lastNowPlayingChapterTitle = chapterTitle
+        var episodeTitle = episodeIdStr
+        var showName = ""
+        var imageURLString: String? = nil
+        outer: for pod in library {
+            for ep in pod.episodes where ep.id == episodeIdStr {
+                episodeTitle = ep.title
+                showName = pod.title
+                imageURLString = ep.artworkUrl ?? pod.artworkUrl
+                break outer
+            }
+        }
+        NowPlayingSnapshotStore.write(NowPlayingSnapshot(
+            episodeTitle: episodeTitle,
+            showName: showName,
+            imageURLString: imageURLString,
+            position: nowPlaying.positionSecs,
+            duration: nowPlaying.durationSecs,
+            chapterTitle: chapterTitle,
+            isPlaying: isPlaying
+        ))
+    }
 
     // MARK: - Widget snapshot serialization
 

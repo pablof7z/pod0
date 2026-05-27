@@ -147,6 +147,13 @@ final class AppStateStore {
     @ObservationIgnored
     var onQueueFromKernel: (([UUID]) -> Void)?
 
+    /// Fires on every kernel-projection tick where content changed (position-only
+    /// ticks are suppressed by `snapshotContentHash`). Wired in `AppMain` to
+    /// `PlatformCapability.applyNowPlayingSnapshot` so the widget stays current
+    /// without `PlaybackState` owning the widget write path.
+    @ObservationIgnored
+    var onNowPlayingSnapshot: ((PodcastUpdate?, [PodcastSummary]) -> Void)?
+
     /// Retained observer token for iCloud external-change notifications.
     private var iCloudObserver: NSObjectProtocol?
 

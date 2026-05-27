@@ -10,18 +10,6 @@ extension RootView {
             store.setEpisodePlaybackPosition(id, position: position)
             store.setLastPlayedEpisode(id)
         }
-        playbackState.onEpisodeFinished = { [store, playbackState] id in
-            store.markEpisodePlayed(id)
-            let endOfEpisodeArmed: Bool
-            switch playbackState.engine.sleepTimer.phase {
-            case .armedEndOfEpisode, .fired:
-                endOfEpisodeArmed = true
-            default:
-                endOfEpisodeArmed = false
-            }
-            guard store.state.settings.autoPlayNext, !endOfEpisodeArmed else { return }
-            playbackState.playNext { store.episode(id: $0) }
-        }
         playbackState.onFlushPositions = { [store] in
             store.flushPendingPositions()
         }
@@ -68,11 +56,7 @@ extension RootView {
             delegate.pendingShortcutURL = nil
             handleDeepLink(url)
         }
-        playbackState.autoMarkPlayedOnFinish = store.state.settings.autoMarkPlayedAtEnd
         playbackState.applyPreferences(from: store.state.settings)
-        playbackState.resolveShowName = { [store] episode in
-            store.podcast(id: episode.podcastID)?.title ?? ""
-        }
         playbackState.resolveShowImage = { [store] episode in
             store.podcast(id: episode.podcastID)?.imageURL
         }
@@ -110,6 +94,22 @@ extension RootView {
            let lastID = store.state.lastPlayedEpisodeID,
            let episode = store.episode(id: lastID) {
             playbackState.setEpisode(episode, enqueueDownloadIfNeeded: false)
+            // On cold launch the Rust kernel starts with nowPlaying == nil
+            // (position is not persisted in PersistedStore). Write the widget
+            // snapshot here so it shows the restored episode immediately —
+            // onNowPlayingSnapshot won't fire until the kernel snapshot advances
+            // with a live nowPlaying, which only happens once the user taps play.
+            let showName = store.podcast(id: episode.podcastID)?.title ?? ""
+            let imageURLString = (episode.imageURL ?? store.podcast(id: episode.podcastID)?.imageURL)?.absoluteString
+            NowPlayingSnapshotStore.write(NowPlayingSnapshot(
+                episodeTitle: episode.title,
+                showName: showName,
+                imageURLString: imageURLString,
+                position: episode.playbackPosition,
+                duration: episode.duration,
+                chapterTitle: nil,
+                isPlaying: false
+            ))
         }
     }
 

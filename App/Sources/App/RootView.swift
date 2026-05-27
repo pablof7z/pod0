@@ -88,7 +88,6 @@ struct RootView: View {
                 }
                 .onAppear { setupPlaybackHandlers() }
                 .onChange(of: store.state.settings) { _, new in
-                    playbackState.autoMarkPlayedOnFinish = new.autoMarkPlayedAtEnd
                     playbackState.applyPreferences(from: new)
                 }
                 .sheet(isPresented: $showFullPlayer) {

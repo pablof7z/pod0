@@ -1,5 +1,6 @@
 import Foundation
 import os.log
+import WidgetKit
 
 // MARK: - NowPlayingSnapshot (app side)
 
@@ -48,6 +49,10 @@ enum NowPlayingSnapshotStore {
     /// for `encode` after construction.
     private static let encoder = JSONEncoder()
 
+    /// In-memory copy of the last snapshot written. Used by `updatePosition`
+    /// to skip the library lookup when only position/isPlaying changed.
+    private static var lastWrittenSnapshot: NowPlayingSnapshot?
+
     /// App Group identifier — must match `Project.swift`'s `appGroupID` and the
     /// entitlements on both targets. Hard-coded here (rather than read from
     /// `Info.plist`) so the call site is synchronous and can't fail.
@@ -68,6 +73,8 @@ enum NowPlayingSnapshotStore {
         do {
             let data = try encoder.encode(snapshot)
             defaults.set(data, forKey: defaultsKey)
+            lastWrittenSnapshot = snapshot
+            WidgetCenter.shared.reloadAllTimelines()
         } catch {
             logger.error("Failed to encode NowPlayingSnapshot: \(error, privacy: .public)")
         }
@@ -78,5 +85,17 @@ enum NowPlayingSnapshotStore {
     static func clear() {
         guard let defaults = UserDefaults(suiteName: appGroupID) else { return }
         defaults.removeObject(forKey: defaultsKey)
+        lastWrittenSnapshot = nil
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    /// Update only `position` and `isPlaying` on the cached snapshot.
+    /// Called from the 1 Hz persistence loop (every 5 ticks) to keep the
+    /// widget position fresh without a full library lookup.
+    static func updatePosition(_ position: TimeInterval, isPlaying: Bool) {
+        guard var snapshot = lastWrittenSnapshot else { return }
+        snapshot.position = position
+        snapshot.isPlaying = isPlaying
+        write(snapshot)
     }
 }

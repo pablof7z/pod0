@@ -179,6 +179,7 @@ extension AppStateStore {
         }
 
         state = next
+        onNowPlayingSnapshot?(snapshot, library)
     }
 }
 

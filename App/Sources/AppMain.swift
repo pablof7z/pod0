@@ -46,6 +46,10 @@ struct PodcastrApp: App {
                 .environment(askCoordinator)
                 .task {
                     kernelModel.start()
+                    let platform = PodcastCapabilities.shared.platform
+                    store.onNowPlayingSnapshot = { [platform] snap, lib in
+                        platform.applyNowPlayingSnapshot(snap, library: lib)
+                    }
                     store.attachKernel(kernelModel)
                     PodcastCapabilities.shared.startICloudSync(kernel: kernelModel)
                 }
