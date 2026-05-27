@@ -201,10 +201,6 @@ final class PlaybackState {
     var lastSnapshotWrite: Date?
     /// Idempotency guard for per-episode download enqueue requests.
     private var downloadEnqueueRequestedForEpisodeID: UUID?
-    /// Counts 1-second ticks during playback. `updatePosition` is called every
-    /// 5 ticks so the widget's position stays ≤5s stale without a full write on
-    /// every tick.
-    private var widgetPositionTick = 0
 
     // MARK: - Init
 
@@ -237,7 +233,6 @@ final class PlaybackState {
             didFireFinishedFor = nil
             lastSnapshotWrite = nil
             downloadEnqueueRequestedForEpisodeID = nil
-            widgetPositionTick = 0
         } else {
             // Same-id reload: clear the finished-flag so a replay produces
             // position writes instead of returning early in tickPersistence.

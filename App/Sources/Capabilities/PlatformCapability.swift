@@ -125,9 +125,9 @@ final class PlatformCapability {
     ///
     /// Deduplicates on `(episodeId, isPlaying, chapterTitle)` — the most
     /// common ticks during live playback change only `positionSecs`, which
-    /// is excluded from `snapshotContentHash`; those ticks never reach here.
-    /// Position is kept fresh by `NowPlayingSnapshotStore.updatePosition`
-    /// called from `tickPersistence()` in `PlaybackState`.
+    /// is excluded from the dedup keys; those ticks never reach here.
+    /// Position is kept fresh by `PlaybackState.writeNowPlayingSnapshot`
+    /// which writes the full snapshot (throttled to 5 s) on every tick.
     func applyNowPlayingSnapshot(_ snapshot: PodcastUpdate?, library: [PodcastSummary]) {
         guard let nowPlaying = snapshot?.nowPlaying,
               let episodeIdStr = nowPlaying.episodeId else { return }
