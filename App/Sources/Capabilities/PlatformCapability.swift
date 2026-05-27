@@ -90,11 +90,16 @@ final class PlatformCapability {
     /// `becomeCurrent()`).
     private var currentActivity: NSUserActivity?
 
-    // Dedup keys for `applyNowPlayingSnapshot` — skip writes when
-    // only library-metadata changed but the player state is identical.
+    // Dedup keys for `applyNowPlayingSnapshot`. Includes `episodeTitle` and
+    // `imageURLString` so a library-hydration pass (which replaces the UUID
+    // fallback title with the real title) always writes through — without
+    // these two keys the first write wins and the widget is stuck on the
+    // episode ID string.
     private var lastNowPlayingEpisodeId: String? = nil
     private var lastNowPlayingIsPlaying: Bool = false
     private var lastNowPlayingChapterTitle: String? = nil
+    private var lastNowPlayingEpisodeTitle: String = ""
+    private var lastNowPlayingImageURLString: String? = nil
 
     /// Idempotent. Marks the capability active. Today this is a
     /// no-op besides flipping the flag — the OS resources
@@ -133,12 +138,6 @@ final class PlatformCapability {
               let episodeIdStr = nowPlaying.episodeId else { return }
         let isPlaying = nowPlaying.isPlaying
         let chapterTitle = nowPlaying.currentChapterTitle
-        if episodeIdStr == lastNowPlayingEpisodeId,
-           isPlaying == lastNowPlayingIsPlaying,
-           chapterTitle == lastNowPlayingChapterTitle { return }
-        lastNowPlayingEpisodeId = episodeIdStr
-        lastNowPlayingIsPlaying = isPlaying
-        lastNowPlayingChapterTitle = chapterTitle
         var episodeTitle = episodeIdStr
         var showName = ""
         var imageURLString: String? = nil
@@ -150,6 +149,16 @@ final class PlatformCapability {
                 break outer
             }
         }
+        if episodeIdStr == lastNowPlayingEpisodeId,
+           isPlaying == lastNowPlayingIsPlaying,
+           chapterTitle == lastNowPlayingChapterTitle,
+           episodeTitle == lastNowPlayingEpisodeTitle,
+           imageURLString == lastNowPlayingImageURLString { return }
+        lastNowPlayingEpisodeId = episodeIdStr
+        lastNowPlayingIsPlaying = isPlaying
+        lastNowPlayingChapterTitle = chapterTitle
+        lastNowPlayingEpisodeTitle = episodeTitle
+        lastNowPlayingImageURLString = imageURLString
         NowPlayingSnapshotStore.write(NowPlayingSnapshot(
             episodeTitle: episodeTitle,
             showName: showName,

@@ -173,6 +173,15 @@ final class PlaybackState {
     /// detection still stops the persistence loop but skips `onEpisodeFinished`.
     var autoMarkPlayedOnFinish: Bool = true
 
+    /// Mirrors `Settings.autoSkipAds`. When `true`, `tickPersistence` seeks
+    /// past any `Episode.AdSegment` the playhead enters, throttled to one
+    /// skip per segment per playback session via `skippedAdSegmentIDs`.
+    var autoSkipAdsEnabled: Bool = false
+
+    /// Ad segments for the currently-loaded episode. Refreshed in `setEpisode`
+    /// so the auto-skip loop doesn't reach into `AppStateStore` on every tick.
+    var adSegments: [Episode.AdSegment] = []
+
     /// Resolves the parent show's name. Used by `writeNowPlayingSnapshot`.
     var resolveShowName: (Episode) -> String = { _ in "" }
 
@@ -199,6 +208,9 @@ final class PlaybackState {
     private var didFireFinishedFor: UUID?
     /// Most recent App-Group snapshot write timestamp (throttle state).
     var lastSnapshotWrite: Date?
+    /// Ad segments already auto-skipped this session. Cleared on episode change
+    /// so replaying the same episode re-skips the same ads.
+    var skippedAdSegmentIDs: Set<UUID> = []
     /// Idempotency guard for per-episode download enqueue requests.
     private var downloadEnqueueRequestedForEpisodeID: UUID?
 
@@ -232,6 +244,7 @@ final class PlaybackState {
             onFlushPositions()
             didFireFinishedFor = nil
             lastSnapshotWrite = nil
+            skippedAdSegmentIDs = []
             downloadEnqueueRequestedForEpisodeID = nil
         } else {
             // Same-id reload: clear the finished-flag so a replay produces
@@ -245,6 +258,7 @@ final class PlaybackState {
         if newEpisode.isTriageArchived {
             onClearTriageDecision(newEpisode.id)
         }
+        adSegments = newEpisode.adSegments ?? []
         if !isSameEpisode {
             engine.load(newEpisode)
             if newEpisode.playbackPosition > 0 {
@@ -388,6 +402,7 @@ final class PlaybackState {
         }
         headphoneDoubleTapAction = settings.headphoneDoubleTapAction
         headphoneTripleTapAction = settings.headphoneTripleTapAction
+        autoSkipAdsEnabled = settings.autoSkipAds
     }
 
     func setSleepTimer(_ timer: PlaybackSleepTimer) {
@@ -433,6 +448,7 @@ final class PlaybackState {
             return
         }
 
+        applyAutoSkipAdsIfNeeded(at: time)
         writeNowPlayingSnapshot(force: false)
 
         if engine.didReachNaturalEnd {

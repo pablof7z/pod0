@@ -213,6 +213,11 @@ worktrees currently in flight.
   status behind.
 - **line-limit-audit.** Continue enforcing the 300-line soft and 500-line hard
   limits. Split files before adding logic to near-limit modules.
+- **m1.6-kernel-widget-position.** Once `AudioCapability.sendReport` is wired
+  to the Rust kernel (M1.6), kernel-projection position ticks will drive
+  `nowPlaying.positionSecs`. At that point `PlatformCapability.applyNowPlayingSnapshot`
+  needs a separate position-write path (not gated by the identity dedup) so the
+  widget stays live during playback. Owner: M1.6 agent.
 
 ## Pending Decisions
 
