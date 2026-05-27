@@ -43,14 +43,27 @@ struct PodcastUpdate: Codable {
 /// Active player state (present only when an episode is loaded).
 struct PlayerState: Codable {
     var episodeId: String? = nil
+    var podcastId: String? = nil
     var url: String? = nil
     var positionSecs: Double = 0
-    var durationSecs: Double? = nil
+    var durationSecs: Double = 0
     var isPlaying: Bool = false
-    var isBuffering: Bool = false
-    var bufferingFraction: Double = 0
-    var speed: Double = 1
-    var volume: Double = 1
+    var bufferingFraction: Double? = nil
+    var speed: Float = 1
+    var volume: Float = 1
+    var sleepTimerRemainingSecs: Int? = nil
+    var lastError: String? = nil
+    /// Set to `true` when AVPlayer fires `AVPlayerItemDidPlayToEndTime`.
+    /// Cleared when the next episode loads. Used by the UI to distinguish
+    /// a natural finish from a user-initiated stop.
+    var didReachNaturalEnd: Bool = false
+    /// Absolute end boundary (seconds) for a bounded agent segment.
+    /// Nil for unbounded playback.
+    var segmentEndSecs: Double? = nil
+    /// Title of the chapter active at the current playhead position.
+    var currentChapterTitle: String? = nil
+    /// Artwork URL of the active chapter, if the chapter has a per-chapter image.
+    var currentChapterArtworkUrl: String? = nil
 }
 
 /// Active Nostr identity (present only when an account is loaded).
@@ -65,6 +78,16 @@ struct AccountSummary: Codable {
 struct SettingsSnapshot: Codable, Equatable {
     var hasCompletedOnboarding: Bool = false
     var autoSkipAdsEnabled: Bool = false
+    /// When `true`, the kernel auto-advances to the next queued episode on
+    /// natural episode end. Default `true`.
+    var autoPlayNext: Bool = true
+    /// When `true`, the kernel marks the episode listened on natural episode
+    /// end. Default `true`.
+    var autoMarkPlayedAtEnd: Bool = true
+    /// Raw action string for headphone double-tap gesture. Default `"skipForward"`.
+    var headphoneDoubleTapAction: String = "skipForward"
+    /// Raw action string for headphone triple-tap gesture. Default `"clipNow"`.
+    var headphoneTripleTapAction: String = "clipNow"
     /// Skip-forward interval in seconds. Default 30. Set via
     /// `podcast.settings.set_skip_intervals`.
     var skipForwardSecs: Double = 30

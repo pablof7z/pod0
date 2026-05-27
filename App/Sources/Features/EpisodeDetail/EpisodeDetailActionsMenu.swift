@@ -3,9 +3,8 @@ import SwiftUI
 // MARK: - EpisodeDetailActionsMenu
 
 /// Trailing toolbar menu shown by `EpisodeDetailView`: download / mark-played
-/// toggles. Routes every mutation through `AppStateStore` (state) plus
-/// `EpisodeDownloadService` (network) so the change persists immediately and
-/// a real `URLSession` task carries the bytes.
+/// toggles. Routes every mutation through the Rust kernel so the change
+/// persists immediately and `DownloadCapability` carries the bytes.
 ///
 /// The download menu surfaces four affordances driven by `episode.downloadState`:
 ///   - `.notDownloaded` → "Download"

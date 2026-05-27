@@ -15,9 +15,8 @@ import os.log
 // misses by visiting the show page.
 //
 // Implementation choices:
-//   • One in-flight task at a time. Caller is `SubscriptionRefreshService`
-//     (post-refresh) plus on-demand triggers like pull-to-refresh; both
-//     coalesce onto the same task.
+//   • One in-flight task at a time. Triggered post-refresh and on-demand
+//     (pull-to-refresh); both coalesce onto the same task.
 //   • Decisions land via `AppStateStore.applyTriageDecisions(_:)` in a
 //     single mutation batch — SwiftUI re-renders once per pass, not once
 //     per episode.

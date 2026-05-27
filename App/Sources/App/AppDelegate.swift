@@ -59,12 +59,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         handleEventsForBackgroundURLSession identifier: String,
         completionHandler: @escaping () -> Void
     ) {
-        Task { @MainActor in
-            EpisodeDownloadService.shared.handleEventsForBackgroundURLSession(
-                identifier: identifier,
-                completionHandler: completionHandler
-            )
-        }
+        PodcastCapabilities.shared.download.handleEventsForBackgroundURLSession(
+            identifier: identifier,
+            completionHandler: completionHandler
+        )
     }
 
     /// Maps an `UIApplicationShortcutItem.type` to a `podcastr://` deep-link

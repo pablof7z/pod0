@@ -25,6 +25,15 @@ pub enum SettingsAction {
     /// Update both skip intervals. Clamped server-side to `[1, 120]` seconds.
     /// iOS dispatches this when the user changes the skip interval in Settings.
     SetSkipIntervals { forward_secs: f64, backward_secs: f64 },
+    /// Toggle auto-play-next: when `true`, the kernel auto-advances to
+    /// the next queued episode on natural `ItemEnd`.
+    SetAutoPlayNext { enabled: bool },
+    /// Toggle auto-mark-played: when `true`, the kernel marks the episode
+    /// listened on natural `ItemEnd`.
+    SetAutoMarkPlayedAtEnd { enabled: bool },
+    /// Update both headphone gesture action strings. The raw values must
+    /// match a `HeadphoneGestureAction` case on the iOS side.
+    SetHeadphoneGestureActions { double_tap: String, triple_tap: String },
 }
 
 /// Action module for the `"podcast.settings"` namespace.

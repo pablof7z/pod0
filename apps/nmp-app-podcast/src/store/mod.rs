@@ -95,6 +95,18 @@ pub struct PodcastStore {
     pub(super) ad_segments: HashMap<String, Vec<AdSegment>>,
     /// User toggle: auto-skip ads when the playhead enters one.
     pub(super) auto_skip_ads_enabled: bool,
+    /// When `true`, the kernel auto-advances to the next queued episode
+    /// on `ItemEnd`. Default `true`.
+    pub(super) auto_play_next: bool,
+    /// When `true`, the kernel marks the episode listened on `ItemEnd`.
+    /// Default `true`.
+    pub(super) auto_mark_played_at_end: bool,
+    /// Raw action string for headphone double-tap gesture.
+    /// Default `"skip_forward"`. See `HeadphoneGestureAction` in Swift.
+    pub(super) headphone_double_tap_action: String,
+    /// Raw action string for headphone triple-tap gesture.
+    /// Default `"clip_now"`. See `HeadphoneGestureAction` in Swift.
+    pub(super) headphone_triple_tap_action: String,
     /// Skip-forward interval (seconds). Default 30.0; user-configurable.
     pub(super) skip_forward_secs: f64,
     /// Skip-backward interval (seconds). Default 15.0; user-configurable.
@@ -124,6 +136,10 @@ impl PodcastStore {
             memory_facts: HashMap::new(),
             ad_segments: HashMap::new(),
             auto_skip_ads_enabled: false,
+            auto_play_next: true,
+            auto_mark_played_at_end: true,
+            headphone_double_tap_action: "skipForward".to_owned(),
+            headphone_triple_tap_action: "clipNow".to_owned(),
             skip_forward_secs: 30.0,
             skip_backward_secs: 15.0,
             data_dir: None,
@@ -195,6 +211,14 @@ impl PodcastStore {
             self.ad_segments.insert(ep_id, segs);
         }
         self.auto_skip_ads_enabled = loaded.settings.auto_skip_ads_enabled;
+        self.auto_play_next = loaded.settings.auto_play_next;
+        self.auto_mark_played_at_end = loaded.settings.auto_mark_played_at_end;
+        if !loaded.settings.headphone_double_tap_action.is_empty() {
+            self.headphone_double_tap_action = loaded.settings.headphone_double_tap_action;
+        }
+        if !loaded.settings.headphone_triple_tap_action.is_empty() {
+            self.headphone_triple_tap_action = loaded.settings.headphone_triple_tap_action;
+        }
         // On-disk value of 0.0 means "field absent in old file" — replace
         // with the semantic default so the UI gets a usable value.
         self.skip_forward_secs = if loaded.settings.skip_forward_secs > 0.0 {
@@ -268,6 +292,10 @@ impl PodcastStore {
             ad_segments: ad_segments.into_iter().collect(),
             settings: PersistedSettings {
                 auto_skip_ads_enabled: self.auto_skip_ads_enabled,
+                auto_play_next: self.auto_play_next,
+                auto_mark_played_at_end: self.auto_mark_played_at_end,
+                headphone_double_tap_action: self.headphone_double_tap_action.clone(),
+                headphone_triple_tap_action: self.headphone_triple_tap_action.clone(),
                 skip_forward_secs: self.skip_forward_secs,
                 skip_backward_secs: self.skip_backward_secs,
             },

@@ -324,6 +324,33 @@ impl PodcastHostOpHandler {
                 self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 serde_json::json!({"ok": true})
             }
+            SettingsAction::SetAutoPlayNext { enabled } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_auto_play_next(enabled);
+                }
+                if let Ok(mut a) = self.player_actor.lock() {
+                    a.set_auto_play_next(enabled);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetAutoMarkPlayedAtEnd { enabled } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_auto_mark_played_at_end(enabled);
+                }
+                if let Ok(mut a) = self.player_actor.lock() {
+                    a.set_auto_mark_played_at_end(enabled);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetHeadphoneGestureActions { double_tap, triple_tap } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_headphone_gesture_actions(double_tap, triple_tap);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
         }
     }
 }

@@ -45,6 +45,28 @@ pub struct PlayerState {
     /// Cleared on the next successful `Load`. Surfaces in the
     /// `now_playing` projection so the UI can render a banner.
     pub last_error: Option<String>,
+    /// Set to `true` when the audio capability reports `ItemEnd`
+    /// (AVPlayerItemDidPlayToEndTime). Cleared when the next `Load` stages.
+    /// The UI uses this to distinguish a natural finish from a user-initiated
+    /// stop, and M1.3 business logic gates auto-advance on it.
+    #[serde(default)]
+    pub did_reach_natural_end: bool,
+    /// Absolute end boundary for a bounded agent segment. When set, the
+    /// player should treat reaching this position as an `ItemEnd` (auto-
+    /// advance, mark played, etc.). Cleared when the episode loads or a
+    /// new segment boundary is assigned. `None` for unbounded playback.
+    #[serde(default)]
+    pub segment_end_secs: Option<f64>,
+    /// Title of the chapter active at the current playhead position,
+    /// sourced from the store's chapter list. `None` when the episode has
+    /// no chapters or the position is before the first chapter start.
+    #[serde(default)]
+    pub current_chapter_title: Option<String>,
+    /// Artwork URL override for the active chapter (per-chapter `<itunes:image>`).
+    /// Overrides the episode and show artwork while the chapter is active.
+    /// `None` when the chapter has no per-chapter image, or when there are no chapters.
+    #[serde(default)]
+    pub current_chapter_artwork_url: Option<String>,
 }
 
 impl PlayerState {

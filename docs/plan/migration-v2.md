@@ -79,7 +79,7 @@ exists. The substeps below are listed in the order they must land.
 
 ### M1.1 — Extend `PodcastUpdate` so Swift no longer needs a 1 Hz loop
 
-Status: **todo**.
+Status: **done** (PR feat/m1-playbackstate-pure).
 
 Rust changes in `apps/nmp-app-podcast/src/ffi/projections.rs` (or the
 matching projection file) and `apps/nmp-app-podcast/src/ffi/snapshot.rs`:
@@ -103,7 +103,7 @@ through `actions_tests.rs`.
 
 ### M1.2 — Add the player ops that the deletions below depend on
 
-Status: **todo**. New action variants in
+Status: **done** (PR feat/m1-playbackstate-pure). New action variants in
 `apps/nmp-app-podcast/src/ffi/actions/player_module.rs`:
 
 - `Advance` — drop the current item, advance to the next queued item, no
@@ -125,7 +125,7 @@ New action variants in
 
 ### M1.3 — Move business logic INTO `PodcastHostOpHandler`
 
-Status: **todo**. Files:
+Status: **partial** (PR feat/m1-playbackstate-pure; end-of-episode + auto-advance wired; segment-end, triage-clear-on-play, download-enqueue-on-play remain). Files:
 `apps/nmp-app-podcast/src/host_op_handler.rs` and
 `apps/nmp-app-podcast/src/host_op_player.rs` (split if needed under the
 500-line limit).

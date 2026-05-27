@@ -161,6 +161,14 @@ extension AppStateStore {
         // onboarding gate because Rust hasn't received the flag yet.
         next.settings.hasCompletedOnboarding = ks.hasCompletedOnboarding || state.settings.hasCompletedOnboarding
         next.settings.autoSkipAds = ks.autoSkipAdsEnabled
+        next.settings.autoPlayNext = ks.autoPlayNext
+        next.settings.autoMarkPlayedAtEnd = ks.autoMarkPlayedAtEnd
+        if let doubleTap = HeadphoneGestureAction(rawValue: ks.headphoneDoubleTapAction) {
+            next.settings.headphoneDoubleTapAction = doubleTap
+        }
+        if let tripleTap = HeadphoneGestureAction(rawValue: ks.headphoneTripleTapAction) {
+            next.settings.headphoneTripleTapAction = tripleTap
+        }
         next.settings.skipForwardSeconds = Int(ks.skipForwardSecs)
         next.settings.skipBackwardSeconds = Int(ks.skipBackwardSecs)
 

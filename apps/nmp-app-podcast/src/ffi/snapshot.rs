@@ -128,6 +128,10 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         let settings = SettingsSnapshot {
             has_completed_onboarding: s.has_completed_onboarding(),
             auto_skip_ads_enabled: s.auto_skip_ads_enabled(),
+            auto_play_next: s.auto_play_next(),
+            auto_mark_played_at_end: s.auto_mark_played_at_end(),
+            headphone_double_tap_action: s.headphone_double_tap_action().to_owned(),
+            headphone_triple_tap_action: s.headphone_triple_tap_action().to_owned(),
             skip_forward_secs: s.skip_forward_secs(),
             skip_backward_secs: s.skip_backward_secs(),
         };

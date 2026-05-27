@@ -12,8 +12,7 @@ import os.log
 /// container path, so absolute file URLs from a previous session are brittle.
 ///
 /// This type is intentionally tiny: pure path math + file existence checks +
-/// directory bootstrapping. The `EpisodeDownloadService` orchestrates the
-/// network layer on top.
+/// directory bootstrapping. `DownloadCapability` orchestrates the network layer.
 final class EpisodeDownloadStore: @unchecked Sendable {
 
     // MARK: Singleton

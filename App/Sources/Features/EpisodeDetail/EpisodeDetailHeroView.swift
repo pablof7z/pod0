@@ -26,11 +26,9 @@ struct EpisodeDetailHeroView: View {
     /// playback is on a different episode (or no chapters); the list
     /// renders flat in that case.
     var activeChapterID: UUID? = nil
-    /// Live download progress in `0...1`, observed from
-    /// `EpisodeDownloadService`. Drives the inline progress pill on the
-    /// action row so the user sees a smooth "Downloading 42%" badge while
-    /// the file is in flight (the Episode's persisted `downloadState` only
-    /// updates at coarse transitions to spare AppStateStore).
+    /// Live download progress in `0...1`, from the kernel snapshot.
+    /// Drives the inline progress pill on the action row so the user sees
+    /// a smooth "Downloading 42%" badge while the file is in flight.
     var downloadProgress: Double? = nil
     /// Download / cancel / delete handler bound by the parent. The hero
     /// flips the affordance based on the episode's `downloadState`.

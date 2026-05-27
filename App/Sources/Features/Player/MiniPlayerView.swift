@@ -184,8 +184,7 @@ struct MiniPlayerView: View {
             case .downloading, .failed:
                 DownloadProgressBadge(
                     episode: resolved,
-                    liveProgress: store.podcastSnapshot?.downloads?.active
-                        .first(where: { $0.episodeID == resolved.id.uuidString })?.progress
+                    liveProgress: (store.kernel?.podcastSnapshot?.downloads?.active ?? []).first(where: { $0.episodeId == resolved.id.uuidString })?.progress
                 )
             default:
                 EmptyView()

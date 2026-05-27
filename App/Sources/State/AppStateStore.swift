@@ -238,11 +238,6 @@ final class AppStateStore {
         // Hand `self` to the service so the briefing adapter and transcript
         // ingester can resolve episode/subscription metadata.
         RAGService.shared.attach(appStore: self)
-        // Downloads and feed refresh are owned by the Rust kernel when it is
-        // attached. We still call attach here so the legacy URLSession delegate
-        // path (background download rehydration) stays wired; the kernel owns
-        // queueing policy and trigger decisions.
-        EpisodeDownloadService.shared.attach(appStore: self)
         // Prune agent-activity entries older than 30 days so the persisted log
         // doesn't grow unboundedly across many months of use. This fires one
         // Persistence.save only when stale entries are actually found.
@@ -267,11 +262,6 @@ final class AppStateStore {
         // Feed refresh is driven by the Rust kernel (lifecycle foreground
         // triggers `refresh_all`). The legacy Swift refresh loop is skipped
         // when `kernel` is non-nil (set by `attachKernel`). We start it here
-        // only as a fallback for tests / environments where the kernel is
-        // absent.  The actual kernel attach happens asynchronously in AppMain,
-        // so the flag check lives inside the service's own start logic — for
-        // now, defer start until attachKernel is called.
-        // SubscriptionRefreshService.shared.startPeriodicRefresh(store: self)
         // Subscribe to app-backgrounding so the position cache is flushed
         // to disk before iOS can suspend or kill the process. Token is
         // retained on `self` so the observer outlives the init call but
@@ -331,6 +321,23 @@ final class AppStateStore {
                                  "op": "set_skip_intervals",
                                  "forward_secs": Double(settings.skipForwardSeconds),
                                  "backward_secs": Double(settings.skipBackwardSeconds)
+                             ])
+        }
+        if settings.autoPlayNext != prior.autoPlayNext {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: ["op": "set_auto_play_next", "enabled": settings.autoPlayNext])
+        }
+        if settings.autoMarkPlayedAtEnd != prior.autoMarkPlayedAtEnd {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: ["op": "set_auto_mark_played_at_end", "enabled": settings.autoMarkPlayedAtEnd])
+        }
+        if settings.headphoneDoubleTapAction != prior.headphoneDoubleTapAction
+            || settings.headphoneTripleTapAction != prior.headphoneTripleTapAction {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: [
+                                 "op": "set_headphone_gesture_actions",
+                                 "double_tap": settings.headphoneDoubleTapAction.rawValue,
+                                 "triple_tap": settings.headphoneTripleTapAction.rawValue
                              ])
         }
         if settings.hasCompletedOnboarding != prior.hasCompletedOnboarding {

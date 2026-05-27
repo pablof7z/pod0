@@ -70,6 +70,22 @@ pub(super) struct PersistedSettings {
     /// the toggle off — never accidentally enabled.
     #[serde(default)]
     pub auto_skip_ads_enabled: bool,
+    /// When `true`, kernel auto-advances to the next queued episode on `ItemEnd`.
+    /// `#[serde(default)]` + `fn default_true` loads absent (old) files as `true`.
+    #[serde(default = "default_true")]
+    pub auto_play_next: bool,
+    /// When `true`, kernel marks the episode listened on `ItemEnd`.
+    /// Defaults to `true` for the same reason as `auto_play_next`.
+    #[serde(default = "default_true")]
+    pub auto_mark_played_at_end: bool,
+    /// Raw headphone double-tap action string. Empty string in old files →
+    /// hydration replaces with `"skip_forward"`.
+    #[serde(default)]
+    pub headphone_double_tap_action: String,
+    /// Raw headphone triple-tap action string. Empty string in old files →
+    /// hydration replaces with `"clip_now"`.
+    #[serde(default)]
+    pub headphone_triple_tap_action: String,
     /// Skip-forward interval in seconds. `serde(default)` loads pre-existing
     /// files (that lack this field) as 0.0; the store replaces 0.0 with the
     /// semantic default (30.0) during hydration.
@@ -80,10 +96,16 @@ pub(super) struct PersistedSettings {
     pub skip_backward_secs: f64,
 }
 
+fn default_true() -> bool { true }
+
 impl Default for PersistedSettings {
     fn default() -> Self {
         Self {
             auto_skip_ads_enabled: false,
+            auto_play_next: true,
+            auto_mark_played_at_end: true,
+            headphone_double_tap_action: "skipForward".to_owned(),
+            headphone_triple_tap_action: "clipNow".to_owned(),
             skip_forward_secs: 30.0,
             skip_backward_secs: 15.0,
         }

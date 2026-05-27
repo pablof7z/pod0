@@ -256,7 +256,7 @@ struct EpisodeAuditLogView: View {
         case .notDownloaded: return "not downloaded"
         case .queued: return "queued"
         case .downloading(let p, _): return "downloading (\(Int(p * 100))%)"
-        case .downloaded(_, let bytes): return EpisodeDownloadService.formatBytes(bytes)
+        case .downloaded(_, let bytes): return bytes.formattedFileSize
         case .failed(let m): return "failed — \(m)"
         }
     }
@@ -287,8 +287,7 @@ struct EpisodeAuditLogView: View {
     }
 
     /// Button is inert when the download is already on disk or actively in
-    /// flight — `EpisodeDownloadService.download` early-returns in both
-    /// cases, so leaving the button enabled would be a silent no-op.
+    /// flight — the kernel ignores duplicate download ops in both cases.
     private var downloadButtonDisabled: Bool {
         switch episode.downloadState {
         case .downloaded, .downloading: return true

@@ -66,16 +66,10 @@ extension AppStateStore {
     /// the store are merged: the publisher fields refresh while the user-
     /// mutable playback state (`playbackPosition`, `played`, `downloadState`,
     /// `transcriptState`) is preserved.
-    ///
-    /// When `evaluateAutoDownload` is true, triggers
-    /// `EpisodeDownloadService.evaluateAutoDownload(...)` for genuinely new
-    /// episode IDs. Initial subscription/import paths pass false so historical
-    /// back-catalog episodes do not queue thousands of downloads at once.
     @discardableResult
     func upsertEpisodes(
         _ incoming: [Episode],
-        forPodcast podcastID: UUID,
-        evaluateAutoDownload: Bool = false
+        forPodcast podcastID: UUID
     ) -> [UUID] {
         guard !incoming.isEmpty else { return [] }
         var updated = state.episodes
@@ -119,23 +113,6 @@ extension AppStateStore {
             // The didSet fingerprint catches count changes but misses pure
             // merges where count stays equal; explicit invalidation covers both.
             invalidateEpisodeProjections()
-        }
-        if evaluateAutoDownload, !newlyInserted.isEmpty {
-            // Attach the service to this store on first reach so the
-            // download lifecycle, the auto-download path, and the AudioEngine
-            // local-file fallback all see the same `appStore`. Idempotent.
-            EpisodeDownloadService.shared.attach(appStore: self)
-            EpisodeDownloadService.shared.evaluateAutoDownload(
-                forPodcast: podcastID,
-                newEpisodeIDs: newlyInserted
-            )
-            // Fire publisher-transcript ingestion for the new IDs so we
-            // don't depend on the user manually opening Episode Detail to
-            // discover a transcript exists. Settings-gated; the service
-            // bails fast when the toggle is off.
-            TranscriptIngestService.shared.evaluateAutoIngest(
-                newEpisodeIDs: newlyInserted
-            )
         }
         // Metadata-index every newly-inserted episode, regardless of the
         // auto-download gate — initial-subscribe paths pass false but the

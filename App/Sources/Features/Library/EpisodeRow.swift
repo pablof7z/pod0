@@ -193,8 +193,7 @@ struct EpisodeRow: View {
     @ViewBuilder
     private var downloadProgressBar: some View {
         if case .downloading(let persisted, _) = episode.downloadState {
-            let live = store.podcastSnapshot?.downloads?.active
-                .first(where: { $0.episodeID == episode.id.uuidString })?.progress
+            let live = (store.kernel?.podcastSnapshot?.downloads?.active ?? []).first(where: { $0.episodeId == episode.id.uuidString })?.progress
             let p = (live ?? persisted).clamped01
             thinProgressBar(progress: p, color: Color.primary)
         } else if case .downloaded = episode.downloadState,
@@ -238,8 +237,7 @@ struct EpisodeRow: View {
         }
         switch episode.downloadState {
         case .downloading(let persisted, _):
-            let live = store.podcastSnapshot?.downloads?.active
-                .first(where: { $0.episodeID == episode.id.uuidString })?.progress
+            let live = (store.kernel?.podcastSnapshot?.downloads?.active ?? []).first(where: { $0.episodeId == episode.id.uuidString })?.progress
             let pct = Int(((live ?? persisted).clamped01 * 100).rounded())
             parts.append("downloading \(pct) percent")
         case .downloaded:

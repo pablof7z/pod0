@@ -12,7 +12,6 @@ extension KernelModel {
     /// **Excluded** (volatile at 4 Hz during playback, never cause UI change):
     ///   - `nowPlaying.positionSecs`
     ///   - `nowPlaying.bufferingFraction`
-    ///   - `nowPlaying.isBuffering`
     ///   - `widget.positionFraction`
     ///   - `library[*].playbackPositionSecs`  (library has its own hash gate)
     ///

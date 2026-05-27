@@ -145,12 +145,9 @@ final class PlaybackState {
     /// pipeline without blocking playback — the audio engine has already
     /// started streaming by the time this closure fires.
     ///
-    /// Wired by `RootView` to `EpisodeDownloadService.ensureDownloadEnqueued`.
-    /// The closure injection mirrors `onPersistPosition` / `onFlushPositions`
-    /// so `PlaybackState` stays decoupled from the download service for
-    /// tests, while still funnelling every playback entry point
-    /// (`play_episode`, Continue Listening, Home featured, deep links)
-    /// through a single download trigger.
+    /// Wired by `RootView` to `store.kernelDownload` so every playback entry
+    /// point (`play_episode`, Continue Listening, Home featured, deep links)
+    /// funnels through the Rust kernel's download queue.
     ///
     /// Only fires on *new* episode load, never on same-episode reloads —
     /// Play/Resume taps and deep-link replays hit `setEpisode` on every

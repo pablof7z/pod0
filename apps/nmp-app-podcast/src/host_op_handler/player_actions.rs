@@ -107,6 +107,18 @@ impl PodcastHostOpHandler {
                 }
                 Err(_) => serde_json::json!({"ok": false, "error": "store poisoned"}),
             },
+            PlayerAction::Advance => self.handle_play_next(correlation_id),
+            PlayerAction::PersistPosition { episode_id, position_secs } => {
+                match self.store.lock() {
+                    Ok(mut s) => {
+                        s.set_episode_position(&episode_id, position_secs);
+                        s.flush_positions();
+                        self.rev.fetch_add(1, Ordering::Relaxed);
+                        serde_json::json!({"ok": true})
+                    }
+                    Err(_) => serde_json::json!({"ok": false, "error": "store poisoned"}),
+                }
+            }
         }
     }
 

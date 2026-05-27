@@ -60,6 +60,54 @@ impl PodcastStore {
         }
     }
 
+    /// Whether to auto-advance to the next queued episode on `ItemEnd`.
+    /// Default `true`. Controlled via `podcast.settings.set_auto_play_next`.
+    pub fn auto_play_next(&self) -> bool {
+        self.auto_play_next
+    }
+
+    /// Set the auto-play-next toggle and persist. Idempotent.
+    pub fn set_auto_play_next(&mut self, value: bool) {
+        if self.auto_play_next == value { return; }
+        self.auto_play_next = value;
+        self.persist();
+    }
+
+    /// Whether to mark the episode listened on natural `ItemEnd`.
+    /// Default `true`.
+    pub fn auto_mark_played_at_end(&self) -> bool {
+        self.auto_mark_played_at_end
+    }
+
+    /// Set the auto-mark-played toggle and persist. Idempotent.
+    pub fn set_auto_mark_played_at_end(&mut self, value: bool) {
+        if self.auto_mark_played_at_end == value { return; }
+        self.auto_mark_played_at_end = value;
+        self.persist();
+    }
+
+    /// Raw action string for headphone double-tap gesture. Default `"skip_forward"`.
+    pub fn headphone_double_tap_action(&self) -> &str {
+        &self.headphone_double_tap_action
+    }
+
+    /// Raw action string for headphone triple-tap gesture. Default `"clip_now"`.
+    pub fn headphone_triple_tap_action(&self) -> &str {
+        &self.headphone_triple_tap_action
+    }
+
+    /// Update both headphone gesture action strings and persist. Idempotent.
+    pub fn set_headphone_gesture_actions(&mut self, double_tap: String, triple_tap: String) {
+        if self.headphone_double_tap_action == double_tap
+            && self.headphone_triple_tap_action == triple_tap
+        {
+            return;
+        }
+        self.headphone_double_tap_action = double_tap;
+        self.headphone_triple_tap_action = triple_tap;
+        self.persist();
+    }
+
     /// Skip-forward interval in seconds. Default 30.0; user-configurable via
     /// `podcast.settings.set_skip_intervals`.
     pub fn skip_forward_secs(&self) -> f64 {

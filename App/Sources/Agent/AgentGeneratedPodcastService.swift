@@ -122,7 +122,7 @@ struct AgentGeneratedPodcastService: Sendable {
             ),
             generationSource: generationSource
         )
-        store.upsertEpisodes([episode], forPodcast: podcastID, evaluateAutoDownload: false)
+        store.upsertEpisodes([episode], forPodcast: podcastID)
         logger.info("Published agent episode '\(title, privacy: .public)' id=\(episodeID, privacy: .public)")
         return episode
     }

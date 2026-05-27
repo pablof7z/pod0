@@ -9,8 +9,7 @@ import os.log
 // `NSObjectProtocol` delegate contract (callbacks are nonisolated and may
 // land on an arbitrary queue, including after a background-relaunch).
 // Every callback hops back to the main actor before touching the
-// capability's state — same pattern as the legacy `DownloadCoordinator`
-// in `App/Sources/Services/EpisodeDownloadService+Delegate.swift`.
+// capability's state.
 
 final class NmpDownloadCoordinator: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
 

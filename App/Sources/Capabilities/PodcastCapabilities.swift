@@ -56,9 +56,8 @@ final class PodcastCapabilities {
     /// `application(_:handleEventsForBackgroundURLSession:completionHandler:)`
     /// into `shared.download.handleEventsForBackgroundURLSession(...)`.
     ///
-    /// This is the same "singleton holder" pattern the legacy
-    /// `EpisodeDownloadService.shared` used; the iOS-side capability
-    /// surface owns the OS hook regardless of where the kernel wires it.
+    /// The iOS-side capability surface owns the OS hook regardless of where
+    /// the kernel wires it.
     static let shared = PodcastCapabilities()
 
     let keyring: KeychainCapability

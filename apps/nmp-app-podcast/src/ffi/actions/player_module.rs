@@ -75,6 +75,14 @@ pub enum PlayerAction {
     /// Reset the playback position of an episode to zero. Clears the
     /// "Continue Listening" resume point without marking the episode played.
     ResetProgress { episode_id: String },
+    /// Pop the front of the queue and play it. Equivalent to `PlayNext`
+    /// but named for auto-advance semantics — fired by Rust's `ItemEnd`
+    /// handler; never synthesized by the iOS shell.
+    Advance,
+    /// Write a playback position to the store without going through the
+    /// audio-report path. Used for deep-link warm-resume and mini-player
+    /// restore where no `Playing` report is in flight.
+    PersistPosition { episode_id: String, position_secs: f64 },
 }
 
 /// Action module for the `"podcast.player"` namespace.

@@ -30,8 +30,10 @@
 use std::ffi::{c_char, CStr, CString};
 use std::time::SystemTime;
 
+use nmp_core::substrate::CapabilityRequest;
+
 use super::handle::PodcastHandle;
-use crate::capability::AudioReport;
+use crate::capability::{AudioCommand, AudioReport, AUDIO_CAPABILITY_NAMESPACE};
 use crate::store::PodcastStore;
 
 /// Minimum position delta (seconds) between disk flushes while a `Playing`
@@ -90,10 +92,20 @@ pub extern "C" fn nmp_app_podcast_audio_report(
     };
 
     // -- 2. Mirror the playhead into the store. -----------------------
-    if let Some(episode_id) = episode_id_for_writeback {
+    let is_item_end = matches!(report, AudioReport::ItemEnd { .. });
+    if let Some(ref episode_id) = episode_id_for_writeback {
         if let Ok(mut store) = handle_ref.store.lock() {
-            apply_writeback(&mut store, &report, &episode_id);
+            apply_writeback(&mut store, &report, episode_id);
         }
+    }
+
+    // -- 3. M1.3: Auto-advance on natural end. -------------------------
+    // When `ItemEnd` fires and `auto_play_next` is armed, pop the next
+    // queued episode and dispatch Load + Play directly — the actor does
+    // not do this internally because it has no access to the store (URLs)
+    // or the capability dispatcher.
+    if is_item_end {
+        maybe_auto_advance(handle_ref);
     }
 
     match follow_up_json {
@@ -138,14 +150,71 @@ fn apply_writeback(store: &mut PodcastStore, report: &AudioReport, episode_id: &
             store.flush_positions();
         }
         AudioReport::ItemEnd { .. } => {
-            // Natural play-to-completion: mark the episode as listened and
-            // flush so the state survives a restart. The position is already
-            // up-to-date from the last `Playing` tick.
-            store.mark_episode_played(episode_id);
+            // Natural play-to-completion. Gate the "mark listened" write on
+            // the store's `auto_mark_played_at_end` flag (M1.3). The
+            // position is already up-to-date from the last `Playing` tick.
+            if store.auto_mark_played_at_end() {
+                store.mark_episode_played(episode_id);
+            }
             store.flush_positions();
         }
         AudioReport::Failed { .. } | AudioReport::BufferingProgress { .. } => {}
     }
+}
+
+/// M1.3 — auto-advance on natural end.
+///
+/// Called only on `ItemEnd`. Reads the actor's `auto_play_next` flag and
+/// queue. If conditions are met, pops the next episode, stages a load in
+/// the actor, and dispatches `Load` + `Play` back to iOS via the
+/// capability channel. Does nothing (silently) on any lock failure.
+fn maybe_auto_advance(handle: &PodcastHandle) {
+    // Read the flag + pop atomically under the actor lock.
+    let next_episode_id = {
+        let mut actor = match handle.player_actor.lock() {
+            Ok(a) => a,
+            Err(_) => return,
+        };
+        if !actor.auto_play_next || actor.queue().is_empty() {
+            return;
+        }
+        actor.pop_next()
+    };
+
+    let Some(episode_id) = next_episode_id else { return; };
+
+    // Look up playback info for the next episode.
+    let (podcast_id, url, position_secs) = match handle.store.lock() {
+        Ok(s) => match s.episode_playback_info(&episode_id) {
+            Some(info) => info,
+            None => return, // episode disappeared from library
+        },
+        Err(_) => return,
+    };
+
+    // Stage the new load on the actor.
+    if let Ok(mut actor) = handle.player_actor.lock() {
+        actor.stage_load(&episode_id, Some(podcast_id), &url, position_secs);
+    }
+
+    // Dispatch Load + Play. Failures degrade silently per D6.
+    dispatch_audio_cmd(handle, &AudioCommand::load(&url, position_secs));
+    dispatch_audio_cmd(handle, &AudioCommand::Play);
+
+    handle.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+}
+
+fn dispatch_audio_cmd(handle: &PodcastHandle, cmd: &AudioCommand) {
+    let payload_json = match serde_json::to_string(cmd) {
+        Ok(j) => j,
+        Err(_) => return,
+    };
+    let req = CapabilityRequest {
+        namespace: AUDIO_CAPABILITY_NAMESPACE.to_owned(),
+        correlation_id: String::new(),
+        payload_json,
+    };
+    let _ = unsafe { &*handle.app }.dispatch_capability(&req);
 }
 
 

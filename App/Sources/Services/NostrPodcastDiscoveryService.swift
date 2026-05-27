@@ -126,7 +126,7 @@ final class NostrPodcastDiscoveryService {
         )
         let stored = store.upsertPodcast(draft)
         let episodes = await fetchEpisodes(for: show, relayURL: relayURL, podcastID: stored.id)
-        store.upsertEpisodes(episodes, forPodcast: stored.id, evaluateAutoDownload: false)
+        store.upsertEpisodes(episodes, forPodcast: stored.id)
         store.addSubscription(podcastID: stored.id)
         return stored
     }

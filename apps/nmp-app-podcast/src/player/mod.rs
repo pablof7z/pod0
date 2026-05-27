@@ -70,6 +70,14 @@ pub struct PlayerActor {
     /// into a previously-skipped ad won't be auto-yanked forward — we
     /// treat scrub-back as "I want to hear this".
     skipped_ad_ids: HashSet<uuid::Uuid>,
+    /// Mirror of `PodcastStore::auto_play_next`. When `true` and the
+    /// queue is non-empty, the FFI layer auto-advances on `ItemEnd`.
+    /// Pushed from the store at `play` time (same pattern as `auto_skip_ads`).
+    pub(crate) auto_play_next: bool,
+    /// Mirror of `PodcastStore::auto_mark_played_at_end`. When `true`,
+    /// the writeback layer marks the episode listened on `ItemEnd`.
+    /// Pushed from the store at `play` time.
+    pub(crate) auto_mark_played_at_end: bool,
 }
 
 impl PlayerActor {
@@ -83,6 +91,8 @@ impl PlayerActor {
             ad_segments: Vec::new(),
             auto_skip_ads: false,
             skipped_ad_ids: HashSet::new(),
+            auto_play_next: true,
+            auto_mark_played_at_end: true,
         }
     }
 
@@ -164,6 +174,8 @@ impl PlayerActor {
         self.state.is_playing = false;
         self.state.last_error = None;
         self.state.buffering_fraction = None;
+        self.state.did_reach_natural_end = false;
+        self.state.segment_end_secs = None;
     }
 
     /// Project a `set_speed` action into state. Clamped to `0.5..=3.0`.
@@ -217,6 +229,16 @@ impl PlayerActor {
         } else {
             Some(self.queue.remove(0))
         }
+    }
+
+    /// Mirror `auto_play_next` from the store. See [`Self::auto_play_next`].
+    pub fn set_auto_play_next(&mut self, enabled: bool) {
+        self.auto_play_next = enabled;
+    }
+
+    /// Mirror `auto_mark_played_at_end` from the store.
+    pub fn set_auto_mark_played_at_end(&mut self, enabled: bool) {
+        self.auto_mark_played_at_end = enabled;
     }
 
 }

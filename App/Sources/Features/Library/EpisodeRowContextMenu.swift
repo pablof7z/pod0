@@ -8,7 +8,7 @@ import SwiftUI
 ///   - Open episode details (NavigationLink with a caller-supplied route value).
 ///   - Mark as played / Mark as unplayed (toggle based on `episode.played`).
 ///   - Download / Cancel download / Remove download / Retry download
-///     (state-aware via `EpisodeDownloadService.shared`).
+///     (state-aware; dispatches through the Rust kernel).
 ///   - Share (`ShareLink` with the enclosure URL).
 ///
 /// The route is generic over `Hashable` so Library can pass `LibraryEpisodeRoute`

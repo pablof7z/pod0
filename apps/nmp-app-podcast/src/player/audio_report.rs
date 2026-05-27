@@ -56,10 +56,13 @@ impl PlayerActor {
                 Some(AudioCommand::Stop)
             }
             AudioReport::ItemEnd { .. } => {
-                // Natural play-to-completion: transition to stopped state
-                // (same housekeeping as an explicit Stop) without emitting
-                // an AudioCommand. The writeback layer in `ffi/audio_report`
-                // marks the episode `played = true` on this variant.
+                // Natural play-to-completion: set the natural-end flag so
+                // the snapshot surface and M1.3 business logic can
+                // distinguish this from a user-initiated stop. The flag is
+                // cleared in `stage_load` so a subsequent play starts fresh.
+                // `on_stopped` handles the remaining housekeeping (clear
+                // timer, clear skipped ads, set is_playing = false).
+                self.state.did_reach_natural_end = true;
                 self.on_stopped();
                 None
             }

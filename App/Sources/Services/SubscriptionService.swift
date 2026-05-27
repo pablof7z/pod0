@@ -112,8 +112,7 @@ struct SubscriptionService {
             let stored = store.upsertPodcast(podcast)
             store.upsertEpisodes(
                 episodes,
-                forPodcast: stored.id,
-                evaluateAutoDownload: false
+                forPodcast: stored.id
             )
             return stored
         case .notModified:
