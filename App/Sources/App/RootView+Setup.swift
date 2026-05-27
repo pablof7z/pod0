@@ -10,8 +10,23 @@ extension RootView {
             store.setEpisodePlaybackPosition(id, position: position)
             store.setLastPlayedEpisode(id)
         }
+        playbackState.onEpisodeFinished = { [store, playbackState] id in
+            store.markEpisodePlayed(id)
+            let endOfEpisodeArmed: Bool
+            switch playbackState.engine.sleepTimer.phase {
+            case .armedEndOfEpisode, .fired:
+                endOfEpisodeArmed = true
+            default:
+                endOfEpisodeArmed = false
+            }
+            guard store.state.settings.autoPlayNext, !endOfEpisodeArmed else { return }
+            playbackState.playNext { store.episode(id: $0) }
+        }
         playbackState.onFlushPositions = { [store] in
             store.flushPendingPositions()
+        }
+        playbackState.onEnsureDownloadEnqueued = { [store] id in
+            store.kernelDownload(id)
         }
         playbackState.onKernelEnqueueLast = { [store] id in
             store.kernelEnqueueLast(episodeID: id)
@@ -53,7 +68,11 @@ extension RootView {
             delegate.pendingShortcutURL = nil
             handleDeepLink(url)
         }
+        playbackState.autoMarkPlayedOnFinish = store.state.settings.autoMarkPlayedAtEnd
         playbackState.applyPreferences(from: store.state.settings)
+        playbackState.resolveShowName = { [store] episode in
+            store.podcast(id: episode.podcastID)?.title ?? ""
+        }
         playbackState.resolveShowImage = { [store] episode in
             store.podcast(id: episode.podcastID)?.imageURL
         }
@@ -90,7 +109,7 @@ extension RootView {
         if playbackState.episode == nil,
            let lastID = store.state.lastPlayedEpisodeID,
            let episode = store.episode(id: lastID) {
-            playbackState.setEpisode(episode)
+            playbackState.setEpisode(episode, enqueueDownloadIfNeeded: false)
             // On cold launch the Rust kernel starts with nowPlaying == nil
             // (position is not persisted in PersistedStore). Write the widget
             // snapshot here so it shows the restored episode immediately —

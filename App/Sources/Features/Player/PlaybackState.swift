@@ -116,10 +116,15 @@ final class PlaybackState {
     /// app launches.
     var onPersistPosition: (UUID, TimeInterval) -> Void = { _, _ in }
 
+    /// Called once per episode when the playhead reaches the end. Receivers
+    /// should mark the episode as fully played. Gated by `autoMarkPlayedOnFinish`
+    /// (mirrors `Settings.autoMarkPlayedAtEnd`) so the user can opt out.
+    var onEpisodeFinished: (UUID) -> Void = { _ in }
+
     /// Called when the playhead reaches `currentSegmentEndTime` for a bounded
     /// segment item. `RootView` wires this to `playNext` (with `pause()` as
     /// fallback when the queue is empty) so the transition logic lives in one
-    /// place. Not fired for full-episode items (Rust owns those via `maybe_auto_advance`).
+    /// place. Not fired for full-episode items — those go through `onEpisodeFinished`.
     var onSegmentFinished: () -> Void = { }
 
     /// Called when the player wants any queued position writes drained to
@@ -159,6 +164,18 @@ final class PlaybackState {
     /// `AppStateStore.clearTriageDecision`.
     var onClearTriageDecision: (UUID) -> Void = { _ in }
 
+    /// Called when `setEpisode` loads a *new* episode whose `downloadState`
+    /// is `.notDownloaded` or `.failed`. Receivers should kick off the
+    /// background download pipeline without blocking playback.
+    var onEnsureDownloadEnqueued: (UUID) -> Void = { _ in }
+
+    /// Mirrors `Settings.autoMarkPlayedAtEnd`. When `false`, end-of-episode
+    /// detection still stops the persistence loop but skips `onEpisodeFinished`.
+    var autoMarkPlayedOnFinish: Bool = true
+
+    /// Resolves the parent show's name. Used by `writeNowPlayingSnapshot`.
+    var resolveShowName: (Episode) -> String = { _ in "" }
+
     /// Resolves the parent show's cover-art URL for a given episode. Used by
     /// the player UI as the fallback when `episode.imageURL` is `nil`.
     /// Returns `nil` when the show's artwork isn't known.
@@ -178,6 +195,12 @@ final class PlaybackState {
 
     /// Drives the 1-second persistence + end-detection loop.
     private var persistenceTask: Task<Void, Never>?
+    /// Prevents `onEpisodeFinished` from firing twice for the same playthrough.
+    private var didFireFinishedFor: UUID?
+    /// Most recent App-Group snapshot write timestamp (throttle state).
+    var lastSnapshotWrite: Date?
+    /// Idempotency guard for per-episode download enqueue requests.
+    private var downloadEnqueueRequestedForEpisodeID: UUID?
     /// Counts 1-second ticks during playback. `updatePosition` is called every
     /// 5 ticks so the widget's position stays ≤5s stale without a full write on
     /// every tick.
@@ -203,7 +226,7 @@ final class PlaybackState {
     /// hero "Play/Resume" button, chapter-row taps, deep-links). The
     /// metadata refresh + snapshot write still run so any post-hydrate
     /// changes (chapters, title) flush to the widget.
-    func setEpisode(_ newEpisode: Episode) {
+    func setEpisode(_ newEpisode: Episode, enqueueDownloadIfNeeded: Bool = true) {
         let isSameEpisode = (episode?.id == newEpisode.id)
         if !isSameEpisode {
             // Drain any cached position for the previous episode before
@@ -211,7 +234,14 @@ final class PlaybackState {
             // playhead would only land on disk at the next 30s eager-cap
             // tick, by which time the user may have force-quit.
             onFlushPositions()
+            didFireFinishedFor = nil
+            lastSnapshotWrite = nil
+            downloadEnqueueRequestedForEpisodeID = nil
             widgetPositionTick = 0
+        } else {
+            // Same-id reload: clear the finished-flag so a replay produces
+            // position writes instead of returning early in tickPersistence.
+            didFireFinishedFor = nil
         }
         episode = newEpisode
         // Rescue: starting playback on a triage-archived episode clears the
@@ -233,8 +263,21 @@ final class PlaybackState {
                 engine.seek(to: target)
             }
         }
+        writeNowPlayingSnapshot(force: true)
         if !isSameEpisode {
             startPersistenceLoop()
+            if enqueueDownloadIfNeeded { ensureDownloadEnqueuedIfNeeded(for: newEpisode) }
+        }
+    }
+
+    private func ensureDownloadEnqueuedIfNeeded(for episode: Episode) {
+        guard downloadEnqueueRequestedForEpisodeID != episode.id else { return }
+        switch episode.downloadState {
+        case .notDownloaded, .failed:
+            downloadEnqueueRequestedForEpisodeID = episode.id
+            onEnsureDownloadEnqueued(episode.id)
+        case .downloading, .queued, .downloaded:
+            break
         }
     }
 
@@ -252,12 +295,17 @@ final class PlaybackState {
         guard let episode else { return }
         Haptics.medium()
         engine.play()
+        ensureDownloadEnqueuedIfNeeded(for: episode)
         startPersistenceLoop()
+        writeNowPlayingSnapshot(force: true)
     }
 
     func pause() {
         Haptics.soft()
         let pausedEpisodeID = episode?.id
+        if engine.didReachNaturalEnd {
+            tickPersistence()
+        }
         guard episode?.id == pausedEpisodeID else { return }
         engine.pause()
         // Stop the 1-second persistence + snapshot loop while paused —
@@ -271,6 +319,7 @@ final class PlaybackState {
         // position cache so the playhead survives a force-quit-after-
         // pause cycle. Cheap when the cache is empty.
         onFlushPositions()
+        writeNowPlayingSnapshot(force: true)
     }
 
     func seek(to time: TimeInterval) {
@@ -370,10 +419,9 @@ final class PlaybackState {
 
     private func tickPersistence() {
         guard let episode else { return }
-        // Rust owns end-of-episode handling (mark_episode_played + maybe_auto_advance).
-        // Stop writing position once the engine reports natural end so we don't
-        // clobber the store-side reset that `mark_episode_played` performed.
-        guard !engine.didReachNaturalEnd else { return }
+        // Stop writing position once onEpisodeFinished has fired — otherwise
+        // we'd clobber the store-side reset that `markEpisodePlayed` performed.
+        guard didFireFinishedFor != episode.id else { return }
 
         let time = engine.currentTime
         if time > 0 {
@@ -390,9 +438,15 @@ final class PlaybackState {
             return
         }
 
-        widgetPositionTick += 1
-        if widgetPositionTick % 5 == 0 {
-            NowPlayingSnapshotStore.updatePosition(time, isPlaying: isPlaying)
+        writeNowPlayingSnapshot(force: false)
+
+        if engine.didReachNaturalEnd {
+            didFireFinishedFor = episode.id
+            if autoMarkPlayedOnFinish {
+                onEpisodeFinished(episode.id)
+            } else {
+                onFlushPositions()
+            }
         }
     }
 }
