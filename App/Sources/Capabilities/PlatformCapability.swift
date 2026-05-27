@@ -167,11 +167,19 @@ final class PlatformCapability {
         lastNowPlayingShowName = showName
         lastNowPlayingImageURLString = imageURLString
         lastNowPlayingDurationSecs = durationSecs
+        // Preserve the live playhead from the iOS-layer snapshot. The kernel
+        // snapshot excludes position-only ticks from its content hash, so
+        // nowPlaying.positionSecs here is the position from the last hashed
+        // tick — potentially far behind the real playhead. Using the last
+        // iOS-written position prevents the widget jumping backwards when a
+        // library-hydration pass (title, artwork, chapter) triggers this write.
+        let livePosition = NowPlayingSnapshotStore.lastWrittenSnapshot?.position
+            ?? nowPlaying.positionSecs
         NowPlayingSnapshotStore.write(NowPlayingSnapshot(
             episodeTitle: episodeTitle,
             showName: showName,
             imageURLString: imageURLString,
-            position: nowPlaying.positionSecs,
+            position: livePosition,
             duration: nowPlaying.durationSecs,
             chapterTitle: chapterTitle,
             isPlaying: isPlaying

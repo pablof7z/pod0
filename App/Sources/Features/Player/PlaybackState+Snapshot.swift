@@ -1,14 +1,12 @@
 import Foundation
-import WidgetKit
 
 // MARK: - Now Playing snapshot
 
 extension PlaybackState {
 
     /// Write the current episode metadata into the App Group `UserDefaults` the
-    /// widget reads from, then nudge WidgetKit to refresh. Throttled to once per
-    /// 5 s unless `force` is set (e.g. on episode change), where the snapshot
-    /// must update immediately.
+    /// widget reads from. `NowPlayingSnapshotStore.write` handles the WidgetKit
+    /// timeline reload. Throttled to once per 5 s unless `force` is set.
     func writeNowPlayingSnapshot(force: Bool) {
         guard let episode else { return }
         let now = Date()
@@ -27,6 +25,5 @@ extension PlaybackState {
         )
         NowPlayingSnapshotStore.write(snapshot)
         lastSnapshotWrite = now
-        WidgetCenter.shared.reloadAllTimelines()
     }
 }

@@ -50,8 +50,10 @@ enum NowPlayingSnapshotStore {
     private static let encoder = JSONEncoder()
 
     /// In-memory copy of the last snapshot written. Used by `updatePosition`
-    /// to skip the library lookup when only position/isPlaying changed.
-    private static var lastWrittenSnapshot: NowPlayingSnapshot?
+    /// to skip the library lookup when only position/isPlaying changed, and
+    /// by `PlatformCapability.applyNowPlayingSnapshot` to preserve the live
+    /// iOS-layer position on metadata-only refreshes.
+    static var lastWrittenSnapshot: NowPlayingSnapshot?
 
     /// App Group identifier — must match `Project.swift`'s `appGroupID` and the
     /// entitlements on both targets. Hard-coded here (rather than read from
