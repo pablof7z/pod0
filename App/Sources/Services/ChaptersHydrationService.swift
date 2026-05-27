@@ -13,6 +13,11 @@ import os.log
 /// Deduplication: a per-session `Set<UUID>` prevents duplicate dispatches for
 /// the same episode. Errors are handled by Rust (logged internally) and
 /// surface as a no-op to the caller — chapters are nice-to-have.
+///
+/// Note: `Episode.chaptersURL` is intentionally not checked here. Kernel-projected
+/// episodes never carry `chaptersURL` (the field is internal to Rust). Rust
+/// self-gates on whether the episode has a chapters URL and returns NoOp when
+/// it does not.
 @MainActor
 final class ChaptersHydrationService {
 
@@ -27,7 +32,6 @@ final class ChaptersHydrationService {
     /// doesn't already have inline chapters, and hasn't been dispatched yet
     /// this session. Idempotent — safe to call on every view appear.
     func hydrateIfNeeded(episode: Episode, store: AppStateStore) {
-        guard episode.chaptersURL != nil else { return }
         if let existing = episode.chapters, !existing.isEmpty { return }
         guard !dispatched.contains(episode.id) else { return }
         dispatched.insert(episode.id)

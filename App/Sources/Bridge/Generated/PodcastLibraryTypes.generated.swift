@@ -84,6 +84,8 @@ struct AdSegment: Codable, Identifiable, Equatable, Hashable {
     var id: String
     var startSecs: Double
     var endSecs: Double
+    /// Ad classification: "preroll", "midroll", or "postroll".
+    var kind: String = "midroll"
 }
 
 /// Snapshot row for a podcast the user owns (NIP-F4 per-podcast keypair).

@@ -135,7 +135,10 @@ extension AppStateStore {
             episodes[idx].triageDecision = prior.triageDecision
             episodes[idx].triageRationale = prior.triageRationale
             episodes[idx].triageIsHero = prior.triageIsHero
-            episodes[idx].adSegments = prior.adSegments
+            // Prefer Rust-projected ad segments; fall back to Swift's if Rust has none.
+            if episodes[idx].adSegments?.isEmpty != false {
+                episodes[idx].adSegments = prior.adSegments
+            }
             episodes[idx].metadataIndexed = prior.metadataIndexed
             // Prefer Rust-projected chapters (publisher JSON fetched via
             // `fetch_chapters`). If Rust has none yet, fall back to any
@@ -200,6 +203,11 @@ private extension EpisodeSummary {
         let projectedChapters: [Episode.Chapter]? = chapters.flatMap {
             $0.isEmpty ? nil : $0.map(\.toChapter)
         }
+        let projectedAdSegments: [Episode.AdSegment]? = adSegments.isEmpty ? nil : adSegments.compactMap { seg in
+            guard let uuid = UUID(uuidString: seg.id) else { return nil }
+            let kind = Episode.AdKind(rawValue: seg.kind) ?? .midroll
+            return Episode.AdSegment(id: uuid, start: seg.startSecs, end: seg.endSecs, kind: kind)
+        }
         return Episode(
             id: episodeUUID,
             podcastID: podcastUUID,
@@ -215,7 +223,8 @@ private extension EpisodeSummary {
             playbackPosition: playbackPositionSecs ?? 0,
             played: played,
             isStarred: starred,
-            downloadState: downloadState
+            downloadState: downloadState,
+            adSegments: projectedAdSegments
         )
     }
 }

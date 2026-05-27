@@ -120,6 +120,19 @@ extension AppStateStore {
                          body: ["op": "fetch_chapters", "episode_id": episodeID.uuidString])
     }
 
+    // MARK: - Ad segments
+
+    /// Persist detected ad-break intervals for an episode (namespace: podcast.player).
+    /// Rust stores them in `PodcastStore` and (if the episode is currently loaded)
+    /// pushes them into the player actor so auto-skip fires on the next tick.
+    func kernelSetAdSegments(episodeID: UUID, segments: [Episode.AdSegment]) {
+        let segDicts: [[String: Any]] = segments.map { seg in
+            ["id": seg.id.uuidString, "start_secs": seg.start, "end_secs": seg.end, "kind": seg.kind.rawValue]
+        }
+        kernel?.dispatch(namespace: "podcast.player",
+                         body: ["op": "set_ad_segments", "episode_id": episodeID.uuidString, "segments": segDicts])
+    }
+
     // MARK: - Subscription settings
 
     /// Update the auto-download policy for a single podcast (namespace: podcast).

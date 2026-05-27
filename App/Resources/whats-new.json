@@ -2,6 +2,24 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-27T18:30:00Z",
+      "lines": [
+        "Detected ad segments now persist across app restarts — auto-skip works immediately on replay without re-analyzing the transcript."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-27T18:29:00Z",
+      "lines": [
+        "Chapter fetching now works for all subscribed episodes, not just those loaded from RSS — fixes missing chapters on recently added shows."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-27T17:02:00Z",
+      "lines": [
+        "Per-podcast auto-download toggle now persists correctly across restarts."
+      ]
+    },
+    {
       "shipped_at": "2026-05-27T17:01:00Z",
       "lines": [
         "Chapter markers and transcripts now survive feed refreshes — no more re-loading after a refresh."

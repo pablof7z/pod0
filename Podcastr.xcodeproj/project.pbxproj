@@ -442,7 +442,6 @@
 		99D2E98E99B0CB95046EACB3 /* KernelIdentityProjection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B334B83E154E2680BE51FDC5 /* KernelIdentityProjection.swift */; };
 		99D35A53AE2F6EC7CF0EB626 /* EditProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE2405B0025D1B1C6C78A6D6 /* EditProfileView.swift */; };
 		9AAC8FCB2A1CFB5B1200FB35 /* OnboardingPages.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5C71BEB7CB9908E8F4D917 /* OnboardingPages.swift */; };
-		9B3E7B29673CD3B761D4321F /* ChaptersClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26F659D3841F9C4F85C7B6E0 /* ChaptersClient.swift */; };
 		9B950E6A6A44CFFDD1347DFF /* OnboardingSubscribePage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D8269F3BAD30696B61360DE /* OnboardingSubscribePage.swift */; };
 		9BB05C9DA39D8C13D58DDC24 /* ProviderEmbeddingsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC887889E3D3A4F4E05AC04F /* ProviderEmbeddingsClient.swift */; };
 		9C25BA5ABC331979999B9C44 /* SubscriptionAddErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F833AA22A592FCA0B58604 /* SubscriptionAddErrorTests.swift */; };
@@ -908,7 +907,6 @@
 		2662C0BFD81474F425CD3EC8 /* ShowDetailSettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowDetailSettingsSheet.swift; sourceTree = "<group>"; };
 		269104D37F8A8A8A2D5F6A1C /* KernelModelHashing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KernelModelHashing.swift; sourceTree = "<group>"; };
 		26A735604F439E2BB4A10A52 /* LivePodcastRAGAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivePodcastRAGAdapter.swift; sourceTree = "<group>"; };
-		26F659D3841F9C4F85C7B6E0 /* ChaptersClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChaptersClient.swift; sourceTree = "<group>"; };
 		2763688843F3F2578F4B5DA8 /* ElevenLabsScribeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevenLabsScribeClient.swift; sourceTree = "<group>"; };
 		278CA9637B1B804C8D5D4509 /* PlayerShareSheetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerShareSheetTests.swift; sourceTree = "<group>"; };
 		27D96D869DCB5D4F1FB36CA0 /* AgentToolSchema+OwnedPodcasts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AgentToolSchema+OwnedPodcasts.swift"; sourceTree = "<group>"; };
@@ -1707,7 +1705,6 @@
 			children = (
 				98DAEDC159EB12D823A8DDE6 /* AutoDownloadPolicy.swift */,
 				511731D80490220B47A3B4E1 /* CategorySettings.swift */,
-				26F659D3841F9C4F85C7B6E0 /* ChaptersClient.swift */,
 				D19840842AA448D8665CECFC /* DownloadState.swift */,
 				086F37EBFE11D08101EB3756 /* Episode.swift */,
 				0767C0EFD3EE8CA914E16094 /* Episode+Triage.swift */,
@@ -3417,7 +3414,6 @@
 				E4151E61041623F5B0BA311F /* WikiVerifier.swift in Sources */,
 				916C3EF963BE3EAF8C30F6CC /* AutoDownloadPolicy.swift in Sources */,
 				8B2598EDDD99EB99139D69B1 /* CategorySettings.swift in Sources */,
-				9B3E7B29673CD3B761D4321F /* ChaptersClient.swift in Sources */,
 				C60DE59DAE164662CE7E818D /* DownloadState.swift in Sources */,
 				8ADE7DDE6DADB962BB887648 /* Episode+Triage.swift in Sources */,
 				642D729BCF01B29A890BCFDD /* Episode.swift in Sources */,

@@ -22,5 +22,6 @@ extension AppStateStore {
         var episodes = state.episodes
         episodes[idx].adSegments = segments
         state.episodes = episodes
+        kernelSetAdSegments(episodeID: id, segments: segments)
     }
 }
