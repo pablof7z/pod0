@@ -70,7 +70,7 @@ public protocol BriefingComposerProtocol: Sendable {
 
 /// Summarization for an individual episode (lane 5/8).
 public protocol EpisodeSummarizerProtocol: Sendable {
-    func summarizeEpisode(episodeID: EpisodeID, length: String?) async throws -> EpisodeSummary
+    func summarizeEpisode(episodeID: EpisodeID, length: String?) async throws -> AgentEpisodeSummary
 }
 
 /// Episode metadata + existence check (lane 2/3).

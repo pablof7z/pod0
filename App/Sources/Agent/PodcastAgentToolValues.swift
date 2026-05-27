@@ -168,7 +168,7 @@ public struct BriefingResult: Sendable, Equatable {
 }
 
 /// A summary returned by `summarize_episode`.
-public struct EpisodeSummary: Sendable, Equatable {
+public struct AgentEpisodeSummary: Sendable, Equatable {
 
     /// Indicates whether the text was produced by an LLM or is a raw fallback.
     public enum SummarySource: String, Sendable, Equatable {

@@ -89,6 +89,12 @@ let project = Project(
                     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
                     "TARGETED_DEVICE_FAMILY": "1,2",
                     "PROVISIONING_PROFILE_SPECIFIER": "$(CI_APP_PROFILE_SPECIFIER)",
+                    // Rust FFI bridge
+                    "SWIFT_OBJC_BRIDGING_HEADER": "App/Sources/Bridge/NmpCore.h",
+                    "OTHER_LDFLAGS": "$(inherited) -lnmp_app_podcast",
+                    "ENABLE_USER_SCRIPT_SANDBOXING": "NO",
+                    "LIBRARY_SEARCH_PATHS[sdk=iphoneos*]": "$(inherited) $(SRCROOT)/target/aarch64-apple-ios/debug $(SRCROOT)/target/aarch64-apple-ios/release $(HOME)/.cargo/target-shared/aarch64-apple-ios/debug $(HOME)/.cargo/target-shared/aarch64-apple-ios/release",
+                    "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]": "$(inherited) $(SRCROOT)/target/aarch64-apple-ios-sim/debug $(SRCROOT)/target/aarch64-apple-ios-sim/release $(HOME)/.cargo/target-shared/aarch64-apple-ios-sim/debug $(HOME)/.cargo/target-shared/aarch64-apple-ios-sim/release",
                 ]
             )
         ),

@@ -5,6 +5,7 @@ import SwiftUI
 @main
 struct PodcastrApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @State private var kernelModel = KernelModel()
     @State private var store = AppStateStore()
     @State private var userIdentity = UserIdentityStore.shared
     @State private var relayService: NostrRelayService?
@@ -34,12 +35,20 @@ struct PodcastrApp: App {
     // race.
     @State private var whatsNewPresentation: WhatsNewPresentation?
 
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some Scene {
         WindowGroup {
             RootView(relayService: relayService, scheduledTaskRunner: scheduledTaskRunner)
+                .environment(kernelModel)
                 .environment(store)
                 .environment(userIdentity)
                 .environment(askCoordinator)
+                .task {
+                    kernelModel.start()
+                    store.attachKernel(kernelModel)
+                    PodcastCapabilities.shared.startICloudSync(kernel: kernelModel)
+                }
                 .task { userIdentity.start() }
                 .task { CarPlayController.shared.attach(store: store) }
                 .task {
@@ -77,6 +86,19 @@ struct PodcastrApp: App {
                 .onChange(of: store.state.settings.nostrProfileName) { _, _ in relayService?.republishProfile() }
                 .onChange(of: store.state.settings.nostrProfileAbout) { _, _ in relayService?.republishProfile() }
                 .onChange(of: store.state.settings.nostrProfilePicture) { _, _ in relayService?.republishProfile() }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            switch newPhase {
+            case .active:
+                kernelModel.checkAlive()
+                kernelModel.lifecycleForeground()
+            case .background:
+                kernelModel.lifecycleBackground()
+            case .inactive:
+                break
+            @unknown default:
+                break
+            }
         }
     }
 }

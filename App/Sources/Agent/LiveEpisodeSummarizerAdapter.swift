@@ -20,14 +20,14 @@ struct LiveEpisodeSummarizerAdapter: EpisodeSummarizerProtocol {
         self.store = store
     }
 
-    func summarizeEpisode(episodeID: EpisodeID, length: String?) async throws -> EpisodeSummary {
+    func summarizeEpisode(episodeID: EpisodeID, length: String?) async throws -> AgentEpisodeSummary {
         guard let uuid = UUID(uuidString: episodeID),
               let episode = await store?.episode(id: uuid) else {
-            return EpisodeSummary(episodeID: episodeID, summary: "", source: .unavailable)
+            return AgentEpisodeSummary(episodeID: episodeID, summary: "", source: .unavailable)
         }
         let body = await Self.episodeBodyText(uuid: uuid, fallback: episode.description)
         guard !body.isEmpty else {
-            return EpisodeSummary(
+            return AgentEpisodeSummary(
                 episodeID: episodeID,
                 summary: episode.description,
                 source: .publisherDescription
@@ -38,7 +38,7 @@ struct LiveEpisodeSummarizerAdapter: EpisodeSummarizerProtocol {
         }
         let reference = LLMModelReference(storedID: model)
         guard LLMProviderCredentialResolver.hasAPIKey(for: reference.provider) else {
-            return EpisodeSummary(
+            return AgentEpisodeSummary(
                 episodeID: episodeID,
                 summary: episode.description,
                 source: .publisherDescription
@@ -52,7 +52,7 @@ struct LiveEpisodeSummarizerAdapter: EpisodeSummarizerProtocol {
             feature: CostFeature.episodeSummary
         )
         return Self.parseSummary(episodeID: episodeID, json: json) ??
-            EpisodeSummary(
+            AgentEpisodeSummary(
                 episodeID: episodeID,
                 summary: episode.description,
                 source: .publisherDescription
@@ -90,12 +90,12 @@ struct LiveEpisodeSummarizerAdapter: EpisodeSummarizerProtocol {
         """
     }
 
-    static func parseSummary(episodeID: EpisodeID, json: String) -> EpisodeSummary? {
+    static func parseSummary(episodeID: EpisodeID, json: String) -> AgentEpisodeSummary? {
         guard let data = json.data(using: .utf8),
               let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else { return nil }
         let summary = (root["summary"] as? String) ?? ""
         let bullets = (root["bullets"] as? [String]) ?? []
-        return EpisodeSummary(episodeID: episodeID, summary: summary, bulletPoints: bullets, source: .llm)
+        return AgentEpisodeSummary(episodeID: episodeID, summary: summary, bulletPoints: bullets, source: .llm)
     }
 }
