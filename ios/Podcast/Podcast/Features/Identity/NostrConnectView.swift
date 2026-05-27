@@ -212,24 +212,16 @@ struct NostrConnectView: View {
 
     // MARK: - Actions
 
-    /// Render the QR + signer-app rail without dispatching anything to
-    /// the kernel. The kernel's `identity.connect_via_nostrconnect` action
-    /// will replace this stub flow at M1 exit — at which point the
-    /// `pairingState` enum becomes a projection from `IdentityViewModel`.
     private func beginPairing() {
         pairingTask?.cancel()
         detectSignerApps()
+        guard let uri = model.nostrconnectURI() else {
+            pairingState = .failed("Could not generate connection URI.")
+            return
+        }
         pairingState = .setup
-        // Placeholder URI matches the legacy compat-stub shape so the
-        // QR view renders something the user can visibly scan. The
-        // pairing handshake won't complete until the kernel action
-        // lands; the user lands on the staged-action banner if they
-        // tap any connect surface elsewhere in the flow.
-        let placeholderURI =
-            "nostrconnect://placeholder?relay=&secret=&perms=&name=Podcastr"
-        nostrConnectURI = placeholderURI
-        qrImage = makeQR(from: placeholderURI)
-        model.surfaceStagedIdentityAction("identity.connect_via_nostrconnect")
+        nostrConnectURI = uri
+        qrImage = makeQR(from: uri)
     }
 
     private func cancelAndDismiss() {

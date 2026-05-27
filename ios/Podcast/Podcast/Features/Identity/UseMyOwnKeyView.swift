@@ -195,23 +195,16 @@ struct UseMyOwnKeyView: View {
         Haptics.light()
     }
 
-    /// Import an nsec into the kernel. The `identity.import_nsec` action
-    /// hasn't shipped yet (M1 exit), so this stages the user's intent and
-    /// surfaces the staged-action banner via inline-error UX. The visible
-    /// flow matches the legacy stub: spinner → error inline. The flow
-    /// will become a `model.dispatch(namespace: "identity", body:
-    /// ["op": "import_nsec", "nsec": trimmedKey])` once the action lands.
     private func importNsec() async {
         guard canSubmit else { return }
         importing = true
         defer { importing = false }
         inlineError = nil
-        model.surfaceStagedIdentityAction("identity.import_nsec")
-        // Hold the spinner long enough that the user sees it before
-        // landing on the inline-error surface.
-        try? await Task.sleep(for: .milliseconds(400))
-        inlineError = IdentityViewModel.stagedActionToast
-        Haptics.error()
+        // SECURITY: nsec MUST NOT be logged — forwarded straight to
+        // the kernel FFI which wraps it in Zeroizing<String>.
+        model.signInNsec(nsec.trimmingCharacters(in: .whitespacesAndNewlines))
+        Haptics.success()
+        onImportComplete()
     }
 
     // MARK: - Section helper

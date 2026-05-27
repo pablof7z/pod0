@@ -94,24 +94,19 @@ struct RemoteSignerView: View {
 
     // MARK: - Connect
 
-    /// Connect via NIP-46 bunker URI. The kernel's
-    /// `identity.connect_remote_signer` action lands at M1 exit; until
-    /// then this surfaces the staged-action banner so the user knows
-    /// the input was received but no pairing happened.
     private func connect() async {
         let trimmed = bunkerInput.trimmed
         guard !trimmed.isEmpty else { return }
         isConnecting = true
-        model.surfaceStagedIdentityAction("identity.connect_remote_signer")
-        // Hold the "connecting" beat briefly so the spinner is visible
-        // before we resolve to the error toast — matches the previous
-        // flow's visible UX.
-        try? await Task.sleep(for: .milliseconds(400))
+        model.signInBunker(uri: trimmed)
+        // Fire-and-forget — outcome observed via model.identity.account.
+        // Reactive isConnecting clearing tracked in BACKLOG.
         isConnecting = false
-        Haptics.error()
+        Haptics.light()
     }
 
     private func disconnect() async {
-        model.surfaceStagedIdentityAction("identity.disconnect_remote_signer")
+        model.cancelBunkerHandshake()
+        model.removeActiveAccount()
     }
 }

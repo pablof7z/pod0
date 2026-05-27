@@ -182,15 +182,8 @@ struct AdvancedView: View {
 
     // MARK: - Actions
 
-    /// "Start a new account" — clears the active identity and silently
-    /// regenerates a new local key. The kernel actions `identity.clear`
-    /// and `identity.generate` land at M1 exit; until then this surfaces
-    /// the staged-action banner so the user gets visible feedback after
-    /// confirming the destructive alert. The button is reachable only
-    /// from the alert's "Start new" action, so the toast lands right
-    /// after dismissal.
     private func startNewAccount() async {
-        model.surfaceStagedIdentityAction("identity.clear")
+        model.removeActiveAccount()
         Haptics.medium()
     }
 }
