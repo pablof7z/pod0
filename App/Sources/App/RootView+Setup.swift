@@ -13,9 +13,6 @@ extension RootView {
         playbackState.onFlushPositions = { [store] in
             store.flushPendingPositions()
         }
-        playbackState.onEnsureDownloadEnqueued = { [store] id in
-            store.kernelDownload(id)
-        }
         playbackState.onKernelEnqueueLast = { [store] id in
             store.kernelEnqueueLast(episodeID: id)
         }
@@ -93,7 +90,7 @@ extension RootView {
         if playbackState.episode == nil,
            let lastID = store.state.lastPlayedEpisodeID,
            let episode = store.episode(id: lastID) {
-            playbackState.setEpisode(episode, enqueueDownloadIfNeeded: false)
+            playbackState.setEpisode(episode)
             // On cold launch the Rust kernel starts with nowPlaying == nil
             // (position is not persisted in PersistedStore). Write the widget
             // snapshot here so it shows the restored episode immediately —

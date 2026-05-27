@@ -134,35 +134,6 @@ final class PlaybackState {
     /// store can't observe directly.
     var onFlushPositions: () -> Void = { }
 
-    /// Called when `setEpisode` loads a *new* episode (`!isSameEpisode`)
-    /// whose `downloadState` is `.notDownloaded` or `.failed`. Receivers
-    /// should kick off the background download → transcription → chapters
-    /// pipeline without blocking playback — the audio engine has already
-    /// started streaming by the time this closure fires.
-    ///
-    /// Wired by `RootView` to `store.kernelDownload` so every playback entry
-    /// point (`play_episode`, Continue Listening, Home featured, deep links)
-    /// funnels through the Rust kernel's download queue.
-    ///
-    /// Only fires on *new* episode load, never on same-episode reloads —
-    /// Play/Resume taps and deep-link replays hit `setEpisode` on every
-    /// gesture and would otherwise spam the download queue.
-    var onEnsureDownloadEnqueued: (UUID) -> Void = { _ in }
-
-    /// Mirrors `Settings.autoSkipAds`. When `true`, `tickPersistence` seeks
-    /// past any `Episode.AdSegment` the playhead enters, throttled to one
-    /// skip per segment per playback session via `skippedAdSegmentIDs`.
-    /// Off by default so the toggle stays opt-in until detection quality
-    /// is proven.
-    var autoSkipAdsEnabled: Bool = false
-
-    /// Ad segments for the currently-loaded episode. Refreshed by
-    /// `RootView` whenever the episode changes (and after detection runs)
-    /// so the auto-skip loop doesn't have to reach into `AppStateStore`
-    /// from a tight 1-second tick. Empty when detection hasn't run or
-    /// found nothing.
-    var adSegments: [Episode.AdSegment] = []
-
     /// Called when a whole-episode item is added to the back of Up Next.
     /// Wired by `RootView` to `AppStateStore.kernelEnqueueLast` so Rust
     /// persists the queue for the next app launch.
@@ -211,12 +182,6 @@ final class PlaybackState {
     /// 5 ticks so the widget's position stays ≤5s stale without a full write on
     /// every tick.
     private var widgetPositionTick = 0
-    /// Ad segments already auto-skipped in this playback session, keyed by
-    /// `AdSegment.id`. Cleared on episode change so a user replaying the
-    /// same episode sees ads skipped again. Not persisted — purely
-    /// throttling state for the 1-second tick loop.
-    var skippedAdSegmentIDs: Set<UUID> = []
-    private var downloadEnqueueRequestedForEpisodeID: UUID?
 
     // MARK: - Init
 
@@ -238,7 +203,7 @@ final class PlaybackState {
     /// hero "Play/Resume" button, chapter-row taps, deep-links). The
     /// metadata refresh + snapshot write still run so any post-hydrate
     /// changes (chapters, title) flush to the widget.
-    func setEpisode(_ newEpisode: Episode, enqueueDownloadIfNeeded: Bool = true) {
+    func setEpisode(_ newEpisode: Episode) {
         let isSameEpisode = (episode?.id == newEpisode.id)
         if !isSameEpisode {
             // Drain any cached position for the previous episode before
@@ -247,11 +212,6 @@ final class PlaybackState {
             // tick, by which time the user may have force-quit.
             onFlushPositions()
             widgetPositionTick = 0
-            // Skipped-ad set is per-episode-session. Replaying the same
-            // episode should re-skip the same ads; a brand-new episode
-            // starts with an empty set.
-            skippedAdSegmentIDs = []
-            downloadEnqueueRequestedForEpisodeID = nil
         }
         episode = newEpisode
         // Rescue: starting playback on a triage-archived episode clears the
@@ -260,11 +220,6 @@ final class PlaybackState {
         if newEpisode.isTriageArchived {
             onClearTriageDecision(newEpisode.id)
         }
-        // Refresh the local ad-segments cache from the newly-loaded episode
-        // so the 1-second auto-skip loop has the right list. On same-episode
-        // reloads we still refresh — detection may have completed since the
-        // previous `setEpisode` call and added segments to the model.
-        adSegments = newEpisode.adSegments ?? []
         if !isSameEpisode {
             engine.load(newEpisode)
             if newEpisode.playbackPosition > 0 {
@@ -280,18 +235,6 @@ final class PlaybackState {
         }
         if !isSameEpisode {
             startPersistenceLoop()
-            if enqueueDownloadIfNeeded { ensureDownloadEnqueuedIfNeeded(for: newEpisode) }
-        }
-    }
-
-    private func ensureDownloadEnqueuedIfNeeded(for episode: Episode) {
-        guard downloadEnqueueRequestedForEpisodeID != episode.id else { return }
-        switch episode.downloadState {
-        case .notDownloaded, .failed:
-            downloadEnqueueRequestedForEpisodeID = episode.id
-            onEnsureDownloadEnqueued(episode.id)
-        case .downloading, .queued, .downloaded:
-            break
         }
     }
 
@@ -309,7 +252,6 @@ final class PlaybackState {
         guard let episode else { return }
         Haptics.medium()
         engine.play()
-        ensureDownloadEnqueuedIfNeeded(for: episode)
         startPersistenceLoop()
     }
 
@@ -400,10 +342,6 @@ final class PlaybackState {
         if engine.episode == nil {
             engine.setRate(settings.defaultPlaybackRate)
         }
-        // Mirror the user's auto-skip-ads preference. The 1-second
-        // persistence loop reads `autoSkipAdsEnabled` directly so a Settings
-        // edit takes effect on the next tick — no need to re-open the player.
-        autoSkipAdsEnabled = settings.autoSkipAds
         headphoneDoubleTapAction = settings.headphoneDoubleTapAction
         headphoneTripleTapAction = settings.headphoneTripleTapAction
     }
@@ -452,7 +390,6 @@ final class PlaybackState {
             return
         }
 
-        applyAutoSkipAdsIfNeeded(at: time)
         widgetPositionTick += 1
         if widgetPositionTick % 5 == 0 {
             NowPlayingSnapshotStore.updatePosition(time, isPlaying: isPlaying)
