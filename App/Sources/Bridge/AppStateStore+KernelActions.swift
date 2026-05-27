@@ -109,6 +109,17 @@ extension AppStateStore {
         kernel?.dispatch(namespace: "podcast.queue", body: ["op": "clear"])
     }
 
+    // MARK: - Chapters
+
+    /// Fetch Podcasting 2.0 chapters JSON for an episode (namespace: podcast).
+    /// Rust fetches the `chaptersURL`, parses the JSON, stores the results in
+    /// `PodcastStore`, increments the snapshot rev, and the next projection
+    /// tick maps them onto `Episode.chapters` via `applyKernelState`.
+    func kernelFetchChapters(episodeID: UUID) {
+        kernel?.dispatch(namespace: "podcast",
+                         body: ["op": "fetch_chapters", "episode_id": episodeID.uuidString])
+    }
+
     // MARK: - Subscription settings
 
     /// Update the auto-download policy for a single podcast (namespace: podcast).

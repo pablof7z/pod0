@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-27T17:01:00Z",
+      "lines": [
+        "Chapter markers and transcripts now survive feed refreshes — no more re-loading after a refresh."
+      ]
+    },
+    {
       "shipped_at": "2026-05-27T08:01:00Z",
       "lines": [
         "Social tab now loads your real Nostr follow list — contacts and their profile photos pulled live from the relay."

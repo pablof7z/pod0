@@ -118,6 +118,36 @@ extension AppStateStore {
                 episodes.append(episode)
             }
         }
+
+        // ── Preserve Swift-only episode state across projection passes ────
+        // Rust does not own: transcript state, AI inbox triage decisions,
+        // ad segments, RAG metadata index flag, or AI-generated chapters.
+        // Without this merge those fields would be silently wiped on every
+        // feed refresh (which advances the library hash and re-runs this
+        // projection).
+        let priorByID = Dictionary(
+            state.episodes.map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        for idx in episodes.indices {
+            guard let prior = priorByID[episodes[idx].id] else { continue }
+            episodes[idx].transcriptState = prior.transcriptState
+            episodes[idx].triageDecision = prior.triageDecision
+            episodes[idx].triageRationale = prior.triageRationale
+            episodes[idx].triageIsHero = prior.triageIsHero
+            episodes[idx].adSegments = prior.adSegments
+            episodes[idx].metadataIndexed = prior.metadataIndexed
+            // Prefer Rust-projected chapters (publisher JSON fetched via
+            // `fetch_chapters`). If Rust has none yet, fall back to any
+            // chapters stored in Swift. AI-generated chapters are merged on
+            // top of publisher chapters so the full set is always visible.
+            if episodes[idx].chapters?.isEmpty != false {
+                episodes[idx].chapters = prior.chapters
+            } else if let aiOnly = prior.chapters?.filter({ $0.isAIGenerated }),
+                      !aiOnly.isEmpty {
+                episodes[idx].chapters = (episodes[idx].chapters ?? []) + aiOnly
+            }
+        }
         next.episodes = episodes
 
         // ── Settings ─────────────────────────────────────────────────────
@@ -167,6 +197,9 @@ private extension EpisodeSummary {
             downloadState = .notDownloaded
         }
 
+        let projectedChapters: [Episode.Chapter]? = chapters.flatMap {
+            $0.isEmpty ? nil : $0.map(\.toChapter)
+        }
         return Episode(
             id: episodeUUID,
             podcastID: podcastUUID,
@@ -177,11 +210,27 @@ private extension EpisodeSummary {
             duration: durationSecs,
             enclosureURL: enclosureURL,
             imageURL: artworkUrl.flatMap { URL(string: $0) },
+            chapters: projectedChapters,
             publisherTranscriptURL: transcriptUrl.flatMap { URL(string: $0) },
             playbackPosition: playbackPositionSecs ?? 0,
             played: played,
             isStarred: starred,
             downloadState: downloadState
+        )
+    }
+}
+
+// MARK: - ChapterSummary → Episode.Chapter
+
+private extension ChapterSummary {
+    var toChapter: Episode.Chapter {
+        Episode.Chapter(
+            startTime: startSecs,
+            endTime: endSecs,
+            title: title,
+            imageURL: imageUrl.flatMap { URL(string: $0) },
+            linkURL: url.flatMap { URL(string: $0) },
+            isAIGenerated: isAiGenerated
         )
     }
 }

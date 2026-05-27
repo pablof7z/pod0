@@ -3,15 +3,16 @@ import os.log
 
 // MARK: - ChaptersHydrationService
 
-/// Coordinates async fetches of Podcasting 2.0 `chaptersURL` JSON and writes
-/// the resulting chapters back to `AppStateStore`. UI surfaces (`PlayerView`,
-/// `EpisodeDetailView`) call `hydrateIfNeeded(_:)` from `.task`; the service
-/// deduplicates concurrent and repeat requests so opening an episode several
-/// times in one session never spawns more than one fetch per URL.
+/// Routes Podcasting 2.0 chapter fetches through the Rust kernel.
 ///
-/// Errors are logged and swallowed — chapters are nice-to-have. A failed
-/// fetch is recorded in `attempted` so we don't retry that URL within the
-/// same app launch.
+/// UI surfaces (`PlayerView`, `EpisodeDetailView`) call `hydrateIfNeeded(_:)`
+/// from `.task`. The method dispatches `{"op":"fetch_chapters"}` to the kernel
+/// which owns the HTTP fetch, JSON parse, and persistence. The next snapshot
+/// tick projects the chapters onto `Episode.chapters` via `applyKernelState`.
+///
+/// Deduplication: a per-session `Set<UUID>` prevents duplicate dispatches for
+/// the same episode. Errors are handled by Rust (logged internally) and
+/// surface as a no-op to the caller — chapters are nice-to-have.
 @MainActor
 final class ChaptersHydrationService {
 
@@ -19,56 +20,24 @@ final class ChaptersHydrationService {
 
     private static let logger = Logger.app("ChaptersHydration")
 
-    private let client: ChaptersClient
-    /// Tracks which `chaptersURL`s we've already fetched (or are fetching)
-    /// this session. Keyed by absolute URL so two episodes that happen to
-    /// reference the same JSON file share one network round-trip.
-    ///
-    /// Previously held `Task<Void, Never>` values for each URL — and
-    /// never removed them after completion. Each retained task pinned
-    /// its closure capture (`client`, `store`, `episodeID`, `url`) for
-    /// the rest of the app session, so a heavy browser could leak
-    /// hundreds of closures over a long session. A plain `Set<URL>`
-    /// preserves the dedup semantics with zero per-URL retention beyond
-    /// the URL itself.
-    private var attempted: Set<URL> = []
+    /// Episode IDs whose chapter fetch has been dispatched this session.
+    private var dispatched: Set<UUID> = []
 
-    init(client: ChaptersClient = ChaptersClient()) {
-        self.client = client
-    }
-
-    /// Fetch chapters for `episode` if it has a `chaptersURL` and doesn't
-    /// already have inline chapters. Idempotent per session — calling this
-    /// repeatedly for the same episode never re-fetches.
+    /// Dispatch a chapter fetch for `episode` if it has a `chaptersURL`,
+    /// doesn't already have inline chapters, and hasn't been dispatched yet
+    /// this session. Idempotent — safe to call on every view appear.
     func hydrateIfNeeded(episode: Episode, store: AppStateStore) {
-        guard let url = episode.chaptersURL else { return }
-        // Inline chapters from the RSS extension take priority — if a feed
-        // ships both `<podcast:chapters>` and `chaptersURL`, the inline
-        // version is authoritative.
+        guard episode.chaptersURL != nil else { return }
         if let existing = episode.chapters, !existing.isEmpty { return }
-        guard !attempted.contains(url) else { return }
-        // Mark *before* dispatching so a concurrent second caller for the
-        // same URL short-circuits without racing to start a duplicate
-        // fetch.
-        attempted.insert(url)
-
-        let episodeID = episode.id
-        Task { [client] in
-            do {
-                let chapters = try await client.fetch(url: url)
-                store.setEpisodeChapters(episodeID, chapters: chapters)
-                Self.logger.info("Hydrated \(chapters.count) chapters for episode \(episodeID, privacy: .public)")
-            } catch {
-                Self.logger.notice(
-                    "Chapters fetch failed for \(url.absoluteString, privacy: .public): \(String(describing: error), privacy: .public)"
-                )
-            }
-        }
+        guard !dispatched.contains(episode.id) else { return }
+        dispatched.insert(episode.id)
+        store.kernelFetchChapters(episodeID: episode.id)
+        Self.logger.info("Dispatched fetch_chapters for episode \(episode.id, privacy: .public)")
     }
 
-    /// Test hook: clears the per-session dedup cache so a fresh fetch can
+    /// Test hook: clears the per-session dedup cache so a fresh dispatch can
     /// be observed. Production code never needs this.
     func resetForTesting() {
-        attempted.removeAll()
+        dispatched.removeAll()
     }
 }
