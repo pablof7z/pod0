@@ -136,6 +136,7 @@ extension AppStateStore {
     /// destructive action on followed podcasts and by the swipe-to-delete
     /// on the all-podcasts list for podcasts the user never followed.
     func deletePodcast(podcastID: UUID) {
+        kernelUnsubscribe(podcastID: podcastID)
         let removedEpisodeIDs = state.episodes
             .filter { $0.podcastID == podcastID }
             .map(\.id)

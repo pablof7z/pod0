@@ -215,7 +215,7 @@ struct StorageSettingsView: View {
 
     private func deleteShow(_ row: ShowRow) {
         for episodeID in row.episodeIDs {
-            EpisodeDownloadService.shared.delete(episodeID: episodeID)
+            store.kernelDeleteDownload(episodeID)
         }
         Task { await refresh() }
     }
@@ -243,14 +243,12 @@ struct StorageSettingsView: View {
     }
 
     private func deleteAll() {
-        // Walk every artifact (including orphans) and remove via the
-        // service for tracked episodes; for orphans, hit the file
-        // directly so we don't leak. Service path also clears
-        // `downloadState` on the live episode.
-        let store = EpisodeDownloadStore.shared
-        for file in store.enumerateOnDisk() {
+        // Walk every artifact (including orphans). Kernel handles tracked
+        // episodes; orphans (no live episode row) are removed directly.
+        let downloadStore = EpisodeDownloadStore.shared
+        for file in downloadStore.enumerateOnDisk() {
             if let id = file.episodeID, self.store.episode(id: id) != nil {
-                EpisodeDownloadService.shared.delete(episodeID: id)
+                self.store.kernelDeleteDownload(id)
             } else {
                 try? FileManager.default.removeItem(at: file.url)
             }

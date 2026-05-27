@@ -76,8 +76,7 @@ struct EpisodeRowDownloadSwipeAction: View {
         case .notDownloaded, .queued:
             Button {
                 Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
+                store.kernelDownload(episode.id)
             } label: {
                 Label("Download", systemImage: "arrow.down.circle")
             }
@@ -85,8 +84,7 @@ struct EpisodeRowDownloadSwipeAction: View {
         case .downloading:
             Button {
                 Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.cancel(episodeID: episode.id)
+                store.kernelCancelDownload(episode.id)
             } label: {
                 Label("Cancel", systemImage: "xmark.circle")
             }
@@ -99,8 +97,7 @@ struct EpisodeRowDownloadSwipeAction: View {
             // gray tint signals "secondary cleanup" instead of "destroy data".
             Button {
                 Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.delete(episodeID: episode.id)
+                store.kernelDeleteDownload(episode.id)
             } label: {
                 Label("Free up", systemImage: "internaldrive")
             }
@@ -108,8 +105,7 @@ struct EpisodeRowDownloadSwipeAction: View {
         case .failed:
             Button {
                 Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
+                store.kernelDownload(episode.id)
             } label: {
                 Label("Retry", systemImage: "arrow.clockwise")
             }

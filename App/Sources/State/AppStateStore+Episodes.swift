@@ -169,6 +169,7 @@ extension AppStateStore {
     /// "played=false but position correct" — recoverable next time the
     /// user opens the episode.
     func markEpisodePlayed(_ id: UUID) {
+        kernelMarkPlayed(id)
         flushPendingPositions()
         guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
         let wasDownloaded: Bool
@@ -189,9 +190,9 @@ extension AppStateStore {
         }
         // Honour the user's "Delete after played" setting. Runs after the
         // mutation batch so the played=true write is on disk before the
-        // download service flips downloadState back to .notDownloaded.
+        // kernel processes the delete.
         if wasDownloaded, state.settings.autoDeleteDownloadsAfterPlayed {
-            EpisodeDownloadService.shared.delete(episodeID: id)
+            kernelDeleteDownload(id)
         }
     }
 
@@ -225,6 +226,8 @@ extension AppStateStore {
     /// Flips the user-set "starred" flag for an episode.
     func toggleEpisodeStarred(_ id: UUID) {
         guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
+        let current = state.episodes[idx].isStarred
+        kernelToggleStar(id, currentlyStarred: current)
         var episodes = state.episodes
         episodes[idx].isStarred.toggle()
         performMutationBatch {
@@ -236,6 +239,7 @@ extension AppStateStore {
     func setEpisodeStarred(_ id: UUID, _ starred: Bool) {
         guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
         guard state.episodes[idx].isStarred != starred else { return }
+        kernelToggleStar(id, currentlyStarred: !starred)
         var episodes = state.episodes
         episodes[idx].isStarred = starred
         performMutationBatch {

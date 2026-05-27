@@ -374,10 +374,6 @@ struct HomeView: View {
     }
 
     private func refreshAllFeeds() async {
-        await SubscriptionRefreshService.shared.refreshAll(store: store)
-        // `refreshAll` already kicks `InboxTriageService.triageNewEpisodes`
-        // after the upsert sweep, so any new episodes get classified on
-        // this pass. The triage service coalesces, so a second call here
-        // is harmless but unnecessary.
+        store.kernelRefreshAll()
     }
 }

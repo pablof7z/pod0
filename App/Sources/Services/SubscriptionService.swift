@@ -138,60 +138,11 @@ struct SubscriptionService {
     /// can surface a friendly "you're already subscribed" notice).
     @discardableResult
     func addSubscription(feedURLString: String) async throws -> Podcast {
-        let trimmed = feedURLString.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = normalizedURL(from: trimmed) else {
-            throw AddError.invalidURL
-        }
-
-        // Refuse early when the user already follows the matching podcast.
-        // We DON'T early-return for the "podcast known but not followed"
-        // case — that's exactly the path we want to promote to a real
-        // follow, including backlog ingestion.
-        if let existing = store.podcast(feedURL: url),
-           store.subscription(podcastID: existing.id) != nil {
-            throw AddError.alreadySubscribed(title: existing.title.isEmpty ? trimmed : existing.title)
-        }
-
-        // Always do a fresh fetch on the follow path so the user sees the
-        // show's current episode list, even when a placeholder Podcast row
-        // already exists from an earlier external play.
-        //
-        // Critical: strip any cached `etag` / `lastModified` from the input
-        // before fetching. A placeholder created by `play_external_episode`
-        // may carry validators from its metadata-hydration pass, and we
-        // intentionally did NOT upsert episodes during that pass. If we sent
-        // those validators on the follow fetch, the server could 304 and
-        // we'd add the subscription with an empty episode list. Force a 200
-        // to guarantee the backlog backfill the user expects from
-        // subscribing.
-        var podcastForFetch = store.podcast(feedURL: url) ?? Podcast(
-            kind: .rss,
-            feedURL: url,
-            title: url.host ?? trimmed,
-            titleIsPlaceholder: true
-        )
-        podcastForFetch.etag = nil
-        podcastForFetch.lastModified = nil
-        let result: FeedClient.FeedFetchResult
-        do {
-            result = try await client.fetch(podcastForFetch)
-        } catch let feedError as FeedClient.FeedFetchError {
-            throw map(feedError)
-        }
-        let stored: Podcast
-        switch result {
-        case .updated(let fetched, let episodes, _):
-            stored = store.upsertPodcast(fetched)
-            store.upsertEpisodes(
-                episodes,
-                forPodcast: stored.id,
-                evaluateAutoDownload: false
-            )
-        case .notModified:
-            stored = store.upsertPodcast(podcastForFetch)
-        }
-        store.addSubscription(podcastID: stored.id)
-        return stored
+        // Delegate entirely to the Rust kernel: it validates, fetches,
+        // ingests episodes, and projects the new podcast into the store.
+        // `kernelSubscribe` blocks until the podcast appears in the library
+        // snapshot (or times out with an informative error).
+        return try await store.kernelSubscribe(feedURL: feedURLString)
     }
 
     // MARK: - Adopt a parsed OPML entry
@@ -252,11 +203,7 @@ struct SubscriptionService {
     /// flaky feed doesn't poison a multi-feed refresh.
     func refresh(_ podcast: Podcast) async {
         guard let live = store.podcast(id: podcast.id) else { return }
-        do {
-            try await SubscriptionRefreshService(client: client).refresh(live.id, store: store)
-        } catch {
-            Self.logger.error("refresh failed for \(live.feedURL?.absoluteString ?? "(no feed)", privacy: .public): \(error.localizedDescription, privacy: .public)")
-        }
+        store.kernelRefresh(podcastID: live.id)
     }
 
     // MARK: - Helpers

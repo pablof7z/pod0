@@ -38,10 +38,6 @@ struct EpisodeRowContextMenu<Route: Hashable>: View {
     /// existing call sites (Home cards) keep their current behavior.
     var playback: PlaybackState? = nil
 
-    /// Live download service — observed so the surfaced affordance flips between
-    /// Download / Cancel / Remove / Retry as the underlying state moves.
-    @State private var downloadService = EpisodeDownloadService.shared
-
     var body: some View {
         // No wrapping container view — `.contextMenu` walks the body looking
         // for menu items (Buttons / NavigationLinks / ShareLinks). A `Group`
@@ -187,16 +183,14 @@ struct EpisodeRowContextMenu<Route: Hashable>: View {
         case .notDownloaded, .queued:
             Button {
                 Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
+                store.kernelDownload(episode.id)
             } label: {
                 Label("Download", systemImage: "arrow.down.circle")
             }
         case .downloading:
             Button {
                 Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.cancel(episodeID: episode.id)
+                store.kernelCancelDownload(episode.id)
             } label: {
                 Label("Cancel download", systemImage: "xmark.circle")
             }
@@ -208,16 +202,14 @@ struct EpisodeRowContextMenu<Route: Hashable>: View {
             // land in the visible hierarchy), so we drop it here for parity.
             Button(role: .destructive) {
                 Haptics.warning()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.delete(episodeID: episode.id)
+                store.kernelDeleteDownload(episode.id)
             } label: {
                 Label("Remove download", systemImage: "trash")
             }
         case .failed:
             Button {
                 Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
+                store.kernelDownload(episode.id)
             } label: {
                 Label("Retry download", systemImage: "arrow.clockwise")
             }
