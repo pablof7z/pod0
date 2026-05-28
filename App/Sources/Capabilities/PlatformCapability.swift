@@ -144,15 +144,31 @@ final class PlatformCapability {
         var episodeTitle = episodeIdStr
         var showName = ""
         var imageURLString: String? = nil
+        var libraryDurationSecs: Double? = nil
         outer: for pod in library {
             for ep in pod.episodes where ep.id == episodeIdStr {
                 episodeTitle = ep.title
                 showName = pod.title
                 imageURLString = ep.artworkUrl ?? pod.artworkUrl
+                libraryDurationSecs = ep.durationSecs
                 break outer
             }
         }
-        let durationSecs = nowPlaying.durationSecs
+        // Prefer library duration (set when feed metadata arrives) over the kernel
+        // snapshot value (only populated once the Rust audio capability emits
+        // Playing reports). Fall back to the cached iOS snapshot for same-episode
+        // refreshes so a hydration pass never regresses a duration that was already
+        // known. Last resort: whatever the kernel reported.
+        let durationSecs: Double
+        if let lib = libraryDurationSecs, lib > 0 {
+            durationSecs = lib
+        } else if let cached = NowPlayingSnapshotStore.lastWrittenSnapshot?.duration,
+                  cached > 0,
+                  episodeIdStr == lastNowPlayingEpisodeId {
+            durationSecs = cached
+        } else {
+            durationSecs = nowPlaying.durationSecs
+        }
         if episodeIdStr == lastNowPlayingEpisodeId,
            isPlaying == lastNowPlayingIsPlaying,
            chapterTitle == lastNowPlayingChapterTitle,
@@ -184,7 +200,7 @@ final class PlatformCapability {
             showName: showName,
             imageURLString: imageURLString,
             position: livePosition,
-            duration: nowPlaying.durationSecs,
+            duration: durationSecs,
             chapterTitle: chapterTitle,
             isPlaying: isPlaying
         ))
