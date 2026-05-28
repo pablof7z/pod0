@@ -83,20 +83,33 @@ extension PodcastHandle {
     /// the `sendReport` closure from its own `@MainActor` methods; the closure
     /// uses `MainActor.assumeIsolated` to safely reach back into
     /// `PodcastCapabilities.shared` from the non-isolated closure type.
+    ///
+    /// The FFI call is dispatched to a background serial queue so that when
+    /// `maybe_auto_advance` re-enters `SyncCapabilityBridge` and calls
+    /// `DispatchQueue.main.sync`, the calling thread is not main and the
+    /// hop cannot deadlock.
     @MainActor
     func attachAudioReportChannel() {
+        let reportQueue = DispatchQueue(label: "podcast.audio-report", qos: .utility)
         PodcastCapabilities.shared.audio.attach { [weak self] reportJSON in
             MainActor.assumeIsolated {
-                guard let handle = self?.podcastHandle else { return }
-                guard let result = nmp_app_podcast_audio_report(handle, reportJSON)
-                else { return }
-                defer { nmp_app_free_string(result) }
-                let followUpJSON = String(cString: result)
-                guard
-                    let data = followUpJSON.data(using: .utf8),
-                    let command = try? JSONDecoder().decode(AudioCommand.self, from: data)
-                else { return }
-                PodcastCapabilities.shared.audio.execute(command)
+                // Capture self strongly for the background hop so the handle
+                // pointer stays valid until the FFI call completes.
+                guard let self else { return }
+                reportQueue.async { [self] in
+                    guard let handle = self.podcastHandle else { return }
+                    guard let result = nmp_app_podcast_audio_report(handle, reportJSON)
+                    else { return }
+                    defer { nmp_app_free_string(result) }
+                    let followUpJSON = String(cString: result)
+                    guard
+                        let data = followUpJSON.data(using: .utf8),
+                        let command = try? JSONDecoder().decode(AudioCommand.self, from: data)
+                    else { return }
+                    Task { @MainActor in
+                        PodcastCapabilities.shared.audio.execute(command)
+                    }
+                }
             }
         }
     }

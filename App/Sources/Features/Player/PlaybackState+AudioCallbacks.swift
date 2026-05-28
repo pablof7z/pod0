@@ -47,13 +47,13 @@ extension PlaybackState {
         // Commands from Rust (auto-advance, Siri, CarPlay) route here so
         // AudioEngine — the real player — acts on them, not AudioCapability's
         // idle own AVPlayer.
-        audio.commandHandler = { [weak self, weak store = self.store] command in
+        audio.commandHandler = { [weak self] command in
             guard let self else { return }
             switch command {
             case let .load(urlString, positionSecs, episodeID):
                 if let idStr = episodeID,
                    let id = UUID(uuidString: idStr),
-                   var episode = store?.episode(id: id) {
+                   var episode = self.store?.episode(id: id) {
                     // The store's enclosureURL is a placeholder for streaming
                     // episodes (Rust projects only the local download path).
                     // Use Rust's resolved URL for non-downloaded episodes.

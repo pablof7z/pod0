@@ -138,7 +138,7 @@ final class PlaybackState {
         guard let episode else { return }
         Haptics.medium()
         engine.play()
-        _ = episode // silence "unused" warning — episode presence is the guard
+        store?.kernelLoad(episodeID: episode.id)
     }
 
     func pause() {

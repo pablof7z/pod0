@@ -9,7 +9,7 @@ let kbLog = Logger(subsystem: "io.f7z.podcast", category: "KernelBridge")
 private let KERNEL_SCHEMA_VERSION: UInt32 = 1
 
 /// Thin C-FFI wrapper around the `nmp_app_podcast` static library.
-final class PodcastHandle {
+final class PodcastHandle: @unchecked Sendable {
     let raw: UnsafeMutableRawPointer
     private var updateSink: KernelUpdateSink?
     /// Opaque handle returned by `nmp_app_podcast_register`.
