@@ -35,6 +35,7 @@ extension PlaybackState {
         let audio = PodcastCapabilities.shared.audio
         engine.onPlayingTick = { [weak audio] url, position, duration in
             audio?.emitReport(.playing(url: url, positionSecs: position, durationSecs: duration))
+            NowPlayingSnapshotStore.updatePosition(position, isPlaying: true)
         }
         engine.onPauseEvent = { [weak audio] url, position in
             audio?.emitReport(.paused(url: url, positionSecs: position))

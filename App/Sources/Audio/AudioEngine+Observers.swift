@@ -132,14 +132,12 @@ extension AudioEngine {
         didReachNaturalEnd = true
         publishNowPlayingElapsed()
         let url = episode?.enclosureURL.absoluteString ?? ""
-        // Sleep timer "end of episode" mode wins if armed.
-        if sleepTimer.shouldStopAtEpisodeEnd() {
-            setState(.paused)
-            onItemEnd?(url)
-            return
-        }
         setState(.paused)
-        onItemEnd?(url)
-        // Lane 2 / Lane 4 will hook autoplay-next here; the engine stays neutral.
+        // Sleep timer "end of episode" mode: stop without emitting itemEnd so
+        // Rust's maybe_auto_advance is not triggered. The paused report from
+        // setState(.paused) is sufficient to persist the final position.
+        if !sleepTimer.shouldStopAtEpisodeEnd() {
+            onItemEnd?(url)
+        }
     }
 }
