@@ -17,7 +17,7 @@ extension PlaybackState {
         let snapshot = NowPlayingSnapshot(
             episodeTitle: episode.title,
             showName: resolveShowName(episode),
-            imageURLString: episode.imageURL?.absoluteString,
+            imageURLString: (episode.imageURL ?? resolveShowImage(episode))?.absoluteString,
             position: engine.currentTime,
             duration: duration,
             chapterTitle: engine.resolveActiveChapterTitle(episode, engine.currentTime),

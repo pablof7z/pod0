@@ -33,7 +33,10 @@ use std::time::SystemTime;
 use nmp_core::substrate::CapabilityRequest;
 
 use super::handle::PodcastHandle;
-use crate::capability::{AudioCommand, AudioReport, AUDIO_CAPABILITY_NAMESPACE};
+use crate::capability::{
+    AudioCommand, AudioReport, DownloadCommand, AUDIO_CAPABILITY_NAMESPACE,
+    DOWNLOAD_CAPABILITY_NAMESPACE,
+};
 use crate::store::PodcastStore;
 
 /// Minimum position delta (seconds) between disk flushes while a `Playing`
@@ -201,6 +204,20 @@ fn maybe_auto_advance(handle: &PodcastHandle) {
     dispatch_audio_cmd(handle, &AudioCommand::load(&url, position_secs));
     dispatch_audio_cmd(handle, &AudioCommand::Play);
 
+    // Enqueue a background download for un-downloaded episodes (mirrors
+    // handle_play). `DownloadQueue::enqueue` is idempotent.
+    let needs_dl = match handle.store.lock() {
+        Ok(s) => !s.episode_is_downloaded(&episode_id),
+        Err(_) => false,
+    };
+    if needs_dl {
+        if let Ok(mut q) = handle.download_queue.lock() {
+            if let Some(cmd) = q.enqueue(episode_id.clone(), url.clone()) {
+                dispatch_download_cmd(handle, &cmd);
+            }
+        }
+    }
+
     handle.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 }
 
@@ -211,6 +228,19 @@ fn dispatch_audio_cmd(handle: &PodcastHandle, cmd: &AudioCommand) {
     };
     let req = CapabilityRequest {
         namespace: AUDIO_CAPABILITY_NAMESPACE.to_owned(),
+        correlation_id: String::new(),
+        payload_json,
+    };
+    let _ = unsafe { &*handle.app }.dispatch_capability(&req);
+}
+
+fn dispatch_download_cmd(handle: &PodcastHandle, cmd: &DownloadCommand) {
+    let payload_json = match serde_json::to_string(cmd) {
+        Ok(j) => j,
+        Err(_) => return,
+    };
+    let req = CapabilityRequest {
+        namespace: DOWNLOAD_CAPABILITY_NAMESPACE.to_owned(),
         correlation_id: String::new(),
         payload_json,
     };

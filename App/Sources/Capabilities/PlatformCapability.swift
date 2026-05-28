@@ -160,6 +160,7 @@ final class PlatformCapability {
            showName == lastNowPlayingShowName,
            imageURLString == lastNowPlayingImageURLString,
            durationSecs == lastNowPlayingDurationSecs { return }
+        let episodeChanged = (episodeIdStr != lastNowPlayingEpisodeId)
         lastNowPlayingEpisodeId = episodeIdStr
         lastNowPlayingIsPlaying = isPlaying
         lastNowPlayingChapterTitle = chapterTitle
@@ -167,14 +168,17 @@ final class PlatformCapability {
         lastNowPlayingShowName = showName
         lastNowPlayingImageURLString = imageURLString
         lastNowPlayingDurationSecs = durationSecs
-        // Preserve the live playhead from the iOS-layer snapshot. The kernel
-        // snapshot excludes position-only ticks from its content hash, so
-        // nowPlaying.positionSecs here is the position from the last hashed
-        // tick — potentially far behind the real playhead. Using the last
-        // iOS-written position prevents the widget jumping backwards when a
-        // library-hydration pass (title, artwork, chapter) triggers this write.
-        let livePosition = NowPlayingSnapshotStore.lastWrittenSnapshot?.position
-            ?? nowPlaying.positionSecs
+        // Preserve the live playhead only on same-episode metadata refreshes.
+        // The kernel snapshot excludes position-only ticks from its content hash,
+        // so nowPlaying.positionSecs can be far behind the real playhead. On an
+        // episode change (Siri / kernel auto-advance), use the kernel position
+        // so a new episode doesn't inherit the old 40-minute playhead.
+        let livePosition: TimeInterval
+        if !episodeChanged, let cached = NowPlayingSnapshotStore.lastWrittenSnapshot?.position {
+            livePosition = cached
+        } else {
+            livePosition = nowPlaying.positionSecs
+        }
         NowPlayingSnapshotStore.write(NowPlayingSnapshot(
             episodeTitle: episodeTitle,
             showName: showName,
