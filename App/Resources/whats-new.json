@@ -2,7 +2,7 @@
   "schema_version": 1,
   "entries": [
     {
-      "shipped_at": "2026-05-28T02:45:00Z",
+      "shipped_at": "2026-05-28T00:50:00Z",
       "lines": [
         "Now Playing widget now updates immediately when a show's artwork or title loads — no more showing a blank image until the next chapter change."
       ]
