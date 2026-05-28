@@ -8,5 +8,6 @@ members = [
     "apps/podcast-feeds",
     "apps/podcast-knowledge",
     "apps/podcast-transcripts",
+    "apps/podcast-tui",
 ]
 resolver = "2"

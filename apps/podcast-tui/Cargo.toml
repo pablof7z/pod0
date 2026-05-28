@@ -1,0 +1,28 @@
+[package]
+name = "podcast-tui"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Ratatui terminal player for the Podcast app."
+
+[[bin]]
+name = "podcast-tui"
+path = "src/main.rs"
+
+[dependencies]
+nmp-app-podcast = { path = "../nmp-app-podcast", default-features = false }
+nmp-core = { path = "../../../nostrmultiplatform/crates/nmp-core", features = ["test-support"] }
+nmp-ffi = { path = "../../../nostrmultiplatform/crates/nmp-ffi", features = ["test-support"] }
+podcast-core = { path = "../podcast-core" }
+podcast-feeds = { path = "../podcast-feeds" }
+clap = { version = "4", features = ["derive"] }
+color-eyre = "0.6"
+crossterm = "0.29"
+ratatui = { version = "0.30", features = ["crossterm"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+reqwest = { version = "0.12", features = ["blocking", "rustls-tls"] }
+
+[dev-dependencies]
+insta = { version = "1", features = ["yaml"] }
