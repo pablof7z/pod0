@@ -211,10 +211,12 @@ fn maybe_auto_advance(handle: &PodcastHandle) {
         Err(_) => false,
     };
     if needs_dl {
-        if let Ok(mut q) = handle.download_queue.lock() {
-            if let Some(cmd) = q.enqueue(episode_id.clone(), url.clone()) {
-                dispatch_download_cmd(handle, &cmd);
-            }
+        let dl_cmd = match handle.download_queue.lock() {
+            Ok(mut q) => q.enqueue(episode_id.clone(), url.clone()),
+            Err(_) => None,
+        };
+        if let Some(cmd) = dl_cmd {
+            dispatch_download_cmd(handle, &cmd);
         }
     }
 
