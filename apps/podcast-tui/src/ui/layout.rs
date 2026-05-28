@@ -32,10 +32,26 @@ pub fn render(frame: &mut Frame<'_>, state: &AppState) {
     if matches!(state.mode, Mode::SearchInput | Mode::SubscribeInput) {
         render_input_bar(frame, area, state);
     }
+
+    if matches!(state.mode, Mode::EpisodeDetail { .. }) {
+        let popup = Layout::vertical([
+            Constraint::Percentage(10),
+            Constraint::Percentage(80),
+            Constraint::Percentage(10),
+        ])
+        .split(area);
+        let detail_area = Layout::horizontal([
+            Constraint::Percentage(10),
+            Constraint::Percentage(80),
+            Constraint::Percentage(10),
+        ])
+        .split(popup[1])[1];
+        ui::detail::render(frame, detail_area, state);
+    }
 }
 
 fn render_title(frame: &mut Frame<'_>, area: Rect, state: &AppState) {
-    let tabs = [Tab::Library, Tab::Queue, Tab::Search, Tab::Settings]
+    let tabs = [Tab::Library, Tab::Queue, Tab::Inbox, Tab::Search, Tab::Settings]
         .iter()
         .map(|tab| {
             let label = format!(" {} ", tab.label());
@@ -62,6 +78,7 @@ fn render_body(frame: &mut Frame<'_>, area: Rect, state: &AppState) {
     match state.tab {
         Tab::Library => render_library_body(frame, area, state),
         Tab::Queue => ui::queue::render(frame, area, state),
+        Tab::Inbox => ui::inbox::render(frame, area, state),
         Tab::Search => ui::search::render(frame, area, state),
         Tab::Settings => ui::settings::render(frame, area, state),
     }

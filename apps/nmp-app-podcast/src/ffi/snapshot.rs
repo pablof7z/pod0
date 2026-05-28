@@ -27,17 +27,13 @@ use crate::inbox_handler::build_inbox;
 /// respective short-duration locks, assembles the typed [`PodcastUpdate`],
 /// and serializes it. Failures degrade to the byte-compatible legacy stub
 /// (D6).
-fn build_snapshot_payload(handle: &PodcastHandle) -> String {
+/// Build the typed [`PodcastUpdate`] directly from the handle state.
+///
+/// Rust-native path — no JSON round-trip. Used by the TUI and other
+/// Rust consumers that want typed projections without paying serde
+/// serialization + deserialization.
+pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     let rev = handle.rev.load(Ordering::Relaxed);
-
-    // Fast path: skip re-serialization when rev hasn't changed.
-    if let Ok(cache) = handle.snapshot_cache.lock() {
-        if let Some((cached_rev, ref cached_json)) = *cache {
-            if cached_rev == rev {
-                return cached_json.clone();
-            }
-        }
-    }
 
     let now_playing = handle.player_actor.lock().ok().and_then(|a| {
         let s = a.state().clone();
@@ -199,7 +195,7 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         }
     });
 
-    let update = PodcastUpdate {
+    PodcastUpdate {
         rev,
         now_playing,
         library,
@@ -226,7 +222,22 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         briefing,
         social,
         ..PodcastUpdate::default()
-    };
+    }
+}
+
+fn build_snapshot_payload(handle: &PodcastHandle) -> String {
+    let rev = handle.rev.load(Ordering::Relaxed);
+
+    // Fast path: skip re-serialization when rev hasn't changed.
+    if let Ok(cache) = handle.snapshot_cache.lock() {
+        if let Some((cached_rev, ref cached_json)) = *cache {
+            if cached_rev == rev {
+                return cached_json.clone();
+            }
+        }
+    }
+
+    let update = build_podcast_update(handle);
     let json = serde_json::to_string(&update)
         .unwrap_or_else(|_| r#"{"running":true,"rev":0,"schema_version":1}"#.to_owned());
 
@@ -234,6 +245,17 @@ fn build_snapshot_payload(handle: &PodcastHandle) -> String {
         *cache = Some((rev, json.clone()));
     }
     json
+}
+
+impl PodcastHandle {
+    /// Build the typed [`PodcastUpdate`] directly from the handle state.
+    ///
+    /// Rust-native path — no JSON round-trip. Used by the TUI and other
+    /// Rust consumers that want typed projections without paying serde
+    /// serialization + deserialization.
+    pub fn update(&self) -> PodcastUpdate {
+        build_podcast_update(self)
+    }
 }
 
 /// Serialize the current app state into a JSON C string.

@@ -1,5 +1,7 @@
+pub mod detail;
 pub mod episodes;
 pub mod help;
+pub mod inbox;
 pub mod layout;
 pub mod library;
 pub mod player;

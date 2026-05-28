@@ -64,7 +64,11 @@ fn run(args: Args) -> Result<()> {
                 }
             }
             UiEvent::Terminal(_) => {}
-            UiEvent::Nmp(event) => state.apply_nmp_event(event),
+            UiEvent::Nmp(_event) => {
+                if let Some(update) = runtime.podcast_update() {
+                    state.apply_podcast_update(update);
+                }
+            }
             UiEvent::Tick => {
                 state.tick_toasts();
                 runtime.poll_audio_position();

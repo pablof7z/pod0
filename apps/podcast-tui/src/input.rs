@@ -63,6 +63,41 @@ pub fn handle_key(state: &mut AppState, runtime: &AppRuntime, key: KeyEvent) -> 
             return InputFlow::Continue;
         }
         Mode::Normal => {}
+        Mode::EpisodeDetail { .. } => {
+            match key.code {
+                KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('h') => {
+                    state.close_episode_detail();
+                }
+                KeyCode::Char('j') | KeyCode::Down => state.episode_detail_scroll_down(),
+                KeyCode::Char('k') | KeyCode::Up => state.episode_detail_scroll_up(),
+                KeyCode::Char('g') | KeyCode::Home => state.episode_detail_scroll_top(),
+                KeyCode::Char('p') => {
+                    if let Some(id) = state.selected_episode_id() {
+                        let _ = runtime.play_episode(&id, 0.0);
+                    }
+                }
+                KeyCode::Char('d') => {
+                    if let Some(id) = state.selected_episode_id() {
+                        let _ = runtime.download_episode(&id);
+                        state.push_toast("download queued");
+                    }
+                }
+                KeyCode::Char('s') => {
+                    if let Some(id) = state.selected_episode_id() {
+                        let _ = runtime.star(&id);
+                        state.push_toast("starred");
+                    }
+                }
+                KeyCode::Char('a') => {
+                    if let Some(id) = state.selected_episode_id() {
+                        let _ = runtime.add_to_queue(&id);
+                        state.push_toast("added to queue");
+                    }
+                }
+                _ => {}
+            }
+            return InputFlow::Continue;
+        }
     }
 
     if key.code == KeyCode::Char('q') {
@@ -101,6 +136,7 @@ pub fn handle_key(state: &mut AppState, runtime: &AppRuntime, key: KeyEvent) -> 
     match state.tab {
         Tab::Library => handle_library_keys(state, runtime, key),
         Tab::Queue => handle_queue_keys(state, runtime, key),
+        Tab::Inbox => handle_inbox_keys(state, runtime, key),
         Tab::Search => handle_search_keys(state, runtime, key),
         Tab::Settings => handle_settings_keys(state, runtime, key),
     }
@@ -196,14 +232,7 @@ fn handle_library_keys(state: &mut AppState, runtime: &AppRuntime, key: KeyEvent
         }
         KeyCode::Enter => {
             if state.focused == Pane::Episodes {
-                if let Some(id) = state.selected_episode_id() {
-                    let id_str = id;
-                    if let Some(ref ep) = state.episodes.get(state.selected_episode) {
-                        let pos = ep.playback_position_secs.unwrap_or(0.0);
-                        let _ = runtime.play_episode(&id_str, pos);
-                        state.status = format!("playing {}", ep.title);
-                    }
-                }
+                state.open_episode_detail();
             }
         }
         _ => {}
@@ -260,4 +289,36 @@ fn handle_search_keys(state: &mut AppState, runtime: &AppRuntime, key: KeyEvent)
 
 fn handle_settings_keys(_state: &mut AppState, _runtime: &AppRuntime, _key: KeyEvent) {
     // placeholder
+}
+
+fn handle_inbox_keys(state: &mut AppState, runtime: &AppRuntime, key: KeyEvent) {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => state.next_inbox_item(),
+        KeyCode::Char('k') | KeyCode::Up => state.previous_inbox_item(),
+        KeyCode::Char('g') | KeyCode::Home => state.selected_inbox = 0,
+        KeyCode::Char('G') | KeyCode::End => {
+            state.selected_inbox = state.inbox.len().saturating_sub(1);
+        }
+        KeyCode::Char('p') => {
+            if let Some(id) = state.selected_inbox_episode_id() {
+                let _ = runtime.play_episode(&id, 0.0);
+            }
+        }
+        KeyCode::Char('d') => {
+            if let Some(id) = state.selected_inbox_episode_id() {
+                let _ = runtime.download_episode(&id);
+                state.push_toast("download queued");
+            }
+        }
+        KeyCode::Char(' ') => {
+            if let Some(ref np) = state.now_playing {
+                if np.is_playing {
+                    let _ = runtime.pause();
+                } else {
+                    let _ = runtime.resume();
+                }
+            }
+        }
+        _ => {}
+    }
 }

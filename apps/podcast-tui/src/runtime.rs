@@ -3,9 +3,10 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, OnceLock};
 
 use nmp_app_podcast::{
-    nmp_app_podcast_register, nmp_app_podcast_set_data_dir, nmp_app_podcast_unregister, nmp_signer_broker_init,
-    PodcastHandle, AUDIO_CAPABILITY_NAMESPACE,
+    nmp_app_podcast_register, nmp_app_podcast_set_data_dir, nmp_app_podcast_unregister,
+    nmp_signer_broker_init, PodcastHandle, AUDIO_CAPABILITY_NAMESPACE,
 };
+use nmp_app_podcast::ffi::PodcastUpdate;
 use nmp_ffi::{
     nmp_app_dispatch_action, nmp_app_free, nmp_app_free_string, nmp_app_new,
     nmp_app_set_capability_callback, nmp_app_start, NmpApp,
@@ -241,6 +242,17 @@ impl AppRuntime {
         if let Some(host) = AUDIO_HOST.get() {
             let _ = host.lock().unwrap().poll_position();
         }
+    }
+
+    /// Read the current podcast state directly from the handle.
+    ///
+    /// This is the Rust-native path — no JSON round-trip. Called on the
+    /// main UI thread when the kernel update callback fires.
+    pub fn podcast_update(&self) -> Option<PodcastUpdate> {
+        if self.podcast.is_null() {
+            return None;
+        }
+        Some(unsafe { (*self.podcast).update() })
     }
 }
 
