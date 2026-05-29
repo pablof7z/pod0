@@ -11,9 +11,10 @@ import os.log
 // PASSIVE SHAPE — like `PlatformCapability` / `SpotlightCapability` there
 // is no request/response capability socket here. The capability is driven
 // by (a) `NSUbiquitousKeyValueStoreDidChangeExternallyNotification` for
-// inbound pulls and (b) the snapshot-poll observer in
-// `KernelModel.startSnapshotPoll` for outbound writes. It is therefore
-// **not** routed through `PodcastCapabilities.handleJSON(_:)`.
+// inbound pulls and (b) the reactive `KernelModel.applyPodcastUpdate`
+// path (which calls `applySettingsSnapshot` on every accepted frame) for
+// outbound writes. It is therefore **not** routed through
+// `PodcastCapabilities.handleJSON(_:)`.
 //
 // Doctrine:
 //   D6 — failures never throw. A missing entitlement, an unreachable iCloud
@@ -142,9 +143,9 @@ final class iCloudSyncCapability {
     // MARK: - Outbound — snapshot → iCloud
 
     /// Compare `settings` against the last value we wrote and push any
-    /// changed keys to iCloud. Called by the snapshot-poll observer in
-    /// `KernelModel.startSnapshotPoll` on every tick where
-    /// `podcastSnapshot` advanced.
+    /// changed keys to iCloud. Called from `KernelModel.applyPodcastUpdate`
+    /// on every accepted kernel frame (rev-gated), so writes ride the
+    /// reactive push path rather than a timer.
     func applySettingsSnapshot(_ settings: SettingsKVSnapshot) {
         guard started else { return }
         if isApplyingRemoteChange {

@@ -8,7 +8,7 @@ import os.log
 // Indexes the kernel's library projection into iOS Spotlight so system
 // search can deep-link back into the app. Passive shape — like
 // `PlatformCapability`, it is not routed through `handleJSON(_:)`. The
-// hook is the snapshot poll in `KernelModel.startSnapshotPoll`, which
+// hook is the reactive `KernelModel.applyPodcastUpdate` path, which
 // calls `indexLibrary(_:)` after assigning a new `library`.
 //
 // All items live in a single Spotlight domain

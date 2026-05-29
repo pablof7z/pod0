@@ -6,7 +6,8 @@ import ActivityKit
 #endif
 
 /// Translation layer between kernel `PlayerState` transitions (observed in
-/// `KernelModel.startSnapshotPoll`) and ActivityKit's lifecycle API.
+/// `KernelModel.applyPodcastUpdate` via `reconcileLiveActivity`) and
+/// ActivityKit's lifecycle API.
 ///
 /// This is the *executor* half of the Live Activity feature — it never
 /// decides *whether* to surface a Live Activity. That decision lives in
