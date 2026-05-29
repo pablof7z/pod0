@@ -269,6 +269,12 @@ impl PodcastHostOpHandler {
         cmd: &AudioCommand,
         correlation_id: &str,
     ) -> Result<(), String> {
+        // D6: a null/uninitialized app pointer (unit tests, pre-`nmp_app_start`)
+        // degrades to a no-op rather than dereferencing null. Mirrors the
+        // publish path's null guard.
+        if self.app.is_null() {
+            return Ok(());
+        }
         let payload_json = serde_json::to_string(cmd).map_err(|e| e.to_string())?;
         let req = CapabilityRequest {
             namespace: AUDIO_CAPABILITY_NAMESPACE.to_owned(),
@@ -284,6 +290,11 @@ impl PodcastHostOpHandler {
         cmd: &DownloadCommand,
         correlation_id: &str,
     ) -> Result<(), String> {
+        // D6: null/uninitialized app pointer degrades to a no-op (see
+        // `dispatch_audio`).
+        if self.app.is_null() {
+            return Ok(());
+        }
         let payload_json = serde_json::to_string(cmd).map_err(|e| e.to_string())?;
         let req = CapabilityRequest {
             namespace: DOWNLOAD_CAPABILITY_NAMESPACE.to_owned(),
@@ -302,6 +313,11 @@ impl PodcastHostOpHandler {
         cmd: &NotificationCommand,
         correlation_id: &str,
     ) -> Result<(), String> {
+        // D6: null/uninitialized app pointer degrades to a no-op (see
+        // `dispatch_audio`).
+        if self.app.is_null() {
+            return Ok(());
+        }
         let payload_json = notification_command_json(cmd);
         let req = CapabilityRequest {
             namespace: NOTIFICATION_CAPABILITY_NAMESPACE.to_owned(),

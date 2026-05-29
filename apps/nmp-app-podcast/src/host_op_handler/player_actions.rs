@@ -285,3 +285,7 @@ impl PodcastHostOpHandler {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "player_actions_tests.rs"]
+mod tests;
