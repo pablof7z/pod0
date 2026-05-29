@@ -84,11 +84,15 @@ final class KernelModel {
     /// `podcastSnapshot?.nowPlaying` so they don't hold a reference to the
     /// full snapshot struct. All other views should use `podcastSnapshot`.
     private(set) var nowPlaying: PlayerState?
-    /// Cancellable for the snapshot safety poll. The reactive push
-    /// (`apply(result:)`) is primary, but the poll remains as a safety net for
-    /// autonomous/large-frame updates the push path does not yet reliably
-    /// deliver (e.g. a multi-MB post-feed-fetch frame whose `podcast.snapshot`
-    /// projection currently fails to decode). Remove once that is root-caused.
+    /// Cancellable for the snapshot poll. NECESSARY (not just a fallback): the
+    /// podcast projection's `rev` advances on AUTONOMOUS, non-dispatched events
+    /// — the kernel loading the persisted store from LMDB on launch, async feed
+    /// refresh completion, download progress — and the kernel only emits a push
+    /// frame on dispatched actions (`maybe_emit_after_dispatch`), NOT when the
+    /// podcast handle's `rev` changes out-of-band. So the reactive push delivers
+    /// dispatched changes; this poll bridges autonomous ones (verified: with it
+    /// removed, the persisted library does not load on launch). Removing it for
+    /// good requires an emit-on-podcast-rev-change trigger in the kernel/FFI.
     private var snapshotPollTask: Task<Void, Never>?
     /// Hash of the library fields that matter to list views. Excludes
     /// `playbackPositionSecs` so list views don't re-render at 4 Hz
@@ -186,10 +190,8 @@ final class KernelModel {
         startSnapshotPoll()
     }
 
-    /// Safety-net poll: pulls the podcast snapshot on a low cadence so
-    /// autonomous and large-frame updates the reactive push does not yet
-    /// deliver (see `snapshotPollTask`) still reach the UI. The push remains the
-    /// primary path; this only catches what it misses.
+    /// Poll the podcast snapshot rev and apply on change. See `snapshotPollTask`
+    /// for why this is necessary (autonomous rev changes the push doesn't emit).
     private func startSnapshotPoll() {
         snapshotPollTask = Task { [weak self] in
             while !Task.isCancelled {
