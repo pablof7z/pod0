@@ -152,13 +152,18 @@ extension PodcastHandle {
     func attachVoiceReportChannel() {
         PodcastCapabilities.shared.voice.attach { [weak self] reportJSON in
             MainActor.assumeIsolated {
-                guard let handle = self?.podcastHandle else { return }
-                guard let result = nmp_app_podcast_voice_report(handle, reportJSON)
-                else { return }
-                // Reserved: when Rust starts returning a follow-up
-                // `VoiceCommand`, decode + execute it here. For the
-                // capability scaffold the symbol always returns NULL.
-                nmp_app_free_string(result)
+                guard let self, let handle = self.podcastHandle else { return }
+                // The voice report bumps the podcast `rev` (voice_state:
+                // listening / transcript / speaking) and returns no push frame,
+                // so surface it reactively like the audio/download reports —
+                // otherwise voice state is invisible until an unrelated dispatch.
+                if let result = nmp_app_podcast_voice_report(handle, reportJSON) {
+                    // Reserved: when Rust starts returning a follow-up
+                    // `VoiceCommand`, decode + execute it here. For the
+                    // capability scaffold the symbol always returns NULL.
+                    nmp_app_free_string(result)
+                }
+                self.onSnapshotMaybeChanged?()
             }
         }
     }
