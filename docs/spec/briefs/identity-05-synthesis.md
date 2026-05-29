@@ -390,7 +390,7 @@ UX-10 §S3 stands. **Two refinements** (01's calls):
 | Clips, source `.agent` | **don't** | n/a | local-only | same | future |
 | Highlights (future) | user | 9802 | as above | TBD | future |
 | Comments on episodes (future) | user | 1111 (NIP-22) | `["A", showCoord]`, `["E", parentID?]` | TBD | future |
-| Friend DMs (future) | user | 14/1059 (NIP-17) | per ux-12 | TBD | future |
+| Friend / friend-agent messages | user | 1 (NIP-10 threaded) | per ux-12 | TBD | public kind:1, matching win-the-day-app; NIP-17 is a non-goal |
 | Agent runs / tool calls | **don't** | — | (agent identity) | `AgentIdentityStore` | separate |
 | Agent chat replies | **don't** | — | (agent identity / in-process) | — | separate |
 | AI-generated wikis | **don't** | — | (agent identity if published) | — | separate |

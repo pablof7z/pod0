@@ -1,22 +1,22 @@
-# Plan: Pod0 Nostr Publishing Migration From NIP-74 To NIP-F4
+# Plan: Pod0 NIP-F4 Nostr Publishing And Discovery
 
 Canonical status: tracked from `docs/plan.md` and `docs/BACKLOG.md`.
 
 ## Current Status - 2026-05-26
 
-This migration is **not complete**. PR #89 corrected the active
-show/episode builders and show parser away from the known NIP-74-era wire
-shape, and PR #93 replaced fake public-key derivation with real secp256k1
+NIP-F4 publishing is **not complete**. PR #89 corrected the active
+show/episode builders and show parser to canonical NIP-F4 wire shape,
+and PR #93 replaced fake public-key derivation with real secp256k1
 key generation. The remaining work is not "add more screens"; it is replacing
 the scaffolded publish/discovery path with persisted keys, signed events,
-relay publication, relay-backed discovery, author claims, legacy-data
-handling, and validation against real relays.
+relay publication, relay-backed discovery, author claims,
+and validation against real relays.
 
-The repo still has legacy names and old parser paths (`NIP74Show`,
+The repo still has stale code names and old parser paths (`NIP74Show`,
 `NIP74Episode`, `parse_episode_event`, and related comments/tests) alongside
 the newer `NipF4Show` discovery parser and corrected publish builders. Treat
-those as migration debt until each path is either renamed/reworked for NIP-F4
-or explicitly quarantined as legacy compatibility.
+those as code debt until each path is either renamed/reworked for NIP-F4
+or explicitly quarantined as a read-only compatibility path.
 
 ## Required NIP-F4 Contract
 
@@ -65,29 +65,27 @@ or explicitly quarantined as legacy compatibility.
   leans on `feed` when present and RSS subscribe for the durable path.
 - `apps/podcast-discovery/src/nip_f4.rs` still parses the older
   PR-19-style `summary` tag for gateway discovery. Decide whether this remains
-  accepted legacy input or is migrated to the `description` tag used by the
-  active publish builder.
-- Legacy parser/type paths still carry NIP-74 concepts:
+  an accepted read-only compatibility input or is updated to the `description`
+  tag used by the canonical publish builder.
+- Stale parser/type paths still carry old-name concepts:
   `NIP74Show`/`NIP74Episode`, episode `d_tag`, `published_at`, `imeta`, and
   `show_a_tag`. Each caller must either move to canonical NIP-F4 event-id
-  identity and `audio` tags or be explicitly marked legacy read-only.
+  identity and `audio` tags or be explicitly marked read-only.
 - Source comments in `apps/podcast-discovery/src/kinds.rs`, `lib.rs`, and the
   old parser modules still describe mixed NIP-74/NIP-F4 semantics. Clean them
   up in the same PR that rewires or quarantines those code paths.
-- Existing local rows with old `30074:<pubkey>:<d>` coordinates or
-  NIP-74-derived metadata still need an explicit migrate/hide/read-only policy.
 
 ## P0 Implementation Plan
 
-1. Rename or quarantine the remaining legacy typed raw views away from
+1. Rename or quarantine the remaining stale typed raw views away from
    `NIP74Show`/`NIP74Episode`. Use `NipF4Show` and `NipF4Episode`
-   consistently for canonical NIP-F4 parse/build/tests; keep any NIP-74
-   compatibility path visibly legacy.
+   consistently for canonical NIP-F4 parse/build/tests; keep any compatibility
+   path that accepts old event shapes explicitly marked read-only.
 2. Finish episode parsing for canonical NIP-F4.
    Remove required `d`; remove `a`; remove `published_at`; read/write
    `description`; read/write `audio`; identify episodes by event id under the
-   podcast pubkey. Keep legacy `imeta`/`summary`/`d` parsing only behind an
-   explicit compatibility label if still required.
+   podcast pubkey. Keep any `imeta`/`summary`/`d` parsing only behind an
+   explicit read-only compatibility label if still required.
 3. Update tests to fail on NIP-74 tags in the active publish/discovery path.
    Builder tests already cover much of this; extend parse/discovery tests so
    `d`, `a`, `summary`, `published_at`, and `imeta` cannot re-enter the
@@ -112,11 +110,7 @@ or explicitly quarantined as legacy compatibility.
 9. Update iOS/Android UI semantics.
    Owned-podcast UI must not tell users a show/episode is published until a
    signed event has been accepted or queued durably for relay publish.
-10. Add migration handling for existing NIP-74-derived local data.
-   Existing `nostr_coordinate` and `owner_pubkey_hex` rows must either be
-   migrated to NIP-F4 coordinates or explicitly treated as legacy read-only
-   entries.
-11. Validate against relays.
+10. Validate against relays.
    Publish a show, publish an episode, fetch both back from relay data, verify
    author claim, delete/cleanup key material, and confirm restart behavior.
 
@@ -130,5 +124,5 @@ or explicitly quarantined as legacy compatibility.
 - `publish_show`, `publish_episode`, and `publish_author_claim` produce signed
   events and publish them to relays.
 - Discovery can subscribe to a Nostr-only podcast without relying on RSS.
-- Docs, tests, UI copy, and `whats-new.json` no longer describe NIP-74 as the
-  current publish/discovery protocol.
+- Docs, tests, UI copy, and `whats-new.json` describe NIP-F4 as the
+  canonical publish/discovery protocol.

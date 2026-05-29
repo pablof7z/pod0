@@ -6,9 +6,9 @@ worktrees currently in flight.
 
 ## Active P0 - Correctness Before More Features
 
-- ~~**p0-nipf4-wire-contract.**~~ Done in PR #89: removed NIP-74-era `d`/`a`/
-  `published_at`/`imeta` from kind `10154`/`54` builders; parsers updated;
-  round-trip tests verify absence.
+- ~~**p0-nipf4-wire-contract.**~~ Done in PR #89: aligned kind `10154`/`54`
+  builders and parsers with the NIP-F4 wire contract; removed non-NIP-F4
+  `d`/`a`/`published_at`/`imeta` tags; round-trip tests verify absence.
 - **p0-nipf4-real-keys.** ~~Real pubkey derivation~~ done in PR #93
   (`nostr::Keys::generate()` + real secp256k1). Remaining: persisted storage,
   Keychain-backed secret, survive restart, cleanup on owned-podcast delete.
@@ -22,9 +22,6 @@ worktrees currently in flight.
 - **p0-nipf4-author-claim.** Publish and refresh kind `10064` author claims
   after owned-podcast create/update/delete. Tests must verify exact `p` tags
   and signer identity.
-- **p0-nipf4-legacy-data.** Decide and implement migration behavior for rows
-  with old `30074:<pubkey>:<d>` coordinates or agent-owned NIP-74 state:
-  migrate, hide, or mark read-only. Document the behavior in the plan.
 - **p0-plan-truthfulness.** Keep `docs/plan.md`,
   `docs/plan/nmp-feature-parity.md`, and this backlog synchronized with code.
   Do not mark scaffolded behavior done.
@@ -115,10 +112,13 @@ worktrees currently in flight.
   subscription refresh, and snapshot updates.
 - **nostr-conversations-real-projection.** Replace compat-empty
   conversation/approval surfaces with Rust-owned conversation projection,
-  trust-list/approval actions, kind:0 profile cache, and NIP-17/NIP-46
+  trust-list/approval actions, kind:0 profile cache, and NIP-46
   integration.
-- **agent-to-agent-nip17.** Implement NIP-17 agent-to-agent messaging only
+- **agent-to-agent-kind1.** Implement agent-to-agent messaging via public
+  kind:1 notes threaded with NIP-10 (`e`/`p` tags for reply chains) only
   after identity, signer, relay, contact, and trust-list primitives are real.
+  Non-goal: NIP-17 (private direct messages) is out of scope for agent
+  coordination and will not be used for this purpose.
 
 ## Active P1 - AI Scaffold Replacement
 
@@ -220,8 +220,6 @@ worktrees currently in flight.
   implementation uses JSON persistence for `PodcastStore`. Decide whether JSON
   is the accepted canonical storage for the current milestone or whether a
   sled/SQLite migration is required before parity.
-- **NIP-F4 legacy compatibility.** Decide whether existing NIP-74 user data is
-  migrated automatically, surfaced as read-only legacy content, or hidden.
 - **Relay publish queue semantics.** Decide whether relay publish is
   synchronous user-visible completion or durable async queue with retry and
   status projection.
@@ -243,8 +241,8 @@ worktrees currently in flight.
 - **episode-description-htmlstrip.** Done via PR #87; descriptions are stripped
   at Rust projection time.
 - **nipf4-wire-contract.** Done via PR #89; kind `10154`/`54` builders and
-  parsers no longer emit or require NIP-74-era `d`/`a`/`published_at`/`imeta`
-  tags.
+  parsers conform to the NIP-F4 wire contract; non-NIP-F4
+  `d`/`a`/`published_at`/`imeta` tags are no longer emitted or required.
 - **nipf4-real-pubkey-derivation.** Done via PR #93; `PodcastKeyStore` now uses
   real secp256k1 key generation/public-key derivation. Persisted secret storage
   remains tracked under `p0-nipf4-real-keys`.

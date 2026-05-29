@@ -33,7 +33,7 @@ This is the canonical project plan. Detailed implementation plans live under
 | Feature parity | Not achieved | Many merged PRs are scaffolds or heuristics, not full original-app behavior. |
 | Legacy app deletion | Blocked | `App/Sources/` remains the reference implementation until all parity exits pass. |
 | Compat layer | Active debt | `ios/Podcast/Podcast/Compat/` still contains service/domain/identity/utility shims. |
-| NIP-F4 | Wire contract fixed; publishing partially scaffolded | PR #89 removed NIP-74-era tags from builders/parsers. PR #93 uses real secp256k1 key derivation. Persisted Keychain storage, signing, relay publishing, relay-backed discovery, author claims, and legacy-data behavior remain open. |
+| NIP-F4 | Wire contract fixed; publishing partially scaffolded | PR #89 corrected the active builders/parsers to canonical NIP-F4 wire shape. PR #93 uses real secp256k1 key derivation. Persisted Keychain storage, signing, relay publishing, relay-backed discovery, and author claims remain open. |
 | Validation | Incomplete gate | Docs-only changes require `git diff --check`; code parity work must also run focused Rust/Swift tests plus the merge gate. |
 
 ## Pod0 / NIP-F4 Milestones
@@ -42,13 +42,13 @@ This is the canonical project plan. Detailed implementation plans live under
 |---|---|---|
 | Pod0 protocol setup | `AGENTS.md`, `WIP.md`, `docs/plan.md`, and `docs/BACKLOG.md` define the NMP-style workflow. | Done |
 | Pod0 app rename | User-facing app name reflects Pod0; stable identifiers unchanged. | Done via PR #52 |
-| NIP-F4 discovery | Discovery reads kind `10154` shows and kind `54` episodes without NIP-74 addressing assumptions. | Partial |
+| NIP-F4 discovery | Discovery reads kind `10154` shows and kind `54` episodes using canonical NIP-F4 addressing. | Partial |
 | NIP-F4 publishing | Publishes signed kind `10154`/`54`/`10064` events with real per-podcast keys. | Scaffolded, not done |
 | Feature-parity truth pass | Every feature has `done`, `partial`, `scaffold`, `wrong`, or `blocked` status. | Done in `docs/plan/nmp-feature-parity.md` |
 
 ## Next Execution Order
 
-1. Finish NIP-F4 key persistence, signed relay publish, relay-backed discovery, author claims, deletion cleanup, and legacy-data behavior.
+1. Finish NIP-F4 key persistence, signed relay publish, relay-backed discovery, author claims, and deletion cleanup.
 2. Broaden the iOS validation gate now that the known focused-test compile blockers have been cleared.
 3. Burn down `ios/Podcast/Podcast/Compat/` by replacing each shim with Rust-backed snapshot/action behavior.
 4. Replace AI/platform scaffolds with real logic feature by feature, keeping each PR tied to a backlog item.
