@@ -23,8 +23,11 @@ struct PodcastSummary: Identifiable, Equatable, Hashable {
     /// rendered state and dispatches `set_auto_download` to flip it.
     /// Defaults to `false`; iTunes search rows never set it (they have
     /// no real `PodcastId` server-side).
-    var autoDownload: Bool = false
-    var episodes: [EpisodeSummary] = []
+    /// `@DefaultFalse`: the Rust projection omits this key when `false` (D5), so
+    /// decode must tolerate its absence — synthesized `Decodable` would otherwise
+    /// throw `keyNotFound`.
+    @DefaultFalse var autoDownload: Bool = false
+    @DefaultEmptyArray var episodes: [EpisodeSummary] = []
 }
 
 /// One episode row embedded in `PodcastSummary.episodes`.
@@ -56,10 +59,11 @@ struct EpisodeSummary: Identifiable, Equatable, Hashable {
     /// Persisted playback position in seconds. `nil` when not started.
     var playbackPositionSecs: Double? = nil
     var transcript: String? = nil
-    var aiCategories: [String] = []
-    var adSegments: [AdSegment] = []
-    var played: Bool = false
-    var starred: Bool = false
+    // D5 omit-on-empty/false fields — wrapped so absent keys decode to defaults.
+    @DefaultEmptyStrings var aiCategories: [String] = []
+    @DefaultEmptyArray var adSegments: [AdSegment] = []
+    @DefaultFalse var played: Bool = false
+    @DefaultFalse var starred: Bool = false
 }
 
 /// One time-stamped transcript row for a single episode.

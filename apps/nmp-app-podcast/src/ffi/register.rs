@@ -8,6 +8,8 @@ use std::sync::{Arc, Mutex};
 
 use nmp_ffi::NmpApp;
 
+use super::snapshot::build_snapshot_payload;
+
 use super::actions::agent_module::AgentActionModule;
 use super::actions::categorization_module::CategorizationModule;
 use super::actions::chapters_module::ChaptersActionModule;
@@ -175,7 +177,7 @@ pub extern "C" fn nmp_app_podcast_register(
         social.clone(),
     )));
 
-    Box::into_raw(Box::new(PodcastHandle {
+    let handle = Arc::new(PodcastHandle {
         app,
         player_actor,
         store,
@@ -206,5 +208,37 @@ pub extern "C" fn nmp_app_podcast_register(
         inbox_triage_cache,
         comments_cache,
         social,
-    }))
+    });
+
+    // Reactive push projection — the canonical snapshot-output seam
+    // (`NmpApp::register_snapshot_projection`). Podcast state now rides the
+    // generic push frame under `projections["podcast.snapshot"]`, delivered to
+    // the shell on every tick through the same update callback it already
+    // listens on — replacing the bespoke `nmp_app_podcast_snapshot` pull symbol
+    // and the shell's 500ms poll (a D8 violation / reborn deprecated
+    // `chirp_snapshot` pattern).
+    //
+    // The closure runs on the actor thread inside `make_update` (D8 — must be
+    // cheap, non-blocking). It reuses `build_snapshot_payload`, the SAME
+    // serialization the pull path uses: that function owns the rev-gated
+    // snapshot-string cache (so an unchanged `rev` is a cheap clone, not a
+    // rebuild) AND the proven fallback-to-stub on a serialization error. Reusing
+    // it makes the pushed projection byte-identical to the JSON the shell's pull
+    // path already decodes successfully — avoiding a divergent `to_value(...)`
+    // path that yields `null` (and a dropped frame) when the typed value can't
+    // serialize (e.g. a non-finite float in real feed data).
+    {
+        let proj = Arc::clone(&handle);
+        app_ref.register_snapshot_projection("podcast.snapshot", move || {
+            serde_json::from_str(&build_snapshot_payload(&proj)).unwrap_or(serde_json::Value::Null)
+        });
+    }
+
+    // Ownership: one strong ref is returned to the shell as the opaque handle
+    // pointer; the projection closure above holds a second strong ref for the
+    // app's lifetime. `nmp_app_podcast_unregister` reclaims the shell's ref via
+    // `Arc::from_raw`. `nmp_app_free` joins the actor thread before dropping, so
+    // no projector call is in flight after teardown. The handle is only ever
+    // borrowed shared across the FFI (no `&mut`), so `Arc` aliasing is sound.
+    Arc::into_raw(handle) as *mut PodcastHandle
 }

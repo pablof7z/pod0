@@ -225,6 +225,7 @@ struct RootView: View {
                     if let url = note.object as? URL { handleDeepLink(url) }
                 }
                 .onContinueUserActivity(CSSearchableItemActionType, perform: handleSpotlight)
+                .storeFailureAlert()
 
             AppSidebarView(
                 selectedTab: $selectedTab,

@@ -216,13 +216,13 @@ Add an entry to the `KnownSigner` enum in `NostrConnectView.swift` with its URL 
 
 ---
 
-## NIP-74 — Agent-Owned Podcasts
+## NIP-F4 — Agent-Owned Podcasts
 
 **Source:** `App/Sources/Agent/AgentTools+OwnedPodcasts.swift`, `App/Sources/Agent/LiveAgentOwnedPodcastManager.swift`, `App/Sources/Agent/AgentToolSchema+Podcast.swift`, `App/Sources/Features/Settings/Agent/AgentPodcastsView.swift`
 
 ### Concept
 
-The AI agent can create and manage its own podcast shows — complete with AI-generated cover art and optional Nostr publishing via NIP-74. Agent-owned shows appear in the library alongside subscribed shows and can contain TTS-generated episodes.
+The AI agent can create and manage its own podcast shows — complete with AI-generated cover art and optional Nostr publishing via NIP-F4. Agent-owned shows appear in the library alongside subscribed shows and can contain TTS-generated episodes.
 
 ### Tools
 
@@ -233,21 +233,21 @@ The AI agent can create and manage its own podcast shows — complete with AI-ge
 | `delete_my_podcast` | Delete an agent-owned show and all its episodes. |
 | `list_my_podcasts` | List all agent-owned shows with metadata and episode counts. |
 | `generate_podcast_artwork` | Generate cover art via the configured image-gen model, upload via Blossom, return a CDN URL. |
-| `publish_episode` | Publish an existing TTS episode to Nostr (NIP-74). Requires `visibility=public` and Nostr enabled in Settings. |
+| `publish_episode` | Publish an existing TTS episode to Nostr (NIP-F4). Requires `visibility=public` and Nostr enabled in Settings. |
 
 `generate_tts_episode` (in `AgentTools+TTS.swift`) accepts an optional `podcast_id`; when the podcast is public and Nostr is enabled, the episode is auto-published after generation.
 
 ### Lifecycle (`LiveAgentOwnedPodcastManager`)
 
 1. `createPodcast(...)` — creates a `Podcast` with `kind: .synthetic` and calls `store.upsertPodcast(...)`.
-2. If `visibility == .public` and Nostr is enabled, immediately publishes a NIP-74 show event signed by the agent's Nostr key from `NostrCredentialStore`.
+2. If `visibility == .public` and Nostr is enabled, immediately publishes a NIP-F4 show event signed by the agent's Nostr key from `NostrCredentialStore`.
 3. `generateAndUploadArtwork(prompt:)` — calls the image-gen API (model configured in Image Generation Settings), uploads the result to the user's Blossom server, returns the CDN URL.
-4. `publishEpisodeToNostr(episodeID:)` — looks up the episode, builds a NIP-74 episode event, signs and publishes, returns the `naddr`.
+4. `publishEpisodeToNostr(episodeID:)` — looks up the episode, builds a NIP-F4 episode event, signs and publishes, returns the `naddr`.
 
 ### Visibility
 
 - `private` — show exists only in the local library; not signed or published.
-- `public` — show and episodes are signed with the agent's nsec and published to Nostr relays as NIP-74 events.
+- `public` — show and episodes are signed with the agent's nsec and published to Nostr relays as NIP-F4 events.
 
 Visibility can be changed after creation via `update_podcast(podcast_id:, visibility:)`.
 

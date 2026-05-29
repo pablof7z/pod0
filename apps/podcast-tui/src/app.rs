@@ -1,8 +1,6 @@
 use nmp_app_podcast::ffi::PodcastUpdate;
 use serde_json::Value;
 
-use crate::bridge::NmpEvent;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Pane {
     Library,

@@ -16,6 +16,12 @@ final class PodcastHandle: @unchecked Sendable {
     var podcastHandle: UnsafeMutableRawPointer?
     /// Retained bridge passed as `context` to `nmp_app_set_capability_callback`.
     var syncBridge: SyncCapabilityBridge?
+    /// Fired (on the main actor) immediately after a shell-initiated FFI report
+    /// (`nmp_app_podcast_audio_report` / `_download_report`) bumps the podcast
+    /// `rev`. `KernelModel` wires this to a one-shot rev-gated pull so those
+    /// changes reach the UI reactively — replacing the old 500ms snapshot poll.
+    /// (Dispatched host-ops already arrive via the kernel push frame.)
+    var onSnapshotMaybeChanged: (() -> Void)?
 
     init() {
         raw = nmp_app_new()
@@ -120,6 +126,28 @@ final class PodcastHandle: @unchecked Sendable {
         return DispatchResult.parse(envelope: envelope)
     }
 
+    /// Decode the `PodcastUpdate` from the push frame's
+    /// `projections["podcast.snapshot"]` slice (registered via the canonical
+    /// snapshot-projection seam). Returns `nil` when the projection is absent or
+    /// malformed. Mirrors `KernelIdentityProjection.decode`'s raw-read approach.
+    fileprivate static func decodePodcastUpdate(envelopePayload data: Data) -> PodcastUpdate? {
+        guard
+            let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let value = raw["v"] as? [String: Any],
+            let projections = value["projections"] as? [String: Any],
+            let podcast = projections["podcast.snapshot"],
+            let podcastData = try? JSONSerialization.data(withJSONObject: podcast)
+        else { return nil }
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        do {
+            return try decoder.decode(PodcastUpdate.self, from: podcastData)
+        } catch {
+            kbLog.error("podcast.snapshot decode FAILED: \(error) bytes=\(podcastData.count)")
+            return nil
+        }
+    }
+
     fileprivate static func decode(pointer: UnsafePointer<CChar>) -> KernelUpdateResult? {
         let start = ContinuousClock.now
         let payload = String(cString: pointer)
@@ -132,19 +160,30 @@ final class PodcastHandle: @unchecked Sendable {
                 kbLog.error("unknown envelope tag=\(envelope.t) bytes=\(data.count)")
                 return nil
             }
-            let update = envelope.v
-            // Second decode pass: extract the identity projection slice
-            // (`projections.active_account`, `projections.accounts`,
-            // `projections.bunker_handshake`) from the raw envelope. The
-            // `PodcastUpdate` typed decode above intentionally ignores
-            // `projections` — see `KernelIdentityProjection`'s module
-            // doc-comment for the rationale.
+            // The podcast projection rides the generic push frame under
+            // `projections["podcast.snapshot"]` (registered via the canonical
+            // `register_snapshot_projection` seam). Decode the `PodcastUpdate`
+            // out of it — the envelope's `v` is the generic kernel snapshot, not
+            // the podcast shape.
+            guard let update = Self.decodePodcastUpdate(envelopePayload: data) else {
+                kbLog.error("snapshot frame missing podcast.snapshot projection bytes=\(data.count)")
+                return nil
+            }
+            // Identity projection slice (`projections.active_account` / `accounts`
+            // / `bunker_handshake`) from the same raw envelope.
             let identity = KernelIdentityProjection.decode(envelopePayload: data)
+            // Mandatory NMP v0.1.0 surface (V-67): the kernel sets the
+            // top-level `store_open_failure` string when the configured LMDB
+            // store failed to open and it fell back to in-memory. It rides the
+            // generic snapshot (sibling of `projections`), which `PodcastUpdate`
+            // does not model — so read it raw, mirroring the identity decode.
+            let storeOpenFailure = KernelUpdateResult.extractStoreOpenFailure(envelopePayload: data)
             let duration = start.duration(to: .now)
             kbLog.info("decoded ok rev=\(update.rev)")
             return KernelUpdateResult(
                 update: update,
                 identity: identity,
+                storeOpenFailure: storeOpenFailure,
                 payloadBytes: data.count,
                 callbackReceivedAt: start,
                 decodeMicros: duration.microseconds)
@@ -160,7 +199,6 @@ final class PodcastHandle: @unchecked Sendable {
 
 private struct SnapshotEnvelope: Decodable {
     let t: String
-    let v: PodcastUpdate
 }
 
 // ─── C callback objects ───────────────────────────────────────────────────
@@ -175,16 +213,21 @@ private final class KernelUpdateSink {
     }
 }
 
-private let nmpUpdateCallback: NmpUpdateCallback = { context, pointer in
-    guard let context, let pointer else { return }
-    let payload = String(cString: pointer)
+private let nmpUpdateCallback: NmpUpdateCallback = { context, bytes, len in
+    guard let context, let bytes, len > 0 else { return }
+    // The kernel's update transport is binary FlatBuffers (NMP commit "Replace
+    // update transport with FlatBuffers"). Decode the `(bytes, len)` frame to the
+    // JSON envelope the shell consumes; `nmp_app_free_string` reclaims it.
+    guard let jsonPtr = nmp_app_podcast_decode_update_frame(bytes, len) else { return }
+    defer { nmp_app_free_string(jsonPtr) }
+    let payload = String(cString: jsonPtr)
     let sink = Unmanaged<KernelUpdateSink>.fromOpaque(context).takeUnretainedValue()
     if payload.contains("\"t\":\"panic\"") {
-        kbLog.fault("NMP_ACTOR_PANIC detected bytes=\(payload.utf8.count)")
+        kbLog.fault("NMP_ACTOR_PANIC detected bytes=\(len)")
         sink.onPanic()
         return
     }
-    guard let result = PodcastHandle.decode(pointer: pointer) else { return }
+    guard let result = PodcastHandle.decode(pointer: jsonPtr) else { return }
     sink.handler(result)
 }
 
@@ -196,9 +239,29 @@ struct KernelUpdateResult {
     /// `accounts` / `bunker_handshake` per
     /// `KernelIdentityProjection.decode`.
     let identity: KernelIdentityProjection
+    /// Top-level `store_open_failure` diagnostic (V-67). `nil` in healthy
+    /// sessions; `Some(reason)` when the kernel could not open its on-disk
+    /// LMDB store and fell back to in-memory (this session's data will not
+    /// persist). The host MUST surface this to the user.
+    let storeOpenFailure: String?
     let payloadBytes: Int
     let callbackReceivedAt: ContinuousClock.Instant
     let decodeMicros: Int
+}
+
+extension KernelUpdateResult {
+    /// Extract the top-level `store_open_failure` string from a kernel snapshot
+    /// wire envelope (`{"t":"snapshot","v":{...}}`). Mirrors the raw second-pass
+    /// read in `KernelIdentityProjection.decode` — the typed `PodcastUpdate`
+    /// decode intentionally drops this generic-snapshot key. Returns `nil` when
+    /// the key is absent (healthy session) or the payload is unparseable.
+    static func extractStoreOpenFailure(envelopePayload data: Data) -> String? {
+        guard let raw = try? JSONSerialization.jsonObject(with: data),
+              let outer = raw as? [String: Any],
+              let value = outer["v"] as? [String: Any]
+        else { return nil }
+        return value["store_open_failure"] as? String
+    }
 }
 
 // ─── Duration microseconds helper ────────────────────────────────────────

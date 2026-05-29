@@ -8,6 +8,7 @@ pub use super::snapshot_update::PodcastUpdate;
 
 use std::ffi::{c_char, CString};
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 
 use super::handle::PodcastHandle;
 use super::helpers::strip_html;
@@ -226,7 +227,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     }
 }
 
-fn build_snapshot_payload(handle: &PodcastHandle) -> String {
+pub(super) fn build_snapshot_payload(handle: &PodcastHandle) -> String {
     let rev = handle.rev.load(Ordering::Relaxed);
 
     // Fast path: skip re-serialization when rev hasn't changed.
@@ -318,9 +319,57 @@ pub extern "C" fn nmp_app_podcast_unregister(handle: *mut PodcastHandle) {
         return;
     }
     // SAFETY: caller guarantees `handle` came from `nmp_app_podcast_register`
-    // and has not already been freed.
-    let boxed = unsafe { Box::from_raw(handle) };
-    let _ = boxed.app;
+    // (which now returns `Arc::into_raw`) and has not already been freed. This
+    // reclaims the shell's strong ref; the snapshot-projection closure holds a
+    // second ref that is released when the app's projection registry is dropped.
+    let reclaimed = unsafe { Arc::from_raw(handle as *const PodcastHandle) };
+    let _ = reclaimed.app;
+}
+
+/// Decode a binary FlatBuffers update frame — the payload the kernel hands the
+/// `nmp_app_set_update_callback` callback as `(bytes, len)` — into the JSON
+/// envelope the iOS shell consumes:
+///   - snapshot → `{"t":"snapshot","v":<generic KernelSnapshot value>}`
+///   - panic    → `{"t":"panic","message":<msg>}`
+///
+/// The shell's update callback is a thin C string consumer; the kernel's update
+/// transport is FlatBuffers (`nmp-core` commit "Replace update transport with
+/// FlatBuffers"). This helper bridges the two so the reactive push frame — which
+/// carries `projections` (incl. `podcast.snapshot`) and the top-level
+/// `store_open_failure` — decodes correctly instead of being misread as a JSON
+/// C string.
+///
+/// Returns a heap `CString` (free with `nmp_app_free_string`), or null when the
+/// bytes are not a valid frame (the shell treats null as "skip this tick").
+///
+/// # Safety
+/// `bytes` must point to `len` readable bytes, or be null.
+#[no_mangle]
+pub unsafe extern "C" fn nmp_app_podcast_decode_update_frame(
+    bytes: *const u8,
+    len: usize,
+) -> *mut c_char {
+    if bytes.is_null() || len == 0 {
+        return std::ptr::null_mut();
+    }
+    // SAFETY: caller guarantees `bytes` is valid for `len` bytes.
+    let slice = unsafe { std::slice::from_raw_parts(bytes, len) };
+    let envelope = match nmp_core::decode_update_frame(slice) {
+        Ok(env) => env,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let json = match envelope {
+        nmp_core::UpdateEnvelope::Snapshot(value) => {
+            serde_json::json!({ "t": "snapshot", "v": value })
+        }
+        nmp_core::UpdateEnvelope::Panic(panic) => {
+            serde_json::json!({ "t": "panic", "message": panic.msg })
+        }
+    };
+    match CString::new(json.to_string()) {
+        Ok(c) => c.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
 }
 
 // Tests split into snapshot_tests.rs + snapshot_tests_ext.rs; #[path] keeps private items in scope.

@@ -18,26 +18,29 @@ struct PodcastUpdate {
     var voice: VoiceSnapshot? = nil
     var briefing: BriefingSnapshot? = nil
     var social: SocialSnapshot? = nil
-    var library: [PodcastSummary] = []
+    // D5: the Rust projection omits empty collections / default settings from
+    // the wire. Wrap them so absent keys decode to defaults instead of throwing
+    // `keyNotFound` (synthesized `Decodable` does not honor the `= []` default).
+    @DefaultEmptyArray var library: [PodcastSummary] = []
     var activeAccount: AccountSummary? = nil
     var widget: WidgetSnapshot? = nil
     var toast: String? = nil
-    var searchResults: [PodcastSummary] = []
-    var nostrResults: [NostrShowSummary] = []
-    var settings: SettingsSnapshot = SettingsSnapshot()
-    var comments: [CommentSummary] = []
-    var queue: [EpisodeSummary] = []
-    var wikiArticles: [WikiArticle] = []
-    var wikiSearchResults: [WikiArticle] = []
-    var picks: [AgentPickSummary] = []
-    var agentTasks: [AgentTaskSummary] = []
-    var knowledgeSearchResults: [KnowledgeSearchResult] = []
-    var memoryFacts: [MemoryFact] = []
-    var ttsEpisodes: [TtsEpisodeSummary] = []
-    var clips: [ClipSummary] = []
-    var inbox: [InboxItem] = []
-    var ownedPodcasts: [OwnedPodcastInfo] = []
-    var categories: [CategoryBrowseItem] = []
+    @DefaultEmptyArray var searchResults: [PodcastSummary] = []
+    @DefaultEmptyArray var nostrResults: [NostrShowSummary] = []
+    @DefaultSettings var settings: SettingsSnapshot = SettingsSnapshot()
+    @DefaultEmptyArray var comments: [CommentSummary] = []
+    @DefaultEmptyArray var queue: [EpisodeSummary] = []
+    @DefaultEmptyArray var wikiArticles: [WikiArticle] = []
+    @DefaultEmptyArray var wikiSearchResults: [WikiArticle] = []
+    @DefaultEmptyArray var picks: [AgentPickSummary] = []
+    @DefaultEmptyArray var agentTasks: [AgentTaskSummary] = []
+    @DefaultEmptyArray var knowledgeSearchResults: [KnowledgeSearchResult] = []
+    @DefaultEmptyArray var memoryFacts: [MemoryFact] = []
+    @DefaultEmptyArray var ttsEpisodes: [TtsEpisodeSummary] = []
+    @DefaultEmptyArray var clips: [ClipSummary] = []
+    @DefaultEmptyArray var inbox: [InboxItem] = []
+    @DefaultEmptyArray var ownedPodcasts: [OwnedPodcastInfo] = []
+    @DefaultEmptyArray var categories: [CategoryBrowseItem] = []
 }
 
 /// Active player state (present only when an episode is loaded).

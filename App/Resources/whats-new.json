@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-28T09:00:00Z",
+      "lines": [
+        "If on-device storage can't be opened, the app now warns you that this session won't be saved instead of failing silently."
+      ]
+    },
+    {
       "shipped_at": "2026-05-28T07:56:00Z",
       "lines": [
         "Playback engine refactored: the Rust kernel now drives position tracking, ad-skip decisions, and auto-advance for more reliable playback state across sessions."

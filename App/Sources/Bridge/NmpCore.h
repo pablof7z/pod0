@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 
 // Podcast uses the raw C bridge over the NMP kernel actor. This header MUST
 // stay in sync with the non-test-gated `#[no_mangle] extern "C" fn nmp_app_*`
@@ -13,8 +14,17 @@
 void *nmp_app_new(void);
 void nmp_app_free(void *app);
 
-typedef void (*NmpUpdateCallback)(void *context, const char *json);
+// The kernel's update transport is binary FlatBuffers: the callback receives a
+// length-delimited byte buffer, NOT a NUL-terminated JSON string. Decode it to
+// the JSON envelope via `nmp_app_podcast_decode_update_frame`.
+typedef void (*NmpUpdateCallback)(void *context, const uint8_t *bytes, size_t len);
 void nmp_app_set_update_callback(void *app, void *context, NmpUpdateCallback callback);
+
+// Decode a binary FlatBuffers update frame `(bytes, len)` into the JSON envelope
+// the shell consumes: `{"t":"snapshot","v":...}` or `{"t":"panic","message":...}`.
+// Returns a heap string to free with `nmp_app_free_string`, or NULL on a frame
+// that isn't decodable.
+char *nmp_app_podcast_decode_update_frame(const uint8_t *bytes, size_t len);
 
 // Persistent storage directory for the LMDB EventStore backend. Must be
 // called before `nmp_app_start`; a NULL or empty `path` clears it.

@@ -16,7 +16,7 @@ struct InboxItem: Identifiable, Equatable, Hashable {
     /// `0.0..=1.0`; higher = more important.
     var priorityScore: Double
     var priorityReason: String? = nil
-    var aiCategories: [String] = []
+    @DefaultEmptyStrings var aiCategories: [String] = []
 
     var id: String { episodeId }
 }
