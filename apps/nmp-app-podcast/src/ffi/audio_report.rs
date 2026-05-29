@@ -194,20 +194,25 @@ fn maybe_auto_advance(handle: &PodcastHandle) {
     // `handle.queue`). The actor's own queue is NOT populated by the UI enqueue
     // path, so advancing off it would silently skip UI-queued episodes. (The
     // vestigial `PlayerActor` queue is tracked for removal in BACKLOG.md.)
-    let next_episode_id = match handle.queue.lock() {
-        Ok(mut q) => q.next(),
-        Err(_) => return,
-    };
-
-    let Some(episode_id) = next_episode_id else { return; };
-
-    // Look up playback info for the next episode.
-    let (podcast_id, url, position_secs) = match handle.store.lock() {
-        Ok(s) => match s.episode_playback_info(&episode_id) {
-            Some(info) => info,
-            None => return, // episode disappeared from library
-        },
-        Err(_) => return,
+    // Pop the next RESOLVABLE episode, skipping stale heads — entries for
+    // episodes removed from the library or unsubscribed shows. The old Swift
+    // `playNext` loop did this; popping once and bailing on a stale head would
+    // strand every valid Up Next entry behind it. Queue and store locks are
+    // taken separately per iteration (never nested) to avoid lock-order hazards.
+    let (episode_id, podcast_id, url, position_secs) = loop {
+        let popped = match handle.queue.lock() {
+            Ok(mut q) => q.next(),
+            Err(_) => return,
+        };
+        let Some(id) = popped else { return }; // queue exhausted — nothing to play
+        let info = match handle.store.lock() {
+            Ok(s) => s.episode_playback_info(&id),
+            Err(_) => return,
+        };
+        if let Some((pod, ep_url, pos)) = info {
+            break (id, pod, ep_url, pos);
+        }
+        // Stale head already popped; continue to the next entry.
     };
 
     // Stage the new load on the actor.

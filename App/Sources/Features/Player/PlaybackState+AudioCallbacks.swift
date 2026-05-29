@@ -77,14 +77,13 @@ extension PlaybackState {
             guard let self, let episodeID = self.episode?.id else { return }
             // Mark played + run iOS side effects only if the user setting allows
             // (matches the natural-end path and Rust's apply_writeback gate).
+            // The position rewind for this completed episode is handled in
+            // `AudioEngine.handleEndOfItem`, which reports the final paused
+            // position as 0 on the ordered audio-report channel (no racy
+            // separate host op).
             if self.store?.state.settings.autoMarkPlayedAtEnd == true {
                 self.store?.markEpisodePlayed(episodeID)
             }
-            // The episode completed, so rewind Rust's stored position to 0 — the
-            // `itemEnd` writeback normally does this, but we skip `itemEnd` here.
-            // Runs regardless of auto-mark: a finished episode must replay from
-            // the start, not resume at its end.
-            self.store?.kernelPersistPosition(episodeID: episodeID, positionSecs: 0)
         }
 
         // ── Kernel bridge: Rust AudioCommand → AudioEngine ───────────────

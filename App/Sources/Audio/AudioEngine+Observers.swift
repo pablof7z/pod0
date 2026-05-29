@@ -134,9 +134,13 @@ extension AudioEngine {
         let url = episode?.enclosureURL.absoluteString ?? ""
         setState(.paused)
         if sleepTimer.shouldStopAtEpisodeEnd() {
-            // Emit paused (not itemEnd) so Rust persists the final position
-            // without triggering maybe_auto_advance.
-            onPauseEvent?(url, duration)
+            // Emit paused at position 0 (not itemEnd) so Rust both avoids
+            // `maybe_auto_advance` AND records the rewind in the same ordered
+            // report. The episode completed, so the next play must start over;
+            // reporting 0 here (rather than `duration` + a separate host-op
+            // rewind) removes the race where the queued paused report could
+            // overwrite the rewind back to `duration`.
+            onPauseEvent?(url, 0)
             // Caller marks the episode played via the iOS store path so that
             // delete-after-played side effects still run, but without the auto-
             // advance that itemEnd would trigger via Rust's maybe_auto_advance.

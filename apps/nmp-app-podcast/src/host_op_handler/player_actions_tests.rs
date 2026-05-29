@@ -98,6 +98,30 @@ fn play_enqueues_download_for_not_downloaded_episode() {
     );
 }
 
+/// The UI's play path dispatches `load` (not `play`), so `handle_load` must
+/// also enqueue a background download for a streamed episode — otherwise
+/// restored mini-player plays (which skip the Swift-side enqueue) would never
+/// download.
+#[test]
+fn load_enqueues_download_for_not_downloaded_episode() {
+    let store = Arc::new(Mutex::new(PodcastStore::new()));
+    let podcast = Podcast::new("Load Show");
+    let pid = podcast.id;
+    let ep = make_episode(pid, "Ep");
+    let ep_id = ep.id.0.to_string();
+    store.lock().unwrap().subscribe(podcast, vec![ep]);
+
+    let handler = handler_with_store(store);
+    let result = handler.handle_load(ep_id.clone(), "corr-load-1");
+
+    assert_eq!(result["ok"], serde_json::json!(true));
+    let dq = handler.download_queue.lock().unwrap();
+    assert!(
+        dq.get(&ep_id).is_some(),
+        "loading a not-downloaded episode must enqueue it for download"
+    );
+}
+
 /// The enqueue is idempotent: replaying the same episode does not create a
 /// second queue entry or leave the queue in an inconsistent state.
 #[test]
