@@ -84,6 +84,12 @@ final class KernelModel {
     /// `podcastSnapshot?.nowPlaying` so they don't hold a reference to the
     /// full snapshot struct. All other views should use `podcastSnapshot`.
     private(set) var nowPlaying: PlayerState?
+    /// Cancellable for the snapshot safety poll. The reactive push
+    /// (`apply(result:)`) is primary, but the poll remains as a safety net for
+    /// autonomous/large-frame updates the push path does not yet reliably
+    /// deliver (e.g. a multi-MB post-feed-fetch frame whose `podcast.snapshot`
+    /// projection currently fails to decode). Remove once that is root-caused.
+    private var snapshotPollTask: Task<Void, Never>?
     /// Hash of the library fields that matter to list views. Excludes
     /// `playbackPositionSecs` so list views don't re-render at 4 Hz
     /// during playback (the position is only needed by the player row).
@@ -154,14 +160,19 @@ final class KernelModel {
         guard !startedKernel else { return }
         startedKernel = true
         kernel.start(visibleLimit: visibleLimit, emitHz: emitHz)
+        startSnapshotPoll()
     }
 
     func stop() {
+        snapshotPollTask?.cancel()
+        snapshotPollTask = nil
         kernel.stop()
         startedKernel = false
     }
 
     func resetAndRestart() {
+        snapshotPollTask?.cancel()
+        snapshotPollTask = nil
         kernel.reset()
         snapshot = nil
         podcastSnapshot = nil
@@ -172,6 +183,23 @@ final class KernelModel {
         storeOpenFailure = nil
         kernel.start(visibleLimit: visibleLimit, emitHz: emitHz)
         startedKernel = true
+        startSnapshotPoll()
+    }
+
+    /// Safety-net poll: pulls the podcast snapshot on a low cadence so
+    /// autonomous and large-frame updates the reactive push does not yet
+    /// deliver (see `snapshotPollTask`) still reach the UI. The push remains the
+    /// primary path; this only catches what it misses.
+    private func startSnapshotPoll() {
+        snapshotPollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(500))
+                guard !Task.isCancelled else { break }
+                await MainActor.run { [weak self] in
+                    self?.pullPodcastSnapshotIfChanged()
+                }
+            }
+        }
     }
 
     /// One-shot synchronous pull, used only immediately after a `dispatch` /
