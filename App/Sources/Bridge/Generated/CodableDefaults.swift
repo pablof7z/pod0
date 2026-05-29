@@ -33,8 +33,12 @@ struct CodableDefault<Source: CodableDefaultSource>: Codable, Equatable, Hashabl
     init(wrappedValue: Source.Value) { self.wrappedValue = wrappedValue }
 
     init(from decoder: Decoder) throws {
+        // Decode strictly: a PRESENT-but-malformed value must throw (don't mask
+        // schema drift). The missing/null-key default is applied by the
+        // `KeyedDecodingContainer.decode(_:forKey:)` overload below, which only
+        // substitutes the default when `decodeIfPresent` reports the key absent.
         let container = try decoder.singleValueContainer()
-        wrappedValue = (try? container.decode(Source.Value.self)) ?? Source.defaultValue
+        wrappedValue = try container.decode(Source.Value.self)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -45,7 +49,8 @@ struct CodableDefault<Source: CodableDefaultSource>: Codable, Equatable, Hashabl
 
 extension KeyedDecodingContainer {
     /// Called by synthesized `Decodable` for a `@CodableDefault` property. An
-    /// absent key resolves to the source default rather than throwing.
+    /// absent/null key resolves to the source default; a present-but-invalid
+    /// value still throws (via the wrapper's strict `init(from:)`).
     func decode<Source>(
         _ type: CodableDefault<Source>.Type, forKey key: Key
     ) throws -> CodableDefault<Source> {
@@ -77,8 +82,10 @@ struct DefaultEmptyArray<Element: Codable>: Codable {
     init(wrappedValue: [Element]) { self.wrappedValue = wrappedValue }
 
     init(from decoder: Decoder) throws {
+        // Strict: present-but-malformed throws; the empty-default for an absent
+        // key is applied by the `decode(_:forKey:)` overload below.
         let container = try decoder.singleValueContainer()
-        wrappedValue = (try? container.decode([Element].self)) ?? []
+        wrappedValue = try container.decode([Element].self)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -114,8 +121,10 @@ struct DefaultSettings: Codable {
     init(wrappedValue: SettingsSnapshot) { self.wrappedValue = wrappedValue }
 
     init(from decoder: Decoder) throws {
+        // Strict: present-but-malformed throws; the default for an absent key is
+        // applied by the `decode(_:forKey:)` overload below.
         let container = try decoder.singleValueContainer()
-        wrappedValue = (try? container.decode(SettingsSnapshot.self)) ?? SettingsSnapshot()
+        wrappedValue = try container.decode(SettingsSnapshot.self)
     }
 
     func encode(to encoder: Encoder) throws {
