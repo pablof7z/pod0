@@ -134,7 +134,12 @@ final class PodcastHandle {
         else { return nil }
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return try? decoder.decode(PodcastUpdate.self, from: podcastData)
+        do {
+            return try decoder.decode(PodcastUpdate.self, from: podcastData)
+        } catch {
+            kbLog.error("podcast.snapshot decode FAILED: \(error) bytes=\(podcastData.count)")
+            return nil
+        }
     }
 
     fileprivate static func decode(pointer: UnsafePointer<CChar>) -> KernelUpdateResult? {

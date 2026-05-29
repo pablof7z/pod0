@@ -226,7 +226,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     }
 }
 
-fn build_snapshot_payload(handle: &PodcastHandle) -> String {
+pub(super) fn build_snapshot_payload(handle: &PodcastHandle) -> String {
     let rev = handle.rev.load(Ordering::Relaxed);
 
     // Fast path: skip re-serialization when rev hasn't changed.

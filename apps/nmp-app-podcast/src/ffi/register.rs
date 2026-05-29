@@ -2,13 +2,13 @@
 //! Podcast projections and action namespaces into an [`NmpApp`].
 
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::{Arc, Mutex};
 
 
 use nmp_ffi::NmpApp;
 
-use super::snapshot::build_podcast_update;
+use super::snapshot::build_snapshot_payload;
 
 use super::actions::agent_module::AgentActionModule;
 use super::actions::categorization_module::CategorizationModule;
@@ -218,28 +218,19 @@ pub extern "C" fn nmp_app_podcast_register(
     // and the shell's 500ms poll (a D8 violation / reborn deprecated
     // `chirp_snapshot` pattern).
     //
-    // Rev-gated: the closure runs on the actor thread inside `make_update`
-    // (D8 — must be cheap, non-blocking). The full library rebuild only runs
-    // when `rev` advanced since the last projection; otherwise the cached value
-    // is cloned. `rev` is bumped by `PodcastHostOpHandler` on every store write.
+    // The closure runs on the actor thread inside `make_update` (D8 — must be
+    // cheap, non-blocking). It reuses `build_snapshot_payload`, the SAME
+    // serialization the pull path uses: that function owns the rev-gated
+    // snapshot-string cache (so an unchanged `rev` is a cheap clone, not a
+    // rebuild) AND the proven fallback-to-stub on a serialization error. Reusing
+    // it makes the pushed projection byte-identical to the JSON the shell's pull
+    // path already decodes successfully — avoiding a divergent `to_value(...)`
+    // path that yields `null` (and a dropped frame) when the typed value can't
+    // serialize (e.g. a non-finite float in real feed data).
     {
         let proj = Arc::clone(&handle);
-        let cache: Arc<Mutex<Option<(u64, serde_json::Value)>>> = Arc::new(Mutex::new(None));
         app_ref.register_snapshot_projection("podcast.snapshot", move || {
-            let rev = proj.rev.load(Ordering::Relaxed);
-            if let Ok(guard) = cache.lock() {
-                if let Some((cached_rev, val)) = guard.as_ref() {
-                    if *cached_rev == rev {
-                        return val.clone();
-                    }
-                }
-            }
-            let val = serde_json::to_value(build_podcast_update(&proj))
-                .unwrap_or(serde_json::Value::Null);
-            if let Ok(mut guard) = cache.lock() {
-                *guard = Some((rev, val.clone()));
-            }
-            val
+            serde_json::from_str(&build_snapshot_payload(&proj)).unwrap_or(serde_json::Value::Null)
         });
     }
 
