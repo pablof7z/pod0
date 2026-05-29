@@ -69,7 +69,7 @@ pub struct WikiArticle {
     pub summary: String,
     /// Episode ids the synthesis drew from. Empty in the scaffold —
     /// populated once the LLM follow-up wires real retrieval.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub source_episode_ids: Vec<String>,
     /// Unix seconds — see struct-level comment.
     pub last_updated_at: i64,

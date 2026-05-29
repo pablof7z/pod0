@@ -69,7 +69,11 @@ pub struct PodcastUpdate {
     /// Subscribed-podcast library projection. Each entry is a narrow
     /// [`PodcastSummary`] with embedded episode rows (newest-first).
     /// Empty until the first successful `podcast.subscribe` action.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // ALWAYS serialized: the Swift `PodcastUpdate` mirror types these collections
+    // as non-optional, and synthesized `Decodable` ignores property defaults for
+    // absent keys — a skip-when-empty field makes the whole snapshot fail to
+    // decode (`keyNotFound`). `#[serde(default)]` keeps Rust decode tolerant.
+    #[serde(default)]
     pub library: Vec<PodcastSummary>,
     /// Active Nostr identity, or `None` when no account is loaded.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -83,56 +87,117 @@ pub struct PodcastUpdate {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub toast: Option<String>,
     /// iTunes search results, populated after a `podcast.search_itunes` action.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // ALWAYS serialized: the Swift `PodcastUpdate` mirror types these collections
+    // as non-optional, and synthesized `Decodable` ignores property defaults for
+    // absent keys — a skip-when-empty field makes the whole snapshot fail to
+    // decode (`keyNotFound`). `#[serde(default)]` keeps Rust decode tolerant.
+    #[serde(default)]
     pub search_results: Vec<PodcastSummary>,
     /// NIP-F4 discovery results, populated after `podcast.discover_nostr`.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // ALWAYS serialized: the Swift `PodcastUpdate` mirror types these collections
+    // as non-optional, and synthesized `Decodable` ignores property defaults for
+    // absent keys — a skip-when-empty field makes the whole snapshot fail to
+    // decode (`keyNotFound`). `#[serde(default)]` keeps Rust decode tolerant.
+    #[serde(default)]
     pub nostr_results: Vec<NostrShowSummary>,
     /// App-settings projection (onboarding completion, auto-skip-ads, …).
     ///
     /// Defaults to the fresh-install `SettingsSnapshot`. The
     /// `skip_serializing_if = "SettingsSnapshot::is_default"` guard keeps the
     /// no-op snapshot byte-identical to the legacy stub (D6).
-    #[serde(default, skip_serializing_if = "SettingsSnapshot::is_default")]
+    // ALWAYS serialized (non-optional Swift mirror; see the collection note above).
+    #[serde(default)]
     pub settings: SettingsSnapshot,
     /// NIP-22 (kind 1111) comments for the currently-playing episode.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // ALWAYS serialized: the Swift `PodcastUpdate` mirror types these collections
+    // as non-optional, and synthesized `Decodable` ignores property defaults for
+    // absent keys — a skip-when-empty field makes the whole snapshot fail to
+    // decode (`keyNotFound`). `#[serde(default)]` keeps Rust decode tolerant.
+    #[serde(default)]
     pub comments: Vec<CommentSummary>,
     /// Playback "Up Next" queue, front-first.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // ALWAYS serialized: the Swift `PodcastUpdate` mirror types these collections
+    // as non-optional, and synthesized `Decodable` ignores property defaults for
+    // absent keys — a skip-when-empty field makes the whole snapshot fail to
+    // decode (`keyNotFound`). `#[serde(default)]` keeps Rust decode tolerant.
+    #[serde(default)]
     pub queue: Vec<EpisodeSummary>,
     /// AI-wiki articles surfaced to the iOS reader.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // ALWAYS serialized: the Swift `PodcastUpdate` mirror types these collections
+    // as non-optional, and synthesized `Decodable` ignores property defaults for
+    // absent keys — a skip-when-empty field makes the whole snapshot fail to
+    // decode (`keyNotFound`). `#[serde(default)]` keeps Rust decode tolerant.
+    #[serde(default)]
     pub wiki_articles: Vec<WikiArticle>,
     /// Filtered result of the most recent `podcast.wiki.search` dispatch.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // ALWAYS serialized: the Swift `PodcastUpdate` mirror types these collections
+    // as non-optional, and synthesized `Decodable` ignores property defaults for
+    // absent keys — a skip-when-empty field makes the whole snapshot fail to
+    // decode (`keyNotFound`). `#[serde(default)]` keeps Rust decode tolerant.
+    #[serde(default)]
     pub wiki_search_results: Vec<WikiArticle>,
     /// AI agent picks for the Home rail.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // ALWAYS serialized: the Swift `PodcastUpdate` mirror types these collections
+    // as non-optional, and synthesized `Decodable` ignores property defaults for
+    // absent keys — a skip-when-empty field makes the whole snapshot fail to
+    // decode (`keyNotFound`). `#[serde(default)]` keeps Rust decode tolerant.
+    #[serde(default)]
     pub picks: Vec<AgentPickSummary>,
     /// Agent-scheduled-tasks projection.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // ALWAYS serialized: the Swift `PodcastUpdate` mirror types these collections
+    // as non-optional, and synthesized `Decodable` ignores property defaults for
+    // absent keys — a skip-when-empty field makes the whole snapshot fail to
+    // decode (`keyNotFound`). `#[serde(default)]` keeps Rust decode tolerant.
+    #[serde(default)]
     pub agent_tasks: Vec<AgentTaskSummary>,
     /// RAG / knowledge search results.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // ALWAYS serialized: the Swift `PodcastUpdate` mirror types these collections
+    // as non-optional, and synthesized `Decodable` ignores property defaults for
+    // absent keys — a skip-when-empty field makes the whole snapshot fail to
+    // decode (`keyNotFound`). `#[serde(default)]` keeps Rust decode tolerant.
+    #[serde(default)]
     pub knowledge_search_results: Vec<KnowledgeSearchResult>,
     /// Agent-memory bag (feature #33).
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // ALWAYS serialized: the Swift `PodcastUpdate` mirror types these collections
+    // as non-optional, and synthesized `Decodable` ignores property defaults for
+    // absent keys — a skip-when-empty field makes the whole snapshot fail to
+    // decode (`keyNotFound`). `#[serde(default)]` keeps Rust decode tolerant.
+    #[serde(default)]
     pub memory_facts: Vec<MemoryFact>,
     /// Agent-generated TTS episode list (feature #43).
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // ALWAYS serialized: the Swift `PodcastUpdate` mirror types these collections
+    // as non-optional, and synthesized `Decodable` ignores property defaults for
+    // absent keys — a skip-when-empty field makes the whole snapshot fail to
+    // decode (`keyNotFound`). `#[serde(default)]` keeps Rust decode tolerant.
+    #[serde(default)]
     pub tts_episodes: Vec<TtsEpisodeSummary>,
     /// User-saved audio clips across all episodes, newest-first.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // ALWAYS serialized: the Swift `PodcastUpdate` mirror types these collections
+    // as non-optional, and synthesized `Decodable` ignores property defaults for
+    // absent keys — a skip-when-empty field makes the whole snapshot fail to
+    // decode (`keyNotFound`). `#[serde(default)]` keeps Rust decode tolerant.
+    #[serde(default)]
     pub clips: Vec<ClipSummary>,
     /// AI-triaged inbox: unlistened episodes, highest-priority-first.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // ALWAYS serialized: the Swift `PodcastUpdate` mirror types these collections
+    // as non-optional, and synthesized `Decodable` ignores property defaults for
+    // absent keys — a skip-when-empty field makes the whole snapshot fail to
+    // decode (`keyNotFound`). `#[serde(default)]` keeps Rust decode tolerant.
+    #[serde(default)]
     pub inbox: Vec<InboxItem>,
     /// User-owned podcasts (NIP-F4).
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // ALWAYS serialized: the Swift `PodcastUpdate` mirror types these collections
+    // as non-optional, and synthesized `Decodable` ignores property defaults for
+    // absent keys — a skip-when-empty field makes the whole snapshot fail to
+    // decode (`keyNotFound`). `#[serde(default)]` keeps Rust decode tolerant.
+    #[serde(default)]
     pub owned_podcasts: Vec<OwnedPodcastInfo>,
     /// Browse-by-topic aggregation surfaced via the iOS Library tab.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // ALWAYS serialized: the Swift `PodcastUpdate` mirror types these collections
+    // as non-optional, and synthesized `Decodable` ignores property defaults for
+    // absent keys — a skip-when-empty field makes the whole snapshot fail to
+    // decode (`keyNotFound`). `#[serde(default)]` keeps Rust decode tolerant.
+    #[serde(default)]
     pub categories: Vec<CategoryBrowseItem>,
 }
 

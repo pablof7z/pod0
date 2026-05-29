@@ -28,6 +28,6 @@ pub struct InboxItem {
     /// At most three entries, ordered by keyword-match strength (strongest
     /// first). Wire field is omitted when empty so the byte-compatible
     /// legacy stub is preserved for cold-start snapshots (D5 / D6).
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub ai_categories: Vec<String>,
 }

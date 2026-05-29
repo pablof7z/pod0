@@ -31,10 +31,15 @@ pub struct PodcastSummary {
     /// Per-podcast auto-download policy state. Mirrors
     /// `PodcastStore::is_auto_download_enabled`. The iOS toolbar toggle
     /// reads this to render its check mark; it dispatches
-    /// `PodcastAction::SetAutoDownload` to flip the bit. Defaults to
-    /// `false` so the field is omitted from the wire payload (and from
-    /// iTunes search rows, which never have a real `PodcastId`).
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    /// `PodcastAction::SetAutoDownload` to flip the bit.
+    ///
+    /// ALWAYS serialized (even when `false`). The Swift `PodcastSummary`
+    /// mirror types this as a non-optional `Bool`, and Swift's synthesized
+    /// `Decodable` does NOT apply property defaults for absent keys — so a
+    /// skipped-when-false field makes every real library row fail to decode
+    /// with `keyNotFound("autoDownload")`. `#[serde(default)]` keeps decode
+    /// tolerant on the Rust side.
+    #[serde(default)]
     pub auto_download: bool,
     /// Recent episodes — ordered newest-first by the projection layer.
     pub episodes: Vec<EpisodeSummary>,
@@ -86,12 +91,12 @@ pub struct EpisodeSummary {
     ///
     /// Per D5 we skip serializing an empty Vec so the wire payload stays
     /// byte-compatible with snapshots that predate this field.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub transcript_entries: Vec<TranscriptEntry>,
     /// Narrow chapter rows projected from `podcast_core::Episode::chapters`
     /// after a `podcast.fetch_chapters` action lands. Empty when the episode
     /// has no chapter markers, or when chapters have not been fetched yet.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub chapters: Vec<ChapterSummary>,
     /// Persisted playback position in seconds, when the user has started but
     /// not finished the episode.
@@ -109,20 +114,29 @@ pub struct EpisodeSummary {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transcript: Option<String>,
     /// Topic labels the agent's heuristic categorizer assigned to this
-    /// episode. Empty until `podcast.categorize.run` triggers. Per D5
-    /// omitted when empty.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    /// episode. Empty until `podcast.categorize.run` triggers.
+    /// ALWAYS serialized: the Swift `EpisodeSummary` mirror types this as a
+    /// non-optional `[String]`, so skipping it when empty breaks decode of
+    /// every uncategorized episode (`keyNotFound("aiCategories")`).
+    #[serde(default)]
     pub ai_categories: Vec<String>,
-    /// Ad-break intervals for this episode. Per D5 omitted when empty.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    /// Ad-break intervals for this episode. ALWAYS serialized (non-optional
+    /// Swift mirror; absent-key decode failure when skipped, same as
+    /// `ai_categories`).
+    #[serde(default)]
     pub ad_segments: Vec<AdSegment>,
     /// Whether the user has listened to this episode to completion.
-    /// Omitted from the wire payload when `false` per D5.
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    /// ALWAYS serialized: the Swift `EpisodeSummary` mirror types this as a
+    /// non-optional `Bool`, and synthesized `Decodable` ignores property
+    /// defaults for absent keys — skipping it when `false` breaks decode of
+    /// every unplayed episode (`keyNotFound("played")`).
+    #[serde(default)]
     pub played: bool,
     /// Whether the user has starred (bookmarked) this episode.
-    /// Toggled via `podcast.star_episode`. Omitted when `false` per D5.
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    /// Toggled via `podcast.star_episode`. ALWAYS serialized for the same
+    /// reason as `played` above (non-optional Swift mirror; absent-key decode
+    /// failure when skipped).
+    #[serde(default)]
     pub starred: bool,
 }
 
@@ -158,7 +172,7 @@ pub struct CategoryBrowseItem {
     pub top_episode_ids: Vec<String>,
     /// Ad-break intervals annotated by the upstream ingest pipeline.
     /// Per D5 we skip an empty vec on the wire.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub ad_segments: Vec<AdSegment>,
 }
 
@@ -193,6 +207,6 @@ pub struct NostrShowSummary {
     pub feed_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub artwork_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub categories: Vec<String>,
 }

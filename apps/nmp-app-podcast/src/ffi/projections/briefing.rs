@@ -39,7 +39,7 @@ pub struct BriefingSnapshot {
     pub segment_count: usize,
     /// Editorial segments in playback order. Empty until the composer
     /// completes (`status == "ready"`).
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub segments: Vec<BriefingSegmentSummary>,
     /// Unix seconds the most recent briefing was composed/delivered.
     /// `None` until the first briefing finishes.
