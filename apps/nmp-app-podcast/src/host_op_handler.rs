@@ -469,7 +469,7 @@ impl HostOpHandler for PodcastHostOpHandler {
             return memory_handler::handle(action, &self.store, &self.rev);
         }
         if let Ok(action) = serde_json::from_str::<TtsEpisodeAction>(action_json) {
-            return self.tts.handle(action, correlation_id);
+            return self.tts.handle(action, correlation_id, Some(&self.runtime));
         }
         if let Ok(action) = serde_json::from_str::<ClipAction>(action_json) {
             return ClipHandler::new(self.clips.clone(), self.store.clone(), self.rev.clone())
