@@ -58,7 +58,6 @@ extension AppStateStore {
         let snapshot = state
         persistence.save(snapshot)
         scheduleWidgetReload()
-        iCloudSettingsSync.shared.push(state.settings)
     }
 
     /// Trailing-debounce `WidgetCenter.reloadAllTimelines()`. Bursts of

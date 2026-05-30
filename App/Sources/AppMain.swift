@@ -51,7 +51,7 @@ struct PodcastrApp: App {
                         platform.applyNowPlayingSnapshot(snap, library: lib)
                     }
                     store.attachKernel(kernelModel)
-                    PodcastCapabilities.shared.startICloudSync(kernel: kernelModel)
+                    PodcastCapabilities.shared.startICloudSync(kernel: kernelModel, appStore: store)
                 }
                 .task { userIdentity.start() }
                 .task { CarPlayController.shared.attach(store: store) }

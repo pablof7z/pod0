@@ -142,7 +142,8 @@ final class PodcastCapabilities {
     /// Bring the iCloud sync capability online. Idempotent. Separated
     /// from `start()` so the model can be wired in after the kernel has
     /// booted and the capability has somewhere to dispatch.
-    func startICloudSync(kernel: KernelModel) {
+    func startICloudSync(kernel: KernelModel, appStore: AppStateStore) {
+        iCloudSync.appStore = appStore
         iCloudSync.start(kernel: kernel)
         voice.start()
     }
