@@ -10,7 +10,8 @@ pub mod types;
 pub use projections::{EpisodeProjection, EpisodeSummary, LibraryProjection, PodcastSummary};
 pub use types::{
     AdKind, AdSegment, Anchor, AutoDownloadMode, AutoDownloadPolicy, CategorySettings, Chapter,
-    Clip, ClipBoundary, ClipSource, DownloadState, ElevenLabsCredentialSource, Episode, EpisodeId,
+    ChapterSource, Clip, ClipBoundary, ClipSource, DownloadState, ElevenLabsCredentialSource,
+    Episode, EpisodeId,
     GenerationSource, HeadphoneGestureAction, NostrVisibility, OllamaCredentialSource,
     OpenRouterCredentialSource, Person, Podcast, PodcastCategory, PodcastId, PodcastKind,
     PodcastSubscription, ProviderCredentialMetadata, Settings, SoundBite, SttProvider,

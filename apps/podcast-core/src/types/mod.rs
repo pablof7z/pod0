@@ -20,7 +20,7 @@ pub use ad_segment::{AdKind, AdSegment};
 pub use anchor::Anchor;
 pub use category::PodcastCategory;
 pub use category_settings::CategorySettings;
-pub use chapter::Chapter;
+pub use chapter::{Chapter, ChapterSource};
 pub use clip::{Clip, ClipBoundary, ClipSource};
 pub use download::DownloadState;
 pub use episode::{Episode, EpisodeId};

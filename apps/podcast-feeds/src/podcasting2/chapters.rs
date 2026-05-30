@@ -1,6 +1,6 @@
 use std::fmt;
 
-use podcast_core::Chapter;
+use podcast_core::{Chapter, ChapterSource};
 use serde::Deserialize;
 use url::Url;
 use uuid::Uuid;
@@ -41,6 +41,7 @@ fn raw_to_chapter(raw: RawChapter) -> Option<Chapter> {
         link_url: raw.url.as_deref().and_then(|s| Url::parse(s).ok()),
         include_in_toc: raw.toc.unwrap_or(true),
         is_ai_generated: false,
+        source: ChapterSource::Publisher,
         summary: None,
         source_episode_id: None,
     })

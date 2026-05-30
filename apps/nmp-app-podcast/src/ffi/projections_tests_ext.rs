@@ -61,6 +61,49 @@ fn chapter_summary_decodes_when_is_ai_generated_omitted() {
 }
 
 #[test]
+fn chapter_summary_omits_publisher_source_on_wire() {
+    // Publisher is the default + carries no signal → must not bloat the payload.
+    let pub_chapter = ChapterSummary {
+        start_secs: 0.0,
+        title: "RSS chapter".into(),
+        source: podcast_core::ChapterSource::Publisher,
+        ..ChapterSummary::default()
+    };
+    let json = serde_json::to_string(&pub_chapter).expect("encode");
+    assert!(!json.contains("source"), "publisher source must be skipped: {json}");
+}
+
+#[test]
+fn chapter_summary_serializes_llm_and_stub_source() {
+    let llm = ChapterSummary {
+        start_secs: 0.0,
+        title: "Real topic".into(),
+        source: podcast_core::ChapterSource::Llm,
+        ..ChapterSummary::default()
+    };
+    let json = serde_json::to_string(&llm).expect("encode");
+    assert!(json.contains("\"source\":\"llm\""), "got: {json}");
+    assert_eq!(serde_json::from_str::<ChapterSummary>(&json).expect("decode"), llm);
+
+    let stub = ChapterSummary {
+        start_secs: 0.0,
+        title: "Chapter 1".into(),
+        source: podcast_core::ChapterSource::Stub,
+        ..ChapterSummary::default()
+    };
+    let stub_json = serde_json::to_string(&stub).expect("encode");
+    assert!(stub_json.contains("\"source\":\"stub\""), "got: {stub_json}");
+}
+
+#[test]
+fn chapter_summary_decodes_source_default_publisher_when_omitted() {
+    // A pre-`source` snapshot (no field) must decode as Publisher for wire-compat.
+    let json = r#"{"start_secs":0.0,"title":"Intro"}"#;
+    let decoded: ChapterSummary = serde_json::from_str(json).expect("decode");
+    assert_eq!(decoded.source, podcast_core::ChapterSource::Publisher);
+}
+
+#[test]
 fn agent_task_summary_round_trips_with_all_fields() {
     let task = AgentTaskSummary {
         id: "task-1".into(),

@@ -1,3 +1,4 @@
+use podcast_core::ChapterSource;
 use serde::{Deserialize, Serialize};
 
 use crate::player::AdSegment;
@@ -209,6 +210,11 @@ pub struct CategoryBrowseItem {
 ///
 /// `is_ai_generated` distinguishes chapters synthesized by
 /// `podcast.chapters.compile` from publisher-supplied RSS chapters.
+/// `source` is the finer-grained provenance ("publisher" / "llm" / "stub")
+/// so the UI can signal confidence — an `llm` chapter is transcript-grounded,
+/// a `stub` chapter is an offline equal-length placeholder. Omitted on the
+/// wire when `publisher` (the default) to keep the payload small and
+/// backward-compatible with decoders that predate the field.
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct ChapterSummary {
     pub start_secs: f64,
@@ -221,6 +227,8 @@ pub struct ChapterSummary {
     pub url: Option<String>,
     #[serde(default)]
     pub is_ai_generated: bool,
+    #[serde(default, skip_serializing_if = "ChapterSource::is_publisher")]
+    pub source: ChapterSource,
 }
 
 /// NIP-F4 podcast discovery result projected into the iOS Add Show sheet.

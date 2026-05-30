@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-31T03:30:00Z",
+      "lines": [
+        "AI chapters now read the episode transcript to name real topic sections, instead of slicing the episode into equal blank chunks. If the AI can't be reached, you'll still get evenly-spaced chapters as a fallback."
+      ]
+    },
+    {
       "shipped_at": "2026-05-31T02:30:00Z",
       "lines": [
         "Your Inbox now sorts itself with AI automatically — episodes are prioritized in the background as soon as they arrive, with no need to tap Triage, and it quietly falls back to newest-first when the AI is unavailable."

@@ -123,6 +123,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
                                                 .map(|u| u.to_string()),
                                             url: c.link_url.as_ref().map(|u| u.to_string()),
                                             is_ai_generated: c.is_ai_generated,
+                                            source: c.source,
                                         })
                                         .collect()
                                 })

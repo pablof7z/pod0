@@ -4,7 +4,9 @@
 //! running Ollama instance); we test the deterministic parse/extract seam that
 //! the round-trip funnels its response through.
 
-use super::{extract_json_array, parse_chapters, synthesize_chapters, SynthesizedChapter};
+use super::{
+    extract_json_array, parse_chapters, synthesize_chapters, SynthError, SynthesizedChapter,
+};
 
 #[test]
 fn parse_valid_json_chapters() {
@@ -36,15 +38,46 @@ Hope that helps!"#;
 }
 
 #[test]
-fn synthesize_falls_back_on_bad_json() {
+fn parse_rejects_unusable_responses() {
+    // A reachable-but-unparseable model produces these. The caller treats them
+    // as `SynthError::Parse` (retry with a simpler prompt, then give up) —
+    // NOT as a reason to fabricate equal-length stub chapters.
     // Garbage with no array → Err.
     assert!(parse_chapters("I cannot help with that.").is_err());
     // An array of the wrong shape → Err.
     assert!(parse_chapters(r#"[{"name":"oops"}]"#).is_err());
-    // A valid-but-empty array → Err (caller falls back to the stub).
+    // A valid-but-empty array → Err.
     assert!(parse_chapters("[]").is_err());
     // Malformed JSON inside the brackets → Err.
     assert!(parse_chapters(r#"[{"title":"x","start_secs":}]"#).is_err());
+}
+
+#[test]
+fn synth_error_discriminates_unavailable_from_parse() {
+    // The fallback ladder hinges on this split: only `Unavailable` justifies
+    // the equal-length stub; `Parse` means the model is present and answered.
+    assert!(SynthError::Unavailable("connection refused".into()).is_unavailable());
+    assert!(!SynthError::Parse("no JSON array".into()).is_unavailable());
+    assert_eq!(SynthError::Parse("boom".into()).message(), "boom");
+}
+
+/// Offline `synthesize_chapters` against a port with nothing listening must be
+/// classified as `Unavailable` (not `Parse`) so the caller stubs rather than
+/// retries forever. Uses the real (no-Ollama) localhost path; fast because the
+/// connection is refused immediately.
+#[test]
+fn synthesize_offline_is_unavailable() {
+    let rt = std::sync::Arc::new(tokio::runtime::Runtime::new().unwrap());
+    let result = synthesize_chapters("Ep", "some transcript text", 600.0, 5, &rt);
+    match result {
+        Err(e) => assert!(
+            e.is_unavailable(),
+            "offline Ollama must classify as Unavailable, got: {e:?}"
+        ),
+        // If a dev machine happens to have Ollama up, a successful parse is fine
+        // too — we only assert the *error* shape, never that it must fail.
+        Ok(_) => {}
+    }
 }
 
 /// Live round-trip against a running Ollama instance (`deepseek-v4-flash:cloud`

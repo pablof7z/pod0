@@ -116,6 +116,7 @@ fn episode_summary_round_trips_with_chapters() {
                 image_url: Some("https://ex.com/intro.png".into()),
                 url: None,
                 is_ai_generated: false,
+                ..ChapterSummary::default()
             },
             ChapterSummary {
                 start_secs: 60.0,
