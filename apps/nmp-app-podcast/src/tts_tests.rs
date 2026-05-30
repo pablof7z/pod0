@@ -23,6 +23,7 @@ fn generate_with_default_length_yields_5_minute_estimate() {
             length_minutes: None,
         },
         "corr-1",
+        None,
     );
     assert_eq!(response["ok"], true);
     let episode_id = response["episode_id"].as_str().expect("episode_id");
@@ -31,8 +32,11 @@ fn generate_with_default_length_yields_5_minute_estimate() {
     assert_eq!(stored[0].id, episode_id);
     assert_eq!(stored[0].title, "AI news");
     assert_eq!(stored[0].duration_estimate_secs, 300.0);
-    assert_eq!(stored[0].status, "ready");
-    assert!(stored[0].script.contains("AI news"));
+    // With no runtime (unit-test path), the episode stays in the optimistic
+    // "generating" state — the background LLM task that flips it to "ready"
+    // only spawns when a runtime is wired (production path).
+    assert_eq!(stored[0].status, "generating");
+    assert_eq!(stored[0].script, GENERATING_PLACEHOLDER);
 }
 
 #[test]
@@ -44,6 +48,7 @@ fn generate_clamps_length_to_15_minutes() {
             length_minutes: Some(99),
         },
         "corr-1",
+        None,
     );
     assert_eq!(list.lock().unwrap()[0].duration_estimate_secs, 15.0 * 60.0);
 }
@@ -57,6 +62,7 @@ fn generate_clamps_length_to_at_least_one_minute() {
             length_minutes: Some(0),
         },
         "corr-1",
+        None,
     );
     assert_eq!(list.lock().unwrap()[0].duration_estimate_secs, 60.0);
 }
@@ -70,6 +76,7 @@ fn generate_rejects_empty_topic() {
             length_minutes: None,
         },
         "corr-1",
+        None,
     );
     assert_eq!(response["ok"], false);
     assert!(list.lock().unwrap().is_empty());
@@ -84,10 +91,11 @@ fn delete_removes_matching_episode() {
             length_minutes: None,
         },
         "corr-1",
+        None,
     );
     let id = response["episode_id"].as_str().unwrap().to_string();
     assert_eq!(list.lock().unwrap().len(), 1);
-    let del = h.handle(TtsEpisodeAction::Delete { episode_id: id }, "corr-1");
+    let del = h.handle(TtsEpisodeAction::Delete { episode_id: id }, "corr-1", None);
     assert_eq!(del["ok"], true);
     assert!(list.lock().unwrap().is_empty());
 }
@@ -100,6 +108,7 @@ fn delete_unknown_id_is_idempotent_ok() {
             episode_id: "nope".into(),
         },
         "corr-1",
+        None,
     );
     assert_eq!(del["ok"], true);
 }
@@ -112,6 +121,7 @@ fn play_unknown_id_returns_error() {
             episode_id: "nope".into(),
         },
         "corr-1",
+        None,
     );
     assert_eq!(response["ok"], false);
 }
