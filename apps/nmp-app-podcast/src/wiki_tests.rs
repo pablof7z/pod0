@@ -11,6 +11,7 @@ fn make_slots() -> (
     Arc<Mutex<Vec<WikiArticle>>>,
     Arc<Mutex<Vec<WikiArticle>>>,
     Arc<Mutex<crate::store::PodcastStore>>,
+    Arc<Mutex<podcast_knowledge::KnowledgeStore>>,
     Arc<AtomicU64>,
     Arc<Runtime>,
 ) {
@@ -24,6 +25,7 @@ fn make_slots() -> (
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(crate::store::PodcastStore::new())),
+        Arc::new(Mutex::new(podcast_knowledge::KnowledgeStore::new())),
         Arc::new(AtomicU64::new(0)),
         rt,
     )
@@ -36,11 +38,12 @@ fn make_slots() -> (
 /// deferred to BACKLOG: wiki-generate-e2e-test.
 #[test]
 fn generate_inserts_placeholder_and_primes_rev() {
-    let (articles, results, store, rev, rt) = make_slots();
+    let (articles, results, store, knowledge_store, rev, rt) = make_slots();
     let envelope = handle_wiki_action(
         &articles,
         &results,
         &store,
+        &knowledge_store,
         &rev,
         &rt,
         WikiAction::Generate {
@@ -65,11 +68,12 @@ fn generate_inserts_placeholder_and_primes_rev() {
 
 #[test]
 fn generate_rejects_empty_topic() {
-    let (articles, results, store, rev, rt) = make_slots();
+    let (articles, results, store, knowledge_store, rev, rt) = make_slots();
     let envelope = handle_wiki_action(
         &articles,
         &results,
         &store,
+        &knowledge_store,
         &rev,
         &rt,
         WikiAction::Generate {
@@ -84,11 +88,12 @@ fn generate_rejects_empty_topic() {
 
 #[test]
 fn generate_rejects_empty_podcast_id() {
-    let (articles, results, store, rev, rt) = make_slots();
+    let (articles, results, store, knowledge_store, rev, rt) = make_slots();
     let envelope = handle_wiki_action(
         &articles,
         &results,
         &store,
+        &knowledge_store,
         &rev,
         &rt,
         WikiAction::Generate {
@@ -102,11 +107,12 @@ fn generate_rejects_empty_podcast_id() {
 
 #[test]
 fn delete_removes_article_and_clears_search_row() {
-    let (articles, results, store, rev, rt) = make_slots();
+    let (articles, results, store, knowledge_store, rev, rt) = make_slots();
     let envelope = handle_wiki_action(
         &articles,
         &results,
         &store,
+        &knowledge_store,
         &rev,
         &rt,
         WikiAction::Generate {
@@ -126,6 +132,7 @@ fn delete_removes_article_and_clears_search_row() {
         &articles,
         &results,
         &store,
+        &knowledge_store,
         &rev,
         &rt,
         WikiAction::Delete {
@@ -140,12 +147,13 @@ fn delete_removes_article_and_clears_search_row() {
 
 #[test]
 fn delete_unknown_id_does_not_bump_rev() {
-    let (articles, results, store, rev, rt) = make_slots();
+    let (articles, results, store, knowledge_store, rev, rt) = make_slots();
     let rev_before = rev.load(Ordering::Relaxed);
     let envelope = handle_wiki_action(
         &articles,
         &results,
         &store,
+        &knowledge_store,
         &rev,
         &rt,
         WikiAction::Delete {
@@ -158,11 +166,12 @@ fn delete_unknown_id_does_not_bump_rev() {
 
 #[test]
 fn search_filters_by_topic_substring_case_insensitive() {
-    let (articles, results, store, rev, rt) = make_slots();
+    let (articles, results, store, knowledge_store, rev, rt) = make_slots();
     handle_wiki_action(
         &articles,
         &results,
         &store,
+        &knowledge_store,
         &rev,
         &rt,
         WikiAction::Generate {
@@ -174,6 +183,7 @@ fn search_filters_by_topic_substring_case_insensitive() {
         &articles,
         &results,
         &store,
+        &knowledge_store,
         &rev,
         &rt,
         WikiAction::Generate {
@@ -185,6 +195,7 @@ fn search_filters_by_topic_substring_case_insensitive() {
         &articles,
         &results,
         &store,
+        &knowledge_store,
         &rev,
         &rt,
         WikiAction::Search {
@@ -199,11 +210,12 @@ fn search_filters_by_topic_substring_case_insensitive() {
 
 #[test]
 fn search_with_empty_query_clears_results() {
-    let (articles, results, store, rev, rt) = make_slots();
+    let (articles, results, store, knowledge_store, rev, rt) = make_slots();
     handle_wiki_action(
         &articles,
         &results,
         &store,
+        &knowledge_store,
         &rev,
         &rt,
         WikiAction::Generate {
@@ -215,6 +227,7 @@ fn search_with_empty_query_clears_results() {
         &articles,
         &results,
         &store,
+        &knowledge_store,
         &rev,
         &rt,
         WikiAction::Search { query: "to".into() },
@@ -224,6 +237,7 @@ fn search_with_empty_query_clears_results() {
         &articles,
         &results,
         &store,
+        &knowledge_store,
         &rev,
         &rt,
         WikiAction::Search { query: "  ".into() },

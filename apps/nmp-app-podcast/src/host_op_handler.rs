@@ -444,6 +444,7 @@ impl HostOpHandler for PodcastHostOpHandler {
                 &self.wiki_articles,
                 &self.wiki_search_results,
                 &self.store,
+                &self.knowledge_store,
                 &self.rev,
                 &self.runtime,
                 action,

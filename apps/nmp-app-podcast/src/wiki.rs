@@ -24,10 +24,16 @@ use std::sync::{Arc, Mutex};
 use chrono::Utc;
 use tokio::runtime::Runtime;
 
+use podcast_knowledge::KnowledgeStore;
+
 use crate::ffi::actions::wiki_module::WikiAction;
 use crate::ffi::projections::WikiArticle;
+use crate::knowledge::collect_chunk_texts_for_topic;
 use crate::store::PodcastStore;
 use crate::wiki_llm;
+
+/// RAG context chunks pulled into the wiki prompt per generate (M5.6-wiki).
+const WIKI_CONTEXT_CHUNK_LIMIT: usize = 5;
 
 /// Dispatch a [`WikiAction`] against the wiki slots on the handle and
 /// bump `rev` on any state change.
@@ -38,13 +44,14 @@ pub(crate) fn handle_wiki_action(
     articles: &Arc<Mutex<Vec<WikiArticle>>>,
     search_results: &Arc<Mutex<Vec<WikiArticle>>>,
     store: &Arc<Mutex<PodcastStore>>,
+    knowledge_store: &Arc<Mutex<KnowledgeStore>>,
     rev: &Arc<AtomicU64>,
     runtime: &Arc<Runtime>,
     action: WikiAction,
 ) -> serde_json::Value {
     match action {
         WikiAction::Generate { podcast_id, topic } => {
-            handle_generate(articles, store, rev, runtime, podcast_id, topic)
+            handle_generate(articles, store, knowledge_store, rev, runtime, podcast_id, topic)
         }
         WikiAction::Delete { article_id } => {
             handle_delete(articles, search_results, rev, article_id)
@@ -56,6 +63,7 @@ pub(crate) fn handle_wiki_action(
 fn handle_generate(
     articles: &Arc<Mutex<Vec<WikiArticle>>>,
     store: &Arc<Mutex<PodcastStore>>,
+    knowledge_store: &Arc<Mutex<KnowledgeStore>>,
     rev: &Arc<AtomicU64>,
     runtime: &Arc<Runtime>,
     podcast_id: String,
@@ -69,8 +77,9 @@ fn handle_generate(
         return serde_json::json!({"ok": false, "error": "podcast_id is empty"});
     }
 
-    // Collect podcast title + stored transcripts for LLM context.
-    let (podcast_title, transcripts) = {
+    // Collect podcast title + stored transcripts for LLM context, plus the
+    // episode ids so the RAG chunk search below stays scoped to this podcast.
+    let (podcast_title, transcripts, episode_ids) = {
         match store.lock() {
             Ok(s) => {
                 use podcast_core::PodcastId;
@@ -87,6 +96,8 @@ fn handle_generate(
                 let eps = pid
                     .map(|id| s.episodes_for(id).to_vec())
                     .unwrap_or_default();
+                let ep_ids: Vec<String> =
+                    eps.iter().map(|ep| ep.id.0.to_string()).collect();
                 let txs: Vec<String> = eps
                     .iter()
                     .filter_map(|ep| {
@@ -95,10 +106,26 @@ fn handle_generate(
                     })
                     .filter(|t| !t.is_empty())
                     .collect();
-                (title, txs)
+                (title, txs, ep_ids)
             }
-            Err(_) => (podcast_id.clone(), Vec::new()),
+            Err(_) => (podcast_id.clone(), Vec::new(), Vec::new()),
         }
+    };
+
+    // M5.6-wiki: pull the most relevant indexed transcript chunks for the
+    // topic so the LLM gets focused RAG context alongside the broad
+    // transcripts. Scoped to this podcast's episodes — the knowledge store is
+    // global, but a per-podcast article must not cite an unrelated podcast.
+    // Collected synchronously (lock dropped before spawn), mirroring the
+    // transcript collection above.
+    let context_chunks: Vec<String> = match knowledge_store.lock() {
+        Ok(ks) => collect_chunk_texts_for_topic(
+            &ks,
+            topic_trimmed,
+            &episode_ids,
+            WIKI_CONTEXT_CHUNK_LIMIT,
+        ),
+        Err(_) => Vec::new(),
     };
 
     let article_id = uuid::Uuid::new_v4().to_string();
@@ -139,7 +166,13 @@ fn handle_generate(
 
     runtime.spawn(async move {
         let result = tokio::task::spawn_blocking(move || {
-            wiki_llm::synthesize_summary(&topic_owned, &podcast_title, &transcripts, &runtime_c)
+            wiki_llm::synthesize_summary(
+                &topic_owned,
+                &podcast_title,
+                &transcripts,
+                &context_chunks,
+                &runtime_c,
+            )
         })
         .await;
 

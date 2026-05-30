@@ -267,6 +267,47 @@ pub fn collect_knowledge_matches(
         .collect()
 }
 
+/// Collect the full text of up to `limit` transcript chunks matching
+/// `query` (case-insensitive substring), ranked by the same early-position
+/// [`score_match`] heuristic used by search. Returns the chunks' full
+/// `text` (not the 200-char snippet) so the wiki LLM gets real source
+/// material to synthesize from (M5.6-wiki RAG context).
+///
+/// Scoped to `episode_ids`: the knowledge store is global across all
+/// subscribed podcasts, but a per-podcast wiki article must only cite that
+/// podcast's episodes. An empty `episode_ids` scope yields no chunks.
+///
+/// Unlike [`merge_chunk_matches`], this is library-agnostic: it doesn't
+/// resolve episode labels or dedup by episode, because the wiki prompt
+/// wants raw context excerpts, not UI rows.
+pub(crate) fn collect_chunk_texts_for_topic(
+    knowledge_store: &KnowledgeStore,
+    query: &str,
+    episode_ids: &[String],
+    limit: usize,
+) -> Vec<String> {
+    let needle = query.to_lowercase();
+    if needle.is_empty() || episode_ids.is_empty() {
+        return Vec::new();
+    }
+    let scope: std::collections::HashSet<&str> =
+        episode_ids.iter().map(String::as_str).collect();
+    let mut scored: Vec<(f32, String)> = Vec::new();
+    for kc in &knowledge_store.chunks {
+        let chunk = &kc.chunk;
+        if !scope.contains(chunk.episode_id.as_str()) {
+            continue;
+        }
+        let text_lc = chunk.text.to_lowercase();
+        if let Some(pos) = text_lc.find(&needle) {
+            let score = score_match(pos, text_lc.len());
+            scored.push((score, chunk.text.clone()));
+        }
+    }
+    scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+    scored.into_iter().take(limit).map(|(_, t)| t).collect()
+}
+
 /// Build an `episode_id -> (podcast_title, episode_title)` map from the
 /// library so chunk matches (which only carry `episode_id`) can resolve
 /// the labels [`KnowledgeSearchResult`] requires.

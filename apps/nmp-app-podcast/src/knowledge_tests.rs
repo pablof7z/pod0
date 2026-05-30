@@ -342,3 +342,75 @@ fn relevance_score_is_bounded() {
     assert!(results[0].relevance_score >= 0.0);
     assert!(results[0].relevance_score <= 1.0);
 }
+
+#[test]
+fn collect_chunk_texts_returns_full_text_capped_at_limit() {
+    let mut ks = KnowledgeStore::new();
+    // Six chunks all matching "halving" — the helper must cap at the limit.
+    for i in 0..6u32 {
+        ks.upsert(KnowledgeChunk::without_embedding(TranscriptChunk {
+            episode_id: "ep-1".to_owned(),
+            chunk_index: i,
+            start_secs: 0.0,
+            end_secs: 0.0,
+            text: format!("chunk {i} discusses the bitcoin halving in detail"),
+            word_count: 8,
+        }));
+    }
+    // Non-matching chunk must be excluded.
+    ks.upsert(KnowledgeChunk::without_embedding(TranscriptChunk {
+        episode_id: "ep-1".to_owned(),
+        chunk_index: 99,
+        start_secs: 0.0,
+        end_secs: 0.0,
+        text: "unrelated lightning network routing".to_owned(),
+        word_count: 4,
+    }));
+
+    let scope = vec!["ep-1".to_owned()];
+    let texts = collect_chunk_texts_for_topic(&ks, "halving", &scope, 5);
+    assert_eq!(texts.len(), 5, "must cap at the requested limit");
+    // Returns the full chunk text, not a 200-char snippet.
+    assert!(texts.iter().all(|t| t.contains("bitcoin halving in detail")));
+    assert!(
+        texts.iter().all(|t| !t.contains("lightning")),
+        "non-matching chunks excluded"
+    );
+}
+
+#[test]
+fn collect_chunk_texts_scopes_to_supplied_episode_ids() {
+    let mut ks = KnowledgeStore::new();
+    // Same matching text under two different episodes.
+    for ep in ["ep-mine", "ep-other"] {
+        ks.upsert(KnowledgeChunk::without_embedding(TranscriptChunk {
+            episode_id: ep.to_owned(),
+            chunk_index: 0,
+            start_secs: 0.0,
+            end_secs: 0.0,
+            text: "deep dive on the bitcoin halving".to_owned(),
+            word_count: 6,
+        }));
+    }
+    // Only ep-mine is in scope; the unrelated podcast's chunk must not leak.
+    let scope = vec!["ep-mine".to_owned()];
+    let texts = collect_chunk_texts_for_topic(&ks, "halving", &scope, 5);
+    assert_eq!(texts.len(), 1, "chunk search must stay scoped to the podcast");
+
+    // Empty scope yields nothing even when chunks match.
+    assert!(collect_chunk_texts_for_topic(&ks, "halving", &[], 5).is_empty());
+}
+
+#[test]
+fn collect_chunk_texts_empty_query_returns_nothing() {
+    let mut ks = KnowledgeStore::new();
+    ks.upsert(KnowledgeChunk::without_embedding(TranscriptChunk {
+        episode_id: "ep-1".to_owned(),
+        chunk_index: 0,
+        start_secs: 0.0,
+        end_secs: 0.0,
+        text: "anything".to_owned(),
+        word_count: 1,
+    }));
+    assert!(collect_chunk_texts_for_topic(&ks, "  ", &["ep-1".to_owned()], 5).is_empty());
+}
