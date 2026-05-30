@@ -163,6 +163,11 @@ pub struct PodcastHandle {
     /// to overlay LLM scores and categories over the recency-bucket fallback.
     /// In-memory only — results are recomputed on each explicit Triage action.
     pub(super) inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
+    /// `true` while the background LLM triage task is running. Set before
+    /// `tokio::spawn` and cleared when the task completes (or errors out).
+    /// Surfaced on `PodcastUpdate.inbox_triage_in_progress` so the iOS UI
+    /// can show a spinner on the Inbox tab.
+    pub(super) inbox_triage_in_progress: Arc<AtomicBool>,
     /// NIP-22 (kind 1111) comment cache, keyed by episode_id string.
     /// Written by `handle_fetch_comments` / `handle_post_comment` on the
     /// actor thread; read by `build_snapshot_payload` on the main thread.

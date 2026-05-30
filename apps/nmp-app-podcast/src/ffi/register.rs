@@ -123,6 +123,7 @@ pub extern "C" fn nmp_app_podcast_register(
     let rev = Arc::new(AtomicU64::new(1));
 
     let inbox_triage_cache = Arc::new(Mutex::new(HashMap::new()));
+    let inbox_triage_in_progress = Arc::new(AtomicBool::new(false));
 
 
     // Shared Tokio runtime — multi-thread scheduler so async LLM/relay
@@ -174,6 +175,7 @@ pub extern "C" fn nmp_app_podcast_register(
         comments_cache.clone(),
         runtime,
         inbox_triage_cache.clone(),
+        Arc::clone(&inbox_triage_in_progress),
         social.clone(),
     )));
 
@@ -206,6 +208,7 @@ pub extern "C" fn nmp_app_podcast_register(
         agent_touched,
         categories,
         inbox_triage_cache,
+        inbox_triage_in_progress,
         comments_cache,
         social,
     });

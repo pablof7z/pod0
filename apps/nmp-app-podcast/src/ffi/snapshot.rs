@@ -156,6 +156,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     let tts_episodes = handle.tts_episodes.lock().ok().map(|r| r.clone()).unwrap_or_default();
     let clips = crate::clip_handler::project_clips(&handle.clips, &library);
     let inbox = build_inbox(&handle.store, &handle.dismissed_episode_ids, &handle.inbox_triage_cache);
+    let inbox_triage_in_progress = handle.inbox_triage_in_progress.load(std::sync::atomic::Ordering::Relaxed);
     let owned_podcasts = collect_owned_podcasts(handle);
     let downloads = handle.download_queue.lock().ok()
         .and_then(|q| build_downloads_snapshot(&q));
@@ -219,6 +220,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         tts_episodes,
         clips,
         inbox,
+        inbox_triage_in_progress,
         owned_podcasts,
         downloads,
         voice,

@@ -39,6 +39,8 @@ struct PodcastUpdate {
     @DefaultEmptyArray var ttsEpisodes: [TtsEpisodeSummary] = []
     @DefaultEmptyArray var clips: [ClipSummary] = []
     @DefaultEmptyArray var inbox: [InboxItem] = []
+    /// `true` while a background LLM triage pass is running. D5: omitted when false.
+    @DefaultFalse var inboxTriageInProgress: Bool = false
     @DefaultEmptyArray var ownedPodcasts: [OwnedPodcastInfo] = []
     @DefaultEmptyArray var categories: [CategoryBrowseItem] = []
 }
@@ -165,6 +167,7 @@ extension PodcastUpdate: Codable {
         ttsEpisodes = try c.decodeIfPresent([TtsEpisodeSummary].self, forKey: .ttsEpisodes) ?? []
         clips = try c.decodeIfPresent([ClipSummary].self, forKey: .clips) ?? []
         inbox = try c.decodeIfPresent([InboxItem].self, forKey: .inbox) ?? []
+        inboxTriageInProgress = try c.decodeIfPresent(Bool.self, forKey: .inboxTriageInProgress) ?? false
         ownedPodcasts = try c.decodeIfPresent([OwnedPodcastInfo].self, forKey: .ownedPodcasts) ?? []
         categories = try c.decodeIfPresent([CategoryBrowseItem].self, forKey: .categories) ?? []
     }

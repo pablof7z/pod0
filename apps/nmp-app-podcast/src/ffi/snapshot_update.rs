@@ -128,6 +128,11 @@ pub struct PodcastUpdate {
     /// AI-triaged inbox: unlistened episodes, highest-priority-first.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub inbox: Vec<InboxItem>,
+    /// `true` while a background LLM triage pass is running. The iOS UI
+    /// can show a spinner on the Inbox tab while this is set.
+    /// Omitted from the wire when `false` (D5).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub inbox_triage_in_progress: bool,
     /// User-owned podcasts (NIP-F4).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub owned_podcasts: Vec<OwnedPodcastInfo>,
@@ -166,6 +171,7 @@ impl Default for PodcastUpdate {
             tts_episodes: Vec::new(),
             clips: Vec::new(),
             inbox: Vec::new(),
+            inbox_triage_in_progress: false,
             owned_podcasts: Vec::new(),
             categories: Vec::new(),
         }

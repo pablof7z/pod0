@@ -170,12 +170,37 @@ pub fn handle_inbox_action(
     rev: &Arc<AtomicU64>,
     triage_cache: &Arc<Mutex<HashMap<String, TriageResult>>>,
     runtime: &Arc<Runtime>,
+    in_progress: &Arc<std::sync::atomic::AtomicBool>,
 ) -> serde_json::Value {
     match action {
         InboxAction::Triage => {
-            run_llm_triage(store, triage_cache, runtime);
+            // Guard against concurrent triage passes (re-entrancy: user double-tap,
+            // or an auto-trigger while the first pass is still running). If the flag
+            // is already `true` a pass is in flight — return early rather than
+            // spawning a second one that would race on the shared triage_cache.
+            if in_progress.compare_exchange(
+                false, true,
+                std::sync::atomic::Ordering::Acquire,
+                std::sync::atomic::Ordering::Relaxed,
+            ).is_err() {
+                return serde_json::json!({"ok": true, "status": "already_running"});
+            }
+
+            // M5.1: move triage off the actor thread. Prime the spinner rev now;
+            // each per-episode result bumps `rev` again for incremental updates.
             rev.fetch_add(1, Ordering::Relaxed);
-            serde_json::json!({"ok": true})
+
+            let store_c = Arc::clone(store);
+            let cache_c = Arc::clone(triage_cache);
+            let runtime_c = Arc::clone(runtime);
+            let rev_c = Arc::clone(rev);
+            let in_progress_c = Arc::clone(in_progress);
+
+            runtime.spawn(async move {
+                triage_episodes_in_background(store_c, cache_c, runtime_c, rev_c, in_progress_c).await;
+            });
+
+            serde_json::json!({"ok": true, "status": "triage_started"})
         }
         InboxAction::Dismiss { episode_id } => match dismissed.lock() {
             Ok(mut d) => {
@@ -204,22 +229,24 @@ pub fn handle_inbox_action(
     }
 }
 
-/// Run LLM triage on all unlistened episodes and populate the cache.
-///
-/// Extracts episode metadata under a short store lock, then releases the
-/// lock before making any LLM calls so the actor isn't blocked from
-/// handling other actions while waiting for network I/O. Each successful
-/// result is immediately written to `triage_cache`.
-fn run_llm_triage(
-    store: &Arc<Mutex<PodcastStore>>,
-    triage_cache: &Arc<Mutex<HashMap<String, TriageResult>>>,
-    runtime: &Arc<Runtime>,
+/// Background async triage task (M5.1). Runs off the actor thread so the
+/// kernel is never blocked waiting for Ollama. Each successful result bumps
+/// `rev` so the iOS snapshot delivers incremental progress.
+async fn triage_episodes_in_background(
+    store: Arc<Mutex<PodcastStore>>,
+    triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
+    runtime: Arc<Runtime>,
+    rev: Arc<AtomicU64>,
+    in_progress: Arc<std::sync::atomic::AtomicBool>,
 ) {
-    // Collect episode metadata under a brief store lock.
+    // Collect episode metadata under a brief store lock then release it.
     let episodes_to_triage: Vec<(String, String, String, String)> = {
         let guard = match store.lock() {
             Ok(g) => g,
-            Err(_) => return,
+            Err(_) => {
+                in_progress.store(false, std::sync::atomic::Ordering::Relaxed);
+                return;
+            }
         };
         guard
             .all_podcasts()
@@ -238,21 +265,41 @@ fn run_llm_triage(
             })
             .collect()
     };
-    // Lock released here — LLM calls happen without holding the store.
 
-    for (ep_id, ep_title, pod_title, description) in &episodes_to_triage {
-        match triage_episode(ep_title, pod_title, description, runtime) {
-            Ok(result) => {
+    // Process each episode sequentially; `triage_episode` itself drives the
+    // async LLM call without `block_on` — we call `tokio::task::spawn_blocking`
+    // to offload the synchronous rig-core call to the blocking thread pool.
+    for (ep_id, ep_title, pod_title, description) in episodes_to_triage {
+        let runtime2 = Arc::clone(&runtime);
+        let ep_title2 = ep_title.clone();
+        let pod_title2 = pod_title.clone();
+        let description2 = description.clone();
+
+        let result = tokio::task::spawn_blocking(move || {
+            triage_episode(&ep_title2, &pod_title2, &description2, &runtime2)
+        })
+        .await;
+
+        match result {
+            Ok(Ok(triage)) => {
                 if let Ok(mut cache) = triage_cache.lock() {
-                    cache.insert(ep_id.clone(), result);
+                    cache.insert(ep_id, triage);
                 }
+                // Bump rev so iOS picks up this result immediately.
+                rev.fetch_add(1, Ordering::Relaxed);
+            }
+            Ok(Err(e)) => {
+                eprintln!("[inbox_triage] LLM triage failed for {ep_id}: {e}");
             }
             Err(e) => {
-                // Log the failure; heuristic fallback applies for this episode.
-                eprintln!("[inbox_triage] LLM triage failed for {ep_id}: {e}");
+                eprintln!("[inbox_triage] spawn_blocking panicked for {ep_id}: {e}");
             }
         }
     }
+
+    // Clear the in-progress flag and emit a final rev bump.
+    in_progress.store(false, std::sync::atomic::Ordering::Relaxed);
+    rev.fetch_add(1, Ordering::Relaxed);
 }
 
 #[cfg(test)]

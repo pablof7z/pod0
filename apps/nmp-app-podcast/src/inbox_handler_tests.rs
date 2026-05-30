@@ -151,6 +151,7 @@ fn handle_dismiss_records_in_set_and_bumps_rev() {
             .unwrap(),
     );
 
+    let in_progress = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let result = handle_inbox_action(
         InboxAction::Dismiss { episode_id: "ep-7".into() },
         &store,
@@ -158,14 +159,21 @@ fn handle_dismiss_records_in_set_and_bumps_rev() {
         &rev,
         &cache,
         &runtime,
+        &in_progress,
     );
     assert_eq!(result["ok"], true);
     assert!(dismissed.lock().unwrap().contains("ep-7"));
     assert_eq!(rev.load(Ordering::Relaxed), 1);
 }
 
+/// Tests that `Triage` sets the in-progress flag and primes the rev counter
+/// synchronously, then returns immediately. The background `triage_episodes_in_background`
+/// task is not exercised here because `new_current_thread` never re-enters the
+/// runtime from the calling thread. End-to-end coverage of the background path
+/// (including incremental rev bumps and in-progress clearing) is a manual /
+/// integration-test concern deferred to BACKLOG: inbox-triage-e2e-test.
 #[test]
-fn handle_triage_bumps_rev() {
+fn handle_triage_primes_spinner_and_returns_immediately() {
     let now = Utc::now().timestamp();
     let store = fixture_store(now);
     let dismissed = Arc::new(Mutex::new(HashSet::<String>::new()));
@@ -177,15 +185,42 @@ fn handle_triage_bumps_rev() {
             .build()
             .unwrap(),
     );
-
-    // Triage will attempt LLM calls that fail (Ollama likely not running in
-    // unit test environment). The rev must still be bumped regardless of
-    // whether LLM calls succeed.
-    let result = handle_inbox_action(InboxAction::Triage, &store, &dismissed, &rev, &cache, &runtime);
+    let in_progress = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let result = handle_inbox_action(InboxAction::Triage, &store, &dismissed, &rev, &cache, &runtime, &in_progress);
     assert_eq!(result["ok"], true);
-    assert_eq!(rev.load(Ordering::Relaxed), 1);
-    // No dismissed entries added.
+    assert_eq!(result["status"], "triage_started");
+    // Spinner prime: exactly one synchronous rev bump before the background task runs.
+    assert_eq!(rev.load(Ordering::Relaxed), 1, "spinner prime must bump rev exactly once");
+    // in_progress must be set immediately (background task may not have run yet).
+    assert!(in_progress.load(Ordering::Relaxed), "in_progress must be true after dispatch");
     assert!(dismissed.lock().unwrap().is_empty());
+}
+
+/// A second `Triage` dispatch while the first is in-flight must be a no-op:
+/// it returns `already_running` without re-priming `rev` or double-spawning.
+#[test]
+fn handle_triage_double_dispatch_is_noop() {
+    let now = Utc::now().timestamp();
+    let store = fixture_store(now);
+    let dismissed = Arc::new(Mutex::new(HashSet::<String>::new()));
+    let rev = Arc::new(AtomicU64::new(0));
+    let cache = empty_triage_cache();
+    let runtime = Arc::new(
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap(),
+    );
+    let in_progress = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    // First dispatch.
+    let r1 = handle_inbox_action(InboxAction::Triage, &store, &dismissed, &rev, &cache, &runtime, &in_progress);
+    assert_eq!(r1["status"], "triage_started");
+    assert_eq!(rev.load(Ordering::Relaxed), 1);
+    // Second dispatch while in_progress is still true.
+    let r2 = handle_inbox_action(InboxAction::Triage, &store, &dismissed, &rev, &cache, &runtime, &in_progress);
+    assert_eq!(r2["status"], "already_running");
+    // Rev must NOT have been bumped a second time.
+    assert_eq!(rev.load(Ordering::Relaxed), 1, "double-dispatch must not prime rev again");
 }
 
 #[test]
@@ -207,6 +242,7 @@ fn handle_mark_listened_flips_store_flag() {
         eps.iter().find(|e| e.title == "Fresh").unwrap().id.0.to_string()
     };
 
+    let in_progress = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let result = handle_inbox_action(
         InboxAction::MarkListened { episode_id: fresh_id.clone() },
         &store,
@@ -214,6 +250,7 @@ fn handle_mark_listened_flips_store_flag() {
         &rev,
         &cache,
         &runtime,
+        &in_progress,
     );
     assert_eq!(result["ok"], true);
     assert_eq!(rev.load(Ordering::Relaxed), 1);

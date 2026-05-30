@@ -141,6 +141,9 @@ pub struct PodcastHostOpHandler {
     /// `PodcastHandle.inbox_triage_cache` so the snapshot reader sees
     /// results without holding the handler lock.
     pub(crate) inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
+    /// Shared with `PodcastHandle.inbox_triage_in_progress`; set `true` when a
+    /// background triage task starts, cleared when it finishes.
+    pub(crate) inbox_triage_in_progress: Arc<std::sync::atomic::AtomicBool>,
     /// Active social-graph snapshot, populated by `FetchContacts`. Shared
     /// with `PodcastHandle.social` so the snapshot reader projects it on
     /// every tick after the first fetch.
@@ -185,6 +188,7 @@ impl PodcastHostOpHandler {
         comments_cache: Arc<Mutex<HashMap<String, Vec<CommentSummary>>>>,
         runtime: Arc<Runtime>,
         inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
+        inbox_triage_in_progress: Arc<std::sync::atomic::AtomicBool>,
         social: Arc<Mutex<Option<SocialSnapshot>>>,
     ) -> Self {
         let tts = TtsEpisodeHandler::new(app, tts_episodes, rev.clone());
@@ -216,6 +220,7 @@ impl PodcastHostOpHandler {
             comments_cache,
             runtime,
             inbox_triage_cache,
+            inbox_triage_in_progress,
             social,
         }
     }
@@ -417,6 +422,7 @@ impl HostOpHandler for PodcastHostOpHandler {
                 &self.rev,
                 &self.inbox_triage_cache,
                 &self.runtime,
+                &self.inbox_triage_in_progress,
             );
         }
         if let Ok(action) = serde_json::from_str::<QueueAction>(action_json) {
