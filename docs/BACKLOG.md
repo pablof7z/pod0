@@ -165,8 +165,53 @@ worktrees currently in flight.
   content selection, script generation, TTS/audio output, playback handoff,
   persistence, and failure/retry projection.
 - **voice-real-manager.** Finish Rust voice conversation manager, audio-session
-  state transitions, barge-in policy, provider TTS/STT choices, transcript
-  handoff, and cancellation.
+  state transitions, transcript handoff, and cancellation. (Provider TTS/STT
+  choices and barge-in policy are tracked separately — see
+  voice-provider-selection below for the feature #42 provider blockers.)
+- **voice-provider-selection (feature #42).** Investigated for M5 voice-mode
+  provider wiring; the conclusion is that the M3 provider *settings* exist but
+  there is no non-native *execution path* to dispatch them to, so the settings
+  cannot be wired without net-new work that exceeds "wire an existing setting".
+  Concrete blockers, in dependency order:
+  1. **No provider field on the voice wire schema.** `VoiceCommand::Speak` /
+     `StartListening` (`apps/nmp-app-podcast/src/capability/voice.rs` +
+     `App/Sources/Capabilities/VoiceCapability+Wire.swift`) carry no provider
+     selector. iOS `VoiceCapability.speak` maps `voice_id` directly to
+     `AVSpeechSynthesisVoice(identifier:)`/`(language:)`, so passing an
+     ElevenLabs voice id (e.g. `eleven_labs_voice_id`) through the existing
+     `voice_id` field resolves to `nil` → silent fall-back to the default
+     device voice. Do NOT wire `eleven_labs_voice_id` into `Speak.voice_id`;
+     it looks done and does nothing. A `provider` field (plus a provider-
+     scoped voice id) must be added to the schema on both sides first.
+  2. **No iOS provider adapter exists.** The `Capabilities/Tts/{ElevenLabsAdapter,
+     AvSpeechAdapter}` referenced in the `voice.rs` doc comment are unwritten;
+     iOS is `SFSpeechRecognizer` (STT) + `AVSpeechSynthesizer` (TTS) only.
+     There is no ElevenLabs WS/HTTP TTS client, no AssemblyAI STT client, and
+     no OpenRouter Whisper STT client anywhere in Rust or Swift — every
+     `eleven_labs`/`assembly_ai`/`whisper` reference is settings/iCloud-sync/
+     Keychain plumbing, not a call site. A provider-routed TTS path also needs
+     an audio sink (the synthesized bytes must reach `nmp.audio.capability` or
+     the OS audio engine).
+  3. **Two referenced settings do not exist.** There is no `tts_provider`
+     selector (TTS provider is implicit-from-ElevenLabs-config) and no
+     barge-in-threshold setting, and no OpenRouter-TTS-voice setting. The M5
+     task forbids adding settings, so barge-in policy and OpenRouter TTS stay
+     deferred until those fields are designed.
+  4. **Default-vs-execution mismatch (correctness gap).** `stt_provider`
+     defaults to `"elevenlabs_scribe"` (`store/settings.rs`) and is projected
+     verbatim into `SettingsSnapshot.stt_provider`, so the snapshot reports a
+     non-native STT provider while the app actually transcribes on-device with
+     `SFSpeechRecognizer`. A user reading settings believes they are on Scribe;
+     they are not. Do NOT fix by changing the default (it has iOS settings-UI
+     implications) — resolve when the AssemblyAI/Scribe STT execution path
+     lands, so the reported provider matches the engine that actually runs.
+  Suggested landing order once unblocked: (1) add `provider` + provider-scoped
+  voice to the wire schema; (2) iOS ElevenLabs TTS adapter + audio sink behind
+  that provider; (3) route `eleven_labs_voice_id`/`eleven_labs_tts_model` in
+  `VoiceConversationManager` (D7: Rust decides voice) only when the active
+  provider can honor it; (4) AssemblyAI/Scribe STT execution path + reconcile
+  the `stt_provider` default; (5) design barge-in-threshold + OpenRouter-TTS
+  settings, then wire barge-in and OpenRouter TTS.
 - **tts-episodes-real-generation.** Replace placeholder scripts with real
   provider-generated audio, persisted media, playback, deletion, and optional
   NIP-F4 publishing integration.
