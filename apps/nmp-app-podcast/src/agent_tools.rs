@@ -44,6 +44,7 @@ Tools:\n\
 title/author and return matching episodes with their episode_id and podcast_id.\n\
 - get_transcript: {\"episode_id\":\"<uuid>\"} — get the transcript text for an episode.\n\
 - get_podcast_info: {\"podcast_id\":\"<uuid>\"} — get a podcast's title, episode count, and latest publish date.\n\
+- get_memory_facts: {} — list everything the user has asked you to remember (their stored key:value memory facts).\n\
 After a tool returns, use its result to answer. If you need no tools, respond normally with plain text.";
 
 /// Holds the shared store and executes named tool calls against it.
@@ -64,6 +65,7 @@ impl ToolRegistry {
             "search_library" => self.search_library(args),
             "get_transcript" => self.get_transcript(args),
             "get_podcast_info" => self.get_podcast_info(args),
+            "get_memory_facts" => self.get_memory_facts(),
             other => format!("unknown tool: {other}"),
         }
     }
@@ -135,6 +137,26 @@ impl ToolRegistry {
             }
             None => "no transcript available for that episode".to_owned(),
         }
+    }
+
+    /// Return every stored memory fact as a plain-text `key: value` list, or a
+    /// clear "none stored" message. Takes no args (M5.6).
+    fn get_memory_facts(&self) -> String {
+        let store = match self.store.lock() {
+            Ok(s) => s,
+            Err(_) => return "get_memory_facts: store unavailable".to_owned(),
+        };
+
+        let facts = store.all_memory_facts();
+        if facts.is_empty() {
+            return "No memory facts stored.".to_owned();
+        }
+
+        facts
+            .iter()
+            .map(|f| format!("{}: {}", f.key, f.value))
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     fn get_podcast_info(&self, args: &Value) -> String {
