@@ -126,6 +126,34 @@ fn get_podcast_info_returns_title_and_count() {
 }
 
 #[test]
+fn get_memory_facts_lists_stored_facts() {
+    let (store, _pid, _eid) = fixture_store();
+    {
+        let mut s = store.lock().unwrap();
+        s.set_memory_fact("preferred_genre".into(), "true crime".into(), "user".into(), 1);
+    }
+    let registry = ToolRegistry::new(store);
+
+    let out = registry.execute("get_memory_facts", &serde_json::json!({}));
+
+    assert!(out.contains("preferred_genre"), "should include the fact key, got: {out}");
+    assert!(out.contains("true crime"), "should include the fact value, got: {out}");
+}
+
+#[test]
+fn get_memory_facts_reports_when_empty() {
+    let (store, _pid, _eid) = fixture_store();
+    let registry = ToolRegistry::new(store);
+
+    let out = registry.execute("get_memory_facts", &serde_json::json!({}));
+
+    assert!(
+        out.to_lowercase().contains("no memory facts"),
+        "expected an empty-memory message, got: {out}"
+    );
+}
+
+#[test]
 fn unknown_tool_returns_error_string() {
     let (store, _pid, _eid) = fixture_store();
     let registry = ToolRegistry::new(store);

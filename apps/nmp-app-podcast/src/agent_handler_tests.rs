@@ -1,5 +1,39 @@
 use super::*;
 
+use crate::store::PodcastStore;
+
+#[test]
+fn system_prompt_includes_memory_facts_when_store_has_facts() {
+    let mut store = PodcastStore::new();
+    store.set_memory_fact("preferred_genre".into(), "true crime".into(), "user".into(), 1);
+    let store = Arc::new(Mutex::new(store));
+
+    let prompt = build_system_prompt_with_memory(Some(&store));
+
+    assert!(
+        prompt.contains("preferred_genre"),
+        "prompt must include the fact key, got: {prompt}"
+    );
+    assert!(
+        prompt.contains("true crime"),
+        "prompt must include the fact value, got: {prompt}"
+    );
+    assert!(
+        prompt.contains("User memory facts"),
+        "prompt must label the memory section, got: {prompt}"
+    );
+    // The base prompt is still present alongside the facts.
+    assert!(prompt.contains(AGENT_SYSTEM_PROMPT));
+}
+
+#[test]
+fn system_prompt_is_base_when_no_facts() {
+    let store = Arc::new(Mutex::new(PodcastStore::new()));
+    assert_eq!(build_system_prompt_with_memory(Some(&store)), AGENT_SYSTEM_PROMPT);
+    // No store at all (scaffold path) also yields just the base prompt.
+    assert_eq!(build_system_prompt_with_memory(None), AGENT_SYSTEM_PROMPT);
+}
+
 fn fresh_handler() -> AgentChatHandler {
     AgentChatHandler::new_without_runtime(
         Arc::new(Mutex::new(Vec::new())),
