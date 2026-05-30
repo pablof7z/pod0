@@ -138,7 +138,18 @@ extension AppStateStore {
         )
         for idx in episodes.indices {
             guard let prior = priorByID[episodes[idx].id] else { continue }
-            episodes[idx].transcriptState = prior.transcriptState
+            // transcriptState: restore from the prior Swift state (`.fetching`/
+            // `.failed`) for in-progress or failed passes. When the kernel projects
+            // a non-empty `transcript` (via `kernelTranscriptReport` → Rust store),
+            // `toEpisode` sets `.ready` directly from the projection — so the
+            // restore here only applies for the transient fetching/failed states
+            // that Rust can't project. See `EpisodeSummary.toEpisode`.
+            if case .ready = episodes[idx].transcriptState {
+                // toEpisode already derived .ready from the Rust projection; keep it.
+            } else {
+                // Preserve in-progress (.fetching) or failed state from the last pass.
+                episodes[idx].transcriptState = prior.transcriptState
+            }
             episodes[idx].triageDecision = prior.triageDecision
             episodes[idx].triageRationale = prior.triageRationale
             episodes[idx].triageIsHero = prior.triageIsHero
@@ -222,6 +233,22 @@ private extension EpisodeSummary {
             let kind = Episode.AdKind(rawValue: seg.kind) ?? .midroll
             return Episode.AdSegment(id: uuid, start: seg.startSecs, end: seg.endSecs, kind: kind)
         }
+        // Derive transcriptState from what Rust projects. If the kernel has a
+        // stored transcript (via kernelTranscriptReport or podcast.fetch_transcript),
+        // surface .ready immediately rather than waiting for iOS to re-ingest.
+        // Rust cannot project .fetching/.failed — those remain Swift-only states
+        // restored by the preserved-state merge above.
+        let derivedTranscriptState: TranscriptState? = {
+            guard let text = transcript, !text.isEmpty else { return nil }
+            // If the Rust store has a transcript, it came from either:
+            //   1. iOS STT via kernelTranscriptReport (could be any provider)
+            //   2. publisher fetch via podcast.fetch_transcript
+            // We can't distinguish source from Rust alone; use .publisher as the
+            // conservative default — the actual source is preserved on the iOS
+            // TranscriptStore and in the preserved-state fallback.
+            return .ready(source: .publisher)
+        }()
+
         return Episode(
             id: episodeUUID,
             podcastID: podcastUUID,
@@ -238,6 +265,7 @@ private extension EpisodeSummary {
             played: played,
             isStarred: starred,
             downloadState: downloadState,
+            transcriptState: derivedTranscriptState ?? .none,
             adSegments: projectedAdSegments
         )
     }

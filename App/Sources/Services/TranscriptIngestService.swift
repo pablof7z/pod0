@@ -327,6 +327,13 @@ final class TranscriptIngestService {
             episode.id,
             state: .ready(source: source)
         )
+        // M5.2: report the plain-text transcript to the Rust kernel so AI
+        // features (wiki, chapters, RAG context, agent chat) can access it
+        // without going through Swift's TranscriptStore. D7: the iOS
+        // capability performs the work and reports the result; Rust decides
+        // what to do with it.
+        let plainText = transcript.segments.map(\.text).joined(separator: " ")
+        appStore.kernelTranscriptReport(episodeID: episode.id, text: plainText)
 
         // STEP 2: Best-effort embed. Failures are logged but don't throw.
         let chunkable = ChunkableTranscript(

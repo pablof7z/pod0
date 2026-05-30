@@ -158,4 +158,9 @@ char *nmp_app_podcast_voice_report(void *handle, const char *report_json);
 // Always returns NULL — no follow-up command.
 char *nmp_app_podcast_network_report(void *handle, const char *report_json);
 
+// Deliver a completed transcript (plain text) to the Rust store so AI features
+// can access it. JSON shape: {"episode_id":"<uuid>","text":"<plain text>"}.
+// Always returns NULL.
+char *nmp_app_podcast_transcript_report(void *handle, const char *report_json);
+
 #endif

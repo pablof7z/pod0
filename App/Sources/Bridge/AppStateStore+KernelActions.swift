@@ -226,4 +226,13 @@ extension AppStateStore {
         kernel?.dispatch(namespace: "podcast",
                          body: ["op": "delete_download", "episode_id": id.uuidString])
     }
+
+    // MARK: - Transcripts
+
+    /// Report a completed transcript to the Rust kernel (M5.2).
+    /// Delegates to `KernelModel.sendTranscriptReport` which has access to
+    /// the raw `podcastHandle` pointer.
+    func kernelTranscriptReport(episodeID: UUID, text: String) {
+        kernel?.sendTranscriptReport(episodeID: episodeID, text: text)
+    }
 }
