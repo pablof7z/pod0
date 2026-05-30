@@ -239,7 +239,7 @@ impl PodcastHostOpHandler {
                 // notification set + auto-download set, then merge forward.
                 let (episodes, new_for_notification, to_auto_download, podcast_title) =
                     match self.store.lock() {
-                        Ok(s) => {
+                        Ok(mut s) => {
                             let existing: Vec<Episode> = s.episodes_for(podcast_id).to_vec();
                             let existing_guids: HashSet<String> =
                                 existing.iter().map(|e| e.guid.clone()).collect();
@@ -259,7 +259,7 @@ impl PodcastHostOpHandler {
                             let auto_on = s.is_auto_download_enabled(podcast_id);
                             let wifi_only = s.wifi_only_for(podcast_id);
                             let is_on_wifi = s.is_on_wifi();
-                            let to_auto_download = episodes_to_auto_download(
+                            let (to_auto_download, deferred) = episodes_to_auto_download(
                                 &parsed.episodes,
                                 &existing_guids,
                                 s.local_paths(),
@@ -267,6 +267,11 @@ impl PodcastHostOpHandler {
                                 wifi_only,
                                 is_on_wifi,
                             );
+                            if !deferred.is_empty() {
+                                s.add_pending_wifi_downloads(
+                                    deferred.into_iter().map(|(id, url)| (id.0.to_string(), url)).collect()
+                                );
+                            }
                             let podcast_title = parsed.podcast.title.clone();
                             let merged = merge_episodes(parsed.episodes.clone(), existing);
                             (merged, new_for_notification, to_auto_download, podcast_title)

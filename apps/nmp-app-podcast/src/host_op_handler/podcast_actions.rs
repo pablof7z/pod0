@@ -96,8 +96,11 @@ impl PodcastHostOpHandler {
                     correlation_id,
                 )
             }
-            PodcastAction::SetAutoDownload { podcast_id, enabled } => {
-                self.handle_set_auto_download(podcast_id, enabled)
+            PodcastAction::SetAutoDownload { podcast_id, enabled, wifi_only } => {
+                self.handle_set_auto_download(podcast_id, enabled, wifi_only)
+            }
+            PodcastAction::DispatchDeferredWifiDownloads => {
+                self.handle_dispatch_deferred_wifi_downloads(correlation_id)
             }
             PodcastAction::FetchContacts => crate::social_handler::handle_fetch_contacts(self),
             PodcastAction::StarEpisode { episode_id, starred } => {
@@ -113,6 +116,19 @@ impl PodcastHostOpHandler {
                 }
             }
         }
+    }
+
+    fn handle_dispatch_deferred_wifi_downloads(&self, correlation_id: &str) -> serde_json::Value {
+        let pending = match self.store.lock() {
+            Ok(mut s) => s.drain_pending_wifi_downloads(),
+            Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+        };
+        let count = pending.len();
+        for (episode_id, url) in pending {
+            let cmd = crate::capability::DownloadCommand::start(url, episode_id, None);
+            let _ = self.dispatch_download(&cmd, correlation_id);
+        }
+        serde_json::json!({"ok": true, "dispatched": count})
     }
 
     fn handle_search_itunes(&self, query: String, correlation_id: &str) -> serde_json::Value {
@@ -193,6 +209,7 @@ impl PodcastHostOpHandler {
         &self,
         podcast_id_str: String,
         enabled: bool,
+        wifi_only: bool,
     ) -> serde_json::Value {
         let uuid = match podcast_id_str.parse::<Uuid>() {
             Ok(u) => u,
@@ -202,6 +219,7 @@ impl PodcastHostOpHandler {
         match self.store.lock() {
             Ok(mut s) => {
                 s.set_auto_download(podcast_id, enabled);
+                s.set_wifi_only(podcast_id, wifi_only);
                 self.rev.fetch_add(1, Ordering::Relaxed);
                 serde_json::json!({"ok": true})
             }

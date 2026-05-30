@@ -7,20 +7,23 @@ import Network
 /// Wi-Fi-only auto-download policies without iOS deciding which
 /// episodes to queue (D7).
 ///
-/// Usage: call `start(handle:)` once from `KernelModel.init()`, after
-/// the podcast projection is registered.
+/// When Wi-Fi is restored, also dispatches
+/// `podcast.dispatch_deferred_wifi_downloads` so episodes that were deferred
+/// during a cellular-only session are downloaded immediately.
+///
+/// Usage: call `start(handle:onWifiRestored:)` once from `KernelModel.init()`.
 @MainActor
 final class NetworkCapability {
     private let monitor = NWPathMonitor()
     private let monitorQueue = DispatchQueue(label: "podcast.network-monitor", qos: .utility)
     private(set) var isOnWifi = true
+    /// Called on the main actor when Wi-Fi is (re)connected.
+    var onWifiRestored: (() -> Void)?
 
     /// Begin monitoring and send an initial `ConnectivityChanged` event
     /// to prime the Rust-side state. No-op when `handle` is nil.
     func start(handle: UnsafeMutableRawPointer?) {
         guard let handle else { return }
-        // Wrap the raw pointer in a value so the NWPathMonitor callback
-        // (which is @Sendable) can capture it without a non-Sendable warning.
         let rawHandle = UInt(bitPattern: handle)
         monitor.pathUpdateHandler = { [weak self] path in
             let wifi = path.usesInterfaceType(.wifi)
@@ -29,10 +32,15 @@ final class NetworkCapability {
                 guard let self,
                       let ptr = UnsafeMutableRawPointer(bitPattern: rawHandle)
                 else { return }
+                let wasOnWifi = self.isOnWifi
                 self.isOnWifi = wifi
                 self.sendReport(
                     NetworkReport(isWifi: wifi, isConnected: connected),
                     handle: ptr)
+                // When transitioning from cellular to Wi-Fi, drain deferred downloads.
+                if wifi && connected && !wasOnWifi {
+                    self.onWifiRestored?()
+                }
             }
         }
         monitor.start(queue: monitorQueue)
@@ -40,6 +48,7 @@ final class NetworkCapability {
 
     func stop() {
         monitor.cancel()
+        onWifiRestored = nil
     }
 
     private func sendReport(_ report: NetworkReport, handle: UnsafeMutableRawPointer) {

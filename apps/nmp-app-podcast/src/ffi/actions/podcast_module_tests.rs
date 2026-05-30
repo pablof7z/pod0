@@ -54,6 +54,7 @@ fn set_auto_download_action_round_trips() {
     let action = PodcastAction::SetAutoDownload {
         podcast_id: "abc-123".into(),
         enabled: true,
+        wifi_only: true,
     };
     let json = serde_json::to_string(&action).expect("encode");
     assert!(json.contains(r#""op":"set_auto_download""#));

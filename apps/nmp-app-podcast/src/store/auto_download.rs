@@ -51,6 +51,13 @@ use podcast_core::{Episode, EpisodeId};
 ///   `true`. When `false`, downloads on any interface (cellular + Wi-Fi).
 /// * `is_on_wifi` — current network-path state reported by
 ///   `nmp.network.capability`. Ignored when `wifi_only_on` is `false`.
+/// Returns `(ready, deferred)` where:
+/// - `ready` — episodes to dispatch for download immediately.
+/// - `deferred` — episodes that would auto-download but are gated on Wi-Fi
+///   while the device is currently on cellular. The caller must persist these
+///   so they can be dispatched when `NetworkReport::ConnectivityChanged`
+///   reports Wi-Fi restored; otherwise their guids become "existing" on the
+///   next refresh and they are permanently skipped.
 pub fn episodes_to_auto_download(
     fresh: &[Episode],
     existing_guids: &HashSet<String>,
@@ -58,19 +65,23 @@ pub fn episodes_to_auto_download(
     auto_download_on: bool,
     wifi_only_on: bool,
     is_on_wifi: bool,
-) -> Vec<(EpisodeId, String)> {
+) -> (Vec<(EpisodeId, String)>, Vec<(EpisodeId, String)>) {
     if !auto_download_on {
-        return Vec::new();
+        return (Vec::new(), Vec::new());
     }
-    if wifi_only_on && !is_on_wifi {
-        return Vec::new();
-    }
-    fresh
+    let candidates: Vec<(EpisodeId, String)> = fresh
         .iter()
         .filter(|ep| !existing_guids.contains(&ep.guid))
         .filter(|ep| !local_paths.contains_key(&ep.id))
         .map(|ep| (ep.id, ep.enclosure_url.to_string()))
-        .collect()
+        .collect();
+
+    if wifi_only_on && !is_on_wifi {
+        // Defer rather than discard: the caller persists these so they can be
+        // dispatched when Wi-Fi is restored.
+        return (Vec::new(), candidates);
+    }
+    (candidates, Vec::new())
 }
 
 #[cfg(test)]

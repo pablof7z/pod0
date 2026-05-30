@@ -90,6 +90,14 @@ pub struct PodcastStore {
     /// applies: Wi-Fi-only (matching `AutoDownloadPolicy.default.wifiOnly`).
     /// Cleared by `unsubscribe`.
     auto_download_cellular_allowed: HashSet<PodcastId>,
+    /// Episodes deferred because the device was on cellular when the feed
+    /// refreshed and the show is Wi-Fi-only. These are dispatched as a batch
+    /// the next time `NetworkReport::ConnectivityChanged { is_wifi: true }`
+    /// arrives. Keyed by `(episode_id_str, enclosure_url)`.
+    /// Not persisted — a cold launch on Wi-Fi will re-discover them naturally
+    /// via the next feed refresh; deferred entries represent at most the
+    /// downloads that were missed in the current session.
+    pub(super) pending_wifi_downloads: Vec<(String, String)>,
     /// Durable agent-memory bag (feature #33). Keyed on `MemoryFact.key`
     /// so writes upsert and the snapshot can render a deduped list. Lives
     /// alongside `podcasts` in `podcasts.json` so both projections share
@@ -146,6 +154,7 @@ impl PodcastStore {
             has_completed_onboarding: false,
             auto_download_enabled: HashSet::new(),
             auto_download_cellular_allowed: HashSet::new(),
+            pending_wifi_downloads: Vec::new(),
             memory_facts: HashMap::new(),
             ad_segments: HashMap::new(),
             auto_skip_ads_enabled: false,

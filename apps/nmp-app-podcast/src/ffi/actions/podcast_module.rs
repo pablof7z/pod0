@@ -9,6 +9,8 @@
 
 use serde::{Deserialize, Serialize};
 
+fn default_true() -> bool { true }
+
 use nmp_core::substrate::ActionModule;
 use nmp_core::ActorCommand;
 
@@ -107,7 +109,16 @@ pub enum PodcastAction {
     ///
     /// Per D0: Rust owns the decision; iOS only renders the toggle
     /// state from the projection.
-    SetAutoDownload { podcast_id: String, enabled: bool },
+    /// `wifi_only` — when `true` (the default), auto-download only fires when
+    /// the device is on Wi-Fi; when `false`, cellular downloads are allowed.
+    /// Defaults to `true` when absent (backward-compatible with old dispatches
+    /// that only sent `enabled`).
+    SetAutoDownload {
+        podcast_id: String,
+        enabled: bool,
+        #[serde(default = "default_true")]
+        wifi_only: bool,
+    },
     /// Fetch the active account's NIP-02 (kind:3) follow list and surface
     /// the result on `PodcastUpdate.social`.
     ///
@@ -129,6 +140,10 @@ pub enum PodcastAction {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         starred: Option<bool>,
     },
+    /// Drain and dispatch any downloads deferred because the device was on
+    /// cellular when their feed refreshed (Wi-Fi-only shows). Called by iOS
+    /// `NetworkCapability` when `ConnectivityChanged` reports `is_wifi: true`.
+    DispatchDeferredWifiDownloads,
 }
 
 /// Single action module for the whole `"podcast"` namespace.

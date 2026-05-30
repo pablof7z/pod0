@@ -194,6 +194,14 @@ extension PodcastHandle {
     @MainActor
     func startNetworkMonitor() {
         guard let handle = podcastHandle else { return }
+        // When Wi-Fi is restored after a cellular-only period, dispatch the
+        // deferred downloads action so episodes that were skipped on cellular
+        // are downloaded immediately rather than waiting for the next refresh.
+        PodcastCapabilities.shared.network.onWifiRestored = { [weak self] in
+            guard let self else { return }
+            _ = self.dispatchAction(namespace: "podcast",
+                                    body: ["op": "dispatch_deferred_wifi_downloads"])
+        }
         PodcastCapabilities.shared.network.start(handle: handle)
     }
 

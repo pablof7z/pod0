@@ -156,6 +156,18 @@ impl PodcastStore {
         self.is_on_wifi = value;
     }
 
+    /// Append deferred downloads (episodes that need Wi-Fi but the device
+    /// was on cellular at refresh time).
+    pub fn add_pending_wifi_downloads(&mut self, items: Vec<(String, String)>) {
+        self.pending_wifi_downloads.extend(items);
+    }
+
+    /// Drain and return all pending Wi-Fi downloads. Called when Wi-Fi is
+    /// restored so they can be dispatched immediately.
+    pub fn drain_pending_wifi_downloads(&mut self) -> Vec<(String, String)> {
+        std::mem::take(&mut self.pending_wifi_downloads)
+    }
+
     /// Update both skip intervals. Clamps each value to `[1.0, 120.0]`
     /// seconds and persists when either value changes.
     pub fn set_skip_intervals(&mut self, forward_secs: f64, backward_secs: f64) {

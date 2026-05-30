@@ -43,6 +43,11 @@ pub extern "C" fn nmp_app_podcast_network_report(
             if let Ok(mut s) = handle_ref.store.lock() {
                 s.set_is_on_wifi(is_wifi);
             }
+            // When Wi-Fi is restored, pending deferred downloads are drained
+            // and dispatched from `PodcastAction::DispatchDeferredWifiDownloads`.
+            // The iOS NetworkCapability fires that action when `is_wifi` becomes
+            // true so that the dispatch runs through the normal actor-thread path
+            // (which has access to `PodcastHostOpHandler::dispatch_download`).
         }
     }
 
