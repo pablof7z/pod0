@@ -9,10 +9,12 @@
 //! exposes one entry point per action variant, returning the
 //! `{"ok":true}` envelope shape every action handler in this crate uses.
 //!
-//! PR 6 replaces the scaffold canned reply with a real synchronous Ollama
-//! call via `agent_llm::chat_sync`. When Ollama is unreachable the handler
-//! falls back to `SCAFFOLD_ASSISTANT_REPLY` so the UI always receives
-//! a non-empty assistant message.
+//! The send path drives a real synchronous, tool-calling Ollama loop via
+//! `agent_llm::chat_with_tools` (M5.4), giving the agent access to the podcast
+//! store through `search_library` / `get_transcript` / `get_podcast_info`.
+//! When Ollama is unreachable the handler falls back to
+//! `SCAFFOLD_ASSISTANT_REPLY` so the UI always receives a non-empty assistant
+//! message.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -23,6 +25,7 @@ use uuid::Uuid;
 use crate::agent_llm;
 use crate::ffi::actions::AgentChatAction;
 use crate::ffi::projections::AgentMessageSummary;
+use crate::store::PodcastStore;
 
 /// Owns the agent-chat conversation transcript and the `is_busy` /
 /// "touched" flags. Held by `super::host_op_handler::PodcastHostOpHandler`
@@ -37,6 +40,10 @@ pub struct AgentChatHandler {
     /// `None` in unit tests (where the runtime isn't wired in) so the handler
     /// falls back to the scaffold reply without attempting a network connection.
     runtime: Option<Arc<tokio::runtime::Runtime>>,
+    /// Shared podcast store, exposed to the agent's tool layer (M5.4) so
+    /// `search_library` / `get_transcript` / `get_podcast_info` can read it.
+    /// `None` in unit tests that exercise transcript bookkeeping without a store.
+    store: Option<Arc<Mutex<PodcastStore>>>,
 }
 
 /// Fallback assistant reply used when Ollama is offline or the model errors.
@@ -56,8 +63,9 @@ impl AgentChatHandler {
         touched: Arc<AtomicBool>,
         rev: Arc<AtomicU64>,
         runtime: Arc<tokio::runtime::Runtime>,
+        store: Arc<Mutex<PodcastStore>>,
     ) -> Self {
-        Self { conversation, busy, touched, rev, runtime: Some(runtime) }
+        Self { conversation, busy, touched, rev, runtime: Some(runtime), store: Some(store) }
     }
 
     /// Create a handler without a runtime (test / scaffold path).
@@ -68,7 +76,7 @@ impl AgentChatHandler {
         touched: Arc<AtomicBool>,
         rev: Arc<AtomicU64>,
     ) -> Self {
-        Self { conversation, busy, touched, rev, runtime: None }
+        Self { conversation, busy, touched, rev, runtime: None, store: None }
     }
 
     /// Route a typed [`AgentChatAction`] to the right entry point.
@@ -132,22 +140,26 @@ impl AgentChatHandler {
         // placeholder. The background task bumps rev again when the reply lands.
         self.rev.fetch_add(1, Ordering::Relaxed);
 
-        match &self.runtime {
-            Some(rt) => {
+        match (&self.runtime, &self.store) {
+            (Some(rt), Some(store)) => {
                 // M5.2: spawn LLM call off the actor thread so the kernel stays
                 // responsive while waiting for Ollama (can take 2–30s).
+                // M5.4: the LLM call is now a tool-calling loop with access to
+                // the podcast store via `chat_with_tools`.
                 let conversation = Arc::clone(&self.conversation);
                 let busy = Arc::clone(&self.busy);
                 let rev = Arc::clone(&self.rev);
                 let runtime_clone = Arc::clone(rt);
+                let store_c = Arc::clone(store);
                 let message_owned = trimmed.to_owned();
 
                 rt.spawn(async move {
                     let reply = tokio::task::spawn_blocking(move || {
-                        agent_llm::chat_sync(
+                        agent_llm::chat_with_tools(
                             AGENT_SYSTEM_PROMPT,
                             &history_snapshot,
                             &message_owned,
+                            store_c,
                             &runtime_clone,
                         )
                         .unwrap_or_else(|_| SCAFFOLD_ASSISTANT_REPLY.to_owned())
@@ -167,8 +179,9 @@ impl AgentChatHandler {
                     rev.fetch_add(1, Ordering::Relaxed);
                 });
             }
-            None => {
-                // Test / scaffold path: no runtime wired, fill immediately by id.
+            _ => {
+                // Test / scaffold path: no runtime (or no store) wired, fill
+                // immediately by id with the scaffold reply.
                 if let Ok(mut c) = self.conversation.lock() {
                     if let Some(msg) = c.iter_mut().find(|m| m.id == placeholder_id) {
                         msg.content = SCAFFOLD_ASSISTANT_REPLY.to_owned();

@@ -143,6 +143,7 @@ pub extern "C" fn nmp_app_podcast_register(
         agent_touched.clone(),
         rev.clone(),
         runtime.clone(),
+        store.clone(),
     );
 
     // Install the host-op handler (requires &self, so take the ref AFTER the
