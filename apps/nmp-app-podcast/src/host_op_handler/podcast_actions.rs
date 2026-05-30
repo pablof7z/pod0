@@ -72,7 +72,12 @@ impl PodcastHostOpHandler {
                 self.handle_update_settings(has_completed_onboarding)
             }
             PodcastAction::GenerateBriefing => {
-                crate::briefings_handler::handle_generate_briefing(&self.briefing, &self.rev)
+                crate::briefings_handler::handle_generate_briefing(
+                    &self.briefing,
+                    &self.rev,
+                    Some(&self.store),
+                    Some(&self.runtime),
+                )
             }
             PodcastAction::FetchComments { episode_id } => {
                 crate::comments_handler::handle_fetch_comments(
