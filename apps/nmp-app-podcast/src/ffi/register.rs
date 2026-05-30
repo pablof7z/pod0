@@ -176,11 +176,27 @@ pub extern "C" fn nmp_app_podcast_register(
         publish_state.clone(),
         agent_chat,
         comments_cache.clone(),
-        runtime,
+        runtime.clone(),
         inbox_triage_cache.clone(),
         Arc::clone(&inbox_triage_in_progress),
         social.clone(),
     )));
+
+    // Voice-mode conversation manager (M5.6-voice): owns the STT→LLM→TTS
+    // turn history and dispatches LLM replies back to the iOS voice
+    // executor. Holds clones of the shared store / voice-state / rev plus
+    // the same Tokio runtime so background turns reuse the shared
+    // scheduler. The `runtime` Arc is itself moved onto the handle below
+    // so the manager's spawned turns are fenced by the actor-thread join
+    // before `nmp_app_free`.
+    let voice_conversation = crate::voice_conversation::VoiceConversationManager::new(
+        app,
+        Arc::new(Mutex::new(Vec::new())),
+        store.clone(),
+        voice_state.clone(),
+        runtime,
+        rev.clone(),
+    );
 
     let handle = Arc::new(PodcastHandle {
         app,
@@ -207,6 +223,7 @@ pub extern "C" fn nmp_app_podcast_register(
         podcast_keys,
         publish_state,
         voice_state,
+        voice_conversation,
         conversation,
         agent_busy,
         agent_touched,

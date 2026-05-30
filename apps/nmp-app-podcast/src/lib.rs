@@ -68,6 +68,7 @@ pub mod store;
 pub(crate) mod tasks_handler;
 pub(crate) mod transcript;
 pub(crate) mod tts;
+pub(crate) mod voice_conversation;
 pub(crate) mod voice_handler;
 pub(crate) mod wiki;
 pub(crate) mod wiki_llm;

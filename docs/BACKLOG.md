@@ -248,6 +248,17 @@ worktrees currently in flight.
   `nowPlaying.positionSecs`. At that point `PlatformCapability.applyNowPlayingSnapshot`
   needs a separate position-write path (not gated by the identity dedup) so the
   widget stays live during playback. Owner: M1.6 agent.
+- **voice-conversation-off-thread-dispatch-uaf.** `VoiceConversationManager`
+  (M5.6-voice, `apps/nmp-app-podcast/src/voice_conversation.rs`) dispatches
+  `VoiceCommand::Speak` by dereferencing the `*mut NmpApp` from inside a
+  `runtime.spawn` task on a Tokio worker thread. `NmpApp::Drop` joins only the
+  actor and update-listener threads — it does not await this crate's Tokio
+  runtime, and `Runtime::drop` does not wait for detached tasks. A long LLM
+  turn that returns after `nmp_app_free` begins is therefore an unfenced read
+  of a freeing `NmpApp`. Fix: route the `Speak` dispatch back through the actor
+  thread (so the existing actor-join fence covers it) instead of dereferencing
+  `app` off-thread. The synchronous `audio_report.rs` dispatch is the safe
+  precedent. Owner: M5.6 follow-up.
 
 ## Pending Decisions
 
