@@ -156,15 +156,12 @@ extension AppStateStore {
             // adSegments: fully projected from Rust (EpisodeSummary.ad_segments).
             // Fallback removed — M4 cleanup.
             episodes[idx].metadataIndexed = prior.metadataIndexed
-            // Prefer Rust-projected chapters (publisher JSON fetched via
-            // `fetch_chapters`). If Rust has none yet, fall back to any
-            // chapters stored in Swift. AI-generated chapters are merged on
-            // top of publisher chapters so the full set is always visible.
+            // Prefer Rust-projected chapters. If Rust has none yet, keep prior
+            // Swift chapters so UI doesn't flash empty.
+            // The AI-chapter merge branch is removed — M5.5 persists AI chapters
+            // to the Rust store (is_ai_generated=true); they now ride the projection.
             if episodes[idx].chapters?.isEmpty != false {
                 episodes[idx].chapters = prior.chapters
-            } else if let aiOnly = prior.chapters?.filter({ $0.isAIGenerated }),
-                      !aiOnly.isEmpty {
-                episodes[idx].chapters = (episodes[idx].chapters ?? []) + aiOnly
             }
         }
         next.episodes = episodes
