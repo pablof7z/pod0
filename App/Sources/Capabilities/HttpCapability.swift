@@ -52,14 +52,26 @@ struct HttpRequest: Decodable {
     let url: String
     /// Header `[name, value]` pairs. Absent from the wire ⇒ empty.
     let headers: [[String]]
-    /// Request body — present for POST, absent for GET.
+    /// Request body as a UTF-8 string — present for a text POST (e.g. an LNURL
+    /// callback or a JSON payload), absent for GET. Mutually exclusive with
+    /// `bodyBase64`: a UTF-8 string body cannot carry arbitrary binary bytes.
     let body: String?
+    /// Request body as standard-alphabet base64 (`+/`, padded). Present when the
+    /// kernel needs to send *binary* bytes that don't survive a UTF-8 round-trip
+    /// — e.g. the Blossom blob upload (`apps/nmp-app-podcast/src/blossom.rs`),
+    /// which SHA-256s the raw audio file and base64-encodes the bytes so they
+    /// can transit this capability intact. When present it takes precedence over
+    /// `body` and is decoded back to raw `Data` before being sent as the HTTP
+    /// request body. The wire field is purely additive: callers that only send
+    /// UTF-8 bodies omit it and behave exactly as before.
+    let bodyBase64: String?
 
     enum CodingKeys: String, CodingKey {
         case method
         case url
         case headers
         case body
+        case bodyBase64 = "body_base64"
     }
 
     init(from decoder: Decoder) throws {
@@ -68,6 +80,7 @@ struct HttpRequest: Decodable {
         url = try c.decode(String.self, forKey: .url)
         headers = try c.decodeIfPresent([[String]].self, forKey: .headers) ?? []
         body = try c.decodeIfPresent(String.self, forKey: .body)
+        bodyBase64 = try c.decodeIfPresent(String.self, forKey: .bodyBase64)
     }
 }
 
@@ -225,7 +238,17 @@ final class HttpCapability {
         for pair in httpRequest.headers where pair.count == 2 {
             urlRequest.setValue(pair[1], forHTTPHeaderField: pair[0])
         }
-        if let body = httpRequest.body {
+        // Binary bodies arrive base64-encoded so they survive the UTF-8 wire
+        // (the Rust `body` field is a `String`). `bodyBase64` wins over `body`
+        // when both are somehow present — it is the only field that can carry
+        // arbitrary bytes (e.g. a Blossom blob upload). A malformed base64
+        // payload is reported as data, never silently sent as garbage (D6).
+        if let bodyBase64 = httpRequest.bodyBase64 {
+            guard let data = Data(base64Encoded: bodyBase64) else {
+                return .error(message: "invalid-body-base64")
+            }
+            urlRequest.httpBody = data
+        } else if let body = httpRequest.body {
             urlRequest.httpBody = body.data(using: .utf8)
         }
 
