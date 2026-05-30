@@ -376,6 +376,33 @@ final class AppStateStore {
                              body: ["op": "set_auto_delete_downloads_after_played",
                                     "enabled": settings.autoDeleteDownloadsAfterPlayed])
         }
+        if settings.agentInitialModel != prior.agentInitialModel
+            || settings.agentInitialModelName != prior.agentInitialModelName {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: [
+                                 "op": "set_agent_initial_model",
+                                 "model": settings.agentInitialModel,
+                                 "model_name": settings.agentInitialModelName
+                             ])
+        }
+        if settings.agentThinkingModel != prior.agentThinkingModel
+            || settings.agentThinkingModelName != prior.agentThinkingModelName {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: [
+                                 "op": "set_agent_thinking_model",
+                                 "model": settings.agentThinkingModel,
+                                 "model_name": settings.agentThinkingModelName
+                             ])
+        }
+        if settings.memoryCompilationModel != prior.memoryCompilationModel
+            || settings.memoryCompilationModelName != prior.memoryCompilationModelName {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: [
+                                 "op": "set_memory_compilation_model",
+                                 "model": settings.memoryCompilationModel,
+                                 "model_name": settings.memoryCompilationModelName
+                             ])
+        }
     }
 
     /// Wipes all user data while preserving API credentials and Nostr identity.

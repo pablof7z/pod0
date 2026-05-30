@@ -135,6 +135,12 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
             skip_backward_secs: s.skip_backward_secs(),
             default_playback_rate: s.default_playback_rate(),
             auto_delete_downloads_after_played: s.auto_delete_downloads_after_played(),
+            agent_initial_model: s.agent_initial_model().to_owned(),
+            agent_initial_model_name: s.agent_initial_model_name().to_owned(),
+            agent_thinking_model: s.agent_thinking_model().to_owned(),
+            agent_thinking_model_name: s.agent_thinking_model_name().to_owned(),
+            memory_compilation_model: s.memory_compilation_model().to_owned(),
+            memory_compilation_model_name: s.memory_compilation_model_name().to_owned(),
         };
         (library, s.all_memory_facts(), settings)
     })

@@ -395,6 +395,27 @@ impl PodcastHostOpHandler {
                 self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 serde_json::json!({"ok": true})
             }
+            SettingsAction::SetAgentInitialModel { model, model_name } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_agent_initial_model(model, model_name);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetAgentThinkingModel { model, model_name } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_agent_thinking_model(model, model_name);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetMemoryCompilationModel { model, model_name } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_memory_compilation_model(model, model_name);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
         }
     }
 }

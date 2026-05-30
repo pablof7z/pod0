@@ -39,6 +39,14 @@ pub enum SettingsAction {
     /// Toggle delete-downloaded-file-after-played. When `true`, the kernel
     /// deletes the local audio file after marking the episode played.
     SetAutoDeleteDownloadsAfterPlayed { enabled: bool },
+    /// Set both the model ID and name for initial agent chat. Carried atomically
+    /// in one action so id and name update together and the guard fires when
+    /// either value changes.
+    SetAgentInitialModel { model: String, model_name: String },
+    /// Set both the model ID and name for agent thinking/planning. Atomic update.
+    SetAgentThinkingModel { model: String, model_name: String },
+    /// Set both the model ID and name for memory compilation. Atomic update.
+    SetMemoryCompilationModel { model: String, model_name: String },
 }
 
 /// Action module for the `"podcast.settings"` namespace.

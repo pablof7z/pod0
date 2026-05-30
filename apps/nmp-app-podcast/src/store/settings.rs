@@ -208,6 +208,66 @@ impl PodcastStore {
         self.skip_backward_secs = bwd;
         self.persist();
     }
+
+    /// LLM model ID for initial agent chat. Default "deepseek-v4-flash:cloud".
+    pub fn agent_initial_model(&self) -> &str {
+        &self.agent_initial_model
+    }
+
+    /// Human-readable name for the initial agent model. Default "DeepSeek Flash".
+    pub fn agent_initial_model_name(&self) -> &str {
+        &self.agent_initial_model_name
+    }
+
+    /// Set both the model ID and name for initial agent chat. Idempotent.
+    pub fn set_agent_initial_model(&mut self, model: String, model_name: String) {
+        if self.agent_initial_model == model && self.agent_initial_model_name == model_name {
+            return;
+        }
+        self.agent_initial_model = model;
+        self.agent_initial_model_name = model_name;
+        self.persist();
+    }
+
+    /// LLM model ID for agent thinking/planning. Default "deepseek-v4-pro:cloud".
+    pub fn agent_thinking_model(&self) -> &str {
+        &self.agent_thinking_model
+    }
+
+    /// Human-readable name for the agent thinking model. Default "DeepSeek Pro".
+    pub fn agent_thinking_model_name(&self) -> &str {
+        &self.agent_thinking_model_name
+    }
+
+    /// Set both the model ID and name for agent thinking/planning. Idempotent.
+    pub fn set_agent_thinking_model(&mut self, model: String, model_name: String) {
+        if self.agent_thinking_model == model && self.agent_thinking_model_name == model_name {
+            return;
+        }
+        self.agent_thinking_model = model;
+        self.agent_thinking_model_name = model_name;
+        self.persist();
+    }
+
+    /// LLM model ID for memory compilation. Default "deepseek-v4-flash:cloud".
+    pub fn memory_compilation_model(&self) -> &str {
+        &self.memory_compilation_model
+    }
+
+    /// Human-readable name for the memory compilation model. Default "DeepSeek Flash".
+    pub fn memory_compilation_model_name(&self) -> &str {
+        &self.memory_compilation_model_name
+    }
+
+    /// Set both the model ID and name for memory compilation. Idempotent.
+    pub fn set_memory_compilation_model(&mut self, model: String, model_name: String) {
+        if self.memory_compilation_model == model && self.memory_compilation_model_name == model_name {
+            return;
+        }
+        self.memory_compilation_model = model;
+        self.memory_compilation_model_name = model_name;
+        self.persist();
+    }
 }
 
 #[cfg(test)]

@@ -128,6 +128,21 @@ pub struct PodcastStore {
     pub(super) default_playback_rate: f64,
     /// When `true`, downloaded files are deleted after the episode is marked played.
     pub(super) auto_delete_downloads_after_played: bool,
+    /// LLM model ID for initial agent chat. E.g. "deepseek-v4-flash:cloud".
+    /// Default: "deepseek-v4-flash:cloud".
+    pub(super) agent_initial_model: String,
+    /// Human-readable name for `agent_initial_model`. Default: "DeepSeek Flash".
+    pub(super) agent_initial_model_name: String,
+    /// LLM model ID for agent thinking/planning. E.g. "deepseek-v4-pro:cloud".
+    /// Default: "deepseek-v4-pro:cloud".
+    pub(super) agent_thinking_model: String,
+    /// Human-readable name for `agent_thinking_model`. Default: "DeepSeek Pro".
+    pub(super) agent_thinking_model_name: String,
+    /// LLM model ID for memory compilation (agent memory synthesis).
+    /// Default: "deepseek-v4-flash:cloud".
+    pub(super) memory_compilation_model: String,
+    /// Human-readable name for `memory_compilation_model`. Default: "DeepSeek Flash".
+    pub(super) memory_compilation_model_name: String,
     /// Last-known Wi-Fi state reported by `nmp.network.capability`. `true` when
     /// the device's active interface is Wi-Fi. Defaults to `true` so
     /// auto-download runs on first launch before the iOS capability fires its
@@ -170,6 +185,12 @@ impl PodcastStore {
             skip_backward_secs: 15.0,
             default_playback_rate: 1.0,
             auto_delete_downloads_after_played: false,
+            agent_initial_model: "deepseek-v4-flash:cloud".to_owned(),
+            agent_initial_model_name: "DeepSeek Flash".to_owned(),
+            agent_thinking_model: "deepseek-v4-pro:cloud".to_owned(),
+            agent_thinking_model_name: "DeepSeek Pro".to_owned(),
+            memory_compilation_model: "deepseek-v4-flash:cloud".to_owned(),
+            memory_compilation_model_name: "DeepSeek Flash".to_owned(),
             is_on_wifi: true,
             data_dir: None,
             loaded_queue: Vec::new(),
@@ -271,6 +292,37 @@ impl PodcastStore {
         };
         self.auto_delete_downloads_after_played =
             loaded.settings.auto_delete_downloads_after_played;
+        // On-disk empty string means "field absent in old file" — replace with default.
+        self.agent_initial_model = if !loaded.settings.agent_initial_model.is_empty() {
+            loaded.settings.agent_initial_model
+        } else {
+            "deepseek-v4-flash:cloud".to_owned()
+        };
+        self.agent_initial_model_name = if !loaded.settings.agent_initial_model_name.is_empty() {
+            loaded.settings.agent_initial_model_name
+        } else {
+            "DeepSeek Flash".to_owned()
+        };
+        self.agent_thinking_model = if !loaded.settings.agent_thinking_model.is_empty() {
+            loaded.settings.agent_thinking_model
+        } else {
+            "deepseek-v4-pro:cloud".to_owned()
+        };
+        self.agent_thinking_model_name = if !loaded.settings.agent_thinking_model_name.is_empty() {
+            loaded.settings.agent_thinking_model_name
+        } else {
+            "DeepSeek Pro".to_owned()
+        };
+        self.memory_compilation_model = if !loaded.settings.memory_compilation_model.is_empty() {
+            loaded.settings.memory_compilation_model
+        } else {
+            "deepseek-v4-flash:cloud".to_owned()
+        };
+        self.memory_compilation_model_name = if !loaded.settings.memory_compilation_model_name.is_empty() {
+            loaded.settings.memory_compilation_model_name
+        } else {
+            "DeepSeek Flash".to_owned()
+        };
         self.cached_queue = loaded.queue.clone();
         self.loaded_queue = loaded.queue;
         // Restore deferred Wi-Fi downloads that were pending when the app was
@@ -345,6 +397,12 @@ impl PodcastStore {
                 skip_backward_secs: self.skip_backward_secs,
                 default_playback_rate: self.default_playback_rate,
                 auto_delete_downloads_after_played: self.auto_delete_downloads_after_played,
+                agent_initial_model: self.agent_initial_model.clone(),
+                agent_initial_model_name: self.agent_initial_model_name.clone(),
+                agent_thinking_model: self.agent_thinking_model.clone(),
+                agent_thinking_model_name: self.agent_thinking_model_name.clone(),
+                memory_compilation_model: self.memory_compilation_model.clone(),
+                memory_compilation_model_name: self.memory_compilation_model_name.clone(),
             },
             queue: Vec::new(), // filled by persist() from self.cached_queue after return
             pending_wifi_downloads: self.pending_wifi_downloads.clone(),

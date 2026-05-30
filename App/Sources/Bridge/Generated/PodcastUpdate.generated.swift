@@ -103,6 +103,18 @@ struct SettingsSnapshot: Equatable {
     /// When `true`, the kernel deletes the downloaded file after the episode
     /// is marked played. Default `false`.
     var autoDeleteDownloadsAfterPlayed: Bool = false
+    /// LLM model ID for initial agent chat. Default `"deepseek-v4-flash:cloud"`.
+    var agentInitialModel: String = "deepseek-v4-flash:cloud"
+    /// Human-readable name for initial agent model. Default `"DeepSeek Flash"`.
+    var agentInitialModelName: String = "DeepSeek Flash"
+    /// LLM model ID for agent thinking/planning. Default `"deepseek-v4-pro:cloud"`.
+    var agentThinkingModel: String = "deepseek-v4-pro:cloud"
+    /// Human-readable name for agent thinking model. Default `"DeepSeek Pro"`.
+    var agentThinkingModelName: String = "DeepSeek Pro"
+    /// LLM model ID for memory compilation. Default `"deepseek-v4-flash:cloud"`.
+    var memoryCompilationModel: String = "deepseek-v4-flash:cloud"
+    /// Human-readable name for memory compilation model. Default `"DeepSeek Flash"`.
+    var memoryCompilationModelName: String = "DeepSeek Flash"
 }
 
 /// Active download-queue projection surfaced via `PodcastUpdate.downloads`.
@@ -207,6 +219,12 @@ extension SettingsSnapshot: Codable {
         skipBackwardSecs = try c.decodeIfPresent(Double.self, forKey: .skipBackwardSecs) ?? 15
         defaultPlaybackRate = try c.decodeIfPresent(Double.self, forKey: .defaultPlaybackRate) ?? 1.0
         autoDeleteDownloadsAfterPlayed = try c.decodeIfPresent(Bool.self, forKey: .autoDeleteDownloadsAfterPlayed) ?? false
+        agentInitialModel = try c.decodeIfPresent(String.self, forKey: .agentInitialModel) ?? "deepseek-v4-flash:cloud"
+        agentInitialModelName = try c.decodeIfPresent(String.self, forKey: .agentInitialModelName) ?? "DeepSeek Flash"
+        agentThinkingModel = try c.decodeIfPresent(String.self, forKey: .agentThinkingModel) ?? "deepseek-v4-pro:cloud"
+        agentThinkingModelName = try c.decodeIfPresent(String.self, forKey: .agentThinkingModelName) ?? "DeepSeek Pro"
+        memoryCompilationModel = try c.decodeIfPresent(String.self, forKey: .memoryCompilationModel) ?? "deepseek-v4-flash:cloud"
+        memoryCompilationModelName = try c.decodeIfPresent(String.self, forKey: .memoryCompilationModelName) ?? "DeepSeek Flash"
     }
 }
 

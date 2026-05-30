@@ -108,6 +108,30 @@ pub(super) struct PersistedSettings {
     /// When `true`, downloaded files are deleted after the episode is marked played.
     #[serde(default)]
     pub auto_delete_downloads_after_played: bool,
+    /// LLM model ID for initial agent chat. Empty string in old files →
+    /// hydration replaces with "deepseek-v4-flash:cloud".
+    #[serde(default)]
+    pub agent_initial_model: String,
+    /// Human-readable name for agent initial model. Empty string in old files →
+    /// hydration replaces with "DeepSeek Flash".
+    #[serde(default)]
+    pub agent_initial_model_name: String,
+    /// LLM model ID for agent thinking/planning. Empty string in old files →
+    /// hydration replaces with "deepseek-v4-pro:cloud".
+    #[serde(default)]
+    pub agent_thinking_model: String,
+    /// Human-readable name for agent thinking model. Empty string in old files →
+    /// hydration replaces with "DeepSeek Pro".
+    #[serde(default)]
+    pub agent_thinking_model_name: String,
+    /// LLM model ID for memory compilation. Empty string in old files →
+    /// hydration replaces with "deepseek-v4-flash:cloud".
+    #[serde(default)]
+    pub memory_compilation_model: String,
+    /// Human-readable name for memory compilation model. Empty string in old files →
+    /// hydration replaces with "DeepSeek Flash".
+    #[serde(default)]
+    pub memory_compilation_model_name: String,
 }
 
 fn default_true() -> bool { true }
@@ -124,6 +148,12 @@ impl Default for PersistedSettings {
             skip_backward_secs: 15.0,
             default_playback_rate: 1.0,
             auto_delete_downloads_after_played: false,
+            agent_initial_model: "deepseek-v4-flash:cloud".to_owned(),
+            agent_initial_model_name: "DeepSeek Flash".to_owned(),
+            agent_thinking_model: "deepseek-v4-pro:cloud".to_owned(),
+            agent_thinking_model_name: "DeepSeek Pro".to_owned(),
+            memory_compilation_model: "deepseek-v4-flash:cloud".to_owned(),
+            memory_compilation_model_name: "DeepSeek Flash".to_owned(),
         }
     }
 }
