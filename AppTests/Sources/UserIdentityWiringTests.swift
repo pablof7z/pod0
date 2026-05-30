@@ -29,7 +29,11 @@ final class UserIdentityWiringTests: XCTestCase {
         storeFileURL = made.fileURL
         store = made.store
         signer = RecordingSigner()
-        identity = UserIdentityStore.shared
+        // The wiring under test publishes through `store.identity` (the
+        // AppStateStore-owned instance) now that the `.shared` singleton is
+        // gone — so seed the recording signer into that same instance, not a
+        // detached one, or the +Notes/+Clips publish Tasks would never reach it.
+        identity = store.identity
         identity._setSignerForTesting(signer)
     }
 

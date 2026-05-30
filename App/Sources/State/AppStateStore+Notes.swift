@@ -5,7 +5,7 @@ import Foundation
 extension AppStateStore {
 
     /// User-authored note path. Defaults `author: .user` and fires a
-    /// fire-and-forget kind-1 publish through `UserIdentityStore.shared`
+    /// fire-and-forget kind-1 publish through the store-owned `identity`
     /// per the wiring contract in `identity-05-synthesis.md` §5.3.
     /// Existing call-sites (`AgentNotesView`, `FriendDetailView`) hit this
     /// signature unchanged.
@@ -30,7 +30,7 @@ extension AppStateStore {
                 episodeCoord = nil
             }
             // Fire-and-forget — relay outage must never block a local action.
-            Task { try? await UserIdentityStore.shared.publishUserNote(note, episodeCoord: episodeCoord) }
+            Task { try? await identity.publishUserNote(note, episodeCoord: episodeCoord) }
         }
         return note
     }

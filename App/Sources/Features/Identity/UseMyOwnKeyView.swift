@@ -15,7 +15,8 @@ struct UseMyOwnKeyView: View {
     /// Identity root rather than stranding them on AdvancedView.
     var onImportComplete: () -> Void = {}
 
-    @Environment(UserIdentityStore.self) private var identity
+    @Environment(AppStateStore.self) private var store
+    private var identity: UserIdentityStore { store.identity }
     @State private var nsec = ""
     @State private var revealed = false
     @State private var hasBackup = false

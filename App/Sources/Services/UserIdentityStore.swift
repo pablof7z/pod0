@@ -376,15 +376,6 @@ final class UserIdentityStore {
         try KeychainStore.saveString(s, service: Self.nip46MetaService, account: Self.nip46MetaAccount)
     }
 
-    // MARK: - Process-wide singleton (slice B)
-
-    /// Process-wide instance used by the wiring layer (`AppStateStore+Notes`,
-    /// `AppStateStore+Clips`, `EditProfileView.save`) so domain-level
-    /// extensions can publish without DI threading. The SwiftUI environment
-    /// instance in `AppMain` references the same object so observation stays
-    /// consistent.
-    static let shared = UserIdentityStore()
-
     // MARK: - Slice-B internal helpers
 
     /// Internal alias for the file-private `generateGeneratedKey()` so the

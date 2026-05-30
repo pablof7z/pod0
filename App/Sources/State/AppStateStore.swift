@@ -25,6 +25,15 @@ final class AppStateStore {
 
     nonisolated private static let logger = Logger.app("AppStateStore")
 
+    // MARK: - User identity
+
+    /// The human user's Nostr identity (signer + Keychain key material + NIP-46
+    /// connection). Owned here so the wiring layer (`AppStateStore+Notes`,
+    /// `AppStateStore+Clips`) and the SwiftUI surface share one instance without
+    /// a process-wide singleton. Call `identity.start()` once at launch
+    /// (see `AppMain`) to load any persisted key / resume a remote signer.
+    let identity = UserIdentityStore()
+
     // MARK: - Navigation
 
     /// Pending friend invite dispatched by a `podcastr://friend/add` deep-link.

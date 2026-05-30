@@ -33,7 +33,7 @@ struct RootView: View {
 
     @Environment(AppStateStore.self) var store
     @Environment(AgentAskCoordinator.self) var askCoordinator
-    @Environment(UserIdentityStore.self) var userIdentity
+    private var userIdentity: UserIdentityStore { store.identity }
     @State var selectedTab: RootTab = .home
     @State var feedbackWorkflow = FeedbackWorkflow()
     @State var sharedFeedbackStore = ShakeFeedbackStore(config: .podcastr, namespace: "io.f7z.podcast")

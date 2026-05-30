@@ -12,7 +12,8 @@ struct FeedbackComposeView: View {
     let store: FeedbackStore
     @Bindable var workflow: FeedbackWorkflow
     @Environment(\.dismiss) private var dismiss
-    @Environment(UserIdentityStore.self) private var userIdentity
+    @Environment(AppStateStore.self) private var appStore
+    private var userIdentity: UserIdentityStore { appStore.identity }
 
     @State private var errorMessage: String?
     @State private var showDiscardConfirm = false

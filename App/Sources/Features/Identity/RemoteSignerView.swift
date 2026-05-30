@@ -9,7 +9,8 @@ import SwiftUI
 
 struct RemoteSignerView: View {
 
-    @Environment(UserIdentityStore.self) private var identity
+    @Environment(AppStateStore.self) private var store
+    private var identity: UserIdentityStore { store.identity }
     @State private var bunkerInput = ""
     @State private var isConnecting = false
     @State private var showNostrConnect = false

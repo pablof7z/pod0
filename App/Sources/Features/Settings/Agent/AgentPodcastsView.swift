@@ -173,7 +173,7 @@ struct AgentPodcastsView: View {
     }
 
     private func initializeRelays() async {
-        let userPubkey = await MainActor.run { UserIdentityStore.shared.publicKeyHex }
+        let userPubkey = await MainActor.run { store.identity.publicKeyHex }
         let inboxRelay = await MainActor.run { store.state.settings.nostrRelayURL }
 
         isFetchingRelays = true

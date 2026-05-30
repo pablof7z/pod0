@@ -7,7 +7,6 @@ struct PodcastrApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var kernelModel = KernelModel()
     @State private var store = AppStateStore()
-    @State private var userIdentity = UserIdentityStore.shared
     @State private var relayService: NostrRelayService?
     @State private var scheduledTaskRunner: AgentScheduledTaskRunner?
     /// Single global owner-consultation coordinator. Lives here (not on
@@ -42,7 +41,6 @@ struct PodcastrApp: App {
             RootView(relayService: relayService, scheduledTaskRunner: scheduledTaskRunner)
                 .environment(kernelModel)
                 .environment(store)
-                .environment(userIdentity)
                 .environment(askCoordinator)
                 .task {
                     kernelModel.start()
@@ -53,7 +51,7 @@ struct PodcastrApp: App {
                     store.attachKernel(kernelModel)
                     PodcastCapabilities.shared.startICloudSync(kernel: kernelModel, appStore: store)
                 }
-                .task { userIdentity.start() }
+                .task { store.identity.start() }
                 .task { CarPlayController.shared.attach(store: store) }
                 .task {
                     let service = NostrRelayService(store: store, askCoordinator: askCoordinator)

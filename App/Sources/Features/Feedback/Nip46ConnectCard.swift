@@ -22,7 +22,8 @@ struct Nip46ConnectCard: View {
         case primary
     }
 
-    @Environment(UserIdentityStore.self) private var identity
+    @Environment(AppStateStore.self) private var store
+    private var identity: UserIdentityStore { store.identity }
     @Environment(\.openURL) private var openURL
     @Binding var bunkerInput: String
     @Binding var isConnectingRemote: Bool

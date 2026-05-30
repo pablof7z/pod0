@@ -13,7 +13,7 @@ struct FeedbackVoiceRecordingSheet: View {
     let store: FeedbackStore
     @Bindable var workflow: FeedbackWorkflow
     @Environment(AppStateStore.self) private var appStore
-    @Environment(UserIdentityStore.self) private var userIdentity
+    private var userIdentity: UserIdentityStore { appStore.identity }
     @Environment(\.dismiss) private var dismiss
 
     @StateObject private var stt = VoiceNoteRealtimeSTT()
