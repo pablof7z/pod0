@@ -53,9 +53,9 @@ enum DataExport {
     /// - Removes the legacy OpenRouter API key (the only secret-shaped field
     ///   that ever touched persistence; current credentials live in Keychain).
     static func redactedState(from state: AppState) -> AppState {
-        // Credentials live exclusively in Keychain (PcstIdentityCapability);
-        // no legacy plaintext key remains in the AppState JSON blob.
-        state
+        var copy = state
+        copy.settings.legacyOpenRouterAPIKey = nil
+        return copy
     }
 
     /// Builds the export payload from the live in-memory state.
