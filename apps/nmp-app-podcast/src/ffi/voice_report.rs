@@ -55,6 +55,15 @@ pub extern "C" fn nmp_app_podcast_voice_report(
     };
 
     let handle_ref = unsafe { &*handle };
+
+    // A final transcript means the user finished speaking — capture the
+    // text *before* `apply_report` consumes the report so we can kick off
+    // the LLM turn once the projection lock is released (M5.6-voice).
+    let final_transcript = match &report {
+        VoiceReport::TranscriptFinal { text } => Some(text.clone()),
+        _ => None,
+    };
+
     let changed = match handle_ref.voice_state.lock() {
         Ok(mut state) => apply_report(&mut state, report),
         Err(_) => false,
@@ -63,6 +72,13 @@ pub extern "C" fn nmp_app_podcast_voice_report(
         handle_ref
             .rev
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    // Lock released — now close the STT→LLM→TTS loop. The manager no-ops
+    // on an empty transcript and spawns the LLM turn off the actor thread
+    // otherwise, dispatching the spoken reply back to iOS asynchronously.
+    if let Some(transcript) = final_transcript {
+        handle_ref.voice_conversation.on_transcript_final(transcript);
     }
 
     std::ptr::null_mut()

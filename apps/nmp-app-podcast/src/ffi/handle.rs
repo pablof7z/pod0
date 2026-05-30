@@ -139,6 +139,12 @@ pub struct PodcastHandle {
     /// reports translate back into projection updates). Read by the
     /// snapshot builder on each tick.
     pub(super) voice_state: Arc<Mutex<VoiceState>>,
+    /// Voice-mode conversation manager (M5.6-voice). Owns the rolling
+    /// STT→LLM→TTS turn history and dispatches LLM replies back to the
+    /// iOS voice executor. Invoked from `nmp_app_podcast_voice_report`
+    /// when a `VoiceReport::TranscriptFinal` arrives (the user finished
+    /// speaking).
+    pub(super) voice_conversation: crate::voice_conversation::VoiceConversationManager,
     /// Active agent-chat transcript. Written by the
     /// [`super::actions::agent_module::AgentActionModule`] handler on the
     /// actor thread; read by `build_snapshot_payload` on the main thread.
