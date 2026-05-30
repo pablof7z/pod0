@@ -251,6 +251,21 @@ worktrees currently in flight.
 
 ## Pending Decisions
 
+- **podcast-keys-keychain-m7 (follow-up to M6-part-B).** Per-podcast NIP-F4
+  secrets are now copied JSON→Keychain on startup by the Swift
+  `PodcastKeysKeychainMigration` (account id `pcst.podcast.<podcast_id>.nipf4`,
+  written via `PcstIdentityCapability.direct`). The Keychain copy is currently
+  **write-only**: Rust still reads/writes plaintext `podcast-keys.json` as the
+  source of truth, and nothing reads the Keychain item yet. M7 must:
+  (1) flip the Rust read path to recall secrets from the Keychain — but note
+  `pcst.identity.capability` is **not reachable from Rust** today
+  (`SyncCapabilityBridge` routes only http/audio/download), so this depends on
+  **PD-019** (the keyring Rust→Swift contract) being built first, OR on a
+  Swift-side read shim; (2) delete `save_to_disk`/`podcast-keys.json` once reads
+  are Keychain-backed. **Cross-language contract:** the account-id format lives
+  only in Swift (`PodcastKeysKeychainMigration.accountID(_:)`) — the Rust read
+  path must reconstruct `pcst.podcast.<id>.nipf4` to match; there is no shared
+  constant enforcing this.
 - **storage-engine-canonicality.** The old plan called for sled; the current
   implementation uses JSON persistence for `PodcastStore`. Decide whether JSON
   is the accepted canonical storage for the current milestone or whether a
