@@ -142,10 +142,8 @@ extension AppStateStore {
             episodes[idx].triageDecision = prior.triageDecision
             episodes[idx].triageRationale = prior.triageRationale
             episodes[idx].triageIsHero = prior.triageIsHero
-            // Prefer Rust-projected ad segments; fall back to Swift's if Rust has none.
-            if episodes[idx].adSegments?.isEmpty != false {
-                episodes[idx].adSegments = prior.adSegments
-            }
+            // adSegments: fully projected from Rust (EpisodeSummary.ad_segments).
+            // Fallback removed — M4 cleanup.
             episodes[idx].metadataIndexed = prior.metadataIndexed
             // Prefer Rust-projected chapters (publisher JSON fetched via
             // `fetch_chapters`). If Rust has none yet, fall back to any
