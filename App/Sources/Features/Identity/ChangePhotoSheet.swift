@@ -12,7 +12,8 @@ struct ChangePhotoSheet: View {
 
     @Binding var pictureURL: String
     @Environment(\.dismiss) private var dismiss
-    @Environment(UserIdentityStore.self) private var identity
+    @Environment(AppStateStore.self) private var store
+    private var identity: UserIdentityStore { store.identity }
 
     @State private var pasteURL: String = ""
     @State private var pasteVisible = false

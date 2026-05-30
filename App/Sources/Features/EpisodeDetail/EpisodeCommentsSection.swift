@@ -21,7 +21,7 @@ struct EpisodeCommentsSection: View {
     let episode: Episode
 
     @Environment(AppStateStore.self) private var store
-    @Environment(UserIdentityStore.self) private var identity
+    private var identity: UserIdentityStore { store.identity }
 
     /// Live websocket subscription. Held in @State so the view's lifetime
     /// drives the network connection's lifetime.

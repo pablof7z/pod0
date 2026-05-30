@@ -5,8 +5,8 @@ import SwiftUI
 struct FeedbackView: View {
     @Bindable var workflow: FeedbackWorkflow
     @Environment(\.dismiss) private var dismiss
-    @Environment(UserIdentityStore.self) private var userIdentity
     @Environment(AppStateStore.self) private var appStore
+    private var userIdentity: UserIdentityStore { appStore.identity }
 
     @State private var store = FeedbackStore()
     @State private var composerPresented = false

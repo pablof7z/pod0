@@ -9,7 +9,8 @@ import CryptoKit
 
 struct AccountDetailsView: View {
 
-    @Environment(UserIdentityStore.self) private var identity
+    @Environment(AppStateStore.self) private var store
+    private var identity: UserIdentityStore { store.identity }
     @State private var npubCopied = false
     @State private var hexCopied = false
     @State private var fpCopied = false

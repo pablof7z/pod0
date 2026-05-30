@@ -17,7 +17,8 @@ struct IdentityRootView: View {
         static let aboutQuoteSize: CGFloat = 28
     }
 
-    @Environment(UserIdentityStore.self) private var identity
+    @Environment(AppStateStore.self) private var store
+    private var identity: UserIdentityStore { store.identity }
     @State private var editPresented = false
 
     var body: some View {

@@ -16,7 +16,8 @@ struct AvatarStylePickerView: View {
     }
 
     @Binding var pictureURL: String
-    @Environment(UserIdentityStore.self) private var identity
+    @Environment(AppStateStore.self) private var store
+    private var identity: UserIdentityStore { store.identity }
     @Environment(\.dismiss) private var dismiss
     @State private var preview: DicebearStyle?
 

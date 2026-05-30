@@ -24,7 +24,7 @@ extension AppStateStore {
         if clip.source != .agent {
             let ep  = episode(id: clip.episodeID)
             let pod = ep.flatMap { podcast(id: $0.podcastID) }
-            Task { try? await UserIdentityStore.shared.publishUserClip(clip, episode: ep, podcast: pod) }
+            Task { try? await identity.publishUserClip(clip, episode: ep, podcast: pod) }
         }
     }
 

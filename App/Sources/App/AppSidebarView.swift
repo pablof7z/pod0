@@ -7,7 +7,8 @@ struct AppSidebarView: View {
     @Binding var selectedTab: RootTab
     @Binding var isPresented: Bool
 
-    @Environment(UserIdentityStore.self) private var userIdentity
+    @Environment(AppStateStore.self) private var store
+    private var userIdentity: UserIdentityStore { store.identity }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {

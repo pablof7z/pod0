@@ -21,8 +21,8 @@ struct FeedbackThreadDetailView: View {
 
     let thread: FeedbackThread
     let store: FeedbackStore
-    @Environment(UserIdentityStore.self) private var userIdentity
     @Environment(AppStateStore.self) private var appStore
+    private var userIdentity: UserIdentityStore { appStore.identity }
 
     @State private var replyDraft = ""
     @State private var isSending = false
