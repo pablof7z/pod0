@@ -154,9 +154,6 @@ final class AppStateStore {
     @ObservationIgnored
     var onNowPlayingSnapshot: ((PodcastUpdate?, [PodcastSummary]) -> Void)?
 
-    /// Retained observer token for iCloud external-change notifications.
-    private var iCloudObserver: NSObjectProtocol?
-
     /// Retained observer token for `UIApplication.didEnterBackgroundNotification`.
     /// On background, the position cache is flushed to disk so the user
     /// can force-quit + relaunch without losing playback progress.
@@ -235,9 +232,6 @@ final class AppStateStore {
             loadedState.podcasts.removeAll { legacyExternalPodcastIDs.contains($0.id) }
             loadedState.subscriptions.removeAll { legacyExternalPodcastIDs.contains($0.podcastID) }
         }
-        // Start iCloud KV sync before assigning state so that the first
-        // push (triggered by the `didSet` below) reflects the merged values.
-        iCloudSettingsSync.shared.start(mergingInto: &loadedState.settings)
         self.state = loadedState
         // The `state.didSet` above doesn't fire from inside `init` until all
         // stored properties are initialised, and even then it skips the very
@@ -261,17 +255,6 @@ final class AppStateStore {
         // published so the app doesn't continue to litter the system index
         // with stale entries that no longer get refreshed.
         SpotlightIndexer.clearAll()
-        // Observe external iCloud changes so settings stay in sync while the
-        // app is running on multiple devices simultaneously.
-        iCloudObserver = NotificationCenter.default.addObserver(
-            forName: iCloudSettingsSync.settingsDidChangeExternallyNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.applyExternalSettingsChange()
-            }
-        }
         // Feed refresh is driven by the Rust kernel (lifecycle foreground
         // triggers `refresh_all`). The legacy Swift refresh loop is skipped
         // when `kernel` is non-nil (set by `attachKernel`). We start it here
@@ -283,19 +266,6 @@ final class AppStateStore {
     }
 
     /// Pulls the latest iCloud values into `state.settings`.
-    /// Called when `iCloudSettingsSync` reports an external change.
-    private func applyExternalSettingsChange() {
-        let sync = iCloudSettingsSync.shared
-        sync.isApplyingRemoteChange = true
-        defer { sync.isApplyingRemoteChange = false }
-        var updated = state.settings
-        sync.merge(from: NSUbiquitousKeyValueStore.default, into: &updated)
-        guard updated != state.settings else { return }
-        Self.logger.info("iCloudSettingsSync: applying remote settings update")
-        // Assign directly (bypassing updateSettings) to avoid a redundant push.
-        state.settings = updated
-    }
-
     // MARK: - Legacy migration helpers
 
     /// Migrate the plaintext OpenRouter key from the AppState JSON blob into the
@@ -619,9 +589,6 @@ final class AppStateStore {
         MainActor.assumeIsolated {
             if let backgroundObserver {
                 NotificationCenter.default.removeObserver(backgroundObserver)
-            }
-            if let iCloudObserver {
-                NotificationCenter.default.removeObserver(iCloudObserver)
             }
             kernelObservationTask?.cancel()
             positionFlushTask?.cancel()

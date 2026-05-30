@@ -20,6 +20,47 @@ struct SettingsKVSnapshot: Equatable {
     var autoSkipAds: Bool?
     var streamingOnly: Bool?
     var autoDeleteDownloadsAfterPlayed: Bool?
+    var agentInitialModel: String?
+    var agentInitialModelName: String?
+    var agentThinkingModel: String?
+    var agentThinkingModelName: String?
+    var memoryCompilationModel: String?
+    var memoryCompilationModelName: String?
+    var wikiModel: String?
+    var wikiModelName: String?
+    var categorizationModel: String?
+    var categorizationModelName: String?
+    var chapterCompilationModel: String?
+    var chapterCompilationModelName: String?
+    var embeddingsModel: String?
+    var embeddingsModelName: String?
+    var imageGenerationModel: String?
+    var imageGenerationModelName: String?
+    var rerankerEnabled: Bool?
+    var ollamaChatUrl: String?
+    var sttProvider: String?
+    var openRouterWhisperModel: String?
+    var assemblyAiSttModel: String?
+    var elevenLabsSttModel: String?
+    var elevenLabsTtsModel: String?
+    var elevenLabsVoiceId: String?
+    var elevenLabsVoiceName: String?
+    var blossomServerUrl: String?
+    var youtubeExtractorUrl: String??
+    var autoMarkPlayedAtEnd: Bool?
+    var autoPlayNext: Bool?
+    var headphoneDoubleTapAction: String?
+    var headphoneTripleTapAction: String?
+    var wikiAutoGenerateOnTranscriptIngest: Bool?
+    var autoIngestPublisherTranscripts: Bool?
+    var autoFallbackToScribe: Bool?
+    var notifyOnNewEpisodes: Bool?
+    var notifyOnBriefingReady: Bool?
+    var nostrRelayUrl: String?
+    var nostrPublicRelays: [String]?
+    var nostrProfileName: String?
+    var nostrProfileAbout: String?
+    var nostrProfilePicture: String?
 
     /// All-`nil` snapshot. Returned by the `PodcastUpdate` bridge when the
     /// active kernel projection does not (yet) carry any of the playback
@@ -47,6 +88,129 @@ struct SettingsKVSnapshot: Equatable {
         }
         if let v = autoDeleteDownloadsAfterPlayed {
             lastWritten[iCloudSyncCapability.Key.autoDeleteDownloadsAfterPlayed] = AnyHashable(v)
+        }
+        if let v = agentInitialModel {
+            lastWritten[iCloudSyncCapability.Key.agentInitialModel] = AnyHashable(v)
+        }
+        if let v = agentInitialModelName {
+            lastWritten[iCloudSyncCapability.Key.agentInitialModelName] = AnyHashable(v)
+        }
+        if let v = agentThinkingModel {
+            lastWritten[iCloudSyncCapability.Key.agentThinkingModel] = AnyHashable(v)
+        }
+        if let v = agentThinkingModelName {
+            lastWritten[iCloudSyncCapability.Key.agentThinkingModelName] = AnyHashable(v)
+        }
+        if let v = memoryCompilationModel {
+            lastWritten[iCloudSyncCapability.Key.memoryCompilationModel] = AnyHashable(v)
+        }
+        if let v = memoryCompilationModelName {
+            lastWritten[iCloudSyncCapability.Key.memoryCompilationModelName] = AnyHashable(v)
+        }
+        if let v = wikiModel {
+            lastWritten[iCloudSyncCapability.Key.wikiModel] = AnyHashable(v)
+        }
+        if let v = wikiModelName {
+            lastWritten[iCloudSyncCapability.Key.wikiModelName] = AnyHashable(v)
+        }
+        if let v = categorizationModel {
+            lastWritten[iCloudSyncCapability.Key.categorizationModel] = AnyHashable(v)
+        }
+        if let v = categorizationModelName {
+            lastWritten[iCloudSyncCapability.Key.categorizationModelName] = AnyHashable(v)
+        }
+        if let v = chapterCompilationModel {
+            lastWritten[iCloudSyncCapability.Key.chapterCompilationModel] = AnyHashable(v)
+        }
+        if let v = chapterCompilationModelName {
+            lastWritten[iCloudSyncCapability.Key.chapterCompilationModelName] = AnyHashable(v)
+        }
+        if let v = embeddingsModel {
+            lastWritten[iCloudSyncCapability.Key.embeddingsModel] = AnyHashable(v)
+        }
+        if let v = embeddingsModelName {
+            lastWritten[iCloudSyncCapability.Key.embeddingsModelName] = AnyHashable(v)
+        }
+        if let v = imageGenerationModel {
+            lastWritten[iCloudSyncCapability.Key.imageGenerationModel] = AnyHashable(v)
+        }
+        if let v = imageGenerationModelName {
+            lastWritten[iCloudSyncCapability.Key.imageGenerationModelName] = AnyHashable(v)
+        }
+        if let v = rerankerEnabled {
+            lastWritten[iCloudSyncCapability.Key.rerankerEnabled] = AnyHashable(v)
+        }
+        if let v = ollamaChatUrl {
+            lastWritten[iCloudSyncCapability.Key.ollamaChatUrl] = AnyHashable(v)
+        }
+        if let v = sttProvider {
+            lastWritten[iCloudSyncCapability.Key.sttProvider] = AnyHashable(v)
+        }
+        if let v = openRouterWhisperModel {
+            lastWritten[iCloudSyncCapability.Key.openRouterWhisperModel] = AnyHashable(v)
+        }
+        if let v = assemblyAiSttModel {
+            lastWritten[iCloudSyncCapability.Key.assemblyAiSttModel] = AnyHashable(v)
+        }
+        if let v = elevenLabsSttModel {
+            lastWritten[iCloudSyncCapability.Key.elevenLabsSttModel] = AnyHashable(v)
+        }
+        if let v = elevenLabsTtsModel {
+            lastWritten[iCloudSyncCapability.Key.elevenLabsTtsModel] = AnyHashable(v)
+        }
+        if let v = elevenLabsVoiceId {
+            lastWritten[iCloudSyncCapability.Key.elevenLabsVoiceId] = AnyHashable(v)
+        }
+        if let v = elevenLabsVoiceName {
+            lastWritten[iCloudSyncCapability.Key.elevenLabsVoiceName] = AnyHashable(v)
+        }
+        if let v = blossomServerUrl {
+            lastWritten[iCloudSyncCapability.Key.blossomServerUrl] = AnyHashable(v)
+        }
+        if let v = youtubeExtractorUrl {
+            lastWritten[iCloudSyncCapability.Key.youtubeExtractorUrl] = AnyHashable(v)
+        }
+        if let v = autoMarkPlayedAtEnd {
+            lastWritten[iCloudSyncCapability.Key.autoMarkPlayedAtEnd] = AnyHashable(v)
+        }
+        if let v = autoPlayNext {
+            lastWritten[iCloudSyncCapability.Key.autoPlayNext] = AnyHashable(v)
+        }
+        if let v = headphoneDoubleTapAction {
+            lastWritten[iCloudSyncCapability.Key.headphoneDoubleTapAction] = AnyHashable(v)
+        }
+        if let v = headphoneTripleTapAction {
+            lastWritten[iCloudSyncCapability.Key.headphoneTripleTapAction] = AnyHashable(v)
+        }
+        if let v = wikiAutoGenerateOnTranscriptIngest {
+            lastWritten[iCloudSyncCapability.Key.wikiAutoGenerateOnTranscriptIngest] = AnyHashable(v)
+        }
+        if let v = autoIngestPublisherTranscripts {
+            lastWritten[iCloudSyncCapability.Key.autoIngestPublisherTranscripts] = AnyHashable(v)
+        }
+        if let v = autoFallbackToScribe {
+            lastWritten[iCloudSyncCapability.Key.autoFallbackToScribe] = AnyHashable(v)
+        }
+        if let v = notifyOnNewEpisodes {
+            lastWritten[iCloudSyncCapability.Key.notifyOnNewEpisodes] = AnyHashable(v)
+        }
+        if let v = notifyOnBriefingReady {
+            lastWritten[iCloudSyncCapability.Key.notifyOnBriefingReady] = AnyHashable(v)
+        }
+        if let v = nostrRelayUrl {
+            lastWritten[iCloudSyncCapability.Key.nostrRelayUrl] = AnyHashable(v)
+        }
+        if let v = nostrPublicRelays {
+            lastWritten[iCloudSyncCapability.Key.nostrPublicRelays] = AnyHashable(v)
+        }
+        if let v = nostrProfileName {
+            lastWritten[iCloudSyncCapability.Key.nostrProfileName] = AnyHashable(v)
+        }
+        if let v = nostrProfileAbout {
+            lastWritten[iCloudSyncCapability.Key.nostrProfileAbout] = AnyHashable(v)
+        }
+        if let v = nostrProfilePicture {
+            lastWritten[iCloudSyncCapability.Key.nostrProfilePicture] = AnyHashable(v)
         }
     }
 }
@@ -93,6 +257,47 @@ extension SettingsKVSnapshot {
             skipBackwardSecs: Int(s.skipBackwardSecs),
             autoSkipAds: s.autoSkipAdsEnabled,
             streamingOnly: nil,
-            autoDeleteDownloadsAfterPlayed: s.autoDeleteDownloadsAfterPlayed)
+            autoDeleteDownloadsAfterPlayed: s.autoDeleteDownloadsAfterPlayed,
+            agentInitialModel: s.agentInitialModel,
+            agentInitialModelName: s.agentInitialModelName,
+            agentThinkingModel: s.agentThinkingModel,
+            agentThinkingModelName: s.agentThinkingModelName,
+            memoryCompilationModel: s.memoryCompilationModel,
+            memoryCompilationModelName: s.memoryCompilationModelName,
+            wikiModel: s.wikiModel,
+            wikiModelName: s.wikiModelName,
+            categorizationModel: s.categorizationModel,
+            categorizationModelName: s.categorizationModelName,
+            chapterCompilationModel: s.chapterCompilationModel,
+            chapterCompilationModelName: s.chapterCompilationModelName,
+            embeddingsModel: s.embeddingsModel,
+            embeddingsModelName: s.embeddingsModelName,
+            imageGenerationModel: s.imageGenerationModel,
+            imageGenerationModelName: s.imageGenerationModelName,
+            rerankerEnabled: s.rerankerEnabled,
+            ollamaChatUrl: s.ollamaChatUrl,
+            sttProvider: s.sttProvider,
+            openRouterWhisperModel: s.openRouterWhisperModel,
+            assemblyAiSttModel: s.assemblyAiSttModel,
+            elevenLabsSttModel: s.elevenLabsSttModel,
+            elevenLabsTtsModel: s.elevenLabsTtsModel,
+            elevenLabsVoiceId: s.elevenLabsVoiceId,
+            elevenLabsVoiceName: s.elevenLabsVoiceName,
+            blossomServerUrl: s.blossomServerUrl,
+            youtubeExtractorUrl: s.youtubeExtractorUrl,
+            autoMarkPlayedAtEnd: s.autoMarkPlayedAtEnd,
+            autoPlayNext: s.autoPlayNext,
+            headphoneDoubleTapAction: s.headphoneDoubleTapAction,
+            headphoneTripleTapAction: s.headphoneTripleTapAction,
+            wikiAutoGenerateOnTranscriptIngest: s.wikiAutoGenerateOnTranscriptIngest,
+            autoIngestPublisherTranscripts: s.autoIngestPublisherTranscripts,
+            autoFallbackToScribe: s.autoFallbackToScribe,
+            notifyOnNewEpisodes: s.notifyOnNewEpisodes,
+            notifyOnBriefingReady: s.notifyOnBriefingReady,
+            nostrRelayUrl: s.nostrRelayUrl,
+            nostrPublicRelays: s.nostrPublicRelays,
+            nostrProfileName: s.nostrProfileName,
+            nostrProfileAbout: s.nostrProfileAbout,
+            nostrProfilePicture: s.nostrProfilePicture)
     }
 }
