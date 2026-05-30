@@ -54,13 +54,6 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(
         Err(_) => return, // poisoned mutex — degrade silently (D6)
     };
 
-    // Wire the key store to the same data dir so per-podcast keypairs
-    // survive app restarts. Called after the store lock is released to
-    // avoid holding two mutexes simultaneously.
-    if let Ok(mut keys) = handle.podcast_keys.lock() {
-        keys.set_data_dir(&path_buf);
-    }
-
     // Restore the "Up Next" queue from disk. Even an empty persisted queue
     // is fine — the shared PlaybackQueue starts empty and we just skip.
     if !loaded_queue.is_empty() {
