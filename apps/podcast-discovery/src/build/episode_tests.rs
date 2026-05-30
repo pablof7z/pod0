@@ -47,10 +47,27 @@ fn audio_uses_default_mime_when_not_supplied() {
     assert_eq!(audio[2], "audio/mp4");
 }
 #[test]
+fn audio_uses_supplied_url_override_when_present() {
+    // M8: a Blossom URL override replaces the RSS enclosure URL in the
+    // `audio` tag while still falling back to the episode mime.
+    let ep = fixture();
+    let imeta_info = ImetaInfo {
+        url: Some("https://blossom.example/blob.mp3".into()),
+        ..Default::default()
+    };
+    let tags = episode_to_episode_tags_with_imeta(&ep, &imeta_info);
+    let audio = tags
+        .iter()
+        .find(|t| t.first().map(String::as_str) == Some("audio"))
+        .expect("audio present");
+    assert_eq!(audio[1], "https://blossom.example/blob.mp3");
+}
+#[test]
 fn audio_uses_supplied_mime_when_present() {
     let ep = fixture();
     let imeta_info = ImetaInfo {
         mime_type: Some("audio/m4a".into()),
+        ..Default::default()
     };
     let tags = episode_to_episode_tags_with_imeta(&ep, &imeta_info);
     let audio = tags

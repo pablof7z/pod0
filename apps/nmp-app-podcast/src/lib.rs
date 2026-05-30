@@ -38,6 +38,7 @@ pub(crate) mod agent_tools;
 pub(crate) mod identity_handler;
 pub(crate) mod ai_chapters;
 pub(crate) mod ai_chapters_llm;
+pub(crate) mod blossom;
 pub(crate) mod briefing_llm;
 pub(crate) mod briefings_handler;
 pub mod capability;

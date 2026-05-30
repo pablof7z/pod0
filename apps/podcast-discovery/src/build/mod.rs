@@ -9,5 +9,5 @@
 pub mod episode;
 pub mod show;
 
-pub use episode::episode_to_episode_tags;
+pub use episode::{episode_to_episode_tags, episode_to_episode_tags_with_imeta, ImetaInfo};
 pub use show::{podcast_to_show_tags, show_content};

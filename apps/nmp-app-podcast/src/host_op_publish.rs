@@ -20,9 +20,11 @@ use std::sync::atomic::Ordering;
 use chrono::Utc;
 use nostr::{EventBuilder, JsonUtil, Keys, Kind, SecretKey, Tag, Timestamp};
 use podcast_discovery::{
-    episode_to_episode_tags, podcast_to_show_tags, show_content, KIND_AUTHOR_CLAIM, KIND_EPISODE,
-    KIND_SHOW,
+    episode_to_episode_tags, episode_to_episode_tags_with_imeta, podcast_to_show_tags,
+    show_content, ImetaInfo, KIND_AUTHOR_CLAIM, KIND_EPISODE, KIND_SHOW,
 };
+
+use crate::blossom;
 
 use crate::capability::{NostrRelayRequest, NostrRelayResult, NOSTR_RELAY_CAPABILITY_NAMESPACE};
 use crate::ffi::actions::publish_module::PublishAction;
@@ -150,9 +152,13 @@ fn publish_show(handler: &PodcastHostOpHandler, podcast_id: String) -> serde_jso
 /// event, then broadcast to `relay.primal.net`. The parent podcast must
 /// have been claimed via `create_owned_podcast`.
 fn publish_episode(handler: &PodcastHostOpHandler, episode_id: String) -> serde_json::Value {
-    let (podcast, episode) = match handler.store.lock() {
+    let (podcast, episode, local_path, blossom_url) = match handler.store.lock() {
         Ok(s) => match s.episode_with_podcast_clone(&episode_id) {
-            Some(pair) => pair,
+            Some((podcast, episode)) => {
+                let local_path = s.local_path_for(&episode.id).map(str::to_owned);
+                let blossom_url = s.blossom_server_url().to_owned();
+                (podcast, episode, local_path, blossom_url)
+            }
             None => return serde_json::json!({
                 "ok": false,
                 "error": format!("episode not found: {episode_id}")
@@ -183,7 +189,12 @@ fn publish_episode(handler: &PodcastHostOpHandler, episode_id: String) -> serde_
     };
     let _ = pubkey_hex; // pubkey is embedded in the signed event; not needed directly
 
-    let tags = episode_to_episode_tags(&episode);
+    // Resolve the audio URL for the `kind:54` event. If the episode has a
+    // local download, upload it to the configured Blossom server and point the
+    // `audio` tag at the hosted blob. On any failure (no local file, upload
+    // error) fall back to the RSS enclosure URL the builder uses by default.
+    let (tags, blossom_url_used, blossom_error) =
+        resolve_episode_tags(handler, &episode, local_path.as_deref(), &blossom_url, &secret_bytes);
     let content = episode.description.clone();
     let created_at = Utc::now().timestamp();
 
@@ -200,7 +211,58 @@ fn publish_episode(handler: &PodcastHostOpHandler, episode_id: String) -> serde_
         "event_id": event_id,
         "event_tags": tags,
         "event_json": event_json,
+        "audio_url": blossom_url_used,
+        "blossom_error": blossom_error,
     })
+}
+
+/// Build the `kind:54` episode tags, resolving the `audio` URL from Blossom
+/// when the episode has a local download. Returns `(tags, blossom_url_used,
+/// blossom_error)`:
+///
+/// * `blossom_url_used` — `Some(url)` when the Blossom upload succeeded and
+///   the `audio` tag points at the hosted blob; `None` when the RSS enclosure
+///   URL is used (no local file or upload failed).
+/// * `blossom_error` — `Some(diagnostic)` when an upload was attempted and
+///   failed; logged and surfaced to the caller for visibility, but the publish
+///   still proceeds with the enclosure fallback.
+fn resolve_episode_tags(
+    handler: &PodcastHostOpHandler,
+    episode: &podcast_core::types::episode::Episode,
+    local_path: Option<&str>,
+    blossom_url: &str,
+    secret_bytes: &[u8; 32],
+) -> (Vec<Vec<String>>, Option<String>, Option<String>) {
+    let Some(path) = local_path else {
+        // No local download — publish with the RSS enclosure URL.
+        return (episode_to_episode_tags(episode), None, None);
+    };
+    if handler.app.is_null() {
+        // Unit-test / pre-login: no capability executor to dispatch HTTP
+        // through. Fall back to the enclosure URL.
+        return (episode_to_episode_tags(episode), None, None);
+    }
+
+    let correlation_id = uuid::Uuid::new_v4().to_string();
+    match blossom::upload_to_blossom(path, blossom_url, secret_bytes, |req| {
+        handler.dispatch_http(req, &correlation_id)
+    }) {
+        Ok(result) => {
+            let imeta = ImetaInfo {
+                url: Some(result.url.clone()),
+                mime_type: Some(result.mime_type),
+            };
+            (
+                episode_to_episode_tags_with_imeta(episode, &imeta),
+                Some(result.url),
+                None,
+            )
+        }
+        Err(e) => {
+            eprintln!("[host_op_publish] blossom upload failed, falling back to enclosure URL: {e}");
+            (episode_to_episode_tags(episode), None, Some(e))
+        }
+    }
 }
 
 /// `podcast.publish.publish_author_claim` — build and sign a `kind:10064`

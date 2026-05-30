@@ -51,7 +51,10 @@ pub use actions::{
     DiscoverPodcastsAction, PublishEpisodeAction, PublishShowAction, ACTION_DISCOVER_PODCASTS,
     ACTION_PUBLISH_EPISODE, ACTION_PUBLISH_SHOW,
 };
-pub use build::{episode_to_episode_tags, podcast_to_show_tags, show_content};
+pub use build::{
+    episode_to_episode_tags, episode_to_episode_tags_with_imeta, podcast_to_show_tags,
+    show_content, ImetaInfo,
+};
 pub use kinds::{KIND_AUTHOR_CLAIM, KIND_EPISODE, KIND_SHOW};
 pub use nip_f4::{
     parse_event_json as parse_nip_f4_event_json, parse_kind_10154, NipF4Show,

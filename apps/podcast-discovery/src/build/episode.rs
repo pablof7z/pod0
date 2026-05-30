@@ -7,10 +7,17 @@
 
 use podcast_core::types::episode::Episode;
 
-/// Optional mime-type override for the `audio` tag. When absent, the builder
-/// falls back to `episode.enclosure_mime_type` then `"audio/mp4"`.
+/// Overrides for the `audio` tag. When a field is absent the builder falls
+/// back to the episode's own value.
+///
+/// * `url` — M8 Blossom upload. The `kind:54` `audio` tag normally carries
+///   `episode.enclosure_url` (the RSS enclosure). After a successful Blossom
+///   upload the publish path supplies the permanent Blossom URL here so the
+///   published event points at the hosted blob instead of the original feed.
+/// * `mime_type` — overrides `episode.enclosure_mime_type` (then `"audio/mp4"`).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ImetaInfo {
+    pub url: Option<String>,
     pub mime_type: Option<String>,
 }
 
@@ -61,7 +68,11 @@ fn build_audio_tag(episode: &Episode, imeta: &ImetaInfo) -> Vec<String> {
         .clone()
         .or_else(|| episode.enclosure_mime_type.clone())
         .unwrap_or_else(|| "audio/mp4".into());
-    vec!["audio".into(), episode.enclosure_url.to_string(), mime]
+    let url = imeta
+        .url
+        .clone()
+        .unwrap_or_else(|| episode.enclosure_url.to_string());
+    vec!["audio".into(), url, mime]
 }
 
 fn transcript_mime(kind: &Option<podcast_core::types::transcript::TranscriptKind>) -> String {
