@@ -306,6 +306,25 @@ final class KernelModel {
         return result
     }
 
+    // ── Transcript report ───────────────────────────────────────────────
+
+    /// Report a completed transcript to the Rust kernel so AI features
+    /// can access the plain text without going through Swift's TranscriptStore.
+    func sendTranscriptReport(episodeID: UUID, text: String) {
+        guard let handle = kernel.podcastHandle else { return }
+        let payload: [String: Any] = [
+            "episode_id": episodeID.uuidString,
+            "text": text
+        ]
+        guard let json = try? JSONSerialization.data(withJSONObject: payload),
+              let jsonStr = String(data: json, encoding: .utf8)
+        else { return }
+        jsonStr.withCString { ptr in
+            let result = nmp_app_podcast_transcript_report(handle, ptr)
+            if let result { nmp_app_free_string(result) }
+        }
+    }
+
     // ── Identity / NIP-46 ────────────────────────────────────────────────
     //
     // Typed wrappers around the NMP-core identity FFI. `UserIdentityStore`

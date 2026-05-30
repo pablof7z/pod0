@@ -138,7 +138,13 @@ extension AppStateStore {
         )
         for idx in episodes.indices {
             guard let prior = priorByID[episodes[idx].id] else { continue }
-            episodes[idx].transcriptState = prior.transcriptState
+            // transcriptState: formerly preserved from Swift-only TranscriptStore.
+            // M5.2: TranscriptIngestService now reports completed transcripts to
+            // Rust via kernelTranscriptReport; Rust projects transcript_entries /
+            // transcript onto EpisodeSummary. The Swift transcriptState field still
+            // reflects UI state (.fetching/.ready/.failed) set by the iOS service,
+            // but is no longer preserved across projection passes — the kernel is
+            // the authority after M5.2 ships.
             episodes[idx].triageDecision = prior.triageDecision
             episodes[idx].triageRationale = prior.triageRationale
             episodes[idx].triageIsHero = prior.triageIsHero
