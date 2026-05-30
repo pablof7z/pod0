@@ -25,9 +25,16 @@ fn handle_run_categorizes_all_episodes() {
         "A look at modern machine learning and the future of code.",
     );
     let cache: Arc<Mutex<HashMap<String, Vec<String>>>> = Arc::new(Mutex::new(HashMap::new()));
-    let rev = AtomicU64::new(0);
-    let result = handle_run(&store, &cache, &rev);
+    let rev = Arc::new(AtomicU64::new(0));
+    let runtime = Arc::new(tokio::runtime::Runtime::new().unwrap());
+    // Pre-set the guard to `true` so the background LLM pass is NOT spawned:
+    // this test isolates the synchronous phase-1 keyword pass and stays
+    // hermetic (no Ollama, no task outliving the local runtime). The LLM
+    // parse/filter path is covered by `categorization_llm_tests.rs`.
+    let in_progress = Arc::new(AtomicBool::new(true));
+    let result = handle_run(&store, &cache, &rev, &runtime, &in_progress);
     assert_eq!(result["ok"], true);
+    // Phase-1 bumps rev exactly once; no background pass runs.
     assert_eq!(rev.load(Ordering::Relaxed), 1);
     let c = cache.lock().unwrap();
     assert_eq!(c.len(), 1);

@@ -42,6 +42,7 @@ pub(crate) mod briefing_llm;
 pub(crate) mod briefings_handler;
 pub mod capability;
 pub(crate) mod categorization;
+pub(crate) mod categorization_llm;
 pub(crate) mod chapter;
 pub(crate) mod clip_handler;
 pub(crate) mod comments_anchor;

@@ -116,11 +116,18 @@ pub struct PodcastHostOpHandler {
     pub(crate) transcripts: Arc<Mutex<HashMap<String, Vec<TranscriptEntry>>>>,
     pub(crate) dismissed_episode_ids: Arc<Mutex<HashSet<String>>>,
     pub(crate) voice_state: Arc<Mutex<VoiceState>>,
-    /// Heuristic categorizer cache shared with
+    /// Categorizer cache shared with
     /// `ffi::handle::PodcastHandle::categories`. Mutated by
     /// `handle_categorize_*` and auto-triggered at the end of every
-    /// successful feed refresh.
+    /// successful feed refresh. Phase-1 keyword tags are written
+    /// synchronously; the background LLM pass (M5.6) re-stamps entries.
     pub(crate) categories: Arc<Mutex<HashMap<String, Vec<String>>>>,
+    /// Re-entrancy guard for the background LLM categorization pass. Set
+    /// `true` when a pass is spawned, cleared when it finishes, so a feed
+    /// refresh fired while the previous LLM pass is still running doesn't
+    /// race a second one on the shared `categories` cache. Internal only —
+    /// not projected to `PodcastUpdate`.
+    pub(crate) categorization_in_progress: Arc<std::sync::atomic::AtomicBool>,
     pub(crate) rev: Arc<AtomicU64>,
     /// Per-podcast Nostr keypairs for NIP-F4 owned podcasts. Shared with
     /// `PodcastHandle.podcast_keys` so the snapshot reader sees the same
@@ -213,6 +220,7 @@ impl PodcastHostOpHandler {
             wiki_search_results,
             picks,
             picks_score_in_progress: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            categorization_in_progress: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             agent_tasks,
             knowledge_search_results,
             knowledge_store,
@@ -237,7 +245,13 @@ impl PodcastHostOpHandler {
     /// Re-run the categorizer after a successful refresh so newly-
     /// arrived episodes pick up labels automatically.
     pub(super) fn auto_categorize(&self) {
-        let _ = categorization_run(&self.store, &self.categories, &self.rev);
+        let _ = categorization_run(
+            &self.store,
+            &self.categories,
+            &self.rev,
+            &self.runtime,
+            &self.categorization_in_progress,
+        );
     }
 
     pub(crate) fn dispatch_http(
@@ -616,9 +630,13 @@ impl HostOpHandler for PodcastHostOpHandler {
         }
         if let Ok(action) = serde_json::from_str::<CategorizationAction>(action_json) {
             return match action {
-                CategorizationAction::Run => {
-                    categorization_run(&self.store, &self.categories, &self.rev)
-                }
+                CategorizationAction::Run => categorization_run(
+                    &self.store,
+                    &self.categories,
+                    &self.rev,
+                    &self.runtime,
+                    &self.categorization_in_progress,
+                ),
                 CategorizationAction::CategorizeEpisode { episode_id } => {
                     handle_categorize_episode(&self.store, &self.categories, &self.rev, episode_id)
                 }

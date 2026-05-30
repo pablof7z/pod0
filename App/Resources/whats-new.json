@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-31T00:30:00Z",
+      "lines": [
+        "Episode category tags are now picked by AI — titles and descriptions are read and labeled with topics like Technology or True Crime, instead of simple keyword matching."
+      ]
+    },
+    {
       "shipped_at": "2026-05-30T20:40:00Z",
       "lines": [
         "Voice mode now talks back — ask a question out loud and the assistant answers with a short spoken reply, using your podcast library."
