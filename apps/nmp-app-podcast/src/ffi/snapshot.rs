@@ -152,6 +152,19 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
             image_generation_model: s.image_generation_model().to_owned(),
             image_generation_model_name: s.image_generation_model_name().to_owned(),
             reranker_enabled: s.reranker_enabled(),
+            open_router_credential_source: s.open_router_credential_source().to_owned(),
+            open_router_byok_key_id: s.open_router_byok_key_id().map(|s| s.to_owned()),
+            open_router_byok_key_label: s.open_router_byok_key_label().map(|s| s.to_owned()),
+            open_router_connected_at: s.open_router_connected_at(),
+            ollama_credential_source: s.ollama_credential_source().to_owned(),
+            ollama_byok_key_id: s.ollama_byok_key_id().map(|s| s.to_owned()),
+            ollama_byok_key_label: s.ollama_byok_key_label().map(|s| s.to_owned()),
+            ollama_connected_at: s.ollama_connected_at(),
+            ollama_chat_url: s.ollama_chat_url().to_owned(),
+            eleven_labs_credential_source: s.eleven_labs_credential_source().to_owned(),
+            eleven_labs_byok_key_id: s.eleven_labs_byok_key_id().map(|s| s.to_owned()),
+            eleven_labs_byok_key_label: s.eleven_labs_byok_key_label().map(|s| s.to_owned()),
+            eleven_labs_connected_at: s.eleven_labs_connected_at(),
         };
         (library, s.all_memory_facts(), settings)
     })

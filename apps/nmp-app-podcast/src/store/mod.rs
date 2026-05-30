@@ -165,6 +165,32 @@ pub struct PodcastStore {
     pub(super) image_generation_model_name: String,
     /// Whether the reranker is enabled for search results. Default: `false`.
     pub(super) reranker_enabled: bool,
+    /// OpenRouter credential source enum (raw String: "apiKey", "byok", "nostr").
+    pub(super) open_router_credential_source: String,
+    /// OpenRouter BYOK key ID (optional).
+    pub(super) open_router_byok_key_id: Option<String>,
+    /// OpenRouter BYOK key label (optional).
+    pub(super) open_router_byok_key_label: Option<String>,
+    /// OpenRouter credential connected-at timestamp (epoch seconds, optional).
+    pub(super) open_router_connected_at: Option<i64>,
+    /// Ollama credential source enum (raw String: "apiKey", "byok", "nostr").
+    pub(super) ollama_credential_source: String,
+    /// Ollama BYOK key ID (optional).
+    pub(super) ollama_byok_key_id: Option<String>,
+    /// Ollama BYOK key label (optional).
+    pub(super) ollama_byok_key_label: Option<String>,
+    /// Ollama credential connected-at timestamp (epoch seconds, optional).
+    pub(super) ollama_connected_at: Option<i64>,
+    /// Ollama chat endpoint URL for LLM inference.
+    pub(super) ollama_chat_url: String,
+    /// ElevenLabs credential source enum (raw String: "apiKey", "byok", "nostr").
+    pub(super) eleven_labs_credential_source: String,
+    /// ElevenLabs BYOK key ID (optional).
+    pub(super) eleven_labs_byok_key_id: Option<String>,
+    /// ElevenLabs BYOK key label (optional).
+    pub(super) eleven_labs_byok_key_label: Option<String>,
+    /// ElevenLabs credential connected-at timestamp (epoch seconds, optional).
+    pub(super) eleven_labs_connected_at: Option<i64>,
     /// Last-known Wi-Fi state reported by `nmp.network.capability`. `true` when
     /// the device's active interface is Wi-Fi. Defaults to `true` so
     /// auto-download runs on first launch before the iOS capability fires its
@@ -224,6 +250,19 @@ impl PodcastStore {
             image_generation_model: "google/gemini-2.5-flash-image".to_owned(),
             image_generation_model_name: "Gemini 2.5 Flash".to_owned(),
             reranker_enabled: false,
+            open_router_credential_source: String::new(),
+            open_router_byok_key_id: None,
+            open_router_byok_key_label: None,
+            open_router_connected_at: None,
+            ollama_credential_source: String::new(),
+            ollama_byok_key_id: None,
+            ollama_byok_key_label: None,
+            ollama_connected_at: None,
+            ollama_chat_url: String::new(),
+            eleven_labs_credential_source: String::new(),
+            eleven_labs_byok_key_id: None,
+            eleven_labs_byok_key_label: None,
+            eleven_labs_connected_at: None,
             is_on_wifi: true,
             data_dir: None,
             loaded_queue: Vec::new(),
@@ -407,6 +446,19 @@ impl PodcastStore {
             "Gemini 2.5 Flash".to_owned()
         };
         self.reranker_enabled = loaded.settings.reranker_enabled;
+        self.open_router_credential_source = loaded.settings.open_router_credential_source;
+        self.open_router_byok_key_id = loaded.settings.open_router_byok_key_id;
+        self.open_router_byok_key_label = loaded.settings.open_router_byok_key_label;
+        self.open_router_connected_at = loaded.settings.open_router_connected_at;
+        self.ollama_credential_source = loaded.settings.ollama_credential_source;
+        self.ollama_byok_key_id = loaded.settings.ollama_byok_key_id;
+        self.ollama_byok_key_label = loaded.settings.ollama_byok_key_label;
+        self.ollama_connected_at = loaded.settings.ollama_connected_at;
+        self.ollama_chat_url = loaded.settings.ollama_chat_url;
+        self.eleven_labs_credential_source = loaded.settings.eleven_labs_credential_source;
+        self.eleven_labs_byok_key_id = loaded.settings.eleven_labs_byok_key_id;
+        self.eleven_labs_byok_key_label = loaded.settings.eleven_labs_byok_key_label;
+        self.eleven_labs_connected_at = loaded.settings.eleven_labs_connected_at;
         self.cached_queue = loaded.queue.clone();
         self.loaded_queue = loaded.queue;
         // Restore deferred Wi-Fi downloads that were pending when the app was
@@ -498,6 +550,19 @@ impl PodcastStore {
                 image_generation_model: self.image_generation_model.clone(),
                 image_generation_model_name: self.image_generation_model_name.clone(),
                 reranker_enabled: self.reranker_enabled,
+                open_router_credential_source: self.open_router_credential_source.clone(),
+                open_router_byok_key_id: self.open_router_byok_key_id.clone(),
+                open_router_byok_key_label: self.open_router_byok_key_label.clone(),
+                open_router_connected_at: self.open_router_connected_at,
+                ollama_credential_source: self.ollama_credential_source.clone(),
+                ollama_byok_key_id: self.ollama_byok_key_id.clone(),
+                ollama_byok_key_label: self.ollama_byok_key_label.clone(),
+                ollama_connected_at: self.ollama_connected_at,
+                ollama_chat_url: self.ollama_chat_url.clone(),
+                eleven_labs_credential_source: self.eleven_labs_credential_source.clone(),
+                eleven_labs_byok_key_id: self.eleven_labs_byok_key_id.clone(),
+                eleven_labs_byok_key_label: self.eleven_labs_byok_key_label.clone(),
+                eleven_labs_connected_at: self.eleven_labs_connected_at,
             },
             queue: Vec::new(), // filled by persist() from self.cached_queue after return
             pending_wifi_downloads: self.pending_wifi_downloads.clone(),

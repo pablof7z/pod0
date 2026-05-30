@@ -452,6 +452,49 @@ final class AppStateStore {
             kernel?.dispatch(namespace: "podcast.settings",
                              body: ["op": "set_reranker_enabled", "enabled": settings.rerankerEnabled])
         }
+        if settings.openRouterCredentialSource != prior.openRouterCredentialSource
+            || settings.openRouterBYOKKeyID != prior.openRouterBYOKKeyID
+            || settings.openRouterBYOKKeyLabel != prior.openRouterBYOKKeyLabel
+            || settings.openRouterConnectedAt != prior.openRouterConnectedAt {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: [
+                                 "op": "set_open_router_credential",
+                                 "source": settings.openRouterCredentialSource,
+                                 "key_id": settings.openRouterBYOKKeyID as Any,
+                                 "key_label": settings.openRouterBYOKKeyLabel as Any,
+                                 "connected_at": settings.openRouterConnectedAt.map { Int($0.timeIntervalSince1970) } as Any
+                             ])
+        }
+        if settings.ollamaCredentialSource != prior.ollamaCredentialSource
+            || settings.ollamaBYOKKeyID != prior.ollamaBYOKKeyID
+            || settings.ollamaBYOKKeyLabel != prior.ollamaBYOKKeyLabel
+            || settings.ollamaConnectedAt != prior.ollamaConnectedAt {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: [
+                                 "op": "set_ollama_credential",
+                                 "source": settings.ollamaCredentialSource,
+                                 "key_id": settings.ollamaBYOKKeyID as Any,
+                                 "key_label": settings.ollamaBYOKKeyLabel as Any,
+                                 "connected_at": settings.ollamaConnectedAt.map { Int($0.timeIntervalSince1970) } as Any
+                             ])
+        }
+        if settings.ollamaChatURL != prior.ollamaChatURL {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: ["op": "set_ollama_chat_url", "url": settings.ollamaChatURL])
+        }
+        if settings.elevenLabsCredentialSource != prior.elevenLabsCredentialSource
+            || settings.elevenLabsBYOKKeyID != prior.elevenLabsBYOKKeyID
+            || settings.elevenLabsBYOKKeyLabel != prior.elevenLabsBYOKKeyLabel
+            || settings.elevenLabsConnectedAt != prior.elevenLabsConnectedAt {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: [
+                                 "op": "set_eleven_labs_credential",
+                                 "source": settings.elevenLabsCredentialSource,
+                                 "key_id": settings.elevenLabsBYOKKeyID as Any,
+                                 "key_label": settings.elevenLabsBYOKKeyLabel as Any,
+                                 "connected_at": settings.elevenLabsConnectedAt.map { Int($0.timeIntervalSince1970) } as Any
+                             ])
+        }
     }
 
     /// Wipes all user data while preserving API credentials and Nostr identity.

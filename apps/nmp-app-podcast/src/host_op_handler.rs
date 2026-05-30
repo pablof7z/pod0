@@ -458,6 +458,34 @@ impl PodcastHostOpHandler {
                 self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 serde_json::json!({"ok": true})
             }
+            SettingsAction::SetOpenRouterCredential { source, key_id, key_label, connected_at } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_open_router_credential(source, key_id, key_label, connected_at);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetOllamaCredential { source, key_id, key_label, connected_at } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_ollama_credential(source, key_id, key_label, connected_at);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetOllamaChatUrl { url } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_ollama_chat_url(url);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetElevenLabsCredential { source, key_id, key_label, connected_at } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_eleven_labs_credential(source, key_id, key_label, connected_at);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
         }
     }
 }

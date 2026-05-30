@@ -59,6 +59,32 @@ pub enum SettingsAction {
     SetImageGenerationModel { model: String, model_name: String },
     /// Set the reranker-enabled toggle.
     SetRerankerEnabled { enabled: bool },
+    /// Set OpenRouter credential metadata (source, key_id, key_label, connected_at).
+    /// Secrets stay in Keychain; only metadata is persisted.
+    SetOpenRouterCredential {
+        source: String,
+        key_id: Option<String>,
+        key_label: Option<String>,
+        connected_at: Option<i64>,
+    },
+    /// Set Ollama credential metadata (source, key_id, key_label, connected_at).
+    /// Secrets stay in Keychain; only metadata is persisted.
+    SetOllamaCredential {
+        source: String,
+        key_id: Option<String>,
+        key_label: Option<String>,
+        connected_at: Option<i64>,
+    },
+    /// Set Ollama chat endpoint URL for LLM inference.
+    SetOllamaChatUrl { url: String },
+    /// Set ElevenLabs credential metadata (source, key_id, key_label, connected_at).
+    /// Secrets stay in Keychain; only metadata is persisted.
+    SetElevenLabsCredential {
+        source: String,
+        key_id: Option<String>,
+        key_label: Option<String>,
+        connected_at: Option<i64>,
+    },
 }
 
 /// Action module for the `"podcast.settings"` namespace.

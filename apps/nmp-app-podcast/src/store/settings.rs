@@ -380,6 +380,147 @@ impl PodcastStore {
         self.reranker_enabled = value;
         self.persist();
     }
+
+    /// OpenRouter credential source enum (as raw String: "apiKey", "byok", "nostr").
+    pub fn open_router_credential_source(&self) -> &str {
+        &self.open_router_credential_source
+    }
+
+    /// OpenRouter BYOK key ID (optional).
+    pub fn open_router_byok_key_id(&self) -> Option<&str> {
+        self.open_router_byok_key_id.as_deref()
+    }
+
+    /// OpenRouter BYOK key label (optional).
+    pub fn open_router_byok_key_label(&self) -> Option<&str> {
+        self.open_router_byok_key_label.as_deref()
+    }
+
+    /// OpenRouter credential connected-at timestamp (epoch seconds, optional).
+    pub fn open_router_connected_at(&self) -> Option<i64> {
+        self.open_router_connected_at
+    }
+
+    /// Set OpenRouter credential metadata. Coalesces source+key_id+key_label+connected_at
+    /// into a single mutation so the guard fires once when any value changes.
+    pub fn set_open_router_credential(
+        &mut self,
+        source: String,
+        key_id: Option<String>,
+        key_label: Option<String>,
+        connected_at: Option<i64>,
+    ) {
+        if self.open_router_credential_source == source
+            && self.open_router_byok_key_id == key_id
+            && self.open_router_byok_key_label == key_label
+            && self.open_router_connected_at == connected_at
+        {
+            return;
+        }
+        self.open_router_credential_source = source;
+        self.open_router_byok_key_id = key_id;
+        self.open_router_byok_key_label = key_label;
+        self.open_router_connected_at = connected_at;
+        self.persist();
+    }
+
+    /// Ollama credential source enum (as raw String: "apiKey", "byok", "nostr").
+    pub fn ollama_credential_source(&self) -> &str {
+        &self.ollama_credential_source
+    }
+
+    /// Ollama BYOK key ID (optional).
+    pub fn ollama_byok_key_id(&self) -> Option<&str> {
+        self.ollama_byok_key_id.as_deref()
+    }
+
+    /// Ollama BYOK key label (optional).
+    pub fn ollama_byok_key_label(&self) -> Option<&str> {
+        self.ollama_byok_key_label.as_deref()
+    }
+
+    /// Ollama credential connected-at timestamp (epoch seconds, optional).
+    pub fn ollama_connected_at(&self) -> Option<i64> {
+        self.ollama_connected_at
+    }
+
+    /// Set Ollama credential metadata. Coalesces source+key_id+key_label+connected_at
+    /// into a single mutation so the guard fires once when any value changes.
+    pub fn set_ollama_credential(
+        &mut self,
+        source: String,
+        key_id: Option<String>,
+        key_label: Option<String>,
+        connected_at: Option<i64>,
+    ) {
+        if self.ollama_credential_source == source
+            && self.ollama_byok_key_id == key_id
+            && self.ollama_byok_key_label == key_label
+            && self.ollama_connected_at == connected_at
+        {
+            return;
+        }
+        self.ollama_credential_source = source;
+        self.ollama_byok_key_id = key_id;
+        self.ollama_byok_key_label = key_label;
+        self.ollama_connected_at = connected_at;
+        self.persist();
+    }
+
+    /// Ollama chat endpoint URL for LLM inference.
+    pub fn ollama_chat_url(&self) -> &str {
+        &self.ollama_chat_url
+    }
+
+    /// Set Ollama chat URL and persist. Idempotent.
+    pub fn set_ollama_chat_url(&mut self, url: String) {
+        if self.ollama_chat_url == url { return; }
+        self.ollama_chat_url = url;
+        self.persist();
+    }
+
+    /// ElevenLabs credential source enum (as raw String: "apiKey", "byok", "nostr").
+    pub fn eleven_labs_credential_source(&self) -> &str {
+        &self.eleven_labs_credential_source
+    }
+
+    /// ElevenLabs BYOK key ID (optional).
+    pub fn eleven_labs_byok_key_id(&self) -> Option<&str> {
+        self.eleven_labs_byok_key_id.as_deref()
+    }
+
+    /// ElevenLabs BYOK key label (optional).
+    pub fn eleven_labs_byok_key_label(&self) -> Option<&str> {
+        self.eleven_labs_byok_key_label.as_deref()
+    }
+
+    /// ElevenLabs credential connected-at timestamp (epoch seconds, optional).
+    pub fn eleven_labs_connected_at(&self) -> Option<i64> {
+        self.eleven_labs_connected_at
+    }
+
+    /// Set ElevenLabs credential metadata. Coalesces source+key_id+key_label+connected_at
+    /// into a single mutation so the guard fires once when any value changes.
+    pub fn set_eleven_labs_credential(
+        &mut self,
+        source: String,
+        key_id: Option<String>,
+        key_label: Option<String>,
+        connected_at: Option<i64>,
+    ) {
+        if self.eleven_labs_credential_source == source
+            && self.eleven_labs_byok_key_id == key_id
+            && self.eleven_labs_byok_key_label == key_label
+            && self.eleven_labs_connected_at == connected_at
+        {
+            return;
+        }
+        self.eleven_labs_credential_source = source;
+        self.eleven_labs_byok_key_id = key_id;
+        self.eleven_labs_byok_key_label = key_label;
+        self.eleven_labs_connected_at = connected_at;
+        self.persist();
+    }
 }
 
 #[cfg(test)]

@@ -23,6 +23,7 @@ fn default_embeddings_model_name() -> String { "DeepSeek Flash".to_owned() }
 fn default_image_generation_model() -> String { "google/gemini-2.5-flash-image".to_owned() }
 fn default_image_generation_model_name() -> String { "Gemini 2.5 Flash".to_owned() }
 fn default_false() -> bool { false }
+fn default_empty_string() -> String { String::new() }
 
 /// App-settings projection surfaced via
 /// [`super::snapshot::PodcastUpdate::settings`].
@@ -117,6 +118,45 @@ pub struct SettingsSnapshot {
     /// Whether the reranker is enabled for search results. Default `false`.
     #[serde(default = "default_false")]
     pub reranker_enabled: bool,
+    /// OpenRouter credential source enum (raw String: "apiKey", "byok", "nostr").
+    #[serde(default = "default_empty_string")]
+    pub open_router_credential_source: String,
+    /// OpenRouter BYOK key ID (optional).
+    #[serde(default)]
+    pub open_router_byok_key_id: Option<String>,
+    /// OpenRouter BYOK key label (optional).
+    #[serde(default)]
+    pub open_router_byok_key_label: Option<String>,
+    /// OpenRouter credential connected-at timestamp (epoch seconds, optional).
+    #[serde(default)]
+    pub open_router_connected_at: Option<i64>,
+    /// Ollama credential source enum (raw String: "apiKey", "byok", "nostr").
+    #[serde(default = "default_empty_string")]
+    pub ollama_credential_source: String,
+    /// Ollama BYOK key ID (optional).
+    #[serde(default)]
+    pub ollama_byok_key_id: Option<String>,
+    /// Ollama BYOK key label (optional).
+    #[serde(default)]
+    pub ollama_byok_key_label: Option<String>,
+    /// Ollama credential connected-at timestamp (epoch seconds, optional).
+    #[serde(default)]
+    pub ollama_connected_at: Option<i64>,
+    /// Ollama chat endpoint URL for LLM inference.
+    #[serde(default = "default_empty_string")]
+    pub ollama_chat_url: String,
+    /// ElevenLabs credential source enum (raw String: "apiKey", "byok", "nostr").
+    #[serde(default = "default_empty_string")]
+    pub eleven_labs_credential_source: String,
+    /// ElevenLabs BYOK key ID (optional).
+    #[serde(default)]
+    pub eleven_labs_byok_key_id: Option<String>,
+    /// ElevenLabs BYOK key label (optional).
+    #[serde(default)]
+    pub eleven_labs_byok_key_label: Option<String>,
+    /// ElevenLabs credential connected-at timestamp (epoch seconds, optional).
+    #[serde(default)]
+    pub eleven_labs_connected_at: Option<i64>,
 }
 
 impl Default for SettingsSnapshot {
@@ -149,6 +189,19 @@ impl Default for SettingsSnapshot {
             image_generation_model: "google/gemini-2.5-flash-image".to_owned(),
             image_generation_model_name: "Gemini 2.5 Flash".to_owned(),
             reranker_enabled: false,
+            open_router_credential_source: String::new(),
+            open_router_byok_key_id: None,
+            open_router_byok_key_label: None,
+            open_router_connected_at: None,
+            ollama_credential_source: String::new(),
+            ollama_byok_key_id: None,
+            ollama_byok_key_label: None,
+            ollama_connected_at: None,
+            ollama_chat_url: String::new(),
+            eleven_labs_credential_source: String::new(),
+            eleven_labs_byok_key_id: None,
+            eleven_labs_byok_key_label: None,
+            eleven_labs_connected_at: None,
         }
     }
 }
