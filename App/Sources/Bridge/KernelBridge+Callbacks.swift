@@ -70,6 +70,12 @@ extension PodcastHandle {
             try FileManager.default.createDirectory(
                 at: directory, withIntermediateDirectories: true)
             directory.path.withCString { nmp_app_podcast_set_data_dir(handle, $0) }
+            // M6 — sync any plaintext per-podcast NIP-F4 secrets in
+            // `podcast-keys.json` into the iOS Keychain. Idempotent upsert,
+            // independent of the FFI call above (reads the file directly), so
+            // ordering doesn't matter. Rust still writes the JSON as the
+            // fallback this window; M7 removes it.
+            PodcastKeysKeychainMigration.runIfNeeded(dataDir: directory)
         } catch {
             kbLog.error(
                 "failed to create PodcastLibrary directory: \(error.localizedDescription, privacy: .public)")

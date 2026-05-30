@@ -30,6 +30,34 @@ use serde::{Deserialize, Serialize};
 /// File name of the persisted key store inside the data directory.
 pub const PODCAST_KEYS_FILE: &str = "podcast-keys.json";
 
+/// Encode a 32-byte secp256k1 secret scalar as 64 lowercase hex chars —
+/// the wire form stored in `podcast-keys.json` (and, post-M6, the Keychain
+/// item the Swift migration writes).
+#[must_use]
+pub fn secret_to_hex(sk: &[u8; 32]) -> String {
+    sk.iter().fold(String::with_capacity(64), |mut s, b| {
+        s.push_str(&format!("{b:02x}"));
+        s
+    })
+}
+
+/// Decode a 64-char lowercase-hex secret back into a 32-byte scalar.
+/// Returns `None` for any malformed input (wrong length, non-hex). Used by
+/// [`PodcastKeyStore::load_from_disk_if_present`] to rehydrate secrets from
+/// `podcast-keys.json`.
+#[must_use]
+pub fn hex_to_secret(hex: &str) -> Option<[u8; 32]> {
+    if hex.len() != 64 {
+        return None;
+    }
+    let mut out = [0u8; 32];
+    for (i, chunk) in hex.as_bytes().chunks(2).enumerate() {
+        let byte_str = std::str::from_utf8(chunk).ok()?;
+        out[i] = u8::from_str_radix(byte_str, 16).ok()?;
+    }
+    Some(out)
+}
+
 /// Schema version for `podcast-keys.json`. Bump on incompatible format
 /// changes; unknown versions are treated as empty on load.
 const KEYS_SCHEMA_VERSION: u32 = 1;
@@ -137,12 +165,7 @@ impl PodcastKeyStore {
             .iter()
             .map(|(id, sk)| PersistedKey {
                 podcast_id: id.clone(),
-                secret_hex: sk
-                    .iter()
-                    .fold(String::with_capacity(64), |mut s, b| {
-                        s.push_str(&format!("{b:02x}"));
-                        s
-                    }),
+                secret_hex: secret_to_hex(sk),
             })
             .collect();
         let payload = PersistedKeys {
@@ -200,27 +223,10 @@ impl PodcastKeyStore {
         }
         for row in payload.keys {
             // Parse 64-char hex string back to 32 bytes.
-            let hex = &row.secret_hex;
-            if hex.len() != 64 {
-                eprintln!("[podcast_keys] invalid secret_hex length for {}", row.podcast_id);
-                continue;
-            }
-            let mut sk_bytes = [0u8; 32];
-            let mut ok = true;
-            for (i, chunk) in hex.as_bytes().chunks(2).enumerate() {
-                let byte_str = match std::str::from_utf8(chunk) {
-                    Ok(s) => s,
-                    Err(_) => { ok = false; break; }
-                };
-                match u8::from_str_radix(byte_str, 16) {
-                    Ok(b) => sk_bytes[i] = b,
-                    Err(_) => { ok = false; break; }
-                }
-            }
-            if !ok {
+            let Some(sk_bytes) = hex_to_secret(&row.secret_hex) else {
                 eprintln!("[podcast_keys] hex decode failed for {}", row.podcast_id);
                 continue;
-            }
+            };
             // Merge: don't overwrite keys already in memory.
             self.keys.entry(row.podcast_id).or_insert(sk_bytes);
         }
@@ -236,10 +242,7 @@ fn derive_pubkey_hex(sk: &[u8; 32]) -> String {
         .unwrap_or_else(|_| {
             // Invalid scalar (< 1 in 2^128 probability with random input).
             // Return the raw bytes as hex so callers still get 64 chars.
-            sk.iter().fold(String::with_capacity(64), |mut s, b| {
-                s.push_str(&format!("{b:02x}"));
-                s
-            })
+            secret_to_hex(sk)
         })
 }
 

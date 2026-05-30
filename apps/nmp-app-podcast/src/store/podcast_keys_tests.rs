@@ -157,3 +157,22 @@ fn get_key_returns_none_for_unknown_podcast() {
     assert!(store.pubkey_hex("never-generated").is_none());
 }
 
+// --- M6: hex codec coverage (shared by save_to_disk / load + Swift migration) ---
+
+#[test]
+fn secret_hex_round_trips_through_hex_to_secret() {
+    let mut store = PodcastKeyStore::new();
+    let sk = store.generate_key("pod-1");
+    let hex = secret_to_hex(&sk);
+    assert_eq!(hex.len(), 64);
+    assert!(hex.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
+    assert_eq!(hex_to_secret(&hex), Some(sk));
+}
+
+#[test]
+fn hex_to_secret_rejects_malformed_input() {
+    assert_eq!(hex_to_secret("deadbeef"), None, "too short");
+    assert_eq!(hex_to_secret(&"g".repeat(64)), None, "non-hex chars");
+    assert_eq!(hex_to_secret(&"a".repeat(63)), None, "odd length");
+}
+
