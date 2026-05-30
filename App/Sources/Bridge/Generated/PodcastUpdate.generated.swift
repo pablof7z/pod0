@@ -255,6 +255,49 @@ extension PlayerState: Codable {
 }
 
 extension SettingsSnapshot: Codable {
+    enum CodingKeys: String, CodingKey {
+        case hasCompletedOnboarding
+        case autoSkipAdsEnabled
+        case autoPlayNext
+        case autoMarkPlayedAtEnd
+        case headphoneDoubleTapAction
+        case headphoneTripleTapAction
+        case skipForwardSecs
+        case skipBackwardSecs
+        case defaultPlaybackRate
+        case autoDeleteDownloadsAfterPlayed
+        case agentInitialModel
+        case agentInitialModelName
+        case agentThinkingModel
+        case agentThinkingModelName
+        case memoryCompilationModel
+        case memoryCompilationModelName
+        case wikiModel
+        case wikiModelName
+        case categorizationModel
+        case categorizationModelName
+        case chapterCompilationModel
+        case chapterCompilationModelName
+        case embeddingsModel
+        case embeddingsModelName
+        case imageGenerationModel
+        case imageGenerationModelName
+        case rerankerEnabled
+        case openRouterCredentialSource
+        case openRouterBYOKKeyID = "open_router_byok_key_id"
+        case openRouterBYOKKeyLabel = "open_router_byok_key_label"
+        case openRouterConnectedAt
+        case ollamaCredentialSource
+        case ollamaBYOKKeyID = "ollama_byok_key_id"
+        case ollamaBYOKKeyLabel = "ollama_byok_key_label"
+        case ollamaConnectedAt
+        case ollamaChatURL = "ollama_chat_url"
+        case elevenLabsCredentialSource
+        case elevenLabsBYOKKeyID = "eleven_labs_byok_key_id"
+        case elevenLabsBYOKKeyLabel = "eleven_labs_byok_key_label"
+        case elevenLabsConnectedAt
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         hasCompletedOnboarding = try c.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? false
