@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-31T02:30:00Z",
+      "lines": [
+        "Your Inbox now sorts itself with AI automatically — episodes are prioritized in the background as soon as they arrive, with no need to tap Triage, and it quietly falls back to newest-first when the AI is unavailable."
+      ]
+    },
+    {
       "shipped_at": "2026-05-31T00:30:00Z",
       "lines": [
         "Episode category tags are now picked by AI — titles and descriptions are read and labeled with topics like Technology or True Crime, instead of simple keyword matching."

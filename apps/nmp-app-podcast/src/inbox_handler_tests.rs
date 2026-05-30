@@ -117,11 +117,12 @@ fn build_inbox_uses_llm_score_when_cache_hit() {
         let (_, eps) = s.all_podcasts()[0];
         eps.iter().find(|e| e.title == "Old").unwrap().id.0.to_string()
     };
-    cache.lock().unwrap().insert(old_id.clone(), TriageResult {
-        priority_score: 0.99,
-        priority_reason: "Exceptional episode".to_owned(),
-        categories: vec!["tech".to_owned()],
-    });
+    cache.lock().unwrap().insert(old_id.clone(), TriageResult::ready(
+        0.99,
+        "Exceptional episode".to_owned(),
+        vec!["tech".to_owned()],
+        Utc::now().timestamp(),
+    ));
 
     let items = build_inbox(&store, &dismissed, &cache);
     assert_eq!(items.len(), 3);

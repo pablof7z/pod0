@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::{Arc, Mutex};
 
 use nmp_ffi::NmpApp;
+use tokio::runtime::Runtime;
 
 use crate::clip_handler::ClipRecord;
 use crate::inbox_llm::TriageResult;
@@ -191,6 +192,10 @@ pub struct PodcastHandle {
     /// `social_handler::handle_fetch_contacts` on the actor thread; read
     /// by `build_snapshot_payload` on each tick.
     pub(super) social: Arc<Mutex<Option<SocialSnapshot>>>,
+    /// Shared multi-thread Tokio runtime (same `Arc` the host-op handler and
+    /// voice manager hold). The snapshot path needs it so `maybe_enqueue_triage`
+    /// can spawn proactive background triage off the actor thread.
+    pub(super) runtime: Arc<Runtime>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the

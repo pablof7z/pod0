@@ -11,24 +11,43 @@
 //! ## Failure handling
 //!
 //! If Ollama is offline or returns an unparseable response the function
-//! returns `Err(String)`. The caller is expected to fall back to the
-//! recency-bucket heuristic and log the failure without surfacing it to the
-//! user.
+//! returns `Err(String)`. The caller records a [`TriageStatus::Pending`]
+//! cache entry so `build_inbox` falls back to the recency-bucket heuristic
+//! and the proactive trigger retries later under a cooldown — without
+//! surfacing the failure to the user.
 //!
 //! ## Blocking concern
 //!
-//! This calls `runtime.block_on` for each episode sequentially. For a
-//! typical library of dozens of episodes the total latency may run into
-//! tens of seconds. This is acceptable for the current scope (triage is
-//! triggered by explicit user action, not background polling). A future PR
-//! should move triage to a background task that streams results back
-//! incrementally via the rev counter.
+//! `triage_episode` itself uses `runtime.block_on`, but it is only ever
+//! invoked from inside `tokio::task::spawn_blocking` on a background task
+//! (see `inbox_handler::triage_episodes_in_background`). The actor thread is
+//! never blocked: both the explicit `InboxAction::Triage` and the proactive
+//! snapshot-path trigger spawn that background task and return immediately.
 
 use tokio::runtime::Runtime;
 
 use rig_core::client::{CompletionClient as _, Nothing};
 use rig_core::completion::Prompt as _;
 use rig_core::providers::ollama;
+
+/// Lifecycle status of a cached triage entry.
+///
+/// The cache stores an entry for an episode whether the LLM call **succeeded**
+/// or **failed**, so the proactive trigger can tell "never attempted" apart
+/// from "attempted recently, leave it alone." See [`TriageResult`] and
+/// `inbox_handler::episodes_needing_triage`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TriageStatus {
+    /// The LLM produced a usable score; `priority_score` / `priority_reason` /
+    /// `categories` are authoritative and `build_inbox` uses them verbatim.
+    Ready,
+    /// The LLM call failed (Ollama offline, unparseable reply, …). The score
+    /// fields are placeholders and `build_inbox` ignores them in favor of the
+    /// recency heuristic. The entry exists only to record `attempted_at` so the
+    /// proactive trigger applies a retry cooldown instead of re-spawning every
+    /// snapshot tick.
+    Pending,
+}
 
 /// Result of LLM-based episode triage.
 #[derive(Debug, Clone)]
@@ -39,6 +58,44 @@ pub struct TriageResult {
     pub priority_reason: String,
     /// Zero or more topic / guest category labels.
     pub categories: Vec<String>,
+    /// Whether this entry carries a real LLM score (`Ready`) or is a
+    /// failure placeholder awaiting retry (`Pending`).
+    pub status: TriageStatus,
+    /// Unix seconds when the triage attempt that produced this entry ran.
+    /// Drives both 24h staleness (for `Ready`) and the retry cooldown
+    /// (for `Pending`) in `inbox_handler::episodes_needing_triage`.
+    pub attempted_at: i64,
+}
+
+impl TriageResult {
+    /// Construct a successful (`Ready`) triage entry stamped at `attempted_at`.
+    pub fn ready(
+        priority_score: f32,
+        priority_reason: String,
+        categories: Vec<String>,
+        attempted_at: i64,
+    ) -> Self {
+        Self {
+            priority_score,
+            priority_reason,
+            categories,
+            status: TriageStatus::Ready,
+            attempted_at,
+        }
+    }
+
+    /// Construct a failure placeholder (`Pending`) stamped at `attempted_at`.
+    /// The score fields are inert; `build_inbox` falls back to the heuristic
+    /// for `Pending` entries.
+    pub fn pending(attempted_at: i64) -> Self {
+        Self {
+            priority_score: 0.0,
+            priority_reason: String::new(),
+            categories: Vec::new(),
+            status: TriageStatus::Pending,
+            attempted_at,
+        }
+    }
 }
 
 const OLLAMA_BASE_URL: &str = "http://localhost:11434";
@@ -93,11 +150,12 @@ pub fn triage_episode(
             })
             .unwrap_or_default();
 
-        Ok(TriageResult {
-            priority_score: priority_score.clamp(0.0, 1.0),
+        Ok(TriageResult::ready(
+            priority_score.clamp(0.0, 1.0),
             priority_reason,
             categories,
-        })
+            chrono::Utc::now().timestamp(),
+        ))
     })
 }
 

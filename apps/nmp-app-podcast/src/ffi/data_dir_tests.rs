@@ -55,6 +55,7 @@ fn make_handle(store: Arc<Mutex<PodcastStore>>, rev: Arc<AtomicU64>) -> Box<Podc
         inbox_triage_in_progress: Arc::new(AtomicBool::new(false)),
         comments_cache: Arc::new(Mutex::new(HashMap::new())),
         social: Arc::new(Mutex::new(None)),
+        runtime: Arc::new(tokio::runtime::Runtime::new().unwrap()),
     })
 }
 struct TempDir { path: PathBuf }
