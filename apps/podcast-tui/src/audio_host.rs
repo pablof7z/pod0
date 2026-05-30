@@ -99,7 +99,7 @@ impl AudioHost {
 
     fn handle_mpv_command(&mut self, cmd: AudioCommand) -> String {
         match cmd {
-            AudioCommand::Load { url, position_secs } => {
+            AudioCommand::Load { url, position_secs, .. } => {
                 self.kill_mpv();
                 self.last_url = Some(url.clone());
                 self.last_position_secs = position_secs;
@@ -162,7 +162,7 @@ impl AudioHost {
 
     fn handle_stub_command(&mut self, cmd: AudioCommand) -> String {
         match cmd {
-            AudioCommand::Load { url, position_secs } => {
+            AudioCommand::Load { url, position_secs, .. } => {
                 self.last_url = Some(url.clone());
                 self.last_position_secs = position_secs;
                 self.is_playing = true;
