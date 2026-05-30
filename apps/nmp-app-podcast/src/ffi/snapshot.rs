@@ -141,6 +141,17 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
             agent_thinking_model_name: s.agent_thinking_model_name().to_owned(),
             memory_compilation_model: s.memory_compilation_model().to_owned(),
             memory_compilation_model_name: s.memory_compilation_model_name().to_owned(),
+            wiki_model: s.wiki_model().to_owned(),
+            wiki_model_name: s.wiki_model_name().to_owned(),
+            categorization_model: s.categorization_model().to_owned(),
+            categorization_model_name: s.categorization_model_name().to_owned(),
+            chapter_compilation_model: s.chapter_compilation_model().to_owned(),
+            chapter_compilation_model_name: s.chapter_compilation_model_name().to_owned(),
+            embeddings_model: s.embeddings_model().to_owned(),
+            embeddings_model_name: s.embeddings_model_name().to_owned(),
+            image_generation_model: s.image_generation_model().to_owned(),
+            image_generation_model_name: s.image_generation_model_name().to_owned(),
+            reranker_enabled: s.reranker_enabled(),
         };
         (library, s.all_memory_facts(), settings)
     })

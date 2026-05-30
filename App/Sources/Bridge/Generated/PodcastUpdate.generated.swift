@@ -115,6 +115,28 @@ struct SettingsSnapshot: Equatable {
     var memoryCompilationModel: String = "deepseek-v4-flash:cloud"
     /// Human-readable name for memory compilation model. Default `"DeepSeek Flash"`.
     var memoryCompilationModelName: String = "DeepSeek Flash"
+    /// LLM model ID for wiki synthesis. Default `"deepseek-v4-flash:cloud"`.
+    var wikiModel: String = "deepseek-v4-flash:cloud"
+    /// Human-readable name for wiki model. Default `"DeepSeek Flash"`.
+    var wikiModelName: String = "DeepSeek Flash"
+    /// LLM model ID for episode categorization. Default `"deepseek-v4-flash:cloud"`.
+    var categorizationModel: String = "deepseek-v4-flash:cloud"
+    /// Human-readable name for categorization model. Default `"DeepSeek Flash"`.
+    var categorizationModelName: String = "DeepSeek Flash"
+    /// LLM model ID for chapter compilation. Default `"deepseek-v4-flash:cloud"`.
+    var chapterCompilationModel: String = "deepseek-v4-flash:cloud"
+    /// Human-readable name for chapter compilation model. Default `"DeepSeek Flash"`.
+    var chapterCompilationModelName: String = "DeepSeek Flash"
+    /// LLM model ID for embeddings generation. Default `"deepseek-v4-flash:cloud"`.
+    var embeddingsModel: String = "deepseek-v4-flash:cloud"
+    /// Human-readable name for embeddings model. Default `"DeepSeek Flash"`.
+    var embeddingsModelName: String = "DeepSeek Flash"
+    /// LLM model ID for image generation. Default `"google/gemini-2.5-flash-image"`.
+    var imageGenerationModel: String = "google/gemini-2.5-flash-image"
+    /// Human-readable name for image generation model. Default `"Gemini 2.5 Flash"`.
+    var imageGenerationModelName: String = "Gemini 2.5 Flash"
+    /// Whether the reranker is enabled for search results. Default `false`.
+    var rerankerEnabled: Bool = false
 }
 
 /// Active download-queue projection surfaced via `PodcastUpdate.downloads`.
@@ -225,6 +247,17 @@ extension SettingsSnapshot: Codable {
         agentThinkingModelName = try c.decodeIfPresent(String.self, forKey: .agentThinkingModelName) ?? "DeepSeek Pro"
         memoryCompilationModel = try c.decodeIfPresent(String.self, forKey: .memoryCompilationModel) ?? "deepseek-v4-flash:cloud"
         memoryCompilationModelName = try c.decodeIfPresent(String.self, forKey: .memoryCompilationModelName) ?? "DeepSeek Flash"
+        wikiModel = try c.decodeIfPresent(String.self, forKey: .wikiModel) ?? "deepseek-v4-flash:cloud"
+        wikiModelName = try c.decodeIfPresent(String.self, forKey: .wikiModelName) ?? "DeepSeek Flash"
+        categorizationModel = try c.decodeIfPresent(String.self, forKey: .categorizationModel) ?? "deepseek-v4-flash:cloud"
+        categorizationModelName = try c.decodeIfPresent(String.self, forKey: .categorizationModelName) ?? "DeepSeek Flash"
+        chapterCompilationModel = try c.decodeIfPresent(String.self, forKey: .chapterCompilationModel) ?? "deepseek-v4-flash:cloud"
+        chapterCompilationModelName = try c.decodeIfPresent(String.self, forKey: .chapterCompilationModelName) ?? "DeepSeek Flash"
+        embeddingsModel = try c.decodeIfPresent(String.self, forKey: .embeddingsModel) ?? "deepseek-v4-flash:cloud"
+        embeddingsModelName = try c.decodeIfPresent(String.self, forKey: .embeddingsModelName) ?? "DeepSeek Flash"
+        imageGenerationModel = try c.decodeIfPresent(String.self, forKey: .imageGenerationModel) ?? "google/gemini-2.5-flash-image"
+        imageGenerationModelName = try c.decodeIfPresent(String.self, forKey: .imageGenerationModelName) ?? "Gemini 2.5 Flash"
+        rerankerEnabled = try c.decodeIfPresent(Bool.self, forKey: .rerankerEnabled) ?? false
     }
 }
 

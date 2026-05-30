@@ -12,6 +12,17 @@ fn default_agent_thinking_model() -> String { "deepseek-v4-pro:cloud".to_owned()
 fn default_agent_thinking_model_name() -> String { "DeepSeek Pro".to_owned() }
 fn default_memory_compilation_model() -> String { "deepseek-v4-flash:cloud".to_owned() }
 fn default_memory_compilation_model_name() -> String { "DeepSeek Flash".to_owned() }
+fn default_wiki_model() -> String { "deepseek-v4-flash:cloud".to_owned() }
+fn default_wiki_model_name() -> String { "DeepSeek Flash".to_owned() }
+fn default_categorization_model() -> String { "deepseek-v4-flash:cloud".to_owned() }
+fn default_categorization_model_name() -> String { "DeepSeek Flash".to_owned() }
+fn default_chapter_compilation_model() -> String { "deepseek-v4-flash:cloud".to_owned() }
+fn default_chapter_compilation_model_name() -> String { "DeepSeek Flash".to_owned() }
+fn default_embeddings_model() -> String { "deepseek-v4-flash:cloud".to_owned() }
+fn default_embeddings_model_name() -> String { "DeepSeek Flash".to_owned() }
+fn default_image_generation_model() -> String { "google/gemini-2.5-flash-image".to_owned() }
+fn default_image_generation_model_name() -> String { "Gemini 2.5 Flash".to_owned() }
+fn default_false() -> bool { false }
 
 /// App-settings projection surfaced via
 /// [`super::snapshot::PodcastUpdate::settings`].
@@ -73,6 +84,39 @@ pub struct SettingsSnapshot {
     /// Human-readable name for memory compilation model. Default `"DeepSeek Flash"`.
     #[serde(default = "default_memory_compilation_model_name")]
     pub memory_compilation_model_name: String,
+    /// LLM model ID for wiki synthesis. Default `"deepseek-v4-flash:cloud"`.
+    #[serde(default = "default_wiki_model")]
+    pub wiki_model: String,
+    /// Human-readable name for wiki model. Default `"DeepSeek Flash"`.
+    #[serde(default = "default_wiki_model_name")]
+    pub wiki_model_name: String,
+    /// LLM model ID for episode categorization. Default `"deepseek-v4-flash:cloud"`.
+    #[serde(default = "default_categorization_model")]
+    pub categorization_model: String,
+    /// Human-readable name for categorization model. Default `"DeepSeek Flash"`.
+    #[serde(default = "default_categorization_model_name")]
+    pub categorization_model_name: String,
+    /// LLM model ID for chapter compilation. Default `"deepseek-v4-flash:cloud"`.
+    #[serde(default = "default_chapter_compilation_model")]
+    pub chapter_compilation_model: String,
+    /// Human-readable name for chapter compilation model. Default `"DeepSeek Flash"`.
+    #[serde(default = "default_chapter_compilation_model_name")]
+    pub chapter_compilation_model_name: String,
+    /// LLM model ID for embeddings generation. Default `"deepseek-v4-flash:cloud"`.
+    #[serde(default = "default_embeddings_model")]
+    pub embeddings_model: String,
+    /// Human-readable name for embeddings model. Default `"DeepSeek Flash"`.
+    #[serde(default = "default_embeddings_model_name")]
+    pub embeddings_model_name: String,
+    /// LLM model ID for image generation. Default `"google/gemini-2.5-flash-image"`.
+    #[serde(default = "default_image_generation_model")]
+    pub image_generation_model: String,
+    /// Human-readable name for image generation model. Default `"Gemini 2.5 Flash"`.
+    #[serde(default = "default_image_generation_model_name")]
+    pub image_generation_model_name: String,
+    /// Whether the reranker is enabled for search results. Default `false`.
+    #[serde(default = "default_false")]
+    pub reranker_enabled: bool,
 }
 
 impl Default for SettingsSnapshot {
@@ -94,6 +138,17 @@ impl Default for SettingsSnapshot {
             agent_thinking_model_name: "DeepSeek Pro".to_owned(),
             memory_compilation_model: "deepseek-v4-flash:cloud".to_owned(),
             memory_compilation_model_name: "DeepSeek Flash".to_owned(),
+            wiki_model: "deepseek-v4-flash:cloud".to_owned(),
+            wiki_model_name: "DeepSeek Flash".to_owned(),
+            categorization_model: "deepseek-v4-flash:cloud".to_owned(),
+            categorization_model_name: "DeepSeek Flash".to_owned(),
+            chapter_compilation_model: "deepseek-v4-flash:cloud".to_owned(),
+            chapter_compilation_model_name: "DeepSeek Flash".to_owned(),
+            embeddings_model: "deepseek-v4-flash:cloud".to_owned(),
+            embeddings_model_name: "DeepSeek Flash".to_owned(),
+            image_generation_model: "google/gemini-2.5-flash-image".to_owned(),
+            image_generation_model_name: "Gemini 2.5 Flash".to_owned(),
+            reranker_enabled: false,
         }
     }
 }

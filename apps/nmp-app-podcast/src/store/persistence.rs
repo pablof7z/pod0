@@ -132,6 +132,49 @@ pub(super) struct PersistedSettings {
     /// hydration replaces with "DeepSeek Flash".
     #[serde(default)]
     pub memory_compilation_model_name: String,
+    /// LLM model ID for wiki synthesis. Empty string in old files →
+    /// hydration replaces with "deepseek-v4-flash:cloud".
+    #[serde(default)]
+    pub wiki_model: String,
+    /// Human-readable name for wiki model. Empty string in old files →
+    /// hydration replaces with "DeepSeek Flash".
+    #[serde(default)]
+    pub wiki_model_name: String,
+    /// LLM model ID for episode categorization. Empty string in old files →
+    /// hydration replaces with "deepseek-v4-flash:cloud".
+    #[serde(default)]
+    pub categorization_model: String,
+    /// Human-readable name for categorization model. Empty string in old files →
+    /// hydration replaces with "DeepSeek Flash".
+    #[serde(default)]
+    pub categorization_model_name: String,
+    /// LLM model ID for chapter compilation. Empty string in old files →
+    /// hydration replaces with "deepseek-v4-flash:cloud".
+    #[serde(default)]
+    pub chapter_compilation_model: String,
+    /// Human-readable name for chapter compilation model. Empty string in old files →
+    /// hydration replaces with "DeepSeek Flash".
+    #[serde(default)]
+    pub chapter_compilation_model_name: String,
+    /// LLM model ID for embeddings generation. Empty string in old files →
+    /// hydration replaces with "deepseek-v4-flash:cloud".
+    #[serde(default)]
+    pub embeddings_model: String,
+    /// Human-readable name for embeddings model. Empty string in old files →
+    /// hydration replaces with "DeepSeek Flash".
+    #[serde(default)]
+    pub embeddings_model_name: String,
+    /// LLM model ID for image generation. Empty string in old files →
+    /// hydration replaces with "google/gemini-2.5-flash-image".
+    #[serde(default)]
+    pub image_generation_model: String,
+    /// Human-readable name for image generation model. Empty string in old files →
+    /// hydration replaces with "Gemini 2.5 Flash".
+    #[serde(default)]
+    pub image_generation_model_name: String,
+    /// Whether the reranker is enabled for search results. Defaults to `false`.
+    #[serde(default)]
+    pub reranker_enabled: bool,
 }
 
 fn default_true() -> bool { true }
@@ -154,6 +197,17 @@ impl Default for PersistedSettings {
             agent_thinking_model_name: "DeepSeek Pro".to_owned(),
             memory_compilation_model: "deepseek-v4-flash:cloud".to_owned(),
             memory_compilation_model_name: "DeepSeek Flash".to_owned(),
+            wiki_model: "deepseek-v4-flash:cloud".to_owned(),
+            wiki_model_name: "DeepSeek Flash".to_owned(),
+            categorization_model: "deepseek-v4-flash:cloud".to_owned(),
+            categorization_model_name: "DeepSeek Flash".to_owned(),
+            chapter_compilation_model: "deepseek-v4-flash:cloud".to_owned(),
+            chapter_compilation_model_name: "DeepSeek Flash".to_owned(),
+            embeddings_model: "deepseek-v4-flash:cloud".to_owned(),
+            embeddings_model_name: "DeepSeek Flash".to_owned(),
+            image_generation_model: "google/gemini-2.5-flash-image".to_owned(),
+            image_generation_model_name: "Gemini 2.5 Flash".to_owned(),
+            reranker_enabled: false,
         }
     }
 }
