@@ -70,7 +70,6 @@ fn create_owned(handler: &PodcastHostOpHandler, podcast_id: String) -> serde_jso
                 Some(pk) => pk,
                 None => return serde_json::json!({"ok": false, "error": "derive pubkey failed"}),
             };
-            keys.save_to_disk();
             pk
         }
         Err(_) => return serde_json::json!({"ok": false, "error": "podcast_keys poisoned"}),
@@ -288,7 +287,6 @@ fn publish_author_claim(
 fn remove_owned(handler: &PodcastHostOpHandler, podcast_id: String) -> serde_json::Value {
     if let Ok(mut keys) = handler.podcast_keys.lock() {
         keys.remove_key(&podcast_id);
-        keys.save_to_disk();
     }
     if let Ok(mut s) = handler.store.lock() {
         s.clear_owner_pubkey_hex(&podcast_id);
