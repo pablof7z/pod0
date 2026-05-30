@@ -89,6 +89,14 @@ pub struct PodcastHandle {
     /// `build_snapshot_payload` on the main thread. Mirrors the
     /// `search_results` shape so the snapshot reads stay symmetric.
     pub(super) knowledge_search_results: Arc<Mutex<Vec<KnowledgeSearchResult>>>,
+    /// In-memory RAG chunk store (M5.3). `KnowledgeAction::IndexEpisode`
+    /// chunks the Rust-stored transcript into here; `Search` substring-
+    /// matches over the chunks. The handle owns its share of the `Arc` so
+    /// the chunk store outlives any single host-op dispatch and a future
+    /// snapshot projection can read it; today only the handler writes/reads
+    /// it, hence the `allow(dead_code)` on the handle-side owner.
+    #[allow(dead_code)]
+    pub(super) knowledge_store: Arc<Mutex<podcast_knowledge::KnowledgeStore>>,
     /// In-memory list of agent-generated TTS episodes (feature #43).
     /// Written by the `podcast.tts.*` action handlers on the actor thread;
     /// read by `build_snapshot_payload` on the main thread. Not persisted

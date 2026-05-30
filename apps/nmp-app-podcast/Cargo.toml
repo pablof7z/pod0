@@ -85,6 +85,12 @@ podcast-briefings = { path = "../podcast-briefings" }
 # bytes via the HTTP capability, parse them with these pure-Rust parsers,
 # and store the plain text on a per-episode slot in `PodcastStore`.
 podcast-transcripts = { path = "../podcast-transcripts" }
+# M5.3 — RAG/knowledge chunk store. `KnowledgeAction::IndexEpisode` chunks
+# the Rust-stored transcript into this in-memory store and
+# `KnowledgeAction::Search` does BM25-style substring matching over the
+# resulting chunks (in addition to title/description). Real embedding
+# search is a follow-up; this baseline needs no STT timing or vectors.
+podcast-knowledge = { path = "../podcast-knowledge" }
 # NIP-F4 (`kind:10154`) parser + action constants for Nostr discovery.
 # Discovery + publish layer. NIP-F4 tag builders (`podcast_to_show_tags`,
 # `episode_to_episode_tags`, `show_content`) and kind constants

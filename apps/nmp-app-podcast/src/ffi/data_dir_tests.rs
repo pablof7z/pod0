@@ -31,6 +31,7 @@ fn make_handle(store: Arc<Mutex<PodcastStore>>, rev: Arc<AtomicU64>) -> Box<Podc
         picks: Arc::new(Mutex::new(Vec::<AgentPickSummary>::new())),
         agent_tasks: Arc::new(Mutex::new(Vec::new())),
         knowledge_search_results: Arc::new(Mutex::new(Vec::new())),
+        knowledge_store: Arc::new(Mutex::new(podcast_knowledge::KnowledgeStore::new())),
         tts_episodes: Arc::new(Mutex::new(Vec::new())),
         clips: Arc::new(Mutex::new(Vec::new())),
         transcripts: Arc::new(Mutex::new(HashMap::new())),

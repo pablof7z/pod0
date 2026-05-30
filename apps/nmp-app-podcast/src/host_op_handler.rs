@@ -105,6 +105,8 @@ pub struct PodcastHostOpHandler {
     pub(crate) picks: Arc<Mutex<Vec<AgentPickSummary>>>,
     pub(crate) agent_tasks: Arc<Mutex<Vec<AgentTaskSummary>>>,
     pub(crate) knowledge_search_results: Arc<Mutex<Vec<KnowledgeSearchResult>>>,
+    /// RAG chunk store (M5.3). Shared with `PodcastHandle.knowledge_store`.
+    pub(crate) knowledge_store: Arc<Mutex<podcast_knowledge::KnowledgeStore>>,
     pub(crate) tts: TtsEpisodeHandler,
     pub(crate) clips: Arc<Mutex<Vec<ClipRecord>>>,
     pub(crate) transcripts: Arc<Mutex<HashMap<String, Vec<TranscriptEntry>>>>,
@@ -175,6 +177,7 @@ impl PodcastHostOpHandler {
         picks: Arc<Mutex<Vec<AgentPickSummary>>>,
         agent_tasks: Arc<Mutex<Vec<AgentTaskSummary>>>,
         knowledge_search_results: Arc<Mutex<Vec<KnowledgeSearchResult>>>,
+        knowledge_store: Arc<Mutex<podcast_knowledge::KnowledgeStore>>,
         tts_episodes: Arc<Mutex<Vec<TtsEpisodeSummary>>>,
         clips: Arc<Mutex<Vec<ClipRecord>>>,
         transcripts: Arc<Mutex<HashMap<String, Vec<TranscriptEntry>>>>,
@@ -207,6 +210,7 @@ impl PodcastHostOpHandler {
             picks,
             agent_tasks,
             knowledge_search_results,
+            knowledge_store,
             tts,
             clips,
             transcripts,
@@ -456,6 +460,7 @@ impl HostOpHandler for PodcastHostOpHandler {
                 a,
                 &self.store,
                 &self.knowledge_search_results,
+                &self.knowledge_store,
                 &self.rev,
             );
         }

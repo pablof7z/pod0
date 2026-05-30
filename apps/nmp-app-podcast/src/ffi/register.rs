@@ -102,6 +102,7 @@ pub extern "C" fn nmp_app_podcast_register(
     // `tasks_handler::default_seed`).
     let agent_tasks = Arc::new(Mutex::new(tasks_handler::default_seed()));
     let knowledge_search_results = Arc::new(Mutex::new(Vec::new()));
+    let knowledge_store = Arc::new(Mutex::new(podcast_knowledge::KnowledgeStore::new()));
     let tts_episodes = Arc::new(Mutex::new(Vec::new()));
     let clips = Arc::new(Mutex::new(Vec::new()));
     let transcripts = Arc::new(Mutex::new(HashMap::new()));
@@ -162,6 +163,7 @@ pub extern "C" fn nmp_app_podcast_register(
         picks.clone(),
         agent_tasks.clone(),
         knowledge_search_results.clone(),
+        knowledge_store.clone(),
         tts_episodes.clone(),
         clips.clone(),
         transcripts.clone(),
@@ -196,6 +198,7 @@ pub extern "C" fn nmp_app_podcast_register(
         picks,
         agent_tasks,
         knowledge_search_results,
+        knowledge_store,
         tts_episodes,
         clips,
         transcripts,
