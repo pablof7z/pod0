@@ -486,6 +486,55 @@ impl PodcastHostOpHandler {
                 self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 serde_json::json!({"ok": true})
             }
+            SettingsAction::SetSttProvider { provider } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_stt_provider(provider);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetOpenRouterWhisperModel { model } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_open_router_whisper_model(model);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetAssemblyAiSttModel { model } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_assembly_ai_stt_model(model);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetElevenLabsModels { stt_model, tts_model } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_eleven_labs_models(stt_model, tts_model);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetElevenLabsVoice { voice_id, voice_name } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_eleven_labs_voice(voice_id, voice_name);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetBlossomServerUrl { url } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_blossom_server_url(url);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetYoutubeExtractorUrl { url } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_youtube_extractor_url(url);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
         }
     }
 }

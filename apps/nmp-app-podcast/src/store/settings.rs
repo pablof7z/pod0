@@ -521,6 +521,107 @@ impl PodcastStore {
         self.eleven_labs_connected_at = connected_at;
         self.persist();
     }
+
+    /// STT provider selection (enum .rawValue String).
+    /// Default `"elevenlabs_scribe"`.
+    pub fn stt_provider(&self) -> &str {
+        &self.stt_provider
+    }
+
+    /// Set the STT provider and persist. Idempotent.
+    pub fn set_stt_provider(&mut self, value: String) {
+        if self.stt_provider == value { return; }
+        self.stt_provider = value;
+        self.persist();
+    }
+
+    /// OpenRouter Whisper model string. Default `"openai/whisper-1"`.
+    pub fn open_router_whisper_model(&self) -> &str {
+        &self.open_router_whisper_model
+    }
+
+    /// Set the OpenRouter Whisper model and persist. Idempotent.
+    pub fn set_open_router_whisper_model(&mut self, value: String) {
+        if self.open_router_whisper_model == value { return; }
+        self.open_router_whisper_model = value;
+        self.persist();
+    }
+
+    /// AssemblyAI STT model string. Default `"universal-3-pro,universal-2"`.
+    pub fn assembly_ai_stt_model(&self) -> &str {
+        &self.assembly_ai_stt_model
+    }
+
+    /// Set the AssemblyAI STT model and persist. Idempotent.
+    pub fn set_assembly_ai_stt_model(&mut self, value: String) {
+        if self.assembly_ai_stt_model == value { return; }
+        self.assembly_ai_stt_model = value;
+        self.persist();
+    }
+
+    /// ElevenLabs STT model string. Default `"scribe_v1"`.
+    pub fn eleven_labs_stt_model(&self) -> &str {
+        &self.eleven_labs_stt_model
+    }
+
+    /// ElevenLabs TTS model string. Default `"eleven_turbo_v2_5"`.
+    pub fn eleven_labs_tts_model(&self) -> &str {
+        &self.eleven_labs_tts_model
+    }
+
+    /// Set both ElevenLabs STT and TTS models and persist. Atomic update. Idempotent.
+    pub fn set_eleven_labs_models(&mut self, stt_model: String, tts_model: String) {
+        if self.eleven_labs_stt_model == stt_model && self.eleven_labs_tts_model == tts_model {
+            return;
+        }
+        self.eleven_labs_stt_model = stt_model;
+        self.eleven_labs_tts_model = tts_model;
+        self.persist();
+    }
+
+    /// ElevenLabs voice ID. Defaults to empty string.
+    pub fn eleven_labs_voice_id(&self) -> &str {
+        &self.eleven_labs_voice_id
+    }
+
+    /// ElevenLabs voice name. Defaults to empty string.
+    pub fn eleven_labs_voice_name(&self) -> &str {
+        &self.eleven_labs_voice_name
+    }
+
+    /// Set both ElevenLabs voice ID and name and persist. Atomic update. Idempotent.
+    pub fn set_eleven_labs_voice(&mut self, voice_id: String, voice_name: String) {
+        if self.eleven_labs_voice_id == voice_id && self.eleven_labs_voice_name == voice_name {
+            return;
+        }
+        self.eleven_labs_voice_id = voice_id;
+        self.eleven_labs_voice_name = voice_name;
+        self.persist();
+    }
+
+    /// Blossom server URL. Default `"https://blossom.primal.net"`.
+    pub fn blossom_server_url(&self) -> &str {
+        &self.blossom_server_url
+    }
+
+    /// Set the Blossom server URL and persist. Idempotent.
+    pub fn set_blossom_server_url(&mut self, value: String) {
+        if self.blossom_server_url == value { return; }
+        self.blossom_server_url = value;
+        self.persist();
+    }
+
+    /// YouTube extractor URL (optional).
+    pub fn youtube_extractor_url(&self) -> Option<&str> {
+        self.youtube_extractor_url.as_deref()
+    }
+
+    /// Set the YouTube extractor URL and persist. Idempotent.
+    pub fn set_youtube_extractor_url(&mut self, value: Option<String>) {
+        if self.youtube_extractor_url == value { return; }
+        self.youtube_extractor_url = value;
+        self.persist();
+    }
 }
 
 #[cfg(test)]

@@ -165,6 +165,15 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
             eleven_labs_byok_key_id: s.eleven_labs_byok_key_id().map(|s| s.to_owned()),
             eleven_labs_byok_key_label: s.eleven_labs_byok_key_label().map(|s| s.to_owned()),
             eleven_labs_connected_at: s.eleven_labs_connected_at(),
+            stt_provider: s.stt_provider().to_owned(),
+            open_router_whisper_model: s.open_router_whisper_model().to_owned(),
+            assembly_ai_stt_model: s.assembly_ai_stt_model().to_owned(),
+            eleven_labs_stt_model: s.eleven_labs_stt_model().to_owned(),
+            eleven_labs_tts_model: s.eleven_labs_tts_model().to_owned(),
+            eleven_labs_voice_id: s.eleven_labs_voice_id().to_owned(),
+            eleven_labs_voice_name: s.eleven_labs_voice_name().to_owned(),
+            blossom_server_url: s.blossom_server_url().to_owned(),
+            youtube_extractor_url: s.youtube_extractor_url().map(|s| s.to_owned()),
         };
         (library, s.all_memory_facts(), settings)
     })

@@ -191,6 +191,24 @@ pub struct PodcastStore {
     pub(super) eleven_labs_byok_key_label: Option<String>,
     /// ElevenLabs credential connected-at timestamp (epoch seconds, optional).
     pub(super) eleven_labs_connected_at: Option<i64>,
+    /// STT provider selection. Default `"elevenlabs_scribe"`.
+    pub(super) stt_provider: String,
+    /// OpenRouter Whisper model string. Default `"openai/whisper-1"`.
+    pub(super) open_router_whisper_model: String,
+    /// AssemblyAI STT model string. Default `"universal-3-pro,universal-2"`.
+    pub(super) assembly_ai_stt_model: String,
+    /// ElevenLabs STT model string. Default `"scribe_v1"`.
+    pub(super) eleven_labs_stt_model: String,
+    /// ElevenLabs TTS model string. Default `"eleven_turbo_v2_5"`.
+    pub(super) eleven_labs_tts_model: String,
+    /// ElevenLabs voice ID. Defaults to empty string.
+    pub(super) eleven_labs_voice_id: String,
+    /// ElevenLabs voice name. Defaults to empty string.
+    pub(super) eleven_labs_voice_name: String,
+    /// Blossom server URL. Default `"https://blossom.primal.net"`.
+    pub(super) blossom_server_url: String,
+    /// YouTube extractor URL (optional).
+    pub(super) youtube_extractor_url: Option<String>,
     /// Last-known Wi-Fi state reported by `nmp.network.capability`. `true` when
     /// the device's active interface is Wi-Fi. Defaults to `true` so
     /// auto-download runs on first launch before the iOS capability fires its
@@ -263,6 +281,15 @@ impl PodcastStore {
             eleven_labs_byok_key_id: None,
             eleven_labs_byok_key_label: None,
             eleven_labs_connected_at: None,
+            stt_provider: "elevenlabs_scribe".to_owned(),
+            open_router_whisper_model: "openai/whisper-1".to_owned(),
+            assembly_ai_stt_model: "universal-3-pro,universal-2".to_owned(),
+            eleven_labs_stt_model: "scribe_v1".to_owned(),
+            eleven_labs_tts_model: "eleven_turbo_v2_5".to_owned(),
+            eleven_labs_voice_id: String::new(),
+            eleven_labs_voice_name: String::new(),
+            blossom_server_url: "https://blossom.primal.net".to_owned(),
+            youtube_extractor_url: None,
             is_on_wifi: true,
             data_dir: None,
             loaded_queue: Vec::new(),
@@ -459,6 +486,39 @@ impl PodcastStore {
         self.eleven_labs_byok_key_id = loaded.settings.eleven_labs_byok_key_id;
         self.eleven_labs_byok_key_label = loaded.settings.eleven_labs_byok_key_label;
         self.eleven_labs_connected_at = loaded.settings.eleven_labs_connected_at;
+        self.stt_provider = if !loaded.settings.stt_provider.is_empty() {
+            loaded.settings.stt_provider
+        } else {
+            "elevenlabs_scribe".to_owned()
+        };
+        self.open_router_whisper_model = if !loaded.settings.open_router_whisper_model.is_empty() {
+            loaded.settings.open_router_whisper_model
+        } else {
+            "openai/whisper-1".to_owned()
+        };
+        self.assembly_ai_stt_model = if !loaded.settings.assembly_ai_stt_model.is_empty() {
+            loaded.settings.assembly_ai_stt_model
+        } else {
+            "universal-3-pro,universal-2".to_owned()
+        };
+        self.eleven_labs_stt_model = if !loaded.settings.eleven_labs_stt_model.is_empty() {
+            loaded.settings.eleven_labs_stt_model
+        } else {
+            "scribe_v1".to_owned()
+        };
+        self.eleven_labs_tts_model = if !loaded.settings.eleven_labs_tts_model.is_empty() {
+            loaded.settings.eleven_labs_tts_model
+        } else {
+            "eleven_turbo_v2_5".to_owned()
+        };
+        self.eleven_labs_voice_id = loaded.settings.eleven_labs_voice_id;
+        self.eleven_labs_voice_name = loaded.settings.eleven_labs_voice_name;
+        self.blossom_server_url = if !loaded.settings.blossom_server_url.is_empty() {
+            loaded.settings.blossom_server_url
+        } else {
+            "https://blossom.primal.net".to_owned()
+        };
+        self.youtube_extractor_url = loaded.settings.youtube_extractor_url;
         self.cached_queue = loaded.queue.clone();
         self.loaded_queue = loaded.queue;
         // Restore deferred Wi-Fi downloads that were pending when the app was
@@ -563,6 +623,15 @@ impl PodcastStore {
                 eleven_labs_byok_key_id: self.eleven_labs_byok_key_id.clone(),
                 eleven_labs_byok_key_label: self.eleven_labs_byok_key_label.clone(),
                 eleven_labs_connected_at: self.eleven_labs_connected_at,
+                stt_provider: self.stt_provider.clone(),
+                open_router_whisper_model: self.open_router_whisper_model.clone(),
+                assembly_ai_stt_model: self.assembly_ai_stt_model.clone(),
+                eleven_labs_stt_model: self.eleven_labs_stt_model.clone(),
+                eleven_labs_tts_model: self.eleven_labs_tts_model.clone(),
+                eleven_labs_voice_id: self.eleven_labs_voice_id.clone(),
+                eleven_labs_voice_name: self.eleven_labs_voice_name.clone(),
+                blossom_server_url: self.blossom_server_url.clone(),
+                youtube_extractor_url: self.youtube_extractor_url.clone(),
             },
             queue: Vec::new(), // filled by persist() from self.cached_queue after return
             pending_wifi_downloads: self.pending_wifi_downloads.clone(),
