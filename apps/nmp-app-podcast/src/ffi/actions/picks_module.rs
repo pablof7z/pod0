@@ -144,6 +144,108 @@ pub fn compute_picks(mut candidates: Vec<CandidateEpisode>) -> Vec<AgentPickSumm
     picks
 }
 
+/// Compute the picks list using LLM scores when available (M5.6).
+///
+/// Mirrors [`compute_picks`]'s diversity rules (per-show cap, total limit)
+/// but the ranking signal is the LLM `(score, reason)` pair from
+/// `scores` (keyed by `episode_id`). Candidates without an LLM score fall
+/// back to a recency-normalized heuristic score so the rail still fills when
+/// Ollama is partially offline.
+///
+/// Algorithm:
+///   1. Resolve each candidate's `(score, reason)`: LLM if present in
+///      `scores`, else `(recency_score, "New from {podcast_title}")`.
+///   2. Sort by resolved score descending; ties broken newest-first so the
+///      visible order is deterministic.
+///   3. Walk in order, accepting each episode under [`PICKS_PER_SHOW_CAP`]
+///      per show, stopping at [`PICKS_LIMIT`].
+///   4. `pick_score` = resolved score; `pick_reason` = resolved reason.
+pub fn compute_picks_scored(
+    candidates: Vec<CandidateEpisode>,
+    scores: &std::collections::HashMap<String, (f32, String)>,
+) -> Vec<AgentPickSummary> {
+    let now = chrono::Utc::now().timestamp();
+
+    // Resolve (score, reason) per candidate up front so sorting is by the
+    // final signal, not by recency.
+    let mut resolved: Vec<(CandidateEpisode, f32, String)> = candidates
+        .into_iter()
+        .map(|cand| {
+            let (score, reason) = match scores.get(&cand.episode_id) {
+                Some((s, r)) => (*s, r.clone()),
+                None => (
+                    recency_score(now, cand.published_at),
+                    format!("New from {}", cand.podcast_title),
+                ),
+            };
+            (cand, score, reason)
+        })
+        .collect();
+
+    // Highest score first; ties newest-first (deterministic).
+    resolved.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| b.0.published_at.cmp(&a.0.published_at))
+    });
+
+    let mut per_show: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
+    let mut picks: Vec<AgentPickSummary> = Vec::with_capacity(PICKS_LIMIT);
+
+    for (cand, score, reason) in resolved {
+        if picks.len() >= PICKS_LIMIT {
+            break;
+        }
+        let count = per_show.entry(cand.podcast_id.clone()).or_insert(0);
+        if *count >= PICKS_PER_SHOW_CAP {
+            continue;
+        }
+        *count += 1;
+
+        picks.push(AgentPickSummary {
+            episode_id: cand.episode_id,
+            episode_title: cand.episode_title,
+            podcast_id: cand.podcast_id,
+            podcast_title: cand.podcast_title,
+            artwork_url: cand.artwork_url,
+            published_at: cand.published_at,
+            duration_secs: cand.duration_secs,
+            pick_reason: reason,
+            pick_score: score.clamp(0.0, 1.0),
+        });
+    }
+
+    picks
+}
+
+/// Recency-normalized fallback score in `0.0..=1.0`, newest = highest.
+///
+/// Used by [`compute_picks_scored`] for candidates the LLM did not score.
+/// Mirrors the inbox recency-bucket curve so unscored picks rank sensibly
+/// against LLM-scored ones rather than collapsing to a constant.
+fn recency_score(now_unix: i64, published_at_unix: i64) -> f32 {
+    const ONE_HOUR: i64 = 3_600;
+    const ONE_DAY: i64 = 24 * ONE_HOUR;
+    const WINDOW_SECS: i64 = 30 * ONE_DAY;
+
+    let age = (now_unix - published_at_unix).max(0);
+    if age < 12 * ONE_HOUR {
+        return 1.0;
+    }
+    if age < 3 * ONE_DAY {
+        return 0.85;
+    }
+    if age < 7 * ONE_DAY {
+        return 0.65;
+    }
+    if age < WINDOW_SECS {
+        let progress = (age - 7 * ONE_DAY) as f32 / (WINDOW_SECS - 7 * ONE_DAY) as f32;
+        return 0.55 - progress.clamp(0.0, 1.0) * 0.35;
+    }
+    0.15
+}
+
 #[cfg(test)]
 #[path = "picks_module_tests.rs"]
 mod tests;

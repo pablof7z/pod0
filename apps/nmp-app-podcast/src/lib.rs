@@ -59,6 +59,7 @@ pub(crate) mod itunes;
 pub mod knowledge;
 pub(crate) mod memory_handler;
 pub(crate) mod picks_handler;
+pub(crate) mod picks_llm;
 pub mod player;
 pub mod queue;
 pub(crate) mod relay;

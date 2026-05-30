@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-30T12:00:00Z",
+      "lines": [
+        "For You picks are now chosen by AI — episodes are scored for interest with a one-line reason, instead of just showing the newest."
+      ]
+    },
+    {
       "shipped_at": "2026-05-30T06:00:00Z",
       "lines": [
         "Your comments and posts now actually reach the Nostr relays — publishing and fetching over Nostr works directly from your iPhone."

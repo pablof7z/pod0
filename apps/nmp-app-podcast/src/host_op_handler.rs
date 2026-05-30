@@ -103,6 +103,10 @@ pub struct PodcastHostOpHandler {
     pub(crate) wiki_articles: Arc<Mutex<Vec<WikiArticle>>>,
     pub(crate) wiki_search_results: Arc<Mutex<Vec<WikiArticle>>>,
     pub(crate) picks: Arc<Mutex<Vec<AgentPickSummary>>>,
+    /// Re-entrancy guard for background LLM picks scoring (M5.6); see
+    /// `picks_handler::handle_refresh`. Handler-only (the snapshot never reads
+    /// it, so it is not mirrored onto `PodcastHandle`); set in `new()`.
+    pub(crate) picks_score_in_progress: Arc<std::sync::atomic::AtomicBool>,
     pub(crate) agent_tasks: Arc<Mutex<Vec<AgentTaskSummary>>>,
     pub(crate) knowledge_search_results: Arc<Mutex<Vec<KnowledgeSearchResult>>>,
     /// RAG chunk store (M5.3). Shared with `PodcastHandle.knowledge_store`.
@@ -208,6 +212,7 @@ impl PodcastHostOpHandler {
             wiki_articles,
             wiki_search_results,
             picks,
+            picks_score_in_progress: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             agent_tasks,
             knowledge_search_results,
             knowledge_store,
@@ -451,7 +456,8 @@ impl HostOpHandler for PodcastHostOpHandler {
             );
         }
         if let Ok(PicksAction::Refresh) = serde_json::from_str::<PicksAction>(action_json) {
-            return picks_handle_refresh(&self.store, &self.picks, &self.rev);
+            let p = &self.picks_score_in_progress;
+            return picks_handle_refresh(&self.store, &self.picks, &self.rev, &self.runtime, p);
         }
         if let Ok(action) = serde_json::from_str::<AgentTasksAction>(action_json) {
             return tasks_handler::handle_tasks_action(action, &self.agent_tasks, &self.rev);
