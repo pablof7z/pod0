@@ -435,7 +435,7 @@ impl HostOpHandler for PodcastHostOpHandler {
         if let Ok(action) = serde_json::from_str::<ChaptersAction>(action_json) {
             return match action {
                 ChaptersAction::Compile { episode_id } => {
-                    handle_compile_chapters(&self.store, &self.rev, episode_id)
+                    handle_compile_chapters(&self.store, &self.rev, &self.runtime, episode_id)
                 }
             };
         }
