@@ -214,7 +214,8 @@ final class AppStateStore {
             Self.logger.error("Persistence.load failed: \(error, privacy: .public) — starting with empty state")
             loadedState = AppState()
         }
-        Self.migrateLegacyOpenRouterSecretIfNeeded(in: &loadedState, persistence: persistence)
+        // Legacy OpenRouter key migration (from JSON blob to Keychain) is now
+        // handled by LegacyKeychainMigration v2. The old pump is deleted.
         // Strip synthetic external-playback podcasts written by an earlier
         // build that used an `external-episode://` sentinel feed URL. The
         // new model parents external episodes to `Podcast.unknownID` (or a
@@ -288,26 +289,6 @@ final class AppStateStore {
         Self.logger.info("iCloudSettingsSync: applying remote settings update")
         // Assign directly (bypassing updateSettings) to avoid a redundant push.
         state.settings = updated
-    }
-
-    private static func migrateLegacyOpenRouterSecretIfNeeded(
-        in state: inout AppState,
-        persistence: Persistence
-    ) {
-        let legacyKey = state.settings.legacyOpenRouterAPIKey.trimmedOrEmpty
-        guard !legacyKey.isEmpty else {
-            state.settings.legacyOpenRouterAPIKey = nil
-            return
-        }
-
-        do {
-            try OpenRouterCredentialStore.saveAPIKey(legacyKey)
-            state.settings.markOpenRouterManual()
-        } catch {
-            logger.error("Failed to migrate legacy OpenRouter key to keychain: \(error, privacy: .public)")
-            state.settings.clearOpenRouterCredential()
-        }
-        persistence.save(state)
     }
 
     // MARK: - Settings

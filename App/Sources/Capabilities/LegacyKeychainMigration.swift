@@ -53,7 +53,11 @@ struct MigrationReport: Sendable {
 /// `pcst.identity.capability` namespace. Idempotent — guarded by UserDefaults.
 enum LegacyKeychainMigration {
 
-    private static let sentinelKey = "pcst.migration.keychain.v1.done"
+    // v1: covered nsec, bunkerSession, byokOpenRouter, byokElevenLabs
+    private static let sentinelKeyV1 = "pcst.migration.keychain.v1.done"
+    // v2: adds byokOllama (new slot added in M3). v2 re-runs the full batch so
+    // the skip-if-already-present guard protects all slots already migrated in v1.
+    private static let sentinelKeyV2 = "pcst.migration.keychain.v2.done"
 
     /// Legacy Keychain constants from the Podcastr app's credential stores.
     private enum Legacy {
@@ -69,13 +73,16 @@ enum LegacyKeychainMigration {
         static let apiKeyAccount = "api-key"
         // ElevenLabsCredentialStore
         static let elevenLabsService = "\(bundleID).elevenlabs"
+        // OllamaCredentialStore (added M3)
+        static let ollamaService = "\(bundleID).ollama"
     }
 
-    /// Run the migration. Safe to call on every launch; no-ops after first run.
-    /// Returns a `MigrationReport` the caller may forward to the kernel.
+    /// Run the migration. Safe to call on every launch; no-ops after the
+    /// latest version's sentinel is set. v2 re-runs the full batch to pick up
+    /// the Ollama slot; the skip-if-already-present guard is idempotent.
     @discardableResult
     static func runIfNeeded() -> MigrationReport {
-        guard !UserDefaults.standard.bool(forKey: sentinelKey) else {
+        guard !UserDefaults.standard.bool(forKey: sentinelKeyV2) else {
             return MigrationReport(alreadyDone: true, slots: [])
         }
 
@@ -84,6 +91,7 @@ enum LegacyKeychainMigration {
             (Legacy.nip46SessionService,  Legacy.nip46SessionAccount,   PcstIdentityCapability.AccountID.bunkerSession),
             (Legacy.openRouterService,    Legacy.apiKeyAccount,          PcstIdentityCapability.AccountID.byokOpenRouter),
             (Legacy.elevenLabsService,    Legacy.apiKeyAccount,          PcstIdentityCapability.AccountID.byokElevenLabs),
+            (Legacy.ollamaService,        Legacy.apiKeyAccount,          PcstIdentityCapability.AccountID.byokOllama),
         ]
 
         var results: [SlotMigrationResult] = []
@@ -96,7 +104,9 @@ enum LegacyKeychainMigration {
             results.append(result)
         }
 
-        UserDefaults.standard.set(true, forKey: sentinelKey)
+        // Mark both v1 and v2 done so the check above works on a clean install.
+        UserDefaults.standard.set(true, forKey: sentinelKeyV1)
+        UserDefaults.standard.set(true, forKey: sentinelKeyV2)
         return MigrationReport(alreadyDone: false, slots: results)
     }
 

@@ -26,6 +26,12 @@ import Security
 /// and are never migrated to a new device.
 final class PcstIdentityCapability {
     static let namespace = "pcst.identity.capability"
+    /// Non-MainActor singleton for direct Keychain access from non-isolated
+    /// contexts (e.g. credential-store shims that are called from synchronous
+    /// service code). This instance is distinct from the one held by
+    /// `PodcastCapabilities` — Keychain operations are stateless so both
+    /// instances operate on the same physical Keychain items.
+    nonisolated(unsafe) static let direct = PcstIdentityCapability()
 
     /// `kSecAttrService` for all items managed by this capability.
     static let service = "io.f7z.podcast.pcst.identity"
@@ -36,10 +42,11 @@ final class PcstIdentityCapability {
         static let bunkerSession  = "pcst.identity.bunker_session"
         static let byokOpenAI     = "pcst.byok.openai"
         static let byokOpenRouter = "pcst.byok.openrouter"
+        static let byokOllama     = "pcst.byok.ollama"
         static let byokElevenLabs = "pcst.byok.elevenlabs"
 
         static let all: Set<String> = [
-            nsec, bunkerSession, byokOpenAI, byokOpenRouter, byokElevenLabs,
+            nsec, bunkerSession, byokOpenAI, byokOpenRouter, byokOllama, byokElevenLabs,
         ]
     }
 
@@ -117,6 +124,42 @@ final class PcstIdentityCapability {
             kSecAttrService as String:  Self.service,
             kSecAttrAccount as String:  accountID,
         ]
+    }
+
+    // MARK: - Swift-native convenience API
+    //
+    // Direct Keychain access without FFI JSON round-trips.  Used by the credential
+    // stores (OpenRouter, Ollama) that are wired into Swift-side UI code.
+
+    /// Store a secret under `accountID`. Throws if the Keychain write fails.
+    func saveSecret(_ secret: String, for accountID: String) throws {
+        let r = store(accountID: accountID, secret: secret)
+        if r.status == "error", let code = r.osStatus {
+            throw NSError(domain: NSOSStatusErrorDomain, code: Int(code))
+        }
+    }
+
+    /// Retrieve the secret for `accountID`, or `nil` when absent.
+    func loadSecret(for accountID: String) throws -> String? {
+        let r = retrieve(accountID: accountID)
+        if r.status == "error", let code = r.osStatus {
+            throw NSError(domain: NSOSStatusErrorDomain, code: Int(code))
+        }
+        return r.secret
+    }
+
+    /// `true` when the secret exists and is non-empty.
+    func hasSecret(for accountID: String) -> Bool {
+        let r = retrieve(accountID: accountID)
+        return r.status == "ok" && r.secret != nil
+    }
+
+    /// Delete the secret for `accountID`. Ignores not-found.
+    func deleteSecret(for accountID: String) throws {
+        let r = delete(accountID: accountID)
+        if r.status == "error", let code = r.osStatus {
+            throw NSError(domain: NSOSStatusErrorDomain, code: Int(code))
+        }
     }
 
     private func store(accountID: String, secret: String) -> KeyringResult {

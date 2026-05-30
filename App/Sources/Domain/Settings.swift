@@ -126,7 +126,6 @@ struct Settings: Codable, Hashable, Sendable {
     var openRouterBYOKKeyID: String?
     var openRouterBYOKKeyLabel: String?
     var openRouterConnectedAt: Date?
-    var legacyOpenRouterAPIKey: String?
 
     // Ollama Cloud credentials (secret stored in Keychain; only metadata here)
     var ollamaCredentialSource: OllamaCredentialSource = .none
@@ -257,7 +256,6 @@ struct Settings: Codable, Hashable, Sendable {
         case embeddingsModel, embeddingsModelName, rerankerEnabled
         case imageGenerationModel, imageGenerationModelName
         case blossomServerURL
-        case openRouterAPIKey                                             // legacy
         case openRouterCredentialSource
         case openRouterBYOKKeyID, openRouterBYOKKeyLabel, openRouterConnectedAt
         case ollamaCredentialSource, ollamaBYOKKeyID, ollamaBYOKKeyLabel, ollamaConnectedAt, ollamaChatURL
@@ -302,7 +300,6 @@ struct Settings: Codable, Hashable, Sendable {
         openRouterBYOKKeyID = try c.decodeIfPresent(String.self, forKey: .openRouterBYOKKeyID)
         openRouterBYOKKeyLabel = try c.decodeIfPresent(String.self, forKey: .openRouterBYOKKeyLabel)
         openRouterConnectedAt = try c.decodeIfPresent(Date.self, forKey: .openRouterConnectedAt)
-        legacyOpenRouterAPIKey = try c.decodeIfPresent(String.self, forKey: .openRouterAPIKey)
         ollamaCredentialSource = try c.decodeIfPresent(OllamaCredentialSource.self, forKey: .ollamaCredentialSource) ?? .none
         ollamaBYOKKeyID = try c.decodeIfPresent(String.self, forKey: .ollamaBYOKKeyID)
         ollamaBYOKKeyLabel = try c.decodeIfPresent(String.self, forKey: .ollamaBYOKKeyLabel)
@@ -343,11 +340,6 @@ struct Settings: Codable, Hashable, Sendable {
         hasCompletedOnboarding = try c.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? false
         youtubeExtractorURL = try c.decodeIfPresent(String.self, forKey: .youtubeExtractorURL)
 
-        if openRouterCredentialSource == .none,
-           let legacy = legacyOpenRouterAPIKey,
-           !legacy.isBlank {
-            openRouterCredentialSource = .manual
-        }
     }
 
     func encode(to encoder: Encoder) throws {

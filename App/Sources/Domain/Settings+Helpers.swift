@@ -27,7 +27,6 @@ extension Settings {
         openRouterBYOKKeyID = nil
         openRouterBYOKKeyLabel = nil
         openRouterConnectedAt = connectedAt
-        legacyOpenRouterAPIKey = nil
     }
 
     mutating func markOpenRouterBYOK(keyID: String?, keyLabel: String?, connectedAt: Date = Date()) {
@@ -35,7 +34,6 @@ extension Settings {
         openRouterBYOKKeyID = keyID
         openRouterBYOKKeyLabel = keyLabel
         openRouterConnectedAt = connectedAt
-        legacyOpenRouterAPIKey = nil
     }
 
     mutating func clearOpenRouterCredential() {
@@ -43,7 +41,6 @@ extension Settings {
         openRouterBYOKKeyID = nil
         openRouterBYOKKeyLabel = nil
         openRouterConnectedAt = nil
-        legacyOpenRouterAPIKey = nil
     }
 
     mutating func markOllamaManual(connectedAt: Date = Date()) {
