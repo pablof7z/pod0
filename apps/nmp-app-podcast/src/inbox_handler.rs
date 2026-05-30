@@ -12,19 +12,38 @@
 //!
 //! ## Scoring strategy
 //!
-//! `build_inbox` checks the LLM triage cache first. If a cache entry
+//! `build_inbox` checks the LLM triage cache first. If a `Ready` cache entry
 //! exists for an episode, its `priority_score`, `priority_reason`, and
-//! `categories` are used verbatim. If not, the recency-bucket heuristic
-//! (`score()`) is the fallback so the inbox always renders something useful
-//! even before the first `Triage` action fires or when Ollama is offline.
+//! `categories` are used verbatim. Otherwise (no entry, or a `Pending`
+//! failure-placeholder entry) the recency-bucket heuristic (`score()`) is the
+//! fallback so the inbox always renders something useful even before the first
+//! triage pass completes or when Ollama is offline.
 //!
-//! `InboxAction::Triage` runs LLM classification for all unlistened
-//! episodes and populates the cache. This blocks the actor thread for the
-//! duration of the LLM calls; see `inbox_llm` module docs for the
-//! known-tradeoff note.
+//! `build_inbox` is a **pure projection**: it never spawns work. The proactive
+//! population lives in [`maybe_enqueue_triage`], called from the snapshot
+//! builder right next to `build_inbox`.
+//!
+//! ## Proactive triage trigger
+//!
+//! Triage no longer waits for an explicit user `InboxAction::Triage`. On each
+//! snapshot tick the snapshot builder calls [`maybe_enqueue_triage`], which
+//! asks the pure [`episodes_needing_triage`] predicate whether any unlistened
+//! episode lacks a fresh `Ready` entry. If so — and no pass is already in
+//! flight — it spawns the same background task the explicit action uses, so
+//! both paths share the `in_progress` re-entrancy guard and can never race.
+//!
+//! The predicate is deliberately conservative to avoid hammering Ollama every
+//! tick: an episode needs triage when it has **no** entry, a **`Ready`** entry
+//! older than [`TRIAGE_STALE_SECS`], or a **`Pending`** entry older than
+//! [`TRIAGE_RETRY_COOLDOWN_SECS`]. A recent `Pending` entry suppresses retries
+//! during the cooldown so an offline Ollama degrades to the heuristic instead
+//! of a hot spawn loop.
+//!
+//! All LLM work runs off the actor thread (`runtime.spawn` →
+//! `tokio::task::spawn_blocking`); the actor is never blocked.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use chrono::Utc;
@@ -32,7 +51,18 @@ use tokio::runtime::Runtime;
 
 use crate::ffi::actions::inbox_module::InboxAction;
 use crate::ffi::projections::InboxItem;
-use crate::inbox_llm::{triage_episode, TriageResult};
+use crate::inbox_llm::{triage_episode, TriageResult, TriageStatus};
+
+/// A `Ready` triage entry older than this is considered stale and re-triaged
+/// by the proactive trigger (the episode's metadata or the model may have
+/// changed, and scores drift as "recent" decays). 24 hours per spec.
+const TRIAGE_STALE_SECS: i64 = 24 * 60 * 60;
+
+/// A `Pending` (failed) triage entry is not retried until this cooldown
+/// elapses. Without it, an offline Ollama would make `episodes_needing_triage`
+/// return `true` on *every* snapshot tick, hot-looping `spawn_blocking` against
+/// a dead endpoint. 10 minutes balances "retries next time" against that loop.
+const TRIAGE_RETRY_COOLDOWN_SECS: i64 = 10 * 60;
 use crate::store::PodcastStore;
 
 /// Build the `Vec<InboxItem>` for one snapshot tick.
@@ -80,13 +110,20 @@ pub fn build_inbox(
 
             let published_at = ep.pub_date.timestamp();
 
-            let (priority_score, priority_reason, ai_categories) =
-                if let Some(tr) = triage_snapshot.get(&ep_id) {
+            // Only a `Ready` cache entry carries an authoritative LLM score.
+            // A `Pending` entry is a failure placeholder (it exists only to
+            // throttle retries) so it falls through to the recency heuristic,
+            // exactly as a missing entry does.
+            let (priority_score, priority_reason, ai_categories) = match triage_snapshot.get(&ep_id)
+            {
+                Some(tr) if tr.status == TriageStatus::Ready => {
                     (tr.priority_score, tr.priority_reason.clone(), tr.categories.clone())
-                } else {
+                }
+                _ => {
                     let (s, r) = score(now, published_at);
                     (s, r.to_owned(), vec![])
-                };
+                }
+            };
 
             items.push(InboxItem {
                 episode_id: ep_id,
@@ -116,6 +153,112 @@ pub fn build_inbox(
             .then_with(|| b.published_at.cmp(&a.published_at))
     });
     items
+}
+
+/// Decide whether the proactive trigger should run a triage pass.
+///
+/// Pure function over the current set of unlistened `episode_ids` and a
+/// snapshot of the triage cache. Returns `true` when **any** episode warrants
+/// a (re)triage:
+///
+/// * no cache entry at all — never attempted;
+/// * a [`TriageStatus::Ready`] entry older than [`TRIAGE_STALE_SECS`] — stale;
+/// * a [`TriageStatus::Pending`] entry older than
+///   [`TRIAGE_RETRY_COOLDOWN_SECS`] — failed, cooldown elapsed, retry.
+///
+/// A `Ready` entry within the staleness window, or a `Pending` entry within
+/// the cooldown, suppresses the trigger — this is what keeps an offline Ollama
+/// from re-spawning a background pass on every snapshot tick.
+///
+/// Kept pure (no locks, no spawn) so it is unit-testable without a Tokio
+/// runtime, mirroring how #141 tested the synchronous triage prelude.
+pub fn episodes_needing_triage(
+    cache: &HashMap<String, TriageResult>,
+    episode_ids: &[String],
+    now_unix: i64,
+) -> bool {
+    episode_ids.iter().any(|id| match cache.get(id) {
+        None => true,
+        Some(tr) => match tr.status {
+            TriageStatus::Ready => now_unix - tr.attempted_at >= TRIAGE_STALE_SECS,
+            TriageStatus::Pending => now_unix - tr.attempted_at >= TRIAGE_RETRY_COOLDOWN_SECS,
+        },
+    })
+}
+
+/// Proactive triage trigger — the snapshot-path counterpart to the explicit
+/// `InboxAction::Triage` user action.
+///
+/// Called from the snapshot builder right next to [`build_inbox`] (so it runs
+/// once per tick). It collects the unlistened episode ids under a brief store
+/// lock, releases it, and — if [`episodes_needing_triage`] says so and no pass
+/// is already in flight — spawns the **same** [`triage_episodes_in_background`]
+/// task the user action uses. Sharing the task and the `in_progress` guard
+/// means the proactive and explicit paths can never run concurrently.
+///
+/// This never blocks the caller: the predicate check is cheap and the LLM work
+/// happens on the spawned task. If a pass is already running, or nothing needs
+/// triage, it returns without spawning. `rev` is **not** bumped here — the
+/// background task bumps it as each result lands.
+pub fn maybe_enqueue_triage(
+    store: &Arc<Mutex<PodcastStore>>,
+    triage_cache: &Arc<Mutex<HashMap<String, TriageResult>>>,
+    rev: &Arc<AtomicU64>,
+    runtime: &Arc<Runtime>,
+    in_progress: &Arc<AtomicBool>,
+) {
+    // Cheap pre-check: if a pass is already running, the in-flight task will
+    // populate the cache. Skip the store walk entirely.
+    if in_progress.load(Ordering::Relaxed) {
+        return;
+    }
+
+    // Collect unlistened episode ids under a brief store lock, then release.
+    let episode_ids: Vec<String> = match store.lock() {
+        Ok(guard) => guard
+            .all_podcasts()
+            .into_iter()
+            .flat_map(|(_, eps)| {
+                eps.iter()
+                    .filter(|e| !e.played)
+                    .map(|e| e.id.0.to_string())
+                    .collect::<Vec<_>>()
+            })
+            .collect(),
+        Err(_) => return,
+    };
+
+    if episode_ids.is_empty() {
+        return;
+    }
+
+    let now = Utc::now().timestamp();
+    let needs = match triage_cache.lock() {
+        Ok(cache) => episodes_needing_triage(&cache, &episode_ids, now),
+        Err(_) => return,
+    };
+    if !needs {
+        return;
+    }
+
+    // Claim the in_progress guard; lose the race → another pass is starting,
+    // so do nothing (the winner covers this tick).
+    if in_progress
+        .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+        .is_err()
+    {
+        return;
+    }
+
+    let store_c = Arc::clone(store);
+    let cache_c = Arc::clone(triage_cache);
+    let runtime_c = Arc::clone(runtime);
+    let rev_c = Arc::clone(rev);
+    let in_progress_c = Arc::clone(in_progress);
+
+    runtime.spawn(async move {
+        triage_episodes_in_background(store_c, cache_c, runtime_c, rev_c, in_progress_c).await;
+    });
 }
 
 /// Recency-weighted heuristic: score newer episodes higher.
@@ -253,7 +396,7 @@ async fn triage_episodes_in_background(
             .into_iter()
             .flat_map(|(podcast, eps)| {
                 let pod_title = podcast.title.clone();
-                eps.into_iter()
+                eps.iter()
                     .filter(|e| !e.played)
                     .map(move |e| {
                         let ep_id = e.id.0.to_string();
@@ -290,9 +433,14 @@ async fn triage_episodes_in_background(
             }
             Ok(Err(e)) => {
                 eprintln!("[inbox_triage] LLM triage failed for {ep_id}: {e}");
+                // Stamp a Pending placeholder so build_inbox keeps the heuristic
+                // fallback AND the proactive trigger waits out the retry cooldown
+                // instead of re-spawning this pass on the very next tick.
+                stamp_pending(&triage_cache, ep_id);
             }
             Err(e) => {
                 eprintln!("[inbox_triage] spawn_blocking panicked for {ep_id}: {e}");
+                stamp_pending(&triage_cache, ep_id);
             }
         }
     }
@@ -302,6 +450,34 @@ async fn triage_episodes_in_background(
     rev.fetch_add(1, Ordering::Relaxed);
 }
 
+/// Record a failed triage attempt in the cache so the retry cooldown applies.
+///
+/// Two cases:
+/// * **No entry, or an existing `Pending` entry** → write a fresh `Pending`
+///   stamped now. `build_inbox` keeps using the heuristic; the proactive
+///   trigger waits out [`TRIAGE_RETRY_COOLDOWN_SECS`] before retrying.
+/// * **An existing `Ready` entry** (a stale re-triage that just failed) → keep
+///   the good score but bump its `attempted_at` to now. A transient failure
+///   must not downgrade a usable score to the heuristic, yet the staleness
+///   clock has to reset or the trigger would re-spawn every tick.
+fn stamp_pending(triage_cache: &Arc<Mutex<HashMap<String, TriageResult>>>, ep_id: String) {
+    let now = Utc::now().timestamp();
+    if let Ok(mut cache) = triage_cache.lock() {
+        match cache.get_mut(&ep_id) {
+            Some(tr) if tr.status == TriageStatus::Ready => {
+                tr.attempted_at = now;
+            }
+            _ => {
+                cache.insert(ep_id, TriageResult::pending(now));
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 #[path = "inbox_handler_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "inbox_proactive_tests.rs"]
+mod proactive_tests;

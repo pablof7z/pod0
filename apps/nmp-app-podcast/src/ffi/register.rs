@@ -182,13 +182,18 @@ pub extern "C" fn nmp_app_podcast_register(
         social.clone(),
     )));
 
+    // Keep a clone for the handle before the runtime Arc is moved into the
+    // voice manager below. The snapshot path's proactive triage trigger
+    // (`maybe_enqueue_triage`) spawns onto this same shared runtime.
+    let runtime_for_handle = runtime.clone();
+
     // Voice-mode conversation manager (M5.6-voice): owns the STT→LLM→TTS
     // turn history and dispatches LLM replies back to the iOS voice
     // executor. Holds clones of the shared store / voice-state / rev plus
     // the same Tokio runtime so background turns reuse the shared
-    // scheduler. The `runtime` Arc is itself moved onto the handle below
-    // so the manager's spawned turns are fenced by the actor-thread join
-    // before `nmp_app_free`.
+    // scheduler. All clones of this `runtime` Arc (handler, voice manager,
+    // handle) point at one runtime, so spawned work is fenced by the
+    // actor-thread join before `nmp_app_free`.
     let voice_conversation = crate::voice_conversation::VoiceConversationManager::new(
         app,
         Arc::new(Mutex::new(Vec::new())),
@@ -232,6 +237,7 @@ pub extern "C" fn nmp_app_podcast_register(
         inbox_triage_in_progress,
         comments_cache,
         social,
+        runtime: runtime_for_handle,
     });
 
     // Reactive push projection — the canonical snapshot-output seam

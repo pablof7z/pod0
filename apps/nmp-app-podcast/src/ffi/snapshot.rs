@@ -20,7 +20,7 @@ use super::snapshot_categories::build_category_aggregate;
 use super::snapshot_downloads::build_downloads_snapshot;
 use super::snapshot_owned::collect_owned_podcasts;
 use super::snapshot_queue::resolve_queue_rows;
-use crate::inbox_handler::build_inbox;
+use crate::inbox_handler::{build_inbox, maybe_enqueue_triage};
 
 /// Build the JSON payload for one snapshot tick.
 ///
@@ -226,6 +226,17 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     let tts_episodes = handle.tts_episodes.lock().ok().map(|r| r.clone()).unwrap_or_default();
     let clips = crate::clip_handler::project_clips(&handle.clips, &library);
     let inbox = build_inbox(&handle.store, &handle.dismissed_episode_ids, &handle.inbox_triage_cache);
+    // Proactive triage: if any unlistened episode lacks a fresh `Ready` score,
+    // spawn a background pass off the actor thread so the cache fills without
+    // an explicit user `Triage` action. Cheap no-op when nothing needs triage
+    // or a pass is already running (re-entrancy-guarded internally).
+    maybe_enqueue_triage(
+        &handle.store,
+        &handle.inbox_triage_cache,
+        &handle.rev,
+        &handle.runtime,
+        &handle.inbox_triage_in_progress,
+    );
     let inbox_triage_in_progress = handle.inbox_triage_in_progress.load(std::sync::atomic::Ordering::Relaxed);
     let owned_podcasts = collect_owned_podcasts(handle);
     let downloads = handle.download_queue.lock().ok()
