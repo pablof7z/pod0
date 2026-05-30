@@ -243,6 +243,16 @@ worktrees currently in flight.
 - **m5-non-utf8-feed-bodies.** Widen HTTP capability body transfer to preserve
   non-UTF8 feed bytes. Update Swift and Rust so XML encoding declarations are
   honored.
+- **m8-blossom-body-base64-rust-side.** The iOS HTTP capability now decodes a
+  `body_base64` request field to raw `Data` before sending it as the HTTP body
+  (`App/Sources/Capabilities/HttpCapability.swift`), so binary uploads survive
+  the UTF-8 bridge. The Rust side on `feat/m8-blossom-upload` does **not** use
+  it yet: `apps/nmp-app-podcast/src/blossom.rs` still puts the base64 string in
+  the existing `body` field, and `apps/podcast-feeds/src/http.rs`'s
+  `HttpRequest` has no `body_base64` field. Until both are updated to emit
+  `body_base64`, the Blossom upload silently sends base64 *text* as the HTTP
+  body and is **not** end-to-end functional. Follow-up: add `body_base64` to the
+  Rust `HttpRequest` struct and have `blossom.rs` set it instead of `body`.
 - **m5-chirp-headers-parity.** Reconcile podcast-player and Chirp HTTP header
   schemas once the canonical `nmp-core::capability::http` shape lands.
 - **legacy-app-deletion-gate.** Do not delete `App/Sources/` until every
