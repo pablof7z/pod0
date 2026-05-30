@@ -55,6 +55,20 @@ pub(super) struct PersistedStore {
     /// Per-episode ad-break intervals. Sorted on write for deterministic bytes.
     #[serde(default)]
     pub ad_segments: Vec<(String, Vec<AdSegment>)>,
+    /// AI Inbox triage decisions (M4 / D7). Tuples of
+    /// `(episode_id, decision, is_hero, rationale)`. Sorted on write for
+    /// deterministic bytes. `#[serde(default)]` so pre-M4 files load as empty.
+    #[serde(default)]
+    pub episode_triage: Vec<(String, String, bool, Option<String>)>,
+    /// Episodes covered by the RAG metadata index (M4 / D7). Sorted on write.
+    /// `#[serde(default)]` so pre-M4 files load as empty.
+    #[serde(default)]
+    pub metadata_indexed_episodes: Vec<String>,
+    /// Transient transcript-ingestion status overrides (M4 / D7). Tuples of
+    /// `(episode_id, status, message)`. Sorted on write. `#[serde(default)]`
+    /// so pre-M4 files load as empty.
+    #[serde(default)]
+    pub transcript_status_overrides: Vec<(String, String, Option<String>)>,
     #[serde(default)]
     pub settings: PersistedSettings,
     /// "Up Next" queue — episode ids in play order. `#[serde(default)]` keeps

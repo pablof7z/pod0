@@ -235,4 +235,65 @@ extension AppStateStore {
     func kernelTranscriptReport(episodeID: UUID, text: String) {
         kernel?.sendTranscriptReport(episodeID: episodeID, text: text)
     }
+
+    // MARK: - M4 capability reports (D7)
+
+    /// One row of a triage batch dispatched to the Rust kernel.
+    struct KernelTriagePatch {
+        let episodeID: UUID
+        /// Raw `TriageDecision` rawValue, or `"none"` to clear.
+        let decision: String
+        let isHero: Bool
+        let rationale: String?
+    }
+
+    /// Report a batch of AI Inbox triage decisions to the Rust kernel so they
+    /// survive a feed refresh via the projection (replaces the deleted
+    /// preserved-state merge). Batched — one dispatch (one rev bump + one
+    /// library re-encode) per `applyTriageDecisions` pass rather than one per
+    /// episode. `decision` is the raw `TriageDecision` rawValue, or `"none"`
+    /// to clear a prior decision (the `clearTriageDecision` path).
+    func kernelSetEpisodeTriage(_ patches: [KernelTriagePatch]) {
+        guard !patches.isEmpty else { return }
+        let decisions: [[String: Any]] = patches.map { patch in
+            var row: [String: Any] = [
+                "episode_id": patch.episodeID.uuidString,
+                "decision": patch.decision,
+                "is_hero": patch.isHero,
+            ]
+            if let rationale = patch.rationale { row["rationale"] = rationale }
+            return row
+        }
+        kernel?.dispatch(namespace: "podcast",
+                         body: ["op": "set_episode_triage", "decisions": decisions])
+    }
+
+    /// Report a batch of RAG-metadata-indexed episodes to the Rust kernel.
+    /// Batched so a whole backfill pass costs one dispatch (one rev bump +
+    /// one library re-encode) rather than one per episode.
+    func kernelMarkEpisodesMetadataIndexed(_ ids: [UUID]) {
+        guard !ids.isEmpty else { return }
+        kernel?.dispatch(namespace: "podcast",
+                         body: ["op": "mark_episodes_metadata_indexed",
+                                "episode_ids": ids.map(\.uuidString)])
+    }
+
+    /// Report the transient transcript-ingestion status for an episode. Rust
+    /// derives `.ready` from the stored transcript; iOS reports the in-progress
+    /// / failed / cleared states here. `status` is `"queued"` |
+    /// `"fetching_publisher"` | `"transcribing"` | `"failed"` | `"none"`
+    /// (clear). `message` carries the user-facing error for `"failed"`.
+    func kernelSetEpisodeTranscriptStatus(
+        episodeID: UUID,
+        status: String,
+        message: String?
+    ) {
+        var body: [String: Any] = [
+            "op": "set_episode_transcript_status",
+            "episode_id": episodeID.uuidString,
+            "status": status,
+        ]
+        if let message { body["message"] = message }
+        kernel?.dispatch(namespace: "podcast", body: body)
+    }
 }

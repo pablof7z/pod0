@@ -77,6 +77,19 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
                         let ai_categories =
                             categories_cache.get(&ep_id).cloned().unwrap_or_default();
                         let ad_segments = s.ad_segments_for(&ep_id).to_vec();
+                        // M4 / D7 capability-report side-maps.
+                        let triage = s.triage_for(&ep_id);
+                        let triage_decision = triage.map(|(d, _, _)| d.clone());
+                        let triage_is_hero = triage.map(|(_, h, _)| *h).unwrap_or(false);
+                        let triage_rationale =
+                            triage.and_then(|(_, _, r)| r.clone());
+                        let metadata_indexed = s.is_metadata_indexed(&ep_id);
+                        let transcript_override = s.transcript_status_for(&ep_id);
+                        let transcript_status = transcript_override
+                            .map(|(st, _)| st.clone())
+                            .unwrap_or_default();
+                        let transcript_status_message =
+                            transcript_override.and_then(|(_, m)| m.clone());
                         EpisodeSummary {
                             id: ep_id.clone(),
                             title: ep.title.clone(),
@@ -119,6 +132,12 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
                             ad_segments,
                             played: ep.played,
                             starred: ep.is_starred,
+                            triage_decision,
+                            triage_is_hero,
+                            triage_rationale,
+                            metadata_indexed,
+                            transcript_status,
+                            transcript_status_message,
                         }
                     })
                     .collect(),

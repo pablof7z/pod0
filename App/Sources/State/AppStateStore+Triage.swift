@@ -49,6 +49,9 @@ extension AppStateStore {
         let byID = Dictionary(uniqueKeysWithValues: valid.map { ($0.episodeID, $0) })
         var episodes = state.episodes
         var changed = false
+        // Episodes whose triage state actually changed this pass — dispatched
+        // to Rust (M4 / D7) after the mutation batch lands.
+        var dispatched: [UUID] = []
         // Hero only applies to inbox patches. Compute up-front whether
         // *any* incoming inbox patch claims hero — if so, every other
         // episode loses its hero flag in this pass so we never end up
@@ -68,6 +71,7 @@ extension AppStateStore {
             episodes[idx].triageDecision = patch.decision
             episodes[idx].triageRationale = patch.decision == .inbox ? patch.rationale : nil
             episodes[idx].triageIsHero = nextHero
+            dispatched.append(episodes[idx].id)
             changed = true
         }
         // Demote any prior hero NOT in this batch when the new batch
@@ -76,6 +80,7 @@ extension AppStateStore {
         if incomingHero {
             for idx in episodes.indices where episodes[idx].triageIsHero && byID[episodes[idx].id] == nil {
                 episodes[idx].triageIsHero = false
+                dispatched.append(episodes[idx].id)
                 changed = true
             }
         }
@@ -84,6 +89,21 @@ extension AppStateStore {
             state.episodes = episodes
             invalidateEpisodeProjections()
         }
+        // M4 / D7: report the changed decisions to Rust so they ride the
+        // projection through feed refreshes (replaces the deleted
+        // preserved-state merge). One batched dispatch for the whole pass.
+        // Read the final post-batch values so demoted heroes report their new
+        // `is_hero = false`.
+        let patches: [KernelTriagePatch] = dispatched.compactMap { episodeID in
+            guard let ep = state.episodes.first(where: { $0.id == episodeID }) else { return nil }
+            return KernelTriagePatch(
+                episodeID: episodeID,
+                decision: ep.triageDecision?.rawValue ?? "none",
+                isHero: ep.triageIsHero,
+                rationale: ep.triageRationale
+            )
+        }
+        kernelSetEpisodeTriage(patches)
     }
 
     /// Clear a single episode's triage state. Used when the user
@@ -100,5 +120,10 @@ extension AppStateStore {
             state.episodes = episodes
             invalidateEpisodeProjections()
         }
+        // M4 / D7: clear the decision in Rust via the "none" sentinel so the
+        // next projection pass doesn't resurrect the stale decision.
+        kernelSetEpisodeTriage([
+            KernelTriagePatch(episodeID: episodeID, decision: "none", isHero: false, rationale: nil)
+        ])
     }
 }

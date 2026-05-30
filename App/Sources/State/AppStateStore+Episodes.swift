@@ -248,25 +248,71 @@ extension AppStateStore {
         let target = Set(ids)
         var episodes = state.episodes
         var changed = false
+        var newlyIndexed: [UUID] = []
         for idx in episodes.indices where target.contains(episodes[idx].id) && !episodes[idx].metadataIndexed {
             episodes[idx].metadataIndexed = true
+            newlyIndexed.append(episodes[idx].id)
             changed = true
         }
         guard changed else { return }
         performMutationBatch {
             state.episodes = episodes
         }
+        // M4 / D7: report coverage to Rust so the flag survives a feed refresh
+        // via the projection (replaces the deleted preserved-state merge).
+        // Batched: one dispatch for the whole pass.
+        kernelMarkEpisodesMetadataIndexed(newlyIndexed)
     }
 
     /// Updates the episode's transcript ingestion lifecycle.
     func setEpisodeTranscriptState(_ id: UUID, state newState: TranscriptState) {
         guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
+        let priorState = state.episodes[idx].transcriptState
         var episodes = state.episodes
         episodes[idx].transcriptState = newState
         performMutationBatch {
             state.episodes = episodes
             // Cached `hasTranscribedByShow` set may now need to add or drop this subscription.
             invalidateEpisodeProjections()
+        }
+        // M4 / D7: report the transient status to Rust so it survives a feed
+        // refresh via the projection (replaces the deleted preserved-state
+        // merge). Dispatch only when the coarse status changed, to avoid a
+        // rev-bump storm (guards a progress loop; in practice `.transcribing`
+        // is set once at 0).
+        //
+        // `.ready` is deliberately NOT dispatched. `.ready` is owned by the
+        // presence of the stored transcript in Rust, which arrives via the
+        // separate `kernelTranscriptReport` call in `persistAndIndex` (fired
+        // immediately after this). `toEpisode` derives `.ready` from that
+        // transcript with priority over any status override. Dispatching
+        // `"none"` here would synchronously pull a snapshot in which Rust has
+        // neither the transcript (reported on the next line) nor an override,
+        // briefly projecting `.none` and clobbering the `.ready` we just set.
+        // Leaving the prior override in place is harmless: `toEpisode` reads
+        // the transcript first, so a stale `"transcribing"` never surfaces
+        // once the transcript lands.
+        if case .ready = newState { return }
+        let (status, message) = Self.transcriptStatusReport(for: newState)
+        if Self.transcriptStatusReport(for: priorState).0 != status {
+            kernelSetEpisodeTranscriptStatus(episodeID: id, status: status, message: message)
+        }
+    }
+
+    /// Map a `TranscriptState` to the coarse `(status, message)` pair reported
+    /// to Rust. `.none` clears the override (`"none"`). `.ready` is never
+    /// reported (see `setEpisodeTranscriptState`) — it's derived by Rust from
+    /// the stored transcript — but is mapped to `"none"` here for completeness
+    /// so the prior-state comparison treats a `.ready → X` transition cleanly.
+    private static func transcriptStatusReport(
+        for state: TranscriptState
+    ) -> (String, String?) {
+        switch state {
+        case .none, .ready: return ("none", nil)
+        case .queued: return ("queued", nil)
+        case .fetchingPublisher: return ("fetching_publisher", nil)
+        case .transcribing: return ("transcribing", nil)
+        case .failed(let message): return ("failed", message)
         }
     }
 

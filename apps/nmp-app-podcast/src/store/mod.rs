@@ -40,6 +40,7 @@ mod tests;
 #[cfg(test)]
 mod tests_ext;
 mod transcripts;
+mod triage_state;
 
 use crate::ffi::projections::MemoryFact;
 use crate::player::AdSegment;
@@ -106,6 +107,19 @@ pub struct PodcastStore {
     /// Per-episode ad-break intervals keyed by the string form of
     /// `EpisodeId`. See [`mod@ad_segments`] for the accessor surface.
     pub(super) ad_segments: HashMap<String, Vec<AdSegment>>,
+    /// AI Inbox triage decisions reported by iOS (M4 / D7). Keyed by the
+    /// string form of `EpisodeId`; value is `(decision, is_hero, rationale)`
+    /// where `decision` is `"inbox"` | `"archived"`. See [`mod@triage_state`].
+    pub(super) episode_triage: HashMap<String, (String, bool, Option<String>)>,
+    /// Episodes whose metadata (or transcript) chunk has been embedded into the
+    /// RAG index, reported by iOS (M4 / D7). String form of `EpisodeId`.
+    pub(super) metadata_indexed_episodes: HashSet<String>,
+    /// Transient transcript-ingestion status overrides reported by iOS
+    /// (M4 / D7). Keyed by the string form of `EpisodeId`; value is
+    /// `(status, message)` where `status` is one of `"queued"` |
+    /// `"fetching_publisher"` | `"transcribing"` | `"failed"`. `.ready` is
+    /// derived from the stored `transcript`, never stored here.
+    pub(super) transcript_status_overrides: HashMap<String, (String, Option<String>)>,
     /// User toggle: auto-skip ads when the playhead enters one.
     pub(super) auto_skip_ads_enabled: bool,
     /// When `true`, the kernel auto-advances to the next queued episode
@@ -266,6 +280,9 @@ impl PodcastStore {
             pending_wifi_downloads: Vec::new(),
             memory_facts: HashMap::new(),
             ad_segments: HashMap::new(),
+            episode_triage: HashMap::new(),
+            metadata_indexed_episodes: HashSet::new(),
+            transcript_status_overrides: HashMap::new(),
             auto_skip_ads_enabled: false,
             auto_play_next: true,
             auto_mark_played_at_end: true,
@@ -372,6 +389,9 @@ impl PodcastStore {
         self.auto_download_cellular_allowed.clear();
         self.memory_facts.clear();
         self.ad_segments.clear();
+        self.episode_triage.clear();
+        self.metadata_indexed_episodes.clear();
+        self.transcript_status_overrides.clear();
         for row in loaded.podcasts {
             let id = row.podcast.id;
             for ep in &row.episodes {
@@ -398,6 +418,17 @@ impl PodcastStore {
         }
         for (ep_id, segs) in loaded.ad_segments {
             self.ad_segments.insert(ep_id, segs);
+        }
+        for (ep_id, decision, is_hero, rationale) in loaded.episode_triage {
+            self.episode_triage
+                .insert(ep_id, (decision, is_hero, rationale));
+        }
+        for ep_id in loaded.metadata_indexed_episodes {
+            self.metadata_indexed_episodes.insert(ep_id);
+        }
+        for (ep_id, status, message) in loaded.transcript_status_overrides {
+            self.transcript_status_overrides
+                .insert(ep_id, (status, message));
         }
         self.auto_skip_ads_enabled = loaded.settings.auto_skip_ads_enabled;
         self.auto_play_next = loaded.settings.auto_play_next;
@@ -626,12 +657,41 @@ impl PodcastStore {
             .filter(|(_, v)| !v.is_empty())
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
+        // Sort the M4 side-maps on write (BTreeMap) so two consecutive saves
+        // produce byte-identical output — same rationale as podcasts / facts /
+        // ad_segments above.
+        let episode_triage: Vec<(String, String, bool, Option<String>)> = self
+            .episode_triage
+            .iter()
+            .collect::<std::collections::BTreeMap<_, _>>()
+            .into_iter()
+            .map(|(k, (decision, is_hero, rationale))| {
+                (k.clone(), decision.clone(), *is_hero, rationale.clone())
+            })
+            .collect();
+        let metadata_indexed_episodes: Vec<String> = self
+            .metadata_indexed_episodes
+            .iter()
+            .cloned()
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
+            .collect();
+        let transcript_status_overrides: Vec<(String, String, Option<String>)> = self
+            .transcript_status_overrides
+            .iter()
+            .collect::<std::collections::BTreeMap<_, _>>()
+            .into_iter()
+            .map(|(k, (status, message))| (k.clone(), status.clone(), message.clone()))
+            .collect();
         PersistedStore {
             schema_version: PERSIST_SCHEMA_VERSION,
             podcasts: rows,
             has_completed_onboarding: self.has_completed_onboarding,
             memory_facts: facts,
             ad_segments: ad_segments.into_iter().collect(),
+            episode_triage,
+            metadata_indexed_episodes,
+            transcript_status_overrides,
             settings: PersistedSettings {
                 auto_skip_ads_enabled: self.auto_skip_ads_enabled,
                 auto_play_next: self.auto_play_next,

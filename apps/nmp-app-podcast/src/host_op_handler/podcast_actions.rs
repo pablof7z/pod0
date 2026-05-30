@@ -120,6 +120,76 @@ impl PodcastHostOpHandler {
                     Err(_) => serde_json::json!({"ok": false, "error": "store poisoned"}),
                 }
             }
+            PodcastAction::SetEpisodeTriage { decisions } => {
+                self.handle_set_episode_triage(decisions)
+            }
+            PodcastAction::MarkEpisodesMetadataIndexed { episode_ids } => {
+                self.handle_mark_episodes_metadata_indexed(episode_ids)
+            }
+            PodcastAction::SetEpisodeTranscriptStatus { episode_id, status, message } => {
+                self.handle_set_episode_transcript_status(episode_id, status, message)
+            }
+        }
+    }
+
+    fn handle_set_episode_triage(
+        &self,
+        decisions: Vec<crate::ffi::actions::podcast_module::EpisodeTriagePatch>,
+    ) -> serde_json::Value {
+        match self.store.lock() {
+            Ok(mut s) => {
+                let mut changed = false;
+                for patch in decisions {
+                    if s.set_episode_triage(
+                        patch.episode_id,
+                        &patch.decision,
+                        patch.is_hero,
+                        patch.rationale,
+                    ) {
+                        changed = true;
+                    }
+                }
+                // Single rev bump for the whole batch — one snapshot tick.
+                if changed {
+                    self.rev.fetch_add(1, Ordering::Relaxed);
+                }
+                serde_json::json!({"ok": true})
+            }
+            Err(_) => serde_json::json!({"ok": false, "error": "store poisoned"}),
+        }
+    }
+
+    fn handle_mark_episodes_metadata_indexed(
+        &self,
+        episode_ids: Vec<String>,
+    ) -> serde_json::Value {
+        match self.store.lock() {
+            Ok(mut s) => {
+                let changed = s.mark_episodes_metadata_indexed(episode_ids);
+                if changed {
+                    self.rev.fetch_add(1, Ordering::Relaxed);
+                }
+                serde_json::json!({"ok": true})
+            }
+            Err(_) => serde_json::json!({"ok": false, "error": "store poisoned"}),
+        }
+    }
+
+    fn handle_set_episode_transcript_status(
+        &self,
+        episode_id: String,
+        status: String,
+        message: Option<String>,
+    ) -> serde_json::Value {
+        match self.store.lock() {
+            Ok(mut s) => {
+                let changed = s.set_transcript_status(episode_id, &status, message);
+                if changed {
+                    self.rev.fetch_add(1, Ordering::Relaxed);
+                }
+                serde_json::json!({"ok": true})
+            }
+            Err(_) => serde_json::json!({"ok": false, "error": "store poisoned"}),
         }
     }
 

@@ -135,6 +135,37 @@ pub struct EpisodeSummary {
     /// Toggled via `podcast.star_episode`. Omitted when `false` per D5.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub starred: bool,
+    /// AI Inbox triage decision: `"inbox"` | `"archived"`. `None` means the
+    /// episode is untriaged. Reported by iOS via `PodcastAction::SetEpisodeTriage`
+    /// (M4 / D7). Per D5 omitted when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub triage_decision: Option<String>,
+    /// `true` when this episode is the single hero pick of the most recent
+    /// triage pass. Per D5 omitted when `false`.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub triage_is_hero: bool,
+    /// One-line "Because …" rationale shown on the Home Inbox card for
+    /// `.inbox` picks. `None` for archived / untriaged episodes. Per D5
+    /// omitted when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub triage_rationale: Option<String>,
+    /// `true` once the episode's title+description (or transcript) chunk has
+    /// been embedded into the RAG index. Reported by iOS via
+    /// `PodcastAction::MarkEpisodesMetadataIndexed` (M4 / D7). Per D5 omitted
+    /// when `false`.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub metadata_indexed: bool,
+    /// Transient transcript-ingestion status reported by iOS (M4 / D7):
+    /// `"queued"` | `"fetching_publisher"` | `"transcribing"` | `"failed"`.
+    /// `.ready` is derived by the host from `transcript` presence and is never
+    /// surfaced here. Empty string means "no override" (idle / cleared). Per
+    /// D5 skipped on the wire when empty.
+    #[serde(default, skip_serializing_if = "str::is_empty")]
+    pub transcript_status: String,
+    /// User-facing error text accompanying `transcript_status == "failed"`.
+    /// `None` for non-failure statuses. Per D5 omitted when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transcript_status_message: Option<String>,
 }
 
 /// One time-stamped transcript row surfaced to the iOS shell.

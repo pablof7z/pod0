@@ -126,40 +126,26 @@ extension AppStateStore {
             }
         }
 
-        // ── Preserve Swift-only episode state across projection passes ────
-        // Rust does not own: transcript state, AI inbox triage decisions,
-        // ad segments, RAG metadata index flag, or AI-generated chapters.
-        // Without this merge those fields would be silently wiped on every
-        // feed refresh (which advances the library hash and re-runs this
-        // projection).
+        // ── Chapters fallback (last preserved-state field) ───────────────
+        // M4 deleted the preserved-state merge for transcriptState, AI inbox
+        // triage decisions, and the RAG metadata-index flag: all three now ride
+        // the Rust projection via the capability-report model (D7) and are
+        // derived in `toEpisode`. ad_segments were already projection-only.
+        //
+        // Chapters remain the sole exception: there is no Rust action to
+        // RECEIVE AI-generated chapters in this milestone — `setEpisodeChapters`
+        // mutates Swift state only (no kernel dispatch), so chapters can't
+        // round-trip. Until the M5.5 chapter-persistence write path lands
+        // (a `SetChapters` action + store side-map + projection, mirroring
+        // ad_segments), we keep the prior Swift chapters when Rust projects
+        // none so AI chapters don't flash empty on a feed-refresh pass.
+        // Tracked in docs/BACKLOG.md.
         let priorByID = Dictionary(
             state.episodes.map { ($0.id, $0) },
             uniquingKeysWith: { first, _ in first }
         )
         for idx in episodes.indices {
             guard let prior = priorByID[episodes[idx].id] else { continue }
-            // transcriptState: restore from the prior Swift state (`.fetching`/
-            // `.failed`) for in-progress or failed passes. When the kernel projects
-            // a non-empty `transcript` (via `kernelTranscriptReport` → Rust store),
-            // `toEpisode` sets `.ready` directly from the projection — so the
-            // restore here only applies for the transient fetching/failed states
-            // that Rust can't project. See `EpisodeSummary.toEpisode`.
-            if case .ready = episodes[idx].transcriptState {
-                // toEpisode already derived .ready from the Rust projection; keep it.
-            } else {
-                // Preserve in-progress (.fetching) or failed state from the last pass.
-                episodes[idx].transcriptState = prior.transcriptState
-            }
-            episodes[idx].triageDecision = prior.triageDecision
-            episodes[idx].triageRationale = prior.triageRationale
-            episodes[idx].triageIsHero = prior.triageIsHero
-            // adSegments: fully projected from Rust (EpisodeSummary.ad_segments).
-            // Fallback removed — M4 cleanup.
-            episodes[idx].metadataIndexed = prior.metadataIndexed
-            // Prefer Rust-projected chapters. If Rust has none yet, keep prior
-            // Swift chapters so UI doesn't flash empty.
-            // The AI-chapter merge branch is removed — M5.5 persists AI chapters
-            // to the Rust store (is_ai_generated=true); they now ride the projection.
             if episodes[idx].chapters?.isEmpty != false {
                 episodes[idx].chapters = prior.chapters
             }
@@ -230,20 +216,30 @@ private extension EpisodeSummary {
             let kind = Episode.AdKind(rawValue: seg.kind) ?? .midroll
             return Episode.AdSegment(id: uuid, start: seg.startSecs, end: seg.endSecs, kind: kind)
         }
-        // Derive transcriptState from what Rust projects. If the kernel has a
-        // stored transcript (via kernelTranscriptReport or podcast.fetch_transcript),
-        // surface .ready immediately rather than waiting for iOS to re-ingest.
-        // Rust cannot project .fetching/.failed — those remain Swift-only states
-        // restored by the preserved-state merge above.
+        // Derive transcriptState entirely from the Rust projection (M4 / D7).
+        //   1. A non-empty stored `transcript` ⇒ `.ready`. It came from either
+        //      iOS STT (kernelTranscriptReport) or a publisher fetch; we can't
+        //      distinguish the source from Rust alone, so use `.publisher` as
+        //      the conservative default (the precise source lives on the iOS
+        //      TranscriptStore for the badge).
+        //   2. Otherwise honour the transient status iOS reported via
+        //      `set_episode_transcript_status` (queued / fetching publisher /
+        //      transcribing / failed). The progress arg is always 0 — the real
+        //      pipeline never streams a percentage (it sets `.transcribing(0)`
+        //      once before the provider call), so no progress round-trips.
+        //   3. No transcript and no override ⇒ `.none`.
         let derivedTranscriptState: TranscriptState? = {
-            guard let text = transcript, !text.isEmpty else { return nil }
-            // If the Rust store has a transcript, it came from either:
-            //   1. iOS STT via kernelTranscriptReport (could be any provider)
-            //   2. publisher fetch via podcast.fetch_transcript
-            // We can't distinguish source from Rust alone; use .publisher as the
-            // conservative default — the actual source is preserved on the iOS
-            // TranscriptStore and in the preserved-state fallback.
-            return .ready(source: .publisher)
+            if let text = transcript, !text.isEmpty {
+                return .ready(source: .publisher)
+            }
+            switch transcriptStatus {
+            case "queued": return .queued
+            case "fetching_publisher": return .fetchingPublisher
+            case "transcribing": return .transcribing(progress: 0)
+            case "failed":
+                return .failed(message: transcriptStatusMessage ?? "Transcription didn't finish.")
+            default: return nil
+            }
         }()
 
         return Episode(
@@ -263,7 +259,15 @@ private extension EpisodeSummary {
             isStarred: starred,
             downloadState: downloadState,
             transcriptState: derivedTranscriptState ?? .none,
-            adSegments: projectedAdSegments
+            adSegments: projectedAdSegments,
+            // M4 / D7: all three derive from the Rust projection now — no
+            // preserved-state merge. `triageDecision` parses the rawValue
+            // ("inbox" / "archived"); an absent / unrecognised value ⇒ nil
+            // (untriaged).
+            triageDecision: triageDecision.flatMap { TriageDecision(rawValue: $0) },
+            triageRationale: triageRationale,
+            triageIsHero: triageIsHero,
+            metadataIndexed: metadataIndexed
         )
     }
 }

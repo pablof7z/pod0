@@ -144,6 +144,61 @@ pub enum PodcastAction {
     /// cellular when their feed refreshed (Wi-Fi-only shows). Called by iOS
     /// `NetworkCapability` when `ConnectivityChanged` reports `is_wifi: true`.
     DispatchDeferredWifiDownloads,
+    /// Record (or clear) a batch of AI Inbox triage decisions (M4 / D7).
+    ///
+    /// iOS owns the triage *computation* (the LLM pass in `InboxTriageService`)
+    /// and reports the whole pass here so Rust becomes the source of truth and
+    /// the decisions ride the snapshot projection rather than living only in
+    /// Swift state. Batched (one op per `applyTriageDecisions` pass, up to
+    /// ~`candidateCap` rows) so a back-catalog triage doesn't fire one
+    /// rev-bump + full-library re-encode per episode. Each row's `decision` is
+    /// the raw `TriageDecision` rawValue (`"inbox"` / `"archived"`), or the
+    /// sentinel `"none"` to clear a prior decision (user-rescue / re-triage).
+    /// `rationale` is the one-line "Because …" text shown on the Home Inbox
+    /// card for `.inbox` picks; `is_hero` promotes the row to the single hero
+    /// pick of the pass. Stored in the `episode_triage` side-map and surfaced
+    /// via `EpisodeSummary::{triage_decision, triage_is_hero, triage_rationale}`.
+    SetEpisodeTriage { decisions: Vec<EpisodeTriagePatch> },
+    /// Mark a batch of episodes as covered by the RAG metadata index (M4 / D7).
+    ///
+    /// iOS's `EpisodeMetadataIndexer` / `TranscriptIngestService` embed the
+    /// title+description (or transcript) chunk, then report the covered ids
+    /// here so the `metadata_indexed` flag survives a feed refresh via the
+    /// projection instead of the deleted preserved-state merge. Batched (one
+    /// op for the whole backfill pass) so a large library doesn't fire one
+    /// rev-bump + full-library re-encode per episode.
+    MarkEpisodesMetadataIndexed { episode_ids: Vec<String> },
+    /// Report the transient transcript-ingestion status for an episode
+    /// (M4 / D7).
+    ///
+    /// Rust derives `.ready` from the presence of the stored `transcript`
+    /// field; it cannot observe the in-progress / failed states the iOS
+    /// pipeline moves through. iOS reports them here so the
+    /// `TranscribingInProgressView` copy + the Library "Transcribing" capsule
+    /// keep their fidelity through projection passes. `status` is one of
+    /// `"queued"` | `"fetching_publisher"` | `"transcribing"` | `"failed"` |
+    /// `"none"` (clear). `message` carries the user-facing error text for
+    /// `"failed"`. Stored in `transcript_status_overrides`; surfaced via
+    /// `EpisodeSummary::{transcript_status, transcript_status_message}`.
+    SetEpisodeTranscriptStatus {
+        episode_id: String,
+        /// `"queued"` | `"fetching_publisher"` | `"transcribing"` | `"failed"` | `"none"`.
+        status: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        message: Option<String>,
+    },
+}
+
+/// One row in a [`PodcastAction::SetEpisodeTriage`] batch.
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct EpisodeTriagePatch {
+    pub episode_id: String,
+    /// `"inbox"` | `"archived"` | `"none"` (sentinel: clear).
+    pub decision: String,
+    #[serde(default)]
+    pub is_hero: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rationale: Option<String>,
 }
 
 /// Single action module for the whole `"podcast"` namespace.

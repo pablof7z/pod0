@@ -70,6 +70,23 @@ struct EpisodeSummary: Identifiable, Equatable, Hashable {
     @DefaultEmptyArray var adSegments: [AdSegment] = []
     @DefaultFalse var played: Bool = false
     @DefaultFalse var starred: Bool = false
+    /// AI Inbox triage decision (`"inbox"` | `"archived"`); `nil` ⇒ untriaged.
+    /// Reported by iOS via `set_episode_triage` (M4 / D7), projected back here.
+    var triageDecision: String? = nil
+    /// `true` when this is the single hero pick of the latest triage pass.
+    @DefaultFalse var triageIsHero: Bool = false
+    /// One-line "Because …" rationale for `.inbox` picks; `nil` otherwise.
+    var triageRationale: String? = nil
+    /// `true` once the episode's metadata/transcript chunk is RAG-indexed.
+    @DefaultFalse var metadataIndexed: Bool = false
+    /// Transient transcript-ingestion status reported by iOS (M4 / D7):
+    /// `"queued"` | `"fetching_publisher"` | `"transcribing"` | `"failed"`.
+    /// Empty ⇒ no override (idle, or `.ready` derived from `transcript`).
+    /// Decoded with a `?? ""` fallback in `init(from:)` since the Rust wire
+    /// omits the key when empty (D5).
+    var transcriptStatus: String = ""
+    /// User-facing error text for `transcriptStatus == "failed"`; `nil` otherwise.
+    var transcriptStatusMessage: String? = nil
 }
 
 /// One time-stamped transcript row for a single episode.
@@ -174,6 +191,12 @@ extension EpisodeSummary: Codable {
         adSegments = try c.decodeIfPresent([AdSegment].self, forKey: .adSegments) ?? []
         played = try c.decodeIfPresent(Bool.self, forKey: .played) ?? false
         starred = try c.decodeIfPresent(Bool.self, forKey: .starred) ?? false
+        triageDecision = try c.decodeIfPresent(String.self, forKey: .triageDecision)
+        triageIsHero = try c.decodeIfPresent(Bool.self, forKey: .triageIsHero) ?? false
+        triageRationale = try c.decodeIfPresent(String.self, forKey: .triageRationale)
+        metadataIndexed = try c.decodeIfPresent(Bool.self, forKey: .metadataIndexed) ?? false
+        transcriptStatus = try c.decodeIfPresent(String.self, forKey: .transcriptStatus) ?? ""
+        transcriptStatusMessage = try c.decodeIfPresent(String.self, forKey: .transcriptStatusMessage)
     }
 }
 

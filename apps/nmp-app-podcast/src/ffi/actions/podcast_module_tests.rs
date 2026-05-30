@@ -192,3 +192,86 @@ fn fetch_chapters_action_round_trips() {
     let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded, action);
 }
+
+#[test]
+fn set_episode_triage_action_round_trips() {
+    let action = PodcastAction::SetEpisodeTriage {
+        decisions: vec![
+            EpisodeTriagePatch {
+                episode_id: "ep-1".into(),
+                decision: "inbox".into(),
+                is_hero: true,
+                rationale: Some("Because relevant".into()),
+            },
+            EpisodeTriagePatch {
+                episode_id: "ep-2".into(),
+                decision: "none".into(),
+                is_hero: false,
+                rationale: None,
+            },
+        ],
+    };
+    let json = serde_json::to_string(&action).expect("encode");
+    assert!(json.contains(r#""op":"set_episode_triage""#));
+    assert!(json.contains(r#""decisions""#));
+    assert!(json.contains(r#""is_hero":true"#));
+    let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, action);
+}
+
+#[test]
+fn set_episode_triage_tolerates_absent_optional_fields() {
+    // Swift omits `is_hero` (false) and `rationale` (nil) — serde defaults
+    // must fill them so the decode doesn't throw.
+    let json = r#"{"op":"set_episode_triage","decisions":[{"episode_id":"ep-9","decision":"archived"}]}"#;
+    let decoded: PodcastAction = serde_json::from_str(json).expect("decode");
+    match decoded {
+        PodcastAction::SetEpisodeTriage { decisions } => {
+            assert_eq!(decisions.len(), 1);
+            assert_eq!(decisions[0].decision, "archived");
+            assert!(!decisions[0].is_hero);
+            assert_eq!(decisions[0].rationale, None);
+        }
+        other => panic!("wrong variant: {other:?}"),
+    }
+}
+
+#[test]
+fn mark_episodes_metadata_indexed_action_round_trips() {
+    let action = PodcastAction::MarkEpisodesMetadataIndexed {
+        episode_ids: vec!["ep-1".into(), "ep-2".into()],
+    };
+    let json = serde_json::to_string(&action).expect("encode");
+    assert!(json.contains(r#""op":"mark_episodes_metadata_indexed""#));
+    assert!(json.contains(r#""episode_ids""#));
+    let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, action);
+}
+
+#[test]
+fn set_episode_transcript_status_action_round_trips() {
+    let action = PodcastAction::SetEpisodeTranscriptStatus {
+        episode_id: "ep-1".into(),
+        status: "failed".into(),
+        message: Some("network down".into()),
+    };
+    let json = serde_json::to_string(&action).expect("encode");
+    assert!(json.contains(r#""op":"set_episode_transcript_status""#));
+    assert!(json.contains(r#""status":"failed""#));
+    assert!(json.contains(r#""message":"network down""#));
+    let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, action);
+}
+
+#[test]
+fn set_episode_transcript_status_tolerates_absent_message() {
+    let json = r#"{"op":"set_episode_transcript_status","episode_id":"ep-3","status":"transcribing"}"#;
+    let decoded: PodcastAction = serde_json::from_str(json).expect("decode");
+    match decoded {
+        PodcastAction::SetEpisodeTranscriptStatus { status, message, .. } => {
+            assert_eq!(status, "transcribing");
+            assert_eq!(message, None);
+        }
+        other => panic!("wrong variant: {other:?}"),
+    }
+}
