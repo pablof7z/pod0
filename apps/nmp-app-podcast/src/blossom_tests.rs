@@ -132,8 +132,11 @@ fn upload_to_blossom_happy_path_with_injected_fetch() {
                 .expect("missing Authorization header");
             assert!(auth.starts_with("Nostr "), "auth header: {auth}");
             seen_auth = auth;
-            // Body is non-empty (base64 of the bytes).
-            assert!(req.body.as_deref().is_some_and(|b| !b.is_empty()));
+            // The binary blob rides in `body_base64` (base64 of the bytes),
+            // and the UTF-8 `body` field is absent so the iOS executor takes
+            // the binary-decode path.
+            assert!(req.body.is_none(), "body must be None: {:?}", req.body);
+            assert!(req.body_base64.as_deref().is_some_and(|b| !b.is_empty()));
             Ok(HttpResult::Ok {
                 status_code: 200,
                 headers: vec![],

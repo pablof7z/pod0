@@ -114,9 +114,22 @@ pub struct HttpRequest {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub headers: Vec<Vec<String>>,
     /// UTF-8 request body. `None` (the wire-omitted form) for `GET`;
-    /// `Some(body)` for `POST`.
+    /// `Some(body)` for a text `POST`. Mutually exclusive with
+    /// [`Self::body_base64`]: a UTF-8 `String` cannot carry arbitrary binary
+    /// bytes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub body: Option<String>,
+    /// Standard-alphabet base64 (`+/`, padded) request body. Present when the
+    /// kernel needs to send *binary* bytes that don't survive a UTF-8
+    /// round-trip — e.g. the Blossom blob upload (`crate`-external
+    /// `blossom.rs`), which SHA-256s the raw audio file and base64-encodes the
+    /// bytes so they transit this capability intact. The iOS executor decodes
+    /// this back to raw `Data` before sending it as the HTTP body and, when
+    /// both are present, prefers it over [`Self::body`]
+    /// (`HttpCapability.swift`). Purely additive: callers sending only UTF-8
+    /// bodies omit it and behave exactly as before. Wire field `body_base64`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub body_base64: Option<String>,
 }
 
 impl HttpRequest {
@@ -139,6 +152,7 @@ impl HttpRequest {
                 .map(|(k, v)| vec![k.into(), v.into()])
                 .collect(),
             body: None,
+            body_base64: None,
         }
     }
 }

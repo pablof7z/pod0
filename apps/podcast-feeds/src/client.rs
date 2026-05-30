@@ -134,6 +134,7 @@ pub fn build_feed_request(feed_url: &Url, cache: Option<&EtagCache>) -> HttpRequ
         url: feed_url.to_string(),
         headers,
         body: None,
+        body_base64: None,
     }
 }
 

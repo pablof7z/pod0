@@ -63,6 +63,7 @@ fn http_request_post_round_trips_body() {
         url: "https://example.com/api".into(),
         headers: vec![vec!["Content-Type".into(), "application/json".into()]],
         body: Some(r#"{"x":1}"#.into()),
+        body_base64: None,
     };
     let json = serde_json::to_string(&req).expect("encode");
     let back: HttpRequest = serde_json::from_str(&json).expect("decode");

@@ -245,16 +245,16 @@ worktrees currently in flight.
   honored.
 - **m5-chirp-headers-parity.** Reconcile podcast-player and Chirp HTTP header
   schemas once the canonical `nmp-core::capability::http` shape lands.
-- **m8-blossom-binary-body.** The Blossom audio upload (`apps/nmp-app-podcast/src/blossom.rs`,
-  wired into `publish_episode`) base64-encodes the raw audio bytes into the
-  HTTP capability body because `HttpRequest.body` is a UTF-8 `String` and the
-  iOS executor encodes it with `body.data(using: .utf8)`
-  (`HttpCapability.swift:229`). The Rust side is correct and unit-tested, but
-  the upload is NOT end-to-end functional until the HTTP capability + Swift
-  executor learn to base64-decode (or carry raw bytes for) upload bodies.
-  Until then `publish_episode` falls back to the RSS enclosure URL on the
-  failed/garbled upload. Fix: extend the capability for a binary/base64 body
-  on POST and decode on the executor side. Owner: M8 follow-up.
+- ~~**m8-blossom-binary-body.**~~ Done (Rust side): `HttpRequest` now carries
+  binary bodies in a dedicated `body_base64` field
+  (`apps/podcast-feeds/src/http.rs`), and the Blossom upload
+  (`apps/nmp-app-podcast/src/blossom.rs`) emits the base64 blob in
+  `body_base64` with `body: None` instead of stuffing base64 *text* into the
+  UTF-8 `body` field. The iOS executor decodes `body_base64` back to raw
+  `Data` before sending and prefers it over `body`
+  (`App/Sources/Capabilities/HttpCapability.swift`, PR #174), so binary audio
+  uploads survive the bridge intact and the path is end-to-end functional once
+  the Swift change merges.
 - **legacy-app-deletion-gate.** Do not delete `App/Sources/` until every
   feature in `docs/plan/nmp-feature-parity.md` is `Done` and the NMP app is
   the sole implementation for user flows.

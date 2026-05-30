@@ -20,18 +20,17 @@
 //!    capability `HttpMethod` enum currently exposes.
 //! 4. Parse the JSON descriptor `{"url","sha256","size","type"}`.
 //!
-//! ## Transport limitation (READ THIS)
+//! ## Binary transport
 //!
 //! The HTTP capability ([`podcast_feeds::http::HttpRequest`]) carries the
-//! request body as a UTF-8 `String`, and the shipped iOS executor encodes it
-//! with `body.data(using: .utf8)` (`HttpCapability.swift:229`). Binary audio
-//! bytes therefore **cannot transit this capability unchanged today**. We
-//! base64-encode the body here so the wire payload is valid UTF-8 and the
-//! Rust side is correct; the feature is end-to-end functional only once the
-//! capability/Swift executor learns to base64-decode upload bodies. Tracked
-//! in `docs/BACKLOG.md`. The unit tests below exercise auth-event
-//! construction and response parsing (the parts that are transport-agnostic)
-//! via an injected `fetch` closure.
+//! text request body as a UTF-8 `String`, which cannot represent arbitrary
+//! binary audio bytes. The raw blob therefore travels in the dedicated
+//! `body_base64` field: we base64-encode the bytes here and the iOS executor
+//! decodes them back to raw `Data` before sending (`HttpCapability.swift`),
+//! so the wire payload is valid UTF-8 and the bytes arrive intact. `body` is
+//! left `None` so the executor takes the binary path. The unit tests below
+//! exercise auth-event construction and response parsing (the parts that are
+//! transport-agnostic) via an injected `fetch` closure.
 
 use base64::Engine;
 use nostr::{EventBuilder, JsonUtil, Keys, Kind, SecretKey, Tag, Timestamp};
@@ -93,10 +92,13 @@ pub fn upload_to_blossom(
             vec!["Authorization".into(), auth_header],
             vec!["Content-Type".into(), "application/octet-stream".into()],
         ],
-        // See the transport-limitation note in the module docs: the HTTP
-        // capability body is a UTF-8 String, so the raw blob is base64-encoded
-        // to survive the bridge. The executor must base64-decode it.
-        body: Some(base64::engine::general_purpose::STANDARD.encode(&bytes)),
+        // The HTTP capability `body` is a UTF-8 `String`, so the raw blob
+        // travels base64-encoded in the dedicated `body_base64` field. The iOS
+        // executor base64-decodes it back to the original bytes before sending
+        // (`HttpCapability.swift`); `body` stays `None` so the executor takes
+        // the binary path.
+        body: None,
+        body_base64: Some(base64::engine::general_purpose::STANDARD.encode(&bytes)),
     };
 
     let result = fetch(&req)?;
