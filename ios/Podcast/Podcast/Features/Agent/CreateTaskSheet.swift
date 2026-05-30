@@ -86,17 +86,31 @@ struct CreateTaskSheet: View {
     private func save() {
         let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
         let trimmedDescription = description.trimmingCharacters(in: .whitespaces)
+        // Namespace + serialized action body must match the registered
+        // receiver action modules in the Rust kernel. `action_body` is a
+        // JSON *string* (the reducer re-parses it), so each preset carries
+        // its own `{"op":…}` payload rather than an empty `{}`.
         let namespace: String
+        let actionBody: String
         switch actionPreset {
-        case .inboxTriage: namespace = "podcast.inbox.triage"
-        case .generateBriefing: namespace = "podcast.briefings.generate"
-        case .custom: namespace = customNamespace.trimmingCharacters(in: .whitespaces)
+        case .inboxTriage:
+            namespace = "podcast.inbox"
+            actionBody = #"{"op":"triage"}"#
+        case .generateBriefing:
+            namespace = "podcast"
+            actionBody = #"{"op":"generate_briefing"}"#
+        case .categorize:
+            namespace = "podcast.categorize"
+            actionBody = #"{"op":"run"}"#
+        case .custom:
+            namespace = customNamespace.trimmingCharacters(in: .whitespaces)
+            actionBody = "{}"
         }
         var body: [String: Any] = [
             "op": "create",
             "title": trimmedTitle,
             "action_namespace": namespace,
-            "action_body": "{}",
+            "action_body": actionBody,
             "schedule": schedule.rawValue,
         ]
         if !trimmedDescription.isEmpty {
@@ -121,11 +135,12 @@ private enum ScheduleOption: String, CaseIterable {
 }
 
 private enum ActionPreset: CaseIterable {
-    case inboxTriage, generateBriefing, custom
+    case inboxTriage, generateBriefing, categorize, custom
     var label: String {
         switch self {
         case .inboxTriage: "Inbox Triage"
         case .generateBriefing: "Generate Briefing"
+        case .categorize: "Categorize"
         case .custom: "Custom"
         }
     }
