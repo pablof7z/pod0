@@ -367,6 +367,20 @@ impl PodcastHostOpHandler {
                 self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 serde_json::json!({"ok": true})
             }
+            SettingsAction::SetDefaultPlaybackRate { rate } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_default_playback_rate(rate);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetAutoDeleteDownloadsAfterPlayed { enabled } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_auto_delete_downloads_after_played(enabled);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
         }
     }
 }

@@ -133,6 +133,8 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
             headphone_triple_tap_action: s.headphone_triple_tap_action().to_owned(),
             skip_forward_secs: s.skip_forward_secs(),
             skip_backward_secs: s.skip_backward_secs(),
+            default_playback_rate: s.default_playback_rate(),
+            auto_delete_downloads_after_played: s.auto_delete_downloads_after_played(),
         };
         (library, s.all_memory_facts(), settings)
     })

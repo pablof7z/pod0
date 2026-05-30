@@ -168,6 +168,32 @@ impl PodcastStore {
         std::mem::take(&mut self.pending_wifi_downloads)
     }
 
+    /// Default playback rate. `1.0` is normal speed; clamped to `[0.5, 3.0]`.
+    /// Persisted so the preferred rate survives restart.
+    pub fn default_playback_rate(&self) -> f64 {
+        self.default_playback_rate
+    }
+
+    /// Set the default playback rate and persist. Clamped to `[0.5, 3.0]`.
+    pub fn set_default_playback_rate(&mut self, rate: f64) {
+        let clamped = rate.clamp(0.5, 3.0);
+        if (self.default_playback_rate - clamped).abs() < f64::EPSILON { return; }
+        self.default_playback_rate = clamped;
+        self.persist();
+    }
+
+    /// When `true`, downloaded files are deleted after the episode is marked played.
+    pub fn auto_delete_downloads_after_played(&self) -> bool {
+        self.auto_delete_downloads_after_played
+    }
+
+    /// Set the auto-delete-after-played toggle and persist. Idempotent.
+    pub fn set_auto_delete_downloads_after_played(&mut self, value: bool) {
+        if self.auto_delete_downloads_after_played == value { return; }
+        self.auto_delete_downloads_after_played = value;
+        self.persist();
+    }
+
     /// Update both skip intervals. Clamps each value to `[1.0, 120.0]`
     /// seconds and persists when either value changes.
     pub fn set_skip_intervals(&mut self, forward_secs: f64, backward_secs: f64) {

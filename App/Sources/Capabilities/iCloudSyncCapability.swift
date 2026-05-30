@@ -51,12 +51,12 @@ final class iCloudSyncCapability {
         static let skipBackwardSecs  = "pcst.skip_backward_secs"
         static let autoSkipAds       = "pcst.auto_skip_ads"
         static let streamingOnly     = "pcst.streaming_only"
+        static let autoDeleteDownloadsAfterPlayed = "pcst.auto_delete_downloads_after_played"
 
-        /// Every key this capability owns. Used by the external-change
-        /// observer to filter `NSUbiquitousKeyValueStoreChangedKeysKey`
-        /// down to just our slots.
+        /// Every key this capability owns.
         static let all: Set<String> = [
             speed, skipForwardSecs, skipBackwardSecs, autoSkipAds, streamingOnly,
+            autoDeleteDownloadsAfterPlayed,
         ]
     }
 
@@ -180,6 +180,11 @@ final class iCloudSyncCapability {
             kvs.set(v, forKey: Key.streamingOnly)
             lastWritten[Key.streamingOnly] = AnyHashable(v)
         }
+        if let v = settings.autoDeleteDownloadsAfterPlayed,
+           lastWritten[Key.autoDeleteDownloadsAfterPlayed] != AnyHashable(v) {
+            kvs.set(v, forKey: Key.autoDeleteDownloadsAfterPlayed)
+            lastWritten[Key.autoDeleteDownloadsAfterPlayed] = AnyHashable(v)
+        }
     }
 
     // MARK: - Inbound — iCloud → snapshot
@@ -209,16 +214,6 @@ final class iCloudSyncCapability {
     private func dispatchKeysFromCloud(_ keys: [String]) {
         let touched = Set(keys)
         var didDispatch = false
-
-        if touched.contains(Key.speed),
-           let speed = (kvs.object(forKey: Key.speed) as? NSNumber)?.doubleValue,
-           lastWritten[Key.speed] != AnyHashable(speed) {
-            isApplyingRemoteChange = true
-            kernel?.dispatchSilent(namespace: "podcast.settings",
-                                   body: ["op": "set_speed", "speed": speed])
-            lastWritten[Key.speed] = AnyHashable(speed)
-            didDispatch = true
-        }
 
         if touched.contains(Key.skipForwardSecs) || touched.contains(Key.skipBackwardSecs),
            let forward = (kvs.object(forKey: Key.skipForwardSecs) as? NSNumber)?.intValue,
@@ -253,6 +248,26 @@ final class iCloudSyncCapability {
             kernel?.dispatchSilent(namespace: "podcast.settings",
                                    body: ["op": "set_streaming_only", "enabled": enabled])
             lastWritten[Key.streamingOnly] = AnyHashable(enabled)
+            didDispatch = true
+        }
+
+        if touched.contains(Key.speed),
+           let speed = (kvs.object(forKey: Key.speed) as? NSNumber)?.doubleValue,
+           lastWritten[Key.speed] != AnyHashable(speed) {
+            isApplyingRemoteChange = true
+            kernel?.dispatchSilent(namespace: "podcast.settings",
+                                   body: ["op": "set_default_playback_rate", "rate": speed])
+            lastWritten[Key.speed] = AnyHashable(speed)
+            didDispatch = true
+        }
+
+        if touched.contains(Key.autoDeleteDownloadsAfterPlayed),
+           let enabled = (kvs.object(forKey: Key.autoDeleteDownloadsAfterPlayed) as? NSNumber)?.boolValue,
+           lastWritten[Key.autoDeleteDownloadsAfterPlayed] != AnyHashable(enabled) {
+            isApplyingRemoteChange = true
+            kernel?.dispatchSilent(namespace: "podcast.settings",
+                                   body: ["op": "set_auto_delete_downloads_after_played", "enabled": enabled])
+            lastWritten[Key.autoDeleteDownloadsAfterPlayed] = AnyHashable(enabled)
             didDispatch = true
         }
 

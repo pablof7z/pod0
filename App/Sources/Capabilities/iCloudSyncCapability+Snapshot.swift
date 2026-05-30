@@ -19,6 +19,7 @@ struct SettingsKVSnapshot: Equatable {
     var skipBackwardSecs: Int?
     var autoSkipAds: Bool?
     var streamingOnly: Bool?
+    var autoDeleteDownloadsAfterPlayed: Bool?
 
     /// All-`nil` snapshot. Returned by the `PodcastUpdate` bridge when the
     /// active kernel projection does not (yet) carry any of the playback
@@ -43,6 +44,9 @@ struct SettingsKVSnapshot: Equatable {
         }
         if let v = streamingOnly {
             lastWritten[iCloudSyncCapability.Key.streamingOnly] = AnyHashable(v)
+        }
+        if let v = autoDeleteDownloadsAfterPlayed {
+            lastWritten[iCloudSyncCapability.Key.autoDeleteDownloadsAfterPlayed] = AnyHashable(v)
         }
     }
 }
@@ -84,10 +88,11 @@ extension SettingsKVSnapshot {
     static func from(podcastUpdate update: PodcastUpdate) -> SettingsKVSnapshot {
         let s = update.settings
         return SettingsKVSnapshot(
-            speed: nil,
+            speed: s.defaultPlaybackRate,
             skipForwardSecs: Int(s.skipForwardSecs),
             skipBackwardSecs: Int(s.skipBackwardSecs),
             autoSkipAds: s.autoSkipAdsEnabled,
-            streamingOnly: nil)
+            streamingOnly: nil,
+            autoDeleteDownloadsAfterPlayed: s.autoDeleteDownloadsAfterPlayed)
     }
 }

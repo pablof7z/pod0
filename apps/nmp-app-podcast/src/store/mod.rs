@@ -124,6 +124,10 @@ pub struct PodcastStore {
     pub(super) skip_forward_secs: f64,
     /// Skip-backward interval (seconds). Default 15.0; user-configurable.
     pub(super) skip_backward_secs: f64,
+    /// Default playback rate. Default 1.0; clamped to [0.5, 3.0].
+    pub(super) default_playback_rate: f64,
+    /// When `true`, downloaded files are deleted after the episode is marked played.
+    pub(super) auto_delete_downloads_after_played: bool,
     /// Last-known Wi-Fi state reported by `nmp.network.capability`. `true` when
     /// the device's active interface is Wi-Fi. Defaults to `true` so
     /// auto-download runs on first launch before the iOS capability fires its
@@ -164,6 +168,8 @@ impl PodcastStore {
             headphone_triple_tap_action: "clipNow".to_owned(),
             skip_forward_secs: 30.0,
             skip_backward_secs: 15.0,
+            default_playback_rate: 1.0,
+            auto_delete_downloads_after_played: false,
             is_on_wifi: true,
             data_dir: None,
             loaded_queue: Vec::new(),
@@ -258,6 +264,13 @@ impl PodcastStore {
         } else {
             15.0
         };
+        self.default_playback_rate = if loaded.settings.default_playback_rate > 0.0 {
+            loaded.settings.default_playback_rate
+        } else {
+            1.0
+        };
+        self.auto_delete_downloads_after_played =
+            loaded.settings.auto_delete_downloads_after_played;
         self.cached_queue = loaded.queue.clone();
         self.loaded_queue = loaded.queue;
         // Restore deferred Wi-Fi downloads that were pending when the app was
@@ -330,6 +343,8 @@ impl PodcastStore {
                 headphone_triple_tap_action: self.headphone_triple_tap_action.clone(),
                 skip_forward_secs: self.skip_forward_secs,
                 skip_backward_secs: self.skip_backward_secs,
+                default_playback_rate: self.default_playback_rate,
+                auto_delete_downloads_after_played: self.auto_delete_downloads_after_played,
             },
             queue: Vec::new(), // filled by persist() from self.cached_queue after return
             pending_wifi_downloads: self.pending_wifi_downloads.clone(),

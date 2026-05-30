@@ -1,36 +1,33 @@
 import Foundation
 import os.log
 
+/// Thin shim over `PcstIdentityCapability` for the OpenRouter BYOK API key.
+///
+/// All reads and writes now go through the canonical `pcst.byok.openrouter`
+/// Keychain slot managed by `PcstIdentityCapability`. The legacy
+/// `<bundleID>.openrouter` service entry is migrated by
+/// `LegacyKeychainMigration` on first launch.
 enum OpenRouterCredentialStore {
-    private static let logger = Logger.app("OpenRouterCredentialStore")
-    private static let service = "\(Bundle.main.bundleIdentifier ?? "Podcastr").openrouter"
-    private static let account = "api-key"
+    private static let accountID = PcstIdentityCapability.AccountID.byokOpenRouter
+    private static var identity: PcstIdentityCapability { PcstIdentityCapability.direct }
 
     static func saveAPIKey(_ apiKey: String) throws {
         let trimmed = apiKey.trimmed
         guard !trimmed.isEmpty else { return }
-        try KeychainStore.saveString(trimmed, service: service, account: account)
+        try identity.saveSecret(trimmed, for: accountID)
     }
 
     static func apiKey() throws -> String? {
-        guard let value = try KeychainStore.readString(service: service, account: account) else {
-            return nil
-        }
+        guard let value = try identity.loadSecret(for: accountID) else { return nil }
         let trimmed = value.trimmed
         return trimmed.isEmpty ? nil : trimmed
     }
 
     static func hasAPIKey() -> Bool {
-        do {
-            return try apiKey() != nil
-        } catch {
-            logger.error("OpenRouterCredentialStore.hasAPIKey failed: \(error, privacy: .public)")
-            return false
-        }
+        identity.hasSecret(for: accountID)
     }
 
     static func deleteAPIKey() throws {
-        try KeychainStore.deleteString(service: service, account: account)
+        try identity.deleteSecret(for: accountID)
     }
 }
-

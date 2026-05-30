@@ -96,6 +96,11 @@ struct SettingsSnapshot: Equatable {
     var skipForwardSecs: Double = 30
     /// Skip-backward interval in seconds. Default 15.
     var skipBackwardSecs: Double = 15
+    /// Default playback rate. Default 1.0; range [0.5, 3.0].
+    var defaultPlaybackRate: Double = 1.0
+    /// When `true`, the kernel deletes the downloaded file after the episode
+    /// is marked played. Default `false`.
+    var autoDeleteDownloadsAfterPlayed: Bool = false
 }
 
 /// Active download-queue projection surfaced via `PodcastUpdate.downloads`.
@@ -197,6 +202,8 @@ extension SettingsSnapshot: Codable {
         headphoneTripleTapAction = try c.decodeIfPresent(String.self, forKey: .headphoneTripleTapAction) ?? "clipNow"
         skipForwardSecs = try c.decodeIfPresent(Double.self, forKey: .skipForwardSecs) ?? 30
         skipBackwardSecs = try c.decodeIfPresent(Double.self, forKey: .skipBackwardSecs) ?? 15
+        defaultPlaybackRate = try c.decodeIfPresent(Double.self, forKey: .defaultPlaybackRate) ?? 1.0
+        autoDeleteDownloadsAfterPlayed = try c.decodeIfPresent(Bool.self, forKey: .autoDeleteDownloadsAfterPlayed) ?? false
     }
 }
 

@@ -102,6 +102,12 @@ pub(super) struct PersistedSettings {
     /// Skip-backward interval in seconds. Same 0.0 → 15.0 sentinel logic.
     #[serde(default)]
     pub skip_backward_secs: f64,
+    /// Default playback rate. 0.0 in old files → hydration replaces with 1.0.
+    #[serde(default)]
+    pub default_playback_rate: f64,
+    /// When `true`, downloaded files are deleted after the episode is marked played.
+    #[serde(default)]
+    pub auto_delete_downloads_after_played: bool,
 }
 
 fn default_true() -> bool { true }
@@ -116,6 +122,8 @@ impl Default for PersistedSettings {
             headphone_triple_tap_action: "clipNow".to_owned(),
             skip_forward_secs: 30.0,
             skip_backward_secs: 15.0,
+            default_playback_rate: 1.0,
+            auto_delete_downloads_after_played: false,
         }
     }
 }

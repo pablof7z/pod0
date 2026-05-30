@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 fn default_skip_forward_secs() -> f64 { 30.0 }
 fn default_skip_backward_secs() -> f64 { 15.0 }
+fn default_one() -> f64 { 1.0 }
 fn default_true() -> bool { true }
 fn default_skip_forward_action() -> String { "skipForward".to_owned() }
 fn default_clip_now_action() -> String { "clipNow".to_owned() }
@@ -42,6 +43,12 @@ pub struct SettingsSnapshot {
     /// Skip-backward interval in seconds. Default 15.0.
     #[serde(default = "default_skip_backward_secs")]
     pub skip_backward_secs: f64,
+    /// Default playback rate. Default 1.0; range [0.5, 3.0].
+    #[serde(default = "default_one")]
+    pub default_playback_rate: f64,
+    /// When `true`, downloaded files are deleted after the episode is marked played.
+    #[serde(default)]
+    pub auto_delete_downloads_after_played: bool,
 }
 
 impl Default for SettingsSnapshot {
@@ -55,6 +62,8 @@ impl Default for SettingsSnapshot {
             headphone_triple_tap_action: "clipNow".to_owned(),
             skip_forward_secs: 30.0,
             skip_backward_secs: 15.0,
+            default_playback_rate: 1.0,
+            auto_delete_downloads_after_played: false,
         }
     }
 }

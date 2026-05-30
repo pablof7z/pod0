@@ -34,6 +34,11 @@ pub enum SettingsAction {
     /// Update both headphone gesture action strings. The raw values must
     /// match a `HeadphoneGestureAction` case on the iOS side.
     SetHeadphoneGestureActions { double_tap: String, triple_tap: String },
+    /// Set the default playback rate. Clamped server-side to `[0.5, 3.0]`.
+    SetDefaultPlaybackRate { rate: f64 },
+    /// Toggle delete-downloaded-file-after-played. When `true`, the kernel
+    /// deletes the local audio file after marking the episode played.
+    SetAutoDeleteDownloadsAfterPlayed { enabled: bool },
 }
 
 /// Action module for the `"podcast.settings"` namespace.

@@ -214,6 +214,12 @@ final class AppStateStore {
             Self.logger.error("Persistence.load failed: \(error, privacy: .public) — starting with empty state")
             loadedState = AppState()
         }
+        // Keychain migration: move legacy per-service keys into PcstIdentityCapability
+        // slots. v2 adds the Ollama slot; re-running is safe (skip-if-present guard).
+        LegacyKeychainMigration.runIfNeeded()
+        // JSON→Keychain pump: older builds stored the OpenRouter key as plaintext in
+        // the AppState JSON blob. The Keychain migrator cannot read that — it only
+        // knows about previous Keychain services. This pump handles that upgrade path.
         Self.migrateLegacyOpenRouterSecretIfNeeded(in: &loadedState, persistence: persistence)
         // Strip synthetic external-playback podcasts written by an earlier
         // build that used an `external-episode://` sentinel feed URL. The
@@ -290,16 +296,22 @@ final class AppStateStore {
         state.settings = updated
     }
 
+    // MARK: - Legacy migration helpers
+
+    /// Migrate the plaintext OpenRouter key from the AppState JSON blob into the
+    /// Keychain (PcstIdentityCapability.byokOpenRouter). Older builds stored the
+    /// key in `Settings.legacyOpenRouterAPIKey`; LegacyKeychainMigration cannot
+    /// reach JSON fields — only previous Keychain services — so this pump is still
+    /// needed for users upgrading from JSON-blob storage.
     private static func migrateLegacyOpenRouterSecretIfNeeded(
         in state: inout AppState,
         persistence: Persistence
     ) {
-        let legacyKey = state.settings.legacyOpenRouterAPIKey.trimmedOrEmpty
+        let legacyKey = state.settings.legacyOpenRouterAPIKey?.trimmingCharacters(in: .whitespaces) ?? ""
         guard !legacyKey.isEmpty else {
             state.settings.legacyOpenRouterAPIKey = nil
             return
         }
-
         do {
             try OpenRouterCredentialStore.saveAPIKey(legacyKey)
             state.settings.markOpenRouterManual()
@@ -307,6 +319,7 @@ final class AppStateStore {
             logger.error("Failed to migrate legacy OpenRouter key to keychain: \(error, privacy: .public)")
             state.settings.clearOpenRouterCredential()
         }
+        state.settings.legacyOpenRouterAPIKey = nil
         persistence.save(state)
     }
 
@@ -353,6 +366,15 @@ final class AppStateStore {
                                  "op": "update_settings",
                                  "has_completed_onboarding": settings.hasCompletedOnboarding
                              ])
+        }
+        if settings.defaultPlaybackRate != prior.defaultPlaybackRate {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: ["op": "set_default_playback_rate", "rate": settings.defaultPlaybackRate])
+        }
+        if settings.autoDeleteDownloadsAfterPlayed != prior.autoDeleteDownloadsAfterPlayed {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: ["op": "set_auto_delete_downloads_after_played",
+                                    "enabled": settings.autoDeleteDownloadsAfterPlayed])
         }
     }
 
