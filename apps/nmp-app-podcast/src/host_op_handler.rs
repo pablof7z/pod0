@@ -416,6 +416,48 @@ impl PodcastHostOpHandler {
                 self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 serde_json::json!({"ok": true})
             }
+            SettingsAction::SetWikiModel { model, model_name } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_wiki_model(model, model_name);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetCategorizationModel { model, model_name } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_categorization_model(model, model_name);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetChapterCompilationModel { model, model_name } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_chapter_compilation_model(model, model_name);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetEmbeddingsModel { model, model_name } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_embeddings_model(model, model_name);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetImageGenerationModel { model, model_name } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_image_generation_model(model, model_name);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
+            SettingsAction::SetRerankerEnabled { enabled } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_reranker_enabled(enabled);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
         }
     }
 }

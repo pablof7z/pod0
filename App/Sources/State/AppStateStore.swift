@@ -403,6 +403,55 @@ final class AppStateStore {
                                  "model_name": settings.memoryCompilationModelName
                              ])
         }
+        if settings.wikiModel != prior.wikiModel
+            || settings.wikiModelName != prior.wikiModelName {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: [
+                                 "op": "set_wiki_model",
+                                 "model": settings.wikiModel,
+                                 "model_name": settings.wikiModelName
+                             ])
+        }
+        if settings.categorizationModel != prior.categorizationModel
+            || settings.categorizationModelName != prior.categorizationModelName {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: [
+                                 "op": "set_categorization_model",
+                                 "model": settings.categorizationModel,
+                                 "model_name": settings.categorizationModelName
+                             ])
+        }
+        if settings.chapterCompilationModel != prior.chapterCompilationModel
+            || settings.chapterCompilationModelName != prior.chapterCompilationModelName {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: [
+                                 "op": "set_chapter_compilation_model",
+                                 "model": settings.chapterCompilationModel,
+                                 "model_name": settings.chapterCompilationModelName
+                             ])
+        }
+        if settings.embeddingsModel != prior.embeddingsModel
+            || settings.embeddingsModelName != prior.embeddingsModelName {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: [
+                                 "op": "set_embeddings_model",
+                                 "model": settings.embeddingsModel,
+                                 "model_name": settings.embeddingsModelName
+                             ])
+        }
+        if settings.imageGenerationModel != prior.imageGenerationModel
+            || settings.imageGenerationModelName != prior.imageGenerationModelName {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: [
+                                 "op": "set_image_generation_model",
+                                 "model": settings.imageGenerationModel,
+                                 "model_name": settings.imageGenerationModelName
+                             ])
+        }
+        if settings.rerankerEnabled != prior.rerankerEnabled {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: ["op": "set_reranker_enabled", "enabled": settings.rerankerEnabled])
+        }
     }
 
     /// Wipes all user data while preserving API credentials and Nostr identity.

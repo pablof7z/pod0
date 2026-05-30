@@ -268,6 +268,118 @@ impl PodcastStore {
         self.memory_compilation_model_name = model_name;
         self.persist();
     }
+
+    /// LLM model ID for wiki synthesis. Default "deepseek-v4-flash:cloud".
+    pub fn wiki_model(&self) -> &str {
+        &self.wiki_model
+    }
+
+    /// Human-readable name for the wiki model. Default "DeepSeek Flash".
+    pub fn wiki_model_name(&self) -> &str {
+        &self.wiki_model_name
+    }
+
+    /// Set both the model ID and name for wiki synthesis. Idempotent.
+    pub fn set_wiki_model(&mut self, model: String, model_name: String) {
+        if self.wiki_model == model && self.wiki_model_name == model_name {
+            return;
+        }
+        self.wiki_model = model;
+        self.wiki_model_name = model_name;
+        self.persist();
+    }
+
+    /// LLM model ID for episode categorization. Default "deepseek-v4-flash:cloud".
+    pub fn categorization_model(&self) -> &str {
+        &self.categorization_model
+    }
+
+    /// Human-readable name for the categorization model. Default "DeepSeek Flash".
+    pub fn categorization_model_name(&self) -> &str {
+        &self.categorization_model_name
+    }
+
+    /// Set both the model ID and name for categorization. Idempotent.
+    pub fn set_categorization_model(&mut self, model: String, model_name: String) {
+        if self.categorization_model == model && self.categorization_model_name == model_name {
+            return;
+        }
+        self.categorization_model = model;
+        self.categorization_model_name = model_name;
+        self.persist();
+    }
+
+    /// LLM model ID for chapter compilation. Default "deepseek-v4-flash:cloud".
+    pub fn chapter_compilation_model(&self) -> &str {
+        &self.chapter_compilation_model
+    }
+
+    /// Human-readable name for the chapter compilation model. Default "DeepSeek Flash".
+    pub fn chapter_compilation_model_name(&self) -> &str {
+        &self.chapter_compilation_model_name
+    }
+
+    /// Set both the model ID and name for chapter compilation. Idempotent.
+    pub fn set_chapter_compilation_model(&mut self, model: String, model_name: String) {
+        if self.chapter_compilation_model == model && self.chapter_compilation_model_name == model_name {
+            return;
+        }
+        self.chapter_compilation_model = model;
+        self.chapter_compilation_model_name = model_name;
+        self.persist();
+    }
+
+    /// LLM model ID for embeddings generation. Default "deepseek-v4-flash:cloud".
+    pub fn embeddings_model(&self) -> &str {
+        &self.embeddings_model
+    }
+
+    /// Human-readable name for the embeddings model. Default "DeepSeek Flash".
+    pub fn embeddings_model_name(&self) -> &str {
+        &self.embeddings_model_name
+    }
+
+    /// Set both the model ID and name for embeddings. Idempotent.
+    pub fn set_embeddings_model(&mut self, model: String, model_name: String) {
+        if self.embeddings_model == model && self.embeddings_model_name == model_name {
+            return;
+        }
+        self.embeddings_model = model;
+        self.embeddings_model_name = model_name;
+        self.persist();
+    }
+
+    /// LLM model ID for image generation. Default "google/gemini-2.5-flash-image".
+    pub fn image_generation_model(&self) -> &str {
+        &self.image_generation_model
+    }
+
+    /// Human-readable name for the image generation model. Default "Gemini 2.5 Flash".
+    pub fn image_generation_model_name(&self) -> &str {
+        &self.image_generation_model_name
+    }
+
+    /// Set both the model ID and name for image generation. Idempotent.
+    pub fn set_image_generation_model(&mut self, model: String, model_name: String) {
+        if self.image_generation_model == model && self.image_generation_model_name == model_name {
+            return;
+        }
+        self.image_generation_model = model;
+        self.image_generation_model_name = model_name;
+        self.persist();
+    }
+
+    /// Whether the reranker is enabled for search results. Default `false`.
+    pub fn reranker_enabled(&self) -> bool {
+        self.reranker_enabled
+    }
+
+    /// Set the reranker-enabled toggle and persist. Idempotent.
+    pub fn set_reranker_enabled(&mut self, value: bool) {
+        if self.reranker_enabled == value { return; }
+        self.reranker_enabled = value;
+        self.persist();
+    }
 }
 
 #[cfg(test)]

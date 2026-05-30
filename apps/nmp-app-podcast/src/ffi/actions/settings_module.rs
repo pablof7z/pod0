@@ -47,6 +47,18 @@ pub enum SettingsAction {
     SetAgentThinkingModel { model: String, model_name: String },
     /// Set both the model ID and name for memory compilation. Atomic update.
     SetMemoryCompilationModel { model: String, model_name: String },
+    /// Set both the model ID and name for wiki synthesis. Atomic update.
+    SetWikiModel { model: String, model_name: String },
+    /// Set both the model ID and name for episode categorization. Atomic update.
+    SetCategorizationModel { model: String, model_name: String },
+    /// Set both the model ID and name for chapter compilation. Atomic update.
+    SetChapterCompilationModel { model: String, model_name: String },
+    /// Set both the model ID and name for embeddings generation. Atomic update.
+    SetEmbeddingsModel { model: String, model_name: String },
+    /// Set both the model ID and name for image generation. Atomic update.
+    SetImageGenerationModel { model: String, model_name: String },
+    /// Set the reranker-enabled toggle.
+    SetRerankerEnabled { enabled: bool },
 }
 
 /// Action module for the `"podcast.settings"` namespace.

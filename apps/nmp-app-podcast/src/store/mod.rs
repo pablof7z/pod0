@@ -143,6 +143,28 @@ pub struct PodcastStore {
     pub(super) memory_compilation_model: String,
     /// Human-readable name for `memory_compilation_model`. Default: "DeepSeek Flash".
     pub(super) memory_compilation_model_name: String,
+    /// LLM model ID for wiki synthesis. Default: "deepseek-v4-flash:cloud".
+    pub(super) wiki_model: String,
+    /// Human-readable name for `wiki_model`. Default: "DeepSeek Flash".
+    pub(super) wiki_model_name: String,
+    /// LLM model ID for episode categorization. Default: "deepseek-v4-flash:cloud".
+    pub(super) categorization_model: String,
+    /// Human-readable name for `categorization_model`. Default: "DeepSeek Flash".
+    pub(super) categorization_model_name: String,
+    /// LLM model ID for chapter compilation. Default: "deepseek-v4-flash:cloud".
+    pub(super) chapter_compilation_model: String,
+    /// Human-readable name for `chapter_compilation_model`. Default: "DeepSeek Flash".
+    pub(super) chapter_compilation_model_name: String,
+    /// LLM model ID for embeddings generation. Default: "deepseek-v4-flash:cloud".
+    pub(super) embeddings_model: String,
+    /// Human-readable name for `embeddings_model`. Default: "DeepSeek Flash".
+    pub(super) embeddings_model_name: String,
+    /// LLM model ID for image generation. Default: "google/gemini-2.5-flash-image".
+    pub(super) image_generation_model: String,
+    /// Human-readable name for `image_generation_model`. Default: "Gemini 2.5 Flash".
+    pub(super) image_generation_model_name: String,
+    /// Whether the reranker is enabled for search results. Default: `false`.
+    pub(super) reranker_enabled: bool,
     /// Last-known Wi-Fi state reported by `nmp.network.capability`. `true` when
     /// the device's active interface is Wi-Fi. Defaults to `true` so
     /// auto-download runs on first launch before the iOS capability fires its
@@ -191,6 +213,17 @@ impl PodcastStore {
             agent_thinking_model_name: "DeepSeek Pro".to_owned(),
             memory_compilation_model: "deepseek-v4-flash:cloud".to_owned(),
             memory_compilation_model_name: "DeepSeek Flash".to_owned(),
+            wiki_model: "deepseek-v4-flash:cloud".to_owned(),
+            wiki_model_name: "DeepSeek Flash".to_owned(),
+            categorization_model: "deepseek-v4-flash:cloud".to_owned(),
+            categorization_model_name: "DeepSeek Flash".to_owned(),
+            chapter_compilation_model: "deepseek-v4-flash:cloud".to_owned(),
+            chapter_compilation_model_name: "DeepSeek Flash".to_owned(),
+            embeddings_model: "deepseek-v4-flash:cloud".to_owned(),
+            embeddings_model_name: "DeepSeek Flash".to_owned(),
+            image_generation_model: "google/gemini-2.5-flash-image".to_owned(),
+            image_generation_model_name: "Gemini 2.5 Flash".to_owned(),
+            reranker_enabled: false,
             is_on_wifi: true,
             data_dir: None,
             loaded_queue: Vec::new(),
@@ -323,6 +356,57 @@ impl PodcastStore {
         } else {
             "DeepSeek Flash".to_owned()
         };
+        self.wiki_model = if !loaded.settings.wiki_model.is_empty() {
+            loaded.settings.wiki_model
+        } else {
+            "deepseek-v4-flash:cloud".to_owned()
+        };
+        self.wiki_model_name = if !loaded.settings.wiki_model_name.is_empty() {
+            loaded.settings.wiki_model_name
+        } else {
+            "DeepSeek Flash".to_owned()
+        };
+        self.categorization_model = if !loaded.settings.categorization_model.is_empty() {
+            loaded.settings.categorization_model
+        } else {
+            "deepseek-v4-flash:cloud".to_owned()
+        };
+        self.categorization_model_name = if !loaded.settings.categorization_model_name.is_empty() {
+            loaded.settings.categorization_model_name
+        } else {
+            "DeepSeek Flash".to_owned()
+        };
+        self.chapter_compilation_model = if !loaded.settings.chapter_compilation_model.is_empty() {
+            loaded.settings.chapter_compilation_model
+        } else {
+            "deepseek-v4-flash:cloud".to_owned()
+        };
+        self.chapter_compilation_model_name = if !loaded.settings.chapter_compilation_model_name.is_empty() {
+            loaded.settings.chapter_compilation_model_name
+        } else {
+            "DeepSeek Flash".to_owned()
+        };
+        self.embeddings_model = if !loaded.settings.embeddings_model.is_empty() {
+            loaded.settings.embeddings_model
+        } else {
+            "deepseek-v4-flash:cloud".to_owned()
+        };
+        self.embeddings_model_name = if !loaded.settings.embeddings_model_name.is_empty() {
+            loaded.settings.embeddings_model_name
+        } else {
+            "DeepSeek Flash".to_owned()
+        };
+        self.image_generation_model = if !loaded.settings.image_generation_model.is_empty() {
+            loaded.settings.image_generation_model
+        } else {
+            "google/gemini-2.5-flash-image".to_owned()
+        };
+        self.image_generation_model_name = if !loaded.settings.image_generation_model_name.is_empty() {
+            loaded.settings.image_generation_model_name
+        } else {
+            "Gemini 2.5 Flash".to_owned()
+        };
+        self.reranker_enabled = loaded.settings.reranker_enabled;
         self.cached_queue = loaded.queue.clone();
         self.loaded_queue = loaded.queue;
         // Restore deferred Wi-Fi downloads that were pending when the app was
@@ -403,6 +487,17 @@ impl PodcastStore {
                 agent_thinking_model_name: self.agent_thinking_model_name.clone(),
                 memory_compilation_model: self.memory_compilation_model.clone(),
                 memory_compilation_model_name: self.memory_compilation_model_name.clone(),
+                wiki_model: self.wiki_model.clone(),
+                wiki_model_name: self.wiki_model_name.clone(),
+                categorization_model: self.categorization_model.clone(),
+                categorization_model_name: self.categorization_model_name.clone(),
+                chapter_compilation_model: self.chapter_compilation_model.clone(),
+                chapter_compilation_model_name: self.chapter_compilation_model_name.clone(),
+                embeddings_model: self.embeddings_model.clone(),
+                embeddings_model_name: self.embeddings_model_name.clone(),
+                image_generation_model: self.image_generation_model.clone(),
+                image_generation_model_name: self.image_generation_model_name.clone(),
+                reranker_enabled: self.reranker_enabled,
             },
             queue: Vec::new(), // filled by persist() from self.cached_queue after return
             pending_wifi_downloads: self.pending_wifi_downloads.clone(),
