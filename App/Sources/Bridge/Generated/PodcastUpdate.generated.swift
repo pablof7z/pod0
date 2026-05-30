@@ -163,6 +163,24 @@ struct SettingsSnapshot: Equatable {
     var elevenLabsBYOKKeyLabel: String? = nil
     /// ElevenLabs credential connected-at timestamp (optional, converted to Date in Swift).
     var elevenLabsConnectedAt: Date? = nil
+    /// STT provider selection enum (raw String: "elevenlabs_scribe", etc).
+    var sttProvider: String = "elevenlabs_scribe"
+    /// OpenRouter Whisper model string. Default `"openai/whisper-1"`.
+    var openRouterWhisperModel: String = "openai/whisper-1"
+    /// AssemblyAI STT model string. Default `"universal-3-pro,universal-2"`.
+    var assemblyAISTTModel: String = "universal-3-pro,universal-2"
+    /// ElevenLabs STT model string. Default `"scribe_v1"`.
+    var elevenLabsSTTModel: String = "scribe_v1"
+    /// ElevenLabs TTS model string. Default `"eleven_turbo_v2_5"`.
+    var elevenLabsTTSModel: String = "eleven_turbo_v2_5"
+    /// ElevenLabs voice ID. Defaults to empty string.
+    var elevenLabsVoiceID: String = ""
+    /// ElevenLabs voice name. Defaults to empty string.
+    var elevenLabsVoiceName: String = ""
+    /// Blossom server URL. Default `"https://blossom.primal.net"`.
+    var blossomServerURL: String = "https://blossom.primal.net"
+    /// YouTube extractor URL (optional).
+    var youtubeExtractorURL: String? = nil
 }
 
 /// Active download-queue projection surfaced via `PodcastUpdate.downloads`.
@@ -296,6 +314,15 @@ extension SettingsSnapshot: Codable {
         case elevenLabsBYOKKeyID = "eleven_labs_byok_key_id"
         case elevenLabsBYOKKeyLabel = "eleven_labs_byok_key_label"
         case elevenLabsConnectedAt
+        case sttProvider
+        case openRouterWhisperModel
+        case assemblyAISTTModel
+        case elevenLabsSTTModel
+        case elevenLabsTTSModel
+        case elevenLabsVoiceID = "eleven_labs_voice_id"
+        case elevenLabsVoiceName = "eleven_labs_voice_name"
+        case blossomServerURL = "blossom_server_url"
+        case youtubeExtractorURL = "youtube_extractor_url"
     }
 
     init(from decoder: Decoder) throws {
@@ -346,6 +373,15 @@ extension SettingsSnapshot: Codable {
         if let timestamp = try c.decodeIfPresent(Int.self, forKey: .elevenLabsConnectedAt) {
             elevenLabsConnectedAt = Date(timeIntervalSince1970: TimeInterval(timestamp))
         }
+        sttProvider = try c.decodeIfPresent(String.self, forKey: .sttProvider) ?? "elevenlabs_scribe"
+        openRouterWhisperModel = try c.decodeIfPresent(String.self, forKey: .openRouterWhisperModel) ?? "openai/whisper-1"
+        assemblyAISTTModel = try c.decodeIfPresent(String.self, forKey: .assemblyAISTTModel) ?? "universal-3-pro,universal-2"
+        elevenLabsSTTModel = try c.decodeIfPresent(String.self, forKey: .elevenLabsSTTModel) ?? "scribe_v1"
+        elevenLabsTTSModel = try c.decodeIfPresent(String.self, forKey: .elevenLabsTTSModel) ?? "eleven_turbo_v2_5"
+        elevenLabsVoiceID = try c.decodeIfPresent(String.self, forKey: .elevenLabsVoiceID) ?? ""
+        elevenLabsVoiceName = try c.decodeIfPresent(String.self, forKey: .elevenLabsVoiceName) ?? ""
+        blossomServerURL = try c.decodeIfPresent(String.self, forKey: .blossomServerURL) ?? "https://blossom.primal.net"
+        youtubeExtractorURL = try c.decodeIfPresent(String.self, forKey: .youtubeExtractorURL)
     }
 }
 

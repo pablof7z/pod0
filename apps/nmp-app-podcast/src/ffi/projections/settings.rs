@@ -24,6 +24,12 @@ fn default_image_generation_model() -> String { "google/gemini-2.5-flash-image".
 fn default_image_generation_model_name() -> String { "Gemini 2.5 Flash".to_owned() }
 fn default_false() -> bool { false }
 fn default_empty_string() -> String { String::new() }
+fn default_stt_provider() -> String { "elevenlabs_scribe".to_owned() }
+fn default_open_router_whisper_model() -> String { "openai/whisper-1".to_owned() }
+fn default_assembly_ai_stt_model() -> String { "universal-3-pro,universal-2".to_owned() }
+fn default_eleven_labs_stt_model() -> String { "scribe_v1".to_owned() }
+fn default_eleven_labs_tts_model() -> String { "eleven_turbo_v2_5".to_owned() }
+fn default_blossom_server_url() -> String { "https://blossom.primal.net".to_owned() }
 
 /// App-settings projection surfaced via
 /// [`super::snapshot::PodcastUpdate::settings`].
@@ -157,6 +163,33 @@ pub struct SettingsSnapshot {
     /// ElevenLabs credential connected-at timestamp (epoch seconds, optional).
     #[serde(default)]
     pub eleven_labs_connected_at: Option<i64>,
+    /// STT provider selection enum (raw String: "elevenlabs_scribe", etc).
+    #[serde(default = "default_stt_provider")]
+    pub stt_provider: String,
+    /// OpenRouter Whisper model string. Default `"openai/whisper-1"`.
+    #[serde(default = "default_open_router_whisper_model")]
+    pub open_router_whisper_model: String,
+    /// AssemblyAI STT model string. Default `"universal-3-pro,universal-2"`.
+    #[serde(default = "default_assembly_ai_stt_model")]
+    pub assembly_ai_stt_model: String,
+    /// ElevenLabs STT model string. Default `"scribe_v1"`.
+    #[serde(default = "default_eleven_labs_stt_model")]
+    pub eleven_labs_stt_model: String,
+    /// ElevenLabs TTS model string. Default `"eleven_turbo_v2_5"`.
+    #[serde(default = "default_eleven_labs_tts_model")]
+    pub eleven_labs_tts_model: String,
+    /// ElevenLabs voice ID. Defaults to empty string.
+    #[serde(default)]
+    pub eleven_labs_voice_id: String,
+    /// ElevenLabs voice name. Defaults to empty string.
+    #[serde(default)]
+    pub eleven_labs_voice_name: String,
+    /// Blossom server URL. Default `"https://blossom.primal.net"`.
+    #[serde(default = "default_blossom_server_url")]
+    pub blossom_server_url: String,
+    /// YouTube extractor URL (optional).
+    #[serde(default)]
+    pub youtube_extractor_url: Option<String>,
 }
 
 impl Default for SettingsSnapshot {
@@ -202,6 +235,15 @@ impl Default for SettingsSnapshot {
             eleven_labs_byok_key_id: None,
             eleven_labs_byok_key_label: None,
             eleven_labs_connected_at: None,
+            stt_provider: "elevenlabs_scribe".to_owned(),
+            open_router_whisper_model: "openai/whisper-1".to_owned(),
+            assembly_ai_stt_model: "universal-3-pro,universal-2".to_owned(),
+            eleven_labs_stt_model: "scribe_v1".to_owned(),
+            eleven_labs_tts_model: "eleven_turbo_v2_5".to_owned(),
+            eleven_labs_voice_id: String::new(),
+            eleven_labs_voice_name: String::new(),
+            blossom_server_url: "https://blossom.primal.net".to_owned(),
+            youtube_extractor_url: None,
         }
     }
 }

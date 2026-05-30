@@ -495,6 +495,44 @@ final class AppStateStore {
                                  "connected_at": settings.elevenLabsConnectedAt.map { Int($0.timeIntervalSince1970) } as Any
                              ])
         }
+        if settings.sttProvider != prior.sttProvider {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: ["op": "set_stt_provider", "provider": settings.sttProvider])
+        }
+        if settings.openRouterWhisperModel != prior.openRouterWhisperModel {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: ["op": "set_open_router_whisper_model", "model": settings.openRouterWhisperModel])
+        }
+        if settings.assemblyAISTTModel != prior.assemblyAISTTModel {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: ["op": "set_assembly_ai_stt_model", "model": settings.assemblyAISTTModel])
+        }
+        if settings.elevenLabsSTTModel != prior.elevenLabsSTTModel
+            || settings.elevenLabsTTSModel != prior.elevenLabsTTSModel {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: [
+                                 "op": "set_eleven_labs_models",
+                                 "stt_model": settings.elevenLabsSTTModel,
+                                 "tts_model": settings.elevenLabsTTSModel
+                             ])
+        }
+        if settings.elevenLabsVoiceID != prior.elevenLabsVoiceID
+            || settings.elevenLabsVoiceName != prior.elevenLabsVoiceName {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: [
+                                 "op": "set_eleven_labs_voice",
+                                 "voice_id": settings.elevenLabsVoiceID,
+                                 "voice_name": settings.elevenLabsVoiceName
+                             ])
+        }
+        if settings.blossomServerURL != prior.blossomServerURL {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: ["op": "set_blossom_server_url", "url": settings.blossomServerURL])
+        }
+        if settings.youtubeExtractorURL != prior.youtubeExtractorURL {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: ["op": "set_youtube_extractor_url", "url": settings.youtubeExtractorURL as Any])
+        }
     }
 
     /// Wipes all user data while preserving API credentials and Nostr identity.

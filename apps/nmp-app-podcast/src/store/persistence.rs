@@ -214,6 +214,39 @@ pub(super) struct PersistedSettings {
     /// ElevenLabs credential connected-at timestamp (epoch seconds, optional).
     #[serde(default)]
     pub eleven_labs_connected_at: Option<i64>,
+    /// STT provider selection. Empty string in old files →
+    /// hydration replaces with "elevenlabs_scribe".
+    #[serde(default)]
+    pub stt_provider: String,
+    /// OpenRouter Whisper model string. Empty string in old files →
+    /// hydration replaces with "openai/whisper-1".
+    #[serde(default)]
+    pub open_router_whisper_model: String,
+    /// AssemblyAI STT model string. Empty string in old files →
+    /// hydration replaces with "universal-3-pro,universal-2".
+    #[serde(default)]
+    pub assembly_ai_stt_model: String,
+    /// ElevenLabs STT model string. Empty string in old files →
+    /// hydration replaces with "scribe_v1".
+    #[serde(default)]
+    pub eleven_labs_stt_model: String,
+    /// ElevenLabs TTS model string. Empty string in old files →
+    /// hydration replaces with "eleven_turbo_v2_5".
+    #[serde(default)]
+    pub eleven_labs_tts_model: String,
+    /// ElevenLabs voice ID. Defaults to empty string.
+    #[serde(default)]
+    pub eleven_labs_voice_id: String,
+    /// ElevenLabs voice name. Defaults to empty string.
+    #[serde(default)]
+    pub eleven_labs_voice_name: String,
+    /// Blossom server URL. Empty string in old files →
+    /// hydration replaces with "https://blossom.primal.net".
+    #[serde(default)]
+    pub blossom_server_url: String,
+    /// YouTube extractor URL (optional).
+    #[serde(default)]
+    pub youtube_extractor_url: Option<String>,
 }
 
 fn default_true() -> bool { true }
@@ -260,6 +293,15 @@ impl Default for PersistedSettings {
             eleven_labs_byok_key_id: None,
             eleven_labs_byok_key_label: None,
             eleven_labs_connected_at: None,
+            stt_provider: "elevenlabs_scribe".to_owned(),
+            open_router_whisper_model: "openai/whisper-1".to_owned(),
+            assembly_ai_stt_model: "universal-3-pro,universal-2".to_owned(),
+            eleven_labs_stt_model: "scribe_v1".to_owned(),
+            eleven_labs_tts_model: "eleven_turbo_v2_5".to_owned(),
+            eleven_labs_voice_id: String::new(),
+            eleven_labs_voice_name: String::new(),
+            blossom_server_url: "https://blossom.primal.net".to_owned(),
+            youtube_extractor_url: None,
         }
     }
 }

@@ -85,6 +85,20 @@ pub enum SettingsAction {
         key_label: Option<String>,
         connected_at: Option<i64>,
     },
+    /// Set the STT provider selection.
+    SetSttProvider { provider: String },
+    /// Set the OpenRouter Whisper model string.
+    SetOpenRouterWhisperModel { model: String },
+    /// Set the AssemblyAI STT model string.
+    SetAssemblyAiSttModel { model: String },
+    /// Set both ElevenLabs STT and TTS models. Atomic update.
+    SetElevenLabsModels { stt_model: String, tts_model: String },
+    /// Set both ElevenLabs voice ID and name. Atomic update.
+    SetElevenLabsVoice { voice_id: String, voice_name: String },
+    /// Set the Blossom server URL.
+    SetBlossomServerUrl { url: String },
+    /// Set the YouTube extractor URL (optional).
+    SetYoutubeExtractorUrl { url: Option<String> },
 }
 
 /// Action module for the `"podcast.settings"` namespace.
