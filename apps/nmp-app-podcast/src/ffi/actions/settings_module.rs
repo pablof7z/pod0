@@ -99,6 +99,16 @@ pub enum SettingsAction {
     SetBlossomServerUrl { url: String },
     /// Set the YouTube extractor URL (optional).
     SetYoutubeExtractorUrl { url: Option<String> },
+    /// Toggle wiki auto-generation on transcript ingest.
+    SetWikiAutoGenerateOnTranscriptIngest { enabled: bool },
+    /// Toggle auto-ingest of publisher-provided transcripts.
+    SetAutoIngestPublisherTranscripts { enabled: bool },
+    /// Toggle auto-fallback to Scribe when publisher transcript ingestion fails.
+    SetAutoFallbackToScribe { enabled: bool },
+    /// Toggle local notifications for new episodes.
+    SetNotifyOnNewEpisodes { enabled: bool },
+    /// Toggle local notifications for briefing readiness.
+    SetNotifyOnBriefingReady { enabled: bool },
 }
 
 /// Action module for the `"podcast.settings"` namespace.

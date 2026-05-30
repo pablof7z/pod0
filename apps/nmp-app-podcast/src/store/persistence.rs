@@ -247,6 +247,21 @@ pub(super) struct PersistedSettings {
     /// YouTube extractor URL (optional).
     #[serde(default)]
     pub youtube_extractor_url: Option<String>,
+    /// Whether to auto-generate wiki entries when transcripts are ingested. Default `false`.
+    #[serde(default)]
+    pub wiki_auto_generate_on_transcript_ingest: bool,
+    /// Whether to auto-ingest publisher-provided transcripts. Default `true`.
+    #[serde(default = "default_true")]
+    pub auto_ingest_publisher_transcripts: bool,
+    /// Whether to fall back to Scribe (STT) when publisher transcript ingestion fails. Default `true`.
+    #[serde(default = "default_true")]
+    pub auto_fallback_to_scribe: bool,
+    /// Whether to send local notifications when new episodes arrive. Default `true`.
+    #[serde(default = "default_true")]
+    pub notify_on_new_episodes: bool,
+    /// Whether to send local notifications when briefing/AI processing is ready. Default `true`.
+    #[serde(default = "default_true")]
+    pub notify_on_briefing_ready: bool,
 }
 
 fn default_true() -> bool { true }
@@ -302,6 +317,11 @@ impl Default for PersistedSettings {
             eleven_labs_voice_name: String::new(),
             blossom_server_url: "https://blossom.primal.net".to_owned(),
             youtube_extractor_url: None,
+            wiki_auto_generate_on_transcript_ingest: false,
+            auto_ingest_publisher_transcripts: true,
+            auto_fallback_to_scribe: true,
+            notify_on_new_episodes: true,
+            notify_on_briefing_ready: true,
         }
     }
 }

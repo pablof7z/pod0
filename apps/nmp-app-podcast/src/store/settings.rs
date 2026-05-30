@@ -622,6 +622,66 @@ impl PodcastStore {
         self.youtube_extractor_url = value;
         self.persist();
     }
+
+    /// Whether to auto-generate wiki entries when transcripts are ingested. Default `false`.
+    pub fn wiki_auto_generate_on_transcript_ingest(&self) -> bool {
+        self.wiki_auto_generate_on_transcript_ingest
+    }
+
+    /// Set the wiki-auto-generate-on-transcript-ingest toggle and persist. Idempotent.
+    pub fn set_wiki_auto_generate_on_transcript_ingest(&mut self, value: bool) {
+        if self.wiki_auto_generate_on_transcript_ingest == value { return; }
+        self.wiki_auto_generate_on_transcript_ingest = value;
+        self.persist();
+    }
+
+    /// Whether to auto-ingest publisher-provided transcripts. Default `true`.
+    pub fn auto_ingest_publisher_transcripts(&self) -> bool {
+        self.auto_ingest_publisher_transcripts
+    }
+
+    /// Set the auto-ingest-publisher-transcripts toggle and persist. Idempotent.
+    pub fn set_auto_ingest_publisher_transcripts(&mut self, value: bool) {
+        if self.auto_ingest_publisher_transcripts == value { return; }
+        self.auto_ingest_publisher_transcripts = value;
+        self.persist();
+    }
+
+    /// Whether to fall back to Scribe (STT) when publisher transcript ingestion fails. Default `true`.
+    pub fn auto_fallback_to_scribe(&self) -> bool {
+        self.auto_fallback_to_scribe
+    }
+
+    /// Set the auto-fallback-to-scribe toggle and persist. Idempotent.
+    pub fn set_auto_fallback_to_scribe(&mut self, value: bool) {
+        if self.auto_fallback_to_scribe == value { return; }
+        self.auto_fallback_to_scribe = value;
+        self.persist();
+    }
+
+    /// Whether to send local notifications when new episodes arrive. Default `true`.
+    pub fn notify_on_new_episodes(&self) -> bool {
+        self.notify_on_new_episodes
+    }
+
+    /// Set the notify-on-new-episodes toggle and persist. Idempotent.
+    pub fn set_notify_on_new_episodes(&mut self, value: bool) {
+        if self.notify_on_new_episodes == value { return; }
+        self.notify_on_new_episodes = value;
+        self.persist();
+    }
+
+    /// Whether to send local notifications when briefing/AI processing is ready. Default `true`.
+    pub fn notify_on_briefing_ready(&self) -> bool {
+        self.notify_on_briefing_ready
+    }
+
+    /// Set the notify-on-briefing-ready toggle and persist. Idempotent.
+    pub fn set_notify_on_briefing_ready(&mut self, value: bool) {
+        if self.notify_on_briefing_ready == value { return; }
+        self.notify_on_briefing_ready = value;
+        self.persist();
+    }
 }
 
 #[cfg(test)]

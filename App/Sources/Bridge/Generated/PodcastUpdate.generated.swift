@@ -181,6 +181,16 @@ struct SettingsSnapshot: Equatable {
     var blossomServerURL: String = "https://blossom.primal.net"
     /// YouTube extractor URL (optional).
     var youtubeExtractorURL: String? = nil
+    /// Whether to auto-generate wiki entries when transcripts are ingested. Default `false`.
+    var wikiAutoGenerateOnTranscriptIngest: Bool = false
+    /// Whether to auto-ingest publisher-provided transcripts. Default `true`.
+    var autoIngestPublisherTranscripts: Bool = true
+    /// Whether to fall back to Scribe (STT) when publisher transcript ingestion fails. Default `true`.
+    var autoFallbackToScribe: Bool = true
+    /// Whether to send local notifications when new episodes arrive. Default `true`.
+    var notifyOnNewEpisodes: Bool = true
+    /// Whether to send local notifications when briefing/AI processing is ready. Default `true`.
+    var notifyOnBriefingReady: Bool = true
 }
 
 /// Active download-queue projection surfaced via `PodcastUpdate.downloads`.
@@ -323,6 +333,11 @@ extension SettingsSnapshot: Codable {
         case elevenLabsVoiceName = "eleven_labs_voice_name"
         case blossomServerURL = "blossom_server_url"
         case youtubeExtractorURL = "youtube_extractor_url"
+        case wikiAutoGenerateOnTranscriptIngest = "wiki_auto_generate_on_transcript_ingest"
+        case autoIngestPublisherTranscripts = "auto_ingest_publisher_transcripts"
+        case autoFallbackToScribe = "auto_fallback_to_scribe"
+        case notifyOnNewEpisodes = "notify_on_new_episodes"
+        case notifyOnBriefingReady = "notify_on_briefing_ready"
     }
 
     init(from decoder: Decoder) throws {
@@ -382,6 +397,11 @@ extension SettingsSnapshot: Codable {
         elevenLabsVoiceName = try c.decodeIfPresent(String.self, forKey: .elevenLabsVoiceName) ?? ""
         blossomServerURL = try c.decodeIfPresent(String.self, forKey: .blossomServerURL) ?? "https://blossom.primal.net"
         youtubeExtractorURL = try c.decodeIfPresent(String.self, forKey: .youtubeExtractorURL)
+        wikiAutoGenerateOnTranscriptIngest = try c.decodeIfPresent(Bool.self, forKey: .wikiAutoGenerateOnTranscriptIngest) ?? false
+        autoIngestPublisherTranscripts = try c.decodeIfPresent(Bool.self, forKey: .autoIngestPublisherTranscripts) ?? true
+        autoFallbackToScribe = try c.decodeIfPresent(Bool.self, forKey: .autoFallbackToScribe) ?? true
+        notifyOnNewEpisodes = try c.decodeIfPresent(Bool.self, forKey: .notifyOnNewEpisodes) ?? true
+        notifyOnBriefingReady = try c.decodeIfPresent(Bool.self, forKey: .notifyOnBriefingReady) ?? true
     }
 }
 

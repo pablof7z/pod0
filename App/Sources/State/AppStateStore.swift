@@ -533,6 +533,26 @@ final class AppStateStore {
             kernel?.dispatch(namespace: "podcast.settings",
                              body: ["op": "set_youtube_extractor_url", "url": settings.youtubeExtractorURL as Any])
         }
+        if settings.wikiAutoGenerateOnTranscriptIngest != prior.wikiAutoGenerateOnTranscriptIngest {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: ["op": "set_wiki_auto_generate_on_transcript_ingest", "enabled": settings.wikiAutoGenerateOnTranscriptIngest])
+        }
+        if settings.autoIngestPublisherTranscripts != prior.autoIngestPublisherTranscripts {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: ["op": "set_auto_ingest_publisher_transcripts", "enabled": settings.autoIngestPublisherTranscripts])
+        }
+        if settings.autoFallbackToScribe != prior.autoFallbackToScribe {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: ["op": "set_auto_fallback_to_scribe", "enabled": settings.autoFallbackToScribe])
+        }
+        if settings.notifyOnNewEpisodes != prior.notifyOnNewEpisodes {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: ["op": "set_notify_on_new_episodes", "enabled": settings.notifyOnNewEpisodes])
+        }
+        if settings.notifyOnBriefingReady != prior.notifyOnBriefingReady {
+            kernel?.dispatch(namespace: "podcast.settings",
+                             body: ["op": "set_notify_on_briefing_ready", "enabled": settings.notifyOnBriefingReady])
+        }
     }
 
     /// Wipes all user data while preserving API credentials and Nostr identity.
