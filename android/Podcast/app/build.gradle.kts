@@ -56,6 +56,14 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 
+    // ─── Jetpack Security — EncryptedSharedPreferences for the Nostr nsec ──
+    //
+    // `security/KeystoreManager.kt` persists the user's local private key as
+    // an AES-256-GCM ciphertext under a hardware-backed Android Keystore key,
+    // so the nsec survives restart without ever hitting disk in plaintext.
+    // The 1.1.0-alpha line is the only one published for AGP 8 / minSdk 26.
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
     // ─── Coil — async artwork loading from kernel-projected URLs ──────────
     //
     // Search results, library tiles, and episode detail render remote

@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import io.f7z.podcast.capabilities.ExoPlayerCapability
+import io.f7z.podcast.security.KeystoreManager
 import io.f7z.podcast.ui.AppNavigation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -77,6 +78,15 @@ private fun PodcastRoot() {
     var snapshot by remember { mutableStateOf<PodcastSnapshot?>(null) }
 
     DisposableEffect(bridge, audio) {
+        // Restore a previously-imported identity before the actor starts so the
+        // first snapshot already reflects the signed-in state. Dispatches the
+        // canonical `podcast.identity` ImportNsec (the bridge constructor's
+        // `nativeNew` has already run via `remember { KernelBridge() }`); the
+        // legacy `signinNsec` stub is intentionally NOT used — it feeds a store
+        // the Identity screen never reads.
+        KeystoreManager.loadNsec(context)?.let { stored ->
+            IdentityActions.importNsec(bridge, stored)
+        }
         bridge.start()
         audio.attach()
         onDispose {

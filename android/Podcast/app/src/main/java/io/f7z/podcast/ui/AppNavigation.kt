@@ -111,7 +111,6 @@ fun AppNavigation(snapshot: PodcastSnapshot?, bridge: KernelBridge) {
                 snapshot = snapshot,
                 bridge = bridge,
                 onBack = { route = AppRoute.Tab(selectedTab) },
-                onSignInRequested = { /* No-op stub — toast surface is M13.B scope. */ },
                 modifier = contentModifier,
             )
         }
