@@ -246,6 +246,26 @@ impl PodcastHostOpHandler {
         );
     }
 
+    /// Re-run the AI picks pass after a successful refresh so newly-arrived
+    /// episodes are folded into a fresh personalized ranking automatically —
+    /// the same auto-trigger discipline as [`Self::auto_categorize`].
+    ///
+    /// This goes through [`picks_handle_refresh`] (not the bare
+    /// `refresh_picks_into_slot` heuristic stamp) so the LLM scoring path
+    /// actually runs in normal operation: the heuristic stamps the rail
+    /// immediately and the background LLM pass upgrades it. The
+    /// `picks_score_in_progress` guard coalesces the repeated calls that a
+    /// `refresh_all` batch would otherwise produce into a single scoring pass.
+    pub(super) fn auto_refresh_picks(&self) {
+        let _ = picks_handle_refresh(
+            &self.store,
+            &self.picks,
+            &self.rev,
+            &self.runtime,
+            &self.picks_score_in_progress,
+        );
+    }
+
     pub(crate) fn dispatch_http(
         &self,
         req: &HttpRequest,

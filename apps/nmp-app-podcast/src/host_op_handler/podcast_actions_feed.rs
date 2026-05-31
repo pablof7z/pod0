@@ -69,6 +69,7 @@ impl PodcastHostOpHandler {
         };
         if result["ok"] == true {
             self.auto_categorize();
+            self.auto_refresh_picks();
         }
         result
     }
@@ -121,6 +122,7 @@ impl PodcastHostOpHandler {
         );
         if result["ok"] == true {
             self.auto_categorize();
+            self.auto_refresh_picks();
         }
         result
     }
@@ -151,6 +153,7 @@ impl PodcastHostOpHandler {
         self.rev.fetch_add(1, Ordering::Relaxed);
         if any_succeeded {
             self.auto_categorize();
+            self.auto_refresh_picks();
         }
         if errors.is_empty() {
             serde_json::json!({"ok": true})

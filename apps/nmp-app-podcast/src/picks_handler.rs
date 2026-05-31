@@ -120,6 +120,85 @@ fn collect_score_inputs(store: &PodcastStore) -> Vec<(String, String, String, St
     out
 }
 
+/// Build a compact listening profile that summarizes which shows the user
+/// actually engages with, so the LLM can rank candidates for *fit to this
+/// user* rather than generic interest (feature #46 personalization).
+///
+/// Signals (all already on `Episode`, no new capability needed):
+///   * `played` — episodes the user finished.
+///   * `position_secs > 0 && !played` — episodes in progress.
+///   * `is_starred` — episodes the user explicitly favorited.
+///
+/// Shows are ranked by an engagement weight (`played + in-progress +
+/// starred`, finished episodes counting double since a completed listen is a
+/// stronger signal than a partial one), then rendered as the top few lines.
+/// Returns an empty string on a cold start (no history) so
+/// [`crate::picks_llm::build_picks_prompt`] degrades to general-interest
+/// scoring rather than emitting a misleading empty profile.
+fn build_listening_profile(store: &PodcastStore) -> String {
+    /// Cap on profile lines so the prompt stays small; the most-engaged shows
+    /// carry almost all the signal.
+    const MAX_PROFILE_SHOWS: usize = 6;
+
+    struct ShowEngagement {
+        title: String,
+        played: usize,
+        in_progress: usize,
+        starred: usize,
+    }
+
+    let mut shows: Vec<ShowEngagement> = Vec::new();
+    for (podcast, episodes) in store.all_podcasts() {
+        let mut eng = ShowEngagement {
+            title: podcast.title.clone(),
+            played: 0,
+            in_progress: 0,
+            starred: 0,
+        };
+        for ep in episodes {
+            if ep.played {
+                eng.played += 1;
+            } else if ep.position_secs > 0.0 {
+                eng.in_progress += 1;
+            }
+            if ep.is_starred {
+                eng.starred += 1;
+            }
+        }
+        if eng.played + eng.in_progress + eng.starred > 0 {
+            shows.push(eng);
+        }
+    }
+
+    // Finished listens are the strongest signal (weight 2); in-progress and
+    // starred each weight 1. Newest-engaged shows surface first.
+    shows.sort_by(|a, b| {
+        let wa = a.played * 2 + a.in_progress + a.starred;
+        let wb = b.played * 2 + b.in_progress + b.starred;
+        wb.cmp(&wa).then_with(|| a.title.cmp(&b.title))
+    });
+
+    let lines: Vec<String> = shows
+        .into_iter()
+        .take(MAX_PROFILE_SHOWS)
+        .map(|s| {
+            let mut signals: Vec<String> = Vec::new();
+            if s.played > 0 {
+                signals.push(format!("played {}", s.played));
+            }
+            if s.in_progress > 0 {
+                signals.push(format!("{} in progress", s.in_progress));
+            }
+            if s.starred > 0 {
+                signals.push(format!("{} starred", s.starred));
+            }
+            format!("- {} ({})", s.title, signals.join(", "))
+        })
+        .collect();
+
+    lines.join("\n")
+}
+
 /// Handler for `{"op":"refresh"}` on the `podcast.picks` namespace.
 ///
 /// Stamps the heuristic immediately (so the UI is never empty while the LLM
@@ -179,8 +258,10 @@ async fn score_picks_in_background(
     runtime: Arc<Runtime>,
     in_progress: Arc<AtomicBool>,
 ) {
-    // Snapshot candidates + score inputs under a brief store lock, then release.
-    let (candidates, score_inputs) = {
+    // Snapshot candidates + score inputs + listening profile under a brief
+    // store lock, then release. The profile is computed once per pass and
+    // reused for every candidate so we read the store exactly once.
+    let (candidates, score_inputs, profile) = {
         let guard = match store.lock() {
             Ok(g) => g,
             Err(_) => {
@@ -188,14 +269,19 @@ async fn score_picks_in_background(
                 return;
             }
         };
-        (collect_candidates(&guard), collect_score_inputs(&guard))
+        (
+            collect_candidates(&guard),
+            collect_score_inputs(&guard),
+            build_listening_profile(&guard),
+        )
     };
 
     let mut scores: HashMap<String, (f32, String)> = HashMap::new();
     for (ep_id, ep_title, pod_title, description) in score_inputs {
         let runtime2 = Arc::clone(&runtime);
+        let profile2 = profile.clone();
         let result = tokio::task::spawn_blocking(move || {
-            score_episode_for_picks(&ep_title, &pod_title, &description, &runtime2)
+            score_episode_for_picks(&ep_title, &pod_title, &description, &profile2, &runtime2)
         })
         .await;
 

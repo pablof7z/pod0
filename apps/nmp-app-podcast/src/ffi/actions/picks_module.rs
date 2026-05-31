@@ -1,9 +1,14 @@
 //! Picks-action `ActionModule` — routes all `"podcast.picks.*"` dispatches.
 //!
-//! Feature #46 (AI agent picks). The MVP computes picks locally via a
-//! heuristic: newest episodes across the user's library, capped per show
-//! for diversity, top-N overall. A future LLM-driven projection replaces
-//! the compute body without changing the action wire format.
+//! Feature #46 (AI agent picks). The rail fills in two stages: a fast
+//! newest-first heuristic (newest episodes across the user's library, capped
+//! per show for diversity, top-N overall) stamps the slot immediately, then a
+//! background LLM pass (`picks_handler::handle_refresh` →
+//! `picks_llm::score_episode_for_picks`) re-stamps it with a personalized
+//! ranking conditioned on the user's listening profile. Both stages share this
+//! action wire format; the LLM pass runs automatically after every feed refresh
+//! (see `PodcastHostOpHandler::auto_refresh_picks`) and on explicit
+//! `{"op":"refresh"}` dispatches.
 //!
 //! Swift encodes every picks action as `{"op":"<variant>"}`. The
 //! `#[serde(tag = "op", rename_all = "snake_case")]` discriminator maps

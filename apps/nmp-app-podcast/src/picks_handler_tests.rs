@@ -142,3 +142,62 @@ fn refresh_picks_on_empty_store_yields_empty_slot() {
     assert_eq!(rev.load(Ordering::Relaxed), 1);
 }
 
+#[test]
+fn listening_profile_empty_on_cold_start() {
+    // No played / in-progress / starred episodes anywhere → empty profile so
+    // the prompt degrades to general-interest scoring.
+    let mut s = PodcastStore::new();
+    let p = make_podcast("Fresh Show");
+    let pid = p.id;
+    s.subscribe(p, vec![make_episode(pid, "ep-1", 100)]);
+    assert!(build_listening_profile(&s).is_empty());
+}
+
+#[test]
+fn listening_profile_surfaces_most_engaged_shows_first() {
+    let mut s = PodcastStore::new();
+
+    // Show A: 2 finished listens (weight 4) — strongest engagement.
+    let pa = make_podcast("Show A");
+    let pa_id = pa.id;
+    let mut a1 = make_episode(pa_id, "A-1", 100);
+    a1.played = true;
+    let mut a2 = make_episode(pa_id, "A-2", 200);
+    a2.played = true;
+    s.subscribe(pa, vec![a1, a2]);
+
+    // Show B: 1 in-progress (weight 1) — weaker.
+    let pb = make_podcast("Show B");
+    let pb_id = pb.id;
+    let mut b1 = make_episode(pb_id, "B-1", 300);
+    b1.position_secs = 120.0;
+    s.subscribe(pb, vec![b1]);
+
+    // Show C: no engagement → excluded entirely.
+    let pc = make_podcast("Show C");
+    let pc_id = pc.id;
+    s.subscribe(pc, vec![make_episode(pc_id, "C-1", 400)]);
+
+    let profile = build_listening_profile(&s);
+    let a_pos = profile.find("Show A").expect("Show A present");
+    let b_pos = profile.find("Show B").expect("Show B present");
+    assert!(a_pos < b_pos, "more-engaged show must rank first");
+    assert!(!profile.contains("Show C"), "un-engaged show excluded");
+    assert!(profile.contains("played 2"));
+    assert!(profile.contains("1 in progress"));
+}
+
+#[test]
+fn listening_profile_counts_starred_episodes() {
+    let mut s = PodcastStore::new();
+    let p = make_podcast("Starred Show");
+    let pid = p.id;
+    let mut ep = make_episode(pid, "fav", 100);
+    ep.is_starred = true;
+    s.subscribe(p, vec![ep]);
+
+    let profile = build_listening_profile(&s);
+    assert!(profile.contains("Starred Show"));
+    assert!(profile.contains("1 starred"));
+}
+

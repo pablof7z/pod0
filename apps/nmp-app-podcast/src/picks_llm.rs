@@ -38,9 +38,17 @@ const OLLAMA_BASE_URL: &str = "http://localhost:11434";
 /// Same fast model the inbox triage path uses.
 const PICKS_MODEL: &str = "deepseek-v4-flash:cloud";
 
-const PICKS_PREAMBLE: &str = r#"You are a podcast picks recommender. Score this episode 0.0-1.0 for general interest and give a one-sentence reason why it's worth listening to. Output ONLY JSON: {"score": 0.9, "reason": "..."}."#;
+const PICKS_PREAMBLE: &str = r#"You are a personalized podcast picks recommender. You are given the user's recent listening profile (the shows and topics they actually listen to) followed by a candidate episode. Score the candidate 0.0-1.0 for how well it fits THIS user's tastes — not generic popularity — and give a one-sentence reason that references what they care about. Reward episodes from shows or topics the user already engages with; do not just reward novelty. Output ONLY JSON: {"score": 0.9, "reason": "..."}."#;
 
-/// Score a candidate episode for user picks.
+/// Score a candidate episode for user picks, personalized against the user's
+/// listening profile.
+///
+/// `listening_profile` is a short, pre-rendered summary of the shows/topics the
+/// user actually listens to (see [`crate::picks_handler::build_listening_profile`]).
+/// It is injected ahead of the candidate so the LLM ranks for *fit to this user*
+/// rather than generic interest — this is the AI-backed "personalized ranking"
+/// for feature #46. When the profile is empty (cold start, no history) the prompt
+/// degrades to general-interest scoring.
 ///
 /// Returns `(priority_score, reason)` — mirrors
 /// [`crate::inbox_llm::triage_episode`]. `priority_score` is clamped to
@@ -53,6 +61,7 @@ pub fn score_episode_for_picks(
     episode_title: &str,
     podcast_title: &str,
     description: &str,
+    listening_profile: &str,
     runtime: &Arc<Runtime>,
 ) -> Result<(f32, String), String> {
     runtime.block_on(async {
@@ -67,14 +76,36 @@ pub fn score_episode_for_picks(
             .preamble(PICKS_PREAMBLE)
             .build();
 
-        let truncated: String = description.chars().take(500).collect();
-        let prompt = format!(
-            "Podcast: {podcast_title}\nEpisode: {episode_title}\nDescription: {truncated}"
-        );
+        let prompt =
+            build_picks_prompt(episode_title, podcast_title, description, listening_profile);
 
         let response: String = agent.prompt(&prompt).await.map_err(|e| e.to_string())?;
         parse_picks_response(&response)
     })
+}
+
+/// Compose the user-turn prompt for the picks scorer.
+///
+/// Lays out the listening profile first (so the model conditions on the user
+/// before seeing the candidate), then the candidate episode. Pure + free of
+/// the network call so prompt shape is unit-testable. The description is
+/// truncated to 500 chars to bound prompt size (matches inbox triage).
+pub fn build_picks_prompt(
+    episode_title: &str,
+    podcast_title: &str,
+    description: &str,
+    listening_profile: &str,
+) -> String {
+    let truncated: String = description.chars().take(500).collect();
+    let profile = listening_profile.trim();
+    let profile_section = if profile.is_empty() {
+        "Listener profile: (no listening history yet — score for broad interest)".to_owned()
+    } else {
+        format!("Listener profile:\n{profile}")
+    };
+    format!(
+        "{profile_section}\n\nCandidate episode:\nPodcast: {podcast_title}\nEpisode: {episode_title}\nDescription: {truncated}"
+    )
 }
 
 /// Parse the LLM picks reply into `(score, reason)`.

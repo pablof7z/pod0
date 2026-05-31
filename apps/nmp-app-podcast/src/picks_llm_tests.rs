@@ -7,7 +7,44 @@
 //! `picks_handler` background path; here we only validate parsing/fallback so
 //! the suite stays hermetic and fast.
 
-use super::{extract_json_object, parse_picks_response};
+use super::{build_picks_prompt, extract_json_object, parse_picks_response};
+
+#[test]
+fn prompt_includes_listening_profile_when_present() {
+    let prompt = build_picks_prompt(
+        "Rate limiting at scale",
+        "Backend Banter",
+        "A deep dive on token buckets.",
+        "Listens to: Backend Banter (3 in progress), Stratechery (played 5).",
+    );
+    // The profile must appear ahead of the candidate so the model conditions
+    // on the user first.
+    let profile_pos = prompt
+        .find("Backend Banter (3 in progress)")
+        .expect("profile present");
+    let candidate_pos = prompt.find("Candidate episode:").expect("candidate present");
+    assert!(profile_pos < candidate_pos, "profile must precede candidate");
+    assert!(prompt.contains("Episode: Rate limiting at scale"));
+}
+
+#[test]
+fn prompt_degrades_gracefully_with_empty_profile() {
+    let prompt = build_picks_prompt("Ep", "Show", "Desc", "   ");
+    assert!(
+        prompt.contains("no listening history yet"),
+        "empty profile must signal cold-start to the model"
+    );
+    assert!(prompt.contains("Candidate episode:"));
+}
+
+#[test]
+fn prompt_truncates_long_description_to_500_chars() {
+    let long = "x".repeat(900);
+    let prompt = build_picks_prompt("Ep", "Show", &long, "profile");
+    // 500 x's max in the description body.
+    let xs = prompt.matches('x').count();
+    assert_eq!(xs, 500);
+}
 
 #[test]
 fn parses_bare_score_and_reason() {
