@@ -42,6 +42,15 @@ pub struct DownloadQueueSnapshot {
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct DownloadItemSnapshot {
     pub episode_id: String,
+    /// Enclosure URL the executor fetches. Carried on the projection so a
+    /// *pull-model* capability (Android, which has no inbound
+    /// `dispatch_capability` command seam) can start the HTTP download
+    /// straight from a `"queued"` / `"active"` row without an extra
+    /// round-trip. iOS ignores it — its push-model executor receives the
+    /// URL on the `StartDownload` `DownloadCommand` instead. Empty string
+    /// when the queue row predates this field.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub url: String,
     /// `0.0..=1.0`, or `0.0` when `total_bytes` is unknown.
     pub progress: f32,
     /// One of `"active"`, `"queued"`, `"paused"`, `"failed"`. Successful

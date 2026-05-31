@@ -16,6 +16,7 @@ pub(super) fn build_downloads_snapshot(queue: &DownloadQueue) -> Option<Download
         .filter(|item| !item.state.is_terminal() || item.state == DownloadItemState::Failed)
         .map(|item| DownloadItemSnapshot {
             episode_id: item.episode_id.clone(),
+            url: item.url.clone(),
             progress: item.progress_fraction(),
             state: state_label(item.state).to_owned(),
             total_bytes: item.total_bytes,

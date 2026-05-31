@@ -29,8 +29,8 @@ use nmp_ffi::{
 };
 
 use crate::ffi::{
-    nmp_app_podcast_register, nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free,
-    nmp_app_podcast_unregister, PodcastHandle,
+    nmp_app_podcast_download_report, nmp_app_podcast_register, nmp_app_podcast_snapshot,
+    nmp_app_podcast_snapshot_free, nmp_app_podcast_unregister, PodcastHandle,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -396,8 +396,74 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nmpCapabilityReport<'l>(
     }
     // Stub: future M13.B will dispatch this through the kernel's capability
     // report sink. The namespace + body are owned strings ready to forward.
+    //
+    // NOTE: the download capability does NOT use this entry point — it has
+    // a real, handle-aware channel (`nativeDownloadReport` below) that
+    // projects the report onto the kernel `DownloadQueue` and returns the
+    // follow-up `DownloadCommand`. Audio/voice reports still land here and
+    // are dropped pending the broader capability-report wiring (M13.B);
+    // that remains a known gap for those namespaces, untouched by this PR.
     let _ = (ns, body);
     0
+}
+
+/// `nativeDownloadReport(handle, reportJson)` — handle-aware download
+/// report channel. The Kotlin `DownloadCapability` calls this with a
+/// JSON-encoded [`crate::capability::DownloadReport`] (`progress` /
+/// `completed` / `failed` / `cancelled` / `paused`). The report is
+/// projected onto the kernel [`crate::download::DownloadQueue`] via
+/// [`nmp_app_podcast_download_report`], and any follow-up
+/// [`crate::capability::DownloadCommand`] the queue emits (e.g.
+/// `start_download` for the next waiting item once a slot frees) is
+/// returned to Kotlin as a JSON `String`, or `null` when there is none.
+///
+/// This is the Android analogue of the iOS
+/// `KernelBridge+Callbacks.swift::attachDownloadReportChannel` return-and-
+/// execute pattern. Because Android has no inbound `dispatch_capability`
+/// command seam, the returned command is how the kernel drives the *next*
+/// download; the *first* item in a batch is seeded by the capability off
+/// the projected `downloads.active` rows.
+///
+/// **D6:** never panics, never throws. Returns `null` on null handle,
+/// bad UTF-8, lock poison, decode failure, or "no follow-up command".
+#[no_mangle]
+pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeDownloadReport<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    handle: jlong,
+    report_json: JString<'l>,
+) -> jstring {
+    let null = std::ptr::null_mut();
+    let Some(s) = session_ref(handle) else {
+        return null;
+    };
+    if s.podcast.is_null() {
+        return null;
+    }
+    let body = match env.get_string(&report_json) {
+        Ok(s) => s.to_string_lossy().into_owned(),
+        Err(_) => return null,
+    };
+    let Ok(c_body) = CString::new(body) else {
+        return null;
+    };
+    // SAFETY: `s.podcast` is the live `PodcastHandle` registered in
+    // `nativeNew`; `c_body` outlives the call. The FFI fn never panics
+    // (D6) and returns either a heap-owned JSON string or NULL.
+    let follow_up_ptr = nmp_app_podcast_download_report(s.podcast, c_body.as_ptr());
+    if follow_up_ptr.is_null() {
+        return null;
+    }
+    // Copy out, then release through the documented free path — same
+    // convention `nativeDispatchAction` follows for kernel-owned strings.
+    let owned = unsafe { CStr::from_ptr(follow_up_ptr) }
+        .to_string_lossy()
+        .into_owned();
+    nmp_app_free_string(follow_up_ptr);
+    match env.new_string(owned) {
+        Ok(js) => js.into_raw(),
+        Err(_) => null,
+    }
 }
 
 /// `nativeFree(handle)` — tear down the kernel and the projection handle.
