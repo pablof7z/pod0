@@ -9,7 +9,7 @@ use super::projections::{
     AccountSummary, AgentPickSummary, AgentSnapshot, AgentTaskSummary, BriefingSnapshot,
     CategoryBrowseItem, ClipSummary, CommentSummary, DownloadQueueSnapshot, EpisodeSummary,
     InboxItem, KnowledgeSearchResult, MemoryFact, NostrShowSummary, OwnedPodcastInfo,
-    PodcastSummary, SettingsSnapshot, SocialSnapshot, TtsEpisodeSummary, VoiceState,
+    PodcastSummary, SettingsSnapshot, SocialSnapshot, VoiceState,
     WidgetSnapshot, WikiArticle,
 };
 use crate::player::PlayerState;
@@ -119,9 +119,6 @@ pub struct PodcastUpdate {
     /// Agent-memory bag (feature #33).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub memory_facts: Vec<MemoryFact>,
-    /// Agent-generated TTS episode list (feature #43).
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub tts_episodes: Vec<TtsEpisodeSummary>,
     /// User-saved audio clips across all episodes, newest-first.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub clips: Vec<ClipSummary>,
@@ -168,7 +165,6 @@ impl Default for PodcastUpdate {
             agent_tasks: Vec::new(),
             knowledge_search_results: Vec::new(),
             memory_facts: Vec::new(),
-            tts_episodes: Vec::new(),
             clips: Vec::new(),
             inbox: Vec::new(),
             inbox_triage_in_progress: false,

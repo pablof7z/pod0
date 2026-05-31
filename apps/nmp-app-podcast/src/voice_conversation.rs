@@ -171,8 +171,8 @@ pub(crate) struct VoiceConversationManager {
 }
 
 // SAFETY: the `*mut NmpApp` is only ever *read*, never mutated — matching
-// `PodcastHostOpHandler` / `TtsEpisodeHandler`. Unlike those handlers (which
-// dispatch synchronously on the actor / FFI thread, fenced by the actor
+// `PodcastHostOpHandler`. Unlike that handler (which dispatches
+// synchronously on the actor / FFI thread, fenced by the actor
 // join), this manager dereferences `app` from inside a `runtime.spawn` task
 // on a Tokio worker thread. That deref is fenced instead by
 // [`VoiceConversationManager::shutdown`], called from

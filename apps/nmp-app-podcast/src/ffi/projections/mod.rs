@@ -30,7 +30,6 @@ mod library;
 mod platform;
 mod settings;
 mod social;
-mod tts;
 mod voice;
 
 pub use agent::{
@@ -50,5 +49,4 @@ pub use library::{
 pub use platform::WidgetSnapshot;
 pub use settings::SettingsSnapshot;
 pub use social::{CommentSummary, ContactSummary, SocialSnapshot};
-pub use tts::TtsEpisodeSummary;
 pub use voice::VoiceState;

@@ -46,14 +46,13 @@ use crate::ffi::actions::publish_module::PublishAction;
 use crate::ffi::actions::queue_module::QueueAction;
 use crate::ffi::actions::settings_module::SettingsAction;
 use crate::ffi::actions::tasks_module::AgentTasksAction;
-use crate::ffi::actions::tts_module::TtsEpisodeAction;
 use crate::ffi::actions::voice_module::VoiceAction;
 use crate::ffi::actions::siri_module::SiriAction;
 use crate::ffi::actions::wiki_module::WikiAction;
 use crate::ffi::handle::OwnedPublishState;
 use crate::ffi::projections::{
     AgentPickSummary, AgentTaskSummary, BriefingSnapshot, CommentSummary, KnowledgeSearchResult,
-    NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry, TtsEpisodeSummary,
+    NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry,
     VoiceState, WikiArticle,
 };
 use crate::host_op_handler_queue::handle_queue_action;
@@ -68,7 +67,6 @@ use crate::download::DownloadQueue;
 use crate::queue::PlaybackQueue;
 use crate::store::{PodcastKeyStore, PodcastStore};
 use crate::tasks_handler;
-use crate::tts::TtsEpisodeHandler;
 use crate::voice_handler;
 use crate::wiki::handle_wiki_action;
 use crate::capability::nostr_relay::{
@@ -86,10 +84,8 @@ mod siri_actions;
 /// to dispatch capability requests back into the iOS executor.
 ///
 /// Construction mirrors `PodcastHandle` field-for-field (see
-/// `ffi::register::nmp_app_podcast_register`), with two exceptions:
-/// `tts` wraps `tts_episodes` in a `TtsEpisodeHandler` for namespace
-/// hygiene, and `agent_chat` is the already-constructed
-/// `AgentChatHandler`.
+/// `ffi::register::nmp_app_podcast_register`), with one exception:
+/// `agent_chat` is the already-constructed `AgentChatHandler`.
 pub struct PodcastHostOpHandler {
     pub(crate) app: *mut NmpApp,
     pub(crate) store: Arc<Mutex<PodcastStore>>,
@@ -111,7 +107,6 @@ pub struct PodcastHostOpHandler {
     pub(crate) knowledge_search_results: Arc<Mutex<Vec<KnowledgeSearchResult>>>,
     /// RAG chunk store (M5.3). Shared with `PodcastHandle.knowledge_store`.
     pub(crate) knowledge_store: Arc<Mutex<podcast_knowledge::KnowledgeStore>>,
-    pub(crate) tts: TtsEpisodeHandler,
     pub(crate) clips: Arc<Mutex<Vec<ClipRecord>>>,
     pub(crate) transcripts: Arc<Mutex<HashMap<String, Vec<TranscriptEntry>>>>,
     pub(crate) dismissed_episode_ids: Arc<Mutex<HashSet<String>>>,
@@ -189,7 +184,6 @@ impl PodcastHostOpHandler {
         agent_tasks: Arc<Mutex<Vec<AgentTaskSummary>>>,
         knowledge_search_results: Arc<Mutex<Vec<KnowledgeSearchResult>>>,
         knowledge_store: Arc<Mutex<podcast_knowledge::KnowledgeStore>>,
-        tts_episodes: Arc<Mutex<Vec<TtsEpisodeSummary>>>,
         clips: Arc<Mutex<Vec<ClipRecord>>>,
         transcripts: Arc<Mutex<HashMap<String, Vec<TranscriptEntry>>>>,
         dismissed_episode_ids: Arc<Mutex<HashSet<String>>>,
@@ -205,7 +199,6 @@ impl PodcastHostOpHandler {
         inbox_triage_in_progress: Arc<std::sync::atomic::AtomicBool>,
         social: Arc<Mutex<Option<SocialSnapshot>>>,
     ) -> Self {
-        let tts = TtsEpisodeHandler::new(app, tts_episodes, rev.clone());
         Self {
             app,
             store,
@@ -224,7 +217,6 @@ impl PodcastHostOpHandler {
             agent_tasks,
             knowledge_search_results,
             knowledge_store,
-            tts,
             clips,
             transcripts,
             dismissed_episode_ids,
@@ -747,9 +739,6 @@ impl HostOpHandler for PodcastHostOpHandler {
         }
         if let Ok(action) = serde_json::from_str::<MemoryAction>(action_json) {
             return memory_handler::handle(action, &self.store, &self.rev);
-        }
-        if let Ok(action) = serde_json::from_str::<TtsEpisodeAction>(action_json) {
-            return self.tts.handle(action, correlation_id, Some(&self.runtime));
         }
         if let Ok(action) = serde_json::from_str::<ClipAction>(action_json) {
             return ClipHandler::new(self.clips.clone(), self.store.clone(), self.rev.clone())

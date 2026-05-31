@@ -6,7 +6,7 @@
 use super::projections::{
     AgentPickSummary, AgentTaskSummary, CategoryBrowseItem, ChapterSummary, ClipSummary,
     CommentSummary, EpisodeSummary, KnowledgeSearchResult, MemoryFact,
-    SocialSnapshot, TtsEpisodeSummary, WikiArticle,
+    SocialSnapshot, WikiArticle,
 };
 
 #[test]
@@ -344,39 +344,6 @@ fn memory_fact_decodes_agent_source() {
     let json = r#"{"id":"k","key":"k","value":"v","source":"agent","created_at":1700000000}"#;
     let decoded: MemoryFact = serde_json::from_str(json).expect("decode");
     assert_eq!(decoded.source, "agent");
-}
-
-#[test]
-fn tts_episode_summary_round_trips_with_all_fields() {
-    let ep = TtsEpisodeSummary {
-        id: "tts-1".into(),
-        title: "AI Roundup".into(),
-        script: "Hello, this is your daily roundup.".into(),
-        duration_estimate_secs: 300.0,
-        created_at: 1_700_000_000,
-        status: "ready".into(),
-        voice_id: Some("rachel".into()),
-    };
-    let json = serde_json::to_string(&ep).expect("encode");
-    let decoded: TtsEpisodeSummary = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded, ep);
-}
-
-#[test]
-fn tts_episode_summary_omits_none_voice_id() {
-    let ep = TtsEpisodeSummary {
-        id: "tts-1".into(),
-        title: "Generated".into(),
-        script: "hi".into(),
-        duration_estimate_secs: 60.0,
-        created_at: 0,
-        status: "ready".into(),
-        voice_id: None,
-    };
-    let json = serde_json::to_string(&ep).expect("encode");
-    assert!(!json.contains("voice_id"));
-    let decoded: TtsEpisodeSummary = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded, ep);
 }
 
 #[test]

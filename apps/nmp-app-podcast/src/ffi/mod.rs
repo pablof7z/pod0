@@ -66,7 +66,7 @@ pub use actions::{
     ScheduleBriefingAction, SeekAction, SendAgentMessageAction, SetSleepTimerAction, SetSpeedAction,
     SetVoiceAction, SetVolumeAction, SettingsAction, SettingsActionModule, SiriAction,
     SiriActionModule, SiriPlayLatestAction, SiriResumeAction, SpeakAction, StopAction,
-    StopVoiceAction, TtsEpisodeAction, TtsEpisodeModule, VoiceAction, VoiceActionModule,
+    StopVoiceAction, VoiceAction, VoiceActionModule,
     WikiAction, WikiActionModule,
     ACTION_AGENT_APPROVE, ACTION_AGENT_CLEAR, ACTION_AGENT_DENY, ACTION_AGENT_SEND,
     ACTION_BRIEFING_CANCEL, ACTION_BRIEFING_REQUEST, ACTION_BRIEFING_SCHEDULE,
@@ -81,10 +81,9 @@ pub use actions::{
     ACTION_PUBLISH_CREATE_OWNED, ACTION_PUBLISH_PUBLISH_AUTHOR_CLAIM,
     ACTION_PUBLISH_PUBLISH_EPISODE, ACTION_PUBLISH_PUBLISH_SHOW, ACTION_PUBLISH_REMOVE_OWNED,
     ACTION_SIRI_PLAY_LATEST, ACTION_SIRI_RESUME,
-    ACTION_TTS_DELETE, ACTION_TTS_GENERATE, ACTION_TTS_PLAY,
     ACTION_VOICE_ACTIVATE, ACTION_VOICE_DEACTIVATE, ACTION_VOICE_SET_VOICE,
     ACTION_VOICE_SPEAK, ACTION_VOICE_STOP,
-    PICKS_LIMIT, PICKS_PER_SHOW_CAP, TTS_NAMESPACE,
+    PICKS_LIMIT, PICKS_PER_SHOW_CAP,
 };
 pub use audio_report::nmp_app_podcast_audio_report;
 pub use data_dir::nmp_app_podcast_set_data_dir;
@@ -96,7 +95,7 @@ pub use projections::{
     CommentSummary, ContactSummary, ConversationsSnapshot, DownloadItemSnapshot,
     DownloadQueueSnapshot, EpisodeSummary, InboxItem, KnowledgeSearchResult, MemoryFact,
     NostrShowSummary, OwnedPodcastInfo, PendingApprovalSnapshot, PodcastSummary, SettingsSnapshot,
-    SocialSnapshot, TranscriptEntry, TtsEpisodeSummary, VoiceState, WidgetSnapshot, WikiArticle,
+    SocialSnapshot, TranscriptEntry, VoiceState, WidgetSnapshot, WikiArticle,
 };
 pub use register::nmp_app_podcast_register;
 pub use snapshot::{
