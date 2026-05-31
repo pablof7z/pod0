@@ -40,6 +40,7 @@ import kotlinx.serialization.json.Json
 object PodcastNamespace {
     const val PODCAST = "podcast"
     const val PLAYER = "podcast.player"
+    const val SETTINGS = "podcast.settings"
 }
 
 // ── `podcast` namespace payloads ──────────────────────────────────────────
@@ -74,6 +75,16 @@ data class DownloadStartPayload(
     val op: String = "download",
 )
 
+/**
+ * Remove a previously-**completed** download from disk and clear the kernel's
+ * `local_path` mapping. Verified against `PodcastAction::DeleteDownload` →
+ * `handle_delete_download`, which only `clear_local_path`s + `remove_file`s.
+ *
+ * NOTE: this does **not** cancel an in-flight download — it operates on the
+ * store's `local_path`, which is only stamped on completion. To cancel an
+ * active/queued/paused download use [CancelDownloadPayload] on the
+ * `podcast.player` namespace instead.
+ */
 @Serializable
 data class DownloadDeletePayload(
     @SerialName("episode_id") val episodeId: String,
@@ -81,6 +92,18 @@ data class DownloadDeletePayload(
 )
 
 // ── `podcast.player` namespace payloads ───────────────────────────────────
+
+/**
+ * Cancel an active, paused, or queued download. Verified against
+ * `PlayerAction::CancelDownload` → `q.cancel(&episode_id)`. This is the
+ * correct op for the "cancel" affordance on an *active* download row —
+ * `delete_download` (podcast namespace) only removes a finished file.
+ */
+@Serializable
+data class CancelDownloadPayload(
+    @SerialName("episode_id") val episodeId: String,
+    val op: String = "cancel_download",
+)
 
 @Serializable
 data class PlayPayload(
@@ -111,6 +134,30 @@ data class SetSpeedPayload(
 data class SleepTimerPayload(
     val secs: Int?,
     val op: String = "set_sleep_timer",
+)
+
+// ── `podcast.settings` namespace payloads ─────────────────────────────────
+
+/**
+ * Set the default playback rate. Verified against
+ * `SettingsAction::SetDefaultPlaybackRate { rate: f64 }` — the field is
+ * `rate` (NOT the task-spec's `set_default_speed`/`rate` on `podcast`).
+ * The kernel clamps server-side to `[0.5, 3.0]`.
+ */
+@Serializable
+data class SetDefaultPlaybackRatePayload(
+    val rate: Double,
+    val op: String = "set_default_playback_rate",
+)
+
+/**
+ * Toggle delete-downloaded-file-after-played. Verified against
+ * `SettingsAction::SetAutoDeleteDownloadsAfterPlayed { enabled: bool }`.
+ */
+@Serializable
+data class SetAutoDeleteDownloadsPayload(
+    val enabled: Boolean,
+    val op: String = "set_auto_delete_downloads_after_played",
 )
 
 /**

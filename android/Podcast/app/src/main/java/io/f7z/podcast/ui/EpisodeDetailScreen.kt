@@ -95,10 +95,13 @@ fun EpisodeDetailScreen(
             MissingEpisodeState(modifier = Modifier.padding(inner))
             return@Scaffold
         }
+        val activeItem = snapshot?.downloads?.active?.firstOrNull { it.episodeId == episode.id }
         EpisodeDetailBody(
             episode = episode,
             podcastTitle = episode.podcastTitle ?: show?.title,
             artworkUrl = episode.artworkUrl ?: show?.artworkUrl,
+            activeItem = activeItem,
+            bridge = bridge,
             onPlay = {
                 PodcastActionDispatcher.dispatch(
                     bridge = bridge,
@@ -117,6 +120,8 @@ private fun EpisodeDetailBody(
     episode: EpisodeSummary,
     podcastTitle: String?,
     artworkUrl: String?,
+    activeItem: io.f7z.podcast.DownloadItemSnapshot?,
+    bridge: KernelBridge,
     onPlay: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -138,6 +143,13 @@ private fun EpisodeDetailBody(
             Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
             Text(text = "  Play", style = MaterialTheme.typography.titleMedium)
         }
+
+        EpisodeDownloadButton(
+            episode = episode,
+            activeItem = activeItem,
+            bridge = bridge,
+            modifier = Modifier.fillMaxWidth(),
+        )
 
         MetadataLine(episode = episode)
         ResumeBar(episode = episode)

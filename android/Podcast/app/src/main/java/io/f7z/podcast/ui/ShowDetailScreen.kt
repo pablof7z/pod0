@@ -26,7 +26,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.f7z.podcast.DownloadItemSnapshot
 import io.f7z.podcast.EpisodeSummary
+import io.f7z.podcast.KernelBridge
 import io.f7z.podcast.PodcastSnapshot
 
 /**
@@ -45,6 +47,7 @@ import io.f7z.podcast.PodcastSnapshot
 fun ShowDetailScreen(
     showId: String,
     snapshot: PodcastSnapshot?,
+    bridge: KernelBridge,
     onEpisodeSelected: (EpisodeSummary) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -58,6 +61,7 @@ fun ShowDetailScreen(
     // state instead of "Show not found".
     val show = snapshot?.subscriptions?.firstOrNull { it.id == showId }
         ?: snapshot?.searchResults?.firstOrNull { it.id == showId || it.feedUrl == showId }
+    val activeById = snapshot?.downloads?.active?.associateBy { it.episodeId } ?: emptyMap()
 
     Scaffold(
         modifier = modifier,
@@ -87,6 +91,8 @@ fun ShowDetailScreen(
         }
         ShowDetailBody(
             episodes = show.episodes,
+            activeById = activeById,
+            bridge = bridge,
             onEpisodeSelected = onEpisodeSelected,
             modifier = Modifier.padding(inner),
         )
@@ -96,6 +102,8 @@ fun ShowDetailScreen(
 @Composable
 private fun ShowDetailBody(
     episodes: List<EpisodeSummary>,
+    activeById: Map<String, DownloadItemSnapshot>,
+    bridge: KernelBridge,
     onEpisodeSelected: (EpisodeSummary) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -123,14 +131,24 @@ private fun ShowDetailBody(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp),
     ) {
         items(episodes, key = { it.id }) { episode ->
-            EpisodeRow(episode = episode, onClick = { onEpisodeSelected(episode) })
+            EpisodeRow(
+                episode = episode,
+                activeItem = activeById[episode.id],
+                bridge = bridge,
+                onClick = { onEpisodeSelected(episode) },
+            )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EpisodeRow(episode: EpisodeSummary, onClick: () -> Unit) {
+private fun EpisodeRow(
+    episode: EpisodeSummary,
+    activeItem: DownloadItemSnapshot?,
+    bridge: KernelBridge,
+    onClick: () -> Unit,
+) {
     Card(modifier = Modifier.fillMaxWidth(), onClick = onClick) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -138,7 +156,7 @@ private fun EpisodeRow(episode: EpisodeSummary, onClick: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ArtworkPlaceholder(size = 48)
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = episode.title,
                     style = MaterialTheme.typography.titleSmall,
@@ -155,6 +173,11 @@ private fun EpisodeRow(episode: EpisodeSummary, onClick: () -> Unit) {
                     )
                 }
             }
+            EpisodeDownloadButton(
+                episode = episode,
+                activeItem = activeItem,
+                bridge = bridge,
+            )
         }
     }
 }

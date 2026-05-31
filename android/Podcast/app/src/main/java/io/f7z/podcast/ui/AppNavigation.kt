@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Search
@@ -88,6 +89,7 @@ fun AppNavigation(snapshot: PodcastSnapshot?, bridge: KernelBridge) {
             is AppRoute.ShowDetail -> ShowDetailScreen(
                 showId = current.showId,
                 snapshot = snapshot,
+                bridge = bridge,
                 onEpisodeSelected = { episode ->
                     route = AppRoute.EpisodeDetail(
                         episodeId = episode.id,
@@ -135,8 +137,9 @@ private fun TabContent(
             modifier = modifier,
         )
         BottomTab.Library -> LibraryScreen(snapshot = snapshot, bridge = bridge, onShowSelected = onShowSelected, modifier = modifier)
+        BottomTab.Downloads -> DownloadsScreen(snapshot = snapshot, bridge = bridge, modifier = modifier)
         BottomTab.Player -> PlayerScreen(snapshot = snapshot, bridge = bridge, modifier = modifier)
-        BottomTab.Settings -> SettingsScreen(snapshot = snapshot, onNavigateToIdentity = onOpenIdentity, modifier = modifier)
+        BottomTab.Settings -> SettingsScreen(snapshot = snapshot, bridge = bridge, onNavigateToIdentity = onOpenIdentity, modifier = modifier)
     }
 }
 
@@ -149,6 +152,7 @@ enum class BottomTab(val label: String, val icon: ImageVector) {
     Home("Home", Icons.Filled.Home),
     Search("Search", Icons.Filled.Search),
     Library("Library", Icons.AutoMirrored.Filled.LibraryBooks),
+    Downloads("Downloads", Icons.Filled.Download),
     Player("Player", Icons.Filled.PlayCircle),
     Settings("Settings", Icons.Filled.Settings),
 }

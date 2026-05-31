@@ -14,14 +14,22 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.f7z.podcast.BriefingSnapshot
+import io.f7z.podcast.KernelBridge
 import io.f7z.podcast.PodcastSnapshot
+import io.f7z.podcast.SettingsSnapshot
 
 /**
  * Settings tab — entry surface for Identity, Briefings, and About.
@@ -36,9 +44,11 @@ import io.f7z.podcast.PodcastSnapshot
 @Composable
 fun SettingsScreen(
     snapshot: PodcastSnapshot?,
+    bridge: KernelBridge,
     onNavigateToIdentity: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val settings = snapshot?.settings ?: SettingsSnapshot()
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -52,6 +62,13 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.SemiBold,
             )
+        }
+        item {
+            SettingsSection(title = "Playback") {
+                PlaybackSpeedRow(settings = settings, bridge = bridge)
+                HorizontalDivider()
+                AutoDeleteRow(settings = settings, bridge = bridge)
+            }
         }
         item {
             SettingsSection(title = "Identity") {
@@ -68,6 +85,95 @@ fun SettingsScreen(
                 AboutRow()
             }
         }
+    }
+}
+
+/**
+ * Default-playback-rate slider, 0.5×–3.0× in 0.05 steps. Dispatches
+ * `podcast.settings` `{"op":"set_default_playback_rate","rate":d}` on release.
+ *
+ * Holds an ephemeral `dragValue` while the user drags so the thumb doesn't
+ * jitter against snapshot ticks; the committed value goes to the kernel and
+ * the next snapshot's `default_playback_rate` becomes the source of truth
+ * (D5/D8). When not dragging, the displayed value tracks the snapshot.
+ */
+@Composable
+private fun PlaybackSpeedRow(settings: SettingsSnapshot, bridge: KernelBridge) {
+    val snapshotRate = settings.defaultPlaybackRate.coerceIn(MIN_RATE, MAX_RATE)
+    var dragValue by remember(snapshotRate) { mutableStateOf<Float?>(null) }
+    val effective = dragValue ?: snapshotRate
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = "Default speed", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = formatRateLabel(effective),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Slider(
+            value = effective,
+            onValueChange = { dragValue = it },
+            onValueChangeFinished = {
+                dragValue?.let { value ->
+                    PodcastActionDispatcher.dispatch(
+                        bridge = bridge,
+                        namespace = PodcastNamespace.SETTINGS,
+                        payload = SetDefaultPlaybackRatePayload(rate = value.toDouble()),
+                    )
+                }
+                dragValue = null
+            },
+            valueRange = MIN_RATE..MAX_RATE,
+            // 0.5..3.0 in 0.05 steps → 50 intervals → 49 internal steps.
+            steps = 49,
+        )
+    }
+}
+
+/**
+ * Auto-delete-after-played switch. Dispatches `podcast.settings`
+ * `{"op":"set_auto_delete_downloads_after_played","enabled":b}`. Reads the
+ * checked state straight off the snapshot (no local toggle state).
+ */
+@Composable
+private fun AutoDeleteRow(settings: SettingsSnapshot, bridge: KernelBridge) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column(modifier = Modifier.fillMaxWidth(0.78f)) {
+            Text(text = "Delete after playing", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = "Remove the downloaded file once an episode is marked played.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(
+            checked = settings.autoDeleteDownloads,
+            onCheckedChange = { enabled ->
+                PodcastActionDispatcher.dispatch(
+                    bridge = bridge,
+                    namespace = PodcastNamespace.SETTINGS,
+                    payload = SetAutoDeleteDownloadsPayload(enabled = enabled),
+                )
+            },
+        )
     }
 }
 
@@ -174,3 +280,18 @@ private fun briefingScheduleLabel(briefing: BriefingSnapshot?): String {
 
 private const val DEFAULT_BRIEFING_SCHEDULE = "Daily at 7:00 AM"
 private const val APP_VERSION_PLACEHOLDER = "0.1.0"
+
+// Playback-rate bounds match the kernel's server-side clamp `[0.5, 3.0]`
+// in `SettingsAction::SetDefaultPlaybackRate`.
+private const val MIN_RATE = 0.5f
+private const val MAX_RATE = 3.0f
+
+private fun formatRateLabel(rate: Float): String {
+    // Snap to the slider's 0.05 grid so the label never shows float noise.
+    val snapped = Math.round(rate / 0.05f) * 0.05f
+    return if (kotlin.math.abs(snapped - snapped.toInt()) < 0.001f) {
+        "${snapped.toInt()}×"
+    } else {
+        "%.2f".format(snapped).trimEnd('0').trimEnd('.') + "×"
+    }
+}

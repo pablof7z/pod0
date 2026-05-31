@@ -133,6 +133,13 @@ data class DownloadItemSnapshot(
     @SerialName("episode_id") val episodeId: String,
     val progress: Float = 0.0f,
     val state: String,
+    /**
+     * Total file size in bytes once the server reports `Content-Length`.
+     * `null` until the first HTTP response. Mirror of the Rust
+     * `DownloadItemSnapshot.total_bytes` (`Option<u64>`); only ever present
+     * for in-flight rows — completed downloads drop out of `active` entirely.
+     */
+    @SerialName("total_bytes") val totalBytes: Long? = null,
     val error: String? = null,
 )
 
