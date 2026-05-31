@@ -44,6 +44,25 @@
 //! fires at most once per kernel lifetime. Rotating the latch on
 //! completion (so a daily schedule fires daily) is tracked as a
 //! follow-up alongside the structured script composer.
+//!
+//! ## Trigger-location hazard (read before wiring schedule-setting)
+//!
+//! This trigger runs inside `build_podcast_update`, which the FFI entry
+//! point reaches only through `build_snapshot_payload`'s **rev-gated
+//! cache**: an unchanged `rev` returns the cached JSON and never calls
+//! `build_podcast_update`. For the *content-driven* inbox trigger that
+//! is harmless — new content is the same event that bumps `rev`, so the
+//! trigger and its fire condition are correlated. A **wall-clock**
+//! trigger is not: when the app is idle around the scheduled minute
+//! (paused / backgrounded — exactly when a morning briefing should
+//! fire) nothing bumps `rev`, the cache serves, and `should_generate_now`
+//! is never evaluated for that minute. Combined with the *exact*
+//! `time_of_day == now_minutes` match, the slot can be skipped entirely.
+//! The schedule-wiring follow-up must therefore either drive the
+//! scheduler from a real timer (independent of snapshot ticks) or move
+//! this check ahead of the rev cache, and widen `should_generate_now`
+//! past exact-minute matching to a "slot passed and not yet fired today"
+//! window.
 
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
