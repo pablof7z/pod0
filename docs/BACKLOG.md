@@ -452,8 +452,12 @@ worktrees currently in flight.
   `LaunchedEffect` poll tick, and call `detach()` in `onDispose` ahead of
   `bridge.stop()/free()`. Also revisit the WorkManager-vs-foreground-scope
   trade-off documented in `DownloadCapability.kt` for background completion.
-- **android-auth-keychain.** Replace Android `signinNsec` stub with a real
-  secure-storage identity sheet mirroring iOS.
+- ~~**android-auth-keychain.**~~ Done — PR #196. Remaining: key generation
+  (kernel doesn't expose generated nsec to host yet).
+- **android-download-capability-anr.** `DownloadCapability.detach()` calls
+  `runBlocking{job.join()}` on the main thread; with OkHttp read-timeout at 60s
+  this is an ANR vector. Fix: track each in-flight `Call` and call
+  `call.cancel()` before joining so the IO thread exits in milliseconds.
 
 ## Active P2 - Cross-Cutting Technical Debt
 
