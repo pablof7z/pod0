@@ -197,20 +197,32 @@ worktrees currently in flight.
      barge-in-threshold setting, and no OpenRouter-TTS-voice setting. The M5
      task forbids adding settings, so barge-in policy and OpenRouter TTS stay
      deferred until those fields are designed.
-  4. **Default-vs-execution mismatch (correctness gap).** `stt_provider`
-     defaults to `"elevenlabs_scribe"` (`store/settings.rs`) and is projected
-     verbatim into `SettingsSnapshot.stt_provider`, so the snapshot reports a
-     non-native STT provider while the app actually transcribes on-device with
-     `SFSpeechRecognizer`. A user reading settings believes they are on Scribe;
-     they are not. Do NOT fix by changing the default (it has iOS settings-UI
-     implications) — resolve when the AssemblyAI/Scribe STT execution path
-     lands, so the reported provider matches the engine that actually runs.
+  4. **Default-vs-execution mismatch — resolved in PR #178.** Previously
+     `stt_provider` defaulted to `"elevenlabs_scribe"` (`store/settings.rs`) and
+     was projected verbatim into `SettingsSnapshot.stt_provider`, so the snapshot
+     reported a non-native STT provider while the app actually transcribed
+     on-device with `SFSpeechRecognizer` — a user reading settings believed they
+     were on Scribe when they were not. An earlier draft of this entry warned
+     "do NOT fix by changing the default" on the assumption it would break the
+     iOS settings-UI contract. PR #178 deliberately made that change and accepted
+     the tradeoff: the default flipped from `elevenlabs_scribe` to `apple_native`
+     across the Rust store, projection, typed core Settings, and the Swift mirror,
+     because `elevenlabs_scribe` required an API key the user may not have and the
+     auto-ingest gate then stranded keyless users with no transcription. Apple
+     on-device needs no key. A runtime fallback in
+     `TranscriptIngestService.effectiveSTTProvider` also downgrades a keyless
+     cloud provider to `.appleNative`, so the reported provider now matches the
+     engine that actually runs (cloud transcription is preserved when a key is
+     present). When the AssemblyAI/Scribe STT execution path lands, revisit
+     whether a cloud default is appropriate for key-configured users.
   Suggested landing order once unblocked: (1) add `provider` + provider-scoped
   voice to the wire schema; (2) iOS ElevenLabs TTS adapter + audio sink behind
   that provider; (3) route `eleven_labs_voice_id`/`eleven_labs_tts_model` in
   `VoiceConversationManager` (D7: Rust decides voice) only when the active
   provider can honor it; (4) AssemblyAI/Scribe STT execution path + reconcile
-  the `stt_provider` default; (5) design barge-in-threshold + OpenRouter-TTS
+  the cloud `stt_provider` default for key-configured users (the keyless
+  `apple_native` default already landed in PR #178); (5) design
+  barge-in-threshold + OpenRouter-TTS
   settings, then wire barge-in and OpenRouter TTS.
 - **voice-mode-elevenlabs-tts-playback-sink.** The kernel-driven voice executor
   (`VoiceCapability.speak`) now *routes* on the projected `eleven_labs_voice_id`
