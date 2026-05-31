@@ -8,11 +8,11 @@
 //! + enqueued), never the handler result. The actual result appears in the
 //! snapshot via `owned_podcasts`. We poll the snapshot until that entry appears.
 //!
-//! The full round-trip durability proof (restart + reload) is covered by the
-//! unit test `keys_persist_and_reload` in `store/podcast_keys_tests.rs` — doing
-//! it here would require two separate NmpApp instances sharing a tempdir, which
-//! the current headless harness does not support. That enhancement is tracked in
-//! docs/BACKLOG.md.
+//! The full round-trip durability proof (restart + reload of
+//! `podcast-keys.json`) is covered by the unit test `keys_persist_and_reload`
+//! in `store/podcast_keys_tests.rs` — doing it here would require two separate
+//! NmpApp instances sharing a tempdir, which the current headless harness does
+//! not support.
 
 use nmp_app_podcast::PodcastHandle;
 use nmp_ffi::NmpApp;

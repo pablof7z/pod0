@@ -33,7 +33,7 @@ This is the canonical project plan. Detailed implementation plans live under
 | Feature parity | Not achieved | Many merged PRs are scaffolds or heuristics, not full original-app behavior. |
 | Legacy app deletion | Blocked | `App/Sources/` remains the reference implementation until all parity exits pass. |
 | Compat layer | Active debt | `ios/Podcast/Podcast/Compat/` still contains service/domain/identity/utility shims. |
-| NIP-F4 | Wire contract fixed; publishing partially scaffolded | PR #89 corrected the active builders/parsers to canonical NIP-F4 wire shape. PR #93 uses real secp256k1 key derivation. Persisted Keychain storage, signing, relay publishing, relay-backed discovery, and author claims remain open. |
+| NIP-F4 | Publishing + discovery wired end-to-end | PR #89 corrected the builders/parsers to canonical NIP-F4 wire shape; PR #93 added real secp256k1 key derivation. Signed relay publish (kind `10154`/`54`/`10064` via the `nostr_relay` capability), relay-backed discovery (WebSocket primary + `api.nostr.band` HTTP fallback), author claims, Blossom audio upload, and deletion cleanup are all in place. Per-podcast secrets now persist to `<data_dir>/podcast-keys.json` and reload on launch. Remaining: M7 flip of the Rust read path to the Keychain (blocked on PD-019). |
 | Validation | Incomplete gate | Docs-only changes require `git diff --check`; code parity work must also run focused Rust/Swift tests plus the merge gate. |
 
 ## Pod0 / NIP-F4 Milestones
@@ -42,8 +42,8 @@ This is the canonical project plan. Detailed implementation plans live under
 |---|---|---|
 | Pod0 protocol setup | `AGENTS.md`, `WIP.md`, `docs/plan.md`, and `docs/BACKLOG.md` define the NMP-style workflow. | Done |
 | Pod0 app rename | User-facing app name reflects Pod0; stable identifiers unchanged. | Done via PR #52 |
-| NIP-F4 discovery | Discovery reads kind `10154` shows and kind `54` episodes using canonical NIP-F4 addressing. | Partial |
-| NIP-F4 publishing | Publishes signed kind `10154`/`54`/`10064` events with real per-podcast keys. | Scaffolded, not done |
+| NIP-F4 discovery | Discovery reads kind `10154` shows and kind `54` episodes using canonical NIP-F4 addressing. | Done (relay subscription + HTTP-gateway fallback) |
+| NIP-F4 publishing | Publishes signed kind `10154`/`54`/`10064` events with real per-podcast keys. | Done (signed relay publish; per-podcast secrets persisted to `podcast-keys.json`) |
 | Feature-parity truth pass | Every feature has `done`, `partial`, `scaffold`, `wrong`, or `blocked` status. | Done in `docs/plan/nmp-feature-parity.md` |
 
 ## Next Execution Order

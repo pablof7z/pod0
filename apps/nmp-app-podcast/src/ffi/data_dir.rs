@@ -76,9 +76,19 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(
         false
     };
 
-    if loaded > 0 || !loaded_queue.is_empty() || identity_loaded {
+    // Bind the per-podcast NIP-F4 key store to the same directory and reload
+    // `podcast-keys.json`. Restored keys mean any owned podcast survives an
+    // app restart and re-derives the same `owner_pubkey_hex` in the snapshot.
+    let keys_loaded = if let Ok(mut keys) = handle.podcast_keys.lock() {
+        keys.set_data_dir(PathBuf::from(&path_str))
+    } else {
+        0
+    };
+
+    if loaded > 0 || !loaded_queue.is_empty() || identity_loaded || keys_loaded > 0 {
         // Force the next snapshot poll to pick up the restored library,
-        // queue, and/or identity even though no write happened here.
+        // queue, identity, and/or owned-podcast keys even though no write
+        // happened here.
         handle.rev.fetch_add(1, Ordering::Relaxed);
     }
 }
