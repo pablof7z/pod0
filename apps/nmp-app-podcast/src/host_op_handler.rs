@@ -69,9 +69,6 @@ use crate::store::{PodcastKeyStore, PodcastStore};
 use crate::tasks_handler;
 use crate::voice_handler;
 use crate::wiki::handle_wiki_action;
-use crate::capability::nostr_relay::{
-    NostrRelayRequest, NostrRelayResult, NOSTR_RELAY_CAPABILITY_NAMESPACE,
-};
 use podcast_feeds::http::{HttpRequest, HttpResult, HTTP_CAPABILITY_NAMESPACE};
 
 mod player_actions;
@@ -288,28 +285,6 @@ impl PodcastHostOpHandler {
         let envelope = unsafe { &*self.app }.dispatch_capability(&cap_req);
         serde_json::from_str::<HttpResult>(&envelope.result_json)
             .map_err(|e| format!("decode http result: {e}"))
-    }
-
-    /// Dispatch a `nostr_relay` capability request and decode the result.
-    ///
-    /// Used by the `podcast.discover_nostr` handler (and publish handlers
-    /// once wired). Mirrors `dispatch_http` — the capability executor
-    /// (iOS shell or headless host) routes by namespace and returns a
-    /// `CapabilityEnvelope` whose `result_json` is a `NostrRelayResult`.
-    pub(crate) fn dispatch_nostr_relay(
-        &self,
-        req: &NostrRelayRequest,
-        correlation_id: &str,
-    ) -> Result<NostrRelayResult, String> {
-        let payload_json = serde_json::to_string(req).map_err(|e| e.to_string())?;
-        let cap_req = CapabilityRequest {
-            namespace: NOSTR_RELAY_CAPABILITY_NAMESPACE.to_owned(),
-            correlation_id: correlation_id.to_owned(),
-            payload_json,
-        };
-        let envelope = unsafe { &*self.app }.dispatch_capability(&cap_req);
-        serde_json::from_str::<NostrRelayResult>(&envelope.result_json)
-            .map_err(|e| format!("decode nostr_relay result: {e}"))
     }
 
     pub(crate) fn dispatch_audio(

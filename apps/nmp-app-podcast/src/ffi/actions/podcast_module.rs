@@ -14,6 +14,8 @@ fn default_true() -> bool { true }
 use nmp_core::substrate::ActionModule;
 use nmp_core::ActorCommand;
 
+use crate::discover_nostr::{nostr_discovery_identity, nostr_discovery_interest};
+
 /// Wire enum for all `"podcast"` namespace actions.
 ///
 /// `#[serde(tag = "op", rename_all = "snake_case")]` makes the JSON
@@ -53,12 +55,33 @@ pub enum PodcastAction {
     /// Self-gating in the handler: if the episode has no `chapters_url` or
     /// already has chapters loaded, the action is a `{"ok":true}` no-op.
     FetchChapters { episode_id: String },
-    /// NIP-F4 (`kind:10154`) podcast discovery from a Nostr relay HTTP gateway.
+    /// NIP-F4 (`kind:10154`) podcast discovery through NMP's relay pool.
+    ///
+    /// `Claim` (`release: false`, the default) emits
+    /// [`nmp_core::ActorCommand::EnsureInterest`]; the kernel opens the
+    /// subscription through its own relays + the user's NIP-65 outbox relays
+    /// (no relay URL — NMP routes automatically; the sweep is indexer-routed
+    /// because `kind:10154` is sparse). `release: true` emits
+    /// [`nmp_core::ActorCommand::DropInterestOwner`] to detach the consumer.
+    ///
+    /// Results arrive asynchronously via the registered
+    /// [`crate::discover_nostr::NostrDiscoveryObserver`], which writes each
+    /// inbound show onto the `nostr_results` snapshot slot — there is no
+    /// synchronous result here (the iOS shell reads the projection).
+    ///
+    /// `consumer_id` ref-counts the interest by view instance: the form claims
+    /// on appear and releases on disappear. This variant is special-cased in
+    /// [`PodcastActionModule::execute`] — it is the one `podcast.*` action that
+    /// emits an interest command instead of routing through the host-op
+    /// handler, because emitting an `ActorCommand` requires the `send` closure
+    /// that only `execute` carries.
     DiscoverNostr {
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        query: Option<String>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        relay_url: Option<String>,
+        consumer_id: String,
+        /// `true` detaches this consumer (Release); `false`/absent attaches it
+        /// (Claim). Flat boolean rather than a nested `tag = "op"` enum, which
+        /// would collide with this enum's own `op` discriminator under serde.
+        #[serde(default)]
+        release: bool,
     },
     /// Patch one or more fields on the kernel-side settings projection.
     ///
@@ -243,6 +266,26 @@ impl ActionModule for PodcastActionModule {
         correlation_id: &str,
         send: &dyn Fn(ActorCommand),
     ) -> Result<(), String> {
+        // `discover_nostr` is the one `podcast.*` action that drives an
+        // interest subscription rather than a host-op. NMP core owns all relay
+        // connections (D7): the kernel opens the `kind:10154` subscription
+        // through its own relay pool on `EnsureInterest`, and inbound shows
+        // arrive via `NostrDiscoveryObserver`. Emitting an `ActorCommand`
+        // requires the `send` closure, which only `execute` carries — so it
+        // cannot live in the host-op handler.
+        if let PodcastAction::DiscoverNostr { consumer_id, release } = &action {
+            let identity = nostr_discovery_identity(consumer_id);
+            if *release {
+                send(ActorCommand::DropInterestOwner(identity));
+            } else {
+                send(ActorCommand::EnsureInterest {
+                    identity,
+                    interest: nostr_discovery_interest(),
+                });
+            }
+            return Ok(());
+        }
+
         let action_json =
             serde_json::to_string(&action).map_err(|e| e.to_string())?;
         send(ActorCommand::DispatchHostOp {

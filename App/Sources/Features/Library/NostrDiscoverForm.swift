@@ -29,10 +29,8 @@ struct NostrDiscoverForm: View {
                 nostrNotConfiguredState
             }
         }
-        .onAppear { dispatchDiscovery() }
-        .onChange(of: store.state.settings.nostrRelayURL) { _, _ in
-            dispatchDiscovery()
-        }
+        .onAppear { store.kernelDiscoverNostrClaim() }
+        .onDisappear { store.kernelDiscoverNostrRelease() }
     }
 
     // MARK: - Computed state
@@ -181,11 +179,6 @@ struct NostrDiscoverForm: View {
     }
 
     // MARK: - Logic
-
-    private func dispatchDiscovery() {
-        guard configuredRelayURL != nil else { return }
-        store.kernelDiscoverNostr(relayURL: store.state.settings.nostrRelayURL)
-    }
 
     private func isAlreadySubscribed(_ show: NostrShowSummary) -> Bool {
         guard let feed = show.feedUrl, let url = URL(string: feed),

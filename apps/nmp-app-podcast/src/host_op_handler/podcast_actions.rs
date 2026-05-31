@@ -10,8 +10,7 @@
 
 use std::sync::atomic::Ordering;
 
-use podcast_feeds::http::{HttpRequest, HttpResult};
-use uuid::Uuid;
+use podcast_feeds::http::HttpResult;
 
 use crate::chapter::handle_fetch_chapters;
 use crate::discover_nostr;
