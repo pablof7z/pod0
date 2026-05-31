@@ -2,38 +2,36 @@ import SwiftUI
 
 // MARK: - NostrDiscoverForm
 
-/// "Nostr" segment body in `AddShowSheet`. Fetches kind:30074 podcast shows
-/// from the configured relay and lets the user subscribe to them.
+/// "Nostr" segment body in `AddShowSheet`. Surfaces NIP-F4 (`kind:10154`)
+/// podcast shows discovered by the Rust kernel and lets the user subscribe to
+/// the RSS feed each show advertises.
 ///
-/// Shows are fetched once on appearance and cached for the session.
-/// Search filters the cached list client-side — no extra round-trips.
+/// Fully snapshot-driven: a discovery sweep is dispatched to the kernel on
+/// appear (and whenever the configured relay changes). Results arrive on
+/// `store.kernel?.podcastSnapshot?.nostrResults` via the reactive push seam and
+/// render as the relay responds — there is no local loading state and no
+/// spinner. Search filters the projected list client-side; no extra dispatches.
 struct NostrDiscoverForm: View {
 
     let store: AppStateStore
     let onAdded: (Podcast) -> Void
 
-    @State private var service = NostrPodcastDiscoveryService()
-    @State private var shows: [NostrPodcastDiscoveryService.ShowResult] = []
     @State private var query: String = ""
-    @State private var isLoading = false
-    @State private var loadError: String?
     @State private var subscribingID: String?
     @State private var rowErrors: [String: String] = [:]
-    @State private var loaded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if let relayURL = configuredRelayURL {
+            if configuredRelayURL != nil {
                 searchField
-                content(relayURL: relayURL)
+                content
             } else {
                 nostrNotConfiguredState
             }
         }
-        .onAppear {
-            guard !loaded, let url = configuredRelayURL else { return }
-            loaded = true
-            Task { await loadShows(relayURL: url) }
+        .onAppear { dispatchDiscovery() }
+        .onChange(of: store.state.settings.nostrRelayURL) { _, _ in
+            dispatchDiscovery()
         }
     }
 
@@ -46,13 +44,19 @@ struct NostrDiscoverForm: View {
         return url
     }
 
-    private var filteredShows: [NostrPodcastDiscoveryService.ShowResult] {
+    /// Live results projected from the kernel snapshot. The push seam keeps this
+    /// current — reading it directly means the view re-renders as results land.
+    private var results: [NostrShowSummary] {
+        store.kernel?.podcastSnapshot?.nostrResults ?? []
+    }
+
+    private var filteredShows: [NostrShowSummary] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !q.isEmpty else { return shows }
-        return shows.filter {
-            $0.title.lowercased().contains(q) ||
-            $0.author.lowercased().contains(q) ||
-            $0.description.lowercased().contains(q)
+        guard !q.isEmpty else { return results }
+        return results.filter { show in
+            show.title.lowercased().contains(q) ||
+            (show.description?.lowercased().contains(q) ?? false) ||
+            (show.categories?.contains { $0.lowercased().contains(q) } ?? false)
         }
     }
 
@@ -86,54 +90,18 @@ struct NostrDiscoverForm: View {
     // MARK: - Content switching
 
     @ViewBuilder
-    private func content(relayURL: URL) -> some View {
-        if isLoading {
-            loadingState
-        } else if let loadError {
-            errorState(loadError, relayURL: relayURL)
-        } else if filteredShows.isEmpty {
+    private var content: some View {
+        if filteredShows.isEmpty {
             emptyState
         } else {
-            showsList(relayURL: relayURL)
+            showsList
         }
     }
 
-    private var loadingState: some View {
-        VStack {
-            Spacer(minLength: 60)
-            ProgressView()
-            Text("Fetching from relay…")
-                .font(AppTheme.Typography.caption)
-                .foregroundStyle(.secondary)
-                .padding(.top, AppTheme.Spacing.sm)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private func errorState(_ message: String, relayURL: URL) -> some View {
-        VStack(spacing: AppTheme.Spacing.md) {
-            Spacer(minLength: 48)
-            Image(systemName: "antenna.radiowaves.left.and.right.slash")
-                .font(.system(size: 40, weight: .light))
-                .foregroundStyle(.tertiary)
-            Text("Couldn't reach relay")
-                .font(AppTheme.Typography.headline)
-            Text(message)
-                .font(AppTheme.Typography.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            Button("Retry") {
-                Task { await loadShows(relayURL: relayURL) }
-            }
-            .buttonStyle(.glassProminent)
-            .padding(.horizontal, AppTheme.Spacing.xl)
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, AppTheme.Spacing.lg)
-    }
-
+    /// Empty means either "the relay hasn't responded yet" or "genuinely none".
+    /// Without a loading flag we can't distinguish, so the copy stays neutral —
+    /// a static label, never an animated spinner. Results replace it the moment
+    /// the kernel pushes a non-empty `nostrResults`.
     private var emptyState: some View {
         VStack(spacing: AppTheme.Spacing.md) {
             Spacer(minLength: 48)
@@ -141,9 +109,9 @@ struct NostrDiscoverForm: View {
                 .font(.system(size: 40, weight: .light))
                 .foregroundStyle(.tertiary)
             if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Text("No Nostr podcasts found")
+                Text("Searching…")
                     .font(AppTheme.Typography.headline)
-                Text("No NIP-74 shows were found on this relay.")
+                Text("Looking for NIP-F4 shows on this relay. Results appear as the relay responds.")
                     .font(AppTheme.Typography.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -180,7 +148,7 @@ struct NostrDiscoverForm: View {
 
     // MARK: - Shows list
 
-    private func showsList(relayURL: URL) -> some View {
+    private var showsList: some View {
         ScrollView {
             LazyVStack(spacing: 0) {
                 HStack {
@@ -200,7 +168,7 @@ struct NostrDiscoverForm: View {
                         isSubscribing: subscribingID == show.id,
                         isAlreadySubscribed: isAlreadySubscribed(show),
                         rowError: rowErrors[show.id],
-                        onSubscribe: { Task { await subscribe(to: show, relayURL: relayURL) } }
+                        onSubscribe: { Task { await subscribe(to: show) } }
                     )
                     .padding(.horizontal, AppTheme.Spacing.lg)
                     Divider()
@@ -214,31 +182,34 @@ struct NostrDiscoverForm: View {
 
     // MARK: - Logic
 
-    private func isAlreadySubscribed(_ show: NostrPodcastDiscoveryService.ShowResult) -> Bool {
-        let pid = NostrPodcastDiscoveryService.podcastID(for: show.coordinate)
-        return store.subscription(podcastID: pid) != nil
+    private func dispatchDiscovery() {
+        guard configuredRelayURL != nil else { return }
+        store.kernelDiscoverNostr(relayURL: store.state.settings.nostrRelayURL)
     }
 
-    private func loadShows(relayURL: URL) async {
-        isLoading = true
-        loadError = nil
-        defer { isLoading = false }
-        shows = await service.fetchShows(relayURL: relayURL)
-        if shows.isEmpty && !query.isEmpty { query = "" }
+    private func isAlreadySubscribed(_ show: NostrShowSummary) -> Bool {
+        guard let feed = show.feedUrl, let url = URL(string: feed),
+              let existing = store.podcast(feedURL: url) else { return false }
+        return store.subscription(podcastID: existing.id) != nil
     }
 
-    private func subscribe(
-        to show: NostrPodcastDiscoveryService.ShowResult,
-        relayURL: URL
-    ) async {
+    private func subscribe(to show: NostrShowSummary) async {
         guard subscribingID == nil else { return }
+        guard let feed = show.feedUrl, !feed.isEmpty else {
+            rowErrors[show.id] = "This show has no feed to subscribe to."
+            return
+        }
         subscribingID = show.id
         rowErrors.removeValue(forKey: show.id)
         defer { subscribingID = nil }
 
-        let podcast = await service.subscribe(to: show, store: store, relayURL: relayURL)
-        Haptics.success()
-        onAdded(podcast)
+        do {
+            let podcast = try await store.kernelSubscribe(feedURL: feed)
+            Haptics.success()
+            onAdded(podcast)
+        } catch {
+            rowErrors[show.id] = error.localizedDescription
+        }
     }
 }
 
@@ -246,54 +217,71 @@ struct NostrDiscoverForm: View {
 
 private struct NostrShowRow: View {
 
-    let show: NostrPodcastDiscoveryService.ShowResult
+    let show: NostrShowSummary
     let isSubscribing: Bool
     let isAlreadySubscribed: Bool
     let rowError: String?
     let onSubscribe: () -> Void
 
-    var body: some View {
-        HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
-            artwork
-            VStack(alignment: .leading, spacing: 2) {
-                Text(show.title)
-                    .font(AppTheme.Typography.headline)
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                if !show.author.isEmpty {
-                    Text(show.author)
-                        .font(AppTheme.Typography.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                if !show.categories.isEmpty {
-                    Text(show.categories.prefix(2).joined(separator: " · "))
-                        .font(AppTheme.Typography.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .padding(.top, 2)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+    /// A show with no feed URL can't be subscribed (there is no Nostr-native
+    /// subscribe op — only the RSS `feed_url` the kind:10154 event carries).
+    private var isSubscribable: Bool {
+        guard let feed = show.feedUrl else { return false }
+        return !feed.isEmpty
+    }
 
-            trailingControl
-                .padding(.top, 2)
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+            HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
+                artwork
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(show.title.isEmpty ? "Untitled show" : show.title)
+                        .font(AppTheme.Typography.headline)
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    if let description = show.description, !description.isEmpty {
+                        Text(description)
+                            .font(AppTheme.Typography.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                    if let categories = show.categories, !categories.isEmpty {
+                        Text(categories.prefix(2).joined(separator: " · "))
+                            .font(AppTheme.Typography.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .padding(.top, 2)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                trailingControl
+                    .padding(.top, 2)
+            }
+
+            if let rowError {
+                Text(rowError)
+                    .font(AppTheme.Typography.caption)
+                    .foregroundStyle(.red)
+                    .padding(.leading, 64 + AppTheme.Spacing.md)
+            }
         }
         .padding(.vertical, AppTheme.Spacing.sm)
         .contentShape(Rectangle())
         .onTapGesture {
-            guard !isSubscribing, !isAlreadySubscribed else { return }
+            guard !isSubscribing, !isAlreadySubscribed, isSubscribable else { return }
             onSubscribe()
         }
-        .opacity(isSubscribing || isAlreadySubscribed ? 0.65 : 1)
+        .opacity(isSubscribing || isAlreadySubscribed || !isSubscribable ? 0.65 : 1)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityAddTraits(.isButton)
     }
 
     private var artwork: some View {
-        CachedAsyncImage(url: show.imageURL, targetSize: CGSize(width: 64, height: 64)) { phase in
+        CachedAsyncImage(url: show.artworkUrl.flatMap(URL.init(string:)),
+                         targetSize: CGSize(width: 64, height: 64)) { phase in
             switch phase {
             case .success(let image):
                 image.resizable().aspectRatio(contentMode: .fill)
@@ -320,10 +308,15 @@ private struct NostrShowRow: View {
                 .font(.title3)
                 .foregroundStyle(.secondary)
                 .frame(width: 32, height: 32)
-        } else {
+        } else if isSubscribable {
             Image(systemName: "plus.circle.fill")
                 .font(.title3)
                 .foregroundStyle(.tint)
+                .frame(width: 32, height: 32)
+        } else {
+            Image(systemName: "link.badge.plus")
+                .font(.title3)
+                .foregroundStyle(.tertiary)
                 .frame(width: 32, height: 32)
         }
     }
@@ -331,6 +324,7 @@ private struct NostrShowRow: View {
     private var accessibilityLabel: String {
         if isAlreadySubscribed { return "Already subscribed to \(show.title)" }
         if isSubscribing { return "Subscribing to \(show.title)" }
+        if !isSubscribable { return "\(show.title) has no feed to subscribe to" }
         return "Subscribe to \(show.title) on Nostr"
     }
 }
