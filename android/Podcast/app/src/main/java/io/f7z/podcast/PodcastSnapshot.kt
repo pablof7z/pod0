@@ -62,6 +62,25 @@ data class PodcastSnapshot(
      * which transparently falls back to [library].
      */
     @SerialName("podcasts") val podcasts: List<PodcastSummary> = emptyList(),
+    /**
+     * iTunes/RSS directory search results, populated by dispatching the
+     * `{"op":"search_itunes","query":…}` action on the `podcast` namespace.
+     * Mirror of `PodcastUpdate.search_results` (a `Vec<PodcastSummary>`).
+     * Wire key is snake_case, so the explicit `@SerialName` is load-bearing —
+     * kotlinx does not auto-convert.
+     */
+    @SerialName("search_results") val searchResults: List<PodcastSummary> = emptyList(),
+    /**
+     * Playback / app settings projection. Mirror of `PodcastUpdate.settings`.
+     * The Rust side `skip_serializing_if = "is_default"`, so this key is
+     * **absent** from the wire whenever settings equal the fresh-install
+     * default — hence nullable here. Read with a `?: default` fallback.
+     */
+    val settings: SettingsSnapshot? = null,
+    /** Playback "Up Next" queue, front-first. Mirror of `PodcastUpdate.queue`. */
+    val queue: List<EpisodeSummary> = emptyList(),
+    /** AI-triaged inbox, highest-priority first. Mirror of `PodcastUpdate.inbox`. */
+    val inbox: List<InboxItem> = emptyList(),
 ) {
     /**
      * Effective subscription list — prefer the new `podcasts` projection, fall
@@ -200,6 +219,16 @@ data class PodcastSummary(
     @SerialName("episode_count") val episodeCount: Int = 0,
     @SerialName("unplayed_count") val unplayedCount: Int = 0,
     @SerialName("artwork_url") val artworkUrl: String? = null,
+    /**
+     * RSS feed URL. Present for library rows and iTunes search results;
+     * the key the search screen subscribes against (`{"op":"subscribe",
+     * "feed_url":…}`). Mirror of `PodcastSummary.feed_url`.
+     */
+    @SerialName("feed_url") val feedUrl: String? = null,
+    /** Podcast author / host. Mirror of `PodcastSummary.author`. */
+    val author: String? = null,
+    /** HTML-stripped podcast description. Mirror of `PodcastSummary.description`. */
+    val description: String? = null,
     val episodes: List<EpisodeSummary> = emptyList(),
 )
 
@@ -216,6 +245,77 @@ data class EpisodeSummary(
     @SerialName("duration_secs") val durationSecs: Double? = null,
     @SerialName("artwork_url") val artworkUrl: String? = null,
     @SerialName("published_at") val publishedAt: Long? = null,
+    /** Original RSS enclosure URL for streaming. Mirror of `EpisodeSummary.enclosure_url`. */
+    @SerialName("enclosure_url") val enclosureUrl: String? = null,
+    /** Episode show-notes / description (HTML — strip before rendering). */
+    val description: String? = null,
+    /** True once the user has listened to completion. */
+    val played: Boolean = false,
+    /** True when the episode is starred / bookmarked. */
+    val starred: Boolean = false,
+    /** On-disk path to the downloaded enclosure, or `null` when not downloaded. */
+    @SerialName("download_path") val downloadPath: String? = null,
+    /** Persisted resume position in seconds, or `null` for a fresh episode. */
+    @SerialName("playback_position_secs") val playbackPositionSecs: Double? = null,
+    /** Chapter markers. Mirror of `EpisodeSummary.chapters` (`Vec<ChapterSummary>`). */
+    val chapters: List<ChapterSummary> = emptyList(),
+    /** AI-assigned topic labels. Mirror of `EpisodeSummary.ai_categories`. */
+    @SerialName("ai_categories") val aiCategories: List<String> = emptyList(),
+    /** AI Inbox triage decision (`"inbox"` | `"archived"`), or `null` if untriaged. */
+    @SerialName("triage_decision") val triageDecision: String? = null,
+)
+
+/**
+ * One chapter marker on an episode. Mirror of the Rust
+ * `ffi/projections/library.rs::ChapterSummary`.
+ *
+ * The wire field is `start_secs` (`f64`, **required**) — not the task-spec's
+ * `start_time_secs`. `title` is a required `String` on the Rust side; defaulted
+ * to empty here so a malformed row can't fail the whole snapshot decode.
+ */
+@Serializable
+data class ChapterSummary(
+    @SerialName("start_secs") val startSecs: Double = 0.0,
+    @SerialName("end_secs") val endSecs: Double? = null,
+    val title: String = "",
+    @SerialName("image_url") val imageUrl: String? = null,
+    val url: String? = null,
+)
+
+/**
+ * Minimal slice of the Rust `ffi/projections/settings.rs::SettingsSnapshot`.
+ *
+ * The full Rust struct carries ~50 fields (model ids, credential sources, …).
+ * The Android shell only needs playback-relevant settings today; the
+ * `ignoreUnknownKeys = true` decoder drops the rest. When a screen needs more
+ * fields, add them here against the verified snake_case wire names.
+ */
+@Serializable
+data class SettingsSnapshot(
+    @SerialName("default_playback_rate") val defaultPlaybackRate: Float = 1.0f,
+    @SerialName("auto_delete_downloads_after_played") val autoDeleteDownloads: Boolean = false,
+)
+
+/**
+ * One AI-triaged inbox row. Mirror of `ffi/projections/inbox.rs::InboxItem`.
+ *
+ * Field names follow the verified Rust projection — `episode_id`,
+ * `episode_title`, `podcast_id`, `podcast_title`, `priority_score`,
+ * `priority_reason` — **not** the task-spec's approximated `id`/`decision`/
+ * `is_hero`/`score` shape (which would silently decode to empty).
+ */
+@Serializable
+data class InboxItem(
+    @SerialName("episode_id") val episodeId: String = "",
+    @SerialName("episode_title") val episodeTitle: String = "",
+    @SerialName("podcast_id") val podcastId: String = "",
+    @SerialName("podcast_title") val podcastTitle: String = "",
+    @SerialName("artwork_url") val artworkUrl: String? = null,
+    @SerialName("published_at") val publishedAt: Long = 0,
+    @SerialName("duration_secs") val durationSecs: Double? = null,
+    @SerialName("priority_score") val priorityScore: Float = 0.0f,
+    @SerialName("priority_reason") val priorityReason: String? = null,
+    @SerialName("ai_categories") val aiCategories: List<String> = emptyList(),
 )
 
 /** Lazy JSON parser shared by the snapshot consumer. */

@@ -7,74 +7,127 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
- * Action ids — string discriminators the Rust kernel matches on. Mirrors
- * the `pub const ACTION_*` definitions in
- * `apps/nmp-app-podcast/src/ffi/actions/mod.rs`. Kept colocated with the
- * dispatcher so a screen ships one import for the (id, payload) pair.
+ * Kernel action wire contract for the Android shell.
  *
- * iOS has the same constants regenerated from the Rust source of truth via
- * `nmp-codegen`; Kotlin gets the same once M14 lands. Until then, these are
- * hand-mirrored — each id is duplicated below to keep the wire contract
- * explicit and grep-able.
+ * **The wire model is `(namespace, op-tagged body)` — not flat action ids.**
+ *
+ * The Rust kernel registers exactly two podcast-domain `ActionModule`
+ * namespaces:
+ *
+ *  * `"podcast"`        — subscribe, unsubscribe, refresh_all, search_itunes,
+ *                         download, delete_download, star_episode, …
+ *  * `"podcast.player"` — play, pause, resume, seek, set_speed,
+ *                         set_sleep_timer, stop, …
+ *
+ * Each action is encoded as `{"op":"<variant>", …fields}` and the Rust
+ * `#[serde(tag = "op", rename_all = "snake_case")]` discriminator routes it.
+ * `KernelBridge.dispatchAction(namespace, body)` → `nmp_app_dispatch_action`
+ * forwards `(namespace, body)` straight into that registry, exactly like the
+ * iOS `kernel.dispatch(namespace:body:)` reference in
+ * `App/Sources/Bridge/AppStateStore+KernelActions.swift`.
+ *
+ * Source of truth verified against:
+ *  * `apps/nmp-app-podcast/src/ffi/actions/podcast_module.rs` (PodcastAction)
+ *  * `apps/nmp-app-podcast/src/ffi/actions/player_module.rs`  (PlayerAction)
+ *  * `apps/nmp-app-podcast/src/android.rs` (nativeDispatchAction)
+ *
+ * NOTE: an earlier demo passed the *dotted op path* (e.g. `"podcast.player.play"`)
+ * as the namespace argument. That string is not a registered namespace, so
+ * those dispatches never reached the kernel. This file fixes the contract;
+ * payloads carry their `op` as a defaulted field so `encodeDefaults = true`
+ * emits the discriminator.
  */
-object PodcastActionIds {
-    const val PLAYER_PLAY = "podcast.player.play"
-    const val PLAYER_PAUSE = "podcast.player.pause"
-    const val PLAYER_SEEK = "podcast.player.seek"
-    const val PLAYER_SET_SPEED = "podcast.player.set_speed"
-    const val PLAYER_STOP = "podcast.player.stop"
+object PodcastNamespace {
+    const val PODCAST = "podcast"
+    const val PLAYER = "podcast.player"
 }
 
+// ── `podcast` namespace payloads ──────────────────────────────────────────
+//
+// Every payload pins its `op` discriminator as a defaulted field so callers
+// never pass it by hand and `Json { encodeDefaults = true }` serializes it.
+
+@Serializable
+data class SubscribePayload(
+    @SerialName("feed_url") val feedUrl: String,
+    val op: String = "subscribe",
+)
+
+@Serializable
+data class UnsubscribePayload(
+    @SerialName("podcast_id") val podcastId: String,
+    val op: String = "unsubscribe",
+)
+
+@Serializable
+data class SearchPayload(
+    val query: String,
+    val op: String = "search_itunes",
+)
+
+@Serializable
+data class RefreshAllPayload(val op: String = "refresh_all")
+
+@Serializable
+data class DownloadStartPayload(
+    @SerialName("episode_id") val episodeId: String,
+    val op: String = "download",
+)
+
+@Serializable
+data class DownloadDeletePayload(
+    @SerialName("episode_id") val episodeId: String,
+    val op: String = "delete_download",
+)
+
+// ── `podcast.player` namespace payloads ───────────────────────────────────
+
+@Serializable
+data class PlayPayload(
+    @SerialName("episode_id") val episodeId: String,
+    val op: String = "play",
+)
+
+@Serializable
+data class PausePayload(val op: String = "pause")
+
+@Serializable
+data class SeekPayload(
+    @SerialName("position_secs") val positionSecs: Double,
+    val op: String = "seek",
+)
+
+@Serializable
+data class SetSpeedPayload(
+    val speed: Float,
+    val op: String = "set_speed",
+)
+
 /**
- * Typed action payloads matching the Rust `actions::*Action` structs.
- *
- * Only the M13.C-relevant subset is mirrored here (Player surface). Voice,
- * Briefing, and Agent payloads land in their own screens when M13.D wires
- * them up. Each struct is `@Serializable` so the Compose layer can encode
- * via `Json.encodeToString` without hand-rolling the shape.
+ * Arm (`secs = N`) or clear (`secs = null`) the sleep timer. Field is `secs`
+ * (not `seconds`) per `PlayerAction::SetSleepTimer { secs: Option<u64> }`.
  */
 @Serializable
-data class PlayActionPayload(@SerialName("episode_id") val episodeId: String)
-
-@Serializable
-data class SeekActionPayload(@SerialName("position_secs") val positionSecs: Double)
-
-@Serializable
-data class SetSpeedActionPayload(val speed: Float)
+data class SleepTimerPayload(
+    val secs: Int?,
+    val op: String = "set_sleep_timer",
+)
 
 /**
- * Thin wrapper around `KernelBridge.dispatchAction` that
- *
- *  1. Encodes a typed payload to JSON (one place, one configuration).
- *  2. Returns the kernel's response envelope unchanged.
- *
- * No business logic, no caching, no state (D5/D8). The caller is responsible
- * for picking the right action id; this object only owns the encode + the
- * JNI hop.
- *
- * Why not `KernelBridge.nmpActionDispatch(json)` as the task spec suggests?
- * The bridge's actual public surface (`dispatchAction(namespace, payload)`)
- * already takes a separate namespace string + payload JSON, mirroring the
- * Swift `dispatchAction(namespace:body:)` contract. Re-routing through a
- * single-string method would be a regression — we'd lose the namespace/payload
- * separation Rust uses to demux. M13.A may collapse this; until they do, the
- * Compose layer talks to the existing two-arg method.
+ * Thin wrapper around `KernelBridge.dispatchAction`. Encodes a typed,
+ * op-tagged payload to JSON (one place, one config) and forwards it to the
+ * given namespace. No business logic, no state (D5/D8) — the caller picks the
+ * namespace + payload; the kernel decides the outcome and reports it on the
+ * next snapshot.
  */
 object PodcastActionDispatcher {
     @PublishedApi
     internal val json: Json = Json { encodeDefaults = true; ignoreUnknownKeys = true }
 
-    /** Dispatch with a typed payload. Returns the raw envelope JSON. */
+    /** Dispatch a typed, op-tagged payload to [namespace]. Returns the envelope JSON. */
     inline fun <reified T> dispatch(
         bridge: KernelBridge,
-        actionId: String,
+        namespace: String,
         payload: T,
-    ): String? {
-        val body = json.encodeToString<T>(payload)
-        return bridge.dispatchAction(actionId, body)
-    }
-
-    /** Dispatch with no payload (pause / stop / cancel_all). */
-    fun dispatchEmpty(bridge: KernelBridge, actionId: String): String? =
-        bridge.dispatchAction(actionId, "{}")
+    ): String? = bridge.dispatchAction(namespace, json.encodeToString<T>(payload))
 }

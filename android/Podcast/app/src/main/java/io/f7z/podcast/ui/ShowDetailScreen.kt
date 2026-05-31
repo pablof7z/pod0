@@ -45,6 +45,7 @@ import io.f7z.podcast.PodcastSnapshot
 fun ShowDetailScreen(
     showId: String,
     snapshot: PodcastSnapshot?,
+    onEpisodeSelected: (EpisodeSummary) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -78,13 +79,18 @@ fun ShowDetailScreen(
         }
         ShowDetailBody(
             episodes = show.episodes,
+            onEpisodeSelected = onEpisodeSelected,
             modifier = Modifier.padding(inner),
         )
     }
 }
 
 @Composable
-private fun ShowDetailBody(episodes: List<EpisodeSummary>, modifier: Modifier = Modifier) {
+private fun ShowDetailBody(
+    episodes: List<EpisodeSummary>,
+    onEpisodeSelected: (EpisodeSummary) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     if (episodes.isEmpty()) {
         Box(
             modifier = modifier
@@ -109,14 +115,15 @@ private fun ShowDetailBody(episodes: List<EpisodeSummary>, modifier: Modifier = 
         contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp),
     ) {
         items(episodes, key = { it.id }) { episode ->
-            EpisodeRow(episode = episode)
+            EpisodeRow(episode = episode, onClick = { onEpisodeSelected(episode) })
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EpisodeRow(episode: EpisodeSummary) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+private fun EpisodeRow(episode: EpisodeSummary, onClick: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth(), onClick = onClick) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,

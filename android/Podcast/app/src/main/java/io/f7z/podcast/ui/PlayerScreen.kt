@@ -43,9 +43,9 @@ import io.f7z.podcast.PodcastSnapshot
  * Surfaces `snapshot.nowPlaying` with the transport + speed controls. All
  * mutating interactions are kernel-bound:
  *
- *  * Play / pause → `podcast.player.play` / `podcast.player.pause`.
- *  * Seek slider → `podcast.player.seek` with `{ position_secs: f64 }`.
- *  * Speed chip → `podcast.player.set_speed` with `{ speed: f32 }`.
+ *  * Play / pause → namespace `podcast.player`, `{"op":"play",…}` / `{"op":"pause"}`.
+ *  * Seek slider → namespace `podcast.player`, `{"op":"seek","position_secs":f64}`.
+ *  * Speed chip → namespace `podcast.player`, `{"op":"set_speed","speed":f32}`.
  *
  * The slider holds a tiny ephemeral `dragValue` state while the user is
  * dragging — this is presentation-only (it would otherwise jitter against
@@ -133,8 +133,8 @@ private fun SeekBar(nowPlaying: NowPlayingState, bridge: KernelBridge) {
                 dragValue?.let { value ->
                     PodcastActionDispatcher.dispatch(
                         bridge = bridge,
-                        actionId = PodcastActionIds.PLAYER_SEEK,
-                        payload = SeekActionPayload(positionSecs = value.toDouble()),
+                        namespace = PodcastNamespace.PLAYER,
+                        payload = SeekPayload(positionSecs = value.toDouble()),
                     )
                 }
                 dragValue = null
@@ -170,13 +170,17 @@ private fun TransportRow(nowPlaying: NowPlayingState, bridge: KernelBridge) {
         FilledIconButton(
             onClick = {
                 if (nowPlaying.isPlaying) {
-                    PodcastActionDispatcher.dispatchEmpty(bridge, PodcastActionIds.PLAYER_PAUSE)
+                    PodcastActionDispatcher.dispatch(
+                        bridge = bridge,
+                        namespace = PodcastNamespace.PLAYER,
+                        payload = PausePayload(),
+                    )
                 } else {
                     val episodeId = nowPlaying.episodeId ?: return@FilledIconButton
                     PodcastActionDispatcher.dispatch(
                         bridge = bridge,
-                        actionId = PodcastActionIds.PLAYER_PLAY,
-                        payload = PlayActionPayload(episodeId = episodeId),
+                        namespace = PodcastNamespace.PLAYER,
+                        payload = PlayPayload(episodeId = episodeId),
                     )
                 }
             },
@@ -204,8 +208,8 @@ private fun SpeedSelector(currentSpeed: Float, bridge: KernelBridge) {
                 onClick = {
                     PodcastActionDispatcher.dispatch(
                         bridge = bridge,
-                        actionId = PodcastActionIds.PLAYER_SET_SPEED,
-                        payload = SetSpeedActionPayload(speed = speed),
+                        namespace = PodcastNamespace.PLAYER,
+                        payload = SetSpeedPayload(speed = speed),
                     )
                 },
                 label = { Text(formatSpeedLabel(speed)) },

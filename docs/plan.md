@@ -10,6 +10,7 @@ This is the canonical project plan. Detailed implementation plans live under
 | NMP feature parity hardening and scaffold burn-down. | Active | `docs/plan/nmp-feature-parity.md` |
 | Rust-kernel migration v2 (PlaybackState pure renderer → Compat dir deletion). | Active | `docs/plan/migration-v2.md` |
 | NIP-F4 publishing/signing completion for owned publishing/discovery. | P0 | `docs/plan/pod0-nostr-publishing.md` |
+| Android feature wave 1 (subscribe/search/episode detail) + parity matrix. | Active | `docs/plan/android-parity.md` |
 | Pod0 app rename. | Done | `docs/BACKLOG.md` |
 | Planning/WIP reconciliation after merged PR stack. | Done for current pass | `WIP.md`, `docs/BACKLOG.md` |
 
@@ -24,6 +25,7 @@ This is the canonical project plan. Detailed implementation plans live under
   - `docs/plan/pod0-nostr-publishing.md` - NIP-F4 protocol correction and publishing/discovery plan.
   - `docs/plan/nmp-v0.1.0-upgrade.md` - NMP dependency upgrade from old pin to `nmp-v0.1.0` tag: changelog, breakage analysis, and follow-up items.
   - `docs/plan/nmp-v0.2.0-upgrade.md` - NMP dependency upgrade to `nmp-v0.2.0` (rev `ae7b004`): non-breaking pin bump (C-ABI unchanged), changelog, and not-yet-adopted items.
+  - `docs/plan/android-parity.md` - Android feature-parity status matrix (Tier 1-4) and the subscribe/search/episode-detail wave.
 
 ## Migration State
 

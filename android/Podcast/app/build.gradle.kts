@@ -42,10 +42,27 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
+    // Full Material (M2) artifact for the classic `pullRefresh` modifier +
+    // `PullRefreshIndicator`. material3 1.2.x (compose-bom 2024.06.00) predates
+    // `PullToRefreshBox`, so the library pull-to-refresh uses the M2 API. Only
+    // the pull-refresh surface is consumed; the app remains Material3.
+    implementation("androidx.compose.material:material")
     implementation("androidx.activity:activity-compose:1.9.0")
+    // `androidx.core.text.HtmlCompat` for stripping HTML from RSS show notes
+    // in the episode-detail surface. Declared explicitly rather than relied on
+    // transitively via activity-compose.
+    implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.2")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+
+    // ─── Coil — async artwork loading from kernel-projected URLs ──────────
+    //
+    // Search results, library tiles, and episode detail render remote
+    // artwork via `coil.compose.AsyncImage`. Coil 2.6.0 is the last 2.x
+    // line; pinned (not 3.x) to stay on the kotlinx-coroutines baseline the
+    // rest of the module compiles against.
+    implementation("io.coil-kt:coil-compose:2.6.0")
 
     // ─── media3 — ExoPlayer + MediaSession for the real audio capability ──
     //

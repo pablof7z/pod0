@@ -10,18 +10,30 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import io.f7z.podcast.KernelBridge
 import io.f7z.podcast.PodcastSnapshot
 import io.f7z.podcast.PodcastSummary
+import kotlinx.coroutines.delay
 
 /**
  * Library tab — a two-column grid of subscribed shows.
@@ -37,30 +49,62 @@ import io.f7z.podcast.PodcastSummary
  * D8/D5 — no derived state. The kernel is the source of truth for
  * subscription rows; this view only renders.
  */
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun LibraryScreen(
     snapshot: PodcastSnapshot?,
+    bridge: KernelBridge,
     onShowSelected: (PodcastSummary) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val rows = snapshot?.subscriptions.orEmpty()
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text(
-            text = "Library",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
-        if (rows.isEmpty()) {
-            EmptyLibraryState()
-        } else {
-            LibraryGrid(rows = rows, onShowSelected = onShowSelected)
+    // The kernel refresh is fire-and-forget — there is no "refresh complete"
+    // signal on the snapshot (new episodes simply arrive on later ticks). So
+    // the spinner is shown for a fixed beat after dispatch, then dismissed;
+    // the grid updates reactively as the projection lands.
+    var refreshing by remember { mutableStateOf(false) }
+    LaunchedEffect(refreshing) {
+        if (refreshing) {
+            delay(1200)
+            refreshing = false
         }
+    }
+    val pullState = rememberPullRefreshState(
+        refreshing = refreshing,
+        onRefresh = {
+            refreshing = true
+            PodcastActionDispatcher.dispatch(
+                bridge = bridge,
+                namespace = PodcastNamespace.PODCAST,
+                payload = RefreshAllPayload(),
+            )
+        },
+    )
+
+    Box(modifier = modifier.fillMaxSize().pullRefresh(pullState)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = "Library",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (rows.isEmpty()) {
+                EmptyLibraryState()
+            } else {
+                LibraryGrid(rows = rows, onShowSelected = onShowSelected)
+            }
+        }
+        PullRefreshIndicator(
+            refreshing = refreshing,
+            state = pullState,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
     }
 }
 
@@ -93,9 +137,16 @@ private fun LibraryTile(show: PodcastSummary, onClick: () -> Unit) {
                     .aspectRatio(1f),
                 contentAlignment = Alignment.Center,
             ) {
-                // M2.A ships `artwork_url`; until Coil is wired, render the
-                // placeholder square so layouts don't shift when art arrives.
-                ArtworkPlaceholder(size = 120)
+                val art = show.artworkUrl
+                if (art.isNullOrBlank()) {
+                    ArtworkPlaceholder(size = 120)
+                } else {
+                    AsyncImage(
+                        model = art,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                    )
+                }
             }
             Text(
                 text = show.title,

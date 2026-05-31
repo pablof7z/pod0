@@ -1,0 +1,286 @@
+package io.f7z.podcast.ui
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.core.text.HtmlCompat
+import coil.compose.AsyncImage
+import io.f7z.podcast.ChapterSummary
+import io.f7z.podcast.EpisodeSummary
+import io.f7z.podcast.KernelBridge
+import io.f7z.podcast.PodcastSnapshot
+import java.text.DateFormat
+import java.util.Date
+
+/**
+ * Episode-detail surface — full metadata for a single episode plus the play
+ * CTA. Reached from a show-detail episode row or a search-result tap chain.
+ *
+ * The episode is resolved from the live snapshot by `(podcastId, episodeId)`
+ * so the view re-renders as the kernel updates the row (download path,
+ * playback position, AI categories landing asynchronously). D5/D8 — no local
+ * copy of episode state; the snapshot is the source of truth.
+ *
+ * The play button dispatches `{"op":"play","episode_id":…}` to the
+ * `podcast.player` namespace. Per the verified `PlayerAction::Play` enum the
+ * payload carries **only** `episode_id` — the kernel resolves the owning
+ * podcast + resume position itself.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EpisodeDetailScreen(
+    episodeId: String,
+    podcastId: String,
+    snapshot: PodcastSnapshot?,
+    bridge: KernelBridge,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val show = snapshot?.subscriptions?.firstOrNull { it.id == podcastId }
+    val episode = show?.episodes?.firstOrNull { it.id == episodeId }
+        ?: snapshot?.subscriptions
+            ?.flatMap { it.episodes }
+            ?.firstOrNull { it.id == episodeId }
+
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = episode?.title ?: "Episode",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+            )
+        },
+    ) { inner ->
+        if (episode == null) {
+            MissingEpisodeState(modifier = Modifier.padding(inner))
+            return@Scaffold
+        }
+        EpisodeDetailBody(
+            episode = episode,
+            podcastTitle = episode.podcastTitle ?: show?.title,
+            artworkUrl = episode.artworkUrl ?: show?.artworkUrl,
+            onPlay = {
+                PodcastActionDispatcher.dispatch(
+                    bridge = bridge,
+                    namespace = PodcastNamespace.PLAYER,
+                    payload = PlayPayload(episodeId = episode.id),
+                )
+            },
+            modifier = Modifier.padding(inner),
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun EpisodeDetailBody(
+    episode: EpisodeSummary,
+    podcastTitle: String?,
+    artworkUrl: String?,
+    onPlay: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = episode.title,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        ShowRow(podcastTitle = podcastTitle, artworkUrl = artworkUrl)
+
+        Button(onClick = onPlay, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
+            Text(text = "  Play", style = MaterialTheme.typography.titleMedium)
+        }
+
+        MetadataLine(episode = episode)
+        ResumeBar(episode = episode)
+        AiCategoryChips(categories = episode.aiCategories)
+
+        val notes = episode.description?.let { stripHtml(it) }
+        if (!notes.isNullOrBlank()) {
+            Text(text = "Show notes", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+            Text(text = notes, style = MaterialTheme.typography.bodyMedium)
+        }
+
+        ChapterList(chapters = episode.chapters)
+    }
+}
+
+@Composable
+private fun ShowRow(podcastTitle: String?, artworkUrl: String?) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        val shape = RoundedCornerShape(8.dp)
+        if (artworkUrl.isNullOrBlank()) {
+            Box(modifier = Modifier.size(56.dp).clip(shape)) { ArtworkPlaceholder(size = 56) }
+        } else {
+            AsyncImage(
+                model = artworkUrl,
+                contentDescription = null,
+                modifier = Modifier.size(56.dp).clip(shape),
+            )
+        }
+        Text(
+            text = podcastTitle ?: "Unknown show",
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun MetadataLine(episode: EpisodeSummary) {
+    val parts = buildList {
+        episode.durationSecs?.let { secs -> formatDuration(secs).takeIf { it.isNotBlank() }?.let(::add) }
+        episode.publishedAt?.let { add(formatDate(it)) }
+    }
+    if (parts.isEmpty()) return
+    Text(
+        text = parts.joinToString("  •  "),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun ResumeBar(episode: EpisodeSummary) {
+    val position = episode.playbackPositionSecs ?: return
+    val duration = episode.durationSecs ?: return
+    if (position <= 0.0 || duration <= 0.0) return
+    val fraction = (position / duration).coerceIn(0.0, 1.0).toFloat()
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth())
+        Text(
+            text = "Resume at ${formatTimecodeShort(position)}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AiCategoryChips(categories: List<String>) {
+    if (categories.isEmpty()) return
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        categories.forEach { category ->
+            AssistChip(onClick = {}, label = { Text(category) })
+        }
+    }
+}
+
+@Composable
+private fun ChapterList(chapters: List<ChapterSummary>) {
+    if (chapters.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(text = "Chapters", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+        chapters.forEach { chapter ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = formatTimecodeShort(chapter.startSecs),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = chapter.title.ifBlank { "Untitled chapter" },
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MissingEpisodeState(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.fillMaxSize().padding(24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "Episode not found in current snapshot",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** Strip HTML tags/entities from RSS show notes for plain-text rendering. */
+private fun stripHtml(raw: String): String =
+    HtmlCompat.fromHtml(raw, HtmlCompat.FROM_HTML_MODE_LEGACY).toString().trim()
+
+private fun formatDuration(durationSecs: Double): String {
+    if (durationSecs <= 0) return ""
+    val totalMinutes = (durationSecs / 60.0).toInt()
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return if (hours > 0) "${hours}h ${minutes}m" else "$minutes min"
+}
+
+private fun formatTimecodeShort(secs: Double): String {
+    if (secs.isNaN() || secs < 0) return "0:00"
+    val total = secs.toInt()
+    val h = total / 3600
+    val m = (total % 3600) / 60
+    val s = total % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
+}
+
+/** `publishedAt` is Unix **seconds** per the projection contract. */
+private fun formatDate(unixSeconds: Long): String =
+    DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(unixSeconds * 1000L))

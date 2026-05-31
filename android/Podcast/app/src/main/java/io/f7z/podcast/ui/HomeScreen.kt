@@ -145,12 +145,16 @@ private fun NowPlayingCard(nowPlaying: NowPlayingState, bridge: KernelBridge) {
 private fun PlayPauseIconButton(isPlaying: Boolean, bridge: KernelBridge, episodeId: String?) {
     FilledIconButton(onClick = {
         if (isPlaying) {
-            PodcastActionDispatcher.dispatchEmpty(bridge, PodcastActionIds.PLAYER_PAUSE)
+            PodcastActionDispatcher.dispatch(
+                bridge = bridge,
+                namespace = PodcastNamespace.PLAYER,
+                payload = PausePayload(),
+            )
         } else if (episodeId != null) {
             PodcastActionDispatcher.dispatch(
                 bridge = bridge,
-                actionId = PodcastActionIds.PLAYER_PLAY,
-                payload = PlayActionPayload(episodeId = episodeId),
+                namespace = PodcastNamespace.PLAYER,
+                payload = PlayPayload(episodeId = episodeId),
             )
         }
     }) {

@@ -14,7 +14,7 @@
 //! undefined in the cdylib; calling through Rust paths makes rustc pull the
 //! bodies into the codegen unit — same pattern as NMP's `nmp-android-ffi`.
 
-use std::ffi::{c_char, c_void, CStr, CString};
+use std::ffi::{c_void, CStr, CString};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
 use std::time::Duration;
 
@@ -68,22 +68,35 @@ fn session_ref<'a>(handle: jlong) -> Option<&'a Session> {
 // Update callback — copies the JSON before the kernel reclaims its buffer.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// `nmp_app_set_update_callback` fires on the kernel's listener thread; the
-/// `json` pointer is only borrowed for this call (NMP `ffi-surface.md` §3), so
-/// we copy it into an owned `String` before sending it down a channel. A
-/// Kotlin thread drains the channel via `nativeNextUpdate` — pull-side cadence
-/// sidesteps JNI thread-attach/global-ref complexity.
-extern "C" fn on_update(context: *mut c_void, json: *const c_char) {
-    if context.is_null() || json.is_null() {
+/// `nmp_app_set_update_callback` fires on the kernel's listener thread. NMP's
+/// update transport is binary FlatBuffers (NMP `UpdateCallback` is
+/// `extern "C" fn(*mut c_void, *const u8, usize)`), so the frame arrives as a
+/// borrowed `(bytes, len)` buffer — **not** a NUL-terminated C string. We
+/// decode it to the JSON envelope via `nmp_app_podcast_decode_update_frame`
+/// (the same in-crate symbol the iOS `KernelBridge.swift` callback uses), copy
+/// the JSON into an owned `String`, free the kernel pointer, then send it down
+/// the channel. A Kotlin thread drains the channel via `nativeNextUpdate` —
+/// pull-side cadence sidesteps JNI thread-attach/global-ref complexity.
+extern "C" fn on_update(context: *mut c_void, bytes: *const u8, len: usize) {
+    if context.is_null() || bytes.is_null() || len == 0 {
         return;
     }
+    // SAFETY: `bytes` is valid for `len` bytes for the duration of this call
+    // (NMP borrows the frame to the callback). `decode_update_frame` returns a
+    // heap-owned C string (or null on a non-decodable frame) that we must
+    // release through `nmp_app_free_string`.
+    let json_ptr = unsafe { crate::ffi::snapshot::nmp_app_podcast_decode_update_frame(bytes, len) };
+    if json_ptr.is_null() {
+        return;
+    }
+    let owned = unsafe { CStr::from_ptr(json_ptr) }
+        .to_string_lossy()
+        .into_owned();
+    nmp_app_free_string(json_ptr);
     // SAFETY: `context` is the `Box<Sender<String>>` pointer registered in
     // `nativeNew`; it lives until `nativeFree` clears the callback before
     // reclaiming the box.
     let tx = unsafe { &*(context as *const Sender<String>) };
-    let owned = unsafe { CStr::from_ptr(json) }
-        .to_string_lossy()
-        .into_owned();
     // Dead receiver ⇒ silent no-op (D6).
     let _ = tx.send(owned);
 }

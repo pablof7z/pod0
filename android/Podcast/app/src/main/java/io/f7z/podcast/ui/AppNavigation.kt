@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -87,7 +88,21 @@ fun AppNavigation(snapshot: PodcastSnapshot?, bridge: KernelBridge) {
             is AppRoute.ShowDetail -> ShowDetailScreen(
                 showId = current.showId,
                 snapshot = snapshot,
+                onEpisodeSelected = { episode ->
+                    route = AppRoute.EpisodeDetail(
+                        episodeId = episode.id,
+                        podcastId = episode.podcastId ?: current.showId,
+                    )
+                },
                 onBack = { route = AppRoute.Tab(selectedTab) },
+                modifier = contentModifier,
+            )
+            is AppRoute.EpisodeDetail -> EpisodeDetailScreen(
+                episodeId = current.episodeId,
+                podcastId = current.podcastId,
+                snapshot = snapshot,
+                bridge = bridge,
+                onBack = { route = AppRoute.ShowDetail(current.podcastId) },
                 modifier = contentModifier,
             )
             AppRoute.Identity -> IdentityScreen(
@@ -112,7 +127,14 @@ private fun TabContent(
 ) {
     when (tab) {
         BottomTab.Home -> HomeScreen(snapshot = snapshot, bridge = bridge, modifier = modifier)
-        BottomTab.Library -> LibraryScreen(snapshot = snapshot, onShowSelected = onShowSelected, modifier = modifier)
+        BottomTab.Search -> SearchScreen(
+            snapshot = snapshot,
+            bridge = bridge,
+            onSubscribed = { showId -> onShowSelected(PodcastSummary(id = showId, title = "")) },
+            onResultTapped = onShowSelected,
+            modifier = modifier,
+        )
+        BottomTab.Library -> LibraryScreen(snapshot = snapshot, bridge = bridge, onShowSelected = onShowSelected, modifier = modifier)
         BottomTab.Player -> PlayerScreen(snapshot = snapshot, bridge = bridge, modifier = modifier)
         BottomTab.Settings -> SettingsScreen(snapshot = snapshot, onNavigateToIdentity = onOpenIdentity, modifier = modifier)
     }
@@ -125,6 +147,7 @@ private fun TabContent(
  */
 enum class BottomTab(val label: String, val icon: ImageVector) {
     Home("Home", Icons.Filled.Home),
+    Search("Search", Icons.Filled.Search),
     Library("Library", Icons.AutoMirrored.Filled.LibraryBooks),
     Player("Player", Icons.Filled.PlayCircle),
     Settings("Settings", Icons.Filled.Settings),
@@ -141,6 +164,7 @@ enum class BottomTab(val label: String, val icon: ImageVector) {
 private sealed interface AppRoute {
     data class Tab(val tab: BottomTab) : AppRoute
     data class ShowDetail(val showId: String) : AppRoute
+    data class EpisodeDetail(val episodeId: String, val podcastId: String) : AppRoute
     data object Identity : AppRoute
 
     companion object {
@@ -150,6 +174,7 @@ private sealed interface AppRoute {
                     when (value) {
                         is Tab -> listOf("tab", value.tab.name)
                         is ShowDetail -> listOf("show", value.showId)
+                        is EpisodeDetail -> listOf("episode", value.episodeId, value.podcastId)
                         Identity -> listOf("identity")
                     }
                 },
@@ -159,6 +184,11 @@ private sealed interface AppRoute {
                     when (list.firstOrNull()) {
                         "tab" -> Tab(BottomTab.entries.firstOrNull { it.name == list.getOrNull(1) } ?: BottomTab.Home)
                         "show" -> list.getOrNull(1)?.let { ShowDetail(it) }
+                        "episode" -> {
+                            val ep = list.getOrNull(1)
+                            val pod = list.getOrNull(2)
+                            if (ep != null && pod != null) EpisodeDetail(ep, pod) else null
+                        }
                         "identity" -> Identity
                         else -> null
                     }
