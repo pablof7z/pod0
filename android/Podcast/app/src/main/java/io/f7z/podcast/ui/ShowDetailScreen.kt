@@ -49,7 +49,15 @@ fun ShowDetailScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Resolve the show by the id carried in the nav route. A library tile
+    // passes the Rust subscription UUID; a search-result row passes the
+    // iTunes `collectionId` (or feed URL), which never matches a
+    // subscription UUID. So fall back to `searchResults` (matching either
+    // the result id or its feed URL) before giving up — tapping an
+    // unsubscribed result then resolves to its title + the empty-episode
+    // state instead of "Show not found".
     val show = snapshot?.subscriptions?.firstOrNull { it.id == showId }
+        ?: snapshot?.searchResults?.firstOrNull { it.id == showId || it.feedUrl == showId }
 
     Scaffold(
         modifier = modifier,
