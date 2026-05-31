@@ -26,6 +26,7 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
+use podcast_knowledge::bm25::{first_term_position, normalize_scores, tokenize, Bm25Index};
 use podcast_knowledge::types::TranscriptChunk;
 use podcast_knowledge::{KnowledgeChunk, KnowledgeStore};
 
@@ -207,9 +208,17 @@ pub const KNOWLEDGE_SEARCH_TOP_K: usize = 10;
 /// Snippet character budget surfaced in the projection.
 pub const KNOWLEDGE_SNIPPET_MAX_CHARS: usize = 200;
 
-/// Title/description ranker: case-insensitive substring match over each
-/// episode's title + description, sorted by [`score_match`] and truncated
-/// to [`KNOWLEDGE_SEARCH_TOP_K`].
+/// Title/description ranker: tokenised BM25 over each episode's
+/// `title + description` (one document per episode), with a `+0.2` boost
+/// when a query term lands in the title, then truncated to
+/// [`KNOWLEDGE_SEARCH_TOP_K`].
+///
+/// BM25 replaces the old whole-query substring matcher: a query like
+/// `"machine learning"` now matches an episode that mentions both words in
+/// any order, not only those that contain the contiguous phrase. Scores
+/// are per-path normalised into `[0,1]` (top hit = 1.0) before the title
+/// boost and final clamp, so they feed the projection's relevance bar
+/// directly.
 ///
 /// This is one of the two lexical signals [`handle_search`] merges; the
 /// other is [`merge_chunk_matches`] over the indexed transcript chunks.
@@ -219,59 +228,80 @@ pub fn collect_knowledge_matches(
     store: &PodcastStore,
     query: &str,
 ) -> Vec<KnowledgeSearchResult> {
-    let needle = query.to_lowercase();
-    if needle.is_empty() {
+    let query_terms = tokenize(query);
+    if query_terms.is_empty() {
         return Vec::new();
     }
-    let mut scored: Vec<(f32, KnowledgeSearchResult)> = Vec::new();
+
+    // One BM25 document per episode = title + description. Keep a parallel
+    // table of the source rows so we can resolve a ranked doc index back to
+    // its episode/podcast and decide the title-vs-description boost.
+    struct Row<'a> {
+        episode_id: String,
+        episode_title: &'a str,
+        podcast_title: &'a str,
+        description: &'a str,
+    }
+    let mut rows: Vec<Row> = Vec::new();
+    let mut corpus: Vec<String> = Vec::new();
     for (podcast, episodes) in store.all_podcasts() {
         for ep in episodes {
-            let title_lc = ep.title.to_lowercase();
-            let desc_lc = ep.description.to_lowercase();
-            let title_pos = title_lc.find(&needle);
-            let desc_pos = desc_lc.find(&needle);
-            if title_pos.is_none() && desc_pos.is_none() {
-                continue;
-            }
-            // Title hits weigh more than description hits.
-            let score = match (title_pos, desc_pos) {
-                (Some(p), _) => score_match(p, title_lc.len()) + 0.2,
-                (None, Some(p)) => score_match(p, desc_lc.len()),
-                _ => 0.0,
-            };
-            let snippet = match desc_pos {
-                Some(p) => build_snippet(&ep.description, p, needle.len()),
-                None => build_snippet(&ep.title, title_pos.unwrap_or(0), needle.len()),
-            };
-            scored.push((
-                score.clamp(0.0, 1.0),
-                KnowledgeSearchResult {
-                    episode_id: ep.id.0.to_string(),
-                    episode_title: ep.title.clone(),
-                    podcast_title: podcast.title.clone(),
-                    snippet,
-                    // The stub only matches against title + description,
-                    // neither of which carries a timestamp. Real chunk
-                    // search will populate this from the chunk metadata.
-                    start_secs: None,
-                    relevance_score: score.clamp(0.0, 1.0),
-                },
-            ));
+            corpus.push(format!("{} {}", ep.title, ep.description));
+            rows.push(Row {
+                episode_id: ep.id.0.to_string(),
+                episode_title: &ep.title,
+                podcast_title: &podcast.title,
+                description: &ep.description,
+            });
         }
     }
-    scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
-    scored
+
+    let index = Bm25Index::from_texts(&corpus);
+    let ranked = normalize_scores(&index.rank(&query_terms));
+
+    ranked
         .into_iter()
         .take(KNOWLEDGE_SEARCH_TOP_K)
-        .map(|(_, r)| r)
+        .map(|(doc, base)| {
+            let row = &rows[doc];
+            // Title hits weigh more than description-only hits.
+            let title_hit = !tokenize(row.episode_title).is_empty()
+                && query_terms.iter().any(|t| {
+                    row.episode_title.to_lowercase().contains(t.as_str())
+                });
+            let score = (base + if title_hit { 0.2 } else { 0.0 }).clamp(0.0, 1.0);
+            // Anchor the snippet on the first matched term in whichever
+            // field carries it: prefer the description (longer, more
+            // context), fall back to the title.
+            let desc_pos = first_term_position(row.description, &query_terms);
+            let desc_has_term = query_terms
+                .iter()
+                .any(|t| row.description.to_lowercase().contains(t.as_str()));
+            let snippet = if desc_has_term {
+                build_snippet(row.description, desc_pos, 0)
+            } else {
+                let title_pos = first_term_position(row.episode_title, &query_terms);
+                build_snippet(row.episode_title, title_pos, 0)
+            };
+            KnowledgeSearchResult {
+                episode_id: row.episode_id.clone(),
+                episode_title: row.episode_title.to_owned(),
+                podcast_title: row.podcast_title.to_owned(),
+                snippet,
+                // Title/description carry no timestamp; chunk search
+                // populates this from chunk metadata.
+                start_secs: None,
+                relevance_score: score,
+            }
+        })
         .collect()
 }
 
 /// Collect the full text of up to `limit` transcript chunks matching
-/// `query` (case-insensitive substring), ranked by the same early-position
-/// [`score_match`] heuristic used by search. Returns the chunks' full
-/// `text` (not the 200-char snippet) so the wiki LLM gets real source
-/// material to synthesize from (M5.6-wiki RAG context).
+/// `query`, ranked by BM25 over the in-scope chunk set (same engine as
+/// search). Returns the chunks' full `text` (not the 200-char snippet) so
+/// the wiki LLM gets real source material to synthesize from (M5.6-wiki
+/// RAG context).
 ///
 /// Scoped to `episode_ids`: the knowledge store is global across all
 /// subscribed podcasts, but a per-podcast wiki article must only cite that
@@ -286,26 +316,31 @@ pub(crate) fn collect_chunk_texts_for_topic(
     episode_ids: &[String],
     limit: usize,
 ) -> Vec<String> {
-    let needle = query.to_lowercase();
-    if needle.is_empty() || episode_ids.is_empty() {
+    let query_terms = tokenize(query);
+    if query_terms.is_empty() || episode_ids.is_empty() {
         return Vec::new();
     }
     let scope: std::collections::HashSet<&str> =
         episode_ids.iter().map(String::as_str).collect();
-    let mut scored: Vec<(f32, String)> = Vec::new();
-    for kc in &knowledge_store.chunks {
-        let chunk = &kc.chunk;
-        if !scope.contains(chunk.episode_id.as_str()) {
-            continue;
-        }
-        let text_lc = chunk.text.to_lowercase();
-        if let Some(pos) = text_lc.find(&needle) {
-            let score = score_match(pos, text_lc.len());
-            scored.push((score, chunk.text.clone()));
-        }
+    // Build the BM25 corpus from the in-scope chunks only, so IDF and
+    // length normalisation are computed against the same set we rank (a
+    // per-podcast wiki article must only weigh that podcast's episodes).
+    let in_scope: Vec<&str> = knowledge_store
+        .chunks
+        .iter()
+        .filter(|kc| scope.contains(kc.chunk.episode_id.as_str()))
+        .map(|kc| kc.chunk.text.as_str())
+        .collect();
+    if in_scope.is_empty() {
+        return Vec::new();
     }
-    scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
-    scored.into_iter().take(limit).map(|(_, t)| t).collect()
+    let index = Bm25Index::from_texts(&in_scope);
+    index
+        .rank(&query_terms)
+        .into_iter()
+        .take(limit)
+        .map(|(doc, _)| in_scope[doc].to_owned())
+        .collect()
 }
 
 /// Build an `episode_id -> (podcast_title, episode_title)` map from the
@@ -344,23 +379,30 @@ fn merge_chunk_matches(
     query: &str,
     labels: &HashMap<String, (String, String)>,
 ) {
-    let needle = query.to_lowercase();
-    if needle.is_empty() {
+    let query_terms = tokenize(query);
+    if query_terms.is_empty() {
         return;
     }
-    for kc in &knowledge_store.chunks {
-        let chunk = &kc.chunk;
-        let text_lc = chunk.text.to_lowercase();
-        let pos = match text_lc.find(&needle) {
-            Some(p) => p,
-            None => continue,
-        };
+    // BM25 over the whole chunk store, normalised per-path into [0,1].
+    let corpus: Vec<&str> = knowledge_store
+        .chunks
+        .iter()
+        .map(|kc| kc.chunk.text.as_str())
+        .collect();
+    let index = Bm25Index::from_texts(&corpus);
+    let ranked = normalize_scores(&index.rank(&query_terms));
+
+    for (doc, base) in ranked {
+        let chunk = &knowledge_store.chunks[doc].chunk;
         let (podcast_title, episode_title) = match labels.get(&chunk.episode_id) {
             Some(pair) => pair.clone(),
             None => continue,
         };
-        let score = (score_match(pos, text_lc.len()) + 0.1).clamp(0.0, 1.0);
-        let snippet = build_snippet(&chunk.text, pos, needle.len());
+        // Chunk bonus so a transcript hit edges out a bare title/desc hit
+        // of equal normalised score.
+        let score = (base + 0.1).clamp(0.0, 1.0);
+        let pos = first_term_position(&chunk.text, &query_terms);
+        let snippet = build_snippet(&chunk.text, pos, 0);
         let row = KnowledgeSearchResult {
             episode_id: chunk.episode_id.clone(),
             episode_title,
@@ -379,19 +421,6 @@ fn merge_chunk_matches(
             rows.push(row);
         }
     }
-}
-
-/// Cheap "how early in the haystack did the needle land" heuristic
-/// mapped to a `0.0..=1.0` relevance score. An early match against a
-/// long text scores higher than a late match against the same text;
-/// any match scores at least 0.1 so the UI's relevance bar is never
-/// invisible.
-fn score_match(position: usize, total_len: usize) -> f32 {
-    if total_len == 0 {
-        return 0.1;
-    }
-    let rel = position as f32 / total_len as f32;
-    (1.0 - rel).max(0.1)
 }
 
 /// Build a snippet centered on `match_pos` within `text`, capped at

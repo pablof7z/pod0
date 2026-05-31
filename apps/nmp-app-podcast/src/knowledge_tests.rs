@@ -74,6 +74,61 @@ fn title_match_outranks_description_match() {
 }
 
 #[test]
+fn bm25_matches_reordered_query_terms_substring_would_miss() {
+    // BM25 upgrade (feature #38): the old whole-query substring matcher
+    // required the query to appear as a contiguous substring. BM25
+    // tokenises, so a query whose terms appear in the text in a different
+    // order — never as a contiguous phrase — now matches.
+    let mut store = PodcastStore::new();
+    let podcast = Podcast::new("Tech Talk");
+    let id = podcast.id;
+    let ep = make_episode(id, "Episode 1", "consensus among distributed nodes");
+    let ep_id = ep.id.0.to_string();
+    store.subscribe(podcast, vec![ep]);
+
+    // Baseline the old behaviour inline: "distributed consensus" is NOT a
+    // contiguous substring of the description.
+    let desc_lc = "consensus among distributed nodes";
+    assert!(
+        !desc_lc.contains("distributed consensus"),
+        "substring baseline must miss the reordered phrase"
+    );
+
+    // BM25 finds it.
+    let results = collect_knowledge_matches(&store, "distributed consensus");
+    assert_eq!(results.len(), 1, "BM25 matches what substring search misses");
+    assert_eq!(results[0].episode_id, ep_id);
+    assert!(results[0].relevance_score > 0.0);
+}
+
+#[test]
+fn bm25_ranks_focused_episode_above_diluted_mention() {
+    // TF-IDF + length normalisation: a short, focused episode outranks a
+    // long episode where the term is an incidental mention. The old
+    // early-position substring heuristic could not express this.
+    let mut store = PodcastStore::new();
+    let podcast = Podcast::new("Show");
+    let id = podcast.id;
+    let focused = make_episode(id, "bitcoin halving", "bitcoin halving explained");
+    let diluted = make_episode(
+        id,
+        "weekly roundup",
+        "we cover gardening and weather and then mention bitcoin once before \
+         returning to a long discussion of seasonal planting and compost tips",
+    );
+    let focused_id = focused.id.0.to_string();
+    store.subscribe(podcast, vec![diluted, focused]);
+
+    let results = collect_knowledge_matches(&store, "bitcoin");
+    assert_eq!(results.len(), 2);
+    assert_eq!(
+        results[0].episode_id, focused_id,
+        "focused episode must outrank the diluted incidental mention"
+    );
+    assert!(results[0].relevance_score >= results[1].relevance_score);
+}
+
+#[test]
 fn no_match_returns_empty() {
     let mut store = PodcastStore::new();
     let podcast = Podcast::new("Show");
