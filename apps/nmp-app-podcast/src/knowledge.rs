@@ -297,11 +297,12 @@ pub fn collect_knowledge_matches(
         .collect()
 }
 
-/// Collect the full text of up to `limit` transcript chunks matching
-/// `query`, ranked by BM25 over the in-scope chunk set (same engine as
-/// search). Returns the chunks' full `text` (not the 200-char snippet) so
-/// the wiki LLM gets real source material to synthesize from (M5.6-wiki
-/// RAG context).
+/// Collect up to `limit` transcript chunks matching `query`, ranked by
+/// BM25 over the in-scope chunk set (same engine as search). Returns
+/// `(episode_id, text)` pairs carrying each chunk's full `text` (not the
+/// 200-char snippet) so the wiki LLM gets real source material to
+/// synthesize from, plus the owning episode id so the article can record
+/// which episodes it drew from (M9 source attribution).
 ///
 /// Scoped to `episode_ids`: the knowledge store is global across all
 /// subscribed podcasts, but a per-podcast wiki article must only cite that
@@ -309,13 +310,15 @@ pub fn collect_knowledge_matches(
 ///
 /// Unlike [`merge_chunk_matches`], this is library-agnostic: it doesn't
 /// resolve episode labels or dedup by episode, because the wiki prompt
-/// wants raw context excerpts, not UI rows.
+/// wants raw context excerpts, not UI rows. The attribution episode ids are
+/// derived by the caller from the truncated (top-`limit`) result so they
+/// reflect only the chunks that actually entered the LLM context window.
 pub(crate) fn collect_chunk_texts_for_topic(
     knowledge_store: &KnowledgeStore,
     query: &str,
     episode_ids: &[String],
     limit: usize,
-) -> Vec<String> {
+) -> Vec<(String, String)> {
     let query_terms = tokenize(query);
     if query_terms.is_empty() || episode_ids.is_empty() {
         return Vec::new();
@@ -325,21 +328,27 @@ pub(crate) fn collect_chunk_texts_for_topic(
     // Build the BM25 corpus from the in-scope chunks only, so IDF and
     // length normalisation are computed against the same set we rank (a
     // per-podcast wiki article must only weigh that podcast's episodes).
-    let in_scope: Vec<&str> = knowledge_store
+    // `in_scope` carries `(episode_id, text)` so the ranked doc index maps
+    // back to the owning episode for attribution.
+    let in_scope: Vec<(&str, &str)> = knowledge_store
         .chunks
         .iter()
         .filter(|kc| scope.contains(kc.chunk.episode_id.as_str()))
-        .map(|kc| kc.chunk.text.as_str())
+        .map(|kc| (kc.chunk.episode_id.as_str(), kc.chunk.text.as_str()))
         .collect();
     if in_scope.is_empty() {
         return Vec::new();
     }
-    let index = Bm25Index::from_texts(&in_scope);
+    let texts: Vec<&str> = in_scope.iter().map(|(_, text)| *text).collect();
+    let index = Bm25Index::from_texts(&texts);
     index
         .rank(&query_terms)
         .into_iter()
         .take(limit)
-        .map(|(doc, _)| in_scope[doc].to_owned())
+        .map(|(doc, _)| {
+            let (episode_id, text) = in_scope[doc];
+            (episode_id.to_owned(), text.to_owned())
+        })
         .collect()
 }
 

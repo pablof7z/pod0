@@ -423,12 +423,16 @@ fn collect_chunk_texts_returns_full_text_capped_at_limit() {
     }));
 
     let scope = vec!["ep-1".to_owned()];
-    let texts = collect_chunk_texts_for_topic(&ks, "halving", &scope, 5);
-    assert_eq!(texts.len(), 5, "must cap at the requested limit");
+    let hits = collect_chunk_texts_for_topic(&ks, "halving", &scope, 5);
+    assert_eq!(hits.len(), 5, "must cap at the requested limit");
+    // Every hit is attributed to the owning episode.
+    assert!(hits.iter().all(|(ep, _)| ep == "ep-1"));
     // Returns the full chunk text, not a 200-char snippet.
-    assert!(texts.iter().all(|t| t.contains("bitcoin halving in detail")));
+    assert!(hits
+        .iter()
+        .all(|(_, text)| text.contains("bitcoin halving in detail")));
     assert!(
-        texts.iter().all(|t| !t.contains("lightning")),
+        hits.iter().all(|(_, text)| !text.contains("lightning")),
         "non-matching chunks excluded"
     );
 }
@@ -449,8 +453,9 @@ fn collect_chunk_texts_scopes_to_supplied_episode_ids() {
     }
     // Only ep-mine is in scope; the unrelated podcast's chunk must not leak.
     let scope = vec!["ep-mine".to_owned()];
-    let texts = collect_chunk_texts_for_topic(&ks, "halving", &scope, 5);
-    assert_eq!(texts.len(), 1, "chunk search must stay scoped to the podcast");
+    let hits = collect_chunk_texts_for_topic(&ks, "halving", &scope, 5);
+    assert_eq!(hits.len(), 1, "chunk search must stay scoped to the podcast");
+    assert_eq!(hits[0].0, "ep-mine", "hit attributed to the in-scope episode");
 
     // Empty scope yields nothing even when chunks match.
     assert!(collect_chunk_texts_for_topic(&ks, "halving", &[], 5).is_empty());

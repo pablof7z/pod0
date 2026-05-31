@@ -244,3 +244,120 @@ fn search_with_empty_query_clears_results() {
     );
     assert!(results.lock().unwrap().is_empty());
 }
+
+/// M9 source attribution: when the topic's RAG chunks come from two
+/// episodes, the generated article records both episode ids in
+/// `source_episode_ids`. The per-podcast episode scope is derived from the
+/// store (so the podcast_id must be a real UUID), and the chunk store is
+/// seeded with matching chunks under each episode.
+#[test]
+fn generate_records_source_episode_ids_from_matched_chunks() {
+    use podcast_core::{Episode, Podcast};
+    use podcast_knowledge::KnowledgeChunk;
+    use podcast_transcripts::TranscriptChunk;
+
+    let (articles, results, store, knowledge_store, rev, rt) = make_slots();
+
+    // Subscribe a real podcast with two episodes so the chunk scope (derived
+    // from `episodes_for`) is non-empty. Episode ids are random UUIDs.
+    let podcast = Podcast::new("Bitcoin Show");
+    let podcast_id = podcast.id;
+    let ep1 = Episode::new(
+        podcast_id,
+        "https://example.com/feed.xml",
+        "guid-1",
+        "Episode One",
+        url::Url::parse("https://example.com/1.mp3").unwrap(),
+        chrono::Utc::now(),
+    );
+    let ep2 = Episode::new(
+        podcast_id,
+        "https://example.com/feed.xml",
+        "guid-2",
+        "Episode Two",
+        url::Url::parse("https://example.com/2.mp3").unwrap(),
+        chrono::Utc::now(),
+    );
+    // ep3 is in scope but its only chunk shares no tokens with the topic, so
+    // it must NOT appear in source_episode_ids — proving attribution tracks
+    // contributing episodes, not every episode that happens to be indexed.
+    let ep3 = Episode::new(
+        podcast_id,
+        "https://example.com/feed.xml",
+        "guid-3",
+        "Episode Three",
+        url::Url::parse("https://example.com/3.mp3").unwrap(),
+        chrono::Utc::now(),
+    );
+    let ep1_id = ep1.id.0.to_string();
+    let ep2_id = ep2.id.0.to_string();
+    let ep3_id = ep3.id.0.to_string();
+    store
+        .lock()
+        .unwrap()
+        .subscribe(podcast, vec![ep1, ep2, ep3]);
+
+    // Seed one matching chunk per topic episode (BM25 ranks on the shared
+    // "halving" token). ep3's chunk shares no token with the topic — BM25's
+    // strictly-positive-score filter must drop it, so ep3 is not attributed.
+    {
+        let mut ks = knowledge_store.lock().unwrap();
+        ks.upsert(KnowledgeChunk::without_embedding(TranscriptChunk {
+            episode_id: ep1_id.clone(),
+            chunk_index: 0,
+            start_secs: 0.0,
+            end_secs: 0.0,
+            text: "deep dive on the bitcoin halving schedule".to_owned(),
+            word_count: 6,
+        }));
+        ks.upsert(KnowledgeChunk::without_embedding(TranscriptChunk {
+            episode_id: ep2_id.clone(),
+            chunk_index: 0,
+            start_secs: 0.0,
+            end_secs: 0.0,
+            text: "more on the bitcoin halving and supply".to_owned(),
+            word_count: 6,
+        }));
+        ks.upsert(KnowledgeChunk::without_embedding(TranscriptChunk {
+            episode_id: ep3_id.clone(),
+            chunk_index: 0,
+            start_secs: 0.0,
+            end_secs: 0.0,
+            text: "unrelated lightning network routing".to_owned(),
+            word_count: 4,
+        }));
+    }
+
+    let envelope = handle_wiki_action(
+        &articles,
+        &results,
+        &store,
+        &knowledge_store,
+        &rev,
+        &rt,
+        WikiAction::Generate {
+            podcast_id: podcast_id.0.to_string(),
+            topic: "halving".into(),
+        },
+    );
+    assert_eq!(envelope["ok"], true);
+
+    let stored = articles.lock().unwrap();
+    assert_eq!(stored.len(), 1);
+    let sources = &stored[0].source_episode_ids;
+    assert_eq!(
+        sources.len(),
+        2,
+        "article must record both contributing episodes, got {sources:?}"
+    );
+    assert!(sources.contains(&ep1_id), "missing ep1 attribution");
+    assert!(sources.contains(&ep2_id), "missing ep2 attribution");
+    assert!(
+        !sources.contains(&ep3_id),
+        "ep3 has no topic-matching chunk and must not be attributed"
+    );
+    // Deduped + sorted for snapshot stability.
+    let mut expected = vec![ep1_id, ep2_id];
+    expected.sort();
+    assert_eq!(sources, &expected, "source ids must be sorted and deduped");
+}

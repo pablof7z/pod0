@@ -117,8 +117,9 @@ fn handle_generate(
     // transcripts. Scoped to this podcast's episodes — the knowledge store is
     // global, but a per-podcast article must not cite an unrelated podcast.
     // Collected synchronously (lock dropped before spawn), mirroring the
-    // transcript collection above.
-    let context_chunks: Vec<String> = match knowledge_store.lock() {
+    // transcript collection above. Each hit carries its owning episode id so
+    // the article can record which episodes it drew from (M9 attribution).
+    let chunk_hits: Vec<(String, String)> = match knowledge_store.lock() {
         Ok(ks) => collect_chunk_texts_for_topic(
             &ks,
             topic_trimmed,
@@ -127,6 +128,19 @@ fn handle_generate(
         ),
         Err(_) => Vec::new(),
     };
+
+    // M9 source attribution: the source episodes are exactly those whose
+    // chunks entered the LLM context window (the truncated top-N hits), not
+    // the broad per-podcast scope. Deduped and sorted for snapshot stability.
+    let source_episode_ids: Vec<String> = {
+        let mut ids: Vec<String> =
+            chunk_hits.iter().map(|(ep, _)| ep.clone()).collect();
+        ids.sort();
+        ids.dedup();
+        ids
+    };
+    let context_chunks: Vec<String> =
+        chunk_hits.into_iter().map(|(_, text)| text).collect();
 
     let article_id = uuid::Uuid::new_v4().to_string();
     let now = Utc::now().timestamp();
@@ -142,7 +156,7 @@ fn handle_generate(
         podcast_id: podcast_id.clone(),
         topic: topic_trimmed.to_owned(),
         summary: placeholder_summary,
-        source_episode_ids: Vec::new(),
+        source_episode_ids,
         last_updated_at: now,
         is_generating: true,
         generation_error: None,
