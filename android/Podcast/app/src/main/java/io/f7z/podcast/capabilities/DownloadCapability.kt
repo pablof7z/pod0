@@ -13,6 +13,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -110,11 +111,17 @@ class DownloadCapability(
         }
     }
 
-    /** Cancel every in-flight download. Call before the owner frees the
-     *  kernel bridge so no report fires through a freed handle. */
+    /** Cancel every in-flight download and block until all workers have exited.
+     *  Must be called before the owner frees the kernel bridge — guarantees no
+     *  report fires through a freed handle. */
     fun detach() {
-        inFlight.clear()
+        inFlight.keys.toList().forEach { key -> inFlight.remove(key)?.cancel() }
         scope.cancel()
+        // Join the SupervisorJob so all child coroutines have finished their
+        // finally blocks (and cannot fire a report) before we return.
+        runBlocking(Dispatchers.IO) {
+            scope.coroutineContext[Job]?.join()
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────
