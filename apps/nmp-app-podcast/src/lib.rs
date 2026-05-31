@@ -33,6 +33,7 @@
 
 pub(crate) mod ad_skip_handler;
 pub mod agent_handler;
+pub(crate) mod agent_note_handler;
 pub(crate) mod agent_llm;
 pub(crate) mod agent_tools;
 pub(crate) mod identity_handler;

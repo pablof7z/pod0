@@ -290,6 +290,16 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
 
     let social = handle.social.lock().ok().and_then(|s| s.clone());
 
+    // Feature #44 — inbound agent-to-agent kind:1 notes. Reactive push:
+    // the cache is filled by `FetchAgentNotes` on the actor thread and
+    // projected here on every tick (no polling, no pull symbols).
+    let agent_notes = handle
+        .agent_notes
+        .lock()
+        .ok()
+        .map(|n| n.clone())
+        .unwrap_or_default();
+
     let voice = handle.voice_state.lock().ok().and_then(|v| {
         let snap = v.clone();
         (snap != VoiceState::default()).then_some(snap)
@@ -332,6 +342,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         categories,
         briefing,
         social,
+        agent_notes,
         ..PodcastUpdate::default()
     }
 }

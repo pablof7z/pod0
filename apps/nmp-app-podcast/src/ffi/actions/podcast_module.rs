@@ -128,6 +128,25 @@ pub enum PodcastAction {
     /// into the projection layer in a follow-up
     /// (`pr-social-graph-nmp-store-wiring` in `docs/BACKLOG.md`).
     FetchContacts,
+    /// Feature #44 — publish an agent-to-agent kind:1 note addressed to
+    /// `recipient_pubkey_hex`, threaded with NIP-10 when `root_event_id`
+    /// is set. Signs with the active identity and broadcasts to the relay.
+    ///
+    /// Returns `{"status":"published"|"signed","event_id":"..."}`. This is
+    /// the public-note transport the matrix specifies for agent
+    /// coordination — NIP-17 private DMs are an explicit non-goal.
+    PublishAgentNote {
+        recipient_pubkey_hex: String,
+        content: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        root_event_id: Option<String>,
+    },
+    /// Feature #44 — subscribe to inbound kind:1 notes addressed to the
+    /// active account (`#p` filter) and surface them on
+    /// `PodcastUpdate.agent_notes`. Every inbound note is projected as
+    /// untrusted until the kind:3 contact/trust gate is wired
+    /// (`agent-to-agent-kind1` in BACKLOG).
+    FetchAgentNotes,
     /// Toggle or set the "starred" / bookmarked flag on an episode.
     ///
     /// When `starred` is `None` the kernel flips the current value;

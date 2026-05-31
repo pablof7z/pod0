@@ -4,6 +4,7 @@ use nmp_app_podcast::PodcastHandle;
 use nmp_ffi::NmpApp;
 
 mod agent_chat;
+mod agent_notes;
 mod comments;
 mod discover_nostr;
 mod identity;
@@ -63,6 +64,7 @@ pub fn run_all(
         ("nipf4_publish", nipf4_publish::run(app, handle)),
         ("discover_nostr", discover_nostr::run(app, handle)),
         ("comments", comments::run(app, handle)),
+        ("agent_notes", agent_notes::run(app, handle)),
         ("social", social::run(app, handle)),
     ]
 }

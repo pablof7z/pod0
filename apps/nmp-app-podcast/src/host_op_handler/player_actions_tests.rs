@@ -61,6 +61,7 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
         Arc::new(Mutex::new(HashMap::new())),
         Arc::new(AtomicBool::new(false)),
         Arc::new(Mutex::new(None)),
+        Arc::new(Mutex::new(Vec::new())),
     )
 }
 

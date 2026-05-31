@@ -51,8 +51,8 @@ use crate::ffi::actions::siri_module::SiriAction;
 use crate::ffi::actions::wiki_module::WikiAction;
 use crate::ffi::handle::OwnedPublishState;
 use crate::ffi::projections::{
-    AgentPickSummary, AgentTaskSummary, BriefingSnapshot, CommentSummary, KnowledgeSearchResult,
-    NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry,
+    AgentNoteSummary, AgentPickSummary, AgentTaskSummary, BriefingSnapshot, CommentSummary,
+    KnowledgeSearchResult, NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry,
     VoiceState, WikiArticle,
 };
 use crate::host_op_handler_queue::handle_queue_action;
@@ -156,6 +156,12 @@ pub struct PodcastHostOpHandler {
     /// with `PodcastHandle.social` so the snapshot reader projects it on
     /// every tick after the first fetch.
     pub(crate) social: Arc<Mutex<Option<SocialSnapshot>>>,
+    /// Feature #44 — inbound agent-to-agent kind:1 notes addressed to the
+    /// active account, populated by `FetchAgentNotes`. Shared with
+    /// `PodcastHandle.agent_notes` so the snapshot reader projects them on
+    /// `PodcastUpdate.agent_notes` (reactive push seam — no polling).
+    /// In-memory only; re-fetched on the next `FetchAgentNotes` dispatch.
+    pub(crate) agent_notes: Arc<Mutex<Vec<AgentNoteSummary>>>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the
@@ -198,6 +204,7 @@ impl PodcastHostOpHandler {
         inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
         inbox_triage_in_progress: Arc<std::sync::atomic::AtomicBool>,
         social: Arc<Mutex<Option<SocialSnapshot>>>,
+        agent_notes: Arc<Mutex<Vec<AgentNoteSummary>>>,
     ) -> Self {
         Self {
             app,
@@ -231,6 +238,7 @@ impl PodcastHostOpHandler {
             inbox_triage_cache,
             inbox_triage_in_progress,
             social,
+            agent_notes,
         }
     }
 

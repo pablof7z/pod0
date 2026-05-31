@@ -43,6 +43,10 @@ struct PodcastUpdate {
     @DefaultFalse var inboxTriageInProgress: Bool = false
     @DefaultEmptyArray var ownedPodcasts: [OwnedPodcastInfo] = []
     @DefaultEmptyArray var categories: [CategoryBrowseItem] = []
+    /// Feature #44 — inbound agent-to-agent kind:1 notes, newest-first.
+    /// Every row carries `trusted == false` until the kind:3 contact/trust
+    /// gate lands; route to an approval surface, do not auto-respond.
+    @DefaultEmptyArray var agentNotes: [AgentNoteSummary] = []
 }
 
 /// Active player state (present only when an episode is loaded).
@@ -272,6 +276,7 @@ extension PodcastUpdate: Codable {
         inboxTriageInProgress = try c.decodeIfPresent(Bool.self, forKey: .inboxTriageInProgress) ?? false
         ownedPodcasts = try c.decodeIfPresent([OwnedPodcastInfo].self, forKey: .ownedPodcasts) ?? []
         categories = try c.decodeIfPresent([CategoryBrowseItem].self, forKey: .categories) ?? []
+        agentNotes = try c.decodeIfPresent([AgentNoteSummary].self, forKey: .agentNotes) ?? []
     }
 }
 

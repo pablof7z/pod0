@@ -144,11 +144,36 @@ worktrees currently in flight.
   conversation/approval surfaces with Rust-owned conversation projection,
   trust-list/approval actions, kind:0 profile cache, and NIP-46
   integration.
-- **agent-to-agent-kind1.** Implement agent-to-agent messaging via public
-  kind:1 notes threaded with NIP-10 (`e`/`p` tags for reply chains) only
-  after identity, signer, relay, contact, and trust-list primitives are real.
-  Non-goal: NIP-17 (private direct messages) is out of scope for agent
-  coordination and will not be used for this purpose.
+- **agent-to-agent-kind1 (feature #44).** Agent-to-agent messaging over
+  public kind:1 notes threaded with NIP-10.
+  - **DONE — raw transport.** `agent_note_handler.rs` (PR for #44) signs +
+    publishes kind:1 notes addressed to a peer (`["p",<hex>]`) with the
+    NIP-10 root marker `["e",<root>,"","root"]` via the `PublishAgentNote`
+    action (returns `{status:"published"|"signed","event_id"}`), and
+    subscribes `{kinds:[1],"#p":[me]}` via `FetchAgentNotes`, parsing inbound
+    notes into `AgentNoteSummary` and projecting them onto
+    `PodcastUpdate.agent_notes` (reactive push seam). Self-authored notes are
+    filtered. Unit + headless (`scenarios/agent_notes.rs`) coverage exists.
+    `AgentNoteSummary`/`agent_notes` is an **interim flat projection**: the
+    canonical conversation model already exists as
+    `podcast-agent-core::ConversationActor` / `NostrConversation` and the
+    Swift consumer (`NostrConversationsView`) binds conversation-shaped
+    `nostrConversations` keyed by `rootEventID`. The flat note list is
+    expected to be **subsumed/replaced** by the Rust-owned conversation
+    projection under `nostr-conversations-real-projection`; it is shipped
+    now only to give the kind:1 transport an observable output seam.
+  - **OPEN — trust gate.** Every inbound note is projected `trusted:false`;
+    the Rust side cannot classify a sender as an approved peer until the
+    kind:3 contact list + trust list are real (`social-graph-store-wiring`,
+    `nostr-conversations-real-projection`). The iOS shell must route inbound
+    notes to an approval surface and must not auto-respond until then.
+  - **OPEN — LLM responder loop.** The inbound→model→outbound autopilot
+    (dedup via responded-event ids, per-root outgoing turn cap, `wtd-end`
+    end-conversation gate, bounded kind:0 profile hydration, owner-consult
+    `ask` tool) still lives on the Swift `NostrAgentResponder` path. Porting
+    it to the kernel depends on the trust gate landing first.
+  - Non-goal: NIP-17 (private direct messages) is out of scope for agent
+    coordination and will not be used for this purpose.
 
 ## Active P1 - AI Scaffold Replacement
 

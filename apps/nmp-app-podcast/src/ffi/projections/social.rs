@@ -30,6 +30,46 @@ pub struct CommentSummary {
     pub created_at: i64,
 }
 
+/// One inbound agent-to-agent kind:1 note (feature #44), surfaced via
+/// [`super::snapshot::PodcastUpdate::agent_notes`].
+///
+/// These are public NIP-01 text notes that tag the active account's
+/// pubkey (`#p`), threaded with NIP-10 (`["e", <root>, "", "root"]`).
+/// They are the raw inbound feed for agent-to-agent coordination — the
+/// matrix's "kind:1 notes threaded via NIP-10". NIP-17 private DMs are an
+/// explicit non-goal.
+///
+/// ## Trust
+///
+/// `trusted` is **always `false`** for now: the kind:3 contact list and
+/// trust-list primitives (features #30 / `social-graph-store-wiring` and
+/// `nostr-conversations-real-projection` in BACKLOG) are still scaffold,
+/// so the Rust side cannot yet classify a sender as an approved peer. The
+/// iOS shell must treat every row as untrusted (route to an approval
+/// surface, do not auto-respond) until the trust gate lands. The field is
+/// carried now so the wire contract is stable when it does.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
+pub struct AgentNoteSummary {
+    /// Event id (lowercase hex) — stable Nostr identifier, used for dedup.
+    pub id: String,
+    /// Author bech32 (`npub1…`) — pre-encoded so iOS renders the
+    /// truncated-key fallback without a bech32 dependency.
+    pub author_npub: String,
+    /// Note body — the raw `content` field of the kind:1 event.
+    pub content: String,
+    /// Unix seconds (matches NIP-01 `created_at`).
+    pub created_at: i64,
+    /// NIP-10 conversation root event id (lowercase hex) when the note is
+    /// a reply, else `None` for a thread-opening note. Used by the shell
+    /// to group notes into conversations.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub root_event_id: Option<String>,
+    /// Whether the sender is a trust-list-approved peer. Always `false`
+    /// until the kind:3 contact/trust primitives are real — see the
+    /// type-level docs.
+    pub trusted: bool,
+}
+
 /// One contact row in [`SocialSnapshot::following`] — the user's NIP-02
 /// (kind:3) follow list, projected for the iOS "Social" tab.
 ///

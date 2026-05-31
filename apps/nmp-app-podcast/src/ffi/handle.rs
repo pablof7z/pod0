@@ -11,7 +11,8 @@ use tokio::runtime::Runtime;
 use crate::clip_handler::ClipRecord;
 use crate::inbox_llm::TriageResult;
 use crate::ffi::projections::{
-    AgentMessageSummary, AgentPickSummary, AgentTaskSummary, BriefingSnapshot, CommentSummary,
+    AgentMessageSummary, AgentNoteSummary, AgentPickSummary, AgentTaskSummary, BriefingSnapshot,
+    CommentSummary,
     KnowledgeSearchResult, NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry,
     VoiceState, WikiArticle,
 };
@@ -196,6 +197,12 @@ pub struct PodcastHandle {
     /// `social_handler::handle_fetch_contacts` on the actor thread; read
     /// by `build_snapshot_payload` on each tick.
     pub(super) social: Arc<Mutex<Option<SocialSnapshot>>>,
+    /// Feature #44 — inbound agent-to-agent kind:1 notes addressed to the
+    /// active account. `None`/empty until the first `FetchAgentNotes`
+    /// dispatch. Written by `agent_note_handler::handle_fetch_agent_notes`
+    /// on the actor thread; read by `build_snapshot_payload` on each tick
+    /// and projected onto `PodcastUpdate.agent_notes` (reactive push seam).
+    pub(crate) agent_notes: Arc<Mutex<Vec<AgentNoteSummary>>>,
     /// Shared multi-thread Tokio runtime (same `Arc` the host-op handler and
     /// voice manager hold). The snapshot path needs it so `maybe_enqueue_triage`
     /// can spawn proactive background triage off the actor thread.

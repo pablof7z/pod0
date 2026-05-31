@@ -48,5 +48,5 @@ pub use library::{
 };
 pub use platform::WidgetSnapshot;
 pub use settings::SettingsSnapshot;
-pub use social::{CommentSummary, ContactSummary, SocialSnapshot};
+pub use social::{AgentNoteSummary, CommentSummary, ContactSummary, SocialSnapshot};
 pub use voice::VoiceState;

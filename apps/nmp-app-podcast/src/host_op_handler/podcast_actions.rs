@@ -108,6 +108,27 @@ impl PodcastHostOpHandler {
                 self.handle_dispatch_deferred_wifi_downloads(correlation_id)
             }
             PodcastAction::FetchContacts => crate::social_handler::handle_fetch_contacts(self),
+            PodcastAction::PublishAgentNote {
+                recipient_pubkey_hex,
+                content,
+                root_event_id,
+            } => crate::agent_note_handler::handle_publish_agent_note(
+                self.app,
+                &self.identity,
+                &recipient_pubkey_hex,
+                &content,
+                root_event_id.as_deref(),
+                correlation_id,
+            ),
+            PodcastAction::FetchAgentNotes => {
+                crate::agent_note_handler::handle_fetch_agent_notes(
+                    self.app,
+                    &self.identity,
+                    &self.agent_notes,
+                    &self.rev,
+                    correlation_id,
+                )
+            }
             PodcastAction::StarEpisode { episode_id, starred } => {
                 match self.store.lock() {
                     Ok(mut s) => match s.set_episode_starred(&episode_id, starred) {

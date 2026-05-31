@@ -6,10 +6,10 @@
 use serde::{Deserialize, Serialize};
 
 use super::projections::{
-    AccountSummary, AgentPickSummary, AgentSnapshot, AgentTaskSummary, BriefingSnapshot,
-    CategoryBrowseItem, ClipSummary, CommentSummary, DownloadQueueSnapshot, EpisodeSummary,
-    InboxItem, KnowledgeSearchResult, MemoryFact, NostrShowSummary, OwnedPodcastInfo,
-    PodcastSummary, SettingsSnapshot, SocialSnapshot, VoiceState,
+    AccountSummary, AgentNoteSummary, AgentPickSummary, AgentSnapshot, AgentTaskSummary,
+    BriefingSnapshot, CategoryBrowseItem, ClipSummary, CommentSummary, DownloadQueueSnapshot,
+    EpisodeSummary, InboxItem, KnowledgeSearchResult, MemoryFact, NostrShowSummary,
+    OwnedPodcastInfo, PodcastSummary, SettingsSnapshot, SocialSnapshot, VoiceState,
     WidgetSnapshot, WikiArticle,
 };
 use crate::player::PlayerState;
@@ -136,6 +136,13 @@ pub struct PodcastUpdate {
     /// Browse-by-topic aggregation surfaced via the iOS Library tab.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub categories: Vec<CategoryBrowseItem>,
+    /// Feature #44 — inbound agent-to-agent kind:1 notes addressed to the
+    /// active account, newest-first. Empty until the first
+    /// `FetchAgentNotes` dispatch. Every row carries `trusted: false`
+    /// until the kind:3 contact/trust gate lands (`agent-to-agent-kind1`
+    /// in BACKLOG); the iOS shell must route them to an approval surface.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub agent_notes: Vec<AgentNoteSummary>,
 }
 
 impl Default for PodcastUpdate {
@@ -170,6 +177,7 @@ impl Default for PodcastUpdate {
             inbox_triage_in_progress: false,
             owned_podcasts: Vec::new(),
             categories: Vec::new(),
+            agent_notes: Vec::new(),
         }
     }
 }
