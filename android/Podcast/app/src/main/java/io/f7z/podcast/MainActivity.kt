@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import io.f7z.podcast.capabilities.DownloadCapability
 import io.f7z.podcast.capabilities.ExoPlayerCapability
 import io.f7z.podcast.security.KeystoreManager
 import io.f7z.podcast.ui.AppNavigation
@@ -75,9 +76,12 @@ private fun PodcastRoot() {
     val audio = remember(bridge) {
         ExoPlayerCapability(bridge = bridge, context = context.applicationContext)
     }
+    val download = remember(bridge) {
+        DownloadCapability(bridge = bridge, context = context.applicationContext)
+    }
     var snapshot by remember { mutableStateOf<PodcastSnapshot?>(null) }
 
-    DisposableEffect(bridge, audio) {
+    DisposableEffect(bridge, audio, download) {
         // Restore a previously-imported identity before the actor starts so the
         // first snapshot already reflects the signed-in state. Dispatches the
         // canonical `podcast.identity` ImportNsec (the bridge constructor's
@@ -91,6 +95,7 @@ private fun PodcastRoot() {
         audio.attach()
         onDispose {
             audio.detach()
+            download.detach()
             bridge.stop()
             bridge.free()
         }
@@ -100,6 +105,7 @@ private fun PodcastRoot() {
         while (true) {
             val raw = withContext(Dispatchers.IO) { bridge.podcastSnapshot() }
             snapshot = SnapshotCodec.decode(raw)
+            download.reconcile(snapshot?.downloads?.active)
             delay(SNAPSHOT_POLL_INTERVAL_MS)
         }
     }

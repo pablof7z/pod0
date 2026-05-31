@@ -91,6 +91,26 @@ class KernelBridge {
     external fun nmpCapabilityReport(namespace: String, reportJson: String): Int
 
     /**
+     * Host → kernel **download**-report channel. Unlike the generic
+     * [`nmpCapabilityReport`] stub (which drops its body), this is a real,
+     * handle-aware channel: the JSON-encoded `DownloadReport`
+     * (`progress` / `completed` / `failed` / `cancelled` / `paused`) is
+     * projected onto the kernel `DownloadQueue`, and any follow-up
+     * `DownloadCommand` the queue emits (e.g. `start_download` for the next
+     * waiting item once a slot frees) is returned as a JSON `String`, or
+     * `null` when there is none / on any FFI failure (D6).
+     *
+     * This is the Android analogue of the iOS
+     * `KernelBridge+Callbacks.swift::attachDownloadReportChannel`
+     * return-and-execute pattern. The returned command is how the kernel
+     * drives the *next* download; the *first* item in a batch is seeded by
+     * the capability off the projected `downloads.active` rows because
+     * Android has no inbound `dispatch_capability` command seam.
+     */
+    fun downloadReport(reportJson: String): String? =
+        if (handle != 0L) nativeDownloadReport(handle, reportJson) else null
+
+    /**
      * One-shot sign-in via local nsec. Demonstrates a single capability hop
      * the milestone exit checklist calls for. The PoC UI passes a stub value;
      * a real implementation would prompt for the nsec and route through the
@@ -128,6 +148,7 @@ class KernelBridge {
     private external fun nativeLifecycleForeground(handle: Long)
     private external fun nativeLifecycleBackground(handle: Long)
     private external fun nativeDispatchAction(handle: Long, namespace: String, payload: String): String?
+    private external fun nativeDownloadReport(handle: Long, reportJson: String): String?
     private external fun nativeSigninNsec(handle: Long, nsec: String)
     private external fun nativeNextUpdate(handle: Long): String?
     private external fun nativePodcastSnapshot(handle: Long): String?

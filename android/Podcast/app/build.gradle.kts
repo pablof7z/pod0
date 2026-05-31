@@ -83,6 +83,15 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.4.1")
     implementation("androidx.media3:media3-ui:1.4.1")
     implementation("androidx.media3:media3-session:1.4.1")
+
+    // ─── OkHttp — HTTP engine for the download capability ─────────────
+    //
+    // `capabilities/DownloadCapability.kt` fetches episode enclosures over
+    // OkHttp (streaming body → `.part` file → atomic rename). 4.12.0 is the
+    // last 4.x line on the kotlin-stdlib baseline the module compiles
+    // against; pinned off 5.x to stay on that baseline (matching the
+    // coil/media3 pinning rationale above).
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
 
 // ── cargo-ndk task ───────────────────────────────────────────────────────────

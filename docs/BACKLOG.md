@@ -442,6 +442,16 @@ worktrees currently in flight.
   player, downloads, identity, feed refresh, and audio reports.
 - **android-gradle-wrapper.** Vendor `gradlew` and wrapper files under
   `android/Podcast/`.
+- **android-download-capability-wiring.** `capabilities/DownloadCapability.kt`
+  (OkHttp pull-model executor) ships compiling and unit-validated on the Rust
+  side, but is **not yet instantiated** in `MainActivity`: `reconcile()` is
+  never called from the snapshot poll loop and `detach()` is never called
+  before `bridge.free()`, so episode enclosures do not actually download on
+  Android yet. Follow-up: `remember` the capability alongside
+  `ExoPlayerCapability`, drive `reconcile(snapshot.downloads?.active)` from the
+  `LaunchedEffect` poll tick, and call `detach()` in `onDispose` ahead of
+  `bridge.stop()/free()`. Also revisit the WorkManager-vs-foreground-scope
+  trade-off documented in `DownloadCapability.kt` for background completion.
 - **android-auth-keychain.** Replace Android `signinNsec` stub with a real
   secure-storage identity sheet mirroring iOS.
 

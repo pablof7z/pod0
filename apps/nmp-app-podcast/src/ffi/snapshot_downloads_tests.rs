@@ -44,6 +44,17 @@ fn active_queued_paused_failed_rows_project_in_stable_order() {
 }
 
 #[test]
+fn rows_carry_enclosure_url_for_pull_model_executor() {
+    // The Android download capability has no inbound command seam, so it
+    // seeds HTTP fetches from the projected `url` on each active/queued
+    // row. Guard that the projection actually carries it.
+    let mut queue = DownloadQueue::with_capacity(1);
+    let _ = queue.enqueue("ep-1", "https://ex.com/ep-1.mp3");
+    let snapshot = build_downloads_snapshot(&queue).expect("snapshot");
+    assert_eq!(snapshot.active[0].url, "https://ex.com/ep-1.mp3");
+}
+
+#[test]
 fn completed_and_cancelled_rows_drop_out() {
     let mut queue = DownloadQueue::with_capacity(1);
     let _ = queue.enqueue("done", "https://ex.com/done.mp3");

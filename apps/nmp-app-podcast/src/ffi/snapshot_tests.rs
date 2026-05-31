@@ -222,6 +222,7 @@ fn snapshot_with_downloads_round_trips() {
     let downloads = DownloadQueueSnapshot {
         active: vec![DownloadItemSnapshot {
             episode_id: "ep-1".into(),
+            url: "https://example.com/ep-1.mp3".into(),
             progress: 0.5,
             state: "active".into(),
             total_bytes: None,
@@ -243,6 +244,7 @@ fn snapshot_with_downloads_round_trips() {
 fn download_item_snapshot_omits_none_error() {
     let item = DownloadItemSnapshot {
         episode_id: "ep-1".into(),
+        url: String::new(),
         progress: 0.0,
         state: "queued".into(),
         total_bytes: None,
@@ -250,6 +252,8 @@ fn download_item_snapshot_omits_none_error() {
     };
     let json = serde_json::to_string(&item).expect("encode");
     assert!(!json.contains("error"));
+    // Empty `url` is skipped on the wire (pull-model field; iOS never sets it).
+    assert!(!json.contains("url"));
     let decoded: DownloadItemSnapshot = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded, item);
 }
