@@ -126,7 +126,7 @@ completion, not absence of all infrastructure.
 | 38 | RAG/vector search | Scaffold | Replace substring ranker with `podcast-knowledge` embeddings/BM25, indexing jobs, scoped search, and result provenance. |
 | 39 | AI wiki | Scaffold | Replace placeholder articles with RAG-backed synthesis, citations, refresh/invalidation, and per-podcast storage. |
 | 40 | AutoSnip/clip composer | Partial | Clip UI/actions exist; add boundary refinement, persistence/export guarantees, share validation, and audio file handling. |
-| 41 | AI briefings | Scaffold | Replace generating placeholder with scheduler/composer/provider pipeline, audio generation, persistence, and playback handoff. |
+| 41 | AI briefings | Partial | LLM text/provider leg shipped (M5.6 `briefing_llm.rs`); still open: scheduler trigger, structured composer (intro→summaries→outro via `podcast-briefings::SegmentKind`), TTS/audio generation, persistence, and failure/retry projection. Blocked on reconciling the two briefing mechanisms (`tasks_handler` seed vs unwired `podcast-briefings::BriefingScheduler`) — see BACKLOG `briefings-real-pipeline`. |
 | 42 | Voice mode | Partial | iOS STT/TTS exists; finish Rust conversation manager, barge-in policy, provider TTS/STT choices, audio-session state, and transcript handoff. |
 | 43 | Agent-generated TTS podcasts | Scaffold | Replace placeholder script with provider generation, media persistence, show/episode publishing integration, and deletion cleanup. |
 | 44 | Nostr agent-to-agent | Blocked/Scaffold | Needs real identity, signer, relay, contact/trust, and kind:1 notes threaded via NIP-10 before UI can be real. NIP-17 is an explicit non-goal. |
