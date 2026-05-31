@@ -38,6 +38,9 @@ struct EpisodeDetailHeroView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
                 hero
+                if !episode.aiCategories.isEmpty {
+                    categoryChips
+                }
                 actionRow
                 if !descriptionPlain.isEmpty {
                     summarySection
@@ -79,6 +82,28 @@ struct EpisodeDetailHeroView: View {
                     .foregroundStyle(.tertiary)
             }
         }
+    }
+
+    /// #45 — AI-generated category labels rendered as compact chips. Sits in
+    /// its own full-width row beneath the hero and scrolls horizontally so a
+    /// generously-tagged episode never clips. The caller guards on
+    /// `aiCategories.isEmpty`, so this renders only when the kernel has
+    /// produced at least one category (empty state ⇒ no row at all).
+    private var categoryChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: AppTheme.Spacing.xs) {
+                ForEach(episode.aiCategories, id: \.self) { category in
+                    Text(category)
+                        .font(.system(.caption2, design: .rounded).weight(.semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(Color.accentColor.opacity(0.14)))
+                        .foregroundStyle(Color.accentColor)
+                        .accessibilityLabel("Category: \(category)")
+                }
+            }
+        }
+        .scrollClipDisabled()
     }
 
     private var artwork: some View {
@@ -346,7 +371,8 @@ struct EpisodeDetailHeroView: View {
             .init(startTime: 252, title: "Why ketones matter"),
             .init(startTime: 1720, title: "The Inuit objection"),
             .init(startTime: 4810, title: "Practical protocols")
-        ]
+        ],
+        aiCategories: ["Health", "Science", "Nutrition"]
     )
     return NavigationStack {
         EpisodeDetailHeroView(

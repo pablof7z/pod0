@@ -2,6 +2,13 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-31T10:30:00Z",
+      "lines": [
+        "Home now has a \"Recommended for you\" row — AI-scored episode picks from across your shows, ordered by how well they match what you've been listening to.",
+        "Episode pages now show AI-generated category tags so you can tell at a glance what an episode is about."
+      ]
+    },
+    {
       "shipped_at": "2026-05-31T05:30:00Z",
       "lines": [
         "Podcasts you publish to Nostr now keep their identity across restarts — each owned show's signing key is saved to your device, so re-launching the app no longer regenerates a fresh key or orphans your previously published shows."

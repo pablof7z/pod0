@@ -29,6 +29,9 @@ struct HomeView: View {
     @State private var relatedSheetEpisode: Episode?
     @State private var threadedTodaySheet: ThreadingInferenceService.ActiveTopic?
     @State private var voiceOverDetailRoute: HomeEpisodeRoute?
+    /// Navigation route pushed when the user taps a kernel-scored pick in the
+    /// #46 "Recommended for you" rail.
+    @State private var pickRoute: HomeEpisodeRoute?
     @State private var showAddShowSheet: Bool = false
     @State private var showCategoryPicker: Bool = false
     @State private var showAllContinueListening: Bool = false
@@ -51,6 +54,9 @@ struct HomeView: View {
                 EpisodeDetailView(episodeID: route.episodeID)
             }
             .navigationDestination(item: $voiceOverDetailRoute) { route in
+                EpisodeDetailView(episodeID: route.episodeID)
+            }
+            .navigationDestination(item: $pickRoute) { route in
                 EpisodeDetailView(episodeID: route.episodeID)
             }
             .navigationDestination(for: Podcast.self) { pod in
@@ -199,6 +205,17 @@ struct HomeView: View {
                     )
                 }
 
+                if !recommendedPicks.isEmpty {
+                    HomeRecommendedSection(
+                        picks: recommendedPicks,
+                        onSelect: { pick in
+                            guard let id = UUID(uuidString: pick.episodeId) else { return }
+                            Haptics.selection()
+                            pickRoute = HomeEpisodeRoute(episodeID: id)
+                        }
+                    )
+                }
+
                 if shouldShowInboxSection {
                     let triage = triageCounts
                     HomeFeaturedSection(
@@ -339,6 +356,28 @@ struct HomeView: View {
 
     private var shouldShowInboxSection: Bool {
         !inboxBundle.picks.isEmpty || triageService.isRunning
+    }
+
+    /// #46 — kernel-scored episode recommendations (`PodcastUpdate.picks`),
+    /// read straight off the live snapshot. Picks are ephemeral kernel output
+    /// folded into `podcastSnapshot`'s content hash, so reading them here (the
+    /// same way `EpisodeDetailView` reads `downloads`) makes the rail recompute
+    /// whenever the kernel re-scores. Scoped to the active category so the rail
+    /// stays consistent with the rest of Home, then sorted by `pickScore`
+    /// (highest first). Empty ⇒ the section is hidden by the `scrollContent`
+    /// guard.
+    private var recommendedPicks: [AgentPickSummary] {
+        let picks = store.kernel?.podcastSnapshot?.picks ?? []
+        let scoped: [AgentPickSummary]
+        if let allowed = allowedSubscriptionIDs {
+            scoped = picks.filter { pick in
+                guard let podcastUUID = UUID(uuidString: pick.podcastId) else { return false }
+                return allowed.contains(podcastUUID)
+            }
+        } else {
+            scoped = picks
+        }
+        return scoped.sorted { $0.pickScore > $1.pickScore }
     }
 
     // MARK: - Toolbar

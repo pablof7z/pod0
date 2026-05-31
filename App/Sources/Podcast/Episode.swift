@@ -108,6 +108,13 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
     /// chunks subsume the synthetic title/description match).
     var metadataIndexed: Bool
 
+    /// AI-generated category labels for this episode, projected from the
+    /// Rust kernel (`EpisodeSummary.aiCategories`). Empty until the
+    /// categorization pass has run. Rendered as chips in the episode detail
+    /// hero. Projection-only — the kernel owns the values, so this never
+    /// round-trips through a Swift write path.
+    var aiCategories: [String]
+
     init(
         id: UUID = UUID(),
         podcastID: UUID,
@@ -135,7 +142,8 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         triageDecision: TriageDecision? = nil,
         triageRationale: String? = nil,
         triageIsHero: Bool = false,
-        metadataIndexed: Bool = false
+        metadataIndexed: Bool = false,
+        aiCategories: [String] = []
     ) {
         self.id = id
         self.podcastID = podcastID
@@ -164,6 +172,7 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         self.triageRationale = triageRationale
         self.triageIsHero = triageIsHero
         self.metadataIndexed = metadataIndexed
+        self.aiCategories = aiCategories
     }
 
     // MARK: - Codable (forward-compat decoding)
@@ -177,6 +186,7 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         case adSegments, generationSource
         case triageDecision, triageRationale, triageIsHero
         case metadataIndexed
+        case aiCategories
         // Legacy key from the pre-split shape. Decoded as a fallback when
         // `podcastID` is absent. Never written.
         case legacy_subscriptionID = "subscriptionID"
@@ -217,6 +227,7 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         triageRationale = try c.decodeIfPresent(String.self, forKey: .triageRationale)
         triageIsHero = try c.decodeIfPresent(Bool.self, forKey: .triageIsHero) ?? false
         metadataIndexed = try c.decodeIfPresent(Bool.self, forKey: .metadataIndexed) ?? false
+        aiCategories = try c.decodeIfPresent([String].self, forKey: .aiCategories) ?? []
     }
 
     func encode(to encoder: Encoder) throws {
@@ -248,6 +259,7 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         try c.encodeIfPresent(triageRationale, forKey: .triageRationale)
         if triageIsHero { try c.encode(triageIsHero, forKey: .triageIsHero) }
         if metadataIndexed { try c.encode(metadataIndexed, forKey: .metadataIndexed) }
+        if !aiCategories.isEmpty { try c.encode(aiCategories, forKey: .aiCategories) }
     }
 }
 

@@ -267,7 +267,11 @@ private extension EpisodeSummary {
             triageDecision: triageDecision.flatMap { TriageDecision(rawValue: $0) },
             triageRationale: triageRationale,
             triageIsHero: triageIsHero,
-            metadataIndexed: metadataIndexed
+            metadataIndexed: metadataIndexed,
+            // #45: AI-generated category labels. Projection-only — the
+            // kernel owns them, so they ride the snapshot straight onto the
+            // domain model with no preserved-state merge.
+            aiCategories: aiCategories
         )
     }
 }
