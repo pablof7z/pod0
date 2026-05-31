@@ -72,12 +72,17 @@ extension AppStateStore {
     ///
     /// `relayURL` overrides the default relay: a `wss://`/`ws://` URL is used
     /// as the relay socket, an `http(s)://` URL as the gateway. `nil` uses the
-    /// kernel defaults. No `query` is sent — this is the browse sweep; search
-    /// filtering happens client-side over the projected results.
-    func kernelDiscoverNostr(relayURL: String?) {
-        var body: [String: Any] = ["op": "discover_nostr"]
-        if let relayURL, !relayURL.isEmpty { body["relay_url"] = relayURL }
-        kernel?.dispatch(namespace: "podcast", body: body)
+    /// Claim a kind:10154 NIP-F4 discovery subscription. NMP kernel routes
+    /// through app relays + the user's NIP-65 outbox read relays automatically.
+    func kernelDiscoverNostrClaim() {
+        kernel?.dispatch(namespace: "podcast",
+                         body: ["op": "discover_nostr", "consumer_id": "nostr-discover-view"])
+    }
+
+    /// Release the kind:10154 discovery subscription claimed by this view.
+    func kernelDiscoverNostrRelease() {
+        kernel?.dispatch(namespace: "podcast",
+                         body: ["op": "discover_nostr", "consumer_id": "nostr-discover-view", "release": true])
     }
 
     // MARK: - Playback dispatch (M1 Part 3)

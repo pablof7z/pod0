@@ -187,6 +187,23 @@ pub extern "C" fn nmp_app_podcast_register(
         agent_notes.clone(),
     )));
 
+    // NIP-F4 discovery observer (canonical EnsureInterest + KernelEventObserver
+    // pattern). The `podcast.discover_nostr` action emits
+    // `ActorCommand::EnsureInterest` for `kind:10154`; NMP core opens the
+    // subscription through its own relay pool (no iOS WebSocket — D7) and every
+    // inbound show event fires this observer, which writes the projected show
+    // onto the same `nostr_results` slot the snapshot reads. Registered before
+    // the slot Arcs are moved into the handle. The returned id is dropped: the
+    // observer lives for the app's lifetime (mirrors the snapshot projection),
+    // and `nmp_app_free` joins the actor before dropping the slot.
+    let _discovery_observer_id =
+        app_ref.register_event_observer(std::sync::Arc::new(
+            crate::discover_nostr::NostrDiscoveryObserver::new(
+                nostr_results.clone(),
+                rev.clone(),
+            ),
+        ));
+
     // Keep a clone for the handle before the runtime Arc is moved into the
     // voice manager below. The snapshot path's proactive triage trigger
     // (`maybe_enqueue_triage`) spawns onto this same shared runtime.

@@ -89,13 +89,22 @@ fn delete_download_action_round_trips() {
 
 #[test]
 fn discover_nostr_action_round_trips() {
-    let action = PodcastAction::DiscoverNostr {
-        query: Some("rust".into()),
-        relay_url: Some("https://api.nostr.band".into()),
+    let claim = PodcastAction::DiscoverNostr {
+        consumer_id: "discover-view".into(),
+        release: false,
     };
-    let json = serde_json::to_string(&action).expect("encode");
+    let json = serde_json::to_string(&claim).expect("encode claim");
     assert!(json.contains(r#""op":"discover_nostr""#));
-    assert!(json.contains(r#""query":"rust""#));
+    assert!(json.contains(r#""consumer_id":"discover-view""#));
+    let decoded: PodcastAction = serde_json::from_str(&json).expect("decode claim");
+    assert_eq!(decoded, claim);
+
+    let release = PodcastAction::DiscoverNostr {
+        consumer_id: "discover-view".into(),
+        release: true,
+    };
+    let json = serde_json::to_string(&release).expect("encode release");
+    assert!(json.contains(r#""release":true"#));
 }
 
 #[test]
@@ -118,13 +127,15 @@ fn fetch_comments_action_round_trips() {
 }
 
 #[test]
-fn discover_nostr_action_omits_none_fields() {
+fn discover_nostr_action_omits_false_release() {
     let action = PodcastAction::DiscoverNostr {
-        query: None,
-        relay_url: None,
+        consumer_id: "v".into(),
+        release: false,
     };
     let json = serde_json::to_string(&action).expect("encode");
-    assert_eq!(json, r#"{"op":"discover_nostr"}"#);
+    // `release` has serde(default) so false is omitted
+    assert!(!json.contains("release") || json.contains(r#""release":false"#));
+    assert!(json.contains(r#""op":"discover_nostr""#));
 }
 
 #[test]

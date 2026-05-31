@@ -1,154 +1,123 @@
-//! `podcast.discover_nostr` host-op handler — NIP-F4 (`kind:10154`)
-//! podcast discovery via a Nostr relay subscription, with an HTTP gateway
-//! fallback to `api.nostr.band`.
+//! `podcast.discover_nostr` — NIP-F4 (`kind:10154`) podcast discovery via
+//! NMP's relay pool, the canonical `EnsureInterest` + `KernelEventObserver`
+//! pattern.
 //!
-//! Lives in its own module so [`crate::host_op_handler::PodcastHostOpHandler`]
-//! stays under the 500-line hard limit (AGENTS.md). The handler is a free
-//! function that takes a relay-dispatch closure and an HTTP-dispatch closure
-//! so testing can drive it without spinning up an `NmpApp`.
+//! ## Why this replaced the old capability-dispatch path
 //!
-//! ## Primary path — WebSocket relay subscription
+//! The previous implementation dispatched a `nostr_relay` capability request
+//! to the iOS shell, which opened its own `URLSessionWebSocketTask`. That is
+//! wrong: **NMP core owns all relay connections.** The iOS shell must never
+//! open a relay socket. The correct pattern (NMP v0.2.0; the
+//! `nmp-nip01::visible_relations` action-triggered-subscription template —
+//! the shape NMP PR #898 / builder-guide ch. 28 describe) is:
 //!
-//! Dispatches a `NostrRelayRequest::Subscribe` to `wss://relay.primal.net`
-//! with filter `{"kinds":[10154],"limit":50}` (NIP-50 `"search"` field is
-//! added when a query is provided). Events received before EOSE are parsed
-//! via [`podcast_discovery::parse_nip_f4_event_json`].
+//! 1. The action emits [`nmp_core::ActorCommand::EnsureInterest`]. The kernel
+//!    opens the subscription through its own relay pool using the app's
+//!    configured relays + the user's NIP-65 outbox read relays. No relay URL
+//!    is specified — NMP routes automatically. `is_indexer_discovery = true`
+//!    routes the sweep through the indexer because `kind:10154` is sparse.
+//! 2. A [`NostrDiscoveryObserver`] registered at init fires for every inbound
+//!    `kind:10154` event ([`KernelEventObserver::on_kernel_event`]).
+//! 3. The observer parses the event into a [`NostrShowSummary`] and writes it
+//!    into the shared `nostr_results` slot, bumping `rev`.
+//! 4. The existing snapshot projection reads `nostr_results` unchanged.
 //!
-//! ## Fallback path — HTTP gateway
+//! ## Lifecycle
 //!
-//! If the relay path fails (transport error, decode error, or zero events
-//! returned with EOSE), the handler tries the HTTP gateway (`api.nostr.band`
-//! by default). This preserves behaviour when the relay is offline or the
-//! capability executor is not yet wired in production.
-//!
-//! ## Wire shape (HTTP gateway)
-//!
-//! `GET /v0/search` returns `{"events": [<NostrEvent>...]}`. Tolerant of:
-//!
-//! * **events array at root** — `[<event>, <event>, ...]`
-//! * **events under `"events"`** — `{"events": [<event>, ...]}`
-//! * **single event** — `{"id": "...", "kind": 10154, ...}`
-//!
-//! Each event is parsed via [`podcast_discovery::parse_nip_f4_event_json`];
-//! events that don't decode are silently dropped (D6 — errors as data).
+//! The action is ref-counted by `(owner, key, scope)` via [`SubIdentity`]: a
+//! `Claim` attaches one owner (the view), a `Release` detaches it. The kernel
+//! keeps one live subscription while any owner is attached. The view claims on
+//! appear and releases on disappear (see `NostrDiscoverForm.swift`).
 //!
 //! ## Doctrine
 //!
-//! * **D6 — errors as data.** Returns `{"ok": false, "error": "..."}` on
-//!   transport failure; the iOS shell surfaces it as a toast.
-//! * **D7 — capabilities execute, never decide.** The relay and HTTP
-//!   capabilities perform the I/O; this handler chooses parameters and
-//!   parses results.
-//! * **Lock discipline.** The `nostr_results` lock is taken only AFTER
-//!   the capability dispatch returns — same pattern as `handle_search_itunes`.
+//! * **D0** — `nmp-core` never names podcast nouns; the kernel emits raw
+//!   `KernelEvent`s and this per-app module composes the typed view.
+//! * **D6** — the observer fires best-effort: a poisoned slot or an event that
+//!   fails to parse is a silent no-op.
+//! * **D7** — the kernel's relay pool performs the I/O; this module only
+//!   declares the interest and parses results. iOS executes nothing here.
 
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 
-use podcast_discovery::NipF4Show;
-use serde_json::Value;
+use nmp_core::planner::{InterestId, InterestLifecycle, InterestScope, LogicalInterest};
+use nmp_core::stable_hash::stable_hash64;
+use nmp_core::subs::{SubIdentity, SubKey, SubOwnerKey, SubScope};
+use nmp_core::substrate::{KernelEvent, ViewDependencies};
+use nmp_core::KernelEventObserver;
 
-use podcast_feeds::http::{HttpRequest, HttpResult};
+use podcast_discovery::{parse_kind_10154, NipF4Show};
 
-use crate::capability::nostr_relay::{NostrRelayRequest, NostrRelayResult};
 use crate::ffi::projections::NostrShowSummary;
 
-/// Default relay for WebSocket subscription (primary path).
-pub const DEFAULT_RELAY_WSS: &str = "wss://relay.primal.net";
+/// NIP-F4 podcast show event kind.
+pub const KIND_NIP_F4_SHOW: u32 = 10154;
 
-/// Default Nostr relay HTTP gateway. The `api.nostr.band` `v0/search`
-/// endpoint indexes NIP-01 events across the relay network and returns a
-/// JSON `{"events": [...]}` payload.
-pub const DEFAULT_RELAY_HTTP_GATEWAY: &str = "https://api.nostr.band";
+/// Maximum number of historical shows to fetch per discovery sweep.
+pub const NOSTR_DISCOVERY_LIMIT: u32 = 50;
 
-/// Build the `NostrRelayRequest::Subscribe` for a NIP-F4 discovery sweep.
+/// Namespace discriminant folded into every stable hash so the discovery
+/// interest / owner / key never collide with another subsystem's ids.
+const NOSTR_DISCOVERY_NAMESPACE: &str = "podcast.discover_nostr";
+
+/// Stable, deterministic [`InterestId`] for the discovery sweep.
 ///
-/// `relay_wss_override` lets the caller scope the sweep to a specific WSS
-/// relay; `None` selects [`DEFAULT_RELAY_WSS`]. When `query` is `Some`
-/// and non-empty the NIP-50 `"search"` key is added to the filter.
-pub fn build_relay_request(
-    query: Option<&str>,
-    relay_wss_override: Option<&str>,
-) -> NostrRelayRequest {
-    let relay_url = relay_wss_override
-        .unwrap_or(DEFAULT_RELAY_WSS)
-        .to_string();
-    let mut filter = serde_json::json!({"kinds": [10154], "limit": 50});
-    if let Some(q) = query {
-        if !q.is_empty() {
-            filter["search"] = Value::String(q.to_string());
-        }
+/// The same logical interest always hashes to the same id, so re-registering
+/// (e.g. opening the form twice) de-dupes to one live subscription in the
+/// kernel registry rather than spawning a second REQ.
+#[must_use]
+pub fn nostr_discovery_interest_id() -> InterestId {
+    InterestId(stable_hash64(NOSTR_DISCOVERY_NAMESPACE))
+}
+
+/// Build the [`LogicalInterest`] for a NIP-F4 discovery sweep.
+///
+/// Declares `kind:10154` with a bounded history limit. `InterestScope::Global`
+/// (the sweep is not tied to one account's mailbox) and
+/// `InterestLifecycle::OneShot` (fetch-and-close — discovery is a browse, not
+/// a live tail).
+///
+/// `is_indexer_discovery = true` is set on the returned interest:
+/// `into_logical_interest` always defaults it to `false`, but `kind:10154` is
+/// sparse across the relay network, so the sweep must route through the
+/// indexer rather than the user's outbox relays.
+#[must_use]
+pub fn nostr_discovery_interest() -> LogicalInterest {
+    let mut interest = ViewDependencies {
+        kinds: vec![KIND_NIP_F4_SHOW],
+        limit: Some(NOSTR_DISCOVERY_LIMIT),
+        ..Default::default()
     }
-    NostrRelayRequest::Subscribe {
-        sub_id: uuid::Uuid::new_v4().to_string(),
-        filter,
-        relay_urls: vec![relay_url],
-        timeout_ms: 8000,
-    }
+    .into_logical_interest(
+        nostr_discovery_interest_id(),
+        InterestScope::Global,
+        InterestLifecycle::OneShot,
+    );
+    // Sparse kind — route the sweep through the indexer, not outbox relays.
+    interest.is_indexer_discovery = true;
+    interest
 }
 
-/// Build the HTTP request for a NIP-F4 discovery sweep (fallback path).
+/// Build the ref-counting [`SubIdentity`] for one discovery consumer.
 ///
-/// `relay_url_override` lets the caller scope the sweep to a specific
-/// gateway; `None` selects [`DEFAULT_RELAY_HTTP_GATEWAY`].
-///
-/// `query` narrows the search (delegated to the gateway's full-text
-/// indexer); `None` performs a kind-only sweep.
-pub fn build_discover_request(query: Option<&str>, relay_url_override: Option<&str>) -> HttpRequest {
-    let base = relay_url_override
-        .unwrap_or(DEFAULT_RELAY_HTTP_GATEWAY)
-        .trim_end_matches('/');
-    let encoded = url_encode(query.unwrap_or(""));
-    // The gateway accepts `kind` as a filter param. We cap with `limit`
-    // so an empty query doesn't pull the relay's full kind:10154 index.
-    let url = format!("{base}/v0/search?q={encoded}&kind=10154&limit=50");
-    HttpRequest::get(url, [("Accept", "application/json")])
-}
-
-/// Parse relay WebSocket events (from `NostrRelayResult::Events`) into
-/// [`NipF4Show`]s. Each event value is serialized back to JSON and parsed
-/// via [`podcast_discovery::parse_nip_f4_event_json`].
-pub fn parse_relay_events(events: &[Value]) -> Vec<NipF4Show> {
-    events
-        .iter()
-        .filter_map(|ev| {
-            let json = serde_json::to_string(ev).ok()?;
-            podcast_discovery::parse_nip_f4_event_json(&json)
-        })
-        .collect()
-}
-
-/// Parse a relay HTTP response body into [`NipF4Show`]s.
-///
-/// Returns an empty Vec on any decode failure (D6). Tolerant of the three
-/// response shapes documented at module level.
-pub fn parse_discover_response(body: &str) -> Vec<NipF4Show> {
-    let Ok(root) = serde_json::from_str::<Value>(body) else {
-        return Vec::new();
-    };
-    let events = match &root {
-        Value::Array(arr) => arr.clone(),
-        Value::Object(map) => {
-            if let Some(Value::Array(arr)) = map.get("events") {
-                arr.clone()
-            } else if map.contains_key("id") && map.contains_key("kind") {
-                vec![root.clone()]
-            } else {
-                return Vec::new();
-            }
-        }
-        _ => return Vec::new(),
-    };
-    events
-        .into_iter()
-        .filter_map(|ev| {
-            let json = serde_json::to_string(&ev).ok()?;
-            podcast_discovery::parse_nip_f4_event_json(&json)
-        })
-        .collect()
+/// `owner` is per-consumer (so two views can each Claim/Release independently);
+/// `key` is shared across all consumers of the discovery sweep (so they
+/// de-dupe onto one live subscription); `scope` is `Global`.
+#[must_use]
+pub fn nostr_discovery_identity(consumer_id: &str) -> SubIdentity {
+    SubIdentity::new(
+        SubOwnerKey::new((
+            "podcast.discover_nostr.owner",
+            consumer_id,
+        )),
+        SubKey::new(NOSTR_DISCOVERY_NAMESPACE),
+        SubScope::Global,
+    )
 }
 
 /// Project a [`NipF4Show`] onto the FFI-wire [`NostrShowSummary`].
+#[must_use]
 pub fn project_show(show: &NipF4Show) -> NostrShowSummary {
     NostrShowSummary {
         event_id: show.event_id.clone(),
@@ -161,137 +130,88 @@ pub fn project_show(show: &NipF4Show) -> NostrShowSummary {
     }
 }
 
-/// Store the projected results into the shared snapshot slot and bump
-/// `rev` so the next snapshot tick reflects them.
+/// Insert (or replace) one projected show in the shared slot, deduping by
+/// `author_pubkey`, and bump `rev`. Returns `true` if the slot changed.
 ///
-/// Returns the count stored.
-pub fn write_results(
-    results: Vec<NostrShowSummary>,
+/// `kind:10154` is a replaceable event — one show per pubkey. The observer
+/// fires again on a `Replaced` ingest (and a second consumer re-Claims the
+/// same interest), so blind-appending would pile up duplicate rows. Keying on
+/// `author_pubkey` makes a re-arrival update the existing row in place.
+fn upsert_show(
+    show: NostrShowSummary,
     slot: &Arc<Mutex<Vec<NostrShowSummary>>>,
     rev: &Arc<AtomicU64>,
-) -> Result<usize, String> {
-    let mut guard = slot
-        .lock()
-        .map_err(|_| "nostr_results poisoned".to_string())?;
-    *guard = results;
-    let count = guard.len();
+) -> bool {
+    let Ok(mut guard) = slot.lock() else {
+        // D6 — poisoned slot is a silent no-op.
+        return false;
+    };
+    match guard
+        .iter_mut()
+        .find(|existing| existing.author_pubkey == show.author_pubkey)
+    {
+        Some(existing) => {
+            if *existing == show {
+                return false; // no-op: identical re-arrival, don't churn rev.
+            }
+            *existing = show;
+        }
+        None => guard.push(show),
+    }
+    drop(guard);
     rev.fetch_add(1, Ordering::Relaxed);
-    Ok(count)
+    true
 }
 
-/// Handle a `podcast.discover_nostr` action.
+/// In-process [`KernelEventObserver`] that turns inbound `kind:10154` events
+/// into [`NostrShowSummary`] rows on the shared discovery slot.
 ///
-/// Tries the relay subscription path first; falls back to the HTTP gateway
-/// if the relay returns an error, fails to decode, or returns zero events
-/// with EOSE (relay may lack kind:10154 index).
-///
-/// `relay_url` is used as a WSS relay when it starts with `wss://` or
-/// `ws://`, or as an HTTP gateway override when it starts with `http`.
-/// `None` uses the defaults for both paths.
-pub fn handle_discover_nostr(
-    query: Option<String>,
-    relay_url: Option<String>,
-    slot: &Arc<Mutex<Vec<NostrShowSummary>>>,
-    rev: &Arc<AtomicU64>,
-    relay_fetch: impl FnOnce(&NostrRelayRequest) -> Result<NostrRelayResult, String>,
-    http_fetch: impl FnOnce(&HttpRequest) -> Result<HttpResult, String>,
-) -> Value {
-    // Determine WSS and HTTP overrides from relay_url based on scheme.
-    let wss_override = relay_url.as_deref().and_then(|u| {
-        if u.starts_with("wss://") || u.starts_with("ws://") {
-            Some(u)
-        } else {
-            None
-        }
-    });
-    let http_gateway_override = relay_url.as_deref().and_then(|u| {
-        if u.starts_with("http://") || u.starts_with("https://") {
-            Some(u)
-        } else {
-            None
-        }
-    });
+/// Registered once at init (see `ffi::register`) against the same
+/// `nostr_results` / `rev` slots the snapshot projection reads. Fires on the
+/// kernel actor thread between relay frames, so [`Self::on_kernel_event`] does
+/// only cheap, allocation-bounded work (a kind check, a parse, a slot upsert).
+pub struct NostrDiscoveryObserver {
+    /// Shared with `PodcastHandle.nostr_results` (snapshot reader) and
+    /// `PodcastHostOpHandler.nostr_results` (legacy writer slot).
+    nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
+    /// Shared monotonic snapshot revision; bumped when the slot changes so the
+    /// next push frame reflects the new show.
+    rev: Arc<AtomicU64>,
+}
 
-    // --- Primary path: relay subscription ---
-    let relay_req = build_relay_request(query.as_deref(), wss_override);
-    let relay_shows: Option<Vec<NipF4Show>> = match relay_fetch(&relay_req) {
-        Ok(NostrRelayResult::Events { events, eose: _ }) => {
-            let shows = parse_relay_events(&events);
-            if shows.is_empty() {
-                // No parseable kind:10154 events (EOSE with empty list, or
-                // timeout with no events) — fall back to HTTP gateway.
-                None
-            } else {
-                Some(shows)
-            }
+impl NostrDiscoveryObserver {
+    #[must_use]
+    pub fn new(
+        nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
+        rev: Arc<AtomicU64>,
+    ) -> Self {
+        Self {
+            nostr_results,
+            rev,
         }
-        // Transport error, decode failure, unexpected variant — fall back.
-        Ok(_) | Err(_) => None,
-    };
+    }
+}
 
-    if let Some(shows) = relay_shows {
-        let projected = shows.iter().map(project_show).collect();
-        return match write_results(projected, slot, rev) {
-            Ok(count) => success_envelope(count),
-            Err(e) => serde_json::json!({"ok": false, "error": e}),
+impl KernelEventObserver for NostrDiscoveryObserver {
+    fn on_kernel_event(&self, event: &KernelEvent) {
+        if event.kind != KIND_NIP_F4_SHOW {
+            return;
+        }
+        // `KernelEvent` carries `author` (not the nostr-standard `pubkey`) and
+        // no `sig`, so serializing it to JSON for `parse_nip_f4_event_json`
+        // would silently fail to parse. Use the field-level parser instead:
+        // it maps 1:1 onto the substrate event fields.
+        let Ok(show) = parse_kind_10154(
+            event.kind,
+            &event.id,
+            &event.author,
+            &event.content,
+            &event.tags,
+        ) else {
+            return; // D6 — unparseable event is dropped silently.
         };
+        let _ = upsert_show(project_show(&show), &self.nostr_results, &self.rev);
     }
-
-    // --- Fallback path: HTTP gateway ---
-    let req = build_discover_request(query.as_deref(), http_gateway_override);
-    let http_result = match http_fetch(&req) {
-        Ok(result) => result,
-        Err(e) => return serde_json::json!({"ok": false, "error": e}),
-    };
-    let body = match &http_result {
-        HttpResult::Ok { body, .. } => body.as_str(),
-        HttpResult::Error { .. } => return error_envelope(&http_result),
-    };
-    let projected = parse_discover_response(body)
-        .iter()
-        .map(project_show)
-        .collect();
-    match write_results(projected, slot, rev) {
-        Ok(count) => success_envelope(count),
-        Err(e) => serde_json::json!({"ok": false, "error": e}),
-    }
-}
-
-/// Build a `{"ok": true, ...}` envelope from a successful run.
-pub fn success_envelope(count: usize) -> Value {
-    serde_json::json!({"ok": true, "count": count})
-}
-
-/// Build a `{"ok": false, "error": ...}` envelope from a transport-layer
-/// `HttpResult::Error`.
-pub fn error_envelope(result: &HttpResult) -> Value {
-    match result {
-        HttpResult::Error { message } => serde_json::json!({"ok": false, "error": message}),
-        HttpResult::Ok { .. } => serde_json::json!({"ok": false, "error": "unexpected ok in error_envelope"}),
-    }
-}
-
-/// Percent-encode a query string for use in a URL parameter value.
-/// Local copy so this module doesn't reach into `host_op_handler`.
-fn url_encode(s: &str) -> String {
-    s.chars()
-        .flat_map(|c| match c {
-            'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_' | '.' | '~' => vec![c],
-            ' ' => vec!['+'],
-            other => {
-                let mut buf = [0u8; 4];
-                let bytes = other.encode_utf8(&mut buf);
-                bytes
-                    .bytes()
-                    .flat_map(|b| {
-                        let hi = char::from_digit((b >> 4) as u32, 16).unwrap_or('0');
-                        let lo = char::from_digit((b & 0xf) as u32, 16).unwrap_or('0');
-                        vec!['%', hi.to_ascii_uppercase(), lo.to_ascii_uppercase()]
-                    })
-                    .collect()
-            }
-        })
-        .collect()
 }
 
 #[cfg(test)]

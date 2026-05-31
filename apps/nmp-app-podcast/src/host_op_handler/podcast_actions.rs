@@ -14,7 +14,6 @@ use podcast_feeds::http::{HttpRequest, HttpResult};
 use uuid::Uuid;
 
 use crate::chapter::handle_fetch_chapters;
-use crate::discover_nostr;
 use crate::ffi::actions::podcast_module::PodcastAction;
 use crate::host_op_handler::PodcastHostOpHandler;
 use crate::transcript::handle_fetch_transcript;
@@ -57,16 +56,6 @@ impl PodcastHostOpHandler {
                 handle_fetch_chapters(&self.store, &self.rev, episode_id, |req| {
                     self.dispatch_http(req, correlation_id)
                 })
-            }
-            PodcastAction::DiscoverNostr { query, relay_url } => {
-                discover_nostr::handle_discover_nostr(
-                    query,
-                    relay_url,
-                    &self.nostr_results,
-                    &self.rev,
-                    |req| self.dispatch_nostr_relay(req, correlation_id),
-                    |req| self.dispatch_http(req, correlation_id),
-                )
             }
             PodcastAction::UpdateSettings { has_completed_onboarding } => {
                 self.handle_update_settings(has_completed_onboarding)
@@ -149,6 +138,12 @@ impl PodcastHostOpHandler {
             }
             PodcastAction::SetEpisodeTranscriptStatus { episode_id, status, message } => {
                 self.handle_set_episode_transcript_status(episode_id, status, message)
+            }
+            // DiscoverNostr is handled in PodcastActionModule::execute via
+            // EnsureInterest/DropInterestOwner before reaching the host-op
+            // handler — it never arrives here.
+            PodcastAction::DiscoverNostr { .. } => {
+                serde_json::json!({"ok": false, "error": "discover_nostr must be handled by execute()"})
             }
         }
     }
