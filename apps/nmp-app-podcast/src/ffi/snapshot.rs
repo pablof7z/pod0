@@ -214,7 +214,31 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     let categories = build_category_aggregate(&library);
     let search_results = handle.search_results.lock().ok().map(|r| r.clone()).unwrap_or_default();
     let nostr_results = handle.nostr_results.lock().ok().map(|r| r.clone()).unwrap_or_default();
-    let briefing = handle.briefing.lock().ok().and_then(|b| b.clone());
+    // Proactive briefing trigger: if a configured schedule makes a briefing
+    // due at this local minute and none is pending, mint the pending slot and
+    // dispatch the existing `generate_briefing` path. Inert until a schedule
+    // is set (the latch + `should_generate_now` guard re-entrancy internally).
+    // Mirrors `maybe_enqueue_triage` — runs on the actor thread, never blocks.
+    crate::briefing_scheduler::maybe_trigger_briefing(
+        &handle.briefing_scheduler,
+        &handle.briefing,
+        &handle.rev,
+        &handle.store,
+        &handle.runtime,
+    );
+    // Fold the scheduler's "minutes until next slot today" onto the briefing
+    // snapshot so iOS can render "next briefing in X" even before the first
+    // briefing is composed (and even when the slot is currently empty).
+    let next_scheduled = crate::briefing_scheduler::next_scheduled_minutes(&handle.briefing_scheduler);
+    let briefing = handle.briefing.lock().ok().and_then(|b| b.clone()).map(|mut b| {
+        b.next_scheduled_minutes = next_scheduled;
+        b
+    }).or_else(|| {
+        next_scheduled.map(|m| crate::ffi::projections::BriefingSnapshot {
+            next_scheduled_minutes: Some(m),
+            ..Default::default()
+        })
+    });
     let queue_ids: Vec<String> = handle.queue.lock().ok()
         .map(|q| q.items().to_vec()).unwrap_or_default();
     let queue = resolve_queue_rows(&queue_ids, &library);

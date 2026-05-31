@@ -58,6 +58,17 @@ pub struct PodcastHandle {
     /// composer is in flight. Full lifecycle (segments, last_generated_at)
     /// lands in M9.B when the composer + scheduler wire up.
     pub(super) briefing: Arc<Mutex<Option<BriefingSnapshot>>>,
+    /// Canonical briefing scheduler (`podcast_briefings::BriefingScheduler`).
+    /// A pure, clock-free state machine; the kernel supplies the local
+    /// wall clock on each snapshot tick via
+    /// [`crate::briefing_scheduler::maybe_trigger_briefing`], which mints a
+    /// pending slot and dispatches the `generate_briefing` path when a
+    /// configured slot comes due. `next_scheduled_minutes` is projected onto
+    /// the `briefing` snapshot so iOS can show "next briefing in X minutes".
+    /// In-memory only — the scheduler's `pending` is pure-data by design;
+    /// the schedule config is not yet settable in-kernel (no briefing
+    /// settings action module registered), so there is nothing to persist.
+    pub(super) briefing_scheduler: Arc<Mutex<podcast_briefings::BriefingScheduler>>,
     /// Playback "Up Next" queue. Mutated by the queue action handler on the
     /// actor thread; read by the snapshot projection on the main thread.
     pub(super) queue: Arc<Mutex<PlaybackQueue>>,
