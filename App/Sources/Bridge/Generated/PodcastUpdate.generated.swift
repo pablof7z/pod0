@@ -163,8 +163,8 @@ struct SettingsSnapshot: Equatable {
     var elevenLabsBYOKKeyLabel: String? = nil
     /// ElevenLabs credential connected-at timestamp (optional, converted to Date in Swift).
     var elevenLabsConnectedAt: Date? = nil
-    /// STT provider selection enum (raw String: "elevenlabs_scribe", etc).
-    var sttProvider: String = "elevenlabs_scribe"
+    /// STT provider selection enum (raw String: "apple_native", etc).
+    var sttProvider: String = "apple_native"
     /// OpenRouter Whisper model string. Default `"openai/whisper-1"`.
     var openRouterWhisperModel: String = "openai/whisper-1"
     /// AssemblyAI STT model string. Default `"universal-3-pro,universal-2"`.
@@ -409,7 +409,7 @@ extension SettingsSnapshot: Codable {
         if let timestamp = try c.decodeIfPresent(Int.self, forKey: .elevenLabsConnectedAt) {
             elevenLabsConnectedAt = Date(timeIntervalSince1970: TimeInterval(timestamp))
         }
-        sttProvider = try c.decodeIfPresent(String.self, forKey: .sttProvider) ?? "elevenlabs_scribe"
+        sttProvider = try c.decodeIfPresent(String.self, forKey: .sttProvider) ?? "apple_native"
         openRouterWhisperModel = try c.decodeIfPresent(String.self, forKey: .openRouterWhisperModel) ?? "openai/whisper-1"
         assemblyAISTTModel = try c.decodeIfPresent(String.self, forKey: .assemblyAISTTModel) ?? "universal-3-pro,universal-2"
         elevenLabsSTTModel = try c.decodeIfPresent(String.self, forKey: .elevenLabsSTTModel) ?? "scribe_v1"

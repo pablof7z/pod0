@@ -205,7 +205,7 @@ pub struct PodcastStore {
     pub(super) eleven_labs_byok_key_label: Option<String>,
     /// ElevenLabs credential connected-at timestamp (epoch seconds, optional).
     pub(super) eleven_labs_connected_at: Option<i64>,
-    /// STT provider selection. Default `"elevenlabs_scribe"`.
+    /// STT provider selection. Default `"apple_native"`.
     pub(super) stt_provider: String,
     /// OpenRouter Whisper model string. Default `"openai/whisper-1"`.
     pub(super) open_router_whisper_model: String,
@@ -322,7 +322,7 @@ impl PodcastStore {
             eleven_labs_byok_key_id: None,
             eleven_labs_byok_key_label: None,
             eleven_labs_connected_at: None,
-            stt_provider: "elevenlabs_scribe".to_owned(),
+            stt_provider: "apple_native".to_owned(),
             open_router_whisper_model: "openai/whisper-1".to_owned(),
             assembly_ai_stt_model: "universal-3-pro,universal-2".to_owned(),
             eleven_labs_stt_model: "scribe_v1".to_owned(),
@@ -556,7 +556,7 @@ impl PodcastStore {
         self.stt_provider = if !loaded.settings.stt_provider.is_empty() {
             loaded.settings.stt_provider
         } else {
-            "elevenlabs_scribe".to_owned()
+            "apple_native".to_owned()
         };
         self.open_router_whisper_model = if !loaded.settings.open_router_whisper_model.is_empty() {
             loaded.settings.open_router_whisper_model

@@ -46,6 +46,10 @@ final class TranscriptAutoIngestTests: XCTestCase {
         // transcripts, so without auto-Scribe the agent's library-wide chat
         // comes up dark for those subscriptions.
         XCTAssertTrue(s.autoFallbackToScribe)
+        // The STT provider defaults to Apple on-device so keyless installs get
+        // transcription out of the box (cloud providers need an API key the
+        // user may not have configured). Lock it against a silent revert.
+        XCTAssertEqual(s.sttProvider, .appleNative)
     }
 
     // MARK: - Candidate selection branching
@@ -72,6 +76,11 @@ final class TranscriptAutoIngestTests: XCTestCase {
         let pubEp = Self.makeEpisode(hasPublisherURL: true)
         let bareEp = Self.makeEpisode(hasPublisherURL: false)
         var settings = Settings()
+        // Pin the cloud provider explicitly — the default is `.appleNative`
+        // (keyless, always ready), so without this the test would pass via
+        // the apple-native path instead of exercising the Scribe-key path it
+        // names.
+        settings.sttProvider = .elevenLabsScribe
         settings.autoIngestPublisherTranscripts = true
         settings.autoFallbackToScribe = true
 
@@ -89,6 +98,10 @@ final class TranscriptAutoIngestTests: XCTestCase {
         let pubEp = Self.makeEpisode(hasPublisherURL: true)
         let bareEp = Self.makeEpisode(hasPublisherURL: false)
         var settings = Settings()
+        // Pin the cloud provider — the default `.appleNative` is keyless and
+        // always ready, which would (correctly) include the bare episode and
+        // defeat the "no key ⇒ skip" behavior this test pins.
+        settings.sttProvider = .elevenLabsScribe
         settings.autoIngestPublisherTranscripts = true
         settings.autoFallbackToScribe = true
 

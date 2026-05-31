@@ -137,6 +137,10 @@ final class PodcastCapabilities {
     func startICloudSync(kernel: KernelModel, appStore: AppStateStore) {
         iCloudSync.appStore = appStore
         iCloudSync.start(kernel: kernel)
+        // Give the voice executor read access to the projected settings so
+        // `Speak` can route to the selected TTS provider (D7: iOS reads the
+        // kernel-owned projection to pick an executor path).
+        voice.appStore = appStore
         voice.start()
     }
 

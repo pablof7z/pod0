@@ -152,7 +152,7 @@ struct Settings: Codable, Hashable, Sendable {
     var elevenLabsConnectedAt: Date?
 
     // STT provider selection
-    var sttProvider: STTProvider = .elevenLabsScribe
+    var sttProvider: STTProvider = .appleNative
     /// Whisper model used when `sttProvider == .openRouterWhisper`. Must be a model
     /// accessible on OpenRouter's audio transcription endpoint.
     var openRouterWhisperModel: String = "openai/whisper-1"
@@ -309,7 +309,7 @@ struct Settings: Codable, Hashable, Sendable {
         elevenLabsBYOKKeyID = try c.decodeIfPresent(String.self, forKey: .elevenLabsBYOKKeyID)
         elevenLabsBYOKKeyLabel = try c.decodeIfPresent(String.self, forKey: .elevenLabsBYOKKeyLabel)
         elevenLabsConnectedAt = try c.decodeIfPresent(Date.self, forKey: .elevenLabsConnectedAt)
-        sttProvider = try c.decodeIfPresent(STTProvider.self, forKey: .sttProvider) ?? .elevenLabsScribe
+        sttProvider = try c.decodeIfPresent(STTProvider.self, forKey: .sttProvider) ?? .appleNative
         openRouterWhisperModel = try c.decodeIfPresent(String.self, forKey: .openRouterWhisperModel) ?? "openai/whisper-1"
         assemblyAISTTModel = try c.decodeIfPresent(String.self, forKey: .assemblyAISTTModel) ?? "universal-3-pro,universal-2"
         elevenLabsSTTModel = try c.decodeIfPresent(String.self, forKey: .elevenLabsSTTModel) ?? Defaults.elevenLabsSTTModel

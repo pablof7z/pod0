@@ -65,6 +65,13 @@ final class VoiceCapability: NSObject {
     /// previews; the bridge installs the real channel via `attach`.
     private var sendReport: (String) -> Void = { _ in }
 
+    /// Read-only handle to the projected app settings, installed by
+    /// `PodcastCapabilities.startICloudSync`. `speak` reads
+    /// `settings.elevenLabsVoiceID` from here to select the TTS provider.
+    /// `weak` to avoid a retain cycle (the store ultimately owns the
+    /// capability tree). `nil` in tests/previews → native AVSpeech path.
+    weak var appStore: AppStateStore?
+
     private var started: Bool = false
     private var synthesizerDelegate: SpeechSynthesizerDelegate?
 
@@ -239,6 +246,28 @@ final class VoiceCapability: NSObject {
     // MARK: - TTS (AVSpeechSynthesizer)
 
     private func speak(text: String, voiceID: String?, requestID: String) {
+        // ── TTS provider routing ─────────────────────────────────────────
+        // The kernel projects the user's ElevenLabs voice selection via
+        // `eleven_labs_voice_id`. When set, the user has chosen ElevenLabs
+        // TTS. We honour that selection by *routing* to it here — but the
+        // ElevenLabs path cannot emit audio yet: `ElevenLabsTTSClient`
+        // yields raw audio `Data` frames and there is no playback sink in
+        // this kernel-driven executor (the only consumer,
+        // `AudioConversationManager.beginSpeaking`, records frames for
+        // barge-in and explicitly marks playback as future work — there is
+        // no `AVAudioPlayerNode` route wired through `AudioCapability`).
+        //
+        // So we log the selection honestly and fall back to AVSpeech rather
+        // than silently dropping the utterance or pretending ElevenLabs ran.
+        // This wires the setting to the dispatch path and sets the stage for
+        // the playback sink to land later; see docs/BACKLOG.md
+        // ("voice-mode ElevenLabs TTS playback sink").
+        let elevenLabsVoiceID = appStore?.state.settings.elevenLabsVoiceID ?? ""
+        if !elevenLabsVoiceID.isEmpty {
+            logger.notice(
+                "Speak: ElevenLabs TTS selected (voice_id=\(elevenLabsVoiceID, privacy: .public)) but no playback sink is wired in the kernel-driven voice executor — falling back to AVSpeech")
+        }
+
         let utterance = AVSpeechUtterance(string: text)
         if let voiceID, !voiceID.isEmpty {
             utterance.voice = AVSpeechSynthesisVoice(identifier: voiceID)

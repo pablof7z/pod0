@@ -25,7 +25,7 @@ fn default_image_generation_model_name() -> String { "Gemini 2.5 Flash".to_owned
 fn default_false() -> bool { false }
 fn default_empty_string() -> String { String::new() }
 fn default_empty_array() -> Vec<String> { Vec::new() }
-fn default_stt_provider() -> String { "elevenlabs_scribe".to_owned() }
+fn default_stt_provider() -> String { "apple_native".to_owned() }
 fn default_open_router_whisper_model() -> String { "openai/whisper-1".to_owned() }
 fn default_assembly_ai_stt_model() -> String { "universal-3-pro,universal-2".to_owned() }
 fn default_eleven_labs_stt_model() -> String { "scribe_v1".to_owned() }
@@ -164,7 +164,7 @@ pub struct SettingsSnapshot {
     /// ElevenLabs credential connected-at timestamp (epoch seconds, optional).
     #[serde(default)]
     pub eleven_labs_connected_at: Option<i64>,
-    /// STT provider selection enum (raw String: "elevenlabs_scribe", etc).
+    /// STT provider selection enum (raw String: "apple_native", etc).
     #[serde(default = "default_stt_provider")]
     pub stt_provider: String,
     /// OpenRouter Whisper model string. Default `"openai/whisper-1"`.
@@ -272,7 +272,7 @@ impl Default for SettingsSnapshot {
             eleven_labs_byok_key_id: None,
             eleven_labs_byok_key_label: None,
             eleven_labs_connected_at: None,
-            stt_provider: "elevenlabs_scribe".to_owned(),
+            stt_provider: "apple_native".to_owned(),
             open_router_whisper_model: "openai/whisper-1".to_owned(),
             assembly_ai_stt_model: "universal-3-pro,universal-2".to_owned(),
             eleven_labs_stt_model: "scribe_v1".to_owned(),

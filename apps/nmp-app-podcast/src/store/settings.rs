@@ -523,7 +523,7 @@ impl PodcastStore {
     }
 
     /// STT provider selection (enum .rawValue String).
-    /// Default `"elevenlabs_scribe"`.
+    /// Default `"apple_native"`.
     pub fn stt_provider(&self) -> &str {
         &self.stt_provider
     }

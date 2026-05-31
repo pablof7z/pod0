@@ -201,7 +201,7 @@ final class TranscriptIngestService {
             appStore.setEpisodeTranscriptState(episodeID, state: .none)
             return
         }
-        let provider = appStore.state.settings.sttProvider
+        let provider = effectiveSTTProvider(appStore.state.settings.sttProvider)
         guard resolvedSTTKey(provider: provider) != nil else {
             Self.logger.info(
                 "no publisher transcript and no \(provider.displayName, privacy: .public) key for \(episodeID, privacy: .public) — leaving transcriptState=.none"
@@ -288,6 +288,31 @@ final class TranscriptIngestService {
                 state: .failed(message: error.localizedDescription)
             )
         }
+    }
+
+    /// Downgrade a keyless cloud STT provider to Apple on-device.
+    ///
+    /// A user who picked a cloud provider (Scribe / AssemblyAI / OpenRouter
+    /// Whisper) but never configured its API key would otherwise get NO
+    /// transcription at all for episodes lacking a publisher transcript —
+    /// the `resolvedSTTKey` guard below short-circuits to `.none`. Apple's
+    /// on-device `SpeechTranscriber` needs no key, so when the selected
+    /// cloud provider has no usable key we fall back to `.appleNative`.
+    ///
+    /// Note: `.appleNative` requires the episode file to be downloaded
+    /// (`runAITranscription` guards on `EpisodeDownloadStore.exists`). For a
+    /// not-yet-downloaded episode this fallback parks at `.none` until the
+    /// download hook re-enters `ingest()` — strictly better than the prior
+    /// behavior, which gave keyless users nothing in every case.
+    private func effectiveSTTProvider(_ selected: STTProvider) -> STTProvider {
+        guard selected != .appleNative else { return .appleNative }
+        if resolvedSTTKey(provider: selected) != nil {
+            return selected
+        }
+        Self.logger.info(
+            "\(selected.displayName, privacy: .public) selected but no API key configured — falling back to Apple on-device STT"
+        )
+        return .appleNative
     }
 
     private func resolvedSTTKey(provider: STTProvider) -> String? {

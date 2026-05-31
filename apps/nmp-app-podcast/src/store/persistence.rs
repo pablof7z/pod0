@@ -229,7 +229,7 @@ pub(super) struct PersistedSettings {
     #[serde(default)]
     pub eleven_labs_connected_at: Option<i64>,
     /// STT provider selection. Empty string in old files →
-    /// hydration replaces with "elevenlabs_scribe".
+    /// hydration replaces with "apple_native".
     #[serde(default)]
     pub stt_provider: String,
     /// OpenRouter Whisper model string. Empty string in old files →
@@ -343,7 +343,7 @@ impl Default for PersistedSettings {
             eleven_labs_byok_key_id: None,
             eleven_labs_byok_key_label: None,
             eleven_labs_connected_at: None,
-            stt_provider: "elevenlabs_scribe".to_owned(),
+            stt_provider: "apple_native".to_owned(),
             open_router_whisper_model: "openai/whisper-1".to_owned(),
             assembly_ai_stt_model: "universal-3-pro,universal-2".to_owned(),
             eleven_labs_stt_model: "scribe_v1".to_owned(),

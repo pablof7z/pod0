@@ -78,6 +78,17 @@ extension TranscriptIngestService {
         assemblyAIKey: String? = nil
     ) -> [UUID] {
         let publisherOn = settings.autoIngestPublisherTranscripts
+        // STT readiness for *feed-refresh-time* candidate selection. This
+        // deliberately gates on the selected provider's key (not on the
+        // keyless `.appleNative` fallback): `.appleNative` requires the
+        // episode file to be downloaded, which a brand-new feed episode is
+        // not, so the runtime `.appleNative` downgrade in
+        // `effectiveSTTProvider` can't fire here yet. Keyless cloud-provider
+        // users still get on-device transcription via the post-download
+        // re-entry into `ingest()` and on manual open — both of which route
+        // through `effectiveSTTProvider`. Queuing undownloaded bare episodes
+        // here would just be wasted work (`runAITranscription` no-ops for
+        // `.appleNative` without a local file).
         let sttReady: Bool
         switch settings.sttProvider {
         case .appleNative: sttReady = true   // no API key needed

@@ -199,7 +199,7 @@ impl Default for Settings {
             eleven_labs_credential_source: ElevenLabsCredentialSource::None,
             eleven_labs: ProviderCredentialMetadata::default(),
 
-            stt_provider: SttProvider::ElevenLabsScribe,
+            stt_provider: SttProvider::AppleNative,
             open_router_whisper_model: Self::DEFAULT_WHISPER_MODEL.into(),
             assembly_ai_stt_model: Self::DEFAULT_ASSEMBLY_AI_MODEL.into(),
 

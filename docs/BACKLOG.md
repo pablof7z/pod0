@@ -212,6 +212,20 @@ worktrees currently in flight.
   provider can honor it; (4) AssemblyAI/Scribe STT execution path + reconcile
   the `stt_provider` default; (5) design barge-in-threshold + OpenRouter-TTS
   settings, then wire barge-in and OpenRouter TTS.
+- **voice-mode-elevenlabs-tts-playback-sink.** The kernel-driven voice executor
+  (`VoiceCapability.speak`) now *routes* on the projected `eleven_labs_voice_id`
+  (set ⇒ user chose ElevenLabs TTS) but falls back to AVSpeech with an honest
+  log line because there is no audio playback sink in this path:
+  `ElevenLabsTTSClient.synthesizeStream` yields raw audio `Data` frames and the
+  only consumer (`AudioConversationManager.beginSpeaking`) records them for
+  barge-in and marks playback "future work" — no `AVAudioPlayerNode` route is
+  wired through `AudioCapability`. To make ElevenLabs TTS audible in the
+  kernel-driven path: add a player-node sink (likely via `AudioCapability`),
+  feed `ElevenLabsTTSClient` frames into it, and emit `started`/`finished`
+  `VoiceReport`s from real playback callbacks. Until then the fallback is the
+  correct behavior. Note: this is separate from the parallel SwiftUI
+  `AudioConversationManager` voice path used by `VoiceView`, which has the same
+  missing-sink gap.
 - **tts-episodes-real-generation.** Replace placeholder scripts with real
   provider-generated audio, persisted media, playback, deletion, and optional
   NIP-F4 publishing integration.

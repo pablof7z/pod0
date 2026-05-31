@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-05-31T04:30:00Z",
+      "lines": [
+        "Transcription now works out of the box with no API key — new installs default to Apple's on-device speech engine for downloaded episodes. If you've chosen a cloud transcription provider but haven't added its key yet, we now fall back to on-device transcription instead of doing nothing."
+      ]
+    },
+    {
       "shipped_at": "2026-05-31T03:30:00Z",
       "lines": [
         "AI chapters now read the episode transcript to name real topic sections, instead of slicing the episode into equal blank chunks. If the AI can't be reached, you'll still get evenly-spaced chapters as a fallback."
