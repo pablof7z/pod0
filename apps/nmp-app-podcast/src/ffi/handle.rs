@@ -13,7 +13,7 @@ use crate::inbox_llm::TriageResult;
 use crate::ffi::projections::{
     AgentMessageSummary, AgentPickSummary, AgentTaskSummary, BriefingSnapshot, CommentSummary,
     KnowledgeSearchResult, NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry,
-    TtsEpisodeSummary, VoiceState, WikiArticle,
+    VoiceState, WikiArticle,
 };
 use crate::download::DownloadQueue;
 use crate::player::PlayerActor;
@@ -109,13 +109,6 @@ pub struct PodcastHandle {
     /// it, hence the `allow(dead_code)` on the handle-side owner.
     #[allow(dead_code)]
     pub(super) knowledge_store: Arc<Mutex<podcast_knowledge::KnowledgeStore>>,
-    /// In-memory list of agent-generated TTS episodes (feature #43).
-    /// Written by the `podcast.tts.*` action handlers on the actor thread;
-    /// read by `build_snapshot_payload` on the main thread. Not persisted
-    /// across kernel lifetimes — disk-backed storage is a follow-up once
-    /// the LLM-script generator lands and these become user-visible
-    /// artefacts worth keeping.
-    pub(super) tts_episodes: Arc<Mutex<Vec<TtsEpisodeSummary>>>,
     /// User-saved audio clips. Written by `ClipHandler` on the actor
     /// thread; read by `build_snapshot_payload` on the main thread.
     /// In-memory only — clips evaporate on app restart (persistence is

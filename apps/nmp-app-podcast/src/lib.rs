@@ -70,8 +70,6 @@ pub(crate) mod social_handler;
 pub mod store;
 pub(crate) mod tasks_handler;
 pub(crate) mod transcript;
-pub(crate) mod tts;
-pub(crate) mod tts_llm;
 pub(crate) mod voice_conversation;
 pub(crate) mod voice_handler;
 pub(crate) mod wiki;

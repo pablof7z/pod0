@@ -26,7 +26,6 @@ use super::actions::queue_module::QueueActionModule;
 use super::actions::settings_module::SettingsActionModule;
 use super::actions::siri_module::SiriActionModule;
 use super::actions::tasks_module::AgentTasksModule;
-use super::actions::tts_module::TtsEpisodeModule;
 use super::actions::voice_module::VoiceActionModule;
 use super::actions::wiki_module::WikiActionModule;
 use super::handle::PodcastHandle;
@@ -75,7 +74,6 @@ pub extern "C" fn nmp_app_podcast_register(
     app_mut.register_action::<AgentTasksModule>();
     app_mut.register_action::<KnowledgeActionModule>();
     app_mut.register_action::<MemoryActionModule>();
-    app_mut.register_action::<TtsEpisodeModule>();
     app_mut.register_action::<ClipActionModule>();
     app_mut.register_action::<InboxActionModule>();
     app_mut.register_action::<NipF4PublishModule>();
@@ -109,7 +107,6 @@ pub extern "C" fn nmp_app_podcast_register(
     let agent_tasks = Arc::new(Mutex::new(tasks_handler::default_seed()));
     let knowledge_search_results = Arc::new(Mutex::new(Vec::new()));
     let knowledge_store = Arc::new(Mutex::new(podcast_knowledge::KnowledgeStore::new()));
-    let tts_episodes = Arc::new(Mutex::new(Vec::new()));
     let clips = Arc::new(Mutex::new(Vec::new()));
     let transcripts = Arc::new(Mutex::new(HashMap::new()));
     let dismissed_episode_ids = Arc::new(Mutex::new(HashSet::new()));
@@ -171,7 +168,6 @@ pub extern "C" fn nmp_app_podcast_register(
         agent_tasks.clone(),
         knowledge_search_results.clone(),
         knowledge_store.clone(),
-        tts_episodes.clone(),
         clips.clone(),
         transcripts.clone(),
         dismissed_episode_ids.clone(),
@@ -228,7 +224,6 @@ pub extern "C" fn nmp_app_podcast_register(
         agent_tasks,
         knowledge_search_results,
         knowledge_store,
-        tts_episodes,
         clips,
         transcripts,
         dismissed_episode_ids,

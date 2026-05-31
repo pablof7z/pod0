@@ -248,7 +248,6 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     let agent_tasks = handle.agent_tasks.lock().ok().map(|t| t.clone()).unwrap_or_default();
     let knowledge_search_results = handle.knowledge_search_results.lock().ok()
         .map(|r| r.clone()).unwrap_or_default();
-    let tts_episodes = handle.tts_episodes.lock().ok().map(|r| r.clone()).unwrap_or_default();
     let clips = crate::clip_handler::project_clips(&handle.clips, &library);
     let inbox = build_inbox(&handle.store, &handle.dismissed_episode_ids, &handle.inbox_triage_cache);
     // Proactive triage: if any unlistened episode lacks a fresh `Ready` score,
@@ -323,7 +322,6 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         agent_tasks,
         knowledge_search_results,
         memory_facts,
-        tts_episodes,
         clips,
         inbox,
         inbox_triage_in_progress,
