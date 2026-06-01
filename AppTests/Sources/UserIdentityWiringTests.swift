@@ -6,14 +6,16 @@ import XCTest
 // Table-driven coverage for the wiring contract in
 // `docs/spec/briefs/identity-05-synthesis.md` §5.3 — the canonical "what
 // signs vs. what stays local" matrix. Every row owned by Slice B is
-// asserted here against a recording mock signer, so a regression that
-// silently drops a publish (or, worse, signs an agent-authored artefact
-// with the user's identity) trips a test instead of leaking out a relay.
+// asserted here, so a regression that silently drops a publish (or, worse,
+// signs an agent-authored artefact with the user's identity) trips a test
+// instead of leaking out a relay.
 //
-// The publish leg is intentionally NOT exercised — the production calls
-// hit `FeedbackRelayClient.publish(...)` over a real WebSocket which will
-// time out under XCTest. We assert on what the recording signer captured
-// before the network leg, which is the load-bearing part of the contract.
+// kind:0/1/9802 user-content signing now lives in the Rust kernel: a
+// `.localKey` identity dispatches `podcast.social.*` to the kernel rather
+// than signing through the Swift `NostrSigner`. So the "signs" rows assert
+// against a recording KERNEL seam (`_setKernelRecorderForTesting`), and the
+// "does NOT sign" rows assert NO kernel dispatch reached the seam. The
+// publish/relay leg is owned by the kernel and not exercised here.
 
 @MainActor
 final class UserIdentityWiringTests: XCTestCase {
@@ -22,6 +24,7 @@ final class UserIdentityWiringTests: XCTestCase {
     private var store: AppStateStore!
     private var signer: RecordingSigner!
     private var identity: UserIdentityStore!
+    private var kernelDispatches: KernelDispatchRecorder!
 
     override func setUp() async throws {
         try await super.setUp()
@@ -29,12 +32,17 @@ final class UserIdentityWiringTests: XCTestCase {
         storeFileURL = made.fileURL
         store = made.store
         signer = RecordingSigner()
+        kernelDispatches = KernelDispatchRecorder()
         // The wiring under test publishes through `store.identity` (the
-        // AppStateStore-owned instance) now that the `.shared` singleton is
-        // gone — so seed the recording signer into that same instance, not a
-        // detached one, or the +Notes/+Clips publish Tasks would never reach it.
+        // AppStateStore-owned instance). Seed a `.localKey` signer so
+        // `kernelSigningEnabled` is true, and install the kernel recorder so
+        // the kernel dispatches are captured (no live kernel under XCTest).
         identity = store.identity
         identity._setSignerForTesting(signer)
+        let recorder = kernelDispatches!
+        identity._setKernelRecorderForTesting { namespace, body in
+            recorder.record(namespace: namespace, body: body)
+        }
     }
 
     override func tearDown() async throws {
@@ -46,15 +54,39 @@ final class UserIdentityWiringTests: XCTestCase {
         storeFileURL = nil
         signer = nil
         identity = nil
+        kernelDispatches = nil
         try await super.tearDown()
     }
 
-    // MARK: - §5.3 row: Profile (kind:0, signs)
+    // MARK: - Step 1: identity → kernel wiring
 
-    func testPublishProfileSignsKindZero() async throws {
-        // Publish through the network leg will fail (no relay) — that's
-        // expected. The contract we care about is "did the signer see a
-        // kind-0 sign call with the right payload?"
+    func testAdoptingLocalKeyDispatchesImportNsecToKernel() async throws {
+        // Adopt a real local key (no Keychain) — `adoptLocal` runs the kernel
+        // sync, which must forward the private key as ImportNsec.
+        let pair = try NostrKeyPair.generate()
+        identity._setLocalKeyForTesting(pair)
+
+        let call = try XCTUnwrap(
+            kernelDispatches.identity(type: "ImportNsec"),
+            "Adopting a local key must dispatch podcast.identity ImportNsec."
+        )
+        XCTAssertEqual(call["nsec"] as? String, pair.privateKeyHex,
+                       "ImportNsec must carry the local private key hex.")
+    }
+
+    func testClearIdentityDispatchesClearToKernel() async throws {
+        // Sign-out MUST wipe the key from the kernel — otherwise it outlives
+        // sign-out in the kernel IdentityStore and can still sign.
+        identity.clearIdentity()
+        XCTAssertNotNil(
+            kernelDispatches.identity(type: "Clear"),
+            "Sign-out must dispatch podcast.identity Clear."
+        )
+    }
+
+    // MARK: - §5.3 row: Profile (kind:0, signs → kernel)
+
+    func testPublishProfileDispatchesKindZeroToKernel() async throws {
         _ = try? await identity.publishProfile(
             name: "alice-test",
             displayName: "Alice",
@@ -62,53 +94,49 @@ final class UserIdentityWiringTests: XCTestCase {
             picture: "https://example.test/a.png"
         )
 
-        let signed = try XCTUnwrap(signer.calls.first, "Expected one sign call for kind:0 profile.")
-        XCTAssertEqual(signed.kind, 0, "Profile must sign as kind 0.")
-        XCTAssertTrue(signed.content.contains("\"name\":\"alice-test\""), "Content must include name.")
-        XCTAssertTrue(signed.content.contains("\"display_name\":\"Alice\""), "Content must include display_name.")
-        XCTAssertTrue(signed.content.contains("\"about\":\"Hello\""), "Content must include about.")
-        XCTAssertTrue(signed.content.contains("\"picture\":\"https:\\/\\/example.test\\/a.png\"")
-                      || signed.content.contains("\"picture\":\"https://example.test/a.png\""),
-                      "Content must include picture URL.")
+        let call = try XCTUnwrap(
+            kernelDispatches.social(op: "publish_profile"),
+            "Expected one podcast.social publish_profile dispatch."
+        )
+        XCTAssertEqual(call["name"] as? String, "alice-test")
+        XCTAssertEqual(call["display_name"] as? String, "Alice")
+        XCTAssertEqual(call["about"] as? String, "Hello")
+        XCTAssertEqual(call["picture"] as? String, "https://example.test/a.png")
+        XCTAssertTrue(signer.calls.isEmpty, "Local-key profile must NOT sign Swift-side.")
     }
 
-    // MARK: - §5.3 row: Notes (user) — signs kind 1
+    // MARK: - §5.3 row: Notes (user) — kind 1 → kernel
 
-    func testAddNoteUserAuthorSignsKindOne() async throws {
-        // The default `addNote(text:kind:target:)` overload is the user
-        // path — it should fire `publishUserNote` from a fire-and-forget
-        // Task. Wait for the Task to drain.
+    func testAddNoteUserAuthorDispatchesKindOneToKernel() async throws {
         _ = store.addNote(text: "first user note", kind: .free)
-        try await waitForSignerCalls(count: 1)
+        try await waitForKernelDispatch(op: "publish_note")
 
-        let signed = try XCTUnwrap(signer.calls.first)
-        XCTAssertEqual(signed.kind, 1, "User notes must sign as kind 1.")
-        XCTAssertEqual(signed.content, "first user note")
-        XCTAssertTrue(signed.tags.contains(["t", "note"]), "User notes must carry [\"t\", \"note\"] tag.")
+        let call = try XCTUnwrap(kernelDispatches.social(op: "publish_note"))
+        XCTAssertEqual(call["content"] as? String, "first user note")
+        let tags = call["tags"] as? [[String]]
+        XCTAssertTrue(tags?.contains(["t", "note"]) ?? false, "User notes must carry [\"t\", \"note\"] tag.")
+        XCTAssertTrue(signer.calls.isEmpty, "Local-key notes must NOT sign Swift-side.")
     }
 
-    func testAddNoteExplicitUserAuthorSignsKindOne() async throws {
+    func testAddNoteExplicitUserAuthorDispatchesKindOneToKernel() async throws {
         _ = store.addNote(text: "explicit user note", kind: .free, target: nil, author: .user)
-        try await waitForSignerCalls(count: 1)
+        try await waitForKernelDispatch(op: "publish_note")
 
-        let signed = try XCTUnwrap(signer.calls.first)
-        XCTAssertEqual(signed.kind, 1)
-        XCTAssertEqual(signed.content, "explicit user note")
+        let call = try XCTUnwrap(kernelDispatches.social(op: "publish_note"))
+        XCTAssertEqual(call["content"] as? String, "explicit user note")
     }
 
-    // MARK: - §5.3 row: Notes (agent tool) — does NOT sign
+    // MARK: - §5.3 row: Notes (agent tool) — does NOT publish
 
-    func testAddNoteAgentAuthorDoesNotSign() async throws {
-        // Agent-authored notes append locally only.
+    func testAddNoteAgentAuthorDoesNotDispatch() async throws {
         _ = store.addNote(text: "agent note", kind: .free, target: nil, author: .agent)
-        // Give any (stray) fire-and-forget Task a chance to land.
         try await Task.sleep(nanoseconds: 200_000_000)
-        XCTAssertTrue(signer.calls.isEmpty, "Agent-authored notes must not reach the user signer.")
+        XCTAssertNil(kernelDispatches.social(op: "publish_note"),
+                     "Agent-authored notes must not reach the kernel social path.")
+        XCTAssertTrue(signer.calls.isEmpty, "Agent-authored notes must not sign Swift-side either.")
     }
 
-    func testAgentToolCreateNoteDoesNotSign() async throws {
-        // The createNote agent tool path is the canonical "did Slice B
-        // wire `author: .agent` at the call-site?" check.
+    func testAgentToolCreateNoteDoesNotDispatch() async throws {
         _ = AgentTools.dispatchNotesMemory(
             name: AgentTools.Names.createNote,
             args: ["text": "agent tool note", "kind": "free"],
@@ -116,28 +144,26 @@ final class UserIdentityWiringTests: XCTestCase {
             batchID: UUID()
         )
         try await Task.sleep(nanoseconds: 200_000_000)
-        XCTAssertTrue(signer.calls.isEmpty, "AgentTools.createNote must not reach the user signer.")
-        // The note still landed locally.
+        XCTAssertNil(kernelDispatches.social(op: "publish_note"),
+                     "AgentTools.createNote must not reach the kernel social path.")
         XCTAssertEqual(store.state.notes.last?.text, "agent tool note")
         XCTAssertEqual(store.state.notes.last?.author, .agent)
     }
 
-    // MARK: - §5.3 row: Memories — does NOT sign
+    // MARK: - §5.3 row: Memories — does NOT publish
 
-    func testAddAgentMemoryDoesNotSign() async throws {
+    func testAddAgentMemoryDoesNotDispatch() async throws {
         _ = store.addAgentMemory(content: "long-running fact")
         try await Task.sleep(nanoseconds: 200_000_000)
-        XCTAssertTrue(signer.calls.isEmpty, "Memories must not reach the user signer.")
+        XCTAssertTrue(kernelDispatches.socialCalls.isEmpty, "Memories must not reach the kernel social path.")
     }
 
-    // MARK: - §5.3 row: Clips, source ≠ .agent — signs kind 9802
+    // MARK: - §5.3 row: Clips, source ≠ .agent — kind 9802 → kernel
 
-    func testAddClipTouchSourceSignsKindNineEightZeroTwo() async throws {
-        let sub = UUID()
-        let ep = UUID()
+    func testAddClipTouchSourceDispatchesKindNineEightZeroTwoToKernel() async throws {
         let clip = Clip(
-            episodeID: ep,
-            subscriptionID: sub,
+            episodeID: UUID(),
+            subscriptionID: UUID(),
             startMs: 1_000,
             endMs: 5_000,
             caption: "Worth re-listening",
@@ -145,18 +171,19 @@ final class UserIdentityWiringTests: XCTestCase {
             source: .touch
         )
         store.addClip(clip)
-        try await waitForSignerCalls(count: 1)
+        try await waitForKernelDispatch(op: "publish_highlight")
 
-        let signed = try XCTUnwrap(signer.calls.first)
-        XCTAssertEqual(signed.kind, 9802, "Clips must sign as NIP-84 kind 9802.")
-        XCTAssertEqual(signed.content, "the prose at the heart of the clip")
-        XCTAssertTrue(signed.tags.contains(["context", "the prose at the heart of the clip"]),
+        let call = try XCTUnwrap(kernelDispatches.social(op: "publish_highlight"))
+        XCTAssertEqual(call["content"] as? String, "the prose at the heart of the clip")
+        let tags = call["tags"] as? [[String]]
+        XCTAssertTrue(tags?.contains(["context", "the prose at the heart of the clip"]) ?? false,
                       "Clip must carry the [\"context\", transcript] tag.")
-        XCTAssertTrue(signed.tags.contains(["alt", "Worth re-listening"]),
+        XCTAssertTrue(tags?.contains(["alt", "Worth re-listening"]) ?? false,
                       "Clip with caption must carry the [\"alt\", caption] tag.")
+        XCTAssertTrue(signer.calls.isEmpty, "Local-key clips must NOT sign Swift-side.")
     }
 
-    func testAddClipAutoSourceSignsKindNineEightZeroTwo() async throws {
+    func testAddClipAutoSourceDispatchesKindNineEightZeroTwoToKernel() async throws {
         let clip = Clip(
             episodeID: UUID(),
             subscriptionID: UUID(),
@@ -166,14 +193,11 @@ final class UserIdentityWiringTests: XCTestCase {
             source: .auto
         )
         store.addClip(clip)
-        try await waitForSignerCalls(count: 1)
-
-        XCTAssertEqual(signer.calls.first?.kind, 9802)
+        try await waitForKernelDispatch(op: "publish_highlight")
+        XCTAssertNotNil(kernelDispatches.social(op: "publish_highlight"))
     }
 
-    func testAddClipConvenienceOverloadSignsForNonAgentSource() async throws {
-        // The convenience builder routes through `addClip(_:)` — the
-        // publish wiring must fire the same way.
+    func testAddClipConvenienceOverloadDispatchesForNonAgentSource() async throws {
         _ = store.addClip(
             episodeID: UUID(),
             subscriptionID: UUID(),
@@ -182,14 +206,13 @@ final class UserIdentityWiringTests: XCTestCase {
             transcriptText: "auto-snip via convenience",
             source: .headphone
         )
-        try await waitForSignerCalls(count: 1)
-
-        XCTAssertEqual(signer.calls.first?.kind, 9802)
+        try await waitForKernelDispatch(op: "publish_highlight")
+        XCTAssertNotNil(kernelDispatches.social(op: "publish_highlight"))
     }
 
-    // MARK: - §5.3 row: Clips, source == .agent — does NOT sign
+    // MARK: - §5.3 row: Clips, source == .agent — does NOT publish
 
-    func testAddClipAgentSourceDoesNotSign() async throws {
+    func testAddClipAgentSourceDoesNotDispatch() async throws {
         let clip = Clip(
             episodeID: UUID(),
             subscriptionID: UUID(),
@@ -200,7 +223,9 @@ final class UserIdentityWiringTests: XCTestCase {
         )
         store.addClip(clip)
         try await Task.sleep(nanoseconds: 200_000_000)
-        XCTAssertTrue(signer.calls.isEmpty, "Agent-sourced clips must not reach the user signer.")
+        XCTAssertNil(kernelDispatches.social(op: "publish_highlight"),
+                     "Agent-sourced clips must not reach the kernel social path.")
+        XCTAssertTrue(signer.calls.isEmpty, "Agent-sourced clips must not sign Swift-side either.")
     }
 
     // MARK: - Note.author Codable backward-compat
@@ -241,27 +266,65 @@ final class UserIdentityWiringTests: XCTestCase {
 
     // MARK: - Helpers
 
-    /// Polls until the recording signer has captured at least `count`
-    /// calls, or fails after a generous timeout. Wiring-layer Tasks are
-    /// fire-and-forget — there's no completion handle to await — so a
-    /// short polling loop is the cleanest seam.
-    private func waitForSignerCalls(
-        count: Int,
+    /// Polls until the kernel recorder has captured a `podcast.social`
+    /// dispatch with the given `op`, or fails after a generous timeout.
+    /// Wiring-layer publishes are fire-and-forget Tasks — there's no
+    /// completion handle to await — so a short polling loop is the seam.
+    private func waitForKernelDispatch(
+        op: String,
         timeout: TimeInterval = 2.0,
         file: StaticString = #file,
         line: UInt = #line
     ) async throws {
         let deadline = Date().addingTimeInterval(timeout)
-        while signer.calls.count < count {
+        while kernelDispatches.social(op: op) == nil {
             if Date() > deadline {
                 XCTFail(
-                    "Timed out waiting for \(count) signer call(s); got \(signer.calls.count).",
+                    "Timed out waiting for podcast.social \(op) dispatch.",
                     file: file, line: line
                 )
                 return
             }
             try await Task.sleep(nanoseconds: 25_000_000)
         }
+    }
+}
+
+// MARK: - KernelDispatchRecorder
+
+/// Captures the `(namespace, body)` of every dispatch routed through
+/// `UserIdentityStore.dispatchToKernel` so the wiring tests can assert
+/// which publishes reached the kernel social path. Thread-safe — publish
+/// Tasks fire off the main actor's run loop.
+final class KernelDispatchRecorder: @unchecked Sendable {
+    struct Call {
+        let namespace: String
+        let body: [String: Any]
+    }
+
+    private let queue = DispatchQueue(label: "KernelDispatchRecorder")
+    private var _calls: [Call] = []
+
+    func record(namespace: String, body: [String: Any]) {
+        queue.sync { _calls.append(Call(namespace: namespace, body: body)) }
+    }
+
+    /// All `podcast.social` dispatch bodies, in order.
+    var socialCalls: [[String: Any]] {
+        queue.sync { _calls.filter { $0.namespace == "podcast.social" }.map(\.body) }
+    }
+
+    /// The first `podcast.social` dispatch body whose `op` matches, if any.
+    func social(op: String) -> [String: Any]? {
+        socialCalls.first { ($0["op"] as? String) == op }
+    }
+
+    /// The first `podcast.identity` dispatch body whose `type` matches, if any.
+    func identity(type: String) -> [String: Any]? {
+        let bodies = queue.sync {
+            _calls.filter { $0.namespace == "podcast.identity" }.map(\.body)
+        }
+        return bodies.first { ($0["type"] as? String) == type }
     }
 }
 

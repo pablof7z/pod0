@@ -71,6 +71,7 @@ pub mod player;
 pub mod queue;
 pub(crate) mod relay;
 pub(crate) mod social_handler;
+pub(crate) mod social_publish_handler;
 pub mod store;
 pub(crate) mod tasks_handler;
 pub(crate) mod transcript;

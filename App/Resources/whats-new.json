@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-01T19:45:00Z",
+      "lines": [
+        "Your profile, notes, and clips now publish to Nostr through the app core for faster, more reliable signing"
+      ]
+    },
+    {
       "shipped_at": "2026-06-01T18:30:00Z",
       "lines": [
         "Your older agent-generated episodes now stick around after updating the app"
