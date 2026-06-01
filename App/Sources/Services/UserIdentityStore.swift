@@ -35,6 +35,13 @@ final class UserIdentityStore {
     /// `nil` while no identity is configured.
     private(set) var signer: (any NostrSigner)?
 
+    /// Weak handle to the Rust kernel (set by `attachKernel`); forwards the
+    /// local signing key so `podcast.social` / agent notes sign as the user.
+    @ObservationIgnored weak var kernel: KernelModel?
+
+    /// Test-only: records kernel dispatches instead of reaching the kernel.
+    @ObservationIgnored var _kernelDispatchRecorder: (@MainActor (String, [String: Any]) -> Void)?
+
     /// Live state of the NIP-46 connection (UI surfaces this).
     private(set) var remoteSignerState: RemoteSignerState = .idle
 
@@ -140,6 +147,9 @@ final class UserIdentityStore {
         Task { await self.tearDownRemote() }
         try? KeychainStore.deleteString(service: Self.nip46SessionService, account: Self.nip46SessionAccount)
         try? KeychainStore.deleteString(service: Self.nip46MetaService, account: Self.nip46MetaAccount)
+        // Wipe the key from the kernel too (else it outlives sign-out in the
+        // kernel IdentityStore + identity.json and can still sign).
+        clearIdentityInKernel()
         keyPair = nil
         publicKeyHex = nil
         signer = nil
@@ -153,10 +163,9 @@ final class UserIdentityStore {
 
     // MARK: - NIP-46 connect / disconnect
 
-    /// Parse a `bunker://…` URI, run the connect handshake, and (on success) persist the
-    /// connection so the next app launch reconnects automatically. If the bunker replies
-    /// with an `auth_url` challenge, the state advances to `.awaitingAuthorization(url)`
-    /// and the UI surfaces a button to open the URL in the browser.
+    /// Parse a `bunker://…` URI, run the connect handshake, and persist the
+    /// connection on success so launch reconnects automatically. An `auth_url`
+    /// challenge advances state to `.awaitingAuthorization(url)` for the UI.
     func connectRemoteSigner(uri: String) async {
         loginError = nil
         let parsed: BunkerURI
@@ -190,6 +199,9 @@ final class UserIdentityStore {
             self.keyPair = nil
             self.mode = .remoteSigner
             self.remoteSignerState = .connected(userPub)
+            // Wire the bunker into the kernel signer broker so kernel-side
+            // features can delegate signing over the relay.
+            self.syncBunkerToKernel(uri: uri)
             self.loadCachedProfile(for: userPub)
             let pub = userPub
             Task { await self.fetchAndCacheProfile(pubkeyHex: pub) }
@@ -211,6 +223,8 @@ final class UserIdentityStore {
         await tearDownRemote()
         try? KeychainStore.deleteString(service: Self.nip46SessionService, account: Self.nip46SessionAccount)
         try? KeychainStore.deleteString(service: Self.nip46MetaService, account: Self.nip46MetaAccount)
+        // Clear any kernel-side identity wired for this bunker session.
+        clearIdentityInKernel()
         publicKeyHex = nil
         keyPair = nil
         signer = nil
@@ -238,6 +252,9 @@ final class UserIdentityStore {
         signer = LocalKeySigner(keyPair: pair)
         mode = .localKey
         remoteSignerState = .idle
+        // Forward the new local key into the kernel (no-op until attach;
+        // `attachKernel` re-syncs on connect).
+        syncIdentityToKernel()
         loadCachedProfile(for: pair.publicKeyHex)
         guard !isGeneratedLocalKey else { return }
         let pubkey = pair.publicKeyHex
@@ -333,15 +350,15 @@ final class UserIdentityStore {
             secret: meta.secret,
             permissions: meta.permissions
         )
-        // Pass the previously-known pubkey so callers of `signer.publicKey()` during the
-        // ~1s reconnect window get the cached value instead of `.missingPublicKey`.
+        // Cached pubkey lets `signer.publicKey()` answer during the ~1s
+        // reconnect window instead of `.missingPublicKey`.
         let signer = RemoteSigner(
             bunker: bunker,
             sessionKeyPair: sessionKeyPair,
             cachedUserPublicKeyHex: meta.userPubkeyHex
         )
-        // Make the cached signer available to callers immediately (it answers
-        // `publicKey()` from cache; sign requests will block on the WebSocket).
+        // Available immediately (answers `publicKey()` from cache; sign
+        // requests block on the WebSocket).
         self.signer = signer
         do {
             _ = try await signer.connect { [weak self] url in
@@ -378,9 +395,8 @@ final class UserIdentityStore {
 
     // MARK: - Slice-B internal helpers
 
-    /// Internal alias for the file-private `generateGeneratedKey()` so the
-    /// extension file `UserIdentityStore+Publishing.swift` can self-heal
-    /// when invoked without an active signer.
+    /// Internal alias for file-private `generateGeneratedKey()` so the
+    /// `+Publishing.swift` extension can self-heal without an active signer.
     func _ensureGeneratedKey() throws {
         try generateGeneratedKey()
     }
@@ -423,22 +439,28 @@ final class UserIdentityStore {
 
     // MARK: - Test seam (slice B)
 
-    /// Test-only: swap in a recording signer so wiring tests can verify
-    /// which call-sites reach the signer without standing up a real keypair.
-    /// Production code never calls this. Lives in the core file because
-    /// `signer` / `publicKeyHex` / `mode` use file-private `private(set)`.
+    // Test-only seams. They live in this file because `signer` / `publicKeyHex`
+    // / `mode` use file-private `private(set)` and `adoptLocal` is private.
+
+    /// Swap in a recording signer (`.localKey` mode, no real keypair).
     func _setSignerForTesting(_ signer: any NostrSigner, publicKeyHex: String = String(repeating: "0", count: 64)) {
         self.signer = signer
         self.publicKeyHex = publicKeyHex
         self.mode = .localKey
     }
 
-    /// Test-only: drop the active signer so tests can verify the
-    /// `signer == nil` → `generateGeneratedKey()` self-heal path.
+    /// Drop the active signer (verifies the self-heal path).
     func _clearSignerForTesting() {
         self.signer = nil
         self.publicKeyHex = nil
         self.mode = .none
+    }
+
+    /// Adopt a real local `keyPair` WITHOUT touching the Keychain, so
+    /// identity-sync tests can exercise `syncIdentityToKernel`'s `.localKey`
+    /// branch (which reads `keyPair?.privateKeyHex`).
+    func _setLocalKeyForTesting(_ pair: NostrKeyPair) {
+        adoptLocal(pair)
     }
 }
 
@@ -449,16 +471,15 @@ enum RemoteSignerState: Sendable, Equatable {
     case idle
     case connecting
     case reconnecting
-    /// The bunker replied with an `auth_url` challenge — the user must approve in a
-    /// browser. The connect call itself is still suspended; `connected(...)` follows
-    /// once the bunker delivers the real `ack`.
+    /// Bunker replied with an `auth_url` challenge — user must approve in a
+    /// browser; `connected(...)` follows once the bunker delivers the `ack`.
     case awaitingAuthorization(URL)
     case connected(String)            // associated value: user pubkey hex
     case failed(String)               // error message
 }
 
-/// Minimal persisted NIP-46 metadata. Stored in the Keychain (JSON) alongside the
-/// session private key so the app can resume on launch without prompting for the URI again.
+/// Minimal persisted NIP-46 metadata. Stored in the Keychain (JSON) alongside
+/// the session private key so the app can resume on launch without re-prompting.
 private struct RemoteMeta: Codable, Sendable {
     let bunkerPubkeyHex: String
     let relays: [String]

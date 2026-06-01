@@ -78,9 +78,14 @@ pub mod settings_module;
 pub mod voice;
 pub mod wiki_module;
 pub mod siri_module;
+pub mod social_module;
 pub mod voice_module;
 
 pub use chapters_module::{ChaptersAction, ChaptersActionModule};
+pub use social_module::{
+    SocialAction, SocialActionModule, ACTION_SOCIAL_PUBLISH_HIGHLIGHT,
+    ACTION_SOCIAL_PUBLISH_NOTE, ACTION_SOCIAL_PUBLISH_PROFILE,
+};
 pub use identity_module::{IdentityAction, IdentityActionModule};
 pub use picks_module::{AgentPicksModule, PicksAction, PICKS_LIMIT, PICKS_PER_SHOW_CAP};
 pub use knowledge_module::{

@@ -214,6 +214,26 @@ worktrees currently in flight.
 
 ## Active P1 - Social/Nostr Real Logic
 
+- **social-bunker-signing-kernel.** `podcast.social` (kind:0/1/9802) signs from
+  the kernel `IdentityStore.secret_hex`, so it only covers `.localKey`
+  identities. NIP-46 bunker (`.remoteSigner`) keys are remote, so
+  `UserIdentityStore+Publishing.swift` keeps the Swift NIP-46 signing path for
+  bunkers. Follow-up: expose a kernel remote-sign seam (delegate sign over the
+  relay via the signer broker) so bunker users also publish through
+  `podcast.social`, then delete the Swift `.remoteSigner` publish branch.
+- **nip73-formatting-kernel.** `publishUserClip` assembles the NIP-73 / NIP-84
+  highlight tag set (enclosure/feed `r`, episode `i` coordinate, `context`,
+  `alt`) Swift-side and passes it to `podcast.social publish_highlight` as a
+  verbatim `tags` array. Tag *formatting* could move kernel-side (the kernel
+  would build the `i podcast:item:guid:<guid>#t=<start>,<end>` string from
+  episode/podcast ids) so iOS hands data, not pre-formatted tags. Low priority;
+  signing already moved.
+- **social-publish-relay-target.** Kernel social publishing targets the kernel's
+  primary relay (`relay.primal.net`, matching `agent_note_handler`/
+  `social_handler`), whereas the old Swift path used
+  `FeedbackRelayClient.profileRelayURLs` (`relay.tenex.chat` + `purplepag.es`).
+  User content arguably belongs on the user's configured write relays, not a
+  hardcoded one — wire `podcast.social` publishing to the configured-relays set.
 - **episode-comments-relay-wiring.** Replace `comments_handler.rs` stubs with
   real kind-1111 relay subscribe/publish. Map local `EpisodeId` to
   Podcasting 2.0 guid/NIP-73 `i podcast:item:guid:<guid>` anchors.

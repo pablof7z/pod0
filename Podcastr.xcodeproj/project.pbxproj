@@ -287,6 +287,7 @@
 		653DAAC527453619FE0B6892 /* SpeechRecognizerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34844619100E1D12A7AB23CE /* SpeechRecognizerService.swift */; };
 		65AEB511A71F7EE749883F1C /* UserIdentityStore+ProfileFetch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39D57FAE40C99A4DB66FEF1D /* UserIdentityStore+ProfileFetch.swift */; };
 		6603B3C1EF8C6E196082E5B8 /* SettingsCodableRoundTripTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72540683D53BC31AC125B8CD /* SettingsCodableRoundTripTests.swift */; };
+		6678546E927BB001A30C0836 /* UserIdentityStore+Kernel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA47DC266D61E2A26720A8DC /* UserIdentityStore+Kernel.swift */; };
 		66BE180E590D46CC4A17E9A7 /* AppStateStore+FriendMessages.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF9936DB0C1617A8D4E1A139 /* AppStateStore+FriendMessages.swift */; };
 		6767BA78569F2C050AB0136F /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08173A0B13A27110B528F32D /* AppLogger.swift */; };
 		68247C0FE59F4E1BF7B45250 /* WidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5EC59DDC4E5BC03024D6952 /* WidgetBundle.swift */; };
@@ -1266,6 +1267,7 @@
 		A89491ACAEB7BE0A4E93ACFF /* AddRelaySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRelaySheet.swift; sourceTree = "<group>"; };
 		A93A36DF0D016260B4381015 /* PlaybackState+AudioCallbacks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlaybackState+AudioCallbacks.swift"; sourceTree = "<group>"; };
 		A93DB0EBF2134B7960714BD2 /* AppStateStore+Episodes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+Episodes.swift"; sourceTree = "<group>"; };
+		AA47DC266D61E2A26720A8DC /* UserIdentityStore+Kernel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserIdentityStore+Kernel.swift"; sourceTree = "<group>"; };
 		AA50A573EAFE47198834A081 /* InboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxView.swift; sourceTree = "<group>"; };
 		AA71289F9189F1E8D3FD7E89 /* ImageGenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGenerationService.swift; sourceTree = "<group>"; };
 		ABA91AACA012C8EA92CB1BB1 /* TranscriptAskAgentDispatchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptAskAgentDispatchTests.swift; sourceTree = "<group>"; };
@@ -2391,6 +2393,7 @@
 				814FF0BB1072FB41B71F5837 /* TranscriptIngestService+Chunkable.swift */,
 				2299771095C075BD82AF670E /* TranscriptStore.swift */,
 				0E4E8F90C5ECE5E06F40C338 /* UserIdentityStore.swift */,
+				AA47DC266D61E2A26720A8DC /* UserIdentityStore+Kernel.swift */,
 				AD5183645DBEDD1F73FC5F85 /* UserIdentityStore+NIP46.swift */,
 				39D57FAE40C99A4DB66FEF1D /* UserIdentityStore+ProfileFetch.swift */,
 				70F290F8881329E5171D2E7F /* UserIdentityStore+Publishing.swift */,
@@ -3438,6 +3441,7 @@
 				EA7C4952B3B39EC78D5FC1B2 /* TranscriptIngestService+Chunkable.swift in Sources */,
 				7B38745DD2DF0D924C751D64 /* TranscriptIngestService.swift in Sources */,
 				1A2FCFE5ADE3267030656C9B /* TranscriptStore.swift in Sources */,
+				6678546E927BB001A30C0836 /* UserIdentityStore+Kernel.swift in Sources */,
 				48D3774FEED606C4CB30FB6E /* UserIdentityStore+NIP46.swift in Sources */,
 				65AEB511A71F7EE749883F1C /* UserIdentityStore+ProfileFetch.swift in Sources */,
 				A9BBB154AB602CDBD91B29E4 /* UserIdentityStore+Publishing.swift in Sources */,

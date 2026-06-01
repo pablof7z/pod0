@@ -27,6 +27,11 @@ extension AppStateStore {
     @MainActor
     func attachKernel(_ kernel: KernelModel) {
         self.kernel = kernel
+        // Forward the user's Nostr identity into the kernel so kernel-side
+        // signing (podcast.social kind:0/1/9802, agent notes) has the active
+        // local key. Re-syncs the current identity immediately (a key adopted
+        // at launch, before the kernel attached, still reaches the kernel).
+        identity.attachKernel(kernel)
         kernelObservationTask?.cancel()
         // Report which STT providers have a Keychain API key so the kernel's
         // STT fallback policy resolves `settings.effectiveSttProvider`

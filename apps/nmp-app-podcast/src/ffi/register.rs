@@ -25,6 +25,7 @@ use super::actions::publish_module::NipF4PublishModule;
 use super::actions::queue_module::QueueActionModule;
 use super::actions::settings_module::SettingsActionModule;
 use super::actions::siri_module::SiriActionModule;
+use super::actions::social_module::SocialActionModule;
 use super::actions::tasks_module::AgentTasksModule;
 use super::actions::voice_module::VoiceActionModule;
 use super::actions::wiki_module::WikiActionModule;
@@ -82,6 +83,7 @@ pub extern "C" fn nmp_app_podcast_register(
     app_mut.register_action::<CategorizationModule>();
     app_mut.register_action::<SettingsActionModule>();
     app_mut.register_action::<SiriActionModule>();
+    app_mut.register_action::<SocialActionModule>();
 
     // Shared state between the handle (snapshot reader) and the handler (writer).
     let store = Arc::new(Mutex::new(PodcastStore::new()));
