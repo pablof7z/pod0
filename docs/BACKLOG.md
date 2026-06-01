@@ -635,6 +635,15 @@ worktrees currently in flight.
     stored props) out of the main file. Deferred to avoid conflicting with the
     in-flight `fix/double-recompute`, `file-size-projection`, and
     `signpost-instrumentation` branches that all touch this file. Owner: unassigned.
+  - **kernelprojection-split.** `App/Sources/Bridge/AppStateStore+KernelProjection.swift`
+    was already over the 500-line hard limit (533 on origin/main; 603 after the
+    `fix/incremental-episode-update` summary-level episode diff, which added the
+    diff loop plus its reuse-invariant safety comment). Split deferred: this file
+    is concurrently touched by the in-flight `fix/file-size-projection`,
+    `fix/double-recompute`, and `signpost-instrumentation` branches, and a split
+    now would conflict with all three. Relocate `toEpisode`/`toChapter` mapping
+    and `mergeResolvedProfiles`/`backfillSyntheticEpisodes` into sibling files
+    once those land. Owner: unassigned.
 - **m1.6-kernel-widget-position.** Once `AudioCapability.sendReport` is wired
   to the Rust kernel (M1.6), kernel-projection position ticks will drive
   `nowPlaying.positionSecs`. At that point `PlatformCapability.applyNowPlayingSnapshot`

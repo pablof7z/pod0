@@ -61,6 +61,15 @@ extension AppStateStore {
         // yet registered in the kernel would be wiped before we could see it.
         backfillSyntheticEpisodes()
         kernelObservationTask = Task { @MainActor [weak self] in
+            // Previous-tick `EpisodeSummary` cache, keyed by the wire `id`
+            // string. Held as a local across loop iterations (this Task is the
+            // ONLY caller of `applyKernelState`) so the projection can diff the
+            // incoming library against the last one and skip `toEpisode` for
+            // episodes whose summary is byte-for-byte unchanged. Kept here — NOT
+            // as a stored property on `AppStateStore` — because
+            // `AppStateStore.swift` is already over the 500-line hard limit
+            // (see docs/BACKLOG.md line-limit-audit).
+            var prevEpisodeSummaries: [String: EpisodeSummary] = [:]
             while !Task.isCancelled {
                 // Apply current state FIRST, then arm the observation for the
                 // next change. This eliminates the race where the kernel snapshot
@@ -70,7 +79,8 @@ extension AppStateStore {
                 self?.applyKernelState(
                     library: kernel.library,
                     snapshot: kernel.podcastSnapshot,
-                    identity: kernel.kernelIdentity)
+                    identity: kernel.kernelIdentity,
+                    prevEpisodeSummaries: &prevEpisodeSummaries)
                 // Suspend until kernel.library, kernel.podcastSnapshot, or
                 // kernel.kernelIdentity changes. The identity write is
                 // equality-gated in `KernelModel.apply`, so this arms only on a
@@ -209,7 +219,8 @@ extension AppStateStore {
     private func applyKernelState(
         library: [PodcastSummary],
         snapshot: PodcastUpdate?,
-        identity: KernelIdentityProjection
+        identity: KernelIdentityProjection,
+        prevEpisodeSummaries: inout [String: EpisodeSummary]
     ) {
         // Count is computed allocation-free (reduce, not flatMap) so the
         // signpost label adds no O(N) array copy to this hot path — the
@@ -266,15 +277,68 @@ extension AppStateStore {
         next.podcasts = podcasts
         next.subscriptions = subscriptions
 
-        // ── Episodes ──────────────────────────────────────────────────────
+        // ── Episodes (summary-level diff) ─────────────────────────────────
+        // The kernel re-emits the FULL library on every content-changing tick,
+        // even when a single field on a single episode changed. Naively mapping
+        // every `EpisodeSummary` through `toEpisode` reallocates all N `Episode`
+        // structs AND runs `toEpisode`'s per-episode work (incl. a main-thread
+        // file stat for every downloaded episode) on each tick.
+        //
+        // Diff at the SUMMARY level instead: `EpisodeSummary` is `Equatable`, so
+        // a summary byte-for-byte identical to the previous tick's yields a
+        // reusable `Episode` with no `toEpisode` call. Only NEW or CHANGED
+        // summaries pay the mapping cost — the common case (one mutation on one
+        // episode) is a single `toEpisode` call, not N.
+        //
+        // NOTE: an Episode-LEVEL diff (map all summaries, then compare Episodes)
+        // would be pointless here — it still calls `toEpisode` for every summary
+        // to produce the comparison value, saving no allocation and no stat. The
+        // win comes only from gating `toEpisode` on the summary comparison.
+        //
+        // REUSE INVARIANT: reusing the prior `Episode` (rather than re-deriving
+        // it) is behaviour-preserving ONLY because every Swift writer that edits
+        // `state.episodes` between ticks either (a) dispatches to the kernel so
+        // the next `EpisodeSummary` differs and we re-derive (starred, played,
+        // metadataIndexed, transcriptStatus, adSegments, triageDecision), (b) is
+        // the chapters fallback below — deliberately preserved, or (c) writes a
+        // value `toEpisode` would itself produce (`.clearFailed → .notDownloaded`,
+        // which a nil `downloadPath` also yields). If a NEW Swift-only writer
+        // sets a field absent from `EpisodeSummary` and not re-derivable, reuse
+        // would keep it stale — route such a field through the kernel (a) or the
+        // chapters-style merge (b) instead. The old full-rebuild masked this by
+        // wiping every Swift mutation back to kernel truth each content tick.
+        //
+        // Parent-id stability: reuse keys on `EpisodeSummary` equality alone, but
+        // `toEpisode` also takes the parent `summary.id`. Episode ids are
+        // UUIDv5(feedURL|guid) — feed-bound — so an episode cannot reparent
+        // without its own id (and thus its summary key) changing. No risk of a
+        // stale `podcastID` surviving reuse.
+        let priorEpisodesByID = Dictionary(
+            state.episodes.map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
         var episodes: [Episode] = []
+        episodes.reserveCapacity(library.reduce(0) { $0 + $1.episodes.count })
+        var nextEpisodeSummaries: [String: EpisodeSummary] = [:]
+        nextEpisodeSummaries.reserveCapacity(prevEpisodeSummaries.count)
         for summary in library {
             for ep in summary.episodes {
-                if let episode = ep.toEpisode(podcastIdString: summary.id) {
+                nextEpisodeSummaries[ep.id] = ep
+                // Reuse the prior `Episode` only when the wire summary is
+                // unchanged AND we still hold the mapped value. `toEpisode`
+                // parses the id; an unparseable id produced no prior episode and
+                // re-mapping it just returns nil again, so the lookup also
+                // naturally skips those.
+                if prevEpisodeSummaries[ep.id] == ep,
+                   let parsedID = UUID(uuidString: ep.id),
+                   let prior = priorEpisodesByID[parsedID] {
+                    episodes.append(prior)
+                } else if let episode = ep.toEpisode(podcastIdString: summary.id) {
                     episodes.append(episode)
                 }
             }
         }
+        prevEpisodeSummaries = nextEpisodeSummaries
         // Also include episodes from the active queue (snapshot may lag library
         // if only library changed, but queue episodes still need to resolve).
         for ep in snapshot?.queue ?? [] {
@@ -285,7 +349,11 @@ extension AppStateStore {
             }
         }
 
-        // ── Chapters fallback (last preserved-state field) ───────────────
+        // ── Chapters fallback (sole re-derived preserved-state field) ─────
+        // For REUSED episodes this is a no-op — they already carry their merged
+        // chapters from the tick that first mapped them. It exists for the
+        // NEW/CHANGED episodes that just came out of `toEpisode` (kernel projects
+        // no chapters), preserving Swift-side AI chapters across a refresh.
         // M4 deleted the preserved-state merge for transcriptState, AI inbox
         // triage decisions, and the RAG metadata-index flag: all three now ride
         // the Rust projection via the capability-report model (D7) and are
@@ -299,12 +367,14 @@ extension AppStateStore {
         // ad_segments), we keep the prior Swift chapters when Rust projects
         // none so AI chapters don't flash empty on a feed-refresh pass.
         // Tracked in docs/BACKLOG.md.
-        let priorByID = Dictionary(
-            state.episodes.map { ($0.id, $0) },
-            uniquingKeysWith: { first, _ in first }
-        )
+        //
+        // Reuses `priorEpisodesByID` from the diff above. Reused (unchanged)
+        // episodes already carry their merged chapters from the tick that first
+        // mapped them, so this only does real work for the newly-mapped ones —
+        // but running it over the whole array is harmless and keeps the fallback
+        // a single, obviously-correct pass.
         for idx in episodes.indices {
-            guard let prior = priorByID[episodes[idx].id] else { continue }
+            guard let prior = priorEpisodesByID[episodes[idx].id] else { continue }
             if episodes[idx].chapters?.isEmpty != false {
                 episodes[idx].chapters = prior.chapters
             }
