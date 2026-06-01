@@ -4,7 +4,7 @@
     {
       "shipped_at": "2026-06-01T16:30:00Z",
       "lines": [
-        "Editing and deleting agent-owned podcasts now works reliably and stays in sync"
+        "Editing and deleting agent-owned podcasts now updates and publishes correctly"
       ]
     },
     {

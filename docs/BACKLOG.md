@@ -52,6 +52,19 @@ worktrees currently in flight.
   a push. Out of scope for the owned-podcast PR (it touched only the agent
   `LiveAgentOwnedPodcastManager` lifecycle). Verify the "Agent Generated"
   episodes still resolve after a refresh once the row rides the projection.
+- **synthetic-podcast-episodes-kernel-seed.** Sibling to
+  `synthetic-podcast-row-kernel-seed`: episodes attached to owned / synthetic
+  podcasts are added Swift-only via `AgentGeneratedPodcastService.publishEpisode`
+  (the `generate_tts_episode` agent tool → `AgentTTSComposer`, and
+  `LiveYouTubeIngestionAdapter`) with NO kernel insert. `applyKernelState`
+  rebuilds `state.episodes` from `library[*].episodes` (the kernel store), which
+  holds zero episodes for the owned podcast → the show's non-queued episodes are
+  dropped from the UI on the next content-changing snapshot push. The
+  owned-podcast-lifecycle PR (#211) made the *row* survive a push (kernel SSOT)
+  but the *episodes* still don't. Fix by routing owned-podcast episode
+  publishing through a kernel insert (a `podcast.publish` episode-add op, or a
+  `subscribe`-style upsert) so `library[*].episodes` carries them. Until then an
+  owned podcast resets to 0 episodes after a push.
 - **owned-podcast-episode-backfill-kernel.** The kernel `update_owned_podcast`
   op now carries title/description/author/artwork/visibility and republishes
   the kind:10154 SHOW event itself on a private→public flip. The remaining
