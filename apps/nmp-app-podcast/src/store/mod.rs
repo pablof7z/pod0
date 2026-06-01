@@ -18,9 +18,7 @@
 //! authoritative and the next mutation will try to write again.
 
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
-#[cfg(test)]
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use podcast_core::{Episode, EpisodeId, Podcast, PodcastId};
 
@@ -34,6 +32,7 @@ pub(crate) mod owned_ext;
 mod playback;
 mod persistence;
 pub mod podcast_keys;
+pub mod relay_config;
 mod settings;
 pub mod stt_policy;
 pub(crate) mod summary;
@@ -66,6 +65,15 @@ pub struct PodcastStore {
     /// Lives in a side-map so refreshing a feed, which replaces the episode
     /// list wholesale, does not wipe download state.
     local_paths: HashMap<EpisodeId, String>,
+    /// Per-episode downloaded-file size in bytes, recorded alongside
+    /// [`local_paths`] at download-completion time so the snapshot projection
+    /// can surface `EpisodeSummary::file_size_bytes` without a per-tick
+    /// `std::fs::metadata` syscall (the read path runs on the main thread).
+    ///
+    /// Lifecycle-locked to `local_paths`: every `set_local_path` records a
+    /// size and every `clear_local_path` drops it, so the size is never
+    /// staler than the path it describes.
+    file_sizes: HashMap<EpisodeId, i64>,
     /// Plain-text transcripts keyed by the string form of `EpisodeId`.
     transcripts: HashMap<String, String>,
     /// Last position (seconds) committed to disk for each episode, keyed by
@@ -282,6 +290,7 @@ impl PodcastStore {
             podcasts: HashMap::new(),
             episodes: HashMap::new(),
             local_paths: HashMap::new(),
+            file_sizes: HashMap::new(),
             transcripts: HashMap::new(),
             last_flushed_positions: HashMap::new(),
             has_completed_onboarding: false,
@@ -391,6 +400,7 @@ impl PodcastStore {
         self.podcasts.clear();
         self.episodes.clear();
         self.local_paths.clear();
+        self.file_sizes.clear();
         self.transcripts.clear();
         // Hydrated episode positions are themselves the most-recent flushed
         // checkpoint: seed the throttling marker so the writeback layer
@@ -771,8 +781,9 @@ impl PodcastStore {
         }
     }
 
-    /// Test-only accessor for the currently-bound data dir.
-    #[cfg(test)]
+    /// Accessor for the currently-bound data dir, or `None` before
+    /// `set_data_dir`. Read by the host-op handler's relay-edit arm to
+    /// locate the relay-config sidecar (`relay_config::save_relay_config`).
     pub(crate) fn data_dir(&self) -> Option<&Path> {
         self.data_dir.as_deref()
     }

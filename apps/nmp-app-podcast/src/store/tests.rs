@@ -91,18 +91,23 @@ fn set_and_get_local_path() {
     let mut store = PodcastStore::new();
     let ep_id = EpisodeId::generate();
     assert!(store.local_path_for(&ep_id).is_none());
-    store.set_local_path(ep_id, "/tmp/ep.mp3".into());
+    assert!(store.file_size_for(&ep_id).is_none());
+    store.set_local_path(ep_id, "/tmp/ep.mp3".into(), 8192);
     assert_eq!(store.local_path_for(&ep_id), Some("/tmp/ep.mp3"));
+    // Byte size is recorded alongside the path (lifecycle-locked).
+    assert_eq!(store.file_size_for(&ep_id), Some(8192));
 }
 
 #[test]
 fn clear_local_path_returns_previous_and_unsets() {
     let mut store = PodcastStore::new();
     let ep_id = EpisodeId::generate();
-    store.set_local_path(ep_id, "/tmp/ep.mp3".into());
+    store.set_local_path(ep_id, "/tmp/ep.mp3".into(), 4096);
     let prev = store.clear_local_path(&ep_id);
     assert_eq!(prev.as_deref(), Some("/tmp/ep.mp3"));
     assert!(store.local_path_for(&ep_id).is_none());
+    // Clearing the path also drops the recorded size (lifecycle-locked).
+    assert!(store.file_size_for(&ep_id).is_none());
     assert!(store.clear_local_path(&ep_id).is_none());
 }
 

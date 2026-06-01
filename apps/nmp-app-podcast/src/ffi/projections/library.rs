@@ -75,6 +75,12 @@ fn str_is_public(s: &str) -> bool {
     s == "public"
 }
 
+/// D5 skip predicate: omit a byte-count field when it is the `0` default
+/// (episode not downloaded, or size unknown).
+fn zero_i64(v: &i64) -> bool {
+    *v == 0
+}
+
 /// One episode row embedded in [`PodcastSummary::episodes`].
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct EpisodeSummary {
@@ -101,6 +107,15 @@ pub struct EpisodeSummary {
     /// `PodcastStore::local_path_for`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub download_path: Option<String>,
+    /// Size in bytes of the downloaded enclosure, cached by the kernel at
+    /// download-completion time (`PodcastStore::file_size_for`). `0` when the
+    /// episode is not downloaded or its size is unknown. The iOS shell reads
+    /// this directly instead of running `URL.resourceValues(.fileSizeKey)` on
+    /// the main actor for every downloaded episode on every projection tick.
+    /// Per D5 omitted from the wire when `0` to stay byte-compatible with
+    /// snapshots that predate the field.
+    #[serde(default, skip_serializing_if = "zero_i64")]
+    pub file_size_bytes: i64,
     /// The original RSS enclosure URL for streaming. Always present for
     /// library episodes; used by the host player when `download_path` is
     /// absent so it can stream without needing a separate Rust round-trip.
@@ -285,6 +300,48 @@ pub struct NostrShowSummary {
     pub artwork_url: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub categories: Vec<String>,
+}
+
+#[cfg(test)]
+mod episode_size_tests {
+    use super::EpisodeSummary;
+
+    #[test]
+    fn file_size_bytes_survives_round_trip() {
+        let summary = EpisodeSummary {
+            id: "e1".into(),
+            title: "Downloaded".into(),
+            download_path: Some("/var/mobile/e1.mp3".into()),
+            file_size_bytes: 8_388_608,
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&summary).expect("encode");
+        assert!(json.contains(r#""file_size_bytes":8388608"#));
+        let decoded: EpisodeSummary = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, summary);
+    }
+
+    #[test]
+    fn zero_file_size_omitted_on_wire() {
+        // D5: a not-downloaded (or unknown-size) episode omits the field so the
+        // wire payload stays byte-compatible with snapshots that predate it.
+        let summary = EpisodeSummary {
+            id: "e2".into(),
+            title: "Streaming".into(),
+            file_size_bytes: 0,
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&summary).expect("encode");
+        assert!(!json.contains("file_size_bytes"));
+    }
+
+    #[test]
+    fn absent_file_size_decodes_to_zero() {
+        // Snapshots written before this field decode cleanly with the default.
+        let json = r#"{"id":"e3","title":"Legacy"}"#;
+        let decoded: EpisodeSummary = serde_json::from_str(json).expect("decode");
+        assert_eq!(decoded.file_size_bytes, 0);
+    }
 }
 
 #[cfg(test)]

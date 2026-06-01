@@ -156,14 +156,28 @@ impl PodcastStore {
 
     // ── Download local-path tracking ──────────────────────────────────────────
 
-    /// Record the on-disk path of a successfully downloaded enclosure.
-    pub fn set_local_path(&mut self, episode_id: EpisodeId, path: String) {
+    /// Record the on-disk path and byte size of a successfully downloaded
+    /// enclosure. `byte_count` is the file size measured at the download
+    /// boundary (`std::fs::metadata`), kept lifecycle-locked to the path so
+    /// the snapshot projection can surface `EpisodeSummary::file_size_bytes`
+    /// without statting the file on every (main-thread) projection tick.
+    /// Pass `0` when the size is unknown.
+    pub fn set_local_path(&mut self, episode_id: EpisodeId, path: String, byte_count: i64) {
         self.local_paths.insert(episode_id, path);
+        self.file_sizes.insert(episode_id, byte_count);
     }
 
     /// Look up the on-disk path of a downloaded enclosure, if any.
     pub fn local_path_for(&self, episode_id: &EpisodeId) -> Option<&str> {
         self.local_paths.get(episode_id).map(String::as_str)
+    }
+
+    /// Look up the recorded byte size of a downloaded enclosure. Returns
+    /// `None` when the episode has no tracked download (mirrors
+    /// [`local_path_for`](Self::local_path_for)); the projection treats that
+    /// as `0`.
+    pub fn file_size_for(&self, episode_id: &EpisodeId) -> Option<i64> {
+        self.file_sizes.get(episode_id).copied()
     }
 
     /// Return the `PodcastId` for the podcast that owns `episode_id_str`, or
@@ -192,6 +206,7 @@ impl PodcastStore {
     /// Remove the local-path mapping for an episode and return the path that
     /// was previously stored so the caller can remove the file.
     pub fn clear_local_path(&mut self, episode_id: &EpisodeId) -> Option<String> {
+        self.file_sizes.remove(episode_id);
         self.local_paths.remove(episode_id)
     }
 

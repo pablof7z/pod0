@@ -626,14 +626,24 @@ impl PodcastHostOpHandler {
             // Relay edits mutate kernel-owned state (the `AppRelaySlot`), not
             // `PodcastStore` — `SettingsActionModule::execute` already emitted
             // the real `ActorCommand::AddRelay` / `RemoveRelay` that mutates the
-            // slot. This `DispatchHostOp` companion exists solely to bump
-            // `handle.rev` so the rev-gated snapshot push frame rebuilds and the
-            // new relay list reaches iOS (a relay-only ActorCommand never bumps
-            // rev). FIFO actor ordering guarantees the slot mutation landed
-            // before this rebuild, so the fresh snapshot reads the new relays.
+            // slot. This `DispatchHostOp` companion does two things:
+            //
+            //   1. Bumps `handle.rev` so the rev-gated snapshot push frame
+            //      rebuilds and the new relay list reaches iOS (a relay-only
+            //      ActorCommand never bumps rev).
+            //   2. Persists the full post-mutation relay list to the
+            //      `.nmp-relay-config.json` sidecar so the edit survives an app
+            //      restart on the raw C-ABI start path (the builder sidecar is
+            //      unreachable here — see `store::relay_config`).
+            //
+            // FIFO actor ordering guarantees the slot mutation landed before
+            // this arm runs, so reading `configured_relays_handle()` here sees
+            // the just-applied edit — the kernel slot is the source of truth,
+            // identical to what the snapshot projection reads.
             SettingsAction::AddRelay { .. }
             | SettingsAction::RemoveRelay { .. }
             | SettingsAction::SetRelayRole { .. } => {
+                crate::ffi::relay_persist::persist_configured_relays(self.app, &self.store);
                 self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 serde_json::json!({"ok": true})
             }

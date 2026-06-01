@@ -8,6 +8,18 @@
       ]
     },
     {
+      "shipped_at": "2026-06-01T18:30:00Z",
+      "lines": [
+        "Your older agent-generated episodes now stick around after updating the app"
+      ]
+    },
+    {
+      "shipped_at": "2026-06-01T17:00:00Z",
+      "lines": [
+        "Your relay edits now stick — added, removed, and re-roled relays survive an app restart"
+      ]
+    },
+    {
       "shipped_at": "2026-06-01T16:30:00Z",
       "lines": [
         "Editing and deleting agent-owned podcasts now updates and publishes correctly"

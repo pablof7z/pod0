@@ -1,4 +1,6 @@
 import SwiftUI
+import os
+import os.signpost
 
 // MARK: - HomeView
 //
@@ -173,6 +175,8 @@ struct HomeView: View {
     /// the inbox side — listened episodes drop off the surface anyway, so
     /// counting them reads as stale.
     private var triageCounts: (inbox: Int, archived: Int, shows: Int) {
+        let interval = signposter.beginInterval("triageCounts")
+        defer { signposter.endInterval("triageCounts", interval) }
         let allowed = allowedSubscriptionIDs
         var inbox = 0
         var archived = 0

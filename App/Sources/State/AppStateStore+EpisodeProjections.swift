@@ -1,4 +1,6 @@
 import Foundation
+import os
+import os.signpost
 
 // MARK: - AppStateStore + EpisodeProjections
 //
@@ -54,6 +56,8 @@ extension AppStateStore {
     /// states, episode membership, or position-derived in-progress status.
     func recomputeEpisodeProjections() {
         let episodes = state.episodes
+        os_signpost(.begin, log: perfLog, name: "recomputeEpisodeProjections", "count=%d", episodes.count)
+        defer { os_signpost(.end, log: perfLog, name: "recomputeEpisodeProjections") }
 
         var unplayed: [UUID: Int] = [:]
         var downloaded: Set<UUID> = []

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		00398F2D3677B88258458499 /* AIChapterCompiler.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9B23681B1B9A54B3F9C90E /* AIChapterCompiler.swift */; };
+		00A1EEE68C8AD61AFC553D33 /* PerfSignposter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A67DAB8DE371B15ECD8C111 /* PerfSignposter.swift */; };
 		00D0604F92F2793F9CA70A84 /* HighlightedTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E39D85E4B13CD42BCEDDFE48 /* HighlightedTextTests.swift */; };
 		02E8BC01AB1737A2495F0578 /* PlaybackState+Queue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 641B7B6727D57CA53D90E43D /* PlaybackState+Queue.swift */; };
 		02F9988B7922002BB6DB0BEB /* AgentIdentityQRView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE3FED42AA395BDE3B95D518 /* AgentIdentityQRView.swift */; };
@@ -1181,6 +1182,7 @@
 		88FA363167B0DDF4E95F2764 /* ElevenLabsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevenLabsSettingsView.swift; sourceTree = "<group>"; };
 		89B08026F43BE139F0D16703 /* VoiceCapability+Barge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "VoiceCapability+Barge.swift"; sourceTree = "<group>"; };
 		8A333C192AB8AF5ACF08340F /* AppleSTT+TranscriptAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppleSTT+TranscriptAdapter.swift"; sourceTree = "<group>"; };
+		8A67DAB8DE371B15ECD8C111 /* PerfSignposter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerfSignposter.swift; sourceTree = "<group>"; };
 		8A771BE98E53F67D470AC9B7 /* UsageCostModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageCostModels.swift; sourceTree = "<group>"; };
 		8A82835E86FB3FA46E23B756 /* OllamaCredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaCredentialStore.swift; sourceTree = "<group>"; };
 		8AF0FF88220EDB250E19E82A /* LiveWikiStorageAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveWikiStorageAdapter.swift; sourceTree = "<group>"; };
@@ -2294,6 +2296,7 @@
 				269104D37F8A8A8A2D5F6A1C /* KernelModelHashing.swift */,
 				0A6E68116A09796734A82F4D /* KernelModelMediaProjection.swift */,
 				41BA098E43EE550B5B1C6E78 /* LiveActivityManager.swift */,
+				8A67DAB8DE371B15ECD8C111 /* PerfSignposter.swift */,
 				61611885D6AA0AE6DE31BA6B /* PodcastActivityAttributes.swift */,
 			);
 			path = Bridge;
@@ -2967,6 +2970,7 @@
 				0C7D31030CE86E7E63913C5E /* KernelModelHashing.swift in Sources */,
 				C63631AE55028FA93B14AE81 /* KernelModelMediaProjection.swift in Sources */,
 				39E3C2F720B8B7B41C70FBF5 /* LiveActivityManager.swift in Sources */,
+				00A1EEE68C8AD61AFC553D33 /* PerfSignposter.swift in Sources */,
 				7AE16082CAF1996E7CC3B9DB /* PodcastActivityAttributes.swift in Sources */,
 				B70ADEF100836FD74CFCBA14 /* AudioCapability+NowPlaying.swift in Sources */,
 				6110A205D44ADA4D5DF8992F /* AudioCapability+Observers.swift in Sources */,

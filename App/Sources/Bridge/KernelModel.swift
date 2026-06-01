@@ -216,12 +216,16 @@ final class KernelModel {
         // Gate `podcastSnapshot` (and `library`) on content hashes that exclude
         // volatile position/buffering fields so list views don't re-render at
         // the emit rate.
+        let snapHashInterval = signposter.beginInterval("snapshotContentHash")
         let newSnapHash = snapshotContentHash(for: update)
+        signposter.endInterval("snapshotContentHash", snapHashInterval)
         if newSnapHash != lastSnapshotContentHash {
             lastSnapshotContentHash = newSnapHash
             podcastSnapshot = update
         }
+        let libHashInterval = signposter.beginInterval("libraryMetaHash")
         let newLibHash = libraryMetaHash(for: update.library)
+        signposter.endInterval("libraryMetaHash", libHashInterval)
         if newLibHash != lastLibraryMetaHash {
             lastLibraryMetaHash = newLibHash
             library = update.library

@@ -164,7 +164,12 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
     /// Convert an `Episode.Chapter` into the `register_synthetic_episode` wire
     /// dict. Carries the parity fields (`image_url`, `source_episode_id`) the
     /// kernel stores and projects back onto the episode's chapters.
-    private static func chapterWire(_ chapter: Episode.Chapter) -> [String: Any] {
+    ///
+    /// Not `private` so the one-shot synthetic-episode backfill
+    /// (`AppStateStore+KernelProjection.backfillSyntheticEpisodes`) can reuse
+    /// the same wire encoding rather than duplicate it — there must be one
+    /// canonical chapter-wire representation.
+    static func chapterWire(_ chapter: Episode.Chapter) -> [String: Any] {
         var dict: [String: Any] = [
             "start_secs": chapter.startTime,
             "title": chapter.title,

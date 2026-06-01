@@ -143,6 +143,10 @@ extension KernelModel {
                 hasher.combine(episode.played)
                 hasher.combine(episode.starred)
                 hasher.combine(episode.downloadPath)
+                // Lifecycle-locked to `downloadPath`, but hashed too so a
+                // re-download to the same path with a different size still
+                // bumps the library hash and refreshes the displayed size.
+                hasher.combine(episode.fileSizeBytes)
                 hasher.combine(episode.durationSecs)
                 hasher.combine(episode.publishedAt)
                 // Include `summary` so a freshly-landed AI summary changes the
