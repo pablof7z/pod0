@@ -207,6 +207,17 @@ worktrees currently in flight.
 
 ## Active P1 - AI Scaffold Replacement
 
+- **inbox-triage-progress-projection.** The Swift inbox-triage orchestration
+  was deleted in `feat/delete-swift-triage` (kernel owns triage, M5). Two
+  display-only affordances were dropped because the kernel inbox projection
+  does not surface their inputs: the streaming shimmer on `HomeFeaturedSection`
+  (was `InboxTriageService.isRunning`) and the "triaged Xh ago" subtitle (was
+  `InboxTriageService.lastCompletedAt`). The kernel already tracks
+  `inbox_triage_in_progress` (`host_op_handler.rs`) and a triage cache with
+  timestamps; follow-up is to project an `inbox_triage_in_progress: bool` and
+  `inbox_last_triaged_at: Option<i64>` onto `PodcastUpdate`, then re-wire
+  `HomeFeaturedSection.isStreaming` / `lastTriagedAt` to read them. Requires a
+  Rust change, so out of scope for the Swift-only delete PR.
 - **agent-chat-real-loop.** Replace canned assistant responses with real LLM
   streaming, tool execution, progress/cancel states, memory/context policy,
   provider errors, and transcripted tool results.

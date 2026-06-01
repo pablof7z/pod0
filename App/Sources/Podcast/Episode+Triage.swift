@@ -27,7 +27,7 @@ extension Episode {
     var isTriageArchived: Bool { triageDecision == .archived }
 
     /// `true` when the episode has not yet been seen by the triage pass.
-    /// Drives `InboxTriageService`'s selection of work — only untriaged
-    /// episodes need a decision.
+    /// The Rust kernel (M5) selects untriaged episodes as candidates; Swift
+    /// only reads the resulting `triageDecision` off the snapshot projection.
     var isUntriaged: Bool { triageDecision == nil }
 }

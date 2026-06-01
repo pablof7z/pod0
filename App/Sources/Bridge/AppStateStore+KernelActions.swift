@@ -131,6 +131,21 @@ extension AppStateStore {
                          body: ["op": "play", "episode_id": episodeID.uuidString])
     }
 
+    // MARK: - Inbox triage
+
+    /// Ask the kernel to (re)triage the inbox (namespace: podcast.inbox).
+    ///
+    /// The Rust kernel owns inbox triage (M5): it selects candidates, runs
+    /// the classifier, and projects per-episode decisions onto
+    /// `Episode.triageDecision` every snapshot tick. Swift only displays
+    /// the result. This `triage` op is the "recompute / force a visible
+    /// tick" signal — fired on appear and pull-to-refresh so freshly
+    /// arrived episodes get a decision without Swift running any
+    /// orchestration of its own.
+    func kernelTriageInbox() {
+        kernel?.dispatch(namespace: "podcast.inbox", body: ["op": "triage"])
+    }
+
     // MARK: - Episode state
 
     /// Mark an episode as fully played (namespace: podcast.inbox).
@@ -271,9 +286,11 @@ extension AppStateStore {
     /// Report a batch of AI Inbox triage decisions to the Rust kernel so they
     /// survive a feed refresh via the projection (replaces the deleted
     /// preserved-state merge). Batched — one dispatch (one rev bump + one
-    /// library re-encode) per `applyTriageDecisions` pass rather than one per
-    /// episode. `decision` is the raw `TriageDecision` rawValue, or `"none"`
-    /// to clear a prior decision (the `clearTriageDecision` path).
+    /// library re-encode) per call rather than one per episode. `decision` is
+    /// the raw `TriageDecision` rawValue, or `"none"` to clear a prior
+    /// decision. The kernel owns triage (M5); the sole remaining Swift caller
+    /// is `clearTriageDecision`, used when the user rescues an archived
+    /// episode by playing it.
     func kernelSetEpisodeTriage(_ patches: [KernelTriagePatch]) {
         guard !patches.isEmpty else { return }
         let decisions: [[String: Any]] = patches.map { patch in

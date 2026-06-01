@@ -23,7 +23,6 @@ struct HomeView: View {
     @AppStorage("library.categoryFilterID") private var categoryFilterID: String = ""
     @AppStorage("home.featuredExpanded") private var featuredExpanded: Bool = true
 
-    @State private var triageService = InboxTriageService.shared
     @State private var threadingService = ThreadingInferenceService.shared
     @State private var unsubscribeTarget: Podcast?
     @State private var relatedSheetEpisode: Episode?
@@ -114,12 +113,14 @@ struct HomeView: View {
                 Text("This removes the show and all its episodes from your library.")
             }
             .task {
-                // Kick AI Inbox triage so freshly-arrived episodes get a
-                // decision. Coalesced — concurrent calls all wait on a
-                // single in-flight pass. Category changes don't need to
-                // re-trigger this since triage decisions are persisted
-                // on episodes and the Inbox bundle just filters them.
-                triageService.triageNewEpisodes(store: store)
+                // Ask the kernel to (re)triage so freshly-arrived episodes
+                // get a decision. The Rust kernel owns triage (M5): it
+                // selects candidates, runs the classifier, and projects the
+                // decisions onto `Episode.triageDecision`. Swift only
+                // signals "recompute" and displays the result — category
+                // changes don't need to re-trigger since the Inbox bundle
+                // just filters the projected decisions.
+                store.kernelTriageInbox()
                 // Bind the threading service to the store so the
                 // "Threaded Today" derivation has somewhere to look.
                 threadingService.attach(store: store)
@@ -220,14 +221,17 @@ struct HomeView: View {
                     let triage = triageCounts
                     HomeFeaturedSection(
                         picksBundle: inboxBundle,
-                        isStreaming: triageService.isRunning && inboxBundle.picks.isEmpty,
+                        // Triage now runs in the Rust kernel (M5). The kernel
+                        // inbox projection does not yet surface an in-progress
+                        // or last-triaged-at signal, so the streaming shimmer
+                        // and "triaged Xh ago" label are omitted until a
+                        // kernel progress field exists. See docs/BACKLOG.md.
                         activeThread: topActiveThread,
                         activeCategoryID: selectedCategoryID,
                         activeCategoryName: activeCategory?.name,
                         inboxCount: triage.inbox,
                         archivedCount: triage.archived,
                         showCount: triage.shows,
-                        lastTriagedAt: triageService.lastCompletedAt,
                         isExpanded: $featuredExpanded,
                         onPlayEpisode: playEpisode,
                         onLongPressEpisode: { relatedSheetEpisode = $0 },
@@ -342,10 +346,10 @@ struct HomeView: View {
         activeCategory?.name ?? "Home"
     }
 
-    /// Persisted Inbox bundle for the currently-active category. The
-    /// triage service writes `.inbox` decisions onto episodes; this
-    /// composes the bundle by filtering + sorting them and is therefore
-    /// cheap to recompute on every body pass.
+    /// Persisted Inbox bundle for the currently-active category. The Rust
+    /// kernel writes `.inbox` decisions onto episodes via the snapshot
+    /// projection; this composes the bundle by filtering + sorting them and
+    /// is therefore cheap to recompute on every body pass.
     private var inboxBundle: HomeAgentPicksBundle {
         HomeInboxBundleBuilder.make(
             store: store,
@@ -355,7 +359,7 @@ struct HomeView: View {
     }
 
     private var shouldShowInboxSection: Bool {
-        !inboxBundle.picks.isEmpty || triageService.isRunning
+        !inboxBundle.picks.isEmpty
     }
 
     /// #46 — kernel-scored episode recommendations (`PodcastUpdate.picks`),
