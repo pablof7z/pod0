@@ -383,6 +383,37 @@ extension AppStateStore {
     // Field names verified against
     // apps/nmp-app-podcast/src/ffi/actions/publish_module.rs (PublishAction).
 
+    /// Insert a synthetic (feed-less) owned podcast row into the Rust kernel
+    /// store from full metadata. The kernel store is the single source of
+    /// truth for owned podcasts — `create_owned_podcast` / `publish_show`
+    /// require the row to already exist there (they `ok:false` otherwise).
+    /// Must run before `kernelCreateOwnedPodcast` for the same id.
+    /// `visibility` is the canonical `NostrVisibility` rawValue
+    /// (`"public"` / `"private"`).
+    func kernelCreateSyntheticPodcast(
+        podcastId: String,
+        title: String,
+        description: String,
+        author: String,
+        artworkUrl: String?,
+        language: String?,
+        categories: [String],
+        visibility: String
+    ) {
+        var body: [String: Any] = [
+            "op": "create_synthetic_podcast",
+            "podcast_id": podcastId,
+            "title": title,
+            "description": description,
+            "author": author,
+            "categories": categories,
+            "visibility": visibility,
+        ]
+        if let artworkUrl { body["artwork_url"] = artworkUrl }
+        if let language { body["language"] = language }
+        kernel?.dispatch(namespace: "podcast.publish", body: body)
+    }
+
     /// Claim ownership of a podcast for NIP-F4 publishing: Rust generates a
     /// per-podcast keypair and stamps `owner_pubkey_hex`. Must run before any
     /// `publish_show` / `publish_episode` for that podcast — those ops fail
@@ -390,6 +421,45 @@ extension AppStateStore {
     func kernelCreateOwnedPodcast(podcastId: String) {
         kernel?.dispatch(namespace: "podcast.publish",
                          body: ["op": "create_owned_podcast", "podcast_id": podcastId])
+    }
+
+    /// Update an owned podcast's metadata in the kernel store and (when the
+    /// podcast is public + nostr is enabled) re-publish its `kind:10154` show
+    /// event. The kernel owns the publish gate — callers need not trigger a
+    /// separate `publish_show` afterwards. Omitted (`nil`) fields keep their
+    /// current value (partial update). `author` + `visibility` ride the op so
+    /// the kernel store stays SSOT (otherwise the next snapshot push reverts a
+    /// Swift-side edit / flip). `visibility` is the `NostrVisibility` rawValue.
+    /// A private→public flip republishes the show in the same op (the kernel
+    /// applies visibility before evaluating the gate).
+    func kernelUpdateOwnedPodcast(
+        podcastId: String,
+        title: String?,
+        description: String?,
+        author: String?,
+        artworkUrl: String?,
+        visibility: String?
+    ) {
+        var body: [String: Any] = [
+            "op": "update_owned_podcast",
+            "podcast_id": podcastId,
+        ]
+        if let title { body["title"] = title }
+        if let description { body["description"] = description }
+        if let author { body["author"] = author }
+        if let artworkUrl { body["artwork_url"] = artworkUrl }
+        if let visibility { body["visibility"] = visibility }
+        kernel?.dispatch(namespace: "podcast.publish", body: body)
+    }
+
+    /// Delete an owned podcast end-to-end via the kernel: publish a NIP-09
+    /// (kind:5) deletion for the prior show event, drop the per-podcast key,
+    /// and remove the podcast row + episodes from the kernel store. Replaces
+    /// the old Swift `deletePodcast` → `kernelUnsubscribe` path (which leaked
+    /// the per-podcast key and never published a deletion).
+    func kernelDeleteOwnedPodcast(podcastId: String) {
+        kernel?.dispatch(namespace: "podcast.publish",
+                         body: ["op": "delete_owned_podcast", "podcast_id": podcastId])
     }
 
     /// Build, sign, and broadcast the NIP-F4 `kind:10154` show event for an

@@ -65,6 +65,11 @@ pub(crate) fn parse_itunes_results(body: &str) -> Vec<PodcastSummary> {
                 feed_url: r.feed_url,
                 author: r.artist_name,
                 description: None,
+                // iTunes search rows are always RSS shows the user has not
+                // subscribed to — no owner, default visibility.
+                kind: "rss".to_string(),
+                owner_pubkey_hex: None,
+                nostr_visibility: "public".to_string(),
                 auto_download: false,
                 cellular_allowed: false,
                 episodes: vec![],

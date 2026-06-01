@@ -43,8 +43,36 @@ pub struct PodcastSummary {
     /// `AutoDownloadPolicy.wifiOnly` from the projection.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub cellular_allowed: bool,
+    /// Source kind — `"rss"` (default) or `"synthetic"`. Synthetic rows are
+    /// agent-owned shows with no feed URL. Projected so the iOS shell can
+    /// round-trip `Podcast.kind` instead of forcing every projected row to
+    /// `.rss` (which would corrupt owned-podcast detection). Omitted on the
+    /// wire when `"rss"` (D5).
+    #[serde(default, skip_serializing_if = "str_is_rss")]
+    pub kind: String,
+    /// Hex public key of the per-podcast NIP-F4 signing key, set once the
+    /// podcast has been claimed via `create_owned_podcast`. Drives the
+    /// owned-podcast UI surfaces (`listOwnedPodcasts` filters on its
+    /// presence). Omitted when `None` (D5).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub owner_pubkey_hex: Option<String>,
+    /// NIP-F4 publish visibility — `"public"` or `"private"`. Only meaningful
+    /// when `owner_pubkey_hex` is set. Omitted when `"public"` (the default)
+    /// to keep the wire payload byte-compatible with older snapshots (D5).
+    #[serde(default, skip_serializing_if = "str_is_public")]
+    pub nostr_visibility: String,
     /// Recent episodes — ordered newest-first by the projection layer.
     pub episodes: Vec<EpisodeSummary>,
+}
+
+/// D5 skip predicate: omit the `kind` field when it is the `"rss"` default.
+fn str_is_rss(s: &str) -> bool {
+    s == "rss"
+}
+
+/// D5 skip predicate: omit `nostr_visibility` when it is the `"public"` default.
+fn str_is_public(s: &str) -> bool {
+    s == "public"
 }
 
 /// One episode row embedded in [`PodcastSummary::episodes`].
@@ -245,4 +273,45 @@ pub struct NostrShowSummary {
     pub artwork_url: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub categories: Vec<String>,
+}
+
+#[cfg(test)]
+mod owned_field_tests {
+    use super::PodcastSummary;
+
+    #[test]
+    fn synthetic_owned_fields_survive_round_trip() {
+        let summary = PodcastSummary {
+            id: "p1".into(),
+            title: "Owned".into(),
+            kind: "synthetic".into(),
+            owner_pubkey_hex: Some("deadbeef".into()),
+            nostr_visibility: "private".into(),
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&summary).expect("encode");
+        assert!(json.contains(r#""kind":"synthetic""#));
+        assert!(json.contains(r#""owner_pubkey_hex":"deadbeef""#));
+        assert!(json.contains(r#""nostr_visibility":"private""#));
+        let decoded: PodcastSummary = serde_json::from_str(&json).expect("decode");
+        assert_eq!(decoded, summary);
+    }
+
+    #[test]
+    fn rss_defaults_omit_owned_fields_on_wire() {
+        // D5: a plain RSS row omits kind/owner/visibility so the wire payload
+        // stays byte-compatible with snapshots that predate these fields.
+        let summary = PodcastSummary {
+            id: "p2".into(),
+            title: "Feed".into(),
+            kind: "rss".into(),
+            owner_pubkey_hex: None,
+            nostr_visibility: "public".into(),
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&summary).expect("encode");
+        assert!(!json.contains("kind"));
+        assert!(!json.contains("owner_pubkey_hex"));
+        assert!(!json.contains("nostr_visibility"));
+    }
 }

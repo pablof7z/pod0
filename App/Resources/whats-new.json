@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-01T16:30:00Z",
+      "lines": [
+        "Editing and deleting agent-owned podcasts now updates and publishes correctly"
+      ]
+    },
+    {
       "shipped_at": "2026-06-01T15:00:00Z",
       "lines": [
         "Agent-generated podcasts now publish as NIP-F4 — the canonical Nostr podcast standard"

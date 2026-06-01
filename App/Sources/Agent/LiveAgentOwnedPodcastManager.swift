@@ -3,18 +3,28 @@ import os.log
 
 // MARK: - LiveAgentOwnedPodcastManager
 //
-// Production implementation of `AgentOwnedPodcastManagerProtocol`. Owns the
-// store mutations + artwork generation; all Nostr publishing is delegated to
-// the Rust kernel via the `podcast.publish` NIP-F4 action namespace
-// (kind:10154 show / kind:54 episode / kind:10064 author-claim). Constructed
-// once per `AgentChatSession` via `LivePodcastAgentToolDeps.make(...)`.
+// Production implementation of `AgentOwnedPodcastManagerProtocol`. After the
+// owned-podcast lifecycle moved fully into the Rust kernel, this type is a thin
+// wrapper: it routes create / update / delete through the `podcast.publish`
+// NIP-F4 action namespace and keeps a Swift render mirror in step until the
+// next kernel snapshot push reconciles. The only real policy that remains
+// Swift-side is the artwork generation pipeline (image-gen → Blossom upload)
+// and the public-visibility-flip episode backfill (the kernel `Update` op
+// carries no `visibility`, so the retro-publish of existing episodes on a
+// private→public flip is sequenced here).
 //
-// Publishing model (NIP-F4 — replaces the deleted Swift NIP-74 builders):
-// Rust owns the cryptography. `create_owned_podcast` generates a per-podcast
-// keypair and registers it; `publish_show` / `publish_episode` sign + broadcast
-// against that key, uploading audio to Blossom Rust-side. The agent's own key
-// no longer signs show/episode events. Dispatch is fire-and-forget — the signed
-// event id / naddr lives in Rust's snapshot projection, not returned here.
+// Lifecycle ownership (Rust kernel, `podcast.publish.*`):
+//   create_synthetic_podcast — insert the feed-less row into the kernel store
+//                              (the SSOT; `create_owned`/`publish_show` no-op
+//                               without it).
+//   create_owned_podcast     — generate + register the per-podcast keypair.
+//   update_owned_podcast     — mutate metadata + re-publish kind:10154 when
+//                              public + nostr-enabled (kernel owns the gate).
+//   delete_owned_podcast     — NIP-09 deletion → drop key → remove row.
+//   publish_show / publish_episode — sign + broadcast kind:10154 / kind:54.
+//
+// Dispatch is fire-and-forget — the signed event id / naddr lives in Rust's
+// snapshot projection, not returned here.
 
 final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unchecked Sendable {
 
@@ -72,16 +82,32 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
             ownerPubkeyHex: pubkey,
             nostrVisibility: visibility
         )
-        let stored = await MainActor.run {
-            store?.upsertPodcast(podcast) ?? podcast
+        let stored = await MainActor.run { () -> Podcast in
+            guard let store else { return podcast }
+            // 1. Insert the synthetic row into the Rust kernel store (SSOT).
+            //    Without this the key-registration + publish ops below no-op.
+            store.kernelCreateSyntheticPodcast(
+                podcastId: podcast.id.uuidString,
+                title: title,
+                description: description,
+                author: author,
+                artworkUrl: imageURL?.absoluteString,
+                language: language,
+                categories: categories,
+                visibility: visibility.rawValue
+            )
+            // 2. Mirror into the Swift render store so the UI shows the new show
+            //    immediately; the next snapshot push reconciles from the kernel.
+            return store.upsertPodcast(podcast)
         }
         Self.logger.info("Created agent-owned podcast '\(title, privacy: .public)' id=\(stored.id, privacy: .public)")
-        // Claim the per-podcast NIP-F4 signing key once, at creation, regardless
-        // of visibility — so a later private→public flip can publish without
-        // rotating the key. Publishing the show event is gated on public+enabled.
-        await claimOwnership(podcastID: stored.id)
+        // 3. Claim the per-podcast NIP-F4 signing key once, at creation,
+        //    regardless of visibility — so a later private→public flip can
+        //    publish without rotating the key. Publishing the show event is
+        //    gated (public + nostrEnabled) inside the kernel.
+        await MainActor.run { store?.kernelCreateOwnedPodcast(podcastId: stored.id.uuidString) }
         if visibility == .public, let settings = await settings(), settings.nostrEnabled {
-            await publishShowToNostr(podcastID: stored.id)
+            await MainActor.run { store?.kernelPublishShow(podcastId: stored.id.uuidString) }
         }
         return await MainActor.run { info(for: stored, nostrEventID: nil, nostrAddr: nil) }
     }
@@ -112,16 +138,37 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
         if let author { updated.author = author }
         if let imageURL { updated.imageURL = imageURL }
         if let visibility { updated.nostrVisibility = visibility }
-        await MainActor.run { store?.updatePodcast(updated) }
+
+        // Route the entire metadata update through the kernel. The kernel
+        // mutates its own row (SSOT — including author + visibility, so the
+        // next snapshot push doesn't revert this edit) and re-publishes the
+        // kind:10154 show event when the podcast is public + nostr-enabled.
+        // Swift no longer triggers a separate `publish_show`, and the
+        // public/enabled gate is the kernel's. A private→public flip
+        // republishes the show in the same op (the kernel applies the new
+        // visibility before evaluating the gate).
+        await MainActor.run {
+            store?.kernelUpdateOwnedPodcast(
+                podcastId: uuid.uuidString,
+                title: title,
+                description: description,
+                author: author,
+                artworkUrl: imageURL?.absoluteString,
+                visibility: visibility?.rawValue
+            )
+            store?.updatePodcast(updated) // render mirror; snapshot push reconciles
+        }
 
         var episodesPublished: Int?
+        // Episode backfill on a private→public flip: the kernel republishes the
+        // SHOW event itself, but per-episode kind:54 publishing is still
+        // orchestrated Swift-side (the kernel update op has no episode-backfill
+        // leg — tracked in BACKLOG owned-podcast-episode-backfill-kernel).
         if updated.nostrVisibility == .public, let settings = await settings(), settings.nostrEnabled {
-            await publishShowToNostr(podcastID: uuid)
-            // Retroactively publish all existing episodes when flipping to public.
             if wasPrivate {
                 let episodes = await store?.episodes(forPodcast: uuid) ?? []
                 for episode in episodes {
-                    await dispatchPublishEpisode(episodeID: episode.id)
+                    await MainActor.run { store?.kernelPublishEpisode(episodeId: episode.id.uuidString) }
                 }
                 episodesPublished = episodes.count
                 Self.logger.info("Dispatched NIP-F4 publish for \(episodes.count) episodes of '\(updated.title, privacy: .public)'")
@@ -144,8 +191,17 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
         guard existing.ownerPubkeyHex != nil else {
             throw AgentOwnedPodcastError.notOwned(podcastID)
         }
+        // Full kernel-owned deletion: publish NIP-09 (kind:5) for the prior
+        // show event, drop the per-podcast key, remove the row + episodes from
+        // the kernel store. Replaces the old `store.deletePodcast` →
+        // `kernelUnsubscribe` path, which removed the row but leaked the key
+        // and never published a deletion.
         await MainActor.run {
             guard let store else { return }
+            store.kernelDeleteOwnedPodcast(podcastId: uuid.uuidString)
+            // Render mirror — drop the local row immediately; the next snapshot
+            // push reconciles. `deletePodcast` also cleans subscriptions /
+            // episodes / wiki citations Swift-side.
             store.deletePodcast(podcastID: uuid)
         }
     }
@@ -201,28 +257,11 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
 
     // MARK: - Private NIP-F4 dispatch helpers
 
-    /// Claim ownership of the podcast: Rust generates the per-podcast signing
-    /// key and stamps `owner_pubkey_hex`. MUST be called exactly once per
-    /// podcast — `generate_key` overwrites unconditionally
-    /// (`store/podcast_keys.rs::generate_key`), so a second call rotates the
-    /// key, which would orphan the prior replaceable `kind:10154` show event
-    /// (keyed by pubkey) rather than replace it. Only the *first* claim per
-    /// podcast may run.
-    private func claimOwnership(podcastID: UUID) async {
-        let id = podcastID.uuidString
-        await MainActor.run { store?.kernelCreateOwnedPodcast(podcastId: id) }
-    }
-
-    /// Publish (or replace) the `kind:10154` show event for an already-claimed
-    /// podcast. Does NOT re-claim — see `claimOwnership` for why re-claiming is
-    /// destructive.
-    private func publishShowToNostr(podcastID: UUID) async {
-        let id = podcastID.uuidString
-        await MainActor.run { store?.kernelPublishShow(podcastId: id) }
-    }
-
     /// Publish the `kind:54` episode event. Rust resolves the parent podcast +
-    /// its per-podcast key and uploads audio to Blossom.
+    /// its per-podcast key and uploads audio to Blossom. Show creation /
+    /// claim / update / delete dispatch their kernel ops inline at their call
+    /// sites (this remains a helper only because `publishEpisodeToNostr` gates
+    /// the dispatch behind owner/visibility/nostrEnabled checks).
     private func dispatchPublishEpisode(episodeID: UUID) async {
         let id = episodeID.uuidString
         await MainActor.run {

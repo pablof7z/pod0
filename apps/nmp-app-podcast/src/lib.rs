@@ -57,6 +57,7 @@ pub(crate) mod host_op_handler;
 pub(crate) mod host_op_handler_helpers;
 pub(crate) mod host_op_handler_queue;
 pub(crate) mod host_op_publish;
+pub(crate) mod host_op_publish_lifecycle;
 pub(crate) mod inbox_handler;
 pub(crate) mod inbox_llm;
 pub(crate) mod itunes;

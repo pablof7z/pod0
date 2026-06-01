@@ -143,6 +143,9 @@ fn library_with_show(ep_id: &str, episode_title: &str, show_title: &str) -> Vec<
         feed_url: None,
         author: None,
         description: None,
+        kind: "rss".into(),
+        owner_pubkey_hex: None,
+        nostr_visibility: "public".into(),
         auto_download: false,
         cellular_allowed: false,
         episodes: vec![EpisodeSummary {

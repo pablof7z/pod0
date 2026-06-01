@@ -1,6 +1,18 @@
 use super::*;
 #[test]
 fn action_ids_match_documented_strings() {
+    assert_eq!(
+        ACTION_PUBLISH_CREATE_SYNTHETIC,
+        "podcast.publish.create_synthetic_podcast"
+    );
+    assert_eq!(
+        ACTION_PUBLISH_UPDATE_OWNED,
+        "podcast.publish.update_owned_podcast"
+    );
+    assert_eq!(
+        ACTION_PUBLISH_DELETE_OWNED,
+        "podcast.publish.delete_owned_podcast"
+    );
     assert_eq!(ACTION_PUBLISH_CREATE_OWNED, "podcast.publish.create_owned_podcast");
     assert_eq!(ACTION_PUBLISH_PUBLISH_SHOW, "podcast.publish.publish_show");
     assert_eq!(ACTION_PUBLISH_PUBLISH_EPISODE, "podcast.publish.publish_episode");
@@ -63,6 +75,78 @@ fn remove_owned_podcast_round_trips() {
     let decoded: PublishAction = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded, a);
 }
+#[test]
+fn create_synthetic_podcast_round_trips() {
+    let a = PublishAction::CreateSyntheticPodcast {
+        podcast_id: "pod-9".into(),
+        title: "Synth Show".into(),
+        description: "desc".into(),
+        author: "Agent".into(),
+        artwork_url: Some("https://img".into()),
+        language: Some("en".into()),
+        categories: vec!["Tech".into()],
+        visibility: Some("public".into()),
+    };
+    let json = serde_json::to_string(&a).expect("encode");
+    assert!(json.contains(r#""op":"create_synthetic_podcast""#));
+    assert!(json.contains(r#""podcast_id":"pod-9""#));
+    assert!(json.contains(r#""title":"Synth Show""#));
+    let decoded: PublishAction = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, a);
+}
+
+#[test]
+fn create_synthetic_podcast_decodes_minimal_body() {
+    // Swift may omit optional/default fields; decode must tolerate that.
+    let json = r#"{"op":"create_synthetic_podcast","podcast_id":"p","title":"T"}"#;
+    let decoded: PublishAction = serde_json::from_str(json).expect("decode");
+    assert_eq!(
+        decoded,
+        PublishAction::CreateSyntheticPodcast {
+            podcast_id: "p".into(),
+            title: "T".into(),
+            description: String::new(),
+            author: String::new(),
+            artwork_url: None,
+            language: None,
+            categories: vec![],
+            visibility: None,
+        }
+    );
+}
+
+#[test]
+fn update_owned_podcast_round_trips() {
+    let a = PublishAction::UpdateOwnedPodcast {
+        podcast_id: "pod-9".into(),
+        title: Some("New Title".into()),
+        description: None,
+        author: Some("New Author".into()),
+        artwork_url: Some("https://new".into()),
+        visibility: Some("private".into()),
+    };
+    let json = serde_json::to_string(&a).expect("encode");
+    assert!(json.contains(r#""op":"update_owned_podcast""#));
+    assert!(json.contains(r#""title":"New Title""#));
+    assert!(json.contains(r#""author":"New Author""#));
+    assert!(json.contains(r#""visibility":"private""#));
+    // `None` fields are omitted on the wire (partial update).
+    assert!(!json.contains("description"));
+    let decoded: PublishAction = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, a);
+}
+
+#[test]
+fn delete_owned_podcast_round_trips() {
+    let a = PublishAction::DeleteOwnedPodcast {
+        podcast_id: "pod-9".into(),
+    };
+    let json = serde_json::to_string(&a).expect("encode");
+    assert!(json.contains(r#""op":"delete_owned_podcast""#));
+    let decoded: PublishAction = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, a);
+}
+
 #[test]
 fn execute_emits_dispatch_host_op() {
     let action = PublishAction::CreateOwnedPodcast {

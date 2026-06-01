@@ -113,6 +113,13 @@ extension KernelModel {
             hasher.combine(podcast.episodeCount)
             hasher.combine(podcast.artworkUrl)
             hasher.combine(podcast.author)
+            // Owned-podcast identity: a visibility flip or ownership claim
+            // mutates these without touching title/artwork, so include them
+            // or the library projection would not refresh on an owned-podcast
+            // update.
+            hasher.combine(podcast.kind)
+            hasher.combine(podcast.ownerPubkeyHex)
+            hasher.combine(podcast.nostrVisibility)
             for episode in podcast.episodes {
                 hasher.combine(episode.id)
                 hasher.combine(episode.title)

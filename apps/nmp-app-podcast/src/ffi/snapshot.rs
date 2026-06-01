@@ -65,6 +65,15 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
                 },
                 description: Some(strip_html(&podcast.description))
                     .filter(|d| !d.is_empty()),
+                kind: match podcast.kind {
+                    podcast_core::PodcastKind::Synthetic => "synthetic".to_string(),
+                    podcast_core::PodcastKind::Rss => "rss".to_string(),
+                },
+                owner_pubkey_hex: podcast.owner_pubkey_hex.clone(),
+                nostr_visibility: match podcast.nostr_visibility {
+                    podcast_core::NostrVisibility::Private => "private".to_string(),
+                    podcast_core::NostrVisibility::Public => "public".to_string(),
+                },
                 auto_download: s.is_auto_download_enabled(podcast.id),
                 cellular_allowed: !s.wifi_only_for(podcast.id),
                 episodes: episodes

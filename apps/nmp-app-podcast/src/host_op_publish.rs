@@ -41,6 +41,14 @@ pub fn handle_publish_action(
     action: PublishAction,
 ) -> serde_json::Value {
     match action {
+        // Create / update / delete lifecycle lives in the sibling module
+        // (keeps this file under the 500-LOC hard limit). It owns its own
+        // variant destructuring via `handle_lifecycle_action`.
+        action @ (PublishAction::CreateSyntheticPodcast { .. }
+        | PublishAction::UpdateOwnedPodcast { .. }
+        | PublishAction::DeleteOwnedPodcast { .. }) => {
+            crate::host_op_publish_lifecycle::handle_lifecycle_action(handler, action)
+        }
         PublishAction::CreateOwnedPodcast { podcast_id } => create_owned(handler, podcast_id),
         PublishAction::PublishShow { podcast_id } => publish_show(handler, podcast_id),
         PublishAction::PublishEpisode { episode_id } => publish_episode(handler, episode_id),
@@ -54,7 +62,7 @@ pub fn handle_publish_action(
 /// `podcast.publish.create_owned_podcast` — generate a per-podcast
 /// keypair, stamp `owner_pubkey_hex` onto the podcast row, and bump
 /// `rev` so the iOS snapshot poll picks it up.
-fn create_owned(handler: &PodcastHostOpHandler, podcast_id: String) -> serde_json::Value {
+pub(crate) fn create_owned(handler: &PodcastHostOpHandler, podcast_id: String) -> serde_json::Value {
     let exists = match handler.store.lock() {
         Ok(s) => s.podcast_by_id_str(&podcast_id).is_some(),
         Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
@@ -90,7 +98,7 @@ fn create_owned(handler: &PodcastHostOpHandler, podcast_id: String) -> serde_jso
 /// event, then broadcast it to `relay.primal.net` via the `nostr_relay`
 /// capability. The signed event JSON is stamped onto
 /// `publish_state[podcast_id].show_event_json`.
-fn publish_show(handler: &PodcastHostOpHandler, podcast_id: String) -> serde_json::Value {
+pub(crate) fn publish_show(handler: &PodcastHostOpHandler, podcast_id: String) -> serde_json::Value {
     let podcast_clone = match handler.store.lock() {
         Ok(s) => match s.podcast_by_id_str(&podcast_id) {
             Some(p) => p.clone(),
@@ -382,7 +390,7 @@ fn remove_owned(handler: &PodcastHostOpHandler, podcast_id: String) -> serde_jso
 /// dropped (malformed input is logged to stderr).
 ///
 /// `kind_num` is the raw NIP kind integer (e.g. 10154, 54, 10064).
-fn sign_event(
+pub(crate) fn sign_event(
     secret_bytes: &[u8; 32],
     kind_num: u32,
     tags: &[Vec<String>],
@@ -426,7 +434,10 @@ fn sign_event(
 ///
 /// Null-app guard: unit tests run with `app == null_mut()`. Dispatching
 /// a capability through a null pointer is UB — we return `"signed"` early.
-fn dispatch_nostr_relay(handler: &PodcastHostOpHandler, event_json: &str) -> &'static str {
+pub(crate) fn dispatch_nostr_relay(
+    handler: &PodcastHostOpHandler,
+    event_json: &str,
+) -> &'static str {
     if handler.app.is_null() {
         return "signed";
     }
