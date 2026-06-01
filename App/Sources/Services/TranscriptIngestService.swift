@@ -132,7 +132,14 @@ final class TranscriptIngestService {
         // Diagnostics. Skip the publisher fetch and the autoFallback gate
         // and go straight to the chosen STT provider.
         if let forced = forceProvider {
-            guard resolvedSTTKey(provider: forced) != nil else {
+            // The Diagnostics "Retry with…" override is an explicit user pick,
+            // NOT the fallback policy — so it bypasses the kernel-resolved
+            // provider and runs exactly what was chosen. We still require the
+            // chosen provider's key to be present before attempting a cloud
+            // run; the kernel only projects the *resolved* provider, not
+            // per-provider key presence, so this precondition reads the
+            // Keychain directly via the existing closures.
+            guard forcedProviderHasKey(forced) else {
                 Self.logger.info(
                     "forceProvider=\(forced.displayName, privacy: .public) but no key configured — leaving transcriptState=.none"
                 )
@@ -201,14 +208,14 @@ final class TranscriptIngestService {
             appStore.setEpisodeTranscriptState(episodeID, state: .none)
             return
         }
-        let provider = effectiveSTTProvider(appStore.state.settings.sttProvider)
-        guard resolvedSTTKey(provider: provider) != nil else {
-            Self.logger.info(
-                "no publisher transcript and no \(provider.displayName, privacy: .public) key for \(episodeID, privacy: .public) — leaving transcriptState=.none"
-            )
-            appStore.setEpisodeTranscriptState(episodeID, state: .none)
-            return
-        }
+        // The STT provider fallback policy is kernel-owned. Read the resolved
+        // provider the kernel computed (selection + key-presence) rather than
+        // re-deriving it in Swift. `effectiveSttProvider` already downgrades a
+        // key-requiring provider whose key is absent to `apple_native`; an
+        // empty/missing snapshot defaults to `.appleNative` (always available).
+        let resolvedRaw = appStore.kernel?.podcastSnapshot?.settings.effectiveSttProvider
+            ?? STTProvider.appleNative.rawValue
+        let provider = STTProvider(rawValue: resolvedRaw) ?? .appleNative
         await runAITranscription(for: episode, provider: provider, appStore: appStore)
     }
 
@@ -290,37 +297,19 @@ final class TranscriptIngestService {
         }
     }
 
-    /// Downgrade a keyless cloud STT provider to Apple on-device.
+    /// Whether the force-chosen STT provider has a usable Keychain key.
     ///
-    /// A user who picked a cloud provider (Scribe / AssemblyAI / OpenRouter
-    /// Whisper) but never configured its API key would otherwise get NO
-    /// transcription at all for episodes lacking a publisher transcript —
-    /// the `resolvedSTTKey` guard below short-circuits to `.none`. Apple's
-    /// on-device `SpeechTranscriber` needs no key, so when the selected
-    /// cloud provider has no usable key we fall back to `.appleNative`.
-    ///
-    /// Note: `.appleNative` requires the episode file to be downloaded
-    /// (`runAITranscription` guards on `EpisodeDownloadStore.exists`). For a
-    /// not-yet-downloaded episode this fallback parks at `.none` until the
-    /// download hook re-enters `ingest()` — strictly better than the prior
-    /// behavior, which gave keyless users nothing in every case.
-    private func effectiveSTTProvider(_ selected: STTProvider) -> STTProvider {
-        guard selected != .appleNative else { return .appleNative }
-        if resolvedSTTKey(provider: selected) != nil {
-            return selected
-        }
-        Self.logger.info(
-            "\(selected.displayName, privacy: .public) selected but no API key configured — falling back to Apple on-device STT"
-        )
-        return .appleNative
-    }
-
-    private func resolvedSTTKey(provider: STTProvider) -> String? {
+    /// Only used by the Diagnostics "Retry with…" override path. The general
+    /// fallback policy (which provider to use when a key is missing) is
+    /// kernel-owned — see `effective_stt_provider` in the Rust kernel and the
+    /// `settings.effectiveSttProvider` snapshot field. `.appleNative` is
+    /// keyless and always available.
+    private func forcedProviderHasKey(_ provider: STTProvider) -> Bool {
         switch provider {
-        case .elevenLabsScribe: return elevenLabsKey()
-        case .openRouterWhisper: return openRouterKey()
-        case .assemblyAI: return assemblyAIKey()
-        case .appleNative: return "native"  // no API key needed; always available
+        case .elevenLabsScribe: return !(elevenLabsKey() ?? "").isEmpty
+        case .openRouterWhisper: return !(openRouterKey() ?? "").isEmpty
+        case .assemblyAI: return !(assemblyAIKey() ?? "").isEmpty
+        case .appleNative: return true
         }
     }
 

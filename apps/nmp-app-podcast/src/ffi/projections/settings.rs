@@ -167,6 +167,22 @@ pub struct SettingsSnapshot {
     /// STT provider selection enum (raw String: "apple_native", etc).
     #[serde(default = "default_stt_provider")]
     pub stt_provider: String,
+    /// Kernel-resolved effective STT provider after applying the fallback
+    /// policy (raw String: "apple_native" | "elevenlabs_scribe" |
+    /// "assemblyai" | "openrouter_whisper").
+    ///
+    /// This is what callers should act on, NOT `stt_provider`: it already
+    /// accounts for a key-requiring provider whose key is absent (downgraded
+    /// to "apple_native"). Computed in the snapshot builder from `stt_provider`
+    /// + the present-key set Swift reports via
+    /// `podcast.settings.set_stt_keys_present`.
+    #[serde(default = "default_stt_provider")]
+    pub effective_stt_provider: String,
+    /// Whether the *resolved* `effective_stt_provider` needs an API key to
+    /// run. Always `false` when the policy fell back to "apple_native". A UI
+    /// can read this to know whether transcription will hit the network.
+    #[serde(default = "default_false")]
+    pub effective_stt_provider_requires_key: bool,
     /// OpenRouter Whisper model string. Default `"openai/whisper-1"`.
     #[serde(default = "default_open_router_whisper_model")]
     pub open_router_whisper_model: String,
@@ -273,6 +289,8 @@ impl Default for SettingsSnapshot {
             eleven_labs_byok_key_label: None,
             eleven_labs_connected_at: None,
             stt_provider: "apple_native".to_owned(),
+            effective_stt_provider: "apple_native".to_owned(),
+            effective_stt_provider_requires_key: false,
             open_router_whisper_model: "openai/whisper-1".to_owned(),
             assembly_ai_stt_model: "universal-3-pro,universal-2".to_owned(),
             eleven_labs_stt_model: "scribe_v1".to_owned(),

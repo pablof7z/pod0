@@ -502,6 +502,13 @@ impl PodcastHostOpHandler {
                 self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 serde_json::json!({"ok": true})
             }
+            SettingsAction::SetSttKeysPresent { providers } => {
+                if let Ok(mut s) = self.store.lock() {
+                    s.set_stt_keys_present(providers);
+                }
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
             SettingsAction::SetOpenRouterWhisperModel { model } => {
                 if let Ok(mut s) = self.store.lock() {
                     s.set_open_router_whisper_model(model);

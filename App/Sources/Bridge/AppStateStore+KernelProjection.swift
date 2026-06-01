@@ -28,6 +28,11 @@ extension AppStateStore {
     func attachKernel(_ kernel: KernelModel) {
         self.kernel = kernel
         kernelObservationTask?.cancel()
+        // Report which STT providers have a Keychain API key so the kernel's
+        // STT fallback policy resolves `settings.effectiveSttProvider`
+        // correctly from launch. Rust can't read the Keychain; this is the
+        // only signal it has. Re-dispatched after every key save/delete.
+        syncSTTKeysPresent()
         // Seed the Up Next queue from the kernel's persisted snapshot. The
         // handler may not be wired yet (setupPlaybackHandlers runs on .onAppear
         // which can fire after this task), so stash the IDs in pendingKernelQueue

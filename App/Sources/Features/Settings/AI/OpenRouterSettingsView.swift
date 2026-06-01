@@ -208,6 +208,9 @@ struct OpenRouterSettingsView: View {
     private func refreshCredentialState() {
         hasStoredOpenRouterKey = OpenRouterCredentialStore.hasAPIKey()
         if !hasStoredOpenRouterKey { keyInfo = nil }
+        // Re-report STT key presence so the kernel's STT fallback policy
+        // recomputes `settings.effectiveSttProvider` after a save/delete.
+        store.syncSTTKeysPresent()
     }
 
     private func validateStoredKey() async {
