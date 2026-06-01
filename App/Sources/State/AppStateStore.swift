@@ -127,6 +127,25 @@ final class AppStateStore {
     /// rendered limit; if a caller asks for more we recompute on the fly.
     static let recentEpisodesCacheLimit = 30
 
+    /// Per-show count of *unplayed* episodes the agent triaged into the
+    /// inbox (`triageDecision == .inbox && !played`). Backs the inbox-count
+    /// roll-up under Home's Inbox header. Played `.inbox` episodes are
+    /// excluded — they drop off the surface anyway, so counting them reads
+    /// as stale (mirrors the source `triageCounts` semantics).
+    var triageInboxCountByShow: [UUID: Int] = [:]
+
+    /// Per-show count of episodes the agent silently archived
+    /// (`triageDecision == .archived`). Played state is irrelevant here —
+    /// the archived roll-up counts every archived episode regardless.
+    var triageArchivedCountByShow: [UUID: Int] = [:]
+
+    /// Shows that have *any* triaged episode (inbox or archived, played or
+    /// not). Drives the "across N shows" roll-up. Not derivable from the two
+    /// count dicts: a show whose only decided episodes are played `.inbox`
+    /// is "covered" yet contributes 0 to both counts, so the covered-show
+    /// set is tracked explicitly to reproduce the source `coveredShows.count`.
+    var triageDecidedShows: Set<UUID> = []
+
     /// Storage backing this store. Production code uses `Persistence.shared`
     /// (the App Group suite); tests inject an instance over a unique
     /// in-memory suite so fixtures never leak into the real app.

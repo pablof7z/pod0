@@ -65,6 +65,9 @@ extension AppStateStore {
         var byShow: [UUID: [Int]] = [:]
         var inProgress: [Episode] = []
         var recent: [Episode] = []
+        var triageInbox: [UUID: Int] = [:]
+        var triageArchived: [UUID: Int] = [:]
+        var triageDecided: Set<UUID> = []
 
         // Reserve capacity to avoid the rehash storm when growing through
         // a 10k-episode pass. Conservative bounds: bucket counts ≤ unique
@@ -77,6 +80,9 @@ extension AppStateStore {
         byShow.reserveCapacity(state.subscriptions.count)
         inProgress.reserveCapacity(min(64, episodes.count))
         recent.reserveCapacity(min(Self.recentEpisodesCacheLimit, episodes.count))
+        triageInbox.reserveCapacity(state.subscriptions.count)
+        triageArchived.reserveCapacity(state.subscriptions.count)
+        triageDecided.reserveCapacity(state.subscriptions.count)
 
         for (index, episode) in episodes.enumerated() {
             let podID = episode.podcastID
@@ -118,6 +124,21 @@ extension AppStateStore {
             if !episode.played, episode.playbackPosition > 0, !episode.isTriageArchived {
                 inProgress.append(episode)
             }
+
+            // Triage roll-up buckets, scoped per show so Home can sum the
+            // whole library (All) or a single category in O(shows) instead
+            // of re-scanning every episode on every `body` pass. Mirrors the
+            // exact tallying the old `HomeView.triageCounts` did inline:
+            // unplayed `.inbox`, all `.archived`, and the covered-show set.
+            if let decision = episode.triageDecision {
+                triageDecided.insert(podID)
+                switch decision {
+                case .inbox:
+                    if !episode.played { triageInbox[podID, default: 0] += 1 }
+                case .archived:
+                    triageArchived[podID, default: 0] += 1
+                }
+            }
         }
 
         // Sort each per-show array newest-pubDate-first. Total cost:
@@ -151,6 +172,35 @@ extension AppStateStore {
         episodeIndexesByShow = byShow
         inProgressEpisodesCached = inProgress
         recentEpisodesCached = recent
+        triageInboxCountByShow = triageInbox
+        triageArchivedCountByShow = triageArchived
+        triageDecidedShows = triageDecided
+    }
+
+    // MARK: - Triage roll-up (Home Inbox header)
+
+    /// Roll-up of the agent's triage decisions, optionally scoped to a set
+    /// of subscription IDs (the active Home category; `nil` == All). O(1) for
+    /// the All case (three precomputed reductions) and O(category size) for a
+    /// scoped read — never the O(N) episode rescan the inline
+    /// `HomeView.triageCounts` used to do on every `body` pass.
+    func triageRollup(allowed: Set<UUID>?) -> (inbox: Int, archived: Int, shows: Int) {
+        guard let allowed else {
+            return (
+                triageInboxCountByShow.values.reduce(0, +),
+                triageArchivedCountByShow.values.reduce(0, +),
+                triageDecidedShows.count
+            )
+        }
+        var inbox = 0
+        var archived = 0
+        var shows = 0
+        for showID in allowed {
+            inbox += triageInboxCountByShow[showID] ?? 0
+            archived += triageArchivedCountByShow[showID] ?? 0
+            if triageDecidedShows.contains(showID) { shows += 1 }
+        }
+        return (inbox, archived, shows)
     }
 
     /// Alias for `recomputeEpisodeProjections()`. Kept as a separate name
