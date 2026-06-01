@@ -193,6 +193,20 @@ extension AppStateStore {
 
         state = next
 
+        // Force an episode-projection recompute. The `state.didSet`
+        // fingerprint (`episodesFingerprintChanged`) only catches count /
+        // first-id / last-id changes, so a same-count *merge* — e.g. the
+        // kernel flipping `played: false → true` at natural end (now the
+        // canonical mark-played-at-end path, see `onItemEnd`), or clearing a
+        // `downloadPath` on delete-after-played — slips past it. Without this
+        // the in-progress carousel keeps a just-finished episode, the unplayed
+        // badge stays stale, and the "Downloaded" filter chip lingers after a
+        // delete. `applyKernelState` is content-gated (the observation arms on
+        // hash-gated `library`/`snapshot`/`identity`, not the 4 Hz emit rate)
+        // and already does the full O(N) episode walk above, so this recompute
+        // fires only on a real content change and adds no new cost class.
+        invalidateEpisodeProjections()
+
         // ── Kernel-resolved profiles → nostrProfileCache ──────────────────
         // Additive merge of `projections.resolved_profiles` (NMP v0.2.0+).
         // Run AFTER `state = next` so the snapshot taken at the top of this

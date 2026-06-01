@@ -160,12 +160,41 @@ extension AppStateStore {
             // Cached unplayed counts + in-progress feed must drop this episode.
             invalidateEpisodeProjections()
         }
-        // Honour the user's "Delete after played" setting. Runs after the
-        // mutation batch so the played=true write is on disk before the
-        // kernel processes the delete.
+        // Delete-after-played stays on the Swift side deliberately. The Rust
+        // kernel owns the *mark-played* decision (`kernelMarkPlayed` above →
+        // `mark_episode_played`, which only flips `played` + persists) and the
+        // delete *operation* (`delete_download` → `clear_local_path`), but it
+        // owns no *policy* that triggers the delete on played:
+        // `auto_delete_downloads_after_played` has only two Rust consumers — the
+        // settings setter and the snapshot projection — and neither
+        // `mark_episode_played` nor the `ItemEnd` audio-report handler reads it.
+        // Removing this gate (with the "no Rust changes" constraint) would
+        // silently kill the feature. This is also the right choke point: a
+        // *manual* mark-played on a downloaded episode should delete too, and
+        // every mark-played path (manual + both end-of-episode callbacks)
+        // converges here. Tracked for kernel-side migration in docs/BACKLOG.md
+        // (delete-after-played-kernel-policy). Runs after the mutation batch so
+        // the played=true write is on disk before the kernel processes the delete.
         if wasDownloaded, state.settings.autoDeleteDownloadsAfterPlayed {
             kernelDeleteDownload(id)
         }
+    }
+
+    /// Applies the Swift-owned "Delete after played" policy for an episode
+    /// that the *kernel* has just marked played at end-of-item.
+    ///
+    /// The natural-end audio callback (`onItemEnd`) lets the Rust kernel own the
+    /// mark-played-at-end decision (the `itemEnd` report drives Rust's
+    /// `apply_writeback`), so it does NOT call `markEpisodePlayed`. But the
+    /// kernel owns no delete-after-played *policy* (see `markEpisodePlayed`), so
+    /// that callback routes here to honour the user's setting. Deletes only when
+    /// the episode is currently downloaded and the setting is on; the
+    /// `kernelDeleteDownload` dispatch is a no-op for a non-downloaded episode.
+    func deleteDownloadIfAutoDeleteAfterPlayed(_ id: UUID) {
+        guard state.settings.autoDeleteDownloadsAfterPlayed else { return }
+        guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
+        guard case .downloaded = state.episodes[idx].downloadState else { return }
+        kernelDeleteDownload(id)
     }
 
     /// Clears the playback position so the episode drops out of the "Continue
@@ -224,6 +253,15 @@ extension AppStateStore {
     /// Updates the episode's local download lifecycle (queued / downloading /
     /// downloaded / failed). The audio engine reads `downloaded` to decide
     /// between streaming and local file URLs.
+    ///
+    /// Retained (not deleted as a post-Rust-command mirror): the sole remaining
+    /// caller is the Downloads Manager `.clearFailed` action, an optimistic
+    /// local dismissal of a `.failed` row that has no kernel round-trip — the
+    /// failed lifecycle state is iOS-side, so there is no Rust projection to
+    /// defer to. The download *delete* path (`.delete`) already routes through
+    /// `kernelDeleteDownload`, and the downloaded/queued/downloading states
+    /// round-trip via the M2 downloads projection, so this method is no longer
+    /// on those paths.
     func setEpisodeDownloadState(_ id: UUID, state newState: DownloadState) {
         guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
         var episodes = state.episodes
