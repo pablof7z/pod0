@@ -215,38 +215,58 @@ extension AppStateStore {
             next.lastPlayedEpisodeID = uuid
         }
 
-        state = next
+        // Batch every state-mutating write below so the derived work the
+        // `state.didSet` chain triggers (episode-projection rebuild, persist,
+        // widget reload) runs ONCE on batch exit instead of per-write.
+        //
+        // Without the batch this method double-recomputed the episode
+        // projections on every content tick: `state = next` fires
+        // `handleStateDidSet`, which recomputes immediately when the array
+        // fingerprint changed, and the explicit `invalidateEpisodeProjections()`
+        // below then forced a second, redundant rebuild. Inside the batch both
+        // paths only *set* `deferredEpisodeProjectionRebuild`, and
+        // `flushDeferredMutationWork()` collapses them into a single recompute.
+        //
+        // The explicit `invalidateEpisodeProjections()` stays load-bearing:
+        // `episodesFingerprintChanged` only catches count / first-id / last-id
+        // changes, so a same-count *merge* — e.g. the kernel flipping
+        // `played: false → true` at natural end (now the canonical
+        // mark-played-at-end path, see `onItemEnd`), or clearing a
+        // `downloadPath` on delete-after-played — slips past the fingerprint.
+        // Without the explicit invalidation the in-progress carousel keeps a
+        // just-finished episode, the unplayed badge stays stale, and the
+        // "Downloaded" filter chip lingers after a delete. `applyKernelState`
+        // is content-gated (the observation arms on hash-gated
+        // `library`/`snapshot`/`identity`, not the 4 Hz emit rate) and already
+        // does the full O(N) episode walk above, so this recompute fires only
+        // on a real content change and adds no new cost class.
+        performMutationBatch {
+            state = next
 
-        // Force an episode-projection recompute. The `state.didSet`
-        // fingerprint (`episodesFingerprintChanged`) only catches count /
-        // first-id / last-id changes, so a same-count *merge* — e.g. the
-        // kernel flipping `played: false → true` at natural end (now the
-        // canonical mark-played-at-end path, see `onItemEnd`), or clearing a
-        // `downloadPath` on delete-after-played — slips past it. Without this
-        // the in-progress carousel keeps a just-finished episode, the unplayed
-        // badge stays stale, and the "Downloaded" filter chip lingers after a
-        // delete. `applyKernelState` is content-gated (the observation arms on
-        // hash-gated `library`/`snapshot`/`identity`, not the 4 Hz emit rate)
-        // and already does the full O(N) episode walk above, so this recompute
-        // fires only on a real content change and adds no new cost class.
-        invalidateEpisodeProjections()
+            invalidateEpisodeProjections()
 
-        // ── Kernel-resolved profiles → nostrProfileCache ──────────────────
-        // Additive merge of `projections.resolved_profiles` (NMP v0.2.0+).
-        // Run AFTER `state = next` so the snapshot taken at the top of this
-        // method doesn't clobber the inserts. Routed through `setNostrProfile`
-        // (createdAt = 0): its `existing.fetchedFromCreatedAt >= 0` guard makes
-        // this idempotent and never downgrades a real relay-sourced kind:0
-        // (createdAt > 0), while still seeding pubkeys the cache hasn't seen.
-        // This is the delivery half of reference-first profile resolution:
-        // display surfaces `claimNostrProfiles(_:consumer:)` the pubkeys they
-        // render, the kernel resolves each kind:0 over its relay pool, and the
-        // result lands here on the next push frame. The bespoke
-        // `NostrProfileFetcher` remains only for `NostrAgentResponder`'s
-        // synchronous prompt-building window and the approval-enrich snapshot —
-        // neither of which an async push can satisfy.
-        mergeResolvedProfiles(identity.resolvedProfiles)
+            // ── Kernel-resolved profiles → nostrProfileCache ──────────────
+            // Additive merge of `projections.resolved_profiles` (NMP v0.2.0+).
+            // Run AFTER `state = next` so the snapshot taken at the top of this
+            // method doesn't clobber the inserts. Routed through
+            // `setNostrProfile` (createdAt = 0): its
+            // `existing.fetchedFromCreatedAt >= 0` guard makes this idempotent
+            // and never downgrades a real relay-sourced kind:0 (createdAt > 0),
+            // while still seeding pubkeys the cache hasn't seen. This is the
+            // delivery half of reference-first profile resolution: display
+            // surfaces `claimNostrProfiles(_:consumer:)` the pubkeys they
+            // render, the kernel resolves each kind:0 over its relay pool, and
+            // the result lands here on the next push frame. The bespoke
+            // `NostrProfileFetcher` remains only for `NostrAgentResponder`'s
+            // synchronous prompt-building window and the approval-enrich
+            // snapshot — neither of which an async push can satisfy.
+            mergeResolvedProfiles(identity.resolvedProfiles)
+        }
 
+        // After the batch flushes: the widget path reads only `snapshot` and
+        // `library` (never the episode-projection caches), so running it here —
+        // once the single deferred recompute has already landed — is correct
+        // and keeps it from being counted as another batched mutation.
         onNowPlayingSnapshot?(snapshot, library)
     }
 
