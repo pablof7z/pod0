@@ -119,6 +119,22 @@ pub enum SettingsAction {
     SetNostrProfile { name: String, about: String, picture: String },
     /// Set the Nostr public key hex (read-only, for projection only).
     SetNostrPublicKeyHex { hex: Option<String> },
+    /// Add (or upsert the role of) a configured app relay. `role` is one of
+    /// `read` | `write` | `both` | `indexer` (optionally comma-joined, e.g.
+    /// `both,indexer`); the kernel normalizes and validates it server-side and
+    /// surfaces a toast on an invalid URL/role. Drives the iOS App Relays
+    /// editor. Unlike the other settings ops this does NOT route through the
+    /// host-op handler — relay state lives in the kernel `AppRelaySlot`, not
+    /// `PodcastStore`, so `execute` emits `ActorCommand::AddRelay` directly.
+    AddRelay { url: String, role: String },
+    /// Remove a configured app relay by URL. Idempotent: removing a URL that
+    /// is not present is a no-op. Emits `ActorCommand::RemoveRelay` directly.
+    RemoveRelay { url: String },
+    /// Change the NIP-65 role of an already-configured relay. There is no
+    /// dedicated kernel command — `add_relay` upserts on URL (replacing the
+    /// role of an existing row), so this emits `ActorCommand::AddRelay` with
+    /// the new role, exactly like `AddRelay`.
+    SetRelayRole { url: String, role: String },
 }
 
 /// Action module for the `"podcast.settings"` namespace.
@@ -138,6 +154,38 @@ impl ActionModule for SettingsActionModule {
         correlation_id: &str,
         send: &dyn Fn(ActorCommand),
     ) -> Result<(), String> {
+        // Relay edits drive kernel-owned relay state (the `AppRelaySlot`), not
+        // a `PodcastStore` write, so they emit a real relay `ActorCommand`
+        // (`AddRelay`/`RemoveRelay`) instead of relying on the host-op handler
+        // to mutate state. This mirrors the `podcast.discover_nostr` →
+        // `EnsureInterest` precedent in `podcast_module.rs`: emitting an
+        // `ActorCommand` needs the `send` closure, which only `execute` carries.
+        // `add_relay` upserts on URL, so `SetRelayRole` is an `AddRelay` with
+        // the new role.
+        //
+        // REACTIVITY: the kernel mutating `configured_relays` does NOT bump
+        // `handle.rev`, and the snapshot push frame is rev-gated (an unchanged
+        // rev returns the cached JSON, and iOS dedupes ticks on `rev`). So a
+        // relay-only `AddRelay`/`RemoveRelay` would mutate the slot but never
+        // reach the UI until some unrelated rev bump. To make the edit
+        // reactive we ALSO send a `DispatchHostOp` for the same action; its
+        // handler arm bumps `handle.rev`, forcing a fresh rebuild that reads
+        // the just-mutated slot. The kernel actor processes commands FIFO, so
+        // the slot mutation always lands before the rev-bump rebuild.
+        match action {
+            SettingsAction::AddRelay { ref url, ref role }
+            | SettingsAction::SetRelayRole { ref url, ref role } => {
+                send(ActorCommand::AddRelay {
+                    url: url.clone(),
+                    role: role.clone(),
+                });
+            }
+            SettingsAction::RemoveRelay { ref url } => {
+                send(ActorCommand::RemoveRelay { url: url.clone() });
+            }
+            _ => {}
+        }
+
         let action_json =
             serde_json::to_string(&action).map_err(|e| e.to_string())?;
         send(ActorCommand::DispatchHostOp {

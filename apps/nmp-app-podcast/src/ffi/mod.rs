@@ -45,6 +45,7 @@ mod snapshot_categories;
 mod snapshot_downloads;
 mod snapshot_owned;
 mod snapshot_queue;
+mod snapshot_relays;
 mod snapshot_update;
 #[cfg(test)]
 mod snapshot_tests;
@@ -100,7 +101,7 @@ pub use projections::{
 pub use register::nmp_app_podcast_register;
 pub use snapshot::{
     nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free, nmp_app_podcast_snapshot_rev,
-    nmp_app_podcast_unregister, PodcastUpdate,
+    nmp_app_podcast_unregister, AppRelayRow, PodcastUpdate,
 };
 pub use network_report::nmp_app_podcast_network_report;
 pub use transcript_report::nmp_app_podcast_transcript_report;

@@ -143,6 +143,25 @@ pub struct PodcastUpdate {
     /// in BACKLOG); the iOS shell must route them to an approval surface.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub agent_notes: Vec<AgentNoteSummary>,
+    /// User-configured app relays (NMP v0.2.1 `configured_relays` projection),
+    /// each carrying the NIP-65 role string. Projected from the kernel's
+    /// `AppRelaySlot` (`NmpApp::configured_relays_handle`) — NOT from
+    /// `PodcastStore`, since relay state is kernel-owned. Empty until the
+    /// actor seeds `initial_relays` at `Start` or the user adds a relay via
+    /// `podcast.settings.add_relay`. Drives the iOS App Relays editor.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub configured_relays: Vec<AppRelayRow>,
+}
+
+/// One row of the `configured_relays` projection: a relay URL plus its
+/// NIP-65 role string (`read` | `write` | `both` | `indexer`, optionally
+/// comma-joined e.g. `both,indexer`). Mirrors `nmp_core::kernel::AppRelay`'s
+/// `url()` / `role()` accessors. Kept narrow so the iOS shell renders a role
+/// badge / picker without parsing transport internals.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+pub struct AppRelayRow {
+    pub url: String,
+    pub role: String,
 }
 
 impl Default for PodcastUpdate {
@@ -178,6 +197,7 @@ impl Default for PodcastUpdate {
             owned_podcasts: Vec::new(),
             categories: Vec::new(),
             agent_notes: Vec::new(),
+            configured_relays: Vec::new(),
         }
     }
 }

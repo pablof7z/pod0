@@ -6,6 +6,7 @@
 
 use super::*;
 use crate::agent_handler::AgentChatHandler;
+use crate::ffi::actions::settings_module::SettingsAction;
 use crate::download::DownloadQueue;
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
@@ -146,4 +147,37 @@ fn replaying_same_episode_does_not_double_enqueue() {
         1,
         "replaying must not create a duplicate download entry"
     );
+}
+
+/// Relay-edit reactivity seam: the `DispatchHostOp` companion for an
+/// `AddRelay`/`RemoveRelay`/`SetRelayRole` action MUST bump `handle.rev`.
+/// Without it the rev-gated snapshot push frame would serve stale cached JSON
+/// and iOS would dedupe the tick, so a relay edit would never reach the UI.
+/// (The matching `ActorCommand::AddRelay`/`RemoveRelay` that mutates the
+/// kernel `AppRelaySlot` is verified in `settings_module_tests.rs`.)
+#[test]
+fn relay_settings_actions_bump_rev() {
+    let store = Arc::new(Mutex::new(PodcastStore::new()));
+    let handler = handler_with_store(store);
+
+    let before = handler.rev.load(std::sync::atomic::Ordering::Relaxed);
+    handler.handle_settings_action(SettingsAction::AddRelay {
+        url: "wss://relay.example".into(),
+        role: "both".into(),
+    });
+    let after_add = handler.rev.load(std::sync::atomic::Ordering::Relaxed);
+    assert_eq!(after_add, before + 1, "add_relay companion must bump rev");
+
+    handler.handle_settings_action(SettingsAction::SetRelayRole {
+        url: "wss://relay.example".into(),
+        role: "read".into(),
+    });
+    let after_role = handler.rev.load(std::sync::atomic::Ordering::Relaxed);
+    assert_eq!(after_role, after_add + 1, "set_relay_role companion must bump rev");
+
+    handler.handle_settings_action(SettingsAction::RemoveRelay {
+        url: "wss://relay.example".into(),
+    });
+    let after_remove = handler.rev.load(std::sync::atomic::Ordering::Relaxed);
+    assert_eq!(after_remove, after_role + 1, "remove_relay companion must bump rev");
 }

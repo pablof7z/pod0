@@ -62,6 +62,24 @@ worktrees currently in flight.
   once the kernel can represent the state.
 - **relay-list-ownership.** Replace `@AppStorage("nip65.relays")` seed state
   with NMP relay-list store reads/writes and real NIP-65 publish/refresh flow.
+  Rust prerequisite SHIPPED (`feat/podcast-relay-ops`): `configured_relays`
+  projection on `PodcastUpdate` + `add_relay`/`remove_relay`/`set_relay_role`
+  ops on `podcast.settings`. iOS App Relays editor now unblocked.
+- **relay-config-c-abi-persistence.** Relay edits made via the new
+  `podcast.settings` relay ops do NOT survive an app restart. The NMP v0.2.1
+  relay-config sidecar (`relay_config::load`/`save`) is invoked only inside
+  `NmpAppBuilder::start`; the podcast app starts via the raw C-ABI
+  (`nmp_app_new` → `nmp_app_podcast_register` → `nmp_app_start`) and
+  `configured_relays` is in-memory kernel state that no restore path reloads.
+  Consequence: the `register.rs` default-relay seed stays UNCONDITIONAL (a
+  genuine seed-if-empty / first-install-only guard is impossible without
+  persistence — the slot is empty on every fresh process, and a `register`-time
+  `is_empty()` check is always true because the actor seeds `initial_relays`
+  only at `Start`, after `register` returns). Wire relay-config sidecar
+  persistence into the C-ABI start path so edits are durable and the seed
+  becomes genuinely first-install-only. Likely needs an upstream NMP seam
+  (expose the sidecar load/save outside the builder, or persist
+  `configured_relays` to the LMDB store on edit).
 - **app-relays-config-ui.** Build the App Relays editor (Settings → Networking
   → App Relays): per-relay list with role badge, swipe-to-delete, tap-to-edit
   role, and an add sheet — as scoped in the relay-config-ui task. **BLOCKED on a

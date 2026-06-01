@@ -614,6 +614,20 @@ impl PodcastHostOpHandler {
                 self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 serde_json::json!({"ok": true})
             }
+            // Relay edits mutate kernel-owned state (the `AppRelaySlot`), not
+            // `PodcastStore` — `SettingsActionModule::execute` already emitted
+            // the real `ActorCommand::AddRelay` / `RemoveRelay` that mutates the
+            // slot. This `DispatchHostOp` companion exists solely to bump
+            // `handle.rev` so the rev-gated snapshot push frame rebuilds and the
+            // new relay list reaches iOS (a relay-only ActorCommand never bumps
+            // rev). FIFO actor ordering guarantees the slot mutation landed
+            // before this rebuild, so the fresh snapshot reads the new relays.
+            SettingsAction::AddRelay { .. }
+            | SettingsAction::RemoveRelay { .. }
+            | SettingsAction::SetRelayRole { .. } => {
+                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                serde_json::json!({"ok": true})
+            }
         }
     }
 }

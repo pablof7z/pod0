@@ -49,6 +49,32 @@ fn default_update_serializes_to_valid_json() {
 }
 
 #[test]
+fn configured_relays_omitted_when_empty() {
+    // D5/D6 byte-identity: an empty relay list is absent from the wire so the
+    // no-op snapshot stays compatible with the legacy stub and the Swift
+    // `decodeIfPresent ?? []` default.
+    let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
+    assert!(!json.contains("configured_relays"));
+}
+
+#[test]
+fn configured_relays_round_trips_with_role() {
+    use super::AppRelayRow;
+    let snap = PodcastUpdate {
+        configured_relays: vec![
+            AppRelayRow { url: "wss://relay.primal.net".into(), role: "both,indexer".into() },
+            AppRelayRow { url: "wss://purplepag.es".into(), role: "indexer".into() },
+        ],
+        ..PodcastUpdate::default()
+    };
+    let json = serde_json::to_string(&snap).expect("encode");
+    assert!(json.contains(r#""configured_relays""#));
+    assert!(json.contains(r#""role":"both,indexer""#));
+    let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded.configured_relays, snap.configured_relays);
+}
+
+#[test]
 fn snapshot_decoder_tolerates_unknown_fields() {
     // Forward-compat: an older binary decoding a newer snapshot ignores
     // fields it doesn't know about (Codable parity).

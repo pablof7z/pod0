@@ -47,6 +47,20 @@ struct PodcastUpdate {
     /// Every row carries `trusted == false` until the kind:3 contact/trust
     /// gate lands; route to an approval surface, do not auto-respond.
     @DefaultEmptyArray var agentNotes: [AgentNoteSummary] = []
+    /// User-configured app relays (NMP v0.2.1 `configured_relays`). Each row
+    /// carries the relay URL plus its NIP-65 role string. Drives the App
+    /// Relays editor. Empty until the kernel seeds defaults at start or the
+    /// user adds a relay.
+    @DefaultEmptyArray var configuredRelays: [AppRelayRow] = []
+}
+
+/// One configured app relay: URL plus NIP-65 role string
+/// (`read` | `write` | `both` | `indexer`, optionally comma-joined).
+/// Mirrors `ffi::snapshot_update::AppRelayRow`.
+struct AppRelayRow: Codable, Equatable, Identifiable {
+    var url: String = ""
+    var role: String = ""
+    var id: String { url }
 }
 
 /// Active player state (present only when an episode is loaded).
@@ -277,6 +291,7 @@ extension PodcastUpdate: Codable {
         ownedPodcasts = try c.decodeIfPresent([OwnedPodcastInfo].self, forKey: .ownedPodcasts) ?? []
         categories = try c.decodeIfPresent([CategoryBrowseItem].self, forKey: .categories) ?? []
         agentNotes = try c.decodeIfPresent([AgentNoteSummary].self, forKey: .agentNotes) ?? []
+        configuredRelays = try c.decodeIfPresent([AppRelayRow].self, forKey: .configuredRelays) ?? []
     }
 }
 

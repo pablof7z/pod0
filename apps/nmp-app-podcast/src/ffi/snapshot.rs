@@ -4,7 +4,7 @@
 //! per-projection types live in [`super::projections`]; queue, owned-podcast,
 //! and category build helpers live in `snapshot_queue/owned/categories` siblings.
 
-pub use super::snapshot_update::PodcastUpdate;
+pub use super::snapshot_update::{AppRelayRow, PodcastUpdate};
 
 use std::ffi::{c_char, CString};
 use std::sync::atomic::Ordering;
@@ -300,6 +300,12 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         .map(|n| n.clone())
         .unwrap_or_default();
 
+    // Configured app relays (NMP v0.2.1). Kernel-owned slot, projected by the
+    // sibling helper. SAFETY: `handle.app` is the live `*mut NmpApp` the
+    // host-op handler also dereferences; the actor joins before `nmp_app_free`.
+    let configured_relays =
+        unsafe { super::snapshot_relays::build_configured_relays(handle.app) };
+
     let voice = handle.voice_state.lock().ok().and_then(|v| {
         let snap = v.clone();
         (snap != VoiceState::default()).then_some(snap)
@@ -343,6 +349,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         briefing,
         social,
         agent_notes,
+        configured_relays,
         ..PodcastUpdate::default()
     }
 }
