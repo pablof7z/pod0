@@ -154,6 +154,34 @@ pub extern "C" fn nmp_app_podcast_register(
     // Install the host-op handler (requires &self, so take the ref AFTER the
     // &mut borrow above is released by the block end).
     let app_ref = unsafe { &*app };
+
+    // Seed the podcast app's default relay set (NMP v0.2.1, PR #900).
+    //
+    // As of v0.2.1, `nmp-core` no longer carries a hardcoded onboarding relay
+    // default — the app owns its relay list. The Rust composition root
+    // (`NmpAppBuilder::start`) seeds `DEFAULT_APP_RELAYS` for builder-based
+    // apps, but the podcast app is constructed by the iOS shell over the raw
+    // C-ABI (`nmp_app_new` → `nmp_app_podcast_register` → `nmp_app_start`), so
+    // it never runs through the builder. Without an explicit seed here a fresh
+    // install would start with ZERO configured relays and Nostr discovery /
+    // publish would silently no-op. `set_initial_relays_for_start` is the
+    // non-builder seam: it stages `(url, role)` rows into
+    // `ActorCommand::Start { initial_relays }`, read once by the actor before
+    // the first tick. It takes `&self`, so it is sound on `app_ref`, and it
+    // MUST run before the shell calls `nmp_app_start` (it does, after this
+    // `register` returns). These two relays mirror the template's
+    // `DEFAULT_APP_RELAYS`; the podcast app declares them explicitly.
+    //
+    // NOTE (parallel work): this seed is UNCONDITIONAL. That is correct today
+    // because no relay-edit UI persists user relay choices for the podcast app
+    // (zero `configuredRelays` references in the iOS tree). When the relay-edit
+    // UI + sidecar persistence land (parallel PR), this must become a
+    // seed-if-empty so it never clobbers user edits.
+    app_ref.set_initial_relays_for_start(vec![
+        ("wss://relay.primal.net".to_string(), "both,indexer".to_string()),
+        ("wss://purplepag.es".to_string(), "indexer".to_string()),
+    ]);
+
     app_ref.set_host_op_handler(Arc::new(PodcastHostOpHandler::new(
         app,
         store.clone(),

@@ -25,6 +25,7 @@ This is the canonical project plan. Detailed implementation plans live under
   - `docs/plan/pod0-nostr-publishing.md` - NIP-F4 protocol correction and publishing/discovery plan.
   - `docs/plan/nmp-v0.1.0-upgrade.md` - NMP dependency upgrade from old pin to `nmp-v0.1.0` tag: changelog, breakage analysis, and follow-up items.
   - `docs/plan/nmp-v0.2.0-upgrade.md` - NMP dependency upgrade to `nmp-v0.2.0` (rev `ae7b004`): non-breaking pin bump (C-ABI unchanged), changelog, and not-yet-adopted items.
+  - `docs/plan/nmp-v0.2.1-upgrade.md` - NMP dependency upgrade to `nmp-v0.2.1` (rev `7be4a771`): pin bump (C-ABI unchanged) plus the required relay-seed change after NMP moved default relays out of `nmp-core`.
   - `docs/plan/android-parity.md` - Android feature-parity status matrix (Tier 1-4) and the subscribe/search/episode-detail wave.
 
 ## Migration State
@@ -32,7 +33,7 @@ This is the canonical project plan. Detailed implementation plans live under
 | Area | Status | Meaning |
 |---|---|---|
 | PR stack | Merged | GitHub reported zero open PRs on 2026-05-26; prior WIP open-PR entries were stale. |
-| NMP dependency pin | v0.2.0 | The four git-pinned NMP workspace deps (`nmp-app-template`, `nmp-core`, `nmp-ffi`, `nmp-signer-broker`) are pinned to `nmp-v0.2.0` (rev `ae7b004`, workspace version `0.2.0`). Non-breaking bump from v0.1.0 — C-ABI byte-for-byte identical, FlatBuffers pin unchanged. See `docs/plan/nmp-v0.2.0-upgrade.md`. |
+| NMP dependency pin | v0.2.1 | The four git-pinned NMP workspace deps (`nmp-app-template`, `nmp-core`, `nmp-ffi`, `nmp-signer-broker`) are pinned to `nmp-v0.2.1` (rev `7be4a771`, workspace version `0.2.1`). C-ABI byte-for-byte identical to v0.2.0. v0.2.1 (PR #900) moved the default app-relay set out of `nmp-core`, so the podcast app now seeds its relays explicitly in `register.rs` via `set_initial_relays_for_start` (the non-builder seam). See `docs/plan/nmp-v0.2.1-upgrade.md`. |
 | Core NMP shell | Implemented | Subscribe, library, player, refresh, OPML/search, persistence, downloads, settings, queue, chapters, ad segments, and all platform surfaces wired to Rust. iOS is a thin rendering shell. Phases 1–6 landed 2026-05-27. |
 | Feature parity | Not achieved | Many merged PRs are scaffolds or heuristics, not full original-app behavior. |
 | Legacy app deletion | Blocked | `App/Sources/` remains the reference implementation until all parity exits pass. |
