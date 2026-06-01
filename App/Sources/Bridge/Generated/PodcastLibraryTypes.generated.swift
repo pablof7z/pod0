@@ -61,6 +61,11 @@ struct EpisodeSummary: Identifiable, Equatable, Hashable {
     /// On-disk path to the downloaded enclosure when one exists. `nil`
     /// means the episode has not been downloaded yet.
     var downloadPath: String? = nil
+    /// Size in bytes of the downloaded enclosure, cached by the Rust kernel
+    /// at download-completion time. `0` when not downloaded or unknown. Read
+    /// directly instead of statting the file on the main actor per tick.
+    /// Omitted from the wire when `0` (D5); decoded with a `?? 0` fallback.
+    var fileSizeBytes: Int64 = 0
     /// Original RSS enclosure URL for streaming. Present for all library
     /// episodes; used by the host player when `downloadPath` is absent.
     var enclosureUrl: String? = nil
@@ -203,6 +208,7 @@ extension EpisodeSummary: Codable {
         artworkUrl = try c.decodeIfPresent(String.self, forKey: .artworkUrl)
         publishedAt = try c.decodeIfPresent(Int.self, forKey: .publishedAt)
         downloadPath = try c.decodeIfPresent(String.self, forKey: .downloadPath)
+        fileSizeBytes = try c.decodeIfPresent(Int64.self, forKey: .fileSizeBytes) ?? 0
         enclosureUrl = try c.decodeIfPresent(String.self, forKey: .enclosureUrl)
         description = try c.decodeIfPresent(String.self, forKey: .description)
         transcriptUrl = try c.decodeIfPresent(String.self, forKey: .transcriptUrl)

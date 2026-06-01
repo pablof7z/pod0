@@ -146,7 +146,14 @@ fn apply_download_report(store: &mut PodcastStore, report: &DownloadReport) {
             local_path,
         } => {
             if let Some((typed_id, _url)) = store.episode_enclosure_url(&episode_id) {
-                store.set_local_path(typed_id, local_path.clone());
+                // Stat the finished file once, here on the actor thread, so the
+                // main-thread snapshot projection reads a cached size instead of
+                // re-statting every downloaded episode on every tick. `0` when
+                // the file is unreadable — the projection treats it as unknown.
+                let byte_count = std::fs::metadata(local_path)
+                    .map(|m| m.len() as i64)
+                    .unwrap_or(0);
+                store.set_local_path(typed_id, local_path.clone(), byte_count);
             }
             // Episode not in the store (e.g. unsubscribed mid-flight):
             // drop the report on the floor. D6 — data, not exception.

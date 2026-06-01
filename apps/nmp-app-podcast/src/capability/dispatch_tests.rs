@@ -96,6 +96,53 @@ fn completed_report_records_local_path() {
 }
 
 #[test]
+fn completed_report_caches_real_file_size() {
+    // The completion handler stats the finished file on the actor thread so
+    // the main-thread snapshot projection reads a cached size instead of
+    // statting per tick. Write a real file and assert its byte length lands.
+    let (mut store, id_str) = store_with_one_episode();
+    let mut path = std::env::temp_dir();
+    path.push(format!("fsproj-{id_str}.mp3"));
+    let payload = b"podcast-bytes-1234567890"; // 24 bytes
+    std::fs::write(&path, payload).expect("write temp file");
+
+    let report = format!(
+        r#"{{"type":"completed","episode_id":"{id_str}","local_path":"{}"}}"#,
+        path.to_string_lossy()
+    );
+    let outcome = dispatch_download_report_json(&mut store, &report);
+    assert!(matches!(outcome, DispatchOutcome::Ok { .. }));
+
+    let typed_id = store
+        .episode_enclosure_url(&id_str)
+        .map(|(id, _)| id)
+        .expect("episode present");
+    assert_eq!(store.file_size_for(&typed_id), Some(payload.len() as i64));
+
+    let _ = std::fs::remove_file(&path);
+}
+
+#[test]
+fn completed_report_with_missing_file_caches_zero() {
+    // An unreadable / already-gone file yields size 0 (treated as unknown by
+    // the projection) — the path is still recorded so the episode reads as
+    // downloaded.
+    let (mut store, id_str) = store_with_one_episode();
+    let report = format!(
+        r#"{{"type":"completed","episode_id":"{id_str}","local_path":"/nonexistent/{id_str}.mp3"}}"#
+    );
+    let outcome = dispatch_download_report_json(&mut store, &report);
+    assert!(matches!(outcome, DispatchOutcome::Ok { .. }));
+
+    let typed_id = store
+        .episode_enclosure_url(&id_str)
+        .map(|(id, _)| id)
+        .expect("episode present");
+    assert!(store.local_path_for(&typed_id).is_some());
+    assert_eq!(store.file_size_for(&typed_id), Some(0));
+}
+
+#[test]
 fn completed_report_for_unknown_episode_is_noop() {
     let (mut store, _) = store_with_one_episode();
     let report =
@@ -111,7 +158,7 @@ fn cancelled_report_clears_local_path() {
         .episode_enclosure_url(&id_str)
         .map(|(id, _)| id)
         .expect("episode present");
-    store.set_local_path(typed_id, "/var/mobile/seeded.mp3".into());
+    store.set_local_path(typed_id, "/var/mobile/seeded.mp3".into(), 0);
     assert!(store.local_path_for(&typed_id).is_some());
 
     let report = format!(r#"{{"type":"cancelled","episode_id":"{id_str}"}}"#);
@@ -127,7 +174,7 @@ fn progress_failed_paused_decode_without_mutating_store() {
         .episode_enclosure_url(&id_str)
         .map(|(id, _)| id)
         .expect("episode present");
-    store.set_local_path(typed_id, "/var/mobile/seeded.mp3".into());
+    store.set_local_path(typed_id, "/var/mobile/seeded.mp3".into(), 0);
 
     for report in [
         format!(

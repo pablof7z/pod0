@@ -159,7 +159,7 @@ impl PodcastStore {
 
         // Side-maps: local download path (drives `download_path`), flat
         // transcript text, and an explicit empty ad-segment list.
-        self.set_local_path(episode_id, audio_path.to_string());
+        self.set_local_path(episode_id, audio_path.to_string(), byte_count);
         if let Some(text) = transcript {
             self.set_transcript(episode_id_str.to_string(), text);
         }

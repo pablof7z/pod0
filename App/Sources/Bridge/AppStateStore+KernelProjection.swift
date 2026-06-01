@@ -429,9 +429,11 @@ private extension EpisodeSummary {
         let downloadState: DownloadState
         if let path = downloadPath {
             let fileURL = URL(fileURLWithPath: path)
-            let statInterval = signposter.beginInterval("toEpisode.fileStat")
-            let byteCount: Int64 = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize.map { Int64($0) }) ?? 0
-            signposter.endInterval("toEpisode.fileStat", statInterval)
+            // Size is cached by the Rust kernel at download-completion time
+            // (`EpisodeSummary.file_size_bytes`), so we avoid a synchronous
+            // `URL.resourceValues(.fileSizeKey)` stat on the main actor for
+            // every downloaded episode on every projection tick.
+            let byteCount: Int64 = fileSizeBytes
             downloadState = .downloaded(localFileURL: fileURL, byteCount: byteCount)
         } else {
             downloadState = .notDownloaded

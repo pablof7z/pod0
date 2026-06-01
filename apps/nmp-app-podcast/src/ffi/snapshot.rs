@@ -108,6 +108,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
                             artwork_url: ep.image_url.as_ref().map(|u| u.to_string()),
                             published_at: Some(ep.pub_date.timestamp()),
                             download_path: s.local_path_for(&ep.id).map(str::to_owned),
+                            file_size_bytes: s.file_size_for(&ep.id).unwrap_or(0),
                             enclosure_url: Some(ep.enclosure_url.to_string()),
                             description: Some(strip_html(&ep.description))
                                 .filter(|d| !d.is_empty()),
