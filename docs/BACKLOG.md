@@ -627,6 +627,14 @@ worktrees currently in flight.
   status behind.
 - **line-limit-audit.** Continue enforcing the 300-line soft and 500-line hard
   limits. Split files before adding logic to near-limit modules.
+  - **appstatestore-split.** `App/Sources/State/AppStateStore.swift` is already
+    over the 500-line hard limit (583 on origin/main; 602 after the
+    `fix/triage-counts-cache` triage-bucket stored properties, which *cannot*
+    move — Swift stored properties must live in the class body, not an
+    extension). The split must relocate *methods* (not the projection-cache
+    stored props) out of the main file. Deferred to avoid conflicting with the
+    in-flight `fix/double-recompute`, `file-size-projection`, and
+    `signpost-instrumentation` branches that all touch this file. Owner: unassigned.
 - **m1.6-kernel-widget-position.** Once `AudioCapability.sendReport` is wired
   to the Rust kernel (M1.6), kernel-projection position ticks will drive
   `nowPlaying.positionSecs`. At that point `PlatformCapability.applyNowPlayingSnapshot`

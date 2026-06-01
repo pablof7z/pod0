@@ -177,22 +177,10 @@ struct HomeView: View {
     private var triageCounts: (inbox: Int, archived: Int, shows: Int) {
         let interval = signposter.beginInterval("triageCounts")
         defer { signposter.endInterval("triageCounts", interval) }
-        let allowed = allowedSubscriptionIDs
-        var inbox = 0
-        var archived = 0
-        var coveredShows: Set<UUID> = []
-        for episode in store.state.episodes {
-            if let allowed, !allowed.contains(episode.podcastID) { continue }
-            guard let decision = episode.triageDecision else { continue }
-            coveredShows.insert(episode.podcastID)
-            switch decision {
-            case .inbox:
-                if !episode.played { inbox += 1 }
-            case .archived:
-                archived += 1
-            }
-        }
-        return (inbox, archived, coveredShows.count)
+        // O(1) for All, O(category size) when scoped — reads the per-show
+        // triage buckets precomputed once in `recomputeEpisodeProjections`,
+        // instead of rescanning every episode on every `body` pass.
+        return store.triageRollup(allowed: allowedSubscriptionIDs)
     }
 
     // MARK: - Layout
