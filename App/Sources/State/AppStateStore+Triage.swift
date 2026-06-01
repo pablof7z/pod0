@@ -16,14 +16,14 @@ extension AppStateStore {
     /// manually rescues an archived episode (future surface) or when a
     /// re-triage pass wants to overwrite a previous run.
     func clearTriageDecision(_ episodeID: UUID) {
-        guard let idx = state.episodes.firstIndex(where: { $0.id == episodeID }) else { return }
-        guard state.episodes[idx].triageDecision != nil else { return }
-        var episodes = state.episodes
+        guard let idx = self.episodes.firstIndex(where: { $0.id == episodeID }) else { return }
+        guard self.episodes[idx].triageDecision != nil else { return }
+        var episodes = self.episodes
         episodes[idx].triageDecision = nil
         episodes[idx].triageRationale = nil
         episodes[idx].triageIsHero = false
         performMutationBatch {
-            state.episodes = episodes
+            self.episodes = episodes
             invalidateEpisodeProjections()
         }
         // M4 / D7: clear the decision in Rust via the "none" sentinel so the

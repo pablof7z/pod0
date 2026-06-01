@@ -83,7 +83,7 @@ struct BookmarksView: View {
         }()
 
         var entries: [BookmarkEntry] = []
-        for episode in store.state.episodes {
+        for episode in store.episodes {
             let clips = clipsByEpisode[episode.id] ?? []
             let notes = notesByEpisode[episode.id] ?? []
             guard episode.isStarred || !clips.isEmpty || !notes.isEmpty else { continue }

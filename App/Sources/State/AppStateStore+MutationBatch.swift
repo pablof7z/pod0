@@ -5,12 +5,29 @@ import WidgetKit
 
 extension AppStateStore {
 
-    /// Central `state.didSet` handler. Most mutations should persist and
-    /// refresh derived indexes immediately, but import/refresh flows can wrap
-    /// many state edits in `performMutationBatch` so the expensive work runs
+    /// Central `state.didSet` handler for the cold domains (settings,
+    /// subscriptions, podcasts, nostr, agent, …). These mutate rarely, so the
+    /// only side effect is persistence. Episode projections are *not* rebuilt
+    /// here — episodes live in their own stored property whose `didSet`
+    /// (`handleEpisodesDidSet`) owns projection invalidation.
+    ///
+    /// Most mutations should persist immediately, but import/refresh flows can
+    /// wrap many edits in `performMutationBatch` so the expensive save runs
     /// once after the batch lands.
-    func handleStateDidSet(previousEpisodes: [Episode]) {
-        if Self.episodesFingerprintChanged(previousEpisodes, state.episodes) {
+    func handleStateDidSet() {
+        markStateSideEffectsDirty()
+    }
+
+    /// `episodes.didSet` handler. Episodes are the hot field: any change can
+    /// affect the precomputed projections (unplayed counts, download/transcript
+    /// presence, in-progress + recent feeds, triage roll-ups), so rebuild them
+    /// when the array fingerprint changes, and persist either way (a per-element
+    /// edit that leaves the fingerprint unchanged — e.g. a played flag flip on a
+    /// stable array — still needs to reach disk, and the dedicated writers in
+    /// `+Episodes` call `invalidateEpisodeProjections()` themselves for the
+    /// projection side).
+    func handleEpisodesDidSet(previousEpisodes: [Episode]) {
+        if Self.episodesFingerprintChanged(previousEpisodes, episodes) {
             markEpisodeProjectionsDirty()
         }
         markStateSideEffectsDirty()
@@ -55,7 +72,12 @@ extension AppStateStore {
     }
 
     private func runStateSideEffects() {
-        let snapshot = state
+        // Episodes live outside `state` at runtime (their own `@Observable`
+        // stored property). Re-compose the full `AppState` DTO at the save seam
+        // so persistence still writes a complete snapshot — the SQLite episode
+        // sidecar and the metadata JSON both read `snapshot.episodes`.
+        var snapshot = state
+        snapshot.episodes = episodes
         persistence.save(snapshot)
         scheduleWidgetReload()
     }

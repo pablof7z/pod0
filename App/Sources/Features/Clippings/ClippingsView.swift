@@ -167,7 +167,7 @@ private struct EpisodeNavTarget: Identifiable, Hashable {
     )
     store.state.podcasts = [podcast]
     store.state.subscriptions = [PodcastSubscription(podcastID: podcast.id)]
-    store.state.episodes = [episode]
+    store.episodes = [episode]
     store.addClip(Clip(
         episodeID: episode.id,
         subscriptionID: podcast.id,

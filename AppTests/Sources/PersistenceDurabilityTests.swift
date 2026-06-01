@@ -48,7 +48,7 @@ final class PersistenceDurabilityTests: XCTestCase {
         let reopened = AppStateTestSupport.makeIsolatedStore(fileURL: sharedFileURL, reset: false)
         XCTAssertTrue(reopened.store.state.settings.hasCompletedOnboarding)
         XCTAssertEqual(reopened.store.state.subscriptions.count, 1)
-        XCTAssertEqual(reopened.store.state.episodes.count, 1_500)
+        XCTAssertEqual(reopened.store.episodes.count, 1_500)
     }
 
     func testSingleEpisodeMutationUsesDeltaWriteAndRoundTrips() async throws {
@@ -80,9 +80,9 @@ final class PersistenceDurabilityTests: XCTestCase {
         }
 
         let reopened = AppStateTestSupport.makeIsolatedStore(fileURL: sharedFileURL, reset: false)
-        let target = try XCTUnwrap(reopened.store.state.episodes.first { $0.id == targetID })
+        let target = try XCTUnwrap(reopened.store.episodes.first { $0.id == targetID })
         XCTAssertTrue(target.isStarred)
-        XCTAssertEqual(reopened.store.state.episodes.count, 3)
+        XCTAssertEqual(reopened.store.episodes.count, 3)
     }
 
     func testSmallEpisodeDeleteUsesRowDeleteAndRoundTrips() async throws {
@@ -107,7 +107,7 @@ final class PersistenceDurabilityTests: XCTestCase {
 
             store.persistence.resetEpisodeWriteSummary()
             store.performMutationBatch {
-                store.state.episodes.removeAll { $0.id == deletedID }
+                store.episodes.removeAll { $0.id == deletedID }
             }
 
             let summary = store.persistence.lastEpisodeWriteSummary
@@ -118,8 +118,8 @@ final class PersistenceDurabilityTests: XCTestCase {
         }
 
         let reopened = AppStateTestSupport.makeIsolatedStore(fileURL: sharedFileURL, reset: false)
-        XCTAssertNil(reopened.store.state.episodes.first { $0.id == deletedID })
-        XCTAssertEqual(reopened.store.state.episodes.map(\.id), survivingIDs)
+        XCTAssertNil(reopened.store.episodes.first { $0.id == deletedID })
+        XCTAssertEqual(reopened.store.episodes.map(\.id), survivingIDs)
     }
 
     func testHasCompletedOnboardingPersistsAcrossStoreInstances() async throws {

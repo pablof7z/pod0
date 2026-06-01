@@ -79,9 +79,42 @@ final class AppStateStore {
     /// turn — matched to win-the-day's 10s window.
     static let nostrActivityIndicatorDuration: TimeInterval = 10
 
+    /// Cold-path application state: settings, subscriptions, podcasts, nostr,
+    /// agent, social, and threading data. Every field here mutates rarely
+    /// relative to playback. Kept as a single `@Observable`-tracked stored
+    /// property so its `didSet` can drive persistence for the cold domains.
+    ///
+    /// **Why `episodes` lives outside this struct.** `episodes` is the hot
+    /// field — the position-debounce flush rewrites it on a playback cadence,
+    /// and mark-played / download / triage churn it constantly. With a single
+    /// `var state`, every such write invalidated *every* view reading any
+    /// `store.state.*` (settings screens, nostr surfaces, agent activity),
+    /// because `@Observable` tracks at the granularity of the class's stored
+    /// properties — one `state` property means one tracking unit. Promoting
+    /// `episodes` to its own stored property (`store.episodes`) partitions the
+    /// observation: episode churn now re-renders only episode readers, leaving
+    /// the cold screens untouched. See `episodes` below and `handleStateDidSet`
+    /// / `handleEpisodesDidSet` in `AppStateStore+MutationBatch.swift`.
     var state: AppState {
         didSet {
-            handleStateDidSet(previousEpisodes: oldValue.episodes)
+            handleStateDidSet()
+        }
+    }
+
+    /// All known episodes across all podcasts, hydrated from SQLite at launch.
+    /// Promoted out of `AppState` into its own `@Observable` stored property so
+    /// the high-frequency episode mutations (position flush, played/download/
+    /// triage edits) invalidate only the views that actually read episodes —
+    /// not the settings/nostr/agent surfaces that read other `state.*` fields.
+    ///
+    /// `AppState.episodes` still exists as a serialization-only field: it is
+    /// populated from / written to this property at the persistence and
+    /// snapshot seams (`init`, `clearAllData`, `runStateSideEffects`,
+    /// kernel projection). Treat *this* property as the single source of truth
+    /// at runtime; `state.episodes` is a transient DTO slot.
+    var episodes: [Episode] = [] {
+        didSet {
+            handleEpisodesDidSet(previousEpisodes: oldValue)
         }
     }
 
@@ -258,13 +291,21 @@ final class AppStateStore {
             loadedState.podcasts.removeAll { legacyExternalPodcastIDs.contains($0.id) }
             loadedState.subscriptions.removeAll { legacyExternalPodcastIDs.contains($0.podcastID) }
         }
+        // Split the freshly-loaded episodes out of the DTO into the dedicated
+        // `episodes` stored property — the runtime source of truth. We blank
+        // `state.episodes` so there is exactly one live copy in memory; the
+        // save seam (`runStateSideEffects`) re-composes the DTO on the way to
+        // disk. Both assignments here are the first write to their respective
+        // stored properties, so neither `didSet` fires during init.
+        self.episodes = loadedState.episodes
+        loadedState.episodes = []
         self.state = loadedState
-        // The `state.didSet` above doesn't fire from inside `init` until all
-        // stored properties are initialised, and even then it skips the very
-        // first assignment in init. Build the projections by hand from the
-        // freshly-loaded state so the first SwiftUI render after launch
-        // already sees populated caches — otherwise the Library grid would
-        // briefly read empty unplayed dots until the first mutation.
+        // The `didSet`s above don't fire from inside `init` until all stored
+        // properties are initialised, and even then they skip the very first
+        // assignment in init. Build the projections by hand from the freshly-
+        // loaded episodes so the first SwiftUI render after launch already
+        // sees populated caches — otherwise the Library grid would briefly
+        // read empty unplayed dots until the first mutation.
         recomputeEpisodeProjections()
         // Bootstrap the live RAG stack so the SQLite vector store is opened
         // (and its file path logged) before any view tries to query it.
@@ -289,6 +330,19 @@ final class AppStateStore {
         // retained on `self` so the observer outlives the init call but
         // dies with the store. See `AppStateStore+PositionDebounce.swift`.
         backgroundObserver = registerBackgroundFlushObserver()
+    }
+
+    /// A fully-composed `AppState` snapshot with the live `episodes` folded
+    /// back into the DTO. Use this for the handful of consumers that take a
+    /// whole `AppState` and need `episodes` populated (data-export stats,
+    /// local search) now that `episodes` is a separate stored property.
+    /// Prefer reading `store.episodes` directly in view bodies — this
+    /// allocates a struct copy with the episode array, so it is *not* a
+    /// per-cell read path.
+    var composedState: AppState {
+        var snapshot = state
+        snapshot.episodes = episodes
+        return snapshot
     }
 
     // MARK: - Settings
@@ -568,10 +622,12 @@ final class AppStateStore {
         performMutationBatch {
             state = AppState()
             state.settings = preserved
-            // `state = AppState()` above changes the episode array's count from
-            // N to 0, so the `state.didSet` fingerprint catches it and rebuilds
-            // the projections to empty. Explicit call here is belt-and-
+            // Episodes now live in their own stored property — `state = AppState()`
+            // no longer zeroes them, so wipe them explicitly. The `episodes.didSet`
+            // fingerprint catches the N→0 count change and rebuilds the projections
+            // to empty; the explicit `invalidateEpisodeProjections()` is belt-and-
             // suspenders against future refactors that might bypass didSet.
+            episodes = []
             invalidateEpisodeProjections()
         }
         SpotlightIndexer.clearAll()

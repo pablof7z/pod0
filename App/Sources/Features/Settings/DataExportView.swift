@@ -126,7 +126,7 @@ struct DataExportView: View {
     // MARK: - Derived
 
     private var stats: DataExport.Stats {
-        DataExport.stats(for: store.state)
+        DataExport.stats(for: store.composedState)
     }
 
     private var actionFooterText: String {
@@ -143,7 +143,7 @@ struct DataExportView: View {
     private func generate() {
         do {
             let now = Date()
-            let exportState = store.state
+            let exportState = store.composedState
             let url = try DataExport.writeExport(of: exportState, now: now)
             let attrs: [FileAttributeKey: Any]?
             do {

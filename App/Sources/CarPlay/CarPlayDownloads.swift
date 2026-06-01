@@ -21,7 +21,7 @@ enum CarPlayDownloads {
         store: AppStateStore,
         onSelect: @escaping (Episode) -> Void
     ) -> CPListTemplate {
-        let downloaded = store.state.episodes
+        let downloaded = store.episodes
             .filter {
                 if case .downloaded = $0.downloadState { return true }
                 return false

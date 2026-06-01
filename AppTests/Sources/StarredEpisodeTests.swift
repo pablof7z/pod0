@@ -113,7 +113,7 @@ final class StarredEpisodeTests: XCTestCase {
 
     func testSetEpisodeStarredIsNopForUnknownID() {
         store.setEpisodeStarred(UUID(), true) // must not crash
-        XCTAssertTrue(store.state.episodes.allSatisfy { !$0.isStarred })
+        XCTAssertTrue(store.episodes.allSatisfy { !$0.isStarred })
     }
 
     // MARK: - Episode insert invariant

@@ -26,7 +26,7 @@ extension AppStateStore {
         let podcastByID = Dictionary(uniqueKeysWithValues: state.podcasts.map { ($0.id, $0) })
         let followed = state.subscriptions.compactMap { podcastByID[$0.podcastID] }
             .filter { $0.kind == .rss }
-        let episodes = state.episodes
+        let episodes = self.episodes
         var lookup: [UUID: Date] = [:]
         lookup.reserveCapacity(followed.count)
         for podcast in followed {
@@ -56,7 +56,7 @@ extension AppStateStore {
     /// podcast has no episodes yet.
     func mostRecentEpisode(forPodcast podcastID: UUID) -> Episode? {
         guard let firstIdx = episodeIndexesByShow[podcastID]?.first,
-              state.episodes.indices.contains(firstIdx) else { return nil }
-        return state.episodes[firstIdx]
+              self.episodes.indices.contains(firstIdx) else { return nil }
+        return self.episodes[firstIdx]
     }
 }

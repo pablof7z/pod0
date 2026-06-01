@@ -6,7 +6,7 @@ import os.signpost
 //
 // **Why this exists.** Several SwiftUI surfaces — the Library subscriptions
 // grid, ShowDetail, Home Today's Continue Listening + New Episodes feeds —
-// read derived facts about `state.episodes`. Each fact is O(N) to compute
+// read derived facts about `self.episodes`. Each fact is O(N) to compute
 // (filter / sort / contains). Each fact is read inside a `body` getter that
 // SwiftUI re-runs every scroll tick, every cell. With 20 subscriptions and
 // 10k episodes, scrolling Library used to fire 20 × 10k = 200k filter
@@ -15,7 +15,7 @@ import os.signpost
 // per-cell helpers iterating the entire episode array and copying full
 // `Episode` structs.
 //
-// The fix: precompute every O(N) fact once, off `state.episodes`, into a
+// The fix: precompute every O(N) fact once, off `self.episodes`, into a
 // dictionary or set keyed by subscription ID (or, for the Home feeds, into
 // a flat sorted array). Reads become O(1) dict lookups, the per-cell
 // helpers become trivial.
@@ -24,7 +24,7 @@ import os.signpost
 // stored state); see `AppStateStore.swift` for the property declarations.
 //
 // **Invalidation.** Every method in `AppStateStore+Episodes.swift` that
-// mutates `state.episodes` calls `invalidateEpisodeProjections()` after
+// mutates `self.episodes` calls `invalidateEpisodeProjections()` after
 // the mutation lands. As a safety net, `state.didSet` also recomputes
 // when the array fingerprint changes — covering bulk assignments
 // (`clearAllData`, persistence reload) and the one episode-removing path
@@ -36,7 +36,7 @@ import os.signpost
 // returned values *at read time*, not stored in the precomputed array,
 // so a 1 Hz playback tick doesn't dirty the projection.
 //
-// **Memory.** Per-show projections store sorted indexes into `state.episodes`,
+// **Memory.** Per-show projections store sorted indexes into `self.episodes`,
 // not full `Episode` copies. Reads materialize just the visible show's slice,
 // keeping the large imported-library footprint lower than a duplicate cache.
 
@@ -44,7 +44,7 @@ extension AppStateStore {
 
     // MARK: - Public invalidation entry points
 
-    /// Rebuilds every cached projection from the current `state.episodes`.
+    /// Rebuilds every cached projection from the current `self.episodes`.
     /// Cheap relative to the per-cell helpers it replaces (one O(N) pass
     /// instead of N × number-of-cells per scroll tick), but still not free
     /// — callers should fire it at most once per logical mutation, not in
@@ -55,7 +55,7 @@ extension AppStateStore {
     /// any write that affects unplayed counts, download states, transcript
     /// states, episode membership, or position-derived in-progress status.
     func recomputeEpisodeProjections() {
-        let episodes = state.episodes
+        let episodes = self.episodes
         os_signpost(.begin, log: perfLog, name: "recomputeEpisodeProjections", "count=%d", episodes.count)
         defer { os_signpost(.end, log: perfLog, name: "recomputeEpisodeProjections") }
 
@@ -243,7 +243,7 @@ extension AppStateStore {
         if !positionCache.isEmpty {
             let existingIDs = Set(inProgressEpisodesCached.map(\.id))
             for (id, position) in positionCache where position > 0 && !existingIDs.contains(id) {
-                guard var ep = state.episodes.first(where: { $0.id == id }), !ep.played else { continue }
+                guard var ep = self.episodes.first(where: { $0.id == id }), !ep.played else { continue }
                 ep.playbackPosition = position
                 result.append(ep)
             }
@@ -258,13 +258,13 @@ extension AppStateStore {
     /// cache so a freshly-started episode reads with its live playhead.
     /// Honours `limit` against the cached top-N; if a caller requests
     /// more than `recentEpisodesCacheLimit`, falls back to a full
-    /// recompute against `state.episodes`.
+    /// recompute against `self.episodes`.
     func recentEpisodesView(limit: Int) -> [Episode] {
         if limit <= Self.recentEpisodesCacheLimit {
             return applyingPositionCache(Array(recentEpisodesCached.prefix(limit)))
         }
         // Rare cold path: caller asked for more than we cache.
-        let recomputed = state.episodes
+        let recomputed = self.episodes
             .lazy
             .filter { !$0.played }
             .sorted { $0.pubDate > $1.pubDate }
@@ -277,7 +277,7 @@ extension AppStateStore {
     /// Backed by `episodeIndexesByShow`; no per-call filter or sort.
     func episodesForShowView(_ id: UUID) -> [Episode] {
         guard let indexes = episodeIndexesByShow[id] else { return [] }
-        let episodes = state.episodes
+        let episodes = self.episodes
         let cached = indexes.compactMap { index -> Episode? in
             guard episodes.indices.contains(index) else { return nil }
             return episodes[index]
@@ -291,7 +291,7 @@ extension AppStateStore {
     /// the episode projections need recomputing. Compares `count` and
     /// first/last `id` only — purely a safety net for paths that replace
     /// the entire array (`clearAllData`, persistence reload). Per-element
-    /// edits inside `state.episodes` (e.g. `state.episodes[idx].played =
+    /// edits inside `self.episodes` (e.g. `self.episodes[idx].played =
     /// true`) that don't change array shape would be missed here, so
     /// every dedicated writer also calls `invalidateEpisodeProjections()`
     /// after the mutation lands. The two paths together guarantee no

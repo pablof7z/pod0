@@ -121,7 +121,7 @@ final class ThreadingInferenceService {
         // "is this mention's episode unplayed" check downstream stays an
         // O(1) set membership.
         var eligibleEpisodeIDs: Set<UUID> = []
-        for episode in store.state.episodes where !episode.played && !episode.isTriageArchived {
+        for episode in store.episodes where !episode.played && !episode.isTriageArchived {
             if let allowed = subscriptionFilter,
                !allowed.contains(episode.podcastID) { continue }
             eligibleEpisodeIDs.insert(episode.id)
@@ -195,7 +195,7 @@ final class ThreadingInferenceService {
     func seedMockIfEmpty(store: AppStateStore) {
         #if DEBUG
         guard store.state.threadingTopics.isEmpty else { return }
-        let seedEpisodes = store.state.episodes
+        let seedEpisodes = store.episodes
             .sorted { $0.pubDate > $1.pubDate }
             .prefix(3)
         guard seedEpisodes.count >= 2 else { return }

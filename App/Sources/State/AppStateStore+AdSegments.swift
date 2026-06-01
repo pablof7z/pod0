@@ -18,10 +18,10 @@ extension AppStateStore {
         _ id: UUID,
         segments: [Episode.AdSegment]
     ) {
-        guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
-        var episodes = state.episodes
+        guard let idx = self.episodes.firstIndex(where: { $0.id == id }) else { return }
+        var episodes = self.episodes
         episodes[idx].adSegments = segments
-        state.episodes = episodes
+        self.episodes = episodes
         kernelSetAdSegments(episodeID: id, segments: segments)
     }
 }

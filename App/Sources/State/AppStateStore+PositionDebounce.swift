@@ -5,7 +5,7 @@ import UIKit
 //
 // **Why this exists.** The audio engine ticks once per second while playback
 // runs and forwards the playhead through `setEpisodePlaybackPosition`. Before
-// this file landed, every one of those ticks mutated `state.episodes`, which
+// this file landed, every one of those ticks mutated `self.episodes`, which
 // fires `state.didSet`, which atomically rewrites the entire ~8 MB JSON blob
 // at `<App Group>/Library/Application Support/podcastr-state.v1.json`. That's
 // 480 MB of disk I/O per minute of playback — battery, NAND wear, and a main-
@@ -13,7 +13,7 @@ import UIKit
 //
 // **The fix (Option A — debounce position writes only).** Position updates
 // flow through a side cache (`positionCache`) instead of straight into
-// `state.episodes`. The cache is folded back into reads (`episode(id:)`,
+// `self.episodes`. The cache is folded back into reads (`episode(id:)`,
 // `inProgressEpisodes`, `recentEpisodes`) so UI surfaces always see the
 // latest playhead. Disk writes happen only when we need them:
 //
@@ -21,7 +21,7 @@ import UIKit
 //     written immediately. Rationale: a crash 0.5 sec after playback starts
 //     mustn't lose all progress. It also keeps the existing single-call
 //     `setEpisodePlaybackPosition` semantics — the position lands in
-//     `state.episodes` straight away when the loop hasn't started yet.
+//     `self.episodes` straight away when the loop hasn't started yet.
 //   - **Trailing debounce:** once the eager save fires, subsequent rapid
 //     updates queue in the cache. A `Task` schedules a flush 5 sec after
 //     the last update — covering the "user paused mid-episode" case where
@@ -73,7 +73,7 @@ extension AppStateStore {
     /// we skip the bookkeeping entirely so the engine's coalesced ticks
     /// don't double-touch the cache.
     func setEpisodePlaybackPosition(_ id: UUID, position: TimeInterval) {
-        guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else {
+        guard let idx = self.episodes.firstIndex(where: { $0.id == id }) else {
             // Episode is gone (rare: removed mid-tick). Drop the cached entry
             // so it can't resurrect the record on the next flush.
             positionCache.removeValue(forKey: id)
@@ -83,7 +83,7 @@ extension AppStateStore {
         // Effective current position is whichever is more recent: cache
         // wins if it's been touched since the last flush, else fall back
         // to the persisted record.
-        let liveCurrent = positionCache[id] ?? state.episodes[idx].playbackPosition
+        let liveCurrent = positionCache[id] ?? self.episodes[idx].playbackPosition
         guard liveCurrent != position else { return }
 
         positionCache[id] = position
@@ -106,7 +106,7 @@ extension AppStateStore {
         }
     }
 
-    /// Drains the position cache into `state.episodes` and lets the existing
+    /// Drains the position cache into `self.episodes` and lets the existing
     /// `state.didSet` save the file. Safe to call from any path that needs
     /// the cache on disk synchronously (background notification, mark-played,
     /// clearAllData, episode-end). Idempotent on empty cache.
@@ -125,7 +125,7 @@ extension AppStateStore {
         // Build the mutation in one pass against a working copy so we hit
         // `state.didSet` exactly once — N cached entries become a single
         // 8 MB save, not N saves.
-        var working = state.episodes
+        var working = self.episodes
         var mutated = false
         for (id, position) in positionCache {
             guard let idx = working.firstIndex(where: { $0.id == id }) else { continue }
@@ -139,7 +139,7 @@ extension AppStateStore {
 
         if mutated {
             performMutationBatch {
-                state.episodes = working
+                self.episodes = working
                 // Newly-non-zero playback positions need to land in
                 // `inProgressEpisodesCached`; count-only fingerprinting misses this.
                 invalidateEpisodeProjections()
@@ -156,7 +156,7 @@ extension AppStateStore {
     // immediately below it.
 
     /// Returns the cached position for `id` if one is pending, else `nil`.
-    /// Callers fall back to the value from `state.episodes`.
+    /// Callers fall back to the value from `self.episodes`.
     func cachedPosition(for id: UUID) -> TimeInterval? {
         positionCache[id]
     }

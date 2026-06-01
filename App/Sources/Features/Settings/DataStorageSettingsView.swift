@@ -68,7 +68,7 @@ struct DataStorageSettingsView: View {
 
     private var dataRecordCount: Int {
         store.state.subscriptions.count
-            + store.state.episodes.count
+            + store.episodes.count
             + store.activeNotes.count
             + store.activeMemories.count
             + store.state.friends.count

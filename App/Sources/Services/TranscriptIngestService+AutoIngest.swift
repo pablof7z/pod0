@@ -17,7 +17,7 @@ extension TranscriptIngestService {
         guard let appStore = rag.appStore else {
             return
         }
-        let candidates = appStore.state.episodes
+        let candidates = appStore.episodes
             .filter { $0.publisherTranscriptURL != nil && !Self.isReady($0.transcriptState) }
             .sorted { $0.pubDate > $1.pubDate }
             .prefix(maxCount)
