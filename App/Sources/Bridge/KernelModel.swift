@@ -77,6 +77,14 @@ final class KernelModel {
 
     /// Latest podcast library decoded from `nmp_app_podcast_snapshot`.
     private(set) var library: [PodcastSummary] = []
+    /// Monotonic generation bumped each time `library` is reassigned (i.e. on
+    /// every `libraryMetaHash` change — see `commitPodcastProjection`). The
+    /// kernel-projection pass reads this to detect, in O(1), that a tick fired
+    /// purely on a `podcastSnapshot`/`kernelIdentity` change while `library`
+    /// stayed byte-identical — letting it skip the O(N) episode rebuild.
+    /// `@ObservationIgnored`: callers already observe `library`; a separate
+    /// tracked generation would arm a redundant observation.
+    @ObservationIgnored private(set) var libraryGeneration: Int = 0
     /// Latest full podcast snapshot (library, player, account …).
     private(set) var podcastSnapshot: PodcastUpdate?
     /// Live player state — updated on every snapshot tick (4 Hz during playback).
@@ -326,6 +334,9 @@ final class KernelModel {
         if newLibHash != lastLibraryMetaHash {
             lastLibraryMetaHash = newLibHash
             library = update.library
+            // Bump AFTER the assignment so a reader that samples the generation
+            // alongside `library` sees them advance together.
+            libraryGeneration &+= 1
         }
     }
 

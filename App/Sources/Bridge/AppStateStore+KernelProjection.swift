@@ -70,6 +70,12 @@ extension AppStateStore {
             // `AppStateStore.swift` is already over the 500-line hard limit
             // (see docs/BACKLOG.md line-limit-audit).
             var prevEpisodeSummaries: [String: EpisodeSummary] = [:]
+            // `kernel.libraryGeneration` value behind the last FULL episode
+            // rebuild. `-1` forces a full build on the first iteration
+            // (generation starts at 0). When the current generation matches
+            // this, `library` is byte-identical to that rebuild and the
+            // projection takes the fast path — see `applyKernelState`.
+            var lastProjectedLibraryGeneration = -1
             while !Task.isCancelled {
                 // Apply current state FIRST, then arm the observation for the
                 // next change. This eliminates the race where the kernel snapshot
@@ -80,7 +86,9 @@ extension AppStateStore {
                     library: kernel.library,
                     snapshot: kernel.podcastSnapshot,
                     identity: kernel.kernelIdentity,
-                    prevEpisodeSummaries: &prevEpisodeSummaries)
+                    libraryGeneration: kernel.libraryGeneration,
+                    prevEpisodeSummaries: &prevEpisodeSummaries,
+                    lastProjectedLibraryGeneration: &lastProjectedLibraryGeneration)
                 // Suspend until kernel.library, kernel.podcastSnapshot, or
                 // kernel.kernelIdentity changes. The identity write is
                 // equality-gated in `KernelModel.apply`, so this arms only on a
@@ -102,125 +110,35 @@ extension AppStateStore {
         }
     }
 
-    /// Dedicated logger for the backfill path. `AppStateStore.logger` is
-    /// `private` to its defining file, so this extension declares its own.
-    private static let backfillLogger = Logger.app("SyntheticEpisodeBackfill")
-
-    /// `UserDefaults` key gating the one-shot pre-#215 synthetic-episode
-    /// backfill. Set `true` only after a backfill pass completes, so a pass
-    /// interrupted by a crash or early termination retries on the next launch
-    /// rather than silently leaving episodes stranded in the Swift-only store.
-    private static let syntheticBackfillDoneKey =
-        "synthetic_episode_backfill_v1_done"
-
-    /// One-shot migration: re-register agent-generated episodes that predate
-    /// PR #215 (`kernelRegisterSyntheticEpisode`) into the Rust kernel store.
-    ///
-    /// Before #215, `AgentTTSComposer` wrote produced episodes into the Swift
-    /// render store only. The kernel projection is now the source of truth and
-    /// `applyKernelState` does a full-replace of `state.episodes`, so those
-    /// legacy episodes would vanish on the first projection tick after a user
-    /// updates to a #215+ build. This walks the still-persisted Swift state
-    /// (captured before that first tick — see the call site in `attachKernel`),
-    /// seeds the kernel's default "Agent Generated" podcast row, and registers
-    /// each surviving episode so it rides the next projection back into the UI
-    /// and becomes resolvable by `publish_episode`.
-    ///
-    /// Scope is intentionally narrow: only the default Agent Generated show,
-    /// identified by its stable `sentinelFeedURL`. Other `.synthetic` shows are
-    /// agent-OWNED podcasts whose kernel rows are seeded through their own
-    /// create/publish lifecycle; a blind re-register there would orphan
-    /// episodes under a missing row.
-    ///
-    /// The legacy show is matched by `sentinelFeedURL`, NOT by
-    /// `defaultPodcastID`: that stable id was introduced in PR #215, but the
-    /// pre-#215 `ensurePodcastID` created the synthetic `Podcast` row without an
-    /// explicit id, so the initializer defaulted it to a random `UUID()`.
-    /// Pre-#215 episodes are therefore parented to that random id. We resolve
-    /// the legacy id(s) from the still-persisted `state.podcasts`, collect their
-    /// episodes, and re-register them under the stable `defaultPodcastID` — the
-    /// kernel row seeded just below — consolidating the show under one identity.
-    func backfillSyntheticEpisodes() {
-        let defaults = UserDefaults.standard
-        guard !defaults.bool(forKey: Self.syntheticBackfillDoneKey) else { return }
-
-        let defaultPodcastID = AgentGeneratedPodcastService.defaultPodcastID
-        // Resolve the legacy (random-id) Agent Generated row(s) by the stable
-        // sentinel feed URL, plus the stable id itself for episodes already
-        // produced by a #215+ build that ran before this backfill shipped.
-        let sentinel = AgentGeneratedPodcastService.sentinelFeedURL
-        let legacyPodcastIDs = Set(
-            state.podcasts
-                .filter { $0.feedURL == sentinel || $0.id == defaultPodcastID }
-                .map(\.id)
-        )
-        let legacyEpisodes = episodes.filter { legacyPodcastIDs.contains($0.podcastID) }
-        guard !legacyEpisodes.isEmpty else {
-            // Nothing to migrate (fresh install, or every episode already
-            // produced by a #215+ build). Mark done so we never walk again.
-            defaults.set(true, forKey: Self.syntheticBackfillDoneKey)
-            return
-        }
-
-        // Seed the kernel's default synthetic podcast row first. Idempotent:
-        // `create_synthetic_podcast` keys on the stable id, and the Swift
-        // `upsertPodcast` mirror is insert-only by id. Without the row the
-        // kernel would have nowhere to attach the registered episodes.
-        _ = AgentGeneratedPodcastService.ensurePodcastID(in: self)
-
-        var registered = 0
-        for episode in legacyEpisodes {
-            // Resolve the on-disk audio path: prefer the downloaded local file,
-            // fall back to a `file://` enclosure URL. A synthetic episode is
-            // produced as a downloaded m4a, so one of these is normally set.
-            let downloadedPath: String? = {
-                if case let .downloaded(localFileURL, _) = episode.downloadState {
-                    return localFileURL.path
-                }
-                return nil
-            }()
-            let audioPath = downloadedPath
-                ?? (episode.enclosureURL.isFileURL ? episode.enclosureURL.path : nil)
-            guard let path = audioPath,
-                  FileManager.default.fileExists(atPath: path) else {
-                // Audio file is gone — registering would resurrect a dead row
-                // that can never play. Skip it.
-                continue
-            }
-
-            let chapterWire = (episode.chapters ?? []).map(AgentTTSComposer.chapterWire)
-            let transcript = TranscriptStore.shared.load(episodeID: episode.id)?
-                .segments.map(\.text).joined(separator: " ").nilIfEmpty
-
-            kernelRegisterSyntheticEpisode(
-                podcastId: defaultPodcastID.uuidString,
-                episodeId: episode.id.uuidString,
-                title: episode.title,
-                audioPath: path,
-                durationSecs: episode.duration,
-                chapters: chapterWire,
-                transcript: transcript
-            )
-            registered += 1
-        }
-
-        Self.backfillLogger.info(
-            "Synthetic-episode backfill: registered \(registered, privacy: .public) of \(legacyEpisodes.count, privacy: .public) legacy agent episode(s) into the kernel"
-        )
-        // Flag set ONLY after the loop completes, so an interrupted pass retries.
-        defaults.set(true, forKey: Self.syntheticBackfillDoneKey)
-    }
+    // `backfillSyntheticEpisodes()` (the one-shot pre-#215 synthetic-episode
+    // migration called from `attachKernel`) lives in
+    // `AppStateStore+SyntheticBackfill.swift` (split out to keep this file
+    // under the 500-line hard limit — see the `kernelprojection-split`
+    // backlog item).
 
     /// Project the current kernel state into `AppState`.
     /// Takes `library` and `snapshot` separately because `KernelModel` gates
     /// them on different content hashes. `identity` carries the kernel's
     /// resolved-profiles map, merged into `nostrProfileCache` after the main
     /// projection lands.
+    ///
+    /// `libraryGeneration` is `KernelModel`'s monotonic library-reassignment
+    /// counter. The observation that drives this method arms on `library`,
+    /// `podcastSnapshot`, AND `kernelIdentity`, so it also fires when only the
+    /// snapshot or identity changed while `library` stayed byte-identical (the
+    /// common case: a mark-played echo, a 4 Hz-gated identity refresh, a
+    /// settings/nowPlaying tick). On those ticks the whole library-derived pass
+    /// (podcasts/subscriptions rebuild + the O(N) episode dict/loop/chapters)
+    /// reproduces exactly what's already in `state`/`self.episodes`, so we skip
+    /// it entirely via the fast path below. `lastProjectedLibraryGeneration`
+    /// tracks the generation behind the current `self.episodes`.
     private func applyKernelState(
         library: [PodcastSummary],
         snapshot: PodcastUpdate?,
         identity: KernelIdentityProjection,
-        prevEpisodeSummaries: inout [String: EpisodeSummary]
+        libraryGeneration: Int,
+        prevEpisodeSummaries: inout [String: EpisodeSummary],
+        lastProjectedLibraryGeneration: inout Int
     ) {
         // Count is computed allocation-free (reduce, not flatMap) so the
         // signpost label adds no O(N) array copy to this hot path — the
@@ -228,6 +146,22 @@ extension AppStateStore {
         let applyInterval = signposter.beginInterval(
             "applyKernelState", "episodes=\(library.reduce(0) { $0 + $1.episodes.count })")
         defer { signposter.endInterval("applyKernelState", applyInterval) }
+
+        // ── Fast path: library unchanged since the last full projection ──────
+        // `KernelModel` reassigns `library` (and bumps `libraryGeneration`)
+        // only when `libraryMetaHash` changes. An unchanged generation proves
+        // every podcast/episode field this projection reads is byte-identical
+        // to the last full pass, so the entire library-derived rebuild is a
+        // no-op that reproduces `self.episodes` exactly. Skip it and project
+        // only the snapshot/identity-derived state (which is why the tick
+        // fired). `prevEpisodeSummaries` is intentionally NOT touched here — it
+        // already mirrors the unchanged library.
+        if libraryGeneration == lastProjectedLibraryGeneration {
+            applyKernelSnapshotOnlyState(
+                library: library, snapshot: snapshot, identity: identity)
+            return
+        }
+        lastProjectedLibraryGeneration = libraryGeneration
 
         var next = state
 
@@ -383,30 +317,9 @@ extension AppStateStore {
         // inside the batch below (episodes no longer round-trip through `state`).
         let projectedEpisodes = episodes
 
-        // ── Settings ─────────────────────────────────────────────────────
-        let ks = snapshot?.settings ?? SettingsSnapshot()
-        // OR: preserve Swift-persisted `true` until Rust learns about it
-        // via the `update_settings` dispatch that fires on the same change.
-        // Without this, a first launch after a code update would reset the
-        // onboarding gate because Rust hasn't received the flag yet.
-        next.settings.hasCompletedOnboarding = ks.hasCompletedOnboarding || state.settings.hasCompletedOnboarding
-        next.settings.autoSkipAds = ks.autoSkipAdsEnabled
-        next.settings.autoPlayNext = ks.autoPlayNext
-        next.settings.autoMarkPlayedAtEnd = ks.autoMarkPlayedAtEnd
-        if let doubleTap = HeadphoneGestureAction(rawValue: ks.headphoneDoubleTapAction) {
-            next.settings.headphoneDoubleTapAction = doubleTap
-        }
-        if let tripleTap = HeadphoneGestureAction(rawValue: ks.headphoneTripleTapAction) {
-            next.settings.headphoneTripleTapAction = tripleTap
-        }
-        next.settings.skipForwardSeconds = Int(ks.skipForwardSecs)
-        next.settings.skipBackwardSeconds = Int(ks.skipBackwardSecs)
-
-        // ── Last-played episode ───────────────────────────────────────────
-        if let episodeIdStr = snapshot?.nowPlaying?.episodeId,
-           let uuid = UUID(uuidString: episodeIdStr) {
-            next.lastPlayedEpisodeID = uuid
-        }
+        // Project the snapshot/identity-derived state (settings + last-played).
+        // Shared verbatim with the snapshot-only fast path.
+        projectSnapshotDerivedState(into: &next, snapshot: snapshot)
 
         // Batch every state-mutating write below so the derived work the
         // `state.didSet` chain triggers (episode-projection rebuild, persist,
@@ -464,6 +377,72 @@ extension AppStateStore {
         onNowPlayingSnapshot?(snapshot, library)
     }
 
+    /// Snapshot-only projection: the work `applyKernelState` runs when the
+    /// kernel `library` is byte-identical to the last full projection (the
+    /// tick fired solely on a `podcastSnapshot`/`kernelIdentity` change). It
+    /// reprojects ONLY the snapshot/identity-derived state — settings,
+    /// last-played, resolved profiles, and the now-playing/widget hook —
+    /// and deliberately skips the entire library-derived rebuild:
+    ///
+    ///   • `podcasts`/`subscriptions` would rebuild identically from the
+    ///     unchanged `library`, so they stay as already stored in `state`.
+    ///   • The episode dict + reuse loop + chapters fallback would reproduce
+    ///     `self.episodes` element-for-element (every summary is unchanged, so
+    ///     every entry is the reused prior `Episode`), so `self.episodes` is
+    ///     left untouched — no allocation, no copy.
+    ///   • `invalidateEpisodeProjections()` is skipped: the episode array is
+    ///     unchanged, so the cached projections are still valid. (This also
+    ///     drops the downstream O(N) projection recompute that the full path's
+    ///     explicit invalidation forces.)
+    ///
+    /// `prevEpisodeSummaries` and `lastProjectedLibraryGeneration` are NOT
+    /// advanced — both still correctly describe the unchanged library.
+    private func applyKernelSnapshotOnlyState(
+        library: [PodcastSummary],
+        snapshot: PodcastUpdate?,
+        identity: KernelIdentityProjection
+    ) {
+        var next = state
+        projectSnapshotDerivedState(into: &next, snapshot: snapshot)
+        performMutationBatch {
+            state = next
+            mergeResolvedProfiles(identity.resolvedProfiles)
+        }
+        onNowPlayingSnapshot?(snapshot, library)
+    }
+
+    /// Project the snapshot-derived settings + last-played episode onto a
+    /// working `AppState` copy. Shared verbatim by the full projection and the
+    /// snapshot-only fast path so the two can never drift.
+    private func projectSnapshotDerivedState(
+        into next: inout AppState, snapshot: PodcastUpdate?
+    ) {
+        // ── Settings ─────────────────────────────────────────────────────
+        let ks = snapshot?.settings ?? SettingsSnapshot()
+        // OR: preserve Swift-persisted `true` until Rust learns about it
+        // via the `update_settings` dispatch that fires on the same change.
+        // Without this, a first launch after a code update would reset the
+        // onboarding gate because Rust hasn't received the flag yet.
+        next.settings.hasCompletedOnboarding = ks.hasCompletedOnboarding || state.settings.hasCompletedOnboarding
+        next.settings.autoSkipAds = ks.autoSkipAdsEnabled
+        next.settings.autoPlayNext = ks.autoPlayNext
+        next.settings.autoMarkPlayedAtEnd = ks.autoMarkPlayedAtEnd
+        if let doubleTap = HeadphoneGestureAction(rawValue: ks.headphoneDoubleTapAction) {
+            next.settings.headphoneDoubleTapAction = doubleTap
+        }
+        if let tripleTap = HeadphoneGestureAction(rawValue: ks.headphoneTripleTapAction) {
+            next.settings.headphoneTripleTapAction = tripleTap
+        }
+        next.settings.skipForwardSeconds = Int(ks.skipForwardSecs)
+        next.settings.skipBackwardSeconds = Int(ks.skipBackwardSecs)
+
+        // ── Last-played episode ───────────────────────────────────────────
+        if let episodeIdStr = snapshot?.nowPlaying?.episodeId,
+           let uuid = UUID(uuidString: episodeIdStr) {
+            next.lastPlayedEpisodeID = uuid
+        }
+    }
+
     /// Fold the kernel's resolved-profiles map into `nostrProfileCache`. Each
     /// entry becomes a minimal `NostrProfileMetadata` (display → displayName,
     /// pictureUrl → picture) so agent-conversation views resolve a name and
@@ -487,120 +466,7 @@ extension AppStateStore {
     }
 }
 
-// MARK: - EpisodeSummary → Episode mapping
-
-private extension EpisodeSummary {
-    func toEpisode(podcastIdString: String) -> Episode? {
-        guard let episodeUUID = UUID(uuidString: id),
-              let podcastUUID = UUID(uuidString: podcastIdString)
-        else { return nil }
-
-        let pubDate: Date = publishedAt.map { Date(timeIntervalSince1970: Double($0)) } ?? Date.distantPast
-
-        // For downloaded episodes, use the local file URL. For streaming
-        // episodes, use the RSS enclosure URL projected from Rust so the
-        // host player can start without a Rust round-trip.
-        let enclosureURL: URL = downloadPath.flatMap { URL(fileURLWithPath: $0) }
-            ?? enclosureUrl.flatMap { URL(string: $0) }
-            ?? URL(string: "https://placeholder.invalid/\(id)")!
-
-        let downloadState: DownloadState
-        if let path = downloadPath {
-            let fileURL = URL(fileURLWithPath: path)
-            // Size is cached by the Rust kernel at download-completion time
-            // (`EpisodeSummary.file_size_bytes`), so we avoid a synchronous
-            // `URL.resourceValues(.fileSizeKey)` stat on the main actor for
-            // every downloaded episode on every projection tick.
-            let byteCount: Int64 = fileSizeBytes
-            downloadState = .downloaded(localFileURL: fileURL, byteCount: byteCount)
-        } else {
-            downloadState = .notDownloaded
-        }
-
-        let projectedChapters: [Episode.Chapter]? = chapters.flatMap {
-            $0.isEmpty ? nil : $0.map(\.toChapter)
-        }
-        let projectedAdSegments: [Episode.AdSegment]? = adSegments.isEmpty ? nil : adSegments.compactMap { seg in
-            guard let uuid = UUID(uuidString: seg.id) else { return nil }
-            let kind = Episode.AdKind(rawValue: seg.kind) ?? .midroll
-            return Episode.AdSegment(id: uuid, start: seg.startSecs, end: seg.endSecs, kind: kind)
-        }
-        // Derive transcriptState entirely from the Rust projection (M4 / D7).
-        //   1. A non-empty stored `transcript` ⇒ `.ready`. It came from either
-        //      iOS STT (kernelTranscriptReport) or a publisher fetch; we can't
-        //      distinguish the source from Rust alone, so use `.publisher` as
-        //      the conservative default (the precise source lives on the iOS
-        //      TranscriptStore for the badge).
-        //   2. Otherwise honour the transient status iOS reported via
-        //      `set_episode_transcript_status` (queued / fetching publisher /
-        //      transcribing / failed). The progress arg is always 0 — the real
-        //      pipeline never streams a percentage (it sets `.transcribing(0)`
-        //      once before the provider call), so no progress round-trips.
-        //   3. No transcript and no override ⇒ `.none`.
-        let derivedTranscriptState: TranscriptState? = {
-            if let text = transcript, !text.isEmpty {
-                return .ready(source: .publisher)
-            }
-            switch transcriptStatus {
-            case "queued": return .queued
-            case "fetching_publisher": return .fetchingPublisher
-            case "transcribing": return .transcribing(progress: 0)
-            case "failed":
-                return .failed(message: transcriptStatusMessage ?? "Transcription didn't finish.")
-            default: return nil
-            }
-        }()
-
-        return Episode(
-            id: episodeUUID,
-            podcastID: podcastUUID,
-            guid: id,
-            title: title,
-            description: description ?? "",
-            pubDate: pubDate,
-            duration: durationSecs,
-            enclosureURL: enclosureURL,
-            imageURL: artworkUrl.flatMap { URL(string: $0) },
-            chapters: projectedChapters,
-            publisherTranscriptURL: transcriptUrl.flatMap { URL(string: $0) },
-            playbackPosition: playbackPositionSecs ?? 0,
-            played: played,
-            isStarred: starred,
-            downloadState: downloadState,
-            transcriptState: derivedTranscriptState ?? .none,
-            adSegments: projectedAdSegments,
-            // M4 / D7: all three derive from the Rust projection now — no
-            // preserved-state merge. `triageDecision` parses the rawValue
-            // ("inbox" / "archived"); an absent / unrecognised value ⇒ nil
-            // (untriaged).
-            triageDecision: triageDecision.flatMap { TriageDecision(rawValue: $0) },
-            triageRationale: triageRationale,
-            triageIsHero: triageIsHero,
-            metadataIndexed: metadataIndexed,
-            // #45: AI-generated category labels. Projection-only — the
-            // kernel owns them, so they ride the snapshot straight onto the
-            // domain model with no preserved-state merge.
-            aiCategories: aiCategories,
-            // AI episode summary. Projection-only — produced by the kernel
-            // `summarize_episode` pass and carried straight onto the domain
-            // model so `store.episode(id:).summary` reflects it.
-            summary: summary
-        )
-    }
-}
-
-// MARK: - ChapterSummary → Episode.Chapter
-
-private extension ChapterSummary {
-    var toChapter: Episode.Chapter {
-        Episode.Chapter(
-            startTime: startSecs,
-            endTime: endSecs,
-            title: title,
-            imageURL: imageUrl.flatMap { URL(string: $0) },
-            linkURL: url.flatMap { URL(string: $0) },
-            isAIGenerated: isAiGenerated,
-            sourceEpisodeID: sourceEpisodeId
-        )
-    }
-}
+// `EpisodeSummary.toEpisode` / `ChapterSummary.toChapter` wire-to-domain
+// mapping lives in `EpisodeSummary+Projection.swift` (split out to keep this
+// file under the 500-line hard limit — see the `kernelprojection-split`
+// backlog item).
