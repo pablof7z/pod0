@@ -317,4 +317,34 @@ extension AppStateStore {
         if let message { body["message"] = message }
         kernel?.dispatch(namespace: "podcast", body: body)
     }
+
+    // MARK: - App relays (podcast.settings namespace)
+    //
+    // Relay state is kernel-owned (NMP v0.2.1 `AppRelaySlot`), not `PodcastStore`.
+    // `add_relay` upserts on URL, so `set_relay_role` is just an `add_relay` with
+    // the new role. Reactivity is handled Rust-side: `settings_module.rs::execute`
+    // emits the relay `ActorCommand` AND a companion `DispatchHostOp` that bumps
+    // `handle.rev`, forcing the rev-gated snapshot push frame to rebuild and read
+    // the just-mutated slot — so callers must NOT keep an optimistic local mirror.
+    // Just dispatch and let `configuredRelays` refresh on the next projection.
+
+    /// Add (or upsert the role of) a configured app relay. `role` must be a
+    /// canonical NIP-65 role string (`read` | `write` | `both` | `indexer` |
+    /// `both,indexer`); the kernel normalizes and validates it server-side.
+    func kernelAddRelay(url: String, role: String) {
+        kernel?.dispatch(namespace: "podcast.settings",
+                         body: ["op": "add_relay", "url": url, "role": role])
+    }
+
+    /// Remove a configured app relay by URL. Idempotent server-side.
+    func kernelRemoveRelay(url: String) {
+        kernel?.dispatch(namespace: "podcast.settings",
+                         body: ["op": "remove_relay", "url": url])
+    }
+
+    /// Change the NIP-65 role of an already-configured relay (upsert on URL).
+    func kernelSetRelayRole(url: String, role: String) {
+        kernel?.dispatch(namespace: "podcast.settings",
+                         body: ["op": "set_relay_role", "url": url, "role": role])
+    }
 }

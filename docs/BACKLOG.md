@@ -80,25 +80,18 @@ worktrees currently in flight.
   becomes genuinely first-install-only. Likely needs an upstream NMP seam
   (expose the sidecar load/save outside the builder, or persist
   `configured_relays` to the LMDB store on edit).
-- **app-relays-config-ui.** Build the App Relays editor (Settings → Networking
-  → App Relays): per-relay list with role badge, swipe-to-delete, tap-to-edit
-  role, and an add sheet — as scoped in the relay-config-ui task. **BLOCKED on a
-  Rust prerequisite (apps/nmp-app-podcast), which that task forbids:** today the
-  snapshot projects only `nostrRelayURL: String` (single agent relay) +
-  `nostrPublicRelays: [String]` (a roles-less URL list), and `podcast.settings`
-  exposes only `set_nostr_relay_url` / `set_nostr_public_relays` — there is NO
-  per-relay `{url, role}` model. The UI needs the kernel to first project
-  `configured_relays: [AppRelay { url, role }]` (roles: read/write/both/indexer/
-  both,indexer) and add `add_relay` / `remove_relay` / `set_relay_role` ops to
-  `SettingsActionModule`. NOTE the nmp-v0.2.1 rename (`relay_edit_rows` →
-  `configured_relays`, `RelayEditRow` → `AppRelay`) is nmp-core/chirp-INTERNAL
-  and does NOT surface this projection in the podcast app, so v0.2.1 alone is
-  insufficient — a dedicated Rust PR in apps/nmp-app-podcast must expose the
-  projection + 3 ops before the Swift editor can be built without fragmenting
-  against the existing single-relay `NetworkingSettingsView` design. Once landed,
-  add the whats-new line "Configure app relays in Settings → Networking → App
-  Relays" (deferred from relay-config-ui, which shipped only the Agent Relay
-  label).
+- **app-relays-config-ui.** DONE (`feat/app-relays-ui`). The App Relays editor
+  ships at Settings → Networking → App Relays: `AppRelaysView` lists
+  `configuredRelays` (color-coded role pill, swipe-to-delete → `kernelRemoveRelay`,
+  tap-row → `ChangeRelayRoleSheet` role picker, empty state), `AddRelaySheet`
+  (URL + role picker, `wss://`/`ws://` validation → `kernelAddRelay`), and a
+  shared `AppRelayRole` model keyed to the kernel's canonical role strings
+  (`read` | `write` | `both` | `indexer` | `both,indexer`). `NetworkingSettingsView`
+  now NavigationLinks to the editor with a relay count and relabels the legacy
+  single relay as "Agent Relay". Consumed the Rust prerequisite from
+  `feat/podcast-relay-ops` (PR #202): `configured_relays` projection +
+  `add_relay`/`remove_relay`/`set_relay_role` on `podcast.settings`. Restart
+  durability of edits remains tracked in `relay-config-c-abi-persistence`.
 - **snapshot-push-delivery.** Replace the remaining 500 ms polling dependency
   with push-style delivery through the NMP update sink for autonomous changes,
   while keeping content-hash throttling for volatile playback/download fields.

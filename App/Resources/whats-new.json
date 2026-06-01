@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-01T12:00:00Z",
+      "lines": [
+        "Configure app relays in Settings → Networking → App Relays"
+      ]
+    },
+    {
       "shipped_at": "2026-06-01T01:00:00Z",
       "lines": [
         "Your agent's Nostr relay is now a clearly labeled \"Agent Relay\" row in Settings → Agent — tap it to view or change the relay, with a note on what it's used for."

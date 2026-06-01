@@ -6,6 +6,7 @@ struct NetworkingSettingsView: View {
     var body: some View {
         List {
             summarySection
+            appRelaysSection
             relaysSection
             rolesSection
         }
@@ -14,10 +15,32 @@ struct NetworkingSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    private var configuredRelayCount: Int {
+        store.kernel?.podcastSnapshot?.configuredRelays.count ?? 0
+    }
+
     private var summarySection: some View {
         Section("Summary") {
-            summaryRow("Configured relay", value: store.state.settings.nostrRelayURL.isEmpty ? "None" : "1")
+            summaryRow("App relays", value: "\(configuredRelayCount)")
             summaryRow("Nostr", value: store.state.settings.nostrEnabled ? "Enabled" : "Disabled")
+        }
+    }
+
+    private var appRelaysSection: some View {
+        Section {
+            NavigationLink {
+                AppRelaysView()
+            } label: {
+                HStack {
+                    Label("App Relays", systemImage: "network")
+                    Spacer(minLength: 12)
+                    Text("\(configuredRelayCount)")
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
+        } footer: {
+            Text("Per-relay NIP-65 roles (read / write / indexer) used for Nostr discovery and publishing.")
         }
     }
 
@@ -37,9 +60,9 @@ struct NetworkingSettingsView: View {
                 }
             }
         } header: {
-            Text("Relays")
+            Text("Agent Relay")
         } footer: {
-            Text("The configured relay is used for agent inbox delivery, profile publishing, podcast pairing, and NIP-F4 discovery.")
+            Text("The agent relay is used for agent inbox delivery, profile publishing, podcast pairing, and NIP-F4 discovery.")
         }
     }
 
