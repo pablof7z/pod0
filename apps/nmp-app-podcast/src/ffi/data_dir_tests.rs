@@ -109,6 +109,45 @@ fn binds_data_dir_and_does_not_bump_rev_when_empty() {
     let _ = unsafe { Box::from_raw(ptr) };
 }
 #[test]
+fn relay_sidecar_present_with_null_app_is_silent_noop() {
+    // A persisted relay sidecar must NOT cause a null-pointer deref when the
+    // handle has no app (D6). The real seam (`set_initial_relays_for_start`)
+    // is exercised in the FFI smoke path; here we only assert robustness: a
+    // present sidecar + null app binds the data dir and does not crash.
+    let dir = TempDir::new("relay-noop");
+    crate::store::relay_config::save_relay_config(
+        &dir.path,
+        &[("wss://saved.example".to_string(), "both".to_string())],
+    )
+    .expect("seed sidecar");
+    let store = Arc::new(Mutex::new(PodcastStore::new()));
+    let rev = Arc::new(AtomicU64::new(0));
+    let handle = make_handle(store.clone(), rev.clone());
+    let ptr = Box::into_raw(handle);
+    let cpath = CString::new(dir.path.to_str().unwrap()).unwrap();
+    // app is null in the test handle — must not deref it.
+    nmp_app_podcast_set_data_dir(ptr, cpath.as_ptr());
+    assert!(store.lock().unwrap().data_dir().is_some());
+    let _ = unsafe { Box::from_raw(ptr) };
+}
+
+#[test]
+fn relay_sidecar_round_trips_via_load_helper() {
+    // The data-dir directory the FFI binds is exactly the directory the
+    // host-op handler writes the sidecar into, so a write-then-load round
+    // trips through the same path. This guards the file-location contract
+    // between the save (handler) and load (this FFI) halves.
+    let dir = TempDir::new("relay-roundtrip");
+    let relays = vec![
+        ("wss://a.example".to_string(), "read".to_string()),
+        ("wss://b.example".to_string(), "both,indexer".to_string()),
+    ];
+    crate::store::relay_config::save_relay_config(&dir.path, &relays).expect("save");
+    let loaded = crate::store::relay_config::load_relay_config(&dir.path);
+    assert_eq!(loaded, relays);
+}
+
+#[test]
 fn loading_existing_library_bumps_rev_so_ios_re_polls() {
     let dir = TempDir::new("reload");
     // Pre-populate the directory with one podcast.

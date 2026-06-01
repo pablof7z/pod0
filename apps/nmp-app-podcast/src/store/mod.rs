@@ -18,9 +18,7 @@
 //! authoritative and the next mutation will try to write again.
 
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
-#[cfg(test)]
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use podcast_core::{Episode, EpisodeId, Podcast, PodcastId};
 
@@ -34,6 +32,7 @@ pub(crate) mod owned_ext;
 mod playback;
 mod persistence;
 pub mod podcast_keys;
+pub mod relay_config;
 mod settings;
 pub mod stt_policy;
 pub(crate) mod summary;
@@ -771,8 +770,9 @@ impl PodcastStore {
         }
     }
 
-    /// Test-only accessor for the currently-bound data dir.
-    #[cfg(test)]
+    /// Accessor for the currently-bound data dir, or `None` before
+    /// `set_data_dir`. Read by the host-op handler's relay-edit arm to
+    /// locate the relay-config sidecar (`relay_config::save_relay_config`).
     pub(crate) fn data_dir(&self) -> Option<&Path> {
         self.data_dir.as_deref()
     }
