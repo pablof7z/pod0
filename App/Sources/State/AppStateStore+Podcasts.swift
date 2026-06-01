@@ -1,16 +1,5 @@
 import Foundation
 
-struct SubscriptionImportPayload: Sendable {
-    let podcast: Podcast
-    let subscription: PodcastSubscription
-    let episodes: [Episode]
-}
-
-struct SubscriptionImportResult: Sendable, Equatable {
-    let imported: Int
-    let skipped: Int
-}
-
 // MARK: - Podcast metadata lookups
 
 extension AppStateStore {
@@ -42,49 +31,40 @@ extension AppStateStore {
         }
     }
 
-    /// Inserts a brand-new podcast metadata row, or merges fields into the
-    /// existing row matched by id or feedURL. Returns the persisted podcast.
+    /// Inserts a podcast metadata row for agent-synthesized content — the
+    /// `Podcast(kind: .synthetic)` "Agent Generated" / agent-owned shows and
+    /// the thin `.rss` placeholder an external-play creates for an unfollowed
+    /// feed. Returns the existing row unchanged if one already matches by id.
+    ///
+    /// This is an INSERT seam, not a merge: the legacy RSS pull-merge policy
+    /// (`merged()` + feed-URL reconcile) was deleted because RSS subscribe /
+    /// refresh / OPML now ingest exclusively through the Rust kernel
+    /// (`kernelSubscribe` / `kernelRefresh`), and `applyKernelState` is the
+    /// sole writer of `.rss` podcast rows. Every caller here guards on an
+    /// existing feed URL *before* dispatching, so only brand-new synthetic /
+    /// placeholder rows reach this method.
+    ///
+    /// NOTE: synthetic / placeholder rows live only in Swift `state`; the
+    /// kernel has no synthetic-podcast model, so `applyKernelState`'s full
+    /// replace can clobber them across a projection tick. That projection
+    /// round-trip is a pre-existing gap tracked in `docs/BACKLOG.md`
+    /// (`m9-tts-persistence`); migrating these inserts to the kernel is a
+    /// separate synthetic-content subsystem, not this cleanup.
     @discardableResult
     func upsertPodcast(_ incoming: Podcast) -> Podcast {
-        if let idx = state.podcasts.firstIndex(where: { $0.id == incoming.id }) {
-            state.podcasts[idx] = merged(state.podcasts[idx], with: incoming)
-            return state.podcasts[idx]
-        }
-        if let feedURL = incoming.feedURL,
-           let idx = state.podcasts.firstIndex(where: {
-               $0.feedURL?.absoluteString.caseInsensitiveCompare(feedURL.absoluteString) == .orderedSame
-           }) {
-            // Same feed under a different id — keep the existing row.
-            state.podcasts[idx] = merged(state.podcasts[idx], with: incoming)
-            return state.podcasts[idx]
+        if let existing = state.podcasts.first(where: { $0.id == incoming.id }) {
+            return existing
         }
         state.podcasts.append(incoming)
         return incoming
     }
 
-    /// Persists changes back to a podcast — used after a feed refresh to
-    /// write the new HTTP cache (etag / lastModified) and any drifted
-    /// metadata (title, imageURL).
+    /// Writes drifted metadata (title / author / artwork) back onto an
+    /// existing podcast row by id. Used by the agent-owned podcast editor and
+    /// the external-play placeholder hydration — a direct id-keyed write for
+    /// synthetic / placeholder rows, not an RSS merge.
     func updatePodcast(_ updated: Podcast) {
         guard let idx = state.podcasts.firstIndex(where: { $0.id == updated.id }) else { return }
         state.podcasts[idx] = updated
-    }
-
-    /// Merge policy: keep the existing podcast's identity, prefer non-empty
-    /// incoming values for human-visible fields. HTTP cache always wins
-    /// when present (otherwise we'd lose etags between refreshes).
-    private func merged(_ existing: Podcast, with incoming: Podcast) -> Podcast {
-        var out = existing
-        if !incoming.title.isEmpty { out.title = incoming.title }
-        if !incoming.author.isEmpty { out.author = incoming.author }
-        if !incoming.description.isEmpty { out.description = incoming.description }
-        if let img = incoming.imageURL { out.imageURL = img }
-        if let lang = incoming.language { out.language = lang }
-        if !incoming.categories.isEmpty { out.categories = incoming.categories }
-        if let feedURL = incoming.feedURL { out.feedURL = feedURL }
-        if let lr = incoming.lastRefreshedAt { out.lastRefreshedAt = lr }
-        if let etag = incoming.etag { out.etag = etag }
-        if let lm = incoming.lastModified { out.lastModified = lm }
-        return out
     }
 }

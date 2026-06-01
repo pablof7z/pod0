@@ -429,6 +429,25 @@ worktrees currently in flight.
   deleted stub): NIP-F4 publishing of agent episodes, deletion cleanup of
   `agent-episodes/<id>.m4a`, and verifying the published `.synthetic` episode
   metadata round-trips the store's disk layer across restart.
+
+  SHARPENED (`feat/appstate-merge-kernel`): the round-trip gap is not just disk
+  persistence — it is the kernel projection itself. `applyKernelState`
+  FULL-REPLACES `state.podcasts` / `state.subscriptions` / `state.episodes`
+  from the Rust library every snapshot tick, and the library only emits
+  `.rss` rows. The agent-synthesized rows inserted by Swift
+  `upsertPodcast` / `upsertEpisodes` (the `Podcast(kind: .synthetic)` "Agent
+  Generated" + agent-owned shows, their TTS / YouTube episodes, and the
+  external-play `.rss` placeholders from `ensurePodcast`) live ONLY in Swift
+  `state`. The kernel has no synthetic-podcast model and no
+  `upsert_podcast` / `add_episode` op, so any projection tick after an insert
+  can clobber these rows. The Swift merge-policy removal in
+  `feat/appstate-merge-kernel` deliberately KEPT those `upsertPodcast` /
+  `upsertEpisodes` / `upsertEpisode` insert seams (they are the only writer
+  for this content) and stripped only the RSS pull-merge branches. The real
+  fix is a kernel synthetic-content subsystem (a new podcast `kind` + ingest
+  op + projection that preserves non-`.rss` rows) — a feature-scale
+  human-decision gate, not a cleanup. Until then agent-synthesized content is
+  projection-fragile.
 - **ai-chapters-real-generation.** Replace equal-length stub chapters with
   transcript/LLM-grounded chapters, provenance, regeneration/clear behavior,
   and persistence.

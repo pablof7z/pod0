@@ -116,56 +116,21 @@ final class StarredEpisodeTests: XCTestCase {
         XCTAssertTrue(store.state.episodes.allSatisfy { !$0.isStarred })
     }
 
-    // MARK: - Feed upsert invariant
-
-    /// The starred flag must survive a feed refresh. `upsertEpisodes` merges
-    /// incoming episodes by guid; for an existing episode the user-mutable
-    /// fields — including `isStarred` — must be copied from the persisted
-    /// record, not overwritten by the publisher-supplied object (which always
-    /// has `isStarred == false`).
-    func testStarredFlagSurvivesFeedRefresh() {
-        let sub = addSubscription(title: "Refresh")
-        store.upsertEpisodes([makeEpisode(podcastID: sub.id, guid: "refresh-ep", title: "Rev 1")], forPodcast: sub.id)
-        let epID = store.episodes(forPodcast: sub.id).first!.id
-
-        store.setEpisodeStarred(epID, true)
-        XCTAssertTrue(store.episode(id: epID)?.isStarred ?? false, "pre-condition")
-
-        // Simulate a feed refresh: same guid, publisher object with isStarred == false.
-        let refreshed = makeEpisode(podcastID: sub.id, guid: "refresh-ep", title: "Rev 2")
-        XCTAssertFalse(refreshed.isStarred, "sanity: fresh Episode defaults to unstarred")
-
-        store.upsertEpisodes([refreshed], forPodcast: sub.id)
-
-        guard let afterRefresh = store.episode(id: epID) else {
-            return XCTFail("Episode vanished after upsert")
-        }
-        XCTAssertTrue(afterRefresh.isStarred, "isStarred must survive a feed refresh")
-        XCTAssertEqual(afterRefresh.title, "Rev 2", "publisher title must be updated")
-    }
+    // MARK: - Episode insert invariant
+    //
+    // The RSS feed-refresh merge-preservation policy (same-guid upsert keeps
+    // the user-mutable `isStarred` flag) was removed from Swift: RSS feeds are
+    // ingested by the Rust kernel and `isStarred` round-trips through the
+    // snapshot projection (`EpisodeSummary.toEpisode`), covered by
+    // `cargo test -p nmp-app-podcast`. `upsertEpisodes` is now an INSERT-only
+    // seam for agent-synthesized episodes, so the only invariant left to assert
+    // here is that a freshly-inserted episode defaults to unstarred.
 
     func testNewEpisodeFromFeedDefaultsToUnstarred() {
         let sub = addSubscription(title: "NewFeed")
         store.upsertEpisodes([makeEpisode(podcastID: sub.id, guid: "brand-new")], forPodcast: sub.id)
         let stored = store.episodes(forPodcast: sub.id).first!
         XCTAssertFalse(stored.isStarred)
-    }
-
-    func testStarredFlagPreservedAcrossMultipleRefreshCycles() {
-        let sub = addSubscription(title: "MultiRefresh")
-        let guid = "multi-refresh"
-
-        store.upsertEpisodes([makeEpisode(podcastID: sub.id, guid: guid, title: "Rev 1")], forPodcast: sub.id)
-        let epID = store.episodes(forPodcast: sub.id).first!.id
-        store.setEpisodeStarred(epID, true)
-
-        for rev in 2...5 {
-            store.upsertEpisodes([makeEpisode(podcastID: sub.id, guid: guid, title: "Rev \(rev)")], forPodcast: sub.id)
-            XCTAssertTrue(
-                store.episode(id: epID)?.isStarred ?? false,
-                "isStarred must survive refresh cycle \(rev)"
-            )
-        }
     }
 
     func testSetEpisodeStarredAgreesWithToggle() {

@@ -144,57 +144,6 @@ struct SubscriptionService {
         return try await store.kernelSubscribe(feedURL: feedURLString)
     }
 
-    // MARK: - Adopt a parsed OPML entry
-
-    /// Persists a single OPML-parsed entry, enriching it with a live fetch so
-    /// the title / author / image / description come from the feed itself
-    /// rather than the OPML attributes (which are usually sparse).
-    ///
-    /// Skips silently when the user already follows the feed; returns `nil`
-    /// in that case so the caller can count duplicates separately from
-    /// errors.
-    @discardableResult
-    func adopt(opmlEntry seed: Podcast) async throws -> Podcast? {
-        guard let payload = try await fetchForAdoption(opmlEntry: seed) else { return nil }
-        let result = store.addSubscriptions([payload])
-        return result.imported == 1 ? payload.podcast : nil
-    }
-
-    /// Fetches and enriches an OPML entry without mutating the store. The
-    /// import sheet uses this to gather many feeds and then commit them in
-    /// one store batch.
-    ///
-    /// Skips ONLY when the user already follows the feed. A `Podcast` row
-    /// that exists from a prior external play (no subscription) is still
-    /// a valid OPML import — the import promotes it to a real follow.
-    func fetchForAdoption(opmlEntry seed: Podcast) async throws -> SubscriptionImportPayload? {
-        guard let feedURL = seed.feedURL else { return nil }
-        if let existing = store.podcast(feedURL: feedURL),
-           store.subscription(podcastID: existing.id) != nil {
-            return nil
-        }
-        let result: FeedClient.FeedFetchResult
-        do {
-            result = try await client.fetch(seed)
-        } catch let feedError as FeedClient.FeedFetchError {
-            throw map(feedError)
-        }
-        switch result {
-        case .updated(let podcast, let episodes, _):
-            return SubscriptionImportPayload(
-                podcast: podcast,
-                subscription: PodcastSubscription(podcastID: podcast.id),
-                episodes: episodes
-            )
-        case .notModified:
-            return SubscriptionImportPayload(
-                podcast: seed,
-                subscription: PodcastSubscription(podcastID: seed.id),
-                episodes: []
-            )
-        }
-    }
-
     // MARK: - Refresh
 
     /// Re-fetches a single podcast and writes back the merged metadata + any

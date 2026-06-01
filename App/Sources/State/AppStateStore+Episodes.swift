@@ -61,11 +61,28 @@ extension AppStateStore {
 
     // MARK: - Writes
 
-    /// Inserts new episodes and updates existing ones (matched by `guid`)
-    /// for the given subscription. Episodes whose `guid` already exists in
-    /// the store are merged: the publisher fields refresh while the user-
-    /// mutable playback state (`playbackPosition`, `played`, `downloadState`,
-    /// `transcriptState`) is preserved.
+    /// Inserts episodes for an agent-synthesized podcast — the agent TTS /
+    /// YouTube-ingested episodes published onto the `Podcast(kind: .synthetic)`
+    /// "Agent Generated" show, and the back-catalog an agent external-play
+    /// `ensurePodcast` lands for a freshly-captured feed. Returns the ids of
+    /// the rows that were newly inserted (skipping any whose `guid` already
+    /// exists under the same podcast, so a re-entrant publish is idempotent).
+    ///
+    /// This is an INSERT seam, not a merge. The legacy RSS feed-refresh merge
+    /// policy — guid-match with user-mutable-state preservation
+    /// (`playbackPosition` / `played` / `isStarred` / `downloadState` /
+    /// `transcriptState` / triage / adSegments) — was deleted: RSS feeds are
+    /// ingested by the Rust kernel (`kernelSubscribe` / `kernelRefresh`) and
+    /// every preserved field now round-trips through `applyKernelState` →
+    /// `EpisodeSummary.toEpisode` (M4 / D7), so the Swift preservation merge
+    /// was dead duplication. Production callers here only ever pass brand-new
+    /// episodes (a fresh UUID/guid per publish, or the first-ensure backlog of
+    /// a new podcast), so no merge branch was reachable.
+    ///
+    /// NOTE: like the synthetic podcast rows themselves, these episodes live
+    /// only in Swift `state`; the kernel has no model for them, so a
+    /// projection tick can clobber them — a pre-existing gap tracked in
+    /// `docs/BACKLOG.md` (`m9-tts-persistence`).
     @discardableResult
     func upsertEpisodes(
         _ incoming: [Episode],
@@ -73,52 +90,28 @@ extension AppStateStore {
     ) -> [UUID] {
         guard !incoming.isEmpty else { return [] }
         var updated = state.episodes
-        let existingByGUID = Dictionary(
-            updated.enumerated()
-                .filter { $0.element.podcastID == podcastID }
-                .map { ($0.element.guid, $0.offset) },
-            uniquingKeysWith: { first, _ in first }
+        var existingGUIDs = Set(
+            updated.lazy
+                .filter { $0.podcastID == podcastID }
+                .map(\.guid)
         )
         var newlyInserted: [UUID] = []
-        for episode in incoming {
-            if let idx = existingByGUID[episode.guid] {
-                let prior = updated[idx]
-                var merged = episode
-                merged.id = prior.id
-                merged.playbackPosition = prior.playbackPosition
-                merged.played = prior.played
-                merged.isStarred = prior.isStarred
-                merged.downloadState = prior.downloadState
-                merged.transcriptState = prior.transcriptState
-                // Preserve the AI Inbox triage verdict across feed refreshes;
-                // without this, an archived episode reappears on the next
-                // refresh and the LLM redoes the classification.
-                merged.triageDecision = prior.triageDecision
-                merged.triageRationale = prior.triageRationale
-                merged.triageIsHero = prior.triageIsHero
-                merged.adSegments = prior.adSegments
-                updated[idx] = merged
-            } else {
-                updated.append(episode)
-                newlyInserted.append(episode.id)
-            }
+        for episode in incoming where existingGUIDs.insert(episode.guid).inserted {
+            updated.append(episode)
+            newlyInserted.append(episode.id)
         }
+        guard !newlyInserted.isEmpty else { return [] }
         performMutationBatch {
             state.episodes = updated
-            // The didSet fingerprint catches count changes but misses pure
-            // merges where count stays equal; explicit invalidation covers both.
             invalidateEpisodeProjections()
         }
-        // Metadata-index every newly-inserted episode, regardless of the
-        // auto-download gate — initial-subscribe paths pass false but the
-        // back-catalog they introduce is exactly the population that needs
-        // title/description coverage for similarity search.
-        if !newlyInserted.isEmpty {
-            EpisodeMetadataIndexer.shared.indexNewlyInserted(
-                newlyInserted,
-                appStore: self
-            )
-        }
+        // Metadata-index the newly-inserted episodes for similarity search —
+        // the agent-synthesized back-catalog needs title/description coverage
+        // exactly like a feed's would.
+        EpisodeMetadataIndexer.shared.indexNewlyInserted(
+            newlyInserted,
+            appStore: self
+        )
         return newlyInserted
     }
 

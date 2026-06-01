@@ -159,25 +159,6 @@ final class AppStateStorePerformanceTests: XCTestCase {
         )
     }
 
-    func testBatchSubscriptionImportPersistsOnce() {
-        let payloads = (0..<5).map { i in
-            makeImportPayload(index: i, episodeCount: 25)
-        }
-
-        store.persistence.resetSaveInvocationCount()
-        let result = store.addSubscriptions(payloads)
-
-        XCTAssertEqual(result, SubscriptionImportResult(imported: 5, skipped: 0))
-        XCTAssertEqual(store.state.subscriptions.count, 5)
-        XCTAssertEqual(store.state.episodes.count, 125)
-        XCTAssertEqual(
-            store.persistence.saveInvocationCount,
-            1,
-            "Batch import should perform one state save, not one save per subscription or episode batch."
-        )
-        XCTAssertEqual(store.unplayedCount(forPodcast: payloads[0].podcast.id), 25)
-    }
-
     // MARK: - Correctness: invalidation
 
     func testUpsertEpisodesAddsToUnplayedCount() {
@@ -373,21 +354,6 @@ final class AppStateStorePerformanceTests: XCTestCase {
             title: "Episode \(guid)",
             pubDate: Date(),
             enclosureURL: URL(string: "https://example.com/\(guid).mp3")!
-        )
-    }
-
-    private func makeImportPayload(index: Int, episodeCount: Int) -> SubscriptionImportPayload {
-        let sub = Podcast(
-            feedURL: URL(string: "https://example.com/import-\(index).xml")!,
-            title: "Import Show \(index)"
-        )
-        let episodes = (0..<episodeCount).map { episodeIndex in
-            makeEpisode(podcastID: sub.id, guid: "import-\(index)-\(episodeIndex)")
-        }
-        return SubscriptionImportPayload(
-            podcast: sub,
-            subscription: PodcastSubscription(podcastID: sub.id),
-            episodes: episodes
         )
     }
 

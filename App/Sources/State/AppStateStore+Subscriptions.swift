@@ -38,99 +38,6 @@ extension AppStateStore {
         return true
     }
 
-    /// Inserts a follow row with an explicit subscription record. Used by
-    /// the OPML import path which materializes the row inline.
-    @discardableResult
-    func addSubscription(_ subscription: PodcastSubscription) -> Bool {
-        guard state.podcasts.contains(where: { $0.id == subscription.podcastID }) else { return false }
-        guard !state.subscriptions.contains(where: { $0.podcastID == subscription.podcastID }) else { return false }
-        state.subscriptions.append(subscription)
-        return true
-    }
-
-    /// Imports a batch of podcasts the user wants to follow, each with its
-    /// initial episode set. Pre-existing podcasts (matched by feed URL)
-    /// are skipped — call refresh on them instead.
-    @discardableResult
-    func addSubscriptions(_ payloads: [SubscriptionImportPayload]) -> SubscriptionImportResult {
-        guard !payloads.isEmpty else {
-            return SubscriptionImportResult(imported: 0, skipped: 0)
-        }
-
-        var next = state
-        // Pre-existing podcasts may already be in the store (e.g. from a
-        // prior external play). Index by feed URL → podcast ID so we
-        // promote the existing row to a follow rather than creating a
-        // duplicate. Index of currently-followed podcasts dedupes against
-        // re-import of an OPML you've already adopted.
-        var podcastIDByFeedKey: [String: UUID] = [:]
-        for podcast in next.podcasts {
-            if let feedURL = podcast.feedURL {
-                podcastIDByFeedKey[Self.feedURLKey(feedURL)] = podcast.id
-            }
-        }
-        var subscribedPodcastIDs = Set(next.subscriptions.map(\.podcastID))
-        var imported = 0
-        var skipped = 0
-
-        next.podcasts.reserveCapacity(next.podcasts.count + payloads.count)
-        next.subscriptions.reserveCapacity(next.subscriptions.count + payloads.count)
-        next.episodes.reserveCapacity(next.episodes.count + payloads.reduce(0) { $0 + $1.episodes.count })
-
-        for payload in payloads {
-            guard let feedURL = payload.podcast.feedURL else {
-                skipped += 1
-                continue
-            }
-            let key = Self.feedURLKey(feedURL)
-            if let existingID = podcastIDByFeedKey[key] {
-                // Known podcast — only count as imported if we still need
-                // to add the follow row.
-                guard subscribedPodcastIDs.insert(existingID).inserted else {
-                    skipped += 1
-                    continue
-                }
-                // Promote: keep the existing Podcast.id (existing episodes
-                // already reference it) but adopt the freshly-fetched
-                // metadata + backlog from the OPML import. Otherwise an
-                // external-play placeholder's stub title/no-episodes would
-                // win silently.
-                if let podcastIdx = next.podcasts.firstIndex(where: { $0.id == existingID }) {
-                    var merged = payload.podcast
-                    merged.id = existingID
-                    next.podcasts[podcastIdx] = merged
-                }
-                next.subscriptions.append(PodcastSubscription(podcastID: existingID))
-                // Re-parent the OPML-fetched episodes to the existing
-                // podcast id before appending so foreign keys stay consistent.
-                let reparented = payload.episodes.map { episode -> Episode in
-                    var copy = episode
-                    copy.podcastID = existingID
-                    return copy
-                }
-                next.episodes.append(contentsOf: reparented)
-                imported += 1
-                continue
-            }
-            podcastIDByFeedKey[key] = payload.podcast.id
-            subscribedPodcastIDs.insert(payload.podcast.id)
-            next.podcasts.append(payload.podcast)
-            next.subscriptions.append(payload.subscription)
-            next.episodes.append(contentsOf: payload.episodes)
-            imported += 1
-        }
-
-        guard imported > 0 else {
-            return SubscriptionImportResult(imported: imported, skipped: skipped)
-        }
-
-        performMutationBatch {
-            state = next
-        }
-
-        return SubscriptionImportResult(imported: imported, skipped: skipped)
-    }
-
     /// Fully removes a podcast — its metadata row, any follow row, and
     /// every episode that belonged to it. Used both by the "Unsubscribe"
     /// destructive action on followed podcasts and by the swipe-to-delete
@@ -176,9 +83,5 @@ extension AppStateStore {
         guard let idx = state.subscriptions.firstIndex(where: { $0.podcastID == podcastID }) else { return }
         state.subscriptions[idx].autoDownload = policy
         kernelSetAutoDownload(podcastID: podcastID, policy: policy)
-    }
-
-    static func feedURLKey(_ url: URL) -> String {
-        url.absoluteString.lowercased()
     }
 }
