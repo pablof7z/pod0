@@ -400,7 +400,7 @@ final class AgentToolsPodcastTests: XCTestCase {
     private func makeDeps(
         rag: PodcastAgentRAGSearchProtocol = MockRAG(),
         wiki: WikiStorageProtocol = MockWiki(),
-        summarizer: EpisodeSummarizerProtocol = MockSummarizer(),
+        summarizer: EpisodeSummaryProviding = MockSummarizer(),
         fetcher: EpisodeFetcherProtocol = MockFetcher(),
         playback: MockPlayback = MockPlayback(),
         library: PodcastLibraryProtocol = MockLibrary(),

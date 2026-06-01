@@ -229,6 +229,17 @@ pub enum PodcastAction {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         message: Option<String>,
     },
+    /// Generate an AI summary for an episode (replaces the deleted Swift
+    /// `LiveEpisodeSummarizerAdapter`).
+    ///
+    /// The handler reads the episode's title + description + cached transcript,
+    /// spawns an off-actor Ollama call ([`crate::episode_summary_llm`]), stamps
+    /// the result onto the episode's persisted `summary` field, and bumps `rev`
+    /// so the projection surfaces it via `EpisodeSummary.summary`. Fire-and-
+    /// forget at the dispatch level: returns `{"ok":true,"status":"summarizing"}`
+    /// immediately. The iOS `summarize_episode` agent tool dispatches this then
+    /// awaits the snapshot until `episode.summary` populates.
+    SummarizeEpisode { episode_id: String },
 }
 
 /// One row in a [`PodcastAction::SetEpisodeTriage`] batch.

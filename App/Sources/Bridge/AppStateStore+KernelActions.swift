@@ -178,6 +178,36 @@ extension AppStateStore {
                          ])
     }
 
+    /// Generate (or fetch a cached) AI summary for an episode via the Rust
+    /// kernel LLM pipeline (namespace: podcast). Replaces the deleted Swift
+    /// `LiveEpisodeSummarizerAdapter`.
+    ///
+    /// If a summary is already stamped on the projected episode, returns it
+    /// immediately (the prompt is fixed, so a cached value is authoritative).
+    /// Otherwise dispatches `summarize_episode` — a fire-and-forget action whose
+    /// result arrives asynchronously on the snapshot projection — and waits, up
+    /// to `timeout`, for `episode.summary` to populate (mirroring
+    /// `kernelSubscribe`'s dispatch-then-await-projection pattern). Returns
+    /// `nil` on timeout (e.g. Ollama offline); the caller falls back to the
+    /// publisher description.
+    func kernelSummarizeEpisode(episodeID: UUID,
+                                timeout: Duration = .seconds(30)) async -> String? {
+        if let cached = episode(id: episodeID)?.summary, !cached.isEmpty {
+            return cached
+        }
+        kernel?.dispatch(namespace: "podcast",
+                         body: ["op": "summarize_episode",
+                                "episode_id": episodeID.uuidString])
+        let deadline = ContinuousClock.now + timeout
+        while ContinuousClock.now < deadline {
+            if let summary = episode(id: episodeID)?.summary, !summary.isEmpty {
+                return summary
+            }
+            try? await Task.sleep(for: .milliseconds(300))
+        }
+        return nil
+    }
+
     // MARK: - Queue (podcast.queue namespace)
 
     /// Push an episode to the back of the Rust-owned Up Next queue.

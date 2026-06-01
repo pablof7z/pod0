@@ -16,7 +16,7 @@ import Foundation
 // hop actors. Implementations that touch `@MainActor` state should mark their
 // methods `@MainActor`; the protocol surface tolerates either.
 //
-// Value-type result envelopes (`EpisodeHit`, `AgentEpisodeSummary`, etc.) live
+// Value-type result envelopes (`EpisodeHit`, `PerplexityResult`, etc.) live
 // in `PodcastAgentToolValues.swift`.
 
 // MARK: - Search & retrieval
@@ -59,8 +59,15 @@ public protocol WikiStorageProtocol: Sendable {
 // MARK: - Composer / summarizer / fetcher
 
 /// Summarization for an individual episode (lane 5/8).
-public protocol EpisodeSummarizerProtocol: Sendable {
-    func summarizeEpisode(episodeID: EpisodeID, length: String?) async throws -> AgentEpisodeSummary
+///
+/// Thin kernel-dispatch seam: the live implementation forwards to the Rust
+/// kernel's `podcast.summarize_episode` LLM pipeline (replacing the deleted
+/// Swift `LiveEpisodeSummarizerAdapter`) and awaits the summary on the snapshot
+/// projection. Returns a plain summary string, or `nil` when the kernel could
+/// not produce one (e.g. Ollama offline) so the caller can fall back to the
+/// publisher description.
+public protocol EpisodeSummaryProviding: Sendable {
+    func summarize(episodeID: EpisodeID) async -> String?
 }
 
 /// Episode metadata + existence check (lane 2/3).
@@ -309,7 +316,7 @@ public protocol PodcastSubscribeProtocol: Sendable {
 struct PodcastAgentToolDeps: Sendable {
     let rag: PodcastAgentRAGSearchProtocol
     let wiki: WikiStorageProtocol
-    let summarizer: EpisodeSummarizerProtocol
+    let summarizer: EpisodeSummaryProviding
     let fetcher: EpisodeFetcherProtocol
     let playback: PlaybackHostProtocol
     let library: PodcastLibraryProtocol
@@ -335,7 +342,7 @@ struct PodcastAgentToolDeps: Sendable {
     init(
         rag: PodcastAgentRAGSearchProtocol,
         wiki: WikiStorageProtocol,
-        summarizer: EpisodeSummarizerProtocol,
+        summarizer: EpisodeSummaryProviding,
         fetcher: EpisodeFetcherProtocol,
         playback: PlaybackHostProtocol,
         library: PodcastLibraryProtocol,

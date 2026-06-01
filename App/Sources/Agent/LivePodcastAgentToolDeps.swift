@@ -8,7 +8,7 @@ import os.log
 //
 //   • `PodcastAgentRAGSearchProtocol`  → `LivePodcastRAGAdapter`
 //   • `WikiStorageProtocol`            → `LiveWikiStorageAdapter`
-//   • `EpisodeSummarizerProtocol`      → `LiveEpisodeSummarizerAdapter`
+//   • `EpisodeSummaryProviding`        → `LiveEpisodeSummaryAdapter` (kernel)
 //   • `EpisodeFetcherProtocol`         → `LiveEpisodeFetcherAdapter`
 //   • `PlaybackHostProtocol`           → `LivePlaybackHostAdapter`
 //   • `PeerEventPublisherProtocol`     → `LivePeerEventPublisher`
@@ -17,8 +17,8 @@ import os.log
 //
 // Constructed once per `AgentChatSession` / `AgentRelayBridge`, the bundle
 // holds weak references to `AppStateStore` and `PlaybackState` so the agent
-// adapters never extend their lifetimes. Heavy adapters (RAG, Summarizer)
-// live in their own files; the small ones live here.
+// adapters never extend their lifetimes. Heavy adapters (RAG) live in their
+// own files; the small ones live here.
 
 @MainActor
 enum LivePodcastAgentToolDeps {
@@ -36,7 +36,7 @@ enum LivePodcastAgentToolDeps {
         return PodcastAgentToolDeps(
             rag: LivePodcastRAGAdapter(store: store),
             wiki: LiveWikiStorageAdapter(store: store),
-            summarizer: LiveEpisodeSummarizerAdapter(store: store),
+            summarizer: LiveEpisodeSummaryAdapter(store: store),
             fetcher: LiveEpisodeFetcherAdapter(store: store),
             playback: LivePlaybackHostAdapter(store: store, playback: playback),
             library: LivePodcastLibraryAdapter(
@@ -56,6 +56,36 @@ enum LivePodcastAgentToolDeps {
             ownedPodcasts: LiveAgentOwnedPodcastManager(store: store),
             peerContext: nil
         )
+    }
+}
+
+// MARK: - Summary adapter
+
+/// Forwards `summarize_episode` to the Rust kernel LLM pipeline
+/// (`podcast.summarize_episode`) and awaits the result on the snapshot
+/// projection (`AppStateStore.kernelSummarizeEpisode`). Replaces the deleted
+/// Swift `LiveEpisodeSummarizerAdapter`, which ran its own OpenRouter call.
+///
+/// On a kernel miss (e.g. Ollama offline → `nil`) it falls back to the
+/// publisher description, reproducing the old adapter's `.publisherDescription`
+/// behaviour so the agent tool always returns *something* useful.
+struct LiveEpisodeSummaryAdapter: EpisodeSummaryProviding {
+
+    weak var store: AppStateStore?
+
+    init(store: AppStateStore) {
+        self.store = store
+    }
+
+    func summarize(episodeID: EpisodeID) async -> String? {
+        guard let store, let uuid = UUID(uuidString: episodeID) else { return nil }
+        if let summary = await store.kernelSummarizeEpisode(episodeID: uuid) {
+            return summary
+        }
+        // Kernel could not produce a summary (offline / timeout) — fall back to
+        // the publisher description, mirroring the old `.publisherDescription`.
+        let description = await store.episode(id: uuid)?.description
+        return description?.isEmpty == false ? description : nil
     }
 }
 

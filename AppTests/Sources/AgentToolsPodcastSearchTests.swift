@@ -151,20 +151,33 @@ final class AgentToolsPodcastSearchTests: XCTestCase {
 
     func testSummarizeEpisodeSuccess() async throws {
         let deps = makeDeps(
-            summarizer: MockSummarizer(result: AgentEpisodeSummary(
-                episodeID: "ep1", summary: "Quick TLDR.", bulletPoints: ["A", "B"]
-            )),
+            summarizer: MockSummarizer(result: "Quick TLDR."),
             fetcher: MockFetcher(known: ["ep1"])
         )
         let json = await AgentTools.dispatchPodcast(
             name: AgentTools.PodcastNames.summarizeEpisode,
-            args: ["episode_id": "ep1", "length": "short"],
+            args: ["episode_id": "ep1"],
             deps: deps
         )
         let decoded = try decode(json)
         XCTAssertEqual(decoded["summary"] as? String, "Quick TLDR.")
-        XCTAssertEqual(decoded["length"] as? String, "short")
-        XCTAssertEqual((decoded["bullets"] as? [String])?.count, 2)
+        XCTAssertEqual(decoded["episode_id"] as? String, "ep1")
+    }
+
+    func testSummarizeEpisodeUnavailableReturnsError() async throws {
+        // Kernel produced no summary and the adapter found no fallback (mock
+        // returns nil) — the tool surfaces a clean error rather than an empty
+        // success payload.
+        let deps = makeDeps(
+            summarizer: MockSummarizer(result: nil),
+            fetcher: MockFetcher(known: ["ep1"])
+        )
+        let json = await AgentTools.dispatchPodcast(
+            name: AgentTools.PodcastNames.summarizeEpisode,
+            args: ["episode_id": "ep1"],
+            deps: deps
+        )
+        XCTAssertNotNil(try decode(json)["error"])
     }
 
     // MARK: - find_similar_episodes
@@ -208,7 +221,7 @@ final class AgentToolsPodcastSearchTests: XCTestCase {
     private func makeDeps(
         rag: PodcastAgentRAGSearchProtocol = MockRAG(),
         wiki: WikiStorageProtocol = MockWiki(),
-        summarizer: EpisodeSummarizerProtocol = MockSummarizer(),
+        summarizer: EpisodeSummaryProviding = MockSummarizer(),
         fetcher: EpisodeFetcherProtocol = MockFetcher(),
         perplexity: PerplexityClientProtocol = MockPerplexity()
     ) -> PodcastAgentToolDeps {

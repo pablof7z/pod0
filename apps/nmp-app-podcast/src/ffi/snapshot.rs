@@ -129,6 +129,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
                                 })
                                 .unwrap_or_default(),
                             playback_position_secs: s.position_for(&ep_id),
+                            summary: ep.summary.clone(),
                             ai_categories,
                             ad_segments,
                             played: ep.played,
