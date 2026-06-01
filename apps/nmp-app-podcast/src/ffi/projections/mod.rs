@@ -20,6 +20,7 @@
 //! No conditional logic, no policy decisions.
 
 mod agent;
+mod agent_context;
 mod briefing;
 mod clips;
 mod download;
@@ -36,6 +37,7 @@ pub use agent::{
     AgentMessageSummary, AgentPickSummary, AgentSnapshot, AgentTaskSummary,
     ConversationsSnapshot, PendingApprovalSnapshot,
 };
+pub use agent_context::{AgentContextEpisode, AgentContextSnapshot};
 pub use briefing::{BriefingSegmentSummary, BriefingSnapshot};
 pub use clips::ClipSummary;
 pub use download::{DownloadItemSnapshot, DownloadQueueSnapshot};

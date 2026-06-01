@@ -95,7 +95,10 @@ final class AgentRelayBridge {
             for: store,
             peerPubkey: peerPubkey
         )
-        let ownerPrompt = AgentPrompt.build(for: store.state)
+        let ownerPrompt = AgentPrompt.build(
+            for: store.state,
+            agentContext: store.kernel?.podcastSnapshot?.agentContext
+        )
         let systemPrompt = preamble + "\n\n" + ownerPrompt
 
         var messages: [[String: Any]] = [["role": "system", "content": systemPrompt]]
@@ -127,7 +130,10 @@ final class AgentRelayBridge {
         var enabledSkills: Set<String> = []
 
         let senderName = displayName(for: senderPubkey)
-        let systemPrompt = AgentPrompt.build(for: store.state)
+        let systemPrompt = AgentPrompt.build(
+            for: store.state,
+            agentContext: store.kernel?.podcastSnapshot?.agentContext
+        )
         let userText = "[from \(senderName) via Nostr]\n\(trimmed)"
         var messages: [[String: Any]] = [
             ["role": "system", "content": systemPrompt],

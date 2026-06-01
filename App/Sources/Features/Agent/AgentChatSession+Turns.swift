@@ -7,6 +7,16 @@ import Foundation
 
 extension AgentChatSession {
 
+    /// The position-0 system prompt for this session, rebuilt on each send so
+    /// it reflects the latest inventory. Inventory selection/capping is
+    /// kernel-owned and read from the live snapshot.
+    var systemPromptText: String {
+        AgentPrompt.build(
+            for: store.state,
+            agentContext: store.kernel?.podcastSnapshot?.agentContext
+        )
+    }
+
     func retry() {
         guard let msg = lastFailedMessage, canSend else { return }
         rawMessages = Array(rawMessages.prefix(rawMessageCountAtLastSendStart))
@@ -75,7 +85,7 @@ extension AgentChatSession {
         }
 
         if !rawMessages.isEmpty {
-            rawMessages[0] = ["role": "system", "content": AgentPrompt.build(for: store.state)]
+            rawMessages[0] = ["role": "system", "content": systemPromptText]
         }
 
         rawMessageCountAtLastSendStart = rawMessages.count
@@ -107,13 +117,13 @@ extension AgentChatSession {
         if rawMessages.isEmpty {
             rawMessages.append([
                 "role": "system",
-                "content": AgentPrompt.build(for: store.state),
+                "content": systemPromptText,
             ])
             seedRawMessagesFromHistory()
         } else {
             rawMessages[0] = [
                 "role": "system",
-                "content": AgentPrompt.build(for: store.state),
+                "content": systemPromptText,
             ]
         }
 

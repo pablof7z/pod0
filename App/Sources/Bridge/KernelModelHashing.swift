@@ -84,6 +84,22 @@ extension KernelModel {
         h.combine(update.agent?.messages.count)
         h.combine(update.agent?.isBusy)
 
+        // Agent-prompt inventory context. The kernel derives this from
+        // library fields (playback position, played, triage) that are
+        // deliberately EXCLUDED from this hash because their raw values are
+        // volatile. But `agentContext` carries only titles + counts — its
+        // *membership* changes solely when an episode enters/leaves the
+        // in-progress or recent-unplayed set (or a sub is added/removed), not
+        // on every position tick. Hashing it here keeps `podcastSnapshot`
+        // (and therefore `AgentPrompt`) fresh when that membership shifts,
+        // without reintroducing per-tick republish churn.
+        if let ctx = update.agentContext {
+            h.combine(ctx.subscriptionsTotal)
+            for title in ctx.subscriptions { h.combine(title) }
+            for ep in ctx.inProgress { h.combine(ep.title); h.combine(ep.showTitle) }
+            for ep in ctx.recentUnplayed { h.combine(ep.title); h.combine(ep.showTitle) }
+        }
+
         // Voice (state transitions that matter for UI)
         h.combine(update.voice?.isSpeaking)
         h.combine(update.voice?.isListening)

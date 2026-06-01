@@ -15,6 +15,11 @@ struct PodcastUpdate {
     var nowPlaying: PlayerState? = nil
     var downloads: DownloadQueueSnapshot? = nil
     var agent: AgentSnapshot? = nil
+    /// Agent-prompt inventory context: kernel-owned selection/ordering/capping
+    /// of the subscribed-show list, in-progress episodes, and recent-unplayed
+    /// episodes the `AgentPrompt` builder renders into its system prompt.
+    /// `nil` when the library is empty.
+    var agentContext: AgentContextSnapshot? = nil
     var voice: VoiceSnapshot? = nil
     var social: SocialSnapshot? = nil
     // D5: the Rust projection omits empty collections / default settings from
@@ -61,6 +66,10 @@ struct AppRelayRow: Codable, Equatable, Identifiable {
     var role: String = ""
     var id: String { url }
 }
+
+// AgentContextSnapshot / AgentContextEpisode live in
+// `PodcastAgentContextTypes.generated.swift` to keep this file under the
+// 500-line hard limit.
 
 /// Active player state (present only when an episode is loaded).
 struct PlayerState {
@@ -271,6 +280,7 @@ extension PodcastUpdate: Codable {
         nowPlaying = try c.decodeIfPresent(PlayerState.self, forKey: .nowPlaying)
         downloads = try c.decodeIfPresent(DownloadQueueSnapshot.self, forKey: .downloads)
         agent = try c.decodeIfPresent(AgentSnapshot.self, forKey: .agent)
+        agentContext = try c.decodeIfPresent(AgentContextSnapshot.self, forKey: .agentContext)
         voice = try c.decodeIfPresent(VoiceSnapshot.self, forKey: .voice)
         social = try c.decodeIfPresent(SocialSnapshot.self, forKey: .social)
         library = try c.decodeIfPresent([PodcastSummary].self, forKey: .library) ?? []
