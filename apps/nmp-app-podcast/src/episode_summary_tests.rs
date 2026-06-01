@@ -31,17 +31,13 @@ fn handle_summarize_episode_errors_on_unknown_id() {
     assert_eq!(rev.load(Ordering::Relaxed), 0);
 }
 
-#[test]
-fn handle_summarize_episode_accepts_known_id() {
-    // Synchronous-path assertion only: the dispatch returns "summarizing"
-    // immediately. The background Ollama call is exercised hermetically by
-    // `episode_summary_llm_tests.rs` (prompt build + clean), not here — this
-    // test must not depend on a live Ollama. The spawned task will fail to
-    // connect and log without touching `rev` or the store.
-    let (store, ep_id) = store_with_one("Title", "Desc");
-    let rev = Arc::new(AtomicU64::new(0));
-    let runtime = Arc::new(tokio::runtime::Runtime::new().unwrap());
-    let result = handle_summarize_episode(&store, &rev, &runtime, ep_id);
-    assert_eq!(result["ok"], true);
-    assert_eq!(result["status"], "summarizing");
-}
+// NOTE: there is intentionally no "known id spawns + completes" test here.
+// `handle_summarize_episode` spawns a real background Ollama call for a known
+// episode; asserting its success synchronously would fire a live network
+// request during the suite (the dev's Ollama is reachable), which is exactly
+// the non-hermeticity the categorization author avoided with an in-progress
+// guard. The synchronous success envelope is trivial (`{"ok":true,
+// "status":"summarizing"}`); the LLM prompt/clean path is covered hermetically
+// by `episode_summary_llm_tests.rs`, and the store stamp by
+// `store::summary::tests`. The unknown-id path below is the meaningful
+// branch — it returns before any spawn.
