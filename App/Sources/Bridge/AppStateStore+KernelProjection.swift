@@ -353,7 +353,11 @@ private extension EpisodeSummary {
             // #45: AI-generated category labels. Projection-only — the
             // kernel owns them, so they ride the snapshot straight onto the
             // domain model with no preserved-state merge.
-            aiCategories: aiCategories
+            aiCategories: aiCategories,
+            // AI episode summary. Projection-only — produced by the kernel
+            // `summarize_episode` pass and carried straight onto the domain
+            // model so `store.episode(id:).summary` reflects it.
+            summary: summary
         )
     }
 }

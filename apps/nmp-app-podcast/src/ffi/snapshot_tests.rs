@@ -8,10 +8,33 @@
 use crate::ffi::projections::{
     AgentMessageSummary, AgentSnapshot, AgentTaskSummary,
     ConversationsSnapshot, DownloadItemSnapshot, DownloadQueueSnapshot,
-    PendingApprovalSnapshot, SettingsSnapshot, VoiceState, WidgetSnapshot,
+    EpisodeSummary, PendingApprovalSnapshot, SettingsSnapshot, VoiceState, WidgetSnapshot,
 };
 use super::PodcastUpdate;
 use crate::player::PlayerState;
+
+#[test]
+fn episode_summary_field_round_trips() {
+    // Guards the `summary` projection field end-to-end on the wire: present
+    // when set (key emitted), omitted when None (D5 skip_serializing_if), and
+    // decoded back. Catches a dropped/renamed serde attr on the field that the
+    // compiler-checked struct literal in `build_snapshot_payload` would not.
+    let ep = EpisodeSummary {
+        id: "ep-1".into(),
+        title: "T".into(),
+        summary: Some("A concise summary.".into()),
+        ..Default::default()
+    };
+    let json = serde_json::to_string(&ep).expect("encode");
+    assert!(json.contains("\"summary\":\"A concise summary.\""));
+    let decoded: EpisodeSummary = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded.summary.as_deref(), Some("A concise summary."));
+
+    // None ⇒ omitted from the wire (byte-compat with pre-summary snapshots).
+    let bare = EpisodeSummary { id: "ep-2".into(), ..Default::default() };
+    let json = serde_json::to_string(&bare).expect("encode");
+    assert!(!json.contains("summary"));
+}
 
 #[test]
 fn default_snapshot_omits_now_playing() {

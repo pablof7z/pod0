@@ -129,6 +129,10 @@ extension KernelModel {
                 hasher.combine(episode.downloadPath)
                 hasher.combine(episode.durationSecs)
                 hasher.combine(episode.publishedAt)
+                // Include `summary` so a freshly-landed AI summary changes the
+                // library hash and the `summarize_episode` tool's snapshot await
+                // is actually woken (without this, the rev bump is deduped).
+                hasher.combine(episode.summary)
                 for cat in episode.aiCategories {
                     hasher.combine(cat)
                 }

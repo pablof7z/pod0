@@ -103,6 +103,16 @@ pub struct Episode {
     pub triage_is_hero: bool,
 
     pub metadata_indexed: bool,
+
+    /// AI-generated 2–3 sentence episode summary, produced by the kernel's
+    /// `episode_summary_llm` pass over the title + description (+ transcript
+    /// when present). `None` until the user invokes the `summarize_episode`
+    /// agent tool. Persisted alongside the episode so an expensive LLM call
+    /// survives feed refreshes and app restarts (mirrors `triage_rationale` /
+    /// `chapters`); `skip_serializing_if` keeps old `podcasts.json` records
+    /// forward-compatible.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
 }
 
 impl Episode {
@@ -153,6 +163,7 @@ impl Episode {
             triage_rationale: None,
             triage_is_hero: false,
             metadata_indexed: false,
+            summary: None,
         }
     }
 

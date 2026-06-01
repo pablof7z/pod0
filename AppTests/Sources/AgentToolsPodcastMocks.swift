@@ -77,12 +77,12 @@ actor MockWiki: WikiStorageProtocol {
     func deleteWikiPage(slug: String, scope: PodcastID?) async throws {}
 }
 
-actor MockSummarizer: EpisodeSummarizerProtocol {
-    private let result: AgentEpisodeSummary?
-    init(result: AgentEpisodeSummary? = nil) { self.result = result }
+actor MockSummarizer: EpisodeSummaryProviding {
+    private let result: String?
+    init(result: String? = nil) { self.result = result }
 
-    func summarizeEpisode(episodeID: EpisodeID, length: String?) async throws -> AgentEpisodeSummary {
-        return result ?? AgentEpisodeSummary(episodeID: episodeID, summary: "")
+    func summarize(episodeID: EpisodeID) async -> String? {
+        return result
     }
 }
 

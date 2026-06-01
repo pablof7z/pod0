@@ -77,6 +77,10 @@ struct EpisodeSummary: Identifiable, Equatable, Hashable {
     /// Persisted playback position in seconds. `nil` when not started.
     var playbackPositionSecs: Double? = nil
     var transcript: String? = nil
+    /// AI-generated 2–3 sentence episode summary, projected from the Rust
+    /// kernel (`Episode::summary`). `nil` until `podcast.summarize_episode`
+    /// runs. Drives the `summarize_episode` agent tool result.
+    var summary: String? = nil
     // D5 omit-on-empty/false fields — wrapped so absent keys decode to defaults.
     @DefaultEmptyStrings var aiCategories: [String] = []
     @DefaultEmptyArray var adSegments: [AdSegment] = []
@@ -202,6 +206,7 @@ extension EpisodeSummary: Codable {
         chapters = try c.decodeIfPresent([ChapterSummary].self, forKey: .chapters)
         playbackPositionSecs = try c.decodeIfPresent(Double.self, forKey: .playbackPositionSecs)
         transcript = try c.decodeIfPresent(String.self, forKey: .transcript)
+        summary = try c.decodeIfPresent(String.self, forKey: .summary)
         aiCategories = try c.decodeIfPresent([String].self, forKey: .aiCategories) ?? []
         adSegments = try c.decodeIfPresent([AdSegment].self, forKey: .adSegments) ?? []
         played = try c.decodeIfPresent(Bool.self, forKey: .played) ?? false

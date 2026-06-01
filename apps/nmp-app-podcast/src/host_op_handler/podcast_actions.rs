@@ -139,6 +139,14 @@ impl PodcastHostOpHandler {
             PodcastAction::SetEpisodeTranscriptStatus { episode_id, status, message } => {
                 self.handle_set_episode_transcript_status(episode_id, status, message)
             }
+            PodcastAction::SummarizeEpisode { episode_id } => {
+                crate::episode_summary::handle_summarize_episode(
+                    &self.store,
+                    &self.rev,
+                    &self.runtime,
+                    episode_id,
+                )
+            }
             // DiscoverNostr is handled in PodcastActionModule::execute via
             // EnsureInterest/DropInterestOwner before reaching the host-op
             // handler — it never arrives here.

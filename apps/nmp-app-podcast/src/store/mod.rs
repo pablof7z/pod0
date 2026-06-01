@@ -36,6 +36,7 @@ mod persistence;
 pub mod podcast_keys;
 mod settings;
 pub mod stt_policy;
+pub(crate) mod summary;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

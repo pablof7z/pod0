@@ -130,10 +130,9 @@ extension AgentTools {
             ),
             podcastTool(
                 name: PodcastNames.summarizeEpisode,
-                description: "Generate an on-demand summary of a single episode. Use when the user asks 'TLDR this' or 'what's this episode about?' for a specific episode.",
+                description: "Generate an on-demand 2-3 sentence summary of a single episode. Use when the user asks 'TLDR this' or 'what's this episode about?' for a specific episode.",
                 properties: [
                     "episode_id": ["type": "string", "description": "The episode to summarize."],
-                    "length": ["type": "string", "enum": ["short", "medium", "long"], "description": "Optional summary length. Defaults to 'medium'."],
                 ],
                 required: ["episode_id"]
             ),

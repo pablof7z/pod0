@@ -148,6 +148,12 @@ pub struct EpisodeSummary {
     /// generation, summaries). Per D5 omitted when `None`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transcript: Option<String>,
+    /// AI-generated 2–3 sentence episode summary, projected from the persisted
+    /// `Episode::summary` field. Populated by `podcast.summarize_episode`
+    /// (off-actor Ollama call). `None` until summarization runs. Per D5 omitted
+    /// when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
     /// Topic labels the agent's heuristic categorizer assigned to this
     /// episode. Empty until `podcast.categorize.run` triggers. Per D5
     /// omitted when empty.

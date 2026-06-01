@@ -328,25 +328,18 @@ extension AgentTools {
         guard exists else {
             return toolError("Episode not found: \(episodeID)")
         }
-        let length = (args["length"] as? String)?.trimmed.nilIfEmpty
-        do {
-            let summary = try await deps.summarizer.summarizeEpisode(
-                episodeID: episodeID,
-                length: length
-            )
-            var payload: [String: Any] = [
-                "episode_id": summary.episodeID,
-                "summary": summary.summary,
-                "summary_source": summary.source.rawValue,
-            ]
-            if !summary.bulletPoints.isEmpty {
-                payload["bullets"] = summary.bulletPoints
-            }
-            if let length = length { payload["length"] = length }
-            return toolSuccess(payload)
-        } catch {
-            return toolError("summarize_episode failed: \(error.localizedDescription)")
+        // Dispatches `podcast.summarize_episode` to the Rust kernel and awaits
+        // the summary on the snapshot projection (with a description fallback in
+        // the adapter). The fixed "2-3 sentences" kernel prompt has no length /
+        // bullet options, so the payload is a plain `{episode_id, summary}`.
+        guard let summary = await deps.summarizer.summarize(episodeID: episodeID),
+              !summary.isEmpty else {
+            return toolError("summarize_episode failed: no summary available for \(episodeID)")
         }
+        return toolSuccess([
+            "episode_id": episodeID,
+            "summary": summary,
+        ])
     }
 
     // MARK: - find_similar_episodes

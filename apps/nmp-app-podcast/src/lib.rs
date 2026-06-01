@@ -52,6 +52,8 @@ pub(crate) mod comments_anchor;
 pub(crate) mod comments_handler;
 pub(crate) mod discover_nostr;
 pub mod download;
+pub(crate) mod episode_summary;
+pub(crate) mod episode_summary_llm;
 pub mod ffi;
 pub(crate) mod host_op_handler;
 pub(crate) mod host_op_handler_helpers;
