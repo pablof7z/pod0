@@ -90,8 +90,11 @@ extension AppStateStore {
         snapshot: PodcastUpdate?,
         identity: KernelIdentityProjection
     ) {
+        // Count is computed allocation-free (reduce, not flatMap) so the
+        // signpost label adds no O(N) array copy to this hot path — the
+        // os_signpost API defers FORMATTING, not argument evaluation.
         let applyInterval = signposter.beginInterval(
-            "applyKernelState", "episodes=\(library.flatMap(\.episodes).count)")
+            "applyKernelState", "episodes=\(library.reduce(0) { $0 + $1.episodes.count })")
         defer { signposter.endInterval("applyKernelState", applyInterval) }
 
         var next = state
