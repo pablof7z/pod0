@@ -5,6 +5,7 @@ struct AgentSettingsView: View {
     @ObservedObject private var runLogger = AgentRunLogger.shared
     @State private var settings: Settings = Settings()
     @State private var hasNostrKey: Bool = false
+    @State private var showAgentRelaySettings = false
 
     var body: some View {
         List {
@@ -22,6 +23,41 @@ struct AgentSettingsView: View {
             store.updateSettings(new)
         }
         .onChange(of: settings.nostrEnabled) { Haptics.selection() }
+        .sheet(isPresented: $showAgentRelaySettings) {
+            AgentConnectionSettingsView(
+                relayURL: $settings.nostrRelayURL,
+                hasPrivateKey: hasNostrKey
+            )
+        }
+    }
+
+    private var agentRelayRow: some View {
+        Button {
+            showAgentRelaySettings = true
+        } label: {
+            HStack {
+                SettingsRow(
+                    icon: "antenna.radiowaves.left.and.right",
+                    tint: .mint,
+                    title: "Agent Relay"
+                )
+                Spacer(minLength: 12)
+                Text(agentRelayDisplay)
+                    .font(AppTheme.Typography.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Agent Relay")
+        .accessibilityValue(agentRelayDisplay)
+    }
+
+    private var agentRelayDisplay: String {
+        let url = settings.nostrRelayURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !url.isEmpty else { return "Not set" }
+        return URL(string: url)?.host ?? url
     }
 
     // MARK: - Sections
@@ -143,6 +179,8 @@ struct AgentSettingsView: View {
         Section {
             Toggle("Enabled", isOn: $settings.nostrEnabled)
                 .disabled(!hasNostrKey)
+
+            agentRelayRow
 
             if !hasNostrKey {
                 NavigationLink {

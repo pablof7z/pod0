@@ -17,7 +17,7 @@ struct AgentConnectionSettingsView: View {
                     privateKeySection
                 }
             }
-            .navigationTitle("Connection")
+            .navigationTitle("Agent Connection")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -38,9 +38,9 @@ struct AgentConnectionSettingsView: View {
                 .textInputAutocapitalization(.never)
                 .keyboardType(.URL)
         } header: {
-            Label("Relay", systemImage: "antenna.radiowaves.left.and.right")
+            Label("Agent Relay", systemImage: "antenna.radiowaves.left.and.right")
         } footer: {
-            Text("Your agent connects here to send and receive Nostr messages.")
+            Text("Your agent connects to this relay to send and receive Nostr messages — inbox delivery, profile publishing, and NIP-46 pairing.")
         }
     }
 
