@@ -17,7 +17,12 @@ extension KernelModel {
     ///
     /// Everything else in `PodcastUpdate` is hashed so any real content change
     /// triggers a `podcastSnapshot` update on the next poll.
-    func snapshotContentHash(for update: PodcastUpdate) -> Int {
+    ///
+    /// `nonisolated`: reads only the `update` parameter and a local `Hasher`,
+    /// never `self`, so it is safe to run off the MainActor. `applyPodcastUpdate`
+    /// offloads this computation to a background `Task.detached` so the hash
+    /// cost is no longer paid on the MainActor at the 4 Hz emit rate.
+    nonisolated func snapshotContentHash(for update: PodcastUpdate) -> Int {
         var h = Hasher()
 
         // Player state (position excluded — too volatile)
@@ -121,7 +126,11 @@ extension KernelModel {
     /// Hash only the fields that list views render. Excludes
     /// `playbackPositionSecs` (and other volatile playback state) so the
     /// `library` property stays stable during active playback.
-    func libraryMetaHash(for library: [PodcastSummary]) -> Int {
+    ///
+    /// `nonisolated`: reads only the `library` parameter and a local `Hasher`,
+    /// never `self`. This is the O(N×M) cost (every show × every episode ×
+    /// multiple fields) that `applyPodcastUpdate` now runs off the MainActor.
+    nonisolated func libraryMetaHash(for library: [PodcastSummary]) -> Int {
         var hasher = Hasher()
         for podcast in library {
             hasher.combine(podcast.id)

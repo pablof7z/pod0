@@ -701,6 +701,7 @@
 		FADF427A29ED99BFD0A00703 /* VoiceNoteRealtimeSTT+Support.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ADECD9617551B942A2D26B3 /* VoiceNoteRealtimeSTT+Support.swift */; };
 		FAE8E222FD59220E95FADD79 /* PodcastAgentToolDeps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76FF1CBA3F84D3FF36B06CAA /* PodcastAgentToolDeps.swift */; };
 		FB7C15147AC581D98285F12D /* ElevenLabsHeroCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78B392F3A48AF766BAE55289 /* ElevenLabsHeroCard.swift */; };
+		FC637FAB1053AEBB7D32DA33 /* BridgeSendable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3542826002A8C08422BBD003 /* BridgeSendable.swift */; };
 		FC6A9DF0ECB27C24D6C1E857 /* LiveYouTubeIngestionAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54A97C210A0D240E47E7BB25 /* LiveYouTubeIngestionAdapter.swift */; };
 		FC9A860EB3EDD3B8152CF07A /* NetworkCapability.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A887037C6EF99FFA16FAAE4 /* NetworkCapability.swift */; };
 		FCE630D417B7A0DA2B919557 /* HomeDatelineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F592998836755A9CB06A25AB /* HomeDatelineTests.swift */; };
@@ -939,6 +940,7 @@
 		342C8B784FFF19006DCABEF3 /* LivePodcastDirectoryAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivePodcastDirectoryAdapter.swift; sourceTree = "<group>"; };
 		34844619100E1D12A7AB23CE /* SpeechRecognizerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognizerService.swift; sourceTree = "<group>"; };
 		34AD101F19534A8D54E47BB7 /* AgentOpenRouterClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentOpenRouterClient.swift; sourceTree = "<group>"; };
+		3542826002A8C08422BBD003 /* BridgeSendable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeSendable.swift; sourceTree = "<group>"; };
 		3556F9FBC20C7EE5C2A37BCD /* AgentChatSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentChatSession.swift; sourceTree = "<group>"; };
 		3687910CDE28D4C09EFD0A0A /* ElevenLabsVoiceBrowserViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevenLabsVoiceBrowserViewModel.swift; sourceTree = "<group>"; };
 		36961222960629DE35F87A8B /* HomeEmptyStates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeEmptyStates.swift; sourceTree = "<group>"; };
@@ -1588,6 +1590,7 @@
 		1809013E5A3119C004D4C71B /* Generated */ = {
 			isa = PBXGroup;
 			children = (
+				3542826002A8C08422BBD003 /* BridgeSendable.swift */,
 				F7192A50120796AF81480691 /* CodableDefaults.swift */,
 				921CE9D50F3AD2E2AE3831C0 /* PodcastAgentContextTypes.generated.swift */,
 				5B075CD43F14B2EFCF0D9C83 /* PodcastLibraryTypes.generated.swift */,
@@ -2954,6 +2957,7 @@
 				B85B71804FE5850A6A96A7CD /* SleepTimer.swift in Sources */,
 				7C36F67FEE0ECEE7743F903C /* AppStateStore+KernelActions.swift in Sources */,
 				3A4B60482E8F118986753228 /* AppStateStore+KernelProjection.swift in Sources */,
+				FC637FAB1053AEBB7D32DA33 /* BridgeSendable.swift in Sources */,
 				4BB2F38F7D0E2F7DDD6B5C8B /* CodableDefaults.swift in Sources */,
 				C315FA2090726A43F532412E /* PodcastAgentContextTypes.generated.swift in Sources */,
 				4C43A5BE500F2DD0FAFF4E2D /* PodcastLibraryTypes.generated.swift in Sources */,

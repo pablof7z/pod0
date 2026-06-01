@@ -129,12 +129,18 @@ final class KernelModel {
         // Prime Rust's is_on_wifi flag before the first feed refresh.
         kernel.startNetworkMonitor()
         // Reactive replacement for the old 500ms poll: shell-initiated FFI
-        // reports (audio/download) bump the podcast `rev` without emitting a
-        // kernel push frame, so surface them with a one-shot rev-gated pull at
+        // reports (audio/download/voice) bump the podcast `rev` without emitting
+        // a kernel push frame, so surface them with a one-shot rev-gated pull at
         // the moment they happen. Dispatched host-ops already arrive via the
         // push frame (`apply`) and `dispatch`/`dispatchSilent`'s own pull.
+        //
+        // `synchronous: false`: audio reports fire at playback frequency, so this
+        // hook is a 4 Hz hot path — keep the O(N×M) list hashing off the
+        // MainActor. There is no same-runloop freshness contract here (no user
+        // action is waiting on it); live player position still updates inline via
+        // `nowPlaying`/`snapshot` at the top of `applyPodcastUpdate`.
         kernel.onSnapshotMaybeChanged = { [weak self] in
-            self?.pullPodcastSnapshotIfChanged()
+            self?.pullPodcastSnapshotIfChanged(synchronous: false)
         }
         // Publish to the shared handle for external scenes (CarPlay, AppIntents,
         // …). The static is `weak`, so the model still deallocates on scene
@@ -165,10 +171,11 @@ final class KernelModel {
         startedKernel = true
         kernel.start(visibleLimit: visibleLimit, emitHz: emitHz)
         // One-shot startup pull: the persisted library is loaded synchronously
-        // during register, so it's already in the projection — surface it once.
+        // during register, so it's already in the projection — surface it once,
+        // synchronously, so the first frame is on-screen immediately on launch.
         // Everything after this is event-driven (push frame + report hooks); no
         // timer/poll.
-        pullPodcastSnapshotIfChanged()
+        pullPodcastSnapshotIfChanged(synchronous: true)
     }
 
     func stop() {
@@ -187,49 +194,70 @@ final class KernelModel {
         storeOpenFailure = nil
         kernel.start(visibleLimit: visibleLimit, emitHz: emitHz)
         startedKernel = true
-        pullPodcastSnapshotIfChanged()
+        // One-shot post-reset pull — surface the re-registered projection
+        // synchronously so the rebuilt UI is current immediately.
+        pullPodcastSnapshotIfChanged(synchronous: true)
     }
 
-    /// One-shot synchronous pull, used only immediately after a `dispatch` /
-    /// `dispatchSilent` so a user action is reflected in the same runloop pass
-    /// rather than waiting for the next reactive push frame. This is NOT a poll
-    /// — there is no timer; the 500ms background poll has been removed in favor
-    /// of the reactive push (`apply(result:)`).
-    private func pullPodcastSnapshotIfChanged() {
+    /// One-shot rev-gated pull. This is NOT a poll — there is no timer; the
+    /// 500ms background poll has been removed in favor of the reactive push
+    /// (`apply(result:)`).
+    ///
+    /// `synchronous` is threaded straight through to `applyPodcastUpdate` and
+    /// follows the same "is there a synchronous freshness contract?" rule:
+    ///
+    /// - `true` — user-action callers (`dispatch` / `dispatchSilent`) and the
+    ///   one-shot startup pulls (`start` / `resetAndRestart`). The action must be
+    ///   reflected in the same runloop pass, so the hashing runs inline on the
+    ///   MainActor and `library`/`podcastSnapshot` are assigned before the
+    ///   dispatch returns.
+    /// - `false` — the reactive report hook (`onSnapshotMaybeChanged`, fed by the
+    ///   audio/download/voice FFI report channels). Audio reports fire at
+    ///   playback frequency, so running the O(N×M) `libraryMetaHash` inline here
+    ///   would reintroduce the very main-thread cost this change removes. There
+    ///   is no same-runloop contract for these — `nowPlaying`/`snapshot` (which
+    ///   carry live position) are still assigned synchronously at the top of
+    ///   `applyPodcastUpdate`; only the list-view properties hop off-main.
+    private func pullPodcastSnapshotIfChanged(synchronous: Bool) {
         let currentRev = kernel.podcastSnapshotRev()
         guard currentRev > lastProcessedRev else { return }
-        applyPodcastUpdate(kernel.podcastSnapshot())
+        applyPodcastUpdate(kernel.podcastSnapshot(), synchronous: synchronous)
     }
 
     /// Apply one `PodcastUpdate` to the observable surface. Shared by the
-    /// reactive push path (`apply(result:)`) and the one-shot post-dispatch
-    /// pull. Rev-gated so redundant frames (push at emit-Hz, or a pull racing a
-    /// push) are dropped cheaply.
-    private func applyPodcastUpdate(_ update: PodcastUpdate) {
+    /// reactive push path (`apply(result:)`) and the rev-gated pull
+    /// (`pullPodcastSnapshotIfChanged`). Rev-gated so redundant frames (push at
+    /// emit-Hz, or a pull racing a push) are dropped cheaply.
+    ///
+    /// `synchronous` selects where the O(N×M) content/library hashing runs. The
+    /// rule is "is a caller waiting on same-runloop freshness?", NOT "push vs
+    /// pull" — the pull funnel serves both a user-action path and a
+    /// playback-frequency report hook, so the flag is decided per call site:
+    ///
+    /// - `false` (no freshness contract): the 4 Hz push frame (`apply(result:)`)
+    ///   and the reactive report hook (`onSnapshotMaybeChanged`, which audio
+    ///   reports fire at playback frequency). The hash *computation* is offloaded
+    ///   to a detached utility task so these hot paths don't pay it on the
+    ///   MainActor. `podcastSnapshot`/`library` land a hop later, which SwiftUI
+    ///   observation tolerates.
+    /// - `true` (same-runloop contract): user-action dispatch
+    ///   (`dispatch`/`dispatchSilent`) and the one-shot startup pulls
+    ///   (`start`/`resetAndRestart`). The hashing runs inline on the MainActor so
+    ///   `podcastSnapshot`/`library` are assigned *before this call returns* —
+    ///   preserving the same-runloop guarantee a user action depends on.
+    ///
+    /// `nowPlaying`/`snapshot` (live player position) are assigned synchronously
+    /// at the top of this method on *every* path, so the flag only governs the
+    /// list-view properties.
+    private func applyPodcastUpdate(_ update: PodcastUpdate, synchronous: Bool) {
         guard update.rev > lastProcessedRev else { return }
         lastProcessedRev = UInt64(update.rev)
         snapshot = update
         let previousNowPlaying = nowPlaying
         // `nowPlaying` carries live playback position; refresh on every accepted
-        // frame so player views stay current.
+        // frame so player views stay current. Stays on the MainActor inline so
+        // the live player surface (and post-dispatch pull) reflects same-runloop.
         nowPlaying = update.nowPlaying
-        // Gate `podcastSnapshot` (and `library`) on content hashes that exclude
-        // volatile position/buffering fields so list views don't re-render at
-        // the emit rate.
-        let snapHashInterval = signposter.beginInterval("snapshotContentHash")
-        let newSnapHash = snapshotContentHash(for: update)
-        signposter.endInterval("snapshotContentHash", snapHashInterval)
-        if newSnapHash != lastSnapshotContentHash {
-            lastSnapshotContentHash = newSnapHash
-            podcastSnapshot = update
-        }
-        let libHashInterval = signposter.beginInterval("libraryMetaHash")
-        let newLibHash = libraryMetaHash(for: update.library)
-        signposter.endInterval("libraryMetaHash", libHashInterval)
-        if newLibHash != lastLibraryMetaHash {
-            lastLibraryMetaHash = newLibHash
-            library = update.library
-        }
         PodcastCapabilities.shared.iCloudSync.applySettingsSnapshot(
             SettingsKVSnapshot.from(podcastUpdate: update))
         PodcastCapabilities.shared.spotlight.indexLibrary(update.library)
@@ -238,6 +266,67 @@ final class KernelModel {
         reconcileNowPlayingMetadata(
             previous: previousNowPlaying, next: update.nowPlaying, library: update.library)
         kmLog.debug("podcast update rev=\(update.rev) library=\(update.library.count)")
+
+        // Gate `podcastSnapshot` (and `library`) on content hashes that exclude
+        // volatile position/buffering fields so list views don't re-render at
+        // the emit rate. Both hashes are O(N×M) (every show × every episode ×
+        // multiple fields).
+        let frameRev = UInt64(update.rev)
+        if synchronous {
+            // Pull path: compute inline on the MainActor so the assignments are
+            // visible in the same runloop pass the dispatch returned in.
+            let snapHashInterval = signposter.beginInterval("snapshotContentHash")
+            let newSnapHash = snapshotContentHash(for: update)
+            signposter.endInterval("snapshotContentHash", snapHashInterval)
+            let libHashInterval = signposter.beginInterval("libraryMetaHash")
+            let newLibHash = libraryMetaHash(for: update.library)
+            signposter.endInterval("libraryMetaHash", libHashInterval)
+            commitPodcastProjection(
+                update: update, frameRev: frameRev,
+                newSnapHash: newSnapHash, newLibHash: newLibHash)
+        } else {
+            // Push-frame path: the two hashes previously ran on the MainActor on
+            // every accepted 4 Hz push frame during playback — before the gate
+            // could discard the frame. Move the *computation* off the MainActor;
+            // only the cheap comparison and the `@Observable` assignments come
+            // back on.
+            Task.detached(priority: .utility) { [weak self] in
+                guard let self else { return }
+                let snapHashInterval = signposter.beginInterval("snapshotContentHash")
+                let newSnapHash = self.snapshotContentHash(for: update)
+                signposter.endInterval("snapshotContentHash", snapHashInterval)
+                let libHashInterval = signposter.beginInterval("libraryMetaHash")
+                let newLibHash = self.libraryMetaHash(for: update.library)
+                signposter.endInterval("libraryMetaHash", libHashInterval)
+                await MainActor.run {
+                    self.commitPodcastProjection(
+                        update: update, frameRev: frameRev,
+                        newSnapHash: newSnapHash, newLibHash: newLibHash)
+                }
+            }
+        }
+    }
+
+    /// Commit the rev-gated `podcastSnapshot`/`library` assignments. Shared by
+    /// both the inline (pull) and detached (push) hashing paths so they can
+    /// never drift. The `frameRev == lastProcessedRev` reentrancy guard is
+    /// load-bearing for the async path — 4 Hz hops interleave, so a
+    /// late-returning stale frame must not clobber newer state; `lastProcessedRev`
+    /// is monotonic, so a newer frame already advanced it (newest wins). On the
+    /// synchronous path the guard is trivially true (nothing ran between
+    /// assigning `lastProcessedRev` above and arriving here).
+    private func commitPodcastProjection(
+        update: PodcastUpdate, frameRev: UInt64, newSnapHash: Int, newLibHash: Int
+    ) {
+        guard frameRev == lastProcessedRev else { return }
+        if newSnapHash != lastSnapshotContentHash {
+            lastSnapshotContentHash = newSnapHash
+            podcastSnapshot = update
+        }
+        if newLibHash != lastLibraryMetaHash {
+            lastLibraryMetaHash = newLibHash
+            library = update.library
+        }
     }
 
     func applyConfiguration() {
@@ -289,7 +378,9 @@ final class KernelModel {
             kmLog.error("dispatch_action rejected: \(message, privacy: .public)")
             lastErrorToast = message
         }
-        pullPodcastSnapshotIfChanged()
+        // Synchronous: a user action must be reflected in the same runloop pass
+        // rather than waiting for the next 4 Hz push frame.
+        pullPodcastSnapshotIfChanged(synchronous: true)
         return result
     }
 
@@ -306,7 +397,8 @@ final class KernelModel {
         if case let .failure(message) = result {
             kmLog.error("dispatch_action (silent) rejected: \(message, privacy: .public)")
         }
-        pullPodcastSnapshotIfChanged()
+        // Synchronous: same same-runloop contract as `dispatch`.
+        pullPodcastSnapshotIfChanged(synchronous: true)
         return result
     }
 
@@ -417,6 +509,8 @@ final class KernelModel {
         snapshotCount &+= 1
         lastSnapshotAt = Date()
         // Drive the podcast observable surface from the pushed projection.
-        applyPodcastUpdate(result.update)
+        // Async: no synchronous freshness contract on the 4 Hz push path, so the
+        // O(N×M) hashing is offloaded off the MainActor.
+        applyPodcastUpdate(result.update, synchronous: false)
     }
 }

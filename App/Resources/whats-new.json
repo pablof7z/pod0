@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-01T19:50:00Z",
+      "lines": [
+        "Smoother library scrolling during playback — snapshot diffing now runs off the main thread"
+      ]
+    },
+    {
       "shipped_at": "2026-06-01T19:45:00Z",
       "lines": [
         "Your profile, notes, and clips now publish to Nostr through the app core for faster, more reliable signing"
