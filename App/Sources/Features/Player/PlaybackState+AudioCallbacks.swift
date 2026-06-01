@@ -60,27 +60,40 @@ extension PlaybackState {
         }
         engine.onItemEnd = { [weak self, weak audio] url in
             audio?.emitReport(.itemEnd(url: url))
-            // Run the iOS-side mark-played path so side effects (delete-after-
-            // played, position cache flush, projection invalidation) fire in
-            // addition to Rust's own apply_writeback mark — but only when the
-            // user's "mark played at end" setting is on. Rust's apply_writeback
-            // gates the same way, so leaving this ungated would mark episodes
-            // played (and delete-after-played) against the user's preference.
+            // Mark-played-at-end is the KERNEL's policy on this path. The
+            // `itemEnd` report above drives Rust's `apply_writeback` ItemEnd
+            // branch, which flips `played` (gated on `auto_mark_played_at_end`),
+            // rewinds the stored position to 0, and bumps the snapshot rev — the
+            // resulting frame round-trips `played`/`position` back through the
+            // projection (`toEpisode`). So no Swift `markEpisodePlayed` mark is
+            // needed here; doing it would duplicate the kernel-owned decision.
+            //
+            // Delete-after-played, however, has no kernel policy (see
+            // `markEpisodePlayed` for the full rationale: the kernel owns the
+            // delete *operation* but not the *trigger* on played). So we keep a
+            // gated delete reaction here, mirroring the kernel's own
+            // `auto_mark_played_at_end` gate so a finished-but-not-marked
+            // episode is never deleted against the user's preference.
             guard let self, let episodeID = self.episode?.id else { return }
             guard self.store?.state.settings.autoMarkPlayedAtEnd == true else { return }
-            self.store?.markEpisodePlayed(episodeID)
+            self.store?.deleteDownloadIfAutoDeleteAfterPlayed(episodeID)
         }
         engine.onSleepTimerEpisodeEnd = { [weak self] in
             // Sleep timer stopped at end of episode: position was already flushed
             // via onPauseEvent. This path deliberately skips emitting `itemEnd`
             // so Rust's `maybe_auto_advance` doesn't fire.
             guard let self, let episodeID = self.episode?.id else { return }
-            // Mark played + run iOS side effects only if the user setting allows
-            // (matches the natural-end path and Rust's apply_writeback gate).
-            // The position rewind for this completed episode is handled in
-            // `AudioEngine.handleEndOfItem`, which reports the final paused
-            // position as 0 on the ordered audio-report channel (no racy
-            // separate host op).
+            // UNLIKE `onItemEnd`, this path cannot delegate mark-played to the
+            // kernel: suppressing `itemEnd` (to avoid auto-advance) also means
+            // Rust's `apply_writeback` ItemEnd branch — the only kernel path
+            // that honours `auto_mark_played_at_end` — never runs. A bare
+            // `kernelMarkPlayed` dispatch (`inbox/mark_listened`) is
+            // unconditional and would ignore the user's setting. So the Swift
+            // `markEpisodePlayed` stays the marker here, gated on the setting to
+            // match the natural-end semantics. It also routes the gated
+            // delete-after-played policy. The position rewind for this completed
+            // episode is handled in `AudioEngine.handleEndOfItem`, which reports
+            // the final paused position as 0 on the ordered audio-report channel.
             if self.store?.state.settings.autoMarkPlayedAtEnd == true {
                 self.store?.markEpisodePlayed(episodeID)
             }

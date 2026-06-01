@@ -147,6 +147,21 @@ worktrees currently in flight.
   paused/failed rows instead of only completed local paths. Remaining:
   validate background URLSession restore, deletion failure, and offline-first
   playback on device.
+- **delete-after-played-kernel-policy.** The "Delete after played" policy still
+  lives on the Swift side (`AppStateStore.markEpisodePlayed` and the
+  `deleteDownloadIfAutoDeleteAfterPlayed` reaction on `onItemEnd`). The kernel
+  owns the *operation* (`delete_download` → `clear_local_path`) and the
+  *setting* (`auto_delete_downloads_after_played`, with a setter in
+  `host_op_handler.rs` and a snapshot projection), but no kernel path reads the
+  setting to trigger the delete: neither `mark_episode_played`
+  (`store/playback.rs`) nor the `ItemEnd` branch of `apply_writeback`
+  (`ffi/audio_report.rs`) consults it. To finish delegating this policy to Rust,
+  `mark_episode_played` (or the `ItemEnd` handler) should, when
+  `auto_delete_downloads_after_played` is on and the episode is downloaded,
+  `clear_local_path` and emit the file-deletion through the download capability
+  so iOS removes the bytes. Once that lands, drop the Swift gate in
+  `markEpisodePlayed` and the `onItemEnd` `deleteDownloadIfAutoDeleteAfterPlayed`
+  call. Deferred from `feat/mark-played-kernel` (no-Rust-changes constraint).
 - **settings-completion.** Finish playback/settings projection parity:
   skip intervals, auto-skip ads, streaming/offline preferences, onboarding
   gate, provider settings, and persistence migration.
