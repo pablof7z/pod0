@@ -85,6 +85,30 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(
         0
     };
 
+    // Restore the user's configured relays from the `.nmp-relay-config.json`
+    // sidecar, if present. This is the load half of the C-ABI relay-config
+    // persistence (`store::relay_config`); the save half lives in the host-op
+    // handler's relay-edit arm.
+    //
+    // WHY HERE (not in `register`): `register` runs BEFORE any data dir is
+    // known, so it cannot read the sidecar. It seeds the declared defaults via
+    // `set_initial_relays_for_start` unconditionally. This function runs after
+    // `register` and before `nmp_app_start` (see the caller contract above),
+    // which is exactly the window `set_initial_relays_for_start` requires — the
+    // actor reads the staged `initial_relays` only when it handles
+    // `ActorCommand::Start`. So overriding the staged seed here makes the
+    // register-time seed genuinely first-install-only: a returning user with a
+    // saved sidecar gets their edited list; a fresh install (no sidecar) keeps
+    // the defaults `register` already staged.
+    //
+    // SAFETY: `handle.app` is the live `*mut NmpApp` the handle was registered
+    // with; the actor thread is joined before `nmp_app_free`, so the pointer is
+    // valid here (this runs before `nmp_app_start`, well before teardown).
+    let saved_relays = crate::store::relay_config::load_relay_config(&path_buf);
+    if !saved_relays.is_empty() && !handle.app.is_null() {
+        unsafe { &*handle.app }.set_initial_relays_for_start(saved_relays);
+    }
+
     if loaded > 0 || !loaded_queue.is_empty() || identity_loaded || keys_loaded > 0 {
         // Force the next snapshot poll to pick up the restored library,
         // queue, identity, and/or owned-podcast keys even though no write

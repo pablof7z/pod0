@@ -41,6 +41,7 @@ mod projections_tests;
 #[cfg(test)]
 mod projections_tests_ext;
 mod register;
+pub(crate) mod relay_persist;
 pub(crate) mod snapshot;
 mod snapshot_categories;
 mod snapshot_downloads;
