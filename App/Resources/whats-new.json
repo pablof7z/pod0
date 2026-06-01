@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-01T01:00:00Z",
+      "lines": [
+        "The relay your agent uses for Nostr is now clearly labeled \"Agent Relay\" in Identity → Connection, with a note on what it's used for."
+      ]
+    },
+    {
       "shipped_at": "2026-05-31T16:00:00Z",
       "lines": [
         "Nostr show discovery is now fully reactive — results appear as relays respond."
