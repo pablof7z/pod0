@@ -88,11 +88,14 @@ struct FeedbackThreadDetailView: View {
                 imageViewer(image)
             }
         }
-        .task(id: bubblePubkeysKey) {
-            let pubkeys = burstSlots.map(\.pubkey).filter { !$0.isEmpty }
-            guard !pubkeys.isEmpty else { return }
-            await NostrProfileFetcher(store: appStore).fetchProfiles(for: Array(Set(pubkeys)))
-        }
+        .claimNostrProfiles(bubblePubkeys, consumer: "FeedbackThreadDetailView")
+    }
+
+    /// Author pubkeys of every message in this thread. Claimed while the
+    /// view is on screen so names + avatars resolve via the kernel's
+    /// `resolved_profiles` push into `nostrProfileCache`.
+    private var bubblePubkeys: Set<String> {
+        Set(burstSlots.map(\.pubkey).filter { !$0.isEmpty })
     }
 
     // MARK: - Burst grouping
@@ -105,13 +108,6 @@ struct FeedbackThreadDetailView: View {
             slots.append(BurstSlot(pubkey: reply.authorPubkey, createdAt: reply.createdAt))
         }
         return slots
-    }
-
-    /// Stable key for the profile-fetch task so it only re-runs when the
-    /// set of authors changes (not on every reply append from the same
-    /// people).
-    private var bubblePubkeysKey: String {
-        Set(burstSlots.map(\.pubkey)).sorted().joined(separator: ",")
     }
 
     private func showHeader(at index: Int) -> Bool {

@@ -9,6 +9,14 @@ import os.log
 /// Designed to be cheap to call: the websocket is closed as soon as EOSE
 /// arrives, or after a hard timeout. Concurrent calls are safe — each one
 /// owns its own socket and `REQ` id.
+///
+/// SCOPE: display surfaces no longer use this — they ride the kernel's
+/// `resolved_profiles` push via `claimNostrProfiles(_:consumer:)` (see
+/// `ClaimNostrProfiles.swift`). The two remaining callers fetch synchronously
+/// where an async push can't be awaited: `NostrAgentResponder` (the peer's
+/// kind:0 inside a 2s prompt-building window) and `NostrRelayService`'s
+/// approval-enrich (snapshots the profile straight into the approval record).
+/// Do not reintroduce this for reactive display paths.
 @MainActor
 final class NostrProfileFetcher {
 

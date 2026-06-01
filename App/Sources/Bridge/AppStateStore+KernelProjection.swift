@@ -214,8 +214,13 @@ extension AppStateStore {
         // (createdAt = 0): its `existing.fetchedFromCreatedAt >= 0` guard makes
         // this idempotent and never downgrades a real relay-sourced kind:0
         // (createdAt > 0), while still seeding pubkeys the cache hasn't seen.
-        // `NostrProfileFetcher` (active relay subscriptions) is untouched and
-        // coexists — resolved_profiles is pre-populated, not a replacement.
+        // This is the delivery half of reference-first profile resolution:
+        // display surfaces `claimNostrProfiles(_:consumer:)` the pubkeys they
+        // render, the kernel resolves each kind:0 over its relay pool, and the
+        // result lands here on the next push frame. The bespoke
+        // `NostrProfileFetcher` remains only for `NostrAgentResponder`'s
+        // synchronous prompt-building window and the approval-enrich snapshot —
+        // neither of which an async push can satisfy.
         mergeResolvedProfiles(identity.resolvedProfiles)
 
         onNowPlayingSnapshot?(snapshot, library)

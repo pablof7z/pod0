@@ -70,10 +70,17 @@ struct NostrConversationsView: View {
                 openedRootID = rootID
             }
         }
+        .claimNostrProfiles(counterpartyPubkeys, consumer: "NostrConversationsView")
     }
 
     private var sortedConversations: [NostrConversationRecord] {
         store.state.nostrConversations.sorted { $0.lastTouched > $1.lastTouched }
+    }
+
+    /// Every counterparty pubkey in the conversation list. Claimed while this
+    /// view is on screen so names + avatars resolve via the kernel push.
+    private var counterpartyPubkeys: Set<String> {
+        Set(store.state.nostrConversations.map(\.counterpartyPubkey))
     }
 }
 

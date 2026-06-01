@@ -145,6 +145,26 @@ void nmp_broker_free_string(char *ptr);
 // supplied identity id (hex pubkey). The actor drops the row + invalidates
 // any cached keys; the next snapshot tick reflects the change.
 void nmp_app_remove_account(void *app, const char *identity_id);
+
+// ── Profile claim / release (T114 reference-first profile resolution) ─────
+//
+// `nmp_app_claim_profile` registers a refcounted interest in `pubkey`'s kind:0
+// profile keyed by `consumer_id`. On the cold-claim transition the kernel
+// enqueues a kind:0 REQ against its configured relay pool (or queues it until a
+// relay connects), owning all relay/cache policy. The resolved profile surfaces
+// in `projections.resolved_profiles` (and `claimed_profiles`) on the next
+// snapshot tick — i.e. it rides the same reactive push the shell already folds
+// into `nostrProfileCache` via `mergeResolvedProfiles`. This is the designed
+// replacement for a host opening its own websocket to fetch kind:0.
+//
+// `nmp_app_release_profile` decrements the per-consumer refcount; the kernel
+// drops the pending request when the last consumer releases. Both are
+// FFI-clean (D6): a null/invalid pubkey or consumer id is a silent no-op.
+// `pubkey` MUST be lowercase hex; `consumer_id` is a host-chosen stable token
+// (typically the view identity) so claims dedupe and release matches claim.
+// Declared per `crates/nmp-ffi/src/timeline.rs`.
+void nmp_app_claim_profile(void *app, const char *pubkey, const char *consumer_id);
+void nmp_app_release_profile(void *app, const char *pubkey, const char *consumer_id);
 // Deliver a JSON-encoded VoiceReport (STT partial/final, listening
 // started/stopped, speak started/finished, error) to the Rust voice
 // projection. Currently always returns NULL — voice mode has no

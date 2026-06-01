@@ -51,9 +51,6 @@ struct FeedbackView: View {
         }
         .task {
             await store.load(identity: userIdentity)
-            // First load: if "Everyone" was selected last time, fetch
-            // profiles so author names land before the row renders.
-            if !showMine { await fetchVisibleProfiles() }
         }
         .sheet(isPresented: $composerPresented) {
             FeedbackComposeView(store: store, workflow: workflow)
@@ -66,18 +63,21 @@ struct FeedbackView: View {
                 composerPresented = true
             }
         }
-        .onChange(of: showMine) { _, isMine in
-            guard !isMine else { return }
-            Task { await fetchVisibleProfiles() }
-        }
+        .claimNostrProfiles(visibleAuthorPubkeys, consumer: "FeedbackView")
     }
 
-    private func fetchVisibleProfiles() async {
-        let others = store.threads
-            .map(\.authorPubkey)
-            .filter { !$0.isEmpty && $0 != userIdentity.publicKeyHex }
-        guard !others.isEmpty else { return }
-        await NostrProfileFetcher(store: appStore).fetchProfiles(for: Array(Set(others)))
+    /// Non-self thread authors visible when "Everyone" is selected. Claimed
+    /// while the view is on screen so their names + avatars resolve via the
+    /// kernel's `resolved_profiles` push. Empty when "Mine" is selected (own
+    /// threads need no profile lookup) — the claim modifier releases the
+    /// previously-claimed set when this flips, and re-claims on toggle back.
+    private var visibleAuthorPubkeys: Set<String> {
+        guard !showMine else { return [] }
+        return Set(
+            store.threads
+                .map(\.authorPubkey)
+                .filter { !$0.isEmpty && $0 != userIdentity.publicKeyHex }
+        )
     }
 
     private func authorName(for thread: FeedbackThread) -> String? {

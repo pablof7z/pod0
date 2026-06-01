@@ -372,6 +372,26 @@ final class KernelModel {
         kernel.removeAccount(identityId: active)
     }
 
+    // ── Profile resolution (reference-first; rides resolved_profiles) ──────
+    //
+    // Replaces the host opening its own websocket to fetch kind:0. A view that
+    // displays a Nostr profile claims the pubkey on appear and releases on
+    // disappear; the kernel fetches kind:0 over its own relay pool and delivers
+    // the result via `projections.resolved_profiles`, which
+    // `AppStateStore.mergeResolvedProfiles` folds into `nostrProfileCache`. The
+    // display then re-renders reactively. `consumerID` is a stable per-view
+    // token so the kernel's refcount dedupes and release matches claim.
+
+    /// Claim a refcounted interest in `pubkeyHex`'s kind:0 profile.
+    func claimProfile(pubkeyHex: String, consumerID: String) {
+        kernel.claimProfile(pubkeyHex: pubkeyHex, consumerID: consumerID)
+    }
+
+    /// Release a previously-claimed profile interest.
+    func releaseProfile(pubkeyHex: String, consumerID: String) {
+        kernel.releaseProfile(pubkeyHex: pubkeyHex, consumerID: consumerID)
+    }
+
     // ── Snapshot apply ─────────────────────────────────────────────────────
 
     private func apply(result: KernelUpdateResult) {

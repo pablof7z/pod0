@@ -68,4 +68,27 @@ extension PodcastHandle {
     func removeAccount(identityId: String) {
         identityId.withCString { nmp_app_remove_account(raw, $0) }
     }
+
+    /// Register a refcounted interest in `pubkeyHex`'s kind:0 profile under
+    /// `consumerID`. The kernel fetches the profile over its own relay pool
+    /// (cold claim) and surfaces it in `projections.resolved_profiles` on the
+    /// next snapshot tick — the same push `mergeResolvedProfiles` folds into
+    /// `nostrProfileCache`. Fire-and-forget (D6): an invalid pubkey is a no-op.
+    func claimProfile(pubkeyHex: String, consumerID: String) {
+        pubkeyHex.withCString { pk in
+            consumerID.withCString { cid in
+                nmp_app_claim_profile(raw, pk, cid)
+            }
+        }
+    }
+
+    /// Release a previously-claimed profile interest. The kernel drops the
+    /// pending request when the last consumer releases. Mirrors `claimProfile`.
+    func releaseProfile(pubkeyHex: String, consumerID: String) {
+        pubkeyHex.withCString { pk in
+            consumerID.withCString { cid in
+                nmp_app_release_profile(raw, pk, cid)
+            }
+        }
+    }
 }
