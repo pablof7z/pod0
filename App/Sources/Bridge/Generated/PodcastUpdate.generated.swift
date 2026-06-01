@@ -182,6 +182,14 @@ struct SettingsSnapshot: Equatable {
     var elevenLabsConnectedAt: Date? = nil
     /// STT provider selection enum (raw String: "apple_native", etc).
     var sttProvider: String = "apple_native"
+    /// Kernel-resolved effective STT provider after the fallback policy runs
+    /// (raw String: "apple_native" | "elevenlabs_scribe" | "assemblyai" |
+    /// "openrouter_whisper"). Act on THIS, not `sttProvider` — it already
+    /// accounts for a key-requiring provider whose key is absent.
+    var effectiveSttProvider: String = "apple_native"
+    /// Whether the resolved `effectiveSttProvider` needs an API key to run.
+    /// Always `false` when the policy fell back to "apple_native".
+    var effectiveSttProviderRequiresKey: Bool = false
     /// OpenRouter Whisper model string. Default `"openai/whisper-1"`.
     var openRouterWhisperModel: String = "openai/whisper-1"
     /// AssemblyAI STT model string. Default `"universal-3-pro,universal-2"`.
@@ -355,6 +363,8 @@ extension SettingsSnapshot: Codable {
         case elevenLabsBYOKKeyLabel = "eleven_labs_byok_key_label"
         case elevenLabsConnectedAt
         case sttProvider = "stt_provider"
+        case effectiveSttProvider
+        case effectiveSttProviderRequiresKey
         case openRouterWhisperModel = "open_router_whisper_model"
         case assemblyAISTTModel = "assembly_ai_stt_model"
         case elevenLabsSTTModel = "eleven_labs_stt_model"
@@ -425,6 +435,8 @@ extension SettingsSnapshot: Codable {
             elevenLabsConnectedAt = Date(timeIntervalSince1970: TimeInterval(timestamp))
         }
         sttProvider = try c.decodeIfPresent(String.self, forKey: .sttProvider) ?? "apple_native"
+        effectiveSttProvider = try c.decodeIfPresent(String.self, forKey: .effectiveSttProvider) ?? "apple_native"
+        effectiveSttProviderRequiresKey = try c.decodeIfPresent(Bool.self, forKey: .effectiveSttProviderRequiresKey) ?? false
         openRouterWhisperModel = try c.decodeIfPresent(String.self, forKey: .openRouterWhisperModel) ?? "openai/whisper-1"
         assemblyAISTTModel = try c.decodeIfPresent(String.self, forKey: .assemblyAISTTModel) ?? "universal-3-pro,universal-2"
         elevenLabsSTTModel = try c.decodeIfPresent(String.self, forKey: .elevenLabsSTTModel) ?? "scribe_v1"

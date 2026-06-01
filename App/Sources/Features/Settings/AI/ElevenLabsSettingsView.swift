@@ -155,6 +155,9 @@ struct ElevenLabsSettingsView: View {
     private func refreshCredentialState() {
         hasStoredKey = ElevenLabsCredentialStore.hasAPIKey()
         if !hasStoredKey { keyInfo = nil }
+        // Re-report STT key presence so the kernel's STT fallback policy
+        // recomputes `settings.effectiveSttProvider` after a save/delete.
+        store.syncSTTKeysPresent()
     }
 
     private func validateStoredKey() async {

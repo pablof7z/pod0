@@ -35,6 +35,7 @@ mod playback;
 mod persistence;
 pub mod podcast_keys;
 mod settings;
+pub mod stt_policy;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
@@ -254,6 +255,14 @@ pub struct PodcastStore {
     /// told otherwise, avoiding unnecessary cellular charges on startup).
     /// Not persisted — refreshed from the capability on every app launch.
     pub(super) is_on_wifi: bool,
+    /// Set of STT-provider raw values (`"elevenlabs_scribe"`, `"assemblyai"`,
+    /// `"openrouter_whisper"`) whose API key is present in the iOS Keychain.
+    /// Rust never holds the secret itself — Swift reads the Keychain and
+    /// reports presence via `podcast.settings.set_stt_keys_present`. This is
+    /// the signal the kernel-owned STT fallback policy reads to decide whether
+    /// a key-requiring provider can run or must downgrade to `apple_native`.
+    /// Not persisted — Swift re-syncs it from the Keychain on every app launch.
+    pub(super) stt_keys_present: std::collections::BTreeSet<String>,
     data_dir: Option<PathBuf>,
     /// Episode ids loaded from disk during `set_data_dir`. Drained exactly
     /// once by `take_loaded_queue`; the FFI layer seeds the shared
@@ -344,6 +353,7 @@ impl PodcastStore {
             nostr_profile_picture: String::new(),
             nostr_public_key_hex: None,
             is_on_wifi: true,
+            stt_keys_present: std::collections::BTreeSet::new(),
             data_dir: None,
             loaded_queue: Vec::new(),
             cached_queue: Vec::new(),
