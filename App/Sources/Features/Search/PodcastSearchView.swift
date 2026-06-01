@@ -7,7 +7,7 @@ struct PodcastSearchView: View {
     @State private var destination: PodcastSearchDestination?
 
     private var localResults: PodcastLocalSearchResults {
-        PodcastSearchEngine.localResults(query: model.debouncedQuery, state: store.state)
+        PodcastSearchEngine.localResults(query: model.debouncedQuery, state: store.composedState)
     }
 
     private var hasAnyResults: Bool {

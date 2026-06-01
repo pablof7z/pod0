@@ -142,7 +142,7 @@ struct DownloadsManagerView: View {
     private var downloadRows: [DownloadManagerRowData] {
         let podcasts = Dictionary(uniqueKeysWithValues: store.state.podcasts.map { ($0.id, $0) })
 
-        return store.state.episodes.compactMap { episode in
+        return store.episodes.compactMap { episode in
             guard let status = status(for: episode) else { return nil }
             let podcast = podcasts[episode.podcastID]
             return DownloadManagerRowData(

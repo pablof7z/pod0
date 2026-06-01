@@ -254,7 +254,7 @@ final class AdSegmentDetectorTests: XCTestCase {
             pubDate: Date(timeIntervalSince1970: 1_700_000_000),
             enclosureURL: URL(string: "https://example.com/a.mp3")!
         )
-        store.state.episodes = [episode]
+        store.episodes = [episode]
 
         let segments: [Episode.AdSegment] = [
             Episode.AdSegment(start: 0, end: 30, kind: .preroll),

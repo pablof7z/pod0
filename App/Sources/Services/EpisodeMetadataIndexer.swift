@@ -97,7 +97,7 @@ final class EpisodeMetadataIndexer {
         backfillRunning = true
         defer { backfillRunning = false }
 
-        let pending = appStore.state.episodes
+        let pending = appStore.episodes
             .filter { !$0.metadataIndexed }
             .map(\.id)
         guard !pending.isEmpty else {

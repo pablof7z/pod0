@@ -37,7 +37,7 @@ final class EpisodePlayedStateTests: XCTestCase {
 
         store.markEpisodePlayed(ep.id)
 
-        let updated = try XCTUnwrap(store.state.episodes.first { $0.id == ep.id })
+        let updated = try XCTUnwrap(store.episodes.first { $0.id == ep.id })
         XCTAssertTrue(updated.played, "Mark-played must set `played = true`")
         XCTAssertEqual(updated.podcastID, sub.id)
     }
@@ -46,22 +46,22 @@ final class EpisodePlayedStateTests: XCTestCase {
         // Half-listened episode → mark-played → re-play should start from 0.
         let (_, ep) = seed()
         store.setEpisodePlaybackPosition(ep.id, position: 1234.5)
-        XCTAssertEqual(store.state.episodes.first?.playbackPosition, 1234.5)
+        XCTAssertEqual(store.episodes.first?.playbackPosition, 1234.5)
 
         store.markEpisodePlayed(ep.id)
 
-        let updated = try XCTUnwrap(store.state.episodes.first { $0.id == ep.id })
+        let updated = try XCTUnwrap(store.episodes.first { $0.id == ep.id })
         XCTAssertEqual(updated.playbackPosition, 0,
                        "Mark-played must reset playback to 0 so re-play starts from the top")
     }
 
     func testMarkPlayedNoOpsForUnknownID() {
         let (_, ep) = seed()
-        let snapshot = store.state.episodes.first { $0.id == ep.id }
+        let snapshot = store.episodes.first { $0.id == ep.id }
 
         store.markEpisodePlayed(UUID())
 
-        let after = store.state.episodes.first { $0.id == ep.id }
+        let after = store.episodes.first { $0.id == ep.id }
         XCTAssertEqual(snapshot, after, "Mark-played with an unknown ID must not mutate any episode")
     }
 
@@ -70,11 +70,11 @@ final class EpisodePlayedStateTests: XCTestCase {
     func testMarkUnplayedClearsTheFlag() throws {
         let (_, ep) = seed()
         store.markEpisodePlayed(ep.id)
-        XCTAssertEqual(store.state.episodes.first?.played, true)
+        XCTAssertEqual(store.episodes.first?.played, true)
 
         store.markEpisodeUnplayed(ep.id)
 
-        let updated = try XCTUnwrap(store.state.episodes.first { $0.id == ep.id })
+        let updated = try XCTUnwrap(store.episodes.first { $0.id == ep.id })
         XCTAssertFalse(updated.played)
     }
 
@@ -88,7 +88,7 @@ final class EpisodePlayedStateTests: XCTestCase {
 
         store.markEpisodeUnplayed(ep.id)
 
-        let updated = try XCTUnwrap(store.state.episodes.first { $0.id == ep.id })
+        let updated = try XCTUnwrap(store.episodes.first { $0.id == ep.id })
         XCTAssertEqual(updated.playbackPosition, 0)
         XCTAssertFalse(updated.played)
     }
@@ -97,16 +97,16 @@ final class EpisodePlayedStateTests: XCTestCase {
 
     func testRoundTrip() throws {
         let (_, ep) = seed()
-        XCTAssertFalse(store.state.episodes.first?.played ?? true)
+        XCTAssertFalse(store.episodes.first?.played ?? true)
 
         store.markEpisodePlayed(ep.id)
-        XCTAssertEqual(store.state.episodes.first?.played, true)
+        XCTAssertEqual(store.episodes.first?.played, true)
 
         store.markEpisodeUnplayed(ep.id)
-        XCTAssertEqual(store.state.episodes.first?.played, false)
+        XCTAssertEqual(store.episodes.first?.played, false)
 
         store.markEpisodePlayed(ep.id)
-        XCTAssertEqual(store.state.episodes.first?.played, true)
+        XCTAssertEqual(store.episodes.first?.played, true)
     }
 
     // MARK: - setEpisodePlaybackPosition
@@ -118,10 +118,10 @@ final class EpisodePlayedStateTests: XCTestCase {
 
         store.setEpisodePlaybackPosition(other.id, position: 42)
 
-        let otherStored = try XCTUnwrap(store.state.episodes.first { $0.id == other.id })
+        let otherStored = try XCTUnwrap(store.episodes.first { $0.id == other.id })
         XCTAssertEqual(otherStored.playbackPosition, 42, accuracy: 0.001)
         // Other episodes in the same subscription are untouched.
-        let originalsUntouched = store.state.episodes.filter { $0.id != other.id }
+        let originalsUntouched = store.episodes.filter { $0.id != other.id }
         XCTAssertTrue(originalsUntouched.allSatisfy { $0.playbackPosition == 0 })
     }
 

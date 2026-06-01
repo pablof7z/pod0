@@ -591,6 +591,18 @@ worktrees currently in flight.
 
 ## Active P2 - Cross-Cutting Technical Debt
 
+- **observable-granularity-podcasts-subscriptions.** PR for
+  `fix/observable-granularity` promoted `episodes` out of the single
+  `AppStateStore.state` into its own `@Observable` stored property (the hot
+  field that churns at playback / mark-played / triage cadence), so episode
+  mutations no longer re-render settings/nostr/agent surfaces. `podcasts` and
+  `subscriptions` were intentionally left inside `state`: they are cold-path
+  (subscribe/unsubscribe only) and pulling them would have meant editing ~24
+  more read sites for marginal benefit. Follow-up: if profiling shows library
+  grid re-renders driven by a `state` write to a cold field, split
+  `podcasts`/`subscriptions` out the same way (`store.podcasts` /
+  `store.subscriptions`), re-composing them at the persistence seam alongside
+  `episodes` in `runStateSideEffects` / `composedState`.
 - **m5-non-utf8-feed-bodies.** Widen HTTP capability body transfer to preserve
   non-UTF8 feed bytes. Update Swift and Rust so XML encoding declarations are
   honored.

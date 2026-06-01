@@ -20,7 +20,7 @@ extension RootView {
         case .episode(let uuid):
             spotlightSheet = .episode(uuid)
         case .episodeByGUID(let guid, let startTime):
-            if let episode = store.state.episodes.first(where: { $0.id.uuidString == guid || $0.guid == guid }) {
+            if let episode = store.episodes.first(where: { $0.id.uuidString == guid || $0.guid == guid }) {
                 if let startTime {
                     playbackState.setEpisode(episode)
                     playbackState.navigationalSeek(to: startTime)

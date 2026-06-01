@@ -38,7 +38,7 @@ extension AgentPicksService {
 
     func makeFingerprint(store: AppStateStore, category: PodcastCategory?) -> PicksFingerprint {
         let allowed = category.map { Set($0.subscriptionIDs) }
-        let unplayed = store.state.episodes.filter { ep in
+        let unplayed = store.episodes.filter { ep in
             guard !ep.played else { return false }
             if let allowed { return allowed.contains(ep.podcastID) }
             return true
@@ -73,7 +73,7 @@ extension AgentPicksService {
         let unplayed: [Episode]
         let inProgress: [Episode]
         if let allowedSubs {
-            unplayed = store.state.episodes
+            unplayed = store.episodes
                 .filter { !$0.played && allowedSubs.contains($0.podcastID) }
                 .sorted { $0.pubDate > $1.pubDate }
                 .prefix(Self.promptSubscriptionCap)
@@ -91,7 +91,7 @@ extension AgentPicksService {
         let scopedTopics = HomeCategoryScope.topicsInCategory(
             topics: store.threadingTopics,
             mentions: store.state.threadingMentions,
-            episodes: store.state.episodes,
+            episodes: store.episodes,
             allowedSubscriptionIDs: allowedSubs
         )
         let topicNames = scopedTopics.prefix(3).map { $0.displayName }

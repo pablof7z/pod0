@@ -641,6 +641,7 @@
 		E2DE2F86BC10C63E271C989C /* TuistAssets+Podcastr.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99DB1DA9B59A5E414FB49EA3 /* TuistAssets+Podcastr.swift */; };
 		E33F8D59EDFA9805B638A1AA /* DeepLinkHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29F6076526CA3A2B32A3F8A7 /* DeepLinkHandlerTests.swift */; };
 		E3A9200AF6532A700F4604CA /* PodcastSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CADB09C7101B2717B7FA6A8 /* PodcastSearchView.swift */; };
+		E3C3DF0FB0D71A7CB30C6D4C /* AppStateStore+Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64C3D3C27ED0AD9791FEB59D /* AppStateStore+Settings.swift */; };
 		E4151E61041623F5B0BA311F /* WikiVerifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED739916259DCA1C1404E60 /* WikiVerifier.swift */; };
 		E42216B0651009E75B0436EF /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2E73D63396EF21AF9CA1562 /* Settings.swift */; };
 		E4979F80C351BDC8B7652D5E /* NostrRelayService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9EAFD61A06355CEEBAD9AF7 /* NostrRelayService.swift */; };
@@ -1083,6 +1084,7 @@
 		641B7B6727D57CA53D90E43D /* PlaybackState+Queue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlaybackState+Queue.swift"; sourceTree = "<group>"; };
 		64334EEB9F70E379F701528A /* AppSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSidebarView.swift; sourceTree = "<group>"; };
 		64423DF6A4BB13725F785B08 /* AppTheme+ViewExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppTheme+ViewExtensions.swift"; sourceTree = "<group>"; };
+		64C3D3C27ED0AD9791FEB59D /* AppStateStore+Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+Settings.swift"; sourceTree = "<group>"; };
 		64CCEB4A7701F0ACD3FEA63D /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		64DB68ECE06F82597B5DCE9E /* HomeActiveFilterChipsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeActiveFilterChipsTests.swift; sourceTree = "<group>"; };
 		654532F9ECE33BB8040DDFFB /* CachedAsyncImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedAsyncImage.swift; sourceTree = "<group>"; };
@@ -2069,6 +2071,7 @@
 				325AAE8B62A04BEFC34A5FB0 /* AppStateStore+Podcasts.swift */,
 				3879641F41F035F7862DC411 /* AppStateStore+PositionDebounce.swift */,
 				0E1E1A08FB171B82AEA9ECE5 /* AppStateStore+ScheduledTasks.swift */,
+				64C3D3C27ED0AD9791FEB59D /* AppStateStore+Settings.swift */,
 				E8350DA2ECAB3BD4233213FF /* AppStateStore+Sorting.swift */,
 				5FFD4A10896F06EBDE8D4102 /* AppStateStore+STTKeys.swift */,
 				31822DD58237A18EDF0122A4 /* AppStateStore+Subscriptions.swift */,
@@ -3477,6 +3480,7 @@
 				C66C7D89009C2E6FBB3C7F17 /* AppStateStore+PositionDebounce.swift in Sources */,
 				ADD1DBE40FBB87B32EF0754B /* AppStateStore+STTKeys.swift in Sources */,
 				8F22C51EE96910944EACB918 /* AppStateStore+ScheduledTasks.swift in Sources */,
+				E3C3DF0FB0D71A7CB30C6D4C /* AppStateStore+Settings.swift in Sources */,
 				A227B537B4465D6B2E5D50A4 /* AppStateStore+Sorting.swift in Sources */,
 				A10F908B29438687A833C418 /* AppStateStore+Subscriptions.swift in Sources */,
 				C77DBC83450A4C649F71B3A8 /* AppStateStore+Threading.swift in Sources */,

@@ -76,7 +76,7 @@ extension AppStateStore {
     /// (newest first). Episodes the user no longer has in their library are
     /// silently filtered so the timeline never points at dead ids.
     func threadingMentions(forTopic id: UUID) -> [ThreadingMention] {
-        let knownEpisodeIDs = Set(state.episodes.map(\.id))
+        let knownEpisodeIDs = Set(self.episodes.map(\.id))
         return state.threadingMentions
             .filter { $0.topicID == id && knownEpisodeIDs.contains($0.episodeID) }
             .sorted { lhs, rhs in

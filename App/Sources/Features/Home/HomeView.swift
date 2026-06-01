@@ -147,7 +147,7 @@ struct HomeView: View {
 
     private var topActiveThreadKey: TopActiveThreadKey {
         TopActiveThreadKey(
-            episodeCount: store.state.episodes.count,
+            episodeCount: store.episodes.count,
             totalUnplayed: store.unplayedCountByShow.values.reduce(0, +),
             mentionCount: store.state.threadingMentions.count,
             categoryID: selectedCategoryID

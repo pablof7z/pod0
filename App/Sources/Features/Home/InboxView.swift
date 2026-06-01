@@ -47,7 +47,7 @@ struct InboxView: View {
     }
 
     private var inboxEpisodes: [Episode] {
-        store.state.episodes
+        store.episodes
             .filter { ep in
                 guard ep.triageDecision == .inbox, !ep.played else { return false }
                 if let allowed = allowedSubscriptionIDs,

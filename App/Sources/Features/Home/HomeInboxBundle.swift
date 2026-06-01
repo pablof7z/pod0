@@ -30,7 +30,7 @@ enum HomeInboxBundleBuilder {
         allowedSubscriptionIDs: Set<UUID>?,
         now: Date = Date()
     ) -> HomeAgentPicksBundle {
-        let inbox = store.state.episodes
+        let inbox = store.episodes
             .filter { episode in
                 guard episode.triageDecision == .inbox else { return false }
                 // Triage marks `.inbox` even after the user has started

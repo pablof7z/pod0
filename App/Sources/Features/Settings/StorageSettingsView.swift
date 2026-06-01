@@ -267,7 +267,7 @@ struct StorageSettingsView: View {
         guard !files.isEmpty else { return .empty }
 
         // Pre-build lookup tables.
-        let episodes = Dictionary(uniqueKeysWithValues: store.state.episodes.map { ($0.id, $0) })
+        let episodes = Dictionary(uniqueKeysWithValues: store.episodes.map { ($0.id, $0) })
         let podcasts = Dictionary(uniqueKeysWithValues: store.state.podcasts.map { ($0.id, $0) })
 
         var byShow: [UUID: (title: String, bytes: Int64, episodes: Set<UUID>)] = [:]

@@ -154,7 +154,7 @@ extension AppStateStore {
                 .filter { $0.feedURL == sentinel || $0.id == defaultPodcastID }
                 .map(\.id)
         )
-        let legacyEpisodes = state.episodes.filter { legacyPodcastIDs.contains($0.podcastID) }
+        let legacyEpisodes = episodes.filter { legacyPodcastIDs.contains($0.podcastID) }
         guard !legacyEpisodes.isEmpty else {
             // Nothing to migrate (fresh install, or every episode already
             // produced by a #215+ build). Mark done so we never walk again.
@@ -314,7 +314,7 @@ extension AppStateStore {
         // without its own id (and thus its summary key) changing. No risk of a
         // stale `podcastID` surviving reuse.
         let priorEpisodesByID = Dictionary(
-            state.episodes.map { ($0.id, $0) },
+            self.episodes.map { ($0.id, $0) },
             uniquingKeysWith: { first, _ in first }
         )
         var episodes: [Episode] = []
@@ -379,7 +379,9 @@ extension AppStateStore {
                 episodes[idx].chapters = prior.chapters
             }
         }
-        next.episodes = episodes
+        // Assign the projected list to the live `self.episodes` stored property
+        // inside the batch below (episodes no longer round-trip through `state`).
+        let projectedEpisodes = episodes
 
         // ── Settings ─────────────────────────────────────────────────────
         let ks = snapshot?.settings ?? SettingsSnapshot()
@@ -433,6 +435,7 @@ extension AppStateStore {
         // on a real content change and adds no new cost class.
         performMutationBatch {
             state = next
+            self.episodes = projectedEpisodes
 
             invalidateEpisodeProjections()
 

@@ -44,16 +44,18 @@ extension AppStateStore {
     /// on the all-podcasts list for podcasts the user never followed.
     func deletePodcast(podcastID: UUID) {
         kernelUnsubscribe(podcastID: podcastID)
-        let removedEpisodeIDs = state.episodes
+        let removedEpisodeIDs = episodes
             .filter { $0.podcastID == podcastID }
             .map(\.id)
 
         var next = state
         next.subscriptions.removeAll { $0.podcastID == podcastID }
         next.podcasts.removeAll { $0.id == podcastID }
-        next.episodes.removeAll { $0.podcastID == podcastID }
         performMutationBatch {
             state = next
+            // Episodes are a separate stored property now — remove them
+            // directly rather than through the `next` DTO copy.
+            episodes.removeAll { $0.podcastID == podcastID }
             invalidateEpisodeProjections()
         }
 

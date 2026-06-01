@@ -205,7 +205,7 @@ struct SettingsView: View {
 
     private var dataRecordCount: Int {
         store.state.subscriptions.count
-            + store.state.episodes.count
+            + store.episodes.count
             + store.activeNotes.count
             + store.activeMemories.count
             + store.state.friends.count
@@ -235,7 +235,7 @@ struct SettingsView: View {
         var active = 0
         var failed = 0
         var downloaded = 0
-        for episode in store.state.episodes {
+        for episode in store.episodes {
             switch episode.downloadState {
             case .queued, .downloading:
                 active += 1

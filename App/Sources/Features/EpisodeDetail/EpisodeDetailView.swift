@@ -229,7 +229,7 @@ struct EpisodeDetailView: View {
     )
     store.state.podcasts = [podcast]
     store.state.subscriptions = [PodcastSubscription(podcastID: subID)]
-    store.state.episodes = [episode]
+    store.episodes = [episode]
     return NavigationStack {
         EpisodeDetailView(episodeID: episode.id)
     }
