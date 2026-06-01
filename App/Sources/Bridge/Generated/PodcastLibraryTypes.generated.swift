@@ -122,6 +122,10 @@ struct ChapterSummary: Equatable, Hashable {
     var imageUrl: String? = nil
     var url: String? = nil
     var isAiGenerated: Bool = false
+    /// UUID string of the source episode when this chapter is a clip from
+    /// another episode (agent-generated TTS snippet turns). Drives the
+    /// clip-source chip + mid-play artwork swap in the player.
+    var sourceEpisodeId: String? = nil
 }
 
 /// One advertisement interval inside an episode's audio track.
@@ -239,5 +243,6 @@ extension ChapterSummary: Codable {
         imageUrl = try c.decodeIfPresent(String.self, forKey: .imageUrl)
         url = try c.decodeIfPresent(String.self, forKey: .url)
         isAiGenerated = try c.decodeIfPresent(Bool.self, forKey: .isAiGenerated) ?? false
+        sourceEpisodeId = try c.decodeIfPresent(String.self, forKey: .sourceEpisodeId)
     }
 }

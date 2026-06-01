@@ -21,6 +21,62 @@ fn action_ids_match_documented_strings() {
         "podcast.publish.publish_author_claim"
     );
     assert_eq!(ACTION_PUBLISH_REMOVE_OWNED, "podcast.publish.remove_owned_podcast");
+    assert_eq!(
+        ACTION_PUBLISH_REGISTER_SYNTHETIC_EPISODE,
+        "podcast.publish.register_synthetic_episode"
+    );
+}
+
+#[test]
+fn register_synthetic_episode_round_trips_with_chapters() {
+    let a = PublishAction::RegisterSyntheticEpisode {
+        podcast_id: "pod-1".into(),
+        episode_id: "ep-1".into(),
+        title: "Episode One".into(),
+        audio_path: "/tmp/ep-1.m4a".into(),
+        duration_secs: Some(90.0),
+        chapters: vec![
+            SyntheticChapterArg {
+                start_secs: 0.0,
+                title: "Intro".into(),
+                image_url: None,
+                source_episode_id: None,
+            },
+            SyntheticChapterArg {
+                start_secs: 30.0,
+                title: "Clip".into(),
+                image_url: Some("https://img/c.png".into()),
+                source_episode_id: Some("src-ep".into()),
+            },
+        ],
+        transcript: Some("transcript text".into()),
+    };
+    let json = serde_json::to_string(&a).expect("encode");
+    assert!(json.contains(r#""op":"register_synthetic_episode""#));
+    assert!(json.contains(r#""audio_path":"/tmp/ep-1.m4a""#));
+    assert!(json.contains(r#""source_episode_id":"src-ep""#));
+    let decoded: PublishAction = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, a);
+}
+
+#[test]
+fn register_synthetic_episode_decodes_with_defaults() {
+    // Minimal wire shape from Swift: no duration, no chapters, no transcript.
+    let json = r#"{"op":"register_synthetic_episode","podcast_id":"p","episode_id":"e","title":"T","audio_path":"/tmp/a.m4a"}"#;
+    let decoded: PublishAction = serde_json::from_str(json).expect("decode");
+    match decoded {
+        PublishAction::RegisterSyntheticEpisode {
+            duration_secs,
+            chapters,
+            transcript,
+            ..
+        } => {
+            assert!(duration_secs.is_none());
+            assert!(chapters.is_empty());
+            assert!(transcript.is_none());
+        }
+        other => panic!("wrong variant: {other:?}"),
+    }
 }
 #[test]
 fn create_owned_podcast_round_trips() {

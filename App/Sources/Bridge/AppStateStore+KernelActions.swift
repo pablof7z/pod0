@@ -444,6 +444,38 @@ extension AppStateStore {
         kernel?.dispatch(namespace: "podcast.publish", body: body)
     }
 
+    /// Register an agent-generated episode (TTS composer output) into the Rust
+    /// kernel store under a synthetic podcast. The kernel becomes the source of
+    /// truth so the episode survives the projection full-replace tick (it is no
+    /// longer held only in the Swift render store) and `publish_episode` can
+    /// resolve it by id for NIP-F4 publishing.
+    ///
+    /// Swift still owns the audio file write — `audioPath` is the local path of
+    /// the already-stitched m4a. `chapters` carry the parity fields (`imageUrl`
+    /// for the mid-play artwork swap, `sourceEpisodeId` for the source chip).
+    /// Fire-and-forget: the episode appears on the next projection tick.
+    func kernelRegisterSyntheticEpisode(
+        podcastId: String,
+        episodeId: String,
+        title: String,
+        audioPath: String,
+        durationSecs: Double?,
+        chapters: [[String: Any]],
+        transcript: String?
+    ) {
+        var body: [String: Any] = [
+            "op": "register_synthetic_episode",
+            "podcast_id": podcastId,
+            "episode_id": episodeId,
+            "title": title,
+            "audio_path": audioPath,
+            "chapters": chapters,
+        ]
+        if let durationSecs { body["duration_secs"] = durationSecs }
+        if let transcript { body["transcript"] = transcript }
+        kernel?.dispatch(namespace: "podcast.publish", body: body)
+    }
+
     /// Claim ownership of a podcast for NIP-F4 publishing: Rust generates a
     /// per-podcast keypair and stamps `owner_pubkey_hex`. Must run before any
     /// `publish_show` / `publish_episode` for that podcast — those ops fail

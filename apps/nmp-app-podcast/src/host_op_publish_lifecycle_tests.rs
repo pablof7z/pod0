@@ -59,6 +59,77 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
 }
 
 #[test]
+fn register_synthetic_episode_inserts_into_kernel_store() {
+    use crate::ffi::actions::publish_module::SyntheticChapterArg;
+
+    let store = Arc::new(Mutex::new(PodcastStore::new()));
+    let handler = handler_with_store(store.clone());
+    let pid = uuid::Uuid::new_v4().to_string();
+
+    // Parent synthetic podcast must exist first.
+    let created = create_synthetic(
+        &handler,
+        pid.clone(),
+        "Agent Generated".into(),
+        String::new(),
+        "Agent".into(),
+        None,
+        None,
+        vec![],
+        Some("public".into()),
+    );
+    assert_eq!(created["ok"], true);
+    let rev_before = handler.rev.load(std::sync::atomic::Ordering::Relaxed);
+
+    let eid = uuid::Uuid::new_v4().to_string();
+    let out = register_synthetic_episode(
+        &handler,
+        pid.clone(),
+        eid.clone(),
+        "Episode One".into(),
+        "/tmp/agent-ep.m4a".into(),
+        Some(42.0),
+        vec![SyntheticChapterArg {
+            start_secs: 0.0,
+            title: "Intro".into(),
+            image_url: None,
+            source_episode_id: None,
+        }],
+        Some("the transcript".into()),
+    );
+    assert_eq!(out["ok"], true);
+    assert_eq!(out["episode_id"], eid);
+    assert!(
+        handler.rev.load(std::sync::atomic::Ordering::Relaxed) > rev_before,
+        "rev must bump so the projection picks up the episode"
+    );
+
+    let guard = store.lock().unwrap();
+    let pod_id = podcast_core::PodcastId(uuid::Uuid::parse_str(&pid).unwrap());
+    let eps = guard.episodes_for(pod_id);
+    assert_eq!(eps.len(), 1);
+    assert_eq!(eps[0].title, "Episode One");
+    assert_eq!(guard.transcript_for(&eid), Some("the transcript"));
+}
+
+#[test]
+fn register_synthetic_episode_fails_when_podcast_missing() {
+    let store = Arc::new(Mutex::new(PodcastStore::new()));
+    let handler = handler_with_store(store);
+    let out = register_synthetic_episode(
+        &handler,
+        uuid::Uuid::new_v4().to_string(),
+        uuid::Uuid::new_v4().to_string(),
+        "Orphan".into(),
+        "/tmp/x.m4a".into(),
+        None,
+        vec![],
+        None,
+    );
+    assert_eq!(out["ok"], false);
+}
+
+#[test]
 fn create_synthetic_inserts_row_then_create_owned_succeeds() {
     let store = Arc::new(Mutex::new(PodcastStore::new()));
     let handler = handler_with_store(store.clone());

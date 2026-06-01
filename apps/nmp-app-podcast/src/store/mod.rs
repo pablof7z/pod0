@@ -30,7 +30,7 @@ pub mod auto_download;
 pub mod identity;
 mod library;
 mod memory;
-mod owned_ext;
+pub(crate) mod owned_ext;
 mod playback;
 mod persistence;
 pub mod podcast_keys;

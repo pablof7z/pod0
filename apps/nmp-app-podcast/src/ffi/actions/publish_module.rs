@@ -35,6 +35,15 @@ use nmp_core::ActorCommand;
 /// and requires the row to already exist).
 pub const ACTION_PUBLISH_CREATE_SYNTHETIC: &str = "podcast.publish.create_synthetic_podcast";
 
+/// `podcast.publish.register_synthetic_episode` — insert an
+/// agent-generated episode (from the TTS composer) under a synthetic
+/// podcast so the kernel store is the source of truth. Without this the
+/// episode lives only in the Swift render store and is wiped by the next
+/// projection full-replace tick; with it, `publish_episode` can also find
+/// the episode by id to publish via NIP-F4.
+pub const ACTION_PUBLISH_REGISTER_SYNTHETIC_EPISODE: &str =
+    "podcast.publish.register_synthetic_episode";
+
 /// `podcast.publish.create_owned_podcast` — generate a per-podcast
 /// secret key, derive the pubkey, write `owner_pubkey_hex` back onto
 /// the `Podcast` row.
@@ -75,7 +84,22 @@ pub const ACTION_PUBLISH_REMOVE_OWNED: &str = "podcast.publish.remove_owned_podc
 /// `PlayerAction` — the iOS shell encodes
 /// `{"op":"publish_show","podcast_id":"…"}` and the action module
 /// dispatches the variant to the host-op handler.
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+/// One chapter for a `RegisterSyntheticEpisode` op. `image_url` +
+/// `source_episode_id` carry the parity fields the Swift TTS composer built on
+/// `Episode.Chapter` (mid-play artwork swap + source-episode chip). They round
+/// the kernel store, not just the wire, so the projected chapter is identical
+/// to the pre-kernel build.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+pub struct SyntheticChapterArg {
+    pub start_secs: f64,
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_episode_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum PublishAction {
     /// Insert a synthetic (feed-less) podcast row from full metadata.
@@ -97,6 +121,24 @@ pub enum PublishAction {
         categories: Vec<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         visibility: Option<String>,
+    },
+    /// Insert an agent-generated episode under a synthetic podcast so the
+    /// kernel store owns it (survives the projection full-replace tick).
+    /// `podcast_id` / `episode_id` are the Swift-minted UUID strings.
+    /// `audio_path` is the local file path of the stitched m4a (Swift still
+    /// owns the file write). `chapters` carry the parity fields; `transcript`
+    /// is the flat episode transcript text.
+    RegisterSyntheticEpisode {
+        podcast_id: String,
+        episode_id: String,
+        title: String,
+        audio_path: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        duration_secs: Option<f64>,
+        #[serde(default)]
+        chapters: Vec<SyntheticChapterArg>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        transcript: Option<String>,
     },
     CreateOwnedPodcast {
         podcast_id: String,

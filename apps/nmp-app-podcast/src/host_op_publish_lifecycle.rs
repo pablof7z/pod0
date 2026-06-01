@@ -28,6 +28,7 @@ use podcast_discovery::KIND_SHOW;
 use crate::ffi::actions::publish_module::PublishAction;
 use crate::host_op_handler::PodcastHostOpHandler;
 use crate::host_op_publish::{dispatch_nostr_relay, publish_show, sign_event};
+use crate::store::owned_ext::SyntheticChapter;
 
 /// NIP-09 deletion request kind.
 const KIND_DELETION: u32 = 5;
@@ -77,6 +78,24 @@ pub fn handle_lifecycle_action(
             author,
             artwork_url,
             visibility,
+        ),
+        PublishAction::RegisterSyntheticEpisode {
+            podcast_id,
+            episode_id,
+            title,
+            audio_path,
+            duration_secs,
+            chapters,
+            transcript,
+        } => register_synthetic_episode(
+            handler,
+            podcast_id,
+            episode_id,
+            title,
+            audio_path,
+            duration_secs,
+            chapters,
+            transcript,
         ),
         PublishAction::DeleteOwnedPodcast { podcast_id } => delete_owned(handler, podcast_id),
         other => serde_json::json!({
@@ -132,6 +151,57 @@ pub fn create_synthetic(
     }
     handler.rev.fetch_add(1, Ordering::Relaxed);
     serde_json::json!({"ok": true})
+}
+
+/// `podcast.publish.register_synthetic_episode` — insert an agent-generated
+/// episode (TTS composer output) into the kernel store under a synthetic
+/// podcast so the kernel is the SSOT: the episode survives the projection
+/// full-replace tick, and `publish_episode` can later resolve it by id.
+///
+/// Returns `ok: false` when the parent podcast row does not exist, or when the
+/// episode id / audio path is unusable (mirrors `insert_synthetic_episode`'s
+/// no-op cases). Bumps `rev` on success so the projection picks the episode up.
+#[allow(clippy::too_many_arguments)]
+pub fn register_synthetic_episode(
+    handler: &PodcastHostOpHandler,
+    podcast_id: String,
+    episode_id: String,
+    title: String,
+    audio_path: String,
+    duration_secs: Option<f64>,
+    chapters: Vec<crate::ffi::actions::publish_module::SyntheticChapterArg>,
+    transcript: Option<String>,
+) -> serde_json::Value {
+    let chapters: Vec<SyntheticChapter> = chapters
+        .into_iter()
+        .map(|c| SyntheticChapter {
+            start_secs: c.start_secs,
+            title: c.title,
+            image_url: c.image_url,
+            source_episode_id: c.source_episode_id,
+        })
+        .collect();
+
+    let inserted = match handler.store.lock() {
+        Ok(mut s) => s.insert_synthetic_episode(
+            &podcast_id,
+            &episode_id,
+            title,
+            &audio_path,
+            duration_secs,
+            chapters,
+            transcript,
+        ),
+        Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+    };
+    if !inserted {
+        return serde_json::json!({
+            "ok": false,
+            "error": format!("could not register episode {episode_id} under podcast {podcast_id}")
+        });
+    }
+    handler.rev.fetch_add(1, Ordering::Relaxed);
+    serde_json::json!({"ok": true, "episode_id": episode_id})
 }
 
 /// `podcast.publish.update_owned_podcast` — apply a partial metadata

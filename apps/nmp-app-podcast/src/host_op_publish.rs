@@ -45,6 +45,7 @@ pub fn handle_publish_action(
         // (keeps this file under the 500-LOC hard limit). It owns its own
         // variant destructuring via `handle_lifecycle_action`.
         action @ (PublishAction::CreateSyntheticPodcast { .. }
+        | PublishAction::RegisterSyntheticEpisode { .. }
         | PublishAction::UpdateOwnedPodcast { .. }
         | PublishAction::DeleteOwnedPodcast { .. }) => {
             crate::host_op_publish_lifecycle::handle_lifecycle_action(handler, action)

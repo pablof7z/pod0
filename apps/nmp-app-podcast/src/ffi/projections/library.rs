@@ -263,6 +263,12 @@ pub struct ChapterSummary {
     pub is_ai_generated: bool,
     #[serde(default, skip_serializing_if = "ChapterSource::is_publisher")]
     pub source: ChapterSource,
+    /// UUID string of the source episode when this chapter is a clip from
+    /// another episode (agent-generated TTS episodes with snippet turns).
+    /// Drives the clip-source chip + mid-play artwork swap in the iOS player.
+    /// Omitted on the wire when absent (the common publisher-chapter case).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_episode_id: Option<String>,
 }
 
 /// NIP-F4 podcast discovery result projected into the iOS Add Show sheet.

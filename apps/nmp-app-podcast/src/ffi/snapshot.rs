@@ -133,6 +133,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
                                             url: c.link_url.as_ref().map(|u| u.to_string()),
                                             is_ai_generated: c.is_ai_generated,
                                             source: c.source,
+                                            source_episode_id: c.source_episode_id.clone(),
                                         })
                                         .collect()
                                 })

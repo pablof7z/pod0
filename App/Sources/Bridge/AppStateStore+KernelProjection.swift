@@ -372,7 +372,8 @@ private extension ChapterSummary {
             title: title,
             imageURL: imageUrl.flatMap { URL(string: $0) },
             linkURL: url.flatMap { URL(string: $0) },
-            isAIGenerated: isAiGenerated
+            isAIGenerated: isAiGenerated,
+            sourceEpisodeID: sourceEpisodeId
         )
     }
 }

@@ -87,37 +87,63 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
         // none.
         let inheritedArtwork = chapters.first(where: { $0.imageURL != nil })?.imageURL
 
-        // 4. Register the episode and optionally start playback.
-        let episode = await MainActor.run {
-            guard let store else { return Optional<Episode>.none }
-            return AgentGeneratedPodcastService.publishEpisode(
+        // 4. Register the episode in the Rust kernel store (the source of
+        //    truth) so it survives the `applyKernelState` full-replace tick and
+        //    `publish_episode` can later resolve it by id. The kernel owns the
+        //    episode lifecycle now; Swift only writes the audio file (already
+        //    done above) and builds the chapter structure. Chapter building
+        //    stays here because the artwork / source-episode-title resolution it
+        //    needs reads the Swift store. Chapters carry `imageUrl` +
+        //    `sourceEpisodeId` for parity (mid-play artwork swap + source chip).
+        let podcastID: String = await MainActor.run {
+            guard let store else { return "" }
+            let resolvedPodcastID = targetPodcastID
+                ?? AgentGeneratedPodcastService.ensurePodcastID(in: store)
+            store.kernelRegisterSyntheticEpisode(
+                podcastId: resolvedPodcastID.uuidString,
+                episodeId: episodeID.uuidString,
                 title: title,
-                description: description ?? "",
-                audioURL: outputURL,
-                durationSeconds: durationSeconds,
-                imageURL: inheritedArtwork,
-                generationSource: generationSource,
-                targetPodcastID: targetPodcastID,
-                in: store
+                audioPath: outputURL.path,
+                durationSecs: durationSeconds,
+                chapters: chapters.map(Self.chapterWire),
+                transcript: transcript.segments.map(\.text)
+                    .joined(separator: " ").nilIfEmpty
             )
+            // Persist the timed transcript to the Swift TranscriptStore (file
+            // I/O stays in Swift). The kernel holds the flat text for the
+            // projection; the timed segments back the iOS transcript view.
+            try? TranscriptStore.shared.save(transcript)
+            return resolvedPodcastID.uuidString
         }
 
-        guard let episode else {
+        guard !podcastID.isEmpty else {
             throw AgentTTSError.storeUnavailable
         }
 
-        // 5. Persist transcript, chapters, and set adSegments = [] so
-        //    AIChapterCompiler skips this already-structured episode.
-        await MainActor.run {
-            guard let store else { return }
-            try? TranscriptStore.shared.save(transcript)
-            store.setEpisodeTranscriptState(episode.id, state: .ready(source: .other))
-            store.setEpisodeChapters(episode.id, chapters: chapters)
-            store.setEpisodeAdSegments(episode.id, segments: [])
-        }
-
-        // 6. Optionally start playback.
+        // 5. Optionally start playback. The episode is not yet in the Swift
+        //    store (it rides the next projection push), so drive the player off
+        //    a locally-built `Episode` value — `PlaybackState.setEpisode`
+        //    retains its own reference and loads from the (already-downloaded)
+        //    local file, so it does not read this back from the store.
         if playNow {
+            let episode = Episode(
+                id: episodeID,
+                podcastID: targetPodcastID ?? AgentGeneratedPodcastService.defaultPodcastID,
+                guid: episodeID.uuidString,
+                title: title,
+                description: description ?? "",
+                pubDate: Date(),
+                duration: durationSeconds,
+                enclosureURL: outputURL,
+                enclosureMimeType: "audio/mp4",
+                imageURL: inheritedArtwork,
+                chapters: chapters,
+                downloadState: .downloaded(
+                    localFileURL: outputURL,
+                    byteCount: (try? FileManager.default.attributesOfItem(atPath: outputURL.path)[.size] as? Int64) ?? 0
+                ),
+                generationSource: generationSource
+            )
             await MainActor.run {
                 guard let playback else { return }
                 playback.setEpisode(episode)
@@ -126,22 +152,30 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
             }
         }
 
-        let podcastID: String
-        if let targetPodcastID {
-            podcastID = targetPodcastID.uuidString
-        } else {
-            podcastID = await MainActor.run {
-                store?.podcast(feedURL: AgentGeneratedPodcastService.sentinelFeedURL)?.id.uuidString ?? ""
-            }
-        }
-
         return TTSEpisodeResult(
-            episodeID: episode.id.uuidString,
+            episodeID: episodeID.uuidString,
             podcastID: podcastID,
             title: title,
             durationSeconds: durationSeconds,
             publishedToLibrary: true
         )
+    }
+
+    /// Convert an `Episode.Chapter` into the `register_synthetic_episode` wire
+    /// dict. Carries the parity fields (`image_url`, `source_episode_id`) the
+    /// kernel stores and projects back onto the episode's chapters.
+    private static func chapterWire(_ chapter: Episode.Chapter) -> [String: Any] {
+        var dict: [String: Any] = [
+            "start_secs": chapter.startTime,
+            "title": chapter.title,
+        ]
+        if let imageURL = chapter.imageURL {
+            dict["image_url"] = imageURL.absoluteString
+        }
+        if let sourceEpisodeID = chapter.sourceEpisodeID {
+            dict["source_episode_id"] = sourceEpisodeID
+        }
+        return dict
     }
 
     // MARK: - Track building

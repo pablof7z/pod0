@@ -159,6 +159,165 @@ fn update_owned_metadata_returns_false_for_unknown() {
 }
 
 #[test]
+fn insert_synthetic_episode_registers_under_synthetic_podcast() {
+    let mut store = PodcastStore::new();
+    let pid = Uuid::new_v4().to_string();
+    store.insert_synthetic_podcast(
+        &pid,
+        "Agent Generated".into(),
+        String::new(),
+        "Agent".into(),
+        None,
+        None,
+        vec![],
+        NostrVisibility::Public,
+    );
+
+    // A real temp file so the file:// URL + byte-count path resolves.
+    let dir = std::env::temp_dir();
+    let audio = dir.join(format!("synthetic-{}.m4a", Uuid::new_v4()));
+    std::fs::write(&audio, b"fake-m4a-bytes").unwrap();
+    let audio_path = audio.to_string_lossy().to_string();
+
+    let eid = Uuid::new_v4().to_string();
+    let ok = store.insert_synthetic_episode(
+        &pid,
+        &eid,
+        "Episode One".into(),
+        &audio_path,
+        Some(123.5),
+        vec![
+            SyntheticChapter {
+                start_secs: 0.0,
+                title: "Intro".into(),
+                image_url: None,
+                source_episode_id: None,
+            },
+            SyntheticChapter {
+                start_secs: 30.0,
+                title: "Clip".into(),
+                image_url: Some("https://img/clip.png".into()),
+                source_episode_id: Some("source-ep-id".into()),
+            },
+        ],
+        Some("hello world transcript".into()),
+    );
+    assert!(ok);
+
+    let parsed = Uuid::parse_str(&eid).unwrap();
+    let ep_id = EpisodeId(parsed);
+    let pod_id = PodcastId(Uuid::parse_str(&pid).unwrap());
+    let eps = store.episodes_for(pod_id);
+    assert_eq!(eps.len(), 1);
+    let ep = &eps[0];
+    assert_eq!(ep.id, ep_id);
+    assert_eq!(ep.title, "Episode One");
+    assert_eq!(ep.duration_secs, Some(123.5));
+    assert!(!ep.played);
+    assert_eq!(ep.position_secs, 0.0);
+    assert!(matches!(
+        ep.download_state,
+        podcast_core::types::download::DownloadState::Downloaded { .. }
+    ));
+    // Episode artwork inherited from the first chapter that has one.
+    assert_eq!(
+        ep.image_url.as_ref().map(|u| u.as_str()),
+        Some("https://img/clip.png")
+    );
+    let chapters = ep.chapters.as_ref().expect("chapters present");
+    assert_eq!(chapters.len(), 2);
+    assert!(chapters.iter().all(|c| c.is_ai_generated));
+    assert_eq!(chapters[1].source_episode_id.as_deref(), Some("source-ep-id"));
+    assert_eq!(
+        chapters[1].image_url.as_ref().map(|u| u.as_str()),
+        Some("https://img/clip.png")
+    );
+
+    // Side-maps: download_path projection source + flat transcript + empty ads.
+    assert_eq!(store.local_path_for(&ep_id), Some(audio_path.as_str()));
+    assert_eq!(store.transcript_for(&eid), Some("hello world transcript"));
+    assert!(store.ad_segments_for(&eid).is_empty());
+
+    let _ = std::fs::remove_file(&audio);
+}
+
+#[test]
+fn insert_synthetic_episode_is_idempotent_on_episode_id() {
+    let mut store = PodcastStore::new();
+    let pid = Uuid::new_v4().to_string();
+    store.insert_synthetic_podcast(
+        &pid,
+        "Agent Generated".into(),
+        String::new(),
+        "Agent".into(),
+        None,
+        None,
+        vec![],
+        NostrVisibility::Public,
+    );
+    let pod_id = PodcastId(Uuid::parse_str(&pid).unwrap());
+    let eid = Uuid::new_v4().to_string();
+
+    let insert = |store: &mut PodcastStore, title: &str| {
+        store.insert_synthetic_episode(
+            &pid,
+            &eid,
+            title.into(),
+            "/tmp/agent-episode.m4a",
+            None,
+            vec![],
+            None,
+        )
+    };
+    assert!(insert(&mut store, "First"));
+    assert!(insert(&mut store, "Second"));
+    let eps = store.episodes_for(pod_id);
+    assert_eq!(eps.len(), 1, "re-register must replace, not duplicate");
+    assert_eq!(eps[0].title, "Second");
+}
+
+#[test]
+fn insert_synthetic_episode_rejects_unknown_podcast() {
+    let mut store = PodcastStore::new();
+    let ok = store.insert_synthetic_episode(
+        &Uuid::new_v4().to_string(),
+        &Uuid::new_v4().to_string(),
+        "Orphan".into(),
+        "/tmp/x.m4a",
+        None,
+        vec![],
+        None,
+    );
+    assert!(!ok);
+}
+
+#[test]
+fn insert_synthetic_episode_rejects_bad_episode_id() {
+    let mut store = PodcastStore::new();
+    let pid = Uuid::new_v4().to_string();
+    store.insert_synthetic_podcast(
+        &pid,
+        "Agent Generated".into(),
+        String::new(),
+        "Agent".into(),
+        None,
+        None,
+        vec![],
+        NostrVisibility::Public,
+    );
+    let ok = store.insert_synthetic_episode(
+        &pid,
+        "not-a-uuid",
+        "Bad".into(),
+        "/tmp/x.m4a",
+        None,
+        vec![],
+        None,
+    );
+    assert!(!ok);
+}
+
+#[test]
 fn remove_podcast_and_episodes_clears_row_and_episodes() {
     let mut store = PodcastStore::new();
     let podcast = Podcast::new("ToDelete");
