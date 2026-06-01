@@ -226,6 +226,19 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     .unwrap_or_default();
 
     let categories = build_category_aggregate(&library);
+    // Agent-prompt inventory context (kernel-owned selection/ordering/capping).
+    // Derived from the already-assembled `library` so it reuses resolved
+    // position/played/triage/pub-date without a second store lock. `None` when
+    // the library is empty so a fresh install stays byte-identical to the stub.
+    let agent_context = if library.is_empty() {
+        None
+    } else {
+        let now_unix = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0);
+        Some(super::agent_context::build_agent_context(&library, now_unix))
+    };
     let search_results = handle.search_results.lock().ok().map(|r| r.clone()).unwrap_or_default();
     let nostr_results = handle.nostr_results.lock().ok().map(|r| r.clone()).unwrap_or_default();
     // Proactive briefing trigger: if a configured schedule makes a briefing
@@ -359,6 +372,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         downloads,
         voice,
         agent,
+        agent_context,
         categories,
         briefing,
         social,

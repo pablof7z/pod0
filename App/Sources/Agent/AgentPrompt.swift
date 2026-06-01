@@ -10,19 +10,25 @@ import Foundation
 ///
 /// Includes the friend list, recent notes, and persisted memories the
 /// template ships with.
+///
+/// ## Inventory policy lives in the Rust kernel
+///
+/// The selection / ordering / capping of the inventory sections
+/// (Subscriptions, In Progress, Recent) is computed by the kernel and
+/// surfaced as `PodcastUpdate.agentContext` (see
+/// `ffi::projections::AgentContextSnapshot`). This builder only renders the
+/// kernel's pre-selected lists into prompt strings — it owns the *template*
+/// (section headers, title truncation, bullet joining), not the *policy*
+/// (which shows, which episodes, the recency window). Friends / Notes /
+/// Memories remain `AppState`-sourced because they are not inventory policy.
 enum AgentPrompt {
 
-    // Inventory caps — keep the prompt under a few KB even with a heavy library.
-    private enum Cap {
-        static let subscriptions = 30
-        static let inProgress = 5
-        static let recentUnplayed = 10
-        static let recentWindowDays: Double = 7
-        static let titleChars = 80
-    }
+    /// Max title length rendered before truncation. The kernel owns the
+    /// list caps + recency window; this is the only render-side limit.
+    private static let titleChars = 80
 
     @MainActor
-    static func build(for state: AppState) -> String {
+    static func build(for state: AppState, agentContext: AgentContextSnapshot?) -> String {
         var sections: [String] = []
 
         sections.append("""
@@ -62,50 +68,28 @@ enum AgentPrompt {
 
         sections.append(Self.skillsCatalog())
 
-        // Prompt the agent with the user's followed podcasts only. Synthetic
-        // shows (Agent Generated, Unknown) don't carry user follow rows, so
-        // they're filtered out by the join.
-        let followedPodcastIDs = Set(state.subscriptions.map(\.podcastID))
-        let followedPodcasts = state.podcasts.filter { followedPodcastIDs.contains($0.id) }
-        if !followedPodcasts.isEmpty {
-            let titles = followedPodcasts
-                .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
-                .prefix(Cap.subscriptions)
-                .map { "- \(truncate($0.title))" }
-                .joined(separator: "\n")
-            let suffix = followedPodcasts.count > Cap.subscriptions
-                ? "\n…and \(followedPodcasts.count - Cap.subscriptions) more"
-                : ""
-            sections.append("## Subscriptions (\(followedPodcasts.count))\n\(titles)\(suffix)")
-        }
+        // Inventory sections render the kernel-computed `agentContext`. The
+        // kernel already filtered to followed shows, dropped archived /
+        // played / out-of-window episodes, sorted, and capped each list.
+        if let ctx = agentContext {
+            if !ctx.subscriptions.isEmpty {
+                let titles = ctx.subscriptions
+                    .map { "- \(truncate($0))" }
+                    .joined(separator: "\n")
+                let suffix = ctx.subscriptionsTotal > ctx.subscriptions.count
+                    ? "\n…and \(ctx.subscriptionsTotal - ctx.subscriptions.count) more"
+                    : ""
+                sections.append("## Subscriptions (\(ctx.subscriptionsTotal))\n\(titles)\(suffix)")
+            }
 
-        // AI Inbox: archived episodes are silently soft-hidden from the agent's prompt context.
-        let inProgress = state.episodes
-            .filter { !$0.played && !$0.isTriageArchived && $0.playbackPosition > 0 }
-            .sorted { $0.pubDate > $1.pubDate }
-            .prefix(Cap.inProgress)
-        if !inProgress.isEmpty {
-            let lookup = subscriptionTitlesByID(state)
-            let lines = inProgress.map { ep -> String in
-                let show = lookup[ep.podcastID] ?? "Unknown show"
-                return "- \(truncate(ep.title)) — \(show)"
-            }.joined(separator: "\n")
-            sections.append("## In Progress\n\(lines)")
-        }
+            if !ctx.inProgress.isEmpty {
+                sections.append("## In Progress\n\(episodeLines(ctx.inProgress))")
+            }
 
-        let cutoff = Date().addingTimeInterval(-Cap.recentWindowDays * 86_400)
-        // AI Inbox: archived episodes are silently soft-hidden from the agent's prompt context.
-        let recentUnplayed = state.episodes
-            .filter { !$0.played && !$0.isTriageArchived && $0.playbackPosition == 0 && $0.pubDate >= cutoff }
-            .sorted { $0.pubDate > $1.pubDate }
-            .prefix(Cap.recentUnplayed)
-        if !recentUnplayed.isEmpty {
-            let lookup = subscriptionTitlesByID(state)
-            let lines = recentUnplayed.map { ep -> String in
-                let show = lookup[ep.podcastID] ?? "Unknown show"
-                return "- \(truncate(ep.title)) — \(show)"
-            }.joined(separator: "\n")
-            sections.append("## Recent (last \(Int(Cap.recentWindowDays)) days, unplayed)\n\(lines)")
+            if !ctx.recentUnplayed.isEmpty {
+                let header = "## Recent (last \(ctx.recentWindowDays) days, unplayed)"
+                sections.append("\(header)\n\(episodeLines(ctx.recentUnplayed))")
+            }
         }
 
         if !state.friends.isEmpty {
@@ -142,6 +126,11 @@ enum AgentPrompt {
     /// Renders the `## Skills` section enumerating every registered skill.
     /// The agent reads this list and calls `use_skill(skill_id:)` to opt in
     /// to a skill's instructions and tools.
+    ///
+    /// The skill catalog stays Swift-side: `AgentSkillRegistry` is the single
+    /// canonical source for each skill's id / summary / manual / tool schema,
+    /// and it drives the `use_skill` activation path. The kernel has no
+    /// equivalent registry, so this is template, not inventory policy.
     @MainActor
     private static func skillsCatalog() -> String {
         let lines = AgentSkillRegistry.all
@@ -155,12 +144,15 @@ enum AgentPrompt {
         """
     }
 
-    private static func subscriptionTitlesByID(_ state: AppState) -> [UUID: String] {
-        Dictionary(uniqueKeysWithValues: state.podcasts.map { ($0.id, $0.title) })
+    /// Renders one bullet per episode using the kernel-resolved show title.
+    private static func episodeLines(_ episodes: [AgentContextEpisode]) -> String {
+        episodes
+            .map { "- \(truncate($0.title)) — \($0.showTitle)" }
+            .joined(separator: "\n")
     }
 
     private static func truncate(_ s: String) -> String {
-        s.count <= Cap.titleChars ? s : String(s.prefix(Cap.titleChars - 1)) + "…"
+        s.count <= titleChars ? s : String(s.prefix(titleChars - 1)) + "…"
     }
 
     /// Cached formatter — DateFormatter is expensive to allocate and thread-safe for read after setup.

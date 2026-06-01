@@ -29,6 +29,7 @@
 //! Every `pub extern "C"` symbol Swift links against is re-exported below.
 
 pub mod actions;
+pub(crate) mod agent_context;
 mod audio_report;
 mod data_dir;
 mod download_report;

@@ -206,7 +206,7 @@ final class AgentSkillsTests: XCTestCase {
     // MARK: - Prompt catalog
 
     func testSystemPromptContainsSkillsSection() {
-        let prompt = AgentPrompt.build(for: AppState())
+        let prompt = AgentPrompt.build(for: AppState(), agentContext: nil)
         XCTAssertTrue(prompt.contains("## Skills"))
         XCTAssertTrue(prompt.contains(AgentSkillID.podcastGeneration))
         XCTAssertTrue(prompt.contains("use_skill"))

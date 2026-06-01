@@ -6,11 +6,11 @@
 use serde::{Deserialize, Serialize};
 
 use super::projections::{
-    AccountSummary, AgentNoteSummary, AgentPickSummary, AgentSnapshot, AgentTaskSummary,
-    BriefingSnapshot, CategoryBrowseItem, ClipSummary, CommentSummary, DownloadQueueSnapshot,
-    EpisodeSummary, InboxItem, KnowledgeSearchResult, MemoryFact, NostrShowSummary,
-    OwnedPodcastInfo, PodcastSummary, SettingsSnapshot, SocialSnapshot, VoiceState,
-    WidgetSnapshot, WikiArticle,
+    AccountSummary, AgentContextSnapshot, AgentNoteSummary, AgentPickSummary, AgentSnapshot,
+    AgentTaskSummary, BriefingSnapshot, CategoryBrowseItem, ClipSummary, CommentSummary,
+    DownloadQueueSnapshot, EpisodeSummary, InboxItem, KnowledgeSearchResult, MemoryFact,
+    NostrShowSummary, OwnedPodcastInfo, PodcastSummary, SettingsSnapshot, SocialSnapshot,
+    VoiceState, WidgetSnapshot, WikiArticle,
 };
 use crate::player::PlayerState;
 
@@ -49,6 +49,14 @@ pub struct PodcastUpdate {
     /// preserves byte-identity with the legacy stub.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent: Option<AgentSnapshot>,
+    /// Agent-prompt inventory context: kernel-owned selection/ordering/capping
+    /// of the subscribed-show list, in-progress episodes, and recent-unplayed
+    /// episodes the iOS `AgentPrompt` builder renders into its system prompt.
+    ///
+    /// `None` when the library is empty (nothing to surface) — preserves
+    /// byte-identity with the legacy stub for fresh installs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_context: Option<AgentContextSnapshot>,
     /// Voice projection: whether TTS is currently speaking and (when
     /// it is) the in-flight request id + active voice id.
     ///
@@ -173,6 +181,7 @@ impl Default for PodcastUpdate {
             now_playing: None,
             downloads: None,
             agent: None,
+            agent_context: None,
             voice: None,
             briefing: None,
             social: None,

@@ -337,11 +337,18 @@ final class AppTests: XCTestCase {
 
     // MARK: - AgentPrompt
 
+    // NOTE: inventory selection / filtering / capping / recency-window policy
+    // now lives in the Rust kernel (`ffi::agent_context::build_agent_context`,
+    // covered by `cargo test -p nmp-app-podcast agent_context`). These Swift
+    // tests now only assert that `AgentPrompt` RENDERS a kernel-provided
+    // `AgentContextSnapshot` and the `AppState`-sourced sections it still owns
+    // (friends, memories).
+
     func testAgentPromptIncludesFriends() {
         var state = AppState()
         state.friends.append(Friend(displayName: "Alice", identifier: "alice_id"))
 
-        let prompt = AgentPrompt.build(for: state)
+        let prompt = AgentPrompt.build(for: state, agentContext: nil)
 
         XCTAssertTrue(prompt.contains("Alice"))
     }
@@ -350,76 +357,67 @@ final class AppTests: XCTestCase {
         var state = AppState()
         state.agentMemories.append(AgentMemory(content: "User prefers mornings"))
 
-        let prompt = AgentPrompt.build(for: state)
+        let prompt = AgentPrompt.build(for: state, agentContext: nil)
 
         XCTAssertTrue(prompt.contains("User prefers mornings"))
     }
 
-    func testAgentPromptIncludesSubscriptions() {
-        var state = AppState()
-        let p1 = makeSubscription(title: "The Tim Ferriss Show")
-        let p2 = makeSubscription(title: "Acquired")
-        state.podcasts.append(contentsOf: [p1, p2])
-        state.subscriptions.append(contentsOf: [
-            PodcastSubscription(podcastID: p1.id),
-            PodcastSubscription(podcastID: p2.id),
-        ])
+    func testAgentPromptRendersKernelSubscriptions() {
+        var ctx = AgentContextSnapshot()
+        ctx.subscriptions = ["The Tim Ferriss Show", "Acquired"]
+        ctx.subscriptionsTotal = 2
 
-        let prompt = AgentPrompt.build(for: state)
+        let prompt = AgentPrompt.build(for: AppState(), agentContext: ctx)
 
         XCTAssertTrue(prompt.contains("## Subscriptions (2)"))
         XCTAssertTrue(prompt.contains("The Tim Ferriss Show"))
         XCTAssertTrue(prompt.contains("Acquired"))
     }
 
-    func testAgentPromptIncludesInProgressEpisodes() {
-        var state = AppState()
-        let sub = makeSubscription(title: "Lex Fridman")
-        state.podcasts.append(sub)
-        state.subscriptions.append(PodcastSubscription(podcastID: sub.id))
-        var ep = makeEpisode(podcastID: sub.id, guid: "ip-1")
-        ep.title = "Episode about something"
-        ep.playbackPosition = 600
-        state.episodes.append(ep)
+    func testAgentPromptRendersAndMoreSuffixFromKernelTotal() {
+        var ctx = AgentContextSnapshot()
+        ctx.subscriptions = ["Listed Show"]
+        // Kernel capped a larger followed set; renderer shows the overflow.
+        ctx.subscriptionsTotal = 4
 
-        let prompt = AgentPrompt.build(for: state)
+        let prompt = AgentPrompt.build(for: AppState(), agentContext: ctx)
+
+        XCTAssertTrue(prompt.contains("## Subscriptions (4)"))
+        XCTAssertTrue(prompt.contains("…and 3 more"))
+    }
+
+    func testAgentPromptRendersKernelInProgressEpisodes() {
+        var ctx = AgentContextSnapshot()
+        ctx.inProgress = [
+            AgentContextEpisode(title: "Episode about something", showTitle: "Lex Fridman"),
+        ]
+
+        let prompt = AgentPrompt.build(for: AppState(), agentContext: ctx)
 
         XCTAssertTrue(prompt.contains("## In Progress"))
         XCTAssertTrue(prompt.contains("Episode about something"))
         XCTAssertTrue(prompt.contains("Lex Fridman"))
     }
 
-    func testAgentPromptIncludesRecentUnplayedEpisodes() {
-        var state = AppState()
-        let sub = makeSubscription(title: "Recent Show")
-        state.podcasts.append(sub)
-        state.subscriptions.append(PodcastSubscription(podcastID: sub.id))
-        var fresh = makeEpisode(podcastID: sub.id, guid: "fresh-1")
-        fresh.title = "Brand new episode"
-        fresh.pubDate = Date().addingTimeInterval(-3600)
-        state.episodes.append(fresh)
+    func testAgentPromptRendersKernelRecentUnplayedWithWindowLabel() {
+        var ctx = AgentContextSnapshot()
+        ctx.recentUnplayed = [
+            AgentContextEpisode(title: "Brand new episode", showTitle: "Recent Show"),
+        ]
+        ctx.recentWindowDays = 7
 
-        let prompt = AgentPrompt.build(for: state)
+        let prompt = AgentPrompt.build(for: AppState(), agentContext: ctx)
 
-        XCTAssertTrue(prompt.contains("## Recent"))
+        XCTAssertTrue(prompt.contains("## Recent (last 7 days, unplayed)"))
         XCTAssertTrue(prompt.contains("Brand new episode"))
     }
 
-    func testAgentPromptOmitsOldEpisodesFromRecentSection() {
-        var state = AppState()
-        let sub = makeSubscription(title: "Old Show")
-        state.podcasts.append(sub)
-        state.subscriptions.append(PodcastSubscription(podcastID: sub.id))
-        var old = makeEpisode(podcastID: sub.id, guid: "old-1")
-        old.title = "Old episode title that is unique"
-        old.pubDate = Date().addingTimeInterval(-30 * 86_400)
-        state.episodes.append(old)
+    func testAgentPromptOmitsInventorySectionsWhenContextNil() {
+        let prompt = AgentPrompt.build(for: AppState(), agentContext: nil)
 
-        let prompt = AgentPrompt.build(for: state)
-
-        // Subscription should still appear, but the 30-day-old episode
-        // shouldn't surface in the 7-day recent window.
-        XCTAssertFalse(prompt.contains("Old episode title that is unique"))
+        XCTAssertFalse(prompt.contains("## Subscriptions"))
+        XCTAssertFalse(prompt.contains("## In Progress"))
+        XCTAssertFalse(prompt.contains("## Recent"))
     }
 
     // MARK: - Persistence isolation
