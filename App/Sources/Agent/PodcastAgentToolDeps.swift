@@ -16,8 +16,8 @@ import Foundation
 // hop actors. Implementations that touch `@MainActor` state should mark their
 // methods `@MainActor`; the protocol surface tolerates either.
 //
-// Value-type result envelopes (`EpisodeHit`, `BriefingResult`, etc.) live in
-// `PodcastAgentToolValues.swift`.
+// Value-type result envelopes (`EpisodeHit`, `AgentEpisodeSummary`, etc.) live
+// in `PodcastAgentToolValues.swift`.
 
 // MARK: - Search & retrieval
 
@@ -57,16 +57,6 @@ public protocol WikiStorageProtocol: Sendable {
 }
 
 // MARK: - Composer / summarizer / fetcher
-
-/// Briefing composer (lane 8).
-public protocol BriefingComposerProtocol: Sendable {
-    /// Compose a personalized briefing.
-    /// - Parameters:
-    ///   - scope: keyword like `"this_week"`, `"unlistened"`, or a podcast ID.
-    ///   - lengthMinutes: target length in minutes.
-    ///   - style: optional style hint (`"news"`, `"deep_dive"`, etc).
-    func composeBriefing(scope: String, lengthMinutes: Int, style: String?) async throws -> BriefingResult
-}
 
 /// Summarization for an individual episode (lane 5/8).
 public protocol EpisodeSummarizerProtocol: Sendable {
@@ -319,7 +309,6 @@ public protocol PodcastSubscribeProtocol: Sendable {
 struct PodcastAgentToolDeps: Sendable {
     let rag: PodcastAgentRAGSearchProtocol
     let wiki: WikiStorageProtocol
-    let briefing: BriefingComposerProtocol
     let summarizer: EpisodeSummarizerProtocol
     let fetcher: EpisodeFetcherProtocol
     let playback: PlaybackHostProtocol
@@ -346,7 +335,6 @@ struct PodcastAgentToolDeps: Sendable {
     init(
         rag: PodcastAgentRAGSearchProtocol,
         wiki: WikiStorageProtocol,
-        briefing: BriefingComposerProtocol,
         summarizer: EpisodeSummarizerProtocol,
         fetcher: EpisodeFetcherProtocol,
         playback: PlaybackHostProtocol,
@@ -367,7 +355,6 @@ struct PodcastAgentToolDeps: Sendable {
     ) {
         self.rag = rag
         self.wiki = wiki
-        self.briefing = briefing
         self.summarizer = summarizer
         self.fetcher = fetcher
         self.playback = playback
@@ -391,7 +378,7 @@ struct PodcastAgentToolDeps: Sendable {
     /// inbound entrypoint to thread per-turn context without rebuilding adapters.
     func withPeerContext(_ ctx: PeerConversationContext?) -> PodcastAgentToolDeps {
         PodcastAgentToolDeps(
-            rag: rag, wiki: wiki, briefing: briefing, summarizer: summarizer,
+            rag: rag, wiki: wiki, summarizer: summarizer,
             fetcher: fetcher, playback: playback, library: library,
             inventory: inventory, categories: categories,
             peerPublisher: peerPublisher, friendDirectory: friendDirectory,
@@ -405,7 +392,7 @@ struct PodcastAgentToolDeps: Sendable {
 
     func withChatConversationID(_ id: UUID?) -> PodcastAgentToolDeps {
         PodcastAgentToolDeps(
-            rag: rag, wiki: wiki, briefing: briefing, summarizer: summarizer,
+            rag: rag, wiki: wiki, summarizer: summarizer,
             fetcher: fetcher, playback: playback, library: library,
             inventory: inventory, categories: categories,
             peerPublisher: peerPublisher, friendDirectory: friendDirectory,

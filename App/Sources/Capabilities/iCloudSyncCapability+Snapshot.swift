@@ -55,7 +55,6 @@ struct SettingsKVSnapshot: Equatable {
     var autoIngestPublisherTranscripts: Bool?
     var autoFallbackToScribe: Bool?
     var notifyOnNewEpisodes: Bool?
-    var notifyOnBriefingReady: Bool?
     var nostrRelayUrl: String?
     var nostrPublicRelays: [String]?
     var nostrProfileName: String?
@@ -194,9 +193,6 @@ struct SettingsKVSnapshot: Equatable {
         if let v = notifyOnNewEpisodes {
             lastWritten[iCloudSyncCapability.Key.notifyOnNewEpisodes] = AnyHashable(v)
         }
-        if let v = notifyOnBriefingReady {
-            lastWritten[iCloudSyncCapability.Key.notifyOnBriefingReady] = AnyHashable(v)
-        }
         if let v = nostrRelayUrl {
             lastWritten[iCloudSyncCapability.Key.nostrRelayUrl] = AnyHashable(v)
         }
@@ -293,7 +289,6 @@ extension SettingsKVSnapshot {
             autoIngestPublisherTranscripts: s.autoIngestPublisherTranscripts,
             autoFallbackToScribe: s.autoFallbackToScribe,
             notifyOnNewEpisodes: s.notifyOnNewEpisodes,
-            notifyOnBriefingReady: s.notifyOnBriefingReady,
             nostrRelayUrl: s.nostrRelayURL,
             nostrPublicRelays: s.nostrPublicRelays,
             nostrProfileName: s.nostrProfileName,

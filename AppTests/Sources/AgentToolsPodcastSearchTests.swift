@@ -1,7 +1,7 @@
 import XCTest
 @testable import Podcastr
 
-/// Tests for search, wiki, transcript, briefing, perplexity, summarize, and
+/// Tests for search, wiki, transcript, perplexity, summarize, and
 /// find-similar dispatch paths. Playback and action tool tests live in
 /// `AgentToolsPodcastTests.swift`.
 @MainActor
@@ -119,46 +119,6 @@ final class AgentToolsPodcastSearchTests: XCTestCase {
         XCTAssertEqual(rows?.first?["start_seconds"] as? Double, 47.0)
     }
 
-    // MARK: - generate_briefing
-
-    func testGenerateBriefingClampsLengthRange() async throws {
-        let mockBriefing = MockBriefing(result: BriefingResult(
-            briefingID: "b1", title: "This Week", estimatedSeconds: 720, episodeIDs: ["ep1"]
-        ))
-        let deps = makeDeps(briefing: mockBriefing)
-        _ = await AgentTools.dispatchPodcast(
-            name: AgentTools.PodcastNames.generateBriefing,
-            args: ["scope": "this_week", "length": 9999],
-            deps: deps
-        )
-        let lastLength = await mockBriefing.lastLength
-        XCTAssertEqual(lastLength, AgentTools.briefingMaxLengthMinutes)
-    }
-
-    func testGenerateBriefingReturnsHandle() async throws {
-        let deps = makeDeps(briefing: MockBriefing(result: BriefingResult(
-            briefingID: "b1", title: "This Week", estimatedSeconds: 720, episodeIDs: ["ep1", "ep2"]
-        )))
-        let json = await AgentTools.dispatchPodcast(
-            name: AgentTools.PodcastNames.generateBriefing,
-            args: ["scope": "this_week", "length": 12, "style": "news"],
-            deps: deps
-        )
-        let decoded = try decode(json)
-        XCTAssertEqual(decoded["briefing_id"] as? String, "b1")
-        XCTAssertEqual(decoded["estimated_seconds"] as? Int, 720)
-        XCTAssertEqual(decoded["style"] as? String, "news")
-    }
-
-    func testGenerateBriefingRequiresScope() async throws {
-        let json = await AgentTools.dispatchPodcast(
-            name: AgentTools.PodcastNames.generateBriefing,
-            args: ["length": 10],
-            deps: makeDeps()
-        )
-        XCTAssertNotNil(try decode(json)["error"])
-    }
-
     // MARK: - perplexity_search
 
     func testPerplexitySearchPropagatesAnswerAndSources() async throws {
@@ -248,7 +208,6 @@ final class AgentToolsPodcastSearchTests: XCTestCase {
     private func makeDeps(
         rag: PodcastAgentRAGSearchProtocol = MockRAG(),
         wiki: WikiStorageProtocol = MockWiki(),
-        briefing: BriefingComposerProtocol = MockBriefing(),
         summarizer: EpisodeSummarizerProtocol = MockSummarizer(),
         fetcher: EpisodeFetcherProtocol = MockFetcher(),
         perplexity: PerplexityClientProtocol = MockPerplexity()
@@ -256,7 +215,6 @@ final class AgentToolsPodcastSearchTests: XCTestCase {
         PodcastAgentToolDeps(
             rag: rag,
             wiki: wiki,
-            briefing: briefing,
             summarizer: summarizer,
             fetcher: fetcher,
             playback: MockPlayback(),

@@ -96,18 +96,6 @@ final class RAGSearchTests: XCTestCase {
         XCTAssertEqual(resolved?.startMS, chunk.startMS)
     }
 
-    @MainActor
-    func testBriefingUnsupportedShowScopeDoesNotWidenToAllContent() {
-        XCTAssertEqual(
-            BriefingRAGSearchAdapter.chunkScope(for: .mySubscriptions, service: RAGService.shared),
-            .all
-        )
-        XCTAssertEqual(
-            BriefingRAGSearchAdapter.chunkScope(for: .thisShow, service: RAGService.shared),
-            .episodes([])
-        )
-    }
-
     func testSettingsAwareRerankerSkipsBaseClientWhenDisabled() async throws {
         let base = CountingReranker(order: [2, 1, 0])
         let reranker = SettingsAwareRerankerClient(base: base, isEnabled: { false })

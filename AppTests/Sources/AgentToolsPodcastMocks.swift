@@ -77,25 +77,6 @@ actor MockWiki: WikiStorageProtocol {
     func deleteWikiPage(slug: String, scope: PodcastID?) async throws {}
 }
 
-actor MockBriefing: BriefingComposerProtocol {
-    private let result: BriefingResult?
-    private let error: Error?
-    private(set) var lastLength: Int = -1
-
-    init(result: BriefingResult? = nil, error: Error? = nil) {
-        self.result = result
-        self.error = error
-    }
-
-    func composeBriefing(scope: String, lengthMinutes: Int, style: String?) async throws -> BriefingResult {
-        lastLength = lengthMinutes
-        if let error = error { throw error }
-        return result ?? BriefingResult(
-            briefingID: "default", title: "Default", estimatedSeconds: 0, episodeIDs: []
-        )
-    }
-}
-
 actor MockSummarizer: EpisodeSummarizerProtocol {
     private let result: AgentEpisodeSummary?
     init(result: AgentEpisodeSummary? = nil) { self.result = result }

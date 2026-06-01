@@ -9,7 +9,6 @@
 //                                        NostrShowSummary
 //   PodcastMediaTypes.generated.swift  — VoiceSnapshot, AgentSnapshot, AgentMessageSummary,
 //                                        AgentTaskSummary, AgentPickSummary,
-//                                        BriefingSnapshot, BriefingSegmentSummary,
 //                                        TtsEpisodeSummary, ClipSummary
 //   PodcastSocialTypes.generated.swift — InboxItem, CommentSummary, ContactSummary,
 //                                        SocialSnapshot, CategoryBrowseItem, WikiArticle,

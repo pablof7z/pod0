@@ -47,24 +47,13 @@ enum VoiceError: Error, Equatable, Sendable {
 ///                      ▼                            │
 /// idle ── PTT/ambient ──▶ listening ──▶ thinking ──▶ speaking
 ///   ▲           barge-in │              │            │
-///   │                    │              │            │ briefing handoff
-///   │                    │              ▼            ▼
-///   └──── exit ──────────┴──── error ◀──────── duckedWhileBriefing
+///   │                    │              ▼            │
+///   └──── exit ──────────┴──── error ◀──────────────┘
 /// ```
 enum AudioConversationState: Equatable, Sendable {
     case idle
     case listening
     case thinking
     case speaking
-    case duckedWhileBriefing
     case error(VoiceError)
-}
-
-// MARK: - VoiceBriefingHandle
-
-/// Opaque handle Lane 9 (Briefings) hands us so we know when to resume.
-/// `waitUntilFinished` returns when the briefing's audio has stopped.
-@MainActor
-protocol VoiceBriefingHandle: AnyObject {
-    func waitUntilFinished() async
 }

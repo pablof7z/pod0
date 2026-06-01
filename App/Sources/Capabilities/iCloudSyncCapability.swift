@@ -87,7 +87,6 @@ final class iCloudSyncCapability {
         static let autoIngestPublisherTranscripts = "pcst.auto_ingest_publisher_transcripts"
         static let autoFallbackToScribe = "pcst.auto_fallback_to_scribe"
         static let notifyOnNewEpisodes = "pcst.notify_on_new_episodes"
-        static let notifyOnBriefingReady = "pcst.notify_on_briefing_ready"
         static let nostrRelayUrl = "pcst.nostr_relay_url"
         static let nostrPublicRelays = "pcst.nostr_public_relays"
         static let nostrProfileName = "pcst.nostr_profile_name"
@@ -106,7 +105,7 @@ final class iCloudSyncCapability {
             assemblyAiSttModel, elevenLabsSttModel, elevenLabsTtsModel, elevenLabsVoiceId, elevenLabsVoiceName,
             blossomServerUrl, youtubeExtractorUrl, autoMarkPlayedAtEnd, autoPlayNext,
             headphoneDoubleTapAction, headphoneTripleTapAction, wikiAutoGenerateOnTranscriptIngest,
-            autoIngestPublisherTranscripts, autoFallbackToScribe, notifyOnNewEpisodes, notifyOnBriefingReady,
+            autoIngestPublisherTranscripts, autoFallbackToScribe, notifyOnNewEpisodes,
             nostrRelayUrl, nostrPublicRelays, nostrProfileName, nostrProfileAbout, nostrProfilePicture,
         ]
     }
@@ -416,11 +415,6 @@ final class iCloudSyncCapability {
            lastWritten[Key.notifyOnNewEpisodes] != AnyHashable(v) {
             kvs.set(v, forKey: Key.notifyOnNewEpisodes)
             lastWritten[Key.notifyOnNewEpisodes] = AnyHashable(v)
-        }
-        if let v = settings.notifyOnBriefingReady,
-           lastWritten[Key.notifyOnBriefingReady] != AnyHashable(v) {
-            kvs.set(v, forKey: Key.notifyOnBriefingReady)
-            lastWritten[Key.notifyOnBriefingReady] = AnyHashable(v)
         }
         if let v = settings.nostrRelayUrl,
            lastWritten[Key.nostrRelayUrl] != AnyHashable(v) {
@@ -839,16 +833,6 @@ final class iCloudSyncCapability {
             kernel?.dispatchSilent(namespace: "podcast.settings",
                                    body: ["op": "set_notify_on_new_episodes", "enabled": enabled])
             lastWritten[Key.notifyOnNewEpisodes] = AnyHashable(enabled)
-            didDispatch = true
-        }
-
-        if touched.contains(Key.notifyOnBriefingReady),
-           let enabled = (kvs.object(forKey: Key.notifyOnBriefingReady) as? NSNumber)?.boolValue,
-           lastWritten[Key.notifyOnBriefingReady] != AnyHashable(enabled) {
-            isApplyingRemoteChange = true
-            kernel?.dispatchSilent(namespace: "podcast.settings",
-                                   body: ["op": "set_notify_on_briefing_ready", "enabled": enabled])
-            lastWritten[Key.notifyOnBriefingReady] = AnyHashable(enabled)
             didDispatch = true
         }
 

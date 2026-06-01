@@ -90,12 +90,6 @@ extension KernelModel {
         h.combine(update.voice?.currentRequestId)
         h.combine(update.voice?.lastResponse)
 
-        // Briefing
-        h.combine(update.briefing?.status)
-        h.combine(update.briefing?.segmentCount)
-        h.combine(update.briefing?.isGenerating)
-        h.combine(update.briefing?.lastGeneratedAt)
-
         // Social
         h.combine(update.social?.followingCount)
 

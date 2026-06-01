@@ -8,7 +8,6 @@ import os.log
 //
 //   • `PodcastAgentRAGSearchProtocol`  → `LivePodcastRAGAdapter`
 //   • `WikiStorageProtocol`            → `LiveWikiStorageAdapter`
-//   • `BriefingComposerProtocol`       → `LiveBriefingComposerAdapter`
 //   • `EpisodeSummarizerProtocol`      → `LiveEpisodeSummarizerAdapter`
 //   • `EpisodeFetcherProtocol`         → `LiveEpisodeFetcherAdapter`
 //   • `PlaybackHostProtocol`           → `LivePlaybackHostAdapter`
@@ -18,8 +17,8 @@ import os.log
 //
 // Constructed once per `AgentChatSession` / `AgentRelayBridge`, the bundle
 // holds weak references to `AppStateStore` and `PlaybackState` so the agent
-// adapters never extend their lifetimes. Heavy adapters (RAG, Briefing,
-// Summarizer) live in their own files; the small ones live here.
+// adapters never extend their lifetimes. Heavy adapters (RAG, Summarizer)
+// live in their own files; the small ones live here.
 
 @MainActor
 enum LivePodcastAgentToolDeps {
@@ -37,7 +36,6 @@ enum LivePodcastAgentToolDeps {
         return PodcastAgentToolDeps(
             rag: LivePodcastRAGAdapter(store: store),
             wiki: LiveWikiStorageAdapter(store: store),
-            briefing: LiveBriefingComposerAdapter(store: store),
             summarizer: LiveEpisodeSummarizerAdapter(store: store),
             fetcher: LiveEpisodeFetcherAdapter(store: store),
             playback: LivePlaybackHostAdapter(store: store, playback: playback),

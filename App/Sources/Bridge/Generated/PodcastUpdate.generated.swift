@@ -16,7 +16,6 @@ struct PodcastUpdate {
     var downloads: DownloadQueueSnapshot? = nil
     var agent: AgentSnapshot? = nil
     var voice: VoiceSnapshot? = nil
-    var briefing: BriefingSnapshot? = nil
     var social: SocialSnapshot? = nil
     // D5: the Rust projection omits empty collections / default settings from
     // the wire. Wrap them so absent keys decode to defaults instead of throwing
@@ -207,8 +206,6 @@ struct SettingsSnapshot: Equatable {
     var autoFallbackToScribe: Bool = true
     /// Whether to send local notifications when new episodes arrive. Default `true`.
     var notifyOnNewEpisodes: Bool = true
-    /// Whether to send local notifications when briefing/AI processing is ready. Default `true`.
-    var notifyOnBriefingReady: Bool = true
     /// Whether Nostr publishing and identity features are enabled. Default `false`.
     var nostrEnabled: Bool = false
     /// Primary Nostr relay URL for publishing and event distribution. Default empty.
@@ -267,7 +264,6 @@ extension PodcastUpdate: Codable {
         downloads = try c.decodeIfPresent(DownloadQueueSnapshot.self, forKey: .downloads)
         agent = try c.decodeIfPresent(AgentSnapshot.self, forKey: .agent)
         voice = try c.decodeIfPresent(VoiceSnapshot.self, forKey: .voice)
-        briefing = try c.decodeIfPresent(BriefingSnapshot.self, forKey: .briefing)
         social = try c.decodeIfPresent(SocialSnapshot.self, forKey: .social)
         library = try c.decodeIfPresent([PodcastSummary].self, forKey: .library) ?? []
         activeAccount = try c.decodeIfPresent(AccountSummary.self, forKey: .activeAccount)
@@ -371,7 +367,6 @@ extension SettingsSnapshot: Codable {
         case autoIngestPublisherTranscripts = "auto_ingest_publisher_transcripts"
         case autoFallbackToScribe = "auto_fallback_to_scribe"
         case notifyOnNewEpisodes = "notify_on_new_episodes"
-        case notifyOnBriefingReady = "notify_on_briefing_ready"
         case nostrEnabled = "nostr_enabled"
         case nostrRelayURL = "nostr_relay_url"
         case nostrPublicRelays = "nostr_public_relays"
@@ -442,7 +437,6 @@ extension SettingsSnapshot: Codable {
         autoIngestPublisherTranscripts = try c.decodeIfPresent(Bool.self, forKey: .autoIngestPublisherTranscripts) ?? true
         autoFallbackToScribe = try c.decodeIfPresent(Bool.self, forKey: .autoFallbackToScribe) ?? true
         notifyOnNewEpisodes = try c.decodeIfPresent(Bool.self, forKey: .notifyOnNewEpisodes) ?? true
-        notifyOnBriefingReady = try c.decodeIfPresent(Bool.self, forKey: .notifyOnBriefingReady) ?? true
         nostrEnabled = try c.decodeIfPresent(Bool.self, forKey: .nostrEnabled) ?? false
         nostrRelayURL = try c.decodeIfPresent(String.self, forKey: .nostrRelayURL) ?? ""
         nostrPublicRelays = try c.decodeIfPresent([String].self, forKey: .nostrPublicRelays) ?? []

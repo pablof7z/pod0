@@ -239,7 +239,6 @@ final class AgentToolsListEpisodesTests: XCTestCase {
         let deps = PodcastAgentToolDeps(
             rag: MockRAG(),
             wiki: MockWiki(),
-            briefing: MockBriefing(),
             summarizer: MockSummarizer(),
             fetcher: MockFetcher(),
             playback: MockPlayback(),

@@ -8,15 +8,15 @@ import os.log
 // and the `RAGSearch` orchestrator that wires them together.
 //
 // Why a `@MainActor` singleton:
-//   - The wiki and briefing surfaces want a stable, ready-on-launch handle.
+//   - The wiki and search surfaces want a stable, ready-on-launch handle.
 //   - State the rest of the app cares about (where the SQLite file lives,
 //     when the index was opened) is UI-adjacent.
 //   - The underlying `VectorIndex` is itself an `actor`, so DB work stays
 //     off the main thread; this class just hands out references.
 //
-// Lazy lookup of `AppStateStore` is intentionally NOT done here — the
-// briefing adapter needs episode/subscription metadata, so the bridge
-// is set up via `attach(appStore:)` once `AppStateStore` finishes init.
+// Lazy lookup of `AppStateStore` is intentionally NOT done here — retrieval
+// adapters need episode/subscription metadata, so the bridge is set up via
+// `attach(appStore:)` once `AppStateStore` finishes init.
 
 @MainActor
 final class RAGService {
@@ -47,7 +47,7 @@ final class RAGService {
     /// debug commands.
     let storeURL: URL?
 
-    // MARK: AppStateStore weak ref (briefing adapter needs episode lookup)
+    // MARK: AppStateStore weak ref (adapters need episode lookup)
 
     /// Late-bound back-reference to the application's main state store.
     /// Set via `attach(appStore:)` from `AppStateStore.init` after the
@@ -56,7 +56,7 @@ final class RAGService {
     private(set) weak var appStore: AppStateStore?
     private let providerEmbedder: ProviderEmbeddingsClient
 
-    /// Wire the live `AppStateStore` so the briefing adapter can resolve
+    /// Wire the live `AppStateStore` so retrieval adapters can resolve
     /// episode + subscription metadata at retrieval time. Idempotent.
     func attach(appStore: AppStateStore) {
         self.appStore = appStore
@@ -69,11 +69,6 @@ final class RAGService {
     /// and `WikiVerifier` can take it directly.
     var wikiRAG: any WikiRAGSearchProtocol {
         WikiRAGSearchAdapter(search: search, index: index)
-    }
-
-    /// Adapter that conforms to `BriefingRAGSearchProtocol`.
-    var briefingRAG: any BriefingRAGSearchProtocol {
-        BriefingRAGSearchAdapter(service: self)
     }
 
     // MARK: Init
@@ -106,7 +101,7 @@ final class RAGService {
                 "failed to open on-disk vectors.sqlite (\(String(describing: error), privacy: .public)) — falling back to in-memory store"
             )
             // The in-memory `VectorIndex` keeps the app runnable; data won't
-            // survive a relaunch but the wiki/briefing code paths still work.
+            // survive a relaunch but the wiki/search code paths still work.
             do {
                 openedIndex = try VectorIndex(embedder: embedder, inMemory: true)
                 resolvedURL = nil

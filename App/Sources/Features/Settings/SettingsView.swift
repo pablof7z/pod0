@@ -276,13 +276,7 @@ struct SettingsView: View {
     }
 
     private var notificationsRowValue: String? {
-        let s = store.state.settings
-        var on: [String] = []
-        if s.notifyOnNewEpisodes  { on.append("Episodes") }
-        if s.notifyOnBriefingReady { on.append("Briefings") }
-        if on.isEmpty { return "Off" }
-        if on.count == 2 { return "On" }
-        return on.first
+        store.state.settings.notifyOnNewEpisodes ? "On" : "Off"
     }
 
     private var providersRowValue: String {

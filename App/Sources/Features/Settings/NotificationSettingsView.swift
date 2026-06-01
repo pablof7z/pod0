@@ -8,7 +8,7 @@ import os.log
 // Settings → Notifications. Two surfaces:
 //   1. System authorization status with a deep-link to iOS Settings when denied.
 //   2. Per-kind toggles persisted to `Settings` so the user can opt in/out
-//      independently for new-episode alerts and briefing-ready alerts.
+//      independently for new-episode alerts.
 //
 // Per-show notification toggles live on each `PodcastSubscription` and are
 // surfaced in `SubscriptionsListView`. The toggles here gate the *kind* of
@@ -84,13 +84,10 @@ struct NotificationSettingsView: View {
             Toggle(isOn: newEpisodesBinding) {
                 Label("New episode alerts", systemImage: "antenna.radiowaves.left.and.right")
             }
-            Toggle(isOn: briefingReadyBinding) {
-                Label("Briefing-ready alerts", systemImage: "sparkles.tv.fill")
-            }
         } header: {
             Text("Categories")
         } footer: {
-            Text("New-episode alerts also respect each show's individual notification toggle (see Subscriptions). Briefing alerts fire when a new daily / weekly briefing is ready to play.")
+            Text("New-episode alerts also respect each show's individual notification toggle (see Subscriptions).")
         }
         .disabled(!isAuthorized)
         .opacity(isAuthorized ? 1.0 : 0.6)
@@ -104,18 +101,6 @@ struct NotificationSettingsView: View {
             set: { v in
                 var s = store.state.settings
                 s.notifyOnNewEpisodes = v
-                store.updateSettings(s)
-                Haptics.selection()
-            }
-        )
-    }
-
-    private var briefingReadyBinding: Binding<Bool> {
-        Binding(
-            get: { store.state.settings.notifyOnBriefingReady },
-            set: { v in
-                var s = store.state.settings
-                s.notifyOnBriefingReady = v
                 store.updateSettings(s)
                 Haptics.selection()
             }
@@ -177,7 +162,7 @@ private extension UNAuthorizationStatus {
         case .authorized: "Notifications are enabled for this app."
         case .provisional: "Notifications are delivered quietly."
         case .ephemeral: "Notifications are temporary."
-        case .denied: "Enable in iOS Settings to receive new-episode and briefing alerts."
+        case .denied: "Enable in iOS Settings to receive new-episode alerts."
         case .notDetermined: "We'll ask the first time something needs to notify you."
         @unknown default: ""
         }

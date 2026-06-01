@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-01T14:00:00Z",
+      "lines": [
+        "Briefings feature removed — it will be rebuilt properly."
+      ]
+    },
+    {
       "shipped_at": "2026-06-01T12:00:00Z",
       "lines": [
         "Configure app relays in Settings → Networking → App Relays"

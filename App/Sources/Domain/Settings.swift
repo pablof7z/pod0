@@ -210,7 +210,7 @@ struct Settings: Codable, Hashable, Sendable {
     /// When `true`, the app pre-fetches publisher-supplied transcripts in the
     /// background as soon as new episodes appear (called from
     /// `AppStateStore.upsertEpisodes` after a feed refresh). Default-on
-    /// because the agent layer (RAG, wiki, briefings, summarisation) only
+    /// because the agent layer (RAG, wiki, summarisation) only
     /// works once the transcript exists; publisher transcripts are typically
     /// tens of KB so the bandwidth cost is small. Toggle off in
     /// Settings → Transcripts to defer everything to manual fetch.
@@ -224,9 +224,6 @@ struct Settings: Codable, Hashable, Sendable {
     /// When `true`, fire a local notification when a feed refresh discovers a brand-new
     /// episode for a subscription that has notifications enabled.
     var notifyOnNewEpisodes: Bool = true
-    /// When `true`, fire a local notification when a daily/weekly briefing finishes
-    /// generating and is ready to play.
-    var notifyOnBriefingReady: Bool = true
 
     // Nostr identity (private key stored in Keychain via NostrCredentialStore)
     var nostrEnabled: Bool = false
@@ -268,7 +265,7 @@ struct Settings: Codable, Hashable, Sendable {
         case headphoneDoubleTapAction, headphoneTripleTapAction
         case wikiAutoGenerateOnTranscriptIngest
         case autoIngestPublisherTranscripts, autoFallbackToScribe
-        case notifyOnNewEpisodes, notifyOnBriefingReady
+        case notifyOnNewEpisodes
         case nostrEnabled, nostrRelayURL, nostrPublicRelays
         case nostrProfileName, nostrProfileAbout, nostrProfilePicture
         case nostrPublicKeyHex
@@ -329,7 +326,6 @@ struct Settings: Codable, Hashable, Sendable {
         autoIngestPublisherTranscripts = try c.decodeIfPresent(Bool.self, forKey: .autoIngestPublisherTranscripts) ?? true
         autoFallbackToScribe = try c.decodeIfPresent(Bool.self, forKey: .autoFallbackToScribe) ?? true
         notifyOnNewEpisodes = try c.decodeIfPresent(Bool.self, forKey: .notifyOnNewEpisodes) ?? true
-        notifyOnBriefingReady = try c.decodeIfPresent(Bool.self, forKey: .notifyOnBriefingReady) ?? true
         nostrEnabled = try c.decodeIfPresent(Bool.self, forKey: .nostrEnabled) ?? false
         nostrRelayURL = try c.decodeIfPresent(String.self, forKey: .nostrRelayURL) ?? Defaults.nostrRelayURL
         nostrPublicRelays = try c.decodeIfPresent([String].self, forKey: .nostrPublicRelays) ?? []
@@ -394,7 +390,6 @@ struct Settings: Codable, Hashable, Sendable {
         try c.encode(autoIngestPublisherTranscripts, forKey: .autoIngestPublisherTranscripts)
         try c.encode(autoFallbackToScribe, forKey: .autoFallbackToScribe)
         try c.encode(notifyOnNewEpisodes, forKey: .notifyOnNewEpisodes)
-        try c.encode(notifyOnBriefingReady, forKey: .notifyOnBriefingReady)
         try c.encode(nostrEnabled, forKey: .nostrEnabled)
         try c.encode(nostrRelayURL, forKey: .nostrRelayURL)
         try c.encode(nostrPublicRelays, forKey: .nostrPublicRelays)

@@ -30,7 +30,6 @@ extension AgentTools {
         static let listWikiPages        = "list_wiki_pages"
         static let deleteWikiPage       = "delete_wiki_page"
         static let queryTranscripts     = "query_transcripts"
-        static let generateBriefing     = "generate_briefing"
         static let perplexitySearch     = "perplexity_search"
         static let summarizeEpisode     = "summarize_episode"
         static let findSimilarEpisodes  = "find_similar_episodes"
@@ -83,7 +82,7 @@ extension AgentTools {
                 playEpisode, pausePlayback, setPlaybackRate, setSleepTimer,
                 searchEpisodes, queryWiki, createWikiPage, listWikiPages, deleteWikiPage,
                 queryTranscripts,
-                generateBriefing, perplexitySearch, summarizeEpisode,
+                perplexitySearch, summarizeEpisode,
                 findSimilarEpisodes, markEpisodePlayed, markEpisodeUnplayed,
                 downloadEpisode, requestTranscription, refreshFeed,
                 endConversation, sendFriendMessage,
@@ -113,10 +112,6 @@ extension AgentTools {
     static let podcastWikiDefaultLimit = 5
     /// Default `k` for find_similar_episodes.
     static let findSimilarDefaultK = 5
-    /// Hard cap on briefing length minutes — protects the briefing composer
-    /// from a runaway prompt.
-    static let briefingMaxLengthMinutes = 30
-    static let briefingMinLengthMinutes = 3
 
     // MARK: - Dispatcher
 
@@ -176,8 +171,6 @@ extension AgentTools {
             return await deleteWikiPageTool(args: args, deps: deps)
         case PodcastNames.queryTranscripts:
             return await queryTranscriptsTool(args: args, deps: deps)
-        case PodcastNames.generateBriefing:
-            return await generateBriefingTool(args: args, deps: deps)
         case PodcastNames.perplexitySearch:
             return await perplexitySearchTool(args: args, deps: deps)
         case PodcastNames.summarizeEpisode:
@@ -301,39 +294,6 @@ extension AgentTools {
             ])
         } catch {
             return toolError("query_transcripts failed: \(error.localizedDescription)")
-        }
-    }
-
-    // MARK: - generate_briefing
-
-    private static func generateBriefingTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        guard let scope = (args["scope"] as? String)?.trimmed, !scope.isEmpty else {
-            return toolError("Missing or empty 'scope'")
-        }
-        guard let lengthRaw = args["length"] as? Int else {
-            return toolError("Missing 'length' (target minutes)")
-        }
-        let length = max(briefingMinLengthMinutes, min(briefingMaxLengthMinutes, lengthRaw))
-        let style = (args["style"] as? String)?.trimmed.nilIfEmpty
-        do {
-            let result = try await deps.briefing.composeBriefing(
-                scope: scope,
-                lengthMinutes: length,
-                style: style
-            )
-            var payload: [String: Any] = [
-                "briefing_id": result.briefingID,
-                "title": result.title,
-                "estimated_seconds": result.estimatedSeconds,
-                "episode_ids": result.episodeIDs,
-                "scope": scope,
-                "length_minutes": length,
-            ]
-            if let preview = result.scriptPreview { payload["script_preview"] = preview }
-            if let style = style { payload["style"] = style }
-            return toolSuccess(payload)
-        } catch {
-            return toolError("generate_briefing failed: \(error.localizedDescription)")
         }
     }
 

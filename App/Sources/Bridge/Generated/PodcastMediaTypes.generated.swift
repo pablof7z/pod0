@@ -1,5 +1,5 @@
 // PodcastMediaTypes.generated.swift
-// Media types: agent, voice, briefing, TTS, clips.
+// Media types: agent, voice, TTS, clips.
 // Hand-maintained mirror of Rust projection types. See PodcastUpdate.generated.swift.
 
 import Foundation
@@ -59,27 +59,6 @@ struct AgentPickSummary: Identifiable, Equatable, Hashable {
     var pickScore: Double = 0
 
     var id: String { episodeId }
-}
-
-/// Daily briefing projection — mirrors `BriefingSnapshot` in Rust.
-struct BriefingSnapshot: Equatable, Hashable {
-    /// One of `"pending"`, `"generating"`, `"ready"`, `"delivered"`, `"failed"`.
-    var status: String = "pending"
-    var isGenerating: Bool = false
-    var segmentCount: Int = 0
-    var segments: [BriefingSegmentSummary] = []
-    var lastGeneratedAt: Int? = nil
-    var nextScheduledMinutes: Int? = nil
-}
-
-/// One row in `BriefingSnapshot.segments`.
-struct BriefingSegmentSummary: Codable, Equatable, Hashable, Identifiable {
-    var kind: String
-    var text: String
-    var podcastTitle: String? = nil
-    var episodeTitle: String? = nil
-
-    var id: String { "\(kind)|\(text.prefix(40))" }
 }
 
 /// One agent-generated TTS episode row surfaced via `PodcastUpdate.ttsEpisodes`.
@@ -154,17 +133,5 @@ extension AgentPickSummary: Codable {
         durationSecs = try c.decodeIfPresent(Double.self, forKey: .durationSecs)
         pickReason = try c.decodeIfPresent(String.self, forKey: .pickReason) ?? ""
         pickScore = try c.decodeIfPresent(Double.self, forKey: .pickScore) ?? 0
-    }
-}
-
-extension BriefingSnapshot: Codable {
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        status = try c.decodeIfPresent(String.self, forKey: .status) ?? "pending"
-        isGenerating = try c.decodeIfPresent(Bool.self, forKey: .isGenerating) ?? false
-        segmentCount = try c.decodeIfPresent(Int.self, forKey: .segmentCount) ?? 0
-        segments = try c.decodeIfPresent([BriefingSegmentSummary].self, forKey: .segments) ?? []
-        lastGeneratedAt = try c.decodeIfPresent(Int.self, forKey: .lastGeneratedAt)
-        nextScheduledMinutes = try c.decodeIfPresent(Int.self, forKey: .nextScheduledMinutes)
     }
 }

@@ -249,7 +249,7 @@ final class AppStateStore {
         recomputeEpisodeProjections()
         // Bootstrap the live RAG stack so the SQLite vector store is opened
         // (and its file path logged) before any view tries to query it.
-        // Hand `self` to the service so the briefing adapter and transcript
+        // Hand `self` to the service so the retrieval adapters and transcript
         // ingester can resolve episode/subscription metadata.
         RAGService.shared.attach(appStore: self)
         // Prune agent-activity entries older than 30 days so the persisted log
@@ -507,10 +507,6 @@ final class AppStateStore {
         if settings.notifyOnNewEpisodes != prior.notifyOnNewEpisodes {
             kernel?.dispatch(namespace: "podcast.settings",
                              body: ["op": "set_notify_on_new_episodes", "enabled": settings.notifyOnNewEpisodes])
-        }
-        if settings.notifyOnBriefingReady != prior.notifyOnBriefingReady {
-            kernel?.dispatch(namespace: "podcast.settings",
-                             body: ["op": "set_notify_on_briefing_ready", "enabled": settings.notifyOnBriefingReady])
         }
         if settings.nostrEnabled != prior.nostrEnabled {
             kernel?.dispatch(namespace: "podcast.settings",
