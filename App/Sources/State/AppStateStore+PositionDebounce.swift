@@ -162,10 +162,34 @@ extension AppStateStore {
     }
 
     /// Folds the position cache into a list of episodes. Used by the
-    /// in-progress / recent feeds so a freshly-started episode shows up
-    /// without waiting for the first 30s flush.
+    /// in-progress / recent / per-show feeds so a freshly-started episode
+    /// shows up with its live playhead without waiting for the first 30s
+    /// flush.
+    ///
+    /// **Allocation contract.** This is called from `inProgressEpisodesView`,
+    /// `recentEpisodesView`, and `episodesForShowView` — each fires inside a
+    /// SwiftUI `body` getter that re-runs on every scroll tick and every
+    /// playback tick. The naive `.map` below allocates a fresh array and
+    /// ARC-churns every `Episode` struct on *every* read, even when the
+    /// cache holds nothing relevant to this slice. Two guards keep the
+    /// common case allocation-free:
+    ///
+    ///   1. **Empty cache** (no playback in flight) → return the input.
+    ///   2. **Disjoint slice** — cache non-empty, but no episode in this
+    ///      slice has a pending position (during playback only the playing
+    ///      episode's show overlaps) → return the input unchanged. Swift's
+    ///      copy-on-write makes this a refcount bump, not an N-element copy.
+    ///
+    /// Both guards still *read* `positionCache` every pass, so the
+    /// `@Observable` dependency registers and the views re-render correctly
+    /// when the cache changes. The `.map` runs only for the slice that
+    /// actually overlaps the cache, where the copy is unavoidable (we must
+    /// surface the live position) and bounded to that one show / feed.
     func applyingPositionCache(_ episodes: [Episode]) -> [Episode] {
         guard !positionCache.isEmpty else { return episodes }
+        guard episodes.contains(where: { positionCache[$0.id] != nil }) else {
+            return episodes
+        }
         return episodes.map { episode in
             guard let cached = positionCache[episode.id] else { return episode }
             var copy = episode

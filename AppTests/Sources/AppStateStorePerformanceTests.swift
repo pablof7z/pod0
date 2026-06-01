@@ -320,6 +320,40 @@ final class AppStateStorePerformanceTests: XCTestCase {
         XCTAssertEqual(listed.first?.id, unplayed.id)
     }
 
+    /// The position-cache fold must be behaviourally identical when the
+    /// queried slice does not overlap `positionCache`. This pins the
+    /// overlap-guard fast path in `applyingPositionCache`: a non-empty
+    /// cache holding a position for an episode in *another* show must not
+    /// alter the positions returned for the queried show — every episode
+    /// in the disjoint slice keeps its persisted value.
+    func testPositionCacheFoldLeavesDisjointSliceUnchanged() {
+        let playing = addSubscription(title: "Playing Show")
+        let other = addSubscription(title: "Other Show")
+
+        let playingEp = makeEpisode(podcastID: playing.id, guid: "playing-ep")
+        let otherEp = makeEpisode(podcastID: other.id, guid: "other-ep")
+        store.upsertEpisodes([playingEp], forPodcast: playing.id)
+        store.upsertEpisodes([otherEp], forPodcast: other.id)
+
+        // First call eagerly flushes; a second lands in the cache only, so
+        // `positionCache` is non-empty and holds *only* the playing show's
+        // episode — disjoint from the other show's slice.
+        store.setEpisodePlaybackPosition(playingEp.id, position: 100)
+        store.setEpisodePlaybackPosition(playingEp.id, position: 250)
+
+        // The other show's slice does not overlap the cache: its episode
+        // must read its persisted position (0), unchanged by the fold.
+        let otherSlice = store.episodes(forPodcast: other.id)
+        XCTAssertEqual(otherSlice.count, 1)
+        XCTAssertEqual(otherSlice.first?.id, otherEp.id)
+        XCTAssertEqual(otherSlice.first?.playbackPosition ?? -1, 0, accuracy: 0.001)
+
+        // The playing show's slice *does* overlap: the fold still surfaces
+        // the live cached position (250), not the persisted 100.
+        let playingSlice = store.episodes(forPodcast: playing.id)
+        XCTAssertEqual(playingSlice.first?.playbackPosition ?? -1, 250, accuracy: 0.001)
+    }
+
     func testClearAllDataEmptiesProjections() {
         let sub = addSubscription(title: "Wipe")
         let ep = makeEpisode(podcastID: sub.id, guid: "wipe-1")
