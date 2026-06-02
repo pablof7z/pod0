@@ -9,11 +9,12 @@ tags:
 volatility: cold
 confidence: medium
 created: 2026-05-30
-updated: 2026-05-30
+updated: 2026-06-02
 verified: 2026-05-30
 compiled-from: conversation
 sources:
   - session:14943b9b-5bf3-4317-bc44-298a773bc75e
+  - session:8bfa1b91-b40c-44b3-acb9-245b36f4c841
 ---
 
 # Disk Full Recovery (ENOSPC)
@@ -30,4 +31,6 @@ The recovery procedure: (1) Remove the iOS build cache: rm -rf ~/.cargo/target-s
 
 ## Detection
 
-ENOSPC is detected when Rust or Xcode builds fail with disk-full errors (I/O error or ENOSPC in cargo output). The `df -h` command confirms the volume at 100%. <!-- [^14943-64] -->
+ENOSPC is detected when Rust or Xcode builds fail with disk-full errors (I/O error or ENOSPC in cargo output), or when an Opus agent review cycle fails due to the volume being full. The `df -h` command confirms the volume at 100%.
+
+<!-- citations: [^14943-64] [^8bfa1-2] -->

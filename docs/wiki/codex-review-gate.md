@@ -11,11 +11,12 @@ tags:
 volatility: cold
 confidence: medium
 created: 2026-05-29
-updated: 2026-06-01
+updated: 2026-06-02
 verified: 2026-05-29
 compiled-from: conversation
 sources:
   - session:14943b9b-5bf3-4317-bc44-298a773bc75e
+  - session:8bfa1b91-b40c-44b3-acb9-245b36f4c841
 ---
 
 # Codex Review Gate
@@ -24,9 +25,9 @@ sources:
 
 ## Gate Requirement
 
-Opus agents are used for code reviews instead of codex CLI. Before shipping any migration or significant change, a code review must be run and must return a clean approval. This is an Opus agent review, not a CLI command. It audits the diff against `main` for correctness, security, maintainability, technical debt, gimmicks, shortcuts, and alignment with NMP. <!-- [^14943-38] -->
+Opus agents are used for code reviews. Before shipping any migration or significant change, a code review must be run and must return a clean approval. This is an Opus agent review, not a CLI command. It audits the diff against `main` for correctness, security, maintainability, technical debt, gimmicks, shortcuts, and alignment with NMP.
 
-<!-- citations: [^14943-38] [^14943-105] -->
+<!-- citations: [^14943-38] [^14943-105] [^8bfa1-1] -->
 ## Approval Criteria
 
 The review returns findings at P1 (blocking) and P2 (non-blocking) severity. For the gate to be satisfied, the review must return with no P1 findings. P2 findings may be addressed or rebutted with evidence, but the review must finish with no actionable correctness issues. A clean verdict reads: "No introduced correctness, security, or maintainability issues were found in the reviewed diff." <!-- [^14943-39] -->

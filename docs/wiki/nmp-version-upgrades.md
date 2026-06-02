@@ -11,11 +11,12 @@ tags:
 volatility: warm
 confidence: medium
 created: 2026-05-29
-updated: 2026-06-01
+updated: 2026-06-02
 verified: 2026-05-29
 compiled-from: conversation
 sources:
   - session:14943b9b-5bf3-4317-bc44-298a773bc75e
+  - session:8bfa1b91-b40c-44b3-acb9-245b36f4c841
 ---
 
 # NMP Version Upgrades
@@ -50,9 +51,9 @@ When upgrading NMP, a changelog must be produced summarizing everything new betw
 
 `resolved_profiles` from NMP v0.2.0 is not optional tech debt — it removes a proven-broken merge pattern and should be adopted in the same window as the pin bump, not deferred.
 
-The changelog is written to `docs/plan/nmp-v<version>-upgrade.md` (e.g., `nmp-v0.2.0-upgrade.md`) and referenced from `docs/plan.md`.
+The changelog is written to `docs/plan/nmp-v<version>-upgrade.md` (parameterized by the target version, e.g., `nmp-v0.2.0-upgrade.md`) and referenced from `docs/plan.md`.
 
-<!-- citations: [^14943-54] [^14943-118] -->
+<!-- citations: [^14943-54] [^14943-118] [^8bfa1-4] -->
 ## See Also
 - [[nmp-integration-rules|NMP Integration Rules]] — related guide
 - [[ios-build-pipeline|iOS Build Pipeline]] — related guide
