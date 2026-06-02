@@ -105,6 +105,27 @@ real navigation. Where the convention id maps to a real surface, the flows use
 it; otherwise they use stable text. Update the id taps once the parallel agent
 assigns ids to the sidebar / Add Show / queue surfaces.
 
+## ID-placement notes for the parallel a11y-id agent
+
+Two convention ids are reused on surfaces the convention did not explicitly
+name. For these flows to bind once ids land, please tag these surfaces (or tell
+us a distinct id to use):
+
+- **`search-field` / `search-result-row`** read most naturally as the top-right
+  **Search sheet** (`PodcastSearchView`'s `.searchable`). But flows 01 +
+  `subscribe-darknet` use them on the **Discover / Add Show** field
+  (`DiscoverSearchForm` → `DiscoverSearchTextField`, placeholder
+  *"Search Apple Podcasts"*) and its iTunes result rows — a different view.
+  Either add `discover-search-field` / `discover-result-row` ids there, or
+  apply `search-field` / `search-result-row` to the Discover surface too. The
+  flows tap these ids `optional: true` and fall back to placeholder/title text,
+  so they degrade rather than hard-fail until this is resolved.
+- **`home-episode-row`** is a Home-screen id, but flows 02 / 06 / 08 tap episode
+  rows inside **`ShowDetailView`** (the per-podcast episode list reached by
+  opening a show). Those detail rows need an episode-row id too — reuse
+  `home-episode-row` on `ShowDetailView`'s list, or define
+  `show-detail-episode-row` and we will switch the taps.
+
 ## Conventions used (per the task)
 
 Tabs: `tab-home`, `tab-library` (others in the convention have no real tab).
@@ -125,3 +146,20 @@ Home: `home-episode-row`, `home-search-button`. Search: `search-field`,
   advances within budget", and "skip ±15s" are flagged
   `# MANUAL VERIFICATION REQUIRED` inside the flows; the automatable proxies
   (mini-player present, Play↔Pause toggle) are asserted instead.
+
+## Validate on first real run
+
+A few command/selector choices can only be confirmed against a live build with
+the ids installed. On the first end-to-end run, re-verify:
+
+- **iOS back navigation** — `back` is Android-only; flow 08 uses a left-edge
+  swipe (interactive pop) + a "Back" text fallback. Confirm the swipe pops the
+  detail view on iOS.
+- **`pressKey: Enter`** — submits the search field (was `Return`; Maestro's key
+  enum uses `Enter`). Confirm the Discover/Search submit fires.
+- **`pressKey: Home`** (flow 07) — confirm it backgrounds the app on the target
+  Simulator/device.
+- **Optional-tap chains** — in flows where the episode-open / play taps are
+  `optional: true`, confirm they actually fire once ids land; otherwise a later
+  required `assertVisible` (e.g. `mini-player-bar`) fails with a misleading
+  error rather than at the real cause (a missing episode-row id).

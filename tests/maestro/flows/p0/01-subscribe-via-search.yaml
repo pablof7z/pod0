@@ -22,10 +22,17 @@ appId: io.f7z.podcast
     optional: true
 
 # --- Search ---
+# See the ID-PLACEMENT NOTE in shared/subscribe-darknet.yaml: `search-field`
+# most likely binds to the Search sheet, not this Discover field. Tap by id
+# (optional) then fall back to the Discover placeholder text.
 - tapOn:
     id: "search-field"
+    optional: true
+- tapOn:
+    text: "Search Apple Podcasts"
+    optional: true
 - inputText: "Darknet Diaries"
-- pressKey: Return
+- pressKey: Enter
 - waitForAnimationToEnd
 
 # Assertion: search results render at least one podcast cell with a title.

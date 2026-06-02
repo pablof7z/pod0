@@ -28,7 +28,15 @@ appId: io.f7z.podcast
 - waitForAnimationToEnd
 
 # --- Navigate back to the episode list while the download is in progress ---
-- back
+# NOTE: Maestro's `back` command is Android-only; iOS has no hardware back.
+# Use the interactive pop gesture (swipe in from the left screen edge), with
+# a tap on the nav "Back" button as a fallback.
+- swipe:
+    start: 2%, 50%
+    end: 90%, 50%
+- tapOn:
+    text: "Back"
+    optional: true
 - waitForAnimationToEnd
 
 # Assertion: the list row reflects the in-progress download (a Downloads /

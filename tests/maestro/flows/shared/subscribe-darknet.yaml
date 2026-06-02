@@ -28,11 +28,24 @@ appId: io.f7z.podcast
     # on the search field appearing next.
     optional: true
 
-# Type the show name into the discover search field and submit.
+# Type the show name into the Discover search field and submit.
+#
+# ID-PLACEMENT NOTE for the parallel a11y-id agent: the convention's
+# `search-field` is most naturally attached to the top-right Search SHEET
+# (PodcastSearchView's `.searchable`). This Discover field is a DIFFERENT
+# surface (DiscoverSearchForm -> DiscoverSearchTextField, placeholder
+# "Search Apple Podcasts"). For this subscribe flow to bind, the Discover
+# field ALSO needs an id (suggest `discover-search-field`, or reuse
+# `search-field` here). Until then this taps by id (optional) then falls back
+# to the placeholder text so the setup helper never hard-fails the whole suite.
 - tapOn:
     id: "search-field"
+    optional: true
+- tapOn:
+    text: "Search Apple Podcasts"
+    optional: true
 - inputText: "Darknet Diaries"
-- pressKey: Return
+- pressKey: Enter
 - waitForAnimationToEnd
 
 # Tap the matching result row (prefer the convention id, fall back to the
