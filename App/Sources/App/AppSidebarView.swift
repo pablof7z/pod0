@@ -6,11 +6,10 @@ import SwiftUI
 struct AppSidebarView: View {
     @Binding var selectedTab: RootTab
     @Binding var isPresented: Bool
+    var onShowPodcasts: () -> Void
 
     @Environment(AppStateStore.self) private var store
     private var userIdentity: UserIdentityStore { store.identity }
-
-    @State private var showPodcastsSheet = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -22,19 +21,6 @@ struct AppSidebarView: View {
         .safeAreaPadding(.top)
         .safeAreaPadding(.bottom)
         .background(Color(.systemBackground).ignoresSafeArea())
-        .sheet(isPresented: $showPodcastsSheet) {
-            NavigationStack {
-                AllPodcastsListView()
-                    .navigationDestination(for: Podcast.self) { podcast in
-                        ShowDetailView(podcast: podcast)
-                    }
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            Button("Done") { showPodcastsSheet = false }
-                        }
-                    }
-            }
-        }
     }
 
     // MARK: - Header
@@ -83,7 +69,7 @@ struct AppSidebarView: View {
             }
             navRow("Podcasts", icon: "mic.fill", isActive: false) {
                 dismiss()
-                showPodcastsSheet = true
+                onShowPodcasts()
             }
             navRow("Bookmarks", icon: "bookmark.fill", isActive: selectedTab == .bookmarks) {
                 selectedTab = .bookmarks

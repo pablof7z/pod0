@@ -41,6 +41,7 @@ struct RootView: View {
     @State var showSettings = false
     @State var showAgentChat = false
     @State var showSidebar = false
+    @State var showPodcastsSheet = false
     @State var showSearch = false
     @State var agentSession: AgentChatSession?
     @State var agentUnseenMessageCount: Int = 0
@@ -156,6 +157,20 @@ struct RootView: View {
                     })
                 }
                 .sheet(isPresented: $showSearch) { searchSheet }
+                .sheet(isPresented: $showPodcastsSheet) {
+                    NavigationStack {
+                        AllPodcastsListView()
+                            .navigationDestination(for: Podcast.self) { podcast in
+                                ShowDetailView(podcast: podcast)
+                            }
+                            .toolbar {
+                                ToolbarItem(placement: .topBarLeading) {
+                                    Button("Done") { showPodcastsSheet = false }
+                                }
+                            }
+                    }
+                    .environment(playbackState)
+                }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                     scheduledTaskRunner?.runDueTasksIfNeeded()
                 }
@@ -229,7 +244,8 @@ struct RootView: View {
 
             AppSidebarView(
                 selectedTab: $selectedTab,
-                isPresented: $showSidebar
+                isPresented: $showSidebar,
+                onShowPodcasts: { showPodcastsSheet = true }
             )
             .frame(width: sidebarWidth)
             .ignoresSafeArea()
