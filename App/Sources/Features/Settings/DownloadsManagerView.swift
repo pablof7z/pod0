@@ -27,6 +27,7 @@ struct DownloadsManagerView: View {
             }
         }
         .settingsListStyle()
+        .accessibilityIdentifier("downloads-list")
         .navigationTitle("Downloads")
         .navigationBarTitleDisplayMode(.large)
         .task { }

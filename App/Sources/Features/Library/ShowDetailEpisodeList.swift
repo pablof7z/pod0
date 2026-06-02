@@ -42,6 +42,7 @@ struct ShowDetailEpisodeList: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("home-episode-row")
             .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets(
                 top: AppTheme.Spacing.xs,

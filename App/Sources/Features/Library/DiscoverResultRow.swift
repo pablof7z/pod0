@@ -36,6 +36,7 @@ struct DiscoverResultRow: View {
             }
         }
         .animation(AppTheme.Animation.springFast, value: isErrorExpanded)
+        .accessibilityIdentifier("search-result-row")
     }
 
     // MARK: - Subviews

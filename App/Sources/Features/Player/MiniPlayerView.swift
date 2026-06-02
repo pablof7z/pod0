@@ -50,6 +50,7 @@ struct MiniPlayerView: View {
             }
         }
         .animation(AppTheme.Animation.spring, value: placement)
+        .accessibilityIdentifier("mini-player-bar")
     }
 
     // MARK: - Expanded (regular) layout
@@ -134,6 +135,7 @@ struct MiniPlayerView: View {
             }
             .buttonStyle(.pressable)
             .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
+            .accessibilityIdentifier("mini-player-play-pause")
         }
         .padding(.horizontal, AppTheme.Spacing.sm)
     }
@@ -154,6 +156,7 @@ struct MiniPlayerView: View {
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .truncationMode(.tail)
+                .accessibilityIdentifier("mini-player-title")
         }
     }
 
@@ -282,6 +285,7 @@ struct MiniPlayerView: View {
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .truncationMode(.tail)
+                .accessibilityIdentifier("mini-player-title")
         }
     }
 
@@ -343,6 +347,7 @@ struct MiniPlayerView: View {
             }
             .buttonStyle(.pressable)
             .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
+            .accessibilityIdentifier("mini-player-play-pause")
 
             Button {
                 state.skipForward()

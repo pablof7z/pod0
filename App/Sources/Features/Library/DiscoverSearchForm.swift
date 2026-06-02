@@ -107,6 +107,7 @@ struct DiscoverSearchForm: View {
             )
             .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("search-field")
             Button {
                 clearQuery()
             } label: {

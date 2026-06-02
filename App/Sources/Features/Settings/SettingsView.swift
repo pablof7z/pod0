@@ -15,6 +15,7 @@ struct SettingsView: View {
             versionFooterSection
         }
         .settingsListStyle()
+        .accessibilityIdentifier("settings-root-list")
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.large)
         .task {

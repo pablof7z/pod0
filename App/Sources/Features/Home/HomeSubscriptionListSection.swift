@@ -56,6 +56,7 @@ struct HomeSubscriptionListSection: View {
                     now: now,
                     onRequestUnsubscribe: { onRequestUnsubscribe(sub) }
                 )
+                .accessibilityIdentifier("library-podcast-row")
                 .padding(.horizontal, AppTheme.Spacing.md)
                 .padding(.vertical, AppTheme.Spacing.sm)
                 Divider()
@@ -63,5 +64,6 @@ struct HomeSubscriptionListSection: View {
                     .padding(.leading, AppTheme.Spacing.md + 53 + AppTheme.Spacing.md)
             }
         }
+        .accessibilityIdentifier("library-podcast-list")
     }
 }

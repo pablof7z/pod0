@@ -261,6 +261,7 @@ struct RootView: View {
         let base = TabView(selection: $selectedTab) {
             ForEach(RootTab.allCases, id: \.self) { tab in
                 tabContent(for: tab)
+                    .accessibilityIdentifier("tab-\(tab.rawValue.lowercased())")
                     .tabItem { Label(tab.rawValue, systemImage: tab.icon) }
                     .tag(tab)
             }
@@ -388,6 +389,7 @@ struct RootView: View {
                 Image(systemName: "magnifyingglass")
             }
             .accessibilityLabel("Search")
+            .accessibilityIdentifier("home-search-button")
         }
         ToolbarItem(placement: .topBarTrailing) {
             Button {

@@ -36,6 +36,7 @@ struct PlayerControlsView: View {
                 tapAction: { state.skipBackward() },
                 chapterAction: chapters.isEmpty ? nil : { state.seekToPreviousChapter(in: chapters) }
             )
+            .accessibilityIdentifier("player-skip-backward")
 
             playPauseButton
 
@@ -45,6 +46,7 @@ struct PlayerControlsView: View {
                 tapAction: { state.skipForward() },
                 chapterAction: chapters.isEmpty ? nil : { state.seekToNextChapter(in: chapters) }
             )
+            .accessibilityIdentifier("player-skip-forward")
 
             Spacer(minLength: 0)
 
@@ -69,6 +71,7 @@ struct PlayerControlsView: View {
                 .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
         }
         .buttonStyle(.pressable(scale: 0.94, opacity: 0.9))
+        .accessibilityIdentifier("player-play-pause")
     }
 
     private func actionChip(
