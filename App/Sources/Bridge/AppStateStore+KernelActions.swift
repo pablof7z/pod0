@@ -280,7 +280,7 @@ extension AppStateStore {
     /// Passes the episode enclosure URL directly in the dispatch to avoid
     /// relying on Rust store lookup (which may not have the episode yet).
     func kernelDownload(_ id: UUID) {
-        guard let episode = state.episodes.first(where: { $0.id == id }) else {
+        guard let episode = episode(id: id) else {
             os_log(.error, log: OSLog(subsystem: "io.f7z.podcast", category: "AppStateStore"),
                    "kernelDownload: episode not found: %{public}s", id.uuidString)
             return
