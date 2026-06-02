@@ -1,0 +1,28 @@
+# Shared flow: cold-launch the app and wait until the Home tab is on screen.
+#
+# Every P0 flow imports this via `runFlow: ../shared/launch.yaml` so launch
+# steps are defined in exactly one place.
+#
+# Navigation note (verified against App/Sources/App/RootView.swift):
+#   The real root tabs are Home / Library / Bookmarks / Clippings / Wiki.
+#   They are a standard SwiftUI TabView whose `tabItem` labels are the tab
+#   titles ("Home", "Library", ...). The parallel a11y-id agent assigns
+#   `tab-home`, `tab-library`, etc. We prefer the id and fall back to the
+#   visible tab label text.
+appId: io.f7z.podcast
+---
+- launchApp:
+    # `stopApp: true` gives every importing flow a clean cold start so prior
+    # state (a playing episode, an open sheet) never leaks between flows.
+    stopApp: true
+- waitForAnimationToEnd
+
+# Home is the default selected tab. Assert it is reachable/visible before any
+# flow proceeds. Prefer the convention id; the tab label "Home" is the stable
+# text fallback.
+- assertVisible:
+    id: "tab-home"
+- tapOn:
+    id: "tab-home"
+    optional: true
+- assertVisible: "Home"

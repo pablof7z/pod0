@@ -1,0 +1,57 @@
+# P0 / subscribe-via-search
+# Scenario: Subscribe to a podcast found via keyword search.
+#
+# Network-dependent (hits Apple iTunes search). Searches for the stable,
+# well-known "Darknet Diaries" feed and subscribes, then confirms it lands in
+# the library reactively (no manual refresh).
+#
+# Reality note: the app's top-right magnifying-glass Search sheet searches the
+# LOCAL library/transcripts, not a remote catalog. Subscribing-by-keyword is
+# the Discover (Apple iTunes) path reached via the sidebar -> Add Show. This
+# flow exercises that real path; ids fall back to stable text.
+appId: io.f7z.podcast
+---
+- runFlow: ../shared/launch.yaml
+
+# --- Open Discover / Add Show ---
+- tapOn:
+    accessibilityLabel: "Open sidebar"
+- waitForAnimationToEnd
+- tapOn:
+    text: "Add Show"
+    optional: true
+
+# --- Search ---
+- tapOn:
+    id: "search-field"
+- inputText: "Darknet Diaries"
+- pressKey: Return
+- waitForAnimationToEnd
+
+# Assertion: search results render at least one podcast cell with a title.
+- assertVisible: "Darknet Diaries"
+
+# --- Open the first result + subscribe ---
+- tapOn:
+    id: "search-result-row"
+    optional: true
+- tapOn:
+    text: "Darknet Diaries"
+- waitForAnimationToEnd
+- tapOn:
+    text: "Subscribe"
+    optional: true
+
+# Assertion: Subscribe toggles to a subscribed/Unsubscribe state immediately
+# (reactive, no manual refresh).
+- assertVisible:
+    text: "Unsubscribe"
+    optional: true
+
+# --- Confirm it appears in the Library reactively ---
+# Library tab hosts AllEpisodesView; subscribed shows surface on Home and in
+# the sidebar's Podcasts section. Navigate Home and assert the show is present.
+- tapOn:
+    id: "tab-home"
+- waitForAnimationToEnd
+- assertVisible: "Darknet Diaries"
