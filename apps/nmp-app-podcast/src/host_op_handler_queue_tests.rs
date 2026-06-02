@@ -176,3 +176,88 @@ fn clear_persists_empty_queue() {
     reload.set_data_dir(tmp.path.clone());
     assert!(reload.take_loaded_queue().is_empty());
 }
+
+#[test]
+fn add_next_on_non_empty_queue_inserts_at_front() {
+    // The existing `add_next_pushes_front_and_bumps_rev` only exercises an
+    // empty queue. This pins the "Play Next cuts the line" invariant on a
+    // populated queue at the HANDLER level: AddNext must land ahead of every
+    // already-queued item, not at the back.
+    let (q, store, rev) = fresh();
+    handle_queue_action(
+        &q,
+        &store,
+        &rev,
+        QueueAction::AddLast { episode_id: "ep-1".into() },
+    );
+    handle_queue_action(
+        &q,
+        &store,
+        &rev,
+        QueueAction::AddLast { episode_id: "ep-2".into() },
+    );
+    let result = handle_queue_action(
+        &q,
+        &store,
+        &rev,
+        QueueAction::AddNext { episode_id: "ep-urgent".into() },
+    );
+    assert_eq!(result, serde_json::json!({"ok": true}));
+    assert_eq!(
+        q.lock().unwrap().items(),
+        &["ep-urgent".to_owned(), "ep-1".to_owned(), "ep-2".to_owned()]
+    );
+}
+
+#[test]
+fn queue_survives_unsubscribe_of_the_owning_podcast() {
+    use podcast_core::{Episode, Podcast};
+    use url::Url;
+    use uuid::Uuid;
+
+    // Build a real subscribed podcast + episode so the queued id refers to a
+    // genuine library row, then unsubscribe the show out from under the queue.
+    let mut s = PodcastStore::new();
+    let podcast = Podcast::new("Doomed Show");
+    let pid = podcast.id;
+    let episode = Episode::new(
+        pid,
+        "https://example.com/feed.xml",
+        format!("guid-{}", Uuid::new_v4()),
+        "Queued Episode",
+        Url::parse("https://example.com/audio.mp3").unwrap(),
+        chrono::Utc::now(),
+    );
+    let ep_id = episode.id.0.to_string();
+    s.subscribe(podcast, vec![episode]);
+
+    let store = Arc::new(Mutex::new(s));
+    let q = Arc::new(Mutex::new(PlaybackQueue::new()));
+    let rev = Arc::new(AtomicU64::new(0));
+
+    // Queue the episode, then unsubscribe its podcast.
+    handle_queue_action(
+        &q,
+        &store,
+        &rev,
+        QueueAction::AddLast { episode_id: ep_id.clone() },
+    );
+    store.lock().unwrap().unsubscribe(pid);
+
+    // The queue holds opaque ids (D0) — it must still carry the now-orphaned
+    // id without panicking; the store simply no longer resolves it.
+    assert_eq!(q.lock().unwrap().items(), &[ep_id.clone()]);
+    assert!(store.lock().unwrap().episode_playback_info(&ep_id).is_none());
+
+    // Mutating the queue after the unsubscribe still works (remove the stale
+    // id cleanly), proving the queue handler is decoupled from the store's
+    // library state.
+    let result = handle_queue_action(
+        &q,
+        &store,
+        &rev,
+        QueueAction::Remove { episode_id: ep_id },
+    );
+    assert_eq!(result, serde_json::json!({"ok": true}));
+    assert!(q.lock().unwrap().items().is_empty());
+}
