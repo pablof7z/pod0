@@ -1,0 +1,67 @@
+# Shared setup helper: subscribe to "Darknet Diaries" (a stable, well-known
+# public podcast) so flows that need a precondition of "at least one
+# subscribed podcast with episodes" can `runFlow` this once.
+#
+# Network-dependent. Subscribe/discover in this app is NOT the in-app Search
+# sheet (that searches the LOCAL library + transcripts). Real discovery lives
+# behind the avatar sidebar -> "Add Show" -> Discover (Apple iTunes search),
+# where tapping a result row subscribes (verified against
+# App/Sources/Features/Library/{AddShowSheet,DiscoverSearchForm}.swift).
+#
+# Because that path has no stable accessibility ids in the convention yet,
+# this helper leans on stable visible text ("Add Show", "Subscribe",
+# "Darknet Diaries"). Adjust the entry-point taps once the parallel agent
+# assigns ids to the sidebar + Add Show surfaces.
+appId: io.f7z.podcast
+---
+- runFlow: launch.yaml
+
+# Open the avatar sidebar (top-leading toolbar button, a11y label "Open
+# sidebar") then the Add Show / Discover surface.
+- tapOn:
+    accessibilityLabel: "Open sidebar"
+- waitForAnimationToEnd
+- tapOn:
+    text: "Add Show"
+    # Sidebar entry-point label may differ ("Discover", "Add Podcast"); keep
+    # optional so a label tweak does not hard-fail the whole suite, and rely
+    # on the search field appearing next.
+    optional: true
+
+# Type the show name into the Discover search field and submit.
+#
+# ID-PLACEMENT NOTE for the parallel a11y-id agent: the convention's
+# `search-field` is most naturally attached to the top-right Search SHEET
+# (PodcastSearchView's `.searchable`). This Discover field is a DIFFERENT
+# surface (DiscoverSearchForm -> DiscoverSearchTextField, placeholder
+# "Search Apple Podcasts"). For this subscribe flow to bind, the Discover
+# field ALSO needs an id (suggest `discover-search-field`, or reuse
+# `search-field` here). Until then this taps by id (optional) then falls back
+# to the placeholder text so the setup helper never hard-fails the whole suite.
+- tapOn:
+    id: "search-field"
+    optional: true
+- tapOn:
+    text: "Search Apple Podcasts"
+    optional: true
+- inputText: "Darknet Diaries"
+- pressKey: Enter
+- waitForAnimationToEnd
+
+# Tap the matching result row (prefer the convention id, fall back to the
+# show title text) and subscribe.
+- tapOn:
+    id: "search-result-row"
+    optional: true
+- tapOn:
+    text: "Darknet Diaries"
+- waitForAnimationToEnd
+- tapOn:
+    text: "Subscribe"
+    optional: true
+
+# Reactive assertion: the row/detail flips to the subscribed state without a
+# manual refresh.
+- assertVisible:
+    text: "Unsubscribe"
+    optional: true

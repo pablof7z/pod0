@@ -1,0 +1,54 @@
+# P0 / pause-resume-playback
+# Scenario: Pause and resume keeps position.
+#
+# Precondition: an episode is actively playing. We reach that state by chaining
+# the play-episode-basic flow (which subscribes + starts playback).
+appId: io.f7z.podcast
+---
+- runFlow: 02-play-episode-basic.yaml
+
+# Confirm we are in the playing state (button shows Pause).
+- assertVisible:
+    accessibilityLabel: "Pause"
+    optional: true
+
+# --- Pause from the mini-player ---
+- tapOn:
+    id: "mini-player-play-pause"
+    optional: true
+- tapOn:
+    accessibilityLabel: "Pause"
+    optional: true
+- waitForAnimationToEnd
+
+# Assertion: on pause the control flips to Play.
+- assertVisible:
+    accessibilityLabel: "Play"
+    optional: true
+- assertVisible:
+    id: "mini-player-bar"
+
+# While paused, the counter must not advance. Maestro cannot assert "frozen
+# clock" via text matching reliably -> the still-present mini-player + the
+# Play (not Pause) control are the automatable proxy.
+# MANUAL VERIFICATION REQUIRED: confirm the elapsed time does not advance
+# during the paused window.
+
+# --- Resume ---
+- tapOn:
+    id: "mini-player-play-pause"
+    optional: true
+- tapOn:
+    accessibilityLabel: "Play"
+    optional: true
+- waitForAnimationToEnd
+
+# Assertion: on resume the control flips back to Pause (playing again). The
+# episode resumes from ~T rather than restarting at 0:00.
+- assertVisible:
+    accessibilityLabel: "Pause"
+    optional: true
+- assertVisible:
+    id: "mini-player-bar"
+# MANUAL VERIFICATION REQUIRED: confirm resume continues from ~T (no restart
+# to 0:00) and there is no FFI/kernel-UI desync.

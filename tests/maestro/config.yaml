@@ -1,0 +1,27 @@
+# Maestro test-suite configuration for the Podcastr iOS app.
+#
+# Run the whole P0 suite with:
+#     maestro test tests/maestro/config.yaml
+#
+# Or a single flow with:
+#     maestro test tests/maestro/flows/p0/02-play-episode-basic.yaml
+#
+# `flows` lists the executable P0 entry-point flows. The shared helpers under
+# flows/shared/ are imported via `runFlow` and are intentionally NOT listed
+# here so they do not run standalone as part of the suite.
+appId: io.f7z.podcast
+
+flows:
+  - flows/p0/01-subscribe-via-search.yaml
+  - flows/p0/02-play-episode-basic.yaml
+  - flows/p0/03-pause-resume.yaml
+  - flows/p0/04-skip-forward-back.yaml
+  - flows/p0/05-offline-library-access.yaml
+  - flows/p0/06-queue-add-multiple.yaml
+  - flows/p0/07-background-playback.yaml
+  - flows/p0/08-reactive-state.yaml
+
+# Exclude the shared helpers from suite-level discovery; they are dependencies,
+# not standalone tests.
+excludeFlows:
+  - flows/shared/*

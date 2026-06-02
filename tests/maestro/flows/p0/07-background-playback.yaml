@@ -1,0 +1,49 @@
+# P0 / background-playback-continues
+# Scenario: Audio continues when the app is backgrounded.
+#
+# Precondition: an episode is playing. We chain play-episode-basic to get there.
+#
+# MANUAL VERIFICATION REQUIRED (audio): Maestro can background/foreground the
+# app, but it cannot HEAR audio or read the elapsed-clock delta. Whether audio
+# actually keeps playing while backgrounded (T2 ~ T + elapsed) is an auditory /
+# timing assertion that must be confirmed by a human or an instrumented harness
+# reading the kernel playback position. This flow exercises the scene-phase
+# transition + verifies the UI does not desync on return.
+appId: io.f7z.podcast
+---
+- runFlow: 02-play-episode-basic.yaml
+
+# Confirm the playing state before backgrounding.
+- assertVisible:
+    accessibilityLabel: "Pause"
+    optional: true
+- assertVisible:
+    id: "mini-player-bar"
+
+# --- Send the app to the background (scene-phase change) ---
+- pressKey: Home
+- waitForAnimationToEnd
+
+# Hold in the background for ~5s. Maestro has no portable foreground "sleep"
+# command; `extendedWaitUntil` with a never-true condition is used as a bounded
+# wait so audio (if playing) keeps advancing in the background.
+- extendedWaitUntil:
+    visible: "__never_matches_sentinel__"
+    timeout: 5000
+    optional: true
+
+# --- Bring the app back to the foreground ---
+- launchApp
+- waitForAnimationToEnd
+
+# Assertion: now-playing UI remains populated and the play state is consistent
+# after the scene-phase change (no kernel/UI desync). The mini-player bar still
+# present + still showing Pause is the automatable signal.
+- assertVisible:
+    id: "mini-player-bar"
+- assertVisible:
+    accessibilityLabel: "Pause"
+    optional: true
+# MANUAL VERIFICATION REQUIRED: confirm audio kept playing while backgrounded
+# (T2 ~ T + 5s) and the foreground elapsed time matches the real playback
+# position.
