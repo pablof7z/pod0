@@ -290,7 +290,9 @@ extension AppStateStore {
         os_log(.debug, log: OSLog(subsystem: "io.f7z.podcast", category: "AppStateStore"),
                "kernelDownload: queuing episode=%{public}s url=%{public}s",
                id.uuidString, enclosureURL)
-
+        DiagnosticLog.shared.append(
+            level: .info, category: "dispatch",
+            message: "download episode_id=\(id)")
         kernel?.dispatch(namespace: "podcast",
                          body: ["op": "download", "episode_id": id.uuidString, "url": enclosureURL])
     }

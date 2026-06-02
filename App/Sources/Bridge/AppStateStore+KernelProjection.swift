@@ -89,6 +89,15 @@ extension AppStateStore {
                     libraryGeneration: kernel.libraryGeneration,
                     prevEpisodeSummaries: &prevEpisodeSummaries,
                     lastProjectedLibraryGeneration: &lastProjectedLibraryGeneration)
+                // Diagnostic tap: one entry per snapshot tick. Logged at the
+                // call site (not inside `applyKernelState`) so it covers both
+                // the full and fast-path projections uniformly. The `message`
+                // is an `@autoclosure`, so the `library.reduce` count never
+                // runs unless debug logging is enabled — this is a hot path.
+                DiagnosticLog.shared.append(
+                    level: .debug, category: "kernel",
+                    message: "snapshot tick rev=\(kernel.podcastSnapshot?.rev ?? 0) "
+                        + "episodes=\(kernel.library.reduce(0) { $0 + $1.episodes.count })")
                 // Suspend until kernel.library, kernel.podcastSnapshot, or
                 // kernel.kernelIdentity changes. The identity write is
                 // equality-gated in `KernelModel.apply`, so this arms only on a

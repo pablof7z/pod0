@@ -313,6 +313,9 @@ final class DownloadCapability {
             return
         }
         sendReport(json)
+        DiagnosticLog.shared.append(
+            level: .info, category: "download",
+            message: "report: \(String(describing: report))")
     }
 
     /// D8 progress throttle. Emits a `Progress` only when both gates open:

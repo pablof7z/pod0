@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-02T07:04:05Z",
+      "lines": [
+        "New Settings > Debug screen with an in-app log viewer — flip on debug logging to capture recent activity, then search, copy, or clear it"
+      ]
+    },
+    {
       "shipped_at": "2026-06-02T02:20:00Z",
       "lines": [
         "Your podcasts are now one tap away in the sidebar, with a See All view for the full list"

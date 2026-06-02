@@ -11,6 +11,7 @@ struct SettingsView: View {
             listeningSection
             intelligenceSection
             systemSection
+            debugSection
             versionFooterSection
         }
         .settingsListStyle()
@@ -179,6 +180,25 @@ struct SettingsView: View {
                 )
             }
         }
+    }
+
+    private var debugSection: some View {
+        Section("Debug") {
+            NavigationLink {
+                DebugSettingsView()
+            } label: {
+                SettingsRow(
+                    icon: "ladybug.fill",
+                    tint: .gray,
+                    title: "Debug",
+                    value: debugRowValue
+                )
+            }
+        }
+    }
+
+    private var debugRowValue: String? {
+        DiagnosticLog.shared.isEnabled ? "On" : nil
     }
 
     private var networkingRowValue: String {

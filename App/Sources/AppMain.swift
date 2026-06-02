@@ -94,8 +94,12 @@ struct PodcastrApp: App {
             case .active:
                 kernelModel.checkAlive()
                 kernelModel.lifecycleForeground()
+                DiagnosticLog.shared.append(
+                    level: .info, category: "lifecycle", message: "app foreground")
             case .background:
                 kernelModel.lifecycleBackground()
+                DiagnosticLog.shared.append(
+                    level: .info, category: "lifecycle", message: "app background")
             case .inactive:
                 break
             @unknown default:
