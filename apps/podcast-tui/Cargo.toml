@@ -9,6 +9,14 @@ description = "Ratatui terminal player for the Podcast app."
 name = "podcast-tui"
 path = "src/main.rs"
 
+# Headless kernel integration test. Drives the real Rust kernel via
+# `AppRuntime` (no TUI), exercises subscribe/queue/mark-played/settings against
+# a live RSS feed. Run via tests/integration/run_tui_integration.sh; excluded
+# from `cargo test` because it requires network.
+[[bin]]
+name = "integration_test"
+path = "src/bin/integration_test.rs"
+
 [dependencies]
 nmp-app-podcast = { path = "../nmp-app-podcast", default-features = false }
 nmp-core = { workspace = true, features = ["test-support"] }
