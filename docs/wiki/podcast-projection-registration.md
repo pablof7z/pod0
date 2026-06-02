@@ -11,11 +11,12 @@ tags:
 volatility: cold
 confidence: medium
 created: 2026-05-29
-updated: 2026-06-01
+updated: 2026-06-02
 verified: 2026-05-29
 compiled-from: conversation
 sources:
   - session:14943b9b-5bf3-4317-bc44-298a773bc75e
+  - session:e1cfd663-230d-4f78-9078-0c9ed8b6a4bb
 ---
 
 # Podcast Projection Registration
@@ -27,7 +28,7 @@ sources:
 The podcast projection is registered through the canonical `nmp_app_register_snapshot_projection` seam. In Rust, this is `NmpApp::register_snapshot_projection(key, f)` where `f: impl Fn() -> serde_json::Value + Send + Sync + 'static`. The podcast crate registers `"podcast.snapshot"` with a closure that calls `build_snapshot_payload(&handle)` — the same function the pull path uses, ensuring byte-identical output and benefiting from the rev-gated cache. <!-- [^14943-7] -->
 
 
-Synthetic episodes are registered in the Rust kernel via `RegisterSyntheticEpisode` so they survive projection and NIP-F4 publish can find them. <!-- [^14943-154] -->
+When an agent publishes a podcast, the user is not auto-subscribed to it; the synthetic podcast creates a Podcast row but no PodcastSubscription row, so it appears in 'See All' but not in the user's followed-podcasts list. <!-- [^e1cfd-7] -->
 ## Handle Ownership
 
 The `PodcastHandle` is wrapped in `Arc<PodcastHandle>` so the projection registry can hold one reference while Swift holds the other. Registration uses `Arc::into_raw(handle) as *mut PodcastHandle`. The unregister path uses `Arc::from_raw`. This is sound because `PodcastHandle` is already `unsafe impl Send + Sync` and no FFI function takes `&mut *handle`. <!-- [^14943-8] -->
