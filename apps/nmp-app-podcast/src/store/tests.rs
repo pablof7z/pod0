@@ -87,6 +87,57 @@ fn resubscribe_replaces_existing() {
 }
 
 #[test]
+fn episode_count_reflects_subscribed_episode_list() {
+    // `episodes_for` must mirror exactly what was subscribed — no synthetic
+    // padding, no dropped rows. Guards the snapshot's per-show episode count.
+    let mut store = PodcastStore::new();
+    let podcast = make_podcast("Counted Show");
+    let id = podcast.id;
+    let episodes = vec![
+        make_episode(id, "Ep 1"),
+        make_episode(id, "Ep 2"),
+        make_episode(id, "Ep 3"),
+    ];
+    store.subscribe(podcast, episodes.clone());
+    assert_eq!(store.episodes_for(id).len(), 3);
+    assert_eq!(store.episodes_for(id), episodes.as_slice());
+}
+
+#[test]
+fn unsubscribe_removes_podcast_and_its_episodes_in_memory() {
+    // `unsubscribe_writes_to_disk_when_bound` (tests_ext) asserts the
+    // reload-empty path; this pins the in-memory drop directly — both the
+    // podcast row AND its episode list must be gone, with no orphaned
+    // episodes left addressable under the removed id.
+    let mut store = PodcastStore::new();
+    let podcast = make_podcast("To Remove");
+    let id = podcast.id;
+    store.subscribe(podcast, vec![make_episode(id, "Ep 1"), make_episode(id, "Ep 2")]);
+    assert_eq!(store.podcast_count(), 1);
+    assert_eq!(store.episodes_for(id).len(), 2);
+
+    store.unsubscribe(id);
+
+    assert_eq!(store.podcast_count(), 0);
+    assert!(store.podcast(id).is_none());
+    assert!(store.episodes_for(id).is_empty());
+}
+
+#[test]
+fn unsubscribe_unknown_podcast_is_a_noop() {
+    // Removing an id that was never subscribed must not disturb existing rows.
+    let mut store = PodcastStore::new();
+    let keep = make_podcast("Keep");
+    let keep_id = keep.id;
+    store.subscribe(keep, vec![make_episode(keep_id, "Ep 1")]);
+
+    store.unsubscribe(PodcastId::generate());
+
+    assert_eq!(store.podcast_count(), 1);
+    assert_eq!(store.episodes_for(keep_id).len(), 1);
+}
+
+#[test]
 fn set_and_get_local_path() {
     let mut store = PodcastStore::new();
     let ep_id = EpisodeId::generate();

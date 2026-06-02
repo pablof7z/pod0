@@ -31,6 +31,7 @@ fn import_opml_action_round_trips() {
 fn download_action_round_trips() {
     let action = PodcastAction::Download {
         episode_id: "ep-7".into(),
+        url: None,
     };
     let json = serde_json::to_string(&action).expect("encode");
     assert!(json.contains(r#""op":"download""#));
