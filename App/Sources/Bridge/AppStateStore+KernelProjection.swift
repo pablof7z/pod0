@@ -324,7 +324,14 @@ extension AppStateStore {
         }
         // Assign the projected list to the live `self.episodes` stored property
         // inside the batch below (episodes no longer round-trip through `state`).
-        let projectedEpisodes = episodes
+        var projectedEpisodes = episodes
+        // Overlay live download states (.queued / .downloading / .failed) from
+        // the kernel DownloadQueue projection. `toEpisode` only knows two states
+        // (.downloaded when downloadPath != nil, .notDownloaded otherwise); the
+        // active-queue snapshot carries the in-progress states that toEpisode
+        // cannot see. Must run after the episode array is fully built so it also
+        // catches episodes that went through the unchanged-summary reuse path.
+        applyDownloadOverlay(to: &projectedEpisodes, snapshot: snapshot)
 
         // Project the snapshot/identity-derived state (settings + last-played).
         // Shared verbatim with the snapshot-only fast path.
@@ -413,8 +420,14 @@ extension AppStateStore {
     ) {
         var next = state
         projectSnapshotDerivedState(into: &next, snapshot: snapshot)
+        // Re-apply the download overlay even on the fast path: download progress
+        // ticks bump `rev` without changing the library, so they arrive here.
+        // Without this, an in-progress download never shows its progress ring.
+        var overlaidEpisodes = self.episodes
+        applyDownloadOverlay(to: &overlaidEpisodes, snapshot: snapshot)
         performMutationBatch {
             state = next
+            self.episodes = overlaidEpisodes
             mergeResolvedProfiles(identity.resolvedProfiles)
         }
         onNowPlayingSnapshot?(snapshot, library)
@@ -457,6 +470,37 @@ extension AppStateStore {
     /// pictureUrl → picture) so agent-conversation views resolve a name and
     /// avatar without a Swift-side relay round-trip. Idempotent via the
     /// `setNostrProfile` createdAt guard.
+    /// Overlay live download states onto an episode array from the kernel
+    /// `DownloadQueueSnapshot`. `toEpisode` only knows `.downloaded` /
+    /// `.notDownloaded`; in-progress states (`.queued`, `.downloading`,
+    /// `.failed`) live only in the snapshot's active-queue projection.
+    ///
+    /// Idempotent: episodes whose `downloadState` is already `.downloaded`
+    /// are left untouched — a completed file on disk wins over queue state.
+    private func applyDownloadOverlay(to episodes: inout [Episode], snapshot: PodcastUpdate?) {
+        guard let active = snapshot?.downloads?.active, !active.isEmpty else { return }
+        let byID = Dictionary(uniqueKeysWithValues: active.map { ($0.episodeId.uppercased(), $0) })
+        for idx in episodes.indices {
+            let key = episodes[idx].id.uuidString.uppercased()
+            guard let dl = byID[key] else { continue }
+            // Don't downgrade a completed download.
+            if case .downloaded = episodes[idx].downloadState { continue }
+            switch dl.state {
+            case "queued", "paused":
+                episodes[idx].downloadState = .queued
+            case "active":
+                let bytesWritten: Int64? = dl.totalBytes.map { Int64(dl.progress * Double($0)) }
+                episodes[idx].downloadState = .downloading(
+                    progress: dl.progress,
+                    bytesWritten: bytesWritten)
+            case "failed":
+                episodes[idx].downloadState = .failed(message: dl.error ?? "Download failed")
+            default:
+                break
+            }
+        }
+    }
+
     private func mergeResolvedProfiles(_ profiles: [String: ResolvedProfile]) {
         for (pubkey, profile) in profiles {
             // Skip empty rows — no name and no picture is nothing to surface,
