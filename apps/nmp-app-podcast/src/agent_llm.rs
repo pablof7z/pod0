@@ -29,8 +29,22 @@ pub const FAST_MODEL: &str = "deepseek-v4-flash:cloud";
 /// Thinking/agent model for deep-reasoning chat turns.
 pub const THINKING_MODEL: &str = "deepseek-v4-pro:cloud";
 
-/// Ollama base URL used across all LLM requests in the app.
-pub const OLLAMA_BASE_URL: &str = "http://localhost:11434";
+/// Default Ollama base URL (Ollama Cloud). Used when the store has no URL configured.
+pub const DEFAULT_OLLAMA_BASE_URL: &str = "https://ollama.com";
+
+/// Derive the rig-core base URL from the stored full chat URL.
+///
+/// The store holds the complete endpoint (e.g. `https://ollama.com/api/chat`)
+/// while rig-core's `base_url` wants just the host root. Strip `/api/chat`
+/// if present; fall back to the cloud default for empty values.
+pub fn base_url_from_chat_url(chat_url: &str) -> String {
+    let trimmed = chat_url.trim_end_matches("/api/chat");
+    if trimmed.is_empty() {
+        DEFAULT_OLLAMA_BASE_URL.to_owned()
+    } else {
+        trimmed.to_owned()
+    }
+}
 
 /// Convert stored `(role, content)` pairs into rig-core chat history.
 /// The `Chat` trait prepends the new user turn itself — we only pass prior turns.
@@ -53,9 +67,10 @@ async fn single_turn(
     system_prompt: &str,
     history: &[(String, String)],
     user_message: &str,
+    base_url: &str,
 ) -> Result<String, String> {
     let client = ollama::Client::builder()
-        .base_url(OLLAMA_BASE_URL)
+        .base_url(base_url)
         .api_key(Nothing)
         .build()
         .map_err(|e| e.to_string())?;
@@ -103,6 +118,10 @@ pub fn chat_with_tools(
     store: Arc<Mutex<PodcastStore>>,
     runtime: &tokio::runtime::Runtime,
 ) -> Result<String, String> {
+    let base_url = store
+        .lock()
+        .map(|g| base_url_from_chat_url(g.ollama_chat_url()))
+        .unwrap_or_else(|_| DEFAULT_OLLAMA_BASE_URL.to_owned());
     let registry = ToolRegistry::new(store);
     let full_prompt = format!("{system_prompt}\n\n{TOOL_INSTRUCTIONS}");
 
@@ -115,7 +134,7 @@ pub fn chat_with_tools(
         let mut used_a_tool = false;
 
         for _ in 0..MAX_TOOL_TURNS {
-            let reply = match single_turn(&full_prompt, &convo, &next_user_message).await {
+            let reply = match single_turn(&full_prompt, &convo, &next_user_message, &base_url).await {
                 Ok(r) => r,
                 Err(e) => {
                     // First model call failing means Ollama is down — propagate so
@@ -125,7 +144,7 @@ pub fn chat_with_tools(
                     if !used_a_tool {
                         return Err(e);
                     }
-                    return Ok(force_final_answer(system_prompt, &convo, user_message).await);
+                    return Ok(force_final_answer(system_prompt, &convo, user_message, &base_url).await);
                 }
             };
 
@@ -150,7 +169,7 @@ pub fn chat_with_tools(
 
         // Tool-call budget exhausted and the model still wants a tool. Make one
         // final tools-suppressed call so the user gets prose, never raw JSON.
-        Ok(force_final_answer(system_prompt, &convo, user_message).await)
+        Ok(force_final_answer(system_prompt, &convo, user_message, &base_url).await)
     })
 }
 
@@ -162,12 +181,13 @@ async fn force_final_answer(
     system_prompt: &str,
     convo: &[(String, String)],
     original_question: &str,
+    base_url: &str,
 ) -> String {
     let closing = format!(
         "Based on the tool results above, answer this question in plain text \
          (do not call any tools): {original_question}"
     );
-    single_turn(system_prompt, convo, &closing)
+    single_turn(system_prompt, convo, &closing, base_url)
         .await
         .unwrap_or_else(|_| crate::agent_handler::SCAFFOLD_ASSISTANT_REPLY.to_owned())
 }

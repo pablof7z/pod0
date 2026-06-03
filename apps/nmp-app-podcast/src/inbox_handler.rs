@@ -51,6 +51,7 @@ use tokio::runtime::Runtime;
 
 use crate::ffi::actions::inbox_module::InboxAction;
 use crate::ffi::projections::InboxItem;
+use crate::agent_llm::base_url_from_chat_url;
 use crate::inbox_llm::{triage_episode, TriageResult, TriageStatus};
 
 /// A `Ready` triage entry older than this is considered stale and re-triaged
@@ -382,8 +383,8 @@ async fn triage_episodes_in_background(
     rev: Arc<AtomicU64>,
     in_progress: Arc<std::sync::atomic::AtomicBool>,
 ) {
-    // Collect episode metadata under a brief store lock then release it.
-    let episodes_to_triage: Vec<(String, String, String, String)> = {
+    // Collect episode metadata and the configured Ollama URL under a brief store lock.
+    let (episodes_to_triage, ollama_base_url): (Vec<(String, String, String, String)>, String) = {
         let guard = match store.lock() {
             Ok(g) => g,
             Err(_) => {
@@ -391,7 +392,8 @@ async fn triage_episodes_in_background(
                 return;
             }
         };
-        guard
+        let base_url = base_url_from_chat_url(guard.ollama_chat_url());
+        let episodes = guard
             .all_podcasts()
             .into_iter()
             .flat_map(|(podcast, eps)| {
@@ -406,7 +408,8 @@ async fn triage_episodes_in_background(
                     })
                     .collect::<Vec<_>>()
             })
-            .collect()
+            .collect();
+        (episodes, base_url)
     };
 
     // Process each episode sequentially; `triage_episode` itself drives the
@@ -417,9 +420,10 @@ async fn triage_episodes_in_background(
         let ep_title2 = ep_title.clone();
         let pod_title2 = pod_title.clone();
         let description2 = description.clone();
+        let base_url2 = ollama_base_url.clone();
 
         let result = tokio::task::spawn_blocking(move || {
-            triage_episode(&ep_title2, &pod_title2, &description2, &runtime2)
+            triage_episode(&ep_title2, &pod_title2, &description2, &runtime2, &base_url2)
         })
         .await;
 

@@ -98,7 +98,6 @@ impl TriageResult {
     }
 }
 
-const OLLAMA_BASE_URL: &str = "http://localhost:11434";
 const TRIAGE_MODEL: &str = "deepseek-v4-flash:cloud";
 
 const TRIAGE_PREAMBLE: &str = r#"You are a podcast inbox triage assistant. Given episode metadata, output ONLY valid JSON with these fields: {"priority_score": <0.0-1.0>, "priority_reason": "<one sentence why>", "categories": ["<tag1>", "<tag2>"]}. No other text."#;
@@ -112,11 +111,12 @@ pub fn triage_episode(
     podcast_title: &str,
     description: &str,
     runtime: &Runtime,
+    base_url: &str,
 ) -> Result<TriageResult, String> {
     runtime.block_on(async {
         let client = ollama::Client::builder()
             .api_key(Nothing)
-            .base_url(OLLAMA_BASE_URL)
+            .base_url(base_url)
             .build()
             .map_err(|e: rig_core::http_client::Error| e.to_string())?;
 
