@@ -258,6 +258,28 @@ pub extern "C" fn nmp_app_podcast_register(
             ),
         ));
 
+    // kind:1111 comments observer — receives events from push_interest_via_nmp
+    // subscriptions opened by handle_fetch_comments. No iOS WebSocket.
+    let _comments_observer_id =
+        app_ref.register_event_observer(std::sync::Arc::new(
+            crate::comments_handler::CommentsObserver::new(
+                store.clone(),
+                comments_cache.clone(),
+                rev.clone(),
+            ),
+        ));
+
+    // kind:1 agent-notes observer — receives events from push_interest_via_nmp
+    // subscriptions opened by handle_fetch_agent_notes. No iOS WebSocket.
+    let _agent_notes_observer_id =
+        app_ref.register_event_observer(std::sync::Arc::new(
+            crate::agent_note_handler::AgentNotesObserver::new(
+                identity.clone(),
+                agent_notes.clone(),
+                rev.clone(),
+            ),
+        ));
+
     // Keep a clone for the handle before the runtime Arc is moved into the
     // voice manager below. The snapshot path's proactive triage trigger
     // (`maybe_enqueue_triage`) spawns onto this same shared runtime.

@@ -1,22 +1,20 @@
 //! NIP-F4 publish handlers — actor-thread implementation for the
 //! `podcast.publish.*` action namespace (features #27/#28).
 //!
-//! Each function builds a signed NIP-F4 event (kind:10154 show, kind:54
-//! episode, kind:10064 author-claim) using real secp256k1 cryptography via
-//! the `nostr` crate, then hands the signed event to NMP via
-//! `dispatch_action("nmp.publish", { Publish: { event, target: Auto } })`.
-//! NMP drives relay routing through its own pool using the app's configured
-//! relays — the podcast app never specifies relay URLs at publish time.
+//! Per-podcast events (kind:10154/54) are signed in Rust with the podcast's
+//! secp256k1 key, then routed through NMP via `nmp.publish { Publish, Auto }`.
+//! The author claim (kind:10064) uses `nmp.publish { PublishRaw }` so NMP
+//! signs with the active user signer — no secret bytes in app code for that
+//! path. The remaining per-podcast signing gap (D4/D7) will be closed once
+//! NMP exposes a "sign-as-non-active-account" API.
 //!
 //! Return envelope:
-//!   - `status: "queued"` — event signed and handed to NMP for relay routing.
-//!   - `status: "signed"` — event signed but NMP dispatch was skipped
-//!     (null app pointer in unit tests).
+//!   - `status: "queued"` — handed to NMP for relay routing (async).
+//!   - `status: "signed"` — null app pointer in unit tests.
 //!
 //! Lives in a sibling module to keep [`crate::host_op_handler`] under
 //! the 500-LOC hard limit (AGENTS.md).
 
-use std::ffi::CString;
 use std::sync::atomic::Ordering;
 
 use chrono::Utc;
@@ -30,6 +28,7 @@ use crate::blossom;
 use crate::ffi::actions::publish_module::PublishAction;
 use crate::ffi::handle::OwnedPublishState;
 use crate::host_op_handler::PodcastHostOpHandler;
+use crate::nmp_dispatch::{publish_raw_via_nmp, publish_via_nmp};
 
 /// Dispatch entry-point — match the typed enum variant to the per-op
 /// handler. The caller (the `HostOpHandler::handle` impl in
@@ -289,12 +288,9 @@ fn resolve_episode_tags(
     }
 }
 
-/// `podcast.publish.publish_author_claim` — build and sign a `kind:10064`
-/// author-claim event listing one `["p", podcast_pubkey_hex]` per owned
-/// podcast, signed with the active agent identity from
-/// `NmpApp::active_local_keys()`. When no agent keys are available (unit
-/// tests, or before login), the event JSON is returned unsigned and
-/// `status: "signed"` is used so callers know relay dispatch was skipped.
+/// `podcast.publish.publish_author_claim` — emit a `kind:10064` author-claim
+/// event via `nmp.publish { PublishRaw }`. NMP signs with the active user
+/// signer (D4/D7 compliant — no secret bytes in app code for this path).
 fn publish_author_claim(
     handler: &PodcastHostOpHandler,
     agent_pubkey_hex: String,
@@ -306,54 +302,15 @@ fn publish_author_claim(
         Ok(keys) => keys.iter_pubkeys(),
         Err(_) => return serde_json::json!({"ok": false, "error": "podcast_keys poisoned"}),
     };
-    let mut tags: Vec<Vec<String>> = Vec::with_capacity(pairs.len());
-    for (_, pk) in &pairs {
-        tags.push(vec!["p".into(), pk.clone()]);
-    }
-    let created_at = Utc::now().timestamp();
-
-    // Attempt to sign with the active agent identity (NmpApp::active_local_keys).
-    // Falls back to an unsigned placeholder when the app pointer is null or no
-    // keys are loaded (unit-test and pre-login scenarios).
-    let agent_keys: Option<nostr::Keys> = if handler.app.is_null() {
-        None
-    } else {
-        // SAFETY: app is non-null and caller guarantees the pointer is live for
-        // the duration of this call (same invariant as dispatch_nostr_relay).
-        let slot = unsafe { &*handler.app }.active_local_keys();
-        slot.lock().ok().and_then(|guard| guard.clone())
-    };
-
-    match agent_keys {
-        Some(keys) => {
-            let secret_bytes = keys.secret_key().to_secret_bytes();
-            match sign_event(&secret_bytes, KIND_AUTHOR_CLAIM, &tags, "", created_at) {
-                Ok((event, event_id)) => {
-                    handler.rev.fetch_add(1, Ordering::Relaxed);
-                    let status = publish_via_nmp(handler.app, &event);
-                    serde_json::json!({
-                        "ok": true,
-                        "status": status,
-                        "event_id": event_id,
-                        "event_tags": tags,
-                        "event_json": event.as_json(),
-                        "owned_count": pairs.len(),
-                    })
-                }
-                Err(e) => serde_json::json!({"ok": false, "error": format!("signing failed: {e}")}),
-            }
-        }
-        None => {
-            // No agent keys — not broadcast.
-            handler.rev.fetch_add(1, Ordering::Relaxed);
-            serde_json::json!({
-                "ok": true,
-                "status": "signed",
-                "event_tags": tags,
-                "owned_count": pairs.len(),
-            })
-        }
-    }
+    let tags: Vec<Vec<String>> = pairs.iter().map(|(_, pk)| vec!["p".into(), pk.clone()]).collect();
+    handler.rev.fetch_add(1, Ordering::Relaxed);
+    let status = publish_raw_via_nmp(handler.app, KIND_AUTHOR_CLAIM, &tags, "");
+    serde_json::json!({
+        "ok": true,
+        "status": status,
+        "event_tags": tags,
+        "owned_count": pairs.len(),
+    })
 }
 
 /// `podcast.publish.remove_owned_podcast` — drop the per-podcast key,
@@ -412,45 +369,6 @@ pub(crate) fn sign_event(
 
     let event_id = event.id.to_hex();
     Ok((event, event_id))
-}
-
-/// Hand a signed event to NMP via `dispatch_action("nmp.publish", ...)` with
-/// `target: Auto`. NMP routes through its relay pool using the app's configured
-/// relays — no relay URLs are specified here.
-///
-/// Returns `"queued"` when the event was handed to NMP, `"signed"` when the
-/// app pointer is null (unit tests).
-pub(crate) fn publish_via_nmp(app: *mut nmp_ffi::NmpApp, event: &Event) -> &'static str {
-    if app.is_null() {
-        return "signed";
-    }
-    let signed_event = serde_json::json!({
-        "id": event.id.to_hex(),
-        "sig": event.sig.to_string(),
-        "unsigned": {
-            "pubkey": event.pubkey.to_hex(),
-            "kind": u32::from(event.kind.as_u16()),
-            "created_at": event.created_at.as_u64(),
-            "tags": event.tags.iter().map(|t| t.as_slice().to_vec()).collect::<Vec<_>>(),
-            "content": &*event.content,
-        }
-    });
-    let body = serde_json::json!({
-        "Publish": {
-            "handle": uuid::Uuid::new_v4().to_string(),
-            "event": signed_event,
-            "target": "Auto",
-        }
-    });
-    let Ok(ns_c) = CString::new("nmp.publish") else { return "signed"; };
-    let Ok(body_c) = CString::new(body.to_string()) else { return "signed"; };
-    // SAFETY: app is non-null (checked above).
-    let raw = unsafe { nmp_ffi::nmp_app_dispatch_action(app, ns_c.as_ptr(), body_c.as_ptr()) };
-    if !raw.is_null() {
-        // SAFETY: NMP allocated this string; we free it immediately.
-        unsafe { nmp_ffi::nmp_app_free_string(raw) };
-    }
-    "queued"
 }
 
 #[cfg(test)]

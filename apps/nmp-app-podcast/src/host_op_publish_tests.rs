@@ -162,10 +162,9 @@ fn publish_author_claim_lists_every_owned_pubkey() {
         assert_eq!(tag[0], "p");
         assert_eq!(tag[1].as_str().unwrap().len(), 64);
     }
-    let event: serde_json::Value =
-        serde_json::from_str(out["event_json"].as_str().unwrap()).unwrap();
-    assert_eq!(event["kind"], 10064);
-    assert_eq!(event["pubkey"], "agent-pk-hex");
+    // event_json is no longer in the response — NMP builds and signs the event
+    // via PublishRaw; status is "signed" (null app in unit tests).
+    assert_eq!(out["status"], "signed");
 }
 
 #[test]

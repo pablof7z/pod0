@@ -27,7 +27,8 @@ use podcast_discovery::KIND_SHOW;
 
 use crate::ffi::actions::publish_module::PublishAction;
 use crate::host_op_handler::PodcastHostOpHandler;
-use crate::host_op_publish::{publish_show, publish_via_nmp, sign_event};
+use crate::host_op_publish::{publish_show, sign_event};
+use crate::nmp_dispatch::publish_via_nmp;
 use crate::store::owned_ext::SyntheticChapter;
 
 /// NIP-09 deletion request kind.

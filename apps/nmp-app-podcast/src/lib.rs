@@ -51,6 +51,7 @@ pub(crate) mod clip_handler;
 pub(crate) mod comments_anchor;
 pub(crate) mod comments_handler;
 pub(crate) mod discover_nostr;
+pub(crate) mod nmp_dispatch;
 pub mod download;
 pub(crate) mod episode_summary;
 pub(crate) mod episode_summary_llm;

@@ -72,10 +72,7 @@ impl PodcastHostOpHandler {
                 crate::comments_handler::handle_fetch_comments(
                     self.app,
                     &self.store,
-                    &self.comments_cache,
-                    &self.rev,
                     &episode_id,
-                    correlation_id,
                 )
             }
             PodcastAction::PostComment { episode_id, content } => {
@@ -87,7 +84,6 @@ impl PodcastHostOpHandler {
                     &self.rev,
                     &episode_id,
                     &content,
-                    correlation_id,
                 )
             }
             PodcastAction::SetAutoDownload { podcast_id, enabled, wifi_only } => {
@@ -107,15 +103,11 @@ impl PodcastHostOpHandler {
                 &recipient_pubkey_hex,
                 &content,
                 root_event_id.as_deref(),
-                correlation_id,
             ),
             PodcastAction::FetchAgentNotes => {
                 crate::agent_note_handler::handle_fetch_agent_notes(
                     self.app,
                     &self.identity,
-                    &self.agent_notes,
-                    &self.rev,
-                    correlation_id,
                 )
             }
             PodcastAction::StarEpisode { episode_id, starred } => {
