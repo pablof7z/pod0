@@ -3,34 +3,33 @@
 //!
 //! Each function builds a signed NIP-F4 event (kind:10154 show, kind:54
 //! episode, kind:10064 author-claim) using real secp256k1 cryptography via
-//! the `nostr` crate, then broadcasts it to the app's configured write relays
-//! through the `nostr_relay` capability.
+//! the `nostr` crate, then hands the signed event to NMP via
+//! `dispatch_action("nmp.publish", { Publish: { event, target: Auto } })`.
+//! NMP drives relay routing through its own pool using the app's configured
+//! relays — the podcast app never specifies relay URLs at publish time.
 //!
 //! Return envelope:
-//!   - `status: "published"` — event signed AND relay accepted it.
-//!   - `status: "signed"` — event signed, but relay dispatch was skipped
-//!     (null app pointer in unit tests) or the relay returned an error.
-//!   - `status: "relay_pending"` is no longer used; removed in PR 8.
+//!   - `status: "queued"` — event signed and handed to NMP for relay routing.
+//!   - `status: "signed"` — event signed but NMP dispatch was skipped
+//!     (null app pointer in unit tests).
 //!
 //! Lives in a sibling module to keep [`crate::host_op_handler`] under
 //! the 500-LOC hard limit (AGENTS.md).
 
+use std::ffi::CString;
 use std::sync::atomic::Ordering;
 
 use chrono::Utc;
-use nostr::{EventBuilder, JsonUtil, Keys, Kind, SecretKey, Tag, Timestamp};
+use nostr::{Event, EventBuilder, JsonUtil, Keys, Kind, SecretKey, Tag, Timestamp};
 use podcast_discovery::{
     episode_to_episode_tags, episode_to_episode_tags_with_imeta, podcast_to_show_tags,
     show_content, ImetaInfo, KIND_AUTHOR_CLAIM, KIND_EPISODE, KIND_SHOW,
 };
 
 use crate::blossom;
-
-use crate::capability::{NostrRelayRequest, NostrRelayResult, NOSTR_RELAY_CAPABILITY_NAMESPACE};
 use crate::ffi::actions::publish_module::PublishAction;
 use crate::ffi::handle::OwnedPublishState;
 use crate::host_op_handler::PodcastHostOpHandler;
-use nmp_core::substrate::CapabilityRequest;
 
 /// Dispatch entry-point — match the typed enum variant to the per-op
 /// handler. The caller (the `HostOpHandler::handle` impl in
@@ -95,10 +94,9 @@ pub(crate) fn create_owned(handler: &PodcastHostOpHandler, podcast_id: String) -
     serde_json::json!({"ok": true, "pubkey_hex": pubkey_hex})
 }
 
-/// `podcast.publish.publish_show` — build and sign a `kind:10154` show
-/// event, then broadcast it to `relay.primal.net` via the `nostr_relay`
-/// capability. The signed event JSON is stamped onto
-/// `publish_state[podcast_id].show_event_json`.
+/// `podcast.publish.publish_show` — build and sign a `kind:10154` show event,
+/// then hand it to NMP for relay routing via `nmp.publish`. The signed event
+/// JSON is stamped onto `publish_state[podcast_id].show_event_json`.
 pub(crate) fn publish_show(handler: &PodcastHostOpHandler, podcast_id: String) -> serde_json::Value {
     let podcast_clone = match handler.store.lock() {
         Ok(s) => match s.podcast_by_id_str(&podcast_id) {
@@ -135,25 +133,25 @@ pub(crate) fn publish_show(handler: &PodcastHostOpHandler, podcast_id: String) -
     let content = show_content(&podcast_clone);
     let created_at = Utc::now().timestamp();
 
-    let (event_json, event_id) = match sign_event(&secret_bytes, KIND_SHOW, &tags, &content, created_at) {
+    let (event, event_id) = match sign_event(&secret_bytes, KIND_SHOW, &tags, &content, created_at) {
         Ok(pair) => pair,
         Err(e) => return serde_json::json!({"ok": false, "error": format!("signing failed: {e}")}),
     };
 
     if let Ok(mut state) = handler.publish_state.lock() {
         let entry: &mut OwnedPublishState = state.entry(podcast_id).or_default();
-        entry.show_event_json = Some(event_json.clone());
+        entry.show_event_json = Some(event.as_json());
         entry.last_published_at = Some(created_at);
     }
     handler.rev.fetch_add(1, Ordering::Relaxed);
 
-    let status = dispatch_nostr_relay(handler, &event_json);
+    let status = publish_via_nmp(handler.app, &event);
     serde_json::json!({
         "ok": true,
         "status": status,
         "event_id": event_id,
         "event_tags": tags,
-        "event_json": event_json,
+        "event_json": event.as_json(),
     })
 }
 
@@ -224,19 +222,19 @@ fn publish_episode(handler: &PodcastHostOpHandler, episode_id: String) -> serde_
     let content = episode.description.clone();
     let created_at = Utc::now().timestamp();
 
-    let (event_json, event_id) = match sign_event(&secret_bytes, KIND_EPISODE, &tags, &content, created_at) {
+    let (event, event_id) = match sign_event(&secret_bytes, KIND_EPISODE, &tags, &content, created_at) {
         Ok(pair) => pair,
         Err(e) => return serde_json::json!({"ok": false, "error": format!("signing failed: {e}")}),
     };
 
     handler.rev.fetch_add(1, Ordering::Relaxed);
-    let status = dispatch_nostr_relay(handler, &event_json);
+    let status = publish_via_nmp(handler.app, &event);
     serde_json::json!({
         "ok": true,
         "status": status,
         "event_id": event_id,
         "event_tags": tags,
-        "event_json": event_json,
+        "event_json": event.as_json(),
         "audio_url": blossom_url_used,
         "blossom_error": blossom_error,
     })
@@ -330,15 +328,15 @@ fn publish_author_claim(
         Some(keys) => {
             let secret_bytes = keys.secret_key().to_secret_bytes();
             match sign_event(&secret_bytes, KIND_AUTHOR_CLAIM, &tags, "", created_at) {
-                Ok((event_json, event_id)) => {
+                Ok((event, event_id)) => {
                     handler.rev.fetch_add(1, Ordering::Relaxed);
-                    let status = dispatch_nostr_relay(handler, &event_json);
+                    let status = publish_via_nmp(handler.app, &event);
                     serde_json::json!({
                         "ok": true,
                         "status": status,
                         "event_id": event_id,
                         "event_tags": tags,
-                        "event_json": event_json,
+                        "event_json": event.as_json(),
                         "owned_count": pairs.len(),
                     })
                 }
@@ -346,23 +344,12 @@ fn publish_author_claim(
             }
         }
         None => {
-            // No agent keys — return the tag list but mark as unsigned so the
-            // caller knows it was not broadcast.
-            let unsigned = serde_json::json!({
-                "kind": KIND_AUTHOR_CLAIM,
-                "pubkey": agent_pubkey_hex,
-                "created_at": created_at,
-                "tags": tags,
-                "content": "",
-                "id": null,
-                "sig": null,
-            });
+            // No agent keys — not broadcast.
             handler.rev.fetch_add(1, Ordering::Relaxed);
             serde_json::json!({
                 "ok": true,
                 "status": "signed",
                 "event_tags": tags,
-                "event_json": unsigned.to_string(),
                 "owned_count": pairs.len(),
             })
         }
@@ -386,9 +373,9 @@ fn remove_owned(handler: &PodcastHostOpHandler, podcast_id: String) -> serde_jso
     serde_json::json!({"ok": true})
 }
 
-/// Sign a Nostr event with the given secret key. Returns `(event_json,
-/// event_id_hex)` on success. Tags that fail `Tag::parse` are silently
-/// dropped (malformed input is logged to stderr).
+/// Sign a Nostr event with the given secret key. Returns `(event, event_id_hex)`
+/// on success. Tags that fail `Tag::parse` are silently dropped (malformed
+/// input is logged to stderr).
 ///
 /// `kind_num` is the raw NIP kind integer (e.g. 10154, 54, 10064).
 pub(crate) fn sign_event(
@@ -397,7 +384,7 @@ pub(crate) fn sign_event(
     tags: &[Vec<String>],
     content: &str,
     created_at_secs: i64,
-) -> Result<(String, String), String> {
+) -> Result<(Event, String), String> {
     let sk = SecretKey::from_slice(secret_bytes)
         .map_err(|e| format!("invalid secret key: {e}"))?;
     let keys = Keys::new(sk);
@@ -424,75 +411,46 @@ pub(crate) fn sign_event(
         .map_err(|e| format!("sign error: {e}"))?;
 
     let event_id = event.id.to_hex();
-    let event_json = event.as_json();
-    Ok((event_json, event_id))
+    Ok((event, event_id))
 }
 
-/// Collect write-capable relay URLs from the app's configured relay slot.
-/// Relays with role `"both"` or `"write"` are included. Falls back to
-/// `wss://relay.primal.net` when the slot is empty or contains no write relays
-/// so that publish always reaches at least one relay.
+/// Hand a signed event to NMP via `dispatch_action("nmp.publish", ...)` with
+/// `target: Auto`. NMP routes through its relay pool using the app's configured
+/// relays — no relay URLs are specified here.
 ///
-/// SAFETY: caller must guarantee `app` is non-null.
-fn write_relay_urls(app: &nmp_ffi::NmpApp) -> Vec<String> {
-    let slot = app.configured_relays_handle();
-    let urls: Vec<String> = slot
-        .lock()
-        .map(|guard| {
-            guard
-                .as_slice()
-                .iter()
-                .filter(|r| {
-                    nmp_core::__ffi_internal::has_role(r.role(), "both")
-                        || nmp_core::__ffi_internal::has_role(r.role(), "write")
-                })
-                .map(|r| r.url().to_owned())
-                .collect()
-        })
-        .unwrap_or_default();
-    if urls.is_empty() {
-        vec!["wss://relay.primal.net".to_owned()]
-    } else {
-        urls
-    }
-}
-
-/// Dispatch a signed event JSON string to the app's configured write relays
-/// via the `nostr_relay` capability. Returns `"published"` if the relay
-/// accepted the event, `"signed"` otherwise (null app pointer, parse error,
-/// or relay rejection).
-///
-/// Null-app guard: unit tests run with `app == null_mut()`. Dispatching
-/// a capability through a null pointer is UB — we return `"signed"` early.
-pub(crate) fn dispatch_nostr_relay(
-    handler: &PodcastHostOpHandler,
-    event_json: &str,
-) -> &'static str {
-    if handler.app.is_null() {
+/// Returns `"queued"` when the event was handed to NMP, `"signed"` when the
+/// app pointer is null (unit tests).
+pub(crate) fn publish_via_nmp(app: *mut nmp_ffi::NmpApp, event: &Event) -> &'static str {
+    if app.is_null() {
         return "signed";
     }
-
+    let signed_event = serde_json::json!({
+        "id": event.id.to_hex(),
+        "sig": event.sig.to_string(),
+        "unsigned": {
+            "pubkey": event.pubkey.to_hex(),
+            "kind": u32::from(event.kind.as_u16()),
+            "created_at": event.created_at.as_u64(),
+            "tags": event.tags.iter().map(|t| t.as_slice().to_vec()).collect::<Vec<_>>(),
+            "content": &*event.content,
+        }
+    });
+    let body = serde_json::json!({
+        "Publish": {
+            "handle": uuid::Uuid::new_v4().to_string(),
+            "event": signed_event,
+            "target": "Auto",
+        }
+    });
+    let Ok(ns_c) = CString::new("nmp.publish") else { return "signed"; };
+    let Ok(body_c) = CString::new(body.to_string()) else { return "signed"; };
     // SAFETY: app is non-null (checked above).
-    let app = unsafe { &*handler.app };
-    let relay_req = NostrRelayRequest::Publish {
-        event_json: event_json.to_owned(),
-        relay_urls: write_relay_urls(app),
-    };
-    let payload_json = match serde_json::to_string(&relay_req) {
-        Ok(j) => j,
-        Err(_) => return "signed",
-    };
-    let cap_req = CapabilityRequest {
-        namespace: NOSTR_RELAY_CAPABILITY_NAMESPACE.to_owned(),
-        correlation_id: uuid::Uuid::new_v4().to_string(),
-        payload_json,
-    };
-
-    let envelope = app.dispatch_capability(&cap_req);
-    match serde_json::from_str::<NostrRelayResult>(&envelope.result_json) {
-        Ok(NostrRelayResult::Published { ok: true, .. }) => "published",
-        _ => "signed",
+    let raw = unsafe { nmp_ffi::nmp_app_dispatch_action(app, ns_c.as_ptr(), body_c.as_ptr()) };
+    if !raw.is_null() {
+        // SAFETY: NMP allocated this string; we free it immediately.
+        unsafe { nmp_ffi::nmp_app_free_string(raw) };
     }
+    "queued"
 }
 
 #[cfg(test)]

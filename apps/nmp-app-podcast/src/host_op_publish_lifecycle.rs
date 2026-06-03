@@ -27,7 +27,7 @@ use podcast_discovery::KIND_SHOW;
 
 use crate::ffi::actions::publish_module::PublishAction;
 use crate::host_op_handler::PodcastHostOpHandler;
-use crate::host_op_publish::{dispatch_nostr_relay, publish_show, sign_event};
+use crate::host_op_publish::{publish_show, publish_via_nmp, sign_event};
 use crate::store::owned_ext::SyntheticChapter;
 
 /// NIP-09 deletion request kind.
@@ -312,8 +312,8 @@ pub fn delete_owned(handler: &PodcastHostOpHandler, podcast_id: String) -> serde
             ];
             let created_at = Utc::now().timestamp();
             match sign_event(&sk, KIND_DELETION, &tags, "", created_at) {
-                Ok((event_json, ev_id)) => {
-                    deletion_status = dispatch_nostr_relay(handler, &event_json);
+                Ok((event, ev_id)) => {
+                    deletion_status = publish_via_nmp(handler.app, &event);
                     deletion_event_id = Some(ev_id);
                 }
                 Err(e) => {
