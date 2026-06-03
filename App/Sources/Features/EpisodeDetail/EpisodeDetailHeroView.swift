@@ -26,10 +26,6 @@ struct EpisodeDetailHeroView: View {
     /// playback is on a different episode (or no chapters); the list
     /// renders flat in that case.
     var activeChapterID: UUID? = nil
-    /// Live download progress in `0...1`, from the kernel snapshot.
-    /// Drives the inline progress pill on the action row so the user sees
-    /// a smooth "Downloading 42%" badge while the file is in flight.
-    var downloadProgress: Double? = nil
     /// Download / cancel / delete handler bound by the parent. The hero
     /// flips the affordance based on the episode's `downloadState`.
     var onToggleDownload: () -> Void = {}
@@ -206,10 +202,9 @@ struct EpisodeDetailHeroView: View {
             .buttonStyle(.plain)
             .foregroundStyle(.primary)
             .accessibilityHint("Download episode for offline listening")
-        case .downloading(let persistedProgress, _):
+        case .downloading(let progress, _):
             Button(action: onToggleDownload) {
-                let live = downloadProgress ?? persistedProgress
-                let pct = Int((live.clamped01 * 100).rounded())
+                let pct = Int((progress.clamped01 * 100).rounded())
                 Label("Downloading \(pct)%", systemImage: "arrow.down.circle.fill")
                     .font(.system(.subheadline, design: .rounded).weight(.medium))
                     .padding(.horizontal, 14)
@@ -218,7 +213,7 @@ struct EpisodeDetailHeroView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(.primary)
-            .accessibilityLabel("Downloading, \(Int(((downloadProgress ?? persistedProgress).clamped01 * 100).rounded())) percent")
+            .accessibilityLabel("Downloading, \(Int((progress.clamped01 * 100).rounded())) percent")
             .accessibilityHint("Cancels the download")
         case .downloaded:
             Label("Downloaded", systemImage: "checkmark.circle.fill")

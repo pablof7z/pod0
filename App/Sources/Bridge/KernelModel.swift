@@ -43,6 +43,13 @@ final class KernelModel {
     /// Latest decoded snapshot. `nil` before the first tick lands.
     private(set) var snapshot: PodcastUpdate?
 
+    /// Latest download-queue snapshot, updated on every accepted frame where
+    /// the downloads value changed. `podcastSnapshot` deliberately excludes
+    /// `d.progress` from its content hash to avoid per-second list churn;
+    /// this property is the dedicated observation target so `AppStateStore`
+    /// can re-run `applyDownloadOverlay` with fresh progress values.
+    private(set) var downloadSnapshot: DownloadQueueSnapshot?
+
     // ── Local counters ─────────────────────────────────────────────────────
 
     private(set) var snapshotCount: UInt64 = 0
@@ -261,6 +268,7 @@ final class KernelModel {
         guard update.rev > lastProcessedRev else { return }
         lastProcessedRev = UInt64(update.rev)
         snapshot = update
+        if update.downloads != downloadSnapshot { downloadSnapshot = update.downloads }
         let previousNowPlaying = nowPlaying
         // `nowPlaying` carries live playback position; refresh on every accepted
         // frame so player views stay current. Stays on the MainActor inline so

@@ -330,9 +330,8 @@ struct PlayerView: View {
         guard let id = state.episode?.id,
               let episode = store.episode(id: id) ?? state.episode else { return nil }
         switch episode.downloadState {
-        case .downloading(let persisted, _):
-            let live = (store.kernel?.podcastSnapshot?.downloads?.active ?? []).first(where: { $0.episodeId == id.uuidString })?.progress
-            return (live ?? persisted).clamped01
+        case .downloading(let progress, _):
+            return progress.clamped01
         case .downloaded:
             return 1.0
         default:

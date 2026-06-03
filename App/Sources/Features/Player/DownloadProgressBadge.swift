@@ -23,9 +23,6 @@ import SwiftUI
 /// into the player chrome instead of stealing focus.
 struct DownloadProgressBadge: View {
     let episode: Episode
-    /// Live progress in `0...1` from the kernel download snapshot.
-    /// `nil` falls back to the value baked into `episode.downloadState`.
-    var liveProgress: Double? = nil
 
     var body: some View {
         if let render = render {
@@ -69,9 +66,8 @@ struct DownloadProgressBadge: View {
                 foreground: AnyShapeStyle(.secondary),
                 accessibilityLabel: "Download queued"
             )
-        case .downloading(let persisted, _):
-            let resolved = (liveProgress ?? persisted).clamped01
-            let pct = Int((resolved * 100).rounded())
+        case .downloading(let progress, _):
+            let pct = Int((progress.clamped01 * 100).rounded())
             return Render(
                 symbol: "arrow.down.circle",
                 label: "\(pct)%",

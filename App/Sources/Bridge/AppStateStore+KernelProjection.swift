@@ -115,6 +115,7 @@ extension AppStateStore {
                         _ = kernel.library
                         _ = kernel.podcastSnapshot
                         _ = kernel.kernelIdentity
+                        _ = kernel.downloadSnapshot
                     } onChange: {
                         continuation.resume()
                     }
@@ -336,7 +337,7 @@ extension AppStateStore {
         // active-queue snapshot carries the in-progress states that toEpisode
         // cannot see. Must run after the episode array is fully built so it also
         // catches episodes that went through the unchanged-summary reuse path.
-        applyDownloadOverlay(to: &projectedEpisodes, snapshot: snapshot)
+        applyDownloadOverlay(to: &projectedEpisodes, active: snapshot?.downloads?.active)
 
         // Project the snapshot/identity-derived state (settings + last-played).
         // Shared verbatim with the snapshot-only fast path.
@@ -429,7 +430,7 @@ extension AppStateStore {
         // ticks bump `rev` without changing the library, so they arrive here.
         // Without this, an in-progress download never shows its progress ring.
         var overlaidEpisodes = self.episodes
-        applyDownloadOverlay(to: &overlaidEpisodes, snapshot: snapshot)
+        applyDownloadOverlay(to: &overlaidEpisodes, active: kernel?.downloadSnapshot?.active)
         performMutationBatch {
             state = next
             self.episodes = overlaidEpisodes
@@ -482,8 +483,8 @@ extension AppStateStore {
     ///
     /// Idempotent: episodes whose `downloadState` is already `.downloaded`
     /// are left untouched — a completed file on disk wins over queue state.
-    private func applyDownloadOverlay(to episodes: inout [Episode], snapshot: PodcastUpdate?) {
-        guard let active = snapshot?.downloads?.active, !active.isEmpty else { return }
+    private func applyDownloadOverlay(to episodes: inout [Episode], active: [DownloadItemSnapshot]?) {
+        guard let active, !active.isEmpty else { return }
         let byID = Dictionary(uniqueKeysWithValues: active.map { ($0.episodeId.uppercased(), $0) })
         for idx in episodes.indices {
             let key = episodes[idx].id.uuidString.uppercased()

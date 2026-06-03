@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-03T12:06:00Z",
+      "lines": [
+        "Download progress now updates live instead of staying stuck at 0%"
+      ]
+    },
+    {
       "shipped_at": "2026-06-02T07:04:05Z",
       "lines": [
         "New Settings > Debug screen with an in-app log viewer — flip on debug logging to capture recent activity, then search, copy, or clear it"
