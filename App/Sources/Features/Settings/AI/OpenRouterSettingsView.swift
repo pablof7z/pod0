@@ -211,6 +211,9 @@ struct OpenRouterSettingsView: View {
         // Re-report STT key presence so the kernel's STT fallback policy
         // recomputes `settings.effectiveSttProvider` after a save/delete.
         store.syncSTTKeysPresent()
+        // Re-push LLM provider API keys to the kernel so it has the latest
+        // Keychain values after a save/delete.
+        store.kernelSetProviderApiKeys()
     }
 
     private func validateStoredKey() async {

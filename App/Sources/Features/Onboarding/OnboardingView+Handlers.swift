@@ -23,6 +23,7 @@ extension OnboardingView {
             s.markOpenRouterManual()
             store.updateSettings(s)
             store.syncSTTKeysPresent()
+            store.kernelSetProviderApiKeys()
             apiKeyDraft = ""
             apiKeySaving = false
             Haptics.success()
@@ -47,6 +48,7 @@ extension OnboardingView {
             }
             store.updateSettings(s)
             store.syncSTTKeysPresent()
+            store.kernelSetProviderApiKeys()
             apiKeyDraft = ""
             Haptics.success()
             advance()

@@ -79,8 +79,8 @@ extension AgentChatSession {
     /// Like `send(_:)` but skips appending the user message — it's already in
     /// both `messages` and `rawMessages` from the original turn.
     func regenerateSend(_ text: String, source: AgentRunSource) async {
-        guard selectedProviderHasCredential() else {
-            phase = .failed(missingCredentialMessage())
+        guard LLMReadiness.canSend(model: store.state.settings.agentInitialModel, store: store) else {
+            phase = .failed(LLMReadiness.missingCredentialMessage(for: store.state.settings.agentInitialModel))
             return
         }
 
@@ -109,8 +109,8 @@ extension AgentChatSession {
         let trimmed = text.trimmed
         guard !trimmed.isEmpty else { return }
 
-        guard selectedProviderHasCredential() else {
-            phase = .failed(missingCredentialMessage())
+        guard LLMReadiness.canSend(model: store.state.settings.agentInitialModel, store: store) else {
+            phase = .failed(LLMReadiness.missingCredentialMessage(for: store.state.settings.agentInitialModel))
             return
         }
 
@@ -162,14 +162,13 @@ extension AgentChatSession {
                 ? store.state.settings.agentThinkingModel
                 : store.state.settings.agentInitialModel
             do {
-                let ollamaChatURL = URL(string: store.state.settings.ollamaChatURL)
                 result = try await AgentLLMClient.streamCompletion(
                     messages: rawMessages,
                     tools: AgentTools.schema
                          + AgentTools.podcastSchema
                          + AgentSkillRegistry.schemas(for: enabledSkills),
                     model: modelForTurn,
-                    ollamaChatURL: ollamaChatURL
+                    store: store
                 ) { [weak self] partial in
                     self?.streamingContent = partial
                 }
@@ -378,19 +377,6 @@ extension AgentChatSession {
         return result.resultJSON
     }
 
-    func selectedProviderHasCredential() -> Bool {
-        let reference = LLMModelReference(storedID: store.state.settings.agentInitialModel)
-        let ollamaChatURL = URL(string: store.state.settings.ollamaChatURL)
-        if !LLMProviderCredentialResolver.requiresAPIKey(for: reference.provider, ollamaChatURL: ollamaChatURL) {
-            return true
-        }
-        return LLMProviderCredentialResolver.hasAPIKey(for: reference.provider)
-    }
-
-    func missingCredentialMessage() -> String {
-        let reference = LLMModelReference(storedID: store.state.settings.agentInitialModel)
-        return LLMProviderCredentialResolver.missingCredentialMessage(for: reference.provider)
-    }
 
     /// Saves any non-empty partial streaming content as an assistant message
     /// before an error terminates the turn.

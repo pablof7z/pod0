@@ -40,6 +40,11 @@ extension AppStateStore {
         // correctly from launch. Rust can't read the Keychain; this is the
         // only signal it has. Re-dispatched after every key save/delete.
         syncSTTKeysPresent()
+        // Push OpenRouter and Ollama API keys to the Rust kernel's in-memory
+        // provider registry. Keys are never persisted on either side; this
+        // is re-dispatched after every Settings credential mutation so the
+        // kernel always has the current Keychain values.
+        kernelSetProviderApiKeys()
         // Seed the Up Next queue from the kernel's persisted snapshot. The
         // handler may not be wired yet (setupPlaybackHandlers runs on .onAppear
         // which can fire after this task), so stash the IDs in pendingKernelQueue

@@ -6,23 +6,17 @@ enum AgentLLMClient {
         messages: [[String: Any]],
         tools: [[String: Any]],
         model: String,
+        store: AppStateStore,
         feature: String = CostFeature.agentChat,
-        ollamaChatURL: URL? = nil,
         onPartialContent: (String) -> Void
     ) async throws -> AgentResult {
         let reference = LLMModelReference(storedID: model)
         guard !reference.isEmpty else {
             throw AgentError.httpError("No model selected.")
         }
-        let requiresKey = LLMProviderCredentialResolver.requiresAPIKey(
-            for: reference.provider, ollamaChatURL: ollamaChatURL
-        )
+
+        // Resolve credentials from Keychain based on provider.
         let apiKey = (try LLMProviderCredentialResolver.apiKey(for: reference.provider)) ?? ""
-        guard !requiresKey || !apiKey.isEmpty else {
-            throw AgentError.httpError(
-                LLMProviderCredentialResolver.missingCredentialMessage(for: reference.provider)
-            )
-        }
 
         switch reference.provider {
         case .openRouter:
@@ -35,6 +29,7 @@ enum AgentLLMClient {
                 onPartialContent: onPartialContent
             )
         case .ollama:
+            let ollamaChatURL = URL(string: store.state.settings.ollamaChatURL)
             return try await AgentOllamaClient.streamCompletion(
                 messages: messages,
                 tools: tools,

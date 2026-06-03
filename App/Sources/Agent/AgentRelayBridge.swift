@@ -67,11 +67,9 @@ final class AgentRelayBridge {
         inboundEventID: String? = nil
     ) async -> String? {
         guard !history.isEmpty else { return nil }
-        let reference = LLMModelReference(storedID: store.state.settings.agentInitialModel)
-        let ollamaChatURL = URL(string: store.state.settings.ollamaChatURL)
-        guard !LLMProviderCredentialResolver.requiresAPIKey(for: reference.provider, ollamaChatURL: ollamaChatURL)
-                || LLMProviderCredentialResolver.hasAPIKey(for: reference.provider) else {
-            logger.warning("No \(reference.provider.displayName, privacy: .public) key for Nostr peer reply")
+        let model = store.state.settings.agentInitialModel
+        guard LLMReadiness.canSend(model: model, store: store) else {
+            logger.warning("No LLM credential available for Nostr peer reply")
             return nil
         }
         var isUpgraded = false
@@ -186,8 +184,8 @@ final class AgentRelayBridge {
                          + (peerContext != nil ? AgentTools.peerOnlySchema : [])
                          + AgentSkillRegistry.schemas(for: enabledSkills),
                     model: modelForTurn,
+                    store: store,
                     feature: CostFeature.agentNostr,
-                    ollamaChatURL: URL(string: store.state.settings.ollamaChatURL),
                     onPartialContent: { _ in }
                 )
             } catch {

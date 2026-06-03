@@ -63,10 +63,8 @@ struct AgentChatView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarItems }
         .onAppear {
-            let reference = LLMModelReference(storedID: store.state.settings.agentInitialModel)
-            let ollamaChatURL = URL(string: store.state.settings.ollamaChatURL)
-            let hasKey = !LLMProviderCredentialResolver.requiresAPIKey(for: reference.provider, ollamaChatURL: ollamaChatURL)
-                || LLMProviderCredentialResolver.hasAPIKey(for: reference.provider)
+            let model = store.state.settings.agentInitialModel
+            let hasKey = LLMReadiness.canSend(model: model, store: store)
             showSettingsHint = !hasKey
             // Drain any pending ask-agent context that was set since the
             // session was last opened (e.g. long-press → Ask Agent while

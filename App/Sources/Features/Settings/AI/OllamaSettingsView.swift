@@ -241,6 +241,9 @@ struct OllamaSettingsView: View {
 
     private func refreshCredentialState() {
         hasStoredKey = OllamaCredentialStore.hasAPIKey()
+        // Re-push LLM provider API keys to the kernel so it has the latest
+        // Keychain values after a save/delete.
+        store.kernelSetProviderApiKeys()
     }
 
     private func validateStoredKey() async {
