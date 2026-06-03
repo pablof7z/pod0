@@ -124,3 +124,62 @@ fn merge_leaves_new_episode_chapters_untouched() {
     assert!(merged[0].chapters.is_none());
 }
 
+// ── changed_metadata_ids (triage-cache staleness) ──────────────────────────
+
+/// Episode with a stable id (deterministic from feed_url + guid) plus
+/// settable title / description / pub_date — the three triage-relevant fields.
+fn meta_ep(guid: &str, title: &str, description: &str, pub_date: chrono::DateTime<Utc>) -> Episode {
+    let mut e = Episode::new(
+        PodcastId::generate(),
+        "https://example.com/feed.xml",
+        guid,
+        title,
+        Url::parse("https://example.com/audio.mp3").unwrap(),
+        pub_date,
+    );
+    e.description = description.to_string();
+    e
+}
+
+#[test]
+fn changed_metadata_reports_title_change() {
+    let t = Utc::now();
+    let existing = vec![meta_ep("g1", "Old Title", "desc", t)];
+    let fresh = vec![meta_ep("g1", "New Title", "desc", t)];
+    assert_eq!(
+        changed_metadata_ids(&fresh, &existing),
+        vec![existing[0].id.0.to_string()]
+    );
+}
+
+#[test]
+fn changed_metadata_reports_description_and_pubdate_changes() {
+    let t = Utc::now();
+    let later = t + chrono::Duration::seconds(60);
+    let existing = vec![
+        meta_ep("g1", "Title", "old desc", t),
+        meta_ep("g2", "Title2", "desc2", t),
+    ];
+    let fresh = vec![
+        meta_ep("g1", "Title", "new desc", t),       // description changed
+        meta_ep("g2", "Title2", "desc2", later),     // pub_date changed
+    ];
+    let mut got = changed_metadata_ids(&fresh, &existing);
+    got.sort();
+    let mut want = vec![existing[0].id.0.to_string(), existing[1].id.0.to_string()];
+    want.sort();
+    assert_eq!(got, want);
+}
+
+#[test]
+fn changed_metadata_ignores_unchanged_and_new_episodes() {
+    let t = Utc::now();
+    let existing = vec![meta_ep("g1", "Title", "desc", t)];
+    // g1 identical (unchanged), g2 is brand new (no prior entry to invalidate).
+    let fresh = vec![
+        meta_ep("g1", "Title", "desc", t),
+        meta_ep("g2", "Brand New", "fresh", t),
+    ];
+    assert!(changed_metadata_ids(&fresh, &existing).is_empty());
+}
+

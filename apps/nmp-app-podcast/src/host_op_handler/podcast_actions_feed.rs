@@ -17,7 +17,7 @@ use uuid::Uuid;
 
 use crate::capability::{DownloadCommand, NotificationCommand};
 use crate::host_op_handler::PodcastHostOpHandler;
-use crate::host_op_handler_helpers::merge_episodes;
+use crate::host_op_handler_helpers::{changed_metadata_ids, merge_episodes};
 use crate::picks_handler::refresh_picks_into_slot;
 use crate::store::episodes_to_auto_download;
 
@@ -240,7 +240,7 @@ impl PodcastHostOpHandler {
             Ok(FeedResult::Parsed { parsed, .. }) => {
                 // Single lock window: snapshot existing list, compute the
                 // notification set + auto-download set, then merge forward.
-                let (episodes, new_for_notification, to_auto_download, podcast_title) =
+                let (episodes, new_for_notification, to_auto_download, podcast_title, stale_triage_ids) =
                     match self.store.lock() {
                         Ok(mut s) => {
                             let existing: Vec<Episode> = s.episodes_for(podcast_id).to_vec();
@@ -276,14 +276,22 @@ impl PodcastHostOpHandler {
                                 );
                             }
                             let podcast_title = parsed.podcast.title.clone();
+                            // Episodes whose triage-relevant metadata changed on
+                            // this refresh — their cached LLM score was computed
+                            // from now-stale metadata and must be invalidated.
+                            // Computed while both lists are in hand, before
+                            // `existing` is moved into `merge_episodes`.
+                            let stale_triage_ids =
+                                changed_metadata_ids(&parsed.episodes, &existing);
                             let merged = merge_episodes(parsed.episodes.clone(), existing);
-                            (merged, new_for_notification, to_auto_download, podcast_title)
+                            (merged, new_for_notification, to_auto_download, podcast_title, stale_triage_ids)
                         }
                         Err(_) => (
                             parsed.episodes.clone(),
                             Vec::new(),
                             Vec::new(),
                             parsed.podcast.title.clone(),
+                            Vec::new(),
                         ),
                     };
                 let etag_out = http_result.header("etag").map(str::to_owned);
@@ -299,6 +307,20 @@ impl PodcastHostOpHandler {
                 };
                 if !write_ok {
                     return serde_json::json!({"ok": false, "error": "store poisoned"});
+                }
+                // Invalidate cached LLM triage scores for episodes whose metadata
+                // changed on this refresh. The next snapshot tick's
+                // `maybe_enqueue_triage` sees the missing entries and re-triages
+                // them; `build_inbox` falls back to the recency heuristic until
+                // then. Done after the store lock released (the cache mutex is
+                // taken on every snapshot tick by `build_inbox`, so never nest
+                // it under the store lock).
+                if !stale_triage_ids.is_empty() {
+                    if let Ok(mut cache) = self.inbox_triage_cache.lock() {
+                        for id in &stale_triage_ids {
+                            cache.remove(id);
+                        }
+                    }
                 }
                 for (episode_id, episode_title) in new_for_notification {
                     let cmd = NotificationCommand::schedule_new_episode(

@@ -33,6 +33,35 @@ pub(crate) fn merge_episodes(fresh: Vec<Episode>, existing: Vec<Episode>) -> Vec
         .collect()
 }
 
+/// Episode ids (string form) whose triage-relevant metadata changed between the
+/// prior in-store episode and the freshly-parsed one.
+///
+/// A feed refresh that revises an episode's `published_at`, `title`, or
+/// `description` should invalidate that episode's cached LLM triage score — the
+/// score was computed from the old metadata and may no longer reflect the
+/// episode. Returns the ids of episodes present in BOTH lists (matched by
+/// [`podcast_core::EpisodeId`]) whose `pub_date`, `title`, or `description`
+/// differs. Brand-new episodes have no cache entry to invalidate, and dropped
+/// episodes are handled by the cache's own staleness/eviction, so neither is
+/// reported here.
+///
+/// Pure (no locks, no IO) so it is unit-testable and leaves `merge_episodes`'s
+/// signature — and its existing tests — untouched. The caller invalidates the
+/// triage cache for the returned ids after releasing the store lock.
+pub(crate) fn changed_metadata_ids(fresh: &[Episode], existing: &[Episode]) -> Vec<String> {
+    fresh
+        .iter()
+        .filter_map(|ep| {
+            existing.iter().find(|e| e.id == ep.id).and_then(|prev| {
+                let changed = prev.pub_date != ep.pub_date
+                    || prev.title != ep.title
+                    || prev.description != ep.description;
+                changed.then(|| ep.id.0.to_string())
+            })
+        })
+        .collect()
+}
+
 /// True when an episode carries usable chapters — i.e. `Some(non-empty)`.
 /// Mirrors the "loaded" notion in
 /// [`crate::store::PodcastStore::episode_chapters_state`] so the merge gate and

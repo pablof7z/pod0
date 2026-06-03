@@ -26,6 +26,7 @@ mod ad_segments;
 mod chapters;
 pub mod auto_download;
 pub mod identity;
+pub mod inbox_triage_cache;
 mod library;
 mod memory;
 pub(crate) mod owned_ext;

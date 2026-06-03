@@ -109,7 +109,33 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(
         unsafe { &*handle.app }.set_initial_relays_for_start(saved_relays);
     }
 
-    if loaded > 0 || !loaded_queue.is_empty() || identity_loaded || keys_loaded > 0 {
+    // Restore the LLM inbox-triage cache from `inbox-triage-cache.json`, if
+    // present. Without this, every cold launch re-triages the whole unlistened
+    // backlog (a burst of Ollama calls reproducing scores the prior session
+    // already computed). A missing file is a fresh start, not an error (D6).
+    // Persistence is written by `inbox_handler::persist_triage_cache` after each
+    // triage batch completes.
+    let triage_loaded = {
+        let restored = crate::store::inbox_triage_cache::load_triage_cache(&path_buf);
+        if restored.is_empty() {
+            false
+        } else if let Ok(mut cache) = handle.inbox_triage_cache.lock() {
+            // Loaded entries seed the in-memory cache. We only reach this path
+            // immediately after `register` (cache constructed empty), so a plain
+            // populate is correct — no pre-existing entries to merge against.
+            *cache = restored;
+            true
+        } else {
+            false
+        }
+    };
+
+    if loaded > 0
+        || !loaded_queue.is_empty()
+        || identity_loaded
+        || keys_loaded > 0
+        || triage_loaded
+    {
         // Force the next snapshot poll to pick up the restored library,
         // queue, identity, and/or owned-podcast keys even though no write
         // happened here.

@@ -146,6 +146,49 @@ fn relay_sidecar_round_trips_via_load_helper() {
 }
 
 #[test]
+fn cold_load_restores_inbox_triage_cache_through_set_data_dir() {
+    use crate::inbox_llm::{TriageResult, TriageStatus};
+    use std::collections::HashMap;
+
+    let dir = TempDir::new("triage-cold-load");
+    // Simulate a prior session having persisted triage scores to this dir.
+    let mut persisted: HashMap<String, TriageResult> = HashMap::new();
+    persisted.insert(
+        "ep-1".to_string(),
+        TriageResult::ready(0.91, "Highly relevant".to_string(), vec!["tech".to_string()], 1_700_000_000),
+    );
+    persisted.insert("ep-2".to_string(), TriageResult::pending(1_700_000_500));
+    crate::store::inbox_triage_cache::save_triage_cache(&dir.path, &persisted)
+        .expect("seed triage cache");
+
+    // Cold launch: a fresh handle with an empty cache binds to the dir.
+    let store = Arc::new(Mutex::new(PodcastStore::new()));
+    let rev = Arc::new(AtomicU64::new(0));
+    let handle = make_handle(store.clone(), rev.clone());
+    let cache_arc = handle.inbox_triage_cache.clone();
+    assert!(cache_arc.lock().unwrap().is_empty(), "cache starts empty");
+    let ptr = Box::into_raw(handle);
+    let cpath = CString::new(dir.path.to_str().unwrap()).unwrap();
+
+    nmp_app_podcast_set_data_dir(ptr, cpath.as_ptr());
+
+    // The FFI load block populated the handle's cache from disk...
+    let restored = cache_arc.lock().unwrap();
+    assert_eq!(restored.len(), 2, "both persisted entries restored");
+    let ready = restored.get("ep-1").expect("ready entry restored");
+    assert_eq!(ready.status, TriageStatus::Ready);
+    assert!((ready.priority_score - 0.91).abs() < f32::EPSILON);
+    assert_eq!(ready.priority_reason, "Highly relevant");
+    assert_eq!(restored.get("ep-2").unwrap().status, TriageStatus::Pending);
+    drop(restored);
+
+    // ...and the restore bumped rev so the first snapshot poll surfaces it.
+    assert_eq!(rev.load(Ordering::Relaxed), 1);
+
+    let _ = unsafe { Box::from_raw(ptr) };
+}
+
+#[test]
 fn loading_existing_library_bumps_rev_so_ios_re_polls() {
     let dir = TempDir::new("reload");
     // Pre-populate the directory with one podcast.

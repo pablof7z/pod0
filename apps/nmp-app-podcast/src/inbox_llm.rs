@@ -24,6 +24,7 @@
 //! never blocked: both the explicit `InboxAction::Triage` and the proactive
 //! snapshot-path trigger spawn that background task and return immediately.
 
+use serde::{Deserialize, Serialize};
 use tokio::runtime::Runtime;
 
 use rig_core::client::{CompletionClient as _, Nothing};
@@ -36,7 +37,11 @@ use rig_core::providers::ollama;
 /// or **failed**, so the proactive trigger can tell "never attempted" apart
 /// from "attempted recently, leave it alone." See [`TriageResult`] and
 /// `inbox_handler::episodes_needing_triage`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+///
+/// `Serialize`/`Deserialize` so the whole [`TriageResult`] (which embeds this)
+/// can be persisted to `<data_dir>/inbox-triage-cache.json` and reloaded on a
+/// cold launch (`store::inbox_triage_cache`), sparing a full re-triage pass.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TriageStatus {
     /// The LLM produced a usable score; `priority_score` / `priority_reason` /
     /// `categories` are authoritative and `build_inbox` uses them verbatim.
@@ -50,7 +55,11 @@ pub enum TriageStatus {
 }
 
 /// Result of LLM-based episode triage.
-#[derive(Debug, Clone)]
+///
+/// `Serialize`/`Deserialize` so the in-memory triage cache survives an app
+/// restart — persisted by `store::inbox_triage_cache` after each triage batch
+/// and reloaded in `nmp_app_podcast_set_data_dir`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TriageResult {
     /// Normalized priority score in the range `0.0..=1.0`.
     pub priority_score: f32,
