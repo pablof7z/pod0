@@ -238,13 +238,6 @@ impl PodcastHostOpHandler {
                 self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 serde_json::json!({"ok": true})
             }
-            SettingsAction::SetNotifyOnBriefingReady { enabled } => {
-                if let Ok(mut s) = self.store.lock() {
-                    s.set_notify_on_briefing_ready(enabled);
-                }
-                self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                serde_json::json!({"ok": true})
-            }
             SettingsAction::SetNostrEnabled { enabled } => {
                 if let Ok(mut s) = self.store.lock() {
                     s.set_nostr_enabled(enabled);

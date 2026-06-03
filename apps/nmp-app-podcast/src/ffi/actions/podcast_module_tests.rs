@@ -109,13 +109,6 @@ fn discover_nostr_action_round_trips() {
 }
 
 #[test]
-fn generate_briefing_action_round_trips() {
-    let action = PodcastAction::GenerateBriefing;
-    let json = serde_json::to_string(&action).expect("encode");
-    assert!(json.contains(r#""op":"generate_briefing""#));
-}
-
-#[test]
 fn fetch_comments_action_round_trips() {
     let action = PodcastAction::FetchComments {
         episode_id: "ep-7".into(),

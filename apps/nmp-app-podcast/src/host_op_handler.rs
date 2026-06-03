@@ -49,7 +49,7 @@ use crate::ffi::actions::social_module::SocialAction;
 use crate::ffi::actions::wiki_module::WikiAction;
 use crate::ffi::handle::OwnedPublishState;
 use crate::ffi::projections::{
-    AgentNoteSummary, AgentPickSummary, AgentTaskSummary, BriefingSnapshot, CommentSummary,
+    AgentNoteSummary, AgentPickSummary, AgentTaskSummary, CommentSummary,
     KnowledgeSearchResult, NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry,
     VoiceState, WikiArticle,
 };
@@ -90,7 +90,6 @@ pub struct PodcastHostOpHandler {
     pub(crate) player_actor: Arc<Mutex<PlayerActor>>,
     pub(crate) search_results: Arc<Mutex<Vec<PodcastSummary>>>,
     pub(crate) nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
-    pub(crate) briefing: Arc<Mutex<Option<BriefingSnapshot>>>,
     pub(crate) queue: Arc<Mutex<PlaybackQueue>>,
     pub(crate) download_queue: Arc<Mutex<DownloadQueue>>,
     pub(crate) wiki_articles: Arc<Mutex<Vec<WikiArticle>>>,
@@ -178,7 +177,6 @@ impl PodcastHostOpHandler {
         player_actor: Arc<Mutex<PlayerActor>>,
         search_results: Arc<Mutex<Vec<PodcastSummary>>>,
         nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
-        briefing: Arc<Mutex<Option<BriefingSnapshot>>>,
         queue: Arc<Mutex<PlaybackQueue>>,
         download_queue: Arc<Mutex<DownloadQueue>>,
         wiki_articles: Arc<Mutex<Vec<WikiArticle>>>,
@@ -210,7 +208,6 @@ impl PodcastHostOpHandler {
             player_actor,
             search_results,
             nostr_results,
-            briefing,
             queue,
             download_queue,
             wiki_articles,

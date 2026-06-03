@@ -197,7 +197,7 @@ enum AgentPicksPrompt {
                 The user is in NEWS mode. Pick the freshest episode from the
                 most active subscription in the section as the hero, then add
                 one wildcard from a less-listened show in the section so the
-                briefing isn't monotonous. Prefer episodes published in the
+                roundup isn't monotonous. Prefer episodes published in the
                 last 24 hours.
                 """
             case .storytelling:

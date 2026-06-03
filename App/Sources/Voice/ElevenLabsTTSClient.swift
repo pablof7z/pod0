@@ -42,7 +42,7 @@ enum ElevenLabsTTSError: Error, Equatable, Sendable {
 ///
 /// **Falls back** to the REST `/text-to-speech/{voice}/stream` endpoint when
 /// the socket fails to upgrade — that endpoint backs ElevenLabs' Multilingual
-/// v2 model which the spec calls out as "briefing-grade" quality. We pay a
+/// v2 model which the spec calls out as broadcast-grade quality. We pay a
 /// few hundred ms in first-byte but the audio is uninterrupted.
 ///
 /// **Auth**: API key is read fresh from `ElevenLabsCredentialStore` on each
@@ -65,7 +65,7 @@ final class ElevenLabsTTSClient: TTSClientProtocol, @unchecked Sendable {
     /// per `voice-stt-tts-stack.md`.
     static let flashModelID = "eleven_flash_v2_5"
 
-    /// REST fallback model. Multilingual v2 = briefing-grade quality.
+    /// REST fallback model. Multilingual v2 = broadcast-grade quality.
     static let restModelID = "eleven_multilingual_v2"
 
     init(urlSession: URLSession = .shared) {

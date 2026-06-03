@@ -7,7 +7,7 @@ import SwiftUI
 // Save is tapped. The action's reducer mints the task UUID; this view
 // never invents an id locally.
 //
-// Action presets are kept simple: "Inbox Triage", "Generate Briefing",
+// Action presets are kept simple: "Inbox Triage", "Categorize",
 // and "Custom" (free-form namespace). Real receiver action modules
 // don't exist yet — see `tasks_handler.rs::run_now` comment.
 
@@ -96,9 +96,6 @@ struct CreateTaskSheet: View {
         case .inboxTriage:
             namespace = "podcast.inbox"
             actionBody = #"{"op":"triage"}"#
-        case .generateBriefing:
-            namespace = "podcast"
-            actionBody = #"{"op":"generate_briefing"}"#
         case .categorize:
             namespace = "podcast.categorize"
             actionBody = #"{"op":"run"}"#
@@ -135,11 +132,10 @@ private enum ScheduleOption: String, CaseIterable {
 }
 
 private enum ActionPreset: CaseIterable {
-    case inboxTriage, generateBriefing, categorize, custom
+    case inboxTriage, categorize, custom
     var label: String {
         switch self {
         case .inboxTriage: "Inbox Triage"
-        case .generateBriefing: "Generate Briefing"
         case .categorize: "Categorize"
         case .custom: "Custom"
         }

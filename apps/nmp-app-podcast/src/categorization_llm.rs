@@ -7,7 +7,7 @@
 //! The function is synchronous at the call site — the caller supplies the
 //! shared Tokio runtime (wrapped in `Arc`) and we use `block_on` so a
 //! `spawn_blocking` worker can call it without being async itself. This
-//! mirrors `inbox_llm`, `picks_llm`, and `briefing_llm`.
+//! mirrors `inbox_llm` and `picks_llm`.
 //!
 //! ## Taxonomy enforcement
 //!

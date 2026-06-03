@@ -288,50 +288,6 @@ worktrees currently in flight.
 - **wiki-real-generation.** Replace placeholder wiki articles with RAG-backed
   synthesis, citations, refresh/invalidation, per-podcast storage, and delete
   semantics.
-- **briefings-real-pipeline (feature #41).** The matrix's definition of done is
-  six components: scheduler, composer, provider pipeline, audio generation,
-  persistence, and playback handoff. Status decomposed (verified against code on
-  main, 2026-05-31):
-  - **DONE — text generation (M5.6, `feat/m5-briefings`).** `briefing_llm.rs`
-    asks Ollama (`deepseek-v4-flash`) for a 3–5 item summary over the top-10
-    recent unplayed episodes; `briefings_handler::handle_generate_briefing`
-    flips the slot `generating → ready`, with a no-LLM `fallback_segments`
-    safety net. This is the *provider/script-generation* leg only.
-  - **OPEN — scheduler.** Nothing auto-fires on a schedule. The `tasks_handler`
-    seed already has a "Morning Briefing" row (`schedule:"daily"`,
-    op `generate_briefing`), but no ticker/cron consumes `schedule`/`next_run_at`
-    (both are always `None`; only `RunNow` — a manual button — dispatches). The
-    `podcast_briefings::BriefingScheduler` state machine (`should_generate_now`,
-    `start_pending`, `next_scheduled_minutes`) is fully implemented **but
-    instantiated nowhere** outside its own crate.
-  - **OPEN — composer.** `handle_generate_briefing` emits flat
-    `BriefingSegmentSummary{kind:"episode_summary"}` rows only. The canonical
-    `podcast_briefings::SegmentKind` (`Intro`/`EpisodeSummary`/
-    `NewEpisodeAlert`/`WeatherUpdate`/`OutroCallToAction`) and `BriefingSegment`
-    domain types exist but are unused on the live path. Per the crate's D7
-    doctrine, intro→summaries→outro structuring belongs in `podcast-briefings`,
-    not in `nmp-app-podcast`'s handler.
-  - **OPEN — audio generation.** Briefings produce text only; no TTS/audio
-    output. (TTS now lives only in the Swift `AgentTTSComposer` path — the
-    feature-#43 kernel `tts.rs`/`tts_llm.rs` stub was deleted; see
-    `tts-episodes-reconcile-two-mechanisms`. Briefing audio would compose
-    against the Swift path or a new capability, not the removed kernel stub.)
-  - **OPEN — persistence + failure/retry projection.** The slot is an in-memory
-    `Arc<Mutex<Option<BriefingSnapshot>>>`; nothing survives restart and
-    `status` never reaches `"failed"` on the live path.
-  - **BLOCKED ON A DECISION (do not implement piecemeal):** there are two
-    parallel briefing mechanisms — the `tasks_handler` seed-task path (World A:
-    `BriefingSnapshot`/`BriefingSegmentSummary` projection types) and the
-    unwired `podcast-briefings::BriefingScheduler` + `Briefing`/`BriefingSegment`
-    domain crate (World B, the M9.A skeleton that explicitly defers
-    composer/stitcher/audio to M9.B–C). Scheduler, composer, audio, persistence,
-    and failure projection all pull on reconciling these two. **A human must
-    decide which mechanism is canonical** (wire `BriefingScheduler` into the
-    kernel as SSOT, or extend the `tasks_handler` path and retire the unwired
-    crate) before an agent builds the remaining legs — building any one leg on
-    the live handler alone would add a second composition path (the
-    fragmentation AGENTS.md forbids) and a D7 violation. Sequenced to M9.B per
-    the `podcast-briefings` skeleton.
 - **voice-real-manager.** Finish Rust voice conversation manager, audio-session
   state transitions, transcript handoff, and cancellation. (Provider TTS/STT
   choices and barge-in policy are tracked separately — see
@@ -453,8 +409,8 @@ worktrees currently in flight.
      "the iOS sheet's Stepper" / "the iOS list renders it" describe UI that
      does not exist.
 
-  The reconciliation was a **human-decision gate** (AGENTS.md fragmentation, D7,
-  the feature-#41 briefings precedent), not net-new persistence code. The
+  The reconciliation was a **human-decision gate** (AGENTS.md fragmentation, D7),
+  not net-new persistence code. The
   options weighed were:
   - **Option A — adopt the Swift composer, delete the kernel stub. (CHOSEN.)**
     Point #43 at the agent-tool path; remove the orphaned kernel `podcast.tts`

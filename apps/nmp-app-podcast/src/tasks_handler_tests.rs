@@ -10,28 +10,21 @@ fn new_state() -> (Arc<Mutex<Vec<AgentTaskSummary>>>, Arc<AtomicU64>) {
 }
 
 #[test]
-fn default_seed_has_two_default_tasks() {
+fn default_seed_has_inbox_triage_task() {
     let seed = default_seed();
-    assert_eq!(seed.len(), 2);
-    assert_eq!(seed[0].title, "Morning Briefing");
+    assert_eq!(seed.len(), 1);
+    assert_eq!(seed[0].title, "Inbox Triage");
     // Seed namespaces MUST match a *registered* `ActionModule::NAMESPACE`
     // (exact `modules.get(namespace)` lookup) so `RunNow` actually
     // dispatches. Bind to the real consts so future drift fails loudly.
     assert_eq!(
         seed[0].action_namespace,
-        crate::ffi::actions::PodcastActionModule::NAMESPACE
-    );
-    assert_eq!(seed[0].action_body, r#"{"op":"generate_briefing"}"#);
-    assert_eq!(seed[1].title, "Inbox Triage");
-    assert_eq!(
-        seed[1].action_namespace,
         crate::ffi::actions::InboxActionModule::NAMESPACE
     );
-    assert_eq!(seed[1].action_body, r#"{"op":"triage"}"#);
+    assert_eq!(seed[0].action_body, r#"{"op":"triage"}"#);
     assert!(seed.iter().all(|t| t.is_enabled));
     assert!(seed.iter().all(|t| t.status == "pending"));
-    // Ids must be unique hyphenated UUIDs.
-    assert_ne!(seed[0].id, seed[1].id);
+    // Id must be a hyphenated UUID.
     assert!(Uuid::parse_str(&seed[0].id).is_ok());
 }
 
@@ -254,7 +247,7 @@ fn run_now_forwards_namespace_and_body_to_dispatch() {
     };
     let _ = handle_tasks_action(
         AgentTasksAction::RunNow {
-            task_id: seed[1].id.clone(), // Inbox Triage
+            task_id: seed[0].id.clone(), // Inbox Triage
         },
         &tasks,
         &rev,

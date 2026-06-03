@@ -142,7 +142,7 @@ pub struct AgentPickSummary {
 ///
 /// Mirrors a recurring or one-shot action the agent has scheduled on
 /// the user's behalf (e.g. "fetch new episodes every morning",
-/// "generate a briefing at 7am", "research topic X").
+/// "triage the inbox at 7am", "research topic X").
 ///
 /// Per D5/D7 this is pure data: the projection is consumed by the
 /// `AgentTasksView` SwiftUI list and rendered without any client-side
@@ -150,7 +150,7 @@ pub struct AgentPickSummary {
 /// shell only dispatches actions and re-renders.
 ///
 /// `action_namespace` + `action_body` carry the dispatch payload the
-/// task should fire (e.g. `"podcast.briefings.generate"` + `"{}"`).
+/// task should fire (e.g. `"podcast.inbox.triage"` + `"{}"`).
 /// Carrying them as opaque string fields keeps the projection
 /// open-ended — new agent capabilities show up as new namespace
 /// strings without changing this struct.
@@ -174,7 +174,7 @@ pub struct AgentTaskSummary {
     pub title: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    /// e.g. `"podcast.briefings.generate"` — the action namespace
+    /// e.g. `"podcast.inbox.triage"` — the action namespace
     /// `run_now` would (in a future scheduler) dispatch.
     pub action_namespace: String,
     /// JSON payload (already-encoded). Keeps the projection

@@ -1,7 +1,7 @@
 // EpisodeFormatHelpers.swift
 // Canonical free-function formatters shared across all episode row and player
 // views. Having one implementation eliminates ~15 private copies that were
-// duplicated verbatim across Library, Player, Inbox, and Briefings surfaces.
+// duplicated verbatim across Library, Player, and Inbox surfaces.
 
 import Foundation
 

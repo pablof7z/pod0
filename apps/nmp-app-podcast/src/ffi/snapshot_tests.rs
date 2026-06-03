@@ -2,7 +2,7 @@
 //! byte-identity coverage (part 1/2).
 //!
 //! Split out of `snapshot.rs` to keep that file under the 500-line hard
-//! limit. Briefing, comments, queue, wiki, picks, memory, clips, and inbox
+//! limit. Comments, queue, wiki, picks, memory, clips, and inbox
 //! tests live in `snapshot_tests_ext.rs`.
 
 use crate::ffi::projections::{
@@ -108,7 +108,6 @@ fn snapshot_decoder_tolerates_unknown_fields() {
     assert!(decoded.downloads.is_none());
     assert!(decoded.agent.is_none());
     assert!(decoded.voice.is_none());
-    assert!(decoded.briefing.is_none());
     assert!(decoded.widget.is_none());
     assert!(decoded.toast.is_none());
     // `settings` is non-Option but defaults to fresh-install state when
@@ -145,9 +144,9 @@ fn default_snapshot_omits_agent_tasks() {
 fn snapshot_with_agent_tasks_round_trips() {
     let tasks = vec![AgentTaskSummary {
         id: "task-1".into(),
-        title: "Morning Briefing".into(),
-        description: Some("Daily digest".into()),
-        action_namespace: "podcast.briefings.generate".into(),
+        title: "Inbox Triage".into(),
+        description: Some("Surface new episodes worth your time".into()),
+        action_namespace: "podcast.inbox.triage".into(),
         action_body: "{}".into(),
         schedule: "daily".into(),
         next_run_at: Some(1_700_000_000),
@@ -307,7 +306,7 @@ fn download_item_snapshot_omits_none_error() {
     assert_eq!(decoded, item);
 }
 
-// ── Voice / briefing snapshot wiring (M8.A + M9.A) ───────────────
+// ── Voice snapshot wiring (M8.A) ───────────────
 
 #[test]
 fn snapshot_with_voice_round_trips() {

@@ -11,7 +11,6 @@ pub struct CategorySettings {
     pub transcription_enabled: bool,
     pub rag_enabled: bool,
     pub wiki_generation_enabled: bool,
-    pub briefings_enabled: bool,
     pub notifications_enabled: bool,
 }
 
@@ -23,7 +22,6 @@ impl CategorySettings {
             transcription_enabled: true,
             rag_enabled: true,
             wiki_generation_enabled: true,
-            briefings_enabled: true,
             notifications_enabled: true,
         }
     }

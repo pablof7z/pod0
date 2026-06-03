@@ -671,18 +671,6 @@ impl PodcastStore {
         self.persist();
     }
 
-    /// Whether to send local notifications when briefing/AI processing is ready. Default `true`.
-    pub fn notify_on_briefing_ready(&self) -> bool {
-        self.notify_on_briefing_ready
-    }
-
-    /// Set the notify-on-briefing-ready toggle and persist. Idempotent.
-    pub fn set_notify_on_briefing_ready(&mut self, value: bool) {
-        if self.notify_on_briefing_ready == value { return; }
-        self.notify_on_briefing_ready = value;
-        self.persist();
-    }
-
     /// Whether Nostr publishing and identity features are enabled. Default `false`.
     pub fn nostr_enabled(&self) -> bool {
         self.nostr_enabled

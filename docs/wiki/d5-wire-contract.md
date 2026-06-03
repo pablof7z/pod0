@@ -53,7 +53,7 @@ The D5-vs-non-optional mismatch affects many fields across the type tree. Fields
 
 **InboxItem:** `aiCategories` (array, skip-when-empty)
 
-**PodcastUpdate:** `library`, `searchResults`, `nostrResults`, `comments`, `queue`, `picks`, `inbox`, `nowPlaying`, `downloads`, `tasks`, `knowledge`, `briefing`, `notifications`, and other top-level arrays (all skip-when-empty); `settings` (struct, skip-when-none)
+**PodcastUpdate:** `library`, `searchResults`, `nostrResults`, `comments`, `queue`, `picks`, `inbox`, `nowPlaying`, `downloads`, `tasks`, `knowledge`, `notifications`, and other top-level arrays (all skip-when-empty); `settings` (struct, skip-when-none)
 
 All these fields use the appropriate default-tolerant wrapper in the Swift mirror. Fields whose Swift mirrors are already Optional are unaffected. <!-- [^14943-14] -->
 

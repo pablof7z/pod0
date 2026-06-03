@@ -80,12 +80,6 @@
       ]
     },
     {
-      "shipped_at": "2026-05-26T01:05:00Z",
-      "lines": [
-        "Daily Briefings: AI-generated summaries of your podcast queue."
-      ]
-    },
-    {
       "shipped_at": "2026-05-26T01:00:00Z",
       "lines": [
         "Edit your Nostr profile and publish it to the network."
@@ -1026,7 +1020,7 @@
     {
       "shipped_at": "2026-05-11T12:00:00Z",
       "lines": [
-        "Tap the Home title to browse categories — each category shows podcast artwork, a description, and your unplayed count. Tap the gear on any category to set its transcription, wiki, and briefings preferences independently. Selecting a category scopes the whole feed to that section."
+        "Tap the Home title to browse categories — each category shows podcast artwork, a description, and your unplayed count. Tap the gear on any category to set its transcription and wiki preferences independently. Selecting a category scopes the whole feed to that section."
       ]
     },
     {

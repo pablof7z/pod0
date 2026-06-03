@@ -2,16 +2,16 @@ use super::*;
 #[test]
 fn create_action_round_trips_with_all_fields() {
     let action = AgentTasksAction::Create {
-        title: "Morning Briefing".into(),
-        description: Some("Daily briefing".into()),
-        action_namespace: "podcast.briefings.generate".into(),
+        title: "Inbox Triage".into(),
+        description: Some("Daily inbox triage".into()),
+        action_namespace: "podcast.inbox.triage".into(),
         action_body: "{}".into(),
         schedule: "daily".into(),
     };
     let json = serde_json::to_string(&action).expect("encode");
     assert!(json.contains(r#""op":"create""#));
-    assert!(json.contains(r#""title":"Morning Briefing""#));
-    assert!(json.contains(r#""action_namespace":"podcast.briefings.generate""#));
+    assert!(json.contains(r#""title":"Inbox Triage""#));
+    assert!(json.contains(r#""action_namespace":"podcast.inbox.triage""#));
     let decoded: AgentTasksAction = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded, action);
 }

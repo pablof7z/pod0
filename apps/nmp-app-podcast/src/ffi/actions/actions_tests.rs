@@ -152,28 +152,3 @@ fn agent_send_action_round_trips_through_reexport() {
     let decoded: SendAgentMessageAction = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded, a);
 }
-
-// ── Briefing actions (M9.A — re-exports) ────────────────────────────────────
-
-#[test]
-fn briefing_action_ids_match_documented_strings() {
-    assert_eq!(ACTION_BRIEFING_REQUEST, "podcast.briefing.request");
-    assert_eq!(ACTION_BRIEFING_SCHEDULE, "podcast.briefing.schedule");
-    assert_eq!(ACTION_BRIEFING_CANCEL, "podcast.briefing.cancel");
-}
-
-#[test]
-fn briefing_request_action_round_trips_through_reexport() {
-    let a = RequestBriefingAction;
-    let json = serde_json::to_string(&a).expect("encode");
-    let decoded: RequestBriefingAction = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded, a);
-}
-
-#[test]
-fn briefing_cancel_action_round_trips_through_reexport() {
-    let a = CancelBriefingAction;
-    let json = serde_json::to_string(&a).expect("encode");
-    let decoded: CancelBriefingAction = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded, a);
-}

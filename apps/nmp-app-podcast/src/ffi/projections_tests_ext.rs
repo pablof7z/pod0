@@ -107,9 +107,9 @@ fn chapter_summary_decodes_source_default_publisher_when_omitted() {
 fn agent_task_summary_round_trips_with_all_fields() {
     let task = AgentTaskSummary {
         id: "task-1".into(),
-        title: "Morning Briefing".into(),
-        description: Some("Generate a briefing every morning".into()),
-        action_namespace: "podcast.briefings.generate".into(),
+        title: "Inbox Triage".into(),
+        description: Some("Triage the inbox every morning".into()),
+        action_namespace: "podcast.inbox.triage".into(),
         action_body: "{}".into(),
         schedule: "daily".into(),
         next_run_at: Some(1_700_000_000),

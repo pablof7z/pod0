@@ -100,16 +100,6 @@ pub enum PodcastAction {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         has_completed_onboarding: Option<bool>,
     },
-    /// Compose a fresh daily briefing on demand. No fields — the handler
-    /// reads the current library snapshot and the configured schedule to
-    /// pick source episodes.
-    ///
-    /// M9.A stub: the handler currently flips a `generating` status into
-    /// the snapshot and returns `{"ok":true,"status":"generating"}`. The
-    /// LLM composer + audio stitching wiring lands in M9.B; this variant
-    /// reserves the action-dispatch path so the iOS button can be wired
-    /// against a stable contract today.
-    GenerateBriefing,
     /// Open the NIP-22 (kind 1111) comments subscription for
     /// `episode_id` and surface any matching events on the snapshot's
     /// `comments` field.

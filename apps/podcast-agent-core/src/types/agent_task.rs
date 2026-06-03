@@ -1,7 +1,7 @@
 //! Agent task domain.
 //!
 //! An [`AgentTask`] is one unit of work the agent has been asked to do —
-//! transcribe an episode, summarize one, run a search, compose a briefing.
+//! transcribe an episode, summarize one, run a search, compose a note.
 //! Tasks are persisted in the [`crate::projections::ConversationActor`]
 //! sibling stores (M7.B wires that store; M7.A defines the shape).
 //!

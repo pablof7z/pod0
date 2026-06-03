@@ -75,11 +75,6 @@ podcast-agent-core = { path = "../podcast-agent-core" }
 # `podcast-feeds` (the lower-level consumer); routing them through this
 # re-export keeps the per-app capability surface uniform.
 podcast-feeds = { path = "../podcast-feeds" }
-# Briefing composition + scheduler domain. M9.A wires the dep so the
-# FFI snapshot can surface `briefing: BriefingSnapshot` and re-export
-# the `podcast.briefing.*` action ids alongside the player/agent ones;
-# the kernel-side action modules arrive in M9.B.
-podcast-briefings = { path = "../podcast-briefings" }
 # Transcript parsers (VTT / SRT / Podcasting 2.0 JSON). PR 14 wires the
 # dep so the `podcast.fetch_transcript` action can pull publisher transcript
 # bytes via the HTTP capability, parse them with these pure-Rust parsers,

@@ -30,10 +30,9 @@ use nmp_core::ActorCommand;
 ///
 /// `run_now` is a stub: it marks the task `completed` + stamps
 /// `last_run_at` rather than actually dispatching the `action_namespace`
-/// payload. The real receiver actions (`podcast.briefings.generate`,
-/// `podcast.inbox.triage`) don't exist yet as ActionModules; once they
-/// land the stub will be swapped for a real dispatch without changing
-/// the wire shape.
+/// payload. The real receiver action (`podcast.inbox.triage`) is wired
+/// through the task dispatch hook; the stub path remains for unit tests
+/// with no live kernel and preserves the wire shape.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum AgentTasksAction {

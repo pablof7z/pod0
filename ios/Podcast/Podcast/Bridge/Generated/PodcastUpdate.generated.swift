@@ -16,7 +16,6 @@ struct PodcastUpdate: Codable {
     var downloads: DownloadQueueSnapshot? = nil
     var agent: AgentSnapshot? = nil
     var voice: VoiceSnapshot? = nil
-    var briefing: BriefingSnapshot? = nil
     var social: SocialSnapshot? = nil
     var library: [PodcastSummary] = []
     var activeAccount: AccountSummary? = nil

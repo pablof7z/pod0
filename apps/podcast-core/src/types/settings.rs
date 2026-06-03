@@ -133,7 +133,6 @@ pub struct Settings {
 
     // Notifications
     pub notify_on_new_episodes: bool,
-    pub notify_on_briefing_ready: bool,
 
     // Nostr
     pub nostr_enabled: bool,
@@ -224,7 +223,6 @@ impl Default for Settings {
             auto_fallback_to_scribe: true,
 
             notify_on_new_episodes: true,
-            notify_on_briefing_ready: true,
 
             nostr_enabled: false,
             nostr_relay_url: Self::DEFAULT_NOSTR_RELAY_URL.into(),

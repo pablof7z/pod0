@@ -4,29 +4,10 @@
 //! AGENTS.md hard limit.
 
 use crate::ffi::projections::{
-    AgentPickSummary, BriefingSegmentSummary, BriefingSnapshot, ClipSummary, CommentSummary,
+    AgentPickSummary, ClipSummary, CommentSummary,
     InboxItem, MemoryFact, WikiArticle,
 };
 use super::PodcastUpdate;
-
-#[test]
-fn snapshot_with_briefing_round_trips() {
-    let b = BriefingSnapshot {
-        status: "generating".into(),
-        is_generating: true,
-        segment_count: 0,
-        segments: vec![],
-        last_generated_at: None,
-        next_scheduled_minutes: Some(45),
-    };
-    let snap = PodcastUpdate {
-        briefing: Some(b.clone()),
-        ..PodcastUpdate::default()
-    };
-    let json = serde_json::to_string(&snap).expect("encode");
-    let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded.briefing, Some(b));
-}
 
 #[test]
 fn snapshot_with_comments_round_trips() {
@@ -59,53 +40,6 @@ fn snapshot_with_comments_round_trips() {
 fn default_snapshot_omits_empty_comments() {
     let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
     assert!(!json.contains("\"comments\""));
-}
-
-#[test]
-fn briefing_snapshot_omits_none_next_scheduled() {
-    let b = BriefingSnapshot {
-        status: "pending".into(),
-        segment_count: 0,
-        next_scheduled_minutes: None,
-        ..BriefingSnapshot::default()
-    };
-    let json = serde_json::to_string(&b).expect("encode");
-    assert!(!json.contains("next_scheduled_minutes"));
-    assert!(!json.contains("last_generated_at"));
-    assert!(!json.contains("\"segments\""));
-    let decoded: BriefingSnapshot = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded, b);
-}
-
-#[test]
-fn briefing_snapshot_with_segments_round_trips() {
-    let b = BriefingSnapshot {
-        status: "ready".into(),
-        is_generating: false,
-        segment_count: 2,
-        segments: vec![
-            BriefingSegmentSummary {
-                kind: "intro".into(),
-                text: "Good morning.".into(),
-                podcast_title: None,
-                episode_title: None,
-            },
-            BriefingSegmentSummary {
-                kind: "episode_summary".into(),
-                text: "Today on Hard Fork…".into(),
-                podcast_title: Some("Hard Fork".into()),
-                episode_title: Some("Ep 42".into()),
-            },
-        ],
-        last_generated_at: Some(1_700_000_000),
-        next_scheduled_minutes: None,
-    };
-    let json = serde_json::to_string(&b).expect("encode");
-    assert!(json.contains("\"kind\":\"intro\""));
-    assert!(json.contains("\"podcast_title\":\"Hard Fork\""));
-    assert!(json.contains("\"last_generated_at\":1700000000"));
-    let decoded: BriefingSnapshot = serde_json::from_str(&json).expect("decode");
-    assert_eq!(decoded, b);
 }
 
 // ── Queue projection (M12 / PR 12) ───────────────────────────────

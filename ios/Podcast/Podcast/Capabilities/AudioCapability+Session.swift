@@ -5,9 +5,9 @@ import Foundation
 //
 // Single arbiter for `AVAudioSession` in the new `ios/Podcast` shell.
 // The legacy app's `AudioSessionCoordinator` is intentionally not
-// referenced here — that singleton handles voice/briefing arbitration
-// that lives outside the M3 scope. When the voice/briefing capabilities
-// migrate, the two coordinators reconcile.
+// referenced here — that singleton handles voice arbitration that lives
+// outside the M3 scope. When the voice capability migrates, the two
+// coordinators reconcile.
 //
 // D7: configuration is a one-time side effect, not a policy decision.
 // The capability sets `.playback + .spokenAudio` because that's what an

@@ -91,13 +91,6 @@ pub extern "C" fn nmp_app_podcast_register(
     let player_actor = Arc::new(Mutex::new(PlayerActor::new()));
     let search_results = Arc::new(Mutex::new(Vec::new()));
     let nostr_results = Arc::new(Mutex::new(Vec::new()));
-    let briefing = Arc::new(Mutex::new(None));
-    // Canonical briefing scheduler — pure, clock-free state machine. The
-    // snapshot tick (`maybe_trigger_briefing`) supplies the local clock and
-    // dispatches `generate_briefing` when a configured slot is due. Starts
-    // schedule-less; the schedule-settings action lands in a follow-up.
-    let briefing_scheduler =
-        Arc::new(Mutex::new(podcast_briefings::BriefingScheduler::new()));
     let queue = Arc::new(Mutex::new(PlaybackQueue::new()));
     let download_queue = Arc::new(Mutex::new(DownloadQueue::new()));
     let wiki_articles = Arc::new(Mutex::new(Vec::new()));
@@ -215,7 +208,6 @@ pub extern "C" fn nmp_app_podcast_register(
         player_actor.clone(),
         search_results.clone(),
         nostr_results.clone(),
-        briefing.clone(),
         queue.clone(),
         download_queue.clone(),
         wiki_articles.clone(),
@@ -310,8 +302,6 @@ pub extern "C" fn nmp_app_podcast_register(
         search_results,
         nostr_results,
         snapshot_cache: Arc::new(Mutex::new(None)),
-        briefing,
-        briefing_scheduler,
         queue,
         download_queue,
         wiki_articles,

@@ -45,7 +45,6 @@ in `android/Podcast/app/src/main/java/io/f7z/podcast/`.
 | AI chapters | Not started (chapters render in episode detail; no synthesis trigger) |
 | Auto ad-skip | Not started |
 | RAG / wiki | Not started |
-| AI briefings | Scaffold |
 | Voice mode | Scaffold |
 | AI picks / categories | Not started (categories render in episode detail; no picks rail) |
 

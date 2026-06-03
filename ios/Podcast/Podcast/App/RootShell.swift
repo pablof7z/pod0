@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum PodcastTab: Hashable { case home, library, downloads, briefings, social, inbox, agent, identity }
+enum PodcastTab: Hashable { case home, library, downloads, social, inbox, agent, identity }
 
 struct RootShell: View {
     @Environment(KernelModel.self) private var model
@@ -39,9 +39,6 @@ struct RootShell: View {
             DownloadsView()
                 .tabItem { Label("Downloads", systemImage: "arrow.down.circle") }
                 .tag(PodcastTab.downloads)
-            BriefingsView()
-                .tabItem { Label("Briefings", systemImage: "newspaper") }
-                .tag(PodcastTab.briefings)
             SocialView()
                 .tabItem { Label("Social", systemImage: "person.2") }
                 .tag(PodcastTab.social)

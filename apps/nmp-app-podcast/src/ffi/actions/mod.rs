@@ -34,9 +34,6 @@
 //! podcast.voice.speak                  — SpeakAction             { text, voice_id? }
 //! podcast.voice.stop                   — StopVoiceAction
 //! podcast.voice.set_voice              — SetVoiceAction          { voice_id }
-//! podcast.briefing.request             — RequestBriefingAction
-//! podcast.briefing.schedule            — ScheduleBriefingAction  { schedule }
-//! podcast.briefing.cancel              — CancelBriefingAction
 //! podcast.agent.send                   — SendAgentMessageAction  { conversation_id?, message }
 //! podcast.agent.approve                — ApproveAction           { approval_id }
 //! podcast.agent.deny                   — DenyAction              { approval_id, reason? }
@@ -54,9 +51,8 @@
 //! ## Module layout
 //!
 //! Player actions live in this `mod.rs`. Voice actions live in
-//! [`voice`]. Briefing actions are re-exported from `podcast-briefings`;
-//! agent actions are re-exported from `podcast-agent-core`. Each domain
-//! owns its wire format; this module is the single import path the
+//! [`voice`]. Agent actions are re-exported from `podcast-agent-core`.
+//! Each domain owns its wire format; this module is the single import path the
 //! iOS shell links against.
 
 pub mod chapters_module;
@@ -306,21 +302,6 @@ pub struct SiriPlayLatestAction {
 /// emits a `toast` on the snapshot and does nothing else.
 #[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
 pub struct SiriResumeAction;
-
-// ---------------------------------------------------------------------------
-// Briefing actions (re-exported from `podcast-briefings` for M9.A)
-// ---------------------------------------------------------------------------
-//
-// The briefing action ids + payloads live in `podcast-briefings` so the
-// crate that owns the briefing/scheduler domain also owns its wire
-// format. Re-exported through this module so the iOS shell links against
-// `nmp_app_podcast::ffi::actions::ACTION_BRIEFING_*` exactly like the
-// player / agent / voice actions — one import path for every action
-// contract.
-pub use podcast_briefings::{
-    CancelBriefingAction, RequestBriefingAction, ScheduleBriefingAction, ACTION_BRIEFING_CANCEL,
-    ACTION_BRIEFING_REQUEST, ACTION_BRIEFING_SCHEDULE,
-};
 
 // ---------------------------------------------------------------------------
 // Agent actions (re-exported from `podcast-agent-core` for M7.A)

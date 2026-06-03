@@ -273,7 +273,7 @@ impl VoiceConversationManager {
         let handle = self.runtime.spawn(async move {
             // `chat_with_tools` blocks on its own runtime internally, so it
             // must not run inside this async task directly. Offload to the
-            // blocking pool (mirrors `briefings_handler`).
+            // blocking pool (mirrors the other LLM handlers).
             let reply = tokio::task::spawn_blocking(move || {
                 run_turn(&history, &transcript, &store, &runtime_for_blocking)
             })

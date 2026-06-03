@@ -39,8 +39,7 @@
 //! `{"op":...}` wire body. The default seed (see [`default_seed`]) uses
 //! the real namespaces:
 //!
-//! * Morning Briefing → ns `"podcast"`, body `{"op":"generate_briefing"}`
-//! * Inbox Triage     → ns `"podcast.inbox"`, body `{"op":"triage"}`
+//! * Inbox Triage → ns `"podcast.inbox"`, body `{"op":"triage"}`
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -56,20 +55,6 @@ use crate::ffi::projections::AgentTaskSummary;
 /// `register.rs` can hand it directly to `Arc::new(Mutex::new(...))`.
 pub fn default_seed() -> Vec<AgentTaskSummary> {
     vec![
-        AgentTaskSummary {
-            id: Uuid::new_v4().to_string(),
-            title: "Morning Briefing".into(),
-            description: Some("Generate today's briefing".into()),
-            // `podcast` namespace, `GenerateBriefing` op (see
-            // `PodcastActionModule` / `PodcastAction::GenerateBriefing`).
-            action_namespace: "podcast".into(),
-            action_body: r#"{"op":"generate_briefing"}"#.into(),
-            schedule: "daily".into(),
-            next_run_at: None,
-            last_run_at: None,
-            status: "pending".into(),
-            is_enabled: true,
-        },
         AgentTaskSummary {
             id: Uuid::new_v4().to_string(),
             title: "Inbox Triage".into(),

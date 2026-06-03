@@ -4,8 +4,8 @@
 //! Lives in its own module to keep [`super::snapshot`] focused on the
 //! C-ABI entry points and the typed root struct. Each projection here
 //! is the *external* (FFI-wire) shape; the *internal* state machines
-//! it derives from live in their domain crates (`podcast-briefings`,
-//! `podcast-agent-core`, …) or in this crate's domain modules
+//! it derives from live in their domain crates (`podcast-agent-core`, …)
+//! or in this crate's domain modules
 //! (`crate::player`, `crate::download`).
 //!
 //! ## Structure
@@ -21,7 +21,6 @@
 
 mod agent;
 mod agent_context;
-mod briefing;
 mod clips;
 mod download;
 mod identity;
@@ -38,7 +37,6 @@ pub use agent::{
     ConversationsSnapshot, PendingApprovalSnapshot,
 };
 pub use agent_context::{AgentContextEpisode, AgentContextSnapshot};
-pub use briefing::{BriefingSegmentSummary, BriefingSnapshot};
 pub use clips::ClipSummary;
 pub use download::{DownloadItemSnapshot, DownloadQueueSnapshot};
 pub use identity::{AccountSummary, OwnedPodcastInfo};

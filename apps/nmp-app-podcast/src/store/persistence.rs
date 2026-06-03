@@ -273,9 +273,6 @@ pub(super) struct PersistedSettings {
     /// Whether to send local notifications when new episodes arrive. Default `true`.
     #[serde(default = "default_true")]
     pub notify_on_new_episodes: bool,
-    /// Whether to send local notifications when briefing/AI processing is ready. Default `true`.
-    #[serde(default = "default_true")]
-    pub notify_on_briefing_ready: bool,
     /// Whether Nostr publishing and identity features are enabled. Default `false`.
     #[serde(default)]
     pub nostr_enabled: bool,
@@ -356,7 +353,6 @@ impl Default for PersistedSettings {
             auto_ingest_publisher_transcripts: true,
             auto_fallback_to_scribe: true,
             notify_on_new_episodes: true,
-            notify_on_briefing_ready: true,
             nostr_enabled: false,
             nostr_relay_url: String::new(),
             nostr_public_relays: Vec::new(),

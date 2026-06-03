@@ -1,7 +1,7 @@
 ---
 title: Local LLM and Cloud Fallback
 slug: local-llm-and-cloud-fallback
-summary: A local Gemma model is embedded in the app to handle lighter queries (search, summaries, briefings), while heavier queries fall back to a cloud provider.
+summary: A local Gemma model is embedded in the app to handle lighter queries (search, summaries), while heavier queries fall back to a cloud provider.
 tags:
   - capture
 volatility: warm
@@ -18,7 +18,7 @@ sources:
 
 ## Local-Cloud Model Split
 
-A local Gemma model is embedded in the app to handle lighter queries (search, summaries, briefings), while heavier queries fall back to a cloud provider. [^4dd36-2]
+A local Gemma model is embedded in the app to handle lighter queries (search, summaries), while heavier queries fall back to a cloud provider. [^4dd36-2]
 
 
 The local model is delivered as a post-install download (~2.6GB), not bundled in the IPA. [^4dd36-3]

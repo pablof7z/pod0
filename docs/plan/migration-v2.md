@@ -350,7 +350,7 @@ Status: **todo**.
 
 Sub-milestones run in this order because each unblocks the next:
 
-### M5.1 — Inbox triage (unblocks AI chapters, picks, briefings)
+### M5.1 — Inbox triage (unblocks AI chapters, picks)
 
 - **Done when:** `podcast.inbox.triage` runs on a background tokio task,
   pushes incremental progress via the snapshot, and never blocks the actor
@@ -387,7 +387,7 @@ Sub-milestones run in this order because each unblocks the next:
   chapters with persistence and regeneration. Emit through the existing
   `ChapterSummary.is_ai_generated = true` channel.
 
-### M5.6 — Picks, briefings, TTS, wiki, voice mode
+### M5.6 — Picks, TTS, wiki, voice mode
 
 - Each gets its own sub-milestone with a one-sentence exit criterion
   consistent with the parity matrix. Do not start any of these until

@@ -3,9 +3,9 @@ import SwiftUI
 // MARK: - OnboardingElevenLabsPage
 //
 // Optional onboarding step that mirrors `OnboardingAISetupPage` but for the
-// ElevenLabs API key. Briefings + transcripts both depend on a configured
+// ElevenLabs API key. Transcripts and voice features depend on a configured
 // ElevenLabs key, so we surface it during onboarding instead of deferring
-// the discovery to the moment the user taps "Generate Briefing".
+// the discovery to the moment the user first needs it.
 //
 // Always skippable — the rest of the app degrades gracefully when the key
 // is missing.
@@ -43,7 +43,7 @@ struct OnboardingElevenLabsPage: View {
                 .font(AppTheme.Typography.largeTitle)
                 .foregroundStyle(.white)
 
-            Text("Briefings and on-device transcripts use ElevenLabs. Optional — paste a key now, or skip and add it later in Settings.")
+            Text("On-device transcripts and voice use ElevenLabs. Optional — paste a key now, or skip and add it later in Settings.")
                 .font(AppTheme.Typography.body)
                 .foregroundStyle(.white.opacity(0.8))
                 .multilineTextAlignment(.center)

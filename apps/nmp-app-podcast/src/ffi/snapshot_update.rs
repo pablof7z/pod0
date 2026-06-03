@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::projections::{
     AccountSummary, AgentContextSnapshot, AgentNoteSummary, AgentPickSummary, AgentSnapshot,
-    AgentTaskSummary, BriefingSnapshot, CategoryBrowseItem, ClipSummary, CommentSummary,
+    AgentTaskSummary, CategoryBrowseItem, ClipSummary, CommentSummary,
     DownloadQueueSnapshot, EpisodeSummary, InboxItem, KnowledgeSearchResult, MemoryFact,
     NostrShowSummary, OwnedPodcastInfo, PodcastSummary, SettingsSnapshot, SocialSnapshot,
     VoiceState, WidgetSnapshot, WikiArticle,
@@ -64,11 +64,6 @@ pub struct PodcastUpdate {
     /// identity with the legacy stub for non-voice-mode snapshots.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub voice: Option<VoiceState>,
-    /// Briefing projection: lifecycle status of the current briefing
-    /// (if any) + segment count + minutes until the next scheduled
-    /// slot. `None` when the scheduler has never been touched.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub briefing: Option<BriefingSnapshot>,
     /// Social projection: the active account's NIP-02 (kind:3) follow
     /// list. `None` until the NMP substrate contact store is wired into
     /// the projection layer — tracked in BACKLOG (`pr-social-graph-nmp-store-wiring`).
@@ -183,7 +178,6 @@ impl Default for PodcastUpdate {
             agent: None,
             agent_context: None,
             voice: None,
-            briefing: None,
             social: None,
             library: Vec::new(),
             active_account: None,

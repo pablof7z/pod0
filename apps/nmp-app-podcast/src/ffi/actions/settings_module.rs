@@ -114,8 +114,6 @@ pub enum SettingsAction {
     SetAutoFallbackToScribe { enabled: bool },
     /// Toggle local notifications for new episodes.
     SetNotifyOnNewEpisodes { enabled: bool },
-    /// Toggle local notifications for briefing readiness.
-    SetNotifyOnBriefingReady { enabled: bool },
     /// Set the Nostr-enabled toggle.
     SetNostrEnabled { enabled: bool },
     /// Set the Nostr relay URL.

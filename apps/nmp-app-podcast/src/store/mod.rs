@@ -241,8 +241,6 @@ pub struct PodcastStore {
     pub(super) auto_fallback_to_scribe: bool,
     /// Whether to send local notifications when new episodes arrive. Default `true`.
     pub(super) notify_on_new_episodes: bool,
-    /// Whether to send local notifications when briefing/AI processing is ready. Default `true`.
-    pub(super) notify_on_briefing_ready: bool,
     /// Whether Nostr publishing and identity features are enabled. Default `false`.
     pub(super) nostr_enabled: bool,
     /// Primary Nostr relay URL for publishing and event distribution. Default empty.
@@ -354,7 +352,6 @@ impl PodcastStore {
             auto_ingest_publisher_transcripts: true,
             auto_fallback_to_scribe: true,
             notify_on_new_episodes: true,
-            notify_on_briefing_ready: true,
             nostr_enabled: false,
             nostr_relay_url: String::new(),
             nostr_public_relays: Vec::new(),
@@ -611,7 +608,6 @@ impl PodcastStore {
         self.auto_ingest_publisher_transcripts = loaded.settings.auto_ingest_publisher_transcripts;
         self.auto_fallback_to_scribe = loaded.settings.auto_fallback_to_scribe;
         self.notify_on_new_episodes = loaded.settings.notify_on_new_episodes;
-        self.notify_on_briefing_ready = loaded.settings.notify_on_briefing_ready;
         self.nostr_enabled = loaded.settings.nostr_enabled;
         self.nostr_relay_url = loaded.settings.nostr_relay_url;
         self.nostr_public_relays = loaded.settings.nostr_public_relays;
@@ -766,7 +762,6 @@ impl PodcastStore {
                 auto_ingest_publisher_transcripts: self.auto_ingest_publisher_transcripts,
                 auto_fallback_to_scribe: self.auto_fallback_to_scribe,
                 notify_on_new_episodes: self.notify_on_new_episodes,
-                notify_on_briefing_ready: self.notify_on_briefing_ready,
                 nostr_enabled: self.nostr_enabled,
                 nostr_relay_url: self.nostr_relay_url.clone(),
                 nostr_public_relays: self.nostr_public_relays.clone(),

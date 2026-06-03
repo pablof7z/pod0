@@ -15,8 +15,8 @@ use uuid::Uuid;
 
 /// One outstanding "ask" the agent has parked for human review.
 ///
-/// `expires_at` is optional: approvals that never expire (e.g. background
-/// briefings the user finds the next morning) leave it `None`; time-bound
+/// `expires_at` is optional: approvals that never expire (e.g. a background
+/// digest the user finds the next morning) leave it `None`; time-bound
 /// approvals (e.g. "send this DM in the next 60s") supply an absolute
 /// deadline. The projection layer culls expired approvals at decision
 /// time — there is no separate sweep task.

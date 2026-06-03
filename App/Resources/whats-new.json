@@ -62,12 +62,6 @@
       ]
     },
     {
-      "shipped_at": "2026-06-01T14:00:00Z",
-      "lines": [
-        "Briefings feature removed — it will be rebuilt properly."
-      ]
-    },
-    {
       "shipped_at": "2026-06-01T12:00:00Z",
       "lines": [
         "Configure app relays in Settings → Networking → App Relays"
@@ -330,12 +324,6 @@
       "shipped_at": "2026-05-26T01:11:00Z",
       "lines": [
         "CarPlay support — your library and per-show episodes now appear on the head unit, with one-tap play that hands off to the standard Now Playing controls."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-26T01:05:00Z",
-      "lines": [
-        "Daily Briefings: AI-generated summaries of your podcast queue."
       ]
     },
     {
@@ -1303,7 +1291,7 @@
     {
       "shipped_at": "2026-05-11T12:01:00Z",
       "lines": [
-        "Tap the Home title to browse categories — each category shows podcast artwork, a description, and your unplayed count. Tap the gear on any category to set its transcription, wiki, and briefings preferences independently. Selecting a category scopes the whole feed to that section."
+        "Tap the Home title to browse categories — each category shows podcast artwork, a description, and your unplayed count. Tap the gear on any category to set its transcription and wiki preferences independently. Selecting a category scopes the whole feed to that section."
       ]
     },
     {
