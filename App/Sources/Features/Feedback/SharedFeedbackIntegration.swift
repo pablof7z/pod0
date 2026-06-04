@@ -9,8 +9,15 @@ extension ShakeFeedbackConfig {
     )
 }
 
+/// Host-signer adapter that bridges ShakeFeedbackKit's `ShakeFeedbackSigner`
+/// seam to the NMP kernel (D13 — no signing in Swift). The SDK builds the
+/// feedback event / NIP-42 AUTH draft and hands it here; we sign it through
+/// `nmp_app_sign_event_for_return` (active account) and return the kernel's
+/// flat wire event. The SDK's in-package Schnorr signer (`ShakeFeedbackCrypto`)
+/// is never reached on this path.
 struct PodcastShakeFeedbackSigner: ShakeFeedbackSigner, @unchecked Sendable {
     weak var identity: UserIdentityStore?
+    weak var kernel: KernelModel?
 
     var publicKeyHex: String? {
         get async {
@@ -19,16 +26,33 @@ struct PodcastShakeFeedbackSigner: ShakeFeedbackSigner, @unchecked Sendable {
     }
 
     func signFeedbackEvent(_ draft: ShakeFeedbackEventDraft) async throws -> ShakeFeedbackEvent {
-        // Hard rule: NO signing in Swift. The ShakeFeedbackKit protocol expects
-        // a signed event returned synchronously; the compliant path is a kernel
-        // sign-for-return continuation (`nmp_app_sign_event_for_return` → read
-        // the `signed_events` frame), which is not wired yet. Until then we
-        // surface a missing-identity error so the SDK does not publish — rather
-        // than signing in Swift. See `docs/wiki/nmp-signing-contract.md`.
-        _ = draft
+        // D13: sign through the kernel, never in Swift. The kernel re-stamps
+        // `created_at` (D7) and fills `pubkey`/`id`/`sig`; the draft carries
+        // only kind/content/tags.
+        guard let kernel else { throw ShakeFeedbackError.missingIdentity }
         guard await MainActor.run(body: { identity?.publicKeyHex }) != nil else {
             throw ShakeFeedbackError.missingIdentity
         }
-        throw ShakeFeedbackError.missingIdentity
+        let unsigned: [String: Any] = [
+            "kind": draft.kind,
+            "content": draft.content,
+            "tags": draft.tags,
+            "created_at": draft.createdAt,
+        ]
+        guard
+            let data = try? JSONSerialization.data(withJSONObject: unsigned),
+            let unsignedJSON = String(data: data, encoding: .utf8)
+        else {
+            throw ShakeFeedbackError.invalidEvent("could not serialize the feedback draft")
+        }
+        let signedJSON = try await kernel.signEventForReturn(
+            accountPubkeyHex: "", unsignedJSON: unsignedJSON)
+        guard
+            let eventData = signedJSON.data(using: .utf8),
+            let event = try? JSONDecoder().decode(ShakeFeedbackEvent.self, from: eventData)
+        else {
+            throw ShakeFeedbackError.invalidEvent("kernel returned an undecodable signed event")
+        }
+        return event
     }
 }
