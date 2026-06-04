@@ -7,7 +7,7 @@ tags:
 volatility: warm
 confidence: medium
 created: 2026-06-03
-updated: 2026-06-03
+updated: 2026-06-04
 verified: 2026-06-03
 compiled-from: conversation
 sources:
@@ -28,8 +28,8 @@ Swift must not parse or construct Nostr event tags; it passes semantic values (r
 <!-- citations: [^c43d5-27] [^c43d5-37] -->
 ## Agent Responder Migration Sequence
 
-Agent responder migration to Rust follows a 4-step sequence: (1) kill NostrEventPublisher by dispatching publish_agent_note via kernel, (2) kill NostrProfileFetcher via kind:0 EnsureInterest observer, (3) kill NostrThreadFetcher via kind:1 #e EnsureInterest one-shot, (4) move the LLM responder loop to Rust.
+Agent responder migration to Rust follows a 4-step sequence: (1) kill NostrEventPublisher by dispatching publish_agent_note via kernel, (2) kill NostrProfileFetcher via kind:0 EnsureInterest observer, (3) kill NostrThreadFetcher via kind:1 #e EnsureInterest one-shot, (4) move the LLM responder loop to Rust. The responder loop (inbound kind:1 notes, dedup, per-root turn cap, LLM call, outbound publish) moves from Swift to Rust in nmp-app-podcast; NostrAgentResponder.swift and NostrRelayService.swift are deleted once migration completes.
 
-<!-- citations: [^c43d5-28] [^c43d5-38] -->
+<!-- citations: [^c43d5-28] [^c43d5-38] [^c43d5-26] -->
 ## See Also
 

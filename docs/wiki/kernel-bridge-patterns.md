@@ -12,11 +12,12 @@ tags:
 volatility: warm
 confidence: medium
 created: 2026-05-29
-updated: 2026-05-29
+updated: 2026-06-04
 verified: 2026-05-29
 compiled-from: conversation
 sources:
   - session:14943b9b-5bf3-4317-bc44-298a773bc75e
+  - session:c43d5e77-d667-4e71-a574-47aaab5b6a7a
 ---
 
 # Kernel Bridge Patterns
@@ -77,6 +78,12 @@ The `onPlayingTick` handler in `PlaybackState+AudioCallbacks.swift` watches `cur
 
 When paused, `seek(to:)`, `skipBackward`, and `skipForward` must persist the new position to Rust's store via `store?.kernelPersistPosition(episodeID:positionSecs:)`. This dispatches `op:"persist_position"` which writes `position_secs` directly to the store without returning an `AudioCommand`. When playing, the engine's time observer handles position reporting. <!-- [^14943-50] -->
 
+
+## Kernel Dispatch API
+
+Kernel action dispatches from Swift must use typed wrapper methods (e.g., `kernelPublishAgentNote`) that encapsulate dictionary construction; call sites never see raw string-keyed dictionaries.
+
+<!-- citations: [^c43d5-13] [^c43d5-23] -->
 ## See Also
 - [[reactive-update-model|Reactive Update Model (No Polling)]] — related guide
 - [[known-bug-patterns|Known Bug Patterns]] — related guide

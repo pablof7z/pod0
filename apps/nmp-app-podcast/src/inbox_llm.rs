@@ -1,65 +1,32 @@
-//! LLM-based inbox triage using rig-core + Ollama.
+//! Inbox triage cache types.
 //!
-//! [`triage_episode`] classifies an episode for inbox priority. It calls
-//! a local Ollama instance (default: `http://localhost:11434`) and parses
-//! the structured JSON reply into [`TriageResult`].
+//! [`TriageResult`] and [`TriageStatus`] are the canonical types for the
+//! in-memory triage cache. Serializable so the cache can be persisted across
+//! app launches (`store::inbox_triage_cache`).
 //!
-//! The function is synchronous at the call site — the caller supplies the
-//! shared Tokio runtime from `PodcastHostOpHandler.runtime` and we use
-//! `block_on` so the actor thread can call this without being async itself.
-//!
-//! ## Failure handling
-//!
-//! If Ollama is offline or returns an unparseable response the function
-//! returns `Err(String)`. The caller records a [`TriageStatus::Pending`]
-//! cache entry so `build_inbox` falls back to the recency-bucket heuristic
-//! and the proactive trigger retries later under a cooldown — without
-//! surfacing the failure to the user.
-//!
-//! ## Blocking concern
-//!
-//! `triage_episode` itself uses `runtime.block_on`, but it is only ever
-//! invoked from inside `tokio::task::spawn_blocking` on a background task
-//! (see `inbox_handler::triage_episodes_in_background`). The actor thread is
-//! never blocked: both the explicit `InboxAction::Triage` and the proactive
-//! snapshot-path trigger spawn that background task and return immediately.
-
-use std::sync::{Arc, Mutex};
+//! The LLM scoring logic that populates the cache lives in
+//! `inbox_handler::triage_episodes_in_background`, which drives the agent via
+//! `agent_llm::run_background_agent_task` + `agent_tools::ToolRegistry::for_triage`.
 
 use serde::{Deserialize, Serialize};
-use tokio::runtime::Runtime;
-
-use crate::llm::{LlmRequest, backend_for};
-use crate::store::PodcastStore;
 
 /// Lifecycle status of a cached triage entry.
 ///
-/// The cache stores an entry for an episode whether the LLM call **succeeded**
-/// or **failed**, so the proactive trigger can tell "never attempted" apart
-/// from "attempted recently, leave it alone." See [`TriageResult`] and
-/// `inbox_handler::episodes_needing_triage`.
-///
-/// `Serialize`/`Deserialize` so the whole [`TriageResult`] (which embeds this)
-/// can be persisted to `<data_dir>/inbox-triage-cache.json` and reloaded on a
-/// cold launch (`store::inbox_triage_cache`), sparing a full re-triage pass.
+/// `Serialize`/`Deserialize` so the whole [`TriageResult`] can be persisted to
+/// `<data_dir>/inbox-triage-cache.json` and reloaded on a cold launch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TriageStatus {
-    /// The LLM produced a usable score; `priority_score` / `priority_reason` /
+    /// The agent produced a usable score; `priority_score` / `priority_reason` /
     /// `categories` are authoritative and `build_inbox` uses them verbatim.
     Ready,
-    /// The LLM call failed (Ollama offline, unparseable reply, …). The score
-    /// fields are placeholders and `build_inbox` ignores them in favor of the
-    /// recency heuristic. The entry exists only to record `attempted_at` so the
-    /// proactive trigger applies a retry cooldown instead of re-spawning every
-    /// snapshot tick.
+    /// The agent call failed or was skipped. The score fields are placeholders
+    /// and `build_inbox` ignores them in favor of the recency heuristic. The
+    /// entry exists only to record `attempted_at` so the proactive trigger
+    /// applies a retry cooldown instead of re-spawning every snapshot tick.
     Pending,
 }
 
-/// Result of LLM-based episode triage.
-///
-/// `Serialize`/`Deserialize` so the in-memory triage cache survives an app
-/// restart — persisted by `store::inbox_triage_cache` after each triage batch
-/// and reloaded in `nmp_app_podcast_set_data_dir`.
+/// Result of agent-based episode triage.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TriageResult {
     /// Normalized priority score in the range `0.0..=1.0`.
@@ -68,7 +35,7 @@ pub struct TriageResult {
     pub priority_reason: String,
     /// Zero or more topic / guest category labels.
     pub categories: Vec<String>,
-    /// Whether this entry carries a real LLM score (`Ready`) or is a
+    /// Whether this entry carries a real agent score (`Ready`) or is a
     /// failure placeholder awaiting retry (`Pending`).
     pub status: TriageStatus,
     /// Unix seconds when the triage attempt that produced this entry ran.
@@ -105,102 +72,5 @@ impl TriageResult {
             status: TriageStatus::Pending,
             attempted_at,
         }
-    }
-}
-
-const TRIAGE_MODEL: &str = "deepseek-v4-flash:cloud";
-
-const TRIAGE_PREAMBLE: &str = r#"You are a podcast inbox triage assistant. Given episode metadata, output ONLY valid JSON with these fields: {"priority_score": <0.0-1.0>, "priority_reason": "<one sentence why>", "categories": ["<tag1>", "<tag2>"]}. No other text."#;
-
-/// Classify an episode for inbox priority using the configured LLM.
-///
-/// Returns `Err` if the LLM endpoint is unreachable or the model
-/// response cannot be parsed as valid triage JSON.
-pub fn triage_episode(
-    episode_title: &str,
-    podcast_title: &str,
-    description: &str,
-    runtime: &Runtime,
-    store: &Arc<Mutex<PodcastStore>>,
-) -> Result<TriageResult, String> {
-    runtime.block_on(async {
-        let truncated: String = description.chars().take(500).collect();
-        let prompt = format!(
-            "Podcast: {podcast_title}\nEpisode: {episode_title}\nDescription: {truncated}"
-        );
-
-        let backend = backend_for(store, TRIAGE_MODEL);
-        let req = LlmRequest {
-            system: TRIAGE_PREAMBLE.to_owned(),
-            history: Vec::new(),
-            user: prompt,
-            model: TRIAGE_MODEL.to_owned(),
-        };
-
-        let response = backend.complete(&req).await?;
-
-        let json_str = extract_json_object(&response)?;
-        let v: serde_json::Value =
-            serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
-
-        let priority_score = v["priority_score"].as_f64().unwrap_or(0.5) as f32;
-        let priority_reason = v["priority_reason"]
-            .as_str()
-            .unwrap_or("LLM-scored episode")
-            .to_owned();
-        let categories = v["categories"]
-            .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|item| item.as_str().map(str::to_owned))
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        Ok(TriageResult::ready(
-            priority_score.clamp(0.0, 1.0),
-            priority_reason,
-            categories,
-            chrono::Utc::now().timestamp(),
-        ))
-    })
-}
-
-/// Extract the first `{…}` JSON object from an arbitrary string.
-///
-/// The LLM may wrap its JSON in markdown fences or preamble text; this
-/// finds the outermost balanced `{…}` delimiters and returns just that
-/// slice.
-fn extract_json_object(s: &str) -> Result<String, String> {
-    let start = s.find('{').ok_or("no JSON object found in LLM response")?;
-    let end = s.rfind('}').ok_or("no closing brace in LLM response")?;
-    if end < start {
-        return Err("malformed JSON: closing brace before opening brace".into());
-    }
-    Ok(s[start..=end].to_owned())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::extract_json_object;
-
-    #[test]
-    fn extract_bare_object() {
-        let s = r#"{"priority_score":0.9,"priority_reason":"New episode","categories":["tech"]}"#;
-        let result = extract_json_object(s).unwrap();
-        assert!(result.starts_with('{'));
-        assert!(result.ends_with('}'));
-    }
-
-    #[test]
-    fn extract_object_with_preamble() {
-        let s = r#"Sure! Here is the JSON: {"priority_score":0.7,"priority_reason":"Interesting","categories":[]} Great!"#;
-        let result = extract_json_object(s).unwrap();
-        assert!(result.contains("priority_score"));
-    }
-
-    #[test]
-    fn extract_fails_on_empty() {
-        assert!(extract_json_object("no braces here").is_err());
     }
 }

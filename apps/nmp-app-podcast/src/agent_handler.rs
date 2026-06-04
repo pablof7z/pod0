@@ -50,39 +50,6 @@ pub struct AgentChatHandler {
 /// Also used in unit tests that don't supply a Tokio runtime.
 pub const SCAFFOLD_ASSISTANT_REPLY: &str = "I'm thinking about your question…";
 
-/// System prompt for agent-chat turns.
-const AGENT_SYSTEM_PROMPT: &str =
-    "You are a helpful podcast assistant. Answer questions about podcasts, episodes, \
-     RSS feeds, and related topics concisely and accurately.";
-
-/// Build the per-turn system prompt, prepending any stored [`MemoryFact`]s
-/// (M5.6) so the agent carries persistent user context across conversations
-/// without us stuffing it into the conversation transcript itself.
-///
-/// When the store is absent (unit/scaffold path) or holds no facts, returns
-/// the plain [`AGENT_SYSTEM_PROMPT`] unchanged. Tool instructions are NOT added
-/// here — `agent_llm::chat_with_tools` appends `TOOL_INSTRUCTIONS` to whatever
-/// system prompt this returns, so duplicating them would confuse the model.
-fn build_system_prompt_with_memory(store: Option<&Arc<Mutex<PodcastStore>>>) -> String {
-    let facts = store
-        .and_then(|s| s.lock().ok())
-        .map(|s| s.all_memory_facts())
-        .unwrap_or_default();
-
-    if facts.is_empty() {
-        return AGENT_SYSTEM_PROMPT.to_owned();
-    }
-
-    let facts_text: String = facts
-        .iter()
-        .map(|f| format!("- {}: {}", f.key, f.value))
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    format!(
-        "{AGENT_SYSTEM_PROMPT}\n\nUser memory facts (things the user has told you):\n{facts_text}"
-    )
-}
 
 impl AgentChatHandler {
     /// Create a handler with a live Tokio runtime (production path).
@@ -186,7 +153,7 @@ impl AgentChatHandler {
                     let reply = tokio::task::spawn_blocking(move || {
                         // Build the system prompt from current memory facts BEFORE
                         // `store_c` is moved into `chat_with_tools` below (M5.6).
-                        let system_prompt = build_system_prompt_with_memory(Some(&store_c));
+                        let system_prompt = agent_llm::build_system_prompt_with_memory(Some(&store_c));
                         agent_llm::chat_with_tools(
                             &system_prompt,
                             &history_snapshot,

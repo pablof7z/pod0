@@ -7,7 +7,7 @@ tags:
 volatility: warm
 confidence: medium
 created: 2026-06-03
-updated: 2026-06-03
+updated: 2026-06-04
 verified: 2026-06-03
 compiled-from: conversation
 sources:
@@ -18,7 +18,8 @@ sources:
 
 ## No TODO Debt
 
-Technical debt such as TODO comments deferring known violations must not be introduced; violations must be fixed at the time they are identified. [^c43d5-12]
+Technical debt (TODOs, stopgaps, skeleton code) must not be introduced; violations must be fixed fully rather than deferred with comments.
 
+<!-- citations: [^c43d5-12] [^c43d5-19] [^c43d5-25] -->
 ## See Also
 

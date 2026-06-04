@@ -1,24 +1,58 @@
-//! LLM integration for agent chat — synchronous wrapper over rig-core + Ollama.
+//! LLM integration for agent chat and background agent tasks.
 //!
-//! The exported entry point [`chat_with_tools`] drives a blocking, tool-calling
-//! Ollama loop from the actor thread (which is a plain `std::thread`, not a
-//! Tokio worker). The Tokio runtime is passed in from
-//! [`super::host_op_handler::PodcastHostOpHandler`] so the caller can reuse the
-//! shared multi-thread scheduler rather than spinning up a new one per call.
+//! [`chat_with_tools`] drives the interactive chat tool-calling loop.
+//! [`run_background_agent_task`] drives non-interactive background tasks
+//! (inbox triage, etc.) using the same agent identity and tool infrastructure
+//! but structurally isolated from the conversation transcript.
 //!
 //! Model selection follows AGENTS.md:
-//! - [`THINKING_MODEL`] for agent-chat turns (reasoning mode).
+//! - [`THINKING_MODEL`] for agent-chat and triage turns (reasoning mode).
 //! - [`FAST_MODEL`] is the fallback when the primary model is unavailable.
 
 use std::sync::{Arc, Mutex};
 
-use crate::agent_tools::{self, ToolRegistry, TOOL_INSTRUCTIONS};
+use crate::agent_tools::{self, ToolRegistry, TOOL_INSTRUCTIONS, TRIAGE_TOOL_INSTRUCTIONS};
 use crate::llm::{LlmRequest, backend_for};
 use crate::store::PodcastStore;
 
-/// Maximum number of tool-call round-trips before we force a final answer.
-/// Local models occasionally loop; this bounds latency and token spend.
+/// Maximum tool-call round-trips for interactive chat turns.
 const MAX_TOOL_TURNS: usize = 3;
+
+/// Maximum tool-call round-trips for background agent tasks (triage).
+/// Allows: get_memory_facts (1) + search_library (1-2) + set_episode_priorities (1) + headroom.
+const MAX_TRIAGE_TOOL_TURNS: usize = 6;
+
+/// Agent identity shared by chat and all background tasks.
+pub(crate) const AGENT_SYSTEM_PROMPT: &str =
+    "You are a helpful podcast assistant. Answer questions about podcasts, episodes, \
+     RSS feeds, and related topics concisely and accurately.";
+
+/// Build the per-turn system prompt, prepending any stored MemoryFacts so the
+/// agent carries persistent user context across conversations and background tasks.
+///
+/// When the store is absent or holds no facts, returns the plain
+/// [`AGENT_SYSTEM_PROMPT`] unchanged. Tool instructions are NOT added here —
+/// callers append the appropriate instruction block for their context.
+pub(crate) fn build_system_prompt_with_memory(store: Option<&Arc<Mutex<PodcastStore>>>) -> String {
+    let facts = store
+        .and_then(|s| s.lock().ok())
+        .map(|s| s.all_memory_facts())
+        .unwrap_or_default();
+
+    if facts.is_empty() {
+        return AGENT_SYSTEM_PROMPT.to_owned();
+    }
+
+    let facts_text: String = facts
+        .iter()
+        .map(|f| format!("- {}: {}", f.key, f.value))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    format!(
+        "{AGENT_SYSTEM_PROMPT}\n\nUser memory facts (things the user has told you):\n{facts_text}"
+    )
+}
 
 /// Fast, low-latency model for iterative requests.
 pub const FAST_MODEL: &str = "deepseek-v4-flash:cloud";
@@ -155,4 +189,56 @@ async fn force_final_answer(
     single_turn(system_prompt, convo, &closing, store)
         .await
         .unwrap_or_else(|_| crate::agent_handler::SCAFFOLD_ASSISTANT_REPLY.to_owned())
+}
+
+/// Run a background agent task (e.g. inbox triage) using the full agent
+/// identity but structurally isolated from the conversation transcript.
+///
+/// Uses [`TRIAGE_TOOL_INSTRUCTIONS`] and [`MAX_TRIAGE_TOOL_TURNS`]. The
+/// conversation `Arc` is never a parameter — transcript isolation is
+/// guaranteed by the type signature, not a runtime guard.
+///
+/// Returns `Err` only when the model is unreachable on the very first turn;
+/// callers should treat that as a total failure and stamp all episodes Pending.
+pub fn run_background_agent_task(
+    system_prompt: &str,
+    user_message: &str,
+    store: Arc<Mutex<PodcastStore>>,
+    registry: ToolRegistry,
+    runtime: &tokio::runtime::Runtime,
+) -> Result<String, String> {
+    let full_prompt = format!("{system_prompt}\n\n{TRIAGE_TOOL_INSTRUCTIONS}");
+
+    runtime.block_on(async {
+        let mut convo: Vec<(String, String)> = Vec::new();
+        let mut next_msg = user_message.to_owned();
+
+        for _ in 0..MAX_TRIAGE_TOOL_TURNS {
+            let reply = match single_turn(&full_prompt, &convo, &next_msg, &store).await {
+                Ok(r) => r,
+                Err(e) => {
+                    if convo.is_empty() {
+                        return Err(e);
+                    }
+                    // Already made progress — return what we have.
+                    return Ok(String::new());
+                }
+            };
+
+            match agent_tools::parse_tool_call(&reply) {
+                Some(call) => {
+                    let result = registry.execute(&call.name, &call.args);
+                    convo.push(("user".to_owned(), std::mem::take(&mut next_msg)));
+                    convo.push(("assistant".to_owned(), reply));
+                    next_msg = format!(
+                        "Tool `{}` returned:\n{}\n\nContinue with the task.",
+                        call.name, result
+                    );
+                }
+                None => return Ok(reply),
+            }
+        }
+
+        Ok(String::new())
+    })
 }

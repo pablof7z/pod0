@@ -14,10 +14,14 @@
 //! round-trip ids it discovered via `search_library` without us parsing them
 //! back into typed ids.
 
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
+use chrono::Utc;
 use serde_json::Value;
 
+use crate::inbox_llm::TriageResult;
 use crate::store::PodcastStore;
 
 /// Maximum transcript characters returned by `get_transcript`. Keeps a single
@@ -47,14 +51,45 @@ title/author and return matching episodes with their episode_id and podcast_id.\
 - get_memory_facts: {} — list everything the user has asked you to remember (their stored key:value memory facts).\n\
 After a tool returns, use its result to answer. If you need no tools, respond normally with plain text.";
 
+/// Tool instructions for the background inbox-triage agent. Restricted to
+/// read tools + the batch write tool; no transcript/mutating tools exposed.
+pub const TRIAGE_TOOL_INSTRUCTIONS: &str = "\
+You have access to these tools. To use one, respond ONLY with a single JSON \
+object and nothing else: {\"tool\":\"<name>\",\"args\":{...}}\n\
+Tools:\n\
+- get_memory_facts: {} — list the user's stored preferences and interests.\n\
+- search_library: {\"query\":\"<string>\"} — search the library to understand what the user has listened to.\n\
+- set_episode_priorities: {\"scores\":[{\"episode_id\":\"<uuid>\",\"score\":<0.0-1.0>,\
+\"reason\":\"<one sentence>\",\"categories\":[\"<tag>\"]}]} \
+— record priority scores for episodes. Call this ONCE with ALL episodes in the array.\n\
+Use get_memory_facts and search_library to understand the user, then call \
+set_episode_priorities with scores for every episode listed. Do not respond with plain text.";
+
+/// State held by [`ToolRegistry`] when operating in triage mode.
+struct TriageSink {
+    cache: Arc<Mutex<HashMap<String, TriageResult>>>,
+    rev: Arc<AtomicU64>,
+}
+
 /// Holds the shared store and executes named tool calls against it.
 pub struct ToolRegistry {
     store: Arc<Mutex<PodcastStore>>,
+    triage: Option<TriageSink>,
 }
 
 impl ToolRegistry {
+    /// Chat path — no triage write access.
     pub fn new(store: Arc<Mutex<PodcastStore>>) -> Self {
-        Self { store }
+        Self { store, triage: None }
+    }
+
+    /// Triage path — gains `set_episode_priorities` write access.
+    pub fn for_triage(
+        store: Arc<Mutex<PodcastStore>>,
+        cache: Arc<Mutex<HashMap<String, TriageResult>>>,
+        rev: Arc<AtomicU64>,
+    ) -> Self {
+        Self { store, triage: Some(TriageSink { cache, rev }) }
     }
 
     /// Execute a named tool with the given JSON args, returning a plain-text
@@ -66,6 +101,7 @@ impl ToolRegistry {
             "get_transcript" => self.get_transcript(args),
             "get_podcast_info" => self.get_podcast_info(args),
             "get_memory_facts" => self.get_memory_facts(),
+            "set_episode_priorities" => self.set_episode_priorities(args),
             other => format!("unknown tool: {other}"),
         }
     }
@@ -188,6 +224,63 @@ impl ToolRegistry {
             podcast.title,
             if podcast.author.is_empty() { "unknown" } else { &podcast.author },
         )
+    }
+
+    /// Write a batch of episode priority scores into the triage cache.
+    ///
+    /// Only available when the registry was constructed via [`Self::for_triage`].
+    /// Parses the `scores` array tolerantly — bad entries are skipped so a
+    /// partially-malformed reply still records the valid scores. Bumps `rev`
+    /// once after all valid entries are written.
+    fn set_episode_priorities(&self, args: &Value) -> String {
+        let sink = match &self.triage {
+            Some(s) => s,
+            None => return "set_episode_priorities: not available in chat mode".to_owned(),
+        };
+
+        let scores = match args.get("scores").and_then(Value::as_array) {
+            Some(arr) => arr,
+            None => return "set_episode_priorities: missing 'scores' array".to_owned(),
+        };
+
+        let now = Utc::now().timestamp();
+        let mut written = 0usize;
+
+        if let Ok(mut cache) = sink.cache.lock() {
+            for entry in scores {
+                let ep_id = match entry.get("episode_id").and_then(Value::as_str) {
+                    Some(id) if !id.is_empty() => id.to_owned(),
+                    _ => continue,
+                };
+                let score = entry.get("score").and_then(Value::as_f64).unwrap_or(0.5) as f32;
+                let reason = entry
+                    .get("reason")
+                    .and_then(Value::as_str)
+                    .unwrap_or("Agent-scored episode")
+                    .to_owned();
+                let categories = entry
+                    .get("categories")
+                    .and_then(Value::as_array)
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(str::to_owned))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+
+                cache.insert(
+                    ep_id,
+                    TriageResult::ready(score.clamp(0.0, 1.0), reason, categories, now),
+                );
+                written += 1;
+            }
+        }
+
+        if written > 0 {
+            sink.rev.fetch_add(1, Ordering::Relaxed);
+        }
+
+        format!("Recorded {written} score(s).")
     }
 }
 

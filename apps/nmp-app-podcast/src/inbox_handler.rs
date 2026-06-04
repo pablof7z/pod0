@@ -45,9 +45,12 @@ use std::sync::{Arc, Mutex};
 use chrono::Utc;
 use tokio::runtime::Runtime;
 
+use crate::agent_llm;
+use crate::agent_tools::ToolRegistry;
 use crate::ffi::actions::inbox_module::InboxAction;
 use crate::ffi::projections::InboxItem;
-use crate::inbox_llm::{triage_episode, TriageResult, TriageStatus};
+use crate::inbox_llm::{TriageResult, TriageStatus};
+use crate::store::PodcastStore;
 
 /// A `Ready` triage entry older than this is considered stale and re-triaged
 /// by the proactive trigger (the episode's metadata or the model may have
@@ -59,7 +62,6 @@ const TRIAGE_STALE_SECS: i64 = 24 * 60 * 60;
 /// return `true` on *every* snapshot tick, hot-looping `spawn_blocking` against
 /// a dead endpoint. 10 minutes balances "retries next time" against that loop.
 const TRIAGE_RETRY_COOLDOWN_SECS: i64 = 10 * 60;
-use crate::store::PodcastStore;
 
 /// Build the `Vec<InboxItem>` for one snapshot tick.
 ///
@@ -379,9 +381,18 @@ pub fn handle_inbox_action(
     }
 }
 
-/// Background async triage task (M5.1). Runs off the actor thread so the
-/// kernel is never blocked waiting for Ollama. Each successful result bumps
-/// `rev` so the iOS snapshot delivers incremental progress.
+/// Background triage task. Runs off the actor thread via `spawn_blocking`.
+///
+/// Instantiates the same agent the user chats with (same identity + memory
+/// facts) and sends it a single user message listing all needy episodes.
+/// The agent calls `set_episode_priorities` to write scores directly into
+/// `triage_cache`. After the agent returns, any needy episode still missing
+/// a `Ready` entry gets `stamp_pending` so the cooldown applies and the
+/// proactive trigger doesn't hot-loop.
+///
+/// Cold-start guard: if the user has no memory facts AND no played/starred
+/// episodes, the agent has nothing to personalize on — skip the LLM and
+/// let the heuristic carry the inbox until there is real signal.
 async fn triage_episodes_in_background(
     store: Arc<Mutex<PodcastStore>>,
     triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
@@ -389,8 +400,14 @@ async fn triage_episodes_in_background(
     rev: Arc<AtomicU64>,
     in_progress: Arc<std::sync::atomic::AtomicBool>,
 ) {
-    // Collect episode metadata under a brief store lock.
-    let episodes_to_triage: Vec<(String, String, String, String)> = {
+    // Collect needy episode metadata + cold-start signals under a brief store lock.
+    struct EpisodeInput {
+        ep_id: String,
+        ep_title: String,
+        pod_title: String,
+        pub_date: String,
+    }
+    let (episodes, has_signal) = {
         let guard = match store.lock() {
             Ok(g) => g,
             Err(_) => {
@@ -398,94 +415,138 @@ async fn triage_episodes_in_background(
                 return;
             }
         };
-        guard
+
+        let has_memory = !guard.all_memory_facts().is_empty();
+        let has_history = guard.all_podcasts().into_iter().any(|(_, eps)| {
+            eps.iter().any(|e| e.played || e.is_starred || e.position_secs > 0.0)
+        });
+
+        let eps: Vec<EpisodeInput> = guard
             .all_podcasts()
             .into_iter()
             .flat_map(|(podcast, eps)| {
                 let pod_title = podcast.title.clone();
                 eps.iter()
                     .filter(|e| !e.played)
-                    .map(move |e| {
-                        let ep_id = e.id.0.to_string();
-                        let ep_title = e.title.clone();
-                        let description: String = e.description.chars().take(500).collect();
-                        (ep_id, ep_title, pod_title.clone(), description)
+                    .map(move |e| EpisodeInput {
+                        ep_id: e.id.0.to_string(),
+                        ep_title: e.title.clone(),
+                        pod_title: pod_title.clone(),
+                        pub_date: e.pub_date.format("%Y-%m-%d").to_string(),
                     })
                     .collect::<Vec<_>>()
             })
-            .collect()
+            .collect();
+
+        (eps, has_memory || has_history)
     };
 
-    // Process each episode sequentially; `triage_episode` itself drives the
-    // async LLM call. We call `tokio::task::spawn_blocking` to offload the
-    // blocking call to the blocking thread pool.
-    for (ep_id, ep_title, pod_title, description) in episodes_to_triage {
-        let runtime2 = Arc::clone(&runtime);
-        let store2 = Arc::clone(&store);
-        let ep_title2 = ep_title.clone();
-        let pod_title2 = pod_title.clone();
-        let description2 = description.clone();
-
-        let result = tokio::task::spawn_blocking(move || {
-            triage_episode(&ep_title2, &pod_title2, &description2, &runtime2, &store2)
-        })
-        .await;
-
-        match result {
-            Ok(Ok(triage)) => {
-                if let Ok(mut cache) = triage_cache.lock() {
-                    cache.insert(ep_id, triage);
-                }
-                // Bump rev so iOS picks up this result immediately.
-                rev.fetch_add(1, Ordering::Relaxed);
-            }
-            Ok(Err(e)) => {
-                eprintln!("[inbox_triage] LLM triage failed for {ep_id}: {e}");
-                // Stamp a Pending placeholder so build_inbox keeps the heuristic
-                // fallback AND the proactive trigger waits out the retry cooldown
-                // instead of re-spawning this pass on the very next tick.
-                stamp_pending(&triage_cache, ep_id);
-            }
-            Err(e) => {
-                eprintln!("[inbox_triage] spawn_blocking panicked for {ep_id}: {e}");
-                stamp_pending(&triage_cache, ep_id);
-            }
-        }
+    if episodes.is_empty() {
+        in_progress.store(false, std::sync::atomic::Ordering::Relaxed);
+        return;
     }
 
-    // Batch complete: persist the whole cache once so a cold launch reloads
-    // these scores instead of re-triaging. Single choke point for both the
-    // explicit `InboxAction::Triage` and proactive `maybe_enqueue_triage` paths.
+    // Cold-start: no user signal → skip LLM, stamp all episodes Pending so the
+    // cooldown applies until the user has listened to something.
+    if !has_signal {
+        let now = Utc::now().timestamp();
+        if let Ok(mut cache) = triage_cache.lock() {
+            for ep in &episodes {
+                cache.entry(ep.ep_id.clone()).or_insert_with(|| TriageResult::pending(now));
+            }
+        }
+        in_progress.store(false, std::sync::atomic::Ordering::Relaxed);
+        rev.fetch_add(1, Ordering::Relaxed);
+        return;
+    }
+
+    // Build the needy-episode id set before the agent call so we can reconcile
+    // gaps after it returns.
+    let needy_ids: Vec<String> = episodes.iter().map(|e| e.ep_id.clone()).collect();
+
+    // Compose the user message: all episodes in a single agent invocation.
+    let episode_lines: String = episodes
+        .iter()
+        .map(|e| {
+            format!(
+                "- episode_id: {} | podcast: \"{}\" | title: \"{}\" | published: {}",
+                e.ep_id, e.pod_title, e.ep_title, e.pub_date
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let user_message = format!(
+        "Please prioritize my inbox. Here are the new episodes since we last checked.\n\
+         Score each one 0.0–1.0 for how much I would want to hear it, give a one-sentence \
+         reason referencing my interests, and tag relevant categories. \
+         Use get_memory_facts and search_library to understand my taste, then record \
+         all scores with a single set_episode_priorities call.\n\n\
+         Episodes:\n{episode_lines}"
+    );
+
+    // Build the system prompt using the same agent identity + memory facts.
+    let system_prompt = agent_llm::build_system_prompt_with_memory(Some(&store));
+    let registry = ToolRegistry::for_triage(
+        Arc::clone(&store),
+        Arc::clone(&triage_cache),
+        Arc::clone(&rev),
+    );
+
+    let store_c = Arc::clone(&store);
+    let runtime_c = Arc::clone(&runtime);
+
+    let outcome = tokio::task::spawn_blocking(move || {
+        agent_llm::run_background_agent_task(
+            &system_prompt,
+            &user_message,
+            store_c,
+            registry,
+            &runtime_c,
+        )
+    })
+    .await;
+
+    if let Err(e) = &outcome {
+        eprintln!("[inbox_triage] spawn_blocking panicked: {e}");
+    }
+    if let Ok(Err(ref e)) = outcome {
+        eprintln!("[inbox_triage] agent call failed: {e}");
+    }
+
+    // Reconcile: any needy episode still missing a Ready entry after the agent
+    // call gets stamp_pending so the cooldown applies. This covers partial
+    // failures (agent skipped some episodes) and total failures (agent errored).
+    reconcile_pending(&triage_cache, &needy_ids);
+
+    // Persist the cache so a cold launch reloads these scores.
     crate::store::inbox_triage_cache::persist_from_store(&store, &triage_cache);
 
-    // Clear the in-progress flag and emit a final rev bump.
     in_progress.store(false, std::sync::atomic::Ordering::Relaxed);
     rev.fetch_add(1, Ordering::Relaxed);
 }
 
-/// Record a failed triage attempt in the cache so the retry cooldown applies.
-///
-/// Two cases:
-/// * **No entry, or an existing `Pending` entry** → write a fresh `Pending`
-///   stamped now. `build_inbox` keeps using the heuristic; the proactive
-///   trigger waits out [`TRIAGE_RETRY_COOLDOWN_SECS`] before retrying.
-/// * **An existing `Ready` entry** (a stale re-triage that just failed) → keep
-///   the good score but bump its `attempted_at` to now. A transient failure
-///   must not downgrade a usable score to the heuristic, yet the staleness
-///   clock has to reset or the trigger would re-spawn every tick.
-fn stamp_pending(triage_cache: &Arc<Mutex<HashMap<String, TriageResult>>>, ep_id: String) {
+/// Stamp `Pending` for every episode in `needy_ids` that still lacks a fresh
+/// `Ready` entry. Preserves existing `Ready` entries (including ones just
+/// written by `set_episode_priorities`) and updates their `attempted_at` only
+/// when the entry is already `Pending` (avoids downgrading a good score).
+fn reconcile_pending(triage_cache: &Arc<Mutex<HashMap<String, TriageResult>>>, needy_ids: &[String]) {
     let now = Utc::now().timestamp();
     if let Ok(mut cache) = triage_cache.lock() {
-        match cache.get_mut(&ep_id) {
-            Some(tr) if tr.status == TriageStatus::Ready => {
-                tr.attempted_at = now;
-            }
-            _ => {
-                cache.insert(ep_id, TriageResult::pending(now));
+        for ep_id in needy_ids {
+            match cache.get(ep_id) {
+                Some(tr) if tr.status == TriageStatus::Ready => {
+                    // Agent wrote a good score — leave it alone.
+                }
+                _ => {
+                    // Missing or still Pending — stamp/refresh the cooldown.
+                    cache.insert(ep_id.clone(), TriageResult::pending(now));
+                }
             }
         }
     }
 }
+
 
 #[cfg(test)]
 #[path = "inbox_handler_tests.rs"]
