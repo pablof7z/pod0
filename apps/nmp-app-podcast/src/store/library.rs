@@ -145,9 +145,18 @@ impl PodcastStore {
     ///
     /// Used by the download handler to translate a wire-format episode id into
     /// the typed key and the URL the download capability should fetch.
+    ///
+    /// Match is **case-insensitive**: a UUID is case-insensitive by spec, and
+    /// the iOS shell sends `UUID.uuidString` (UPPERCASE) while `Uuid::to_string`
+    /// renders lowercase. A direct `==` therefore never matched an iOS-sourced
+    /// id — silently dropping the `Completed` download report's `set_local_path`
+    /// so a finished download never flipped to `.downloaded`.
     pub fn episode_enclosure_url(&self, id_str: &str) -> Option<(EpisodeId, String)> {
         for episodes in self.episodes.values() {
-            if let Some(ep) = episodes.iter().find(|e| e.id.0.to_string() == id_str) {
+            if let Some(ep) = episodes
+                .iter()
+                .find(|e| e.id.0.to_string().eq_ignore_ascii_case(id_str))
+            {
                 return Some((ep.id, ep.enclosure_url.to_string()));
             }
         }

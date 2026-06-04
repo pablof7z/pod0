@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-04T12:01:00Z",
+      "lines": [
+        "Downloading episodes is now much smoother — the app no longer pegs the CPU (or heats up) while a download is in progress"
+      ]
+    },
+    {
       "shipped_at": "2026-06-04T02:45:00Z",
       "lines": [
         "Your Nostr key is now held by the app's secure kernel and never leaves it — stronger key safety across sign-in, profile, and feedback."

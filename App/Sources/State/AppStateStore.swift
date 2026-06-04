@@ -180,6 +180,15 @@ final class AppStateStore {
     @ObservationIgnored
     var kernelObservationTask: Task<Void, Never>?
 
+    /// Observes ONLY `KernelModel.downloadSnapshot` and applies the live
+    /// download overlay onto `episodes` row-by-row. Split out of
+    /// `kernelObservationTask` so download-progress ticks (which no longer bump
+    /// the global kernel `rev` — see `nmp_app_podcast_download_report`) update
+    /// just the affected rows instead of re-running the full library
+    /// projection / decode / hash pass. Cancelled alongside `kernelObservationTask`.
+    @ObservationIgnored
+    var downloadOverlayTask: Task<Void, Never>?
+
     /// Episode IDs from the first kernel snapshot queue, stashed here so
     /// `RootView+Setup` can seed `PlaybackState.queue` even if `attachKernel`
     /// fires before the setup hook is wired. Consumed once and cleared.
@@ -367,6 +376,7 @@ final class AppStateStore {
                 NotificationCenter.default.removeObserver(backgroundObserver)
             }
             kernelObservationTask?.cancel()
+            downloadOverlayTask?.cancel()
             positionFlushTask?.cancel()
             widgetReloadTask?.cancel()
         }

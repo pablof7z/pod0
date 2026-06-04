@@ -209,7 +209,11 @@ fn progress_report_updates_download_queue() {
         r#"{{"type":"progress","episode_id":"{id_str}","bytes_downloaded":4096,"total_bytes":8192}}"#
     );
     let outcome = dispatch_download_report_json_with_queue(&mut store, &mut queue, &report);
-    assert!(matches!(outcome, DispatchOutcome::Ok { follow_up_json: None }));
+    // A progress tick changes only transient queue state — it must NOT report a
+    // durable change (the FFI uses this to skip the global snapshot `rev` bump).
+    assert!(!outcome.decode_failed);
+    assert!(!outcome.durable_changed, "progress must not be durable");
+    assert!(outcome.follow_up_json.is_none());
     let item = queue.get(&id_str).expect("queued item");
     assert_eq!(item.state, DownloadItemState::Active);
     assert_eq!(item.bytes_downloaded, 4096);
@@ -227,11 +231,12 @@ fn completed_report_updates_store_queue_and_returns_next_start() {
         r#"{{"type":"completed","episode_id":"{id_str}","local_path":"/var/mobile/Downloads/{id_str}.mp3"}}"#
     );
     let outcome = dispatch_download_report_json_with_queue(&mut store, &mut queue, &report);
-    let DispatchOutcome::Ok { follow_up_json } = outcome else {
-        panic!("expected ok");
-    };
+    assert!(!outcome.decode_failed);
+    // A completed download flips `Episode.downloadState` to `.downloaded` — a
+    // durable library change that MUST bump the global snapshot `rev`.
+    assert!(outcome.durable_changed, "completion must be durable");
     assert_eq!(
-        follow_up_json.as_deref(),
+        outcome.follow_up_json.as_deref(),
         Some(r#"{"type":"start_download","url":"https://ex.com/ep-2.mp3","episode_id":"ep-2"}"#)
     );
 
@@ -245,4 +250,35 @@ fn completed_report_updates_store_queue_and_returns_next_start() {
     );
     assert_eq!(queue.get(&id_str).unwrap().state, DownloadItemState::Completed);
     assert_eq!(queue.get("ep-2").unwrap().state, DownloadItemState::Active);
+}
+
+#[test]
+fn completed_report_with_uppercase_episode_id_is_durable() {
+    // The iOS shell sends `UUID.uuidString` (UPPERCASE); the store renders the
+    // id lowercase. The completion lookup must match case-insensitively, or a
+    // finished download silently fails to record `local_path` and never flips
+    // to `.downloaded` (durable_changed stays false → no snapshot rev bump).
+    let (mut store, id_str) = store_with_one_episode();
+    let mut queue = DownloadQueue::new();
+    let _ = queue.enqueue(id_str.clone(), "https://ex.com/ep.mp3");
+
+    let upper = id_str.to_uppercase();
+    assert_ne!(upper, id_str, "fixture episode id should be lowercase");
+    let report = format!(
+        r#"{{"type":"completed","episode_id":"{upper}","local_path":"/var/mobile/Downloads/{upper}.mp3"}}"#
+    );
+    let outcome = dispatch_download_report_json_with_queue(&mut store, &mut queue, &report);
+    assert!(!outcome.decode_failed);
+    assert!(
+        outcome.durable_changed,
+        "an UPPERCASE-id completion must resolve the episode and record the path"
+    );
+    let typed_id = store
+        .episode_enclosure_url(&id_str)
+        .map(|(id, _)| id)
+        .expect("episode present");
+    assert_eq!(
+        store.local_path_for(&typed_id),
+        Some(&*format!("/var/mobile/Downloads/{upper}.mp3"))
+    );
 }
