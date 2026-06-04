@@ -19,13 +19,13 @@ struct LocalModelsSettingsView: View {
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
         }
-        .navigationTitle("Local Models")
+        .navigationTitle("Local")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            // Recompute active badge from the kernel-projected localModelID now
-            // that the store is available (init() ran without it). Existing
-            // in-flight downloads on the shared session keep their .downloading
-            // state — recompute only flips disk-backed rows.
+            // Recompute the "In use" badge from the kernel-projected
+            // localModelID now that the store is available (init() ran without
+            // it). Existing in-flight downloads on the shared session keep
+            // their .downloading state — recompute only flips disk-backed rows.
             downloadManager.recomputeStatesFromDisk(activeModelID: store.state.settings.localModelID)
         }
         .onChange(of: store.state.settings.localModelID) { _, newID in
@@ -44,15 +44,14 @@ struct LocalModelsSettingsView: View {
                     state: manager.state(for: spec.id),
                     onDownload: { manager.download(spec: spec) },
                     onCancel: { manager.cancel(spec.id) },
-                    onActivate: { store.kernelSetLocalModel(modelID: spec.id) },
-                    onDelete: { manager.delete(spec.id); if store.state.settings.localModelID == spec.id { store.kernelSetLocalModel(modelID: nil) } }
+                    onDelete: { manager.delete(spec.id) }
                 )
             }
         } header: {
             Text("Available Models")
         } footer: {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Models run fully on-device with no internet connection required. Large downloads (~2.6 GB) — Wi-Fi recommended. Selecting a local model makes all AI features use it until you switch back to a cloud provider.")
+                Text("Models run fully on-device with no internet connection required. Large downloads (~2.6 GB) — Wi-Fi recommended. Once downloaded, a model becomes selectable under Models for each role, alongside your cloud providers.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

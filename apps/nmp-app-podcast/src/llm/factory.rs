@@ -43,19 +43,27 @@ fn ollama_api_key(store: &PodcastStore) -> Option<String> {
 /// Reads the credential source / model prefix from the store and the in-memory
 /// pushed key, then returns the right boxed backend.
 ///
-/// Selection rule:
-/// - If `store.local_model_id()` is Some, use LocalModelBackend (dominates all other callers).
+/// Selection rule (per-role — keyed on the caller's own model string):
+/// - If the model string carries a `local:` prefix, use LocalModelBackend for
+///   that role only. "Local" is just another provider the user picks per role,
+///   not a global override — so a role on `local:gemma4-e2b` runs on-device
+///   while a sibling role on an OpenRouter model still hits the cloud.
 /// - Else if the model string carries an `openrouter:` prefix, use OpenRouter.
 /// - Else if `store.open_router_credential_source()` indicates a connected
 ///   OpenRouter source for non-Ollama models, use OpenRouter.
 /// - Else use Ollama (the default).
+///
+/// `store.local_model_id()` is no longer a routing input — it now only signals
+/// which single on-device engine the host should keep loaded (the host derives
+/// it from the set of role selections; only one local engine loads at a time).
 pub fn backend_for(
     store: &Arc<Mutex<PodcastStore>>,
     model: &str,
 ) -> Box<dyn LlmBackend> {
-    // Check for local model ID FIRST (dominates all callers).
-    if let Some(id) = store.lock().ok().and_then(|s| s.local_model_id().map(|s| s.to_owned())) {
-        return Box::new(LocalModelBackend { model_id: id });
+    // Per-role local routing: a `local:<id>` model string targets the
+    // on-device backend for this caller only.
+    if let Some(id) = model.strip_prefix("local:") {
+        return Box::new(LocalModelBackend { model_id: id.to_owned() });
     }
 
     let use_openrouter = if model.starts_with("openrouter:") {
@@ -134,16 +142,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_backend_for_returns_local_with_empty_callback_slot() {
-        // Store with local_model_id set but no callback registered should return a backend
-        // that yields Unavailable when called.
+    async fn test_backend_for_routes_local_prefix_to_local_backend() {
+        // A `local:` model string routes to LocalModelBackend for that caller.
+        // With no callback registered it yields Unavailable when invoked.
         let store = Arc::new(Mutex::new(PodcastStore::new()));
-        {
-            let mut s = store.lock().unwrap();
-            s.set_local_model_id(Some("gemma-4-e2b".to_string()));
-        }
 
-        let backend = backend_for(&store, "openrouter:anything");
+        let backend = backend_for(&store, "local:gemma4-e2b");
         let req = crate::llm::LlmRequest {
             system: "test".to_string(),
             history: vec![],

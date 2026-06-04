@@ -43,7 +43,10 @@ struct LLMModelReference: Hashable, Sendable {
         case .ollama:
             return "\(provider.rawValue):\(modelID)"
         case .local:
-            return modelID
+            // Prefix so the per-role model selector and the Rust `backend_for`
+            // router can tell a local model apart from a bare OpenRouter id
+            // (which also carries no prefix). `init(storedID:)` parses it back.
+            return "\(provider.rawValue):\(modelID)"
         }
     }
 

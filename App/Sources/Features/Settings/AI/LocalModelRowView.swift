@@ -5,10 +5,7 @@ struct LocalModelRowView: View {
     let state: LocalModelState
     let onDownload: () -> Void
     let onCancel: () -> Void
-    let onActivate: () -> Void
     let onDelete: () -> Void
-
-    @Environment(AppStateStore.self) private var store
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -61,55 +58,36 @@ struct LocalModelRowView: View {
             .foregroundStyle(.red)
 
         case .downloaded:
-            HStack(spacing: 8) {
-                Button(action: onActivate) {
-                    Text("Select")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                }
-                .buttonStyle(.bordered)
-
-                Menu {
-                    Button("Delete", action: onDelete)
-                        .foregroundStyle(.red)
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .foregroundStyle(.secondary)
-                }
-            }
+            downloadedControls(inUse: false)
 
         case .active:
-            VStack(spacing: 4) {
-                HStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                    Text("Active")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.green)
-                    Spacer()
-                }
+            downloadedControls(inUse: true)
+        }
+    }
 
-                Button(action: { store.kernelSetLocalModel(modelID: nil) }) {
-                    Text("Use Cloud Instead")
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                }
-                .buttonStyle(.bordered)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                Menu {
-                    Button("Delete", action: onDelete)
-                        .foregroundStyle(.red)
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "ellipsis.circle")
-                        Text("More")
-                    }
-                    .font(.caption2)
+    /// Controls for a model whose weights are on disk. Selection happens
+    /// per-role under Settings > Models, so this page only downloads, reports
+    /// whether the model is currently loaded ("In use"), and deletes.
+    @ViewBuilder
+    private func downloadedControls(inUse: Bool) -> some View {
+        HStack(spacing: 8) {
+            if inUse {
+                Label("In use", systemImage: "checkmark.circle.fill")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.green)
+                    .labelStyle(.titleAndIcon)
+            } else {
+                Text("Downloaded")
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Menu {
+                Button("Delete", role: .destructive, action: onDelete)
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -118,13 +96,13 @@ struct LocalModelRowView: View {
 #Preview {
     VStack {
         LocalModelRowView(spec: LocalModelCatalog.all[0], state: .notDownloaded,
-                          onDownload: {}, onCancel: {}, onActivate: {}, onDelete: {})
+                          onDownload: {}, onCancel: {}, onDelete: {})
         LocalModelRowView(spec: LocalModelCatalog.all[0], state: .downloading(progress: 0.45),
-                          onDownload: {}, onCancel: {}, onActivate: {}, onDelete: {})
+                          onDownload: {}, onCancel: {}, onDelete: {})
         LocalModelRowView(spec: LocalModelCatalog.all[0], state: .downloaded,
-                          onDownload: {}, onCancel: {}, onActivate: {}, onDelete: {})
+                          onDownload: {}, onCancel: {}, onDelete: {})
         LocalModelRowView(spec: LocalModelCatalog.all[0], state: .active,
-                          onDownload: {}, onCancel: {}, onActivate: {}, onDelete: {})
+                          onDownload: {}, onCancel: {}, onDelete: {})
     }
     .environment(AppStateStore())
 }

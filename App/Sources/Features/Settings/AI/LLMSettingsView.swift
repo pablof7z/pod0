@@ -18,7 +18,6 @@ struct AIModelsSettingsView: View {
 
             List {
                 modelsSection
-                localModelsSection
                 speechSection
                 retrievalSection
             }
@@ -162,23 +161,6 @@ struct AIModelsSettingsView: View {
             Text("Language Roles")
         } footer: {
             Text("Each role can use a different connected provider and model. The agent starts on the Initial model and can self-upgrade to the Thinking model when a task needs more reasoning. Connect provider keys in Providers first.")
-        }
-    }
-
-    private var localModelsSection: some View {
-        Section {
-            NavigationLink {
-                LocalModelsSettingsView()
-            } label: {
-                SettingsRow(
-                    icon: "iphone.gen3",
-                    tint: .green,
-                    title: "Local Models",
-                    subtitle: localModelSubtitle
-                )
-            }
-        } header: {
-            Text("On-Device")
         }
     }
 
@@ -402,14 +384,6 @@ struct AIModelsSettingsView: View {
     private var imageGenSummary: String {
         let s = store.state.settings
         return Settings.modelDisplayName(modelID: s.imageGenerationModel, modelName: s.imageGenerationModelName)
-    }
-
-    private var localModelSubtitle: String {
-        if let localModelID = store.state.settings.localModelID,
-           let spec = LocalModelCatalog.all.first(where: { $0.id == localModelID }) {
-            return spec.displayName
-        }
-        return "Run AI on-device"
     }
 
     private func catalogModel(for modelID: String) -> OpenRouterModelOption? {

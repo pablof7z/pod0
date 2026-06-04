@@ -7,7 +7,7 @@ struct OpenRouterModelSelectorView: View {
 
     private enum Layout {
         static let maxProviderCount: Int = 24
-        static let pinnedProviderIDs: Set<String> = ["ollama-cloud"]
+        static let pinnedProviderIDs: Set<String> = ["local", "ollama-cloud"]
         static let currentFallbackSpacing: CGFloat = 6
         static let rowVerticalPadding: CGFloat = 4
         static let loadingSpacing: CGFloat = 12
@@ -316,9 +316,15 @@ final class OpenRouterModelSelectorViewModel {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
+        // Downloaded on-device models are listed first and unconditionally —
+        // they are available even when the network catalog fetch fails
+        // (offline is exactly when a local model matters most).
+        let localOptions = LocalModelDownloadManager.shared.downloadedSpecs().map(OpenRouterModelOption.init(local:))
         do {
-            models = try await OpenRouterModelCatalogService(ollamaChatURL: ollamaChatURL).fetchModels()
+            let remote = try await OpenRouterModelCatalogService(ollamaChatURL: ollamaChatURL).fetchModels()
+            models = localOptions + remote
         } catch {
+            models = localOptions
             errorMessage = error.localizedDescription
         }
     }

@@ -278,9 +278,37 @@ extension AppStateStore {
                                  "picture": settings.nostrProfilePicture
                              ])
         }
-        if settings.localModelID != prior.localModelID {
+        // "Local" is a per-role provider now (a role's model is `local:<id>`),
+        // not a global switch. Only one on-device engine loads at a time, so we
+        // derive the single engine the kernel should keep loaded from whichever
+        // roles point at a local model, and push it as `set_local_model`. This
+        // drives engine load/unload; per-role routing itself happens in the
+        // kernel's `backend_for` off each role's own model string.
+        let priorLocal = Self.effectiveLocalModelID(prior)
+        let nextLocal = Self.effectiveLocalModelID(settings)
+        if nextLocal != priorLocal {
             kernel?.dispatch(namespace: "podcast.settings",
-                             body: ["op": "set_local_model", "model_id": settings.localModelID as Any])
+                             body: ["op": "set_local_model", "model_id": nextLocal as Any])
         }
+    }
+
+    /// The single on-device model id the kernel should keep loaded, derived
+    /// from the role assignments. Returns the first role pointing at a `local:`
+    /// model (Agent Initial takes precedence), or nil when no role uses one.
+    static func effectiveLocalModelID(_ s: Settings) -> String? {
+        let roleModels = [
+            s.agentInitialModel,
+            s.agentThinkingModel,
+            s.memoryCompilationModel,
+            s.wikiModel,
+            s.categorizationModel,
+            s.chapterCompilationModel,
+            s.embeddingsModel,
+        ]
+        for stored in roleModels {
+            let ref = LLMModelReference(storedID: stored)
+            if ref.provider == .local, !ref.isEmpty { return ref.modelID }
+        }
+        return nil
     }
 }

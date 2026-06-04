@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-05T09:00:00Z",
+      "lines": [
+        "On-device models are reorganized: download them under Settings → Providers → Local, then pick one per role (Agent, Memory, Wiki, and more) in Settings → Models, right alongside your cloud providers."
+      ]
+    },
+    {
       "shipped_at": "2026-06-04T12:01:00Z",
       "lines": [
         "Downloading episodes is now much smoother — the app no longer pegs the CPU (or heats up) while a download is in progress"

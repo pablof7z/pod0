@@ -672,19 +672,4 @@ extension AppStateStore {
                          body: ["op": "publish_author_claim", "agent_pubkey_hex": agentPubkeyHex])
     }
 
-    // MARK: - Local LLM model selection (podcast.settings namespace)
-
-    /// Activate a local model by ID, or pass nil to switch back to cloud providers.
-    /// The kernel persists the selection to Settings.local_model_id and routes future
-    /// LLM inference requests through the registered Swift callback.
-    func kernelSetLocalModel(modelID: String?) {
-        var body: [String: Any] = ["op": "set_local_model"]
-        if let modelID = modelID {
-            body["model_id"] = modelID
-        } else {
-            body["model_id"] = NSNull()
-        }
-        kernel?.dispatch(namespace: "podcast.settings", body: body)
-    }
-
 }

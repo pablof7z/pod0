@@ -79,6 +79,17 @@ struct AIProvidersSettingsView: View {
             }
 
             NavigationLink {
+                LocalModelsSettingsView()
+            } label: {
+                SettingsRow(
+                    icon: "iphone.gen3",
+                    tint: .green,
+                    title: "Local",
+                    value: localStatus
+                )
+            }
+
+            NavigationLink {
                 YouTubeSettingsView()
             } label: {
                 SettingsRow(
@@ -91,7 +102,7 @@ struct AIProvidersSettingsView: View {
         } header: {
             Text("Connections")
         } footer: {
-            Text("Use BYOK Vault to approve several keys at once, or open a provider for manual keys and validation. Choose each role's provider and model in Models.")
+            Text("Use BYOK Vault to approve several keys at once, or open a provider for manual keys and validation. Download on-device models under Local. Choose each role's provider and model in Models.")
         }
     }
 
@@ -159,6 +170,15 @@ struct AIProvidersSettingsView: View {
 
     private var youtubeStatus: String {
         settings.youtubeExtractorURL != nil ? "Configured" : "Not set up"
+    }
+
+    private var localStatus: String {
+        let count = LocalModelDownloadManager.shared.downloadedSpecs().count
+        switch count {
+        case 0:  return "No models"
+        case 1:  return "1 model"
+        default: return "\(count) models"
+        }
     }
 
     private var usageSummary: String? {

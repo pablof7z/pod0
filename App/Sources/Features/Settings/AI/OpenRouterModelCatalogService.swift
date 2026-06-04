@@ -234,6 +234,56 @@ struct OpenRouterModelOption: Identifiable, Hashable, Sendable {
         )
     }
 
+    /// A downloaded on-device model, surfaced in the per-role selector as the
+    /// "Local" provider alongside OpenRouter/Ollama. Only constructed for
+    /// models whose weights are present on disk.
+    init(local spec: LocalModelSpec) {
+        self.provider = .local
+        self.id = LLMModelReference(provider: .local, modelID: spec.id).storedID
+        self.name = spec.displayName
+        self.providerID = "local"
+        self.providerName = LLMProvider.local.displayName
+        self.providerIconURL = nil
+        self.modelDescription = spec.description
+        // On-device inference is free — no per-token cost.
+        self.promptCostPerMillion = 0
+        self.completionCostPerMillion = 0
+        self.cacheReadCostPerMillion = nil
+        self.cacheWriteCostPerMillion = nil
+        self.requestCost = nil
+        self.imageCost = nil
+        self.webSearchCost = nil
+        self.contextLength = nil
+        self.outputLimit = nil
+        self.inputModalities = ["text"]
+        self.outputModalities = ["text"]
+        self.tokenizer = "gemma"
+        self.supportsTools = true
+        self.supportsReasoning = false
+        // Must be true so the model survives the selector's default
+        // `.compatible` filter (isTextOutput && supportsResponseFormat);
+        // otherwise the downloaded model is invisible until the user widens
+        // the capability chip.
+        self.supportsStructuredOutputs = true
+        self.supportsResponseFormat = true
+        self.openWeights = true
+        self.isModerated = nil
+        self.createdAt = nil
+        self.knowledgeCutoff = nil
+        self.releaseDate = nil
+        self.lastUpdated = nil
+        self.searchText = Self.makeSearchText(
+            id: self.id,
+            name: self.name,
+            providerName: self.providerName,
+            providerID: self.providerID,
+            modelDescription: self.modelDescription,
+            tokenizer: self.tokenizer,
+            inputModalities: self.inputModalities,
+            outputModalities: self.outputModalities
+        )
+    }
+
     private static func makeSearchText(
         id: String,
         name: String,

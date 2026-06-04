@@ -128,6 +128,20 @@ final class LocalModelDownloadManager: NSObject, URLSessionDownloadDelegate {
         return states[modelID] ?? .notDownloaded
     }
 
+    /// Whether the model's weights are present on disk. Drives which local
+    /// models appear as selectable entries in the per-role model selector —
+    /// only downloaded models are offered, so "download to make available" is
+    /// honest. Reads the filesystem directly rather than the cached `states`
+    /// map so it is correct before any `recomputeStatesFromDisk` runs.
+    func isDownloaded(_ modelID: String) -> Bool {
+        fileManager.fileExists(atPath: modelFileURL(for: modelID).path)
+    }
+
+    /// Catalog specs whose weights are downloaded and ready to use.
+    func downloadedSpecs() -> [LocalModelSpec] {
+        LocalModelCatalog.all.filter { isDownloaded($0.id) }
+    }
+
     // MARK: - Background-session OS handoff
 
     /// Wired from `AppDelegate.application(_:handleEventsForBackgroundURLSession:)`.
