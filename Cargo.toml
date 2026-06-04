@@ -12,7 +12,7 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-nmp-app-template = { version = "0.2.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "f0b501220edef9d49814dba228f8020b5153a887" }
-nmp-core = { version = "0.2.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "f0b501220edef9d49814dba228f8020b5153a887" }
-nmp-ffi = { version = "0.2.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "f0b501220edef9d49814dba228f8020b5153a887" }
-nmp-signer-broker = { version = "0.2.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "f0b501220edef9d49814dba228f8020b5153a887" }
+nmp-app-template = { version = "0.2.5", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "cab12a8eaf6268b7a897190b5bdc8884c19f3af8" }
+nmp-core = { version = "0.2.5", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "cab12a8eaf6268b7a897190b5bdc8884c19f3af8" }
+nmp-ffi = { version = "0.2.5", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "cab12a8eaf6268b7a897190b5bdc8884c19f3af8" }
+nmp-signer-broker = { version = "0.2.5", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "cab12a8eaf6268b7a897190b5bdc8884c19f3af8" }

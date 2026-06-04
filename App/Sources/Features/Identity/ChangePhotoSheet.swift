@@ -114,11 +114,17 @@ struct ChangePhotoSheet: View {
                 return
             }
             let prepared = try Self.resizeJPEG(raw, maxEdge: 800, quality: 0.85)
-            // Auth signing is the kernel's job (sign-for-return); this uploader
-            // is degraded until that continuation is wired.
+            // Auth signing is the kernel's job (D13 sign-for-return): the
+            // KernelSigner signs the kind:24242 auth event with the active
+            // account — no private key in Swift.
+            guard let kernel = store.kernel else {
+                uploadState = .failed("Kernel is not ready.")
+                return
+            }
             let url = try await uploader.upload(
                 data: prepared,
-                contentType: "image/jpeg"
+                contentType: "image/jpeg",
+                signer: KernelSigner(kernel: kernel)
             )
             pictureURL = url.absoluteString
             Haptics.success()

@@ -9,26 +9,57 @@ extension ShakeFeedbackConfig {
     )
 }
 
+/// Host-signer adapter that bridges ShakeFeedbackKit's `ShakeFeedbackSigner`
+/// seam to the NMP kernel (D13 — no signing in Swift). The SDK builds the
+/// feedback event / NIP-42 AUTH draft and hands it here; we sign it through
+/// `nmp_app_sign_event_for_return` (active account) and return the kernel's
+/// flat wire event. The SDK's in-package Schnorr signer (`ShakeFeedbackCrypto`)
+/// is never reached on this path.
 struct PodcastShakeFeedbackSigner: ShakeFeedbackSigner, @unchecked Sendable {
-    weak var identity: UserIdentityStore?
+    weak var kernel: KernelModel?
 
+    /// Advertise the SAME key the kernel will sign with — the active-account
+    /// pubkey — not the `UserIdentityStore` value. In `.hostApp` mode the SDK
+    /// trusts `publicKeyHex` as "self" (isMine reduction, NIP-42 AUTH); sourcing
+    /// it from the same place `signFeedbackEvent` signs guarantees the advertised
+    /// pubkey and the signing pubkey can never diverge. `nil` (no active account)
+    /// is more correct than advertising a key we cannot sign with.
     var publicKeyHex: String? {
         get async {
-            await MainActor.run { identity?.publicKeyHex }
+            await MainActor.run { kernel?.kernelIdentity.activeAccount }
         }
     }
 
     func signFeedbackEvent(_ draft: ShakeFeedbackEventDraft) async throws -> ShakeFeedbackEvent {
-        // Hard rule: NO signing in Swift. The ShakeFeedbackKit protocol expects
-        // a signed event returned synchronously; the compliant path is a kernel
-        // sign-for-return continuation (`nmp_app_sign_event_for_return` → read
-        // the `signed_events` frame), which is not wired yet. Until then we
-        // surface a missing-identity error so the SDK does not publish — rather
-        // than signing in Swift. See `docs/wiki/nmp-signing-contract.md`.
-        _ = draft
-        guard await MainActor.run(body: { identity?.publicKeyHex }) != nil else {
+        // D13: sign through the kernel, never in Swift. The kernel re-stamps
+        // `created_at` (D7) and fills `pubkey`/`id`/`sig`; the draft carries
+        // only kind/content/tags.
+        guard let kernel else { throw ShakeFeedbackError.missingIdentity }
+        // Gate on the kernel active account — the identity that will actually
+        // sign — not the UserIdentityStore mirror.
+        guard await MainActor.run(body: { kernel.kernelIdentity.activeAccount }) != nil else {
             throw ShakeFeedbackError.missingIdentity
         }
-        throw ShakeFeedbackError.missingIdentity
+        let unsigned: [String: Any] = [
+            "kind": draft.kind,
+            "content": draft.content,
+            "tags": draft.tags,
+            "created_at": draft.createdAt,
+        ]
+        guard
+            let data = try? JSONSerialization.data(withJSONObject: unsigned),
+            let unsignedJSON = String(data: data, encoding: .utf8)
+        else {
+            throw ShakeFeedbackError.invalidEvent("could not serialize the feedback draft")
+        }
+        let signedJSON = try await kernel.signEventForReturn(
+            accountPubkeyHex: "", unsignedJSON: unsignedJSON)
+        guard
+            let eventData = signedJSON.data(using: .utf8),
+            let event = try? JSONDecoder().decode(ShakeFeedbackEvent.self, from: eventData)
+        else {
+            throw ShakeFeedbackError.invalidEvent("kernel returned an undecodable signed event")
+        }
+        return event
     }
 }
