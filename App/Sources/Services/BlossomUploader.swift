@@ -10,6 +10,14 @@ import Foundation
 // `defaultServer`. The kind:24242 auth tags/semantics are unchanged from the
 // pre-degradation implementation; only WHO signs moved (Swift `LocalKeySigner`
 // → kernel `KernelSigner`).
+//
+// TODO: migrate to the idiomatic v0.2.5 dispatch path —
+// `nmp_app_dispatch_action("nmp.blossom.upload", { file_path, content_type?,
+// servers, signer_pubkey? })` + read `action_results[cid]` — so the HTTP
+// transport itself also moves into the kernel. Kept the Swift transport +
+// KernelSigner seam for now because un-degrading (kernel signing) is the
+// priority and the dispatch migration needs a file_path the in-memory upload
+// callers (avatar/artwork) don't currently produce.
 
 protocol BlossomUploading: Sendable {
     /// Upload `data` to the Blossom server. Returns the absolute URL the

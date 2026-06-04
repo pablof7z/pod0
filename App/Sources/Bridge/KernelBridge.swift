@@ -23,6 +23,11 @@ final class PodcastHandle: @unchecked Sendable {
     /// (Dispatched host-ops already arrive via the kernel push frame.)
     var onSnapshotMaybeChanged: (() -> Void)?
 
+    /// Deadline (seconds) for a sign-for-return round-trip. Generous — a remote
+    /// (NIP-46 bunker) signer may need a human tap — but bounded so a kernel that
+    /// never resolves the id can't hang an upload indefinitely.
+    private static let signForReturnTimeout: Double = 60
+
     /// Buffered resolver for `nmp_app_sign_event_for_return` round-trips. The
     /// `signed_events` projection that carries each result is drain-once: the
     /// kernel clears it on the first emit tick that carries it. Because the
@@ -167,7 +172,29 @@ final class PodcastHandle: @unchecked Sendable {
         guard let correlationID else {
             throw NostrSignerError.invalidEventForSigning
         }
-        return try await signedEventsRegistry.awaitResult(correlationID: correlationID)
+        // Caller-owned timeout (NMP contract: a null/unstarted app never reaches
+        // the kernel, so "the caller's continuation times out"). Race the
+        // registry await against a deadline; on expiry, fail + drop the waiter so
+        // the upload surfaces a thrown error instead of hanging forever.
+        return try await withThrowingTaskGroup(of: String.self) { group in
+            group.addTask { [signedEventsRegistry] in
+                try await signedEventsRegistry.awaitResult(correlationID: correlationID)
+            }
+            group.addTask { [signedEventsRegistry] in
+                try? await Task.sleep(for: .seconds(Self.signForReturnTimeout))
+                signedEventsRegistry.cancel(
+                    correlationID: correlationID, with: NostrSignerError.timedOut)
+                // Park: the cancel above resumes the real waiter (success or
+                // timeout); this task just keeps the group alive until then.
+                try await Task.sleep(for: .seconds(3600))
+                throw NostrSignerError.timedOut
+            }
+            defer { group.cancelAll() }
+            guard let result = try await group.next() else {
+                throw NostrSignerError.timedOut
+            }
+            return result
+        }
     }
 
     /// Decode the `PodcastUpdate` from the push frame's
@@ -326,6 +353,21 @@ final class SignedEventsRegistry: @unchecked Sendable {
             waiters[correlationID] = continuation
             lock.unlock()
         }
+    }
+
+    /// Fail an outstanding waiter for `correlationID` with `error` and stop
+    /// retaining it. No-op if the result already drained (the waiter is gone).
+    /// Used by the caller-owned timeout so a kernel that never resolves the id
+    /// (e.g. a null/unstarted app — the NMP contract says "the caller's
+    /// continuation times out") surfaces as a thrown error, not a permanent
+    /// hang. Also drops any buffered-but-unclaimed result for the id so it
+    /// cannot leak.
+    func cancel(correlationID: String, with error: Error) {
+        lock.lock()
+        let waiter = waiters.removeValue(forKey: correlationID)
+        buffered.removeValue(forKey: correlationID)
+        lock.unlock()
+        waiter?.resume(throwing: error)
     }
 }
 
