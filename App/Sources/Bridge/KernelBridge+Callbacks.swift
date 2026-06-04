@@ -135,30 +135,51 @@ extension PodcastHandle {
     /// uses `MainActor.assumeIsolated` to safely reach back into
     /// `PodcastCapabilities.shared` from the non-isolated closure type.
     ///
-    /// The FFI return is NULL when no follow-up is needed. When a report
-    /// frees a queue slot, Rust may return the next `DownloadCommand` for
-    /// the capability to execute immediately.
+    /// The FFI returns a JSON `DownloadReportResponse`
+    /// (`{ follow_up?, downloads?, durable_changed }`), or NULL on error
+    /// (D6 degrade — treated as "nothing actionable"). Progress ticks ride the
+    /// inline `downloads` field and do NOT bump the global `rev`; only a
+    /// `durable_changed` report (completion/cancellation) warrants the full
+    /// snapshot pull. See `nmp_app_podcast_download_report`.
     @MainActor
     func attachDownloadReportChannel() {
         PodcastCapabilities.shared.download.attach { [weak self] reportJSON in
             MainActor.assumeIsolated {
                 guard let self, let handle = self.podcastHandle else { return }
                 guard let result = nmp_app_podcast_download_report(handle, reportJSON) else {
-                    // No follow-up command, but the report bumped `rev`
-                    // (download progress/state) — pull it through reactively.
-                    self.onSnapshotMaybeChanged?()
+                    // Error / degrade path — nothing actionable, don't pull.
                     return
                 }
                 defer { nmp_app_free_string(result) }
-                let followUpJSON = String(cString: result)
-                if let data = followUpJSON.data(using: .utf8),
-                   let command = try? JSONDecoder().decode(DownloadCommand.self, from: data) {
+                let responseJSON = String(cString: result)
+                guard let data = responseJSON.data(using: .utf8) else { return }
+                let decoder = JSONDecoder()
+                decoder.keyDecodingStrategy = .convertFromSnakeCase
+                guard let response = try? decoder.decode(DownloadReportResponse.self, from: data) else {
+                    return
+                }
+                // Execute the follow-up command (decoded with a PLAIN decoder —
+                // `DownloadCommand` uses explicit `episode_id` coding keys that a
+                // snake-case conversion would break).
+                if let followUpJSON = response.followUp,
+                   let cmdData = followUpJSON.data(using: .utf8),
+                   let command = try? JSONDecoder().decode(DownloadCommand.self, from: cmdData) {
                     PodcastCapabilities.shared.download.execute(command)
                 }
-                // The report bumped the podcast `rev`; surface it reactively.
-                self.onSnapshotMaybeChanged?()
+                // Update the live download surface from the inline snapshot, and
+                // pull the full library only when durable state actually changed.
+                self.onDownloadReport?(response.downloads, response.durableChanged)
             }
         }
+    }
+
+    /// Decoded shape of `nmp_app_podcast_download_report`'s JSON response.
+    /// `followUp` is the raw `DownloadCommand` JSON string (decoded separately,
+    /// not nested, to preserve its explicit snake_case coding keys).
+    private struct DownloadReportResponse: Decodable {
+        var followUp: String?
+        var downloads: DownloadQueueSnapshot?
+        var durableChanged: Bool
     }
 
     /// Wire the async iOS→Rust voice report channel. Mirrors

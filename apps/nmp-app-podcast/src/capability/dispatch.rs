@@ -112,34 +112,68 @@ pub fn dispatch_download_report_json(
     }
 }
 
+/// Outcome of the queue-aware download dispatch.
+///
+/// Distinct from [`DispatchOutcome`] because the download FFI needs one extra
+/// bit the audio/voice paths don't: whether the report changed *durable*
+/// library state. Only a completed or cancelled download flips an
+/// `Episode.downloadState` (it touches [`PodcastStore`] local paths); a
+/// `Progress`/`Paused`/`Failed` tick changes only transient queue state. The
+/// FFI bumps the global snapshot `rev` *only* when `durable_changed` is set, so
+/// the ~1 Hz progress stream no longer forces Swift to pull + JSON-decode the
+/// entire library snapshot on the main thread.
+#[derive(Debug)]
+pub struct DownloadDispatch {
+    /// JSON of the follow-up [`DownloadCommand`] when the report freed a
+    /// queue slot; `None` otherwise.
+    pub follow_up_json: Option<String>,
+    /// `true` when the report mutated durable store state
+    /// (`Completed`/`Cancelled` that resolved to a known episode).
+    pub durable_changed: bool,
+    /// `true` when the inbound JSON failed to decode. Per D6 the FFI treats
+    /// this as "degrade silently" (return NULL), never a panic.
+    pub decode_failed: bool,
+}
+
 /// Decode a JSON-encoded [`DownloadReport`], project it into both
-/// `store` and `queue`, and return the next queued
-/// [`DownloadCommand`] when the report frees a slot.
+/// `store` and `queue`, and report whether durable library state changed
+/// alongside the next queued [`DownloadCommand`] (when the report frees a
+/// slot).
 pub fn dispatch_download_report_json_with_queue(
     store: &mut PodcastStore,
     queue: &mut DownloadQueue,
     report_json: &str,
-) -> DispatchOutcome {
+) -> DownloadDispatch {
     let report: DownloadReport = match serde_json::from_str(report_json) {
         Ok(r) => r,
-        Err(err) => {
-            return DispatchOutcome::DecodeFailed {
-                error: err.to_string(),
+        Err(_) => {
+            return DownloadDispatch {
+                follow_up_json: None,
+                durable_changed: false,
+                decode_failed: true,
             }
         }
     };
-    apply_download_report(store, &report);
+    let durable_changed = apply_download_report(store, &report);
     let follow_up_json = queue
         .handle_report(report)
         .into_iter()
         .next()
         .and_then(|cmd: DownloadCommand| serde_json::to_string(&cmd).ok());
-    DispatchOutcome::Ok { follow_up_json }
+    DownloadDispatch {
+        follow_up_json,
+        durable_changed,
+        decode_failed: false,
+    }
 }
 
 /// Pure projection of a typed [`DownloadReport`] onto `store`. Split out
 /// so unit tests don't have to round-trip through JSON.
-fn apply_download_report(store: &mut PodcastStore, report: &DownloadReport) {
+///
+/// Returns `true` when the report mutated durable store state (a
+/// `Completed`/`Cancelled` that resolved to a known episode), so the caller
+/// can decide whether the change warrants a full snapshot `rev` bump.
+fn apply_download_report(store: &mut PodcastStore, report: &DownloadReport) -> bool {
     match report {
         DownloadReport::Completed {
             episode_id,
@@ -154,18 +188,24 @@ fn apply_download_report(store: &mut PodcastStore, report: &DownloadReport) {
                     .map(|m| m.len() as i64)
                     .unwrap_or(0);
                 store.set_local_path(typed_id, local_path.clone(), byte_count);
+                true
+            } else {
+                // Episode not in the store (e.g. unsubscribed mid-flight):
+                // drop the report on the floor. D6 — data, not exception.
+                false
             }
-            // Episode not in the store (e.g. unsubscribed mid-flight):
-            // drop the report on the floor. D6 — data, not exception.
         }
         DownloadReport::Cancelled { episode_id } => {
             if let Some((typed_id, _url)) = store.episode_enclosure_url(&episode_id) {
                 let _ = store.clear_local_path(&typed_id);
+                true
+            } else {
+                false
             }
         }
         DownloadReport::Failed { .. }
         | DownloadReport::Paused { .. }
-        | DownloadReport::Progress { .. } => {}
+        | DownloadReport::Progress { .. } => false,
     }
 }
 

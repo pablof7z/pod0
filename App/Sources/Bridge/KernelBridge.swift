@@ -23,6 +23,15 @@ final class PodcastHandle: @unchecked Sendable {
     /// (Dispatched host-ops already arrive via the kernel push frame.)
     var onSnapshotMaybeChanged: (() -> Void)?
 
+    /// Fired (on the main actor) for every download report, carrying the fresh
+    /// `DownloadQueueSnapshot` (progress %, queue state) and whether the report
+    /// changed *durable* library state. `KernelModel` wires this to update its
+    /// live `downloadSnapshot` directly — progress ticks update only that
+    /// (driving the row overlay) WITHOUT pulling/decoding the full library; only
+    /// `durableChanged == true` (a completion/cancellation) triggers a full pull.
+    /// This is the seam that keeps ~1 Hz progress off the global-`rev` hot path.
+    var onDownloadReport: ((DownloadQueueSnapshot?, Bool) -> Void)?
+
     /// Deadline (seconds) for a sign-for-return round-trip. Generous — a remote
     /// (NIP-46 bunker) signer may need a human tap — but bounded so a kernel that
     /// never resolves the id can't hang an upload indefinitely.

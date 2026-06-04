@@ -157,6 +157,13 @@ final class KernelModel {
         kernel.onSnapshotMaybeChanged = { [weak self] in
             self?.pullPodcastSnapshotIfChanged(synchronous: false)
         }
+        // Download reports carry their own narrow snapshot inline; progress ticks
+        // no longer bump the global `rev`, so they must NOT pull/decode the full
+        // library. Update `downloadSnapshot` directly (drives the row overlay) and
+        // pull only when durable library state changed (completion/cancellation).
+        kernel.onDownloadReport = { [weak self] downloads, durableChanged in
+            self?.applyDownloadReport(downloads: downloads, durableChanged: durableChanged)
+        }
         // Publish to the shared handle for external scenes (CarPlay, AppIntents,
         // …). The static is `weak`, so the model still deallocates on scene
         // teardown; the next instance re-publishes from its own `init`.
@@ -237,6 +244,25 @@ final class KernelModel {
         let currentRev = kernel.podcastSnapshotRev()
         guard currentRev > lastProcessedRev else { return }
         applyPodcastUpdate(kernel.podcastSnapshot(), synchronous: synchronous)
+    }
+
+    /// Apply a download-report response (from `attachDownloadReportChannel`).
+    ///
+    /// Progress ticks (~1 Hz per active download) land here and update only the
+    /// always-fresh `downloadSnapshot` — the source `AppStateStore`'s row
+    /// overlay reads. They do NOT bump the global `rev` in Rust, so they never
+    /// pull or JSON-decode the full library snapshot (the empirical CPU/heat
+    /// hot path). Only a durable change (completion/cancellation, which flips
+    /// `Episode.downloadState`) sets `durableChanged`; then we pull the full
+    /// snapshot so the library projection reprojects the affected episode.
+    @MainActor
+    func applyDownloadReport(downloads: DownloadQueueSnapshot?, durableChanged: Bool) {
+        if downloads != downloadSnapshot {
+            downloadSnapshot = downloads
+        }
+        if durableChanged {
+            pullPodcastSnapshotIfChanged(synchronous: false)
+        }
     }
 
     /// Apply one `PodcastUpdate` to the observable surface. Shared by the

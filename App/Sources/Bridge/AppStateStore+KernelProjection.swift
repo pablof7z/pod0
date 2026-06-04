@@ -114,6 +114,30 @@ extension AppStateStore {
                         _ = kernel.library
                         _ = kernel.podcastSnapshot
                         _ = kernel.kernelIdentity
+                        // NOTE: `downloadSnapshot` is intentionally NOT observed
+                        // here. Download-progress ticks update it ~1 Hz/download
+                        // (without a global `rev` bump — see
+                        // `nmp_app_podcast_download_report`); routing them through
+                        // this full projection loop is exactly the cost we removed.
+                        // They are handled by `downloadOverlayTask` below, which
+                        // applies just the row overlay.
+                    } onChange: {
+                        continuation.resume()
+                    }
+                }
+                guard !Task.isCancelled else { break }
+            }
+        }
+
+        // Dedicated, cheap observation of ONLY `downloadSnapshot`: applies the
+        // live download overlay onto `episodes` row-by-row as progress arrives,
+        // without touching the library / decode / hash machinery above.
+        downloadOverlayTask?.cancel()
+        downloadOverlayTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                self?.applyDownloadOverlayOnly(active: kernel.downloadSnapshot?.active)
+                await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                    withObservationTracking {
                         _ = kernel.downloadSnapshot
                     } onChange: {
                         continuation.resume()
@@ -121,6 +145,19 @@ extension AppStateStore {
                 }
                 guard !Task.isCancelled else { break }
             }
+        }
+    }
+
+    /// Apply ONLY the live download overlay onto `self.episodes`, off the heavy
+    /// projection path. Driven by `downloadOverlayTask` observing
+    /// `kernel.downloadSnapshot`. Mutates just the rows whose download state
+    /// changed and skips the `@Observable` write entirely when nothing changed,
+    /// so a progress tick never invalidates episode readers needlessly.
+    private func applyDownloadOverlayOnly(active: [DownloadItemSnapshot]?) {
+        var overlaid = self.episodes
+        applyDownloadOverlay(to: &overlaid, active: active)
+        if overlaid != self.episodes {
+            self.episodes = overlaid
         }
     }
 
