@@ -293,14 +293,22 @@ final class DownloadCapability {
         // surface the fact; Rust decides whether to re-issue a
         // `StartDownload` with the URL.
         if taskByEpisode[episodeID] != nil { return }
-        guard let resumeData = Self.loadResumeData(for: episodeID) else {
+        // The ResumeDownload command carries only the id (the task is gone), so
+        // recover the kind from which resume blob exists on disk — model blobs
+        // are kind-prefixed (`local_model_<id>.data`). This keeps both the
+        // resume read AND the re-stamped taskDescription consistent with the
+        // original download, so a background-relaunch completion writes the file
+        // to the right directory and runs the right persistence path.
+        let kind: DownloadKind = Self.loadResumeData(for: episodeID, kind: .localModel) != nil
+            ? .localModel : .episode
+        guard let resumeData = Self.loadResumeData(for: episodeID, kind: kind) else {
             emit(.failed(
                 episodeID: episodeID,
                 error: "no-resume-data: re-issue start_download"))
             return
         }
         let task = session.downloadTask(withResumeData: resumeData)
-        task.taskDescription = episodeID
+        task.taskDescription = Self.encodeTaskDescription(episodeID: episodeID, kind: kind)
         taskByEpisode[episodeID] = task
         lastEmittedBytes[episodeID] = 0
         lastEmittedAt[episodeID] = .distantPast
