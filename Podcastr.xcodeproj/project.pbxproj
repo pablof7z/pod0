@@ -2770,11 +2770,13 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = F32525F3356145BDFDB742E2 /* Build configuration list for PBXNativeTarget "Podcastr" */;
 			buildPhases = (
+				B9F5381171CFC3555819C5EE /* Fix Rust Dylib Install Name */,
 				2837A17C0CC762E72DA9928D /* Sources */,
 				D97CFCB8065649196395583B /* Resources */,
 				E932CEB28D36FB602510CFC7 /* Embed Foundation Extensions */,
 				909BE307F1EE10925C3300A1 /* Frameworks */,
 				6B3EA665A487ABFF0206B9A1 /* Embed Frameworks */,
+				141CA5BB32033C1B3EA931B9 /* Embed Rust Dylib */,
 			);
 			buildRules = (
 			);
@@ -2880,6 +2882,47 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		141CA5BB32033C1B3EA931B9 /* Embed Rust Dylib */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Embed Rust Dylib";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "#!/bin/bash\nset -e\nif [[ \"$PLATFORM_NAME\" == \"iphonesimulator\" ]]; then\n    RUST_TARGET=\"aarch64-apple-ios-sim\"\nelse\n    RUST_TARGET=\"aarch64-apple-ios\"\nfi\nDYLIB=\"${SRCROOT}/target/${RUST_TARGET}/debug/libnmp_app_podcast.dylib\"\nif [ ! -f \"$DYLIB\" ]; then\n    echo \"warning: ${DYLIB} not found — skipping Rust dylib embed\"\n    exit 0\nfi\nDEST=\"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libnmp_app_podcast.dylib\"\nmkdir -p \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\ncp -f \"$DYLIB\" \"$DEST\"\nif [ -n \"${EXPANDED_CODE_SIGN_IDENTITY:-}\" ]; then\n    /usr/bin/codesign --force --sign \"${EXPANDED_CODE_SIGN_IDENTITY}\"         --timestamp=none \"$DEST\"\nfi";
+		};
+		B9F5381171CFC3555819C5EE /* Fix Rust Dylib Install Name */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Fix Rust Dylib Install Name";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "#!/bin/bash\nset -e\nif [[ \"$PLATFORM_NAME\" == \"iphonesimulator\" ]]; then\n    RUST_TARGET=\"aarch64-apple-ios-sim\"\nelse\n    RUST_TARGET=\"aarch64-apple-ios\"\nfi\nDYLIB=\"${SRCROOT}/target/${RUST_TARGET}/debug/libnmp_app_podcast.dylib\"\nif [ ! -f \"$DYLIB\" ]; then\n    echo \"warning: ${DYLIB} not found — skipping Rust dylib install-name fix\"\n    exit 0\nfi\ninstall_name_tool -id \"@rpath/libnmp_app_podcast.dylib\" \"$DYLIB\"";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		2837A17C0CC762E72DA9928D /* Sources */ = {
