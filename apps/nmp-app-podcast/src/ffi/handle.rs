@@ -53,6 +53,17 @@ pub struct PodcastHandle {
     /// here after every rebuild; the next poll hit with the same `rev` returns
     /// the cached string without re-serializing the entire library.
     pub(super) snapshot_cache: Arc<Mutex<Option<(u64, String)>>>,
+    /// Memoized `strip_html` results keyed by a 64-bit content hash of the raw
+    /// RSS description. `build_podcast_update` rebuilds the *entire* library on
+    /// every global `rev` bump — and `Playing` position ticks still bump `rev`
+    /// ~1 Hz during playback (`ffi/audio_report.rs`), so the full library is
+    /// HTML-cleaned once per second on a multi-thousand-episode library, which
+    /// dominated the rebuild (see `clean_html`). Descriptions are immutable per
+    /// content, so caching the cleaned text turns the per-rebuild cost from
+    /// "strip every episode" into "hash + clone every episode". Bounded: cleared
+    /// wholesale when it exceeds `CLEAN_HTML_CACHE_CAP` so churned descriptions
+    /// (re-sync, feed edits) can't leak unboundedly.
+    pub(super) clean_html_cache: Arc<Mutex<HashMap<u64, String>>>,
     /// Playback "Up Next" queue. Mutated by the queue action handler on the
     /// actor thread; read by the snapshot projection on the main thread.
     pub(super) queue: Arc<Mutex<PlaybackQueue>>,
@@ -226,3 +237,47 @@ pub struct PodcastHandle {
 // Rust-trait registration path gets that fence for free (the actor join).
 unsafe impl Send for PodcastHandle {}
 unsafe impl Sync for PodcastHandle {}
+
+/// Upper bound on [`PodcastHandle::clean_html_cache`] entries. A library of a
+/// few thousand episodes seeds a few thousand stable entries; the cap only
+/// trips when description churn (re-sync, repeated feed edits) accumulates
+/// stale keys, at which point the cache is cleared and re-warms. Sized well
+/// above any realistic working set so steady-state hit rate stays ~100%.
+const CLEAN_HTML_CACHE_CAP: usize = 16_384;
+
+impl PodcastHandle {
+    /// Memoized [`super::helpers::strip_html`]. The snapshot projection calls
+    /// this once per podcast/episode description on every rebuild; since the
+    /// raw text is immutable per content, the first call strips-and-caches and
+    /// every subsequent rebuild returns a clone of the cleaned string — turning
+    /// the hot path from "3-pass HTML strip per episode" into "hash + clone per
+    /// episode". This is the contained mitigation for the full-library-rebuild
+    /// CPU cost: `build_podcast_update` re-runs on every global `rev` bump, and
+    /// `Playing` position ticks still bump `rev` ~1 Hz throughout playback.
+    pub(super) fn clean_html(&self, raw: &str) -> String {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
+        let mut hasher = DefaultHasher::new();
+        raw.hash(&mut hasher);
+        let key = hasher.finish();
+
+        if let Ok(cache) = self.clean_html_cache.lock() {
+            if let Some(cleaned) = cache.get(&key) {
+                return cleaned.clone();
+            }
+        }
+
+        // Miss: strip outside the lock (the strip is the expensive part; don't
+        // hold the cache mutex across it).
+        let cleaned = super::helpers::strip_html(raw);
+
+        if let Ok(mut cache) = self.clean_html_cache.lock() {
+            if cache.len() >= CLEAN_HTML_CACHE_CAP {
+                cache.clear();
+            }
+            cache.insert(key, cleaned.clone());
+        }
+        cleaned
+    }
+}

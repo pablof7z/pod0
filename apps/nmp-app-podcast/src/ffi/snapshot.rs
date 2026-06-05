@@ -11,7 +11,6 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use super::handle::PodcastHandle;
-use super::helpers::strip_html;
 use super::projections::{
     AccountSummary, AgentSnapshot, ChapterSummary, EpisodeSummary, PodcastSummary,
     SettingsSnapshot, VoiceState,
@@ -63,7 +62,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
                 } else {
                     Some(podcast.author.clone())
                 },
-                description: Some(strip_html(&podcast.description))
+                description: Some(handle.clean_html(&podcast.description))
                     .filter(|d| !d.is_empty()),
                 owner_pubkey_hex: podcast.owner_pubkey_hex.clone(),
                 nostr_visibility: match podcast.nostr_visibility {
@@ -106,7 +105,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
                             download_path: s.local_path_for(&ep.id).map(str::to_owned),
                             file_size_bytes: s.file_size_for(&ep.id).unwrap_or(0),
                             enclosure_url: Some(ep.enclosure_url.to_string()),
-                            description: Some(strip_html(&ep.description))
+                            description: Some(handle.clean_html(&ep.description))
                                 .filter(|d| !d.is_empty()),
                             transcript,
                             transcript_url: ep

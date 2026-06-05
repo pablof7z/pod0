@@ -329,6 +329,7 @@ pub extern "C" fn nmp_app_podcast_register(
         search_results,
         nostr_results,
         snapshot_cache: Arc::new(Mutex::new(None)),
+        clean_html_cache: Arc::new(Mutex::new(std::collections::HashMap::new())),
         queue,
         download_queue,
         wiki_articles,
