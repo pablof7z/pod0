@@ -12,7 +12,7 @@
 use std::sync::{Arc, Mutex};
 
 use crate::agent_tools::{self, ToolRegistry, TOOL_INSTRUCTIONS, TRIAGE_TOOL_INSTRUCTIONS};
-use crate::llm::{LlmRequest, backend_for};
+use crate::llm::{LlmRequest, backend_for, role_model_or_default};
 use crate::store::PodcastStore;
 
 /// Maximum tool-call round-trips for interactive chat turns.
@@ -68,35 +68,50 @@ async fn single_turn(
     user_message: &str,
     store: &Arc<Mutex<PodcastStore>>,
 ) -> Result<String, String> {
-    // Try the thinking model first (reasoning mode for richer answers).
-    let backend = backend_for(store, THINKING_MODEL);
+    // Try the primary model first (the "Agent (Initial)" role). If the user
+    // picked a `local:` model for that role it runs on-device; otherwise the
+    // cloud thinking model is used, unchanged.
+    let initial_cfg = store
+        .lock()
+        .ok()
+        .map(|s| s.agent_initial_model().to_owned())
+        .unwrap_or_default();
+    let primary_model = role_model_or_default(&initial_cfg, THINKING_MODEL);
+    let backend = backend_for(store, &primary_model);
     let req = LlmRequest {
         system: system_prompt.to_owned(),
         history: history.to_vec(),
         user: user_message.to_owned(),
-        model: THINKING_MODEL.to_owned(),
+        model: primary_model.clone(),
     };
     match backend.complete(&req).await {
         Ok(reply) => return Ok(reply),
         Err(thinking_err) => {
             eprintln!(
-                "agent_llm: {THINKING_MODEL} failed ({thinking_err}), retrying with {FAST_MODEL}"
+                "agent_llm: {primary_model} failed ({thinking_err}), retrying with fallback"
             );
         }
     }
 
-    // Fall back to the fast model.
-    let backend = backend_for(store, FAST_MODEL);
+    // Fall back to the secondary model (the "Agent (Thinking)" role), honoring
+    // a `local:` selection there too; otherwise the cloud fast model.
+    let thinking_cfg = store
+        .lock()
+        .ok()
+        .map(|s| s.agent_thinking_model().to_owned())
+        .unwrap_or_default();
+    let fallback_model = role_model_or_default(&thinking_cfg, FAST_MODEL);
+    let backend = backend_for(store, &fallback_model);
     let req = LlmRequest {
         system: system_prompt.to_owned(),
         history: history.to_vec(),
         user: user_message.to_owned(),
-        model: FAST_MODEL.to_owned(),
+        model: fallback_model.clone(),
     };
     backend
         .complete(&req)
         .await
-        .map_err(|e| format!("{FAST_MODEL} also failed: {e}"))
+        .map_err(|e| format!("{fallback_model} also failed: {e}"))
 }
 
 /// Drive a chat turn with podcast-domain tools available (M5.4).

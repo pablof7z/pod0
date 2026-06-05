@@ -30,7 +30,7 @@ use std::time::Duration;
 
 use tokio::runtime::Runtime;
 
-use crate::llm::{LlmRequest, backend_for};
+use crate::llm::{LlmRequest, backend_for, role_model_or_default};
 use crate::store::PodcastStore;
 
 const CHAPTERS_MODEL: &str = "deepseek-v4-flash:cloud";
@@ -140,12 +140,20 @@ pub(crate) fn synthesize_chapters_styled(
     );
 
     runtime.block_on(async {
-        let backend = backend_for(store, CHAPTERS_MODEL);
+        // Honor a `local:` selection for the Chapter Compilation role;
+        // otherwise the cloud chapters model, unchanged.
+        let chapters_cfg = store
+            .lock()
+            .ok()
+            .map(|s| s.chapter_compilation_model().to_owned())
+            .unwrap_or_default();
+        let chapters_model = role_model_or_default(&chapters_cfg, CHAPTERS_MODEL);
+        let backend = backend_for(store, &chapters_model);
         let req = LlmRequest {
             system: preamble,
             history: Vec::new(),
             user: prompt,
-            model: CHAPTERS_MODEL.to_owned(),
+            model: chapters_model.clone(),
         };
 
         // Wrap the round-trip in a timeout: a hung backend would otherwise pin

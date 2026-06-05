@@ -12,5 +12,5 @@ pub mod local_model_backend;
 pub mod factory;
 
 pub use backend::{LlmBackend, LlmRequest, LlmError};
-pub use factory::backend_for;
+pub use factory::{backend_for, role_model_or_default};
 pub use local_model_backend::LocalModelBackend;

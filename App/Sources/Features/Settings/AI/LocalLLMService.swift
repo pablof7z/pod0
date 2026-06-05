@@ -8,6 +8,15 @@ import os.log
 actor LocalLLMService {
     private var engine: Engine?
 
+    /// The model id whose engine is currently loaded, or nil when none. Lets
+    /// `ensureLoaded` skip a redundant (expensive) re-init when the same model
+    /// is requested again, and reload when the selection changes.
+    private(set) var loadedModelID: String?
+
+    /// Tail of the serialized load chain. Each `ensureLoaded` chains after this
+    /// so concurrent calls can't overlap `load`'s multi-second GPU init.
+    private var pendingLoad: Task<Void, Error>?
+
     private nonisolated var cacheDir: URL {
         let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
         return caches.appendingPathComponent("LiteRTCache", isDirectory: true)
@@ -15,6 +24,37 @@ actor LocalLLMService {
 
     init() {
         try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+    }
+
+    /// Loads `spec`'s engine unless it is already the loaded one. Switching
+    /// models unloads the previous engine first (only one on-device engine is
+    /// kept resident at a time).
+    ///
+    /// Concurrency-safe: loads are serialized through `pendingLoad`. Without
+    /// this, two near-simultaneous calls (a settings change racing kernel
+    /// attach, or a fast X→Y→X switch) could both pass the `loadedModelID`
+    /// check before either finished `load`'s slow GPU init and double-init —
+    /// leaving an engine that no longer matches the latest selection. Chaining
+    /// makes the most-recently-requested model the resident one.
+    func ensureLoaded(spec: LocalModelSpec, downloadManager: LocalModelDownloadManager) async throws {
+        if loadedModelID == spec.id, engine != nil { return }
+        let previous = pendingLoad
+        let task = Task { [weak self] in
+            _ = try? await previous?.value
+            guard let self else { return }
+            try await self.loadSerialized(spec: spec, downloadManager: downloadManager)
+        }
+        pendingLoad = task
+        try await task.value
+    }
+
+    /// Runs inside the serialized load chain: re-checks (a prior chained load
+    /// may have already brought this model up), then swaps the resident engine.
+    private func loadSerialized(spec: LocalModelSpec, downloadManager: LocalModelDownloadManager) async throws {
+        if loadedModelID == spec.id, engine != nil { return }
+        engine = nil
+        loadedModelID = nil
+        try await load(spec: spec, downloadManager: downloadManager)
     }
 
     func load(spec: LocalModelSpec, downloadManager: LocalModelDownloadManager) async throws {
@@ -34,30 +74,65 @@ actor LocalLLMService {
         let newEngine = Engine(engineConfig: config)
         try await newEngine.initialize()
         engine = newEngine
+        loadedModelID = spec.id
         os_log("Local LLM engine initialized with model: %{public}@", log: .default, type: .info, fileURL.path)
     }
 
     func unload() async {
         engine = nil
+        loadedModelID = nil
     }
 
     func infer(promptJSON: String) async -> String {
-        guard let engine = engine else {
+        guard let engine = engine, let resident = loadedModelID else {
             return #"{"error":"Local model not loaded"}"#
         }
 
         // Extract the prompt text from the JSON payload sent by the Rust kernel.
-        // Expected shape: {"prompt": "..."} or {"messages": [...]}
+        // The kernel's LocalModelBackend sends {"system","history","user","model"}
+        // where history is an array of [role, content] pairs. We also accept
+        // {"prompt"} and {"messages":[…]} shapes defensively.
         var promptText = promptJSON
+        var requestedModel: String?
         if let data = promptJSON.data(using: .utf8),
            let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            requestedModel = obj["model"] as? String
             if let p = obj["prompt"] as? String {
                 promptText = p
             } else if let messages = obj["messages"] as? [[String: Any]],
                       let last = messages.last,
                       let content = last["content"] as? String {
                 promptText = content
+            } else if obj["user"] != nil || obj["system"] != nil || obj["history"] != nil {
+                // Compose the kernel's structured request into a single prompt:
+                // system preamble, prior turns, then the new user message.
+                var parts: [String] = []
+                if let system = obj["system"] as? String, !system.isEmpty {
+                    parts.append(system)
+                }
+                if let history = obj["history"] as? [[Any]] {
+                    for turn in history where turn.count == 2 {
+                        if let role = turn[0] as? String, let content = turn[1] as? String {
+                            parts.append("\(role): \(content)")
+                        }
+                    }
+                }
+                if let user = obj["user"] as? String, !user.isEmpty {
+                    parts.append("User: \(user)")
+                }
+                if !parts.isEmpty {
+                    promptText = parts.joined(separator: "\n\n")
+                }
             }
+        }
+
+        // The kernel routes each role to its own LocalModelBackend{model_id},
+        // but only one engine is resident at a time. If a role asks for a model
+        // that isn't the loaded one, refuse rather than silently answering with
+        // the wrong model — the kernel maps this error to Unavailable.
+        if let requestedModel, requestedModel != resident {
+            let safe = requestedModel.replacingOccurrences(of: "\"", with: "'")
+            return "{\"error\":\"requested model \(safe) is not the resident on-device model (\(resident))\"}"
         }
 
         do {

@@ -289,21 +289,29 @@ extension AppStateStore {
         if nextLocal != priorLocal {
             kernel?.dispatch(namespace: "podcast.settings",
                              body: ["op": "set_local_model", "model_id": nextLocal as Any])
+            // Load/unload the on-device engine to match the new selection so the
+            // kernel's LocalModelBackend callback actually has an engine to run.
+            syncLocalEngine(for: settings)
         }
     }
 
     /// The single on-device model id the kernel should keep loaded, derived
     /// from the role assignments. Returns the first role pointing at a `local:`
     /// model (Agent Initial takes precedence), or nil when no role uses one.
+    ///
+    /// Only roles with a wired on-device completion call site in the kernel are
+    /// considered — otherwise a `local:` selection would load an engine no role
+    /// can invoke (wasted RAM), or let a non-routable role's precedence starve a
+    /// routable one. Memory Compilation and Embeddings have no `backend_for`
+    /// call site yet, so a `local:` selection there is a no-op (stays on cloud)
+    /// until those paths are threaded.
     static func effectiveLocalModelID(_ s: Settings) -> String? {
         let roleModels = [
             s.agentInitialModel,
             s.agentThinkingModel,
-            s.memoryCompilationModel,
             s.wikiModel,
             s.categorizationModel,
             s.chapterCompilationModel,
-            s.embeddingsModel,
         ]
         for stored in roleModels {
             let ref = LLMModelReference(storedID: stored)

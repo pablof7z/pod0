@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-05T10:30:00Z",
+      "lines": [
+        "On-device models now actually run: pick a downloaded local model for a role (e.g. Agent) and that role does its thinking on your device instead of the cloud."
+      ]
+    },
+    {
       "shipped_at": "2026-06-05T09:00:00Z",
       "lines": [
         "On-device models are reorganized: download them under Settings → Providers → Local, then pick one per role (Agent, Memory, Wiki, and more) in Settings → Models, right alongside your cloud providers."

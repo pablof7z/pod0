@@ -37,7 +37,7 @@ use std::sync::{Arc, Mutex};
 
 use tokio::runtime::Runtime;
 
-use crate::llm::{LlmRequest, backend_for};
+use crate::llm::{LlmRequest, backend_for, role_model_or_default};
 use crate::store::PodcastStore;
 use crate::ffi::actions::categorization_module::MAX_CATEGORIES_PER_EPISODE;
 
@@ -79,12 +79,20 @@ pub fn categorize_episode(
         let truncated: String = description.chars().take(500).collect();
         let prompt = format!("Title: {episode_title}\nDescription: {truncated}");
 
-        let backend = backend_for(store, CATEGORIZE_MODEL);
+        // Honor a `local:` selection for the Categorization role; otherwise the
+        // cloud categorize model, unchanged.
+        let cat_cfg = store
+            .lock()
+            .ok()
+            .map(|s| s.categorization_model().to_owned())
+            .unwrap_or_default();
+        let cat_model = role_model_or_default(&cat_cfg, CATEGORIZE_MODEL);
+        let backend = backend_for(store, &cat_model);
         let req = LlmRequest {
             system: CATEGORIZE_PREAMBLE.to_owned(),
             history: Vec::new(),
             user: prompt,
-            model: CATEGORIZE_MODEL.to_owned(),
+            model: cat_model.clone(),
         };
 
         let response: String = backend.complete(&req).await?;

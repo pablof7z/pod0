@@ -48,8 +48,12 @@ extension AppStateStore {
         // Register the local LLM service callback so Rust can invoke Swift-side
         // inference through the loaded LiteRT-LM engine.
         let localService = localLLMService
-        Task {
+        Task { @MainActor [weak self] in
             await localService.registerWithKernel(kernel)
+            // Startup load: if a persisted role selection already points at a
+            // local model, bring its engine up now (the callback was just
+            // registered above, so inference is ready once the engine loads).
+            self?.syncLocalEngine(for: self?.state.settings ?? Settings())
         }
         // Seed the Up Next queue from the kernel's persisted snapshot. The
         // handler may not be wired yet (setupPlaybackHandlers runs on .onAppear

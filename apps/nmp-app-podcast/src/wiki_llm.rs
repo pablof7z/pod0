@@ -14,7 +14,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use crate::llm::{LlmRequest, backend_for};
+use crate::llm::{LlmRequest, backend_for, role_model_or_default};
 use crate::store::PodcastStore;
 
 pub const FAST_MODEL: &str = "deepseek-v4-flash:cloud";
@@ -70,14 +70,22 @@ pub fn synthesize_summary(
             ));
         }
 
-        let backend = backend_for(store, FAST_MODEL);
+        // Honor a `local:` selection for the Wiki role; otherwise the cloud
+        // fast model, unchanged.
+        let wiki_cfg = store
+            .lock()
+            .ok()
+            .map(|s| s.wiki_model().to_owned())
+            .unwrap_or_default();
+        let wiki_model = role_model_or_default(&wiki_cfg, FAST_MODEL);
+        let backend = backend_for(store, &wiki_model);
         let req = LlmRequest {
             system: "You are a research assistant writing concise, factual wiki articles \
                      about podcast topics. Write 2-3 paragraphs, no headers, no markdown."
                 .to_owned(),
             history: Vec::new(),
             user: prompt,
-            model: FAST_MODEL.to_owned(),
+            model: wiki_model.clone(),
         };
 
         backend.complete(&req).await.map_err(|e| e.to_string())

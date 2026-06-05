@@ -38,6 +38,25 @@ fn ollama_api_key(store: &PodcastStore) -> Option<String> {
     store.ollama_api_key().map(|s| s.to_owned())
 }
 
+/// Resolve the model string a role should actually run, honoring an on-device
+/// selection while keeping cloud behavior byte-identical.
+///
+/// Per-role selection (PR #253) stores each role's chosen model, but the call
+/// sites historically passed a hardcoded cloud constant — so the selection
+/// never reached `backend_for` for any provider. This gate completes the
+/// *local* half only: if the role's configured model is a `local:<id>`
+/// selection, it is returned (so `backend_for` routes the role on-device and
+/// the request carries the local id); otherwise the caller's existing cloud
+/// default is returned unchanged. Wiring the cloud-to-cloud per-role path (and
+/// aligning the pro/flash defaults) is a separate follow-up that finishes #253.
+pub fn role_model_or_default(configured: &str, cloud_default: &str) -> String {
+    if configured.starts_with("local:") {
+        configured.to_owned()
+    } else {
+        cloud_default.to_owned()
+    }
+}
+
 /// Provider-blind backend selection + key injection.
 ///
 /// Reads the credential source / model prefix from the store and the in-memory
@@ -104,6 +123,29 @@ pub fn backend_for(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_role_model_gate_passes_local_selection() {
+        // A local selection is returned so the role routes on-device.
+        assert_eq!(
+            role_model_or_default("local:gemma4-e2b", "deepseek-v4-pro:cloud"),
+            "local:gemma4-e2b"
+        );
+    }
+
+    #[test]
+    fn test_role_model_gate_keeps_cloud_default_unchanged() {
+        // Non-local configs keep the caller's hardcoded cloud default — zero
+        // cloud regression (cloud per-role wiring is a separate follow-up).
+        assert_eq!(
+            role_model_or_default("openrouter:openai/gpt-4o", "deepseek-v4-pro:cloud"),
+            "deepseek-v4-pro:cloud"
+        );
+        assert_eq!(
+            role_model_or_default("", "deepseek-v4-flash:cloud"),
+            "deepseek-v4-flash:cloud"
+        );
+    }
 
     #[test]
     fn test_base_url_from_chat_url_with_api_chat() {
