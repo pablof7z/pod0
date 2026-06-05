@@ -80,6 +80,70 @@ let project = Project(
                 "App/Resources/whats-new.json",
             ],
             entitlements: .file(path: "App/Resources/Podcastr.entitlements"),
+            scripts: [
+                // The Rust kernel links dynamically (`-lnmp_app_podcast` resolves
+                // the `.dylib` over the `.a`, avoiding the duplicate-`std`-symbol
+                // clash with `shake_feedback_core` under LiteRTLM's `-all_load`).
+                // Cargo stamps the dylib's install name as an absolute Mac path,
+                // which does not exist on a device → `dyld` launch crash
+                // ("Library not loaded: /Users/.../libnmp_app_podcast.dylib").
+                //
+                // This MUST run as a `.pre` (before the link step): the linker
+                // records the dylib's install name as the dependency load command
+                // in the app binary, so the id has to read `@rpath/...` *before*
+                // linking. Doing it post-link (the embed step below) is too late —
+                // the recorded load command would stay absolute and still crash.
+                .pre(
+                    script: """
+                    #!/bin/bash
+                    set -e
+                    if [[ "$PLATFORM_NAME" == "iphonesimulator" ]]; then
+                        RUST_TARGET="aarch64-apple-ios-sim"
+                    else
+                        RUST_TARGET="aarch64-apple-ios"
+                    fi
+                    DYLIB="${SRCROOT}/target/${RUST_TARGET}/debug/libnmp_app_podcast.dylib"
+                    if [ ! -f "$DYLIB" ]; then
+                        echo "warning: ${DYLIB} not found — skipping Rust dylib install-name fix"
+                        exit 0
+                    fi
+                    install_name_tool -id "@rpath/libnmp_app_podcast.dylib" "$DYLIB"
+                    """,
+                    name: "Fix Rust Dylib Install Name",
+                    basedOnDependencyAnalysis: false
+                ),
+                // Embed the (now @rpath) Rust dylib into the app bundle so the
+                // loader finds it at `@rpath/libnmp_app_podcast.dylib` (the app's
+                // `@executable_path/Frameworks` rpath). Running as a build phase
+                // lets Xcode's subsequent signing step cover the dylib with the
+                // real development certificate — iOS rejects ad-hoc signing — and
+                // we also sign here so it is valid before the bundle is sealed.
+                .post(
+                    script: """
+                    #!/bin/bash
+                    set -e
+                    if [[ "$PLATFORM_NAME" == "iphonesimulator" ]]; then
+                        RUST_TARGET="aarch64-apple-ios-sim"
+                    else
+                        RUST_TARGET="aarch64-apple-ios"
+                    fi
+                    DYLIB="${SRCROOT}/target/${RUST_TARGET}/debug/libnmp_app_podcast.dylib"
+                    if [ ! -f "$DYLIB" ]; then
+                        echo "warning: ${DYLIB} not found — skipping Rust dylib embed"
+                        exit 0
+                    fi
+                    DEST="${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libnmp_app_podcast.dylib"
+                    mkdir -p "${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}"
+                    cp -f "$DYLIB" "$DEST"
+                    if [ -n "${EXPANDED_CODE_SIGN_IDENTITY:-}" ]; then
+                        /usr/bin/codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY}" \
+                            --timestamp=none "$DEST"
+                    fi
+                    """,
+                    name: "Embed Rust Dylib",
+                    basedOnDependencyAnalysis: false
+                ),
+            ],
             dependencies: [
                 .package(product: "P256K"),
                 .package(product: "SQLiteVec"),
