@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::agent_llm::{build_system_prompt_with_memory, AGENT_SYSTEM_PROMPT};
 use crate::store::PodcastStore;
 
 #[test]

@@ -531,17 +531,26 @@ async fn triage_episodes_in_background(
 /// written by `set_episode_priorities`) and updates their `attempted_at` only
 /// when the entry is already `Pending` (avoids downgrading a good score).
 fn reconcile_pending(triage_cache: &Arc<Mutex<HashMap<String, TriageResult>>>, needy_ids: &[String]) {
+    for ep_id in needy_ids {
+        stamp_pending(triage_cache, ep_id.clone());
+    }
+}
+
+/// Stamp a single episode's triage-cache entry as `Pending`, refreshing the
+/// retry cooldown (`attempted_at` → now) — UNLESS it already holds a `Ready`
+/// score, which is left untouched so a failed re-triage never downgrades a good
+/// score. This is the per-episode body of [`reconcile_pending`]; kept as its own
+/// fn so the behavior has one source of truth (and is unit-testable in isolation).
+fn stamp_pending(triage_cache: &Arc<Mutex<HashMap<String, TriageResult>>>, ep_id: String) {
     let now = Utc::now().timestamp();
     if let Ok(mut cache) = triage_cache.lock() {
-        for ep_id in needy_ids {
-            match cache.get(ep_id) {
-                Some(tr) if tr.status == TriageStatus::Ready => {
-                    // Agent wrote a good score — leave it alone.
-                }
-                _ => {
-                    // Missing or still Pending — stamp/refresh the cooldown.
-                    cache.insert(ep_id.clone(), TriageResult::pending(now));
-                }
+        match cache.get(&ep_id) {
+            Some(tr) if tr.status == TriageStatus::Ready => {
+                // Agent wrote a good score — leave it alone.
+            }
+            _ => {
+                // Missing or still Pending — stamp/refresh the cooldown.
+                cache.insert(ep_id, TriageResult::pending(now));
             }
         }
     }

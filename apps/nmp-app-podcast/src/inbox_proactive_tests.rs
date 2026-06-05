@@ -220,10 +220,10 @@ fn maybe_enqueue_triage_noop_when_already_in_progress() {
 }
 
 #[test]
-fn stamp_pending_preserves_ready_score_but_advances_attempted_at() {
-    // A failed *re-triage* of an existing Ready entry must NOT downgrade the
-    // good score to the heuristic — it keeps the score and only resets the
-    // staleness clock (so the trigger doesn't re-spawn every tick).
+fn stamp_pending_leaves_ready_entries_untouched() {
+    // A re-triage pass over an existing Ready entry must leave a good score
+    // entirely alone — score, reason, categories, AND its attempted_at clock —
+    // so a freshly-graded episode is never downgraded or churned.
     let cache = empty_triage_cache();
     let old_attempt = 1_000;
     cache.lock().unwrap().insert(
@@ -239,7 +239,10 @@ fn stamp_pending_preserves_ready_score_but_advances_attempted_at() {
     assert!((tr.priority_score - 0.9).abs() < 0.001);
     assert_eq!(tr.priority_reason, "graded");
     assert_eq!(tr.categories, vec!["tech".to_owned()]);
-    assert!(tr.attempted_at > old_attempt, "attempted_at must advance to now");
+    assert_eq!(
+        tr.attempted_at, old_attempt,
+        "Ready entries are left untouched — attempted_at is NOT advanced (see reconcile_pending)"
+    );
 }
 
 #[test]
