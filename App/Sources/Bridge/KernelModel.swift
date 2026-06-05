@@ -164,6 +164,13 @@ final class KernelModel {
         kernel.onDownloadReport = { [weak self] downloads, durableChanged in
             self?.applyDownloadReport(downloads: downloads, durableChanged: durableChanged)
         }
+        // Audio reports carry the fresh player state inline; `Playing`/buffering
+        // ticks no longer bump the global `rev`, so they must NOT pull/decode the
+        // full library. Update `nowPlaying` + the live media surfaces directly
+        // and pull only when structural state changed (play/pause/stop, end).
+        kernel.onAudioReport = { [weak self] nowPlaying, durableChanged in
+            self?.applyAudioReport(nowPlaying: nowPlaying, durableChanged: durableChanged)
+        }
         // Publish to the shared handle for external scenes (CarPlay, AppIntents,
         // …). The static is `weak`, so the model still deallocates on scene
         // teardown; the next instance re-publishes from its own `init`.
@@ -263,6 +270,38 @@ final class KernelModel {
         if durableChanged {
             pullPodcastSnapshotIfChanged(synchronous: false)
         }
+    }
+
+    /// Apply one audio report's inline player state. The hot path: `Playing`
+    /// (≤4 Hz playhead) and `BufferingProgress` ticks arrive here with
+    /// `durableChanged == false`, so they refresh ONLY the live surfaces
+    /// (`nowPlaying` scrubber + Dynamic Island + lock-screen elapsed) using the
+    /// already-decoded `library` — never re-decoding the 3k-episode snapshot. A
+    /// structural report (play/pause/stop, track end, sleep-timer) additionally
+    /// pulls the full snapshot so list-view state stays correct.
+    ///
+    /// Mirrors the `nowPlaying`/reconcile block of `applyPodcastUpdate` (the
+    /// path durable reports still take), minus the library decode + hashing.
+    func applyAudioReport(nowPlaying newNowPlaying: PlayerState?, durableChanged: Bool) {
+        let previous = nowPlaying
+        nowPlaying = newNowPlaying
+        // Live media surfaces, off the library-decode path. `reconcileLiveActivity`
+        // coalesces same-episode position updates; `reconcileNowPlayingMetadata`
+        // is a no-op unless the episode changed — both cheap, and `library` is
+        // the current cached value (unchanged by a position tick).
+        reconcileLiveActivity(previous: previous, next: newNowPlaying, library: library)
+        reconcileNowPlayingMetadata(previous: previous, next: newNowPlaying, library: library)
+        // Always probe — but `pullPodcastSnapshotIfChanged` is rev-gated, and
+        // since `Playing`/buffering ticks no longer bump the global `rev`, a tick
+        // with no other activity costs only one atomic read (no decode, no
+        // rebuild). This intentionally preserves the reactive side-channel the
+        // per-tick pull used to provide: background actor-thread work that bumps
+        // `rev` off the kernel emit path (inbox triage, categorization, and any
+        // tokio-spawned projection update) still reaches the UI during a long
+        // listen. A real change — a durable audio event OR a background bump —
+        // advances `rev` and triggers exactly one full rebuild; `durableChanged`
+        // is informational (the rev gate, not the flag, decides the pull).
+        pullPodcastSnapshotIfChanged(synchronous: false)
     }
 
     /// Apply one `PodcastUpdate` to the observable surface. Shared by the

@@ -32,6 +32,16 @@ final class PodcastHandle: @unchecked Sendable {
     /// This is the seam that keeps ~1 Hz progress off the global-`rev` hot path.
     var onDownloadReport: ((DownloadQueueSnapshot?, Bool) -> Void)?
 
+    /// Fired (on the main actor) for every audio report, carrying the fresh
+    /// `PlayerState` (live playhead / buffer / play state) and whether the
+    /// report changed *structural* state. `KernelModel` wires this to update its
+    /// live `nowPlaying` (scrubber, Dynamic Island, lock screen) directly —
+    /// `Playing`/`BufferingProgress` ticks update only that WITHOUT
+    /// pulling/decoding the full library; only `durableChanged == true`
+    /// (play/pause/stop, track end, sleep-timer) triggers a full pull. This is
+    /// the seam that keeps ~1 Hz playback ticks off the global-`rev` hot path.
+    var onAudioReport: ((PlayerState?, Bool) -> Void)?
+
     /// Deadline (seconds) for a sign-for-return round-trip. Generous — a remote
     /// (NIP-46 bunker) signer may need a human tap — but bounded so a kernel that
     /// never resolves the id can't hang an upload indefinitely.

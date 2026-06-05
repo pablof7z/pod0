@@ -102,24 +102,31 @@ extension PodcastHandle {
                 reportQueue.async { [self] in
                     guard let handle = self.podcastHandle else { return }
                     guard let result = nmp_app_podcast_audio_report(handle, reportJSON) else {
-                        // No follow-up command, but the report still bumped `rev`
-                        // (e.g. position/now-playing) — pull it through reactively
-                        // (event-driven, not polled). Hop to main: the snapshot
-                        // hook drives `@MainActor` kernel state.
-                        Task { @MainActor in self.onSnapshotMaybeChanged?() }
+                        // Error / degrade path — nothing actionable, don't pull.
                         return
                     }
                     defer { nmp_app_free_string(result) }
-                    let followUpJSON = String(cString: result)
-                    let command = followUpJSON.data(using: .utf8)
-                        .flatMap { try? JSONDecoder().decode(AudioCommand.self, from: $0) }
+                    let responseJSON = String(cString: result)
+                    guard let data = responseJSON.data(using: .utf8) else { return }
+                    let decoder = JSONDecoder()
+                    decoder.keyDecodingStrategy = .convertFromSnakeCase
+                    guard let response = try? decoder.decode(
+                        AudioReportResponse.self, from: data) else { return }
                     Task { @MainActor in
-                        if let command {
+                        // Execute the follow-up command (decoded with a PLAIN
+                        // decoder — `AudioCommand` uses coding keys a snake-case
+                        // conversion would break).
+                        if let followUpJSON = response.followUp,
+                           let cmdData = followUpJSON.data(using: .utf8),
+                           let command = try? JSONDecoder().decode(
+                            AudioCommand.self, from: cmdData) {
                             PodcastCapabilities.shared.audio.execute(command)
                         }
-                        // The report bumped the podcast `rev`; surface it
-                        // reactively (event-driven, not polled).
-                        self.onSnapshotMaybeChanged?()
+                        // Update the live player surface from the inline state, and
+                        // pull the full library only when structural state changed
+                        // (`Playing`/`BufferingProgress` ticks ride the inline
+                        // `nowPlaying` and never decode the library).
+                        self.onAudioReport?(response.nowPlaying, response.durableChanged)
                     }
                 }
             }
@@ -179,6 +186,16 @@ extension PodcastHandle {
     private struct DownloadReportResponse: Decodable {
         var followUp: String?
         var downloads: DownloadQueueSnapshot?
+        var durableChanged: Bool
+    }
+
+    /// Decoded shape of `nmp_app_podcast_audio_report`'s JSON response.
+    /// `followUp` is the raw `AudioCommand` JSON string (decoded separately, not
+    /// nested, to preserve its coding keys). `nowPlaying` is the same
+    /// `PlayerState` shape as `PodcastUpdate.now_playing`.
+    private struct AudioReportResponse: Decodable {
+        var followUp: String?
+        var nowPlaying: PlayerState?
         var durableChanged: Bool
     }
 

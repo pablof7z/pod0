@@ -31,13 +31,41 @@ use std::ffi::{c_char, CStr, CString};
 use std::time::SystemTime;
 
 use nmp_core::substrate::CapabilityRequest;
+use serde::Serialize;
 
 use super::handle::PodcastHandle;
 use crate::capability::{
     AudioCommand, AudioReport, DownloadCommand, AUDIO_CAPABILITY_NAMESPACE,
     DOWNLOAD_CAPABILITY_NAMESPACE,
 };
+use crate::player::PlayerState;
 use crate::store::PodcastStore;
+
+/// JSON response shape returned to the Swift audio-report channel. Mirrors
+/// `DownloadReportResponse` (see `download_report.rs`): live state rides the
+/// inline payload, and only structural changes bump the global `rev`.
+///
+/// Fields are decoded on the Swift side with `convertFromSnakeCase`.
+#[derive(Serialize)]
+struct AudioReportResponse {
+    /// JSON of the follow-up `AudioCommand` (e.g. the `Stop` a sleep-timer
+    /// fires), omitted when there's nothing to execute. Carried as a *string*
+    /// (not a nested object) so Swift decodes it with a plain decoder —
+    /// `AudioCommand` uses coding keys a `convertFromSnakeCase` pass would break.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    follow_up: Option<String>,
+    /// Fresh player state so Swift updates its live `nowPlaying` (scrubber,
+    /// Dynamic Island, lock screen) without pulling the full library. `None`
+    /// when nothing is loaded. Same shape as `PodcastUpdate.now_playing`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    now_playing: Option<PlayerState>,
+    /// `true` when the report changed structural state (play/pause/stop, track
+    /// end, sleep-timer). Swift pulls the full snapshot only when this is set;
+    /// `Playing`/`BufferingProgress` ticks leave it `false` and ride the inline
+    /// `now_playing` instead — that is the ~1 Hz hot path this split removes
+    /// from the full-rebuild routine.
+    durable_changed: bool,
+}
 
 /// Minimum position delta (seconds) between disk flushes while a `Playing`
 /// stream is in flight. Keeps the on-disk checkpoint within ~30 s of the live
@@ -75,23 +103,46 @@ pub extern "C" fn nmp_app_podcast_audio_report(
         Err(_) => return std::ptr::null_mut(),
     };
 
-    // -- 1. Project the report into the actor under its own lock. -----
-    let (follow_up_json, episode_id_for_writeback) = {
+    // `Playing` (≤4 Hz position) and `BufferingProgress` ticks carry only live
+    // player state — the fresh `now_playing` rides the response inline, so they
+    // must NOT bump the global `rev`. Bumping it on every tick invalidated the
+    // snapshot cache and forced a full-library rebuild + main-thread JSON decode
+    // of the whole library ~1 Hz throughout playback (the residual CPU peg after
+    // the download path was split the same way). Every other report is
+    // structural (play/pause/stop, track end, sleep-timer) and bumps `rev` so
+    // the full library projection re-runs.
+    let durable_changed = !matches!(
+        report,
+        AudioReport::Playing { .. } | AudioReport::BufferingProgress { .. }
+    );
+
+    // -- 1. Project the report into the actor; capture fresh now_playing. -----
+    let (follow_up_json, now_playing, episode_id_for_writeback) = {
         let mut actor = match handle_ref.player_actor.lock() {
             Ok(a) => a,
             Err(_) => return std::ptr::null_mut(),
         };
         let follow_up = actor.handle_audio_report(report.clone(), SystemTime::now());
         let follow_up_json = follow_up.and_then(|cmd| serde_json::to_string(&cmd).ok());
+        let state = actor.state();
         // The episode id stays in actor state across `Playing` / `Paused`
         // ticks (it's only cleared on `Stopped`); read it here so the
         // writeback step doesn't need to crack the report again.
-        let episode_id = actor.state().episode_id.clone();
+        let episode_id = state.episode_id.clone();
+        // Mirror the full snapshot's `now_playing` projection: present only when
+        // an episode is loaded (`build_podcast_update`).
+        let now_playing = if state.episode_id.is_some() {
+            Some(state.clone())
+        } else {
+            None
+        };
         drop(actor); // release before rev bump and store lock
-        handle_ref
-            .rev
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        (follow_up_json, episode_id)
+        if durable_changed {
+            handle_ref
+                .rev
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
+        (follow_up_json, now_playing, episode_id)
     };
 
     // -- 2. Mirror the playhead into the store. -----------------------
@@ -106,17 +157,23 @@ pub extern "C" fn nmp_app_podcast_audio_report(
     // When `ItemEnd` fires and `auto_play_next` is armed, pop the next
     // queued episode and dispatch Load + Play directly — the actor does
     // not do this internally because it has no access to the store (URLs)
-    // or the capability dispatcher.
+    // or the capability dispatcher. (`ItemEnd` is durable, so `rev` already
+    // bumped above; `maybe_auto_advance` bumps again after staging the load.)
     if is_item_end {
         maybe_auto_advance(handle_ref);
     }
 
-    match follow_up_json {
-        Some(json) => match CString::new(json) {
+    let response = AudioReportResponse {
+        follow_up: follow_up_json,
+        now_playing,
+        durable_changed,
+    };
+    match serde_json::to_string(&response) {
+        Ok(json) => match CString::new(json) {
             Ok(c) => c.into_raw(),
             Err(_) => std::ptr::null_mut(),
         },
-        None => std::ptr::null_mut(),
+        Err(_) => std::ptr::null_mut(),
     }
 }
 
