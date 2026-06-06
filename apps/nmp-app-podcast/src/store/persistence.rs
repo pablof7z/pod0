@@ -9,7 +9,9 @@
 //! ```text
 //! {
 //!   "schema_version": 1,
-//!   "podcasts": [ { "podcast": <Podcast>, "episodes": [<Episode>, ...] }, ... ],
+//!   "podcasts": [
+//!     { "podcast": <Podcast>, "episodes": [<Episode>, ...], "is_subscribed": true }
+//!   ],
 //!   "memory_facts": [ { "id": "...", "key": "...", ... }, ... ]  // optional
 //! }
 //! ```
@@ -34,8 +36,8 @@ pub const PERSIST_SCHEMA_VERSION: u32 = 1;
 /// File name of the persisted store inside the data directory.
 pub const PODCASTS_FILE: &str = "podcasts.json";
 
-/// On-disk envelope. One row per subscribed podcast with its episodes inlined
-/// so the load is a single fread.
+/// On-disk envelope. One row per known podcast with its episodes and follow
+/// membership inlined so the load is a single fread.
 ///
 /// `has_completed_onboarding` is part of the same envelope so the iOS
 /// shell's `OnboardingView` gate survives restart without a second file.
@@ -299,7 +301,9 @@ pub(super) struct PersistedSettings {
     pub nostr_public_key_hex: Option<String>,
 }
 
-fn default_true() -> bool { true }
+fn default_true() -> bool {
+    true
+}
 
 impl Default for PersistedSettings {
     fn default() -> Self {
@@ -373,6 +377,11 @@ pub(super) struct PersistedPodcast {
     pub podcast: Podcast,
     #[serde(default)]
     pub episodes: Vec<Episode>,
+    /// Explicit follow membership. Older persisted files predate the
+    /// known-vs-subscribed split and every row in them was treated as followed,
+    /// so the compatible default is `true`.
+    #[serde(default = "default_true")]
+    pub is_subscribed: bool,
     /// Per-podcast auto-download opt-in flag. `#[serde(default)]` lets the
     /// load path tolerate older `podcasts.json` files written before this
     /// field shipped: missing key ⇒ `false` (auto-download off). We
@@ -400,9 +409,8 @@ pub(super) fn load(data_dir: &Path) -> std::io::Result<Option<PersistedStore>> {
     let path = podcasts_path(data_dir);
     match std::fs::read(&path) {
         Ok(bytes) => {
-            let store: PersistedStore = serde_json::from_slice(&bytes).map_err(|e| {
-                std::io::Error::new(std::io::ErrorKind::InvalidData, e)
-            })?;
+            let store: PersistedStore = serde_json::from_slice(&bytes)
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
             if store.schema_version != PERSIST_SCHEMA_VERSION {
                 // Unknown / future schema — treat as empty; the next mutation
                 // will overwrite with the current shape.

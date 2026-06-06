@@ -42,7 +42,7 @@ const TRIAGE_ARCHIVED: &str = "archived";
 /// `now_unix` is injected rather than read from `SystemTime` inside so tests
 /// can pin a deterministic recency cutoff.
 pub fn build_agent_context(library: &[PodcastSummary], now_unix: i64) -> AgentContextSnapshot {
-    // ── Subscriptions: every library row is a followed show. Sort
+    // ── Subscriptions: the snapshot builder passes only followed shows here. Sort
     // case-insensitively by title (matches Swift's
     // `localizedCaseInsensitiveCompare`), then cap. ──────────────────────
     let mut titles: Vec<&str> = library.iter().map(|p| p.title.as_str()).collect();

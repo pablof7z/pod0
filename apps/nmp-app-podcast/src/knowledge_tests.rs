@@ -141,6 +141,19 @@ fn no_match_returns_empty() {
 }
 
 #[test]
+fn metadata_search_ignores_known_unsubscribed_podcast() {
+    let mut store = PodcastStore::new();
+    let podcast = Podcast::new("External Only");
+    let id = podcast.id;
+    let ep = make_episode(id, "bitcoin outside library", "external feed metadata");
+    store.upsert_known_podcast(podcast, vec![ep]);
+
+    let results = collect_knowledge_matches(&store, "bitcoin");
+
+    assert!(results.is_empty());
+}
+
+#[test]
 fn snippet_truncates_long_text_with_ellipsis() {
     let long = "a".repeat(500);
     let body = format!("{}MATCH{}", long, long);

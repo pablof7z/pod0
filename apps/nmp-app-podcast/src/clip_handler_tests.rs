@@ -24,7 +24,9 @@ fn fresh_store_with_episode(ep_id: &str, duration: Option<f64>) -> Arc<Mutex<Pod
     store
 }
 
-fn fresh_handler(store: Arc<Mutex<PodcastStore>>) -> (ClipHandler, Arc<Mutex<Vec<ClipRecord>>>, Arc<AtomicU64>) {
+fn fresh_handler(
+    store: Arc<Mutex<PodcastStore>>,
+) -> (ClipHandler, Arc<Mutex<Vec<ClipRecord>>>, Arc<AtomicU64>) {
     let clips = Arc::new(Mutex::new(Vec::new()));
     let rev = Arc::new(AtomicU64::new(0));
     let h = ClipHandler::new(clips.clone(), store, rev.clone());
@@ -143,6 +145,9 @@ fn library_with_show(ep_id: &str, episode_title: &str, show_title: &str) -> Vec<
         feed_url: None,
         author: None,
         description: None,
+        last_refreshed_at: None,
+        title_is_placeholder: false,
+        is_subscribed: true,
         owner_pubkey_hex: None,
         nostr_visibility: "public".into(),
         auto_download: false,

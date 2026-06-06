@@ -3,11 +3,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::player::AdSegment;
 
-/// One row in the library projection surfaced via
+/// One known podcast row in the library projection surfaced via
 /// [`super::snapshot::PodcastUpdate::library`].
 ///
 /// Narrow enough for the grid/list cells the iOS shell renders; episode
 /// rows are embedded so the show-detail view doesn't need a second pull.
+/// `is_subscribed` distinguishes followed rows from known-but-unfollowed
+/// feeds ingested for external listing/playback.
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct PodcastSummary {
     /// `PodcastId` as a hyphenated UUID string. For iTunes search results this
@@ -16,6 +18,10 @@ pub struct PodcastSummary {
     pub title: String,
     pub episode_count: usize,
     pub unplayed_count: usize,
+    /// True when the user actively follows this known podcast. Known-but-
+    /// unfollowed rows are still projected so external listing/playback paths
+    /// stay Rust-owned without creating Swift-only state.
+    pub is_subscribed: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub artwork_url: Option<String>,
     /// RSS feed URL. Present for library rows and iTunes search results;
@@ -29,6 +35,11 @@ pub struct PodcastSummary {
     /// Omitted when the RSS feed provides no description (`D5`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// Unix milliseconds of the last successful feed fetch/304 check.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_refreshed_at: Option<i64>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub title_is_placeholder: bool,
     /// Per-podcast auto-download policy state. Mirrors
     /// `PodcastStore::is_auto_download_enabled`. The iOS toolbar toggle
     /// reads this to render its check mark; it dispatches

@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 
 use super::projections::{
     AccountSummary, AgentContextSnapshot, AgentNoteSummary, AgentPickSummary, AgentSnapshot,
-    AgentTaskSummary, CategoryBrowseItem, ClipSummary, CommentSummary,
-    DownloadQueueSnapshot, EpisodeSummary, InboxItem, KnowledgeSearchResult, MemoryFact,
-    NostrShowSummary, OwnedPodcastInfo, PodcastSummary, SettingsSnapshot, SocialSnapshot,
-    VoiceState, WidgetSnapshot, WikiArticle,
+    AgentTaskSummary, CategoryBrowseItem, ClipSummary, CommentSummary, DownloadQueueSnapshot,
+    EpisodeSummary, InboxItem, KnowledgeSearchResult, MemoryFact, NostrShowSummary,
+    OwnedPodcastInfo, PodcastSummary, SettingsSnapshot, SocialSnapshot, VoiceState, WidgetSnapshot,
+    WikiArticle,
 };
 use crate::player::PlayerState;
 
@@ -69,9 +69,9 @@ pub struct PodcastUpdate {
     /// the projection layer — tracked in BACKLOG (`pr-social-graph-nmp-store-wiring`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub social: Option<SocialSnapshot>,
-    /// Subscribed-podcast library projection. Each entry is a narrow
-    /// [`PodcastSummary`] with embedded episode rows (newest-first).
-    /// Empty until the first successful `podcast.subscribe` action.
+    /// Known-podcast library projection. Each entry is a narrow
+    /// [`PodcastSummary`] with embedded episode rows (newest-first) and an
+    /// explicit `is_subscribed` follow flag.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub library: Vec<PodcastSummary>,
     /// Active Nostr identity, or `None` when no account is loaded.

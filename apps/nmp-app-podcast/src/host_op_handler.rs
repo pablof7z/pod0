@@ -70,8 +70,10 @@ use crate::wiki::handle_wiki_action;
 
 mod dispatch;
 mod player_actions;
+mod podcast_action_dispatch;
 mod podcast_actions;
 mod podcast_actions_feed;
+mod podcast_actions_refresh;
 mod settings_actions;
 mod siri_actions;
 mod social_actions;

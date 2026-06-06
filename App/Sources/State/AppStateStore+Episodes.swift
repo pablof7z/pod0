@@ -61,16 +61,10 @@ extension AppStateStore {
 
     // MARK: - Writes
 
-    /// Inserts episodes captured Swift-side into the render store — the
-    /// back-catalog an agent external-play `ensurePodcast` lands for a
-    /// freshly-captured (but unfollowed) feed. Returns the ids of the rows that
-    /// were newly inserted (skipping any whose `guid` already exists under the
-    /// same podcast, so a re-entrant publish is idempotent).
-    ///
-    /// Sole remaining caller: `SubscriptionService.ensurePodcast` (capture an
-    /// unfollowed feed WITHOUT subscribing), which reads the inserted episodes
-    /// back synchronously. Agent TTS / external-play single-episode flows now
-    /// route through the kernel (`kernelAddEpisode`) instead.
+    /// Inserts episodes into the Swift render store. Production feed and agent
+    /// episode ingestion now route through the Rust kernel (`kernelEnsurePodcast`
+    /// / `kernelAddEpisode`) and project back through `applyKernelState`; this
+    /// helper remains for focused AppStateStore tests and legacy fixtures.
     ///
     /// This is an INSERT seam, not a merge. The legacy RSS feed-refresh merge
     /// policy — guid-match with user-mutable-state preservation
@@ -79,9 +73,7 @@ extension AppStateStore {
     /// ingested by the Rust kernel (`kernelSubscribe` / `kernelRefresh`) and
     /// every preserved field now round-trips through `applyKernelState` →
     /// `EpisodeSummary.toEpisode` (M4 / D7), so the Swift preservation merge
-    /// was dead duplication. Production callers here only ever pass brand-new
-    /// episodes (a fresh UUID/guid per publish, or the first-ensure backlog of
-    /// a new podcast), so no merge branch was reachable.
+    /// was dead duplication.
     ///
     /// NOTE: like the feed-less podcast rows themselves, these episodes live
     /// only in Swift `state`; the kernel has no model for them, so a

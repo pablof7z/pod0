@@ -70,6 +70,29 @@ fn search_library_reports_no_matches_for_unknown_query() {
 }
 
 #[test]
+fn search_library_ignores_known_unsubscribed_podcast() {
+    let mut store = PodcastStore::new();
+    let podcast = Podcast::new("External Only");
+    let episode = Episode::new(
+        podcast.id,
+        "https://external.example/feed.xml",
+        "guid-external",
+        "Unfollowed Bitcoin Episode",
+        Url::parse("https://external.example/ep.mp3").unwrap(),
+        Utc.with_ymd_and_hms(2026, 5, 2, 12, 0, 0).unwrap(),
+    );
+    store.upsert_known_podcast(podcast, vec![episode]);
+    let registry = ToolRegistry::new(Arc::new(Mutex::new(store)));
+
+    let out = registry.execute("search_library", &serde_json::json!({ "query": "bitcoin" }));
+
+    assert!(
+        out.to_lowercase().contains("no match"),
+        "unfollowed known feeds must not appear in library search, got: {out}"
+    );
+}
+
+#[test]
 fn get_transcript_returns_stored_text() {
     let (store, _pid, eid) = fixture_store();
     {

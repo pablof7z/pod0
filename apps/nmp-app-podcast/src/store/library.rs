@@ -1,7 +1,7 @@
 //! Podcast library management and episode lookup for [`super::PodcastStore`].
 //!
 //! Extracted from `store/mod.rs` to keep that file within the 300-line soft
-//! limit. Covers subscription lifecycle, read-only podcast/episode queries,
+//! limit. Covers known-podcast lifecycle, read-only podcast/episode queries,
 //! download-path tracking, and episode metadata resolution.
 
 use std::collections::HashMap;
@@ -11,16 +11,43 @@ use podcast_core::{Episode, EpisodeId, Podcast, PodcastId};
 use super::PodcastStore;
 
 impl PodcastStore {
-    /// Add or replace a podcast and its episode list, flushing to disk if
-    /// a data dir is registered.
+    /// Add or replace a known podcast and its episode list without changing
+    /// whether the user follows it.
     ///
-    /// Idempotent: re-subscribing to the same feed URL replaces the existing
-    /// record so a "refresh" can use the same code path as "subscribe".
-    pub fn subscribe(&mut self, podcast: Podcast, episodes: Vec<Episode>) {
+    /// Idempotent on podcast id: refreshes, external-play metadata hydration,
+    /// and unfollowed-feed ensure all use this path so the Rust store stays the
+    /// source of truth without manufacturing a subscription row.
+    pub fn upsert_known_podcast(&mut self, podcast: Podcast, episodes: Vec<Episode>) {
         let id = podcast.id;
         self.podcasts.insert(id, podcast);
         self.episodes.insert(id, episodes);
         self.persist();
+    }
+
+    /// Add or replace a podcast and mark it followed, flushing to disk if a
+    /// data dir is registered.
+    ///
+    /// Idempotent: re-subscribing to the same feed URL replaces the existing
+    /// record and keeps exactly one follow membership entry.
+    pub fn subscribe(&mut self, podcast: Podcast, episodes: Vec<Episode>) {
+        let id = podcast.id;
+        self.podcasts.insert(id, podcast);
+        self.episodes.insert(id, episodes);
+        self.followed_podcasts.insert(id);
+        self.persist();
+    }
+
+    /// Mark an already-known podcast as followed. Returns `false` when the
+    /// podcast row does not exist.
+    pub fn mark_subscribed(&mut self, podcast_id: PodcastId) -> bool {
+        if !self.podcasts.contains_key(&podcast_id) {
+            return false;
+        }
+        let changed = self.followed_podcasts.insert(podcast_id);
+        if changed {
+            self.persist();
+        }
+        true
     }
 
     /// Remove a podcast and all its episodes, flushing to disk if a data dir
@@ -32,14 +59,15 @@ impl PodcastStore {
     pub fn unsubscribe(&mut self, podcast_id: PodcastId) {
         let removed_p = self.podcasts.remove(&podcast_id).is_some();
         let removed_e = self.episodes.remove(&podcast_id).is_some();
+        let removed_f = self.followed_podcasts.remove(&podcast_id);
         let removed_a = self.auto_download_enabled.remove(&podcast_id);
         self.auto_download_cellular_allowed.remove(&podcast_id);
-        if removed_p || removed_e || removed_a {
+        if removed_p || removed_e || removed_f || removed_a {
             self.persist();
         }
     }
 
-    /// Iterate over all podcasts and their episode slices.
+    /// Iterate over all known podcasts and their episode slices.
     pub fn all_podcasts(&self) -> Vec<(&Podcast, &[Episode])> {
         let mut result = Vec::with_capacity(self.podcasts.len());
         for (id, podcast) in &self.podcasts {
@@ -49,35 +77,69 @@ impl PodcastStore {
         result
     }
 
+    /// Iterate over followed podcasts and their episode slices.
+    pub fn subscribed_podcasts(&self) -> Vec<(&Podcast, &[Episode])> {
+        let mut result = Vec::with_capacity(self.followed_podcasts.len());
+        for id in &self.followed_podcasts {
+            if let Some(podcast) = self.podcasts.get(id) {
+                let eps = self.episodes.get(id).map(Vec::as_slice).unwrap_or(&[]);
+                result.push((podcast, eps));
+            }
+        }
+        result
+    }
+
     pub fn podcast_count(&self) -> usize {
         self.podcasts.len()
     }
 
     pub fn episodes_for(&self, podcast_id: PodcastId) -> &[Episode] {
-        self.episodes.get(&podcast_id).map(Vec::as_slice).unwrap_or(&[])
+        self.episodes
+            .get(&podcast_id)
+            .map(Vec::as_slice)
+            .unwrap_or(&[])
     }
 
     pub fn podcast(&self, podcast_id: PodcastId) -> Option<&Podcast> {
         self.podcasts.get(&podcast_id)
     }
 
+    pub fn is_subscribed(&self, podcast_id: PodcastId) -> bool {
+        self.followed_podcasts.contains(&podcast_id)
+    }
+
     /// Look up a podcast by the string form of its UUID.
     pub fn podcast_by_id_str(&self, id_str: &str) -> Option<&Podcast> {
-        self.podcasts.values().find(|p| p.id.0.to_string() == id_str)
+        self.podcasts
+            .values()
+            .find(|p| p.id.0.to_string() == id_str)
     }
 
-    /// Return `true` when a podcast with the given RSS feed URL is already
-    /// subscribed. Used to reject duplicate `subscribe` actions before
-    /// the HTTP fetch fires.
+    /// Return the known podcast row for a feed URL.
+    pub fn podcast_by_feed_url(&self, url: &url::Url) -> Option<&Podcast> {
+        self.podcasts
+            .values()
+            .find(|p| p.feed_url.as_ref() == Some(url))
+    }
+
+    /// Return `true` when a podcast with the given RSS feed URL is known.
     pub fn has_feed_url(&self, url: &url::Url) -> bool {
-        self.podcasts.values().any(|p| p.feed_url.as_ref() == Some(url))
+        self.podcast_by_feed_url(url).is_some()
     }
 
-    /// Return `(id, feed_url, etag, last_modified)` for every podcast that has
-    /// an RSS feed URL. Used by `refresh_all`.
+    /// Return `true` when a feed URL is already followed by the user.
+    pub fn has_subscribed_feed_url(&self, url: &url::Url) -> bool {
+        self.podcast_by_feed_url(url)
+            .map(|p| self.is_subscribed(p.id))
+            .unwrap_or(false)
+    }
+
+    /// Return `(id, feed_url, etag, last_modified)` for every followed podcast
+    /// that has an RSS feed URL. Used by `refresh_all`.
     pub fn all_feed_infos(&self) -> Vec<(PodcastId, url::Url, Option<String>, Option<String>)> {
         self.podcasts
             .values()
+            .filter(|p| self.is_subscribed(p.id))
             .filter_map(|p| {
                 p.feed_url
                     .clone()
@@ -193,7 +255,10 @@ impl PodcastStore {
     /// `None` when the episode is unknown. Used for validation before dispatch.
     pub fn podcast_id_for_episode(&self, episode_id_str: &str) -> Option<podcast_core::PodcastId> {
         for (podcast_id, episodes) in &self.episodes {
-            if episodes.iter().any(|e| e.id.0.to_string() == episode_id_str) {
+            if episodes
+                .iter()
+                .any(|e| e.id.0.to_string() == episode_id_str)
+            {
                 return Some(*podcast_id);
             }
         }
@@ -234,7 +299,11 @@ impl PodcastStore {
         for (_podcast, episodes) in self.all_podcasts() {
             for ep in episodes {
                 let id_str = ep.id.0.to_string();
-                let ep_guid: &str = if !ep.guid.is_empty() { &ep.guid } else { &id_str };
+                let ep_guid: &str = if !ep.guid.is_empty() {
+                    &ep.guid
+                } else {
+                    &id_str
+                };
                 if ep_guid == guid {
                     return Some(id_str);
                 }

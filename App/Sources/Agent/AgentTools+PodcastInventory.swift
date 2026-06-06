@@ -123,10 +123,10 @@ extension AgentTools {
         //   • podcast_id (UUID)           — read straight from the store.
         //   • podcast_id (numeric string) — iTunes collection ID; resolve to
         //                                   a feed URL via the directory,
-        //                                   then ensurePodcast → store.
-        //   • feed_url    (RSS URL)       — ensurePodcast → store.
+        //                                   then ensurePodcast → Rust store.
+        //   • feed_url    (RSS URL)       — ensurePodcast → Rust store.
         //
-        // ensurePodcast captures the show's metadata + episodes without
+        // ensurePodcast ingests the show's metadata + episodes without
         // creating a `PodcastSubscription`. That's the whole point: the
         // agent can list episodes for shows the user has not followed
         // without flipping the follow bit against the user's intent.
@@ -217,7 +217,7 @@ extension AgentTools {
             podcastID: ensured.podcastID,
             limit: limit
         ) else {
-            // ensurePodcast just landed a Podcast row; if the inventory
+            // ensurePodcast just projected a Rust-owned Podcast row; if the inventory
             // adapter can't find it the wiring is broken. Surface a
             // clear error rather than masking it as "no episodes."
             return toolError("Feed '\(feedURL)' was loaded but its podcast row could not be located in the inventory.")

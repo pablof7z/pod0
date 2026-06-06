@@ -96,7 +96,7 @@ pub fn build_inbox(
     let now = Utc::now().timestamp();
     let mut items: Vec<InboxItem> = Vec::new();
 
-    for (podcast, episodes) in store_guard.all_podcasts() {
+    for (podcast, episodes) in store_guard.subscribed_podcasts() {
         for ep in episodes {
             if ep.played {
                 continue;
@@ -214,7 +214,7 @@ pub fn maybe_enqueue_triage(
     // Collect unlistened episode ids under a brief store lock, then release.
     let episode_ids: Vec<String> = match store.lock() {
         Ok(guard) => guard
-            .all_podcasts()
+            .subscribed_podcasts()
             .into_iter()
             .flat_map(|(_, eps)| {
                 eps.iter()
@@ -417,12 +417,12 @@ async fn triage_episodes_in_background(
         };
 
         let has_memory = !guard.all_memory_facts().is_empty();
-        let has_history = guard.all_podcasts().into_iter().any(|(_, eps)| {
+        let has_history = guard.subscribed_podcasts().into_iter().any(|(_, eps)| {
             eps.iter().any(|e| e.played || e.is_starred || e.position_secs > 0.0)
         });
 
         let eps: Vec<EpisodeInput> = guard
-            .all_podcasts()
+            .subscribed_podcasts()
             .into_iter()
             .flat_map(|(podcast, eps)| {
                 let pod_title = podcast.title.clone();

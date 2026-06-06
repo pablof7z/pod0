@@ -144,10 +144,10 @@ final class LivePlaybackHostAdapter: PlaybackHostProtocol, @unchecked Sendable {
         //      stable for the user.
         //   3. No feed_url at all → parent to Podcast.unknownID.
         //
-        // We deliberately never call `ensurePodcast` here: that helper also
-        // upserts every parsed episode in the feed, which would dump the
-        // show's whole backlog into the user's library without them having
-        // subscribed. Backlog ingestion is reserved for `subscribe_podcast`.
+        // We deliberately never call `ensurePodcast` here: that helper fetches
+        // and ingests the feed's back-catalog. External playback should start
+        // immediately with a single kernel-owned episode, then hydrate only
+        // lightweight show metadata in the background.
         let parentResolution = await resolveExternalParent(feedURLString: feedURLString)
         guard let parentResolution else {
             logger.error("playExternalEpisode: store unavailable")

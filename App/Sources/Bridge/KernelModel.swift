@@ -436,7 +436,7 @@ final class KernelModel {
             hasObservedForeground = true
             return
         }
-        dispatch(namespace: "podcast", body: ["op": "refresh_all"])
+        dispatch(PodcastKernelAction.RefreshAll())
     }
     func lifecycleBackground() { kernel.lifecycleBackground() }
 

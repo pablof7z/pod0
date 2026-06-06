@@ -247,21 +247,27 @@ extension AppStateStore {
                 author: summary.author ?? "",
                 imageURL: summary.artworkUrl.flatMap { URL(string: $0) },
                 description: summary.description ?? "",
+                lastRefreshedAt: summary.lastRefreshedAt.map {
+                    Date(timeIntervalSince1970: TimeInterval($0) / 1000)
+                },
+                titleIsPlaceholder: summary.titleIsPlaceholder,
                 ownerPubkeyHex: summary.ownerPubkeyHex,
                 nostrVisibility: visibility
             ))
-            // `cellularAllowed` is projected from Rust's
-            // `auto_download_cellular_allowed` set; absent (false) means
-            // the default Wi-Fi-only behaviour. Round-trip the flag so a
-            // user who turned off Wi-Fi-only doesn't find it silently
-            // re-enabled after the next kernel snapshot.
-            let autoDownload: AutoDownloadPolicy = summary.autoDownload
-                ? AutoDownloadPolicy(mode: .allNew, wifiOnly: !summary.cellularAllowed)
-                : AutoDownloadPolicy(mode: .off, wifiOnly: !summary.cellularAllowed)
-            subscriptions.append(PodcastSubscription(
-                podcastID: uuid,
-                autoDownload: autoDownload
-            ))
+            if summary.isSubscribed {
+                // `cellularAllowed` is projected from Rust's
+                // `auto_download_cellular_allowed` set; absent (false) means
+                // the default Wi-Fi-only behaviour. Round-trip the flag so a
+                // user who turned off Wi-Fi-only doesn't find it silently
+                // re-enabled after the next kernel snapshot.
+                let autoDownload: AutoDownloadPolicy = summary.autoDownload
+                    ? AutoDownloadPolicy(mode: .allNew, wifiOnly: !summary.cellularAllowed)
+                    : AutoDownloadPolicy(mode: .off, wifiOnly: !summary.cellularAllowed)
+                subscriptions.append(PodcastSubscription(
+                    podcastID: uuid,
+                    autoDownload: autoDownload
+                ))
+            }
         }
         // Preserve the Unknown sentinel row so legacy foreign keys resolve.
         if !podcasts.contains(where: { $0.id == Podcast.unknownID }) {

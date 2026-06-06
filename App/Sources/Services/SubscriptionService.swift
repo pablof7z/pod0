@@ -1,35 +1,25 @@
 import Foundation
-import os.log
 
-/// Coordinates `FeedClient` fetches with `AppStateStore` writes.
+/// Coordinates feed lifecycle requests with the Rust kernel.
 ///
 /// Single entry point shared by:
 ///   - "Add by URL" — first-time subscribe to an unknown feed.
-///   - OPML import — enrich each parsed entry then store + episodes.
-///   - Pull-to-refresh — re-fetch one show, or every show in parallel.
-///   - Agent `play_external_episode` — `ensurePodcast(feedURLString:)` makes
-///     the metadata available without forcing a follow.
+///   - OPML import — subscribe to each parsed feed.
+///   - Pull-to-refresh — re-fetch one show, or every followed show.
+///   - Agent `list_episodes` external paths — `ensurePodcast(feedURLString:)`
+///     ingests metadata and episodes without forcing a follow.
 ///
-/// All work is `@MainActor`-isolated because the store is `@MainActor` and we
-/// dispatch the I/O via `URLSession.shared` which already hops off-main
-/// internally. Keeping this service main-actor avoids a fan of explicit
-/// `await MainActor.run` blocks at the call sites.
+/// All work is `@MainActor`-isolated because the store is `@MainActor`. Feed
+/// I/O lives in the Rust kernel; Swift waits for projected state.
 @MainActor
 struct SubscriptionService {
 
-    private static let logger = Logger.app("SubscriptionService")
-
-    /// Underlying feed client. Tests can pass a stub session via
-    /// `FeedClient(session:)`.
-    let client: FeedClient
-
     /// The destination store. Podcasts, subscriptions and episodes all land
-    /// here.
+    /// here via kernel projection.
     let store: AppStateStore
 
-    init(store: AppStateStore, client: FeedClient = FeedClient()) {
+    init(store: AppStateStore) {
         self.store = store
-        self.client = client
     }
 
     // MARK: - Errors surfaced to UI
@@ -79,57 +69,25 @@ struct SubscriptionService {
     // MARK: - Ensure a podcast is known (without subscribing)
 
     /// Returns a `Podcast` row for the feed at `feedURLString`, fetching and
-    /// upserting it when the app doesn't already know about it.
+    /// ingesting it through the Rust kernel when needed.
     ///
     /// Does NOT create a `PodcastSubscription` — call `addSubscription` for
-    /// that. The agent's external-play path uses this to capture proper
-    /// metadata for episodes the user hasn't followed.
+    /// that. This is the Rust-owned known-feed path for external listing.
     @discardableResult
     func ensurePodcast(feedURLString: String) async throws -> Podcast {
         let trimmed = feedURLString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = normalizedURL(from: trimmed) else {
             throw AddError.invalidURL
         }
-        if let existing = store.podcast(feedURL: url) {
-            return existing
-        }
-        let placeholder = Podcast(
-            feedURL: url,
-            title: url.host ?? trimmed,
-            titleIsPlaceholder: true
-        )
-        let result: FeedClient.FeedFetchResult
-        do {
-            result = try await client.fetch(placeholder)
-        } catch let feedError as FeedClient.FeedFetchError {
-            throw map(feedError)
-        }
-        switch result {
-        case .updated(let podcast, let episodes, _):
-            // FeedClient returns a new Podcast with real metadata; its
-            // titleIsPlaceholder defaults to false, so no explicit clear needed.
-            let stored = store.upsertPodcast(podcast)
-            store.upsertEpisodes(
-                episodes,
-                forPodcast: stored.id
-            )
-            return stored
-        case .notModified:
-            // First fetch can't realistically be 304 (no ETag was sent), but
-            // if a server misbehaves we still want a record on disk.
-            // titleIsPlaceholder stays true — real title still unknown.
-            return store.upsertPodcast(placeholder)
-        }
+        return try await store.kernelEnsurePodcast(feedURL: url.absoluteString)
     }
 
     // MARK: - Add by URL (subscribe + fetch episodes)
 
-    /// Subscribes to a feed URL. Resolves the podcast (fetching the feed
-    /// fresh when the row is brand-new or only a thin metadata
-    /// placeholder created by a prior external play), persists the
-    /// resulting podcast + subscription, and upserts the parsed episodes
-    /// — the user is now following the show, so they should see the
-    /// backlog like a normal subscribe.
+    /// Subscribes to a feed URL through the Rust kernel. If the feed was
+    /// already known but unfollowed, the kernel reuses that row and marks it
+    /// followed; otherwise it fetches and ingests the feed before projecting
+    /// the subscription back to Swift.
     ///
     /// Returns the live podcast on success. Throws `AddError` for any UI-
     /// reportable failure (including the duplicate-follow case so callers
@@ -166,18 +124,4 @@ struct SubscriptionService {
         return url
     }
 
-    private func map(_ error: FeedClient.FeedFetchError) -> AddError {
-        switch error {
-        case .transport(let underlying):
-            return .transport(underlying)
-        case .http(let status):
-            return .http(status)
-        case .parse(let parseError):
-            let message = parseError.errorDescription
-                ?? (parseError as NSError).localizedDescription
-            return .parse(message)
-        case .missingFeedURL:
-            return .invalidURL
-        }
-    }
 }

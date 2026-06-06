@@ -4,19 +4,26 @@
 
 import Foundation
 
-/// Narrow projection for a subscribed podcast (one library grid/list cell).
+/// Narrow projection for a known podcast (one library grid/list cell).
 /// Episode rows are embedded so the show-detail view doesn't need a second pull.
 struct PodcastSummary: Identifiable, Equatable, Hashable {
     var id: String
     var title: String
     var episodeCount: Int = 0
     var unplayedCount: Int = 0
+    /// True when the user follows this known podcast. Rust also projects
+    /// known-but-unfollowed rows for external feed listing/playback; those
+    /// rows must not become `PodcastSubscription`s in Swift.
+    var isSubscribed: Bool = true
     var artworkUrl: String? = nil
     var feedUrl: String? = nil
     var author: String? = nil
     /// Podcast description, HTML-stripped by the Rust projection layer.
     /// `nil` when the RSS feed provides no description.
     var description: String? = nil
+    /// Unix milliseconds of the last successful Rust feed fetch or 304 check.
+    var lastRefreshedAt: Int? = nil
+    @DefaultFalse var titleIsPlaceholder: Bool = false
     /// Per-podcast auto-download policy state. `true` ⇒ the Rust kernel
     /// will auto-queue freshly-discovered episodes on the next feed
     /// refresh. The ShowDetailView toolbar reads this for the toggle's
@@ -180,10 +187,13 @@ extension PodcastSummary: Codable {
         title = try c.decode(String.self, forKey: .title)
         episodeCount = try c.decodeIfPresent(Int.self, forKey: .episodeCount) ?? 0
         unplayedCount = try c.decodeIfPresent(Int.self, forKey: .unplayedCount) ?? 0
+        isSubscribed = try c.decodeIfPresent(Bool.self, forKey: .isSubscribed) ?? true
         artworkUrl = try c.decodeIfPresent(String.self, forKey: .artworkUrl)
         feedUrl = try c.decodeIfPresent(String.self, forKey: .feedUrl)
         author = try c.decodeIfPresent(String.self, forKey: .author)
         description = try c.decodeIfPresent(String.self, forKey: .description)
+        lastRefreshedAt = try c.decodeIfPresent(Int.self, forKey: .lastRefreshedAt)
+        titleIsPlaceholder = try c.decodeIfPresent(Bool.self, forKey: .titleIsPlaceholder) ?? false
         autoDownload = try c.decodeIfPresent(Bool.self, forKey: .autoDownload) ?? false
         cellularAllowed = try c.decodeIfPresent(Bool.self, forKey: .cellularAllowed) ?? false
         ownerPubkeyHex = try c.decodeIfPresent(String.self, forKey: .ownerPubkeyHex)

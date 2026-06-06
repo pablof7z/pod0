@@ -17,6 +17,43 @@ fn subscribe_action_round_trips() {
 }
 
 #[test]
+fn ensure_podcast_action_round_trips() {
+    let action = PodcastAction::EnsurePodcast {
+        feed_url: "https://feeds.example.com/podcast.rss".into(),
+    };
+    let json = serde_json::to_string(&action).expect("encode");
+    assert!(json.contains(r#""op":"ensure_podcast""#));
+    assert!(json.contains(r#""feed_url""#));
+    let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, action);
+}
+
+#[test]
+fn follow_state_actions_decode_swift_wire_shape() {
+    let unsubscribe: PodcastAction =
+        serde_json::from_str(r#"{"op":"unsubscribe","podcast_id":"p"}"#).expect("decode");
+    assert_eq!(
+        unsubscribe,
+        PodcastAction::Unsubscribe {
+            podcast_id: "p".into()
+        }
+    );
+
+    let refresh: PodcastAction =
+        serde_json::from_str(r#"{"op":"refresh","podcast_id":"p"}"#).expect("decode");
+    assert_eq!(
+        refresh,
+        PodcastAction::Refresh {
+            podcast_id: "p".into()
+        }
+    );
+
+    let refresh_all: PodcastAction =
+        serde_json::from_str(r#"{"op":"refresh_all"}"#).expect("decode");
+    assert_eq!(refresh_all, PodcastAction::RefreshAll);
+}
+
+#[test]
 fn create_podcast_action_round_trips() {
     let action = PodcastAction::CreatePodcast {
         podcast_id: "pod-1".into(),
@@ -117,7 +154,9 @@ fn add_episode_decodes_swift_wire_shape_http_enclosure() {
 #[test]
 fn import_opml_action_round_trips() {
     let xml = "<opml version=\"2.0\"><body/></opml>".to_string();
-    let action = PodcastAction::ImportOpml { content: xml.clone() };
+    let action = PodcastAction::ImportOpml {
+        content: xml.clone(),
+    };
     let json = serde_json::to_string(&action).expect("encode");
     assert!(json.contains(r#""op":"import_opml""#));
     assert!(json.contains(r#""content""#));
@@ -264,7 +303,11 @@ fn execute_emits_dispatch_host_op() {
     .expect("execute ok");
     let commands = commands.into_inner().unwrap();
     assert_eq!(commands.len(), 1);
-    let ActorCommand::DispatchHostOp { action_json, correlation_id } = &commands[0] else {
+    let ActorCommand::DispatchHostOp {
+        action_json,
+        correlation_id,
+    } = &commands[0]
+    else {
         panic!("expected DispatchHostOp");
     };
     assert_eq!(correlation_id, "corr-1");
@@ -326,7 +369,8 @@ fn set_episode_triage_action_round_trips() {
 fn set_episode_triage_tolerates_absent_optional_fields() {
     // Swift omits `is_hero` (false) and `rationale` (nil) — serde defaults
     // must fill them so the decode doesn't throw.
-    let json = r#"{"op":"set_episode_triage","decisions":[{"episode_id":"ep-9","decision":"archived"}]}"#;
+    let json =
+        r#"{"op":"set_episode_triage","decisions":[{"episode_id":"ep-9","decision":"archived"}]}"#;
     let decoded: PodcastAction = serde_json::from_str(json).expect("decode");
     match decoded {
         PodcastAction::SetEpisodeTriage { decisions } => {
@@ -368,10 +412,13 @@ fn set_episode_transcript_status_action_round_trips() {
 
 #[test]
 fn set_episode_transcript_status_tolerates_absent_message() {
-    let json = r#"{"op":"set_episode_transcript_status","episode_id":"ep-3","status":"transcribing"}"#;
+    let json =
+        r#"{"op":"set_episode_transcript_status","episode_id":"ep-3","status":"transcribing"}"#;
     let decoded: PodcastAction = serde_json::from_str(json).expect("decode");
     match decoded {
-        PodcastAction::SetEpisodeTranscriptStatus { status, message, .. } => {
+        PodcastAction::SetEpisodeTranscriptStatus {
+            status, message, ..
+        } => {
             assert_eq!(status, "transcribing");
             assert_eq!(message, None);
         }

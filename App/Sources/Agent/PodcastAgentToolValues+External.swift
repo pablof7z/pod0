@@ -92,10 +92,9 @@ public struct PodcastSubscribeResult: Sendable, Equatable {
 /// Result returned by `PodcastSubscribeProtocol.ensurePodcast(feedURLString:)`.
 ///
 /// Mirrors `PodcastSubscribeResult` minus `alreadySubscribed` — ensure is
-/// idempotent by design and never creates a `PodcastSubscription` row, so the
-/// caller can't distinguish "we created this just now" from "this was already
-/// known." Used by `list_episodes` (external paths) to capture metadata for a
-/// feed without forcing a follow.
+/// idempotent by design and never creates a `PodcastSubscription` row. Used by
+/// `list_episodes` external paths to make Rust ingest a feed without forcing a
+/// follow.
 public struct PodcastEnsureResult: Sendable, Equatable {
     public let podcastID: PodcastID
     public let title: String

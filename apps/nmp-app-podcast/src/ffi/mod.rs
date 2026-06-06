@@ -47,6 +47,7 @@ pub(crate) mod relay_persist;
 pub(crate) mod snapshot;
 mod snapshot_categories;
 mod snapshot_downloads;
+mod snapshot_library;
 mod snapshot_owned;
 mod snapshot_queue;
 mod snapshot_relays;

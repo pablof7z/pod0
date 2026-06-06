@@ -64,16 +64,19 @@ pub(crate) fn handle_run(
 ) -> serde_json::Value {
     let snapshot: Vec<(String, String, String)> = match store.lock() {
         Ok(s) => s
-            .all_podcasts()
+            .subscribed_podcasts()
             .into_iter()
             .flat_map(|(_podcast, episodes)| {
-                episodes.iter().map(|ep| {
-                    (
-                        ep.id.0.to_string(),
-                        ep.title.clone(),
-                        ep.description.clone(),
-                    )
-                }).collect::<Vec<_>>()
+                episodes
+                    .iter()
+                    .map(|ep| {
+                        (
+                            ep.id.0.to_string(),
+                            ep.title.clone(),
+                            ep.description.clone(),
+                        )
+                    })
+                    .collect::<Vec<_>>()
             })
             .collect(),
         Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
@@ -139,7 +142,7 @@ async fn categorize_in_background(
             }
         };
         guard
-            .all_podcasts()
+            .subscribed_podcasts()
             .into_iter()
             .flat_map(|(_podcast, eps)| {
                 eps.into_iter()
@@ -220,7 +223,7 @@ pub(crate) fn handle_categorize_episode(
 /// Returns `None` if the id doesn't match any episode in any subscribed
 /// podcast.
 fn find_episode_text(store: &PodcastStore, episode_id: &str) -> Option<(String, String)> {
-    for (_podcast, episodes) in store.all_podcasts() {
+    for (_podcast, episodes) in store.subscribed_podcasts() {
         for ep in episodes {
             if ep.id.0.to_string() == episode_id {
                 return Some((ep.title.clone(), ep.description.clone()));

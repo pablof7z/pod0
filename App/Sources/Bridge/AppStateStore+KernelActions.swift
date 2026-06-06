@@ -37,7 +37,7 @@ extension AppStateStore {
            subscription(podcastID: existing.id) != nil {
             throw SubscriptionService.AddError.alreadySubscribed(title: existing.title)
         }
-        kern.dispatch(namespace: "podcast", body: ["op": "subscribe", "feed_url": trimmed])
+        kern.dispatch(PodcastKernelAction.Subscribe(feedUrl: trimmed))
         let deadline = ContinuousClock.now + timeout
         while ContinuousClock.now < deadline {
             if let p = podcast(feedURL: url),
@@ -50,19 +50,17 @@ extension AppStateStore {
 
     /// Unsubscribe from a podcast and remove it from the library.
     func kernelUnsubscribe(podcastID: UUID) {
-        kernel?.dispatch(namespace: "podcast",
-                         body: ["op": "unsubscribe", "podcast_id": podcastID.uuidString])
+        kernel?.dispatch(PodcastKernelAction.Unsubscribe(podcastId: podcastID.uuidString))
     }
 
     /// Trigger a full feed refresh for every subscription.
     func kernelRefreshAll() {
-        kernel?.dispatch(namespace: "podcast", body: ["op": "refresh_all"])
+        kernel?.dispatch(PodcastKernelAction.RefreshAll())
     }
 
     /// Refresh a single podcast feed.
     func kernelRefresh(podcastID: UUID) {
-        kernel?.dispatch(namespace: "podcast",
-                         body: ["op": "refresh", "podcast_id": podcastID.uuidString])
+        kernel?.dispatch(PodcastKernelAction.Refresh(podcastId: podcastID.uuidString))
     }
 
     /// Dispatch a NIP-F4 (`kind:10154`) Nostr podcast discovery sweep
@@ -569,20 +567,18 @@ extension AppStateStore {
         visibility: String,
         titleIsPlaceholder: Bool
     ) {
-        var body: [String: Any] = [
-            "op": "create_podcast",
-            "podcast_id": podcastId,
-            "title": title,
-            "description": description,
-            "author": author,
-            "categories": categories,
-            "visibility": visibility,
-            "title_is_placeholder": titleIsPlaceholder,
-        ]
-        if let feedUrl { body["feed_url"] = feedUrl }
-        if let artworkUrl { body["artwork_url"] = artworkUrl }
-        if let language { body["language"] = language }
-        kernel?.dispatch(namespace: "podcast", body: body)
+        kernel?.dispatch(PodcastKernelAction.CreatePodcast(
+            podcastId: podcastId,
+            title: title,
+            description: description,
+            author: author,
+            feedUrl: feedUrl,
+            artworkUrl: artworkUrl,
+            language: language,
+            categories: categories,
+            visibility: visibility,
+            titleIsPlaceholder: titleIsPlaceholder
+        ))
     }
 
     /// Insert (or update) an episode under a podcast in the Rust kernel store —
@@ -602,22 +598,20 @@ extension AppStateStore {
         description: String,
         durationSecs: Double?,
         imageUrl: String?,
-        chapters: [[String: Any]],
+        chapters: [KernelEpisodeChapterPayload],
         transcript: String?
     ) {
-        var body: [String: Any] = [
-            "op": "add_episode",
-            "podcast_id": podcastId,
-            "episode_id": episodeId,
-            "title": title,
-            "enclosure_url": enclosureUrl,
-            "description": description,
-            "chapters": chapters,
-        ]
-        if let durationSecs { body["duration_secs"] = durationSecs }
-        if let imageUrl { body["image_url"] = imageUrl }
-        if let transcript { body["transcript"] = transcript }
-        kernel?.dispatch(namespace: "podcast", body: body)
+        kernel?.dispatch(PodcastKernelAction.AddEpisode(
+            podcastId: podcastId,
+            episodeId: episodeId,
+            title: title,
+            enclosureUrl: enclosureUrl,
+            description: description,
+            durationSecs: durationSecs,
+            imageUrl: imageUrl,
+            chapters: chapters,
+            transcript: transcript
+        ))
     }
 
     /// Claim ownership of a podcast for NIP-F4 publishing: Rust generates a

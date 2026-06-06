@@ -163,22 +163,12 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
         )
     }
 
-    /// Convert an `Episode.Chapter` into the `add_episode` wire dict. Carries
+    /// Convert an `Episode.Chapter` into the typed `add_episode` wire payload. Carries
     /// the parity fields (`image_url`, `source_episode_id`) the kernel stores
     /// and projects back onto the episode's chapters. One canonical chapter-wire
     /// representation.
-    static func chapterWire(_ chapter: Episode.Chapter) -> [String: Any] {
-        var dict: [String: Any] = [
-            "start_secs": chapter.startTime,
-            "title": chapter.title,
-        ]
-        if let imageURL = chapter.imageURL {
-            dict["image_url"] = imageURL.absoluteString
-        }
-        if let sourceEpisodeID = chapter.sourceEpisodeID {
-            dict["source_episode_id"] = sourceEpisodeID
-        }
-        return dict
+    static func chapterWire(_ chapter: Episode.Chapter) -> KernelEpisodeChapterPayload {
+        KernelEpisodeChapterPayload(chapter)
     }
 
     // MARK: - Track building

@@ -12,8 +12,7 @@ use std::sync::Arc;
 
 use super::handle::PodcastHandle;
 use super::projections::{
-    AccountSummary, AgentSnapshot, ChapterSummary, EpisodeSummary, PodcastSummary,
-    SettingsSnapshot, VoiceState,
+    AccountSummary, AgentSnapshot, PodcastSummary, SettingsSnapshot, VoiceState,
 };
 use super::snapshot_categories::build_category_aggregate;
 use super::snapshot_downloads::build_downloads_snapshot;
@@ -37,229 +36,188 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
 
     let now_playing = handle.player_actor.lock().ok().and_then(|a| {
         let s = a.state().clone();
-        if s.episode_id.is_some() { Some(s) } else { None }
+        if s.episode_id.is_some() {
+            Some(s)
+        } else {
+            None
+        }
     });
 
     // Snapshot caches before the store lock so we don't hold two locks at once.
-    let transcripts = handle.transcripts.lock().ok().map(|t| t.clone()).unwrap_or_default();
-    let categories_cache: std::collections::HashMap<String, Vec<String>> =
-        handle.categories.lock().ok().map(|c| c.clone()).unwrap_or_default();
+    let transcripts = handle
+        .transcripts
+        .lock()
+        .ok()
+        .map(|t| t.clone())
+        .unwrap_or_default();
+    let categories_cache: std::collections::HashMap<String, Vec<String>> = handle
+        .categories
+        .lock()
+        .ok()
+        .map(|c| c.clone())
+        .unwrap_or_default();
 
     // Single store lock → library + memory_facts + settings.
-    let (library, memory_facts, settings) = handle.store.lock().ok().map(|s| {
-        let library: Vec<PodcastSummary> = s
-            .all_podcasts()
-            .into_iter()
-            .map(|(podcast, episodes)| PodcastSummary {
-                id: podcast.id.0.to_string(),
-                title: podcast.title.clone(),
-                episode_count: episodes.len(),
-                unplayed_count: episodes.iter().filter(|e| !e.played).count(),
-                artwork_url: podcast.image_url.as_ref().map(|u| u.to_string()),
-                feed_url: podcast.feed_url.as_ref().map(|u| u.to_string()),
-                author: if podcast.author.is_empty() {
-                    None
-                } else {
-                    Some(podcast.author.clone())
-                },
-                description: Some(handle.clean_html(&podcast.description))
-                    .filter(|d| !d.is_empty()),
-                owner_pubkey_hex: podcast.owner_pubkey_hex.clone(),
-                nostr_visibility: match podcast.nostr_visibility {
-                    podcast_core::NostrVisibility::Private => "private".to_string(),
-                    podcast_core::NostrVisibility::Public => "public".to_string(),
-                },
-                auto_download: s.is_auto_download_enabled(podcast.id),
-                cellular_allowed: !s.wifi_only_for(podcast.id),
-                episodes: episodes
-                    .iter()
-                    .map(|ep| {
-                        let ep_id = ep.id.0.to_string();
-                        let transcript = s.transcript_for(&ep_id).map(str::to_owned);
-                        let transcript_entries =
-                            transcripts.get(&ep_id).cloned().unwrap_or_default();
-                        let ai_categories =
-                            categories_cache.get(&ep_id).cloned().unwrap_or_default();
-                        let ad_segments = s.ad_segments_for(&ep_id).to_vec();
-                        // M4 / D7 capability-report side-maps.
-                        let triage = s.triage_for(&ep_id);
-                        let triage_decision = triage.map(|(d, _, _)| d.clone());
-                        let triage_is_hero = triage.map(|(_, h, _)| *h).unwrap_or(false);
-                        let triage_rationale =
-                            triage.and_then(|(_, _, r)| r.clone());
-                        let metadata_indexed = s.is_metadata_indexed(&ep_id);
-                        let transcript_override = s.transcript_status_for(&ep_id);
-                        let transcript_status = transcript_override
-                            .map(|(st, _)| st.clone())
-                            .unwrap_or_default();
-                        let transcript_status_message =
-                            transcript_override.and_then(|(_, m)| m.clone());
-                        EpisodeSummary {
-                            id: ep_id.clone(),
-                            title: ep.title.clone(),
-                            podcast_id: Some(podcast.id.0.to_string()),
-                            podcast_title: Some(podcast.title.clone()),
-                            duration_secs: ep.duration_secs,
-                            artwork_url: ep.image_url.as_ref().map(|u| u.to_string()),
-                            published_at: Some(ep.pub_date.timestamp()),
-                            download_path: s.local_path_for(&ep.id).map(str::to_owned),
-                            file_size_bytes: s.file_size_for(&ep.id).unwrap_or(0),
-                            enclosure_url: Some(ep.enclosure_url.to_string()),
-                            description: Some(handle.clean_html(&ep.description))
-                                .filter(|d| !d.is_empty()),
-                            transcript,
-                            transcript_url: ep
-                                .publisher_transcript_url
-                                .as_ref()
-                                .map(|u| u.to_string()),
-                            transcript_entries,
-                            chapters: ep
-                                .chapters
-                                .as_ref()
-                                .map(|cs| {
-                                    cs.iter()
-                                        .map(|c| ChapterSummary {
-                                            start_secs: c.start_secs,
-                                            end_secs: c.end_secs,
-                                            title: c.title.clone(),
-                                            image_url: c
-                                                .image_url
-                                                .as_ref()
-                                                .map(|u| u.to_string()),
-                                            url: c.link_url.as_ref().map(|u| u.to_string()),
-                                            is_ai_generated: c.is_ai_generated,
-                                            source: c.source,
-                                            source_episode_id: c.source_episode_id.clone(),
-                                        })
-                                        .collect()
-                                })
-                                .unwrap_or_default(),
-                            // Read the position from the episode in hand. The
-                            // store's `position_for(&ep_id)` linearly scans EVERY
-                            // podcast's episode vec (stringifying each UUID) to
-                            // find this same `ep` — so calling it once per episode
-                            // made the whole rebuild O(N²) (≈224 ms at 3.6k eps).
-                            // `ep.position_secs` is the exact value `position_for`
-                            // returns; gating on `> 0.0` preserves its semantics.
-                            playback_position_secs: if ep.position_secs > 0.0 {
-                                Some(ep.position_secs)
-                            } else {
-                                None
-                            },
-                            summary: ep.summary.clone(),
-                            ai_categories,
-                            ad_segments,
-                            played: ep.played,
-                            starred: ep.is_starred,
-                            triage_decision,
-                            triage_is_hero,
-                            triage_rationale,
-                            metadata_indexed,
-                            transcript_status,
-                            transcript_status_message,
-                        }
-                    })
-                    .collect(),
-            })
-            .collect();
-        let settings = SettingsSnapshot {
-            has_completed_onboarding: s.has_completed_onboarding(),
-            auto_skip_ads_enabled: s.auto_skip_ads_enabled(),
-            auto_play_next: s.auto_play_next(),
-            auto_mark_played_at_end: s.auto_mark_played_at_end(),
-            headphone_double_tap_action: s.headphone_double_tap_action().to_owned(),
-            headphone_triple_tap_action: s.headphone_triple_tap_action().to_owned(),
-            skip_forward_secs: s.skip_forward_secs(),
-            skip_backward_secs: s.skip_backward_secs(),
-            default_playback_rate: s.default_playback_rate(),
-            auto_delete_downloads_after_played: s.auto_delete_downloads_after_played(),
-            agent_initial_model: s.agent_initial_model().to_owned(),
-            agent_initial_model_name: s.agent_initial_model_name().to_owned(),
-            agent_thinking_model: s.agent_thinking_model().to_owned(),
-            agent_thinking_model_name: s.agent_thinking_model_name().to_owned(),
-            memory_compilation_model: s.memory_compilation_model().to_owned(),
-            memory_compilation_model_name: s.memory_compilation_model_name().to_owned(),
-            wiki_model: s.wiki_model().to_owned(),
-            wiki_model_name: s.wiki_model_name().to_owned(),
-            categorization_model: s.categorization_model().to_owned(),
-            categorization_model_name: s.categorization_model_name().to_owned(),
-            chapter_compilation_model: s.chapter_compilation_model().to_owned(),
-            chapter_compilation_model_name: s.chapter_compilation_model_name().to_owned(),
-            embeddings_model: s.embeddings_model().to_owned(),
-            embeddings_model_name: s.embeddings_model_name().to_owned(),
-            image_generation_model: s.image_generation_model().to_owned(),
-            image_generation_model_name: s.image_generation_model_name().to_owned(),
-            reranker_enabled: s.reranker_enabled(),
-            open_router_credential_source: s.open_router_credential_source().to_owned(),
-            open_router_byok_key_id: s.open_router_byok_key_id().map(|s| s.to_owned()),
-            open_router_byok_key_label: s.open_router_byok_key_label().map(|s| s.to_owned()),
-            open_router_connected_at: s.open_router_connected_at(),
-            ollama_credential_source: s.ollama_credential_source().to_owned(),
-            ollama_byok_key_id: s.ollama_byok_key_id().map(|s| s.to_owned()),
-            ollama_byok_key_label: s.ollama_byok_key_label().map(|s| s.to_owned()),
-            ollama_connected_at: s.ollama_connected_at(),
-            ollama_chat_url: s.ollama_chat_url().to_owned(),
-            eleven_labs_credential_source: s.eleven_labs_credential_source().to_owned(),
-            eleven_labs_byok_key_id: s.eleven_labs_byok_key_id().map(|s| s.to_owned()),
-            eleven_labs_byok_key_label: s.eleven_labs_byok_key_label().map(|s| s.to_owned()),
-            eleven_labs_connected_at: s.eleven_labs_connected_at(),
-            stt_provider: s.stt_provider().to_owned(),
-            effective_stt_provider: s.effective_stt_provider().to_owned(),
-            effective_stt_provider_requires_key: crate::store::stt_policy::requires_key(
-                s.effective_stt_provider(),
-            ),
-            open_router_whisper_model: s.open_router_whisper_model().to_owned(),
-            assembly_ai_stt_model: s.assembly_ai_stt_model().to_owned(),
-            eleven_labs_stt_model: s.eleven_labs_stt_model().to_owned(),
-            eleven_labs_tts_model: s.eleven_labs_tts_model().to_owned(),
-            eleven_labs_voice_id: s.eleven_labs_voice_id().to_owned(),
-            eleven_labs_voice_name: s.eleven_labs_voice_name().to_owned(),
-            blossom_server_url: s.blossom_server_url().to_owned(),
-            youtube_extractor_url: s.youtube_extractor_url().map(|s| s.to_owned()),
-            local_model_id: s.local_model_id().map(|s| s.to_owned()),
-            wiki_auto_generate_on_transcript_ingest: s.wiki_auto_generate_on_transcript_ingest(),
-            auto_ingest_publisher_transcripts: s.auto_ingest_publisher_transcripts(),
-            auto_fallback_to_scribe: s.auto_fallback_to_scribe(),
-            notify_on_new_episodes: s.notify_on_new_episodes(),
-            nostr_enabled: s.nostr_enabled(),
-            nostr_relay_url: s.nostr_relay_url().to_owned(),
-            nostr_public_relays: s.nostr_public_relays().to_vec(),
-            nostr_profile_name: s.nostr_profile_name().to_owned(),
-            nostr_profile_about: s.nostr_profile_about().to_owned(),
-            nostr_profile_picture: s.nostr_profile_picture().to_owned(),
-            nostr_public_key_hex: s.nostr_public_key_hex().map(|s| s.to_owned()),
-        };
-        (library, s.all_memory_facts(), settings)
-    })
-    .unwrap_or_default();
+    let (library, memory_facts, settings) = handle
+        .store
+        .lock()
+        .ok()
+        .map(|s| {
+            let library = super::snapshot_library::build_library_snapshot(
+                handle,
+                &s,
+                &transcripts,
+                &categories_cache,
+            );
+            let settings = SettingsSnapshot {
+                has_completed_onboarding: s.has_completed_onboarding(),
+                auto_skip_ads_enabled: s.auto_skip_ads_enabled(),
+                auto_play_next: s.auto_play_next(),
+                auto_mark_played_at_end: s.auto_mark_played_at_end(),
+                headphone_double_tap_action: s.headphone_double_tap_action().to_owned(),
+                headphone_triple_tap_action: s.headphone_triple_tap_action().to_owned(),
+                skip_forward_secs: s.skip_forward_secs(),
+                skip_backward_secs: s.skip_backward_secs(),
+                default_playback_rate: s.default_playback_rate(),
+                auto_delete_downloads_after_played: s.auto_delete_downloads_after_played(),
+                agent_initial_model: s.agent_initial_model().to_owned(),
+                agent_initial_model_name: s.agent_initial_model_name().to_owned(),
+                agent_thinking_model: s.agent_thinking_model().to_owned(),
+                agent_thinking_model_name: s.agent_thinking_model_name().to_owned(),
+                memory_compilation_model: s.memory_compilation_model().to_owned(),
+                memory_compilation_model_name: s.memory_compilation_model_name().to_owned(),
+                wiki_model: s.wiki_model().to_owned(),
+                wiki_model_name: s.wiki_model_name().to_owned(),
+                categorization_model: s.categorization_model().to_owned(),
+                categorization_model_name: s.categorization_model_name().to_owned(),
+                chapter_compilation_model: s.chapter_compilation_model().to_owned(),
+                chapter_compilation_model_name: s.chapter_compilation_model_name().to_owned(),
+                embeddings_model: s.embeddings_model().to_owned(),
+                embeddings_model_name: s.embeddings_model_name().to_owned(),
+                image_generation_model: s.image_generation_model().to_owned(),
+                image_generation_model_name: s.image_generation_model_name().to_owned(),
+                reranker_enabled: s.reranker_enabled(),
+                open_router_credential_source: s.open_router_credential_source().to_owned(),
+                open_router_byok_key_id: s.open_router_byok_key_id().map(|s| s.to_owned()),
+                open_router_byok_key_label: s.open_router_byok_key_label().map(|s| s.to_owned()),
+                open_router_connected_at: s.open_router_connected_at(),
+                ollama_credential_source: s.ollama_credential_source().to_owned(),
+                ollama_byok_key_id: s.ollama_byok_key_id().map(|s| s.to_owned()),
+                ollama_byok_key_label: s.ollama_byok_key_label().map(|s| s.to_owned()),
+                ollama_connected_at: s.ollama_connected_at(),
+                ollama_chat_url: s.ollama_chat_url().to_owned(),
+                eleven_labs_credential_source: s.eleven_labs_credential_source().to_owned(),
+                eleven_labs_byok_key_id: s.eleven_labs_byok_key_id().map(|s| s.to_owned()),
+                eleven_labs_byok_key_label: s.eleven_labs_byok_key_label().map(|s| s.to_owned()),
+                eleven_labs_connected_at: s.eleven_labs_connected_at(),
+                stt_provider: s.stt_provider().to_owned(),
+                effective_stt_provider: s.effective_stt_provider().to_owned(),
+                effective_stt_provider_requires_key: crate::store::stt_policy::requires_key(
+                    s.effective_stt_provider(),
+                ),
+                open_router_whisper_model: s.open_router_whisper_model().to_owned(),
+                assembly_ai_stt_model: s.assembly_ai_stt_model().to_owned(),
+                eleven_labs_stt_model: s.eleven_labs_stt_model().to_owned(),
+                eleven_labs_tts_model: s.eleven_labs_tts_model().to_owned(),
+                eleven_labs_voice_id: s.eleven_labs_voice_id().to_owned(),
+                eleven_labs_voice_name: s.eleven_labs_voice_name().to_owned(),
+                blossom_server_url: s.blossom_server_url().to_owned(),
+                youtube_extractor_url: s.youtube_extractor_url().map(|s| s.to_owned()),
+                local_model_id: s.local_model_id().map(|s| s.to_owned()),
+                wiki_auto_generate_on_transcript_ingest: s
+                    .wiki_auto_generate_on_transcript_ingest(),
+                auto_ingest_publisher_transcripts: s.auto_ingest_publisher_transcripts(),
+                auto_fallback_to_scribe: s.auto_fallback_to_scribe(),
+                notify_on_new_episodes: s.notify_on_new_episodes(),
+                nostr_enabled: s.nostr_enabled(),
+                nostr_relay_url: s.nostr_relay_url().to_owned(),
+                nostr_public_relays: s.nostr_public_relays().to_vec(),
+                nostr_profile_name: s.nostr_profile_name().to_owned(),
+                nostr_profile_about: s.nostr_profile_about().to_owned(),
+                nostr_profile_picture: s.nostr_profile_picture().to_owned(),
+                nostr_public_key_hex: s.nostr_public_key_hex().map(|s| s.to_owned()),
+            };
+            (library, s.all_memory_facts(), settings)
+        })
+        .unwrap_or_default();
 
-    let categories = build_category_aggregate(&library);
+    let subscribed_library: Vec<PodcastSummary> = library
+        .iter()
+        .filter(|p| p.is_subscribed)
+        .cloned()
+        .collect();
+    let categories = build_category_aggregate(&subscribed_library);
     // Agent-prompt inventory context (kernel-owned selection/ordering/capping).
-    // Derived from the already-assembled `library` so it reuses resolved
+    // Derived from the already-assembled subscribed slice so it reuses resolved
     // position/played/triage/pub-date without a second store lock. `None` when
-    // the library is empty so a fresh install stays byte-identical to the stub.
-    let agent_context = if library.is_empty() {
+    // no shows are followed so a fresh install stays byte-identical to the stub.
+    let agent_context = if subscribed_library.is_empty() {
         None
     } else {
         let now_unix = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs() as i64)
             .unwrap_or(0);
-        Some(super::agent_context::build_agent_context(&library, now_unix))
+        Some(super::agent_context::build_agent_context(
+            &subscribed_library,
+            now_unix,
+        ))
     };
-    let search_results = handle.search_results.lock().ok().map(|r| r.clone()).unwrap_or_default();
-    let nostr_results = handle.nostr_results.lock().ok().map(|r| r.clone()).unwrap_or_default();
-    let queue_ids: Vec<String> = handle.queue.lock().ok()
-        .map(|q| q.items().to_vec()).unwrap_or_default();
+    let search_results = handle
+        .search_results
+        .lock()
+        .ok()
+        .map(|r| r.clone())
+        .unwrap_or_default();
+    let nostr_results = handle
+        .nostr_results
+        .lock()
+        .ok()
+        .map(|r| r.clone())
+        .unwrap_or_default();
+    let queue_ids: Vec<String> = handle
+        .queue
+        .lock()
+        .ok()
+        .map(|q| q.items().to_vec())
+        .unwrap_or_default();
     let queue = resolve_queue_rows(&queue_ids, &library);
-    let wiki_articles = handle.wiki_articles.lock().ok().map(|w| w.clone()).unwrap_or_default();
-    let wiki_search_results = handle.wiki_search_results.lock().ok().map(|w| w.clone()).unwrap_or_default();
-    let picks = handle.picks.lock().ok().map(|p| p.clone()).unwrap_or_default();
-    let agent_tasks = handle.agent_tasks.lock().ok().map(|t| t.clone()).unwrap_or_default();
-    let knowledge_search_results = handle.knowledge_search_results.lock().ok()
-        .map(|r| r.clone()).unwrap_or_default();
+    let wiki_articles = handle
+        .wiki_articles
+        .lock()
+        .ok()
+        .map(|w| w.clone())
+        .unwrap_or_default();
+    let wiki_search_results = handle
+        .wiki_search_results
+        .lock()
+        .ok()
+        .map(|w| w.clone())
+        .unwrap_or_default();
+    let picks = handle
+        .picks
+        .lock()
+        .ok()
+        .map(|p| p.clone())
+        .unwrap_or_default();
+    let agent_tasks = handle
+        .agent_tasks
+        .lock()
+        .ok()
+        .map(|t| t.clone())
+        .unwrap_or_default();
+    let knowledge_search_results = handle
+        .knowledge_search_results
+        .lock()
+        .ok()
+        .map(|r| r.clone())
+        .unwrap_or_default();
     let clips = crate::clip_handler::project_clips(&handle.clips, &library);
-    let inbox = build_inbox(&handle.store, &handle.dismissed_episode_ids, &handle.inbox_triage_cache);
+    let inbox = build_inbox(
+        &handle.store,
+        &handle.dismissed_episode_ids,
+        &handle.inbox_triage_cache,
+    );
     // Proactive triage: if any unlistened episode lacks a fresh `Ready` score,
     // spawn a background pass off the actor thread so the cache fills without
     // an explicit user `Triage` action. Cheap no-op when nothing needs triage
@@ -271,9 +229,14 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         &handle.runtime,
         &handle.inbox_triage_in_progress,
     );
-    let inbox_triage_in_progress = handle.inbox_triage_in_progress.load(std::sync::atomic::Ordering::Relaxed);
+    let inbox_triage_in_progress = handle
+        .inbox_triage_in_progress
+        .load(std::sync::atomic::Ordering::Relaxed);
     let owned_podcasts = collect_owned_podcasts(handle);
-    let downloads = handle.download_queue.lock().ok()
+    let downloads = handle
+        .download_queue
+        .lock()
+        .ok()
         .and_then(|q| build_downloads_snapshot(&q));
 
     // Project comments for the episode the user is currently viewing
@@ -291,11 +254,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         .and_then(|cache| {
             viewed_comments_episode_id
                 .as_deref()
-                .or_else(|| {
-                    now_playing
-                        .as_ref()
-                        .and_then(|np| np.episode_id.as_deref())
-                })
+                .or_else(|| now_playing.as_ref().and_then(|np| np.episode_id.as_deref()))
                 .and_then(|ep_id| cache.get(ep_id).cloned())
         })
         .unwrap_or_default();
@@ -336,8 +295,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     // Configured app relays (NMP v0.2.1). Kernel-owned slot, projected by the
     // sibling helper. SAFETY: `handle.app` is the live `*mut NmpApp` the
     // host-op handler also dereferences; the actor joins before `nmp_app_free`.
-    let configured_relays =
-        unsafe { super::snapshot_relays::build_configured_relays(handle.app) };
+    let configured_relays = unsafe { super::snapshot_relays::build_configured_relays(handle.app) };
 
     let voice = handle.voice_state.lock().ok().and_then(|v| {
         let snap = v.clone();
@@ -450,7 +408,9 @@ pub extern "C" fn nmp_app_podcast_snapshot(handle: *mut PodcastHandle) -> *mut c
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn nmp_app_podcast_snapshot_rev(handle: *mut PodcastHandle) -> u64 {
-    if handle.is_null() { return 0; }
+    if handle.is_null() {
+        return 0;
+    }
     let handle = unsafe { &*handle };
     handle.rev.load(std::sync::atomic::Ordering::Relaxed)
 }
@@ -494,21 +454,11 @@ pub extern "C" fn nmp_app_podcast_unregister(handle: *mut PodcastHandle) {
     let _ = reclaimed.app;
 }
 
-/// Decode a binary FlatBuffers update frame — the payload the kernel hands the
-/// `nmp_app_set_update_callback` callback as `(bytes, len)` — into the JSON
-/// envelope the iOS shell consumes:
-///   - snapshot → `{"t":"snapshot","v":<generic KernelSnapshot value>}`
-///   - panic    → `{"t":"panic","message":<msg>}`
-///
-/// The shell's update callback is a thin C string consumer; the kernel's update
-/// transport is FlatBuffers (`nmp-core` commit "Replace update transport with
-/// FlatBuffers"). This helper bridges the two so the reactive push frame — which
-/// carries `projections` (incl. `podcast.snapshot`) and the top-level
-/// `store_open_failure` — decodes correctly instead of being misread as a JSON
-/// C string.
-///
-/// Returns a heap `CString` (free with `nmp_app_free_string`), or null when the
-/// bytes are not a valid frame (the shell treats null as "skip this tick").
+/// Decode a binary FlatBuffers update frame into the JSON envelope consumed by
+/// the iOS shell's C-string callback:
+/// snapshot -> `{"t":"snapshot","v":...}`, panic -> `{"t":"panic","message":...}`.
+/// Returns a heap `CString` (free with `nmp_app_free_string`) or null when the
+/// frame is invalid.
 ///
 /// # Safety
 /// `bytes` must point to `len` readable bytes, or be null.

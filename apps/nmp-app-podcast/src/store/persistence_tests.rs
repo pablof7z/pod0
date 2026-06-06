@@ -17,11 +17,8 @@ impl TempDir {
     fn new() -> Self {
         static SEQ: AtomicU64 = AtomicU64::new(0);
         let n = SEQ.fetch_add(1, Ordering::Relaxed);
-        let path = std::env::temp_dir().join(format!(
-            "nmp-podcast-persist-{}-{}",
-            std::process::id(),
-            n,
-        ));
+        let path =
+            std::env::temp_dir().join(format!("nmp-podcast-persist-{}-{}", std::process::id(), n,));
         std::fs::create_dir_all(&path).expect("create temp dir");
         Self { path }
     }
@@ -85,6 +82,7 @@ fn save_then_load_round_trips_podcasts_and_episodes() {
         podcasts: vec![PersistedPodcast {
             podcast: podcast.clone(),
             episodes: episodes.clone(),
+            is_subscribed: true,
             auto_download: false,
             cellular_allowed: false,
         }],

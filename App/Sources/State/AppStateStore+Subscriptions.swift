@@ -30,7 +30,8 @@ extension AppStateStore {
 
     /// Inserts a follow row for the given podcast. Returns `false` if the
     /// user already follows this podcast. The podcast row must already
-    /// exist (call `upsertPodcast` or `ensurePodcast(feedURL:)` first).
+    /// exist (tests may call `upsertPodcast`; production should use a kernel
+    /// action such as `kernelSubscribe` / `kernelEnsurePodcast`).
     @discardableResult
     func addSubscription(podcastID: UUID) -> Bool {
         guard state.podcasts.contains(where: { $0.id == podcastID }) else { return false }

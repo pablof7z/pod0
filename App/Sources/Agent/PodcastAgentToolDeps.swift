@@ -290,9 +290,8 @@ public protocol PodcastSubscribeProtocol: Sendable {
     /// carries `alreadySubscribed: true`.
     func subscribe(feedURLString: String) async throws -> PodcastSubscribeResult
 
-    /// Capture a podcast's metadata + episodes into the store WITHOUT
-    /// creating a `PodcastSubscription` (no subscribe). Wraps
-    /// `SubscriptionService.ensurePodcast(feedURLString:)`. Used by the
+    /// Ensure a podcast's metadata + episodes are known to the Rust kernel
+    /// WITHOUT creating a `PodcastSubscription` (no subscribe). Used by the
     /// `list_episodes` external-input paths so the agent can offer episode
     /// lists for shows the user has not subscribed to.
     func ensurePodcast(feedURLString: String) async throws -> PodcastEnsureResult
@@ -411,4 +410,3 @@ struct PodcastAgentToolDeps: Sendable {
         )
     }
 }
-

@@ -29,18 +29,13 @@ worktrees currently in flight.
 
 ## Active P1 - Compat And Ownership Burn-Down
 
-- **external-feed-ensure-kernel-seed.** `SubscriptionService.ensurePodcast`
-  remains the live Swift-only feed insertion path. Agent external/listing tools
-  use it to capture an unfollowed RSS feed without subscribing; the method calls
-  `FeedClient.fetch`, then writes the podcast row via `store.upsertPodcast` and
-  the parsed back-catalog via `store.upsertEpisodes`. Because
-  `applyKernelState` rebuilds `state.podcasts` and `store.episodes` from the
-  Rust `library` projection, those unfollowed rows are projection-fragile. Add a
-  kernel action for "ensure known feed without follow" (or make the listing path
-  read-only and not durable) so Rust ingests the row + episodes and projects
-  them back. Already-resolved paths: `AgentGeneratedPodcastService` and
-  `LivePlaybackHostAdapter` now use `kernelCreatePodcast` / `kernelAddEpisode`,
-  not Swift `upsertPodcast` / `upsertEpisodes`.
+- ~~**external-feed-ensure-kernel-seed.**~~ Done in this PR:
+  `SubscriptionService.ensurePodcast` now dispatches the typed `podcast`
+  action `{"op":"ensure_podcast"}`. Rust ingests the feed as a known podcast,
+  persists episodes, projects `is_subscribed`/`last_refreshed_at`, and Swift only
+  creates `PodcastSubscription` rows for summaries whose follow flag is true.
+  The old Swift-only `FeedClient.fetch` → `store.upsertPodcast` /
+  `store.upsertEpisodes` path has no production caller.
 - **owned-podcast-episode-backfill-kernel.** The kernel `update_owned_podcast`
   op now carries title/description/author/artwork/visibility and republishes
   the kind:10154 SHOW event itself on a private→public flip. The remaining
@@ -390,11 +385,9 @@ worktrees currently in flight.
   `agent-episodes/<id>.m4a`, and verifying the published `.synthetic` episode
   metadata round-trips the store's disk layer across restart.
 
-  Current projection gap: generated episodes now use `kernelCreatePodcast` /
-  `kernelAddEpisode` and ride the Rust projection. The remaining Swift-only
-  insert seam is `SubscriptionService.ensurePodcast` for unfollowed external
-  RSS feeds; that path is tracked under `external-feed-ensure-kernel-seed`.
-  Keep this TTS item scoped to surviving Swift composer follow-ups
+  Projection gap resolved: generated episodes and unfollowed external RSS
+  ensure now ride the Rust projection. Keep this TTS item scoped to surviving
+  Swift composer follow-ups
   (NIP-F4 publishing, deletion cleanup, restart verification), not feed-store
   ownership.
 - **ai-chapters-swift-compiler-delete.** Rust chapter synthesis/persistence now

@@ -72,7 +72,7 @@ pub fn refresh_picks_into_slot(
 /// decides ordering + caps; we just hand it the raw set.
 fn collect_candidates(store: &PodcastStore) -> Vec<CandidateEpisode> {
     let mut out: Vec<CandidateEpisode> = Vec::new();
-    for (podcast, episodes) in store.all_podcasts() {
+    for (podcast, episodes) in store.subscribed_podcasts() {
         let podcast_id = podcast.id.0.to_string();
         let podcast_title = podcast.title.clone();
         let show_art = podcast.image_url.as_ref().map(|u| u.to_string());
@@ -105,7 +105,7 @@ fn collect_candidates(store: &PodcastStore) -> Vec<CandidateEpisode> {
 /// chars — matching the inbox triage path — to bound prompt size.
 fn collect_score_inputs(store: &PodcastStore) -> Vec<(String, String, String, String)> {
     let mut out: Vec<(String, String, String, String)> = Vec::new();
-    for (podcast, episodes) in store.all_podcasts() {
+    for (podcast, episodes) in store.subscribed_podcasts() {
         let podcast_title = podcast.title.clone();
         for ep in episodes {
             let description: String = ep.description.chars().take(500).collect();
@@ -148,7 +148,7 @@ fn build_listening_profile(store: &PodcastStore) -> String {
     }
 
     let mut shows: Vec<ShowEngagement> = Vec::new();
-    for (podcast, episodes) in store.all_podcasts() {
+    for (podcast, episodes) in store.subscribed_podcasts() {
         let mut eng = ShowEngagement {
             title: podcast.title.clone(),
             played: 0,
@@ -282,7 +282,14 @@ async fn score_picks_in_background(
         let store2 = Arc::clone(&store);
         let profile2 = profile.clone();
         let result = tokio::task::spawn_blocking(move || {
-            score_episode_for_picks(&ep_title, &pod_title, &description, &profile2, &runtime2, &store2)
+            score_episode_for_picks(
+                &ep_title,
+                &pod_title,
+                &description,
+                &profile2,
+                &runtime2,
+                &store2,
+            )
         })
         .await;
 

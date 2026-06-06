@@ -23,11 +23,8 @@ impl TempDir {
     pub(super) fn new() -> Self {
         static SEQ: AtomicU64 = AtomicU64::new(0);
         let n = SEQ.fetch_add(1, Ordering::Relaxed);
-        let path = std::env::temp_dir().join(format!(
-            "nmp-podcast-store-{}-{}",
-            std::process::id(),
-            n,
-        ));
+        let path =
+            std::env::temp_dir().join(format!("nmp-podcast-store-{}-{}", std::process::id(), n,));
         std::fs::create_dir_all(&path).expect("create temp dir");
         Self { path }
     }
@@ -70,6 +67,7 @@ fn all_podcasts_returns_all() {
     store.subscribe(make_podcast("Show A"), vec![]);
     store.subscribe(make_podcast("Show B"), vec![]);
     assert_eq!(store.all_podcasts().len(), 2);
+    assert_eq!(store.subscribed_podcasts().len(), 2);
 }
 
 #[test]
@@ -83,7 +81,10 @@ fn resubscribe_replaces_existing() {
     p2.id = id; // same id — should replace
     store.subscribe(p2, vec![]);
     assert_eq!(store.podcast_count(), 1);
-    assert_eq!(store.podcast(id).map(|p| p.title.as_str()), Some("Updated Title"));
+    assert_eq!(
+        store.podcast(id).map(|p| p.title.as_str()),
+        Some("Updated Title")
+    );
 }
 
 #[test]
@@ -112,7 +113,10 @@ fn unsubscribe_removes_podcast_and_its_episodes_in_memory() {
     let mut store = PodcastStore::new();
     let podcast = make_podcast("To Remove");
     let id = podcast.id;
-    store.subscribe(podcast, vec![make_episode(id, "Ep 1"), make_episode(id, "Ep 2")]);
+    store.subscribe(
+        podcast,
+        vec![make_episode(id, "Ep 1"), make_episode(id, "Ep 2")],
+    );
     assert_eq!(store.podcast_count(), 1);
     assert_eq!(store.episodes_for(id).len(), 2);
 
@@ -121,6 +125,34 @@ fn unsubscribe_removes_podcast_and_its_episodes_in_memory() {
     assert_eq!(store.podcast_count(), 0);
     assert!(store.podcast(id).is_none());
     assert!(store.episodes_for(id).is_empty());
+}
+
+#[test]
+fn known_podcast_does_not_create_subscription() {
+    let mut store = PodcastStore::new();
+    let podcast = make_podcast("Known Only");
+    let id = podcast.id;
+
+    store.upsert_known_podcast(podcast, vec![make_episode(id, "Ep 1")]);
+
+    assert_eq!(store.podcast_count(), 1);
+    assert!(store.podcast(id).is_some());
+    assert!(!store.is_subscribed(id));
+    assert!(store.subscribed_podcasts().is_empty());
+    assert_eq!(store.episodes_for(id).len(), 1);
+}
+
+#[test]
+fn mark_subscribed_follows_existing_known_podcast() {
+    let mut store = PodcastStore::new();
+    let podcast = make_podcast("Known Then Followed");
+    let id = podcast.id;
+    store.upsert_known_podcast(podcast, vec![]);
+
+    assert!(store.mark_subscribed(id));
+
+    assert!(store.is_subscribed(id));
+    assert_eq!(store.subscribed_podcasts().len(), 1);
 }
 
 #[test]
@@ -320,13 +352,27 @@ fn has_feed_url_returns_true_for_subscribed_feed() {
     podcast.feed_url = Some(url.clone());
     store.subscribe(podcast, vec![]);
     assert!(store.has_feed_url(&url));
+    assert!(store.has_subscribed_feed_url(&url));
 }
 
 #[test]
-fn has_feed_url_returns_false_when_not_subscribed() {
+fn has_feed_url_returns_false_when_not_known() {
     let store = PodcastStore::new();
     let url = url::Url::parse("https://example.com/feed.rss").unwrap();
     assert!(!store.has_feed_url(&url));
+    assert!(!store.has_subscribed_feed_url(&url));
+}
+
+#[test]
+fn known_feed_url_is_not_subscribed_until_followed() {
+    let mut store = PodcastStore::new();
+    let url = url::Url::parse("https://example.com/feed.rss").unwrap();
+    let mut podcast = make_podcast("Known Show");
+    podcast.feed_url = Some(url.clone());
+    store.upsert_known_podcast(podcast, vec![]);
+
+    assert!(store.has_feed_url(&url));
+    assert!(!store.has_subscribed_feed_url(&url));
 }
 
 #[test]

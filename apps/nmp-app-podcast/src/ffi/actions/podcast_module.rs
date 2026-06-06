@@ -9,7 +9,9 @@
 
 use serde::{Deserialize, Serialize};
 
-fn default_true() -> bool { true }
+fn default_true() -> bool {
+    true
+}
 
 use nmp_core::substrate::ActionModule;
 use nmp_core::ActorCommand;
@@ -27,7 +29,15 @@ use crate::discover_nostr::{nostr_discovery_identity, nostr_discovery_interest};
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum PodcastAction {
-    Subscribe { feed_url: String },
+    Subscribe {
+        feed_url: String,
+    },
+    /// Fetch and ingest a feed as a known podcast without marking it followed.
+    /// Used by external episode listing and metadata hydration paths that need
+    /// Rust to own the row/episodes but must not create a subscription.
+    EnsurePodcast {
+        feed_url: String,
+    },
     /// Insert (or update) a podcast row from full caller-supplied metadata.
     /// `podcast_id` is the Swift-minted UUID so both stores agree on identity.
     /// `feed_url` distinguishes a feed-backed show (external-play placeholder)
@@ -79,15 +89,23 @@ pub enum PodcastAction {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         transcript: Option<String>,
     },
-    Unsubscribe { podcast_id: String },
-    Refresh { podcast_id: String },
+    Unsubscribe {
+        podcast_id: String,
+    },
+    Refresh {
+        podcast_id: String,
+    },
     RefreshAll,
-    SearchItunes { query: String },
+    SearchItunes {
+        query: String,
+    },
     /// Import an OPML 2.0 subscription list. `content` is the raw XML string
     /// (Swift reads the file on the platform side and forwards the text).
     /// The handler parses entries via `podcast_feeds::import_opml`, then
     /// fans out to `handle_subscribe` for each unique feed URL.
-    ImportOpml { content: String },
+    ImportOpml {
+        content: String,
+    },
     /// Begin downloading the episode's enclosure to local storage.
     ///
     /// The host op handler looks up the episode's `enclosure_url` from the
@@ -105,19 +123,28 @@ pub enum PodcastAction {
     },
     /// Remove a previously downloaded episode from disk and clear the
     /// kernel-side `local_path` mapping.
-    DeleteDownload { episode_id: String },
+    DeleteDownload {
+        episode_id: String,
+    },
     /// Begin downloading an on-device LLM model through the unified download
     /// queue (kind = `LocalModel`). User-initiated and direct: the `url` is
     /// always supplied by the shell (models aren't in the episode store), and
     /// this path deliberately bypasses the auto-download / deferred-wifi /
     /// subscription-revalidation machinery, which assumes episode ids.
-    DownloadLocalModel { model_id: String, url: String },
-    FetchTranscript { episode_id: String },
+    DownloadLocalModel {
+        model_id: String,
+        url: String,
+    },
+    FetchTranscript {
+        episode_id: String,
+    },
     /// Fetch and parse the Podcasting 2.0 chapters JSON for an episode.
     ///
     /// Self-gating in the handler: if the episode has no `chapters_url` or
     /// already has chapters loaded, the action is a `{"ok":true}` no-op.
-    FetchChapters { episode_id: String },
+    FetchChapters {
+        episode_id: String,
+    },
     /// NIP-F4 (`kind:10154`) podcast discovery through NMP's relay pool.
     ///
     /// `Claim` (`release: false`, the default) emits
@@ -165,7 +192,9 @@ pub enum PodcastAction {
     /// projection layer leaves `comments` empty. The full relay
     /// subscription is tracked in `docs/BACKLOG.md`
     /// (`pr-episode-comments-relay-wiring`).
-    FetchComments { episode_id: String },
+    FetchComments {
+        episode_id: String,
+    },
     /// Publish a kind-1111 NIP-22 comment anchored to `episode_id`.
     ///
     /// Stub for this PR — returns
@@ -262,7 +291,9 @@ pub enum PodcastAction {
     /// card for `.inbox` picks; `is_hero` promotes the row to the single hero
     /// pick of the pass. Stored in the `episode_triage` side-map and surfaced
     /// via `EpisodeSummary::{triage_decision, triage_is_hero, triage_rationale}`.
-    SetEpisodeTriage { decisions: Vec<EpisodeTriagePatch> },
+    SetEpisodeTriage {
+        decisions: Vec<EpisodeTriagePatch>,
+    },
     /// Mark a batch of episodes as covered by the RAG metadata index (M4 / D7).
     ///
     /// iOS's `EpisodeMetadataIndexer` / `TranscriptIngestService` embed the
@@ -271,7 +302,9 @@ pub enum PodcastAction {
     /// projection instead of the deleted preserved-state merge. Batched (one
     /// op for the whole backfill pass) so a large library doesn't fire one
     /// rev-bump + full-library re-encode per episode.
-    MarkEpisodesMetadataIndexed { episode_ids: Vec<String> },
+    MarkEpisodesMetadataIndexed {
+        episode_ids: Vec<String>,
+    },
     /// Report the transient transcript-ingestion status for an episode
     /// (M4 / D7).
     ///
@@ -301,7 +334,9 @@ pub enum PodcastAction {
     /// forget at the dispatch level: returns `{"ok":true,"status":"summarizing"}`
     /// immediately. The iOS `summarize_episode` agent tool dispatches this then
     /// awaits the snapshot until `episode.summary` populates.
-    SummarizeEpisode { episode_id: String },
+    SummarizeEpisode {
+        episode_id: String,
+    },
     /// Open the in-app feedback subscription (TENEX project notes) through the
     /// NMP relay pool. Pushes a relay-pinned `OneShot` interest for kind:1 +
     /// kind:513 events bearing the project `["a"]` coord; results arrive via
@@ -382,7 +417,11 @@ impl ActionModule for PodcastActionModule {
         // arrive via `NostrDiscoveryObserver`. Emitting an `ActorCommand`
         // requires the `send` closure, which only `execute` carries — so it
         // cannot live in the host-op handler.
-        if let PodcastAction::DiscoverNostr { consumer_id, release } = &action {
+        if let PodcastAction::DiscoverNostr {
+            consumer_id,
+            release,
+        } = &action
+        {
             let identity = nostr_discovery_identity(consumer_id);
             if *release {
                 send(ActorCommand::DropInterestOwner(identity));
@@ -395,8 +434,7 @@ impl ActionModule for PodcastActionModule {
             return Ok(());
         }
 
-        let action_json =
-            serde_json::to_string(&action).map_err(|e| e.to_string())?;
+        let action_json = serde_json::to_string(&action).map_err(|e| e.to_string())?;
         send(ActorCommand::DispatchHostOp {
             action_json,
             correlation_id: correlation_id.to_owned(),

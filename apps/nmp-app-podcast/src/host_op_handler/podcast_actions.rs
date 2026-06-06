@@ -1,8 +1,4 @@
-//! `PodcastAction` dispatch (subscribe / refresh / search / download /
-//! settings) extracted from `host_op_handler.rs` to keep that file under
-//! the 500-LOC hard ceiling (AGENTS.md). The methods stay on
-//! `PodcastHostOpHandler` via `impl` blocks in this sibling module and
-//! its `podcast_actions_feed` sub-sibling.
+//! Podcast action concrete handlers for owned shows, search, downloads, and settings.
 //!
 //! Lock discipline (inherited from the parent module):
 //! * Never hold a `PodcastStore` lock across a capability dispatch.
@@ -13,202 +9,11 @@ use std::sync::atomic::Ordering;
 use podcast_feeds::http::{HttpRequest, HttpResult};
 use uuid::Uuid;
 
-use crate::chapter::handle_fetch_chapters;
-use crate::ffi::actions::podcast_module::PodcastAction;
 use crate::host_op_handler::PodcastHostOpHandler;
-use crate::transcript::handle_fetch_transcript;
 
 impl PodcastHostOpHandler {
-    pub(super) fn handle_podcast_action(
-        &self,
-        action: PodcastAction,
-        correlation_id: &str,
-    ) -> serde_json::Value {
-        match action {
-            PodcastAction::Subscribe { feed_url } => {
-                self.handle_subscribe(feed_url, correlation_id)
-            }
-            PodcastAction::CreatePodcast {
-                podcast_id,
-                title,
-                description,
-                author,
-                feed_url,
-                artwork_url,
-                language,
-                categories,
-                visibility,
-                title_is_placeholder,
-            } => self.handle_create_podcast(
-                podcast_id,
-                title,
-                description,
-                author,
-                feed_url,
-                artwork_url,
-                language,
-                categories,
-                visibility,
-                title_is_placeholder,
-            ),
-            PodcastAction::AddEpisode {
-                podcast_id,
-                episode_id,
-                title,
-                enclosure_url,
-                description,
-                duration_secs,
-                image_url,
-                chapters,
-                transcript,
-            } => self.handle_add_episode(
-                podcast_id,
-                episode_id,
-                title,
-                enclosure_url,
-                description,
-                duration_secs,
-                image_url,
-                chapters,
-                transcript,
-            ),
-            PodcastAction::Unsubscribe { podcast_id } => self.handle_unsubscribe(podcast_id),
-            PodcastAction::Refresh { podcast_id } => {
-                self.handle_refresh(podcast_id, correlation_id)
-            }
-            PodcastAction::RefreshAll => self.handle_refresh_all(correlation_id),
-            PodcastAction::SearchItunes { query } => {
-                self.handle_search_itunes(query, correlation_id)
-            }
-            PodcastAction::ImportOpml { content } => {
-                self.handle_import_opml(content, correlation_id)
-            }
-            PodcastAction::Download { episode_id, url } => {
-                self.handle_download(episode_id, url, correlation_id)
-            }
-            PodcastAction::DeleteDownload { episode_id } => {
-                self.handle_delete_download(episode_id)
-            }
-            PodcastAction::DownloadLocalModel { model_id, url } => {
-                self.handle_download_local_model(model_id, url, correlation_id)
-            }
-            PodcastAction::FetchTranscript { episode_id } => handle_fetch_transcript(
-                &self.store,
-                &self.transcripts,
-                &self.rev,
-                episode_id,
-                |req| self.dispatch_http(req, correlation_id),
-            ),
-            PodcastAction::FetchChapters { episode_id } => {
-                handle_fetch_chapters(&self.store, &self.rev, episode_id, |req| {
-                    self.dispatch_http(req, correlation_id)
-                })
-            }
-            PodcastAction::UpdateSettings { has_completed_onboarding } => {
-                self.handle_update_settings(has_completed_onboarding)
-            }
-            PodcastAction::FetchComments { episode_id } => {
-                crate::comments_handler::handle_fetch_comments(
-                    self.app,
-                    &self.store,
-                    &self.viewed_comments_episode_id,
-                    &episode_id,
-                )
-            }
-            PodcastAction::PostComment { episode_id, content } => {
-                crate::comments_handler::handle_post_comment(
-                    self.app,
-                    &self.store,
-                    &self.identity,
-                    &self.comments_cache,
-                    &self.rev,
-                    &episode_id,
-                    &content,
-                )
-            }
-            PodcastAction::SetAutoDownload { podcast_id, enabled, wifi_only } => {
-                self.handle_set_auto_download(podcast_id, enabled, wifi_only)
-            }
-            PodcastAction::DispatchDeferredWifiDownloads => {
-                self.handle_dispatch_deferred_wifi_downloads(correlation_id)
-            }
-            PodcastAction::FetchContacts => crate::social_handler::handle_fetch_contacts(self),
-            PodcastAction::PublishAgentNote {
-                recipient_pubkey_hex,
-                content,
-                root_event_id,
-                inbound_event_id,
-                root_a_tags,
-            } => crate::agent_note_handler::handle_publish_agent_note(
-                self.app,
-                &self.identity,
-                &recipient_pubkey_hex,
-                &content,
-                root_event_id.as_deref(),
-                inbound_event_id.as_deref(),
-                &root_a_tags,
-            ),
-            PodcastAction::FetchAgentNotes => {
-                crate::agent_note_handler::handle_fetch_agent_notes(
-                    self.app,
-                    &self.identity,
-                )
-            }
-            PodcastAction::StarEpisode { episode_id, starred } => {
-                match self.store.lock() {
-                    Ok(mut s) => match s.set_episode_starred(&episode_id, starred) {
-                        Some(new_value) => {
-                            self.rev.fetch_add(1, Ordering::Relaxed);
-                            serde_json::json!({"ok": true, "starred": new_value})
-                        }
-                        None => serde_json::json!({"ok": false, "error": format!("episode not found: {episode_id}")}),
-                    },
-                    Err(_) => serde_json::json!({"ok": false, "error": "store poisoned"}),
-                }
-            }
-            PodcastAction::SetEpisodeTriage { decisions } => {
-                self.handle_set_episode_triage(decisions)
-            }
-            PodcastAction::MarkEpisodesMetadataIndexed { episode_ids } => {
-                self.handle_mark_episodes_metadata_indexed(episode_ids)
-            }
-            PodcastAction::SetEpisodeTranscriptStatus { episode_id, status, message } => {
-                self.handle_set_episode_transcript_status(episode_id, status, message)
-            }
-            PodcastAction::SummarizeEpisode { episode_id } => {
-                crate::episode_summary::handle_summarize_episode(
-                    &self.store,
-                    &self.rev,
-                    &self.runtime,
-                    episode_id,
-                )
-            }
-            PodcastAction::FetchFeedback => {
-                crate::feedback_handler::handle_fetch_feedback(self.app)
-            }
-            PodcastAction::PublishFeedback {
-                category,
-                content,
-                parent_event_id,
-                reply_to_pubkey,
-            } => crate::feedback_handler::handle_publish_feedback(
-                self.app,
-                &category,
-                &content,
-                parent_event_id.as_deref(),
-                reply_to_pubkey.as_deref(),
-            ),
-            // DiscoverNostr is handled in PodcastActionModule::execute via
-            // EnsureInterest/DropInterestOwner before reaching the host-op
-            // handler — it never arrives here.
-            PodcastAction::DiscoverNostr { .. } => {
-                serde_json::json!({"ok": false, "error": "discover_nostr must be handled by execute()"})
-            }
-        }
-    }
-
     #[allow(clippy::too_many_arguments)]
-    fn handle_create_podcast(
+    pub(super) fn handle_create_podcast(
         &self,
         podcast_id: String,
         title: String,
@@ -251,7 +56,7 @@ impl PodcastHostOpHandler {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn handle_add_episode(
+    pub(super) fn handle_add_episode(
         &self,
         podcast_id: String,
         episode_id: String,
@@ -296,7 +101,7 @@ impl PodcastHostOpHandler {
         serde_json::json!({"ok": true, "episode_id": episode_id})
     }
 
-    fn handle_set_episode_triage(
+    pub(super) fn handle_set_episode_triage(
         &self,
         decisions: Vec<crate::ffi::actions::podcast_module::EpisodeTriagePatch>,
     ) -> serde_json::Value {
@@ -323,7 +128,7 @@ impl PodcastHostOpHandler {
         }
     }
 
-    fn handle_mark_episodes_metadata_indexed(
+    pub(super) fn handle_mark_episodes_metadata_indexed(
         &self,
         episode_ids: Vec<String>,
     ) -> serde_json::Value {
@@ -339,7 +144,7 @@ impl PodcastHostOpHandler {
         }
     }
 
-    fn handle_set_episode_transcript_status(
+    pub(super) fn handle_set_episode_transcript_status(
         &self,
         episode_id: String,
         status: String,
@@ -357,7 +162,10 @@ impl PodcastHostOpHandler {
         }
     }
 
-    fn handle_dispatch_deferred_wifi_downloads(&self, correlation_id: &str) -> serde_json::Value {
+    pub(super) fn handle_dispatch_deferred_wifi_downloads(
+        &self,
+        correlation_id: &str,
+    ) -> serde_json::Value {
         let pending = match self.store.lock() {
             Ok(mut s) => s.drain_pending_wifi_downloads(),
             Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
@@ -373,9 +181,15 @@ impl PodcastHostOpHandler {
             Ok(s) => {
                 let is_on_wifi = s.is_on_wifi();
                 for (ep_id, url) in pending {
-                    let Some(podcast_id) = s.podcast_id_for_episode(&ep_id) else { continue };
-                    if !s.is_auto_download_enabled(podcast_id) { continue }
-                    if s.episode_is_downloaded(&ep_id) { continue }
+                    let Some(podcast_id) = s.podcast_id_for_episode(&ep_id) else {
+                        continue;
+                    };
+                    if !s.is_auto_download_enabled(podcast_id) {
+                        continue;
+                    }
+                    if s.episode_is_downloaded(&ep_id) {
+                        continue;
+                    }
                     let wifi_only = s.wifi_only_for(podcast_id);
                     if wifi_only && !is_on_wifi {
                         // Network flapped back to cellular — requeue rather than drop.
@@ -401,7 +215,11 @@ impl PodcastHostOpHandler {
         serde_json::json!({"ok": true, "dispatched": count})
     }
 
-    fn handle_search_itunes(&self, query: String, correlation_id: &str) -> serde_json::Value {
+    pub(super) fn handle_search_itunes(
+        &self,
+        query: String,
+        correlation_id: &str,
+    ) -> serde_json::Value {
         let encoded = crate::itunes::url_encode(&query);
         let search_url = format!(
             "https://itunes.apple.com/search?media=podcast&entity=podcast&limit=25&term={encoded}"
@@ -428,7 +246,7 @@ impl PodcastHostOpHandler {
         }
     }
 
-    fn handle_download(
+    pub(super) fn handle_download(
         &self,
         episode_id_str: String,
         provided_url: Option<String>,
@@ -469,14 +287,16 @@ impl PodcastHostOpHandler {
     /// unified queue. Mirrors [`Self::handle_download`] but always uses the
     /// caller-supplied `url` (models have no episode-store entry) and tags the
     /// item so the executor writes it to the on-device models directory.
-    fn handle_download_local_model(
+    pub(super) fn handle_download_local_model(
         &self,
         model_id: String,
         url: String,
         correlation_id: &str,
     ) -> serde_json::Value {
         let command = match self.download_queue.lock() {
-            Ok(mut q) => q.enqueue_with_kind(model_id, url, crate::capability::DownloadKind::LocalModel),
+            Ok(mut q) => {
+                q.enqueue_with_kind(model_id, url, crate::capability::DownloadKind::LocalModel)
+            }
             Err(_) => return serde_json::json!({"ok": false, "error": "download_queue poisoned"}),
         };
         self.rev.fetch_add(1, Ordering::Relaxed);
@@ -488,7 +308,10 @@ impl PodcastHostOpHandler {
         serde_json::json!({"ok": true})
     }
 
-    fn handle_update_settings(&self, has_completed_onboarding: Option<bool>) -> serde_json::Value {
+    pub(super) fn handle_update_settings(
+        &self,
+        has_completed_onboarding: Option<bool>,
+    ) -> serde_json::Value {
         let mut mutated = false;
         match self.store.lock() {
             Ok(mut s) => {
@@ -507,7 +330,7 @@ impl PodcastHostOpHandler {
         serde_json::json!({"ok": true})
     }
 
-    fn handle_set_auto_download(
+    pub(super) fn handle_set_auto_download(
         &self,
         podcast_id_str: String,
         enabled: bool,
@@ -529,7 +352,7 @@ impl PodcastHostOpHandler {
         }
     }
 
-    fn handle_delete_download(&self, episode_id_str: String) -> serde_json::Value {
+    pub(super) fn handle_delete_download(&self, episode_id_str: String) -> serde_json::Value {
         let removed_path = {
             match self.store.lock() {
                 Ok(mut s) => match s.episode_enclosure_url(&episode_id_str) {

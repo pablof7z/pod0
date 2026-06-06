@@ -1,10 +1,8 @@
 //! Podcast library store.
 //!
-//! Holds the set of subscribed podcasts and their episodes. Keyed by `PodcastId`
-//! so lookups are O(1); the store is wrapped in `Arc<Mutex<PodcastStore>>` and
-//! shared between the `PodcastHandle` (snapshot reader) and the
-//! `PodcastHostOpHandler` (writer). All writes happen on the actor thread;
-//! reads happen on the iOS main thread via `nmp_app_podcast_snapshot`.
+//! Holds known podcasts, their episodes, and explicit follow membership. Keyed
+//! by `PodcastId` so lookups are O(1); the store is wrapped in
+//! `Arc<Mutex<PodcastStore>>` and shared between snapshot readers and writers.
 //!
 //! ## Persistence
 //!
@@ -50,7 +48,7 @@ pub use auto_download::episodes_to_auto_download;
 pub use podcast_keys::PodcastKeyStore;
 use persistence::{PersistedPodcast, PersistedSettings, PersistedStore, PERSIST_SCHEMA_VERSION};
 
-/// Backing store for subscribed podcasts and their episode lists.
+/// Backing store for known podcasts, follow membership and episode lists.
 ///
 /// Mutations flush to `data_dir/podcasts.json` (atomic temp+rename) when a
 /// data dir has been registered via [`Self::set_data_dir`]. Without a data
@@ -59,6 +57,7 @@ use persistence::{PersistedPodcast, PersistedSettings, PersistedStore, PERSIST_S
 pub struct PodcastStore {
     pub(super) podcasts: HashMap<PodcastId, Podcast>,
     pub(super) episodes: HashMap<PodcastId, Vec<Episode>>,
+    followed_podcasts: HashSet<PodcastId>,
     /// Per-episode on-disk path for downloaded enclosures. Populated when an
     /// iOS `DownloadCapability` reports `Completed`; cleared by
     /// [`PodcastStore::clear_local_path`] when the user deletes the file.
@@ -297,6 +296,7 @@ impl PodcastStore {
         Self {
             podcasts: HashMap::new(),
             episodes: HashMap::new(),
+            followed_podcasts: HashSet::new(),
             local_paths: HashMap::new(),
             file_sizes: HashMap::new(),
             transcripts: HashMap::new(),
@@ -409,6 +409,7 @@ impl PodcastStore {
         };
         self.podcasts.clear();
         self.episodes.clear();
+        self.followed_podcasts.clear();
         self.local_paths.clear();
         self.file_sizes.clear();
         self.transcripts.clear();
@@ -433,6 +434,9 @@ impl PodcastStore {
             }
             self.podcasts.insert(id, row.podcast);
             self.episodes.insert(id, row.episodes);
+            if row.is_subscribed {
+                self.followed_podcasts.insert(id);
+            }
             if row.auto_download {
                 self.auto_download_enabled.insert(id);
             }
@@ -671,6 +675,7 @@ impl PodcastStore {
             .map(|(id, podcast)| PersistedPodcast {
                 podcast: podcast.clone(),
                 episodes: self.episodes.get(id).cloned().unwrap_or_default(),
+                is_subscribed: self.followed_podcasts.contains(id),
                 auto_download: self.auto_download_enabled.contains(id),
                 cellular_allowed: self.auto_download_cellular_allowed.contains(id),
             })

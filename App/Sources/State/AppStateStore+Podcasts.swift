@@ -37,15 +37,10 @@ extension AppStateStore {
     /// (`merged()` + feed-URL reconcile) was deleted because RSS subscribe /
     /// refresh / OPML now ingest exclusively through the Rust kernel
     /// (`kernelSubscribe` / `kernelRefresh`), and `applyKernelState` is the
-    /// sole writer of feed-backed podcast rows.
-    ///
-    /// Sole remaining caller: `SubscriptionService.ensurePodcast`, which
-    /// captures an unfollowed feed (metadata + back-catalog) WITHOUT
-    /// subscribing and reads the row + episodes back synchronously. Agent-owned
-    /// / TTS / external-play creation now routes through the kernel
-    /// (`kernelCreatePodcast`). The `ensurePodcast` rows still live only in
-    /// Swift `state` and can be clobbered by a projection tick — migrating that
-    /// capture-without-subscribe path to the kernel is separate follow-up work.
+    /// sole production writer of feed-backed podcast rows. This helper remains
+    /// for focused AppStateStore tests and legacy non-feed fixtures; new durable
+    /// podcast creation must route through the kernel (`kernelCreatePodcast` or
+    /// `kernelEnsurePodcast`).
     @discardableResult
     func upsertPodcast(_ incoming: Podcast) -> Podcast {
         if let existing = state.podcasts.first(where: { $0.id == incoming.id }) {

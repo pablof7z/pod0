@@ -2,8 +2,8 @@
 //!
 //! Split from `store/tests.rs` to keep both files under the AGENTS.md 500-line
 //! hard ceiling. Covers agent-memory, persistence integration, and settings.
-use super::*;
 use super::tests::{make_episode, make_podcast, TempDir};
+use super::*;
 use podcast_core::PodcastId;
 
 // ── Auto-download persistence (overflow from tests.rs) ──────────────────
@@ -125,7 +125,10 @@ fn fresh_store_can_reload_after_subscribe() {
         store.set_data_dir(dir.path.clone());
         let podcast = make_podcast("Persistent Show");
         podcast_id = podcast.id;
-        episodes = vec![make_episode(podcast_id, "Ep 1"), make_episode(podcast_id, "Ep 2")];
+        episodes = vec![
+            make_episode(podcast_id, "Ep 1"),
+            make_episode(podcast_id, "Ep 2"),
+        ];
         store.subscribe(podcast, episodes.clone());
     }
     // New store, same dir — should rehydrate.
@@ -175,6 +178,24 @@ fn update_refresh_metadata_writes_to_disk_when_bound() {
 }
 
 #[test]
+fn known_unsubscribed_podcast_round_trips_without_follow_membership() {
+    let dir = TempDir::new();
+    let mut store = PodcastStore::new();
+    store.set_data_dir(dir.path.clone());
+    let podcast = make_podcast("Known Only");
+    let id = podcast.id;
+    store.upsert_known_podcast(podcast, vec![make_episode(id, "Ep 1")]);
+
+    let mut store2 = PodcastStore::new();
+    store2.set_data_dir(dir.path.clone());
+
+    assert!(store2.podcast(id).is_some());
+    assert_eq!(store2.episodes_for(id).len(), 1);
+    assert!(!store2.is_subscribed(id));
+    assert!(store2.subscribed_podcasts().is_empty());
+}
+
+#[test]
 fn set_data_dir_replaces_in_memory_state() {
     // If the store already has content in memory and a different data dir
     // is bound, the on-disk state from that dir wins (replaces in-mem).
@@ -193,7 +214,11 @@ fn set_data_dir_replaces_in_memory_state() {
     let loaded = store_b.set_data_dir(dir.path.clone());
     assert_eq!(loaded, 1);
     // The transient podcast was replaced by the one on disk.
-    let titles: Vec<&str> = store_b.all_podcasts().iter().map(|(p, _)| p.title.as_str()).collect();
+    let titles: Vec<&str> = store_b
+        .all_podcasts()
+        .iter()
+        .map(|(p, _)| p.title.as_str())
+        .collect();
     assert_eq!(titles, vec!["From Disk"]);
 }
 

@@ -244,7 +244,7 @@ pub fn collect_knowledge_matches(
     }
     let mut rows: Vec<Row> = Vec::new();
     let mut corpus: Vec<String> = Vec::new();
-    for (podcast, episodes) in store.all_podcasts() {
+    for (podcast, episodes) in store.subscribed_podcasts() {
         for ep in episodes {
             corpus.push(format!("{} {}", ep.title, ep.description));
             rows.push(Row {
@@ -357,7 +357,7 @@ pub(crate) fn collect_chunk_texts_for_topic(
 /// the labels [`KnowledgeSearchResult`] requires.
 fn build_episode_labels(store: &PodcastStore) -> HashMap<String, (String, String)> {
     let mut map = HashMap::new();
-    for (podcast, episodes) in store.all_podcasts() {
+    for (podcast, episodes) in store.subscribed_podcasts() {
         for ep in episodes {
             map.insert(
                 ep.id.0.to_string(),

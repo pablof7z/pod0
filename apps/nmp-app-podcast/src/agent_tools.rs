@@ -119,7 +119,7 @@ impl ToolRegistry {
         };
 
         let mut hits: Vec<String> = Vec::new();
-        for (podcast, episodes) in store.all_podcasts() {
+        for (podcast, episodes) in store.subscribed_podcasts() {
             let podcast_id = podcast.id.0.to_string();
             for ep in episodes {
                 let matches = ep.title.to_lowercase().contains(&needle)
