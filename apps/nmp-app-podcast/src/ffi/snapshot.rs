@@ -134,7 +134,18 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
                                         .collect()
                                 })
                                 .unwrap_or_default(),
-                            playback_position_secs: s.position_for(&ep_id),
+                            // Read the position from the episode in hand. The
+                            // store's `position_for(&ep_id)` linearly scans EVERY
+                            // podcast's episode vec (stringifying each UUID) to
+                            // find this same `ep` — so calling it once per episode
+                            // made the whole rebuild O(N²) (≈224 ms at 3.6k eps).
+                            // `ep.position_secs` is the exact value `position_for`
+                            // returns; gating on `> 0.0` preserves its semantics.
+                            playback_position_secs: if ep.position_secs > 0.0 {
+                                Some(ep.position_secs)
+                            } else {
+                                None
+                            },
                             summary: ep.summary.clone(),
                             ai_categories,
                             ad_segments,

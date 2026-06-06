@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-06T15:00:00Z",
+      "lines": [
+        "Big libraries are dramatically faster — updating the library after playing, starring, or a background refresh is now ~30× quicker on a multi-thousand-episode library (it no longer slows down as your library grows)."
+      ]
+    },
+    {
       "shipped_at": "2026-06-06T14:00:00Z",
       "lines": [
         "Snappier all around — marking played, starring, and subscribing no longer briefly freeze the app while your library is large; the heavy work now happens off the main thread."
