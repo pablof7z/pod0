@@ -134,6 +134,16 @@ extension AppStateStore {
                 mutated = true
             }
         }
+
+        // Mirror the same positions into the kernel store so that a cold relaunch
+        // (force-quit) reads the correct ep.position_secs. The kernel only updates
+        // position_secs on explicit PersistPosition actions (seek/skip while paused);
+        // without this sync the kernel snapshot always shows 0 on next launch,
+        // overriding the Swift-persisted value via KernelProjection.
+        for (id, position) in positionCache where position > 0 {
+            kernelPersistPosition(episodeID: id, positionSecs: position)
+        }
+
         positionCache.removeAll(keepingCapacity: true)
         lastPositionFlush = Date()
 
@@ -143,6 +153,17 @@ extension AppStateStore {
                 // Newly-non-zero playback positions need to land in
                 // `inProgressEpisodesCached`; count-only fingerprinting misses this.
                 invalidateEpisodeProjections()
+            }
+            // Under --UITestSeed the background write Task can be killed before it
+            // runs (the test runner sends SIGKILL immediately after app.terminate()).
+            // Write synchronously ONLY here — the hot position-flush path — so
+            // SQLite is durably updated before any force-quit. All other writes
+            // keep their background-Task behaviour to avoid throttling the 4 Hz
+            // kernel tick on the main thread.
+            if Self.synchronousPositionFlushForUITests {
+                var snapshot = state
+                snapshot.episodes = self.episodes
+                persistence.flushToDiskNow(snapshot)
             }
         }
     }

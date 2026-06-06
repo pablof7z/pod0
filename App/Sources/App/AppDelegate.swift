@@ -24,6 +24,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
+        // Must run before KernelModel / PodcastHandle init (which happens when
+        // SwiftUI evaluates the @State var).  AppDelegate fires first.
+        UITestSeeder.seedIfNeeded()
         UNUserNotificationCenter.current().delegate = self
         // Bound Kingfisher's memory + disk caches so artwork doesn't grow
         // unchecked. See KingfisherConfiguration for the rationale.

@@ -63,33 +63,38 @@ struct ClippingsView: View {
         .scrollContentBackground(.hidden)
     }
 
-    @ViewBuilder
     private func clipRow(_ clip: Clip) -> some View {
-        if let episode = store.episode(id: clip.episodeID) {
-            let podcast = store.podcast(id: clip.subscriptionID)
-            ClippingsCard(
-                clip: clip,
-                episode: episode,
-                podcast: podcast,
-                onPlay: { playClip(clip, episode: episode) },
-                onOpenEpisode: {
-                    episodeNavTarget = EpisodeNavTarget(id: episode.id)
-                },
-                onDelete: {
-                    Haptics.delete()
-                    store.deleteClip(id: clip.id)
-                }
-            )
-            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                Button(role: .destructive) {
-                    Haptics.delete()
-                    store.deleteClip(id: clip.id)
-                } label: {
-                    Label("Delete", systemImage: "trash")
-                }
+        // Resolve the episode/podcast if still in the library. Clips outlive
+        // their episodes — feeds only retain recent items, so an older clip's
+        // episode can be pruned. `ClippingsCard` accepts a nil episode (it
+        // falls back to a placeholder + the clip's own caption/transcript), so
+        // render unconditionally: guarding on `episode` here dropped the row
+        // while keeping its bucket section header, leaving a ghost "Earlier"
+        // heading over blank space.
+        let episode = store.episode(id: clip.episodeID)
+        let podcast = store.podcast(id: clip.subscriptionID)
+        return ClippingsCard(
+            clip: clip,
+            episode: episode,
+            podcast: podcast,
+            onPlay: { playClip(clip, episode: episode) },
+            onOpenEpisode: {
+                if let episode { episodeNavTarget = EpisodeNavTarget(id: episode.id) }
+            },
+            onDelete: {
+                Haptics.delete()
+                store.deleteClip(id: clip.id)
+            }
+        )
+        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+                Haptics.delete()
+                store.deleteClip(id: clip.id)
+            } label: {
+                Label("Delete", systemImage: "trash")
             }
         }
     }

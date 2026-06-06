@@ -138,6 +138,14 @@ final class Persistence: Sendable {
         }
     }
 
+    /// Synchronously flush `state` to disk, bypassing the background writer.
+    /// Only call this from paths that MUST survive an imminent force-quit (e.g.
+    /// `flushPendingPositions` under `--UITestSeed`, where the SIGKILL can arrive
+    /// before a background Task has a chance to run).
+    func flushToDiskNow(_ state: AppState) {
+        write(state)
+    }
+
     func write(_ state: AppState) {
         let snapshot = EpisodeSQLiteStore.snapshot(for: state.episodes)
         let previousSnapshot = episodeSnapshot.withLock { $0 }

@@ -26,6 +26,7 @@ struct PlayerMoreMenu: View {
     let onMarkUnplayed: () -> Void
     let onShowSleepTimer: () -> Void
     let onShowSpeed: () -> Void
+    let onShowQueue: () -> Void
 
     /// Drives the brief "Copied!" label swap on the Copy item. Resets after
     /// `Self.copyAckDuration` so the next pull-down shows the canonical label.
@@ -38,6 +39,13 @@ struct PlayerMoreMenu: View {
 
     var body: some View {
         Menu {
+            Button {
+                Haptics.selection()
+                onShowQueue()
+            } label: {
+                Label("Up Next", systemImage: "list.number")
+            }
+
             Button {
                 Haptics.selection()
                 onShowSpeed()

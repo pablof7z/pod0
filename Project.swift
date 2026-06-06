@@ -214,6 +214,13 @@ let project = Project(
                 ]
             )
         ),
+        // MARK: - Black-box UI test runner (device scenario tests)
+        //
+        // Intentionally has NO dependency on the app target: it drives the
+        // already-installed `io.f7z.podcast` build via
+        // `XCUIApplication(bundleIdentifier:)`. This keeps the device test
+        // loop fast (only the tiny runner builds — no Rust cross-compile, no
+        // app relink) and tests the exact bytes a user has on device.
         .target(
             name: "\(appName)UITests",
             destinations: [.iPhone],
@@ -221,12 +228,15 @@ let project = Project(
             bundleId: "\(appBundleID).uitests",
             deploymentTargets: deploymentTarget,
             sources: ["AppUITests/Sources/**"],
-            dependencies: [.target(name: appName)],
+            dependencies: [],
             settings: .settings(
                 base: [
                     "GENERATE_INFOPLIST_FILE": "YES",
                     "PRODUCT_BUNDLE_IDENTIFIER": "\(appBundleID).uitests",
-                    "TEST_TARGET_NAME": "\(appName)",
+                    "DEVELOPMENT_TEAM": "\(appleTeamID)",
+                    "CODE_SIGN_STYLE": "Automatic",
+                    "SWIFT_VERSION": "6.0",
+                    "TARGETED_DEVICE_FAMILY": "1,2",
                 ]
             )
         ),
@@ -243,6 +253,14 @@ let project = Project(
             archiveAction: .archiveAction(configuration: .release),
             profileAction: .profileAction(configuration: .release),
             analyzeAction: .analyzeAction(configuration: .debug)
-        )
+        ),
+        // Dedicated UI-test scheme: builds ONLY the runner so a device test
+        // run does not rebuild the app or Rust kernel.
+        .scheme(
+            name: "\(appName)UITests",
+            buildAction: .buildAction(targets: [.target("\(appName)UITests")]),
+            testAction: .targets([.testableTarget(target: .target("\(appName)UITests"))]),
+            runAction: .runAction(configuration: .debug)
+        ),
     ]
 )

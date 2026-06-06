@@ -332,7 +332,21 @@ extension AppStateStore {
                    let parsedID = UUID(uuidString: ep.id),
                    let prior = priorEpisodesByID[parsedID] {
                     episodes.append(prior)
-                } else if let episode = ep.toEpisode(podcastIdString: summary.id) {
+                } else if var episode = ep.toEpisode(podcastIdString: summary.id) {
+                    // The kernel only writes ep.position_secs on explicit PersistPosition
+                    // actions (seek/skip while paused). For episodes rebuilt from a changed
+                    // summary (e.g. RSS metadata refresh), ep.position_secs is still 0 even
+                    // though the user listened part-way. Recover the position from the
+                    // live positionCache first (most accurate), then from the prior Episode
+                    // (last flushed value), so the detail view never shows Play after the
+                    // user navigated away mid-listen.
+                    if episode.playbackPosition == 0,
+                       let parsedID = UUID(uuidString: ep.id) {
+                        let recovered = positionCache[parsedID]
+                            ?? priorEpisodesByID[parsedID]?.playbackPosition
+                            ?? 0
+                        if recovered > 0 { episode.playbackPosition = recovered }
+                    }
                     episodes.append(episode)
                 }
             }

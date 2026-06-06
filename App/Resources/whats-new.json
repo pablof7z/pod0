@@ -14,6 +14,12 @@
       ]
     },
     {
+      "shipped_at": "2026-06-06T15:05:00Z",
+      "lines": [
+        "Clippings now shows every clip — clips of episodes that have since dropped out of a feed no longer vanish behind an empty date heading."
+      ]
+    },
+    {
       "shipped_at": "2026-06-06T15:00:00Z",
       "lines": [
         "Big libraries are dramatically faster — updating the library after playing, starring, or a background refresh is now ~30× quicker on a multi-thousand-episode library (it no longer slows down as your library grows)."

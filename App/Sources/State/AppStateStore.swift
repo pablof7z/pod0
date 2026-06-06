@@ -25,6 +25,14 @@ final class AppStateStore {
 
     nonisolated private static let logger = Logger.app("AppStateStore")
 
+    /// Set by UITestSeeder before AppStateStore is initialised so that
+    /// `flushPendingPositions` writes the episode SQLite store synchronously
+    /// (bypassing the background Task). This guarantees positions survive a
+    /// SIGKILL force-quit during automated UI tests without making ALL writes
+    /// synchronous (which would throttle the main thread at the 4 Hz kernel
+    /// tick rate and break other P0-04 tests).
+    nonisolated(unsafe) static var synchronousPositionFlushForUITests = false
+
     // MARK: - User identity
 
     /// The human user's Nostr identity (signer + Keychain key material + NIP-46

@@ -21,6 +21,7 @@ struct PlayerTopBar: View {
     let onShare: () -> Void
     let onShowSleepTimer: () -> Void
     let onShowSpeed: () -> Void
+    let onShowQueue: () -> Void
 
     @Environment(AppStateStore.self) private var store
 
@@ -75,7 +76,8 @@ struct PlayerTopBar: View {
                         onMarkPlayed: { store.markEpisodePlayed(episode.id) },
                         onMarkUnplayed: { store.markEpisodeUnplayed(episode.id) },
                         onShowSleepTimer: onShowSleepTimer,
-                        onShowSpeed: onShowSpeed
+                        onShowSpeed: onShowSpeed,
+                        onShowQueue: onShowQueue
                     )
                 }
             }

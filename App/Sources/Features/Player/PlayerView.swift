@@ -22,6 +22,7 @@ struct PlayerView: View {
     @State private var isScrubbing: Bool = false
     @State private var showSpeedSheet: Bool = false
     @State private var showSleepSheet: Bool = false
+    @State private var showQueueSheet: Bool = false
     @State private var showShareSheet: Bool = false
     @State private var showVoiceNoteSheet: Bool = false
     @State private var showingShowNotes: Bool = false
@@ -78,6 +79,7 @@ struct PlayerView: View {
         }
         .sheet(isPresented: $showSpeedSheet) { PlayerSpeedSheet(state: state) }
         .sheet(isPresented: $showSleepSheet) { PlayerSleepTimerSheet(state: state) }
+        .sheet(isPresented: $showQueueSheet) { PlayerQueueSheet(state: state) }
         .sheet(isPresented: $showVoiceNoteSheet) {
             VoiceNoteRecordingSheet(state: state)
                 .environment(store)
@@ -150,7 +152,8 @@ struct PlayerView: View {
             onDismiss: { dismiss() },
             onShare: { showShareSheet = true },
             onShowSleepTimer: { showSleepSheet = true },
-            onShowSpeed: { showSpeedSheet = true }
+            onShowSpeed: { showSpeedSheet = true },
+            onShowQueue: { showQueueSheet = true }
         )
     }
 
