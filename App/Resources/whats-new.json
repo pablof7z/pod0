@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-06T00:00:00Z",
+      "lines": [
+        "Fixed on-device AI models failing on iPhone — a downloaded local model now loads and answers instead of erroring out."
+      ]
+    },
+    {
       "shipped_at": "2026-06-05T10:30:00Z",
       "lines": [
         "On-device models now actually run: pick a downloaded local model for a role (e.g. Agent) and that role does its thinking on your device instead of the cloud."

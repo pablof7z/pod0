@@ -232,7 +232,6 @@
 		4F4003CFC72F06E399460E6F /* HomeAgentPicks.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7248B399EB456D87FA99EDB /* HomeAgentPicks.swift */; };
 		4FCB4EDCC0B4C693F3705C17 /* NarrationAudioStitcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 603A98002557540F284D6A86 /* NarrationAudioStitcher.swift */; };
 		5037E8FC669749715A2CCF38 /* HoldToClipGestureModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D77D3EC5A12D174BBFA7541 /* HoldToClipGestureModifier.swift */; };
-		5183B4DF9C2B2DABD6792C93 /* LocalModelDownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05CB526AA07AB011A2D68521 /* LocalModelDownloadManager.swift */; };
 		51D54838155F84B8E0D4C8B7 /* AgentPicksFallbackTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 993B6C0FB5FD98225D5603F9 /* AgentPicksFallbackTests.swift */; };
 		51DE42256BE5C0C2D745CBF4 /* WikiResearchSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D0E6AA734C1AE3A2CB71D8 /* WikiResearchSkill.swift */; };
 		51E0542622B665B44550996C /* PlaybackState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05018D64EEC23C276BD58450 /* PlaybackState.swift */; };
@@ -501,6 +500,7 @@
 		B09D1205689D1BA4D82DD147 /* OpenRouterKeyInfoCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F09BBB04F0D2606495E0126 /* OpenRouterKeyInfoCard.swift */; };
 		B0BC3440ACBF9888613B0281 /* InMemoryVectorStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EFDF992EC3145B6110E93A2 /* InMemoryVectorStore.swift */; };
 		B103CCA9DF81CB612F1E6F1D /* LocalModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75F2620C3F28C00F3554CE80 /* LocalModelCatalog.swift */; };
+		B12E11C0ECAD751DB3DAF1AA /* LocalLLMInferenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EA05DFB9A3B8F9FD49828B1 /* LocalLLMInferenceTests.swift */; };
 		B17FECF8487236979BDBE5C9 /* VoiceCapability.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9679D72BAC3D3E389E1162F /* VoiceCapability.swift */; };
 		B36BA793C08B3FA7DF61448C /* Chunk.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5DFDDEF3551BD1F2EE931E /* Chunk.swift */; };
 		B3726564C7DA6AEDAE081EDB /* ClipExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A742DCE89B39F3ED96D3330 /* ClipExporter.swift */; };
@@ -681,6 +681,7 @@
 		F225EFA39AA3A3CD6F8AABA0 /* AppStateStore+DerivedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BD7F743FEB2B7E0ADC851CA /* AppStateStore+DerivedViews.swift */; };
 		F2E311C0D6D9B347C709AB67 /* DiscoverSearchTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 519E489FD7FA0B6F484E9790 /* DiscoverSearchTextField.swift */; };
 		F3B55ECE7F9F3116A78674E5 /* VoiceNoteAgentContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18E62B751C797AA6938486EB /* VoiceNoteAgentContext.swift */; };
+		F3D827857A8F71A79E9EC642 /* LocalModelDownloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA6AC57D48A9853520632B69 /* LocalModelDownloads.swift */; };
 		F4E111B81EA568C2F171813C /* VoiceCapability+Barge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89B08026F43BE139F0D16703 /* VoiceCapability+Barge.swift */; };
 		F4E138BE2A089DED1A539302 /* BargeInDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03425D7B2A109A66BDA52B7E /* BargeInDetector.swift */; };
 		F510DB989FCA5ED54A9D3BED /* EpisodeAuditLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01283C24F6A52722FFE56958 /* EpisodeAuditLogView.swift */; };
@@ -791,7 +792,6 @@
 		03E4449D57B39F15403BEAEC /* DataExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataExport.swift; sourceTree = "<group>"; };
 		05018D64EEC23C276BD58450 /* PlaybackState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackState.swift; sourceTree = "<group>"; };
 		05440E7E9B5FBBD21618BFA9 /* AgentChatSession+Conversations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AgentChatSession+Conversations.swift"; sourceTree = "<group>"; };
-		05CB526AA07AB011A2D68521 /* LocalModelDownloadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelDownloadManager.swift; sourceTree = "<group>"; };
 		061347C1B283CF130F958F08 /* OpenRouterSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenRouterSettingsView.swift; sourceTree = "<group>"; };
 		067E464B64F6B8C3F074A3EF /* FeedbackAuthorAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackAuthorAvatar.swift; sourceTree = "<group>"; };
 		072E60BC227E75BB230859FA /* ShowDetailHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowDetailHeader.swift; sourceTree = "<group>"; };
@@ -1247,6 +1247,7 @@
 		9DA1784D7FF22F8FFE06C5E3 /* WhatsNew.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNew.swift; sourceTree = "<group>"; };
 		9DBBBBEC7AFD829308C67EA9 /* RerankerClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RerankerClient.swift; sourceTree = "<group>"; };
 		9DF69B8241ACF13747252CF8 /* NostrConversationDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NostrConversationDetailView.swift; sourceTree = "<group>"; };
+		9EA05DFB9A3B8F9FD49828B1 /* LocalLLMInferenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalLLMInferenceTests.swift; sourceTree = "<group>"; };
 		9ED28D177808259F929D4477 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9F01D52619F42226F96452B4 /* CategoryAutoDownloadSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryAutoDownloadSection.swift; sourceTree = "<group>"; };
 		A04BFBCE02E158B5F49611AB /* BYOKConnectService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BYOKConnectService.swift; sourceTree = "<group>"; };
@@ -1347,6 +1348,7 @@
 		CA0FE5F340F1575C19BFB4F5 /* AppStateStore+AgentActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+AgentActivity.swift"; sourceTree = "<group>"; };
 		CA1F1E69DB05ED198000CF47 /* ElevenLabsCredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevenLabsCredentialStore.swift; sourceTree = "<group>"; };
 		CA594AA5EEB9C2B662718060 /* PlayerMoreMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerMoreMenu.swift; sourceTree = "<group>"; };
+		CA6AC57D48A9853520632B69 /* LocalModelDownloads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelDownloads.swift; sourceTree = "<group>"; };
 		CA9B23681B1B9A54B3F9C90E /* AIChapterCompiler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIChapterCompiler.swift; sourceTree = "<group>"; };
 		CB091EEFFE0972BEFCAC22D8 /* DebugSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugSettingsView.swift; sourceTree = "<group>"; };
 		CB9C42182225DE1D0DECA8D6 /* AppStateStore+Threading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+Threading.swift"; sourceTree = "<group>"; };
@@ -1909,7 +1911,7 @@
 				ED231589FC222F453FC4A994 /* LLMSettingsView.swift */,
 				EA4C9F191A49841CBD1704DB /* LocalLLMService.swift */,
 				75F2620C3F28C00F3554CE80 /* LocalModelCatalog.swift */,
-				05CB526AA07AB011A2D68521 /* LocalModelDownloadManager.swift */,
+				CA6AC57D48A9853520632B69 /* LocalModelDownloads.swift */,
 				95512193A330D2A7317FCA73 /* LocalModelRowView.swift */,
 				DF52A6C54C08182E5B0F5B2D /* LocalModelsSettingsView.swift */,
 				81EA3E7DD4188ADC39648130 /* ModelBadge.swift */,
@@ -2222,6 +2224,7 @@
 				6B911B317E44998B217BA40B /* LibraryUnplayedBadgeTests.swift */,
 				75560A14955994ED192ECB7A /* LiquidGlassSegmentedPickerTests.swift */,
 				80D89E3501095FCCE1DCE609 /* LLMProviderTests.swift */,
+				9EA05DFB9A3B8F9FD49828B1 /* LocalLLMInferenceTests.swift */,
 				14BAA8DF7410D8CD30EEE995 /* LocalModelCatalogMatchTests.swift */,
 				FDE4204B8EE4F82AE15FB6E0 /* OPMLExportTests.swift */,
 				107A4F56C8B628B04E067F78 /* OPMLImportTests.swift */,
@@ -3308,7 +3311,7 @@
 				D902D86618076A2F5645F114 /* LLMSettingsView.swift in Sources */,
 				0C3F9C74376644B8CE47D65D /* LocalLLMService.swift in Sources */,
 				B103CCA9DF81CB612F1E6F1D /* LocalModelCatalog.swift in Sources */,
-				5183B4DF9C2B2DABD6792C93 /* LocalModelDownloadManager.swift in Sources */,
+				F3D827857A8F71A79E9EC642 /* LocalModelDownloads.swift in Sources */,
 				5FCAB461058CAD380E00C4E2 /* LocalModelRowView.swift in Sources */,
 				181ECCAD3CAA6D608F599848 /* LocalModelsSettingsView.swift in Sources */,
 				C59F578811E5B30241D5F1CB /* ModelBadge.swift in Sources */,
@@ -3607,6 +3610,7 @@
 				132BF50E44A13F6CC6B1351A /* LLMProviderTests.swift in Sources */,
 				4244877912A09DD057D41003 /* LibraryUnplayedBadgeTests.swift in Sources */,
 				BBCC62B1CD794D7805AA77CC /* LiquidGlassSegmentedPickerTests.swift in Sources */,
+				B12E11C0ECAD751DB3DAF1AA /* LocalLLMInferenceTests.swift in Sources */,
 				956DBBC160AA9C95E64EC6A9 /* LocalModelCatalogMatchTests.swift in Sources */,
 				BBC61B0CFEA61C9CFCE9F636 /* OPMLExportTests.swift in Sources */,
 				641F2588DE631E18F6DCC548 /* OPMLImportTests.swift in Sources */,

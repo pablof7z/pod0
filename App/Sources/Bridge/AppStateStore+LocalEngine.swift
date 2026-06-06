@@ -25,6 +25,12 @@ extension AppStateStore {
     ///   kernel download-unification work will close this into an auto-load on
     ///   download completion.
     func syncLocalEngine(for settings: Settings) {
+        // Test hook: let an integration test load EXACTLY ONE engine itself
+        // without the app racing in a second resident engine (two ~2.6 GB
+        // engines blow the memory budget — a test artifact, not app behavior).
+        if ProcessInfo.processInfo.environment["DISABLE_LOCAL_ENGINE_AUTOLOAD"] == "1" {
+            return
+        }
         let service = localLLMService
 
         guard let targetID = Self.effectiveLocalModelID(settings) else {

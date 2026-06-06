@@ -8,5 +8,14 @@
     </array>
     <key>com.apple.developer.ubiquity-kvstore-identifier</key>
     <string>$(TeamIdentifierPrefix)$(APP_BUNDLE_IDENTIFIER)</string>
+    <!-- On-device LLMs (LiteRT-LM) memory-map multi-GB model weights. Without a
+         raised memory ceiling iOS denies the mmap with ENOMEM ("Cannot allocate
+         memory"), so inference returns null and the process is killed. These two
+         entitlements grant the higher limit + >4 GB virtual address space that
+         such large models need. -->
+    <key>com.apple.developer.kernel.increased-memory-limit</key>
+    <true/>
+    <key>com.apple.developer.kernel.extended-virtual-addressing</key>
+    <true/>
 </dict>
 </plist>

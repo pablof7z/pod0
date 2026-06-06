@@ -60,58 +60,38 @@ pub const FAST_MODEL: &str = "deepseek-v4-flash:cloud";
 /// Thinking/agent model for deep-reasoning chat turns.
 pub const THINKING_MODEL: &str = "deepseek-v4-pro:cloud";
 
-/// Drive one model turn: thinking model first, fast model as fallback.
+/// Drive one model turn using the user-selected "Agent (Initial)" role model.
 /// Shared by the tool loop in [`chat_with_tools`].
+///
+/// NO fallback. The selected model's error is surfaced verbatim so the user
+/// sees the real cause (e.g. a local model's native inference error) rather
+/// than a silent retry against a different ("thinking") model that masks it.
 async fn single_turn(
     system_prompt: &str,
     history: &[(String, String)],
     user_message: &str,
     store: &Arc<Mutex<PodcastStore>>,
 ) -> Result<String, String> {
-    // Try the primary model first (the "Agent (Initial)" role). If the user
-    // picked a `local:` model for that role it runs on-device; otherwise the
-    // cloud thinking model is used, unchanged.
+    // The "Agent (Initial)" role. A `local:` selection runs on-device; anything
+    // else routes to its cloud backend. If unset, default to the cloud thinking
+    // model.
     let initial_cfg = store
         .lock()
         .ok()
         .map(|s| s.agent_initial_model().to_owned())
         .unwrap_or_default();
-    let primary_model = role_model_or_default(&initial_cfg, THINKING_MODEL);
-    let backend = backend_for(store, &primary_model);
+    let model = role_model_or_default(&initial_cfg, THINKING_MODEL);
+    let backend = backend_for(store, &model);
     let req = LlmRequest {
         system: system_prompt.to_owned(),
         history: history.to_vec(),
         user: user_message.to_owned(),
-        model: primary_model.clone(),
-    };
-    match backend.complete(&req).await {
-        Ok(reply) => return Ok(reply),
-        Err(thinking_err) => {
-            eprintln!(
-                "agent_llm: {primary_model} failed ({thinking_err}), retrying with fallback"
-            );
-        }
-    }
-
-    // Fall back to the secondary model (the "Agent (Thinking)" role), honoring
-    // a `local:` selection there too; otherwise the cloud fast model.
-    let thinking_cfg = store
-        .lock()
-        .ok()
-        .map(|s| s.agent_thinking_model().to_owned())
-        .unwrap_or_default();
-    let fallback_model = role_model_or_default(&thinking_cfg, FAST_MODEL);
-    let backend = backend_for(store, &fallback_model);
-    let req = LlmRequest {
-        system: system_prompt.to_owned(),
-        history: history.to_vec(),
-        user: user_message.to_owned(),
-        model: fallback_model.clone(),
+        model: model.clone(),
     };
     backend
         .complete(&req)
         .await
-        .map_err(|e| format!("{fallback_model} also failed: {e}"))
+        .map_err(|e| format!("{model} failed: {e}"))
 }
 
 /// Drive a chat turn with podcast-domain tools available (M5.4).
