@@ -13,6 +13,7 @@ struct DebugSettingsView: View {
         Form {
             loggingSection
             viewerSection
+            performanceSection
         }
         .navigationTitle("Debug")
         .navigationBarTitleDisplayMode(.inline)
@@ -39,6 +40,18 @@ struct DebugSettingsView: View {
             } label: {
                 Label("View logs", systemImage: "doc.text")
             }
+        }
+    }
+
+    private var performanceSection: some View {
+        Section {
+            NavigationLink {
+                PerformanceView()
+            } label: {
+                Label("Performance", systemImage: "gauge.with.dots.needle.67percent")
+            }
+        } footer: {
+            Text("Live FFI / main-thread metrics and a UI-stall watchdog.")
         }
     }
 

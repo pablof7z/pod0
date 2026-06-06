@@ -196,6 +196,17 @@ extension AppStateStore {
             "applyKernelState", "episodes=\(library.reduce(0) { $0 + $1.episodes.count })")
         defer { signposter.endInterval("applyKernelState", applyInterval) }
 
+        // Perf: time the whole projection (full path AND the snapshot-only fast
+        // path, since this sits above the fast-path branch). This is the largest
+        // main-thread cost class — surfacing it in the Performance view lets us
+        // see whether the fast-path guard is actually keeping no-op ticks cheap.
+        let projectionStart = DispatchTime.now().uptimeNanoseconds
+        defer {
+            PerfMetrics.shared.record(
+                .mainProjection,
+                micros: Int((DispatchTime.now().uptimeNanoseconds &- projectionStart) / 1_000))
+        }
+
         // ── Fast path: library unchanged since the last full projection ──────
         // `KernelModel` reassigns `library` (and bumps `libraryGeneration`)
         // only when `libraryMetaHash` changes. An unchanged generation proves

@@ -627,6 +627,17 @@ final class KernelModel {
     // ── Snapshot apply ─────────────────────────────────────────────────────
 
     private func apply(result: KernelUpdateResult) {
+        // Perf: time the synchronous main-actor segment of every accepted push
+        // frame (identity diff, spotlight index, live-activity + now-playing
+        // reconcile). The O(N×M) hashing it kicks off is offloaded off-main, so
+        // this measures only the inline main-thread cost. Recorded via `defer`
+        // so it covers every return path.
+        let applyStart = DispatchTime.now().uptimeNanoseconds
+        defer {
+            PerfMetrics.shared.record(
+                .mainApply,
+                micros: Int((DispatchTime.now().uptimeNanoseconds &- applyStart) / 1_000))
+        }
         // The store-open-failure health flag and the identity slice are
         // independent of the podcast projection rev — assign them on every
         // accepted push frame (before the rev-gated podcast-state apply) so the

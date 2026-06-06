@@ -141,6 +141,15 @@ final class PodcastHandle: @unchecked Sendable {
     /// result. D6: never returns a null envelope for a non-null app.
     @discardableResult
     func dispatchAction(namespace: String, body: [String: Any]) -> DispatchResult {
+        // Perf: dispatch is a synchronous FFI round-trip on the caller thread
+        // (usually main). Time the whole serialize → FFI → parse path so a slow
+        // action shows up as a main-thread cost in the Performance view.
+        let dispatchStart = DispatchTime.now().uptimeNanoseconds
+        defer {
+            PerfMetrics.shared.record(
+                .dispatchAction,
+                micros: Int((DispatchTime.now().uptimeNanoseconds &- dispatchStart) / 1_000))
+        }
         guard let data = try? JSONSerialization.data(withJSONObject: body),
               let jsonStr = String(data: data, encoding: .utf8)
         else {
@@ -392,6 +401,12 @@ final class SignedEventsRegistry: @unchecked Sendable {
 
 private let nmpUpdateCallback: NmpUpdateCallback = { context, bytes, len in
     guard let context, let bytes, len > 0 else { return }
+    // Perf: time the whole background frame-processing cost (FlatBuffer→JSON +
+    // envelope parse) and record the frame size. This runs on the Rust actor
+    // thread, NOT main — background FFI cost, distinct from the main-thread
+    // `apply`/`projection` segments. One monotonic clock read is cheap even when
+    // metrics are off; the matching `record` is a no-op when disabled.
+    let frameStart = DispatchTime.now().uptimeNanoseconds
     // The kernel's update transport is binary FlatBuffers (NMP commit "Replace
     // update transport with FlatBuffers"). Decode the `(bytes, len)` frame to the
     // JSON envelope the shell consumes; `nmp_app_free_string` reclaims it.
@@ -412,6 +427,10 @@ private let nmpUpdateCallback: NmpUpdateCallback = { context, bytes, len in
         return
     }
     guard let result = PodcastHandle.decode(pointer: jsonPtr) else { return }
+    PerfMetrics.shared.record(
+        .pushFrameDecode,
+        micros: Int((DispatchTime.now().uptimeNanoseconds &- frameStart) / 1_000),
+        bytes: Int(len))
     sink.handler(result)
 }
 

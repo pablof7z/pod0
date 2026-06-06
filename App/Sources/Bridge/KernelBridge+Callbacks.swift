@@ -266,6 +266,18 @@ extension PodcastHandle {
     /// when the handle is not registered or the projection serialization fails
     /// (D6 — never crashes, degrades to placeholder).
     func podcastSnapshot() -> PodcastUpdate {
+        // Perf: a full-library serialize + decode on the caller thread (usually
+        // main, via the synchronous post-dispatch pull). Time it and record the
+        // payload size — this is the snapshot-decode hot path that scales O(N)
+        // with library size.
+        let pullStart = DispatchTime.now().uptimeNanoseconds
+        var pullBytes = 0
+        defer {
+            PerfMetrics.shared.record(
+                .snapshotPull,
+                micros: Int((DispatchTime.now().uptimeNanoseconds &- pullStart) / 1_000),
+                bytes: pullBytes)
+        }
         guard let handle = podcastHandle,
               let ptr = nmp_app_podcast_snapshot(handle)
         else {
@@ -274,6 +286,7 @@ extension PodcastHandle {
         defer { nmp_app_podcast_snapshot_free(ptr) }
         let json = String(cString: ptr)
         guard let data = json.data(using: .utf8) else { return PodcastUpdate() }
+        pullBytes = data.count
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         do {
