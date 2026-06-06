@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-06T14:00:00Z",
+      "lines": [
+        "Snappier all around — marking played, starring, and subscribing no longer briefly freeze the app while your library is large; the heavy work now happens off the main thread."
+      ]
+    },
+    {
       "shipped_at": "2026-06-06T00:00:00Z",
       "lines": [
         "Fixed on-device AI models failing on iPhone — a downloaded local model now loads and answers instead of erroring out."

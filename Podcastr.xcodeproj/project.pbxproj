@@ -429,6 +429,7 @@
 		99860B05E3AE31D068F6917B /* NostrApprovalPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4328EE2348E4311577A0600 /* NostrApprovalPresenter.swift */; };
 		99D2E98E99B0CB95046EACB3 /* KernelIdentityProjection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B334B83E154E2680BE51FDC5 /* KernelIdentityProjection.swift */; };
 		99D35A53AE2F6EC7CF0EB626 /* EditProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE2405B0025D1B1C6C78A6D6 /* EditProfileView.swift */; };
+		9A83DE34C434C21228A289F8 /* SnapshotDecodeTransportPerfTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8217E95BF99C433F02C9538A /* SnapshotDecodeTransportPerfTests.swift */; };
 		9AAC8FCB2A1CFB5B1200FB35 /* OnboardingPages.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5C71BEB7CB9908E8F4D917 /* OnboardingPages.swift */; };
 		9B950E6A6A44CFFDD1347DFF /* OnboardingSubscribePage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D8269F3BAD30696B61360DE /* OnboardingSubscribePage.swift */; };
 		9BB05C9DA39D8C13D58DDC24 /* ProviderEmbeddingsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC887889E3D3A4F4E05AC04F /* ProviderEmbeddingsClient.swift */; };
@@ -1158,6 +1159,7 @@
 		81E6F65A1DF23AAAF93E0FA6 /* VoiceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceView.swift; sourceTree = "<group>"; };
 		81EA3E7DD4188ADC39648130 /* ModelBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelBadge.swift; sourceTree = "<group>"; };
 		8200C9B29F01A8001A49ADF1 /* OnboardingAISetupPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingAISetupPage.swift; sourceTree = "<group>"; };
+		8217E95BF99C433F02C9538A /* SnapshotDecodeTransportPerfTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotDecodeTransportPerfTests.swift; sourceTree = "<group>"; };
 		821E31C03B5204DED225C068 /* ThreadingMention.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadingMention.swift; sourceTree = "<group>"; };
 		82535EB946036E137F65771D /* YouTubeAudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubeAudioService.swift; sourceTree = "<group>"; };
 		8258C6269B8BD4716BA6B259 /* QuoteShareView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuoteShareView.swift; sourceTree = "<group>"; };
@@ -2244,6 +2246,7 @@
 				A699AE940BFE2E70A06629CE /* ScribeRequestEncodingTests.swift */,
 				72540683D53BC31AC125B8CD /* SettingsCodableRoundTripTests.swift */,
 				0AE9FEFC9F32ECFA708F90DE /* SignedEventsRegistryTests.swift */,
+				8217E95BF99C433F02C9538A /* SnapshotDecodeTransportPerfTests.swift */,
 				00B04A75C4999049C420ABF6 /* SortedSubscriptionsByRecencyTests.swift */,
 				D7E11F16DE4127AD138AB04C /* SRTParserTests.swift */,
 				EFE2802D61B469977FAEA3E0 /* StarredEpisodeTests.swift */,
@@ -3631,6 +3634,7 @@
 				2C52EE53F6B1605A6BE7981C /* ScribeRequestEncodingTests.swift in Sources */,
 				6603B3C1EF8C6E196082E5B8 /* SettingsCodableRoundTripTests.swift in Sources */,
 				A1DFD5EF7FB3D83B7C4C6515 /* SignedEventsRegistryTests.swift in Sources */,
+				9A83DE34C434C21228A289F8 /* SnapshotDecodeTransportPerfTests.swift in Sources */,
 				E8F4EBFABC2AC616E20E303E /* SortedSubscriptionsByRecencyTests.swift in Sources */,
 				A56CE28E2E07B47CEA451618 /* StarredEpisodeTests.swift in Sources */,
 				ECD00C2651AF43E8009602E6 /* StoreOpenFailureDecodeTests.swift in Sources */,
