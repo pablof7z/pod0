@@ -29,7 +29,7 @@ import androidx.media3.session.MediaSessionService
  *    never decides what to load, when to advance, or how to react to
  *    end-of-track. Every such decision lives in the Rust `PlayerActor`
  *    (see `apps/nmp-app-podcast/src/player/mod.rs`) and round-trips
- *    through `KernelBridge.nmpCapabilityReport`.
+ *    through `KernelBridge.capabilityReport`.
  *  * D6 — service lifecycle never throws. Bind failures degrade to "no
  *    player available", surfaced by the capability returning early.
  *  * D7 — the service reports; it never invents follow-up commands. The

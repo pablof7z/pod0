@@ -13,12 +13,13 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import okhttp3.Call
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.coroutineContext
 
 /**
@@ -28,13 +29,13 @@ import kotlin.coroutines.coroutineContext
  * ## Why a *pull* model (vs. iOS's push model)
  *
  * On iOS the kernel pushes a `DownloadCommand` to the capability through
- * `dispatch_capability`. Android has **no inbound capability-command seam**
- * — the JNI bridge only carries reports *out*. So this executor instead
- * *reconciles* against the kernel's projected `downloads.active` rows: the
- * kernel still owns all policy (which episodes, `max_concurrent`, wifi-only
- * gate, retry); the capability merely mirrors the kernel's intent into real
- * HTTP fetches. The kernel is the single source of truth; this class is a
- * stateless executor over its snapshot. (D7 — report/execute, never decide.)
+ * `dispatch_capability`. Android now has the generic NMP callback for HTTP
+ * and audio, but downloads intentionally keep a pull-model executor: the
+ * capability reconciles against the kernel's projected `downloads.active`
+ * rows, and the router acknowledges download commands without starting a
+ * second path. The kernel still owns all policy (which episodes,
+ * `max_concurrent`, wifi-only gate, retry); this class only mirrors that
+ * intent into real HTTP fetches. (D7 — report/execute, never decide.)
  *
  * ## Single-writer reconcile (no double-start race)
  *
@@ -49,22 +50,21 @@ import kotlin.coroutines.coroutineContext
  *  * For each in-flight episode that is **no longer present** as an active
  *    row → cancel its coroutine. A user-issued cancel resolves the kernel
  *    item to a terminal state, which drops it out of the snapshot; the
- *    disappearance is the only cancel signal Android receives (the kernel's
- *    `CancelDownload` command is dropped, same as the initial start).
+ *    disappearance is the only cancel signal Android acts on; pushed download
+ *    commands are acknowledged by the generic router to avoid duplicate starts.
  *
  * The follow-up `DownloadCommand` returned by [`KernelBridge.downloadReport`]
- * is intentionally **ignored for starting** — see [`DownloadReportWire`].
+ * is intentionally **ignored for starting**; the next snapshot tick is the
+ * only starter.
  *
  * ## Lifecycle / UAF safety
  *
- * Downloads are scoped to [`scope`] (a `SupervisorJob`). [`detach`] cancels
- * every in-flight coroutine *synchronously enough* that the owner
- * (`MainActivity`) cancels-then-frees the kernel: no report fires through
- * the bridge after `bridge.free()`, so a worker can never dereference a
- * freed `Session`. Reports are only meaningful while the kernel is alive,
- * which is also why this uses foreground-scoped coroutines rather than
- * WorkManager (a background-completed report would have no live kernel to
- * land on). See the PR description for the WorkManager trade-off.
+ * Downloads are scoped to [`scope`] (a `SupervisorJob`). [`detach`] marks the
+ * capability detached before cancelling jobs and OkHttp calls, so no report
+ * can fire through the bridge after `bridge.free()`. Reports are only
+ * meaningful while the kernel is alive, which is also why this uses
+ * foreground-scoped coroutines rather than WorkManager (a background-completed
+ * report would have no live kernel to land on).
  */
 class DownloadCapability(
     private val bridge: KernelBridge,
@@ -77,14 +77,12 @@ class DownloadCapability(
         .build()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val detached = AtomicBoolean(false)
 
     /** episodeId → running download job. Touched from the snapshot coroutine
      *  (add, via reconcile) and the IO workers (remove, on finish). */
     private val inFlight = ConcurrentHashMap<String, Job>()
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Reconcile — the single writer
-    // ─────────────────────────────────────────────────────────────────────
+    private val inFlightCalls = ConcurrentHashMap<String, Call>()
 
     /**
      * Diff the kernel's active-download rows against what we're executing,
@@ -93,6 +91,7 @@ class DownloadCapability(
      * "no active downloads" — any in-flight job is then cancelled.
      */
     fun reconcile(active: List<DownloadItemSnapshot>?) {
+        if (detached.get()) return
         val activeRows = active.orEmpty().filter { it.state == STATE_ACTIVE && it.url.isNotBlank() }
         val activeIds = activeRows.mapTo(HashSet()) { it.episodeId }
 
@@ -100,7 +99,7 @@ class DownloadCapability(
         // kernel terminal transition). The disappearance is the cancel signal.
         for (episodeId in inFlight.keys.toList()) {
             if (episodeId !in activeIds) {
-                inFlight.remove(episodeId)?.cancel()
+                cancelInFlight(episodeId)
             }
         }
 
@@ -111,22 +110,18 @@ class DownloadCapability(
         }
     }
 
-    /** Cancel every in-flight download and block until all workers have exited.
-     *  Must be called before the owner frees the kernel bridge — guarantees no
-     *  report fires through a freed handle. */
+    /** Cancel every in-flight download before the owner frees the bridge. */
     fun detach() {
-        inFlight.keys.toList().forEach { key -> inFlight.remove(key)?.cancel() }
+        if (!detached.compareAndSet(false, true)) return
+        inFlight.keys.toList().forEach(::cancelInFlight)
+        inFlightCalls.values.forEach { call -> call.cancel() }
         scope.cancel()
-        // Join the SupervisorJob so all child coroutines have finished their
-        // finally blocks (and cannot fire a report) before we return.
-        runBlocking(Dispatchers.IO) {
-            scope.coroutineContext[Job]?.join()
-        }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Download execution
-    // ─────────────────────────────────────────────────────────────────────
+    private fun cancelInFlight(episodeId: String) {
+        inFlightCalls.remove(episodeId)?.cancel()
+        inFlight.remove(episodeId)?.cancel()
+    }
 
     private fun startDownload(episodeId: String, url: String, hintBytes: Long?) {
         val dest = destinationFile(episodeId, url)
@@ -145,13 +140,18 @@ class DownloadCapability(
                 // Cooperative cancel (reconcile removed the row). Clean up the
                 // partial file and tell the kernel we stopped.
                 partFile(dest).delete()
-                report(DownloadReportWire.cancelled(episodeId))
+                if (!detached.get()) report(DownloadReportWire.cancelled(episodeId))
                 throw cancel
             } catch (t: Throwable) {
                 partFile(dest).delete()
-                report(DownloadReportWire.failed(episodeId, t.message ?: "download-failed"))
+                if (!coroutineContext.isActive && !detached.get()) {
+                    report(DownloadReportWire.cancelled(episodeId))
+                } else if (!detached.get()) {
+                    report(DownloadReportWire.failed(episodeId, t.message ?: "download-failed"))
+                }
             } finally {
                 inFlight.remove(episodeId)
+                inFlightCalls.remove(episodeId)
             }
         }
         inFlight[episodeId] = job
@@ -164,7 +164,9 @@ class DownloadCapability(
         hintBytes: Long?,
     ) {
         val request = Request.Builder().url(url).build()
-        client.newCall(request).execute().use { response ->
+        val call = client.newCall(request)
+        inFlightCalls[episodeId] = call
+        call.execute().use { response ->
             if (!response.isSuccessful) {
                 report(DownloadReportWire.failed(episodeId, "http-${response.code}"))
                 return
@@ -236,17 +238,13 @@ class DownloadCapability(
         return byteGate
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Reporting + storage
-    // ─────────────────────────────────────────────────────────────────────
-
     /**
      * Forward a `DownloadReport` to the kernel. The kernel projects it onto
      * its `DownloadQueue` (advancing the snapshot the UI reads) and returns a
      * follow-up command we deliberately discard — reconcile is the writer.
      */
     private fun report(reportJson: String) {
-        if (!scope.isActive) return // detached — don't touch the freed handle
+        if (detached.get() || !scope.isActive) return
         runCatching { bridge.downloadReport(reportJson) }
             .onFailure { Log.w(TAG, "download report failed", it) }
     }

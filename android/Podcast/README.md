@@ -1,8 +1,10 @@
-# Podcast — Android (M2.F second-platform proof)
+# Podcast — Android second-platform client
 
-Minimal Compose project that drives the **same** `nmp-app-podcast` Rust crate
-the iOS app links. The point of this directory is to prove the kernel
-composition is platform-portable, not to ship a production Android client.
+Compose project that drives the **same** `nmp-app-podcast` Rust crate the iOS
+app links. The point of this directory is to prove NMP's platform-portability:
+Android renders snapshots and executes OS capabilities, while podcast policy,
+state transitions, feed/search behavior, playback policy, and download queue
+ownership stay in the Rust kernel.
 
 ## What this proves
 
@@ -15,10 +17,10 @@ composition is platform-portable, not to ship a production Android client.
   exports `Java_io_f7z_podcast_KernelBridge_*` symbols that bind 1:1 to the
   `external fun` declarations in `KernelBridge.kt`. The surface is a faithful
   port of `ios/Podcast/Podcast/Bridge/KernelBridge.swift`.
-- **One capability hop works.** `nativeSigninNsec` and `nativeDispatchAction`
-  thread through to `nmp_app_signin_nsec` / `nmp_app_dispatch_action` in
-  `nmp-ffi` — the exit-checklist gate for "one capability hop on the second
-  platform".
+- **NMP capability bridge works on Android.** Android registers a generic NMP
+  capability callback for HTTP and audio command execution. Capability reports
+  flow back to Rust through handle-aware JNI channels, so ExoPlayer state and
+  download progress update the same Rust actors iOS uses.
 
 ## Layout
 
@@ -64,7 +66,7 @@ export ANDROID_NDK_HOME=$HOME/Library/Android/sdk/ndk/26.1.10909125
 
 Two equivalent paths.
 
-### 1. Manual cargo-ndk + Gradle (current PoC flow)
+### 1. Manual cargo-ndk + Gradle
 
 From the **repo root**:
 
@@ -92,8 +94,9 @@ $NDK_HOST/bin/llvm-nm -D \
   | grep Java_io_f7z_podcast
 ```
 
-You should see 13 `T Java_io_f7z_podcast_KernelBridge_<native>` entries
-(11 from M2.F + `nmpActionDispatch` and `nmpCapabilityReport` from M13.A).
+You should see 15 `T Java_io_f7z_podcast_KernelBridge_<native>` entries,
+including `nativeSetCapabilityRouter`, `nativeCapabilityReport`, and
+`nativeDownloadReport`.
 
 ### 2. Gradle-driven (what `assembleDebug` does)
 
@@ -124,23 +127,26 @@ This is the production path.
 |---|---|
 | `apps/nmp-app-podcast/Cargo.toml` adds `cdylib` | ✅ |
 | `apps/nmp-app-podcast/src/android.rs` JNI shim compiles for `aarch64-linux-android` and `x86_64-linux-android` | ✅ |
-| `libnmp_app_podcast.so` exports 11 `Java_io_f7z_podcast_KernelBridge_*` symbols | ✅ |
-| Kotlin Compose source compiles | ⚠️ depends on local Android Studio / Gradle wrapper init |
-| App boots and renders subscribed library | ⏸ stub snapshot — wired once `LibraryProjection` is serialized in M2.A+ |
-| One capability hop succeeds end-to-end | ⏸ same blocker |
+| `libnmp_app_podcast.so` exports 15 `Java_io_f7z_podcast_KernelBridge_*` symbols | ✅ |
+| Kotlin Compose source compiles through `./gradlew assembleDebug` | ✅ |
+| Compose shell decodes and renders the Rust snapshot model | ✅ |
+| Subscribe/search/feed refresh execute through `nmp.http.capability` | ✅ |
+| ExoPlayer commands and audio reports round-trip through Rust | ✅ |
+| Download UI and OkHttp executor report progress to Rust | ✅ |
 
-The Kotlin source is structurally complete; the gradle wrapper itself is
-not vendored (we point at the system `gradle` binary from Android Studio).
-A first-time contributor should run `gradle wrapper --gradle-version 8.7`
-from `android/Podcast/` before the `gradlew` flow above works.
+Current Tier 1 gaps are tracked in `docs/plan/android-parity.md` and
+`docs/BACKLOG.md`: queue UI/actions, lock-screen command policy validation,
+and Android keypair generation. AI, Nostr social, and platform integrations
+remain later tiers.
 
 ## Doctrine reminders
 
 This project shares the iOS doctrine — see `AGENTS.md` at the repo root.
 Relevant for the JNI layer:
 
-- **D0** — Kernel emits; this Kotlin layer composes. The Compose UI MUST
-  NOT contain podcast-domain logic; it decodes JSON and renders.
+- **D0** — Kernel emits; this Kotlin layer composes. Compose MUST NOT contain
+  podcast-domain logic; it decodes JSON, dispatches actions, and executes OS
+  capabilities.
 - **D5/D8** — `KernelBridge.kt` carries no cached state beyond the opaque
   handle.
 - **D6** — JNI entry points return `null` / `0` / void on failure; errors
@@ -148,6 +154,6 @@ Relevant for the JNI layer:
 
 ## Open follow-ups
 
-Tracked in `docs/BACKLOG.md` under "NMP Migration — M2.F Android proof
-follow-ups": gradle wrapper vendoring, `LibraryProjection` snapshot
-serializer, JNI shim relocation, real nsec entry sheet.
+Tracked in `docs/BACKLOG.md` under "Active P1 - Platform And Android":
+queue UI/actions, Rust-routed MediaSession validation, Android key generation,
+and later-tier AI/Nostr/platform parity work.

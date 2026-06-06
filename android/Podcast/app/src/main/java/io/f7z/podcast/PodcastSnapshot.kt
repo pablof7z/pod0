@@ -135,9 +135,8 @@ data class DownloadItemSnapshot(
      * Enclosure URL the executor fetches. Projected by Rust
      * (`ffi/projections/download.rs::DownloadItemSnapshot.url`) so the
      * pull-model `DownloadCapability` can start the HTTP download straight
-     * from a `"queued"` / `"active"` row — Android has no inbound
-     * capability-command seam, unlike iOS's push-model executor. Empty when
-     * the row predates the field.
+     * from a `"queued"` / `"active"` row while the kernel remains the only
+     * download policy owner. Empty when the row predates the field.
      */
     val url: String = "",
     val progress: Float = 0.0f,

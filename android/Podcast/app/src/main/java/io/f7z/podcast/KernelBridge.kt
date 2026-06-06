@@ -1,5 +1,7 @@
 package io.f7z.podcast
 
+import io.f7z.podcast.capabilities.AndroidCapabilityRouter
+
 /**
  * Thin JNI wrapper around `libnmp_app_podcast.so`, which links the SAME Rust
  * `nmp-app-podcast` crate the iOS app consumes as a `staticlib`. The native
@@ -79,21 +81,28 @@ class KernelBridge {
     external fun nmpActionDispatch(actionJson: String): Int
 
     /**
-     * Host → kernel capability-report channel (M13.A stub). The Kotlin
-     * capability stubs in `capabilities/` call this with the namespace
-     * (`"nmp.audio.capability"`, `"nmp.download.capability"`, …) and the
-     * JSON-encoded report (`AudioReport::Playing`, …).
-     *
-     * Returns `0` on success, `-1` on input failure. Mirrors the iOS
-     * `attach(sendReport:)` closure's wire shape: the host reports, the
-     * kernel decides (D7).
+     * Register the Android capability router. Rust issues
+     * `CapabilityRequest` envelopes through NMP's callback socket; the router
+     * executes OS work (HTTP, ExoPlayer) and returns `CapabilityEnvelope` JSON.
      */
-    external fun nmpCapabilityReport(namespace: String, reportJson: String): Int
+    fun registerCapabilityRouter(router: AndroidCapabilityRouter) {
+        if (handle != 0L) nativeSetCapabilityRouter(handle, router)
+    }
+
+    fun unregisterCapabilityRouter() {
+        if (handle != 0L) nativeSetCapabilityRouter(handle, null)
+    }
 
     /**
-     * Host → kernel **download**-report channel. Unlike the generic
-     * [`nmpCapabilityReport`] stub (which drops its body), this is a real,
-     * handle-aware channel: the JSON-encoded `DownloadReport`
+     * Host → kernel report channel for capability observations. Audio reports
+     * route through `nmp_app_podcast_audio_report`; the returned follow-up
+     * command JSON, if any, should be executed by the audio capability.
+     */
+    fun capabilityReport(namespace: String, reportJson: String): String? =
+        if (handle != 0L) nativeCapabilityReport(handle, namespace, reportJson) else null
+
+    /**
+     * Host → kernel **download**-report channel. The JSON-encoded `DownloadReport`
      * (`progress` / `completed` / `failed` / `cancelled` / `paused`) is
      * projected onto the kernel `DownloadQueue`, and any follow-up
      * `DownloadCommand` the queue emits (e.g. `start_download` for the next
@@ -102,10 +111,9 @@ class KernelBridge {
      *
      * This is the Android analogue of the iOS
      * `KernelBridge+Callbacks.swift::attachDownloadReportChannel`
-     * return-and-execute pattern. The returned command is how the kernel
-     * drives the *next* download; the *first* item in a batch is seeded by
-     * the capability off the projected `downloads.active` rows because
-     * Android has no inbound `dispatch_capability` command seam.
+     * return-and-execute pattern. Android deliberately starts downloads from
+     * projected `downloads.active` rows so there is one starter/canceller and
+     * no duplicate path competing with the Rust queue.
      */
     fun downloadReport(reportJson: String): String? =
         if (handle != 0L) nativeDownloadReport(handle, reportJson) else null
@@ -148,6 +156,8 @@ class KernelBridge {
     private external fun nativeLifecycleForeground(handle: Long)
     private external fun nativeLifecycleBackground(handle: Long)
     private external fun nativeDispatchAction(handle: Long, namespace: String, payload: String): String?
+    private external fun nativeSetCapabilityRouter(handle: Long, router: AndroidCapabilityRouter?)
+    private external fun nativeCapabilityReport(handle: Long, namespace: String, reportJson: String): String?
     private external fun nativeDownloadReport(handle: Long, reportJson: String): String?
     private external fun nativeSigninNsec(handle: Long, nsec: String)
     private external fun nativeNextUpdate(handle: Long): String?

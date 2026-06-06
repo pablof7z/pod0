@@ -31,7 +31,8 @@ import kotlinx.serialization.json.jsonPrimitive
  *  * On every `handleCommand`, translate the `AudioCommand` JSON envelope
  *    into ExoPlayer calls against the service-owned player.
  *  * Listener callbacks emit `AudioReport` JSON back to the kernel via
- *    `KernelBridge.nmpCapabilityReport`.
+ *    `KernelBridge.capabilityReport`; any follow-up `AudioCommand` JSON is
+ *    executed immediately, matching the iOS report channel.
  *
  * **Doctrine:**
  *
@@ -231,7 +232,9 @@ class ExoPlayerCapability(
      */
     internal fun emit(report: JsonObject) {
         val payload = json.encodeToString(JsonObject.serializer(), report)
-        bridge.nmpCapabilityReport(NAMESPACE, payload)
+        bridge.capabilityReport(NAMESPACE, payload)?.let { followUp ->
+            handleCommand(followUp)
+        }
     }
 
     private fun buildStoppedReport(url: String): JsonObject = buildJsonObject {

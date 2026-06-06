@@ -13,8 +13,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import io.f7z.podcast.capabilities.AndroidCapabilityRouter
 import io.f7z.podcast.capabilities.DownloadCapability
 import io.f7z.podcast.capabilities.ExoPlayerCapability
+import io.f7z.podcast.capabilities.HttpCapability
 import io.f7z.podcast.security.KeystoreManager
 import io.f7z.podcast.ui.AppNavigation
 import kotlinx.coroutines.Dispatchers
@@ -36,11 +38,9 @@ import kotlinx.coroutines.withContext
  * Audio capability (PR 13):
  *  - `ExoPlayerCapability` replaces the M13.A `AudioCapabilityStub`. The
  *    capability holds a `Player.Listener` against the `ExoPlayer` owned
- *    by `PodcastPlaybackService`, emits `AudioReport` envelopes via
- *    `KernelBridge.nmpCapabilityReport`, and consumes `AudioCommand`
- *    envelopes through `handleCommand` (called by the kernel's
- *    capability router when that wiring lands; until then the kernel
- *    sees the executor via the report channel only).
+ *    by `PodcastPlaybackService`, emits `AudioReport` envelopes through
+ *    `KernelBridge.capabilityReport`, and consumes kernel-issued
+ *    `AudioCommand` envelopes through the registered NMP capability router.
  *  - Toast surface for `PodcastSnapshot.toast` via `LaunchedEffect`.
  */
 class MainActivity : ComponentActivity() {
@@ -67,21 +67,22 @@ class MainActivity : ComponentActivity() {
 private fun PodcastRoot() {
     val context = LocalContext.current
     val bridge = remember { KernelBridge() }
-    // PR 13 — replace the M13.A stub with the real ExoPlayer executor.
     // `attach` starts `PodcastPlaybackService` so the OS keeps the process
     // alive while audio plays, then binds a `Player.Listener` to the
-    // service-owned player. `detach` removes the listener on dispose; the
-    // service self-terminates from its own `onTaskRemoved` hook when the
-    // user swipes the app away while paused.
+    // service-owned player. NMP commands arrive through AndroidCapabilityRouter.
     val audio = remember(bridge) {
         ExoPlayerCapability(bridge = bridge, context = context.applicationContext)
     }
     val download = remember(bridge) {
         DownloadCapability(bridge = bridge, context = context.applicationContext)
     }
+    val http = remember { HttpCapability() }
+    val router = remember(audio, http) {
+        AndroidCapabilityRouter(audio = audio, http = http)
+    }
     var snapshot by remember { mutableStateOf<PodcastSnapshot?>(null) }
 
-    DisposableEffect(bridge, audio, download) {
+    DisposableEffect(bridge, audio, download, http, router) {
         // Restore a previously-imported identity before the actor starts so the
         // first snapshot already reflects the signed-in state. Dispatches the
         // canonical `podcast.identity` ImportNsec (the bridge constructor's
@@ -91,12 +92,16 @@ private fun PodcastRoot() {
         KeystoreManager.loadNsec(context)?.let { stored ->
             IdentityActions.importNsec(bridge, stored)
         }
-        bridge.start()
+        bridge.registerCapabilityRouter(router)
+        http.start()
         audio.attach()
+        bridge.start()
         onDispose {
-            audio.detach()
             download.detach()
             bridge.stop()
+            audio.detach()
+            http.stop()
+            bridge.unregisterCapabilityRouter()
             bridge.free()
         }
     }

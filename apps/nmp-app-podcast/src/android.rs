@@ -1,4 +1,4 @@
-//! Android JNI shim — M2.F second-platform proof. Mirrors iOS
+//! Android JNI shim. Mirrors iOS
 //! `KernelBridge.swift` in `Java_io_f7z_podcast_KernelBridge_*` symbols.
 //!
 //! Lives inside this crate (gated `#[cfg(target_os = "android")]`) instead of
@@ -15,7 +15,10 @@
 //! bodies into the codegen unit — same pattern as NMP's `nmp-android-ffi`.
 
 use std::ffi::{c_void, CStr, CString};
-use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
+use std::sync::{
+    mpsc::{Receiver, RecvTimeoutError, Sender},
+    Mutex,
+};
 use std::time::Duration;
 
 use jni::objects::{JClass, JString};
@@ -29,13 +32,16 @@ use nmp_ffi::{
 };
 
 use crate::ffi::{
-    nmp_app_podcast_download_report, nmp_app_podcast_register, nmp_app_podcast_snapshot,
-    nmp_app_podcast_snapshot_free, nmp_app_podcast_unregister, PodcastHandle,
+    nmp_app_podcast_register, nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free,
+    nmp_app_podcast_unregister, PodcastHandle,
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Session — boxed lifetime container
-// ─────────────────────────────────────────────────────────────────────────────
+#[path = "android/capability_router.rs"]
+mod capability_router;
+#[path = "android/reports.rs"]
+mod reports;
+
+// ── Session — boxed lifetime container ──────────────────────────────────────
 
 /// Owns the kernel handle, the projection handle, the snapshot receiver, and
 /// the boxed sender that the kernel holds as an opaque callback context.
@@ -45,6 +51,7 @@ pub(crate) struct Session {
     podcast: *mut PodcastHandle,
     rx: Receiver<String>,
     tx: *mut Sender<String>,
+    capability_ctx: Mutex<Option<*mut capability_router::AndroidCapabilityContext>>,
 }
 
 // SAFETY: `Session` is sent across threads only inside a `Box` whose ownership
@@ -54,7 +61,7 @@ pub(crate) struct Session {
 unsafe impl Send for Session {}
 
 #[must_use]
-fn session_ref<'a>(handle: jlong) -> Option<&'a Session> {
+pub(super) fn session_ref<'a>(handle: jlong) -> Option<&'a Session> {
     if handle == 0 {
         None
     } else {
@@ -64,9 +71,7 @@ fn session_ref<'a>(handle: jlong) -> Option<&'a Session> {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Update callback — copies the JSON before the kernel reclaims its buffer.
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Update callback — copies JSON before the kernel reclaims its buffer. ─────
 
 /// `nmp_app_set_update_callback` fires on the kernel's listener thread. NMP's
 /// update transport is binary FlatBuffers (NMP `UpdateCallback` is
@@ -130,6 +135,7 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeNew(
         podcast,
         rx,
         tx,
+        capability_ctx: Mutex::new(None),
     });
     Box::into_raw(session) as jlong
 }
@@ -360,113 +366,6 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nmpActionDispatch<'l>(
     0
 }
 
-/// `nmpCapabilityReport(namespace, reportJson)` — M13.A stub for the
-/// host → kernel capability-report channel. The Kotlin stubs in
-/// `capabilities/` call this on every executor report (`AudioReport::Playing`,
-/// `AudioReport::Paused`, …) so the kernel can project the executor's
-/// observations into its state machines.
-///
-/// The M13.B work will wire this through `nmp-ffi`'s capability-report
-/// surface (analogue of the iOS `sendReport` closure in
-/// `AudioCapability.swift`). For now we validate the inputs and return 0
-/// so the Kotlin stub can be exercised end-to-end without crashing.
-///
-/// **D6:** never panics, never throws. `-1` on any input failure; `0` on
-/// success.
-#[no_mangle]
-pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nmpCapabilityReport<'l>(
-    mut env: JNIEnv<'l>,
-    _class: JClass<'l>,
-    namespace: JString<'l>,
-    report_json: JString<'l>,
-) -> jint {
-    let Ok(ns) = env.get_string(&namespace) else {
-        return -1;
-    };
-    let Ok(body) = env.get_string(&report_json) else {
-        return -1;
-    };
-    let ns = ns.to_string_lossy().into_owned();
-    let body = body.to_string_lossy().into_owned();
-    // Validate the JSON shape early — capability reports are always JSON
-    // (`AudioReport`, `DownloadReport`, `VoiceReport`). Anything else is a
-    // wire-format bug and we surface it via the return code instead of
-    // letting it propagate as a malformed projection on the next tick.
-    if serde_json::from_str::<serde_json::Value>(&body).is_err() {
-        return -1;
-    }
-    // Stub: future M13.B will dispatch this through the kernel's capability
-    // report sink. The namespace + body are owned strings ready to forward.
-    //
-    // NOTE: the download capability does NOT use this entry point — it has
-    // a real, handle-aware channel (`nativeDownloadReport` below) that
-    // projects the report onto the kernel `DownloadQueue` and returns the
-    // follow-up `DownloadCommand`. Audio/voice reports still land here and
-    // are dropped pending the broader capability-report wiring (M13.B);
-    // that remains a known gap for those namespaces, untouched by this PR.
-    let _ = (ns, body);
-    0
-}
-
-/// `nativeDownloadReport(handle, reportJson)` — handle-aware download
-/// report channel. The Kotlin `DownloadCapability` calls this with a
-/// JSON-encoded [`crate::capability::DownloadReport`] (`progress` /
-/// `completed` / `failed` / `cancelled` / `paused`). The report is
-/// projected onto the kernel [`crate::download::DownloadQueue`] via
-/// [`nmp_app_podcast_download_report`], and any follow-up
-/// [`crate::capability::DownloadCommand`] the queue emits (e.g.
-/// `start_download` for the next waiting item once a slot frees) is
-/// returned to Kotlin as a JSON `String`, or `null` when there is none.
-///
-/// This is the Android analogue of the iOS
-/// `KernelBridge+Callbacks.swift::attachDownloadReportChannel` return-and-
-/// execute pattern. Because Android has no inbound `dispatch_capability`
-/// command seam, the returned command is how the kernel drives the *next*
-/// download; the *first* item in a batch is seeded by the capability off
-/// the projected `downloads.active` rows.
-///
-/// **D6:** never panics, never throws. Returns `null` on null handle,
-/// bad UTF-8, lock poison, decode failure, or "no follow-up command".
-#[no_mangle]
-pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeDownloadReport<'l>(
-    mut env: JNIEnv<'l>,
-    _class: JClass<'l>,
-    handle: jlong,
-    report_json: JString<'l>,
-) -> jstring {
-    let null = std::ptr::null_mut();
-    let Some(s) = session_ref(handle) else {
-        return null;
-    };
-    if s.podcast.is_null() {
-        return null;
-    }
-    let body = match env.get_string(&report_json) {
-        Ok(s) => s.to_string_lossy().into_owned(),
-        Err(_) => return null,
-    };
-    let Ok(c_body) = CString::new(body) else {
-        return null;
-    };
-    // SAFETY: `s.podcast` is the live `PodcastHandle` registered in
-    // `nativeNew`; `c_body` outlives the call. The FFI fn never panics
-    // (D6) and returns either a heap-owned JSON string or NULL.
-    let follow_up_ptr = nmp_app_podcast_download_report(s.podcast, c_body.as_ptr());
-    if follow_up_ptr.is_null() {
-        return null;
-    }
-    // Copy out, then release through the documented free path — same
-    // convention `nativeDispatchAction` follows for kernel-owned strings.
-    let owned = unsafe { CStr::from_ptr(follow_up_ptr) }
-        .to_string_lossy()
-        .into_owned();
-    nmp_app_free_string(follow_up_ptr);
-    match env.new_string(owned) {
-        Ok(js) => js.into_raw(),
-        Err(_) => null,
-    }
-}
-
 /// `nativeFree(handle)` — tear down the kernel and the projection handle.
 /// Exactly-once.
 #[no_mangle]
@@ -480,6 +379,8 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeFree(
     }
     // SAFETY: `handle` was produced by `nativeNew`; freed exactly once.
     let s = unsafe { Box::from_raw(handle as *mut Session) };
+    nmp_app_stop(s.app);
+    capability_router::clear_capability_router(&s);
     if !s.podcast.is_null() {
         nmp_app_podcast_unregister(s.podcast);
     }

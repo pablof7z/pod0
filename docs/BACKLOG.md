@@ -488,26 +488,25 @@ worktrees currently in flight.
   continue path, and stale activity behavior across devices.
 - **icloud-settings-hardening.** Confirm Rust owns settings policy, conflicts,
   echo suppression, availability, opt-in behavior, and migration.
-- **android-tier1-parity.** Finish Android real snapshot parity for library,
-  player, downloads, identity, feed refresh, and audio reports.
-- **android-gradle-wrapper.** Vendor `gradlew` and wrapper files under
-  `android/Podcast/`.
-- **android-download-capability-wiring.** `capabilities/DownloadCapability.kt`
-  (OkHttp pull-model executor) ships compiling and unit-validated on the Rust
-  side, but is **not yet instantiated** in `MainActivity`: `reconcile()` is
-  never called from the snapshot poll loop and `detach()` is never called
-  before `bridge.free()`, so episode enclosures do not actually download on
-  Android yet. Follow-up: `remember` the capability alongside
-  `ExoPlayerCapability`, drive `reconcile(snapshot.downloads?.active)` from the
-  `LaunchedEffect` poll tick, and call `detach()` in `onDispose` ahead of
-  `bridge.stop()/free()`. Also revisit the WorkManager-vs-foreground-scope
-  trade-off documented in `DownloadCapability.kt` for background completion.
+- **android-tier1-parity.** Finish Android parity gaps that still require
+  user-visible work or policy validation: queue UI/actions, lock-screen
+  MediaSession commands routed through Rust playback policy, Android keypair
+  generation, and Tier 2+ AI/Nostr/platform surfaces. Tier 1 library, search,
+  subscribe, feed refresh, playback, sleep timer, downloads, settings, BYOK
+  nsec import, HTTP capability execution, and audio report round-trips now use
+  the NMP kernel/capability path.
+- ~~**android-gradle-wrapper.**~~ Done — `gradlew`, `gradlew.bat`, and the
+  wrapper files are present under `android/Podcast/`; `./gradlew assembleDebug`
+  is the validated Android build path.
+- ~~**android-download-capability-wiring.**~~ Done — `MainActivity` owns the
+  Android `DownloadCapability`, reconciles it from `snapshot.downloads.active`,
+  and detaches it before the bridge is freed. Downloads intentionally stay on
+  the pull-model executor so the Rust queue remains the single policy owner.
 - ~~**android-auth-keychain.**~~ Done — PR #196. Remaining: key generation
   (kernel doesn't expose generated nsec to host yet).
-- **android-download-capability-anr.** `DownloadCapability.detach()` calls
-  `runBlocking{job.join()}` on the main thread; with OkHttp read-timeout at 60s
-  this is an ANR vector. Fix: track each in-flight `Call` and call
-  `call.cancel()` before joining so the IO thread exits in milliseconds.
+- ~~**android-download-capability-anr.**~~ Done — `detach()` no longer blocks
+  the main thread; it marks the capability detached, cancels tracked OkHttp
+  `Call`s, cancels jobs, and suppresses late reports after bridge teardown.
 
 ## Active P2 - Cross-Cutting Technical Debt
 

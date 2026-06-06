@@ -13,7 +13,7 @@ in `android/Podcast/app/src/main/java/io/f7z/podcast/`.
 | Label | Meaning |
 |---|---|
 | Shipped | User-visible behavior works through the NMP stack on Android. |
-| This PR | Landed by the "snapshot completeness + subscribe/search/episode detail" PR. |
+| Partial | A visible shell exists, but a kernel-routed behavior gap remains. |
 | Scaffold | Types / UI / action shells exist, but real behavior is absent. |
 | Not started | No Android implementation yet. |
 
@@ -21,19 +21,19 @@ in `android/Podcast/app/src/main/java/io/f7z/podcast/`.
 
 | Feature | Status |
 |---|---|
-| Subscribe via RSS | This PR |
-| Search (iTunes/RSS directory) | This PR |
+| Subscribe via RSS | Shipped |
+| Search (iTunes/RSS directory) | Shipped |
 | Library / show grid | Shipped |
-| Show detail + episode list | This PR (detail + tappable episode list) |
-| Episode detail view | This PR |
-| Feed refresh (pull-to-refresh) | This PR |
+| Show detail + episode list | Shipped |
+| Episode detail view | Shipped |
+| Feed refresh (pull-to-refresh) | Shipped |
 | Audio playback | Shipped |
 | Variable speed | Shipped |
-| Sleep timer | Scaffold (action wired; no UI control yet) |
-| Episode download UI | Not started (action wired; no UI surface) |
-| Playback settings | Not started (snapshot field decoded; no settings UI) |
+| Sleep timer | Shipped |
+| Episode download UI | Shipped |
+| Playback settings | Shipped |
 | Playback queue | Not started (snapshot field decoded; no queue UI) |
-| Lock-screen / media controls | Not started |
+| Lock-screen / media controls | Partial (MediaSession exists; controls still need Rust-routed policy validation) |
 
 ## Tier 2 - AI
 
@@ -53,7 +53,7 @@ in `android/Podcast/app/src/main/java/io/f7z/podcast/`.
 | Feature | Status |
 |---|---|
 | Keypair generation | Not started |
-| BYOK nsec | Scaffold / stub |
+| BYOK nsec | Shipped (local nsec import + Android Keystore persistence) |
 | NIP-46 bunker | Not started |
 | Profile editing | Not started |
 | Relay list | Not started |
@@ -70,30 +70,27 @@ in `android/Podcast/app/src/main/java/io/f7z/podcast/`.
 | App Actions | Not started |
 | Local notifications | Not started |
 
-## Notes on this PR
+## Current Android Parity Baseline
 
-This PR moves Android from a read-only tech demo to a player a user can
-actually drive: find a podcast, subscribe, browse episodes, open an episode,
-and play it.
+Android is now a real second-platform shell for the Tier 1 podcast flows. It
+decodes the Rust snapshot, renders Compose screens, dispatches op-tagged
+actions back into the kernel, and executes OS capabilities without owning
+podcast business rules.
 
-- **Snapshot completeness.** `PodcastSnapshot.kt` now mirrors the verified Rust
-  projections (`ffi/projections/{library,settings,inbox}.rs`): `search_results`,
-  `settings`, `queue`, `inbox` on the top-level snapshot; the full
-  `EpisodeSummary` field set (`enclosure_url`, `description`, `played`,
-  `starred`, `download_path`, `playback_position_secs`, `chapters`,
-  `ai_categories`, `triage_decision`); `PodcastSummary.{feed_url, author,
-  description}`; and new `ChapterSummary` / `SettingsSnapshot` / `InboxItem`
-  data classes using the real wire field names.
+- **Snapshot + actions.** Library, search, show detail, episode detail,
+  downloads, settings, queue, inbox, playback, chapters, categories, and
+  identity fields are decoded from the Rust projection. Subscribe, refresh,
+  download/delete, play/pause/seek/speed, sleep timer, and settings mutations
+  use the same namespace/body dispatch shape as iOS.
 
-- **Action contract corrected.** The kernel dispatch model is
-  `(namespace, op-tagged body)` — namespace `"podcast"` or `"podcast.player"`,
-  body `{"op":"<variant>", …}` — not flat dotted action ids. `subscribe`,
-  `unsubscribe`, `refresh_all`, `search_itunes`, `download`, `delete_download`
-  ride `"podcast"`; `play`, `pause`, `seek`, `set_speed`, `set_sleep_timer`
-  ride `"podcast.player"`. The prior demo passed the dotted op path as the
-  *namespace* (unregistered), so its player dispatches never reached the
-  kernel; this PR fixes Player + Home to the correct contract.
+- **Capability bridge.** Android registers a generic NMP capability callback
+  for HTTP and audio command execution. Feed/search refreshes now run through
+  `nmp.http.capability`, and ExoPlayer commands/reports round-trip through
+  the Rust player actor. Downloads remain a single-writer pull-model executor
+  seeded by `downloads.active` rows so Android does not duplicate the kernel's
+  queue policy.
 
-- **Known gaps.** Sign-in remains stubbed; downloads have no UI surface (the
-  action is wired but no button/affordance exists); playback settings, queue,
-  and inbox are decoded from the snapshot but have no dedicated screens yet.
+- **Remaining Tier 1 gaps.** Queue rendering/actions are still absent.
+  MediaSession lock-screen controls exist but still need explicit validation
+  that every remote command routes through Rust playback policy. Key generation
+  is not exposed yet; Android supports imported nsec persistence only.

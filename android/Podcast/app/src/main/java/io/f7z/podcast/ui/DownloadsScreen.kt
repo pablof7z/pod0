@@ -54,16 +54,11 @@ import io.f7z.podcast.PodcastSnapshot
  *  * Delete a completed download → `podcast` `{"op":"delete_download",…}`.
  *  * Play a downloaded episode → `podcast.player` `{"op":"play",…}`.
  *
- * KNOWN LIMITATION: the Android shell registers no DownloadCapability today
- * (only ExoPlayer audio). A `download` dispatch DOES enqueue in the Rust queue
- * (so the item appears here as a frozen "queued" / 0% row), but with no
- * capability to fetch bytes the progress never advances, the download never
- * completes, and `download_path` never populates — so the "Downloaded"
- * section stays empty and the active row can only be cancelled, never
- * finished. This screen is contract-correct but not end-to-end functional
- * until an Android DownloadCapability lands. The projection also exposes no
- * file-size field for *completed* downloads, so downloaded rows show no byte
- * count even once the capability ships.
+ * Android owns a real OkHttp `DownloadCapability`, but the screen still reads
+ * only kernel state: active progress from `downloads.active` and completed
+ * files from `EpisodeSummary.download_path`. The projection exposes total
+ * bytes for active rows; completed rows use the episode's persisted file-size
+ * field when present.
  */
 @Composable
 fun DownloadsScreen(
