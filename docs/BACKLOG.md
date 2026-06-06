@@ -467,12 +467,12 @@ worktrees currently in flight.
 - **icloud-settings-hardening.** Confirm Rust owns settings policy, conflicts,
   echo suppression, availability, opt-in behavior, and migration.
 - **android-tier1-parity.** Finish Android parity gaps that still require
-  user-visible work or policy validation: queue UI/actions, lock-screen
-  MediaSession commands routed through Rust playback policy, Android keypair
-  generation, and Tier 2+ AI/Nostr/platform surfaces. Tier 1 library, search,
-  subscribe, feed refresh, playback, sleep timer, downloads, settings, BYOK
-  nsec import, HTTP capability execution, and audio report round-trips now use
-  the NMP kernel/capability path.
+  user-visible work or policy validation: lock-screen MediaSession commands
+  routed through Rust playback policy, Android keypair generation, and Tier 2+
+  AI/Nostr/platform surfaces. Tier 1 library, search, subscribe, feed refresh,
+  playback, sleep timer, playback queue, downloads, settings, BYOK nsec import,
+  HTTP capability execution, and audio report round-trips now use the NMP
+  kernel/capability path.
 - ~~**android-gradle-wrapper.**~~ Done — `gradlew`, `gradlew.bat`, and the
   wrapper files are present under `android/Podcast/`; `./gradlew assembleDebug`
   is the validated Android build path.

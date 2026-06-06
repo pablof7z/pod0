@@ -42,20 +42,7 @@ import io.f7z.podcast.PodcastSnapshot
 import java.text.DateFormat
 import java.util.Date
 
-/**
- * Episode-detail surface — full metadata for a single episode plus the play
- * CTA. Reached from a show-detail episode row or a search-result tap chain.
- *
- * The episode is resolved from the live snapshot by `(podcastId, episodeId)`
- * so the view re-renders as the kernel updates the row (download path,
- * playback position, AI categories landing asynchronously). D5/D8 — no local
- * copy of episode state; the snapshot is the source of truth.
- *
- * The play button dispatches `{"op":"play","episode_id":…}` to the
- * `podcast.player` namespace. Per the verified `PlayerAction::Play` enum the
- * payload carries **only** `episode_id` — the kernel resolves the owning
- * podcast + resume position itself.
- */
+/** Episode metadata resolved from the live Rust snapshot; all actions dispatch back to NMP. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EpisodeDetailScreen(
@@ -101,6 +88,7 @@ fun EpisodeDetailScreen(
             podcastTitle = episode.podcastTitle ?: show?.title,
             artworkUrl = episode.artworkUrl ?: show?.artworkUrl,
             activeItem = activeItem,
+            isQueued = snapshot?.queue?.any { it.id == episode.id } == true,
             bridge = bridge,
             onPlay = {
                 PodcastActionDispatcher.dispatch(
@@ -121,6 +109,7 @@ private fun EpisodeDetailBody(
     podcastTitle: String?,
     artworkUrl: String?,
     activeItem: io.f7z.podcast.DownloadItemSnapshot?,
+    isQueued: Boolean,
     bridge: KernelBridge,
     onPlay: () -> Unit,
     modifier: Modifier = Modifier,
@@ -143,6 +132,13 @@ private fun EpisodeDetailBody(
             Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
             Text(text = "  Play", style = MaterialTheme.typography.titleMedium)
         }
+
+        EpisodeQueueActions(
+            episodeId = episode.id,
+            isQueued = isQueued,
+            bridge = bridge,
+            modifier = Modifier.fillMaxWidth(),
+        )
 
         EpisodeDownloadButton(
             episode = episode,
@@ -272,7 +268,6 @@ private fun MissingEpisodeState(modifier: Modifier = Modifier) {
     }
 }
 
-/** Strip HTML tags/entities from RSS show notes for plain-text rendering. */
 private fun stripHtml(raw: String): String =
     HtmlCompat.fromHtml(raw, HtmlCompat.FROM_HTML_MODE_LEGACY).toString().trim()
 
@@ -293,6 +288,5 @@ private fun formatTimecodeShort(secs: Double): String {
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }
 
-/** `publishedAt` is Unix **seconds** per the projection contract. */
 private fun formatDate(unixSeconds: Long): String =
     DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(unixSeconds * 1000L))

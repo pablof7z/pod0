@@ -18,6 +18,7 @@ import kotlinx.serialization.json.Json
  *                         download, delete_download, star_episode, …
  *  * `"podcast.player"` — play, pause, resume, seek, set_speed,
  *                         set_sleep_timer, stop, …
+ *  * `"podcast.queue"`  — add_next, add_last, remove, clear.
  *
  * Each action is encoded as `{"op":"<variant>", …fields}` and the Rust
  * `#[serde(tag = "op", rename_all = "snake_case")]` discriminator routes it.
@@ -40,6 +41,7 @@ import kotlinx.serialization.json.Json
 object PodcastNamespace {
     const val PODCAST = "podcast"
     const val PLAYER = "podcast.player"
+    const val QUEUE = "podcast.queue"
     const val SETTINGS = "podcast.settings"
 }
 
@@ -135,6 +137,32 @@ data class SleepTimerPayload(
     val secs: Int?,
     val op: String = "set_sleep_timer",
 )
+
+@Serializable
+data class PlayNextPayload(val op: String = "play_next")
+
+// ── `podcast.queue` namespace payloads ────────────────────────────────────
+
+@Serializable
+data class QueueAddNextPayload(
+    @SerialName("episode_id") val episodeId: String,
+    val op: String = "add_next",
+)
+
+@Serializable
+data class QueueAddLastPayload(
+    @SerialName("episode_id") val episodeId: String,
+    val op: String = "add_last",
+)
+
+@Serializable
+data class QueueRemovePayload(
+    @SerialName("episode_id") val episodeId: String,
+    val op: String = "remove",
+)
+
+@Serializable
+data class QueueClearPayload(val op: String = "clear")
 
 // ── `podcast.settings` namespace payloads ─────────────────────────────────
 

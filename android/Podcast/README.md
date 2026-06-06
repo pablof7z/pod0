@@ -135,9 +135,8 @@ This is the production path.
 | Download UI and OkHttp executor report progress to Rust | ✅ |
 
 Current Tier 1 gaps are tracked in `docs/plan/android-parity.md` and
-`docs/BACKLOG.md`: queue UI/actions, lock-screen command policy validation,
-and Android keypair generation. AI, Nostr social, and platform integrations
-remain later tiers.
+`docs/BACKLOG.md`: lock-screen command policy validation and Android keypair
+generation. AI, Nostr social, and platform integrations remain later tiers.
 
 ## Doctrine reminders
 
@@ -155,5 +154,5 @@ Relevant for the JNI layer:
 ## Open follow-ups
 
 Tracked in `docs/BACKLOG.md` under "Active P1 - Platform And Android":
-queue UI/actions, Rust-routed MediaSession validation, Android key generation,
-and later-tier AI/Nostr/platform parity work.
+Rust-routed MediaSession validation, Android key generation, and later-tier
+AI/Nostr/platform parity work.

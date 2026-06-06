@@ -32,7 +32,7 @@ in `android/Podcast/app/src/main/java/io/f7z/podcast/`.
 | Sleep timer | Shipped |
 | Episode download UI | Shipped |
 | Playback settings | Shipped |
-| Playback queue | Not started (snapshot field decoded; no queue UI) |
+| Playback queue | Shipped |
 | Lock-screen / media controls | Partial (MediaSession exists; controls still need Rust-routed policy validation) |
 
 ## Tier 2 - AI
@@ -90,7 +90,7 @@ podcast business rules.
   seeded by `downloads.active` rows so Android does not duplicate the kernel's
   queue policy.
 
-- **Remaining Tier 1 gaps.** Queue rendering/actions are still absent.
-  MediaSession lock-screen controls exist but still need explicit validation
-  that every remote command routes through Rust playback policy. Key generation
-  is not exposed yet; Android supports imported nsec persistence only.
+- **Remaining Tier 1 gaps.** MediaSession lock-screen controls exist but still
+  need explicit validation that every remote command routes through Rust
+  playback policy. Key generation is not exposed yet; Android supports
+  imported nsec persistence only.
