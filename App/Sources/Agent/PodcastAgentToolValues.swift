@@ -56,6 +56,42 @@ public struct PlayEpisodeResult: Sendable, Equatable {
     }
 }
 
+/// Result returned by `get_now_playing`.
+public struct NowPlayingState: Sendable, Equatable {
+    /// The currently-loaded episode's stable library ID. `nil` when nothing is loaded.
+    public let episodeID: EpisodeID?
+    public let episodeTitle: String?
+    public let podcastID: PodcastID?
+    public let podcastTitle: String?
+    /// Current playhead position in seconds.
+    public let positionSeconds: Double
+    /// Total episode duration in seconds. `nil` when not yet known.
+    public let durationSeconds: Double?
+    public let isPlaying: Bool
+    /// Active playback rate (1.0 = normal speed).
+    public let rate: Double
+
+    public init(
+        episodeID: EpisodeID? = nil,
+        episodeTitle: String? = nil,
+        podcastID: PodcastID? = nil,
+        podcastTitle: String? = nil,
+        positionSeconds: Double,
+        durationSeconds: Double? = nil,
+        isPlaying: Bool,
+        rate: Double
+    ) {
+        self.episodeID = episodeID
+        self.episodeTitle = episodeTitle
+        self.podcastID = podcastID
+        self.podcastTitle = podcastTitle
+        self.positionSeconds = positionSeconds
+        self.durationSeconds = durationSeconds
+        self.isPlaying = isPlaying
+        self.rate = rate
+    }
+}
+
 // MARK: - Identifiers
 
 /// Identifier for an episode. Stringly-typed at the tool boundary so we don't

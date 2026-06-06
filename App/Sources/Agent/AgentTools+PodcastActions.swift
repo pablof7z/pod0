@@ -57,6 +57,59 @@ extension AgentTools {
         return toolSuccess(payload)
     }
 
+    // MARK: - Playback navigation
+
+    static func getNowPlayingTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
+        let state = await deps.playback.getNowPlaying()
+        var payload: [String: Any] = [
+            "is_playing": state.isPlaying,
+            "position_seconds": state.positionSeconds,
+            "rate": state.rate,
+        ]
+        if let id = state.episodeID { payload["episode_id"] = id }
+        if let title = state.episodeTitle { payload["episode_title"] = title }
+        if let pid = state.podcastID { payload["podcast_id"] = pid }
+        if let ptitle = state.podcastTitle { payload["podcast_title"] = ptitle }
+        if let dur = state.durationSeconds { payload["duration_seconds"] = dur }
+        if state.episodeID == nil {
+            payload["message"] = "Nothing is currently loaded."
+        }
+        return toolSuccess(payload)
+    }
+
+    static func seekToTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
+        guard let position = podcastActionNumericArg(args["position_seconds"]) else {
+            return toolError("Missing or invalid 'position_seconds'")
+        }
+        guard position >= 0 else {
+            return toolError("'position_seconds' must be >= 0")
+        }
+        guard let applied = await deps.playback.seekTo(positionSeconds: position) else {
+            return toolError("seek_to failed: nothing is currently loaded")
+        }
+        return toolSuccess(["position_seconds": applied])
+    }
+
+    static func skipForwardTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
+        let seconds = podcastActionNumericArg(args["seconds"])
+        guard let newPosition = await deps.playback.skipForward(seconds: seconds) else {
+            return toolError("skip_forward failed: nothing is currently loaded")
+        }
+        var payload: [String: Any] = ["new_position_seconds": newPosition]
+        if let s = seconds { payload["skipped_seconds"] = s }
+        return toolSuccess(payload)
+    }
+
+    static func skipBackwardTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
+        let seconds = podcastActionNumericArg(args["seconds"])
+        guard let newPosition = await deps.playback.skipBackward(seconds: seconds) else {
+            return toolError("skip_backward failed: nothing is currently loaded")
+        }
+        var payload: [String: Any] = ["new_position_seconds": newPosition]
+        if let s = seconds { payload["skipped_seconds"] = s }
+        return toolSuccess(payload)
+    }
+
     // MARK: - Episode state
 
     static func markEpisodePlayedTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {

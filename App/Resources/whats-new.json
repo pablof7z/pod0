@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-06T20:37:00Z",
+      "lines": [
+        "The agent can now skip forward/back, seek to any position, and tell you what’s currently playing"
+      ]
+    },
+    {
       "shipped_at": "2026-06-06T20:36:00Z",
       "lines": [
         "External RSS feeds the agent looks up now stay accurate without quietly adding those shows to your subscriptions."

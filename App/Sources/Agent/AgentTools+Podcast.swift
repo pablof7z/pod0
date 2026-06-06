@@ -24,6 +24,10 @@ extension AgentTools {
         static let pausePlayback        = "pause_playback"
         static let setPlaybackRate      = "set_playback_rate"
         static let setSleepTimer        = "set_sleep_timer"
+        static let getNowPlaying        = "get_now_playing"
+        static let seekTo               = "seek_to"
+        static let skipForward          = "skip_forward"
+        static let skipBackward         = "skip_backward"
         static let searchEpisodes       = "search_episodes"
         static let queryWiki            = "query_wiki"
         static let createWikiPage       = "create_wiki_page"
@@ -80,6 +84,7 @@ extension AgentTools {
         static var all: [String] {
             [
                 playEpisode, pausePlayback, setPlaybackRate, setSleepTimer,
+                getNowPlaying, seekTo, skipForward, skipBackward,
                 searchEpisodes, queryWiki, createWikiPage, listWikiPages, deleteWikiPage,
                 queryTranscripts,
                 perplexitySearch, summarizeEpisode,
@@ -159,6 +164,14 @@ extension AgentTools {
             return await setPlaybackRateTool(args: args, deps: deps)
         case PodcastNames.setSleepTimer:
             return await setSleepTimerTool(args: args, deps: deps)
+        case PodcastNames.getNowPlaying:
+            return await getNowPlayingTool(args: args, deps: deps)
+        case PodcastNames.seekTo:
+            return await seekToTool(args: args, deps: deps)
+        case PodcastNames.skipForward:
+            return await skipForwardTool(args: args, deps: deps)
+        case PodcastNames.skipBackward:
+            return await skipBackwardTool(args: args, deps: deps)
         case PodcastNames.searchEpisodes:
             return await searchEpisodesTool(args: args, deps: deps)
         case PodcastNames.queryWiki:

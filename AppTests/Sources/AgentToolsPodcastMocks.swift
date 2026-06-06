@@ -125,6 +125,20 @@ actor MockPlayback: PlaybackHostProtocol {
     private(set) var pauseCount = 0
     private(set) var recordedRates: [Double] = []
     private(set) var recordedSleepTimers: [(String, Int?)] = []
+    private(set) var seekPositions: [Double] = []
+    private(set) var skipForwardCalls: [Double?] = []
+    private(set) var skipBackwardCalls: [Double?] = []
+    var stubbedNowPlaying: NowPlayingState = NowPlayingState(
+        episodeID: "stub-episode",
+        episodeTitle: "Mock Episode",
+        podcastID: "stub-podcast",
+        podcastTitle: "Mock Show",
+        positionSeconds: 300,
+        durationSeconds: 1800,
+        isPlaying: true,
+        rate: 1.0
+    )
+    var stubbedPosition: Double = 300
 
     func playEpisode(
         episodeID: EpisodeID,
@@ -193,6 +207,31 @@ actor MockPlayback: PlaybackHostProtocol {
             podcastTitle: nil,
             durationSeconds: durationSeconds.map { Int($0) }
         )
+    }
+
+    func getNowPlaying() async -> NowPlayingState {
+        stubbedNowPlaying
+    }
+
+    func seekTo(positionSeconds: Double) async -> Double? {
+        let clamped = max(0, positionSeconds)
+        seekPositions.append(clamped)
+        stubbedPosition = clamped
+        return clamped
+    }
+
+    func skipForward(seconds: Double?) async -> Double? {
+        skipForwardCalls.append(seconds)
+        let delta = seconds ?? 30
+        stubbedPosition = stubbedPosition + delta
+        return stubbedPosition
+    }
+
+    func skipBackward(seconds: Double?) async -> Double? {
+        skipBackwardCalls.append(seconds)
+        let delta = seconds ?? 15
+        stubbedPosition = max(0, stubbedPosition - delta)
+        return stubbedPosition
     }
 }
 

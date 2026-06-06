@@ -243,6 +243,65 @@ final class LivePlaybackHostAdapter: PlaybackHostProtocol, @unchecked Sendable {
         return result
     }
 
+    func getNowPlaying() async -> NowPlayingState {
+        await MainActor.run {
+            guard let playback, let store else {
+                return NowPlayingState(positionSeconds: 0, isPlaying: false, rate: 1.0)
+            }
+            let episode = playback.episode
+            let podcastTitle = episode.flatMap { store.podcast(id: $0.podcastID)?.title }
+            let duration = playback.duration > 0 ? playback.duration : nil
+            return NowPlayingState(
+                episodeID: episode?.id.uuidString,
+                episodeTitle: episode?.title,
+                podcastID: episode?.podcastID.uuidString,
+                podcastTitle: podcastTitle,
+                positionSeconds: playback.currentTime,
+                durationSeconds: duration,
+                isPlaying: playback.isPlaying,
+                rate: playback.engine.rate
+            )
+        }
+    }
+
+    func seekTo(positionSeconds: Double) async -> Double? {
+        await MainActor.run {
+            guard let playback, playback.episode != nil else {
+                logger.error("seekTo: no episode loaded")
+                return nil
+            }
+            let duration = playback.duration > 0 ? playback.duration : Double.infinity
+            let clamped = min(max(0, positionSeconds), duration)
+            playback.seek(to: clamped)
+            logger.info("seekTo: \(clamped)")
+            return clamped
+        }
+    }
+
+    func skipForward(seconds: Double?) async -> Double? {
+        await MainActor.run {
+            guard let playback, playback.episode != nil else {
+                logger.error("skipForward: no episode loaded")
+                return nil
+            }
+            playback.skipForward(seconds)
+            logger.info("skipForward: \(seconds?.description ?? "default")")
+            return playback.currentTime
+        }
+    }
+
+    func skipBackward(seconds: Double?) async -> Double? {
+        await MainActor.run {
+            guard let playback, playback.episode != nil else {
+                logger.error("skipBackward: no episode loaded")
+                return nil
+            }
+            playback.skipBackward(seconds)
+            logger.info("skipBackward: \(seconds?.description ?? "default")")
+            return playback.currentTime
+        }
+    }
+
     /// Decision wrapper: which podcast ID to parent the episode to RIGHT
     /// NOW, plus whether the caller should kick off a background metadata
     /// fetch to enrich a freshly-created placeholder.

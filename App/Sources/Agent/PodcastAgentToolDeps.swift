@@ -134,6 +134,25 @@ public protocol PlaybackHostProtocol: Sendable {
         endSeconds: Double?,
         queuePosition: QueuePosition
     ) async -> PlayEpisodeResult?
+
+    /// Return a snapshot of the current playback state. Never throws.
+    /// Returns an idle `NowPlayingState` (positionSeconds: 0, isPlaying: false)
+    /// when no playback host is available.
+    func getNowPlaying() async -> NowPlayingState
+
+    /// Seek the active player to `positionSeconds`. Returns the position that
+    /// was applied (clamped to [0, duration]), or `nil` when nothing is loaded.
+    func seekTo(positionSeconds: Double) async -> Double?
+
+    /// Skip forward by `seconds` (uses the user-configured skip interval when
+    /// `seconds` is nil). Returns the new position after the skip, or `nil`
+    /// when nothing is loaded.
+    func skipForward(seconds: Double?) async -> Double?
+
+    /// Skip backward by `seconds` (uses the user-configured skip interval when
+    /// `seconds` is nil). Returns the new position after the skip, or `nil`
+    /// when nothing is loaded.
+    func skipBackward(seconds: Double?) async -> Double?
 }
 
 /// Library, transcript, feed, and local episode-state mutations.

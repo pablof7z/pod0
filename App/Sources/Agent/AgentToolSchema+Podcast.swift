@@ -84,6 +84,36 @@ extension AgentTools {
                 required: ["mode"]
             ),
             podcastTool(
+                name: PodcastNames.getNowPlaying,
+                description: "Return the current playback state: which episode is loaded, the playhead position, duration, whether audio is playing, and the active speed. Call this before seek_to / skip_forward / skip_backward when you need to know where the user currently is, or to answer 'what's playing?' without knowing the episode ID in advance.",
+                properties: [:],
+                required: []
+            ),
+            podcastTool(
+                name: PodcastNames.seekTo,
+                description: "Jump the active player to an exact position in seconds. Use when the user says 'go to 45 minutes', 'jump to the beginning', or asks to play from a specific timestamp. Pair with get_now_playing or query_transcripts to resolve a chapter or quote into a position.",
+                properties: [
+                    "position_seconds": ["type": "number", "description": "Target position in seconds from the start of the episode. Clamped to [0, duration]."],
+                ],
+                required: ["position_seconds"]
+            ),
+            podcastTool(
+                name: PodcastNames.skipForward,
+                description: "Skip forward in the currently-playing episode. Uses the user's configured skip interval when 'seconds' is omitted. Use for 'skip ahead', 'fast forward', or 'skip the intro'.",
+                properties: [
+                    "seconds": ["type": "number", "description": "Seconds to skip forward. Omit to use the user's configured interval (typically 30 s)."],
+                ],
+                required: []
+            ),
+            podcastTool(
+                name: PodcastNames.skipBackward,
+                description: "Skip backward in the currently-playing episode. Uses the user's configured skip interval when 'seconds' is omitted. Use for 'go back', 'rewind', or 'replay that'.",
+                properties: [
+                    "seconds": ["type": "number", "description": "Seconds to skip backward. Omit to use the user's configured interval (typically 15 s)."],
+                ],
+                required: []
+            ),
+            podcastTool(
                 name: PodcastNames.searchEpisodes,
                 description: "Semantic + keyword search across every episode in the user's library (subscribed shows AND one-off captured episodes). Use for fuzzy recall like 'the one about stamps last week' or topical queries like 'episodes on Zone 2 training'.",
                 properties: [
