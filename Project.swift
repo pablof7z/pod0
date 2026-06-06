@@ -55,7 +55,7 @@ let project = Project(
             url: "https://github.com/google-ai-edge/LiteRT-LM",
             requirement: .revision("bbc5181df03c6962d7786ce4ad72c8565232d2b2")
         ),
-        .local(path: "../ios-shake-feedback"),
+        .remote(url: "https://github.com/pablof7z/ios-shake-feedback", requirement: .upToNextMajor(from: "1.0.0")),
     ],
     settings: .settings(
         base: [
