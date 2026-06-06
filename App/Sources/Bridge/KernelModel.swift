@@ -112,6 +112,14 @@ final class KernelModel {
     /// this tracks every processed tick so the short-circuit guards stay
     /// accurate.
     private var lastProcessedRev: UInt64 = 0
+    /// Serial queue for the off-MainActor full-library snapshot decode. The
+    /// `JSONDecoder` pass measured ~35 ms on the simulator (≈100 ms on device)
+    /// at 3.6k episodes — it must never run on the MainActor. Serial so a burst
+    /// of rapid dispatches doesn't pile up concurrent multi-MB decodes; the
+    /// rev-monotonic guards in `applyPodcastUpdate` drop any stale frame that a
+    /// late decode produces. See `docs/perf/ffi-snapshot-transport-findings.md`.
+    private let snapshotDecodeQueue = DispatchQueue(
+        label: "podcast.snapshot-decode", qos: .userInitiated)
 
     // ── Computed projections ───────────────────────────────────────────────
 
@@ -149,13 +157,13 @@ final class KernelModel {
         // the moment they happen. Dispatched host-ops already arrive via the
         // push frame (`apply`) and `dispatch`/`dispatchSilent`'s own pull.
         //
-        // `synchronous: false`: audio reports fire at playback frequency, so this
-        // hook is a 4 Hz hot path — keep the O(N×M) list hashing off the
-        // MainActor. There is no same-runloop freshness contract here (no user
-        // action is waiting on it); live player position still updates inline via
-        // `nowPlaying`/`snapshot` at the top of `applyPodcastUpdate`.
+        // Audio reports fire at playback frequency, so this hook is a 4 Hz hot
+        // path — the full-library decode and the O(N×M) list hashing both run off
+        // the MainActor (see `pullPodcastSnapshotIfChanged`). Live player position
+        // still updates inline via `nowPlaying`/`snapshot` at the top of
+        // `applyPodcastUpdate`.
         kernel.onSnapshotMaybeChanged = { [weak self] in
-            self?.pullPodcastSnapshotIfChanged(synchronous: false)
+            self?.pullPodcastSnapshotIfChanged()
         }
         // Download reports carry their own narrow snapshot inline; progress ticks
         // no longer bump the global `rev`, so they must NOT pull/decode the full
@@ -199,12 +207,13 @@ final class KernelModel {
         guard !startedKernel else { return }
         startedKernel = true
         kernel.start(visibleLimit: visibleLimit, emitHz: emitHz)
-        // One-shot startup pull: the persisted library is loaded synchronously
-        // during register, so it's already in the projection — surface it once,
-        // synchronously, so the first frame is on-screen immediately on launch.
-        // Everything after this is event-driven (push frame + report hooks); no
-        // timer/poll.
-        pullPodcastSnapshotIfChanged(synchronous: true)
+        // One-shot startup pull: the persisted library is loaded during register,
+        // so it's already in the projection — surface it once. The decode runs
+        // off the MainActor (a 3.6k-episode library decode would otherwise block
+        // the launch MainActor for ~100 ms); the first frame lands a runloop
+        // later, which is imperceptible at launch. Everything after this is
+        // event-driven (push frame + report hooks); no timer/poll.
+        pullPodcastSnapshotIfChanged()
     }
 
     func stop() {
@@ -223,34 +232,54 @@ final class KernelModel {
         storeOpenFailure = nil
         kernel.start(visibleLimit: visibleLimit, emitHz: emitHz)
         startedKernel = true
-        // One-shot post-reset pull — surface the re-registered projection
-        // synchronously so the rebuilt UI is current immediately.
-        pullPodcastSnapshotIfChanged(synchronous: true)
+        // One-shot post-reset pull — surface the re-registered projection. Decode
+        // runs off the MainActor; the rebuilt UI is current a runloop later.
+        pullPodcastSnapshotIfChanged()
     }
 
     /// One-shot rev-gated pull. This is NOT a poll — there is no timer; the
     /// 500ms background poll has been removed in favor of the reactive push
     /// (`apply(result:)`).
     ///
-    /// `synchronous` is threaded straight through to `applyPodcastUpdate` and
-    /// follows the same "is there a synchronous freshness contract?" rule:
+    /// The full-library `JSONDecoder` pass (`kernel.podcastSnapshot()`) is the
+    /// expensive step — ~35 ms on the simulator (≈100 ms on device) at 3.6k
+    /// episodes — and it ALWAYS runs off the MainActor now, on
+    /// `snapshotDecodeQueue`. Previously it ran inline on the MainActor for every
+    /// user dispatch (mark-played, star, subscribe, …), so each action ate that
+    /// decode as a main-thread stall — the "sluggish" the user reported. Moving
+    /// it off-main is safe because no caller reads `library`/`podcastSnapshot`/
+    /// `episodes` synchronously after `dispatch()` returns: every dispatch site is
+    /// fire-and-forget over `@Observable`, so a one-runloop-later commit is
+    /// invisible. This brings the pull path in line with the push path, whose
+    /// decode already runs off the MainActor (on the kernel C-callback thread).
     ///
-    /// - `true` — user-action callers (`dispatch` / `dispatchSilent`) and the
-    ///   one-shot startup pulls (`start` / `resetAndRestart`). The action must be
-    ///   reflected in the same runloop pass, so the hashing runs inline on the
-    ///   MainActor and `library`/`podcastSnapshot` are assigned before the
-    ///   dispatch returns.
-    /// - `false` — the reactive report hook (`onSnapshotMaybeChanged`, fed by the
-    ///   audio/download/voice FFI report channels). Audio reports fire at
-    ///   playback frequency, so running the O(N×M) `libraryMetaHash` inline here
-    ///   would reintroduce the very main-thread cost this change removes. There
-    ///   is no same-runloop contract for these — `nowPlaying`/`snapshot` (which
-    ///   carry live position) are still assigned synchronously at the top of
-    ///   `applyPodcastUpdate`; only the list-view properties hop off-main.
-    private func pullPodcastSnapshotIfChanged(synchronous: Bool) {
+    /// Ordering: rapid pulls may enqueue several decodes; the rev-monotonic
+    /// guards in `applyPodcastUpdate` (`update.rev > lastProcessedRev`) and
+    /// `commitPodcastProjection` (`frameRev == lastProcessedRev`) make the newest
+    /// frame win and drop any stale one. The decode is dispatched off-main even
+    /// for the `start` / `resetAndRestart` one-shots (a one-runloop-later first
+    /// frame is imperceptible and keeps a 3.6k-episode decode off the launch
+    /// MainActor); the O(N×M) hashing then also runs off-main inside
+    /// `applyPodcastUpdate`.
+    ///
+    /// `synchronous` is accepted but IGNORED — the decode is always off-main now.
+    /// It is retained only for source-compatibility with the in-flight audio
+    /// rev-discipline PR (#265), whose `applyAudioReport` calls this with
+    /// `synchronous: false`; keeping the defaulted parameter lets the two PRs
+    /// compose in either merge order without a compile break. Remove it (and that
+    /// call site's argument) in a follow-up once both have landed.
+    private func pullPodcastSnapshotIfChanged(synchronous: Bool = false) {
         let currentRev = kernel.podcastSnapshotRev()
         guard currentRev > lastProcessedRev else { return }
-        applyPodcastUpdate(kernel.podcastSnapshot(), synchronous: synchronous)
+        let handle = kernel
+        snapshotDecodeQueue.async { [weak self] in
+            let update = handle.podcastSnapshot()
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    self?.applyPodcastUpdate(update)
+                }
+            }
+        }
     }
 
     /// Apply a download-report response (from `attachDownloadReportChannel`).
@@ -268,7 +297,7 @@ final class KernelModel {
             downloadSnapshot = downloads
         }
         if durableChanged {
-            pullPodcastSnapshotIfChanged(synchronous: false)
+            pullPodcastSnapshotIfChanged()
         }
     }
 
@@ -309,27 +338,20 @@ final class KernelModel {
     /// (`pullPodcastSnapshotIfChanged`). Rev-gated so redundant frames (push at
     /// emit-Hz, or a pull racing a push) are dropped cheaply.
     ///
-    /// `synchronous` selects where the O(N×M) content/library hashing runs. The
-    /// rule is "is a caller waiting on same-runloop freshness?", NOT "push vs
-    /// pull" — the pull funnel serves both a user-action path and a
-    /// playback-frequency report hook, so the flag is decided per call site:
-    ///
-    /// - `false` (no freshness contract): the 4 Hz push frame (`apply(result:)`)
-    ///   and the reactive report hook (`onSnapshotMaybeChanged`, which audio
-    ///   reports fire at playback frequency). The hash *computation* is offloaded
-    ///   to a detached utility task so these hot paths don't pay it on the
-    ///   MainActor. `podcastSnapshot`/`library` land a hop later, which SwiftUI
-    ///   observation tolerates.
-    /// - `true` (same-runloop contract): user-action dispatch
-    ///   (`dispatch`/`dispatchSilent`) and the one-shot startup pulls
-    ///   (`start`/`resetAndRestart`). The hashing runs inline on the MainActor so
-    ///   `podcastSnapshot`/`library` are assigned *before this call returns* —
-    ///   preserving the same-runloop guarantee a user action depends on.
-    ///
-    /// `nowPlaying`/`snapshot` (live player position) are assigned synchronously
-    /// at the top of this method on *every* path, so the flag only governs the
-    /// list-view properties.
-    private func applyPodcastUpdate(_ update: PodcastUpdate, synchronous: Bool) {
+    /// `update` is ALWAYS produced off the MainActor now — the push path decodes
+    /// on the kernel C-callback thread, the pull path on `snapshotDecodeQueue`.
+    /// This method runs the cheap, must-be-main work inline (the `@Observable`
+    /// `snapshot`/`nowPlaying`/`downloadSnapshot` assignments + Spotlight / Live
+    /// Activity / Now-Playing reconcile) and then offloads the O(N×M) content/
+    /// library hashing to a detached task, committing `podcastSnapshot`/`library`
+    /// back on the MainActor. There is no longer a "synchronous" same-runloop
+    /// path: no caller reads `library`/`podcastSnapshot`/`episodes` synchronously
+    /// after a dispatch (every dispatch site is fire-and-forget over
+    /// `@Observable`), so the list-view properties always land a hop later, which
+    /// SwiftUI observation tolerates. `nowPlaying`/`snapshot` (live player
+    /// position) are still assigned inline at the top so the player surface stays
+    /// current the moment a frame is accepted.
+    private func applyPodcastUpdate(_ update: PodcastUpdate) {
         guard update.rev > lastProcessedRev else { return }
         lastProcessedRev = UInt64(update.rev)
         snapshot = update
@@ -337,7 +359,7 @@ final class KernelModel {
         let previousNowPlaying = nowPlaying
         // `nowPlaying` carries live playback position; refresh on every accepted
         // frame so player views stay current. Stays on the MainActor inline so
-        // the live player surface (and post-dispatch pull) reflects same-runloop.
+        // the live player surface reflects the frame the moment it's accepted.
         nowPlaying = update.nowPlaying
         PodcastCapabilities.shared.iCloudSync.applySettingsSnapshot(
             SettingsKVSnapshot.from(podcastUpdate: update))
@@ -351,39 +373,22 @@ final class KernelModel {
         // Gate `podcastSnapshot` (and `library`) on content hashes that exclude
         // volatile position/buffering fields so list views don't re-render at
         // the emit rate. Both hashes are O(N×M) (every show × every episode ×
-        // multiple fields).
+        // multiple fields), so the *computation* is offloaded to a detached task;
+        // only the cheap comparison and the `@Observable` assignments come back
+        // on the MainActor.
         let frameRev = UInt64(update.rev)
-        if synchronous {
-            // Pull path: compute inline on the MainActor so the assignments are
-            // visible in the same runloop pass the dispatch returned in.
+        Task.detached(priority: .utility) { [weak self] in
+            guard let self else { return }
             let snapHashInterval = signposter.beginInterval("snapshotContentHash")
-            let newSnapHash = snapshotContentHash(for: update)
+            let newSnapHash = self.snapshotContentHash(for: update)
             signposter.endInterval("snapshotContentHash", snapHashInterval)
             let libHashInterval = signposter.beginInterval("libraryMetaHash")
-            let newLibHash = libraryMetaHash(for: update.library)
+            let newLibHash = self.libraryMetaHash(for: update.library)
             signposter.endInterval("libraryMetaHash", libHashInterval)
-            commitPodcastProjection(
-                update: update, frameRev: frameRev,
-                newSnapHash: newSnapHash, newLibHash: newLibHash)
-        } else {
-            // Push-frame path: the two hashes previously ran on the MainActor on
-            // every accepted 4 Hz push frame during playback — before the gate
-            // could discard the frame. Move the *computation* off the MainActor;
-            // only the cheap comparison and the `@Observable` assignments come
-            // back on.
-            Task.detached(priority: .utility) { [weak self] in
-                guard let self else { return }
-                let snapHashInterval = signposter.beginInterval("snapshotContentHash")
-                let newSnapHash = self.snapshotContentHash(for: update)
-                signposter.endInterval("snapshotContentHash", snapHashInterval)
-                let libHashInterval = signposter.beginInterval("libraryMetaHash")
-                let newLibHash = self.libraryMetaHash(for: update.library)
-                signposter.endInterval("libraryMetaHash", libHashInterval)
-                await MainActor.run {
-                    self.commitPodcastProjection(
-                        update: update, frameRev: frameRev,
-                        newSnapHash: newSnapHash, newLibHash: newLibHash)
-                }
+            await MainActor.run {
+                self.commitPodcastProjection(
+                    update: update, frameRev: frameRev,
+                    newSnapHash: newSnapHash, newLibHash: newLibHash)
             }
         }
     }
@@ -462,9 +467,12 @@ final class KernelModel {
             kmLog.error("dispatch_action rejected: \(message, privacy: .public)")
             lastErrorToast = message
         }
-        // Synchronous: a user action must be reflected in the same runloop pass
-        // rather than waiting for the next 4 Hz push frame.
-        pullPodcastSnapshotIfChanged(synchronous: true)
+        // Surface the result of the user action without waiting for the next
+        // push frame. The full-library decode runs off the MainActor (see
+        // `pullPodcastSnapshotIfChanged`) so this dispatch returns immediately;
+        // the projection commits a runloop later — no caller depends on a
+        // same-runloop read of `library`/`podcastSnapshot`/`episodes`.
+        pullPodcastSnapshotIfChanged()
         return result
     }
 
@@ -481,8 +489,8 @@ final class KernelModel {
         if case let .failure(message) = result {
             kmLog.error("dispatch_action (silent) rejected: \(message, privacy: .public)")
         }
-        // Synchronous: same same-runloop contract as `dispatch`.
-        pullPodcastSnapshotIfChanged(synchronous: true)
+        // Surface the result off-main, same as `dispatch`.
+        pullPodcastSnapshotIfChanged()
         return result
     }
 
@@ -636,9 +644,9 @@ final class KernelModel {
         }
         snapshotCount &+= 1
         lastSnapshotAt = Date()
-        // Drive the podcast observable surface from the pushed projection.
-        // Async: no synchronous freshness contract on the 4 Hz push path, so the
-        // O(N×M) hashing is offloaded off the MainActor.
-        applyPodcastUpdate(result.update, synchronous: false)
+        // Drive the podcast observable surface from the pushed projection. The
+        // frame was already decoded off the MainActor (C-callback thread); the
+        // O(N×M) hashing is then also offloaded off-main inside applyPodcastUpdate.
+        applyPodcastUpdate(result.update)
     }
 }
