@@ -521,7 +521,10 @@ worktrees currently in flight.
   AI/Nostr/platform surfaces. Tier 1 library, search, subscribe, feed refresh,
   playback, sleep timer, playback queue, downloads, settings, BYOK nsec import,
   HTTP capability execution, and audio report round-trips now use the NMP
-  kernel/capability path.
+  kernel/capability path. Android can call the shared Rust provider
+  complete/embed/image/rerank transports through JNI; remaining provider work
+  is secure key reload, provider/model settings UI, and catalog-backed model
+  selection after the shared catalog symbol lands.
 - ~~**android-gradle-wrapper.**~~ Done — `gradlew`, `gradlew.bat`, and the
   wrapper files are present under `android/Podcast/`; `./gradlew assembleDebug`
   is the validated Android build path.

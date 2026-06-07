@@ -38,6 +38,8 @@ use crate::ffi::{
 
 #[path = "android/capability_router.rs"]
 mod capability_router;
+#[path = "android/provider_transport.rs"]
+mod provider_transport;
 #[path = "android/reports.rs"]
 mod reports;
 

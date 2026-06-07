@@ -94,9 +94,9 @@ $NDK_HOST/bin/llvm-nm -D \
   | grep Java_io_f7z_podcast
 ```
 
-You should see 15 `T Java_io_f7z_podcast_KernelBridge_<native>` entries,
-including `nativeSetCapabilityRouter`, `nativeCapabilityReport`, and
-`nativeDownloadReport`.
+You should see 19 `T Java_io_f7z_podcast_KernelBridge_<native>` entries,
+including `nativeSetCapabilityRouter`, `nativeCapabilityReport`,
+`nativeDownloadReport`, and the shared provider transport methods.
 
 ### 2. Gradle-driven (what `assembleDebug` does)
 
@@ -127,12 +127,13 @@ This is the production path.
 |---|---|
 | `apps/nmp-app-podcast/Cargo.toml` adds `cdylib` | ✅ |
 | `apps/nmp-app-podcast/src/android.rs` JNI shim compiles for `aarch64-linux-android` and `x86_64-linux-android` | ✅ |
-| `libnmp_app_podcast.so` exports 15 `Java_io_f7z_podcast_KernelBridge_*` symbols | ✅ |
+| `libnmp_app_podcast.so` exports 19 `Java_io_f7z_podcast_KernelBridge_*` symbols | ✅ |
 | Kotlin Compose source compiles through `./gradlew assembleDebug` | ✅ |
 | Compose shell decodes and renders the Rust snapshot model | ✅ |
 | Subscribe/search/feed refresh execute through `nmp.http.capability` | ✅ |
 | ExoPlayer commands and audio reports round-trip through Rust | ✅ |
 | Download UI and OkHttp executor report progress to Rust | ✅ |
+| Shared provider complete/embed/image/rerank transport is callable through JNI | ✅ |
 
 Current Tier 1 gaps are tracked in `docs/plan/android-parity.md` and
 `docs/BACKLOG.md`: lock-screen command policy validation and Android keypair

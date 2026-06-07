@@ -113,15 +113,17 @@ settings and task-intent APIs:
   `KernelBridge.dispatchAction(namespace, payloadJson)` already routes through
   the same Rust `ActionModule` registry that iOS uses.
 
-Direct shared-provider transport still needs Android JNI parity after the
-provider transport PR lands. The provider worker branch
-`feat/shared-provider-transport` currently exposes C ABI symbols:
+Direct shared-provider transport now has Android JNI parity for the C ABI
+symbols already on `main`:
 
 - `nmp_app_podcast_provider_complete(handle, intent_json) -> char*`
 - `nmp_app_podcast_provider_embed(handle, intent_json) -> char*`
+- `nmp_app_podcast_generate_image(handle, request_json) -> char*`
+- `nmp_app_podcast_rerank(handle, request_json) -> char*`
 
-Once those symbols are on the integration branch, Android should add matching
-handle-scoped JNI methods on `KernelBridge`, returning the JSON envelope and
-freeing the Rust string with `nmp_app_free_string`. Do not add Android wrappers
-before the symbols land; broken speculative JNI exports would compile only on
-the worker branch and leave `main` behind.
+`KernelBridge` exposes handle-scoped `providerComplete`, `providerEmbed`,
+`generateImage`, and `rerank` methods that return Rust's JSON envelope after
+the JNI shim frees the Rust string with `nmp_app_free_string`. Remaining
+provider parity work is UI and binding work: secure provider-key reload on
+Android start, full provider/model settings screens, and catalog-backed model
+selection once `nmp_app_podcast_provider_model_catalog` lands.

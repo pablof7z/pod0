@@ -138,6 +138,26 @@ class KernelBridge {
     /** Pull the Podcast projection JSON (one-shot, off the projection cache). */
     fun podcastSnapshot(): String? = if (handle != 0L) nativePodcastSnapshot(handle) else null
 
+    /**
+     * Shared provider completion transport. The JSON intent and JSON envelope
+     * are the same provider-neutral contract iOS passes through
+     * `nmp_app_podcast_provider_complete`; Android owns no provider HTTP here.
+     */
+    fun providerComplete(intentJson: String): String? =
+        if (handle != 0L) nativeProviderComplete(handle, intentJson) else null
+
+    /** Shared provider embedding transport; returns Rust's JSON envelope. */
+    fun providerEmbed(intentJson: String): String? =
+        if (handle != 0L) nativeProviderEmbed(handle, intentJson) else null
+
+    /** Shared provider image generation transport; returns Rust's JSON envelope. */
+    fun generateImage(requestJson: String): String? =
+        if (handle != 0L) nativeGenerateImage(handle, requestJson) else null
+
+    /** Shared RAG reranking transport; returns Rust's JSON envelope. */
+    fun rerank(requestJson: String): String? =
+        if (handle != 0L) nativeRerank(handle, requestJson) else null
+
     /** Tear down the kernel and projection handle. Exactly-once. */
     fun free() {
         if (handle != 0L) {
@@ -162,6 +182,10 @@ class KernelBridge {
     private external fun nativeSigninNsec(handle: Long, nsec: String)
     private external fun nativeNextUpdate(handle: Long): String?
     private external fun nativePodcastSnapshot(handle: Long): String?
+    private external fun nativeProviderComplete(handle: Long, intentJson: String): String?
+    private external fun nativeProviderEmbed(handle: Long, intentJson: String): String?
+    private external fun nativeGenerateImage(handle: Long, requestJson: String): String?
+    private external fun nativeRerank(handle: Long, requestJson: String): String?
     private external fun nativeFree(handle: Long)
 
     companion object {
