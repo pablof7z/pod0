@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-07T23:32:00Z",
+      "lines": [
+        "Ollama endpoint settings now normalize through the shared backend, so cloud and local Ollama URLs behave consistently across devices."
+      ]
+    },
+    {
       "shipped_at": "2026-06-07T23:09:00Z",
       "lines": [
         "On-device model choices now come from the shared backend, keeping local AI downloads and model selection consistent across platforms."

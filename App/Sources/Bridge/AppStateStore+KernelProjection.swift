@@ -567,39 +567,6 @@ extension AppStateStore {
         onNowPlayingSnapshot?(snapshot, library)
     }
 
-    /// Project the snapshot-derived settings + last-played episode onto a
-    /// working `AppState` copy. Shared verbatim by the full projection and the
-    /// snapshot-only fast path so the two can never drift.
-    private func projectSnapshotDerivedState(
-        into next: inout AppState, snapshot: PodcastUpdate?
-    ) {
-        // ── Settings ─────────────────────────────────────────────────────
-        let ks = snapshot?.settings ?? SettingsSnapshot()
-        // OR: preserve Swift-persisted `true` until Rust learns about it
-        // via the `update_settings` dispatch that fires on the same change.
-        // Without this, a first launch after a code update would reset the
-        // onboarding gate because Rust hasn't received the flag yet.
-        next.settings.hasCompletedOnboarding = ks.hasCompletedOnboarding || state.settings.hasCompletedOnboarding
-        next.settings.autoSkipAds = ks.autoSkipAdsEnabled
-        next.settings.autoPlayNext = ks.autoPlayNext
-        next.settings.autoMarkPlayedAtEnd = ks.autoMarkPlayedAtEnd
-        if let doubleTap = HeadphoneGestureAction(rawValue: ks.headphoneDoubleTapAction) {
-            next.settings.headphoneDoubleTapAction = doubleTap
-        }
-        if let tripleTap = HeadphoneGestureAction(rawValue: ks.headphoneTripleTapAction) {
-            next.settings.headphoneTripleTapAction = tripleTap
-        }
-        next.settings.skipForwardSeconds = Int(ks.skipForwardSecs)
-        next.settings.skipBackwardSeconds = Int(ks.skipBackwardSecs)
-        next.settings.localModelID = ks.localModelID
-
-        // ── Last-played episode ───────────────────────────────────────────
-        if let episodeIdStr = snapshot?.nowPlaying?.episodeId,
-           let uuid = UUID(uuidString: episodeIdStr) {
-            next.lastPlayedEpisodeID = uuid
-        }
-    }
-
     /// Fold the kernel's resolved-profiles map into `nostrProfileCache`. Each
     /// entry becomes a minimal `NostrProfileMetadata` (display → displayName,
     /// pictureUrl → picture) so agent-conversation views resolve a name and

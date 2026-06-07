@@ -6,27 +6,13 @@ use super::backend::{LlmBackend, LlmError};
 use super::local_model_backend::LocalModelBackend;
 use super::ollama_backend::OllamaBackend;
 use super::openrouter_backend::OpenRouterBackend;
+use super::provider_config::{
+    is_ollama_cloud_base_url, ollama_base_url_from_chat_url, OLLAMA_CLOUD_BASE_URL,
+};
 use crate::store::PodcastStore;
-
-/// Default Ollama base URL (Ollama Cloud). Used when the store has no URL configured.
-pub const DEFAULT_OLLAMA_BASE_URL: &str = "https://ollama.com";
 
 /// Default OpenRouter base URL.
 pub const DEFAULT_OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
-
-/// Derive the base URL from the stored full chat URL.
-///
-/// The store holds the complete endpoint (e.g. `https://ollama.com/api/chat`)
-/// while rig-core's `base_url` wants just the host root. Strip `/api/chat`
-/// if present; fall back to the cloud default for empty values.
-fn base_url_from_chat_url(chat_url: &str) -> String {
-    let trimmed = chat_url.trim_end_matches("/api/chat");
-    if trimmed.is_empty() {
-        DEFAULT_OLLAMA_BASE_URL.to_owned()
-    } else {
-        trimmed.to_owned()
-    }
-}
 
 /// Accessor helpers for OpenRouter and Ollama API keys.
 /// These delegate to the real accessors on PodcastStore.
@@ -46,10 +32,6 @@ fn routes_to_openrouter(store: &PodcastStore, model: &str) -> bool {
     } else {
         !store.open_router_credential_source().is_empty()
     }
-}
-
-fn is_ollama_cloud_base_url(base_url: &str) -> bool {
-    base_url.trim_end_matches('/') == DEFAULT_OLLAMA_BASE_URL
 }
 
 /// Resolve the model string a role should actually run, honoring explicit
@@ -99,7 +81,7 @@ pub fn validate_model_credentials(
         return Ok(());
     }
 
-    let base_url = base_url_from_chat_url(store.ollama_chat_url());
+    let base_url = ollama_base_url_from_chat_url(store.ollama_chat_url());
     if is_ollama_cloud_base_url(&base_url) && ollama_api_key(&store).is_none() {
         return Err(LlmError::MissingCredential(
             "Ollama Cloud requires OLLAMA_API_KEY; load provider keys from Settings > Providers"
@@ -157,8 +139,8 @@ pub fn backend_for(store: &Arc<Mutex<PodcastStore>>, model: &str) -> Box<dyn Llm
     } else {
         let base_url = store
             .lock()
-            .map(|s| base_url_from_chat_url(s.ollama_chat_url()))
-            .unwrap_or_else(|_| DEFAULT_OLLAMA_BASE_URL.to_owned());
+            .map(|s| ollama_base_url_from_chat_url(s.ollama_chat_url()))
+            .unwrap_or_else(|_| OLLAMA_CLOUD_BASE_URL.to_owned());
 
         let api_key = store.lock().ok().and_then(|s| ollama_api_key(&s));
 
@@ -253,25 +235,28 @@ mod tests {
     #[test]
     fn test_base_url_from_chat_url_with_api_chat() {
         let url = "https://ollama.com/api/chat";
-        assert_eq!(base_url_from_chat_url(url), "https://ollama.com");
+        assert_eq!(ollama_base_url_from_chat_url(url), "https://ollama.com");
     }
 
     #[test]
     fn test_base_url_from_chat_url_without_suffix() {
         let url = "https://ollama.example.com";
-        assert_eq!(base_url_from_chat_url(url), "https://ollama.example.com");
+        assert_eq!(
+            ollama_base_url_from_chat_url(url),
+            "https://ollama.example.com"
+        );
     }
 
     #[test]
     fn test_base_url_from_chat_url_empty() {
         let url = "";
-        assert_eq!(base_url_from_chat_url(url), DEFAULT_OLLAMA_BASE_URL);
+        assert_eq!(ollama_base_url_from_chat_url(url), OLLAMA_CLOUD_BASE_URL);
     }
 
     #[test]
     fn test_base_url_from_chat_url_only_api_chat() {
         let url = "/api/chat";
-        assert_eq!(base_url_from_chat_url(url), DEFAULT_OLLAMA_BASE_URL);
+        assert_eq!(ollama_base_url_from_chat_url(url), OLLAMA_CLOUD_BASE_URL);
     }
 
     #[tokio::test]

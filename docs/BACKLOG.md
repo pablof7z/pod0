@@ -123,7 +123,10 @@ worktrees currently in flight.
   and input hints. On-device model metadata now comes from the shared Rust
   `nmp_app_podcast_local_model_catalog` instead of Swift-owned constants, with
   Swift/Android/TUI consuming the same ids, names, download URLs, sizes, and RAM
-  floors.
+  floors. Ollama chat endpoint defaults and URL normalization now live in the
+  shared Rust provider settings path; iOS/Android/TUI render the canonical
+  projected URL and submit raw endpoint intent instead of applying platform-
+  specific fallback rules.
   Remaining provider-ownership work is streaming voice-mode STT/TTS once the
   canonical NMP capability seam lands upstream
   (`pablof7z/nostr-multi-platform#954`).

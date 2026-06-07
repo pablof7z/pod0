@@ -20,6 +20,8 @@ use std::path::{Path, PathBuf};
 
 use podcast_core::{Episode, EpisodeId, Podcast, PodcastId};
 
+use crate::llm::provider_config::{normalize_ollama_chat_url, DEFAULT_OLLAMA_CHAT_URL};
+
 mod ad_segments;
 pub mod auto_download;
 mod chapters;
@@ -360,7 +362,7 @@ impl PodcastStore {
             ollama_byok_key_id: None,
             ollama_byok_key_label: None,
             ollama_connected_at: None,
-            ollama_chat_url: String::new(),
+            ollama_chat_url: DEFAULT_OLLAMA_CHAT_URL.to_owned(),
             eleven_labs_credential_source: String::new(),
             eleven_labs_byok_key_id: None,
             eleven_labs_byok_key_label: None,
@@ -607,7 +609,7 @@ impl PodcastStore {
         self.ollama_byok_key_id = loaded.settings.ollama_byok_key_id;
         self.ollama_byok_key_label = loaded.settings.ollama_byok_key_label;
         self.ollama_connected_at = loaded.settings.ollama_connected_at;
-        self.ollama_chat_url = loaded.settings.ollama_chat_url;
+        self.ollama_chat_url = normalize_ollama_chat_url(&loaded.settings.ollama_chat_url);
         self.eleven_labs_credential_source = loaded.settings.eleven_labs_credential_source;
         self.eleven_labs_byok_key_id = loaded.settings.eleven_labs_byok_key_id;
         self.eleven_labs_byok_key_label = loaded.settings.eleven_labs_byok_key_label;

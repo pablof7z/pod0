@@ -27,6 +27,10 @@ struct OllamaSettingsView: View {
             refreshCredentialState()
         }
         .onChange(of: settings) { _, new in store.updateSettings(new) }
+        .onChange(of: store.state.settings.ollamaChatURL) { _, new in
+            settings = store.state.settings
+            chatURLInput = new
+        }
         .animation(AppTheme.Animation.spring, value: credentialMessage)
         .animation(AppTheme.Animation.spring, value: credentialError)
         .animation(AppTheme.Animation.spring, value: modelCount)
@@ -34,7 +38,7 @@ struct OllamaSettingsView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("Save") { commitChatURL() }
-                    .disabled(chatURLInput.isBlank || chatURLInput == settings.ollamaChatURL)
+                    .disabled(chatURLInput == settings.ollamaChatURL)
             }
         }
     }
@@ -47,11 +51,6 @@ struct OllamaSettingsView: View {
                 .autocorrectionDisabled()
                 .onSubmit { commitChatURL() }
 
-            if !chatURLInput.isBlank, URL(string: chatURLInput.trimmed) == nil {
-                Text("Enter a valid URL (e.g. http://localhost:11434/api/chat)")
-                    .inlineErrorText()
-            }
-
             if settings.ollamaChatURL != Settings.defaultOllamaChatURL {
                 Button(role: .destructive) {
                     chatURLInput = Settings.defaultOllamaChatURL
@@ -63,17 +62,14 @@ struct OllamaSettingsView: View {
         } header: {
             Text("Endpoint")
         } footer: {
-            Text("Default: \(Settings.defaultOllamaChatURL). Point to a local instance with http://localhost:11434/api/chat or any self-hosted URL. Invalid URLs fall back to the default.")
+            Text("Default: \(Settings.defaultOllamaChatURL). Point to a local instance with http://localhost:11434/api/chat or any self-hosted URL. Empty or invalid input falls back to the default.")
         }
     }
 
     private func commitChatURL() {
         let trimmed = chatURLInput.trimmed
-        guard !trimmed.isBlank else { return }
-        // Validate — fall back to default if not a valid URL
-        let validated = URL(string: trimmed) != nil ? trimmed : Settings.defaultOllamaChatURL
-        chatURLInput = validated
-        settings.ollamaChatURL = validated
+        chatURLInput = trimmed
+        settings.ollamaChatURL = trimmed
     }
 
     private var connectionSection: some View {

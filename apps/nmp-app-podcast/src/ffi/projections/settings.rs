@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::llm::provider_config::DEFAULT_OLLAMA_CHAT_URL;
+
 fn default_skip_forward_secs() -> f64 {
     30.0
 }
@@ -71,6 +73,9 @@ fn default_false() -> bool {
 }
 fn default_empty_string() -> String {
     String::new()
+}
+fn default_ollama_chat_url() -> String {
+    DEFAULT_OLLAMA_CHAT_URL.to_owned()
 }
 fn default_empty_array() -> Vec<String> {
     Vec::new()
@@ -220,7 +225,7 @@ pub struct SettingsSnapshot {
     #[serde(default)]
     pub ollama_connected_at: Option<i64>,
     /// Ollama chat endpoint URL for LLM inference.
-    #[serde(default = "default_empty_string")]
+    #[serde(default = "default_ollama_chat_url")]
     pub ollama_chat_url: String,
     /// ElevenLabs credential source enum (raw String: "apiKey", "byok", "nostr").
     #[serde(default = "default_empty_string")]
@@ -367,7 +372,7 @@ impl Default for SettingsSnapshot {
             ollama_byok_key_id: None,
             ollama_byok_key_label: None,
             ollama_connected_at: None,
-            ollama_chat_url: String::new(),
+            ollama_chat_url: DEFAULT_OLLAMA_CHAT_URL.to_owned(),
             eleven_labs_credential_source: String::new(),
             eleven_labs_key_present: false,
             eleven_labs_byok_key_id: None,
