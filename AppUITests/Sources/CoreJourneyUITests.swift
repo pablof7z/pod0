@@ -79,11 +79,29 @@ final class CoreJourneyUITests: XCTestCase {
     /// Play ~35s (crosses the kernel's 30s Playing checkpoint so a disk flush
     /// happens independent of the pause-flush), then pause. Returns once paused.
     private func playPastCheckpointAndPause(_ app: XCUIApplication) {
-        app.buttons["Play"].tap()
-        sleep(35) // > POSITION_FLUSH_DELTA_SECS (30s)
+        // Accept both "Play" and "Resume" — if position was already persisted from
+        // a prior test run the button label switches to "Resume".
+        let playBtn = app.buttons["Play"]
+        let resumeBtn = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'resume'")).firstMatch
+        if playBtn.exists { playBtn.tap() } else { resumeBtn.tap() }
+        // Wait up to 15s for audio to actually start (Pause button appears).
+        // Without this guard, a failed stream leaves position=0 and the whole
+        // resume-persistence scenario is vacuously invalid.
         let pause = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'pause'")).firstMatch
-        if pause.waitForExistence(timeout: 4) { pause.tap() }
-        sleep(1)
+        guard pause.waitForExistence(timeout: 15) else {
+            XCTFail("playPastCheckpointAndPause: audio did not start within 15s (no Pause control appeared)")
+            return
+        }
+        // Play for 25s more (total > 30s so the kernel's 30s checkpoint fires
+        // AND the eager-flush gate reopens under --UITestSeed).
+        sleep(25)
+        // Tap Pause — this triggers a flush via didSet on the store.
+        let pause2 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'pause'")).firstMatch
+        if pause2.exists { pause2.tap() }
+        // Sleep past the 5s trailing-debounce interval as a belt-and-suspenders
+        // guard; with synchronousPositionFlushForUITests every tick already
+        // flushed synchronously, but the extra margin costs nothing.
+        sleep(7)
     }
 
     /// True if the reopened episode detail surfaces a saved position
@@ -129,6 +147,8 @@ final class CoreJourneyUITests: XCTestCase {
 
         app.terminate()
         sleep(2)
+        // Signal the seeder to carry over the persisted position on relaunch.
+        app.launchArguments = ["--UITestSeed", "--UITestSeedRelaunch"]
         XCTAssertTrue(launchApp(app), "relaunch")
         sleep(2)
         let hasContinueRow = staticTextContaining(app, "Continue").exists
@@ -168,13 +188,22 @@ final class CoreJourneyUITests: XCTestCase {
         let pause = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'pause'")).firstMatch
         if pause.waitForExistence(timeout: 4) { pause.tap() }
         sleep(2)
-        // Back to the show list.
-        let back = app.navigationBars.buttons.element(boundBy: 0)
-        if back.exists { back.tap(); sleep(2) }
+        // Navigate back to Home using the sidebar so we don't depend on the
+        // navigation stack depth. Left-edge swipe popped unpredictably (straight
+        // to Home instead of to Show Detail), and detecting the right nav bar
+        // back button is fragile. Sidebar "Home" is a stable anchor.
+        let sidebarBtn = app.buttons["Open sidebar"]
+        if sidebarBtn.waitForExistence(timeout: 3) {
+            sidebarBtn.tap(); sleep(1)
+            let homeBtn = app.buttons["Home"]
+            if homeBtn.waitForExistence(timeout: 3) { homeBtn.tap(); sleep(1) }
+        }
         snap(app, "P0-04-back-to-show")
-        // Reopen the same episode by title.
+        // Reopen the same episode via the standard show→episode navigation.
+        // The title prefix is used in the failure message only; openFirstEpisodeDetail
+        // navigates by position which is safe because the seeder provides one episode.
         let prefix = String(epTitle.prefix(16))
-        XCTAssertTrue(robustTap(staticTextContaining(app, prefix)), "reopen episode by title '\(prefix)'")
+        XCTAssertTrue(openFirstEpisodeDetail(app), "reopen episode detail for '\(prefix)'")
         sleep(2)
         snap(app, "P0-04-reopened-by-title")
         dumpTree(app, "P0-04-reopened-tree")
@@ -196,7 +225,18 @@ final class CoreJourneyUITests: XCTestCase {
         // Capture the episode title from the detail header for later matching.
         let titleEl = app.staticTexts.allElementsBoundByIndex.first { $0.frame.minY > 120 && $0.frame.minY < 210 && $0.label.count > 8 }
         let title = titleEl?.label ?? "One Town"
-        app.buttons["Play"].tap()
+        // Accept "Resume" (prior-test state pollution) as well as "Play".
+        // Either way we start/continue playback to prove the store records position.
+        let playBtn = app.buttons["Play"]
+        let resumeBtn = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'resume'")).firstMatch
+        if playBtn.waitForExistence(timeout: 5) {
+            playBtn.tap()
+        } else if resumeBtn.waitForExistence(timeout: 3) {
+            resumeBtn.tap()
+        } else {
+            XCTFail("FAIL: no Play or Resume button on episode detail")
+            return
+        }
         sleep(12) // accrue position; pause flushes
         let pause = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'pause'")).firstMatch
         if pause.waitForExistence(timeout: 4) { pause.tap() }

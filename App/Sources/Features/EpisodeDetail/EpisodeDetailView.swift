@@ -55,8 +55,19 @@ struct EpisodeDetailView: View {
         // No inline player chrome — the global `MiniPlayerView` lives as
         // the tab's bottom accessory and is always visible while an episode
         // is loaded.
+        // When this episode is currently active in the player (playing or paused),
+        // use the engine's live position for the Play/Resume decision rather than
+        // the debounce-cached store value, which may not have flushed yet.
+        let displayEpisode: Episode = {
+            guard playback.episode?.id == episode.id, playback.currentTime > 0 else {
+                return episode
+            }
+            var copy = episode
+            copy.playbackPosition = max(episode.playbackPosition, playback.currentTime)
+            return copy
+        }()
         EpisodeDetailHeroView(
-            episode: episode,
+            episode: displayEpisode,
             showName: showName,
             showImageURL: showImageURL,
             isPlayed: episode.played,

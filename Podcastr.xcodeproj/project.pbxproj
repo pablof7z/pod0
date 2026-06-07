@@ -715,6 +715,7 @@
 		FD93DA02408FAB556AB905E3 /* RoutePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC1350005B7A61F2615FA4E0 /* RoutePickerView.swift */; };
 		FDB1DBC92F041D743F704ABA /* EpisodeDetailTranscriptTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AADC91A3529BEF090A12B53 /* EpisodeDetailTranscriptTests.swift */; };
 		FDDE79EDDAD72292838EA3C8 /* RecommendedPickCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7E2E6712290899389DDFFCB /* RecommendedPickCard.swift */; };
+		FDECAEE0016656B4F5325BB9 /* test-episode.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 3BF895FB2B737238699AD80D /* test-episode.mp3 */; };
 		FDF65567E42F9DA7E3DA8E95 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E32CEFBC182A07C2FFAFF3D /* OnboardingView.swift */; };
 		FDFC49BFFD8F88D80D03EF79 /* OpenRouterCredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 289C4DAFADBAD7708045EC80 /* OpenRouterCredentialStore.swift */; };
 		FEEA1557C2FF51272A8C754F /* LLMProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC163DF4C72FD7E91A69A486 /* LLMProvider.swift */; };
@@ -979,6 +980,7 @@
 		3AB897B9154A9E3DA3DA3D83 /* AgentTools+PodcastInventory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AgentTools+PodcastInventory.swift"; sourceTree = "<group>"; };
 		3ABC2DEEFBE58AA45D6E33C8 /* BYOKCredentialImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BYOKCredentialImporter.swift; sourceTree = "<group>"; };
 		3BE27605784D2C6B087874B4 /* AgentPrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentPrompt.swift; sourceTree = "<group>"; };
+		3BF895FB2B737238699AD80D /* test-episode.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "test-episode.mp3"; sourceTree = "<group>"; };
 		3C0F6CC93B8FEAEE7818D2A9 /* ChapterRailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChapterRailView.swift; sourceTree = "<group>"; };
 		3C6E45A740F2B233D29AB6F8 /* PodcastSearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PodcastSearchViewModel.swift; sourceTree = "<group>"; };
 		3C75924E1E615D0E7CBC2E78 /* AgentAskCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentAskCoordinator.swift; sourceTree = "<group>"; };
@@ -1970,6 +1972,7 @@
 				96C6D55FB366063E88D8E980 /* Assets.xcassets */,
 				9ED28D177808259F929D4477 /* Info.plist */,
 				8C4DF237560086086B02BDC8 /* Podcastr.entitlements */,
+				3BF895FB2B737238699AD80D /* test-episode.mp3 */,
 				FDDE0135D737F1677B521BE8 /* whats-new.json */,
 			);
 			path = Resources;
@@ -2962,6 +2965,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C750F22CBB6429E7F57AF879 /* Assets.xcassets in Resources */,
+				FDECAEE0016656B4F5325BB9 /* test-episode.mp3 in Resources */,
 				62C9A71B2AC8A31D92006160 /* whats-new.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -150,6 +150,15 @@ extension AppStateStore {
                 guard !Task.isCancelled else { break }
             }
         }
+
+        // Forward 1 Hz position ticks from applyAudioReport directly into the
+        // debounce cache. Bypasses withObservationTracking (which is unreliable
+        // for sub-tick mutation) in favour of a synchronous callback on the
+        // MainActor — same thread where applyAudioReport fires.
+        kernel.onPositionTick = { [weak self] idStr, pos in
+            guard let self, let id = UUID(uuidString: idStr) else { return }
+            self.setEpisodePlaybackPosition(id, position: pos)
+        }
     }
 
     /// Apply ONLY the live download overlay onto `self.episodes`, off the heavy
@@ -331,17 +340,43 @@ extension AppStateStore {
                 if prevEpisodeSummaries[ep.id] == ep,
                    let parsedID = UUID(uuidString: ep.id),
                    let prior = priorEpisodesByID[parsedID] {
-                    episodes.append(prior)
+                    // Reused summary: apply position cache and nowPlaying as overlays.
+                    // The kernel excludes position_secs from the library content hash
+                    // so the summary is never "changed" by a position tick alone —
+                    // the prior episode would otherwise keep its stale playbackPosition.
+                    // Guard on isPlaying: nowPlaying can be non-nil with positionSecs>0
+                    // from a restored-but-paused kernel state, which would incorrectly
+                    // set the position on a fresh launch. Restrict to active playback
+                    // only; paused/restored positions reach us via Persistence instead.
+                    var reused = prior
+                    let livePos: TimeInterval? =
+                        positionCache[parsedID]
+                        ?? (kernel?.nowPlaying?.isPlaying == true && kernel?.nowPlaying?.episodeId == ep.id
+                            ? kernel?.nowPlaying?.positionSecs : nil)
+                    if let livePos, livePos > reused.playbackPosition {
+                        reused.playbackPosition = livePos
+                    }
+                    episodes.append(reused)
                 } else if var episode = ep.toEpisode(podcastIdString: summary.id) {
-                    // The kernel only writes ep.position_secs on explicit PersistPosition
-                    // actions (seek/skip while paused). For episodes rebuilt from a changed
-                    // summary (e.g. RSS metadata refresh), ep.position_secs is still 0 even
-                    // though the user listened part-way. Recover the position from the
-                    // live positionCache first (most accurate), then from the prior Episode
-                    // (last flushed value), so the detail view never shows Play after the
-                    // user navigated away mid-listen.
-                    if episode.playbackPosition == 0,
-                       let parsedID = UUID(uuidString: ep.id) {
+                    if Self.synchronousPositionFlushForUITests,
+                       !CommandLine.arguments.contains("--UITestSeedRelaunch") {
+                        // Non-relaunch UITest: zero whatever position the kernel
+                        // reports. UITestSeeder writes position_secs=0 to
+                        // podcasts.json, but the kernel's player-state restoration
+                        // writes the prior session's position back to that file
+                        // during nmp_app_start before Swift sees the first snapshot.
+                        // That makes ep.playbackPositionSecs non-zero regardless of
+                        // UITestSeeder's seed. Zeroing unconditionally here ensures
+                        // every fresh-seed test launch sees "Play", not "Resume".
+                        episode.playbackPosition = 0
+                    } else if episode.playbackPosition == 0,
+                              let parsedID = UUID(uuidString: ep.id) {
+                        // The kernel only writes ep.position_secs on explicit
+                        // PersistPosition actions (seek/skip while paused). For
+                        // episodes rebuilt from a changed summary (e.g. RSS metadata
+                        // refresh), ep.position_secs is still 0 even though the user
+                        // listened part-way. Recover from positionCache first (most
+                        // accurate), then from the prior Episode (last flushed value).
                         let recovered = positionCache[parsedID]
                             ?? priorEpisodesByID[parsedID]?.playbackPosition
                             ?? 0
@@ -488,6 +523,30 @@ extension AppStateStore {
     ) {
         var next = state
         projectSnapshotDerivedState(into: &next, snapshot: snapshot)
+        // Propagate the live nowPlaying position through the debounce cache so
+        // store.episode(id:) returns the correct playhead for the episode detail.
+        // The episode-summary hash excludes positionSecs, so the full projection
+        // loop never runs on a position-only event; the kernel's nowPlaying is
+        // the ONLY in-process source of the current position. We call
+        // setEpisodePlaybackPosition BEFORE capturing self.episodes below so
+        // the eager flush (first call, or after 30 s) lands in self.episodes
+        // before overlaidEpisodes is built.
+        //
+        // Guard on isPlaying: the kernel can restore a non-nil nowPlaying with
+        // positionSecs > 0 from its own internal state after a fresh launch
+        // (independent of what UITestSeeder writes to podcasts.json). Without
+        // this guard, the stale restored position writes through to self.episodes
+        // and the episode detail shows "Resume" on a clean launch instead of
+        // "Play". The "just paused" case is already handled by the explicit
+        // flushPendingPositions() call on pause and by the background flush
+        // observer, so restricting this path to isPlaying=true is safe.
+        if let np = kernel?.nowPlaying,
+           np.isPlaying,
+           np.positionSecs > 0,
+           let idStr = np.episodeId,
+           let id = UUID(uuidString: idStr) {
+            setEpisodePlaybackPosition(id, position: np.positionSecs)
+        }
         // Re-apply the download overlay even on the fast path: download progress
         // ticks bump `rev` without changing the library, so they arrive here.
         // Without this, an in-progress download never shows its progress ring.

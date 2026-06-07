@@ -36,6 +36,14 @@ extension PlaybackState {
         engine.onPlayingTick = { [weak self, weak audio] url, position, duration in
             audio?.emitReport(.playing(url: url, positionSecs: position, durationSecs: duration))
             guard let self else { return }
+            // Persist position directly — the Rust kernel's nowPlaying.episodeId
+            // may be nil when the episode was loaded without a prior kernelLoad
+            // acknowledgment (e.g. cold-start restore path), in which case the
+            // normal Rust→onPositionTick path never fires. Writing here is
+            // idempotent: AppStateStore guards against duplicate values.
+            if let episodeID = self.episode?.id {
+                self.store?.setEpisodePlaybackPosition(episodeID, position: position)
+            }
             // Throttle WidgetKit reloads to ~1 per 5 ticks (~5 s at 1 Hz).
             self.widgetPositionTickCount += 1
             if self.widgetPositionTickCount >= 5 {

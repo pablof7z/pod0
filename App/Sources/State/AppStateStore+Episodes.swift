@@ -18,6 +18,17 @@ extension AppStateStore {
         if let cached = cachedPosition(for: id) {
             found.playbackPosition = cached
         }
+        // When the kernel has this episode loaded (playing or paused), apply
+        // the live kernel position as a floor. This covers the window between
+        // a pause event and the next debounce flush — e.g. when the user
+        // navigates back to the detail view immediately after pausing.
+        if let np = kernel?.nowPlaying,
+           let idStr = np.episodeId,
+           let npId = UUID(uuidString: idStr),
+           npId == id,
+           np.positionSecs > found.playbackPosition {
+            found.playbackPosition = np.positionSecs
+        }
         return found
     }
 

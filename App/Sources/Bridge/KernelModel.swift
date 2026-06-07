@@ -99,6 +99,11 @@ final class KernelModel {
     /// `podcastSnapshot?.nowPlaying` so they don't hold a reference to the
     /// full snapshot struct. All other views should use `podcastSnapshot`.
     private(set) var nowPlaying: PlayerState?
+    /// Called on the MainActor on every `Playing` audio report with the
+    /// episode id string and position (seconds). Wired by `attachKernel` so
+    /// `AppStateStore` can forward 1 Hz position ticks into
+    /// `setEpisodePlaybackPosition` without relying on `withObservationTracking`.
+    var onPositionTick: ((String, Double) -> Void)?
     /// Hash of the library fields that matter to list views. Excludes
     /// `playbackPositionSecs` so list views don't re-render at 4 Hz
     /// during playback (the position is only needed by the player row).
@@ -314,6 +319,15 @@ final class KernelModel {
     func applyAudioReport(nowPlaying newNowPlaying: PlayerState?, durableChanged: Bool) {
         let previous = nowPlaying
         nowPlaying = newNowPlaying
+        // Forward position to AppStateStore so the debounce cache stays current.
+        // Covers Playing, BufferingProgress (which advances positionSecs with
+        // isPlaying=false), and the final Paused frame (capturing the last
+        // playhead before a force-quit). Guard only on positionSecs > 0 and
+        // episodeId being present; skips stopped/reset states automatically.
+        if let np = newNowPlaying, np.positionSecs > 0, let id = np.episodeId,
+           !np.didReachNaturalEnd {
+            onPositionTick?(id, np.positionSecs)
+        }
         // Live media surfaces, off the library-decode path. `reconcileLiveActivity`
         // coalesces same-episode position updates; `reconcileNowPlayingMetadata`
         // is a no-op unless the episode changed — both cheap, and `library` is

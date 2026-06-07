@@ -74,8 +74,6 @@ extension AppStateStore {
     /// don't double-touch the cache.
     func setEpisodePlaybackPosition(_ id: UUID, position: TimeInterval) {
         guard let idx = self.episodes.firstIndex(where: { $0.id == id }) else {
-            // Episode is gone (rare: removed mid-tick). Drop the cached entry
-            // so it can't resurrect the record on the next flush.
             positionCache.removeValue(forKey: id)
             return
         }
@@ -86,11 +84,21 @@ extension AppStateStore {
         let liveCurrent = positionCache[id] ?? self.episodes[idx].playbackPosition
         guard liveCurrent != position else { return }
 
+
         positionCache[id] = position
 
         let now = Date()
         let dueForEager: Bool
-        if let last = lastPositionFlush {
+        if Self.synchronousPositionFlushForUITests {
+            // Under --UITestSeed every tick writes synchronously so a SIGKILL
+            // force-quit at any point during playback still preserves the
+            // latest position. The normal 30s max-interval cap is irrelevant
+            // here because `flushToDiskNow` in `flushPendingPositions` already
+            // bypasses the background-Task path — the only additional cost is
+            // calling `flushPendingPositions` on every tick instead of every
+            // 30s, which is acceptable for a UI test.
+            dueForEager = true
+        } else if let last = lastPositionFlush {
             dueForEager = now.timeIntervalSince(last) >= Self.positionMaxInterval
         } else {
             // No save has happened yet for any episode — write immediately
@@ -154,17 +162,19 @@ extension AppStateStore {
                 // `inProgressEpisodesCached`; count-only fingerprinting misses this.
                 invalidateEpisodeProjections()
             }
-            // Under --UITestSeed the background write Task can be killed before it
-            // runs (the test runner sends SIGKILL immediately after app.terminate()).
-            // Write synchronously ONLY here — the hot position-flush path — so
-            // SQLite is durably updated before any force-quit. All other writes
-            // keep their background-Task behaviour to avoid throttling the 4 Hz
-            // kernel tick on the main thread.
-            if Self.synchronousPositionFlushForUITests {
-                var snapshot = state
-                snapshot.episodes = self.episodes
-                persistence.flushToDiskNow(snapshot)
-            }
+        }
+        // Under --UITestSeed the background write Task can be killed before it
+        // runs (the test runner sends SIGKILL immediately after app.terminate()).
+        // Write synchronously here unconditionally (not guarded by `mutated`) so
+        // SQLite is durably updated before any force-quit, even when
+        // applyKernelSnapshotOnlyState already folded the same position into
+        // self.episodes via performMutationBatch (making mutated=false). All other
+        // writes keep their background-Task behaviour to avoid throttling the 4 Hz
+        // kernel tick on the main thread.
+        if Self.synchronousPositionFlushForUITests {
+            var snapshot = state
+            snapshot.episodes = self.episodes
+            persistence.flushToDiskNow(snapshot)
         }
     }
 

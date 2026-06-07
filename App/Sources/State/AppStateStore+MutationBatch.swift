@@ -78,7 +78,14 @@ extension AppStateStore {
         // sidecar and the metadata JSON both read `snapshot.episodes`.
         var snapshot = state
         snapshot.episodes = episodes
-        persistence.save(snapshot)
+        // Under --UITestSeed the flushToDiskNow path in flushPendingPositions
+        // owns all critical writes synchronously. Background saves are skipped
+        // entirely to prevent a background write carrying kernel-projected
+        // position=0 from racing with (and overwriting) the synchronous
+        // position flush that ran milliseconds earlier.
+        if !Self.synchronousPositionFlushForUITests {
+            persistence.save(snapshot)
+        }
         scheduleWidgetReload()
     }
 

@@ -111,7 +111,9 @@ extension PodcastHandle {
                     let decoder = JSONDecoder()
                     decoder.keyDecodingStrategy = .convertFromSnakeCase
                     guard let response = try? decoder.decode(
-                        AudioReportResponse.self, from: data) else { return }
+                        AudioReportResponse.self, from: data) else {
+                        return
+                    }
                     Task { @MainActor in
                         // Execute the follow-up command (decoded with a PLAIN
                         // decoder — `AudioCommand` uses coding keys a snake-case

@@ -191,7 +191,8 @@ final class AudioEngine {
     /// absolute URL stale. Falls back to streaming when no local file exists.
     func load(_ episode: Episode) {
         let url: URL = {
-            if EpisodeDownloadStore.shared.exists(for: episode) {
+            let localExists = EpisodeDownloadStore.shared.exists(for: episode)
+            if localExists {
                 return EpisodeDownloadStore.shared.localFileURL(for: episode)
             }
             // Agent-generated episodes live under agent-episodes/, not downloads/.

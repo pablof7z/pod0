@@ -225,7 +225,14 @@ final class Persistence: Sendable {
             Self.logger.info("Persistence.load: migrated \(legacyData.count, privacy: .public) bytes from legacy UserDefaults key")
             return migrated
         }
-        return AppState()
+        // JSON absent (e.g. SIGKILL interrupted write between SQLite commit and
+        // atomic rename, or first launch before any save). SQLite may still hold
+        // episode positions from a prior session — hydrate them so AppStateStore
+        // can recover playback positions via priorEpisodesByID on the first
+        // kernel projection instead of showing "Play" after a force-quit.
+        var fresh = AppState()
+        hydrateEpisodesPreservingMetadata(into: &fresh)
+        return fresh
     }
 
     /// Wipes the persisted `AppState` file. Intended for the "Erase all
