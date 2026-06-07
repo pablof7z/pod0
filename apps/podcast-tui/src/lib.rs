@@ -12,6 +12,8 @@ pub mod bridge;
 mod download_state;
 pub mod input;
 mod navigation;
+mod provider_model_catalog;
+mod provider_setting_model_selection;
 mod provider_settings_catalog;
 mod provider_settings_parser;
 pub mod rows;

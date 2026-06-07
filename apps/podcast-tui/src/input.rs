@@ -1,5 +1,7 @@
 #[path = "input_downloads.rs"]
 mod downloads;
+#[path = "input_provider_catalog.rs"]
+mod provider_catalog;
 #[path = "input_settings.rs"]
 mod settings;
 #[path = "input_tabs.rs"]
@@ -79,6 +81,9 @@ fn handle_mode_key(state: &mut AppState, runtime: &AppRuntime, key: KeyEvent) ->
         Mode::SubscribeInput => handle_subscribe_input(state, runtime, key),
         Mode::RelayInput => settings::handle_relay_input(state, runtime, key),
         Mode::SettingsInput => settings::handle_settings_input(state, runtime, key),
+        Mode::ProviderCatalog => {
+            provider_catalog::handle_provider_catalog_keys(state, runtime, key)
+        }
         Mode::AgentInput => handle_agent_input(state, runtime, key),
         Mode::AgentMemoryInput => handle_agent_memory_input(state, runtime, key),
         Mode::AgentTaskInput => handle_agent_task_input(state, runtime, key),

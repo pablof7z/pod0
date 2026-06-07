@@ -91,6 +91,23 @@ impl AppState {
             .get(self.selected_relay)
             .map(|relay| relay.role.clone())
     }
+
+    pub fn next_provider_catalog_model(&mut self, count: usize) {
+        advance_index(&mut self.selected_provider_catalog_model, count);
+    }
+
+    pub fn previous_provider_catalog_model(&mut self) {
+        self.selected_provider_catalog_model =
+            self.selected_provider_catalog_model.saturating_sub(1);
+    }
+
+    pub fn jump_provider_catalog_top(&mut self) {
+        self.selected_provider_catalog_model = 0;
+    }
+
+    pub fn jump_provider_catalog_bottom(&mut self, count: usize) {
+        self.selected_provider_catalog_model = count.saturating_sub(1);
+    }
 }
 
 pub fn next_relay_role(current: &str) -> &'static str {

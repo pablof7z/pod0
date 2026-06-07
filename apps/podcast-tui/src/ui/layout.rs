@@ -44,6 +44,10 @@ pub fn render(frame: &mut Frame<'_>, state: &AppState) {
         render_input_bar(frame, area, state);
     }
 
+    if matches!(state.mode, Mode::ProviderCatalog) {
+        ui::provider_catalog::render(frame, area, state);
+    }
+
     if matches!(state.mode, Mode::EpisodeDetail { .. }) {
         let popup = Layout::vertical([
             Constraint::Percentage(10),

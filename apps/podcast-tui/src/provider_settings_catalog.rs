@@ -367,7 +367,7 @@ impl ProviderSettingItem {
     }
 }
 
-fn load_env_credentials(runtime: &AppRuntime) -> Result<String> {
+pub(crate) fn load_env_credentials(runtime: &AppRuntime) -> Result<String> {
     let open_router = env_key("OPENROUTER_API_KEY");
     let ollama = env_key("OLLAMA_API_KEY");
 
