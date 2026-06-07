@@ -4,9 +4,11 @@ import android.content.Context
 import io.f7z.podcast.security.ProviderCredentialStore
 import io.f7z.podcast.ui.PodcastActionDispatcher
 import io.f7z.podcast.ui.PodcastNamespace
+import io.f7z.podcast.ui.SetElevenLabsCredentialPayload
 import io.f7z.podcast.ui.SetOllamaCredentialPayload
 import io.f7z.podcast.ui.SetOpenRouterCredentialPayload
 import io.f7z.podcast.ui.SetProviderApiKeysPayload
+import io.f7z.podcast.ui.SetSttKeysPresentPayload
 
 data class ProviderCredentialActionResult(
     val ok: Boolean,
@@ -31,6 +33,25 @@ object ProviderCredentialActions {
             ),
         )
 
+    fun syncSttKeysPresent(context: Context, bridge: KernelBridge): String? =
+        PodcastActionDispatcher.dispatch(
+            bridge = bridge,
+            namespace = PodcastNamespace.SETTINGS,
+            payload = SetSttKeysPresentPayload(
+                providers = buildList {
+                    if (ProviderCredentialStore.hasElevenLabsApiKey(context)) {
+                        add(STT_ELEVEN_LABS_SCRIBE)
+                    }
+                    if (ProviderCredentialStore.hasAssemblyAiApiKey(context)) {
+                        add(STT_ASSEMBLY_AI)
+                    }
+                    if (ProviderCredentialStore.hasOpenRouterApiKey(context)) {
+                        add(STT_OPENROUTER_WHISPER)
+                    }
+                },
+            ),
+        )
+
     fun saveOpenRouterManual(
         context: Context,
         bridge: KernelBridge,
@@ -48,7 +69,8 @@ object ProviderCredentialActions {
             ),
         )
         val reload = reloadProviderApiKeys(context, bridge)
-        return if (metadata != null && reload != null) {
+        val stt = syncSttKeysPresent(context, bridge)
+        return if (metadata != null && reload != null && stt != null) {
             ProviderCredentialActionResult(true, "OpenRouter connected.")
         } else {
             ProviderCredentialActionResult(false, "OpenRouter key saved, but provider state did not update.")
@@ -68,7 +90,8 @@ object ProviderCredentialActions {
             payload = SetOpenRouterCredentialPayload(source = SOURCE_NONE),
         )
         val reload = reloadProviderApiKeys(context, bridge)
-        return if (metadata != null && reload != null) {
+        val stt = syncSttKeysPresent(context, bridge)
+        return if (metadata != null && reload != null && stt != null) {
             ProviderCredentialActionResult(true, "OpenRouter disconnected.")
         } else {
             ProviderCredentialActionResult(false, "OpenRouter key deleted, but provider state did not update.")
@@ -116,6 +139,81 @@ object ProviderCredentialActions {
             ProviderCredentialActionResult(true, "Ollama disconnected.")
         } else {
             ProviderCredentialActionResult(false, "Ollama key deleted, but provider state did not update.")
+        }
+    }
+
+    fun saveElevenLabsManual(
+        context: Context,
+        bridge: KernelBridge,
+        apiKey: String,
+    ): ProviderCredentialActionResult {
+        if (!ProviderCredentialStore.saveElevenLabsApiKey(context, apiKey)) {
+            return ProviderCredentialActionResult(false, "ElevenLabs key could not be saved.")
+        }
+        val metadata = PodcastActionDispatcher.dispatch(
+            bridge = bridge,
+            namespace = PodcastNamespace.SETTINGS,
+            payload = SetElevenLabsCredentialPayload(
+                source = SOURCE_MANUAL,
+                connectedAt = epochSeconds(),
+            ),
+        )
+        val stt = syncSttKeysPresent(context, bridge)
+        return if (metadata != null && stt != null) {
+            ProviderCredentialActionResult(true, "ElevenLabs connected.")
+        } else {
+            ProviderCredentialActionResult(false, "ElevenLabs key saved, but provider state did not update.")
+        }
+    }
+
+    fun clearElevenLabs(
+        context: Context,
+        bridge: KernelBridge,
+    ): ProviderCredentialActionResult {
+        if (!ProviderCredentialStore.clearElevenLabsApiKey(context)) {
+            return ProviderCredentialActionResult(false, "ElevenLabs key could not be deleted.")
+        }
+        val metadata = PodcastActionDispatcher.dispatch(
+            bridge = bridge,
+            namespace = PodcastNamespace.SETTINGS,
+            payload = SetElevenLabsCredentialPayload(source = SOURCE_NONE),
+        )
+        val stt = syncSttKeysPresent(context, bridge)
+        return if (metadata != null && stt != null) {
+            ProviderCredentialActionResult(true, "ElevenLabs disconnected.")
+        } else {
+            ProviderCredentialActionResult(false, "ElevenLabs key deleted, but provider state did not update.")
+        }
+    }
+
+    fun saveAssemblyAiManual(
+        context: Context,
+        bridge: KernelBridge,
+        apiKey: String,
+    ): ProviderCredentialActionResult {
+        if (!ProviderCredentialStore.saveAssemblyAiApiKey(context, apiKey)) {
+            return ProviderCredentialActionResult(false, "AssemblyAI key could not be saved.")
+        }
+        val stt = syncSttKeysPresent(context, bridge)
+        return if (stt != null) {
+            ProviderCredentialActionResult(true, "AssemblyAI connected.")
+        } else {
+            ProviderCredentialActionResult(false, "AssemblyAI key saved, but provider state did not update.")
+        }
+    }
+
+    fun clearAssemblyAi(
+        context: Context,
+        bridge: KernelBridge,
+    ): ProviderCredentialActionResult {
+        if (!ProviderCredentialStore.clearAssemblyAiApiKey(context)) {
+            return ProviderCredentialActionResult(false, "AssemblyAI key could not be deleted.")
+        }
+        val stt = syncSttKeysPresent(context, bridge)
+        return if (stt != null) {
+            ProviderCredentialActionResult(true, "AssemblyAI disconnected.")
+        } else {
+            ProviderCredentialActionResult(false, "AssemblyAI key deleted, but provider state did not update.")
         }
     }
 

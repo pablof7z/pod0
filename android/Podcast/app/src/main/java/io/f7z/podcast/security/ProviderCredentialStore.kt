@@ -16,6 +16,8 @@ object ProviderCredentialStore {
     private const val PREFS_FILE = "io.f7z.podcast.providers.secure"
     private const val KEY_OPEN_ROUTER = "open_router_api_key"
     private const val KEY_OLLAMA = "ollama_api_key"
+    private const val KEY_ELEVEN_LABS = "eleven_labs_api_key"
+    private const val KEY_ASSEMBLY_AI = "assembly_ai_api_key"
 
     fun saveOpenRouterApiKey(context: Context, apiKey: String): Boolean =
         saveApiKey(context, KEY_OPEN_ROUTER, apiKey)
@@ -40,6 +42,30 @@ object ProviderCredentialStore {
 
     fun clearOllamaApiKey(context: Context): Boolean =
         clearApiKey(context, KEY_OLLAMA)
+
+    fun saveElevenLabsApiKey(context: Context, apiKey: String): Boolean =
+        saveApiKey(context, KEY_ELEVEN_LABS, apiKey)
+
+    fun loadElevenLabsApiKey(context: Context): String? =
+        loadApiKey(context, KEY_ELEVEN_LABS)
+
+    fun hasElevenLabsApiKey(context: Context): Boolean =
+        loadElevenLabsApiKey(context) != null
+
+    fun clearElevenLabsApiKey(context: Context): Boolean =
+        clearApiKey(context, KEY_ELEVEN_LABS)
+
+    fun saveAssemblyAiApiKey(context: Context, apiKey: String): Boolean =
+        saveApiKey(context, KEY_ASSEMBLY_AI, apiKey)
+
+    fun loadAssemblyAiApiKey(context: Context): String? =
+        loadApiKey(context, KEY_ASSEMBLY_AI)
+
+    fun hasAssemblyAiApiKey(context: Context): Boolean =
+        loadAssemblyAiApiKey(context) != null
+
+    fun clearAssemblyAiApiKey(context: Context): Boolean =
+        clearApiKey(context, KEY_ASSEMBLY_AI)
 
     private fun saveApiKey(context: Context, keyName: String, apiKey: String): Boolean {
         val trimmed = apiKey.trim()

@@ -1,7 +1,8 @@
 //! Settings `ActionModule` — routes `"podcast.settings.*"` dispatches.
 //!
-//! Swift encodes every settings action as `{"op":"<variant>", ...fields}`.
-//! The `#[serde(tag = "op", rename_all = "snake_case")]` discriminator
+//! Platform hosts encode every settings action as
+//! `{"op":"<variant>", ...fields}`. The
+//! `#[serde(tag = "op", rename_all = "snake_case")]` discriminator
 //! maps the string `op` value to the enum variant. The module's
 //! `execute` body forwards the whole action as
 //! `ActorCommand::DispatchHostOp` so the `PodcastHostOpHandler`
@@ -87,12 +88,13 @@ pub enum SettingsAction {
     },
     /// Set the STT provider selection.
     SetSttProvider { provider: String },
-    /// Report which STT providers currently have an API key in the iOS
-    /// Keychain. `providers` is the full present-set of STT-provider raw
+    /// Report which STT providers currently have an API key in platform
+    /// secure storage. `providers` is the full present-set of STT-provider raw
     /// values (`"elevenlabs_scribe"`, `"assemblyai"`, `"openrouter_whisper"`);
     /// the kernel replaces its mirror verbatim. Secrets never cross the FFI —
-    /// only presence. Swift dispatches this on launch and whenever a key is
-    /// saved or deleted so the kernel-owned STT fallback policy stays current.
+    /// only presence. Platform hosts dispatch this on launch and whenever a
+    /// key is saved or deleted so the kernel-owned STT fallback policy stays
+    /// current.
     SetSttKeysPresent { providers: Vec<String> },
     /// Set the OpenRouter Whisper model string.
     SetOpenRouterWhisperModel { model: String },

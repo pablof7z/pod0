@@ -312,6 +312,53 @@ data class SetOllamaChatUrlPayload(
     val op: String = "set_ollama_chat_url",
 )
 
+@Serializable
+data class SetElevenLabsCredentialPayload(
+    val source: String,
+    @SerialName("key_id") val keyId: String? = null,
+    @SerialName("key_label") val keyLabel: String? = null,
+    @SerialName("connected_at") val connectedAt: Long? = null,
+    val op: String = "set_eleven_labs_credential",
+)
+
+@Serializable
+data class SetSttProviderPayload(
+    val provider: String,
+    val op: String = "set_stt_provider",
+)
+
+@Serializable
+data class SetSttKeysPresentPayload(
+    val providers: List<String>,
+    val op: String = "set_stt_keys_present",
+)
+
+@Serializable
+data class SetOpenRouterWhisperModelPayload(
+    val model: String,
+    val op: String = "set_open_router_whisper_model",
+)
+
+@Serializable
+data class SetAssemblyAiSttModelPayload(
+    val model: String,
+    val op: String = "set_assembly_ai_stt_model",
+)
+
+@Serializable
+data class SetElevenLabsModelsPayload(
+    @SerialName("stt_model") val sttModel: String,
+    @SerialName("tts_model") val ttsModel: String,
+    val op: String = "set_eleven_labs_models",
+)
+
+@Serializable
+data class SetElevenLabsVoicePayload(
+    @SerialName("voice_id") val voiceId: String,
+    @SerialName("voice_name") val voiceName: String,
+    val op: String = "set_eleven_labs_voice",
+)
+
 /**
  * Load provider secrets into the Rust store's in-memory provider cache.
  * Secrets are intentionally not projected and must not be persisted by the

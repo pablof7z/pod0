@@ -34,8 +34,12 @@ fun ProviderCredentialSettingsSection(
     val scope = rememberCoroutineScope()
     var hasOpenRouterKey by remember { mutableStateOf(ProviderCredentialStore.hasOpenRouterApiKey(context)) }
     var hasOllamaKey by remember { mutableStateOf(ProviderCredentialStore.hasOllamaApiKey(context)) }
+    var hasElevenLabsKey by remember { mutableStateOf(ProviderCredentialStore.hasElevenLabsApiKey(context)) }
+    var hasAssemblyAiKey by remember { mutableStateOf(ProviderCredentialStore.hasAssemblyAiApiKey(context)) }
     var openRouterInput by remember { mutableStateOf("") }
     var ollamaInput by remember { mutableStateOf("") }
+    var elevenLabsInput by remember { mutableStateOf("") }
+    var assemblyAiInput by remember { mutableStateOf("") }
     var ollamaUrlInput by remember(settings.ollamaChatUrl) {
         mutableStateOf(settings.ollamaChatUrl.ifBlank { DEFAULT_OLLAMA_CHAT_URL })
     }
@@ -44,6 +48,8 @@ fun ProviderCredentialSettingsSection(
     var isValidatingOpenRouter by remember { mutableStateOf(false) }
     var ollamaResult by remember { mutableStateOf<ProviderCredentialActionResult?>(null) }
     var ollamaUrlResult by remember { mutableStateOf<ProviderCredentialActionResult?>(null) }
+    var elevenLabsResult by remember { mutableStateOf<ProviderCredentialActionResult?>(null) }
+    var assemblyAiResult by remember { mutableStateOf<ProviderCredentialActionResult?>(null) }
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -148,6 +154,53 @@ fun ProviderCredentialSettingsSection(
                 } else {
                     ProviderCredentialActionResult(false, "Ollama endpoint could not be saved.")
                 }
+            },
+        )
+        ElevenLabsCredentialCard(
+            input = elevenLabsInput,
+            hasStoredKey = hasElevenLabsKey,
+            status = credentialStatus(
+                source = settings.elevenLabsCredentialSource,
+                hasStoredKey = hasElevenLabsKey,
+                keyLabel = settings.elevenLabsByokKeyLabel,
+            ),
+            result = elevenLabsResult,
+            onInputChanged = {
+                elevenLabsInput = it
+                elevenLabsResult = null
+            },
+            onSave = {
+                val result = ProviderCredentialActions.saveElevenLabsManual(context, bridge, elevenLabsInput)
+                elevenLabsResult = result
+                hasElevenLabsKey = ProviderCredentialStore.hasElevenLabsApiKey(context)
+                if (result.ok) elevenLabsInput = ""
+            },
+            onDisconnect = {
+                val result = ProviderCredentialActions.clearElevenLabs(context, bridge)
+                elevenLabsResult = result
+                hasElevenLabsKey = ProviderCredentialStore.hasElevenLabsApiKey(context)
+                if (result.ok) elevenLabsInput = ""
+            },
+        )
+        AssemblyAiCredentialCard(
+            input = assemblyAiInput,
+            hasStoredKey = hasAssemblyAiKey,
+            result = assemblyAiResult,
+            onInputChanged = {
+                assemblyAiInput = it
+                assemblyAiResult = null
+            },
+            onSave = {
+                val result = ProviderCredentialActions.saveAssemblyAiManual(context, bridge, assemblyAiInput)
+                assemblyAiResult = result
+                hasAssemblyAiKey = ProviderCredentialStore.hasAssemblyAiApiKey(context)
+                if (result.ok) assemblyAiInput = ""
+            },
+            onDisconnect = {
+                val result = ProviderCredentialActions.clearAssemblyAi(context, bridge)
+                assemblyAiResult = result
+                hasAssemblyAiKey = ProviderCredentialStore.hasAssemblyAiApiKey(context)
+                if (result.ok) assemblyAiInput = ""
             },
         )
     }

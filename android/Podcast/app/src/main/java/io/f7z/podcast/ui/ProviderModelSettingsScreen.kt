@@ -109,6 +109,10 @@ fun ProviderModelSettingsScreen(
         }
 
         item {
+            SpeechProviderSettingsSection(settings = settings, bridge = bridge)
+        }
+
+        item {
             Text(
                 text = "LANGUAGE ROLES",
                 style = MaterialTheme.typography.labelMedium,

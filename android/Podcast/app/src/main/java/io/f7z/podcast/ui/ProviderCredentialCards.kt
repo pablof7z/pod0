@@ -106,6 +106,51 @@ fun OllamaCredentialCard(
     }
 }
 
+@Composable
+fun ElevenLabsCredentialCard(
+    input: String,
+    hasStoredKey: Boolean,
+    status: String,
+    result: ProviderCredentialActionResult?,
+    onInputChanged: (String) -> Unit,
+    onSave: () -> Unit,
+    onDisconnect: () -> Unit,
+) {
+    CredentialCard(
+        title = "ElevenLabs",
+        status = status,
+        input = input,
+        inputLabel = "ElevenLabs API key",
+        hasStoredKey = hasStoredKey,
+        result = result,
+        onInputChanged = onInputChanged,
+        onSave = onSave,
+        onDisconnect = onDisconnect,
+    )
+}
+
+@Composable
+fun AssemblyAiCredentialCard(
+    input: String,
+    hasStoredKey: Boolean,
+    result: ProviderCredentialActionResult?,
+    onInputChanged: (String) -> Unit,
+    onSave: () -> Unit,
+    onDisconnect: () -> Unit,
+) {
+    CredentialCard(
+        title = "AssemblyAI",
+        status = if (hasStoredKey) "Connected" else "Not connected",
+        input = input,
+        inputLabel = "AssemblyAI API key",
+        hasStoredKey = hasStoredKey,
+        result = result,
+        onInputChanged = onInputChanged,
+        onSave = onSave,
+        onDisconnect = onDisconnect,
+    )
+}
+
 private fun credentialButtonLabel(hasStoredKey: Boolean): String =
     if (hasStoredKey) "Replace key" else "Save key"
 

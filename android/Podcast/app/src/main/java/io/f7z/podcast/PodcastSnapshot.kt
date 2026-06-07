@@ -333,6 +333,19 @@ data class SettingsSnapshot(
     @SerialName("ollama_byok_key_label") val ollamaByokKeyLabel: String? = null,
     @SerialName("ollama_connected_at") val ollamaConnectedAt: Long? = null,
     @SerialName("ollama_chat_url") val ollamaChatUrl: String = "",
+    @SerialName("eleven_labs_credential_source") val elevenLabsCredentialSource: String = "",
+    @SerialName("eleven_labs_byok_key_id") val elevenLabsByokKeyId: String? = null,
+    @SerialName("eleven_labs_byok_key_label") val elevenLabsByokKeyLabel: String? = null,
+    @SerialName("eleven_labs_connected_at") val elevenLabsConnectedAt: Long? = null,
+    @SerialName("stt_provider") val sttProvider: String = "apple_native",
+    @SerialName("effective_stt_provider") val effectiveSttProvider: String = "apple_native",
+    @SerialName("effective_stt_provider_requires_key") val effectiveSttProviderRequiresKey: Boolean = false,
+    @SerialName("open_router_whisper_model") val openRouterWhisperModel: String = "openai/whisper-1",
+    @SerialName("assembly_ai_stt_model") val assemblyAiSttModel: String = "universal-3-pro,universal-2",
+    @SerialName("eleven_labs_stt_model") val elevenLabsSttModel: String = "scribe_v1",
+    @SerialName("eleven_labs_tts_model") val elevenLabsTtsModel: String = "eleven_turbo_v2_5",
+    @SerialName("eleven_labs_voice_id") val elevenLabsVoiceId: String = "",
+    @SerialName("eleven_labs_voice_name") val elevenLabsVoiceName: String = "",
 )
 
 /**

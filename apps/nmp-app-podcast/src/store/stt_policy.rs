@@ -3,7 +3,7 @@
 //! This is business policy that used to live in Swift
 //! (`TranscriptIngestService.effectiveSTTProvider` / `resolvedSTTKey`). It
 //! decides which speech-to-text provider actually runs given the user's
-//! selection and which API keys are present in the Keychain.
+//! selection and which API keys are present in platform secure storage.
 //!
 //! The rule (ported verbatim from the Swift implementation):
 //!   - `apple_native` is always available (on-device, no key) → it always wins.
@@ -11,8 +11,8 @@
 //!     to `apple_native`.
 //!   - Otherwise the selected provider runs unchanged.
 //!
-//! Rust never holds the secret. Swift reads the Keychain and reports the set
-//! of providers whose key is present via
+//! Rust never holds the secret. Platform hosts read their secure stores and
+//! report the set of providers whose key is present via
 //! `podcast.settings.set_stt_keys_present`; this policy reads that set.
 
 /// STT-provider raw value for Apple's on-device `SpeechTranscriber`.
@@ -33,7 +33,7 @@ pub fn requires_key(provider: &str) -> bool {
 }
 
 /// Resolve the effective STT provider from the user's selection and the set
-/// of providers whose key is present in the Keychain.
+/// of providers whose key is present in platform secure storage.
 ///
 /// Mirrors Swift `TranscriptIngestService.effectiveSTTProvider`:
 ///   - `apple_native` always wins (no key needed).
@@ -96,17 +96,17 @@ impl KeyPresence for [&str] {
 
 impl super::PodcastStore {
     /// Replace the set of STT providers whose API key is present in the
-    /// Keychain. `providers` is a list of STT-provider raw values
+    /// platform secure storage. `providers` is a list of STT-provider raw values
     /// (`"elevenlabs_scribe"`, `"assemblyai"`, `"openrouter_whisper"`).
-    /// Swift reads the Keychain and reports the full present-set on launch and
-    /// whenever a key is saved or deleted; the kernel mirrors it verbatim.
-    /// Not persisted — re-synced from the Keychain on every app launch.
+    /// Platform hosts report the full present-set on launch and whenever a key
+    /// is saved or deleted; the kernel mirrors it verbatim. Not persisted —
+    /// re-synced from secure storage on every app launch.
     pub fn set_stt_keys_present(&mut self, providers: Vec<String>) {
         self.stt_keys_present = providers.into_iter().collect();
     }
 
     /// Whether the API key for `provider` (an STT-provider raw value) is
-    /// currently present in the Keychain, per Swift's last report.
+    /// currently present in platform secure storage, per the host's last report.
     pub fn stt_key_present(&self, provider: &str) -> bool {
         self.stt_keys_present.contains(provider)
     }

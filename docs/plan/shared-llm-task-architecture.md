@@ -41,13 +41,17 @@ Swift live wiki/title/categorization/chapter/clip completion callers now route
 through `WikiOpenRouterClient` without preflighting Keychain keys, so missing
 provider credentials are reported by Rust. Swift OpenRouter settings validation
 also calls the shared validator directly, leaving missing-key handling to Rust.
+Android mirrors the shared STT/ElevenLabs settings projection, stores
+ElevenLabs/AssemblyAI keys in encrypted host storage, reports STT key presence
+to Rust, and updates STT/TTS/voice selections through typed settings actions.
 
 Immediate targets:
 
 - Swift clients should keep stubbed test modes, but every live provider
   inference call should route through Rust.
 - Android should expose every shared Rust provider function through JNI when a
-  user-facing Android feature needs it.
+  user-facing Android feature needs it, and keep provider/model settings as
+  typed `podcast.settings` actions instead of platform-local state.
 - OpenRouter Whisper/STT uses `nmp_app_podcast_openrouter_whisper_transcribe`;
   platform callers submit a typed audio-source intent and Rust owns the
   selected model lookup, OpenRouter auth, remote-source staging, multipart
