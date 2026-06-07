@@ -76,12 +76,16 @@ worktrees currently in flight.
   wiki/title/categorization/chapter/clip completion callers no longer
   preflight OpenRouter/Ollama Keychain keys before invoking the shared Rust
   provider transport, and Swift OpenRouter settings validation no longer
-  preflights Keychain before calling the shared validator. Android now mirrors
-  ElevenLabs/STT provider settings, stores ElevenLabs/AssemblyAI keys in its
-  encrypted host store, reports STT key presence to Rust, and exposes STT/TTS
-  model and ElevenLabs voice settings through typed settings actions. Remaining
-  provider-ownership work is deleting any stale Keychain-only UI fallbacks
-  after kernel projections cover them.
+  preflights Keychain before calling the shared validator. Swift Episode
+  Diagnostics no longer hides the OpenRouter Whisper retry path behind a
+  Keychain preflight; forced OpenRouter Whisper retries now call the shared
+  Rust STT transport so missing-key/provider errors come from the backend.
+  Android now mirrors ElevenLabs/STT provider settings, stores
+  ElevenLabs/AssemblyAI keys in its encrypted host store, reports STT key
+  presence to Rust, and exposes STT/TTS model and ElevenLabs voice settings
+  through typed settings actions. Remaining provider-ownership work is
+  deleting any stale Keychain-only UI fallbacks after kernel projections cover
+  them.
 - **typed-agent-task-intents.** Backend `AgentTaskIntent` creation exists and
   the TUI task editor now submits typed/natural task requests instead of raw
   dispatch namespace/body JSON. Keep raw `create` as compatibility/internal

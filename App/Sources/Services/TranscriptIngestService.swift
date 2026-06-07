@@ -145,11 +145,11 @@ final class TranscriptIngestService {
         if let forced = forceProvider {
             // The Diagnostics "Retry with…" override is an explicit user pick,
             // NOT the fallback policy — so it bypasses the kernel-resolved
-            // provider and runs exactly what was chosen. We still require the
-            // chosen provider's key to be present before attempting a cloud
-            // run; the kernel only projects the *resolved* provider, not
-            // per-provider key presence, so this precondition reads the
-            // Keychain directly via the existing closures.
+            // provider and runs exactly what was chosen. OpenRouter Whisper is
+            // shared-backend owned, so missing-key/provider errors must come
+            // from Rust. Swift still preflights ElevenLabs/AssemblyAI because
+            // those STT clients remain Swift-owned until shared transports
+            // land.
             guard forcedProviderHasKey(forced) else {
                 Self.logger.info(
                     "forceProvider=\(forced.displayName, privacy: .public) but no key configured — leaving transcriptState=.none"
@@ -313,11 +313,12 @@ final class TranscriptIngestService {
     /// fallback policy (which provider to use when a key is missing) is
     /// kernel-owned — see `effective_stt_provider` in the Rust kernel and the
     /// `settings.effectiveSttProvider` snapshot field. `.appleNative` is
-    /// keyless and always available.
+    /// keyless and always available. `.openRouterWhisper` also returns `true`
+    /// here because Rust owns its transport and credential error reporting.
     private func forcedProviderHasKey(_ provider: STTProvider) -> Bool {
         switch provider {
         case .elevenLabsScribe: return !(elevenLabsKey() ?? "").isEmpty
-        case .openRouterWhisper: return !(openRouterKey() ?? "").isEmpty
+        case .openRouterWhisper: return true
         case .assemblyAI: return !(assemblyAIKey() ?? "").isEmpty
         case .appleNative: return true
         }

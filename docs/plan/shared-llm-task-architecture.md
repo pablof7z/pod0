@@ -41,6 +41,10 @@ Swift live wiki/title/categorization/chapter/clip completion callers now route
 through `WikiOpenRouterClient` without preflighting Keychain keys, so missing
 provider credentials are reported by Rust. Swift OpenRouter settings validation
 also calls the shared validator directly, leaving missing-key handling to Rust.
+Swift Episode Diagnostics now exposes forced OpenRouter Whisper retry without a
+Keychain preflight so the shared Rust STT transport reports setup/provider
+errors. ElevenLabs and AssemblyAI STT retries remain Swift-key-gated until their
+transports are shared.
 Android mirrors the shared STT/ElevenLabs settings projection, stores
 ElevenLabs/AssemblyAI keys in encrypted host storage, reports STT key presence
 to Rust, and updates STT/TTS/voice selections through typed settings actions.
