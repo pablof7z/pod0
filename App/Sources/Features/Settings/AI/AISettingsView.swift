@@ -3,6 +3,7 @@ import SwiftUI
 struct AIProvidersSettingsView: View {
     @Environment(AppStateStore.self) private var store
     @ObservedObject private var ledger = CostLedger.shared
+    @State private var localDownloadedModelCount = 0
 
     var body: some View {
         ZStack {
@@ -19,6 +20,7 @@ struct AIProvidersSettingsView: View {
         }
         .navigationTitle("Providers")
         .navigationBarTitleDisplayMode(.inline)
+        .task { await refreshLocalModelStatus() }
     }
 
     private var providersSection: some View {
@@ -189,11 +191,10 @@ struct AIProvidersSettingsView: View {
     }
 
     private var localStatus: String {
-        let count = LocalModelCatalog.downloadedSpecs().count
-        switch count {
+        switch localDownloadedModelCount {
         case 0:  return "No models"
         case 1:  return "1 model"
-        default: return "\(count) models"
+        default: return "\(localDownloadedModelCount) models"
         }
     }
 
@@ -201,6 +202,18 @@ struct AIProvidersSettingsView: View {
         guard !ledger.records.isEmpty else { return nil }
         let total = ledger.records.reduce(0) { $0 + $1.costUSD }
         return "\(ledger.records.count) calls · \(CostFormatter.usd(total))"
+    }
+
+    @MainActor
+    private func refreshLocalModelStatus() async {
+        let specs: [LocalModelSpec]
+        switch await LocalModelCatalog.fetch() {
+        case .loaded(let loadedSpecs):
+            specs = loadedSpecs
+        case .failed:
+            specs = []
+        }
+        localDownloadedModelCount = specs.filter { LocalModelCatalog.isDownloaded($0.id) }.count
     }
 }
 

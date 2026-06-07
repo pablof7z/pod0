@@ -5,10 +5,9 @@ use std::sync::{Arc, Mutex, OnceLock};
 use nmp_app_podcast::ffi::PodcastUpdate;
 use nmp_app_podcast::{
     nmp_app_podcast_elevenlabs_voice_catalog, nmp_app_podcast_local_model_catalog,
-    nmp_app_podcast_provider_model_catalog, nmp_app_podcast_register,
-    nmp_app_podcast_set_data_dir, nmp_app_podcast_speech_model_catalog,
-    nmp_app_podcast_unregister, nmp_signer_broker_init, PodcastHandle,
-    AUDIO_CAPABILITY_NAMESPACE,
+    nmp_app_podcast_provider_model_catalog, nmp_app_podcast_register, nmp_app_podcast_set_data_dir,
+    nmp_app_podcast_speech_model_catalog, nmp_app_podcast_unregister, nmp_signer_broker_init,
+    PodcastHandle, AUDIO_CAPABILITY_NAMESPACE,
 };
 use nmp_ffi::{
     nmp_app_dispatch_action, nmp_app_free, nmp_app_free_string, nmp_app_new,

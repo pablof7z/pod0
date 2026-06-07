@@ -94,14 +94,23 @@ struct LocalModelRowView: View {
 }
 
 #Preview {
+    let previewSpec = LocalModelSpec(
+        id: "gemma4-e2b",
+        displayName: "Gemma 4 E2B",
+        description: "Preview local model",
+        sizeBytes: 2_590_000_000,
+        downloadURL: URL(string: "https://example.test/gemma-4-E2B-it.litertlm")!,
+        minDeviceRAMGB: 4
+    )
+
     VStack {
-        LocalModelRowView(spec: LocalModelCatalog.all[0], state: .notDownloaded,
+        LocalModelRowView(spec: previewSpec, state: .notDownloaded,
                           onDownload: {}, onCancel: {}, onDelete: {})
-        LocalModelRowView(spec: LocalModelCatalog.all[0], state: .downloading(progress: 0.45),
+        LocalModelRowView(spec: previewSpec, state: .downloading(progress: 0.45),
                           onDownload: {}, onCancel: {}, onDelete: {})
-        LocalModelRowView(spec: LocalModelCatalog.all[0], state: .downloaded,
+        LocalModelRowView(spec: previewSpec, state: .downloaded,
                           onDownload: {}, onCancel: {}, onDelete: {})
-        LocalModelRowView(spec: LocalModelCatalog.all[0], state: .active,
+        LocalModelRowView(spec: previewSpec, state: .active,
                           onDownload: {}, onCancel: {}, onDelete: {})
     }
     .environment(AppStateStore())

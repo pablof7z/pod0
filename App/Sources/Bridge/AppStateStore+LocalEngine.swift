@@ -38,30 +38,41 @@ extension AppStateStore {
             return
         }
 
-        guard let spec = LocalModelCatalog.all.first(where: { $0.id == targetID }) else {
-            os_log("syncLocalEngine: no catalog spec for local model id %{public}@",
-                   log: .default, type: .error, targetID)
-            return
-        }
-
-        let fileURL = DownloadCapability.localModelFileURL(for: targetID)
-        guard FileManager.default.fileExists(atPath: fileURL.path) else {
-            // Not downloaded yet. Queue it through the unified download queue —
-            // but only if it isn't already in flight (this method runs on every
-            // settings change; the kernel queue is also idempotent per id). The
-            // engine loads on the next sync once the file lands.
-            if localModelDownloads[targetID] != nil {
-                os_log("syncLocalEngine: model %{public}@ download already in flight",
-                       log: .default, type: .info, targetID)
-            } else {
-                os_log("syncLocalEngine: model %{public}@ not downloaded yet — queuing download",
-                       log: .default, type: .info, targetID)
-                kernelDownloadLocalModel(modelID: targetID, url: spec.downloadURL.absoluteString)
+        Task { @MainActor [weak self] in
+            let catalogResult = await LocalModelCatalog.fetch()
+            guard case .loaded(let specs) = catalogResult else {
+                if case .failed(let error) = catalogResult {
+                    os_log("syncLocalEngine: failed to load local catalog for %{public}@: %{public}@",
+                           log: .default, type: .error, targetID, error.localizedDescription)
+                }
+                return
             }
-            return
-        }
+            guard let spec = specs.first(where: { $0.id == targetID }) else {
+                os_log("syncLocalEngine: no catalog spec for local model id %{public}@",
+                       log: .default, type: .error, targetID)
+                return
+            }
+            guard let self else { return }
 
-        Task {
+            let fileURL = DownloadCapability.localModelFileURL(for: targetID)
+            guard FileManager.default.fileExists(atPath: fileURL.path) else {
+                // Not downloaded yet. Queue it through the unified download queue —
+                // but only if it isn't already in flight (this method runs on every
+                // settings change; the kernel queue is also idempotent per id). The
+                // engine loads on the next sync once the file lands.
+                if self.localModelDownloads[targetID] != nil {
+                    os_log("syncLocalEngine: model %{public}@ download already in flight",
+                           log: .default, type: .info, targetID)
+                } else {
+                    os_log("syncLocalEngine: model %{public}@ not downloaded yet — queuing download",
+                           log: .default, type: .info, targetID)
+                    self.kernelDownloadLocalModel(
+                        modelID: targetID,
+                        url: spec.downloadURL.absoluteString)
+                }
+                return
+            }
+
             do {
                 try await service.ensureLoaded(spec: spec)
             } catch {

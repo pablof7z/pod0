@@ -316,7 +316,16 @@ final class OpenRouterModelSelectorViewModel {
         // Downloaded on-device models are listed first and unconditionally —
         // they are available even when the network catalog fetch fails
         // (offline is exactly when a local model matters most).
-        let localOptions = LocalModelCatalog.downloadedSpecs().map(OpenRouterModelOption.init(local:))
+        let localSpecs: [LocalModelSpec]
+        switch await LocalModelCatalog.fetch() {
+        case .loaded(let specs):
+            localSpecs = specs
+        case .failed:
+            localSpecs = []
+        }
+        let localOptions = localSpecs
+            .filter { LocalModelCatalog.isDownloaded($0.id) }
+            .map(OpenRouterModelOption.init(local:))
         do {
             let remote = try await OpenRouterModelCatalogService().fetchModels()
             models = localOptions + remote

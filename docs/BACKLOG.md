@@ -120,7 +120,10 @@ worktrees currently in flight.
   Speech STT/TTS model options now come from the shared Rust
   `nmp_app_podcast_speech_model_catalog` instead of Swift/Android-owned
   constants, with the TUI using the same catalog for provider-setting display
-  and input hints.
+  and input hints. On-device model metadata now comes from the shared Rust
+  `nmp_app_podcast_local_model_catalog` instead of Swift-owned constants, with
+  Swift/Android/TUI consuming the same ids, names, download URLs, sizes, and RAM
+  floors.
   Remaining provider-ownership work is streaming voice-mode STT/TTS once the
   canonical NMP capability seam lands upstream
   (`pablof7z/nostr-multi-platform#954`).

@@ -78,7 +78,11 @@ fn render_provider_editor(frame: &mut Frame<'_>, area: Rect, state: &AppState) {
                 Span::styled(
                     format!(
                         "  {}",
-                        item.value(&state.settings, &state.speech_model_catalog)
+                        item.value(
+                            &state.settings,
+                            &state.speech_model_catalog,
+                            &state.local_model_catalog,
+                        )
                     ),
                     theme::muted(),
                 ),

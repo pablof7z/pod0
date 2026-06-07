@@ -18,7 +18,7 @@ pub(super) fn handle_settings_keys(state: &mut AppState, runtime: &AppRuntime, k
         },
     }
     if state.settings_section == SettingsSection::Providers {
-        load_speech_model_catalog_if_needed(state, runtime);
+        load_provider_option_catalogs_if_needed(state, runtime);
     }
 }
 
@@ -177,15 +177,19 @@ fn activate_provider_setting(state: &mut AppState, runtime: &AppRuntime) {
     }
     state.mode = Mode::SettingsInput;
     state.settings_input = item.input_value(&state.settings);
-    state.status = item.input_hint(&state.speech_model_catalog);
+    state.status = item.input_hint(&state.speech_model_catalog, &state.local_model_catalog);
 }
 
-fn load_speech_model_catalog_if_needed(state: &mut AppState, runtime: &AppRuntime) {
-    if !state.speech_model_catalog.eleven_labs_tts.is_empty() {
-        return;
+fn load_provider_option_catalogs_if_needed(state: &mut AppState, runtime: &AppRuntime) {
+    if state.speech_model_catalog.eleven_labs_tts.is_empty() {
+        if let Ok(catalog) = runtime.speech_model_catalog() {
+            state.speech_model_catalog = catalog;
+        }
     }
-    if let Ok(catalog) = runtime.speech_model_catalog() {
-        state.speech_model_catalog = catalog;
+    if state.local_model_catalog.models.is_empty() {
+        if let Ok(catalog) = runtime.local_model_catalog() {
+            state.local_model_catalog = catalog;
+        }
     }
 }
 

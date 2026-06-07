@@ -26,11 +26,6 @@ extension LocalModelCatalog {
         FileManager.default.fileExists(
             atPath: DownloadCapability.localModelFileURL(for: modelID).path)
     }
-
-    /// Catalog specs whose weights are downloaded and ready to use.
-    static func downloadedSpecs() -> [LocalModelSpec] {
-        all.filter { isDownloaded($0.id) }
-    }
 }
 
 extension AppStateStore {
