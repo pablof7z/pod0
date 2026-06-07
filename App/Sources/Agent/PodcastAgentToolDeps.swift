@@ -263,10 +263,10 @@ public protocol PodcastCategoryProtocol: Sendable {
     ) async throws -> PodcastCategoryChangeResult
 }
 
-/// HTTP-bearing online lookup (lane 9).
+/// Online lookup routed through the shared Rust provider transport (lane 9).
 public protocol PerplexityClientProtocol: Sendable {
-    /// Run an online search. May throw on transport errors, missing API key,
-    /// or rate limits.
+    /// Run an online search. May throw on shared backend transport errors,
+    /// missing API key, or provider rate limits.
     func search(query: String) async throws -> PerplexityResult
 }
 

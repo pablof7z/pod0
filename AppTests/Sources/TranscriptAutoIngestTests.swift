@@ -64,22 +64,18 @@ final class TranscriptAutoIngestTests: XCTestCase {
         let ids = TranscriptIngestService.autoIngestCandidates(
             among: [pubEp, bareEp],
             settings: settings,
-            elevenLabsKey: "anything"   // ignored when autoFallbackToScribe == false
+            effectiveSttProvider: .appleNative   // ignored when autoFallbackToScribe == false
         )
         XCTAssertEqual(ids, [pubEp.id])
     }
 
-    func testCandidatesIncludesNonPublisherEpisodesWhenScribeConfigured() {
+    func testCandidatesIncludesNonPublisherEpisodesWhenElevenLabsEffective() {
         // The unlock for cross-episode RAG: shows that don't ship a
         // <podcast:transcript> element (most indie podcasts) used to be
-        // skipped by `evaluateAutoIngest` even with Scribe configured + on.
+        // skipped by `evaluateAutoIngest` even with a cloud STT provider.
         let pubEp = Self.makeEpisode(hasPublisherURL: true)
         let bareEp = Self.makeEpisode(hasPublisherURL: false)
         var settings = Settings()
-        // Pin the cloud provider explicitly — the default is `.appleNative`
-        // (keyless, always ready), so without this the test would pass via
-        // the apple-native path instead of exercising the Scribe-key path it
-        // names.
         settings.sttProvider = .elevenLabsScribe
         settings.autoIngestPublisherTranscripts = true
         settings.autoFallbackToScribe = true
@@ -87,20 +83,33 @@ final class TranscriptAutoIngestTests: XCTestCase {
         let ids = TranscriptIngestService.autoIngestCandidates(
             among: [pubEp, bareEp],
             settings: settings,
-            elevenLabsKey: "sk-test-key"
+            effectiveSttProvider: .elevenLabsScribe
         )
         XCTAssertEqual(Set(ids), Set([pubEp.id, bareEp.id]))
     }
 
-    func testCandidatesExcludesNonPublisherEpisodesWhenNoElevenLabsKey() {
-        // `autoFallbackToScribe` on but no key means we'd just bounce off
-        // ElevenLabs — don't waste work queueing those.
+    func testCandidatesIncludesNonPublisherEpisodesWhenOpenRouterEffective() {
+        let bareEp = Self.makeEpisode(hasPublisherURL: false)
+        var settings = Settings()
+        settings.sttProvider = .openRouterWhisper
+        settings.autoIngestPublisherTranscripts = false
+        settings.autoFallbackToScribe = true
+
+        let ids = TranscriptIngestService.autoIngestCandidates(
+            among: [bareEp],
+            settings: settings,
+            effectiveSttProvider: .openRouterWhisper
+        )
+        XCTAssertEqual(ids, [bareEp.id])
+    }
+
+    func testCandidatesExcludesNonPublisherEpisodesWhenKernelDowngradesToAppleNative() {
+        // `autoFallbackToScribe` on but the kernel resolved `.appleNative`
+        // means no cloud STT key is available. A brand-new feed episode is not
+        // downloaded yet, so don't waste work queueing a bare episode.
         let pubEp = Self.makeEpisode(hasPublisherURL: true)
         let bareEp = Self.makeEpisode(hasPublisherURL: false)
         var settings = Settings()
-        // Pin the cloud provider — the default `.appleNative` is keyless and
-        // always ready, which would (correctly) include the bare episode and
-        // defeat the "no key ⇒ skip" behavior this test pins.
         settings.sttProvider = .elevenLabsScribe
         settings.autoIngestPublisherTranscripts = true
         settings.autoFallbackToScribe = true
@@ -108,16 +117,9 @@ final class TranscriptAutoIngestTests: XCTestCase {
         let ids = TranscriptIngestService.autoIngestCandidates(
             among: [pubEp, bareEp],
             settings: settings,
-            elevenLabsKey: nil
+            effectiveSttProvider: .appleNative
         )
         XCTAssertEqual(ids, [pubEp.id])
-
-        let idsEmptyKey = TranscriptIngestService.autoIngestCandidates(
-            among: [pubEp, bareEp],
-            settings: settings,
-            elevenLabsKey: ""   // empty string treated same as missing
-        )
-        XCTAssertEqual(idsEmptyKey, [pubEp.id])
     }
 
     func testCandidatesIncludesNonPublisherEpisodesWhenAssemblyAIConfigured() {
@@ -130,8 +132,7 @@ final class TranscriptAutoIngestTests: XCTestCase {
         let ids = TranscriptIngestService.autoIngestCandidates(
             among: [bareEp],
             settings: settings,
-            elevenLabsKey: nil,
-            assemblyAIKey: "assemblyai-test-key"
+            effectiveSttProvider: .assemblyAI
         )
 
         XCTAssertEqual(ids, [bareEp.id])
@@ -147,7 +148,7 @@ final class TranscriptAutoIngestTests: XCTestCase {
         let ids = TranscriptIngestService.autoIngestCandidates(
             among: [pubEp, bareEp],
             settings: settings,
-            elevenLabsKey: "sk-test-key"
+            effectiveSttProvider: .elevenLabsScribe
         )
         XCTAssertTrue(ids.isEmpty)
     }
@@ -161,7 +162,7 @@ final class TranscriptAutoIngestTests: XCTestCase {
         let ids = TranscriptIngestService.autoIngestCandidates(
             among: [readyEp, pendingEp],
             settings: settings,
-            elevenLabsKey: nil
+            effectiveSttProvider: .appleNative
         )
         XCTAssertEqual(ids, [pendingEp.id])
     }

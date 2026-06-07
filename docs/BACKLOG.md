@@ -108,7 +108,11 @@ worktrees currently in flight.
   previews, pick rationale narration, and generated podcast speech turns now
   uses `nmp_app_podcast_elevenlabs_tts_synthesize`, so Rust owns TTS
   credentials, selected-model fallback, request shaping, provider status
-  handling, and audio response normalization.
+  handling, and audio response normalization. Swift auto-ingest candidate
+  selection now consumes the kernel-resolved effective STT provider instead of
+  re-checking OpenRouter/ElevenLabs/AssemblyAI Keychain values locally, and
+  stale Swift-side OpenRouter/Ollama RAG key probes plus online-search endpoint
+  aliases have been removed.
   Remaining provider-ownership work is deleting any stale Keychain-only UI
   fallbacks after kernel projections cover them, plus streaming voice-mode
   STT/TTS once the canonical NMP capability seam lands upstream

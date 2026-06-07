@@ -33,8 +33,8 @@ extension TranscriptIngestService {
     /// **Inclusion rule** (the unlock for cross-episode RAG):
     ///   - Episode is not already `.ready`.
     ///   - At least one path is available - either a `publisherTranscriptURL`
-    ///     with `autoIngestPublisherTranscripts` on, OR a configured
-    ///     ElevenLabs key with `autoFallbackToScribe` on.
+    ///     with `autoIngestPublisherTranscripts` on, OR the Rust kernel
+    ///     resolves a cloud STT provider with `autoFallbackToScribe` on.
     ///
     /// `ingest()` itself handles per-category opt-out, dedup, and the
     /// publisher -> Scribe fallback inside one call - so this method only has
@@ -46,12 +46,13 @@ extension TranscriptIngestService {
         guard !newEpisodeIDs.isEmpty else { return }
         guard let appStore = rag.appStore else { return }
         let episodes = newEpisodeIDs.compactMap { appStore.episode(id: $0) }
+        let effectiveRaw = appStore.kernel?.podcastSnapshot?.settings.effectiveSttProvider
+            ?? STTProvider.appleNative.rawValue
+        let effectiveProvider = STTProvider(rawValue: effectiveRaw) ?? .appleNative
         let candidates = Self.autoIngestCandidates(
             among: episodes,
             settings: appStore.state.settings,
-            elevenLabsKey: resolvedElevenLabsKey(),
-            openRouterKey: resolvedOpenRouterKey(),
-            assemblyAIKey: resolvedAssemblyAIKey()
+            effectiveSttProvider: effectiveProvider
         )
         guard !candidates.isEmpty else { return }
         for episodeID in candidates {
@@ -73,29 +74,15 @@ extension TranscriptIngestService {
     static func autoIngestCandidates(
         among episodes: [Episode],
         settings: Settings,
-        elevenLabsKey: String?,
-        openRouterKey: String? = nil,
-        assemblyAIKey: String? = nil
+        effectiveSttProvider: STTProvider
     ) -> [UUID] {
         let publisherOn = settings.autoIngestPublisherTranscripts
-        // STT readiness for *feed-refresh-time* candidate selection. This
-        // deliberately gates on the selected provider's key (not on the
-        // keyless `.appleNative` fallback): `.appleNative` requires the
-        // episode file to be downloaded, which a brand-new feed episode is
-        // not, so the runtime `.appleNative` downgrade in
-        // `effectiveSTTProvider` can't fire here yet. Keyless cloud-provider
-        // users still get on-device transcription via the post-download
-        // re-entry into `ingest()` and on manual open — both of which route
-        // through `effectiveSTTProvider`. Queuing undownloaded bare episodes
-        // here would just be wasted work (`runAITranscription` no-ops for
-        // `.appleNative` without a local file).
-        let sttReady: Bool
-        switch settings.sttProvider {
-        case .appleNative: sttReady = true   // no API key needed
-        case .openRouterWhisper: sttReady = !(openRouterKey ?? "").isEmpty
-        case .assemblyAI: sttReady = !(assemblyAIKey ?? "").isEmpty
-        case .elevenLabsScribe: sttReady = !(elevenLabsKey ?? "").isEmpty
-        }
+        // STT readiness for *feed-refresh-time* candidate selection is derived
+        // from the kernel's provider policy, not platform Keychain checks.
+        // `.appleNative` requires a local download; brand-new feed episodes
+        // do not have one yet, so bare episodes should wait for the
+        // post-download re-entry into `ingest()`.
+        let sttReady = effectiveSttProvider != .appleNative
         let scribeOn = settings.autoFallbackToScribe && sttReady
         guard publisherOn || scribeOn else { return [] }
         return episodes.compactMap { episode -> UUID? in
