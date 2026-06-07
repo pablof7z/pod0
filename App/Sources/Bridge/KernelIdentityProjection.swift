@@ -106,9 +106,12 @@ struct ResolvedProfile: Decodable, Equatable {
 /// is the steady-state for a fresh install.
 struct KernelIdentityProjection: Equatable {
     /// Bech32 npub of the active account (`npub1…`), or `nil` when no account
-    /// is loaded. Sourced from `PodcastUpdate.active_account.npub`; the kernel
-    /// does not yet surface the raw hex pubkey in the snapshot (follow-up work).
+    /// is loaded. Sourced from `PodcastUpdate.active_account.npub`.
     let activeAccount: String?
+    /// Lowercase 64-char hex pubkey of the active account, or `nil` when no
+    /// account is loaded or the kernel predates the `pubkey_hex` addition.
+    /// Sourced from `PodcastUpdate.active_account.pubkey_hex`.
+    let activeAccountPubkeyHex: String?
     /// All known identity rows, possibly empty.
     let accounts: [KernelAccountSummary]
     /// Bunker handshake progress, or `nil` when no handshake is in flight.
@@ -120,7 +123,11 @@ struct KernelIdentityProjection: Equatable {
     let resolvedProfiles: [String: ResolvedProfile]
 
     static let empty = KernelIdentityProjection(
-        activeAccount: nil, accounts: [], bunkerHandshake: nil, resolvedProfiles: [:])
+        activeAccount: nil,
+        activeAccountPubkeyHex: nil,
+        accounts: [],
+        bunkerHandshake: nil,
+        resolvedProfiles: [:])
 
     /// The active row (if any), looked up by pubkey.
     var activeAccountRow: KernelAccountSummary? {
@@ -156,6 +163,7 @@ extension KernelIdentityProjection {
     static func from(podcastUpdate update: PodcastUpdate) -> KernelIdentityProjection {
         KernelIdentityProjection(
             activeAccount: update.activeAccount?.npub,
+            activeAccountPubkeyHex: update.activeAccount?.pubkeyHex,
             accounts: [],
             bunkerHandshake: nil,
             resolvedProfiles: [:])

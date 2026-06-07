@@ -91,7 +91,7 @@ final class FeedbackStore {
         // Self-heal: ensure a local key exists (and is forwarded to the kernel
         // signer) before dispatching, mirroring `publishUserNote`. A fresh user
         // with no identity gets a generated key here.
-        if identity.publicKeyHex == nil {
+        if !identity.hasIdentity {
             try identity._ensureGeneratedKey()
         }
         localPubkey = identity.publicKeyHex
@@ -112,7 +112,7 @@ final class FeedbackStore {
     }
 
     func publishReply(content: String, threadID: String, identity: UserIdentityStore) async throws {
-        if identity.publicKeyHex == nil {
+        if !identity.hasIdentity {
             try identity._ensureGeneratedKey()
         }
         localPubkey = identity.publicKeyHex

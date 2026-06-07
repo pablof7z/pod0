@@ -273,6 +273,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     let active_account = handle.identity.lock().ok().and_then(|id| {
         id.npub.as_ref().map(|npub| AccountSummary {
             npub: npub.clone(),
+            pubkey_hex: id.pubkey_hex.clone(),
             mode: "local_key".into(),
             display_name: id.display_name.clone(),
             picture_url: id.picture_url.clone(),

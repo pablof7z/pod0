@@ -219,6 +219,7 @@ data class WidgetSnapshot(
 @Serializable
 data class AccountSummary(
     val npub: String,
+    @SerialName("pubkey_hex") val pubkeyHex: String? = null,
     @SerialName("display_name") val displayName: String? = null,
     val mode: String = "local_key",
     @SerialName("picture_url") val pictureUrl: String? = null,

@@ -24,10 +24,17 @@ import os.log
 final class UserIdentityStore {
     private let logger = Logger.app("UserIdentityStore")
 
-    /// The user's public key identifier mirrored from the kernel's active account.
-    /// Currently bech32 npub format (`npub1…`) from `PodcastUpdate.active_account.npub`.
-    /// `nil` while no identity is configured.
+    /// The user's lowercase 64-hex public key, mirrored from
+    /// `PodcastUpdate.active_account.pubkey_hex`. `nil` while no identity is
+    /// configured or while the kernel predates the `pubkey_hex` projection (older
+    /// builds emit only `npub`; use `activeNpub` as the identity presence check).
     private(set) var publicKeyHex: String?
+
+    /// Bech32 `npub1…` encoding of the active public key, mirrored from
+    /// `PodcastUpdate.active_account.npub`. Always present when an identity is
+    /// loaded; `nil` on fresh install / after sign-out.
+    private(set) var activeNpub: String?
+
     private(set) var loginError: String?
 
     /// What kind of identity is currently active.
@@ -57,7 +64,7 @@ final class UserIdentityStore {
     var profileAbout: String?
     var profilePicture: String?
 
-    var hasIdentity: Bool { publicKeyHex != nil }
+    var hasIdentity: Bool { activeNpub != nil }
     var isRemoteSigner: Bool { mode == .remoteSigner }
 
     // MARK: - Keychain slots (legacy cleanup only)
@@ -148,6 +155,7 @@ final class UserIdentityStore {
         // kernel identity store + identity.json and can still sign).
         clearIdentityInKernel()
         publicKeyHex = nil
+        activeNpub = nil
         mode = .none
         remoteSignerState = .idle
         profileDisplayName = nil
@@ -180,19 +188,17 @@ final class UserIdentityStore {
         clearIdentityInKernel()
         purgeLegacyKeychainKeys()
         publicKeyHex = nil
+        activeNpub = nil
         mode = .none
         remoteSignerState = .idle
     }
 
     // MARK: - Display helpers
 
-    var npub: String? {
-        guard let hex = publicKeyHex, let bytes = Data(hexString: hex), bytes.count == 32 else { return nil }
-        return Bech32.encode(hrp: "npub", data: bytes)
-    }
+    var npub: String? { activeNpub }
 
     var npubShort: String? {
-        guard let full = npub, full.count > 16 else { return npub }
+        guard let full = activeNpub, full.count > 16 else { return activeNpub }
         return "\(full.prefix(10))…\(full.suffix(6))"
     }
 
@@ -210,7 +216,8 @@ final class UserIdentityStore {
     @MainActor
     func applyKernelIdentity(
         handshake: KernelBunkerHandshake?,
-        activeAccount: String?,
+        activeAccount: String?,       // bech32 npub — used for display + presence
+        pubkeyHex: String?,            // hex pubkey — used for crypto / relay queries
         isRemoteSigner: Bool
     ) {
         // 1. Handshake progression (failure surfaces an error; success is
@@ -219,10 +226,15 @@ final class UserIdentityStore {
             _failNostrConnect(handshake.message ?? "NIP-46 pairing failed.")
         }
 
-        // 2. Steady-state: mirror the active pubkey + mode from the kernel.
-        let changed = (activeAccount != publicKeyHex)
+        // 2. Steady-state: mirror the active identity from the kernel.
+        let changed = (activeAccount != activeNpub)
         if changed {
-            publicKeyHex = activeAccount
+            activeNpub = activeAccount
+            publicKeyHex = pubkeyHex
+        } else if pubkeyHex != publicKeyHex {
+            // Hex may arrive on a tick after npub on kernels that add pubkey_hex
+            // mid-session (e.g. after an app update that ships this projection).
+            publicKeyHex = pubkeyHex
         }
 
         let newMode: Mode
@@ -235,8 +247,8 @@ final class UserIdentityStore {
 
         // Connection state: a live account means connected; reflect it without
         // churning if already in the right terminal state.
-        if let pubkey = activeAccount {
-            let target: RemoteSignerState = isRemoteSigner ? .connected(pubkey) : .idle
+        if let npub = activeAccount {
+            let target: RemoteSignerState = isRemoteSigner ? .connected(npub) : .idle
             if remoteSignerState != target {
                 // Don't downgrade an in-flight bunker handshake to idle on a
                 // local-key tick; only set when we have a real account.
@@ -245,9 +257,11 @@ final class UserIdentityStore {
         }
 
         // 3. Profile side-effects only when the active pubkey actually changes.
-        guard changed, let pubkey = activeAccount else { return }
-        loadCachedProfile(for: pubkey)
-        Task { await self.fetchAndCacheProfile(pubkeyHex: pubkey) }
+        // Prefer the hex key for profile cache keying; fall back to the npub so
+        // older kernel snapshots that omit pubkey_hex still populate the cache.
+        guard changed, let cacheKey = pubkeyHex ?? activeAccount else { return }
+        loadCachedProfile(for: cacheKey)
+        Task { await self.fetchAndCacheProfile(pubkeyHex: cacheKey) }
     }
 
     // MARK: - Internal helpers
@@ -288,12 +302,14 @@ final class UserIdentityStore {
     /// gates the kernel publish dispatches.
     func _setActiveAccountForTesting(_ pubkeyHex: String, mode: Mode = .localKey) {
         self.publicKeyHex = pubkeyHex
+        self.activeNpub = pubkeyHex  // tests pass hex; presence check still works
         self.mode = mode
     }
 
     /// Test-only: drop the active identity (verifies the self-heal path).
     func _clearActiveAccountForTesting() {
         self.publicKeyHex = nil
+        self.activeNpub = nil
         self.mode = .none
     }
 }

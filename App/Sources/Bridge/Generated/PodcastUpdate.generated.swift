@@ -136,6 +136,11 @@ struct PlayerState {
 /// Active Nostr identity (present only when an account is loaded).
 struct AccountSummary: Codable {
     var npub: String
+    /// Lowercase 64-hex pubkey. `nil` for remote-signer accounts where
+    /// the kernel holds only the npub. Use this when a raw hex pubkey is
+    /// required (Nostr event authorship, filter construction) so callers
+    /// don't need to re-decode the bech32 npub.
+    var pubkeyHex: String? = nil
     var displayName: String? = nil
     var mode: String
     var pictureUrl: String? = nil

@@ -118,11 +118,11 @@ struct EpisodeCommentsSection: View {
     /// post under, or a prompt to set up Nostr if no signer is configured.
     @ViewBuilder
     private var identityChip: some View {
-        if let pubkey = identity.publicKeyHex {
+        if let display = identity.npubShort ?? identity.publicKeyHex.map(Self.shortKey) {
             HStack(spacing: 4) {
                 Image(systemName: "person.crop.circle.fill")
                     .foregroundStyle(.secondary)
-                Text(Self.shortKey(pubkey))
+                Text(display)
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
             }

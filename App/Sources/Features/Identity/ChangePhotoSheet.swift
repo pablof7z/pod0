@@ -109,7 +109,7 @@ struct ChangePhotoSheet: View {
                 uploadState = .failed("Could not read the selected photo.")
                 return
             }
-            guard identity.publicKeyHex != nil else {
+            guard identity.activeNpub != nil else {
                 uploadState = .failed("Sign in to upload a photo.")
                 return
             }

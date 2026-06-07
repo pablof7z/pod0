@@ -487,6 +487,7 @@ extension AppStateStore {
             self.identity.applyKernelIdentity(
                 handshake: identity.bunkerHandshake,
                 activeAccount: identity.activeAccount,
+                pubkeyHex: identity.activeAccountPubkeyHex,
                 isRemoteSigner: identity.isRemoteSigner)
         }
 
@@ -560,6 +561,7 @@ extension AppStateStore {
             self.identity.applyKernelIdentity(
                 handshake: identity.bunkerHandshake,
                 activeAccount: identity.activeAccount,
+                pubkeyHex: identity.activeAccountPubkeyHex,
                 isRemoteSigner: identity.isRemoteSigner)
         }
         onNowPlayingSnapshot?(snapshot, library)

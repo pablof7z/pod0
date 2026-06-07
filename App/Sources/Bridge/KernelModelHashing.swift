@@ -42,7 +42,7 @@ extension KernelModel {
 
         // Misc
         h.combine(update.toast)
-        h.combine(update.activeAccount?.npub)
+        h.combine(update.activeAccount?.pubkeyHex ?? update.activeAccount?.npub)
 
         // Downloads (state, not progress)
         h.combine(update.downloads?.active.count)
