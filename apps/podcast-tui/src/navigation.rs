@@ -73,6 +73,7 @@ pub enum Mode {
     SubscribeInput,
     RelayInput,
     SettingsInput,
+    ProviderCatalog,
     AgentInput,
     AgentMemoryInput,
     AgentTaskInput,

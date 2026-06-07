@@ -1,7 +1,8 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
+use super::provider_catalog;
 use crate::app::{AppState, Mode, SettingsSection, Tab};
-use crate::provider_settings_catalog::PROVIDER_SETTINGS_ITEMS;
+use crate::provider_settings_catalog::{ProviderSettingItem, PROVIDER_SETTINGS_ITEMS};
 use crate::runtime::AppRuntime;
 use crate::settings_catalog::SETTINGS_ITEMS;
 use crate::settings_state::next_relay_role;
@@ -48,7 +49,21 @@ fn handle_provider_settings_keys(state: &mut AppState, runtime: &AppRuntime, key
         KeyCode::Char('G') | KeyCode::End => {
             state.jump_provider_setting_bottom(PROVIDER_SETTINGS_ITEMS.len());
         }
-        KeyCode::Enter | KeyCode::Char(' ') | KeyCode::Char('e') => {
+        KeyCode::Enter | KeyCode::Char(' ') => {
+            if selected_provider_item(state).is_some_and(|item| item.is_model_setting()) {
+                if let Some(item) = selected_provider_item(state) {
+                    provider_catalog::open_provider_catalog(state, runtime, item);
+                }
+            } else {
+                activate_provider_setting(state, runtime);
+            }
+        }
+        KeyCode::Char('b') => {
+            if let Some(item) = selected_provider_item(state) {
+                provider_catalog::open_provider_catalog(state, runtime, item);
+            }
+        }
+        KeyCode::Char('e') => {
             activate_provider_setting(state, runtime);
         }
         _ => {}
@@ -146,7 +161,7 @@ fn begin_relay_input(state: &mut AppState) {
 }
 
 fn activate_provider_setting(state: &mut AppState, runtime: &AppRuntime) {
-    let Some(item) = PROVIDER_SETTINGS_ITEMS.get(state.selected_provider_setting) else {
+    let Some(item) = selected_provider_item(state) else {
         return;
     };
     if item.is_immediate() {
@@ -160,6 +175,12 @@ fn activate_provider_setting(state: &mut AppState, runtime: &AppRuntime) {
     state.mode = Mode::SettingsInput;
     state.settings_input = item.input_value(&state.settings);
     state.status = item.input_hint().to_owned();
+}
+
+fn selected_provider_item(state: &AppState) -> Option<ProviderSettingItem> {
+    PROVIDER_SETTINGS_ITEMS
+        .get(state.selected_provider_setting)
+        .copied()
 }
 
 fn remove_selected_relay(state: &mut AppState, runtime: &AppRuntime) {

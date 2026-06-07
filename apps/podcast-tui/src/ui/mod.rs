@@ -10,6 +10,7 @@ pub mod inbox;
 pub mod layout;
 pub mod library;
 pub mod player;
+pub mod provider_catalog;
 pub mod queue;
 pub mod search;
 pub mod settings;

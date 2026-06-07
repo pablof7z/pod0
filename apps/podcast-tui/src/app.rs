@@ -7,6 +7,8 @@ use nmp_app_podcast::ffi::{
 
 pub use crate::agent_state::AgentSection;
 pub use crate::navigation::{Mode, Pane, Tab};
+use crate::provider_model_catalog::ProviderCatalogModel;
+use crate::provider_settings_catalog::ProviderSettingItem;
 pub use crate::rows::{DownloadRow, EpisodeRow, InboxRow, PodcastRow, SearchResult};
 pub use crate::settings_state::SettingsSection;
 
@@ -87,6 +89,10 @@ pub struct AppState {
     pub selected_relay: usize,
     pub settings_input: String,
     pub relay_input: String,
+    pub(crate) provider_catalog_models: Vec<ProviderCatalogModel>,
+    pub(crate) provider_catalog_query: String,
+    pub(crate) selected_provider_catalog_model: usize,
+    pub(crate) provider_catalog_target: Option<ProviderSettingItem>,
     pub status: String,
     pub toasts: Vec<Toast>,
     pub downloads: Vec<DownloadRow>,
@@ -154,6 +160,10 @@ impl Default for AppState {
             selected_relay: 0,
             settings_input: String::new(),
             relay_input: String::new(),
+            provider_catalog_models: Vec::new(),
+            provider_catalog_query: String::new(),
+            selected_provider_catalog_model: 0,
+            provider_catalog_target: None,
             status: "starting kernel".to_string(),
             downloads: Vec::new(),
             selected_download: 0,

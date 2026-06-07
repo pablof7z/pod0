@@ -4,8 +4,8 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use nmp_app_podcast::ffi::PodcastUpdate;
 use nmp_app_podcast::{
-    nmp_app_podcast_register, nmp_app_podcast_set_data_dir, nmp_app_podcast_unregister,
-    nmp_signer_broker_init, PodcastHandle, AUDIO_CAPABILITY_NAMESPACE,
+    nmp_app_podcast_provider_model_catalog, nmp_app_podcast_register, nmp_app_podcast_set_data_dir,
+    nmp_app_podcast_unregister, nmp_signer_broker_init, PodcastHandle, AUDIO_CAPABILITY_NAMESPACE,
 };
 use nmp_ffi::{
     nmp_app_dispatch_action, nmp_app_free, nmp_app_free_string, nmp_app_new,
@@ -16,6 +16,7 @@ use serde_json::Value;
 
 use crate::audio_host::AudioHost;
 use crate::bridge::{self, NmpEvent};
+use crate::provider_model_catalog::{decode_provider_catalog, ProviderCatalogModel};
 
 static AUDIO_HOST: OnceLock<Arc<Mutex<AudioHost>>> = OnceLock::new();
 
@@ -94,6 +95,21 @@ impl AppRuntime {
         if let Some(host) = AUDIO_HOST.get() {
             let _ = host.lock().unwrap().poll_position();
         }
+    }
+
+    pub(crate) fn provider_model_catalog(&self) -> Result<Vec<ProviderCatalogModel>> {
+        if self.podcast.is_null() {
+            return Err("podcast handle unavailable".to_owned());
+        }
+        let ptr = nmp_app_podcast_provider_model_catalog(self.podcast);
+        if ptr.is_null() {
+            return Err("provider catalog returned null".to_owned());
+        }
+        let text = unsafe { CStr::from_ptr(ptr) }
+            .to_string_lossy()
+            .into_owned();
+        nmp_app_free_string(ptr);
+        decode_provider_catalog(&text)
     }
 
     /// Read the current podcast state directly from the handle.
