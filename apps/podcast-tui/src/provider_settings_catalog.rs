@@ -1,5 +1,6 @@
 use nmp_app_podcast::ffi::SettingsSnapshot;
 
+use crate::local_model_catalog::{local_model_summary, local_models_hint, LocalModelCatalog};
 use crate::provider_settings_parser::*;
 use crate::runtime::{AppRuntime, Result};
 use crate::speech_model_catalog::{option_summary, options_hint, SpeechModelCatalog};
@@ -84,6 +85,7 @@ impl ProviderSettingItem {
         self,
         settings: &SettingsSnapshot,
         speech_catalog: &SpeechModelCatalog,
+        local_catalog: &LocalModelCatalog,
     ) -> String {
         match self {
             Self::LoadEnvCredentials => env_credentials_summary(),
@@ -165,12 +167,17 @@ impl ProviderSettingItem {
             ),
             Self::LocalModel => settings
                 .local_model_id
-                .clone()
+                .as_deref()
+                .map(|id| local_model_summary(id, &local_catalog.models))
                 .unwrap_or_else(|| "none".to_owned()),
         }
     }
 
-    pub(crate) fn input_hint(self, speech_catalog: &SpeechModelCatalog) -> String {
+    pub(crate) fn input_hint(
+        self,
+        speech_catalog: &SpeechModelCatalog,
+        local_catalog: &LocalModelCatalog,
+    ) -> String {
         match self {
             Self::LoadEnvCredentials => "loads env credentials without showing secrets".to_owned(),
             Self::AgentInitialModel
@@ -201,7 +208,7 @@ impl ProviderSettingItem {
                 options_hint(&speech_catalog.eleven_labs_tts)
             ),
             Self::ElevenLabsVoice => "format: voice_id | voice_name".to_owned(),
-            Self::LocalModel => "format: model id, blank clears".to_owned(),
+            Self::LocalModel => local_models_hint(&local_catalog.models),
         }
     }
 

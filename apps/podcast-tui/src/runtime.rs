@@ -4,9 +4,11 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use nmp_app_podcast::ffi::PodcastUpdate;
 use nmp_app_podcast::{
-    nmp_app_podcast_elevenlabs_voice_catalog, nmp_app_podcast_provider_model_catalog,
-    nmp_app_podcast_register, nmp_app_podcast_set_data_dir, nmp_app_podcast_speech_model_catalog,
-    nmp_app_podcast_unregister, nmp_signer_broker_init, PodcastHandle, AUDIO_CAPABILITY_NAMESPACE,
+    nmp_app_podcast_elevenlabs_voice_catalog, nmp_app_podcast_local_model_catalog,
+    nmp_app_podcast_provider_model_catalog, nmp_app_podcast_register,
+    nmp_app_podcast_set_data_dir, nmp_app_podcast_speech_model_catalog,
+    nmp_app_podcast_unregister, nmp_signer_broker_init, PodcastHandle,
+    AUDIO_CAPABILITY_NAMESPACE,
 };
 use nmp_ffi::{
     nmp_app_dispatch_action, nmp_app_free, nmp_app_free_string, nmp_app_new,
@@ -17,6 +19,7 @@ use serde_json::Value;
 
 use crate::audio_host::AudioHost;
 use crate::bridge::{self, NmpEvent};
+use crate::local_model_catalog::{decode_local_model_catalog, LocalModelCatalog};
 use crate::provider_model_catalog::{decode_provider_catalog, ProviderCatalogModel};
 use crate::provider_voice_catalog::{decode_elevenlabs_voice_catalog, ProviderCatalogVoice};
 use crate::speech_model_catalog::{decode_speech_model_catalog, SpeechModelCatalog};
@@ -143,6 +146,21 @@ impl AppRuntime {
             .into_owned();
         nmp_app_free_string(ptr);
         decode_speech_model_catalog(&text)
+    }
+
+    pub(crate) fn local_model_catalog(&self) -> Result<LocalModelCatalog> {
+        if self.podcast.is_null() {
+            return Err("podcast handle unavailable".to_owned());
+        }
+        let ptr = nmp_app_podcast_local_model_catalog(self.podcast);
+        if ptr.is_null() {
+            return Err("local model catalog returned null".to_owned());
+        }
+        let text = unsafe { CStr::from_ptr(ptr) }
+            .to_string_lossy()
+            .into_owned();
+        nmp_app_free_string(ptr);
+        decode_local_model_catalog(&text)
     }
 
     /// Read the current podcast state directly from the handle.

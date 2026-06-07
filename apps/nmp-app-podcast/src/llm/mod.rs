@@ -14,6 +14,7 @@ pub mod elevenlabs_voice_catalog;
 pub mod factory;
 pub mod image_generation;
 pub mod local_model_backend;
+pub mod local_model_catalog;
 pub mod model_catalog;
 mod model_catalog_dtos;
 pub mod ollama_backend;

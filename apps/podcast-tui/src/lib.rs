@@ -10,6 +10,7 @@ pub mod app;
 pub mod audio_host;
 pub mod bridge;
 mod download_state;
+mod local_model_catalog;
 pub mod input;
 mod navigation;
 mod provider_model_catalog;

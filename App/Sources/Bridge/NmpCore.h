@@ -287,6 +287,18 @@ char *nmp_app_podcast_provider_model_catalog(void *handle);
 // Threading: this call is cheap but may be called from a background thread.
 char *nmp_app_podcast_speech_model_catalog(void *handle);
 
+// Shared on-device model catalog. Rust owns the known local model metadata
+// (ids, display names, download URLs, sizes, and RAM floors) used by Swift,
+// Android, and the TUI. Native shells still execute platform download/file
+// capabilities. Response:
+//   {"result":{"models":[{"id":"...","display_name":"...",
+//                         "description":"...","size_bytes":0,
+//                         "download_url":"...","min_device_ram_gb":0}]}}
+// or {"error":"..."}.
+// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// Threading: this call is cheap but may be called from a background thread.
+char *nmp_app_podcast_local_model_catalog(void *handle);
+
 // Shared OpenRouter `/auth/key` validation using mirrored provider credentials.
 // Returns {"result":...} or {"error":{"kind":"...","message":"..."}}.
 // The caller MUST free the returned pointer via `nmp_app_free_string`.

@@ -6,6 +6,7 @@ use nmp_app_podcast::ffi::{
 };
 
 pub use crate::agent_state::AgentSection;
+use crate::local_model_catalog::LocalModelCatalog;
 pub use crate::navigation::{Mode, Pane, Tab};
 use crate::provider_model_catalog::ProviderCatalogModel;
 use crate::provider_settings_catalog::ProviderSettingItem;
@@ -85,6 +86,7 @@ pub struct AppState {
     pub inbox_triage_in_progress: bool,
     pub settings: SettingsSnapshot,
     pub(crate) speech_model_catalog: SpeechModelCatalog,
+    pub(crate) local_model_catalog: LocalModelCatalog,
     pub settings_section: SettingsSection,
     pub selected_setting: usize,
     pub selected_provider_setting: usize,
@@ -157,6 +159,7 @@ impl Default for AppState {
             inbox_triage_in_progress: false,
             settings: SettingsSnapshot::default(),
             speech_model_catalog: SpeechModelCatalog::default(),
+            local_model_catalog: LocalModelCatalog::default(),
             settings_section: SettingsSection::General,
             selected_setting: 0,
             selected_provider_setting: 0,
