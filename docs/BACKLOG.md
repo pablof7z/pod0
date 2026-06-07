@@ -70,9 +70,12 @@ worktrees currently in flight.
   model catalog discovery, OpenRouter credential validation, and OpenRouter
   Whisper/STT multipart upload now live in the shared Rust backend, with
   iOS/Android/TUI only supplying credentials, selected models, typed audio
-  source intent, and UI. Remaining provider-ownership work is Android secure
-  provider-key reload/full credential settings UI plus deleting any stale
-  Keychain-only UI fallbacks after kernel projections cover them.
+  source intent, and UI. Android now reloads encrypted OpenRouter/Ollama keys
+  into Rust, exposes typed credential settings for those providers, and calls
+  shared Rust OpenRouter key validation through JNI. Remaining
+  provider-ownership work is Android ElevenLabs/STT credential parity once
+  those fields are mirrored plus deleting any stale Keychain-only UI fallbacks
+  after kernel projections cover them.
 - **typed-agent-task-intents.** Backend `AgentTaskIntent` creation exists and
   the TUI task editor now submits typed/natural task requests instead of raw
   dispatch namespace/body JSON. Keep raw `create` as compatibility/internal
@@ -527,8 +530,11 @@ worktrees currently in flight.
   HTTP capability execution, and audio report round-trips now use the NMP
   kernel/capability path. Android can call the shared Rust provider
   complete/embed/catalog/image/rerank transports through JNI, and model-role
-  settings now load the shared Rust catalog for selection; remaining provider
-  work is secure key reload and full provider credential settings UI.
+  settings now load the shared Rust catalog for selection. Android also has
+  encrypted OpenRouter/Ollama credential settings and reloads those keys into
+  the Rust in-memory provider cache, including shared OpenRouter key
+  validation; remaining provider work is the non-LLM STT/voice credential
+  surface.
 - ~~**android-gradle-wrapper.**~~ Done — `gradlew`, `gradlew.bat`, and the
   wrapper files are present under `android/Podcast/`; `./gradlew assembleDebug`
   is the validated Android build path.

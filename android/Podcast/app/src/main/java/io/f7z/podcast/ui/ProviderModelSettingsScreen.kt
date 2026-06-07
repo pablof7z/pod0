@@ -82,7 +82,7 @@ fun ProviderModelSettingsScreen(
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
                 Text(
-                    text = "Models",
+                    text = "Providers & models",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
@@ -102,6 +102,10 @@ fun ProviderModelSettingsScreen(
                 isLoading = isLoading,
                 errorMessage = errorMessage,
             )
+        }
+
+        item {
+            ProviderCredentialSettingsSection(settings = settings, bridge = bridge)
         }
 
         item {
