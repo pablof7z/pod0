@@ -17,6 +17,9 @@ pub(super) fn handle_settings_keys(state: &mut AppState, runtime: &AppRuntime, k
             SettingsSection::Relays => handle_relay_settings_keys(state, runtime, key),
         },
     }
+    if state.settings_section == SettingsSection::Providers {
+        load_speech_model_catalog_if_needed(state, runtime);
+    }
 }
 
 fn handle_general_settings_keys(state: &mut AppState, runtime: &AppRuntime, key: KeyEvent) {
@@ -174,7 +177,16 @@ fn activate_provider_setting(state: &mut AppState, runtime: &AppRuntime) {
     }
     state.mode = Mode::SettingsInput;
     state.settings_input = item.input_value(&state.settings);
-    state.status = item.input_hint().to_owned();
+    state.status = item.input_hint(&state.speech_model_catalog);
+}
+
+fn load_speech_model_catalog_if_needed(state: &mut AppState, runtime: &AppRuntime) {
+    if !state.speech_model_catalog.eleven_labs_tts.is_empty() {
+        return;
+    }
+    if let Ok(catalog) = runtime.speech_model_catalog() {
+        state.speech_model_catalog = catalog;
+    }
 }
 
 fn selected_provider_item(state: &AppState) -> Option<ProviderSettingItem> {

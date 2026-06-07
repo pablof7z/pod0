@@ -23,5 +23,6 @@ mod runtime_actions;
 mod runtime_settings_actions;
 pub mod settings_catalog;
 mod settings_state;
+mod speech_model_catalog;
 pub mod ui;
 mod update;

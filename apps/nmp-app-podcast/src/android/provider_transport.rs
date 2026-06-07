@@ -16,8 +16,8 @@ use crate::ffi::{
     nmp_app_podcast_openrouter_whisper_transcribe, nmp_app_podcast_perplexity_search,
     nmp_app_podcast_provider_complete, nmp_app_podcast_provider_embed,
     nmp_app_podcast_provider_model_catalog, nmp_app_podcast_rerank,
-    nmp_app_podcast_validate_elevenlabs_key, nmp_app_podcast_validate_openrouter_key,
-    PodcastHandle,
+    nmp_app_podcast_speech_model_catalog, nmp_app_podcast_validate_elevenlabs_key,
+    nmp_app_podcast_validate_openrouter_key, PodcastHandle,
 };
 
 type PodcastJsonFn = extern "C" fn(*mut PodcastHandle, *const c_char) -> *mut c_char;
@@ -161,6 +161,17 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeProviderModelCatal
     handle: jlong,
 ) -> jstring {
     call_podcast_catalog_ffi(&env, handle, nmp_app_podcast_provider_model_catalog)
+}
+
+/// `nativeSpeechModelCatalog(handle)` - shared speech STT/TTS model catalog.
+/// Returns Rust's JSON envelope unchanged, or null on FFI failure.
+#[no_mangle]
+pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeSpeechModelCatalog<'l>(
+    env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    handle: jlong,
+) -> jstring {
+    call_podcast_catalog_ffi(&env, handle, nmp_app_podcast_speech_model_catalog)
 }
 
 /// `nativeValidateOpenRouterKey(handle)` - shared OpenRouter key validation.

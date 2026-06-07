@@ -100,7 +100,7 @@ pub use ffi::{
     nmp_app_podcast_openrouter_whisper_transcribe, nmp_app_podcast_perplexity_search,
     nmp_app_podcast_provider_model_catalog, nmp_app_podcast_register, nmp_app_podcast_rerank,
     nmp_app_podcast_set_data_dir, nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free,
-    nmp_app_podcast_snapshot_rev, nmp_app_podcast_unregister,
+    nmp_app_podcast_snapshot_rev, nmp_app_podcast_speech_model_catalog, nmp_app_podcast_unregister,
     nmp_app_podcast_validate_elevenlabs_key, nmp_app_podcast_validate_openrouter_key,
     nmp_app_podcast_voice_report, PodcastHandle,
 };

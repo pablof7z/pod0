@@ -173,6 +173,13 @@ class KernelBridge {
         if (handle != 0L) nativeProviderModelCatalog(handle) else null
 
     /**
+     * Shared speech STT/TTS model catalog. Rust owns the option sets; Android
+     * receives the JSON envelope only.
+     */
+    fun speechModelCatalog(): String? =
+        if (handle != 0L) nativeSpeechModelCatalog(handle) else null
+
+    /**
      * Shared OpenRouter key validation. Rust owns `/auth/key`, credentials,
      * request shaping, and response parsing; Android receives the JSON envelope.
      */
@@ -260,6 +267,7 @@ class KernelBridge {
     private external fun nativeProviderEmbed(handle: Long, intentJson: String): String?
     private external fun nativePerplexitySearch(handle: Long, intentJson: String): String?
     private external fun nativeProviderModelCatalog(handle: Long): String?
+    private external fun nativeSpeechModelCatalog(handle: Long): String?
     private external fun nativeValidateOpenRouterKey(handle: Long): String?
     private external fun nativeValidateElevenLabsKey(handle: Long): String?
     private external fun nativeElevenLabsVoiceCatalog(handle: Long): String?

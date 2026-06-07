@@ -20,9 +20,11 @@ import io.f7z.podcast.STT_ELEVEN_LABS_SCRIBE
 import io.f7z.podcast.STT_OPENROUTER_WHISPER
 
 @Composable
-fun SpeechProviderSettingsSection(
+internal fun SpeechProviderSettingsSection(
     settings: SettingsSnapshot,
     bridge: KernelBridge,
+    speechCatalog: SpeechModelCatalog,
+    catalogError: String?,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -53,6 +55,13 @@ fun SpeechProviderSettingsSection(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (catalogError != null) {
+                    Text(
+                        text = catalogError,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
                 SttProviderButton(
                     title = "Platform native",
                     detail = "On-device transcription when the host supports it; no key required.",
@@ -91,7 +100,7 @@ fun SpeechProviderSettingsSection(
                 SpeechModelChooser(
                     title = "ElevenLabs STT model",
                     current = settings.elevenLabsSttModel,
-                    options = ELEVEN_LABS_STT_MODELS,
+                    options = speechCatalog.elevenLabsStt,
                     onSelect = { model ->
                         PodcastActionDispatcher.dispatch(
                             bridge = bridge,
@@ -106,7 +115,7 @@ fun SpeechProviderSettingsSection(
                 SpeechModelChooser(
                     title = "OpenRouter Whisper model",
                     current = settings.openRouterWhisperModel,
-                    options = OPENROUTER_WHISPER_MODELS,
+                    options = speechCatalog.openRouterWhisper,
                     onSelect = { model ->
                         PodcastActionDispatcher.dispatch(
                             bridge = bridge,
@@ -118,7 +127,7 @@ fun SpeechProviderSettingsSection(
                 SpeechModelChooser(
                     title = "AssemblyAI STT model",
                     current = settings.assemblyAiSttModel,
-                    options = ASSEMBLY_AI_STT_MODELS,
+                    options = speechCatalog.assemblyAiStt,
                     onSelect = { model ->
                         PodcastActionDispatcher.dispatch(
                             bridge = bridge,
@@ -133,7 +142,7 @@ fun SpeechProviderSettingsSection(
                 SpeechModelChooser(
                     title = "ElevenLabs TTS model",
                     current = settings.elevenLabsTtsModel,
-                    options = ELEVEN_LABS_TTS_MODELS,
+                    options = speechCatalog.elevenLabsTts,
                     onSelect = { model ->
                         PodcastActionDispatcher.dispatch(
                             bridge = bridge,

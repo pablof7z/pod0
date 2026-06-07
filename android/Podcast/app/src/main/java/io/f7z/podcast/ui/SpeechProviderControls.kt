@@ -80,7 +80,7 @@ internal fun SpeechModelChooser(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(text = title, style = MaterialTheme.typography.bodyLarge)
-        options.forEach { option ->
+        visibleModelOptions(options, current).forEach { option ->
             val selected = option.id == current
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -106,6 +106,13 @@ internal fun SpeechModelChooser(
             }
         }
     }
+}
+
+private fun visibleModelOptions(options: List<ModelOption>, current: String): List<ModelOption> {
+    if (current.isBlank() || options.any { it.id == current }) {
+        return options
+    }
+    return listOf(ModelOption(current, "Current model")) + options
 }
 
 @Composable

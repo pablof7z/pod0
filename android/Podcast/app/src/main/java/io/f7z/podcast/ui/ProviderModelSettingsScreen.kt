@@ -49,21 +49,27 @@ fun ProviderModelSettingsScreen(
     val settings = snapshot?.settings ?: SettingsSnapshot()
     val scope = rememberCoroutineScope()
     var models by remember { mutableStateOf<List<ProviderModelOption>>(emptyList()) }
+    var speechCatalog by remember { mutableStateOf(SpeechModelCatalog()) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var speechCatalogError by remember { mutableStateOf<String?>(null) }
     var selectedRole by remember { mutableStateOf<ProviderModelRole?>(null) }
 
-    suspend fun loadCatalog() {
+    suspend fun loadCatalogs() {
         isLoading = true
         errorMessage = null
+        speechCatalogError = null
         runCatching { ProviderModelCatalogService.fetchModels(bridge) }
             .onSuccess { models = it }
             .onFailure { errorMessage = it.message ?: "Provider catalog failed" }
+        runCatching { SpeechModelCatalogService.fetchCatalog(bridge) }
+            .onSuccess { speechCatalog = it }
+            .onFailure { speechCatalogError = it.message ?: "Speech catalog failed" }
         isLoading = false
     }
 
     LaunchedEffect(bridge) {
-        loadCatalog()
+        loadCatalogs()
     }
 
     LazyColumn(
@@ -88,7 +94,7 @@ fun ProviderModelSettingsScreen(
                     modifier = Modifier.weight(1f),
                 )
                 IconButton(
-                    onClick = { scope.launch { loadCatalog() } },
+                    onClick = { scope.launch { loadCatalogs() } },
                     enabled = !isLoading,
                 ) {
                     Icon(Icons.Filled.Refresh, contentDescription = "Refresh models")
@@ -109,7 +115,12 @@ fun ProviderModelSettingsScreen(
         }
 
         item {
-            SpeechProviderSettingsSection(settings = settings, bridge = bridge)
+            SpeechProviderSettingsSection(
+                settings = settings,
+                bridge = bridge,
+                speechCatalog = speechCatalog,
+                catalogError = speechCatalogError,
+            )
         }
 
         item {
@@ -147,7 +158,7 @@ fun ProviderModelSettingsScreen(
             currentModelName = role.modelName(settings),
             isLoading = isLoading,
             errorMessage = errorMessage,
-            onRefresh = { scope.launch { loadCatalog() } },
+            onRefresh = { scope.launch { loadCatalogs() } },
             onDismiss = { selectedRole = null },
             onSelect = { modelId, modelName ->
                 role.dispatchSelection(bridge, modelId, modelName)

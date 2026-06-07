@@ -71,6 +71,7 @@ mod snapshot_tests;
 #[cfg(test)]
 mod snapshot_tests_ext;
 mod snapshot_update;
+mod speech_model_catalog;
 mod transcript_report;
 mod voice_report;
 
@@ -135,5 +136,6 @@ pub use snapshot::{
     nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free, nmp_app_podcast_snapshot_rev,
     nmp_app_podcast_unregister, AppRelayRow, PodcastUpdate,
 };
+pub use speech_model_catalog::nmp_app_podcast_speech_model_catalog;
 pub use transcript_report::nmp_app_podcast_transcript_report;
 pub use voice_report::nmp_app_podcast_voice_report;

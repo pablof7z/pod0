@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-07T22:53:00Z",
+      "lines": [
+        "Speech model choices now come from the shared backend, keeping transcription and narration settings consistent across platforms."
+      ]
+    },
+    {
       "shipped_at": "2026-06-07T22:21:00Z",
       "lines": [
         "Provider setup indicators now use the shared backend's loaded-key status, keeping Settings, transcripts, and wiki readiness in sync."

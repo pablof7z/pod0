@@ -277,6 +277,16 @@ char *nmp_app_podcast_perplexity_search(void *handle, const char *intent_json);
 // Threading: this call BLOCKS; call from a background thread / detached Task.
 char *nmp_app_podcast_provider_model_catalog(void *handle);
 
+// Shared speech model catalog. Rust owns the known STT/TTS model option sets
+// used by Swift, Android, and the TUI. Response:
+//   {"result":{"eleven_labs_stt":[{"id":"...","label":"..."}],
+//              "open_router_whisper":[...],"assembly_ai_stt":[...],
+//              "eleven_labs_tts":[...]}}
+// or {"error":"..."}.
+// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// Threading: this call is cheap but may be called from a background thread.
+char *nmp_app_podcast_speech_model_catalog(void *handle);
+
 // Shared OpenRouter `/auth/key` validation using mirrored provider credentials.
 // Returns {"result":...} or {"error":{"kind":"...","message":"..."}}.
 // The caller MUST free the returned pointer via `nmp_app_free_string`.

@@ -75,7 +75,13 @@ fn render_provider_editor(frame: &mut Frame<'_>, area: Rect, state: &AppState) {
             ListItem::new(Line::from(vec![
                 theme::selected_prefix(selected, state.motion_tick),
                 Span::styled(item.label(), base),
-                Span::styled(format!("  {}", item.value(&state.settings)), theme::muted()),
+                Span::styled(
+                    format!(
+                        "  {}",
+                        item.value(&state.settings, &state.speech_model_catalog)
+                    ),
+                    theme::muted(),
+                ),
             ]))
         })
         .collect::<Vec<_>>();
