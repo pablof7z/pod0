@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-07T16:06:45Z",
+      "lines": [
+        "OpenRouter key validation in Settings now uses the shared backend for missing-key and validation errors."
+      ]
+    },
+    {
       "shipped_at": "2026-06-07T15:58:24Z",
       "lines": [
         "AI provider errors for wiki pages, chapters, categories, and clips now come from the shared backend, so OpenRouter and Ollama setup feedback is more consistent."

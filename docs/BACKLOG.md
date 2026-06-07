@@ -75,7 +75,8 @@ worktrees currently in flight.
   shared Rust OpenRouter key validation through JNI. Swift live
   wiki/title/categorization/chapter/clip completion callers no longer
   preflight OpenRouter/Ollama Keychain keys before invoking the shared Rust
-  provider transport. Remaining
+  provider transport, and Swift OpenRouter settings validation no longer
+  preflights Keychain before calling the shared validator. Remaining
   provider-ownership work is Android ElevenLabs/STT credential parity once
   those fields are mirrored plus deleting any stale Keychain-only UI fallbacks
   after kernel projections cover them.

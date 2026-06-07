@@ -224,14 +224,6 @@ struct OpenRouterSettingsView: View {
         defer { isValidatingKey = false }
 
         do {
-            guard let apiKey = try OpenRouterCredentialStore.apiKey() else {
-                credentialError = "No stored key found."
-                return
-            }
-            guard !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                credentialError = "No stored key found."
-                return
-            }
             store.kernelSetProviderApiKeys()
             keyInfo = try await validationService.validateStoredKey()
             Haptics.success()

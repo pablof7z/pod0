@@ -39,7 +39,8 @@ Current shared Rust provider entry points cover agent chat through
 catalog discovery, image generation, reranking, and OpenRouter Whisper/STT.
 Swift live wiki/title/categorization/chapter/clip completion callers now route
 through `WikiOpenRouterClient` without preflighting Keychain keys, so missing
-provider credentials are reported by Rust.
+provider credentials are reported by Rust. Swift OpenRouter settings validation
+also calls the shared validator directly, leaving missing-key handling to Rust.
 
 Immediate targets:
 
