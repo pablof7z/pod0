@@ -43,6 +43,7 @@ mod image_generation;
 mod local_llm;
 mod network_report;
 mod openrouter_whisper;
+mod perplexity_search;
 pub mod projections;
 #[cfg(test)]
 mod projections_tests;
@@ -109,6 +110,7 @@ pub use image_generation::nmp_app_podcast_generate_image;
 pub use local_llm::{nmp_app_clear_local_llm, nmp_app_register_local_llm};
 pub use network_report::nmp_app_podcast_network_report;
 pub use openrouter_whisper::nmp_app_podcast_openrouter_whisper_transcribe;
+pub use perplexity_search::nmp_app_podcast_perplexity_search;
 pub use projections::{
     AccountSummary, AgentMessageSummary, AgentPickSummary, AgentSnapshot, AgentTaskSummary,
     CategoryBrowseItem, ChapterSummary, ClipSummary, CommentSummary, ContactSummary,

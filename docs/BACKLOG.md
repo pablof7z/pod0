@@ -89,12 +89,17 @@ worktrees currently in flight.
   `nmp_app_podcast_assemblyai_transcribe` so Rust owns the selected model
   fallback list, AssemblyAI auth, `/v2/transcript` submit/poll contract,
   status handling, response parsing, and usage telemetry normalization.
-  iOS/Android/TUI mirror ElevenLabs and AssemblyAI credentials into the same
-  in-memory provider-key action as OpenRouter/Ollama. Android now mirrors
-  ElevenLabs/STT provider settings, stores ElevenLabs/AssemblyAI keys in its
-  encrypted host store, reports STT key presence to Rust, exposes shared
-  ElevenLabs validation plus Scribe/AssemblyAI JNI calls, and exposes STT/TTS
-  model and ElevenLabs voice settings through typed settings actions.
+  Agent Perplexity search now uses `nmp_app_podcast_perplexity_search` so Rust
+  owns direct Perplexity `/v1/sonar`, OpenRouter fallback, credential priority,
+  status handling, and source parsing. iOS/Android/TUI mirror ElevenLabs,
+  AssemblyAI, and Perplexity credentials into the same in-memory provider-key
+  action as OpenRouter/Ollama. Android now mirrors ElevenLabs/STT provider
+  settings, stores ElevenLabs/AssemblyAI/Perplexity keys in its encrypted host
+  store, reports STT key presence to Rust, exposes shared ElevenLabs validation
+  plus Scribe/AssemblyAI/online-search JNI calls, and exposes STT/TTS model and
+  ElevenLabs voice settings through typed settings actions. The TUI env loader
+  now forwards `ASSEMBLYAI_API_KEY` and `PERPLEXITY_API_KEY` into the shared
+  provider-key cache.
   Remaining provider-ownership work is deleting any stale Keychain-only UI
   fallbacks after kernel projections cover them.
 - **typed-agent-task-intents.** Backend `AgentTaskIntent` creation exists and
@@ -157,8 +162,9 @@ worktrees currently in flight.
   now wires configured relay add/remove/role editing and validates projection
   updates. The provider/model settings slice now wires LLM role model
   selection, provider credential metadata, env-backed in-memory OpenRouter/
-  Ollama credentials, STT key-presence reporting, STT/TTS model selectors,
-  ElevenLabs voice selection, and the local model hint. The terminal shell now
+  Ollama/ElevenLabs/AssemblyAI/Perplexity credentials, STT key-presence
+  reporting, STT/TTS model selectors, ElevenLabs voice selection, and the local
+  model hint. The terminal shell now
   has shared animated chrome, focused row rails, player waveform motion,
   download activity strips, and themed detail/input overlays without changing
   kernel/provider behavior. Remaining live validation now covers GLM 5.1 Cloud
@@ -554,13 +560,13 @@ worktrees currently in flight.
   playback, sleep timer, playback queue, downloads, settings, BYOK nsec import,
   HTTP capability execution, and audio report round-trips now use the NMP
   kernel/capability path. Android can call the shared Rust provider
-  complete/embed/catalog/image/rerank and cloud-STT transports through JNI, and
-  model-role settings now load the shared Rust catalog for selection. Android
-  also has encrypted OpenRouter/Ollama/ElevenLabs/AssemblyAI credential
-  settings and reloads those keys into the Rust in-memory provider cache,
-  including shared OpenRouter/ElevenLabs validation; remaining provider work is
-  voice-mode provider execution/credential
-  surface.
+  complete/embed/catalog/image/rerank, online search, and cloud-STT transports
+  through JNI, and model-role settings now load the shared Rust catalog for
+  selection. Android also has encrypted OpenRouter/Ollama/ElevenLabs/
+  AssemblyAI/Perplexity credential settings and reloads those keys into the
+  Rust in-memory provider cache, including shared OpenRouter/ElevenLabs
+  validation; remaining provider work is voice-mode provider
+  execution/credential surface.
 - ~~**android-gradle-wrapper.**~~ Done — `gradlew`, `gradlew.bat`, and the
   wrapper files are present under `android/Podcast/`; `./gradlew assembleDebug`
   is the validated Android build path.

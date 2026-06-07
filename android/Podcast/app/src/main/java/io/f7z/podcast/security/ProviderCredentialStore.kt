@@ -18,6 +18,7 @@ object ProviderCredentialStore {
     private const val KEY_OLLAMA = "ollama_api_key"
     private const val KEY_ELEVEN_LABS = "eleven_labs_api_key"
     private const val KEY_ASSEMBLY_AI = "assembly_ai_api_key"
+    private const val KEY_PERPLEXITY = "perplexity_api_key"
 
     fun saveOpenRouterApiKey(context: Context, apiKey: String): Boolean =
         saveApiKey(context, KEY_OPEN_ROUTER, apiKey)
@@ -66,6 +67,18 @@ object ProviderCredentialStore {
 
     fun clearAssemblyAiApiKey(context: Context): Boolean =
         clearApiKey(context, KEY_ASSEMBLY_AI)
+
+    fun savePerplexityApiKey(context: Context, apiKey: String): Boolean =
+        saveApiKey(context, KEY_PERPLEXITY, apiKey)
+
+    fun loadPerplexityApiKey(context: Context): String? =
+        loadApiKey(context, KEY_PERPLEXITY)
+
+    fun hasPerplexityApiKey(context: Context): Boolean =
+        loadPerplexityApiKey(context) != null
+
+    fun clearPerplexityApiKey(context: Context): Boolean =
+        clearApiKey(context, KEY_PERPLEXITY)
 
     private fun saveApiKey(context: Context, keyName: String, apiKey: String): Boolean {
         val trimmed = apiKey.trim()

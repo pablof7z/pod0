@@ -10,14 +10,15 @@ Platform shells own:
 - Credential capture and secret storage in their platform-native secure store.
 - Delivery of live API keys to Rust through the existing in-memory settings
   action (`podcast.settings`, `set_provider_api_keys`) for OpenRouter, Ollama,
-  ElevenLabs, and AssemblyAI.
+  ElevenLabs, AssemblyAI, and Perplexity.
 - Model-selection UI and display labels.
 - Rendering, keyboard/touch interaction, local files, audio, downloads, and
   other platform capabilities.
 
 The shared Rust backend owns:
 
-- Provider routing for OpenRouter, Ollama, and local models.
+- Provider routing for OpenRouter, Ollama, Perplexity/OpenRouter-backed online
+  search, and local models.
 - HTTP request and response shape for provider chat/completions.
 - HTTP request and response shape for provider embeddings.
 - HTTP request, multipart upload, and response shape for provider speech-to-text
@@ -27,9 +28,10 @@ The shared Rust backend owns:
 - Agent task intent resolution and dispatch payload construction.
 
 Platform code must not construct OpenRouter or Ollama chat/embedding request
-bodies, OpenRouter, ElevenLabs, or AssemblyAI speech-to-text requests,
-ElevenLabs validation requests, provider URLs, provider-specific auth headers,
-or raw backend task namespace/body JSON for normal user workflows.
+bodies, Perplexity/OpenRouter online-search requests, OpenRouter, ElevenLabs,
+or AssemblyAI speech-to-text requests, ElevenLabs validation requests, provider
+URLs, provider-specific auth headers, or raw backend task namespace/body JSON
+for normal user workflows.
 
 ## Provider Transport
 
@@ -38,7 +40,8 @@ Current shared Rust provider entry points cover agent chat through
 `nmp_app_podcast_provider_complete`, embeddings through
 `nmp_app_podcast_provider_embed`, OpenRouter and ElevenLabs key validation,
 provider model catalog discovery, image generation, reranking, OpenRouter
-Whisper/STT, ElevenLabs Scribe/STT, and AssemblyAI STT.
+Whisper/STT, ElevenLabs Scribe/STT, AssemblyAI STT, and Perplexity/OpenRouter
+online search through `nmp_app_podcast_perplexity_search`.
 Swift live wiki/title/categorization/chapter/clip completion callers now route
 through `WikiOpenRouterClient` without preflighting Keychain keys, so missing
 provider credentials are reported by Rust. Swift OpenRouter settings validation
@@ -55,12 +58,18 @@ handling, and response parsing. AssemblyAI now uses
 audio-source intent and Rust owns selected model fallback lookup, AssemblyAI
 auth, `/v2/transcript` submit/poll, status handling, response parsing, and
 usage telemetry normalization.
+Agent online search now uses `nmp_app_podcast_perplexity_search`; platform
+callers submit a typed query intent and Rust owns the direct Perplexity
+`/v1/sonar` request, OpenRouter fallback request, credential priority, status
+handling, and citation/search-result parsing.
 Android mirrors the shared STT/ElevenLabs settings projection, stores
-ElevenLabs/AssemblyAI keys in encrypted host storage, reports STT key presence
-to Rust, reloads ElevenLabs and AssemblyAI into the shared provider-key cache,
-calls shared Rust ElevenLabs validation plus Scribe/AssemblyAI transcription
-through JNI, and updates STT/TTS/voice selections through typed settings
-actions.
+ElevenLabs/AssemblyAI/Perplexity keys in encrypted host storage, reports STT
+key presence to Rust, reloads ElevenLabs, AssemblyAI, and Perplexity into the
+shared provider-key cache, calls shared Rust ElevenLabs validation plus
+Scribe/AssemblyAI transcription and online search through JNI, and updates
+STT/TTS/voice selections through typed settings actions. The TUI loads
+OpenRouter/Ollama/ElevenLabs/AssemblyAI/Perplexity env credentials into the
+same shared key-cache action.
 
 Immediate targets:
 

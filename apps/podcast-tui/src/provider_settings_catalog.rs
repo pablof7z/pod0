@@ -371,25 +371,38 @@ pub(crate) fn load_env_credentials(runtime: &AppRuntime) -> Result<String> {
     let open_router = env_key("OPENROUTER_API_KEY");
     let ollama = env_key("OLLAMA_API_KEY");
     let eleven_labs = env_key("ELEVENLABS_API_KEY");
+    let assembly_ai = env_key("ASSEMBLYAI_API_KEY");
+    let perplexity = env_key("PERPLEXITY_API_KEY");
 
     let mut stt = Vec::new();
     if eleven_labs.is_some() {
         stt.push("elevenlabs_scribe".to_owned());
     }
-    if env_key("ASSEMBLYAI_API_KEY").is_some() {
+    if assembly_ai.is_some() {
         stt.push("assemblyai".to_owned());
     }
     if open_router.is_some() {
         stt.push("openrouter_whisper".to_owned());
     }
-    if open_router.is_none() && ollama.is_none() && stt.is_empty() {
+    if open_router.is_none()
+        && ollama.is_none()
+        && eleven_labs.is_none()
+        && assembly_ai.is_none()
+        && perplexity.is_none()
+    {
         return Err(
-            "no provider env keys set; set OLLAMA_API_KEY, OPENROUTER_API_KEY, ELEVENLABS_API_KEY, or ASSEMBLYAI_API_KEY"
+            "no provider env keys set; set OLLAMA_API_KEY, OPENROUTER_API_KEY, ELEVENLABS_API_KEY, ASSEMBLYAI_API_KEY, or PERPLEXITY_API_KEY"
                 .to_owned(),
         );
     }
 
-    runtime.set_provider_api_keys(open_router.clone(), ollama.clone(), eleven_labs.clone())?;
+    runtime.set_provider_api_keys(
+        open_router.clone(),
+        ollama.clone(),
+        eleven_labs.clone(),
+        assembly_ai.clone(),
+        perplexity.clone(),
+    )?;
     runtime.set_stt_keys_present(stt)?;
     Ok(format!(
         "env credentials loaded ({})",

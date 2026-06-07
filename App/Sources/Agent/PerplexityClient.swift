@@ -1,37 +1,32 @@
 import Foundation
 import os.log
 
-/// Concrete `PerplexityClientProtocol` — wraps the Perplexity online-search API.
+/// Concrete `PerplexityClientProtocol` backed by shared Rust provider transport.
 ///
-/// Reads its bearer token from `PerplexityCredentialStore`, the typed
-/// counterpart of `OpenRouterCredentialStore` / `ElevenLabsCredentialStore`.
-/// If no key is stored the client throws `PerplexityClientError.missingAPIKey`
-/// rather than calling out — callers are expected to surface a "needs setup"
-/// affordance to the user.
+/// Swift supplies only the typed search intent and maps the normalized Rust
+/// response into the agent's value type. Rust owns Perplexity/OpenRouter
+/// provider selection, URLs, auth headers, request bodies, status handling, and
+/// response parsing.
 public actor PerplexityClient: PerplexityClientProtocol {
 
-    // MARK: - Keychain contract (legacy aliases)
+    // MARK: - Legacy aliases
 
     /// Legacy alias; new code should go through `PerplexityCredentialStore`.
     public static let keychainService: String = PerplexityCredentialStore.service
     /// Legacy alias; new code should go through `PerplexityCredentialStore`.
     public static let keychainAccount: String = PerplexityCredentialStore.account
 
-    // MARK: - Endpoint
-
-    /// Default Perplexity chat-completions endpoint. Exposed for tests.
+    /// Legacy direct endpoint alias. Search transport is Rust-owned.
     public static let defaultEndpoint = URL(string: "https://api.perplexity.ai/chat/completions")!
-    /// Default model the client requests. Conservative — small + online.
-    public static let defaultModel = "sonar-small-online"
-
-    /// OpenRouter endpoint used when routing Perplexity searches via OpenRouter.
+    /// Legacy direct model alias. Search transport is Rust-owned.
+    public static let defaultModel = "sonar"
+    /// Legacy OpenRouter endpoint alias. Search transport is Rust-owned.
     public static let openRouterEndpoint = URL(string: "https://openrouter.ai/api/v1/chat/completions")!
     /// Perplexity model identifier as used on OpenRouter.
     public static let openRouterModel = "perplexity/sonar"
 
-    private let endpoint: URL
-    private let model: String
-    private let session: URLSession
+    private static let encoder = JSONEncoder()
+    private static let decoder = JSONDecoder()
     private let logger = Logger.app("PerplexityClient")
 
     public init(
@@ -39,9 +34,9 @@ public actor PerplexityClient: PerplexityClientProtocol {
         model: String = PerplexityClient.defaultModel,
         session: URLSession = .shared
     ) {
-        self.endpoint = endpoint
-        self.model = model
-        self.session = session
+        _ = endpoint
+        _ = model
+        _ = session
     }
 
     // MARK: - PerplexityClientProtocol
@@ -51,117 +46,162 @@ public actor PerplexityClient: PerplexityClientProtocol {
         guard !trimmed.isEmpty else {
             throw PerplexityClientError.invalidQuery
         }
-
-        let (apiKey, resolvedEndpoint, resolvedModel) = try Self.resolveRequest(
-            defaultEndpoint: endpoint, defaultModel: model
-        )
-
-        var request = URLRequest(url: resolvedEndpoint)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        // Perplexity searches do a web crawl + LLM synthesis pass and can
-        // legitimately take 30–60 seconds on busy queries. The default
-        // `URLRequest.timeoutInterval` is 60s, which leaves no headroom —
-        // long-tail queries time out before the response lands. Bumping
-        // to 90s gives the slowest legitimate responses room to return.
-        request.timeoutInterval = 90
-
-        let body: [String: Any] = [
-            "model": resolvedModel,
-            "messages": [
-                ["role": "user", "content": trimmed],
-            ],
-            "return_citations": true,
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw PerplexityClientError.transport("non-HTTP response")
-        }
-        guard (200..<300).contains(http.statusCode) else {
-            let bodyText = String(data: data, encoding: .utf8) ?? ""
-            logger.error("Perplexity HTTP \(http.statusCode, privacy: .public): \(bodyText, privacy: .public)")
-            throw PerplexityClientError.httpStatus(http.statusCode)
-        }
-
-        return try Self.parseResponse(data)
+        return try await searchViaRust(query: trimmed)
     }
 
-    // MARK: - Helpers
+    // MARK: - Legacy response parser
 
-    /// Resolves which endpoint, model, and API key to use for a search request.
-    ///
-    /// Priority order:
-    /// 1. If a custom (test) endpoint was provided, use the direct Perplexity key with it.
-    /// 2. If an OpenRouter key is stored, route through OpenRouter using `perplexity/sonar` —
-    ///    no dedicated Perplexity key required.
-    /// 3. Fall back to a direct Perplexity API key.
-    static func resolveRequest(
-        defaultEndpoint: URL,
-        defaultModel: String
-    ) throws -> (apiKey: String, endpoint: URL, model: String) {
-        // Custom endpoint means a test override — skip the resolver entirely.
-        if defaultEndpoint != Self.defaultEndpoint {
-            return (try readAPIKey(), defaultEndpoint, defaultModel)
-        }
-        // Prefer OpenRouter if a key is available.
-        if let orKey = try? OpenRouterCredentialStore.apiKey(), !orKey.isEmpty {
-            return (orKey, openRouterEndpoint, openRouterModel)
-        }
-        // Fall back to a dedicated Perplexity key.
-        return (try readAPIKey(), defaultEndpoint, defaultModel)
-    }
-
-    /// Reads the API key via `PerplexityCredentialStore`. Throws if no key
-    /// is present so the agent's `perplexity_search` tool can surface a
-    /// clean error to the model.
-    static func readAPIKey() throws -> String {
-        let stored: String?
-        do {
-            stored = try PerplexityCredentialStore.apiKey()
-        } catch {
-            throw PerplexityClientError.keychain(error.localizedDescription)
-        }
-        guard let key = stored, !key.isEmpty else {
-            throw PerplexityClientError.missingAPIKey
-        }
-        return key
-    }
-
-    /// Parses Perplexity's chat-completions JSON into a `PerplexityResult`.
-    /// Tolerant: missing citations array becomes `[]`, missing answer becomes
-    /// the empty string. Exposed `internal` for tests.
     static func parseResponse(_ data: Data) throws -> PerplexityResult {
-        let raw = try JSONSerialization.jsonObject(with: data)
-        guard let root = raw as? [String: Any] else {
-            throw PerplexityClientError.malformedResponse("root not an object")
-        }
-
-        // Answer text — choices[0].message.content
-        var answer = ""
-        if let choices = root["choices"] as? [[String: Any]],
-           let first = choices.first,
-           let message = first["message"] as? [String: Any],
-           let content = message["content"] as? String {
-            answer = content
-        }
-
-        // Citations — Perplexity returns them either as a top-level "citations"
-        // array of URL strings, or inside an "search_results" array of objects.
-        var sources: [PerplexityResult.Source] = []
-        if let urls = root["citations"] as? [String] {
-            sources = urls.map { PerplexityResult.Source(title: $0, url: $0) }
-        } else if let results = root["search_results"] as? [[String: Any]] {
-            sources = results.compactMap { obj in
-                guard let url = obj["url"] as? String else { return nil }
-                let title = (obj["title"] as? String) ?? url
-                return PerplexityResult.Source(title: title, url: url)
+        let payload = try Self.decoder.decode(LegacyPerplexityPayload.self, from: data)
+        let answer = payload.choices.first?.message.content ?? ""
+        let sources = payload.searchResults?.compactMap { result -> PerplexityResult.Source? in
+            guard let url = result.url, !url.isEmpty else {
+                return nil
             }
+            return PerplexityResult.Source(title: result.title ?? url, url: url)
+        } ?? payload.citations.map {
+            PerplexityResult.Source(title: $0, url: $0)
+        }
+        return PerplexityResult(answer: answer, sources: sources)
+    }
+
+    // MARK: - Rust transport
+
+    private func searchViaRust(query: String) async throws -> PerplexityResult {
+        guard let handleBits = await MainActor.run(body: {
+            KernelModel.shared?.podcastHandlePointer.map { Int(bitPattern: $0) }
+        }) else {
+            throw PerplexityClientError.kernelUnavailable
         }
 
-        return PerplexityResult(answer: answer, sources: sources)
+        let requestData = try Self.encoder.encode(PerplexitySearchIntent(query: query))
+        guard let requestJSON = String(data: requestData, encoding: .utf8) else {
+            throw PerplexityClientError.malformedResponse("Could not encode search request.")
+        }
+
+        logger.info("submitting online search through Rust provider transport")
+        let responseJSON = await Task.detached(priority: .userInitiated) {
+            guard let handle = UnsafeMutableRawPointer(bitPattern: handleBits) else {
+                return #"{"error":{"kind":"store_unavailable","message":"Kernel handle unavailable"}}"#
+            }
+            return requestJSON.withCString { requestPtr in
+                guard let ptr = nmp_app_podcast_perplexity_search(handle, requestPtr) else {
+                    return #"{"error":{"kind":"store_unavailable","message":"null response from Rust"}}"#
+                }
+                defer { nmp_app_free_string(ptr) }
+                return String(cString: ptr)
+            }
+        }.value
+
+        guard let data = responseJSON.data(using: .utf8) else {
+            throw PerplexityClientError.malformedResponse("Rust returned non-UTF8 search data.")
+        }
+        do {
+            let envelope = try Self.decoder.decode(PerplexitySearchEnvelope.self, from: data)
+            if let error = envelope.error {
+                throw Self.clientError(from: error)
+            }
+            guard let result = envelope.result else {
+                throw PerplexityClientError.malformedResponse("missing search result")
+            }
+            return PerplexityResult(
+                answer: result.answer,
+                sources: result.sources.map {
+                    PerplexityResult.Source(title: $0.title, url: $0.url)
+                }
+            )
+        } catch let error as PerplexityClientError {
+            throw error
+        } catch {
+            logger.error("Perplexity FFI decode failed: \(String(describing: error), privacy: .public)")
+            throw PerplexityClientError.malformedResponse(error.localizedDescription)
+        }
+    }
+
+    private static func clientError(from error: PerplexityBackendError) -> PerplexityClientError {
+        switch error.kind {
+        case "invalid_query":
+            return .invalidQuery
+        case "missing_api_key":
+            return .missingAPIKey
+        case "invalid_key":
+            return .httpStatus(error.statusCode ?? 401)
+        case "rate_limited":
+            return .httpStatus(error.statusCode ?? 429)
+        case "server_error":
+            return .httpStatus(error.statusCode ?? 500)
+        case "network_error":
+            return .transport(error.message)
+        case "timed_out":
+            return .transport("Online search timed out.")
+        case "store_unavailable":
+            return .kernelUnavailable
+        default:
+            return .malformedResponse(error.message)
+        }
+    }
+}
+
+// MARK: - DTOs
+
+private struct PerplexitySearchIntent: Encodable {
+    let query: String
+}
+
+private struct PerplexitySearchEnvelope: Decodable {
+    let result: PerplexitySearchPayload?
+    let error: PerplexityBackendError?
+}
+
+private struct PerplexitySearchPayload: Decodable {
+    let answer: String
+    let sources: [PerplexitySourcePayload]
+}
+
+private struct PerplexitySourcePayload: Decodable {
+    let title: String
+    let url: String
+}
+
+private struct PerplexityBackendError: Decodable {
+    let kind: String
+    let message: String
+    let statusCode: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case kind, message
+        case statusCode = "status_code"
+    }
+}
+
+private struct LegacyPerplexityPayload: Decodable {
+    struct Choice: Decodable {
+        let message: Message
+    }
+
+    struct Message: Decodable {
+        let content: String
+    }
+
+    struct SearchResult: Decodable {
+        let title: String?
+        let url: String?
+    }
+
+    let choices: [Choice]
+    let citations: [String]
+    let searchResults: [SearchResult]?
+
+    enum CodingKeys: String, CodingKey {
+        case choices, citations
+        case searchResults = "search_results"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        choices = try container.decodeIfPresent([Choice].self, forKey: .choices) ?? []
+        citations = try container.decodeIfPresent([String].self, forKey: .citations) ?? []
+        searchResults = try container.decodeIfPresent([SearchResult].self, forKey: .searchResults)
     }
 }
 
@@ -173,6 +213,7 @@ public enum PerplexityClientError: LocalizedError {
     case keychain(String)
     case transport(String)
     case httpStatus(Int)
+    case kernelUnavailable
     case malformedResponse(String)
 
     public var errorDescription: String? {
@@ -187,6 +228,8 @@ public enum PerplexityClientError: LocalizedError {
             return "Network error talking to Perplexity: \(detail)"
         case .httpStatus(let code):
             return "Perplexity returned HTTP \(code)."
+        case .kernelUnavailable:
+            return "Search backend is unavailable. Restart the app and try again."
         case .malformedResponse(let detail):
             return "Couldn't parse Perplexity response: \(detail)"
         }

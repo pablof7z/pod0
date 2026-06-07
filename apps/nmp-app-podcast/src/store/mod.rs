@@ -301,6 +301,9 @@ pub struct PodcastStore {
     /// AssemblyAI API key (in-memory only, never persisted to disk).
     /// Set via `set_provider_api_keys`; credential never touches disk.
     assembly_ai_api_key: Option<String>,
+    /// Perplexity API key (in-memory only, never persisted to disk).
+    /// Set via `set_provider_api_keys`; credential never touches disk.
+    perplexity_api_key: Option<String>,
 }
 
 impl PodcastStore {
@@ -392,6 +395,7 @@ impl PodcastStore {
             ollama_api_key: None,
             eleven_labs_api_key: None,
             assembly_ai_api_key: None,
+            perplexity_api_key: None,
         }
     }
 

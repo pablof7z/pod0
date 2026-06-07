@@ -316,9 +316,16 @@ impl PodcastHostOpHandler {
                 ollama,
                 eleven_labs,
                 assembly_ai,
+                perplexity,
             } => {
                 if let Ok(mut s) = self.store.lock() {
-                    s.set_provider_api_keys(open_router, ollama, eleven_labs, assembly_ai);
+                    s.set_provider_api_keys(
+                        open_router,
+                        ollama,
+                        eleven_labs,
+                        assembly_ai,
+                        perplexity,
+                    );
                 }
                 serde_json::json!({"ok": true})
             }

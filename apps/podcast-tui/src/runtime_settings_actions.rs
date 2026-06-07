@@ -168,6 +168,8 @@ impl AppRuntime {
         open_router: Option<String>,
         ollama: Option<String>,
         eleven_labs: Option<String>,
+        assembly_ai: Option<String>,
+        perplexity: Option<String>,
     ) -> Result<String> {
         self.dispatch_action_value(
             "podcast.settings",
@@ -176,6 +178,8 @@ impl AppRuntime {
                 "open_router": open_router,
                 "ollama": ollama,
                 "eleven_labs": eleven_labs,
+                "assembly_ai": assembly_ai,
+                "perplexity": perplexity,
             }),
         )
     }

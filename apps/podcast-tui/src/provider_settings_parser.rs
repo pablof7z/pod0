@@ -135,6 +135,7 @@ pub(crate) fn env_credentials_summary() -> String {
         ("OLLAMA_API_KEY", env_key("OLLAMA_API_KEY")),
         ("ELEVENLABS_API_KEY", env_key("ELEVENLABS_API_KEY")),
         ("ASSEMBLYAI_API_KEY", env_key("ASSEMBLYAI_API_KEY")),
+        ("PERPLEXITY_API_KEY", env_key("PERPLEXITY_API_KEY")),
     ];
     let present = keys
         .iter()

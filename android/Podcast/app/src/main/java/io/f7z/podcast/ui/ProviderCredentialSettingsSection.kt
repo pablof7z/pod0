@@ -37,10 +37,12 @@ fun ProviderCredentialSettingsSection(
     var hasOllamaKey by remember { mutableStateOf(ProviderCredentialStore.hasOllamaApiKey(context)) }
     var hasElevenLabsKey by remember { mutableStateOf(ProviderCredentialStore.hasElevenLabsApiKey(context)) }
     var hasAssemblyAiKey by remember { mutableStateOf(ProviderCredentialStore.hasAssemblyAiApiKey(context)) }
+    var hasPerplexityKey by remember { mutableStateOf(ProviderCredentialStore.hasPerplexityApiKey(context)) }
     var openRouterInput by remember { mutableStateOf("") }
     var ollamaInput by remember { mutableStateOf("") }
     var elevenLabsInput by remember { mutableStateOf("") }
     var assemblyAiInput by remember { mutableStateOf("") }
+    var perplexityInput by remember { mutableStateOf("") }
     var ollamaUrlInput by remember(settings.ollamaChatUrl) {
         mutableStateOf(settings.ollamaChatUrl.ifBlank { DEFAULT_OLLAMA_CHAT_URL })
     }
@@ -53,6 +55,7 @@ fun ProviderCredentialSettingsSection(
     var elevenLabsValidationResult by remember { mutableStateOf<ProviderCredentialActionResult?>(null) }
     var isValidatingElevenLabs by remember { mutableStateOf(false) }
     var assemblyAiResult by remember { mutableStateOf<ProviderCredentialActionResult?>(null) }
+    var perplexityResult by remember { mutableStateOf<ProviderCredentialActionResult?>(null) }
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -228,6 +231,27 @@ fun ProviderCredentialSettingsSection(
                 assemblyAiResult = result
                 hasAssemblyAiKey = ProviderCredentialStore.hasAssemblyAiApiKey(context)
                 if (result.ok) assemblyAiInput = ""
+            },
+        )
+        PerplexityCredentialCard(
+            input = perplexityInput,
+            hasStoredKey = hasPerplexityKey,
+            result = perplexityResult,
+            onInputChanged = {
+                perplexityInput = it
+                perplexityResult = null
+            },
+            onSave = {
+                val result = ProviderCredentialActions.savePerplexityManual(context, bridge, perplexityInput)
+                perplexityResult = result
+                hasPerplexityKey = ProviderCredentialStore.hasPerplexityApiKey(context)
+                if (result.ok) perplexityInput = ""
+            },
+            onDisconnect = {
+                val result = ProviderCredentialActions.clearPerplexity(context, bridge)
+                perplexityResult = result
+                hasPerplexityKey = ProviderCredentialStore.hasPerplexityApiKey(context)
+                if (result.ok) perplexityInput = ""
             },
         )
     }

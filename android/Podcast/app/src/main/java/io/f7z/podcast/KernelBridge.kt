@@ -151,6 +151,13 @@ class KernelBridge {
         if (handle != 0L) nativeProviderEmbed(handle, intentJson) else null
 
     /**
+     * Shared online-search transport. Rust owns Perplexity/OpenRouter request
+     * shaping, credentials, status mapping, and response parsing.
+     */
+    fun perplexitySearch(intentJson: String): String? =
+        if (handle != 0L) nativePerplexitySearch(handle, intentJson) else null
+
+    /**
      * Shared provider model catalog. Rust owns OpenRouter/models.dev/Ollama
      * retrieval and normalization; Android receives the JSON envelope only.
      */
@@ -227,6 +234,7 @@ class KernelBridge {
     private external fun nativePodcastSnapshot(handle: Long): String?
     private external fun nativeProviderComplete(handle: Long, intentJson: String): String?
     private external fun nativeProviderEmbed(handle: Long, intentJson: String): String?
+    private external fun nativePerplexitySearch(handle: Long, intentJson: String): String?
     private external fun nativeProviderModelCatalog(handle: Long): String?
     private external fun nativeValidateOpenRouterKey(handle: Long): String?
     private external fun nativeValidateElevenLabsKey(handle: Long): String?

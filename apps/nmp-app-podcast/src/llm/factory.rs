@@ -218,10 +218,13 @@ mod tests {
     #[test]
     fn test_validate_ollama_cloud_accepts_loaded_key() {
         let store = Arc::new(Mutex::new(PodcastStore::new()));
-        store
-            .lock()
-            .unwrap()
-            .set_provider_api_keys(None, Some("test-key".to_owned()), None, None);
+        store.lock().unwrap().set_provider_api_keys(
+            None,
+            Some("test-key".to_owned()),
+            None,
+            None,
+            None,
+        );
 
         assert!(validate_model_credentials(&store, "ollama:gpt-oss:120b-cloud").is_ok());
     }

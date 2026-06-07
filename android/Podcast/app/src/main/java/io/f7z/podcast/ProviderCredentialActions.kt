@@ -32,6 +32,7 @@ object ProviderCredentialActions {
                 ollama = ProviderCredentialStore.loadOllamaApiKey(context),
                 elevenLabs = ProviderCredentialStore.loadElevenLabsApiKey(context),
                 assemblyAi = ProviderCredentialStore.loadAssemblyAiApiKey(context),
+                perplexity = ProviderCredentialStore.loadPerplexityApiKey(context),
             ),
         )
 
@@ -220,6 +221,37 @@ object ProviderCredentialActions {
             ProviderCredentialActionResult(true, "AssemblyAI disconnected.")
         } else {
             ProviderCredentialActionResult(false, "AssemblyAI key deleted, but provider state did not update.")
+        }
+    }
+
+    fun savePerplexityManual(
+        context: Context,
+        bridge: KernelBridge,
+        apiKey: String,
+    ): ProviderCredentialActionResult {
+        if (!ProviderCredentialStore.savePerplexityApiKey(context, apiKey)) {
+            return ProviderCredentialActionResult(false, "Perplexity key could not be saved.")
+        }
+        val reload = reloadProviderApiKeys(context, bridge)
+        return if (reload != null) {
+            ProviderCredentialActionResult(true, "Perplexity connected.")
+        } else {
+            ProviderCredentialActionResult(false, "Perplexity key saved, but provider state did not update.")
+        }
+    }
+
+    fun clearPerplexity(
+        context: Context,
+        bridge: KernelBridge,
+    ): ProviderCredentialActionResult {
+        if (!ProviderCredentialStore.clearPerplexityApiKey(context)) {
+            return ProviderCredentialActionResult(false, "Perplexity key could not be deleted.")
+        }
+        val reload = reloadProviderApiKeys(context, bridge)
+        return if (reload != null) {
+            ProviderCredentialActionResult(true, "Perplexity disconnected.")
+        } else {
+            ProviderCredentialActionResult(false, "Perplexity key deleted, but provider state did not update.")
         }
     }
 

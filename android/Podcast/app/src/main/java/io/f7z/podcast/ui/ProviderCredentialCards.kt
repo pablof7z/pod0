@@ -167,6 +167,28 @@ fun AssemblyAiCredentialCard(
     )
 }
 
+@Composable
+fun PerplexityCredentialCard(
+    input: String,
+    hasStoredKey: Boolean,
+    result: ProviderCredentialActionResult?,
+    onInputChanged: (String) -> Unit,
+    onSave: () -> Unit,
+    onDisconnect: () -> Unit,
+) {
+    CredentialCard(
+        title = "Perplexity",
+        status = if (hasStoredKey) "Connected" else "Not connected",
+        input = input,
+        inputLabel = "Perplexity API key",
+        hasStoredKey = hasStoredKey,
+        result = result,
+        onInputChanged = onInputChanged,
+        onSave = onSave,
+        onDisconnect = onDisconnect,
+    )
+}
+
 private fun credentialButtonLabel(hasStoredKey: Boolean): String =
     if (hasStoredKey) "Replace key" else "Save key"
 

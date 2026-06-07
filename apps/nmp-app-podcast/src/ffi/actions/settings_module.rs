@@ -168,6 +168,7 @@ pub enum SettingsAction {
         ollama: Option<String>,
         eleven_labs: Option<String>,
         assembly_ai: Option<String>,
+        perplexity: Option<String>,
     },
 }
 

@@ -254,6 +254,20 @@ char *nmp_app_podcast_provider_complete(void *handle, const char *intent_json);
 // or {"error":"..."}.
 char *nmp_app_podcast_provider_embed(void *handle, const char *intent_json);
 
+// Shared online-search transport. Swift passes a typed query intent:
+//   {"query":"..."}
+// Rust chooses direct Perplexity when a Perplexity key is loaded, otherwise
+// OpenRouter when an OpenRouter key is loaded. Rust owns provider URLs,
+// headers, request bodies, credential lookup, HTTP status handling, and
+// response parsing.
+// Response:
+//   {"result":{"answer":"...","sources":[{"title":"...","url":"..."}],
+//              "provider":"...","model":"...","latency_ms":0,"usage":{...}?}}
+//   {"error":{"kind":"...","message":"...","status_code":401?}}
+// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// Threading: this call BLOCKS; call from a background thread / detached Task.
+char *nmp_app_podcast_perplexity_search(void *handle, const char *intent_json);
+
 // Shared provider model catalog. Rust owns OpenRouter/models.dev/Ollama model
 // discovery HTTP, credentials, URL derivation, response DTO parsing, and
 // normalized compatibility metadata. Response:

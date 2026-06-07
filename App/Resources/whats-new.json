@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-07T19:24:00Z",
+      "lines": [
+        "Agent web search now uses the shared backend for Perplexity and OpenRouter fallback, with provider setup errors handled consistently."
+      ]
+    },
+    {
       "shipped_at": "2026-06-07T19:05:00Z",
       "lines": [
         "AssemblyAI transcription now uses the shared backend for credential lookup, model routing, and error handling — consistent with all other STT providers."

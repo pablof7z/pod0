@@ -195,6 +195,8 @@ struct AISettingsView: View {
 }
 
 struct PerplexitySettingsView: View {
+    @Environment(AppStateStore.self) private var store
+
     @State private var manualAPIKey = ""
     @State private var hasStoredKey = false
     @State private var isConnectingBYOK = false
@@ -332,5 +334,6 @@ struct PerplexitySettingsView: View {
 
     private func refreshCredentialState() {
         hasStoredKey = PerplexityCredentialStore.hasAPIKey()
+        store.kernelSetProviderApiKeys()
     }
 }
