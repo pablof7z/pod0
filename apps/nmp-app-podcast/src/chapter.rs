@@ -48,14 +48,28 @@ fn fetch_and_store_chapters(
         HttpResult::Ok { body, .. } => body,
         HttpResult::Error { message } => return Err(message),
     };
-    let chapters = parse_chapters_json(&body)
+    let chapters: Vec<podcast_core::Chapter> = parse_chapters_json(&body)
         .map_err(|e| e.to_string())?
         .into_iter()
         .filter(|chapter| chapter.include_in_toc)
         .collect();
 
+    let chapter_count = chapters.len();
     let mut store = store.lock().map_err(|_| "store poisoned".to_owned())?;
     if store.set_episode_chapters(&episode_id, chapters) {
+        if chapter_count > 0 {
+            // Chapter identification landed (RSS / Podcasting 2.0 source).
+            store.emit_event(
+                &episode_id,
+                crate::store::events::stage::CHAPTERS_READY,
+                crate::store::events::EventSeverity::Success,
+                "Chapters identified",
+                vec![
+                    crate::store::events::EventDetail::new("Count", chapter_count.to_string()),
+                    crate::store::events::EventDetail::new("Source", "RSS".to_owned()),
+                ],
+            );
+        }
         Ok(FetchChaptersOutcome::Stored)
     } else {
         Err("episode disappeared mid-fetch".to_owned())

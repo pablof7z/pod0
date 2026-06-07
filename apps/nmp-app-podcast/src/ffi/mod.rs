@@ -57,6 +57,7 @@ mod snapshot_tests;
 #[cfg(test)]
 mod snapshot_tests_ext;
 mod network_report;
+mod episode_events;
 mod transcript_report;
 mod voice_report;
 
@@ -94,6 +95,7 @@ pub use audio_report::nmp_app_podcast_audio_report;
 pub use chat_complete::nmp_app_podcast_chat_complete;
 pub use data_dir::nmp_app_podcast_set_data_dir;
 pub use download_report::nmp_app_podcast_download_report;
+pub use episode_events::nmp_app_podcast_episode_events;
 pub use handle::PodcastHandle;
 pub use projections::{
     AccountSummary, AgentMessageSummary, AgentPickSummary, AgentSnapshot, AgentTaskSummary,

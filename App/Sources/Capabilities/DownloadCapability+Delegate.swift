@@ -102,6 +102,18 @@ final class NmpDownloadCoordinator: NSObject, URLSessionDownloadDelegate, @unche
                 capability.emit(.completed(
                     episodeID: episodeID,
                     localPath: moved.path))
+                // Post-download re-entry into the transcript pipeline (the hook
+                // `TranscriptIngestService.runAITranscription` documents): now
+                // that the audio file has landed, kick transcription so
+                // download → transcript → chapters/ads identification chains
+                // automatically. Episodes only — local-model downloads have no
+                // transcript. `ingest()` self-gates (in-flight dedup,
+                // already-ready skip, category opt-out, kernel-resolved
+                // provider), so it is safe to fire on every successful episode
+                // download.
+                if kind == .episode, let uuid = UUID(uuidString: episodeID) {
+                    Task { await TranscriptIngestService.shared.ingest(episodeID: uuid) }
+                }
             } else {
                 capability.emit(.failed(
                     episodeID: episodeID,

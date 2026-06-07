@@ -434,6 +434,12 @@ final class KernelModel {
         kernel.lifecycleForeground()
         guard hasObservedForeground else {
             hasObservedForeground = true
+            // Cold start skips `RefreshAll` (the snapshot already loaded from
+            // disk), so the fresh-feed auto-download path never runs at launch.
+            // Kick a catch-up evaluation over the current library so enabled
+            // shows still pull their latest undownloaded episodes without
+            // waiting for a manual pull-to-refresh.
+            _ = dispatch(namespace: "podcast", body: ["op": "auto_download_evaluate"])
             return
         }
         dispatch(PodcastKernelAction.RefreshAll())
@@ -510,6 +516,26 @@ final class KernelModel {
         jsonStr.withCString { ptr in
             let result = nmp_app_podcast_transcript_report(handle, ptr)
             if let result { nmp_app_free_string(result) }
+        }
+    }
+
+    // ── Episode pipeline event log (Diagnostics) ────────────────────────
+
+    /// Fetch the kernel's per-episode pipeline event log (download / transcript
+    /// / identify lifecycle). A small, synchronous single-episode FFI read —
+    /// the events deliberately do NOT ride the library snapshot, so the
+    /// Diagnostics sheet pulls them lazily on appear and on the snapshot
+    /// generation changes it already observes. Returns `[]` when the kernel is
+    /// unregistered, the episode has no log, or the payload fails to decode.
+    func fetchEpisodeEvents(episodeID: UUID) -> [EpisodeAuditEvent] {
+        guard let handle = kernel.podcastHandle else { return [] }
+        return episodeID.uuidString.withCString { ptr -> [EpisodeAuditEvent] in
+            guard let result = nmp_app_podcast_episode_events(handle, ptr) else { return [] }
+            defer { nmp_app_free_string(result) }
+            guard let data = String(cString: result).data(using: .utf8) else { return [] }
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            return (try? decoder.decode([EpisodeAuditEvent].self, from: data)) ?? []
         }
     }
 

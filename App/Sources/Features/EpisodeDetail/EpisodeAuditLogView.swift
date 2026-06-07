@@ -21,11 +21,26 @@ struct EpisodeAuditLogView: View {
     @Environment(AppStateStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
-    @State private var auditStore = EpisodeAuditLogStore.shared
+    @State private var events: [EpisodeAuditEvent] = []
     @State private var expandedEventIDs: Set<UUID> = []
 
-    private var events: [EpisodeAuditEvent] {
-        auditStore.eventsNewestFirst(for: episode.id)
+    /// Live episode from the store so pipeline state transitions — which is
+    /// exactly when the kernel emits new events — drive a reload. Falls back to
+    /// the value the sheet was presented with if the lookup misses.
+    private var liveEpisode: Episode { store.episode(id: episode.id) ?? episode }
+
+    /// Changes whenever a download/transcript transition lands, so the
+    /// `.task(id:)` below re-pulls the kernel event log without polling.
+    private var reloadToken: String {
+        "\(String(describing: liveEpisode.downloadState))|"
+            + "\(String(describing: liveEpisode.transcriptState))"
+    }
+
+    /// Pull the kernel's per-episode pipeline log (a lazy FFI read — these
+    /// events are not part of the library snapshot) and present it newest-first.
+    private func loadEvents() {
+        events = store.kernelEpisodeEvents(episode.id)
+            .sorted { $0.timestamp > $1.timestamp }
     }
 
     var body: some View {
@@ -39,20 +54,11 @@ struct EpisodeAuditLogView: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Diagnostics")
             .navigationBarTitleDisplayMode(.inline)
+            .task(id: reloadToken) { loadEvents() }
+            .refreshable { loadEvents() }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
-                }
-                ToolbarItem(placement: .topBarLeading) {
-                    Menu {
-                        Button(role: .destructive) {
-                            EpisodeAuditLogStore.shared.clear(episodeID: episode.id)
-                        } label: {
-                            Label("Clear log", systemImage: "trash")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
                 }
             }
         }
@@ -135,14 +141,10 @@ struct EpisodeAuditLogView: View {
     /// provider directly. State is reset to `.none` first so the user sees the
     /// failure marker clear and the new attempt's events stream in cleanly.
     private func retryTranscription(forceProvider: STTProvider?) {
-        let providerLabel = forceProvider?.displayName ?? "settings-configured provider"
-        EpisodeAuditLogStore.shared.record(
-            episodeID: episode.id,
-            kind: .transcriptRetryRequested,
-            severity: .info,
-            summary: "User tapped retry from Diagnostics (\(providerLabel))",
-            details: [.init("Provider", providerLabel)]
-        )
+        // The kernel records the transcript pipeline events (attempt → ready /
+        // failed) as it runs, so the retry surfaces in the log without a
+        // Swift-side write. Reset to `.none` first so the user sees the failure
+        // marker clear and the new attempt's events stream in.
         store.setEpisodeTranscriptState(episode.id, state: .none)
         let episodeID = episode.id
         Task {

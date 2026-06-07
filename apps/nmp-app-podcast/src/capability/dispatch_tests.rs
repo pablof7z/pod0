@@ -282,3 +282,53 @@ fn completed_report_with_uppercase_episode_id_is_durable() {
         Some(&*format!("/var/mobile/Downloads/{upper}.mp3"))
     );
 }
+
+// ── Pipeline event emission through the real download-report path ────────────
+
+#[test]
+fn completed_report_emits_download_finished_event() {
+    let (mut store, id_str) = store_with_one_episode();
+    let report = format!(
+        r#"{{"type":"completed","episode_id":"{id_str}","local_path":"/var/mobile/Downloads/{id_str}.mp3"}}"#
+    );
+    dispatch_download_report_json(&mut store, &report);
+    let events = store.episode_events(&id_str);
+    assert!(
+        events
+            .iter()
+            .any(|e| e.kind == crate::store::events::stage::DOWNLOAD_FINISHED),
+        "completion must emit download.finished; got {:?}",
+        events.iter().map(|e| e.kind.clone()).collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn failed_report_emits_download_failed_event_with_error_detail() {
+    let (mut store, id_str) = store_with_one_episode();
+    let report = format!(r#"{{"type":"failed","episode_id":"{id_str}","error":"HTTP 500"}}"#);
+    dispatch_download_report_json(&mut store, &report);
+    let events = store.episode_events(&id_str);
+    let failed = events
+        .iter()
+        .find(|e| e.kind == crate::store::events::stage::DOWNLOAD_FAILED)
+        .expect("failure must emit download.failed");
+    assert_eq!(failed.severity, "failure");
+    assert!(
+        failed.details.iter().any(|d| d.value.contains("HTTP 500")),
+        "the failure reason must be captured in the event detail"
+    );
+}
+
+#[test]
+fn cancelled_report_emits_download_cancelled_event() {
+    let (mut store, id_str) = store_with_one_episode();
+    let report = format!(r#"{{"type":"cancelled","episode_id":"{id_str}"}}"#);
+    dispatch_download_report_json(&mut store, &report);
+    assert!(
+        store
+            .episode_events(&id_str)
+            .iter()
+            .any(|e| e.kind == crate::store::events::stage::DOWNLOAD_CANCELLED),
+        "cancellation must be recorded in the diagnostics trail"
+    );
+}

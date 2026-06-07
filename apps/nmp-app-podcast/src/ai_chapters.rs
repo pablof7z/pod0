@@ -116,8 +116,25 @@ pub(crate) fn handle_compile_chapters(
         // chapterless so the UI can re-trigger rather than show fake slices.
         match outcome {
             SynthOutcome::Chapters(chapters) => {
+                let chapter_count = chapters.len();
                 if let Ok(mut s) = store_c2.lock() {
                     s.set_episode_chapters(&episode_id_c, chapters);
+                    // AI chapter identification landed — record it in the
+                    // pipeline log (the identification stage of download →
+                    // transcript → chapters/ads).
+                    s.emit_event(
+                        &episode_id_c,
+                        crate::store::events::stage::CHAPTERS_READY,
+                        crate::store::events::EventSeverity::Success,
+                        "Chapters identified",
+                        vec![
+                            crate::store::events::EventDetail::new(
+                                "Count",
+                                chapter_count.to_string(),
+                            ),
+                            crate::store::events::EventDetail::new("Source", "AI".to_owned()),
+                        ],
+                    );
                 }
                 rev_c.fetch_add(1, Ordering::Relaxed);
             }

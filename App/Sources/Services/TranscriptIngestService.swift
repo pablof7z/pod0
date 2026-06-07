@@ -115,6 +115,17 @@ final class TranscriptIngestService {
             )
             return
         }
+        // Skip episodes that already have a transcript unless the caller forced
+        // a specific provider (an explicit Diagnostics "Retry with…", which
+        // resets state to `.none` first). This makes `ingest()` safe to fire
+        // unconditionally from the post-download hook and every other auto
+        // caller without re-running a transcription that already succeeded.
+        if forceProvider == nil, Self.isReady(episode.transcriptState) {
+            Self.logger.debug(
+                "ingest(\(episodeID, privacy: .public)): already has a transcript — skipping"
+            )
+            return
+        }
         // Per-category opt-out: if the user has disabled transcription for
         // the category this show belongs to, skip ingestion entirely.
         // Defaults to allow when the show isn't yet categorised.

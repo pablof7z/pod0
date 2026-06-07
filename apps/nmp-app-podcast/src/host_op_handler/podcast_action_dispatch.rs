@@ -124,9 +124,12 @@ impl PodcastHostOpHandler {
                 podcast_id,
                 enabled,
                 wifi_only,
-            } => self.handle_set_auto_download(podcast_id, enabled, wifi_only),
+            } => self.handle_set_auto_download(podcast_id, enabled, wifi_only, correlation_id),
             PodcastAction::DispatchDeferredWifiDownloads => {
                 self.handle_dispatch_deferred_wifi_downloads(correlation_id)
+            }
+            PodcastAction::AutoDownloadEvaluate => {
+                self.handle_evaluate_auto_downloads(correlation_id)
             }
             PodcastAction::FetchContacts => crate::social_handler::handle_fetch_contacts(self),
             PodcastAction::PublishAgentNote {

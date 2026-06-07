@@ -58,7 +58,21 @@ pub extern "C" fn nmp_app_podcast_transcript_report(
 
     let handle_ref = unsafe { &*handle };
     if let Ok(mut s) = handle_ref.store.lock() {
-        s.set_transcript(report.episode_id, report.text);
+        let char_count = report.text.chars().count();
+        s.set_transcript(report.episode_id.clone(), report.text);
+        // Stage 3 → 4 of the pipeline: the transcript landed. Record it so the
+        // Diagnostics sheet shows the transcript stage completing and the event
+        // log reflects the moment chapter/ad identification can begin.
+        s.emit_event(
+            &report.episode_id,
+            crate::store::events::stage::TRANSCRIPT_READY,
+            crate::store::events::EventSeverity::Success,
+            "Transcript ready",
+            vec![crate::store::events::EventDetail::new(
+                "Characters",
+                char_count.to_string(),
+            )],
+        );
     }
     // Bump rev so the next snapshot tick surfaces the new transcript_entries
     // and transcript fields on EpisodeSummary.

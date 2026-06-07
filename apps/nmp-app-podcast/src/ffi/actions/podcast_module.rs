@@ -277,6 +277,13 @@ pub enum PodcastAction {
     /// cellular when their feed refreshed (Wi-Fi-only shows). Called by iOS
     /// `NetworkCapability` when `ConnectivityChanged` reports `is_wifi: true`.
     DispatchDeferredWifiDownloads,
+    /// Re-evaluate auto-download policy over the *current* library and queue
+    /// each enabled show's most-recent undownloaded episodes (op
+    /// `auto_download_evaluate`). Dispatched by iOS on cold start — where the
+    /// foreground `RefreshAll` (and thus the fresh-feed auto-download path) is
+    /// skipped on the first activation — so episodes still download without a
+    /// manual pull-to-refresh.
+    AutoDownloadEvaluate,
     /// Record (or clear) a batch of AI Inbox triage decisions (M4 / D7).
     ///
     /// iOS owns the triage *computation* (the LLM pass in `InboxTriageService`)

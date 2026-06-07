@@ -413,6 +413,15 @@ extension AppStateStore {
         kernel?.sendTranscriptReport(episodeID: episodeID, text: text)
     }
 
+    // MARK: - Diagnostics
+
+    /// Fetch the kernel's per-episode pipeline event log for the Diagnostics
+    /// sheet. Lazy single-episode read — these events are not part of the
+    /// library snapshot. Returns `[]` when the kernel is unavailable.
+    func kernelEpisodeEvents(_ id: UUID) -> [EpisodeAuditEvent] {
+        kernel?.fetchEpisodeEvents(episodeID: id) ?? []
+    }
+
     // MARK: - M4 capability reports (D7)
 
     /// One row of a triage batch dispatched to the Rust kernel.

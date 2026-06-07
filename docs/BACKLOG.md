@@ -252,6 +252,31 @@ worktrees currently in flight.
 
 ## Active P1 - AI Scaffold Replacement
 
+- **episode-pipeline-followups.** Deferrals from the kernel-owned episode
+  pipeline event-log + auto-download work (`feat/episode-pipeline-events`):
+  1. **auto-download mode collapse.** The kernel stores auto-download as a
+     single `enabled` bool, collapsing `AutoDownloadPolicy.Mode.latestN(N)` and
+     `.allNew` (Swift `AutoDownloadPolicy.swift`). The new
+     `auto_download_backfill_candidates` scan therefore treats every enabled
+     show as "keep the latest `AUTO_DOWNLOAD_BACKFILL_LIMIT` (=3) undownloaded
+     episodes" rather than honoring a user-chosen N or true all-new. Follow-up:
+     project the mode + N into the kernel store so backfill respects it.
+  2. **ad detection not in the kernel.** Ad-span identification still runs only
+     in the Swift legacy `AIChapterCompiler` (chapters + ad spans in one LLM
+     shot, `App/Sources/Services/AIChapterCompiler.swift`); the Rust
+     `ai_chapters`/`ai_chapters_llm` path produces chapters only. The kernel
+     emits an `ads.ready` event when iOS reports segments via
+     `kernelSetAdSegments`, but does not itself detect ads. Follow-up: extend
+     `ai_chapters_llm` to also return ad spans and persist via
+     `set_ad_segments_for`, then delete the Swift detector (per
+     `docs/plan/nmp-feature-parity.md:124`).
+  3. **AI chapters not reported to the kernel from the legacy path.** Swift
+     `AppStateStore.setEpisodeChapters` writes Swift state only (no kernel
+     dispatch), so AI-compiled chapters from the legacy `AIChapterCompiler` do
+     not reach the kernel and therefore do not emit a `chapters.ready` event
+     (only RSS chapters via `fetch_chapters` and the kernel's own
+     `ai_chapters` compile do). Resolved once the legacy compiler call sites
+     dispatch `podcast.chapters.compile` and the Swift writer is removed.
 - **inbox-triage-progress-projection.** The Swift inbox-triage orchestration
   was deleted in `feat/delete-swift-triage` (kernel owns triage, M5). Two
   display-only affordances were dropped because the kernel inbox projection

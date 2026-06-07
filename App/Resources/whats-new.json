@@ -2,6 +2,14 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-07T08:00:00Z",
+      "lines": [
+        "Auto-download now actually works — shows you’ve enabled it for pull their latest episodes on launch and the moment you turn the toggle on, instead of waiting for a manual refresh.",
+        "Downloaded episodes now transcribe themselves automatically, which kicks off chapter and ad-break detection — no need to open each episode first.",
+        "Episode Diagnostics now shows the full processing timeline — every download, transcription, and identification step is logged so you can see exactly what happened."
+      ]
+    },
+    {
       "shipped_at": "2026-06-06T20:37:00Z",
       "lines": [
         "The agent can now skip forward/back, seek to any position, and tell you what’s currently playing"

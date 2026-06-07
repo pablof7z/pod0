@@ -209,6 +209,14 @@ char *nmp_app_podcast_network_report(void *handle, const char *report_json);
 // Always returns NULL.
 char *nmp_app_podcast_transcript_report(void *handle, const char *report_json);
 
+// Fetch the kernel's per-episode pipeline event log (download / transcript /
+// identify lifecycle) for one episode, lazily — these events deliberately do
+// NOT ride the library snapshot. `episode_id` is a hyphenated UUID string.
+// Returns a heap JSON array of event objects (possibly empty `[]`) decoded on
+// the Swift side into `[EpisodeAuditEvent]`; the caller MUST free a non-NULL
+// result via `nmp_app_free_string`. NULL only on a hard error (D6).
+char *nmp_app_podcast_episode_events(void *handle, const char *episode_id);
+
 // ── Provider-blind single-turn LLM completion ─────────────────────────────
 //
 // `nmp_app_podcast_chat_complete` drives one LLM turn through the Rust

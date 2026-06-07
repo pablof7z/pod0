@@ -23,6 +23,7 @@ use podcast_core::{Episode, EpisodeId, Podcast, PodcastId};
 mod ad_segments;
 mod chapters;
 pub mod auto_download;
+pub mod events;
 pub mod identity;
 pub mod inbox_triage_cache;
 mod library;
@@ -130,6 +131,11 @@ pub struct PodcastStore {
     /// `"fetching_publisher"` | `"transcribing"` | `"failed"`. `.ready` is
     /// derived from the stored `transcript`, never stored here.
     pub(super) transcript_status_overrides: HashMap<String, (String, Option<String>)>,
+    /// Per-episode pipeline event log (download/transcript/identify lifecycle).
+    /// Keyed by the string form of `EpisodeId`. Hydrated lazily per episode and
+    /// persisted to its own `episode-events/<id>.json` file — never to the
+    /// `podcasts.json` snapshot persist path. See [`mod@events`].
+    pub(super) episode_events: events::EpisodeEventMap,
     /// User toggle: auto-skip ads when the playhead enters one.
     pub(super) auto_skip_ads_enabled: bool,
     /// When `true`, the kernel auto-advances to the next queued episode
@@ -310,6 +316,7 @@ impl PodcastStore {
             episode_triage: HashMap::new(),
             metadata_indexed_episodes: HashSet::new(),
             transcript_status_overrides: HashMap::new(),
+            episode_events: HashMap::new(),
             auto_skip_ads_enabled: false,
             auto_play_next: true,
             auto_mark_played_at_end: true,

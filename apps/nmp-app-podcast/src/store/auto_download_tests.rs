@@ -144,3 +144,68 @@ fn auto_download_off_with_wifi_still_returns_empty() {
     assert!(ready.is_empty());
     assert!(deferred.is_empty());
 }
+
+// ── Backfill scan over the current library (cold-start / on-enable) ──────────
+
+use crate::store::PodcastStore;
+use podcast_core::Podcast;
+
+/// Build a store with one podcast and `guids.len()` episodes, returning the
+/// store and the podcast id. Episodes are inserted newest-first per the parser
+/// contract the scan relies on.
+fn store_with_show(guids: &[&str]) -> (PodcastStore, PodcastId) {
+    let mut store = PodcastStore::new();
+    let podcast = Podcast::new("Show");
+    let pid = podcast.id();
+    let eps: Vec<Episode> = guids
+        .iter()
+        .map(|g| make_episode(pid, g, &format!("https://ex.com/{g}.mp3")))
+        .collect();
+    store.upsert_known_podcast(podcast, eps);
+    (store, pid)
+}
+
+#[test]
+fn backfill_skips_shows_without_auto_download() {
+    let (store, _pid) = store_with_show(&["g1", "g2"]);
+    let (ready, deferred) = store.auto_download_backfill_candidates(true, 10);
+    assert!(ready.is_empty());
+    assert!(deferred.is_empty());
+}
+
+#[test]
+fn backfill_queues_undownloaded_for_enabled_show() {
+    let (mut store, pid) = store_with_show(&["g1", "g2"]);
+    store.set_auto_download(pid, true);
+    let (ready, deferred) = store.auto_download_backfill_candidates(true, 10);
+    assert_eq!(ready.len(), 2, "both undownloaded episodes should be candidates");
+    assert!(deferred.is_empty());
+}
+
+#[test]
+fn backfill_honours_limit_per_show() {
+    let (mut store, pid) = store_with_show(&["g1", "g2", "g3", "g4"]);
+    store.set_auto_download(pid, true);
+    let (ready, _deferred) = store.auto_download_backfill_candidates(true, 2);
+    assert_eq!(ready.len(), 2, "limit caps how many a single show contributes");
+}
+
+#[test]
+fn backfill_skips_already_downloaded_episodes() {
+    let (mut store, pid) = store_with_show(&["g1", "g2"]);
+    let downloaded_id = make_episode(pid, "g1", "https://ex.com/g1.mp3").id;
+    store.set_local_path(downloaded_id, "/tmp/g1.mp3".to_string(), 100);
+    store.set_auto_download(pid, true);
+    let (ready, _deferred) = store.auto_download_backfill_candidates(true, 10);
+    // g1 is on disk → only g2 remains a candidate (and counts toward the limit).
+    assert_eq!(ready.len(), 1);
+}
+
+#[test]
+fn backfill_defers_wifi_only_show_on_cellular() {
+    let (mut store, pid) = store_with_show(&["g1"]);
+    store.set_auto_download(pid, true); // wifi_only defaults to true
+    let (ready, deferred) = store.auto_download_backfill_candidates(false, 10);
+    assert!(ready.is_empty(), "wifi-only show must not download on cellular");
+    assert_eq!(deferred.len(), 1, "deferred for later Wi-Fi dispatch");
+}

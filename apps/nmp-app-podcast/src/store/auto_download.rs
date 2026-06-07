@@ -25,6 +25,16 @@ use std::collections::{HashMap, HashSet};
 
 use podcast_core::{Episode, EpisodeId};
 
+/// How many of a show's most-recent *undownloaded* episodes a backfill /
+/// evaluate pass queues. The fresh-feed refresh path (`episodes_to_auto_download`)
+/// handles genuinely-new arrivals unbounded; this bound applies only to the
+/// catch-up scan that runs on cold start and when the user *enables*
+/// auto-download on a show that already has a back catalog — without it,
+/// flipping "All new" on a 500-episode feed would queue the entire archive.
+/// Chosen as "keep the latest few episodes local" rather than the full
+/// back catalog. See [`super::PodcastStore::auto_download_backfill_candidates`].
+pub const AUTO_DOWNLOAD_BACKFILL_LIMIT: usize = 3;
+
 /// Decide which freshly-parsed episodes deserve to be auto-queued for
 /// download.
 ///
@@ -82,6 +92,53 @@ pub fn episodes_to_auto_download(
         return (Vec::new(), candidates);
     }
     (candidates, Vec::new())
+}
+
+impl super::PodcastStore {
+    /// Scan the *current* library for episodes that auto-download policy says
+    /// should be on disk but aren't — the catch-up counterpart to
+    /// [`episodes_to_auto_download`], which only sees freshly-parsed feed
+    /// episodes. Runs on cold start (the foreground `RefreshAll` is skipped on
+    /// the first activation) and when the user enables auto-download on a show
+    /// that already has episodes (the fresh-GUID filter would otherwise skip
+    /// every existing episode, so flipping the toggle downloaded nothing).
+    ///
+    /// For each podcast with auto-download enabled, takes its most-recent
+    /// `limit_per_show` episodes that have no recorded local file, splitting
+    /// them into `(ready, deferred)` by the show's Wi-Fi-only policy and the
+    /// current `is_on_wifi` state. Episodes already in flight are filtered by
+    /// the caller's idempotent enqueue, so re-running this is safe.
+    pub fn auto_download_backfill_candidates(
+        &self,
+        is_on_wifi: bool,
+        limit_per_show: usize,
+    ) -> (Vec<(EpisodeId, String)>, Vec<(EpisodeId, String)>) {
+        let mut ready = Vec::new();
+        let mut deferred = Vec::new();
+        for (&podcast_id, episodes) in self.episodes.iter() {
+            if !self.is_auto_download_enabled(podcast_id) {
+                continue;
+            }
+            let wifi_only = self.wifi_only_for(podcast_id);
+            let mut taken = 0usize;
+            for ep in episodes.iter() {
+                if taken >= limit_per_show {
+                    break;
+                }
+                if self.local_paths().contains_key(&ep.id) {
+                    continue;
+                }
+                taken += 1;
+                let item = (ep.id, ep.enclosure_url.to_string());
+                if wifi_only && !is_on_wifi {
+                    deferred.push(item);
+                } else {
+                    ready.push(item);
+                }
+            }
+        }
+        (ready, deferred)
+    }
 }
 
 #[cfg(test)]

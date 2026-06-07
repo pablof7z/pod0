@@ -10,7 +10,7 @@ use chrono::Utc;
 use podcast_core::{Episode, EpisodeId, PodcastId};
 use podcast_feeds::client::{build_feed_request, handle_feed_response, FeedResult};
 
-use crate::capability::{DownloadCommand, NotificationCommand};
+use crate::capability::NotificationCommand;
 use crate::host_op_handler::PodcastHostOpHandler;
 use crate::host_op_handler_helpers::{changed_metadata_ids, merge_episodes};
 use crate::picks_handler::refresh_picks_into_slot;
@@ -272,8 +272,10 @@ impl PodcastHostOpHandler {
         correlation_id: &str,
     ) {
         for (episode_id, url) in items {
-            let cmd = DownloadCommand::start(url.clone(), episode_id.0.to_string(), None);
-            let _ = self.dispatch_download(&cmd, correlation_id);
+            // Route through the canonical queue-backed path so fresh-feed
+            // auto-downloads share concurrency control, the download-queue
+            // snapshot, and the per-episode event log with every other download.
+            let _ = self.start_episode_download(&episode_id.0.to_string(), url, correlation_id, true);
         }
     }
 }

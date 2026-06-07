@@ -321,7 +321,15 @@ impl PodcastHostOpHandler {
             });
         }
 
-        self.handle_download_command(|q| q.enqueue(episode_id, url), correlation_id)
+        // Route through the one canonical download path so this initiator shares
+        // concurrency control, the download-queue snapshot, and the per-episode
+        // event log with the `podcast.download` op — otherwise a download started
+        // here would emit no pipeline events and the Diagnostics log would stay
+        // empty for it.
+        match self.start_episode_download(&episode_id, &url, correlation_id, false) {
+            Ok(()) => serde_json::json!({"ok": true}),
+            Err(e) => serde_json::json!({"ok": false, "error": e}),
+        }
     }
 
     fn handle_download_command(

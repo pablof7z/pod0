@@ -22,6 +22,7 @@ use std::time::SystemTime;
 use crate::capability::{AudioCommand, AudioReport, DownloadCommand, DownloadKind, DownloadReport};
 use crate::download::DownloadQueue;
 use crate::player::PlayerActor;
+use crate::store::events::{stage, EventDetail, EventSeverity};
 use crate::store::PodcastStore;
 
 /// Outcome of feeding a JSON-encoded [`AudioReport`] into a
@@ -212,6 +213,16 @@ fn apply_download_report(
                     .map(|m| m.len() as i64)
                     .unwrap_or(0);
                 store.set_local_path(typed_id, local_path.clone(), byte_count);
+                store.emit_event(
+                    episode_id,
+                    stage::DOWNLOAD_FINISHED,
+                    EventSeverity::Success,
+                    "Download finished",
+                    vec![
+                        EventDetail::new("Bytes", byte_count.to_string()),
+                        EventDetail::new("File", local_path.clone()),
+                    ],
+                );
                 true
             } else {
                 // Episode not in the store (e.g. unsubscribed mid-flight):
@@ -222,14 +233,31 @@ fn apply_download_report(
         DownloadReport::Cancelled { episode_id } => {
             if let Some((typed_id, _url)) = store.episode_enclosure_url(&episode_id) {
                 let _ = store.clear_local_path(&typed_id);
+                store.emit_event_simple(
+                    episode_id,
+                    stage::DOWNLOAD_CANCELLED,
+                    EventSeverity::Info,
+                    "Download cancelled",
+                );
                 true
             } else {
                 false
             }
         }
-        DownloadReport::Failed { .. }
-        | DownloadReport::Paused { .. }
-        | DownloadReport::Progress { .. } => false,
+        DownloadReport::Failed { episode_id, error } => {
+            // Transient (no durable library change → returns false), but the
+            // user needs to see *that it tried and why it failed* in the
+            // Diagnostics sheet, so the event is recorded regardless.
+            store.emit_event(
+                episode_id,
+                stage::DOWNLOAD_FAILED,
+                EventSeverity::Failure,
+                "Download failed",
+                vec![EventDetail::new("Error", error.clone())],
+            );
+            false
+        }
+        DownloadReport::Paused { .. } | DownloadReport::Progress { .. } => false,
     }
 }
 

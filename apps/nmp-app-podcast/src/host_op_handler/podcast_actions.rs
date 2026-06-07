@@ -152,8 +152,49 @@ impl PodcastHostOpHandler {
     ) -> serde_json::Value {
         match self.store.lock() {
             Ok(mut s) => {
-                let changed = s.set_transcript_status(episode_id, &status, message);
+                use crate::store::events::{stage, EventDetail, EventSeverity};
+                let changed = s.set_transcript_status(episode_id.clone(), &status, message.clone());
                 if changed {
+                    // Mirror the iOS-reported transcript stage into the episode
+                    // pipeline log so the Diagnostics sheet shows the attempt,
+                    // its provider stage, and any failure. The kernel never runs
+                    // STT itself — it records what the iOS capability reports.
+                    match status.as_str() {
+                        "none" | "" => {} // status cleared — not a pipeline event
+                        "failed" => s.emit_event(
+                            &episode_id,
+                            stage::TRANSCRIPT_FAILED,
+                            EventSeverity::Failure,
+                            "Transcription failed",
+                            message
+                                .map(|m| vec![EventDetail::new("Error", m)])
+                                .unwrap_or_default(),
+                        ),
+                        "fetching_publisher" => s.emit_event_simple(
+                            &episode_id,
+                            stage::TRANSCRIPT_ATTEMPT,
+                            EventSeverity::Info,
+                            "Fetching publisher transcript",
+                        ),
+                        "transcribing" => s.emit_event_simple(
+                            &episode_id,
+                            stage::TRANSCRIPT_ATTEMPT,
+                            EventSeverity::Info,
+                            "Transcribing audio",
+                        ),
+                        "queued" => s.emit_event_simple(
+                            &episode_id,
+                            stage::TRANSCRIPT_ATTEMPT,
+                            EventSeverity::Info,
+                            "Transcription queued",
+                        ),
+                        other => s.emit_event_simple(
+                            &episode_id,
+                            stage::TRANSCRIPT_ATTEMPT,
+                            EventSeverity::Info,
+                            format!("Transcription: {other}"),
+                        ),
+                    }
                     self.rev.fetch_add(1, Ordering::Relaxed);
                 }
                 serde_json::json!({"ok": true})
@@ -209,8 +250,7 @@ impl PodcastHostOpHandler {
         }
         let count = dispatch_now.len();
         for (episode_id, url) in dispatch_now {
-            let cmd = crate::capability::DownloadCommand::start(url, episode_id, None);
-            let _ = self.dispatch_download(&cmd, correlation_id);
+            let _ = self.start_episode_download(&episode_id, &url, correlation_id, true);
         }
         serde_json::json!({"ok": true, "dispatched": count})
     }
@@ -270,17 +310,77 @@ impl PodcastHostOpHandler {
                 Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
             }
         };
-        let command = match self.download_queue.lock() {
-            Ok(mut q) => q.enqueue(episode_id_str, url),
-            Err(_) => return serde_json::json!({"ok": false, "error": "download_queue poisoned"}),
-        };
+        if let Err(e) = self.start_episode_download(&episode_id_str, &url, correlation_id, false) {
+            return serde_json::json!({"ok": false, "error": e});
+        }
         self.rev.fetch_add(1, Ordering::Relaxed);
-        if let Some(cmd) = command {
-            if let Err(e) = self.dispatch_download(&cmd, correlation_id) {
-                return serde_json::json!({"ok": false, "error": e});
+        serde_json::json!({"ok": true})
+    }
+
+    /// The single canonical path to start an episode download. Enqueues through
+    /// the concurrency-bounded [`DownloadQueue`] (so auto-downloads and
+    /// user-initiated downloads share one queue, honour `max_concurrent`, and
+    /// surface in `DownloadQueueSnapshot`), records the request/start in the
+    /// per-episode pipeline event log, and dispatches the resulting
+    /// `StartDownload` when a slot was free. Fully idempotent: an episode
+    /// already in flight or queued is a no-op (no duplicate event, no duplicate
+    /// dispatch), so the cold-start / on-enable evaluate pass can re-run safely.
+    ///
+    /// `auto` distinguishes a policy-driven enqueue (`auto_download.queued`)
+    /// from a user tap (`download.requested`) in the event log.
+    pub(super) fn start_episode_download(
+        &self,
+        episode_id: &str,
+        url: &str,
+        correlation_id: &str,
+        auto: bool,
+    ) -> Result<(), String> {
+        use crate::capability::DownloadCommand;
+        use crate::store::events::{stage, EventDetail, EventSeverity};
+
+        let command = match self.download_queue.lock() {
+            Ok(mut q) => {
+                // Idempotence: skip an episode already active/queued/paused so a
+                // repeated evaluate pass or a double-tap doesn't re-log or
+                // re-dispatch. Terminal (failed/cancelled/completed) records are
+                // re-enqueued fresh by `enqueue`.
+                if let Some(item) = q.get(episode_id) {
+                    if !item.state.is_terminal() {
+                        return Ok(());
+                    }
+                }
+                q.enqueue(episode_id.to_string(), url.to_string())
+            }
+            Err(_) => return Err("download_queue poisoned".into()),
+        };
+
+        if let Ok(mut s) = self.store.lock() {
+            let (kind, summary): (&str, &str) = if auto {
+                (stage::AUTO_DOWNLOAD_QUEUED, "Auto-download queued")
+            } else {
+                (stage::DOWNLOAD_REQUESTED, "Download requested")
+            };
+            s.emit_event(
+                episode_id,
+                kind,
+                EventSeverity::Info,
+                summary,
+                vec![EventDetail::new("URL", url.to_string())],
+            );
+            if matches!(command, Some(DownloadCommand::StartDownload { .. })) {
+                s.emit_event_simple(
+                    episode_id,
+                    stage::DOWNLOAD_STARTED,
+                    EventSeverity::Info,
+                    "Download started",
+                );
             }
         }
-        serde_json::json!({"ok": true})
+
+        if let Some(cmd) = command {
+            self.dispatch_download(&cmd, correlation_id)?;
+        }
+        Ok(())
     }
 
     /// Enqueue an on-device model download (kind = `LocalModel`) through the
@@ -335,6 +435,7 @@ impl PodcastHostOpHandler {
         podcast_id_str: String,
         enabled: bool,
         wifi_only: bool,
+        correlation_id: &str,
     ) -> serde_json::Value {
         let uuid = match podcast_id_str.parse::<Uuid>() {
             Ok(u) => u,
@@ -346,17 +447,76 @@ impl PodcastHostOpHandler {
                 s.set_auto_download(podcast_id, enabled);
                 s.set_wifi_only(podcast_id, wifi_only);
                 self.rev.fetch_add(1, Ordering::Relaxed);
-                serde_json::json!({"ok": true})
             }
-            Err(_) => serde_json::json!({"ok": false, "error": "store poisoned"}),
+            Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
         }
+        // Enabling on a show that already has a back catalog must backfill the
+        // most-recent undownloaded episodes — the fresh-GUID refresh filter
+        // skips every existing episode, so without this the toggle downloaded
+        // nothing the user could see.
+        if enabled {
+            self.handle_evaluate_auto_downloads(correlation_id);
+        }
+        serde_json::json!({"ok": true})
+    }
+
+    /// Catch-up auto-download evaluation over the *current* library (op
+    /// `auto_download_evaluate`). Dispatched on cold start (the foreground
+    /// `RefreshAll` is skipped on first activation) and after enabling
+    /// auto-download on a show. Queues each enabled show's most-recent
+    /// undownloaded episodes (bounded by `AUTO_DOWNLOAD_BACKFILL_LIMIT`),
+    /// deferring Wi-Fi-only shows while on cellular. Idempotent via the
+    /// queue-backed [`Self::start_episode_download`].
+    pub(super) fn handle_evaluate_auto_downloads(&self, correlation_id: &str) -> serde_json::Value {
+        use crate::store::auto_download::AUTO_DOWNLOAD_BACKFILL_LIMIT;
+        let (ready, deferred) = match self.store.lock() {
+            Ok(s) => {
+                let is_on_wifi = s.is_on_wifi();
+                s.auto_download_backfill_candidates(is_on_wifi, AUTO_DOWNLOAD_BACKFILL_LIMIT)
+            }
+            Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+        };
+        for (episode_id, url) in &ready {
+            let _ = self.start_episode_download(&episode_id.0.to_string(), url, correlation_id, true);
+        }
+        if !deferred.is_empty() {
+            if let Ok(mut s) = self.store.lock() {
+                use crate::store::events::{stage, EventSeverity};
+                for (episode_id, _url) in &deferred {
+                    s.emit_event_simple(
+                        &episode_id.0.to_string(),
+                        stage::AUTO_DOWNLOAD_DEFERRED,
+                        EventSeverity::Info,
+                        "Auto-download deferred until Wi-Fi",
+                    );
+                }
+                s.add_pending_wifi_downloads(
+                    deferred
+                        .iter()
+                        .map(|(id, url)| (id.0.to_string(), url.clone()))
+                        .collect(),
+                );
+            }
+        }
+        serde_json::json!({"ok": true, "queued": ready.len(), "deferred": deferred.len()})
     }
 
     pub(super) fn handle_delete_download(&self, episode_id_str: String) -> serde_json::Value {
         let removed_path = {
             match self.store.lock() {
                 Ok(mut s) => match s.episode_enclosure_url(&episode_id_str) {
-                    Some((ep_id, _url)) => s.clear_local_path(&ep_id),
+                    Some((ep_id, _url)) => {
+                        let path = s.clear_local_path(&ep_id);
+                        if path.is_some() {
+                            s.emit_event_simple(
+                                &episode_id_str,
+                                crate::store::events::stage::DOWNLOAD_DELETED,
+                                crate::store::events::EventSeverity::Info,
+                                "Downloaded file deleted",
+                            );
+                        }
+                        path
+                    }
                     None => None,
                 },
                 Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),

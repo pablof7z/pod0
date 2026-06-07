@@ -32,7 +32,24 @@ pub(crate) fn handle_set_ad_segments(
 ) -> Value {
     {
         match store.lock() {
-            Ok(mut s) => s.set_ad_segments_for(episode_id.clone(), segments.clone()),
+            Ok(mut s) => {
+                s.set_ad_segments_for(episode_id.clone(), segments.clone());
+                // Record ad identification in the pipeline log (the final stage:
+                // download → transcript → chapters/ads). Only when segments were
+                // actually found — an empty report is "no ads", not an event.
+                if !segments.is_empty() {
+                    s.emit_event(
+                        &episode_id,
+                        crate::store::events::stage::ADS_READY,
+                        crate::store::events::EventSeverity::Success,
+                        "Ad segments identified",
+                        vec![crate::store::events::EventDetail::new(
+                            "Segments",
+                            segments.len().to_string(),
+                        )],
+                    );
+                }
+            }
             Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
         }
     }
