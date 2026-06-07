@@ -11,10 +11,19 @@ use nmp_ffi::nmp_app_free_string;
 use super::session_ref;
 use crate::ffi::{
     nmp_app_podcast_generate_image, nmp_app_podcast_provider_complete,
-    nmp_app_podcast_provider_embed, nmp_app_podcast_rerank, PodcastHandle,
+    nmp_app_podcast_provider_embed, nmp_app_podcast_provider_model_catalog, nmp_app_podcast_rerank,
+    PodcastHandle,
 };
 
 type PodcastJsonFn = extern "C" fn(*mut PodcastHandle, *const c_char) -> *mut c_char;
+type PodcastCatalogFn = extern "C" fn(*mut PodcastHandle) -> *mut c_char;
+
+fn java_string<'l>(env: &JNIEnv<'l>, value: String) -> jstring {
+    match env.new_string(value) {
+        Ok(js) => js.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
 
 fn call_podcast_json_ffi<'l>(
     env: &mut JNIEnv<'l>,
@@ -44,10 +53,30 @@ fn call_podcast_json_ffi<'l>(
         .to_string_lossy()
         .into_owned();
     nmp_app_free_string(result_ptr);
-    match env.new_string(owned) {
-        Ok(js) => js.into_raw(),
-        Err(_) => null,
+    java_string(env, owned)
+}
+
+fn call_podcast_catalog_ffi<'l>(
+    env: &JNIEnv<'l>,
+    handle: jlong,
+    call: PodcastCatalogFn,
+) -> jstring {
+    let null = std::ptr::null_mut();
+    let Some(s) = session_ref(handle) else {
+        return null;
+    };
+    if s.podcast.is_null() {
+        return null;
     }
+    let result_ptr = call(s.podcast);
+    if result_ptr.is_null() {
+        return null;
+    }
+    let owned = unsafe { CStr::from_ptr(result_ptr) }
+        .to_string_lossy()
+        .into_owned();
+    nmp_app_free_string(result_ptr);
+    java_string(env, owned)
 }
 
 /// `nativeProviderComplete(handle, intentJson)` — shared provider completion.
@@ -82,6 +111,17 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeProviderEmbed<'l>(
         intent_json,
         nmp_app_podcast_provider_embed,
     )
+}
+
+/// `nativeProviderModelCatalog(handle)` - shared provider model catalog.
+/// Returns Rust's JSON envelope unchanged, or null on FFI failure.
+#[no_mangle]
+pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeProviderModelCatalog<'l>(
+    env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    handle: jlong,
+) -> jstring {
+    call_podcast_catalog_ffi(&env, handle, nmp_app_podcast_provider_model_catalog)
 }
 
 /// `nativeGenerateImage(handle, requestJson)` — shared image generation.

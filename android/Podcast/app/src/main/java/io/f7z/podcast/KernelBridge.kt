@@ -150,6 +150,13 @@ class KernelBridge {
     fun providerEmbed(intentJson: String): String? =
         if (handle != 0L) nativeProviderEmbed(handle, intentJson) else null
 
+    /**
+     * Shared provider model catalog. Rust owns OpenRouter/models.dev/Ollama
+     * retrieval and normalization; Android receives the JSON envelope only.
+     */
+    fun providerModelCatalog(): String? =
+        if (handle != 0L) nativeProviderModelCatalog(handle) else null
+
     /** Shared provider image generation transport; returns Rust's JSON envelope. */
     fun generateImage(requestJson: String): String? =
         if (handle != 0L) nativeGenerateImage(handle, requestJson) else null
@@ -184,6 +191,7 @@ class KernelBridge {
     private external fun nativePodcastSnapshot(handle: Long): String?
     private external fun nativeProviderComplete(handle: Long, intentJson: String): String?
     private external fun nativeProviderEmbed(handle: Long, intentJson: String): String?
+    private external fun nativeProviderModelCatalog(handle: Long): String?
     private external fun nativeGenerateImage(handle: Long, requestJson: String): String?
     private external fun nativeRerank(handle: Long, requestJson: String): String?
     private external fun nativeFree(handle: Long)

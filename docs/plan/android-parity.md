@@ -118,12 +118,14 @@ symbols already on `main`:
 
 - `nmp_app_podcast_provider_complete(handle, intent_json) -> char*`
 - `nmp_app_podcast_provider_embed(handle, intent_json) -> char*`
+- `nmp_app_podcast_provider_model_catalog(handle) -> char*`
 - `nmp_app_podcast_generate_image(handle, request_json) -> char*`
 - `nmp_app_podcast_rerank(handle, request_json) -> char*`
 
 `KernelBridge` exposes handle-scoped `providerComplete`, `providerEmbed`,
-`generateImage`, and `rerank` methods that return Rust's JSON envelope after
-the JNI shim frees the Rust string with `nmp_app_free_string`. Remaining
-provider parity work is UI and binding work: secure provider-key reload on
-Android start, full provider/model settings screens, and catalog-backed model
-selection once `nmp_app_podcast_provider_model_catalog` lands.
+`providerModelCatalog`, `generateImage`, and `rerank` methods that return
+Rust's JSON envelope after the JNI shim frees the Rust string with
+`nmp_app_free_string`. Android model-role settings now load the shared Rust
+catalog and dispatch selections through `podcast.settings`. Remaining provider
+parity work is secure provider-key reload on Android start and full provider
+credential settings screens.

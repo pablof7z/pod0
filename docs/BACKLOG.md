@@ -522,9 +522,9 @@ worktrees currently in flight.
   playback, sleep timer, playback queue, downloads, settings, BYOK nsec import,
   HTTP capability execution, and audio report round-trips now use the NMP
   kernel/capability path. Android can call the shared Rust provider
-  complete/embed/image/rerank transports through JNI; remaining provider work
-  is secure key reload, provider/model settings UI, and catalog-backed model
-  selection after the shared catalog symbol lands.
+  complete/embed/catalog/image/rerank transports through JNI, and model-role
+  settings now load the shared Rust catalog for selection; remaining provider
+  work is secure key reload and full provider credential settings UI.
 - ~~**android-gradle-wrapper.**~~ Done — `gradlew`, `gradlew.bat`, and the
   wrapper files are present under `android/Podcast/`; `./gradlew assembleDebug`
   is the validated Android build path.

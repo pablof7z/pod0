@@ -241,10 +241,51 @@ data class SetAgentThinkingModelPayload(
 )
 
 @Serializable
+data class SetMemoryCompilationModelPayload(
+    val model: String,
+    @SerialName("model_name") val modelName: String,
+    val op: String = "set_memory_compilation_model",
+)
+
+@Serializable
+data class SetWikiModelPayload(
+    val model: String,
+    @SerialName("model_name") val modelName: String,
+    val op: String = "set_wiki_model",
+)
+
+@Serializable
+data class SetCategorizationModelPayload(
+    val model: String,
+    @SerialName("model_name") val modelName: String,
+    val op: String = "set_categorization_model",
+)
+
+@Serializable
+data class SetChapterCompilationModelPayload(
+    val model: String,
+    @SerialName("model_name") val modelName: String,
+    val op: String = "set_chapter_compilation_model",
+)
+
+@Serializable
 data class SetEmbeddingsModelPayload(
     val model: String,
     @SerialName("model_name") val modelName: String,
     val op: String = "set_embeddings_model",
+)
+
+@Serializable
+data class SetImageGenerationModelPayload(
+    val model: String,
+    @SerialName("model_name") val modelName: String,
+    val op: String = "set_image_generation_model",
+)
+
+@Serializable
+data class SetRerankerEnabledPayload(
+    val enabled: Boolean,
+    val op: String = "set_reranker_enabled",
 )
 
 @Serializable

@@ -32,11 +32,10 @@ import io.f7z.podcast.PodcastSnapshot
 import io.f7z.podcast.SettingsSnapshot
 
 /**
- * Settings tab — entry surface for Identity, Briefings, and About.
+ * Settings tab — entry surface for playback, Identity, AI, Briefings, and About.
  *
  * Lean composition: every section is a `Card` containing rows; tapping a
- * navigation row invokes [`onNavigateToIdentity`] which the host routes
- * into a stack push. No business logic — the briefing schedule label
+ * navigation row invokes the supplied route callback. No business logic — the briefing schedule label
  * comes straight from `snapshot.briefing.scheduleLabel` (with a sensible
  * default for when M9.A hasn't shipped) and the app version is a literal
  * placeholder until M14 wires `BuildConfig.VERSION_NAME` through here.
@@ -46,6 +45,7 @@ fun SettingsScreen(
     snapshot: PodcastSnapshot?,
     bridge: KernelBridge,
     onNavigateToIdentity: () -> Unit,
+    onNavigateToModels: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val settings = snapshot?.settings ?: SettingsSnapshot()
@@ -73,6 +73,11 @@ fun SettingsScreen(
         item {
             SettingsSection(title = "Identity") {
                 SettingsNavRow(label = "Account", onClick = onNavigateToIdentity)
+            }
+        }
+        item {
+            SettingsSection(title = "AI") {
+                SettingsNavRow(label = "Models", onClick = onNavigateToModels)
             }
         }
         item {

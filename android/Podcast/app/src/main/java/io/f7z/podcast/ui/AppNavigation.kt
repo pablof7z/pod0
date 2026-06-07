@@ -27,13 +27,12 @@ import io.f7z.podcast.PodcastSnapshot
 import io.f7z.podcast.PodcastSummary
 
 /**
- * Bottom-tab navigator wiring Home / Library / Player / Settings + an
- * inline stack for nested surfaces (ShowDetail, Identity) reached from
- * a tab.
+ * Bottom-tab navigator wiring Home / Library / Player / Settings plus an
+ * inline stack for nested surfaces reached from a tab.
  *
  * Why hand-rolled instead of `androidx.navigation.compose`?
  *
- *  * The M13.C+D scope is four tabs + two pushable surfaces. A nav-compose
+ *  * The M13.C+D scope is bottom tabs plus a small set of pushable surfaces. A nav-compose
  *    graph for that is more boilerplate (NavHost + routes + Bundle args)
  *    than the equivalent sealed-class switch below — and the dependency
  *    isn't in `build.gradle.kts` today (M2.F kept the dep list minimal).
@@ -48,8 +47,8 @@ import io.f7z.podcast.PodcastSummary
  *  * `selectedTab` — which bottom tab is active. Saved across config
  *    changes via `rememberSaveable`.
  *  * `route` — sealed-class for the current inner surface. Tabs reset it
- *    to their root; tapping a library tile pushes to `ShowDetail`; tapping
- *    "Account" in Settings pushes to `Identity`.
+ *    to their root; nested rows push to show, episode, identity, or model
+ *    settings surfaces.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,6 +83,7 @@ fun AppNavigation(snapshot: PodcastSnapshot?, bridge: KernelBridge) {
                 bridge = bridge,
                 onShowSelected = { route = AppRoute.ShowDetail(it.id) },
                 onOpenIdentity = { route = AppRoute.Identity },
+                onOpenModels = { route = AppRoute.ProviderModels },
                 modifier = contentModifier,
             )
             is AppRoute.ShowDetail -> ShowDetailScreen(
@@ -113,6 +113,12 @@ fun AppNavigation(snapshot: PodcastSnapshot?, bridge: KernelBridge) {
                 onBack = { route = AppRoute.Tab(selectedTab) },
                 modifier = contentModifier,
             )
+            AppRoute.ProviderModels -> ProviderModelSettingsScreen(
+                snapshot = snapshot,
+                bridge = bridge,
+                onBack = { route = AppRoute.Tab(selectedTab) },
+                modifier = contentModifier,
+            )
         }
     }
 }
@@ -124,6 +130,7 @@ private fun TabContent(
     bridge: KernelBridge,
     onShowSelected: (PodcastSummary) -> Unit,
     onOpenIdentity: () -> Unit,
+    onOpenModels: () -> Unit,
     modifier: Modifier,
 ) {
     when (tab) {
@@ -138,7 +145,13 @@ private fun TabContent(
         BottomTab.Library -> LibraryScreen(snapshot = snapshot, bridge = bridge, onShowSelected = onShowSelected, modifier = modifier)
         BottomTab.Downloads -> DownloadsScreen(snapshot = snapshot, bridge = bridge, modifier = modifier)
         BottomTab.Player -> PlayerScreen(snapshot = snapshot, bridge = bridge, modifier = modifier)
-        BottomTab.Settings -> SettingsScreen(snapshot = snapshot, bridge = bridge, onNavigateToIdentity = onOpenIdentity, modifier = modifier)
+        BottomTab.Settings -> SettingsScreen(
+            snapshot = snapshot,
+            bridge = bridge,
+            onNavigateToIdentity = onOpenIdentity,
+            onNavigateToModels = onOpenModels,
+            modifier = modifier,
+        )
     }
 }
 
@@ -161,14 +174,15 @@ enum class BottomTab(val label: String, val icon: ImageVector) {
  * `rememberSaveable` can restore the route through process death.
  *
  * The router stays flat (no nested back-stack) per M13.C+D scope — the only
- * pushes are ShowDetail (from Library) and Identity (from Settings). M14
- * may swap this for `androidx.navigation.compose` if deep links land.
+ * pushes are narrow detail/settings surfaces. M14 may swap this for
+ * `androidx.navigation.compose` if deep links land.
  */
 private sealed interface AppRoute {
     data class Tab(val tab: BottomTab) : AppRoute
     data class ShowDetail(val showId: String) : AppRoute
     data class EpisodeDetail(val episodeId: String, val podcastId: String) : AppRoute
     data object Identity : AppRoute
+    data object ProviderModels : AppRoute
 
     companion object {
         val Saver: androidx.compose.runtime.saveable.Saver<AppRoute, Any> =
@@ -179,6 +193,7 @@ private sealed interface AppRoute {
                         is ShowDetail -> listOf("show", value.showId)
                         is EpisodeDetail -> listOf("episode", value.episodeId, value.podcastId)
                         Identity -> listOf("identity")
+                        ProviderModels -> listOf("provider_models")
                     }
                 },
                 restore = { raw ->
@@ -193,6 +208,7 @@ private sealed interface AppRoute {
                             if (ep != null && pod != null) EpisodeDetail(ep, pod) else null
                         }
                         "identity" -> Identity
+                        "provider_models" -> ProviderModels
                         else -> null
                     }
                 },
