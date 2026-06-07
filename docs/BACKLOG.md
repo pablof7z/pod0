@@ -102,7 +102,9 @@ worktrees currently in flight.
   catalog rows now expose a routed `selection_model_id`, and iOS/Android/TUI
   selectors store that value so OpenRouter/Ollama selections run the intended
   provider/model. The TUI env loader now forwards `ASSEMBLYAI_API_KEY` and
-  `PERPLEXITY_API_KEY` into the shared provider-key cache.
+  `PERPLEXITY_API_KEY` into the shared provider-key cache, and its ElevenLabs
+  voice row now browses the shared Rust `/v1/voices` catalog instead of making
+  users paste raw voice ids.
   Remaining provider-ownership work is deleting any stale Keychain-only UI
   fallbacks after kernel projections cover them, plus streaming voice-mode
   STT/TTS once the canonical NMP capability seam lands upstream
@@ -173,8 +175,8 @@ worktrees currently in flight.
   updates. The provider/model settings slice now wires LLM role model
   selection, provider credential metadata, env-backed in-memory OpenRouter/
   Ollama/ElevenLabs/AssemblyAI/Perplexity credentials, STT key-presence
-  reporting, STT/TTS model selectors, ElevenLabs voice selection, and the local
-  model hint. The terminal shell now
+  reporting, STT/TTS model selectors, shared ElevenLabs voice catalog
+  selection, and the local model hint. The terminal shell now
   has shared animated chrome, focused row rails, player waveform motion,
   download activity strips, and themed detail/input overlays without changing
   kernel/provider behavior. Post-architecture live tmux validation now covers

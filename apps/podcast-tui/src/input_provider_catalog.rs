@@ -45,12 +45,22 @@ pub(super) fn open_provider_catalog(
     runtime: &AppRuntime,
     item: ProviderSettingItem,
 ) {
-    if !item.is_model_setting() {
-        state.status = "selected provider row is not a model setting".to_owned();
+    if !item.is_catalog_browsable() {
+        state.status = "selected provider row is not catalog-browsable".to_owned();
         return;
     }
     let _ = load_env_credentials(runtime);
-    match runtime.provider_model_catalog() {
+    let result = if item == ProviderSettingItem::ElevenLabsVoice {
+        runtime.elevenlabs_voice_catalog().map(|voices| {
+            voices
+                .into_iter()
+                .map(|voice| voice.into_catalog_model())
+                .collect()
+        })
+    } else {
+        runtime.provider_model_catalog()
+    };
+    match result {
         Ok(models) => {
             state.provider_catalog_models = models;
             state.provider_catalog_target = Some(item);
@@ -60,7 +70,7 @@ pub(super) fn open_provider_catalog(
             state.tab = Tab::Settings;
             state.settings_section = SettingsSection::Providers;
             state.status = format!(
-                "provider catalog loaded: {} models",
+                "provider catalog loaded: {} items",
                 state.provider_catalog_models.len()
             );
         }
@@ -108,7 +118,7 @@ fn apply_selected_provider_model(state: &mut AppState, runtime: &AppRuntime) {
         state.status = "provider model target missing".to_owned();
         return;
     };
-    match target.apply_model_selection(model.selection_id(), model.display_name(), runtime) {
+    match target.apply_catalog_selection(model.selection_id(), model.display_name(), runtime) {
         Ok(message) => {
             state.push_toast(&message);
             close_provider_catalog(state);

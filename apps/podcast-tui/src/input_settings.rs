@@ -50,7 +50,7 @@ fn handle_provider_settings_keys(state: &mut AppState, runtime: &AppRuntime, key
             state.jump_provider_setting_bottom(PROVIDER_SETTINGS_ITEMS.len());
         }
         KeyCode::Enter | KeyCode::Char(' ') => {
-            if selected_provider_item(state).is_some_and(|item| item.is_model_setting()) {
+            if selected_provider_item(state).is_some_and(|item| item.is_catalog_browsable()) {
                 if let Some(item) = selected_provider_item(state) {
                     provider_catalog::open_provider_catalog(state, runtime, item);
                 }

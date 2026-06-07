@@ -16,6 +16,7 @@ mod provider_model_catalog;
 mod provider_setting_model_selection;
 mod provider_settings_catalog;
 mod provider_settings_parser;
+mod provider_voice_catalog;
 pub mod rows;
 pub mod runtime;
 mod runtime_actions;

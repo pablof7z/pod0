@@ -67,6 +67,10 @@ impl ProviderCatalogModel {
         self.output_modalities.iter().any(|item| item == "image")
     }
 
+    pub(crate) fn is_audio_output(&self) -> bool {
+        self.output_modalities.iter().any(|item| item == "audio")
+    }
+
     pub(crate) fn is_text_output(&self) -> bool {
         self.output_modalities.is_empty()
             || self.output_modalities.iter().any(|item| item == "text")
@@ -86,6 +90,9 @@ impl ProviderCatalogModel {
         if self.is_image_output() {
             flags.push("image");
         }
+        if self.is_audio_output() {
+            flags.push("voice");
+        }
         if flags.is_empty() {
             "basic".to_owned()
         } else {
@@ -100,6 +107,7 @@ impl ProviderCatalogModel {
         ) {
             (Some(0.0), Some(0.0)) => "free".to_owned(),
             (Some(input), Some(output)) => format!("${input:.2}/${output:.2} per 1M"),
+            _ if self.is_audio_output() => "voice".to_owned(),
             _ => "variable".to_owned(),
         }
     }
@@ -132,6 +140,9 @@ pub(crate) fn visible_provider_models<'a>(
 fn matches_target(model: &ProviderCatalogModel, target: Option<ProviderSettingItem>) -> bool {
     match target {
         Some(item) if item.is_image_model_setting() => model.is_image_output(),
+        Some(ProviderSettingItem::ElevenLabsVoice) => {
+            model.provider == "elevenlabs" && model.is_audio_output()
+        }
         Some(_) => model.is_text_output(),
         None => true,
     }
