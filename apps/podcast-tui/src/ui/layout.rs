@@ -34,6 +34,7 @@ pub fn render(frame: &mut Frame<'_>, state: &AppState) {
         Mode::SearchInput
             | Mode::SubscribeInput
             | Mode::RelayInput
+            | Mode::SettingsInput
             | Mode::AgentInput
             | Mode::AgentMemoryInput
             | Mode::AgentTaskInput
@@ -146,6 +147,7 @@ fn render_input_bar(frame: &mut Frame<'_>, area: Rect, state: &AppState) {
         Mode::SearchInput => "Search: ",
         Mode::SubscribeInput => "Subscribe: ",
         Mode::RelayInput => "Relay: ",
+        Mode::SettingsInput => "Setting: ",
         Mode::AgentInput => "Agent: ",
         Mode::AgentMemoryInput => "Memory key=value: ",
         Mode::AgentTaskInput => "Task: ",
@@ -157,6 +159,7 @@ fn render_input_bar(frame: &mut Frame<'_>, area: Rect, state: &AppState) {
         Mode::SearchInput => &state.search_input,
         Mode::SubscribeInput => &state.subscribe_input,
         Mode::RelayInput => &state.relay_input,
+        Mode::SettingsInput => &state.settings_input,
         Mode::AgentInput => &state.agent_input,
         Mode::AgentMemoryInput => &state.agent_memory_input,
         Mode::AgentTaskInput => &state.agent_task_input,

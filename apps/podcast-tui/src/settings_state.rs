@@ -3,17 +3,19 @@ use crate::app::AppState;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SettingsSection {
     General,
+    Providers,
     Relays,
 }
 
 impl SettingsSection {
     pub fn all() -> &'static [Self] {
-        &[Self::General, Self::Relays]
+        &[Self::General, Self::Providers, Self::Relays]
     }
 
     pub fn label(self) -> &'static str {
         match self {
             Self::General => "general",
+            Self::Providers => "providers",
             Self::Relays => "relays",
         }
     }
@@ -44,6 +46,22 @@ impl AppState {
 
     pub fn previous_settings_section(&mut self) {
         self.settings_section = self.settings_section.previous();
+    }
+
+    pub fn next_provider_setting(&mut self, count: usize) {
+        advance_index(&mut self.selected_provider_setting, count);
+    }
+
+    pub fn previous_provider_setting(&mut self) {
+        self.selected_provider_setting = self.selected_provider_setting.saturating_sub(1);
+    }
+
+    pub fn jump_provider_setting_top(&mut self) {
+        self.selected_provider_setting = 0;
+    }
+
+    pub fn jump_provider_setting_bottom(&mut self, count: usize) {
+        self.selected_provider_setting = count.saturating_sub(1);
     }
 
     pub fn next_relay(&mut self) {

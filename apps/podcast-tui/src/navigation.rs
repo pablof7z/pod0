@@ -72,6 +72,7 @@ pub enum Mode {
     SearchInput,
     SubscribeInput,
     RelayInput,
+    SettingsInput,
     AgentInput,
     AgentMemoryInput,
     AgentTaskInput,

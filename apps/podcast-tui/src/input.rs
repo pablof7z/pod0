@@ -77,7 +77,8 @@ fn handle_mode_key(state: &mut AppState, runtime: &AppRuntime, key: KeyEvent) ->
     match state.mode {
         Mode::SearchInput => handle_search_input(state, runtime, key),
         Mode::SubscribeInput => handle_subscribe_input(state, runtime, key),
-        Mode::RelayInput => handle_relay_input(state, runtime, key),
+        Mode::RelayInput => settings::handle_relay_input(state, runtime, key),
+        Mode::SettingsInput => settings::handle_settings_input(state, runtime, key),
         Mode::AgentInput => handle_agent_input(state, runtime, key),
         Mode::AgentMemoryInput => handle_agent_memory_input(state, runtime, key),
         Mode::AgentTaskInput => handle_agent_task_input(state, runtime, key),
@@ -128,35 +129,6 @@ fn handle_subscribe_input(state: &mut AppState, runtime: &AppRuntime, key: KeyEv
             state.subscribe_input.pop();
         }
         KeyCode::Char(c) => state.subscribe_input.push(c),
-        _ => {}
-    }
-    true
-}
-
-fn handle_relay_input(state: &mut AppState, runtime: &AppRuntime, key: KeyEvent) -> bool {
-    match key.code {
-        KeyCode::Esc => state.mode = Mode::Normal,
-        KeyCode::Enter => {
-            let input = state.relay_input.trim().to_string();
-            state.relay_input.clear();
-            state.mode = Mode::Normal;
-            state.tab = Tab::Settings;
-            state.settings_section = crate::app::SettingsSection::Relays;
-            if input.is_empty() {
-                return true;
-            }
-            let mut parts = input.split_whitespace();
-            let url = parts.next().unwrap_or_default();
-            let role = parts.next().unwrap_or("both");
-            match runtime.add_relay(url, role) {
-                Ok(_) => state.push_toast("relay added"),
-                Err(e) => state.status = format!("relay add error: {e}"),
-            }
-        }
-        KeyCode::Backspace => {
-            state.relay_input.pop();
-        }
-        KeyCode::Char(c) => state.relay_input.push(c),
         _ => {}
     }
     true

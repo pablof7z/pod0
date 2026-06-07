@@ -97,6 +97,27 @@ The Settings tab now has a relay-editor section backed by
 - Headless integration asserts add, role update, and removal through the live
   configured-relays projection.
 
+## 2026-06-07 Provider And Model Settings Slice
+
+The Settings tab now has an editable `providers` section backed by the shared
+`podcast.settings` actions:
+
+- Role model rows cover agent initial/thinking, memory compilation, wiki,
+  categorization, chapter compilation, embeddings, and image generation. Each
+  accepts `model_id | display name`, including `openrouter:*`, `ollama:*`, and
+  `local:*` model IDs.
+- Provider credential metadata rows cover OpenRouter, Ollama, and ElevenLabs
+  source/key-id/key-label/connected-at fields. Secrets are still not rendered
+  or persisted by the TUI.
+- Terminal-safe credential loading reads `OPENROUTER_API_KEY`,
+  `OLLAMA_API_KEY`, `ELEVENLABS_API_KEY`, and `ASSEMBLYAI_API_KEY` from the
+  process environment, pushes OpenRouter/Ollama keys through the existing
+  in-memory-only kernel action, and reports STT key presence without exposing
+  raw secrets.
+- STT/TTS/local rows cover STT provider selection, STT key-presence reporting,
+  OpenRouter Whisper, AssemblyAI, ElevenLabs STT/TTS, ElevenLabs voice, and the
+  loaded local model hint.
+
 ## Parity Matrix
 
 | Surface | TUI status | Notes |
@@ -106,7 +127,7 @@ The Settings tab now has a relay-editor section backed by
 | Queue | Partial | Selection, play, remove, clear, add-last, and play-next are wired; reorder/persistence validation remains. |
 | Bookmarks | Partial | Starred episodes now have a tab and unstar/play/queue actions; filtering/search is still absent. |
 | Downloads | TUI wired / executor-dependent | Active queue rows, progress, pause/resume/cancel/cancel-all, delete-file routing, and per-episode badges are wired. A completed-download history needs a richer kernel projection. |
-| Settings | Partial | Common playback/AI/Nostr toggles and configured relay add/remove/role editing are wired; provider credential editing, STT/TTS selectors, and local model management remain. |
+| Settings | Partial | Common playback/AI/Nostr toggles, provider/model editors, env-backed terminal credential loading, STT/TTS/local selectors, and configured relay add/remove/role editing are wired; playback interval editors, onboarding, notification detail, and Nostr profile/public relay fields remain. |
 | Clips | Partial | Clip projection, AutoSnip, play-from-start, and delete are wired; composer/export/share flows are absent. |
 | Agent chat | TUI wired / kernel scaffold | TUI send/clear is wired and tested; real LLM loop remains governed by the existing NMP backlog. |
 | Agent tasks/picks/memory/notes | Partial | TUI task CRUD/run, pick play/queue, memory CRUD, note fetch/publish are wired; note trust workflows and the real scheduler/responder loop remain kernel backlog work. |
@@ -117,9 +138,8 @@ The Settings tab now has a relay-editor section backed by
 
 ## Next Slices
 
-1. Add full settings editors for provider metadata, playback intervals, STT/TTS
-   selections, local models, notification options, and Nostr profile/public
-   relay fields.
+1. Add the remaining settings editors for playback intervals, onboarding,
+   notification options, and Nostr profile/public relay fields.
 2. Add wiki generation/search plus richer agent note trust/conversation flows
    once the corresponding kernel behavior is real.
 3. Add a completed-download history once the kernel projects durable completed

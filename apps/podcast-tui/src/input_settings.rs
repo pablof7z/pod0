@@ -1,6 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent};
 
-use crate::app::{AppState, Mode, SettingsSection};
+use crate::app::{AppState, Mode, SettingsSection, Tab};
+use crate::provider_settings_catalog::PROVIDER_SETTINGS_ITEMS;
 use crate::runtime::AppRuntime;
 use crate::settings_catalog::SETTINGS_ITEMS;
 use crate::settings_state::next_relay_role;
@@ -11,6 +12,7 @@ pub(super) fn handle_settings_keys(state: &mut AppState, runtime: &AppRuntime, k
         KeyCode::Char('l') | KeyCode::Right => state.next_settings_section(),
         _ => match state.settings_section {
             SettingsSection::General => handle_general_settings_keys(state, runtime, key),
+            SettingsSection::Providers => handle_provider_settings_keys(state, runtime, key),
             SettingsSection::Relays => handle_relay_settings_keys(state, runtime, key),
         },
     }
@@ -36,6 +38,23 @@ fn handle_general_settings_keys(state: &mut AppState, runtime: &AppRuntime, key:
     }
 }
 
+fn handle_provider_settings_keys(state: &mut AppState, runtime: &AppRuntime, key: KeyEvent) {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => {
+            state.next_provider_setting(PROVIDER_SETTINGS_ITEMS.len());
+        }
+        KeyCode::Char('k') | KeyCode::Up => state.previous_provider_setting(),
+        KeyCode::Char('g') | KeyCode::Home => state.jump_provider_setting_top(),
+        KeyCode::Char('G') | KeyCode::End => {
+            state.jump_provider_setting_bottom(PROVIDER_SETTINGS_ITEMS.len());
+        }
+        KeyCode::Enter | KeyCode::Char(' ') | KeyCode::Char('e') => {
+            activate_provider_setting(state, runtime);
+        }
+        _ => {}
+    }
+}
+
 fn handle_relay_settings_keys(state: &mut AppState, runtime: &AppRuntime, key: KeyEvent) {
     match key.code {
         KeyCode::Char('j') | KeyCode::Down => state.next_relay(),
@@ -51,10 +70,90 @@ fn handle_relay_settings_keys(state: &mut AppState, runtime: &AppRuntime, key: K
     }
 }
 
+pub(super) fn handle_settings_input(
+    state: &mut AppState,
+    runtime: &AppRuntime,
+    key: KeyEvent,
+) -> bool {
+    match key.code {
+        KeyCode::Esc => state.mode = Mode::Normal,
+        KeyCode::Enter => {
+            let input = state.settings_input.trim().to_owned();
+            state.settings_input.clear();
+            state.mode = Mode::Normal;
+            state.tab = Tab::Settings;
+            state.settings_section = SettingsSection::Providers;
+            let Some(item) = PROVIDER_SETTINGS_ITEMS.get(state.selected_provider_setting) else {
+                return true;
+            };
+            match item.apply_input(&input, runtime) {
+                Ok(message) => state.push_toast(&message),
+                Err(e) => state.status = format!("provider setting error: {e}"),
+            }
+        }
+        KeyCode::Backspace => {
+            state.settings_input.pop();
+        }
+        KeyCode::Char(c) => state.settings_input.push(c),
+        _ => {}
+    }
+    true
+}
+
+pub(super) fn handle_relay_input(
+    state: &mut AppState,
+    runtime: &AppRuntime,
+    key: KeyEvent,
+) -> bool {
+    match key.code {
+        KeyCode::Esc => state.mode = Mode::Normal,
+        KeyCode::Enter => {
+            let input = state.relay_input.trim().to_string();
+            state.relay_input.clear();
+            state.mode = Mode::Normal;
+            state.tab = Tab::Settings;
+            state.settings_section = SettingsSection::Relays;
+            if input.is_empty() {
+                return true;
+            }
+            let mut parts = input.split_whitespace();
+            let url = parts.next().unwrap_or_default();
+            let role = parts.next().unwrap_or("both");
+            match runtime.add_relay(url, role) {
+                Ok(_) => state.push_toast("relay added"),
+                Err(e) => state.status = format!("relay add error: {e}"),
+            }
+        }
+        KeyCode::Backspace => {
+            state.relay_input.pop();
+        }
+        KeyCode::Char(c) => state.relay_input.push(c),
+        _ => {}
+    }
+    true
+}
+
 fn begin_relay_input(state: &mut AppState) {
     state.mode = Mode::RelayInput;
     state.relay_input.clear();
     state.status = "relay format: wss://relay.example [role]".to_string();
+}
+
+fn activate_provider_setting(state: &mut AppState, runtime: &AppRuntime) {
+    let Some(item) = PROVIDER_SETTINGS_ITEMS.get(state.selected_provider_setting) else {
+        return;
+    };
+    if item.is_immediate() {
+        let settings = state.settings.clone();
+        match item.activate_immediate(&settings, runtime) {
+            Ok(message) => state.push_toast(&message),
+            Err(e) => state.status = format!("provider setting error: {e}"),
+        }
+        return;
+    }
+    state.mode = Mode::SettingsInput;
+    state.settings_input = item.input_value(&state.settings);
+    state.status = item.input_hint().to_owned();
 }
 
 fn remove_selected_relay(state: &mut AppState, runtime: &AppRuntime) {
