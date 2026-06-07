@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.f7z.podcast.ElevenLabsKeyValidationService
 import io.f7z.podcast.KernelBridge
 import io.f7z.podcast.OpenRouterKeyValidationService
 import io.f7z.podcast.ProviderCredentialActions
@@ -49,6 +50,8 @@ fun ProviderCredentialSettingsSection(
     var ollamaResult by remember { mutableStateOf<ProviderCredentialActionResult?>(null) }
     var ollamaUrlResult by remember { mutableStateOf<ProviderCredentialActionResult?>(null) }
     var elevenLabsResult by remember { mutableStateOf<ProviderCredentialActionResult?>(null) }
+    var elevenLabsValidationResult by remember { mutableStateOf<ProviderCredentialActionResult?>(null) }
+    var isValidatingElevenLabs by remember { mutableStateOf(false) }
     var assemblyAiResult by remember { mutableStateOf<ProviderCredentialActionResult?>(null) }
 
     Column(
@@ -168,18 +171,42 @@ fun ProviderCredentialSettingsSection(
             onInputChanged = {
                 elevenLabsInput = it
                 elevenLabsResult = null
+                elevenLabsValidationResult = null
             },
             onSave = {
                 val result = ProviderCredentialActions.saveElevenLabsManual(context, bridge, elevenLabsInput)
                 elevenLabsResult = result
+                elevenLabsValidationResult = null
                 hasElevenLabsKey = ProviderCredentialStore.hasElevenLabsApiKey(context)
                 if (result.ok) elevenLabsInput = ""
             },
             onDisconnect = {
                 val result = ProviderCredentialActions.clearElevenLabs(context, bridge)
                 elevenLabsResult = result
+                elevenLabsValidationResult = null
                 hasElevenLabsKey = ProviderCredentialStore.hasElevenLabsApiKey(context)
                 if (result.ok) elevenLabsInput = ""
+            },
+            validationResult = elevenLabsValidationResult,
+            isValidating = isValidatingElevenLabs,
+            onValidate = {
+                scope.launch {
+                    isValidatingElevenLabs = true
+                    elevenLabsValidationResult = null
+                    ProviderCredentialActions.reloadProviderApiKeys(context, bridge)
+                    elevenLabsValidationResult = runCatching {
+                        ElevenLabsKeyValidationService.validateStoredKey(bridge)
+                    }.fold(
+                        onSuccess = { ProviderCredentialActionResult(true, it.summary) },
+                        onFailure = {
+                            ProviderCredentialActionResult(
+                                false,
+                                it.message ?: "ElevenLabs key could not be validated.",
+                            )
+                        },
+                    )
+                    isValidatingElevenLabs = false
+                }
             },
         )
         AssemblyAiCredentialCard(

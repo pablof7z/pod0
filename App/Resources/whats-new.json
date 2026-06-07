@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-07T16:58:04Z",
+      "lines": [
+        "ElevenLabs key validation in Settings now uses the shared backend, matching provider setup errors across iPhone, Android, and the terminal app."
+      ]
+    },
+    {
       "shipped_at": "2026-06-07T16:36:39Z",
       "lines": [
         "Episode Diagnostics can now retry OpenRouter Whisper transcription and show the backend's setup error instead of hiding the option when no key is configured."

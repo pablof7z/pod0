@@ -105,7 +105,9 @@ pub use download_report::nmp_app_podcast_download_report;
 pub use episode_events::nmp_app_podcast_episode_events;
 pub use provider_complete::nmp_app_podcast_provider_complete;
 pub use provider_embeddings::nmp_app_podcast_provider_embed;
-pub use provider_key_validation::nmp_app_podcast_validate_openrouter_key;
+pub use provider_key_validation::{
+    nmp_app_podcast_validate_elevenlabs_key, nmp_app_podcast_validate_openrouter_key,
+};
 pub use provider_model_catalog::nmp_app_podcast_provider_model_catalog;
 pub use handle::PodcastHandle;
 pub use image_generation::nmp_app_podcast_generate_image;

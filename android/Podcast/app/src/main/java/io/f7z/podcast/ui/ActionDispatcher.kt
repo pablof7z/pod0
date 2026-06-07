@@ -368,6 +368,7 @@ data class SetElevenLabsVoicePayload(
 data class SetProviderApiKeysPayload(
     @SerialName("open_router") val openRouter: String? = null,
     val ollama: String? = null,
+    @SerialName("eleven_labs") val elevenLabs: String? = null,
     val op: String = "set_provider_api_keys",
 )
 

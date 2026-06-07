@@ -280,9 +280,13 @@ impl PodcastHostOpHandler {
                 self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 serde_json::json!({"ok": true})
             }
-            SettingsAction::SetProviderApiKeys { open_router, ollama } => {
+            SettingsAction::SetProviderApiKeys {
+                open_router,
+                ollama,
+                eleven_labs,
+            } => {
                 if let Ok(mut s) = self.store.lock() {
-                    s.set_provider_api_keys(open_router, ollama);
+                    s.set_provider_api_keys(open_router, ollama, eleven_labs);
                 }
                 serde_json::json!({"ok": true})
             }

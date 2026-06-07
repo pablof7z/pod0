@@ -167,6 +167,7 @@ impl AppRuntime {
         &self,
         open_router: Option<String>,
         ollama: Option<String>,
+        eleven_labs: Option<String>,
     ) -> Result<String> {
         self.dispatch_action_value(
             "podcast.settings",
@@ -174,6 +175,7 @@ impl AppRuntime {
                 "op": "set_provider_api_keys",
                 "open_router": open_router,
                 "ollama": ollama,
+                "eleven_labs": eleven_labs,
             }),
         )
     }

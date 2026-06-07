@@ -295,6 +295,9 @@ pub struct PodcastStore {
     /// Ollama API key (in-memory only, never persisted to disk).
     /// Set via `set_provider_api_keys`; credential never touches disk.
     ollama_api_key: Option<String>,
+    /// ElevenLabs API key (in-memory only, never persisted to disk).
+    /// Set via `set_provider_api_keys`; credential never touches disk.
+    eleven_labs_api_key: Option<String>,
 }
 
 impl PodcastStore {
@@ -384,6 +387,7 @@ impl PodcastStore {
             cached_queue: Vec::new(),
             open_router_api_key: None,
             ollama_api_key: None,
+            eleven_labs_api_key: None,
         }
     }
 

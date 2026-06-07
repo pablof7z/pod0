@@ -370,9 +370,10 @@ impl ProviderSettingItem {
 pub(crate) fn load_env_credentials(runtime: &AppRuntime) -> Result<String> {
     let open_router = env_key("OPENROUTER_API_KEY");
     let ollama = env_key("OLLAMA_API_KEY");
+    let eleven_labs = env_key("ELEVENLABS_API_KEY");
 
     let mut stt = Vec::new();
-    if env_key("ELEVENLABS_API_KEY").is_some() {
+    if eleven_labs.is_some() {
         stt.push("elevenlabs_scribe".to_owned());
     }
     if env_key("ASSEMBLYAI_API_KEY").is_some() {
@@ -388,7 +389,7 @@ pub(crate) fn load_env_credentials(runtime: &AppRuntime) -> Result<String> {
         );
     }
 
-    runtime.set_provider_api_keys(open_router.clone(), ollama.clone())?;
+    runtime.set_provider_api_keys(open_router.clone(), ollama.clone(), eleven_labs.clone())?;
     runtime.set_stt_keys_present(stt)?;
     Ok(format!(
         "env credentials loaded ({})",

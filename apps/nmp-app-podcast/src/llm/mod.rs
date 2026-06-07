@@ -6,6 +6,7 @@
 //! for a single async turn.
 
 pub mod backend;
+pub mod elevenlabs_key_validation;
 pub mod factory;
 pub mod image_generation;
 pub mod local_model_backend;

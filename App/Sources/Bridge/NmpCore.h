@@ -269,6 +269,12 @@ char *nmp_app_podcast_provider_model_catalog(void *handle);
 // Threading: this call BLOCKS; call from a background thread / detached Task.
 char *nmp_app_podcast_validate_openrouter_key(void *handle);
 
+// Shared ElevenLabs `/v1/user` validation using mirrored provider credentials.
+// Returns {"result":...} or {"error":{"kind":"...","message":"..."}}.
+// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// Threading: this call BLOCKS; call from a background thread / detached Task.
+char *nmp_app_podcast_validate_elevenlabs_key(void *handle);
+
 // Shared OpenRouter Whisper speech-to-text transport. Swift passes a typed
 // intent JSON:
 //   {"audio_url":"file:///.../episode.mp3","language_hint":"en"?}

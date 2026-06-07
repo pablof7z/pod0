@@ -100,7 +100,7 @@ pub use ffi::{
     nmp_app_podcast_set_data_dir, nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free,
     nmp_app_podcast_snapshot_rev,
     nmp_app_podcast_unregister, nmp_app_podcast_voice_report, PodcastHandle,
-    nmp_app_podcast_validate_openrouter_key,
+    nmp_app_podcast_validate_elevenlabs_key, nmp_app_podcast_validate_openrouter_key,
 };
 pub use nmp_ffi::{
     nmp_app_cancel_bunker_handshake, nmp_app_nostrconnect_uri, nmp_broker_free_string,

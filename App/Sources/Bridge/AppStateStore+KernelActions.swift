@@ -487,9 +487,9 @@ extension AppStateStore {
 
     // MARK: - LLM provider credentials (podcast.settings namespace)
 
-    /// Push the current LLM provider API keys into the Rust kernel so
-    /// `PodcastStore::open_router_api_key()` / `ollama_api_key()` return live
-    /// values. Called on kernel attach and after every key save/delete.
+    /// Push the current provider API keys into the Rust kernel so provider
+    /// transport reads live values from the shared in-memory cache. Called on
+    /// kernel attach and after every key save/delete.
     /// Rust can't read the Keychain directly — this is the only delivery path.
     func kernelSetProviderApiKeys() {
         var body: [String: Any] = ["op": "set_provider_api_keys"]
@@ -500,9 +500,12 @@ extension AppStateStore {
             if let key = try OllamaCredentialStore.apiKey() {
                 body["ollama"] = key
             }
+            if let key = try ElevenLabsCredentialStore.apiKey() {
+                body["eleven_labs"] = key
+            }
         } catch {
             os_log(.error, log: OSLog(subsystem: "io.f7z.podcast", category: "AppStateStore"),
-                   "Failed to resolve LLM credentials for kernel: %{public}@", error.localizedDescription)
+                   "Failed to resolve provider credentials for kernel: %{public}@", error.localizedDescription)
         }
         kernel?.dispatch(namespace: "podcast.settings", body: body)
     }

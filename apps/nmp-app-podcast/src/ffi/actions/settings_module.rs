@@ -145,11 +145,12 @@ pub enum SettingsAction {
     /// role of an existing row), so this emits `ActorCommand::AddRelay` with
     /// the new role, exactly like `AddRelay`.
     SetRelayRole { url: String, role: String },
-    /// Set both OpenRouter and Ollama API keys in-memory. In-memory only;
-    /// these keys never touch disk. No projection consumes this action.
+    /// Set provider API keys in-memory. In-memory only; these keys never
+    /// touch disk. No projection consumes this action.
     SetProviderApiKeys {
         open_router: Option<String>,
         ollama: Option<String>,
+        eleven_labs: Option<String>,
     },
 }
 

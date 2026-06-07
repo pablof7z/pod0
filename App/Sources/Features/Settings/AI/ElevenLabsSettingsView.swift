@@ -156,7 +156,9 @@ struct ElevenLabsSettingsView: View {
         hasStoredKey = ElevenLabsCredentialStore.hasAPIKey()
         if !hasStoredKey { keyInfo = nil }
         // Re-report STT key presence so the kernel's STT fallback policy
-        // recomputes `settings.effectiveSttProvider` after a save/delete.
+        // recomputes `settings.effectiveSttProvider` after a save/delete, and
+        // re-push provider keys so shared Rust transports read live credentials.
+        store.kernelSetProviderApiKeys()
         store.syncSTTKeysPresent()
     }
 
@@ -168,11 +170,8 @@ struct ElevenLabsSettingsView: View {
         defer { isValidatingKey = false }
 
         do {
-            guard let apiKey = try ElevenLabsCredentialStore.apiKey() else {
-                credentialError = "No stored key found."
-                return
-            }
-            keyInfo = try await validationService.validate(apiKey: apiKey)
+            store.kernelSetProviderApiKeys()
+            keyInfo = try await validationService.validateStoredKey()
             Haptics.success()
         } catch {
             credentialError = error.localizedDescription

@@ -9,7 +9,8 @@ Platform shells own:
 
 - Credential capture and secret storage in their platform-native secure store.
 - Delivery of live API keys to Rust through the existing in-memory settings
-  action (`podcast.settings`, `set_provider_api_keys`).
+  action (`podcast.settings`, `set_provider_api_keys`) for OpenRouter, Ollama,
+  and ElevenLabs.
 - Model-selection UI and display labels.
 - Rendering, keyboard/touch interaction, local files, audio, downloads, and
   other platform capabilities.
@@ -26,28 +27,33 @@ The shared Rust backend owns:
 - Agent task intent resolution and dispatch payload construction.
 
 Platform code must not construct OpenRouter or Ollama chat/embedding request
-bodies, OpenRouter speech-to-text multipart requests, provider URLs,
-provider-specific auth headers, or raw backend task namespace/body JSON for
-normal user workflows.
+bodies, OpenRouter speech-to-text multipart requests, ElevenLabs validation
+requests, provider URLs, provider-specific auth headers, or raw backend task
+namespace/body JSON for normal user workflows.
 
 ## Provider Transport
 
 Current shared Rust provider entry points cover agent chat through
 `nmp_app_podcast_chat_complete`, provider-blind single-turn completions through
 `nmp_app_podcast_provider_complete`, embeddings through
-`nmp_app_podcast_provider_embed`, OpenRouter key validation, provider model
-catalog discovery, image generation, reranking, and OpenRouter Whisper/STT.
+`nmp_app_podcast_provider_embed`, OpenRouter and ElevenLabs key validation,
+provider model catalog discovery, image generation, reranking, and OpenRouter
+Whisper/STT.
 Swift live wiki/title/categorization/chapter/clip completion callers now route
 through `WikiOpenRouterClient` without preflighting Keychain keys, so missing
 provider credentials are reported by Rust. Swift OpenRouter settings validation
 also calls the shared validator directly, leaving missing-key handling to Rust.
 Swift Episode Diagnostics now exposes forced OpenRouter Whisper retry without a
 Keychain preflight so the shared Rust STT transport reports setup/provider
-errors. ElevenLabs and AssemblyAI STT retries remain Swift-key-gated until their
-transports are shared.
+errors. Swift ElevenLabs settings validation now calls the shared Rust
+validator, leaving `/v1/user` URL/header/response parsing in Rust. ElevenLabs
+and AssemblyAI STT retries remain Swift-key-gated until their transports are
+shared.
 Android mirrors the shared STT/ElevenLabs settings projection, stores
 ElevenLabs/AssemblyAI keys in encrypted host storage, reports STT key presence
-to Rust, and updates STT/TTS/voice selections through typed settings actions.
+to Rust, reloads ElevenLabs into the shared provider-key cache, calls shared
+Rust ElevenLabs validation through JNI, and updates STT/TTS/voice selections
+through typed settings actions.
 
 Immediate targets:
 

@@ -115,6 +115,9 @@ fun ElevenLabsCredentialCard(
     onInputChanged: (String) -> Unit,
     onSave: () -> Unit,
     onDisconnect: () -> Unit,
+    validationResult: ProviderCredentialActionResult?,
+    isValidating: Boolean,
+    onValidate: () -> Unit,
 ) {
     CredentialCard(
         title = "ElevenLabs",
@@ -126,7 +129,20 @@ fun ElevenLabsCredentialCard(
         onInputChanged = onInputChanged,
         onSave = onSave,
         onDisconnect = onDisconnect,
-    )
+    ) {
+        if (hasStoredKey) {
+            HorizontalDivider()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                OutlinedButton(onClick = onValidate, enabled = !isValidating) {
+                    Text(if (isValidating) "Validating" else "Validate key")
+                }
+            }
+            ResultText(validationResult)
+        }
+    }
 }
 
 @Composable

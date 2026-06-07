@@ -30,6 +30,7 @@ object ProviderCredentialActions {
             payload = SetProviderApiKeysPayload(
                 openRouter = ProviderCredentialStore.loadOpenRouterApiKey(context),
                 ollama = ProviderCredentialStore.loadOllamaApiKey(context),
+                elevenLabs = ProviderCredentialStore.loadElevenLabsApiKey(context),
             ),
         )
 
@@ -158,8 +159,9 @@ object ProviderCredentialActions {
                 connectedAt = epochSeconds(),
             ),
         )
+        val reload = reloadProviderApiKeys(context, bridge)
         val stt = syncSttKeysPresent(context, bridge)
-        return if (metadata != null && stt != null) {
+        return if (metadata != null && reload != null && stt != null) {
             ProviderCredentialActionResult(true, "ElevenLabs connected.")
         } else {
             ProviderCredentialActionResult(false, "ElevenLabs key saved, but provider state did not update.")
@@ -178,8 +180,9 @@ object ProviderCredentialActions {
             namespace = PodcastNamespace.SETTINGS,
             payload = SetElevenLabsCredentialPayload(source = SOURCE_NONE),
         )
+        val reload = reloadProviderApiKeys(context, bridge)
         val stt = syncSttKeysPresent(context, bridge)
-        return if (metadata != null && stt != null) {
+        return if (metadata != null && reload != null && stt != null) {
             ProviderCredentialActionResult(true, "ElevenLabs disconnected.")
         } else {
             ProviderCredentialActionResult(false, "ElevenLabs key deleted, but provider state did not update.")
