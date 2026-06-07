@@ -9,35 +9,11 @@ import os.log
 /// response parsing.
 public actor PerplexityClient: PerplexityClientProtocol {
 
-    // MARK: - Legacy aliases
-
-    /// Legacy alias; new code should go through `PerplexityCredentialStore`.
-    public static let keychainService: String = PerplexityCredentialStore.service
-    /// Legacy alias; new code should go through `PerplexityCredentialStore`.
-    public static let keychainAccount: String = PerplexityCredentialStore.account
-
-    /// Legacy direct endpoint alias. Search transport is Rust-owned.
-    public static let defaultEndpoint = URL(string: "https://api.perplexity.ai/chat/completions")!
-    /// Legacy direct model alias. Search transport is Rust-owned.
-    public static let defaultModel = "sonar"
-    /// Legacy OpenRouter endpoint alias. Search transport is Rust-owned.
-    public static let openRouterEndpoint = URL(string: "https://openrouter.ai/api/v1/chat/completions")!
-    /// Perplexity model identifier as used on OpenRouter.
-    public static let openRouterModel = "perplexity/sonar"
-
     private static let encoder = JSONEncoder()
     private static let decoder = JSONDecoder()
     private let logger = Logger.app("PerplexityClient")
 
-    public init(
-        endpoint: URL = PerplexityClient.defaultEndpoint,
-        model: String = PerplexityClient.defaultModel,
-        session: URLSession = .shared
-    ) {
-        _ = endpoint
-        _ = model
-        _ = session
-    }
+    public init() {}
 
     // MARK: - PerplexityClientProtocol
 

@@ -36,9 +36,6 @@ final class TranscriptIngestService {
     private let appleSTT: AppleNativeSTTClient
     private let chunkBuilder: ChunkBuilder
     private let store: TranscriptStore
-    private let elevenLabsKey: @Sendable () -> String?
-    private let openRouterKey: @Sendable () -> String?
-    private let assemblyAIKey: @Sendable () -> String?
 
     // MARK: In-flight tracking (dedup)
 
@@ -54,16 +51,7 @@ final class TranscriptIngestService {
         assemblyAI: AssemblyAITranscriptClient = AssemblyAITranscriptClient(),
         appleSTT: AppleNativeSTTClient = AppleNativeSTTClient(),
         chunkBuilder: ChunkBuilder = ChunkBuilder(),
-        store: TranscriptStore = .shared,
-        elevenLabsKey: @escaping @Sendable () -> String? = {
-            (try? ElevenLabsCredentialStore.apiKey()).flatMap { $0.isEmpty ? nil : $0 }
-        },
-        openRouterKey: @escaping @Sendable () -> String? = {
-            (try? OpenRouterCredentialStore.apiKey()).flatMap { $0.isEmpty ? nil : $0 }
-        },
-        assemblyAIKey: @escaping @Sendable () -> String? = {
-            (try? AssemblyAICredentialStore.apiKey()).flatMap { $0.isEmpty ? nil : $0 }
-        }
+        store: TranscriptStore = .shared
     ) {
         self.rag = rag
         self.ingestor = ingestor
@@ -73,14 +61,7 @@ final class TranscriptIngestService {
         self.appleSTT = appleSTT
         self.chunkBuilder = chunkBuilder
         self.store = store
-        self.elevenLabsKey = elevenLabsKey
-        self.openRouterKey = openRouterKey
-        self.assemblyAIKey = assemblyAIKey
     }
-
-    func resolvedElevenLabsKey() -> String? { elevenLabsKey() }
-    func resolvedOpenRouterKey() -> String? { openRouterKey() }
-    func resolvedAssemblyAIKey() -> String? { assemblyAIKey() }
 
     // MARK: Public API
 

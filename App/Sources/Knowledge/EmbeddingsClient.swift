@@ -22,15 +22,9 @@ struct OpenRouterEmbeddingsClient: EmbeddingsClient {
     private let dimensions: Int
 
     init(
-        apiKeyProvider: @Sendable @escaping () throws -> String? = { try OpenRouterCredentialStore.apiKey() },
         model: String = OpenRouterEmbeddingsClient.defaultModel,
-        dimensions: Int = OpenRouterEmbeddingsClient.defaultDimensions,
-        session: URLSession = .shared,
-        timeout: TimeInterval = 30
+        dimensions: Int = OpenRouterEmbeddingsClient.defaultDimensions
     ) {
-        _ = apiKeyProvider
-        _ = session
-        _ = timeout
         self.model = model
         self.dimensions = dimensions
     }

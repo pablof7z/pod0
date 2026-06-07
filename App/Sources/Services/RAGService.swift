@@ -113,14 +113,6 @@ final class RAGService {
             }
         }
 
-        // Probe provider keys once so devs see a clear "no key" log line
-        // instead of waiting for the first failed embed.
-        if !OpenRouterCredentialStore.hasAPIKey() && !OllamaCredentialStore.hasAPIKey() {
-            Self.logger.warning(
-                "No LLM provider key configured — RAG queries will return [] until the user adds one."
-            )
-        }
-
         self.index = openedIndex
         self.embedder = embedder
         self.providerEmbedder = embedder
