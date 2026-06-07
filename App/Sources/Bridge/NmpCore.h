@@ -238,6 +238,22 @@ char *nmp_app_podcast_episode_events(void *handle, const char *episode_id);
 // completes. Swift MUST call it from a background thread / detached Task.
 char *nmp_app_podcast_chat_complete(void *handle, const char *messages_json);
 
+// Generic provider transport for non-agent one-turn completions. Swift passes a
+// provider/model/prompt intent JSON; Rust owns provider URLs, headers, request
+// bodies, credential lookup, and response decoding. Response:
+//   {"result":{"text":"...","provider":"...","model":"...","latency_ms":0,
+//              "usage":{...}?,"prompt_tokens":0,"completion_tokens":0}}
+// or {"error":"..."}.
+char *nmp_app_podcast_provider_complete(void *handle, const char *intent_json);
+
+// Generic provider transport for embeddings. Swift passes provider/model/input
+// intent JSON; Rust owns OpenRouter/Ollama embedding request shaping.
+// Response:
+//   {"result":{"embeddings":[[...]],"provider":"...","model":"...",
+//              "latency_ms":0,"usage":{...}?,"prompt_tokens":0}}
+// or {"error":"..."}.
+char *nmp_app_podcast_provider_embed(void *handle, const char *intent_json);
+
 // ── Local LLM registration ──────────────────────────────────────────────
 //
 // Register a local LLM backend callback. The callback receives a context pointer

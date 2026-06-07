@@ -1,16 +1,4 @@
 import Foundation
-import os.log
-
-// Lane 6 — RAG: OpenRouter embeddings client.
-//
-// Calls `POST https://openrouter.ai/api/v1/embeddings` (OpenAI-compatible
-// schema) with model `openai/text-embedding-3-large` at 1024 dimensions
-// (Matryoshka truncation — see `docs/spec/research/embeddings-rag-stack.md`).
-// Authentication uses the existing `OpenRouterCredentialStore`.
-//
-// Batching: OpenAI's hard limit is 2048 inputs per request, but OpenRouter
-// docs and downstream providers vary; we cap at 100 to stay well clear of
-// payload-size and provider-specific limits, and to keep latency predictable.
 
 /// Anything that can turn texts into vectors. The protocol stays minimal so
 /// `VectorIndex` can be tested with a synthetic embedder if we ever wire up
@@ -22,30 +10,16 @@ protocol EmbeddingsClient: Sendable {
     func embed(_ texts: [String]) async throws -> [[Float]]
 }
 
-// MARK: - OpenRouter implementation
+// MARK: - OpenRouter compatibility wrapper
 
+/// OpenRouter embeddings routed through Rust shared provider transport.
 struct OpenRouterEmbeddingsClient: EmbeddingsClient {
     static let defaultModel = "openai/text-embedding-3-large"
     static let defaultDimensions = 1024
     static let maxBatchSize = 100
 
-    private static let logger = Logger.app("OpenRouterEmbeddingsClient")
-    private static let endpoint = URL(string: "https://openrouter.ai/api/v1/embeddings")!
-    private static let xTitle = "Podcastr"
-
-    /// Shared encoder/decoder. Each batch in `embedBatch` was minting
-    /// one encoder + two decoders, and a full transcript ingest spends
-    /// dozens of batches — that's a lot of Foundation allocator
-    /// pressure on an already-network-bound path. Both types are
-    /// reentrant for `encode` / `decode` after construction.
-    private static let encoder = JSONEncoder()
-    private static let decoder = JSONDecoder()
-
-    private let apiKeyProvider: @Sendable () throws -> String?
     private let model: String
     private let dimensions: Int
-    private let session: URLSession
-    private let timeout: TimeInterval
 
     init(
         apiKeyProvider: @Sendable @escaping () throws -> String? = { try OpenRouterCredentialStore.apiKey() },
@@ -54,125 +28,23 @@ struct OpenRouterEmbeddingsClient: EmbeddingsClient {
         session: URLSession = .shared,
         timeout: TimeInterval = 30
     ) {
-        self.apiKeyProvider = apiKeyProvider
+        _ = apiKeyProvider
+        _ = session
+        _ = timeout
         self.model = model
         self.dimensions = dimensions
-        self.session = session
-        self.timeout = timeout
     }
 
     func embed(_ texts: [String]) async throws -> [[Float]] {
-        guard !texts.isEmpty else { return [] }
-        guard let apiKey = try apiKeyProvider(), !apiKey.isEmpty else {
-            throw EmbeddingsError.missingAPIKey
-        }
-
-        // Slice into batches and reassemble in input order. Sequential
-        // execution keeps this simple and avoids saturating the rate-limit
-        // budget; concurrent batches can be added later if ingest latency
-        // proves to be a bottleneck.
-        var output: [[Float]] = []
-        output.reserveCapacity(texts.count)
-        for batch in texts.batched(by: Self.maxBatchSize) {
-            let vectors = try await embedBatch(batch, apiKey: apiKey)
-            guard vectors.count == batch.count else {
-                throw EmbeddingsError.shapeMismatch(
-                    expected: batch.count, got: vectors.count)
-            }
-            output.append(contentsOf: vectors)
-        }
-        return output
-    }
-
-    // MARK: - Single batch
-
-    private func embedBatch(_ batch: [String], apiKey: String) async throws -> [[Float]] {
-        var req = URLRequest(url: Self.endpoint, timeoutInterval: timeout)
-        req.httpMethod = "POST"
-        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.setValue(Self.xTitle, forHTTPHeaderField: "X-Title")
-
-        let payload = RequestPayload(
+        try await RustProviderEmbeddingsClient(
+            provider: .openRouter,
             model: model,
-            input: batch,
-            dimensions: dimensions
+            dimensions: dimensions,
+            expectedDimensions: dimensions,
+            feature: CostFeature.embeddingsOpenRouter,
+            maxBatchSize: Self.maxBatchSize
         )
-        let bodyData = try Self.encoder.encode(payload)
-        req.httpBody = bodyData
-        let requestPayloadJSON = String(data: bodyData, encoding: .utf8)
-
-        let start = Date()
-        let (data, response) = try await session.data(for: req)
-        let latencyMs = Int(Date().timeIntervalSince(start) * 1000)
-
-        guard let http = response as? HTTPURLResponse else {
-            throw EmbeddingsError.transport(detail: "no HTTPURLResponse")
-        }
-        switch http.statusCode {
-        case 200..<300:
-            break
-        case 401, 403:
-            throw EmbeddingsError.unauthorized
-        case 429:
-            throw EmbeddingsError.rateLimited
-        default:
-            let body = String(data: data, encoding: .utf8) ?? "<binary>"
-            Self.logger.warning("OpenRouter embeddings HTTP \(http.statusCode, privacy: .public): \(body, privacy: .public)")
-            throw EmbeddingsError.serverError(statusCode: http.statusCode)
-        }
-
-        let decoded: ResponsePayload
-        do {
-            decoded = try Self.decoder.decode(ResponsePayload.self, from: data)
-        } catch {
-            Self.logger.error("OpenRouter embeddings decode failed: \(error, privacy: .public)")
-            throw EmbeddingsError.decoding
-        }
-
-        if let usage = decoded.usage {
-            // `decoded` already carries `model` + `usage` via the typed
-            // `ResponsePayload` — the previous shape re-parsed `data`
-            // through `JSONSerialization` to fish them out, which
-            // allocated a `[String: Any]` dictionary plus a follow-up
-            // `JSONSerialization.data` + `JSONDecoder` round-trip per
-            // batch. One typed parse is enough.
-            let modelUsed = decoded.model ?? model
-            let preview = "embed: \(batch.count) input(s)"
-            Task { @MainActor in
-                CostLedger.shared.log(
-                    feature: CostFeature.embeddingsOpenRouter,
-                    model: modelUsed,
-                    usage: usage,
-                    latencyMs: latencyMs,
-                    requestPayloadJSON: requestPayloadJSON,
-                    responseContentPreview: preview
-                )
-            }
-        }
-
-        // Provider-side ordering is guaranteed by OpenAI-compatible schema
-        // via the `index` field, but always defensively re-sort.
-        let ordered = decoded.data.sorted { $0.index < $1.index }
-        return ordered.map(\.embedding)
-    }
-
-    // MARK: - DTOs
-
-    private struct RequestPayload: Encodable {
-        let model: String
-        let input: [String]
-        let dimensions: Int
-    }
-
-    private struct ResponsePayload: Decodable {
-        let data: [Item]
-        let model: String?
-        let usage: OpenRouterUsagePayload?
-        struct Item: Decodable {
-            let index: Int
-            let embedding: [Float]
-        }
+        .embed(texts)
     }
 }
 

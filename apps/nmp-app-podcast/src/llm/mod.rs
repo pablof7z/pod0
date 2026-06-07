@@ -10,6 +10,7 @@ pub mod factory;
 pub mod local_model_backend;
 pub mod ollama_backend;
 pub mod openrouter_backend;
+pub mod provider_transport;
 
 pub use backend::{LlmBackend, LlmError, LlmRequest};
 pub use factory::{backend_for, role_model_or_default, validate_model_credentials};

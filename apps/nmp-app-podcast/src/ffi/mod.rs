@@ -34,6 +34,8 @@ mod chat_complete;
 mod audio_report;
 mod data_dir;
 mod download_report;
+mod provider_complete;
+mod provider_embeddings;
 pub(crate) mod handle;
 mod helpers;
 mod local_llm;
@@ -96,6 +98,8 @@ pub use chat_complete::nmp_app_podcast_chat_complete;
 pub use data_dir::nmp_app_podcast_set_data_dir;
 pub use download_report::nmp_app_podcast_download_report;
 pub use episode_events::nmp_app_podcast_episode_events;
+pub use provider_complete::nmp_app_podcast_provider_complete;
+pub use provider_embeddings::nmp_app_podcast_provider_embed;
 pub use handle::PodcastHandle;
 pub use projections::{
     AccountSummary, AgentMessageSummary, AgentPickSummary, AgentSnapshot, AgentTaskSummary,

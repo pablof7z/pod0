@@ -2,30 +2,14 @@ import Foundation
 
 // MARK: - Wiki LLM client
 
-/// Stripped-down provider client tuned for the wiki
-/// compile pipeline.
-///
-/// Differs from `AgentLLMClient` (which calls the Rust provider-blind
-/// backend and supports tool calls) on purpose:
-///   • Compile turns are non-interactive — no streaming UI required.
-///   • The response is forced to a single JSON object via
-///     `response_format: { "type": "json_object" }`.
-///   • There are no tool calls — the only side effect is the synthesis.
-///
-/// `Agent/` is intentionally untouched; we duplicate the small request
-/// scaffolding rather than couple the wiki pipeline to the agent loop.
-///
-/// All real network calls are gated behind the `live` initialiser.
-/// The `stubbed` initialiser returns deterministic fixture JSON so the
-/// generator pipeline is exercisable in tests and previews without an
-/// API key (lane 7's "real LLM calls are stubbed" constraint).
+/// Stripped-down provider client tuned for JSON-shaped wiki compile turns.
+/// Live calls go through Rust provider transport; Swift only sends provider,
+/// model, prompt, and response-format intent. Stub mode stays deterministic for
+/// tests and previews.
 struct WikiOpenRouterClient: Sendable {
 
-    /// Shared decoder for the per-call `OpenRouterUsagePayload` parse —
-    /// the previous shape allocated one per wiki compile, on top of the
-    /// already-expensive LLM round-trip. Tiny win individually; matches
-    /// the pattern other clients in the codebase already follow.
-    private static let usageDecoder = JSONDecoder()
+    private static let encoder = JSONEncoder()
+    private static let decoder = JSONDecoder()
 
 
     // MARK: - Modes
@@ -40,25 +24,19 @@ struct WikiOpenRouterClient: Sendable {
     }
 
     let mode: Mode
-    let urlSession: URLSession
-    let endpoint: URL
-    let ollamaEndpoint: URL
-
-    static let defaultEndpoint = URL(string: "https://openrouter.ai/api/v1/chat/completions")!
-    static let defaultOllamaEndpoint = URL(string: "https://ollama.com/api/chat")!
 
     // MARK: - Init
 
     init(
         mode: Mode,
-        endpoint: URL = WikiOpenRouterClient.defaultEndpoint,
-        ollamaEndpoint: URL = WikiOpenRouterClient.defaultOllamaEndpoint,
+        endpoint: URL? = nil,
+        ollamaEndpoint: URL? = nil,
         urlSession: URLSession = .shared
     ) {
+        _ = endpoint
+        _ = ollamaEndpoint
+        _ = urlSession
         self.mode = mode
-        self.endpoint = endpoint
-        self.ollamaEndpoint = ollamaEndpoint
-        self.urlSession = urlSession
     }
 
     // MARK: - Convenience constructors
@@ -110,167 +88,113 @@ struct WikiOpenRouterClient: Sendable {
         apiKey: String?,
         modelReference: LLMModelReference
     ) async throws -> String {
-        let resolvedKey: String
-        if let apiKey, !apiKey.isEmpty {
-            resolvedKey = apiKey
-        } else if let key = try LLMProviderCredentialResolver.apiKey(for: modelReference.provider), !key.isEmpty {
-            resolvedKey = key
-        } else {
+        _ = apiKey
+        guard modelReference.provider != .local else {
             throw WikiClientError.missingCredential(provider: modelReference.provider.displayName)
         }
 
-        switch modelReference.provider {
-        case .openRouter:
-            return try await compileOpenRouter(
-                systemPrompt: systemPrompt,
-                userPrompt: userPrompt,
-                feature: feature,
-                apiKey: resolvedKey,
-                model: modelReference.modelID
-            )
-        case .ollama:
-            return try await compileOllama(
-                systemPrompt: systemPrompt,
-                userPrompt: userPrompt,
-                feature: feature,
-                apiKey: resolvedKey,
-                model: modelReference.modelID
-            )
-        case .local:
-            // Wiki compilation uses cloud HTTP providers; on-device local
-            // models are not wired into this path.
-            throw WikiClientError.missingCredential(provider: modelReference.provider.displayName)
-        }
-    }
-
-    private func compileOpenRouter(
-        systemPrompt: String,
-        userPrompt: String,
-        feature: String,
-        apiKey: String,
-        model: String
-    ) async throws -> String {
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 60
-
-        let body: [String: Any] = [
-            "model": model,
-            "messages": [
-                ["role": "system", "content": systemPrompt],
-                ["role": "user", "content": userPrompt],
-            ],
-            "response_format": ["type": "json_object"],
-            "stream": false,
-        ]
-        let bodyData = try JSONSerialization.data(withJSONObject: body)
-        request.httpBody = bodyData
-        let requestPayloadJSON = String(data: bodyData, encoding: .utf8)
-
-        let start = Date()
-        let (data, response) = try await urlSession.data(for: request)
-        let latencyMs = Int(Date().timeIntervalSince(start) * 1000)
-
-        guard let http = response as? HTTPURLResponse else {
-            throw WikiClientError.malformedResponse
-        }
-        guard (200..<300).contains(http.statusCode) else {
-            let bodyString = String(data: data, encoding: .utf8) ?? ""
-            throw WikiClientError.httpError(status: http.statusCode, body: bodyString)
-        }
-
-        guard
-            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let choices = json["choices"] as? [[String: Any]],
-            let message = choices.first?["message"] as? [String: Any],
-            let content = message["content"] as? String
-        else {
+        guard let handleBits = await MainActor.run(body: {
+            KernelModel.shared?.podcastHandlePointer.map { Int(bitPattern: $0) }
+        }) else {
             throw WikiClientError.malformedResponse
         }
 
-        if let usageRaw = json["usage"] {
-            let usageData = try? JSONSerialization.data(withJSONObject: usageRaw)
-            let usage = usageData.flatMap { try? Self.usageDecoder.decode(OpenRouterUsagePayload.self, from: $0) }
-            let modelUsed = (json["model"] as? String) ?? model
-            Task { @MainActor in
+        let intent = ProviderCompletionIntent(
+            provider: modelReference.provider.rawValue,
+            model: modelReference.modelID,
+            system: systemPrompt,
+            user: userPrompt,
+            responseFormat: "json_object"
+        )
+        let intentJSON = try Self.encoder.encode(intent)
+        guard let intentString = String(data: intentJSON, encoding: .utf8) else {
+            throw WikiClientError.malformedResponse
+        }
+        let responseJSON = await Task.detached(priority: .userInitiated) {
+            guard let handle = UnsafeMutableRawPointer(bitPattern: handleBits) else {
+                return #"{"error":"Kernel handle unavailable"}"#
+            }
+            return intentString.withCString { intentPtr in
+                guard let ptr = nmp_app_podcast_provider_complete(handle, intentPtr) else {
+                    return #"{"error":"null response from Rust"}"#
+                }
+                defer { nmp_app_free_string(ptr) }
+                return String(cString: ptr)
+            }
+        }.value
+
+        guard let responseData = responseJSON.data(using: .utf8) else {
+            throw WikiClientError.malformedResponse
+        }
+        let envelope = try Self.decoder.decode(ProviderCompletionEnvelope.self, from: responseData)
+        if let error = envelope.error {
+            throw WikiClientError.providerError(error)
+        }
+        guard let result = envelope.result else { throw WikiClientError.malformedResponse }
+
+        Task { @MainActor in
+            let requestPreview = String(data: intentJSON, encoding: .utf8)
+            switch modelReference.provider {
+            case .openRouter:
                 CostLedger.shared.log(
                     feature: feature,
-                    model: modelUsed,
-                    usage: usage,
-                    latencyMs: latencyMs,
-                    requestPayloadJSON: requestPayloadJSON,
-                    responseContentPreview: content
+                    model: result.model,
+                    usage: result.usage,
+                    latencyMs: result.latencyMs,
+                    requestPayloadJSON: requestPreview,
+                    responseContentPreview: result.text
                 )
+            case .ollama:
+                CostLedger.shared.logOllama(
+                    feature: feature,
+                    model: result.model,
+                    promptTokens: result.promptTokens,
+                    completionTokens: result.completionTokens,
+                    latencyMs: result.latencyMs,
+                    requestPayloadJSON: requestPreview,
+                    responseContentPreview: result.text
+                )
+            case .local:
+                break
             }
         }
 
-        return content
+        return result.text
     }
 
-    private func compileOllama(
-        systemPrompt: String,
-        userPrompt: String,
-        feature: String,
-        apiKey: String,
-        model: String
-    ) async throws -> String {
-        var request = URLRequest(url: ollamaEndpoint)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 60
+    private struct ProviderCompletionIntent: Encodable {
+        let provider: String
+        let model: String
+        let system: String
+        let user: String
+        let responseFormat: String
 
-        let body: [String: Any] = [
-            "model": model,
-            "messages": [
-                ["role": "system", "content": systemPrompt],
-                ["role": "user", "content": userPrompt],
-            ],
-            "format": "json",
-            "stream": false,
-        ]
-        let bodyData = try JSONSerialization.data(withJSONObject: body)
-        request.httpBody = bodyData
-        let requestPayloadJSON = String(data: bodyData, encoding: .utf8)
-
-        let start = Date()
-        let (data, response) = try await urlSession.data(for: request)
-        let latencyMs = Int(Date().timeIntervalSince(start) * 1000)
-
-        guard let http = response as? HTTPURLResponse else {
-            throw WikiClientError.malformedResponse
+        private enum CodingKeys: String, CodingKey {
+            case provider, model, system, user
+            case responseFormat = "response_format"
         }
-        guard (200..<300).contains(http.statusCode) else {
-            let bodyString = String(data: data, encoding: .utf8) ?? ""
-            throw WikiClientError.httpError(status: http.statusCode, body: bodyString)
-        }
+    }
 
-        guard
-            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let message = json["message"] as? [String: Any],
-            let content = message["content"] as? String
-        else {
-            throw WikiClientError.malformedResponse
-        }
+    private struct ProviderCompletionEnvelope: Decodable {
+        let result: ProviderCompletionResult?
+        let error: String?
+    }
 
-        let promptTokens = (json["prompt_eval_count"] as? Int) ?? 0
-        let completionTokens = (json["eval_count"] as? Int) ?? 0
-        let modelUsed = (json["model"] as? String) ?? model
-        Task { @MainActor in
-            CostLedger.shared.logOllama(
-                feature: feature,
-                model: modelUsed,
-                promptTokens: promptTokens,
-                completionTokens: completionTokens,
-                latencyMs: latencyMs,
-                requestPayloadJSON: requestPayloadJSON,
-                responseContentPreview: content
-            )
-        }
+    private struct ProviderCompletionResult: Decodable {
+        let text: String
+        let provider: String
+        let model: String
+        let latencyMs: Int
+        let usage: OpenRouterUsagePayload?
+        let promptTokens: Int
+        let completionTokens: Int
 
-        return content
+        private enum CodingKeys: String, CodingKey {
+            case text, provider, model, usage
+            case latencyMs = "latency_ms"
+            case promptTokens = "prompt_tokens"
+            case completionTokens = "completion_tokens"
+        }
     }
 }
 
@@ -280,6 +204,7 @@ enum WikiClientError: LocalizedError {
     case missingCredential(provider: String)
     case httpError(status: Int, body: String)
     case malformedResponse
+    case providerError(String)
 
     var errorDescription: String? {
         switch self {
@@ -289,6 +214,8 @@ enum WikiClientError: LocalizedError {
             "Wiki API error (\(status)): \(body.prefix(200))"
         case .malformedResponse:
             "Malformed response from wiki API"
+        case .providerError(let message):
+            "Wiki provider error: \(message)"
         }
     }
 }
