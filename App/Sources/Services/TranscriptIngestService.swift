@@ -145,11 +145,10 @@ final class TranscriptIngestService {
         if let forced = forceProvider {
             // The Diagnostics "Retry with…" override is an explicit user pick,
             // NOT the fallback policy — so it bypasses the kernel-resolved
-            // provider and runs exactly what was chosen. OpenRouter Whisper is
-            // shared-backend owned, so missing-key/provider errors must come
-            // from Rust. Swift still preflights ElevenLabs/AssemblyAI because
-            // those STT clients remain Swift-owned until shared transports
-            // land.
+            // provider and runs exactly what was chosen. Shared-backend-owned
+            // providers report missing-key/provider errors from Rust. Swift
+            // still preflights AssemblyAI because that STT client remains
+            // Swift-owned until its shared transport lands.
             guard forcedProviderHasKey(forced) else {
                 Self.logger.info(
                     "forceProvider=\(forced.displayName, privacy: .public) but no key configured — leaving transcriptState=.none"
@@ -261,6 +260,7 @@ final class TranscriptIngestService {
             let transcript: Transcript
             switch provider {
             case .elevenLabsScribe:
+                appStore.kernelSetProviderApiKeys()
                 let job = try await scribe.submit(audioURL: effectiveAudioURL, episodeID: episode.id)
                 transcript = try await scribe.pollResult(job)
             case .assemblyAI:
@@ -313,11 +313,11 @@ final class TranscriptIngestService {
     /// fallback policy (which provider to use when a key is missing) is
     /// kernel-owned — see `effective_stt_provider` in the Rust kernel and the
     /// `settings.effectiveSttProvider` snapshot field. `.appleNative` is
-    /// keyless and always available. `.openRouterWhisper` also returns `true`
-    /// here because Rust owns its transport and credential error reporting.
+    /// keyless and always available. Shared STT transports also return `true`
+    /// here because Rust owns their credential error reporting.
     private func forcedProviderHasKey(_ provider: STTProvider) -> Bool {
         switch provider {
-        case .elevenLabsScribe: return !(elevenLabsKey() ?? "").isEmpty
+        case .elevenLabsScribe: return true
         case .openRouterWhisper: return true
         case .assemblyAI: return !(assemblyAIKey() ?? "").isEmpty
         case .appleNative: return true

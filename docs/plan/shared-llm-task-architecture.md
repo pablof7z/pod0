@@ -27,9 +27,9 @@ The shared Rust backend owns:
 - Agent task intent resolution and dispatch payload construction.
 
 Platform code must not construct OpenRouter or Ollama chat/embedding request
-bodies, OpenRouter speech-to-text multipart requests, ElevenLabs validation
-requests, provider URLs, provider-specific auth headers, or raw backend task
-namespace/body JSON for normal user workflows.
+bodies, OpenRouter or ElevenLabs speech-to-text multipart requests,
+ElevenLabs validation requests, provider URLs, provider-specific auth headers,
+or raw backend task namespace/body JSON for normal user workflows.
 
 ## Provider Transport
 
@@ -37,8 +37,8 @@ Current shared Rust provider entry points cover agent chat through
 `nmp_app_podcast_chat_complete`, provider-blind single-turn completions through
 `nmp_app_podcast_provider_complete`, embeddings through
 `nmp_app_podcast_provider_embed`, OpenRouter and ElevenLabs key validation,
-provider model catalog discovery, image generation, reranking, and OpenRouter
-Whisper/STT.
+provider model catalog discovery, image generation, reranking, OpenRouter
+Whisper/STT, and ElevenLabs Scribe/STT.
 Swift live wiki/title/categorization/chapter/clip completion callers now route
 through `WikiOpenRouterClient` without preflighting Keychain keys, so missing
 provider credentials are reported by Rust. Swift OpenRouter settings validation
@@ -47,13 +47,16 @@ Swift Episode Diagnostics now exposes forced OpenRouter Whisper retry without a
 Keychain preflight so the shared Rust STT transport reports setup/provider
 errors. Swift ElevenLabs settings validation now calls the shared Rust
 validator, leaving `/v1/user` URL/header/response parsing in Rust. ElevenLabs
-and AssemblyAI STT retries remain Swift-key-gated until their transports are
-shared.
+Scribe now uses `nmp_app_podcast_elevenlabs_scribe_transcribe`; platform
+callers submit a typed audio-source intent and Rust owns selected Scribe model
+lookup, ElevenLabs auth, local-file/source_url multipart shaping, status
+handling, and response parsing. AssemblyAI STT retries remain Swift-key-gated
+until that transport is shared.
 Android mirrors the shared STT/ElevenLabs settings projection, stores
 ElevenLabs/AssemblyAI keys in encrypted host storage, reports STT key presence
 to Rust, reloads ElevenLabs into the shared provider-key cache, calls shared
-Rust ElevenLabs validation through JNI, and updates STT/TTS/voice selections
-through typed settings actions.
+Rust ElevenLabs validation and Scribe transcription through JNI, and updates
+STT/TTS/voice selections through typed settings actions.
 
 Immediate targets:
 
@@ -66,6 +69,10 @@ Immediate targets:
   platform callers submit a typed audio-source intent and Rust owns the
   selected model lookup, OpenRouter auth, remote-source staging, multipart
   upload, status handling, and response parsing.
+- AssemblyAI STT should move to the same shared transport pattern; Rust should
+  own the `/v2/transcript` submit/poll contract, selected model lookup, auth
+  header, provider status handling, response parsing, and usage telemetry
+  normalization.
 
 Provider model-list discovery can remain UI-owned temporarily if it is only a
 catalog/browser concern, but any provider inference call must use Rust.

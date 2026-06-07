@@ -178,6 +178,13 @@ class KernelBridge {
     fun openRouterWhisperTranscribe(intentJson: String): String? =
         if (handle != 0L) nativeOpenRouterWhisperTranscribe(handle, intentJson) else null
 
+    /**
+     * Shared ElevenLabs Scribe transcription transport. Android supplies only
+     * the typed audio-source intent; Rust owns ElevenLabs HTTP and credentials.
+     */
+    fun elevenLabsScribeTranscribe(intentJson: String): String? =
+        if (handle != 0L) nativeElevenLabsScribeTranscribe(handle, intentJson) else null
+
     /** Shared provider image generation transport; returns Rust's JSON envelope. */
     fun generateImage(requestJson: String): String? =
         if (handle != 0L) nativeGenerateImage(handle, requestJson) else null
@@ -216,6 +223,7 @@ class KernelBridge {
     private external fun nativeValidateOpenRouterKey(handle: Long): String?
     private external fun nativeValidateElevenLabsKey(handle: Long): String?
     private external fun nativeOpenRouterWhisperTranscribe(handle: Long, intentJson: String): String?
+    private external fun nativeElevenLabsScribeTranscribe(handle: Long, intentJson: String): String?
     private external fun nativeGenerateImage(handle: Long, requestJson: String): String?
     private external fun nativeRerank(handle: Long, requestJson: String): String?
     private external fun nativeFree(handle: Long)

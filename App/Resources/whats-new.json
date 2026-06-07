@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-07T18:37:36Z",
+      "lines": [
+        "ElevenLabs Scribe transcription now uses the shared backend, including your selected Scribe model and consistent provider errors."
+      ]
+    },
+    {
       "shipped_at": "2026-06-07T18:12:00Z",
       "lines": [
         "Nostr profile and account actions now use the same backend-owned account key across app surfaces."

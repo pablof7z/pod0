@@ -22,6 +22,7 @@ pub struct ProviderSettings {
     pub eleven_labs_key: Option<String>,
     pub ollama_base_url: String,
     pub openrouter_whisper_model: String,
+    pub eleven_labs_stt_model: String,
 }
 
 impl ProviderSettings {
@@ -35,6 +36,7 @@ impl ProviderSettings {
             eleven_labs_key: store.eleven_labs_api_key().map(str::to_owned),
             ollama_base_url: ollama_base_url_from_chat_url(store.ollama_chat_url()),
             openrouter_whisper_model: store.open_router_whisper_model().to_owned(),
+            eleven_labs_stt_model: store.eleven_labs_stt_model().to_owned(),
         })
     }
 }

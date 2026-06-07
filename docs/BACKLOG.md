@@ -68,9 +68,10 @@ worktrees currently in flight.
   once the kernel can represent the state. Provider HTTP transport is part of
   this ownership boundary: OpenRouter/Ollama chat/completion, embeddings,
   model catalog discovery, OpenRouter credential validation, and OpenRouter
-  Whisper/STT multipart upload now live in the shared Rust backend, with
-  iOS/Android/TUI only supplying credentials, selected models, typed audio
-  source intent, and UI. Android now reloads encrypted OpenRouter/Ollama keys
+  Whisper/STT plus ElevenLabs Scribe/STT multipart upload now live in the
+  shared Rust backend, with iOS/Android/TUI only supplying credentials,
+  selected models, typed audio source intent, and UI. Android now reloads
+  encrypted OpenRouter/Ollama keys
   into Rust, exposes typed credential settings for those providers, and calls
   shared Rust OpenRouter key validation through JNI. Swift live
   wiki/title/categorization/chapter/clip completion callers no longer
@@ -81,13 +82,18 @@ worktrees currently in flight.
   Keychain preflight; forced OpenRouter Whisper retries now call the shared
   Rust STT transport so missing-key/provider errors come from the backend.
   ElevenLabs key validation now also runs through the shared Rust backend
-  (`/v1/user`), with iOS/Android/TUI mirroring ElevenLabs credentials into the
-  same in-memory provider-key action as OpenRouter/Ollama. Android now mirrors
-  ElevenLabs/STT provider settings, stores ElevenLabs/AssemblyAI keys in its
-  encrypted host store, reports STT key presence to Rust, and exposes STT/TTS
-  model and ElevenLabs voice settings through typed settings actions.
-  Remaining provider-ownership work is deleting any stale Keychain-only UI
-  fallbacks after kernel projections cover them.
+  (`/v1/user`), and ElevenLabs Scribe transcription now uses
+  `nmp_app_podcast_elevenlabs_scribe_transcribe` so Rust owns selected Scribe
+  model lookup, ElevenLabs auth, local-file/source_url multipart shaping,
+  status handling, and response parsing. iOS/Android/TUI mirror ElevenLabs
+  credentials into the same in-memory provider-key action as OpenRouter/Ollama.
+  Android now mirrors ElevenLabs/STT provider settings, stores ElevenLabs/
+  AssemblyAI keys in its encrypted host store, reports STT key presence to
+  Rust, exposes shared ElevenLabs validation/Scribe JNI calls, and exposes
+  STT/TTS model and ElevenLabs voice settings through typed settings actions.
+  Remaining provider-ownership work is moving AssemblyAI submit/poll STT into
+  the shared backend and deleting any stale Keychain-only UI fallbacks after
+  kernel projections cover them.
 - **typed-agent-task-intents.** Backend `AgentTaskIntent` creation exists and
   the TUI task editor now submits typed/natural task requests instead of raw
   dispatch namespace/body JSON. Keep raw `create` as compatibility/internal

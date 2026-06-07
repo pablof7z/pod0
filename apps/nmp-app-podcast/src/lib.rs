@@ -94,6 +94,7 @@ pub use capability::{
 pub use download::{DownloadItem, DownloadItemState, DownloadQueue, DEFAULT_MAX_CONCURRENT};
 pub use ffi::{
     nmp_app_podcast_audio_report, nmp_app_podcast_download_report,
+    nmp_app_podcast_elevenlabs_scribe_transcribe,
     nmp_app_podcast_episode_events, nmp_app_podcast_generate_image,
     nmp_app_podcast_openrouter_whisper_transcribe,
     nmp_app_podcast_provider_model_catalog, nmp_app_podcast_register, nmp_app_podcast_rerank,
