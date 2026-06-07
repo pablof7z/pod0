@@ -220,12 +220,7 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
         guard let settings = await settings() else {
             throw AgentOwnedPodcastError.storeUnavailable
         }
-        guard settings.openRouterCredentialSource != .none,
-              let apiKey = try? OpenRouterCredentialStore.apiKey(),
-              !apiKey.isEmpty else {
-            throw ImageGenerationError.noAPIKey
-        }
-        let imageGen = ImageGenerationService(apiKey: apiKey)
+        let imageGen = ImageGenerationService()
         let imageData = try await imageGen.generate(prompt: prompt, model: settings.imageGenerationModel)
         // Auth signing is the kernel's job (D13 sign-for-return): the
         // KernelSigner signs the kind:24242 auth event with the active account —

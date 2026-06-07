@@ -254,6 +254,18 @@ char *nmp_app_podcast_provider_complete(void *handle, const char *intent_json);
 // or {"error":"..."}.
 char *nmp_app_podcast_provider_embed(void *handle, const char *intent_json);
 
+// ── Provider-blind image generation ─────────────────────────────────────
+//
+// Drives OpenRouter image generation through shared Rust provider transport.
+// Swift passes provider intent as JSON:
+//   {"prompt":"…","model":"…"}
+// and receives:
+//   {"image_base64":"<bytes>"} on success
+//   {"error":"<reason>"}      on failure
+// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// Threading: this call BLOCKS; call from a background thread / detached Task.
+char *nmp_app_podcast_generate_image(void *handle, const char *request_json);
+
 // ── Local LLM registration ──────────────────────────────────────────────
 //
 // Register a local LLM backend callback. The callback receives a context pointer

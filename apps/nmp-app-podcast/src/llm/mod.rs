@@ -7,6 +7,7 @@
 
 pub mod backend;
 pub mod factory;
+pub mod image_generation;
 pub mod local_model_backend;
 pub mod ollama_backend;
 pub mod openrouter_backend;

@@ -38,6 +38,7 @@ mod provider_complete;
 mod provider_embeddings;
 pub(crate) mod handle;
 mod helpers;
+mod image_generation;
 mod local_llm;
 pub mod projections;
 #[cfg(test)]
@@ -101,6 +102,7 @@ pub use episode_events::nmp_app_podcast_episode_events;
 pub use provider_complete::nmp_app_podcast_provider_complete;
 pub use provider_embeddings::nmp_app_podcast_provider_embed;
 pub use handle::PodcastHandle;
+pub use image_generation::nmp_app_podcast_generate_image;
 pub use projections::{
     AccountSummary, AgentMessageSummary, AgentPickSummary, AgentSnapshot, AgentTaskSummary,
     CategoryBrowseItem, ChapterSummary, ClipSummary,

@@ -93,7 +93,7 @@ pub use capability::{
 pub use download::{DownloadItem, DownloadItemState, DownloadQueue, DEFAULT_MAX_CONCURRENT};
 pub use ffi::{
     nmp_app_podcast_audio_report, nmp_app_podcast_download_report,
-    nmp_app_podcast_episode_events, nmp_app_podcast_register,
+    nmp_app_podcast_episode_events, nmp_app_podcast_generate_image, nmp_app_podcast_register,
     nmp_app_podcast_set_data_dir, nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free,
     nmp_app_podcast_snapshot_rev,
     nmp_app_podcast_unregister, nmp_app_podcast_voice_report, PodcastHandle,
