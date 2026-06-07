@@ -32,97 +32,129 @@ struct OpenRouterKeyValidationService: Sendable {
     private static let logger = Logger.app("OpenRouterKeyValidationService")
     private static let decoder = JSONDecoder()
 
-    private enum Constants {
-        static let authKeyURL = "https://openrouter.ai/api/v1/auth/key"
-        static let timeout: TimeInterval = 15
-        static let xTitle = "Podcastr"
-    }
-
-    func validate(apiKey: String) async throws -> OpenRouterKeyInfo {
-        guard let url = URL(string: Constants.authKeyURL) else {
-            throw ValidationError.invalidURL
+    func validateStoredKey() async throws -> OpenRouterKeyInfo {
+        guard let handleBits = await MainActor.run(body: {
+            KernelModel.shared?.podcastHandlePointer.map { Int(bitPattern: $0) }
+        }) else {
+            throw ValidationError.kernelUnavailable
         }
 
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue(Constants.xTitle, forHTTPHeaderField: "X-Title")
-        request.timeoutInterval = Constants.timeout
+        let responseJSON = await Task.detached(priority: .userInitiated) {
+            guard let handle = UnsafeMutableRawPointer(bitPattern: handleBits) else {
+                return #"{"error":{"kind":"store_unavailable","message":"Kernel handle unavailable"}}"#
+            }
+            guard let ptr = nmp_app_podcast_validate_openrouter_key(handle) else {
+                return #"{"error":{"kind":"store_unavailable","message":"null response from Rust"}}"#
+            }
+            defer { nmp_app_free_string(ptr) }
+            return String(cString: ptr)
+        }.value
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let http = response as? HTTPURLResponse else {
-            throw ValidationError.networkError
-        }
-
-        switch http.statusCode {
-        case 200..<300:
-            break
-        case 401, 403:
-            throw ValidationError.invalidKey
-        default:
-            Self.logger.warning("OpenRouter auth/key returned \(http.statusCode, privacy: .public)")
-            throw ValidationError.serverError(statusCode: http.statusCode)
+        guard let responseData = responseJSON.data(using: .utf8) else {
+            throw ValidationError.decodingError
         }
 
         do {
-            let dto = try Self.decoder.decode(ORAuthKeyResponse.self, from: data)
+            let envelope = try Self.decoder.decode(OpenRouterValidationEnvelope.self, from: responseData)
+            if let error = envelope.error {
+                throw Self.validationError(from: error)
+            }
+            guard let result = envelope.result else {
+                throw ValidationError.decodingError
+            }
             return OpenRouterKeyInfo(
-                label: dto.data.label,
-                usageDollars: dto.data.usage,
-                limitDollars: dto.data.limit,
-                isFreeTier: dto.data.isFreeTier,
-                requestsPerInterval: dto.data.rateLimit?.requests,
-                rateInterval: dto.data.rateLimit?.interval
+                label: result.label,
+                usageDollars: result.usageDollars,
+                limitDollars: result.limitDollars,
+                isFreeTier: result.isFreeTier,
+                requestsPerInterval: result.requestsPerInterval,
+                rateInterval: result.rateInterval
             )
+        } catch let error as ValidationError {
+            throw error
         } catch {
-            Self.logger.error("OpenRouter auth/key decode failed: \(error, privacy: .public)")
+            Self.logger.error("OpenRouter validation decode failed: \(error, privacy: .public)")
             throw ValidationError.decodingError
         }
     }
 
     // MARK: - DTOs
 
-    private struct ORAuthKeyResponse: Decodable {
-        var data: ORAuthKeyData
+    private struct OpenRouterValidationEnvelope: Decodable {
+        var result: OpenRouterValidationResult?
+        var error: OpenRouterValidationBackendError?
     }
 
-    private struct ORAuthKeyData: Decodable {
+    private struct OpenRouterValidationResult: Decodable {
         var label: String?
-        var usage: Double?
-        var limit: Double?
+        var usageDollars: Double?
+        var limitDollars: Double?
         var isFreeTier: Bool
-        var rateLimit: ORRateLimit?
+        var requestsPerInterval: Int?
+        var rateInterval: String?
 
         enum CodingKeys: String, CodingKey {
-            case label, usage, limit
+            case label
+            case usageDollars = "usage_dollars"
+            case limitDollars = "limit_dollars"
             case isFreeTier = "is_free_tier"
-            case rateLimit = "rate_limit"
+            case requestsPerInterval = "requests_per_interval"
+            case rateInterval = "rate_interval"
         }
     }
 
-    private struct ORRateLimit: Decodable {
-        var requests: Int?
-        var interval: String?
+    private struct OpenRouterValidationBackendError: Decodable {
+        var kind: String
+        var message: String?
+        var statusCode: Int?
+
+        enum CodingKeys: String, CodingKey {
+            case kind, message
+            case statusCode = "status_code"
+        }
+    }
+
+    private static func validationError(from error: OpenRouterValidationBackendError) -> ValidationError {
+        switch error.kind {
+        case "missing_api_key":
+            return .missingKey
+        case "invalid_key":
+            return .invalidKey
+        case "network_error":
+            return .networkError
+        case "server_error":
+            return .serverError(statusCode: error.statusCode)
+        case "decoding_error":
+            return .decodingError
+        case "store_unavailable":
+            return .kernelUnavailable
+        default:
+            return .backend(error.message ?? "Unexpected OpenRouter validation error.")
+        }
     }
 }
 
 // MARK: - Errors
 
 enum ValidationError: LocalizedError {
-    case invalidURL
+    case missingKey
     case networkError
     case invalidKey
-    case serverError(statusCode: Int)
+    case serverError(statusCode: Int?)
     case decodingError
+    case kernelUnavailable
+    case backend(String)
 
     var errorDescription: String? {
         switch self {
-        case .invalidURL:             return "Invalid validation URL."
+        case .missingKey:             return "No stored OpenRouter key found."
         case .networkError:           return "Could not reach OpenRouter. Check your connection."
         case .invalidKey:             return "Key rejected — check it is a valid OpenRouter API key."
-        case .serverError(let code):  return "OpenRouter returned an error (HTTP \(code))."
+        case .serverError(.some(let code)): return "OpenRouter returned an error (HTTP \(code))."
+        case .serverError(.none):     return "OpenRouter returned an error."
         case .decodingError:          return "Unexpected response from OpenRouter."
+        case .kernelUnavailable:      return "App backend is not ready yet. Try again in a moment."
+        case .backend(let message):   return message
         }
     }
 }
-

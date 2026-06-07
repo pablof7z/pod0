@@ -13,6 +13,7 @@ pub mod model_catalog;
 mod model_catalog_dtos;
 pub mod ollama_backend;
 pub mod openrouter_backend;
+pub mod openrouter_key_validation;
 pub mod provider_config;
 pub mod provider_transport;
 pub mod rerank_backend;
