@@ -156,10 +156,7 @@ fn dispatch_capability_request(request_str: &str) -> String {
             }
         }
         HTTP_CAPABILITY_NAMESPACE => handle_http(&req.payload_json),
-        ns => {
-            eprintln!("[podcast-tui] stub capability: {ns}");
-            serde_json::json!({"ok": false, "error": format!("stub: {ns}")}).to_string()
-        }
+        ns => serde_json::json!({"ok": false, "error": format!("stub: {ns}")}).to_string(),
     };
 
     serde_json::to_string(&nmp_core::substrate::CapabilityEnvelope {

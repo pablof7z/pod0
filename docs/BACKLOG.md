@@ -172,9 +172,9 @@ worktrees currently in flight.
   model hint. The terminal shell now
   has shared animated chrome, focused row rails, player waveform motion,
   download activity strips, and themed detail/input overlays without changing
-  kernel/provider behavior. Remaining live validation now covers GLM 5.1 Cloud
-  agent chat, memory-aware replies,
-  library tool calls, task run-now, and provider/model settings in tmux.
+  kernel/provider behavior. Post-architecture live tmux validation now covers
+  GLM chat, memory, typed tasks, providers, RSS, queue/bookmark/playback,
+  relaunch persistence, no-identity notes, and clean fallback playback.
   Remaining terminal-client slices: settings editors for playback intervals,
   notifications, onboarding, and Nostr profile/public relay fields; wiki
   generation/search and richer agent note trust/conversation workflows once the

@@ -202,6 +202,10 @@ fn handle_agent_note_input(state: &mut AppState, runtime: &AppRuntime, key: KeyE
                 Some((recipient, content))
                     if !recipient.trim().is_empty() && !content.trim().is_empty() =>
                 {
+                    if state.active_account.is_none() {
+                        state.status = "agent note error: not signed in".to_string();
+                        return true;
+                    }
                     match runtime.publish_agent_note(recipient.trim(), content.trim()) {
                         Ok(_) => state.push_toast("agent note published"),
                         Err(e) => state.status = format!("agent note error: {e}"),

@@ -328,190 +328,84 @@ tmux capture-pane -t podcast-tui-glm-architecture -p -S - \
 
 ## Evidence Log
 
-### 2026-06-07T12:09Z-12:13Z
+### 2026-06-07T20:10Z-20:27Z
 
-- Worktree: `/Users/customer/podcast-player-tui-architecture-validation`
-- Branch: `feat/tui-architecture-validation`
-- Tmux session: `podcast-tui-arch-smoke`
-- Data directory: `/tmp/podcast-tui-arch-smoke-data`
-- Capture directory: `/tmp/podcast-tui-arch-smoke-captures`
+- Worktree: `/Users/customer/podcast-player-tui-glm-post-architecture-validation`
+- Branch: `codex/tui-glm-post-architecture-validation`
+- Tmux sessions:
+  - `podcast-tui-glm-post`
+  - `podcast-tui-glm-post-fixed`
+- Data directory: `/tmp/podcast-tui-glm-post-data`
+- Capture directories:
+  - `/tmp/podcast-tui-glm-post-captures`
+  - `/tmp/podcast-tui-glm-post-fixed-captures`
 - Local Ollama:
   - `ollama ls` showed `glm-5.1:cloud`.
-  - The tmux helper verified tmux/Ollama/model availability before launch.
+  - The helper verified `tmux`, `ollama`, and the cloud model before launch.
 
 ### Scenarios Executed
 
-- Tmux helper:
-  - Built `podcast-tui` and launched the real TUI in tmux with isolated state.
-  - Captured the empty-library first screen at
-    `/tmp/podcast-tui-arch-smoke-captures/00-launch.txt`.
 - Settings > Providers:
-  - Used only TUI keystrokes to set Agent initial and Agent thinking rows to
+  - Used real TUI input to set visible model roles to
     `GLM 5.1 Cloud (ollama:glm-5.1:cloud)`.
-  - Set Ollama chat URL to `http://localhost:11434/api/chat`.
-  - Verified the projection still showed Ollama credential as `none`, matching
-    authenticated local Ollama Cloud behavior.
-- Agent chat, no-tool turn:
-  - Sent through tmux:
-    `In one short sentence, confirm this architecture validation smoke is using GLM 5.1 cloud.`
-  - Verified the real assistant row completed and the busy indicator cleared.
-  - The response declined to self-attest model identity:
-    `I have no information indicating what specific model or architecture this validation smoke is using.`
-    This is not a transport failure, but future smoke wording should avoid
-    depending on model self-identification.
-- Agent memory + memory-aware chat:
-  - Saved `validation_topic=terminal GLM architecture smoke` from Agent >
-    Memory and verified the Memory projection showed it.
-  - Asked through chat:
-    `Based on saved memory, what validation topic should you remember? Answer in one short sentence.`
-  - Verified the assistant row completed with:
-    `The validation topic I should remember is terminal GLM architecture smoke.`
-- Cleanup:
-  - Quit the tmux session with `q`; no `podcast-tui-arch-smoke` tmux session
-    remained.
-
-### Failures Or Watch Items
-
-- Current main smoke did not exercise the pending shared-provider/task-intent
-  architecture because those branches had not landed yet.
-- Model self-identification prompts are weak validation evidence; use captured
-  Settings rows plus live completion behavior instead.
-
-### 2026-06-07T09:34Z-10:12Z
-
-- Worktree: `/Users/customer/podcast-player-tui-agent-validation`
-- Branch: `feat/tui-agent-live-validation`
-- Tmux session: `podcast-tui-agent-live`
-- Data directories:
-  - `/tmp/podcast-tui-agent-live`
-  - `/tmp/podcast-tui-agent-live-feed`
-- Environment:
-  - `OLLAMA_API_KEY` was not set.
-  - `OPENROUTER_API_KEY` was not set.
-  - Full live Ollama Cloud completion scenarios are blocked until a real
-    `OLLAMA_API_KEY` is present in the terminal environment before launching
-    the TUI.
-
-### Scenarios Executed
-
-- Settings > Providers > Load provider keys from env:
-  - Before fix, the action could claim env credentials loaded even when no
-    provider env keys existed.
-  - After fix, the TUI reports:
-    `no provider env keys set; set OLLAMA_API_KEY, OPENROUTER_API_KEY, ELEVENLABS_API_KEY, or ASSEMBLYAI_API_KEY`.
-- Settings > Providers model rows:
-  - Used only TUI keystrokes to set all visible role rows to
-    `ollama:gpt-oss:120b-cloud | GPT-OSS 120B Cloud`.
-  - Verified the Settings projection displayed the Ollama Cloud selection for
-    agent initial/thinking, memory, wiki, categorization, chapter compilation,
-    embeddings, and image generation.
-- Agent chat, empty library:
-  - Sent: `Recommend one podcast episode for me from my current library and explain why.`
-  - Before fix, the TUI stayed pinned at `Agent Chat busy` for more than a
-    minute.
-  - After fix, the assistant row reported the missing Ollama Cloud credential
-    in about four seconds.
-- Agent memory:
-  - Entered `preferred_duration=short episodes under 30 minutes` from the
-    Agent > Memory section.
-  - Verified the Memory projection showed
-    `preferred_duration = short episodes under 30 minutes (user)`.
-- Agent tasks:
-  - Created `Refresh inbox now | manual | podcast.inbox | {"op":"triage"} | manual validation task`.
-  - Disabled it through `e`, verified row changed to `off`.
-  - Pressed `r` while disabled; before fix it still reported `task dispatched`.
-  - After fix it reports `task run error: task disabled`.
-  - Re-enabled, ran, and deleted the task; projection returned to the built-in
-    Inbox Triage row.
-- Real RSS subscription:
+  - Verified the Ollama URL projection as `http://localhost:11434/api/chat`.
+  - Verified credentials remained hidden/`none`, matching authenticated local
+    Ollama Cloud.
+- Agent chat:
+  - Sent a live provider-backed chat prompt through tmux.
+  - Verified the GLM response completed and the busy state cleared.
+- Memory:
+  - Saved `validation_topic=shared TUI GLM post architecture`.
+  - Asked a follow-up chat turn that depended on saved memory and verified the
+    answer included the saved value.
+- Typed task editor:
+  - Created a task through the typed/natural TUI form rather than raw
+    namespace/body JSON.
+  - Verified the row showed user-facing intent detail.
+  - Verified disabled run-now reported `task run error: task disabled`.
+  - Enabled and ran the task, then verified Memory projected
+    `task_validation = completed (task)`.
+  - Deleted the validation task and verified only the built-in Inbox Triage
+    task remained.
+- Library, queue, and bookmarks:
   - Subscribed to `https://feeds.npr.org/510289/podcast.xml` through the TUI.
-  - Verified `Planet Money` loaded with 355 episodes.
-  - Before fix, background picks/categorization LLM calls wrote repeated 401
-    unauthorized logs into the terminal UI.
-  - After fix, the subscription completed cleanly with no 401 log flood and
-    the TUI remained readable.
-- Agent chat, populated library:
-  - Sent: `From my current library, recommend one episode to start with and give a one-sentence reason.`
-  - Verified the assistant row reported the missing `OLLAMA_API_KEY` instead
-    of fabricating a recommendation.
+  - Verified `Planet Money` projected with 355 episodes.
+  - Starred an episode, queued it, played it through the TUI fallback player,
+    and verified Queue and Stars projections after relaunch.
+- Persistence:
+  - Relaunched from the same data directory and verified library, queue,
+    bookmarks, provider settings, and memory/task projections persisted.
+- Missing prerequisite:
+  - Published an Agent Note without an active account and verified the TUI
+    reported `agent note error: not signed in`.
 
-### Fixes From Live TUI Use
+### Fixes From This Run
 
-- Provider env load now errors when no relevant env keys are set.
-- `Ctrl+U` clears settings and relay input fields, making model replacement
-  practical in the terminal.
-- Provider-prefixed `ollama:` and `openrouter:` role selections are now honored
-  by the shared LLM factory instead of falling back to hardcoded defaults.
-- Ollama backend strips the `ollama:` provider prefix before calling the model.
-- Ollama Cloud and OpenRouter paths preflight required in-memory keys before
-  starting model calls.
-- Agent model turns have a 45-second wall-clock budget.
-- Production agent chat writes concrete provider errors into the assistant row
-  instead of falling back to the scaffold placeholder.
-- Picks now shares the visible Categorization model row; episode summaries
-  share the visible Wiki model row, avoiding hidden hardcoded model choices.
-- Background missing-credential failures fall back quietly instead of dumping
-  per-episode logs into the TUI.
-- TUI task run checks the selected task's enabled state before dispatching, so
-  disabled tasks cannot claim they were dispatched.
-- TUI dispatch parsing now recognizes nested `{ok:false}` result envelopes when
-  they are present.
+- Removed stdout/stderr terminal writes from TUI audio fallback and unknown
+  capability handling. Playback state still updates through returned JSON
+  envelopes, but the alternate screen is no longer corrupted by log text.
+- Added a TUI Agent Notes prerequisite check so no-identity publish attempts
+  surface immediately as `agent note error: not signed in`. The backend
+  remains the source of truth for actual publish authorization.
+- No NMP upstream issue was filed from this run; observed failures were TUI
+  presentation/status handling, not missing shared NMP architecture seams.
 
-### 2026-06-07T10:32Z-11:23Z
+### Earlier 2026-06-07 Runs
 
-- Worktree: `/Users/customer/podcast-player-tui-agent-validation`
-- Branch: `feat/tui-agent-live-validation`
-- Tmux session: `podcast-tui-glm-live`
-- Data directory: `/tmp/podcast-tui-glm-live`
-- Local Ollama:
-  - `ollama ls` showed `glm-5.1:cloud` plus other `:cloud` models.
-  - Direct `ollama run glm-5.1:cloud` returned the requested
-    `tui-live-ok` smoke response.
-  - Direct `/api/chat` calls confirmed `stream:false` + `think:false` works
-    against the local daemon.
-
-### Scenarios Executed
-
-- Settings > Providers:
-  - Verified the live TUI projection showed all visible LLM role rows as
-    `GLM 5.1 Cloud (ollama:glm-5.1:cloud)`.
-  - Verified `Ollama chat URL` showed `http://localhost:11434/api/chat`.
-  - Verified OpenRouter/Ollama credential rows remained `none`, matching the
-    authenticated local Ollama Cloud path rather than env-key injection.
-- Agent chat, no-tool turn:
-  - Sent through tmux: `In one short sentence, confirm this live TUI agent
-    model call succeeded using GLM 5.1 cloud.`
-  - The assistant row completed with:
-    `This live TUI agent model call using GLM 5.1 cloud has succeeded.`
-- Agent memory + memory-aware chat:
-  - Entered `favorite_topic=ancient history podcasts` in Agent > Memory.
-  - Verified the Memory projection showed the saved fact.
-  - Asked through chat what topic should be prioritized based on memory.
-  - The assistant row completed with:
-    `You should prioritize ancient history podcasts for me.`
-- Agent tool loop, empty library:
-  - Sent through tmux: `Use your library search tool to look for economics
-    podcasts in my library, then tell me what you found.`
-  - The assistant row completed with:
-    `I searched your library for economics podcasts, but no matches were found.`
-- Agent tasks:
-  - Created `Live GLM Memory Task | once | podcast.memory |
-    {"op":"remember","key":"task_live","value":"ran","source":"user"} |
-    writes memory through live TUI`.
-  - Disabled it, attempted a run, re-enabled it, and ran it.
-  - Verified the task row reached `completed` and Memory showed
-    `task_live = ran (user)`.
-
-### Additional Fixes From GLM Live TUI Use
-
-- Replaced the Rig Ollama chat path with direct `/api/chat` requests so local
-  Ollama Cloud models complete reliably from the app backend.
-- Normalized `http://localhost:*` Ollama URLs to `http://127.0.0.1:*` before
-  request dispatch to avoid IPv6-first localhost connection failures.
-- Added a direct async agent chat path so the production handler no longer
-  nests a Tokio runtime inside a spawned blocking task.
-- Shortened tool instructions so GLM cloud models reliably emit tool-call JSON
-  and final prose within the TUI request budget.
-- Added a TUI snapshot-revision probe on the 250 ms tick so host-side async
-  completions, including agent replies and task-memory writes, refresh the
-  visible terminal projection even when no new NMP actor callback arrives.
+- `feat/tui-agent-live-validation` used tmux sessions
+  `podcast-tui-agent-live` and `podcast-tui-glm-live` to validate provider env
+  loading, visible role-model selection, missing-key errors, memory, task
+  disable/run/delete, real RSS subscription, direct Ollama `/api/chat`, and
+  GLM-backed library search behavior.
+- Fixes from those runs included honest provider-env errors, provider-prefixed
+  model routing through the shared LLM factory, Ollama prefix stripping,
+  direct Ollama chat transport, localhost normalization, provider-error chat
+  rows, quiet background missing-credential failures, disabled task run
+  blocking, nested `{ok:false}` dispatch parsing, and snapshot-revision polling
+  for async host completions.
+- `feat/tui-architecture-validation` used `podcast-tui-arch-smoke` to verify
+  the tmux helper, authenticated local Ollama Cloud availability, basic
+  Settings projection, live GLM completion, and memory-aware chat before the
+  shared provider/task branches had landed.
+- Watch item retained: do not rely on model self-identification as evidence.
+  Use captured Settings rows plus live completion/projection behavior instead.

@@ -2,8 +2,7 @@
 //!
 //! Bridges `nmp.audio.capability` commands to an external audio player.
 //! The default implementation tries `mpv` first, then falls back to a stub
-//! that logs commands and reports fake position updates so the kernel UI
-//! still works.
+//! that reports fake position updates so the kernel UI still works.
 //!
 //! ## mpv IPC
 //!
@@ -120,8 +119,11 @@ impl AudioHost {
                 {
                     Ok(c) => c,
                     Err(e) => {
-                        eprintln!("[audio] failed to spawn mpv: {e}");
-                        return serde_json::json!({"ok": false, "error": format!("mpv spawn: {e}") }).to_string();
+                        return serde_json::json!({
+                            "ok": false,
+                            "error": format!("mpv spawn: {e}")
+                        })
+                        .to_string();
                     }
                 };
                 self.mpv_child = Some(child);
@@ -151,7 +153,7 @@ impl AudioHost {
                 serde_json::json!({"ok": true}).to_string()
             }
             AudioCommand::SetSleepTimer { secs } => {
-                eprintln!("[audio] SetSleepTimer {secs:?} ignored");
+                let _ = secs;
                 serde_json::json!({"ok": true}).to_string()
             }
             AudioCommand::Stop => {
@@ -167,35 +169,30 @@ impl AudioHost {
             AudioCommand::Load {
                 url, position_secs, ..
             } => {
-                self.last_url = Some(url.clone());
+                self.last_url = Some(url);
                 self.last_position_secs = position_secs;
                 self.is_playing = true;
-                eprintln!("[audio-stub] Load {url} @ {position_secs}s");
             }
             AudioCommand::Play => {
                 self.is_playing = true;
-                eprintln!("[audio-stub] Play");
             }
             AudioCommand::Pause => {
                 self.is_playing = false;
-                eprintln!("[audio-stub] Pause");
             }
             AudioCommand::Seek { position_secs } => {
                 self.last_position_secs = position_secs;
-                eprintln!("[audio-stub] Seek {position_secs}s");
             }
             AudioCommand::SetVolume { volume } => {
-                eprintln!("[audio-stub] SetVolume {volume}");
+                let _ = volume;
             }
             AudioCommand::SetSpeed { speed } => {
-                eprintln!("[audio-stub] SetSpeed {speed}");
+                let _ = speed;
             }
             AudioCommand::SetSleepTimer { secs } => {
-                eprintln!("[audio-stub] SetSleepTimer {secs:?}");
+                let _ = secs;
             }
             AudioCommand::Stop => {
                 self.is_playing = false;
-                eprintln!("[audio-stub] Stop");
             }
         }
         serde_json::json!({"ok": true}).to_string()
