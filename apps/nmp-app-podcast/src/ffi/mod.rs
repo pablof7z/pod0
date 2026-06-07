@@ -54,6 +54,7 @@ mod rerank;
 pub(crate) mod snapshot;
 mod snapshot_categories;
 mod snapshot_downloads;
+mod snapshot_identity;
 mod snapshot_library;
 mod snapshot_owned;
 mod snapshot_queue;

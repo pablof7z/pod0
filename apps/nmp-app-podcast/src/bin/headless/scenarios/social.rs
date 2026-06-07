@@ -37,9 +37,9 @@ fn probe_tcp(host: &str, port: u16) -> bool {
     let Ok(addrs) = (host, port).to_socket_addrs() else {
         return false;
     };
-    addrs.into_iter().any(|addr| {
-        TcpStream::connect_timeout(&addr, Duration::from_secs(3)).is_ok()
-    })
+    addrs
+        .into_iter()
+        .any(|addr| TcpStream::connect_timeout(&addr, Duration::from_secs(3)).is_ok())
 }
 
 pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
@@ -57,10 +57,14 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
     let nak_output = std::process::Command::new(NAK_BIN)
         .args([
             "event",
-            "--sec", fixtures::HEADLESS_TEST_SECRET_HEX,
-            "-k", "3",
-            "-t", &format!("p={FIATJAF_HEX}"),
-            "-t", &format!("p={JB55_HEX}"),
+            "--sec",
+            fixtures::HEADLESS_TEST_SECRET_HEX,
+            "-k",
+            "3",
+            "-t",
+            &format!("p={FIATJAF_HEX}"),
+            "-t",
+            &format!("p={JB55_HEX}"),
             &format!("wss://{RELAY_HOST}"),
         ])
         .output();
@@ -68,7 +72,9 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
     match &nak_output {
         Ok(o) if !o.status.success() => {
             let stderr = String::from_utf8_lossy(&o.stderr);
-            return Skip(format!("nak publish failed (relay may be offline): {stderr}"));
+            return Skip(format!(
+                "nak publish failed (relay may be offline): {stderr}"
+            ));
         }
         Err(e) => return Fail(format!("nak exec error: {e}")),
         Ok(_) => {}
@@ -106,9 +112,7 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
 
     // Wait for social snapshot with at least 2 follows.
     match wait_for(handle, 15_000, |u| {
-        u.social
-            .as_ref()
-            .is_some_and(|s| s.following_count >= 2)
+        u.social.as_ref().is_some_and(|s| s.following_count >= 2)
     }) {
         Ok(u) => {
             let social = u.social.unwrap();

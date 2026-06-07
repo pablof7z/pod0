@@ -61,13 +61,19 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
         u.owned_podcasts.iter().any(|o| o.podcast_id == target_id)
     }) {
         Ok(u) => u,
-        Err(msg) => return ScenarioResult::Fail(format!(
-            "timeout waiting for owned_podcasts to contain podcast_id={podcast_id}: {msg}"
-        )),
+        Err(msg) => {
+            return ScenarioResult::Fail(format!(
+                "timeout waiting for owned_podcasts to contain podcast_id={podcast_id}: {msg}"
+            ))
+        }
     };
 
     // 5. Extract and validate the pubkey_hex.
-    let owned = match update.owned_podcasts.iter().find(|o| o.podcast_id == podcast_id) {
+    let owned = match update
+        .owned_podcasts
+        .iter()
+        .find(|o| o.podcast_id == podcast_id)
+    {
         Some(o) => o,
         None => return ScenarioResult::Fail("owned_podcasts entry disappeared".into()),
     };
@@ -80,7 +86,10 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
         ));
     }
 
-    if !pubkey.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()) {
+    if !pubkey
+        .chars()
+        .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+    {
         return ScenarioResult::Fail(format!("pubkey_hex is not lowercase hex: {pubkey}"));
     }
 

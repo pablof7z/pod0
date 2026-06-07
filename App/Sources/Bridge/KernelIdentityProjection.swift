@@ -7,8 +7,8 @@ import Foundation
 // `KernelIdentityProjection.from(podcastUpdate:)` in KernelBridge — NOT by
 // parsing the top-level `projections` dictionary, which has no identity keys.
 //
-// Current wire surface (NMP v0.2.x):
-//   PodcastUpdate.active_account  AccountSummary?  — npub + mode + display_name
+// Current wire surface:
+//   PodcastUpdate.active_account  AccountSummary?  — npub + pubkey_hex + mode + display_name
 //
 // Future slots (not yet wired in Rust; degrade to nil/empty gracefully):
 //   accounts         [Account]  — all loaded accounts for multi-identity
@@ -105,13 +105,12 @@ struct ResolvedProfile: Decodable, Equatable {
 /// or `nil` when no identity is loaded and no handshake is in flight — that
 /// is the steady-state for a fresh install.
 struct KernelIdentityProjection: Equatable {
-    /// Bech32 npub of the active account (`npub1…`), or `nil` when no account
-    /// is loaded. Sourced from `PodcastUpdate.active_account.npub`.
-    let activeAccount: String?
-    /// Lowercase 64-char hex pubkey of the active account, or `nil` when no
-    /// account is loaded or the kernel predates the `pubkey_hex` addition.
+    /// Hex pubkey of the active account, or `nil` when no account is loaded.
     /// Sourced from `PodcastUpdate.active_account.pubkey_hex`.
-    let activeAccountPubkeyHex: String?
+    let activeAccount: String?
+    /// Bech32 npub of the active account (`npub1…`) for display surfaces.
+    /// Sourced from `PodcastUpdate.active_account.npub`.
+    let activeNpub: String?
     /// All known identity rows, possibly empty.
     let accounts: [KernelAccountSummary]
     /// Bunker handshake progress, or `nil` when no handshake is in flight.
@@ -124,7 +123,7 @@ struct KernelIdentityProjection: Equatable {
 
     static let empty = KernelIdentityProjection(
         activeAccount: nil,
-        activeAccountPubkeyHex: nil,
+        activeNpub: nil,
         accounts: [],
         bunkerHandshake: nil,
         resolvedProfiles: [:])
@@ -162,8 +161,8 @@ extension KernelIdentityProjection {
     /// fall back to relay fetches.
     static func from(podcastUpdate update: PodcastUpdate) -> KernelIdentityProjection {
         KernelIdentityProjection(
-            activeAccount: update.activeAccount?.npub,
-            activeAccountPubkeyHex: update.activeAccount?.pubkeyHex,
+            activeAccount: update.activeAccount?.pubkeyHex,
+            activeNpub: update.activeAccount?.npub,
             accounts: [],
             bunkerHandshake: nil,
             resolvedProfiles: [:])

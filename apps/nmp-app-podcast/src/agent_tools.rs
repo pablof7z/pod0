@@ -346,6 +346,50 @@ pub fn parse_tool_call(response: &str) -> Option<ToolCall> {
     Some(ToolCall { name, args })
 }
 
+/// Parse a tool call for the background triage path.
+///
+/// This accepts the generic `{"tool":"set_episode_priorities","args":{...}}`
+/// wrapper and the typed direct payload `{"scores":[...]}`. The direct shape is
+/// still normalized to the same backend write tool; it is not accepted by
+/// general chat.
+pub fn parse_triage_tool_call(response: &str) -> Option<ToolCall> {
+    let candidate = extract_json_object(response)?;
+    let value: Value = serde_json::from_str(&candidate).ok()?;
+
+    if let Some(tool) = value.get("tool").and_then(Value::as_str) {
+        if tool == "set_episode_priorities" {
+            if let Some(args) = value
+                .get("args")
+                .filter(|args| args.get("scores").is_some())
+            {
+                return Some(ToolCall {
+                    name: tool.to_owned(),
+                    args: args.clone(),
+                });
+            }
+            if value.get("scores").is_some() {
+                return scores_tool_call(&value);
+            }
+        }
+        return parse_tool_call(response);
+    }
+
+    scores_tool_call(&value)
+}
+
+fn scores_tool_call(value: &Value) -> Option<ToolCall> {
+    let scores = value.get("scores")?;
+    if !scores.is_array() {
+        return None;
+    }
+    let mut args = serde_json::Map::new();
+    args.insert("scores".to_owned(), scores.clone());
+    Some(ToolCall {
+        name: "set_episode_priorities".to_owned(),
+        args: Value::Object(args),
+    })
+}
+
 /// Scan `text` for the first balanced top-level JSON object and return it as a
 /// slice. Handles braces inside string literals (and escaped quotes) so a
 /// transcript value containing `{` doesn't desync the depth counter.

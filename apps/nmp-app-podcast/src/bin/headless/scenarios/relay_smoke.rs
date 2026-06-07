@@ -33,9 +33,9 @@ fn probe_tcp(host: &str, port: u16) -> bool {
     let Ok(addrs) = (host, port).to_socket_addrs() else {
         return false;
     };
-    addrs.into_iter().any(|addr| {
-        TcpStream::connect_timeout(&addr, Duration::from_secs(3)).is_ok()
-    })
+    addrs
+        .into_iter()
+        .any(|addr| TcpStream::connect_timeout(&addr, Duration::from_secs(3)).is_ok())
 }
 
 #[allow(unused_variables)]
@@ -55,9 +55,12 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
     let nak_output = std::process::Command::new(NAK_BIN)
         .args([
             "event",
-            "--sec", HEADLESS_TEST_SECRET_HEX,
-            "-k", "1",
-            "-c", "headless relay smoke test",
+            "--sec",
+            HEADLESS_TEST_SECRET_HEX,
+            "-k",
+            "1",
+            "-c",
+            "headless relay smoke test",
             &format!("wss://{RELAY_HOST}"),
         ])
         .output();

@@ -61,7 +61,10 @@ fn search_library_reports_no_matches_for_unknown_query() {
     let (store, _pid, _eid) = fixture_store();
     let registry = ToolRegistry::new(store);
 
-    let out = registry.execute("search_library", &serde_json::json!({ "query": "zzzznomatch" }));
+    let out = registry.execute(
+        "search_library",
+        &serde_json::json!({ "query": "zzzznomatch" }),
+    );
 
     assert!(
         out.to_lowercase().contains("no match") || out.to_lowercase().contains("no result"),
@@ -134,7 +137,10 @@ fn get_transcript_truncates_to_2000_chars() {
 
     let out = registry.execute("get_transcript", &serde_json::json!({ "episode_id": eid }));
     let x_count = out.chars().filter(|c| *c == 'x').count();
-    assert!(x_count <= 2000, "transcript must be truncated to <= 2000 chars, got {x_count}");
+    assert!(
+        x_count <= 2000,
+        "transcript must be truncated to <= 2000 chars, got {x_count}"
+    );
 }
 
 #[test]
@@ -142,10 +148,19 @@ fn get_podcast_info_returns_title_and_count() {
     let (store, pid, _eid) = fixture_store();
     let registry = ToolRegistry::new(store);
 
-    let out = registry.execute("get_podcast_info", &serde_json::json!({ "podcast_id": pid }));
+    let out = registry.execute(
+        "get_podcast_info",
+        &serde_json::json!({ "podcast_id": pid }),
+    );
 
-    assert!(out.contains("Bitcoin Weekly"), "should include podcast title, got: {out}");
-    assert!(out.contains('1'), "should include episode count (1), got: {out}");
+    assert!(
+        out.contains("Bitcoin Weekly"),
+        "should include podcast title, got: {out}"
+    );
+    assert!(
+        out.contains('1'),
+        "should include episode count (1), got: {out}"
+    );
 }
 
 #[test]
@@ -153,14 +168,25 @@ fn get_memory_facts_lists_stored_facts() {
     let (store, _pid, _eid) = fixture_store();
     {
         let mut s = store.lock().unwrap();
-        s.set_memory_fact("preferred_genre".into(), "true crime".into(), "user".into(), 1);
+        s.set_memory_fact(
+            "preferred_genre".into(),
+            "true crime".into(),
+            "user".into(),
+            1,
+        );
     }
     let registry = ToolRegistry::new(store);
 
     let out = registry.execute("get_memory_facts", &serde_json::json!({}));
 
-    assert!(out.contains("preferred_genre"), "should include the fact key, got: {out}");
-    assert!(out.contains("true crime"), "should include the fact value, got: {out}");
+    assert!(
+        out.contains("preferred_genre"),
+        "should include the fact key, got: {out}"
+    );
+    assert!(
+        out.contains("true crime"),
+        "should include the fact value, got: {out}"
+    );
 }
 
 #[test]
@@ -208,5 +234,26 @@ fn tool_call_json_detected_with_surrounding_text() {
 #[test]
 fn plain_text_response_is_not_a_tool_call() {
     let raw = "Bitcoin is a decentralized digital currency.";
-    assert!(parse_tool_call(raw).is_none(), "plain prose must not parse as a tool call");
+    assert!(
+        parse_tool_call(raw).is_none(),
+        "plain prose must not parse as a tool call"
+    );
+}
+
+#[test]
+fn triage_parser_accepts_direct_scores_payload() {
+    let raw = r#"{"scores":[{"episode_id":"ep-1","score":0.9,"reason":"Strong match","categories":["technology"]}]}"#;
+    let call = parse_triage_tool_call(raw).expect("direct scores should become a triage tool call");
+
+    assert_eq!(call.name, "set_episode_priorities");
+    assert_eq!(call.args["scores"][0]["episode_id"], "ep-1");
+}
+
+#[test]
+fn triage_parser_accepts_tool_with_top_level_scores() {
+    let raw = r#"{"tool":"set_episode_priorities","scores":[{"episode_id":"ep-2","score":0.6}]}"#;
+    let call = parse_triage_tool_call(raw).expect("top-level scores should be normalized");
+
+    assert_eq!(call.name, "set_episode_priorities");
+    assert_eq!(call.args["scores"][0]["episode_id"], "ep-2");
 }

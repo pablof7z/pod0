@@ -11,21 +11,13 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use super::handle::PodcastHandle;
-use super::projections::{
-    AccountSummary, AgentSnapshot, PodcastSummary, SettingsSnapshot, VoiceState,
-};
+use super::projections::{AgentSnapshot, PodcastSummary, SettingsSnapshot, VoiceState};
 use super::snapshot_categories::build_category_aggregate;
 use super::snapshot_downloads::build_downloads_snapshot;
 use super::snapshot_owned::collect_owned_podcasts;
 use super::snapshot_queue::resolve_queue_rows;
 use crate::inbox_handler::{build_inbox, maybe_enqueue_triage_with_signal};
 
-/// Build the JSON payload for one snapshot tick.
-///
-/// Reads `player_actor`, `store`, and `rev` from `handle` under their
-/// respective short-duration locks, assembles the typed [`PodcastUpdate`],
-/// and serializes it. Failures degrade to the byte-compatible legacy stub
-/// (D6).
 /// Build the typed [`PodcastUpdate`] directly from the handle state.
 ///
 /// Rust-native path — no JSON round-trip. Used by the TUI and other
@@ -270,15 +262,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         })
         .unwrap_or_default();
 
-    let active_account = handle.identity.lock().ok().and_then(|id| {
-        id.npub.as_ref().map(|npub| AccountSummary {
-            npub: npub.clone(),
-            pubkey_hex: id.pubkey_hex.clone(),
-            mode: "local_key".into(),
-            display_name: id.display_name.clone(),
-            picture_url: id.picture_url.clone(),
-        })
-    });
+    let active_account = super::snapshot_identity::build_active_account(handle);
 
     let social = handle.social.lock().ok().and_then(|s| s.clone());
 

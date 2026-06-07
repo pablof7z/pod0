@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-07T18:12:00Z",
+      "lines": [
+        "Nostr profile and account actions now use the same backend-owned account key across app surfaces."
+      ]
+    },
+    {
       "shipped_at": "2026-06-07T17:20:00Z",
       "lines": [
         "Nostr identity now restores with the correct account identifier, keeping profile lookup, signing, and sign-out on the same backend-owned key."

@@ -136,11 +136,9 @@ struct PlayerState {
 /// Active Nostr identity (present only when an account is loaded).
 struct AccountSummary: Codable {
     var npub: String
-    /// Lowercase 64-hex pubkey. `nil` for remote-signer accounts where
-    /// the kernel holds only the npub. Use this when a raw hex pubkey is
-    /// required (Nostr event authorship, filter construction) so callers
-    /// don't need to re-decode the bech32 npub.
-    var pubkeyHex: String? = nil
+    /// Lowercase 64-hex pubkey. This is the canonical account id; `npub` is
+    /// for display.
+    var pubkeyHex: String
     var displayName: String? = nil
     var mode: String
     var pictureUrl: String? = nil
@@ -280,30 +278,6 @@ struct SettingsSnapshot: Equatable {
     var nostrProfilePicture: String = ""
     /// Nostr public key hex (read-only, derived from Keychain). Not persisted.
     var nostrPublicKeyHex: String? = nil
-}
-
-/// Active download-queue projection surfaced via `PodcastUpdate.downloads`.
-struct DownloadQueueSnapshot: Equatable {
-    var active: [DownloadItemSnapshot] = []
-    var queuedCount: Int = 0
-    var completedToday: Int = 0
-}
-
-/// One row in `DownloadQueueSnapshot.active`.
-struct DownloadItemSnapshot: Identifiable, Equatable {
-    var episodeId: String
-    /// What this row fetches. Omitted on the wire for episodes (the default),
-    /// so it must decode-default to `.episode`. Lets the model UI pick out its
-    /// own rows and lets the episode overlay skip non-episode rows.
-    var kind: DownloadKind = .episode
-    var progress: Double = 0
-    var state: String
-    /// Total file size (bytes) once the server reports `Content-Length`.
-    /// `nil` until the first HTTP response arrives.
-    var totalBytes: Int64? = nil
-    var error: String? = nil
-
-    var id: String { episodeId }
 }
 
 // MARK: - Custom Decodable implementations
@@ -516,26 +490,5 @@ extension SettingsSnapshot: Codable {
         nostrProfileAbout = try c.decodeIfPresent(String.self, forKey: .nostrProfileAbout) ?? ""
         nostrProfilePicture = try c.decodeIfPresent(String.self, forKey: .nostrProfilePicture) ?? ""
         nostrPublicKeyHex = try c.decodeIfPresent(String.self, forKey: .nostrPublicKeyHex)
-    }
-}
-
-extension DownloadQueueSnapshot: Codable {
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        active = try c.decodeIfPresent([DownloadItemSnapshot].self, forKey: .active) ?? []
-        queuedCount = try c.decodeIfPresent(Int.self, forKey: .queuedCount) ?? 0
-        completedToday = try c.decodeIfPresent(Int.self, forKey: .completedToday) ?? 0
-    }
-}
-
-extension DownloadItemSnapshot: Codable {
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        episodeId = try c.decode(String.self, forKey: .episodeId)
-        kind = try c.decodeIfPresent(DownloadKind.self, forKey: .kind) ?? .episode
-        progress = try c.decodeIfPresent(Double.self, forKey: .progress) ?? 0
-        state = try c.decode(String.self, forKey: .state)
-        totalBytes = try c.decodeIfPresent(Int64.self, forKey: .totalBytes)
-        error = try c.decodeIfPresent(String.self, forKey: .error)
     }
 }

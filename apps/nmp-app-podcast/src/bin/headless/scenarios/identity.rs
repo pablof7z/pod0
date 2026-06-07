@@ -5,14 +5,18 @@ use nmp_app_podcast::PodcastHandle;
 use nmp_ffi::NmpApp;
 use serde_json::json;
 
-use crate::harness::{dispatch, wait_for};
-use crate::fixtures;
 use super::ScenarioResult::{self, Fail, Pass};
+use crate::fixtures;
+use crate::harness::{dispatch, wait_for};
 
 pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
     // Import the hardcoded test nsec. This should immediately set
     // `active_account` on the snapshot and bump `rev`.
-    let res = dispatch(app, "podcast.identity", json!({"type": "ImportNsec", "nsec": fixtures::HEADLESS_TEST_NSEC}));
+    let res = dispatch(
+        app,
+        "podcast.identity",
+        json!({"type": "ImportNsec", "nsec": fixtures::HEADLESS_TEST_NSEC}),
+    );
     // A successful dispatch returns `{"correlation_id":"..."}`.
     // An immediate rejection returns `{"error":"..."}`.
     if let Some(err) = res.get("error").and_then(|v| v.as_str()) {
@@ -29,7 +33,15 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
             if acc.npub != fixtures::HEADLESS_TEST_NPUB {
                 return Fail(format!(
                     "npub mismatch: expected {} got {}",
-                    fixtures::HEADLESS_TEST_NPUB, acc.npub
+                    fixtures::HEADLESS_TEST_NPUB,
+                    acc.npub
+                ));
+            }
+            if acc.pubkey_hex != fixtures::HEADLESS_TEST_PUBKEY_HEX {
+                return Fail(format!(
+                    "pubkey_hex mismatch: expected {} got {}",
+                    fixtures::HEADLESS_TEST_PUBKEY_HEX,
+                    acc.pubkey_hex
                 ));
             }
             if acc.mode != "local_key" {

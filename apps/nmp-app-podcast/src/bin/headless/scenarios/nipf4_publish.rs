@@ -54,9 +54,7 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
     }) {
         Ok(u) => u,
         Err(msg) => {
-            return ScenarioResult::Fail(format!(
-                "timeout waiting for new library entry: {msg}"
-            ))
+            return ScenarioResult::Fail(format!("timeout waiting for new library entry: {msg}"))
         }
     };
 
@@ -119,7 +117,11 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
     };
 
     // 7. Extract and validate the signed event JSON.
-    let owned = match update.owned_podcasts.iter().find(|o| o.podcast_id == podcast_id) {
+    let owned = match update
+        .owned_podcasts
+        .iter()
+        .find(|o| o.podcast_id == podcast_id)
+    {
         Some(o) => o,
         None => return ScenarioResult::Fail("owned entry disappeared after wait_for".into()),
     };
@@ -134,10 +136,7 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
 
     // kind must be 10154 (NIP-F4 show).
     if event["kind"] != 10154 {
-        return ScenarioResult::Fail(format!(
-            "expected kind 10154, got {}",
-            event["kind"]
-        ));
+        return ScenarioResult::Fail(format!("expected kind 10154, got {}", event["kind"]));
     }
 
     // id must be a 64-char lowercase hex string.

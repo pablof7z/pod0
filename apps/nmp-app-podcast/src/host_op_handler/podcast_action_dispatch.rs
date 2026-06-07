@@ -105,6 +105,8 @@ impl PodcastHostOpHandler {
                     self.app,
                     &self.store,
                     &self.viewed_comments_episode_id,
+                    &self.rev,
+                    self.snapshot_signal.as_ref(),
                     &episode_id,
                 )
             }

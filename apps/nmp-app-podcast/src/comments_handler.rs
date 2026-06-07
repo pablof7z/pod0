@@ -62,6 +62,8 @@ pub fn handle_fetch_comments(
     app: *mut NmpApp,
     store: &Arc<Mutex<PodcastStore>>,
     viewed_comments_episode_id: &Arc<Mutex<Option<String>>>,
+    rev: &Arc<AtomicU64>,
+    snapshot_signal: Option<&SnapshotUpdateSignal>,
     episode_id: &str,
 ) -> serde_json::Value {
     let anchor = match store.lock() {
@@ -73,10 +75,25 @@ pub fn handle_fetch_comments(
     };
     // Mark this episode as the one whose comments are being viewed so the
     // snapshot projects its cache slice (not just the now-playing episode's).
-    if let Ok(mut viewed) = viewed_comments_episode_id.lock() {
-        *viewed = Some(episode_id.to_string());
-    }
+    let viewed_changed = viewed_comments_episode_id
+        .lock()
+        .ok()
+        .map(|mut viewed| {
+            let changed = viewed.as_deref() != Some(episode_id);
+            if changed {
+                *viewed = Some(episode_id.to_string());
+            }
+            changed
+        })
+        .unwrap_or(false);
     push_interest_via_nmp(app, comments_interest(&anchor));
+    if viewed_changed {
+        if let Some(signal) = snapshot_signal {
+            signal.bump();
+        } else {
+            rev.fetch_add(1, Ordering::Relaxed);
+        }
+    }
     serde_json::json!({"ok": true, "status": "subscribed", "anchor": anchor})
 }
 
@@ -100,7 +117,9 @@ pub fn handle_post_comment(
         Ok(id) if id.pubkey_hex.is_none() => {
             return serde_json::json!({"ok": false, "error": "not signed in"});
         }
-        Ok(id) => id.pubkey_hex.as_deref()
+        Ok(id) => id
+            .pubkey_hex
+            .as_deref()
             .and_then(|h| nostr::PublicKey::parse(h).ok())
             .and_then(|pk| pk.to_bech32().ok())
             .unwrap_or_default(),
@@ -129,7 +148,10 @@ pub fn handle_post_comment(
         created_at: chrono::Utc::now().timestamp(),
     };
     if let Ok(mut cache) = comments_cache.lock() {
-        cache.entry(episode_id.to_string()).or_default().insert(0, optimistic);
+        cache
+            .entry(episode_id.to_string())
+            .or_default()
+            .insert(0, optimistic);
     }
     rev.fetch_add(1, Ordering::Relaxed);
     serde_json::json!({"ok": true, "status": status})
@@ -171,7 +193,9 @@ impl KernelEventObserver for CommentsObserver {
         if event.kind != 1111 {
             return;
         }
-        let Some(anchor) = event.tags.iter()
+        let Some(anchor) = event
+            .tags
+            .iter()
             .find(|t| t.first().map(|s| s == "i").unwrap_or(false))
             .and_then(|t| t.get(1))
             .cloned()
@@ -181,10 +205,14 @@ impl KernelEventObserver for CommentsObserver {
 
         // Reverse-lookup episode_id from anchor by scanning the store.
         let episode_id = {
-            let Ok(store) = self.store.lock() else { return; };
+            let Ok(store) = self.store.lock() else {
+                return;
+            };
             store.episode_id_for_anchor(&anchor)
         };
-        let Some(episode_id) = episode_id else { return; };
+        let Some(episode_id) = episode_id else {
+            return;
+        };
 
         let author_npub = nostr::PublicKey::parse(&event.author)
             .ok()

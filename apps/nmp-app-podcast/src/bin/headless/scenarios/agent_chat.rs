@@ -11,11 +11,15 @@ use serde_json::json;
 
 use super::ScenarioResult::{self, Fail, Pass, Skip};
 use crate::harness::{dispatch, probe_tcp, wait_for};
+use crate::scenarios::llm_setup;
 
 pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
     // Gate on Ollama availability. Without it the LLM path cannot be exercised.
     if !probe_tcp("localhost", 11434) {
         return Skip("ollama offline".into());
+    }
+    if let Err(err) = llm_setup::configure_glm_ollama(app) {
+        return Fail(err);
     }
 
     // Send a short, well-defined question so the model produces a fast reply.
@@ -47,7 +51,10 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
                 return Fail("got scaffold reply — LLM not connected".into());
             }
             if reply.len() < 20 {
-                return Fail(format!("reply too short ({} chars): {reply:?}", reply.len()));
+                return Fail(format!(
+                    "reply too short ({} chars): {reply:?}",
+                    reply.len()
+                ));
             }
             Pass
         }

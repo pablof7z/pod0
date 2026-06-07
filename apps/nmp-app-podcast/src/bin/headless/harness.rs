@@ -6,13 +6,13 @@
 use std::ffi::{CStr, CString};
 use std::time::{Duration, Instant};
 
-use nmp_app_podcast::{
-    nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free,
-    nmp_app_podcast_snapshot_rev, PodcastHandle,
-};
 use nmp_app_podcast::ffi::PodcastUpdate;
-use nmp_ffi::{nmp_app_dispatch_action, nmp_app_free_string, nmp_app_new};
+use nmp_app_podcast::{
+    nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free, nmp_app_podcast_snapshot_rev,
+    PodcastHandle,
+};
 use nmp_ffi::NmpApp;
+use nmp_ffi::{nmp_app_dispatch_action, nmp_app_free_string, nmp_app_new};
 
 /// Allocate a new `NmpApp` instance. Panics if the kernel returns null
 /// (should never happen in practice — null only comes from OOM).
@@ -41,7 +41,11 @@ pub unsafe fn app_free(app: *mut NmpApp) {
 /// The `namespace` / `payload` shape must match the registered `ActionModule`
 /// for that namespace. Returns `serde_json::Value::Null` if the returned C
 /// string is empty or not valid UTF-8.
-pub fn dispatch(app: *mut NmpApp, namespace: &str, payload: serde_json::Value) -> serde_json::Value {
+pub fn dispatch(
+    app: *mut NmpApp,
+    namespace: &str,
+    payload: serde_json::Value,
+) -> serde_json::Value {
     let ns_c = CString::new(namespace).expect("namespace NUL-free");
     let payload_str = payload.to_string();
     let payload_c = CString::new(payload_str).expect("payload NUL-free");
@@ -85,18 +89,18 @@ pub fn snapshot(handle: *mut PodcastHandle) -> Option<PodcastUpdate> {
 /// Returns `true` if a TCP connection to `host:port` can be established within 2 seconds.
 /// Used by scenarios to gate on optional external services (e.g. Ollama).
 ///
-/// Resolves the hostname via DNS first (using `std::net::ToSocketAddrs`), then uses
-/// `connect_timeout` on the first resolved address.
+/// Resolves the hostname via DNS first (using `std::net::ToSocketAddrs`), then
+/// tries every resolved address. This matters for `localhost`: some machines
+/// return `::1` first even when the service only listens on IPv4.
 pub fn probe_tcp(host: &str, port: u16) -> bool {
     use std::net::{TcpStream, ToSocketAddrs};
     use std::time::Duration;
     let timeout = Duration::from_secs(2);
     let addr_str = format!("{host}:{port}");
     match addr_str.to_socket_addrs() {
-        Ok(mut addrs) => match addrs.next() {
-            Some(addr) => TcpStream::connect_timeout(&addr, timeout).is_ok(),
-            None => false,
-        },
+        Ok(addrs) => addrs
+            .into_iter()
+            .any(|addr| TcpStream::connect_timeout(&addr, timeout).is_ok()),
         Err(_) => false,
     }
 }
@@ -136,4 +140,3 @@ where
     }
     Err(format!("wait_for timed out after {timeout_ms} ms"))
 }
-

@@ -10,6 +10,7 @@ mod discover_nostr;
 mod identity;
 mod inbox_triage;
 mod key_persistence;
+mod llm_setup;
 mod nipf4_publish;
 mod relay_smoke;
 mod rss_subscribe;
@@ -42,23 +43,11 @@ pub fn run_all(
     handle: *mut PodcastHandle,
 ) -> Vec<(&'static str, ScenarioResult)> {
     vec![
-        (
-            "rss_subscribe",
-            rss_subscribe::run(app, handle),
-        ),
-        (
-            "key_persistence",
-            key_persistence::run(app, handle),
-        ),
-        (
-            "identity_import",
-            identity::run(app, handle),
-        ),
+        ("rss_subscribe", rss_subscribe::run(app, handle)),
+        ("key_persistence", key_persistence::run(app, handle)),
+        ("identity_import", identity::run(app, handle)),
         ("relay_smoke", relay_smoke::run(app, handle)),
-        (
-            "wiki_generate",
-            wiki::run(app, handle),
-        ),
+        ("wiki_generate", wiki::run(app, handle)),
         ("inbox_triage", inbox_triage::run(app, handle)),
         ("agent_chat", agent_chat::run(app, handle)),
         ("nipf4_publish", nipf4_publish::run(app, handle)),

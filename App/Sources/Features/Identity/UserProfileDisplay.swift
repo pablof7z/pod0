@@ -38,11 +38,10 @@ struct UserProfileDisplay {
     /// the deterministic generated profile when the fetch hasn't completed.
     @MainActor
     static func from(identity: UserIdentityStore) -> UserProfileDisplay? {
-        // Use hex for the deterministic seed when available; fall back to the npub
-        // so the generated placeholder renders even on kernel builds that predate
-        // the pubkey_hex projection.
-        guard let seed = identity.publicKeyHex ?? identity.activeNpub, !seed.isEmpty else { return nil }
-        let generated = UserProfileDisplay(publicKeyHex: seed)
+        // Use the canonical hex account id as the deterministic seed. The
+        // backend omits activeAccount if the hex id is not available.
+        guard let hex = identity.publicKeyHex, !hex.isEmpty else { return nil }
+        let generated = UserProfileDisplay(publicKeyHex: hex)
         guard identity.profileDisplayName != nil
            || identity.profileName != nil
            || identity.profileAbout != nil

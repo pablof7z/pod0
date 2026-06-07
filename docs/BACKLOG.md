@@ -60,8 +60,8 @@ worktrees currently in flight.
   identity import/generate/clear/profile/NIP-46 flows are fully Rust/NMP-owned.
 - **identity-kernel-actions.** Implement Rust-owned identity actions:
   import nsec, generate, clear, publish profile, connect/disconnect remote
-  signer, connect via nostrconnect, cancel handshake, and expose raw hex pubkey
-  plus fingerprint data in `AccountSummary`.
+  signer, connect via nostrconnect, cancel handshake, and expose fingerprint
+  data in `AccountSummary`.
 - **settings-provider-ownership.** Move OpenRouter mode, BYOK-imported
   credentials metadata, provider settings, and onboarding gate decisions into
   Rust-owned settings projections/actions. Delete Keychain-only UI fallbacks

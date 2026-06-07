@@ -25,9 +25,8 @@ final class UserIdentityStore {
     private let logger = Logger.app("UserIdentityStore")
 
     /// The user's lowercase 64-hex public key, mirrored from
-    /// `PodcastUpdate.active_account.pubkey_hex`. `nil` while no identity is
-    /// configured or while the kernel predates the `pubkey_hex` projection (older
-    /// builds emit only `npub`; use `activeNpub` as the identity presence check).
+    /// `PodcastUpdate.active_account.pubkey_hex`.
+    /// `nil` while no identity is configured.
     private(set) var publicKeyHex: String?
 
     /// Bech32 `npub1…` encoding of the active public key, mirrored from
@@ -64,7 +63,7 @@ final class UserIdentityStore {
     var profileAbout: String?
     var profilePicture: String?
 
-    var hasIdentity: Bool { activeNpub != nil }
+    var hasIdentity: Bool { publicKeyHex != nil }
     var isRemoteSigner: Bool { mode == .remoteSigner }
 
     // MARK: - Keychain slots (legacy cleanup only)
@@ -216,8 +215,8 @@ final class UserIdentityStore {
     @MainActor
     func applyKernelIdentity(
         handshake: KernelBunkerHandshake?,
-        activeAccount: String?,       // bech32 npub — used for display + presence
-        pubkeyHex: String?,            // hex pubkey — used for crypto / relay queries
+        activeNpub: String?,
+        pubkeyHex: String?,
         isRemoteSigner: Bool
     ) {
         // 1. Handshake progression (failure surfaces an error; success is
@@ -227,18 +226,16 @@ final class UserIdentityStore {
         }
 
         // 2. Steady-state: mirror the active identity from the kernel.
-        let changed = (activeAccount != activeNpub)
-        if changed {
-            activeNpub = activeAccount
-            publicKeyHex = pubkeyHex
-        } else if pubkeyHex != publicKeyHex {
-            // Hex may arrive on a tick after npub on kernels that add pubkey_hex
-            // mid-session (e.g. after an app update that ships this projection).
+        let oldPubkeyHex = publicKeyHex
+        if activeNpub != self.activeNpub {
+            self.activeNpub = activeNpub
+        }
+        if pubkeyHex != publicKeyHex {
             publicKeyHex = pubkeyHex
         }
 
         let newMode: Mode
-        if activeAccount == nil {
+        if pubkeyHex == nil {
             newMode = .none
         } else {
             newMode = isRemoteSigner ? .remoteSigner : .localKey
@@ -247,8 +244,8 @@ final class UserIdentityStore {
 
         // Connection state: a live account means connected; reflect it without
         // churning if already in the right terminal state.
-        if let npub = activeAccount {
-            let target: RemoteSignerState = isRemoteSigner ? .connected(npub) : .idle
+        if let pubkey = pubkeyHex {
+            let target: RemoteSignerState = isRemoteSigner ? .connected(pubkey) : .idle
             if remoteSignerState != target {
                 // Don't downgrade an in-flight bunker handshake to idle on a
                 // local-key tick; only set when we have a real account.
@@ -257,11 +254,9 @@ final class UserIdentityStore {
         }
 
         // 3. Profile side-effects only when the active pubkey actually changes.
-        // Prefer the hex key for profile cache keying; fall back to the npub so
-        // older kernel snapshots that omit pubkey_hex still populate the cache.
-        guard changed, let cacheKey = pubkeyHex ?? activeAccount else { return }
-        loadCachedProfile(for: cacheKey)
-        Task { await self.fetchAndCacheProfile(pubkeyHex: cacheKey) }
+        guard oldPubkeyHex != pubkeyHex, let pubkey = pubkeyHex else { return }
+        loadCachedProfile(for: pubkey)
+        Task { await self.fetchAndCacheProfile(pubkeyHex: pubkey) }
     }
 
     // MARK: - Internal helpers
@@ -302,7 +297,11 @@ final class UserIdentityStore {
     /// gates the kernel publish dispatches.
     func _setActiveAccountForTesting(_ pubkeyHex: String, mode: Mode = .localKey) {
         self.publicKeyHex = pubkeyHex
-        self.activeNpub = pubkeyHex  // tests pass hex; presence check still works
+        if let bytes = Data(hexString: pubkeyHex), bytes.count == 32 {
+            self.activeNpub = Bech32.encode(hrp: "npub", data: bytes)
+        } else {
+            self.activeNpub = nil
+        }
         self.mode = mode
     }
 

@@ -32,9 +32,9 @@ fn probe_tcp(host: &str, port: u16) -> bool {
     let Ok(addrs) = (host, port).to_socket_addrs() else {
         return false;
     };
-    addrs.into_iter().any(|addr| {
-        TcpStream::connect_timeout(&addr, Duration::from_secs(3)).is_ok()
-    })
+    addrs
+        .into_iter()
+        .any(|addr| TcpStream::connect_timeout(&addr, Duration::from_secs(3)).is_ok())
 }
 
 pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
@@ -46,7 +46,11 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
     let result = dispatch(
         app,
         "podcast",
-        serde_json::json!({"op": "discover_nostr", "query": null}),
+        serde_json::json!({
+            "op": "discover_nostr",
+            "consumer_id": "headless-discover-nostr",
+            "query": null
+        }),
     );
 
     if let Some(err) = result.get("error").and_then(|v| v.as_str()) {

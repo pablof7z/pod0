@@ -86,8 +86,8 @@ struct RootView: View {
                     ShakeFeedbackSheet(store: sharedFeedbackStore)
                         .presentationDetents([.large])
                 }
-                .task(id: userIdentity.activeNpub) {
-                    guard userIdentity.activeNpub != nil else { return }
+                .task(id: userIdentity.publicKeyHex) {
+                    guard userIdentity.publicKeyHex != nil else { return }
                     await sharedFeedbackStore.start(
                         hostSigner: PodcastShakeFeedbackSigner(kernel: store.kernel))
                 }

@@ -212,14 +212,14 @@ data class WidgetSnapshot(
 )
 
 /**
- * Identity projection mirrored from `PodcastUpdate.active_account` (M1.A wire
- * target). The Kotlin side carries a forward-compatible shape so M13.C/D can
- * render an Identity screen even before the Rust serializer emits the field.
+ * Identity projection mirrored from `PodcastUpdate.active_account`.
+ * The Rust backend omits `activeAccount` entirely unless it can include both
+ * the display npub and canonical hex account id.
  */
 @Serializable
 data class AccountSummary(
     val npub: String,
-    @SerialName("pubkey_hex") val pubkeyHex: String? = null,
+    @SerialName("pubkey_hex") val pubkeyHex: String,
     @SerialName("display_name") val displayName: String? = null,
     val mode: String = "local_key",
     @SerialName("picture_url") val pictureUrl: String? = null,

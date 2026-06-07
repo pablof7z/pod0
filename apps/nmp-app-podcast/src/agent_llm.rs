@@ -246,17 +246,30 @@ pub fn run_background_agent_task(
                 }
             };
 
-            match agent_tools::parse_tool_call(&reply) {
+            match agent_tools::parse_triage_tool_call(&reply) {
                 Some(call) => {
+                    let tool_name = call.name.clone();
                     let result = registry.execute(&call.name, &call.args);
+                    if tool_name == "set_episode_priorities" && !result.starts_with("Recorded 0 ") {
+                        return Ok(result);
+                    }
                     convo.push(("user".to_owned(), std::mem::take(&mut next_msg)));
                     convo.push(("assistant".to_owned(), reply));
                     next_msg = format!(
                         "Tool `{}` returned:\n{}\n\nContinue with the task.",
-                        call.name, result
+                        tool_name, result
                     );
                 }
-                None => return Ok(reply),
+                None => {
+                    convo.push(("user".to_owned(), std::mem::take(&mut next_msg)));
+                    convo.push(("assistant".to_owned(), reply));
+                    next_msg = "\
+For this background inbox triage task, prose is not a valid final answer. \
+Reply with only a JSON tool call using this exact shape: \
+{\"tool\":\"set_episode_priorities\",\"args\":{\"scores\":[{\"episode_id\":\"uuid\",\"score\":0.0,\"reason\":\"one sentence\",\"categories\":[\"tag\"]}]}}. \
+Include every episode_id from the original request."
+                        .to_owned();
+                }
             }
         }
 

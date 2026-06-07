@@ -115,7 +115,7 @@ struct AvatarStylePickerView: View {
     // MARK: - Helpers
 
     private func previewURL(for style: DicebearStyle) -> URL? {
-        guard let seed = identity.publicKeyHex ?? identity.activeNpub else { return nil }
+        guard let seed = identity.publicKeyHex else { return nil }
         return style.url(seed: String(seed.prefix(16)))
     }
 

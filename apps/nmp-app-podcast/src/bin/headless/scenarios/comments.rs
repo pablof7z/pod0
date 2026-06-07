@@ -35,9 +35,9 @@ fn probe_tcp(host: &str, port: u16) -> bool {
     let Ok(addrs) = (host, port).to_socket_addrs() else {
         return false;
     };
-    addrs.into_iter().any(|addr| {
-        TcpStream::connect_timeout(&addr, Duration::from_secs(3)).is_ok()
-    })
+    addrs
+        .into_iter()
+        .any(|addr| TcpStream::connect_timeout(&addr, Duration::from_secs(3)).is_ok())
 }
 
 pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
@@ -124,14 +124,16 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
     if let Some(err) = res.get("error").and_then(|v| v.as_str()) {
         return Fail(format!("FetchComments dispatch rejected: {err}"));
     }
-    // Wait for actor to process FetchComments (rev bumps on success).
-    let fetch_ok = wait_for(handle, 15_000, |_| true);
+    // Wait for actor to process FetchComments. It marks this episode as the
+    // viewed comment target and bumps the snapshot so the optimistic comment
+    // already cached by PostComment becomes visible in `comments`.
+    let fetch_ok = wait_for(handle, 15_000, |u| !u.comments.is_empty());
     if let Err(e) = fetch_ok {
         return Fail(format!("FetchComments actor timed out: {e}"));
     }
 
-    // Both actions processed by the actor without error — relay round-trip
-    // validated. Comments appear in the snapshot only when the episode is
-    // playing (snapshot builder projects from now_playing.episode_id).
+    // Both actions processed by the actor without error, and the snapshot now
+    // projects the viewed episode's optimistic comment while relay results are
+    // still free to arrive asynchronously via the observer.
     Pass
 }

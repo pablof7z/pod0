@@ -5,14 +5,12 @@
 //! unreachable the scenario skips rather than fails so CI isn't blocked by
 //! missing infrastructure.
 
-use std::net::TcpStream;
-use std::time::Duration;
-
 use nmp_app_podcast::PodcastHandle;
 use nmp_ffi::NmpApp;
 
-use crate::harness::{dispatch, wait_for};
+use crate::harness::{dispatch, probe_tcp, wait_for};
 use crate::mock_feed;
+use crate::scenarios::llm_setup;
 use crate::scenarios::ScenarioResult::{self, Fail, Pass, Skip};
 
 const PODCAST_NS: &str = "podcast";
@@ -22,25 +20,27 @@ const OLLAMA_PORT: u16 = 11434;
 /// Heuristic reason strings that the LLM result must NOT be.
 const HEURISTIC_REASONS: &[&str] = &["Just published", "Recent", "This week", "From your library"];
 
-/// Check whether Ollama is reachable on the local machine.
-///
-/// Uses `ToSocketAddrs` resolution so "localhost" resolves correctly.
-fn probe_tcp(host: &str, port: u16) -> bool {
-    use std::net::ToSocketAddrs;
-    let addr = format!("{host}:{port}");
-    let Ok(mut addrs) = addr.to_socket_addrs() else {
-        return false;
-    };
-    let Some(socket_addr) = addrs.next() else {
-        return false;
-    };
-    TcpStream::connect_timeout(&socket_addr, Duration::from_millis(500)).is_ok()
-}
-
 pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
     // Skip if Ollama isn't reachable — avoids false failures in CI.
     if !probe_tcp(OLLAMA_HOST, OLLAMA_PORT) {
         return Skip("ollama offline".into());
+    }
+    if let Err(err) = llm_setup::configure_glm_ollama(app) {
+        return Fail(err);
+    }
+
+    let memory_result = dispatch(
+        app,
+        "podcast.memory",
+        serde_json::json!({
+            "op": "remember",
+            "key": "episode_preferences",
+            "value": "Prioritize technical deep dives, distributed systems, Rust, and practical engineering lessons.",
+            "source": "user"
+        }),
+    );
+    if let Some(err) = memory_result.get("error").and_then(|v| v.as_str()) {
+        return Fail(format!("memory dispatch rejected: {err}"));
     }
 
     // Subscribe to a mock feed so we have unlistened episodes to triage.
@@ -64,13 +64,13 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
     }
 
     // Dispatch the Triage action. This triggers LLM scoring on the actor
-    // thread. With a 3-episode feed against deepseek-v4-flash:cloud it
-    // typically completes in under 30 s, but we allow 120 s to be safe.
+    // thread. glm-5.1:cloud can require backend reprompts before it emits the
+    // required tool payload, so the scenario mirrors the shared agent budget.
     dispatch(app, INBOX_NS, serde_json::json!({"op": "triage"}));
 
     // Wait until at least one inbox item has non-empty ai_categories —
     // that signals the LLM triage has run and been projected.
-    match wait_for(handle, 120_000, |u| {
+    match wait_for(handle, 300_000, |u| {
         u.inbox.iter().any(|i| !i.ai_categories.is_empty())
     }) {
         Ok(u) => {
@@ -90,6 +90,6 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
 
             Pass
         }
-        Err(e) => Fail(format!("no LLM-triaged inbox items after 120 s: {e}")),
+        Err(e) => Fail(format!("no LLM-triaged inbox items after 300 s: {e}")),
     }
 }

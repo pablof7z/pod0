@@ -9,12 +9,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
 pub struct AccountSummary {
     pub npub: String,
-    /// Lowercase 64-hex pubkey. Omitted for remote signers where only the
-    /// npub is known. Use this field wherever a hex pubkey is required
-    /// (e.g. Nostr event authorship, filter construction) so callers don't
-    /// need to re-decode the bech32 npub.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pubkey_hex: Option<String>,
+    /// Lowercase 64-hex pubkey. This is the canonical account id; `npub` is
+    /// for display. Hosts must use this field for signing, profile lookup,
+    /// filter construction, allowlists, and account removal.
+    pub pubkey_hex: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display_name: Option<String>,
     pub mode: String,
