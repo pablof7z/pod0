@@ -2,6 +2,7 @@ use nmp_app_podcast::ffi::SettingsSnapshot;
 
 use crate::provider_settings_parser::*;
 use crate::runtime::{AppRuntime, Result};
+use crate::speech_model_catalog::{option_summary, options_hint, SpeechModelCatalog};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ProviderSettingItem {
@@ -79,7 +80,11 @@ impl ProviderSettingItem {
         }
     }
 
-    pub(crate) fn value(self, settings: &SettingsSnapshot) -> String {
+    pub(crate) fn value(
+        self,
+        settings: &SettingsSnapshot,
+        speech_catalog: &SpeechModelCatalog,
+    ) -> String {
         match self {
             Self::LoadEnvCredentials => env_credentials_summary(),
             Self::AgentInitialModel => model_summary(
@@ -135,11 +140,24 @@ impl ProviderSettingItem {
                 settings.stt_provider, settings.effective_stt_provider
             ),
             Self::SttKeysPresent => "comma-separated provider raw values".to_owned(),
-            Self::OpenRouterWhisperModel => settings.open_router_whisper_model.clone(),
-            Self::AssemblyAiSttModel => settings.assembly_ai_stt_model.clone(),
+            Self::OpenRouterWhisperModel => option_summary(
+                &settings.open_router_whisper_model,
+                &speech_catalog.open_router_whisper,
+            ),
+            Self::AssemblyAiSttModel => option_summary(
+                &settings.assembly_ai_stt_model,
+                &speech_catalog.assembly_ai_stt,
+            ),
             Self::ElevenLabsModels => format!(
                 "{} | {}",
-                settings.eleven_labs_stt_model, settings.eleven_labs_tts_model
+                option_summary(
+                    &settings.eleven_labs_stt_model,
+                    &speech_catalog.eleven_labs_stt
+                ),
+                option_summary(
+                    &settings.eleven_labs_tts_model,
+                    &speech_catalog.eleven_labs_tts
+                )
             ),
             Self::ElevenLabsVoice => pair_summary(
                 &settings.eleven_labs_voice_id,
@@ -152,9 +170,9 @@ impl ProviderSettingItem {
         }
     }
 
-    pub(crate) fn input_hint(self) -> &'static str {
+    pub(crate) fn input_hint(self, speech_catalog: &SpeechModelCatalog) -> String {
         match self {
-            Self::LoadEnvCredentials => "loads env credentials without showing secrets",
+            Self::LoadEnvCredentials => "loads env credentials without showing secrets".to_owned(),
             Self::AgentInitialModel
             | Self::AgentThinkingModel
             | Self::MemoryCompilationModel
@@ -162,20 +180,28 @@ impl ProviderSettingItem {
             | Self::CategorizationModel
             | Self::ChapterCompilationModel
             | Self::EmbeddingsModel
-            | Self::ImageGenerationModel => "format: model_id | display name",
-            Self::RerankerEnabled => "press Enter to toggle",
+            | Self::ImageGenerationModel => "format: model_id | display name".to_owned(),
+            Self::RerankerEnabled => "press Enter to toggle".to_owned(),
             Self::OpenRouterCredential | Self::OllamaCredential | Self::ElevenLabsCredential => {
-                "format: source | key_id | key_label | connected_at"
+                "format: source | key_id | key_label | connected_at".to_owned()
             }
-            Self::OllamaChatUrl => "format: https://host/api/chat",
+            Self::OllamaChatUrl => "format: https://host/api/chat".to_owned(),
             Self::SttProvider => {
                 "provider: apple_native | elevenlabs_scribe | assemblyai | openrouter_whisper"
+                    .to_owned()
             }
-            Self::SttKeysPresent => "comma list: elevenlabs_scribe,assemblyai,openrouter_whisper",
-            Self::OpenRouterWhisperModel | Self::AssemblyAiSttModel => "format: model id",
-            Self::ElevenLabsModels => "format: stt_model | tts_model",
-            Self::ElevenLabsVoice => "format: voice_id | voice_name",
-            Self::LocalModel => "format: model id, blank clears",
+            Self::SttKeysPresent => {
+                "comma list: elevenlabs_scribe,assemblyai,openrouter_whisper".to_owned()
+            }
+            Self::OpenRouterWhisperModel => options_hint(&speech_catalog.open_router_whisper),
+            Self::AssemblyAiSttModel => options_hint(&speech_catalog.assembly_ai_stt),
+            Self::ElevenLabsModels => format!(
+                "format: stt_model | tts_model; STT: {}; TTS: {}",
+                options_hint(&speech_catalog.eleven_labs_stt),
+                options_hint(&speech_catalog.eleven_labs_tts)
+            ),
+            Self::ElevenLabsVoice => "format: voice_id | voice_name".to_owned(),
+            Self::LocalModel => "format: model id, blank clears".to_owned(),
         }
     }
 

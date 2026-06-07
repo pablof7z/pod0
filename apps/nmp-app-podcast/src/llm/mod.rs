@@ -25,6 +25,7 @@ pub mod perplexity_search;
 pub mod provider_config;
 pub mod provider_transport;
 pub mod rerank_backend;
+pub mod speech_model_catalog;
 
 pub use backend::{LlmBackend, LlmError, LlmRequest};
 pub use factory::{backend_for, role_model_or_default, validate_model_credentials};

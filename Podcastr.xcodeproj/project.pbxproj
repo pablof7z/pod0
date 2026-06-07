@@ -339,6 +339,7 @@
 		79B00D6FC43CAB05674EA3E8 /* Nip46ConnectCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914928B50E334BA9BE9AEB12 /* Nip46ConnectCard.swift */; };
 		79B8D1F81EF1A28D03C3ADA0 /* AgentTools+Voices.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC251F9CF9946FF112BC46DB /* AgentTools+Voices.swift */; };
 		79D1D9914C9DCC31FD4ED58F /* AgentChatBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C70D48DA04DEB4330285B88 /* AgentChatBubble.swift */; };
+		7A71F6172217EC5BCD72BA28 /* SpeechModelCatalogService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B5BCAE8EFF564BBBB1DEE5 /* SpeechModelCatalogService.swift */; };
 		7A9A1A3BC1F2E6B447AE0724 /* VoiceItemService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EC9A01379FA98400B6083FB /* VoiceItemService.swift */; };
 		7AE16082CAF1996E7CC3B9DB /* PodcastActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61611885D6AA0AE6DE31BA6B /* PodcastActivityAttributes.swift */; };
 		7B38745DD2DF0D924C751D64 /* TranscriptIngestService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 604C4FDC93784B68593EB785 /* TranscriptIngestService.swift */; };
@@ -802,6 +803,7 @@
 /* Begin PBXFileReference section */
 		0066858CC2F8B6E6B570CD47 /* Settings+Embeddings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Settings+Embeddings.swift"; sourceTree = "<group>"; };
 		00B04A75C4999049C420ABF6 /* SortedSubscriptionsByRecencyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SortedSubscriptionsByRecencyTests.swift; sourceTree = "<group>"; };
+		00B5BCAE8EFF564BBBB1DEE5 /* SpeechModelCatalogService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechModelCatalogService.swift; sourceTree = "<group>"; };
 		00CCF5D6D1819CA4405F0B7A /* AudioSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionCoordinator.swift; sourceTree = "<group>"; };
 		00F1446278E2E9DDBE5DB5B9 /* ShowDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowDetailView.swift; sourceTree = "<group>"; };
 		00FD5DA0784A938182923E88 /* AgentToolsPodcastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentToolsPodcastTests.swift; sourceTree = "<group>"; };
@@ -1973,6 +1975,7 @@
 				19B7C5E509BE70FC06BF2C59 /* OpenRouterModelSelectorView.swift */,
 				061347C1B283CF130F958F08 /* OpenRouterSettingsView.swift */,
 				5CDCAAC417B4604850BBB6BA /* ProviderLogoView.swift */,
+				00B5BCAE8EFF564BBBB1DEE5 /* SpeechModelCatalogService.swift */,
 				5D99D06F95D15A6539949508 /* SpeechModelsSettingsView.swift */,
 				CD4F36AB9184A23AA102CF07 /* YouTubeSettingsView.swift */,
 			);
@@ -3436,6 +3439,7 @@
 				5F097D5A4D5EB62EA9FFB436 /* OpenRouterModelSelectorView.swift in Sources */,
 				EA1BA31EA27764E91FB5BA19 /* OpenRouterSettingsView.swift in Sources */,
 				14E68373D8EBA2BB1B18663C /* ProviderLogoView.swift in Sources */,
+				7A71F6172217EC5BCD72BA28 /* SpeechModelCatalogService.swift in Sources */,
 				09F87BE2DE39805838096D53 /* SpeechModelsSettingsView.swift in Sources */,
 				E0C659D273A795E445A599CB /* LLMPayloadDetailView.swift in Sources */,
 				D7766B90F05226A0A0704818 /* UsageCostModels.swift in Sources */,

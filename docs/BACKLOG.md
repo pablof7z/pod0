@@ -117,6 +117,10 @@ worktrees currently in flight.
   Perplexity, Android mirrors those fields and uses them for credential-card and
   speech-provider readiness, and Swift provider/transcript/wiki readiness UI
   consumes the shared projection instead of Keychain-only status fallbacks.
+  Speech STT/TTS model options now come from the shared Rust
+  `nmp_app_podcast_speech_model_catalog` instead of Swift/Android-owned
+  constants, with the TUI using the same catalog for provider-setting display
+  and input hints.
   Remaining provider-ownership work is streaming voice-mode STT/TTS once the
   canonical NMP capability seam lands upstream
   (`pablof7z/nostr-multi-platform#954`).

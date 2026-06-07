@@ -1,30 +1,48 @@
 package io.f7z.podcast.ui
 
+import io.f7z.podcast.KernelBridge
 import io.f7z.podcast.SettingsSnapshot
 import io.f7z.podcast.STT_ASSEMBLY_AI
 import io.f7z.podcast.STT_ELEVEN_LABS_SCRIBE
 import io.f7z.podcast.STT_OPENROUTER_WHISPER
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
+@Serializable
 internal data class ModelOption(val id: String, val label: String)
 
-internal val ELEVEN_LABS_STT_MODELS = listOf(
-    ModelOption("scribe_v1", "Scribe v1"),
+@Serializable
+internal data class SpeechModelCatalogEnvelope(
+    val result: SpeechModelCatalog? = null,
+    val error: String? = null,
 )
 
-internal val OPENROUTER_WHISPER_MODELS = listOf(
-    ModelOption("openai/whisper-1", "OpenAI Whisper"),
+@Serializable
+internal data class SpeechModelCatalog(
+    @SerialName("eleven_labs_stt") val elevenLabsStt: List<ModelOption> = emptyList(),
+    @SerialName("open_router_whisper") val openRouterWhisper: List<ModelOption> = emptyList(),
+    @SerialName("assembly_ai_stt") val assemblyAiStt: List<ModelOption> = emptyList(),
+    @SerialName("eleven_labs_tts") val elevenLabsTts: List<ModelOption> = emptyList(),
 )
 
-internal val ASSEMBLY_AI_STT_MODELS = listOf(
-    ModelOption("universal-3-pro,universal-2", "Universal 3 Pro, fallback Universal 2"),
-    ModelOption("universal-2", "Universal 2"),
-)
+internal object SpeechModelCatalogService {
+    private val json = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+    }
 
-internal val ELEVEN_LABS_TTS_MODELS = listOf(
-    ModelOption("eleven_turbo_v2_5", "Turbo v2.5"),
-    ModelOption("eleven_flash_v2_5", "Flash v2.5"),
-    ModelOption("eleven_multilingual_v2", "Multilingual v2"),
-)
+    suspend fun fetchCatalog(bridge: KernelBridge): SpeechModelCatalog =
+        withContext(Dispatchers.IO) {
+            val response = bridge.speechModelCatalog()
+                ?: throw IllegalStateException("Speech model catalog returned null")
+            val envelope = json.decodeFromString<SpeechModelCatalogEnvelope>(response)
+            envelope.error?.let { throw IllegalStateException(it) }
+            envelope.result ?: throw IllegalStateException("Speech model catalog response missing result")
+        }
+}
 
 internal fun sttStatus(settings: SettingsSnapshot): String {
     val selected = sttDisplayName(settings.sttProvider)

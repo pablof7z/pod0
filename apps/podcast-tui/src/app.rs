@@ -11,6 +11,7 @@ use crate::provider_model_catalog::ProviderCatalogModel;
 use crate::provider_settings_catalog::ProviderSettingItem;
 pub use crate::rows::{DownloadRow, EpisodeRow, InboxRow, PodcastRow, SearchResult};
 pub use crate::settings_state::SettingsSection;
+use crate::speech_model_catalog::SpeechModelCatalog;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NowPlaying {
@@ -83,6 +84,7 @@ pub struct AppState {
     pub configured_relays: Vec<AppRelayRow>,
     pub inbox_triage_in_progress: bool,
     pub settings: SettingsSnapshot,
+    pub(crate) speech_model_catalog: SpeechModelCatalog,
     pub settings_section: SettingsSection,
     pub selected_setting: usize,
     pub selected_provider_setting: usize,
@@ -154,6 +156,7 @@ impl Default for AppState {
             configured_relays: Vec::new(),
             inbox_triage_in_progress: false,
             settings: SettingsSnapshot::default(),
+            speech_model_catalog: SpeechModelCatalog::default(),
             settings_section: SettingsSection::General,
             selected_setting: 0,
             selected_provider_setting: 0,

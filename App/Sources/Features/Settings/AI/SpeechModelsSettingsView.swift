@@ -7,28 +7,8 @@ struct SpeechModelsSettingsView: View {
     @State private var ttsPreview = ElevenLabsTTSPreviewService()
     @State private var isTestingVoice = false
     @State private var testVoiceError: String?
-
-    private static let sttModels: [(id: String, label: String)] = [
-        ("scribe_v1", "Scribe v1"),
-        ("scribe_v1_experimental", "Scribe v1 experimental"),
-        ("scribe_v2", "Scribe v2"),
-    ]
-
-    private static let whisperModels: [(id: String, label: String)] = [
-        ("openai/whisper-1", "Whisper"),
-    ]
-
-    private static let assemblyAIModels: [(id: String, label: String)] = [
-        ("universal-3-pro,universal-2", "Universal-3 Pro + Universal-2"),
-        ("universal-3-pro", "Universal-3 Pro"),
-        ("universal-2", "Universal-2"),
-    ]
-
-    private static let ttsModels: [(id: String, label: String)] = [
-        ("eleven_turbo_v2_5", "Turbo v2.5"),
-        ("eleven_flash_v2_5", "Flash v2.5"),
-        ("eleven_multilingual_v2", "Multilingual v2"),
-    ]
+    @State private var speechCatalog = SpeechModelCatalog()
+    @State private var speechCatalogError: String?
 
     var body: some View {
         Form {
@@ -44,7 +24,11 @@ struct SpeechModelsSettingsView: View {
         .onChange(of: settings) { _, new in
             store.updateSettings(new)
         }
+        .task {
+            await loadSpeechCatalog()
+        }
         .animation(AppTheme.Animation.spring, value: testVoiceError)
+        .animation(AppTheme.Animation.spring, value: speechCatalogError)
     }
 
     // MARK: - Sections
@@ -62,12 +46,12 @@ struct SpeechModelsSettingsView: View {
 
             if settings.sttProvider == .elevenLabsScribe {
                 Picker(selection: $settings.elevenLabsSTTModel) {
-                    ForEach(Self.sttModels, id: \.id) { entry in
+                    ForEach(speechCatalog.elevenLabsSTT, id: \.id) { entry in
                         Text(entry.label).tag(entry.id)
                     }
                     customModelEntry(
                         currentID: settings.elevenLabsSTTModel,
-                        knownIDs: Self.sttModels.map(\.id)
+                        knownIDs: speechCatalog.elevenLabsSTT.map(\.id)
                     )
                 } label: {
                     Label("Model", systemImage: "cpu")
@@ -77,12 +61,12 @@ struct SpeechModelsSettingsView: View {
 
             if settings.sttProvider == .openRouterWhisper {
                 Picker(selection: $settings.openRouterWhisperModel) {
-                    ForEach(Self.whisperModels, id: \.id) { entry in
+                    ForEach(speechCatalog.openRouterWhisper, id: \.id) { entry in
                         Text(entry.label).tag(entry.id)
                     }
                     customModelEntry(
                         currentID: settings.openRouterWhisperModel,
-                        knownIDs: Self.whisperModels.map(\.id)
+                        knownIDs: speechCatalog.openRouterWhisper.map(\.id)
                     )
                 } label: {
                     Label("Model", systemImage: "cpu")
@@ -92,17 +76,22 @@ struct SpeechModelsSettingsView: View {
 
             if settings.sttProvider == .assemblyAI {
                 Picker(selection: $settings.assemblyAISTTModel) {
-                    ForEach(Self.assemblyAIModels, id: \.id) { entry in
+                    ForEach(speechCatalog.assemblyAISTT, id: \.id) { entry in
                         Text(entry.label).tag(entry.id)
                     }
                     customModelEntry(
                         currentID: settings.assemblyAISTTModel,
-                        knownIDs: Self.assemblyAIModels.map(\.id)
+                        knownIDs: speechCatalog.assemblyAISTT.map(\.id)
                     )
                 } label: {
                     Label("Model", systemImage: "cpu")
                 }
                 .pickerStyle(.menu)
+            }
+
+            if let speechCatalogError {
+                Text(speechCatalogError)
+                    .inlineErrorText()
             }
         } header: {
             Text("Transcription")
@@ -127,12 +116,12 @@ struct SpeechModelsSettingsView: View {
     private var textToSpeechSection: some View {
         Section {
             Picker(selection: $settings.elevenLabsTTSModel) {
-                ForEach(Self.ttsModels, id: \.id) { entry in
+                ForEach(speechCatalog.elevenLabsTTS, id: \.id) { entry in
                     Text(entry.label).tag(entry.id)
                 }
                 customModelEntry(
                     currentID: settings.elevenLabsTTSModel,
-                    knownIDs: Self.ttsModels.map(\.id)
+                    knownIDs: speechCatalog.elevenLabsTTS.map(\.id)
                 )
             } label: {
                 Label("Text to Speech", systemImage: "speaker.wave.2.fill")
@@ -203,6 +192,15 @@ struct SpeechModelsSettingsView: View {
         let current = store.state.settings
         guard !current.elevenLabsVoiceID.isBlank else { return "Not set" }
         return current.elevenLabsVoiceName.isBlank ? "Selected" : current.elevenLabsVoiceName
+    }
+
+    private func loadSpeechCatalog() async {
+        do {
+            speechCatalog = try await SpeechModelCatalogService().fetchCatalog()
+            speechCatalogError = nil
+        } catch {
+            speechCatalogError = error.localizedDescription
+        }
     }
 
     private func testVoice() async {
