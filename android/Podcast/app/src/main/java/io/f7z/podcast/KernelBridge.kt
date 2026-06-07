@@ -158,6 +158,13 @@ class KernelBridge {
         if (handle != 0L) nativeProviderModelCatalog(handle) else null
 
     /**
+     * Shared OpenRouter key validation. Rust owns `/auth/key`, credentials,
+     * request shaping, and response parsing; Android receives the JSON envelope.
+     */
+    fun validateOpenRouterKey(): String? =
+        if (handle != 0L) nativeValidateOpenRouterKey(handle) else null
+
+    /**
      * Shared OpenRouter Whisper transcription transport. Android supplies only
      * the typed audio-source intent; Rust owns OpenRouter HTTP and credentials.
      */
@@ -199,6 +206,7 @@ class KernelBridge {
     private external fun nativeProviderComplete(handle: Long, intentJson: String): String?
     private external fun nativeProviderEmbed(handle: Long, intentJson: String): String?
     private external fun nativeProviderModelCatalog(handle: Long): String?
+    private external fun nativeValidateOpenRouterKey(handle: Long): String?
     private external fun nativeOpenRouterWhisperTranscribe(handle: Long, intentJson: String): String?
     private external fun nativeGenerateImage(handle: Long, requestJson: String): String?
     private external fun nativeRerank(handle: Long, requestJson: String): String?

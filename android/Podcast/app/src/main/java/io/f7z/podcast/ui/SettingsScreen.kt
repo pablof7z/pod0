@@ -77,7 +77,7 @@ fun SettingsScreen(
         }
         item {
             SettingsSection(title = "AI") {
-                SettingsNavRow(label = "Models", onClick = onNavigateToModels)
+                SettingsNavRow(label = "Providers & models", onClick = onNavigateToModels)
             }
         }
         item {

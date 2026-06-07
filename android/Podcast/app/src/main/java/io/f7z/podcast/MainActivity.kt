@@ -92,6 +92,7 @@ private fun PodcastRoot() {
         KeystoreManager.loadNsec(context)?.let { stored ->
             IdentityActions.importNsec(bridge, stored)
         }
+        ProviderCredentialActions.reloadProviderApiKeys(context, bridge)
         bridge.registerCapabilityRouter(router)
         http.start()
         audio.attach()
