@@ -11,6 +11,7 @@ use crate::ffi::projections::{
     DownloadItemSnapshot, DownloadQueueSnapshot, EpisodeSummary, PendingApprovalSnapshot,
     SettingsSnapshot, VoiceState, WidgetSnapshot,
 };
+use crate::ffi::snapshot::provider_key_present;
 use crate::player::PlayerState;
 
 #[test]
@@ -402,8 +403,8 @@ fn settings_snapshot_missing_skip_fields_use_defaults() {
 
 #[test]
 fn provider_key_presence_is_trimmed() {
-    assert!(!super::provider_key_present(None));
-    assert!(!super::provider_key_present(Some("")));
-    assert!(!super::provider_key_present(Some("   ")));
-    assert!(super::provider_key_present(Some(" sk-live ")));
+    assert!(!provider_key_present(None));
+    assert!(!provider_key_present(Some("")));
+    assert!(!provider_key_present(Some("   ")));
+    assert!(provider_key_present(Some(" sk-live ")));
 }

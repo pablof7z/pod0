@@ -5,7 +5,6 @@ struct OllamaSettingsView: View {
 
     @State private var settings = Settings()
     @State private var manualAPIKey = ""
-    @State private var hasStoredKey = false
     @State private var isConnectingBYOK = false
     @State private var isValidating = false
     @State private var credentialMessage: String?
@@ -154,6 +153,10 @@ struct OllamaSettingsView: View {
         }
     }
 
+    private var hasStoredKey: Bool {
+        (store.kernel?.settings ?? SettingsSnapshot()).ollamaKeyPresent
+    }
+
     private var statusTitle: String {
         guard hasStoredKey else {
             return settings.ollamaCredentialSource == .none ? "Not connected" : "Reconnect required"
@@ -238,7 +241,6 @@ struct OllamaSettingsView: View {
     }
 
     private func refreshCredentialState() {
-        hasStoredKey = OllamaCredentialStore.hasAPIKey()
         // Re-push LLM provider API keys to the kernel so it has the latest
         // Keychain values after a save/delete.
         store.kernelSetProviderApiKeys()

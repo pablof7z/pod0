@@ -36,7 +36,6 @@ struct WikiGenerateSheet: View {
     @State private var scopeChoice: ScopeChoice = .global
     @State private var selectedPodcastID: UUID?
     @State private var phase: Phase = .input
-    @State private var hasAPIKey = false
 
     /// Sheet-local UI state. Distinct from `WikiHomeViewModel` because it
     /// is owned per-presentation.
@@ -77,7 +76,6 @@ struct WikiGenerateSheet: View {
         }
         .presentationDragIndicator(.visible)
         .onAppear {
-            refreshProviderStatus()
             if topic.isEmpty {
                 topic = initialTopic
             }
@@ -147,7 +145,7 @@ struct WikiGenerateSheet: View {
         Section {
             switch phase {
             case .input:
-                if !hasAPIKey {
+                if !hasProviderCredential {
                     NavigationLink {
                         providerSettingsDestination
                     } label: {
@@ -319,6 +317,18 @@ struct WikiGenerateSheet: View {
         LLMModelReference(storedID: store.state.settings.wikiModel).provider
     }
 
+    private var hasProviderCredential: Bool {
+        let settings = store.kernel?.settings ?? SettingsSnapshot()
+        switch wikiProvider {
+        case .openRouter:
+            return settings.openRouterKeyPresent
+        case .ollama:
+            return settings.ollamaKeyPresent
+        case .local:
+            return true
+        }
+    }
+
     @ViewBuilder
     private var providerSettingsDestination: some View {
         switch wikiProvider {
@@ -329,9 +339,5 @@ struct WikiGenerateSheet: View {
         case .local:
             AISettingsView()
         }
-    }
-
-    private func refreshProviderStatus() {
-        hasAPIKey = LLMProviderCredentialResolver.hasAPIKey(for: wikiProvider)
     }
 }

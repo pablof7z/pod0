@@ -3,7 +3,6 @@ import SwiftUI
 struct AssemblyAISettingsView: View {
     @Environment(AppStateStore.self) private var store
     @State private var manualAPIKey = ""
-    @State private var hasStoredKey = false
     @State private var isConnectingBYOK = false
     @State private var credentialMessage: String?
     @State private var credentialError: String?
@@ -74,6 +73,10 @@ struct AssemblyAISettingsView: View {
         }
     }
 
+    private var hasStoredKey: Bool {
+        (store.kernel?.settings ?? SettingsSnapshot()).assemblyAIKeyPresent
+    }
+
     private var statusTitle: String {
         hasStoredKey ? "Connected" : "Not connected"
     }
@@ -141,7 +144,6 @@ struct AssemblyAISettingsView: View {
     }
 
     private func refreshCredentialState() {
-        hasStoredKey = AssemblyAICredentialStore.hasAPIKey()
         // Re-report STT key presence so the kernel's STT fallback policy
         // recomputes `settings.effectiveSttProvider` after a save/delete.
         store.syncSTTKeysPresent()

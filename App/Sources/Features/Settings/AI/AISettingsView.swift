@@ -124,12 +124,28 @@ struct AIProvidersSettingsView: View {
     // MARK: - Derived
 
     private var settings: Settings { store.state.settings }
+    private var kernelSettings: SettingsSnapshot { store.kernel?.settings ?? SettingsSnapshot() }
+
+    private var openRouterSource: OpenRouterCredentialSource {
+        let source = kernelSettings.openRouterSource
+        return source == .none ? settings.openRouterCredentialSource : source
+    }
+
+    private var elevenLabsSource: ElevenLabsCredentialSource {
+        let source = kernelSettings.elevenLabsSource
+        return source == .none ? settings.elevenLabsCredentialSource : source
+    }
+
+    private var ollamaSource: OllamaCredentialSource {
+        let source = kernelSettings.ollamaSource
+        return source == .none ? settings.ollamaCredentialSource : source
+    }
 
     private var openRouterStatus: String {
-        guard OpenRouterCredentialStore.hasAPIKey() else {
-            return settings.openRouterCredentialSource == .none ? "Not set up" : "Reconnect"
+        guard kernelSettings.openRouterKeyPresent else {
+            return openRouterSource == .none ? "Not set up" : "Reconnect"
         }
-        switch settings.openRouterCredentialSource {
+        switch openRouterSource {
         case .byok:   return "BYOK"
         case .manual: return "Manual"
         case .none:   return "Connected"
@@ -137,10 +153,10 @@ struct AIProvidersSettingsView: View {
     }
 
     private var elevenLabsStatus: String {
-        guard ElevenLabsCredentialStore.hasAPIKey() else {
-            return settings.elevenLabsCredentialSource == .none ? "Not set up" : "Reconnect"
+        guard kernelSettings.elevenLabsKeyPresent else {
+            return elevenLabsSource == .none ? "Not set up" : "Reconnect"
         }
-        switch settings.elevenLabsCredentialSource {
+        switch elevenLabsSource {
         case .byok:   return "BYOK"
         case .manual: return "Manual"
         case .none:   return "Connected"
@@ -148,20 +164,20 @@ struct AIProvidersSettingsView: View {
     }
 
     private var assemblyAIStatus: String {
-        AssemblyAICredentialStore.hasAPIKey() ? "Connected" : "Not set up"
+        kernelSettings.assemblyAIKeyPresent ? "Connected" : "Not set up"
     }
 
     private var perplexityStatus: String {
-        if PerplexityCredentialStore.hasAPIKey() { return "Connected" }
-        if OpenRouterCredentialStore.hasAPIKey() { return "Via OpenRouter" }
+        if kernelSettings.perplexityKeyPresent { return "Connected" }
+        if kernelSettings.openRouterKeyPresent { return "Via OpenRouter" }
         return "Not set up"
     }
 
     private var ollamaStatus: String {
-        guard OllamaCredentialStore.hasAPIKey() else {
-            return settings.ollamaCredentialSource == .none ? "Not set up" : "Reconnect"
+        guard kernelSettings.ollamaKeyPresent else {
+            return ollamaSource == .none ? "Not set up" : "Reconnect"
         }
-        switch settings.ollamaCredentialSource {
+        switch ollamaSource {
         case .byok:   return "BYOK"
         case .manual: return "Manual"
         case .none:   return "Connected"
@@ -198,7 +214,6 @@ struct PerplexitySettingsView: View {
     @Environment(AppStateStore.self) private var store
 
     @State private var manualAPIKey = ""
-    @State private var hasStoredKey = false
     @State private var isConnectingBYOK = false
     @State private var credentialMessage: String?
     @State private var credentialError: String?
@@ -269,6 +284,10 @@ struct PerplexitySettingsView: View {
         }
     }
 
+    private var hasStoredKey: Bool {
+        (store.kernel?.settings ?? SettingsSnapshot()).perplexityKeyPresent
+    }
+
     private var statusTitle: String {
         hasStoredKey ? "Connected" : "Not connected"
     }
@@ -333,7 +352,6 @@ struct PerplexitySettingsView: View {
     }
 
     private func refreshCredentialState() {
-        hasStoredKey = PerplexityCredentialStore.hasAPIKey()
         store.kernelSetProviderApiKeys()
     }
 }

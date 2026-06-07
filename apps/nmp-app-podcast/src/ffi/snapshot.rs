@@ -18,7 +18,7 @@ use super::snapshot_owned::collect_owned_podcasts;
 use super::snapshot_queue::resolve_queue_rows;
 use crate::inbox_handler::{build_inbox, maybe_enqueue_triage_with_signal};
 
-fn provider_key_present(key: Option<&str>) -> bool {
+pub(super) fn provider_key_present(key: Option<&str>) -> bool {
     key.is_some_and(|value| !value.trim().is_empty())
 }
 

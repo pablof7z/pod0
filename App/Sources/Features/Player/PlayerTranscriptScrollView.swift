@@ -251,7 +251,7 @@ struct PlayerTranscriptScrollView: View {
 
     private func isIngestActionable(for episode: Episode) -> Bool {
         if episode.publisherTranscriptURL != nil { return true }
-        return hasKey(for: store.state.settings.sttProvider, episode: episode)
+        return hasKey(for: selectedSTTProvider, episode: episode)
     }
 
     private func isIngestEnabled(for episode: Episode) -> Bool {
@@ -286,7 +286,7 @@ struct PlayerTranscriptScrollView: View {
             if episode.publisherTranscriptURL != nil {
                 return "We can pull the publisher's transcript for this episode."
             }
-            let provider = store.state.settings.sttProvider
+            let provider = selectedSTTProvider
             if hasKey(for: provider, episode: episode) {
                 return "We'll transcribe with \(provider.displayName) using your stored key."
             }
@@ -297,12 +297,16 @@ struct PlayerTranscriptScrollView: View {
         }
     }
 
+    private var selectedSTTProvider: STTProvider {
+        store.kernel?.podcastSnapshot?.settings.selectedSTTProvider ?? store.state.settings.sttProvider
+    }
+
     private func hasKey(for provider: STTProvider, episode: Episode) -> Bool {
         switch provider {
-        case .elevenLabsScribe: return ElevenLabsCredentialStore.hasAPIKey()
-        case .assemblyAI: return AssemblyAICredentialStore.hasAPIKey()
-        case .openRouterWhisper: return OpenRouterCredentialStore.hasAPIKey()
-        case .appleNative: return EpisodeDownloadStore.shared.exists(for: episode)
+        case .appleNative:
+            return EpisodeDownloadStore.shared.exists(for: episode)
+        case .elevenLabsScribe, .assemblyAI, .openRouterWhisper:
+            return store.kernel?.podcastSnapshot?.settings.hasLoadedKey(for: provider) ?? false
         }
     }
 

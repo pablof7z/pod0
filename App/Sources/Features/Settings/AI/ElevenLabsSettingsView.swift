@@ -5,7 +5,6 @@ struct ElevenLabsSettingsView: View {
 
     @State private var settings: Settings = Settings()
     @State private var manualAPIKey = ""
-    @State private var hasStoredKey = false
     @State private var isConnectingBYOK = false
     @State private var credentialMessage: String?
     @State private var credentialError: String?
@@ -67,6 +66,10 @@ struct ElevenLabsSettingsView: View {
     }
 
     // MARK: - Derived state
+
+    private var hasStoredKey: Bool {
+        (store.kernel?.settings ?? SettingsSnapshot()).elevenLabsKeyPresent
+    }
 
     private var connectionState: ElevenLabsConnectionState {
         ElevenLabsConnectionState.derive(
@@ -153,8 +156,6 @@ struct ElevenLabsSettingsView: View {
     }
 
     private func refreshCredentialState() {
-        hasStoredKey = ElevenLabsCredentialStore.hasAPIKey()
-        if !hasStoredKey { keyInfo = nil }
         // Re-report STT key presence so the kernel's STT fallback policy
         // recomputes `settings.effectiveSttProvider` after a save/delete, and
         // re-push provider keys so shared Rust transports read live credentials.

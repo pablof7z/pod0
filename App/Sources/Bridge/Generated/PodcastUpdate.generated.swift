@@ -204,6 +204,8 @@ struct SettingsSnapshot: Equatable {
     var rerankerEnabled: Bool = false
     /// OpenRouter credential source enum (raw String: "apiKey", "byok", "nostr").
     var openRouterCredentialSource: String = ""
+    /// Whether an OpenRouter API key is loaded in the shared provider cache.
+    var openRouterKeyPresent: Bool = false
     /// OpenRouter BYOK key ID (optional).
     var openRouterBYOKKeyID: String? = nil
     /// OpenRouter BYOK key label (optional).
@@ -212,6 +214,8 @@ struct SettingsSnapshot: Equatable {
     var openRouterConnectedAt: Date? = nil
     /// Ollama credential source enum (raw String: "apiKey", "byok", "nostr").
     var ollamaCredentialSource: String = ""
+    /// Whether an Ollama API key is loaded in the shared provider cache.
+    var ollamaKeyPresent: Bool = false
     /// Ollama BYOK key ID (optional).
     var ollamaBYOKKeyID: String? = nil
     /// Ollama BYOK key label (optional).
@@ -222,6 +226,8 @@ struct SettingsSnapshot: Equatable {
     var ollamaChatURL: String = ""
     /// ElevenLabs credential source enum (raw String: "apiKey", "byok", "nostr").
     var elevenLabsCredentialSource: String = ""
+    /// Whether an ElevenLabs API key is loaded in the shared provider cache.
+    var elevenLabsKeyPresent: Bool = false
     /// ElevenLabs BYOK key ID (optional).
     var elevenLabsBYOKKeyID: String? = nil
     /// ElevenLabs BYOK key label (optional).
@@ -238,6 +244,10 @@ struct SettingsSnapshot: Equatable {
     /// Whether the resolved `effectiveSttProvider` needs an API key to run.
     /// Always `false` when the policy fell back to "apple_native".
     var effectiveSttProviderRequiresKey: Bool = false
+    /// Whether an AssemblyAI API key is loaded in the shared provider cache.
+    var assemblyAIKeyPresent: Bool = false
+    /// Whether a Perplexity API key is loaded in the shared provider cache.
+    var perplexityKeyPresent: Bool = false
     /// OpenRouter Whisper model string. Default `"openai/whisper-1"`.
     var openRouterWhisperModel: String = "openai/whisper-1"
     /// AssemblyAI STT model string. Default `"universal-3-pro,universal-2"`.
@@ -382,21 +392,26 @@ extension SettingsSnapshot: Codable {
         case imageGenerationModelName
         case rerankerEnabled
         case openRouterCredentialSource
+        case openRouterKeyPresent
         case openRouterBYOKKeyID = "open_router_byok_key_id"
         case openRouterBYOKKeyLabel = "open_router_byok_key_label"
         case openRouterConnectedAt
         case ollamaCredentialSource
+        case ollamaKeyPresent
         case ollamaBYOKKeyID = "ollama_byok_key_id"
         case ollamaBYOKKeyLabel = "ollama_byok_key_label"
         case ollamaConnectedAt
         case ollamaChatURL = "ollama_chat_url"
         case elevenLabsCredentialSource
+        case elevenLabsKeyPresent
         case elevenLabsBYOKKeyID = "eleven_labs_byok_key_id"
         case elevenLabsBYOKKeyLabel = "eleven_labs_byok_key_label"
         case elevenLabsConnectedAt
         case sttProvider = "stt_provider"
         case effectiveSttProvider
         case effectiveSttProviderRequiresKey
+        case assemblyAIKeyPresent = "assemblyAiKeyPresent"
+        case perplexityKeyPresent
         case openRouterWhisperModel = "open_router_whisper_model"
         case assemblyAISTTModel = "assembly_ai_stt_model"
         case elevenLabsSTTModel = "eleven_labs_stt_model"
@@ -449,12 +464,14 @@ extension SettingsSnapshot: Codable {
         imageGenerationModelName = try c.decodeIfPresent(String.self, forKey: .imageGenerationModelName) ?? "Gemini 2.5 Flash"
         rerankerEnabled = try c.decodeIfPresent(Bool.self, forKey: .rerankerEnabled) ?? false
         openRouterCredentialSource = try c.decodeIfPresent(String.self, forKey: .openRouterCredentialSource) ?? ""
+        openRouterKeyPresent = try c.decodeIfPresent(Bool.self, forKey: .openRouterKeyPresent) ?? false
         openRouterBYOKKeyID = try c.decodeIfPresent(String.self, forKey: .openRouterBYOKKeyID)
         openRouterBYOKKeyLabel = try c.decodeIfPresent(String.self, forKey: .openRouterBYOKKeyLabel)
         if let timestamp = try c.decodeIfPresent(Int.self, forKey: .openRouterConnectedAt) {
             openRouterConnectedAt = Date(timeIntervalSince1970: TimeInterval(timestamp))
         }
         ollamaCredentialSource = try c.decodeIfPresent(String.self, forKey: .ollamaCredentialSource) ?? ""
+        ollamaKeyPresent = try c.decodeIfPresent(Bool.self, forKey: .ollamaKeyPresent) ?? false
         ollamaBYOKKeyID = try c.decodeIfPresent(String.self, forKey: .ollamaBYOKKeyID)
         ollamaBYOKKeyLabel = try c.decodeIfPresent(String.self, forKey: .ollamaBYOKKeyLabel)
         if let timestamp = try c.decodeIfPresent(Int.self, forKey: .ollamaConnectedAt) {
@@ -462,6 +479,7 @@ extension SettingsSnapshot: Codable {
         }
         ollamaChatURL = try c.decodeIfPresent(String.self, forKey: .ollamaChatURL) ?? ""
         elevenLabsCredentialSource = try c.decodeIfPresent(String.self, forKey: .elevenLabsCredentialSource) ?? ""
+        elevenLabsKeyPresent = try c.decodeIfPresent(Bool.self, forKey: .elevenLabsKeyPresent) ?? false
         elevenLabsBYOKKeyID = try c.decodeIfPresent(String.self, forKey: .elevenLabsBYOKKeyID)
         elevenLabsBYOKKeyLabel = try c.decodeIfPresent(String.self, forKey: .elevenLabsBYOKKeyLabel)
         if let timestamp = try c.decodeIfPresent(Int.self, forKey: .elevenLabsConnectedAt) {
@@ -470,6 +488,8 @@ extension SettingsSnapshot: Codable {
         sttProvider = try c.decodeIfPresent(String.self, forKey: .sttProvider) ?? "apple_native"
         effectiveSttProvider = try c.decodeIfPresent(String.self, forKey: .effectiveSttProvider) ?? "apple_native"
         effectiveSttProviderRequiresKey = try c.decodeIfPresent(Bool.self, forKey: .effectiveSttProviderRequiresKey) ?? false
+        assemblyAIKeyPresent = try c.decodeIfPresent(Bool.self, forKey: .assemblyAIKeyPresent) ?? false
+        perplexityKeyPresent = try c.decodeIfPresent(Bool.self, forKey: .perplexityKeyPresent) ?? false
         openRouterWhisperModel = try c.decodeIfPresent(String.self, forKey: .openRouterWhisperModel) ?? "openai/whisper-1"
         assemblyAISTTModel = try c.decodeIfPresent(String.self, forKey: .assemblyAISTTModel) ?? "universal-3-pro,universal-2"
         elevenLabsSTTModel = try c.decodeIfPresent(String.self, forKey: .elevenLabsSTTModel) ?? "scribe_v1"

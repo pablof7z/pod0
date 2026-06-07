@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-07T22:21:00Z",
+      "lines": [
+        "Provider setup indicators now use the shared backend's loaded-key status, keeping Settings, transcripts, and wiki readiness in sync."
+      ]
+    },
+    {
       "shipped_at": "2026-06-07T21:27:00Z",
       "lines": [
         "ElevenLabs voice previews, pick narration, and generated podcast speech now use the shared backend for TTS setup and provider errors."

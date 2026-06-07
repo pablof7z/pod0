@@ -29,7 +29,7 @@ struct TranscriptsSettingsView: View {
             Toggle(isOn: scribeFallbackBinding) {
                 Label("AI transcription fallback", systemImage: "arrow.triangle.branch")
             }
-            if store.state.settings.autoFallbackToScribe && !hasActiveProviderKey {
+            if store.state.settings.autoFallbackToScribe && !selectedProviderReady {
                 // The toggle is on but the active provider key isn't configured —
                 // surface the gap so the fallback doesn't silently no-op.
                 Label("\(activeProviderName) key not configured — connect in Providers.", systemImage: "key.slash")
@@ -45,20 +45,16 @@ struct TranscriptsSettingsView: View {
     }
 
     private var activeProvider: STTProvider {
-        store.state.settings.sttProvider
+        store.kernel?.podcastSnapshot?.settings.selectedSTTProvider ?? store.state.settings.sttProvider
     }
 
     private var activeProviderName: String {
         activeProvider.displayName
     }
 
-    private var hasActiveProviderKey: Bool {
-        switch activeProvider {
-        case .elevenLabsScribe: return ElevenLabsCredentialStore.hasAPIKey()
-        case .assemblyAI: return AssemblyAICredentialStore.hasAPIKey()
-        case .openRouterWhisper: return OpenRouterCredentialStore.hasAPIKey()
-        case .appleNative: return true  // no API key needed
-        }
+    private var selectedProviderReady: Bool {
+        store.kernel?.podcastSnapshot?.settings.hasLoadedKey(for: activeProvider)
+            ?? (activeProvider == .appleNative)
     }
 
     // MARK: - Bindings

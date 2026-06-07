@@ -7,7 +7,6 @@ struct OpenRouterSettingsView: View {
 
     @State private var settings: Settings = Settings()
     @State private var manualAPIKey = ""
-    @State private var hasStoredOpenRouterKey = false
     @State private var isConnectingBYOK = false
     @State private var credentialMessage: String?
     @State private var credentialError: String?
@@ -127,6 +126,10 @@ struct OpenRouterSettingsView: View {
 
     // MARK: - Status helpers
 
+    private var hasStoredOpenRouterKey: Bool {
+        (store.kernel?.settings ?? SettingsSnapshot()).openRouterKeyPresent
+    }
+
     private var statusTitle: String {
         guard hasStoredOpenRouterKey else {
             return settings.openRouterCredentialSource == .none ? "Not connected" : "Reconnect required"
@@ -206,8 +209,6 @@ struct OpenRouterSettingsView: View {
     }
 
     private func refreshCredentialState() {
-        hasStoredOpenRouterKey = OpenRouterCredentialStore.hasAPIKey()
-        if !hasStoredOpenRouterKey { keyInfo = nil }
         // Re-report STT key presence so the kernel's STT fallback policy
         // recomputes `settings.effectiveSttProvider` after a save/delete.
         store.syncSTTKeysPresent()

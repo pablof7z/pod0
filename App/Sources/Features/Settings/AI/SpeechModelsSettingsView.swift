@@ -196,7 +196,7 @@ struct SpeechModelsSettingsView: View {
     }
 
     private var hasElevenLabsKey: Bool {
-        ElevenLabsCredentialStore.hasAPIKey()
+        (store.kernel?.settings ?? SettingsSnapshot()).elevenLabsKeyPresent
     }
 
     private var voiceDisplayName: String {
