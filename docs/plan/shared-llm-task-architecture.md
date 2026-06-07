@@ -56,19 +56,21 @@ Task creation must submit typed user intent, not raw backend dispatch payloads.
 The backend may continue storing an internal dispatch namespace/body for
 `run_now` compatibility, but that payload is not a UI contract.
 
-Immediate targets:
+Current state:
 
-- Add a Rust `AgentTaskIntent` enum with variants for currently schedulable
-  tasks such as inbox triage, clear agent chat, and memory writes.
-- Add a typed task-create action that carries title, schedule, description, and
-  intent.
-- Resolve `AgentTaskIntent` to the internal action namespace/body inside
-  `tasks_handler.rs`.
-- Keep raw `create` only as a compatibility/internal action until all platform
-  callers migrate.
-- Update the TUI task editor to accept concise typed/natural input such as
-  `Title | daily | inbox_triage | optional description` instead of namespace
-  and JSON body.
+- Rust owns `AgentTaskIntent`, typed task creation, and intent-to-dispatch
+  resolution inside `tasks_handler.rs`.
+- Raw `create` remains for compatibility/internal callers only.
+- The TUI task editor accepts typed/natural input such as
+  `daily | triage inbox` or `weekly | remember topic=rust` and submits
+  `AgentTaskIntent` through the shared backend action.
+
+Remaining targets:
+
+- Audit Swift and Android task-creation surfaces and migrate any raw task
+  creation to `AgentTaskIntent`.
+- Keep raw dispatch namespace/body JSON out of all normal user-facing task
+  creation workflows.
 
 ## Push Updates
 
@@ -88,8 +90,8 @@ Immediate targets:
 
 1. Provider transport PR: move OpenRouter/Ollama inference and embeddings HTTP
    into shared Rust APIs, then migrate Swift live paths to those APIs.
-2. Typed task intent PR: add backend intent action and migrate TUI task
-   creation away from raw namespace/body JSON.
+2. Typed task intent follow-up: migrate any remaining Swift/Android task
+   creation surfaces to the shared `AgentTaskIntent` contract.
 3. Android/JNI parity PR: expose any new shared provider/task APIs through the
    Android bridge if they are not already reachable.
 4. Push-update PR: replace TUI-specific revision polling with shared backend

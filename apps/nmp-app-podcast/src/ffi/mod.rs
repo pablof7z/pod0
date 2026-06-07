@@ -68,7 +68,7 @@ mod voice_report;
 
 pub use actions::{
     AgentActionModule, AgentApproveAction, AgentChatAction, AgentClearConversationAction,
-    AgentDenyAction, AgentPicksModule, AgentTasksAction, AgentTasksModule,
+    AgentDenyAction, AgentPicksModule, AgentTaskIntent, AgentTasksAction, AgentTasksModule,
     CancelAllDownloadsAction, CancelDownloadAction, CategorizationAction,
     CategorizationModule, ChaptersAction, ChaptersActionModule, ClipAction, ClipActionModule,
     DownloadEpisodeAction, InboxAction, InboxActionModule, KnowledgeAction, KnowledgeActionModule,

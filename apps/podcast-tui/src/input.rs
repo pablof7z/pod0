@@ -1,3 +1,5 @@
+#[path = "input_agent_tasks.rs"]
+mod agent_tasks;
 #[path = "input_downloads.rs"]
 mod downloads;
 #[path = "input_provider_catalog.rs"]
@@ -86,7 +88,7 @@ fn handle_mode_key(state: &mut AppState, runtime: &AppRuntime, key: KeyEvent) ->
         }
         Mode::AgentInput => handle_agent_input(state, runtime, key),
         Mode::AgentMemoryInput => handle_agent_memory_input(state, runtime, key),
-        Mode::AgentTaskInput => handle_agent_task_input(state, runtime, key),
+        Mode::AgentTaskInput => agent_tasks::handle_agent_task_input(state, runtime, key),
         Mode::AgentNoteInput => handle_agent_note_input(state, runtime, key),
         Mode::EpisodeCommentInput => handle_episode_comment_input(state, runtime, key),
         Mode::EpisodeDetail { .. } => handle_episode_detail_key(state, runtime, key),
@@ -184,40 +186,6 @@ fn handle_agent_memory_input(state: &mut AppState, runtime: &AppRuntime, key: Ke
             state.agent_memory_input.pop();
         }
         KeyCode::Char(c) => state.agent_memory_input.push(c),
-        _ => {}
-    }
-    true
-}
-
-fn handle_agent_task_input(state: &mut AppState, runtime: &AppRuntime, key: KeyEvent) -> bool {
-    match key.code {
-        KeyCode::Esc => state.mode = Mode::Normal,
-        KeyCode::Enter => {
-            let input = state.agent_task_input.trim().to_string();
-            state.agent_task_input.clear();
-            state.mode = Mode::Normal;
-            match parse_task_input(&input) {
-                Some((title, schedule, intent, description)) => {
-                    match runtime.create_agent_task(
-                        title,
-                        schedule,
-                        intent,
-                        description.filter(|text| !text.is_empty()),
-                    ) {
-                        Ok(_) => state.push_toast("task created"),
-                        Err(e) => state.status = format!("task error: {e}"),
-                    }
-                }
-                None => {
-                    state.status =
-                        "task format: title | schedule | intent | description".to_string();
-                }
-            }
-        }
-        KeyCode::Backspace => {
-            state.agent_task_input.pop();
-        }
-        KeyCode::Char(c) => state.agent_task_input.push(c),
         _ => {}
     }
     true
@@ -444,17 +412,4 @@ fn cancel_sleep_timer(state: &mut AppState, runtime: &AppRuntime) {
         Ok(_) => state.push_toast("sleep timer cancelled"),
         Err(e) => state.status = format!("sleep timer error: {e}"),
     }
-}
-
-type TaskInputParts<'a> = (&'a str, &'a str, &'a str, Option<&'a str>);
-
-fn parse_task_input(input: &str) -> Option<TaskInputParts<'_>> {
-    let parts = input.split('|').map(str::trim).collect::<Vec<_>>();
-    let [title, schedule, intent, rest @ ..] = parts.as_slice() else {
-        return None;
-    };
-    if title.is_empty() || schedule.is_empty() || intent.is_empty() {
-        return None;
-    }
-    Some((*title, *schedule, *intent, rest.first().copied()))
 }

@@ -241,7 +241,8 @@ fn begin_agent_primary_input(state: &mut AppState) {
         AgentSection::Tasks => {
             state.mode = Mode::AgentTaskInput;
             state.agent_task_input.clear();
-            state.status = "task format: title | schedule | intent | description".to_string();
+            state.status =
+                "task examples: daily | triage inbox; weekly | remember topic=rust".to_string();
         }
         AgentSection::Notes => {
             state.mode = Mode::AgentNoteInput;

@@ -69,11 +69,11 @@ worktrees currently in flight.
   this ownership boundary: OpenRouter and Ollama chat/completion and embedding
   request shaping must live in the shared Rust backend, with iOS/Android/TUI
   only supplying credentials, selected models, and UI.
-- **typed-agent-task-intents.** Agent task creation should submit typed backend
-  intent, not raw action namespace/body JSON. The backend may store an internal
-  dispatch payload for `run_now`, but user-facing editors and platform actions
-  should create tasks through an `AgentTaskIntent` contract shared by all
-  platforms.
+- **typed-agent-task-intents.** Backend `AgentTaskIntent` creation exists and
+  the TUI task editor now submits typed/natural task requests instead of raw
+  dispatch namespace/body JSON. Keep raw `create` as compatibility/internal
+  only; remaining platform task-creation surfaces should use the shared
+  `AgentTaskIntent` contract.
 - **relay-list-ownership.** Replace `@AppStorage("nip65.relays")` seed state
   with NMP relay-list store reads/writes and real NIP-65 publish/refresh flow.
   Rust prerequisite SHIPPED (`feat/podcast-relay-ops`): `configured_relays`

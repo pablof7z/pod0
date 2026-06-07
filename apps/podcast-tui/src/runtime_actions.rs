@@ -1,4 +1,5 @@
-use serde_json::{json, Value};
+use nmp_app_podcast::ffi::AgentTaskIntent;
+use serde_json::json;
 
 use crate::runtime::{AppRuntime, Result};
 
@@ -255,7 +256,19 @@ impl AppRuntime {
         intent: &str,
         description: Option<&str>,
     ) -> Result<String> {
-        let intent = task_intent_value(intent)?;
+        let intent = task_intent_from_input(intent)?;
+        self.create_agent_task_from_intent(title, schedule, &intent, description)
+    }
+
+    pub fn create_agent_task_from_intent(
+        &self,
+        title: &str,
+        schedule: &str,
+        intent: &AgentTaskIntent,
+        description: Option<&str>,
+    ) -> Result<String> {
+        let intent = serde_json::to_value(intent)
+            .map_err(|e| format!("failed to encode task intent: {e}"))?;
         self.dispatch_action_value(
             "podcast.tasks",
             &json!({
@@ -410,18 +423,18 @@ impl AppRuntime {
     }
 }
 
-fn task_intent_value(input: &str) -> Result<Value> {
+fn task_intent_from_input(input: &str) -> Result<AgentTaskIntent> {
     let input = input.trim();
     match input {
-        "inbox_triage" | "triage_inbox" | "triage" => Ok(json!({"type": "inbox_triage"})),
-        "clear_agent" | "agent_clear" | "clear_chat" => Ok(json!({"type": "clear_agent"})),
+        "inbox_triage" | "triage_inbox" | "triage" => Ok(AgentTaskIntent::InboxTriage),
+        "clear_agent" | "agent_clear" | "clear_chat" => Ok(AgentTaskIntent::ClearAgent),
         _ => memory_intent_value(input).ok_or_else(|| {
             "unknown task intent; use inbox_triage, clear_agent, or memory:key=value".to_string()
         }),
     }
 }
 
-fn memory_intent_value(input: &str) -> Option<Value> {
+fn memory_intent_value(input: &str) -> Option<AgentTaskIntent> {
     let rest = input.strip_prefix("memory:")?;
     let (key, value) = rest.split_once('=')?;
     let key = key.trim();
@@ -429,5 +442,8 @@ fn memory_intent_value(input: &str) -> Option<Value> {
     if key.is_empty() || value.is_empty() {
         return None;
     }
-    Some(json!({"type": "remember_memory", "key": key, "value": value}))
+    Some(AgentTaskIntent::RememberMemory {
+        key: key.to_owned(),
+        value: value.to_owned(),
+    })
 }
