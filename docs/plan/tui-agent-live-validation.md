@@ -49,6 +49,9 @@ substitutes count for this pass.
 - Add an episode next instead of at the end.
 - Explain what is currently playing.
 - Recommend playback speed or skip behavior for a show.
+- After a provider/model switch, ask the agent to queue a recommendation and
+  verify the queue mutation still lands in the visible Queue tab.
+- Queue, add-next, play, and remove an Agent Pick using only TUI actions.
 
 ### Inbox And Listening Triage
 
@@ -73,6 +76,10 @@ substitutes count for this pass.
   commute length, preferred episode length, and listening goals.
 - Avoid over-writing unrelated memory facts.
 - Clear all memory after explicit confirmation.
+- Create a typed task that writes memory, run it, and verify the Memory section
+  updates without needing a restart or manual refresh.
+- Switch the active chat model after saving memory and verify memory context is
+  still included in the next provider-backed response.
 
 ### Episode Understanding Work
 
@@ -97,6 +104,12 @@ substitutes count for this pass.
 - Explain the context of a saved clip.
 - Build a list of notable clips from recent listening.
 - Turn a clip into a social/share draft when identity support exists.
+- Verify bookmarks survive tab switches and remain actionable through play,
+  queue, add-next, and remove shortcuts.
+- Verify clip creation reports a clear limitation when no episode is playing or
+  when the current player position is unavailable.
+- Verify a provider-backed agent turn can reference a bookmarked or clipped
+  episode without hallucinating hidden transcript data.
 
 ### Downloads And Offline Work
 
@@ -138,6 +151,17 @@ substitutes count for this pass.
 - Explain what a task will do before saving.
 - Reject malformed schedules or unsafe action JSON.
 - Keep task list projection in sync after changes.
+- Create each typed task intent exposed by the TUI after the typed-task branch
+  lands, including memory, inbox/library triage, queue/playback, bookmarks,
+  clips, notes/social, and wiki/summary intents where the backend supports
+  them.
+- Confirm the TUI task editor no longer requires raw namespace/body JSON after
+  the typed-task branch lands, and that legacy raw input either disappears or
+  fails with an explicit migration message.
+- Confirm disabled typed tasks cannot run and do not mutate memory, queue,
+  bookmarks, clips, or notes.
+- Confirm run-now status moves through dispatched/running/completed or a clear
+  error state and does not leave stale busy UI after provider failure.
 
 ### Agent Notes And Social Work
 
@@ -160,13 +184,27 @@ substitutes count for this pass.
 ### Settings And Provider Work
 
 - Switch all LLM roles to Ollama Cloud models.
+- Switch the primary agent roles from the default model to
+  `ollama:glm-5.1:cloud`, send a live chat turn, then switch back to a local or
+  alternate cloud model and verify the visible model labels and runtime calls
+  stay aligned.
+- Switch only one role at a time, especially agent initial, agent thinking,
+  memory compilation, wiki, categorization, and embeddings, to catch accidental
+  shared-provider coupling.
 - Load provider credentials from environment without displaying secrets.
+- Validate authenticated local Ollama Cloud with no raw `OLLAMA_API_KEY` in the
+  TUI projection, and validate explicit env-key loading when
+  `OLLAMA_API_KEY`/`OPENROUTER_API_KEY` is set before launch.
 - Set OpenRouter, Ollama, and ElevenLabs metadata without raw keys.
 - Set STT provider and key-presence values.
 - Set ElevenLabs STT/TTS and voice choices.
 - Set or clear local model hints.
 - Explain effective provider fallback when required keys are missing.
 - Keep model IDs and display names coherent after edits.
+- Confirm provider credentials and model choices persist after quitting and
+  relaunching the TUI from the same data directory.
+- Confirm provider/model errors are surfaced in chat/status while queue,
+  bookmarks, clips, and memory navigation remain responsive.
 
 ### Error, Recovery, And Trust Work
 
@@ -196,7 +234,148 @@ substitutes count for this pass.
    without identity or summarizing an episode without a transcript, and verify
    the TUI reports the limitation clearly.
 
+## Architecture Regression Pass After Provider/Task PRs
+
+Use this pass after the shared provider transport and typed task intent branches
+land. It is meant to catch UX regressions caused by moving model/provider calls
+and task creation into shared backend paths.
+
+### Tmux Harness
+
+Run the real TUI with an isolated data directory:
+
+```sh
+tests/integration/run_tui_glm_tmux_validation.sh
+```
+
+The helper verifies `tmux`, `ollama`, and `glm-5.1:cloud` availability, builds
+`podcast-tui`, launches a tmux session, and writes an initial pane capture. It
+does not send fake agent responses or dispatch kernel calls directly.
+
+Default session details:
+
+- Session: `podcast-tui-glm-architecture`
+- Data directory: `/tmp/podcast-tui-glm-architecture-data`
+- Capture directory: `/tmp/podcast-tui-glm-architecture-captures`
+- Model: `glm-5.1:cloud`
+
+Capture evidence after every scenario:
+
+```sh
+tmux capture-pane -t podcast-tui-glm-architecture -p -S - \
+  > /tmp/podcast-tui-glm-architecture-captures/NN-scenario-name.txt
+```
+
+### Scenario Script
+
+1. Launch with the helper above and capture the first screen.
+2. In Settings > Providers, set all LLM role rows to
+   `ollama:glm-5.1:cloud | GLM 5.1 Cloud` and set Ollama chat URL to
+   `http://localhost:11434/api/chat`; capture the projected settings.
+3. Quit and relaunch using the same data directory; verify the provider/model
+   rows persisted and still show no raw secrets.
+4. Send a one-sentence Agent chat prompt that explicitly asks for GLM Cloud
+   confirmation; verify a live assistant response appears and no stale busy
+   state remains.
+5. Switch only the agent initial model to an alternate model, then back to
+   `ollama:glm-5.1:cloud`; send another chat turn and verify display labels and
+   behavior follow the selected model.
+6. Save memory through Agent > Memory, then ask for a recommendation that must
+   use that fact; capture the Memory row and chat response.
+7. Subscribe to `https://feeds.npr.org/510289/podcast.xml`; star an episode,
+   open Bookmarks, queue it, add it next, play it, and remove the bookmark.
+   Capture Library, Bookmarks, Queue, and Player projections.
+8. Queue an episode from Library, remove it in Queue, clear Queue, then ask the
+   agent to queue a relevant recommendation; verify the queue changes only when
+   the backend confirms the action.
+9. Create a clip with no episode playing and verify the limitation is reported
+   clearly; then play an episode, create a clip, open Clips, play/delete it, and
+   capture the projection changes.
+10. Create typed tasks for the post-architecture task categories exposed by the
+    TUI: memory write, inbox/library triage, queue/playback, bookmark, clip,
+    note/social, and wiki/summary where supported. For each task, verify create,
+    disable, blocked run-now, enable, run-now, completion/error status, and
+    delete.
+11. Create a task that writes memory, run it, and verify the memory projection
+    updates from the real task execution.
+12. Exercise missing-prerequisite paths: provider key missing/rejected,
+    no selected episode, no transcript, no identity for notes/social, and no
+    library content. Verify the TUI reports limitations without terminal log
+    floods or stuck navigation.
+13. While an agent call is in flight, switch tabs through Queue, Bookmarks,
+    Clips, Memory, and Settings; verify animation/navigation remains smooth and
+    no panel overlaps or stale busy rows persist after completion.
+14. Quit and relaunch from the same data directory; verify subscribed library,
+    queue, bookmarks, clips, memory, provider settings, and tasks match the
+    expected persistence behavior.
+
+### Coordination Notes
+
+- Do not edit provider transport or task intent parser files from this
+  validation branch; report failures against the owning architecture branches.
+- Treat any raw namespace/body task editor that remains after the typed-task PR
+  lands as a validation failure unless the PR deliberately preserves it behind
+  an explicit compatibility label.
+- A provider failure is acceptable only when it is visible to the user as chat
+  or status text and the TUI remains navigable. Silent fallback, fabricated
+  action success, or terminal log flooding should block merge.
+- For authenticated local Ollama Cloud, the TUI may show Ollama credentials as
+  `none`; this is valid when direct `ollama run glm-5.1:cloud` and `/api/chat`
+  calls succeed through the local daemon.
+- Do not rely on the model to self-attest which model handled a prompt. Treat
+  Settings projection, captured configured model rows, and live completion
+  evidence as the source of truth.
+
 ## Evidence Log
+
+### 2026-06-07T12:09Z-12:13Z
+
+- Worktree: `/Users/customer/podcast-player-tui-architecture-validation`
+- Branch: `feat/tui-architecture-validation`
+- Tmux session: `podcast-tui-arch-smoke`
+- Data directory: `/tmp/podcast-tui-arch-smoke-data`
+- Capture directory: `/tmp/podcast-tui-arch-smoke-captures`
+- Local Ollama:
+  - `ollama ls` showed `glm-5.1:cloud`.
+  - The tmux helper verified tmux/Ollama/model availability before launch.
+
+### Scenarios Executed
+
+- Tmux helper:
+  - Built `podcast-tui` and launched the real TUI in tmux with isolated state.
+  - Captured the empty-library first screen at
+    `/tmp/podcast-tui-arch-smoke-captures/00-launch.txt`.
+- Settings > Providers:
+  - Used only TUI keystrokes to set Agent initial and Agent thinking rows to
+    `GLM 5.1 Cloud (ollama:glm-5.1:cloud)`.
+  - Set Ollama chat URL to `http://localhost:11434/api/chat`.
+  - Verified the projection still showed Ollama credential as `none`, matching
+    authenticated local Ollama Cloud behavior.
+- Agent chat, no-tool turn:
+  - Sent through tmux:
+    `In one short sentence, confirm this architecture validation smoke is using GLM 5.1 cloud.`
+  - Verified the real assistant row completed and the busy indicator cleared.
+  - The response declined to self-attest model identity:
+    `I have no information indicating what specific model or architecture this validation smoke is using.`
+    This is not a transport failure, but future smoke wording should avoid
+    depending on model self-identification.
+- Agent memory + memory-aware chat:
+  - Saved `validation_topic=terminal GLM architecture smoke` from Agent >
+    Memory and verified the Memory projection showed it.
+  - Asked through chat:
+    `Based on saved memory, what validation topic should you remember? Answer in one short sentence.`
+  - Verified the assistant row completed with:
+    `The validation topic I should remember is terminal GLM architecture smoke.`
+- Cleanup:
+  - Quit the tmux session with `q`; no `podcast-tui-arch-smoke` tmux session
+    remained.
+
+### Failures Or Watch Items
+
+- Current main smoke did not exercise the pending shared-provider/task-intent
+  architecture because those branches had not landed yet.
+- Model self-identification prompts are weak validation evidence; use captured
+  Settings rows plus live completion behavior instead.
 
 ### 2026-06-07T09:34Z-10:12Z
 
