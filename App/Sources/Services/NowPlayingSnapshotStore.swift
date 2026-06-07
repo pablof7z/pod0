@@ -92,8 +92,8 @@ enum NowPlayingSnapshotStore {
     }
 
     /// Update only `position` and `isPlaying` on the cached snapshot.
-    /// Called from the 1 Hz persistence loop (every 5 ticks) to keep the
-    /// widget position fresh without a full library lookup.
+    /// Called from `PlatformCapability.applyPositionTick` (throttled to ~5 s)
+    /// to keep the widget position fresh without a full library lookup.
     static func updatePosition(_ position: TimeInterval, isPlaying: Bool) {
         guard var snapshot = lastWrittenSnapshot else { return }
         snapshot.position = position

@@ -44,12 +44,6 @@ extension PlaybackState {
             if let episodeID = self.episode?.id {
                 self.store?.setEpisodePlaybackPosition(episodeID, position: position)
             }
-            // Throttle WidgetKit reloads to ~1 per 5 ticks (~5 s at 1 Hz).
-            self.widgetPositionTickCount += 1
-            if self.widgetPositionTickCount >= 5 {
-                self.widgetPositionTickCount = 0
-                NowPlayingSnapshotStore.updatePosition(position, isPlaying: true)
-            }
             // Advance bounded-segment queue items (clips, agent segments) that
             // are not in the Rust queue. Rust handles whole-episode auto-advance
             // via maybe_auto_advance; this path covers start/end-bounded items.

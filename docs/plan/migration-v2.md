@@ -156,19 +156,15 @@ Logic to add:
 
 ### M1.4 — Move widget writes off the 1 Hz loop
 
-Status: **todo**.
+Status: **done** (PR feat/m1.4-widget-position-to-platform-capability).
 
-- Add `WidgetSnapshot` updates to the snapshot projection (already partially
-  present — extend with the fields the widget actually reads:
-  `episode_title`, `show_name`, `show_artwork_url`,
-  `current_chapter_artwork_url`, `is_playing`, `position_secs`,
-  `duration_secs`).
-- Move `PlaybackState.writeNowPlayingSnapshot(...)` into
-  `App/Sources/Capabilities/PlatformCapability.swift`. The capability
-  observes `PodcastUpdate.widget` and writes to the App Group / triggers
-  `WidgetCenter.reloadAllTimelines()` with the existing trailing-debounce
-  task.
-- Delete `lastSnapshotWrite` from `PlaybackState`.
+Moved the 5-tick throttled `NowPlayingSnapshotStore.updatePosition` call from
+`PlaybackState+AudioCallbacks.onPlayingTick` into a new
+`PlatformCapability.applyPositionTick` method, wired via
+`AppStateStore.onPositionTick` → `AppMain`. Deleted `widgetPositionTickCount`
+from `PlaybackState`. The `NowPlayingSnapshot` position is now fully owned by
+`PlatformCapability` on both the full-snapshot path (`applyNowPlayingSnapshot`)
+and the position-only path (`applyPositionTick`).
 
 ### M1.5 — Delete the Swift business callbacks
 

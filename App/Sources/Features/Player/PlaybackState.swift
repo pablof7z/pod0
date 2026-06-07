@@ -54,7 +54,6 @@ final class PlaybackState {
 
     var queue: [QueueItem] = []
     var currentSegmentEndTime: Double? = nil
-    var widgetPositionTickCount = 0
     var seekHistory: [SeekHistoryEntry] = []
     var canJumpBack: Bool { !seekHistory.isEmpty }
 

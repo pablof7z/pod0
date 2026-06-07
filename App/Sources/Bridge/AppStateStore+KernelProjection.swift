@@ -158,6 +158,7 @@ extension AppStateStore {
         kernel.onPositionTick = { [weak self] idStr, pos in
             guard let self, let id = UUID(uuidString: idStr) else { return }
             self.setEpisodePlaybackPosition(id, position: pos)
+            self.onPositionTick?(pos)
         }
     }
 

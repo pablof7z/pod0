@@ -222,6 +222,13 @@ final class AppStateStore {
     @ObservationIgnored
     var onNowPlayingSnapshot: ((PodcastUpdate?, [PodcastSummary]) -> Void)?
 
+    /// Fires on every 1 Hz position tick during active playback. Wired in
+    /// `AppMain` to `PlatformCapability.applyPositionTick` so the
+    /// NowPlayingSnapshot position stays current without `PlaybackState`
+    /// owning the throttle counter.
+    @ObservationIgnored
+    var onPositionTick: ((Double) -> Void)?
+
     /// Service for loading and executing on-device LLM inference. Registered
     /// with the kernel at attach time so Rust can call back into Swift for
     /// local model responses. Held with app lifetime to keep the

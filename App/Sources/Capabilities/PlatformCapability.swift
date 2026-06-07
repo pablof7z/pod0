@@ -90,12 +90,18 @@ final class PlatformCapability {
     /// `becomeCurrent()`).
     private var currentActivity: NSUserActivity?
 
+    // Throttle counter for `applyPositionTick`. Position-only App Group writes
+    // are capped to ~1 per 5 s (at 1 Hz) — WidgetKit timeline reloads are
+    // expensive and position granularity beyond 5 s is imperceptible on the
+    // widget face.
+    private var positionTickCount = 0
+
     // Dedup keys for `applyNowPlayingSnapshot`. All fields written to
     // `NowPlayingSnapshot` are compared except `positionSecs` (excluded
-    // intentionally — position-only ticks are handled by
-    // `PlaybackState.writeNowPlayingSnapshot`). Comparing every written field
-    // ensures library-hydration passes (showName, episodeTitle, imageURL,
-    // duration) always write through instead of being blocked by stale state.
+    // intentionally — position-only ticks are handled by `applyPositionTick`).
+    // Comparing every written field ensures library-hydration passes
+    // (showName, episodeTitle, imageURL, duration) always write through instead
+    // of being blocked by stale state.
     private var lastNowPlayingEpisodeId: String? = nil
     private var lastNowPlayingIsPlaying: Bool = false
     private var lastNowPlayingChapterTitle: String? = nil
@@ -127,6 +133,19 @@ final class PlatformCapability {
 
     // MARK: - Now-playing widget (NowPlayingSnapshot path)
 
+    /// Throttled position-only update for the NowPlayingSnapshot. Wired to
+    /// `AppStateStore.onPositionTick` (1 Hz kernel heartbeat) — fires on every
+    /// 5th tick (~5 s) to keep the widget position fresh without a full
+    /// library lookup. `applyNowPlayingSnapshot` resets `positionTickCount`
+    /// to 0 on every full snapshot write so an episode change always produces
+    /// an immediate position update on the next tick.
+    func applyPositionTick(_ position: Double) {
+        positionTickCount += 1
+        guard positionTickCount >= 5 else { return }
+        positionTickCount = 0
+        NowPlayingSnapshotStore.updatePosition(position, isPlaying: true)
+    }
+
     /// Translate the kernel's player state into a `NowPlayingSnapshot` and
     /// write it to the App Group so the widget picks it up. Called by the
     /// kernel-projection observer on every `onNowPlayingSnapshot` tick.
@@ -134,8 +153,8 @@ final class PlatformCapability {
     /// Deduplicates on all written fields except `positionSecs` — the most
     /// common ticks during live playback change only position, which is
     /// excluded so those ticks don't waste App Group writes. Position is kept
-    /// fresh by `PlaybackState.writeNowPlayingSnapshot` (throttled to 5 s).
-    /// All other fields are compared so library-hydration passes always win.
+    /// fresh by `applyPositionTick` (throttled to ~5 s). All other fields are
+    /// compared so library-hydration passes always win.
     func applyNowPlayingSnapshot(_ snapshot: PodcastUpdate?, library: [PodcastSummary]) {
         guard let nowPlaying = snapshot?.nowPlaying,
               let episodeIdStr = nowPlaying.episodeId else { return }
@@ -204,6 +223,9 @@ final class PlatformCapability {
             chapterTitle: chapterTitle,
             isPlaying: isPlaying
         ))
+        // Reset the position-tick throttle so the next tick after a full
+        // snapshot write produces a fresh position update promptly.
+        positionTickCount = 0
     }
 
     // MARK: - Widget snapshot serialization

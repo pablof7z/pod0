@@ -47,6 +47,9 @@ struct PodcastrApp: App {
                     store.onNowPlayingSnapshot = { [platform] snap, lib in
                         platform.applyNowPlayingSnapshot(snap, library: lib)
                     }
+                    store.onPositionTick = { [platform] pos in
+                        platform.applyPositionTick(pos)
+                    }
                     store.attachKernel(kernelModel)
                     PodcastCapabilities.shared.startICloudSync(kernel: kernelModel, appStore: store)
                 }
