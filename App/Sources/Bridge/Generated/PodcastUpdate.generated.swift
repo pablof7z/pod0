@@ -223,7 +223,7 @@ struct SettingsSnapshot: Equatable {
     /// Ollama credential connected-at timestamp (optional, converted to Date in Swift).
     var ollamaConnectedAt: Date? = nil
     /// Ollama chat endpoint URL for LLM inference.
-    var ollamaChatURL: String = ""
+    var ollamaChatURL: String = "https://ollama.com/api/chat"
     /// ElevenLabs credential source enum (raw String: "apiKey", "byok", "nostr").
     var elevenLabsCredentialSource: String = ""
     /// Whether an ElevenLabs API key is loaded in the shared provider cache.
@@ -477,7 +477,7 @@ extension SettingsSnapshot: Codable {
         if let timestamp = try c.decodeIfPresent(Int.self, forKey: .ollamaConnectedAt) {
             ollamaConnectedAt = Date(timeIntervalSince1970: TimeInterval(timestamp))
         }
-        ollamaChatURL = try c.decodeIfPresent(String.self, forKey: .ollamaChatURL) ?? ""
+        ollamaChatURL = try c.decodeIfPresent(String.self, forKey: .ollamaChatURL) ?? "https://ollama.com/api/chat"
         elevenLabsCredentialSource = try c.decodeIfPresent(String.self, forKey: .elevenLabsCredentialSource) ?? ""
         elevenLabsKeyPresent = try c.decodeIfPresent(Bool.self, forKey: .elevenLabsKeyPresent) ?? false
         elevenLabsBYOKKeyID = try c.decodeIfPresent(String.self, forKey: .elevenLabsBYOKKeyID)

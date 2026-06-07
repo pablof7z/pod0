@@ -28,6 +28,7 @@ use podcast_core::{Episode, Podcast};
 use serde::{Deserialize, Serialize};
 
 use crate::ffi::projections::MemoryFact;
+use crate::llm::provider_config::DEFAULT_OLLAMA_CHAT_URL;
 use crate::player::AdSegment;
 
 /// Schema marker for `podcasts.json`. Bump on incompatible format changes.
@@ -342,7 +343,7 @@ impl Default for PersistedSettings {
             ollama_byok_key_id: None,
             ollama_byok_key_label: None,
             ollama_connected_at: None,
-            ollama_chat_url: String::new(),
+            ollama_chat_url: DEFAULT_OLLAMA_CHAT_URL.to_owned(),
             eleven_labs_credential_source: String::new(),
             eleven_labs_byok_key_id: None,
             eleven_labs_byok_key_label: None,

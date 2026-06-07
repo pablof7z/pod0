@@ -75,7 +75,7 @@ struct Settings: Codable, Hashable, Sendable {
 
     /// Default Ollama chat endpoint (Ollama Cloud). Users can override this to
     /// point at a local or self-hosted instance from Settings → Providers → Ollama.
-    static let defaultOllamaChatURL = "https://ollama.com/api/chat"
+    static var defaultOllamaChatURL: String { SettingsSnapshot().ollamaChatURL }
 
     // AI / LLM
     /// Model the agent chat session starts on. Designed to be a cheap/fast model
@@ -408,4 +408,3 @@ struct Settings: Codable, Hashable, Sendable {
     }
 
 }
-

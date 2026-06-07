@@ -17,6 +17,7 @@ use super::snapshot_downloads::build_downloads_snapshot;
 use super::snapshot_owned::collect_owned_podcasts;
 use super::snapshot_queue::resolve_queue_rows;
 use crate::inbox_handler::{build_inbox, maybe_enqueue_triage_with_signal};
+use crate::llm::provider_config::normalize_ollama_chat_url;
 
 pub(super) fn provider_key_present(key: Option<&str>) -> bool {
     key.is_some_and(|value| !value.trim().is_empty())
@@ -103,7 +104,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
                 ollama_byok_key_id: s.ollama_byok_key_id().map(|s| s.to_owned()),
                 ollama_byok_key_label: s.ollama_byok_key_label().map(|s| s.to_owned()),
                 ollama_connected_at: s.ollama_connected_at(),
-                ollama_chat_url: s.ollama_chat_url().to_owned(),
+                ollama_chat_url: normalize_ollama_chat_url(s.ollama_chat_url()),
                 eleven_labs_credential_source: s.eleven_labs_credential_source().to_owned(),
                 eleven_labs_key_present: provider_key_present(s.eleven_labs_api_key()),
                 eleven_labs_byok_key_id: s.eleven_labs_byok_key_id().map(|s| s.to_owned()),

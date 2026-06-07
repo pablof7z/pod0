@@ -4,10 +4,12 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use crate::store::PodcastStore;
+use url::Url;
 
 pub const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 pub const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
 pub const OLLAMA_CLOUD_BASE_URL: &str = "https://ollama.com";
+pub const DEFAULT_OLLAMA_CHAT_URL: &str = "https://ollama.com/api/chat";
 pub const ELEVENLABS_BASE_URL: &str = "https://api.elevenlabs.io";
 pub const ASSEMBLYAI_BASE_URL: &str = "https://api.assemblyai.com";
 
@@ -58,15 +60,47 @@ pub fn strip_provider_prefix<'a>(model: &'a str, provider: &str) -> &'a str {
 }
 
 pub fn ollama_base_url_from_chat_url(chat_url: &str) -> String {
-    let trimmed = chat_url.trim().trim_end_matches('/');
-    let without_suffix = trimmed.strip_suffix("/api/chat").unwrap_or(trimmed);
-    if without_suffix.is_empty() {
-        OLLAMA_CLOUD_BASE_URL.to_owned()
-    } else if let Some(rest) = without_suffix.strip_prefix("http://localhost:") {
-        format!("http://127.0.0.1:{rest}")
-    } else {
-        without_suffix.to_owned()
+    normalize_ollama_chat_url(chat_url)
+        .trim_end_matches("/api/chat")
+        .to_owned()
+}
+
+pub fn normalize_ollama_chat_url(chat_url: &str) -> String {
+    let trimmed = chat_url.trim();
+    if trimmed.is_empty() {
+        return DEFAULT_OLLAMA_CHAT_URL.to_owned();
     }
+
+    let mut url = match Url::parse(trimmed) {
+        Ok(url) => url,
+        Err(_) => return DEFAULT_OLLAMA_CHAT_URL.to_owned(),
+    };
+
+    if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
+        return DEFAULT_OLLAMA_CHAT_URL.to_owned();
+    }
+
+    if url
+        .host_str()
+        .map(|host| host.eq_ignore_ascii_case("localhost"))
+        .unwrap_or(false)
+    {
+        let _ = url.set_host(Some("127.0.0.1"));
+    }
+
+    url.set_query(None);
+    url.set_fragment(None);
+
+    let path = url.path().trim_end_matches('/');
+    let normalized_path = if path.is_empty() || path == "/" {
+        "/api/chat".to_owned()
+    } else if path.ends_with("/api/chat") {
+        path.to_owned()
+    } else {
+        format!("{path}/api/chat")
+    };
+    url.set_path(&normalized_path);
+    url.to_string()
 }
 
 pub fn ollama_chat_url(base_url: &str) -> String {
@@ -112,5 +146,21 @@ mod tests {
         assert_eq!(ollama_chat_url(&base), "http://127.0.0.1:11434/api/chat");
         assert_eq!(ollama_embed_url(&base), "http://127.0.0.1:11434/api/embed");
         assert_eq!(ollama_tags_url(&base), "http://127.0.0.1:11434/api/tags");
+    }
+
+    #[test]
+    fn normalizes_ollama_chat_url_variants() {
+        assert_eq!(
+            normalize_ollama_chat_url(" http://localhost:11434 "),
+            "http://127.0.0.1:11434/api/chat"
+        );
+        assert_eq!(
+            normalize_ollama_chat_url("https://ollama.com/api/chat/"),
+            DEFAULT_OLLAMA_CHAT_URL
+        );
+        assert_eq!(
+            normalize_ollama_chat_url("not a url"),
+            DEFAULT_OLLAMA_CHAT_URL
+        );
     }
 }

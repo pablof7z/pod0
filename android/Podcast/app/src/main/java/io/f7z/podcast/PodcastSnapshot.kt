@@ -335,7 +335,7 @@ data class SettingsSnapshot(
     @SerialName("ollama_byok_key_id") val ollamaByokKeyId: String? = null,
     @SerialName("ollama_byok_key_label") val ollamaByokKeyLabel: String? = null,
     @SerialName("ollama_connected_at") val ollamaConnectedAt: Long? = null,
-    @SerialName("ollama_chat_url") val ollamaChatUrl: String = "",
+    @SerialName("ollama_chat_url") val ollamaChatUrl: String = "https://ollama.com/api/chat",
     @SerialName("eleven_labs_credential_source") val elevenLabsCredentialSource: String = "",
     @SerialName("eleven_labs_key_present") val elevenLabsKeyPresent: Boolean = false,
     @SerialName("eleven_labs_byok_key_id") val elevenLabsByokKeyId: String? = null,

@@ -8,6 +8,8 @@
 
 use podcast_core::PodcastId;
 
+use crate::llm::provider_config::normalize_ollama_chat_url;
+
 use super::PodcastStore;
 
 impl PodcastStore {
@@ -488,10 +490,11 @@ impl PodcastStore {
 
     /// Set Ollama chat URL and persist. Idempotent.
     pub fn set_ollama_chat_url(&mut self, url: String) {
-        if self.ollama_chat_url == url {
+        let normalized = normalize_ollama_chat_url(&url);
+        if self.ollama_chat_url == normalized {
             return;
         }
-        self.ollama_chat_url = url;
+        self.ollama_chat_url = normalized;
         self.persist();
     }
 
