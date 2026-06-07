@@ -23,10 +23,11 @@ use nmp_core::ActorCommand;
 /// discriminator the lowercase snake-case variant name:
 /// `create` → `{"op":"create","title":"…","schedule":"daily", …}`.
 ///
-/// `create` mints a UUID server-side (Rust-side) and returns
-/// `{"ok":true,"task_id":"<uuid>"}`. The other ops take the existing
-/// `task_id` and return `{"ok":true}` (or `{"ok":false,"error":...}` on
-/// unknown id).
+/// `create_from_intent` mints a UUID server-side (Rust-side), resolves the
+/// typed task intent to the internal dispatch payload, and returns
+/// `{"ok":true,"task_id":"<uuid>"}`. `create` remains for compatibility with
+/// older clients that already send raw dispatch namespace/body pairs; new
+/// clients should use typed intents.
 ///
 /// `run_now` is a stub: it marks the task `completed` + stamps
 /// `last_run_at` rather than actually dispatching the `action_namespace`
@@ -36,12 +37,22 @@ use nmp_core::ActorCommand;
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum AgentTasksAction {
+    /// Compatibility/internal path for older clients that already know the
+    /// backend dispatch namespace/body contract. User-facing clients should
+    /// prefer [`AgentTasksAction::CreateFromIntent`].
     Create {
         title: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         description: Option<String>,
         action_namespace: String,
         action_body: String,
+        schedule: String,
+    },
+    CreateFromIntent {
+        title: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        description: Option<String>,
+        intent: AgentTaskIntent,
         schedule: String,
     },
     Delete {
@@ -56,6 +67,20 @@ pub enum AgentTasksAction {
     RunNow {
         task_id: String,
     },
+}
+
+/// Typed task intents accepted by `"podcast.tasks"` creation.
+///
+/// The handler resolves these stable user-level intents to the internal
+/// `(action_namespace, action_body)` pair used by `run_now`. This keeps clients
+/// from constructing raw action JSON while preserving the current scheduler
+/// storage shape.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum AgentTaskIntent {
+    InboxTriage,
+    ClearAgent,
+    RememberMemory { key: String, value: String },
 }
 
 /// Action module for the `"podcast.tasks"` namespace.

@@ -102,7 +102,7 @@ pub use player_module::{PlayerAction, PlayerActionModule};
 pub use podcast_module::{PodcastAction, PodcastActionModule};
 pub use queue_module::{QueueAction, QueueActionModule};
 pub use wiki_module::{WikiAction, WikiActionModule};
-pub use tasks_module::{AgentTasksAction, AgentTasksModule};
+pub use tasks_module::{AgentTaskIntent, AgentTasksAction, AgentTasksModule};
 pub use publish_module::{
     NipF4PublishModule, PublishAction, ACTION_PUBLISH_CREATE_OWNED,
     ACTION_PUBLISH_PUBLISH_AUTHOR_CLAIM, ACTION_PUBLISH_PUBLISH_EPISODE,
@@ -323,4 +323,3 @@ pub use podcast_agent_core::{
 #[cfg(test)]
 #[path = "actions_tests.rs"]
 mod tests;
-

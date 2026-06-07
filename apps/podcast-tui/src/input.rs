@@ -192,12 +192,11 @@ fn handle_agent_task_input(state: &mut AppState, runtime: &AppRuntime, key: KeyE
             state.agent_task_input.clear();
             state.mode = Mode::Normal;
             match parse_task_input(&input) {
-                Some((title, schedule, namespace, body, description)) => {
+                Some((title, schedule, intent, description)) => {
                     match runtime.create_agent_task(
                         title,
                         schedule,
-                        namespace,
-                        body,
+                        intent,
                         description.filter(|text| !text.is_empty()),
                     ) {
                         Ok(_) => state.push_toast("task created"),
@@ -206,8 +205,7 @@ fn handle_agent_task_input(state: &mut AppState, runtime: &AppRuntime, key: KeyE
                 }
                 None => {
                     state.status =
-                        "task format: title | schedule | namespace | json body | description"
-                            .to_string();
+                        "task format: title | schedule | intent | description".to_string();
                 }
             }
         }
@@ -443,15 +441,15 @@ fn cancel_sleep_timer(state: &mut AppState, runtime: &AppRuntime) {
     }
 }
 
-type TaskInputParts<'a> = (&'a str, &'a str, &'a str, &'a str, Option<&'a str>);
+type TaskInputParts<'a> = (&'a str, &'a str, &'a str, Option<&'a str>);
 
 fn parse_task_input(input: &str) -> Option<TaskInputParts<'_>> {
     let parts = input.split('|').map(str::trim).collect::<Vec<_>>();
-    let [title, schedule, namespace, body, rest @ ..] = parts.as_slice() else {
+    let [title, schedule, intent, rest @ ..] = parts.as_slice() else {
         return None;
     };
-    if title.is_empty() || schedule.is_empty() || namespace.is_empty() || body.is_empty() {
+    if title.is_empty() || schedule.is_empty() || intent.is_empty() {
         return None;
     }
-    Some((*title, *schedule, *namespace, *body, rest.first().copied()))
+    Some((*title, *schedule, *intent, rest.first().copied()))
 }

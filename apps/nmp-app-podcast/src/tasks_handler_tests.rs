@@ -6,7 +6,10 @@ use super::*;
 use nmp_core::substrate::ActionModule;
 
 fn new_state() -> (Arc<Mutex<Vec<AgentTaskSummary>>>, Arc<AtomicU64>) {
-    (Arc::new(Mutex::new(Vec::new())), Arc::new(AtomicU64::new(0)))
+    (
+        Arc::new(Mutex::new(Vec::new())),
+        Arc::new(AtomicU64::new(0)),
+    )
 }
 
 #[test]
@@ -32,6 +35,32 @@ fn default_seed_has_inbox_triage_task() {
 fn create_appends_and_returns_task_id() {
     let (tasks, rev) = new_state();
     let result = handle_tasks_action(
+        AgentTasksAction::CreateFromIntent {
+            title: "Triage".into(),
+            description: None,
+            intent: AgentTaskIntent::InboxTriage,
+            schedule: "daily".into(),
+        },
+        &tasks,
+        &rev,
+        None,
+    );
+    assert_eq!(result["ok"], true);
+    let task_id = result["task_id"].as_str().expect("task_id present");
+    assert!(Uuid::parse_str(task_id).is_ok());
+    let guard = tasks.lock().unwrap();
+    assert_eq!(guard.len(), 1);
+    assert_eq!(guard[0].title, "Triage");
+    assert_eq!(guard[0].id, task_id);
+    assert_eq!(guard[0].action_namespace, "podcast.inbox");
+    assert_eq!(guard[0].action_body, r#"{"op":"triage"}"#);
+    assert_eq!(rev.load(Ordering::Relaxed), 1);
+}
+
+#[test]
+fn create_raw_payload_still_appends_for_compatibility() {
+    let (tasks, rev) = new_state();
+    let result = handle_tasks_action(
         AgentTasksAction::Create {
             title: "Research X".into(),
             description: None,
@@ -44,13 +73,36 @@ fn create_appends_and_returns_task_id() {
         None,
     );
     assert_eq!(result["ok"], true);
-    let task_id = result["task_id"].as_str().expect("task_id present");
-    assert!(Uuid::parse_str(task_id).is_ok());
     let guard = tasks.lock().unwrap();
-    assert_eq!(guard.len(), 1);
-    assert_eq!(guard[0].title, "Research X");
-    assert_eq!(guard[0].id, task_id);
+    assert_eq!(guard[0].action_namespace, "podcast.research");
+    assert_eq!(guard[0].action_body, "{\"topic\":\"x\"}");
     assert_eq!(rev.load(Ordering::Relaxed), 1);
+}
+
+#[test]
+fn create_from_memory_intent_resolves_memory_action() {
+    let (tasks, rev) = new_state();
+    let result = handle_tasks_action(
+        AgentTasksAction::CreateFromIntent {
+            title: "Remember Preference".into(),
+            description: Some("keep preference fresh".into()),
+            intent: AgentTaskIntent::RememberMemory {
+                key: "topic".into(),
+                value: "rust".into(),
+            },
+            schedule: "weekly".into(),
+        },
+        &tasks,
+        &rev,
+        None,
+    );
+    assert_eq!(result["ok"], true);
+    let guard = tasks.lock().unwrap();
+    assert_eq!(guard[0].action_namespace, "podcast.memory");
+    assert_eq!(
+        guard[0].action_body,
+        r#"{"op":"remember","key":"topic","value":"rust","source":"task"}"#
+    );
 }
 
 #[test]

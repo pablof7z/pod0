@@ -276,8 +276,7 @@ fn run_body(data_dir: &str) -> Result<(), String> {
         .create_agent_task(
             "TUI Smoke Task",
             "once",
-            "podcast.agent",
-            r#"{"op":"clear"}"#,
+            "clear_agent",
             Some("integration smoke"),
         )
         .map_err(|e| format!("create task dispatch failed: {e}"))?;

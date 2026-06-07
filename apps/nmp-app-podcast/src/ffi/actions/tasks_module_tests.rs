@@ -29,6 +29,39 @@ fn create_action_omits_none_description() {
     let decoded: AgentTasksAction = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded, action);
 }
+
+#[test]
+fn create_from_intent_action_round_trips() {
+    let action = AgentTasksAction::CreateFromIntent {
+        title: "Clear Agent".into(),
+        description: None,
+        intent: AgentTaskIntent::ClearAgent,
+        schedule: "once".into(),
+    };
+    let json = serde_json::to_string(&action).expect("encode");
+    assert!(json.contains(r#""op":"create_from_intent""#));
+    assert!(json.contains(r#""intent":{"type":"clear_agent"}"#));
+    assert!(!json.contains("action_namespace"));
+    assert!(!json.contains("action_body"));
+    let decoded: AgentTasksAction = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, action);
+}
+
+#[test]
+fn memory_intent_round_trips() {
+    let intent = AgentTaskIntent::RememberMemory {
+        key: "focus".into(),
+        value: "podcasts".into(),
+    };
+    let json = serde_json::to_string(&intent).expect("encode");
+    assert_eq!(
+        json,
+        r#"{"type":"remember_memory","key":"focus","value":"podcasts"}"#
+    );
+    let decoded: AgentTaskIntent = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, intent);
+}
+
 #[test]
 fn delete_action_round_trips() {
     let action = AgentTasksAction::Delete {
@@ -96,4 +129,3 @@ fn execute_emits_dispatch_host_op() {
     assert_eq!(v["op"], "delete");
     assert_eq!(v["task_id"], "task-1");
 }
-

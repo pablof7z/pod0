@@ -10,7 +10,7 @@
 //!
 //! ## Run-now dispatch
 //!
-//! `run_now` re-dispatches the task's `(action_namespace, action_body)`
+//! `run_now` re-dispatches the task's stored `(action_namespace, action_body)`
 //! payload through the kernel action registry via the `dispatch`
 //! callback the call site injects (production wraps
 //! `nmp_ffi::nmp_app_dispatch_action`). The callback runs *synchronously*
@@ -33,6 +33,11 @@
 //!
 //! ## Namespace contract
 //!
+//! `create_from_intent` is the user-facing creation path: it resolves a typed
+//! [`AgentTaskIntent`] to an internal dispatch payload here, so clients do not
+//! have to know or edit action namespace/body JSON. The legacy `create` op
+//! still accepts raw payloads for compatibility.
+//!
 //! `action_namespace` must be a *registered* `ActionModule::NAMESPACE`
 //! (the registry does an exact `modules.get(namespace)` lookup — there
 //! is no prefix routing) and `action_body` must be that module's
@@ -45,31 +50,33 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use chrono::Utc;
+use nmp_core::substrate::ActionModule;
 use uuid::Uuid;
 
-use crate::ffi::actions::AgentTasksAction;
+use crate::ffi::actions::{
+    AgentActionModule, AgentChatAction, AgentTaskIntent, AgentTasksAction, InboxAction,
+    InboxActionModule, MemoryAction, MemoryActionModule,
+};
 use crate::ffi::projections::AgentTaskSummary;
 
 /// Seed value installed on first kernel boot — gives the iOS UI rows to
 /// render before the user has scheduled anything. Returned by value so
 /// `register.rs` can hand it directly to `Arc::new(Mutex::new(...))`.
 pub fn default_seed() -> Vec<AgentTaskSummary> {
-    vec![
-        AgentTaskSummary {
-            id: Uuid::new_v4().to_string(),
-            title: "Inbox Triage".into(),
-            description: Some("Surface new episodes worth your time".into()),
-            // `podcast.inbox` namespace, `Triage` op (see
-            // `InboxActionModule` / `InboxAction::Triage`).
-            action_namespace: "podcast.inbox".into(),
-            action_body: r#"{"op":"triage"}"#.into(),
-            schedule: "daily".into(),
-            next_run_at: None,
-            last_run_at: None,
-            status: "pending".into(),
-            is_enabled: true,
-        },
-    ]
+    let payload = task_payload_from_intent(&AgentTaskIntent::InboxTriage)
+        .expect("inbox triage intent must resolve");
+    vec![AgentTaskSummary {
+        id: Uuid::new_v4().to_string(),
+        title: "Inbox Triage".into(),
+        description: Some("Surface new episodes worth your time".into()),
+        action_namespace: payload.action_namespace,
+        action_body: payload.action_body,
+        schedule: "daily".into(),
+        next_run_at: None,
+        last_run_at: None,
+        status: "pending".into(),
+        is_enabled: true,
+    }]
 }
 
 /// Synchronous action-dispatch callback injected by the call site.
@@ -108,23 +115,26 @@ pub fn handle_tasks_action(
             action_namespace,
             action_body,
             schedule,
-        } => {
-            let task_id = Uuid::new_v4().to_string();
-            guard.push(AgentTaskSummary {
-                id: task_id.clone(),
-                title,
-                description,
+        } => create_task(
+            &mut guard,
+            rev,
+            title,
+            description,
+            TaskPayload {
                 action_namespace,
                 action_body,
-                schedule,
-                next_run_at: None,
-                last_run_at: None,
-                status: "pending".into(),
-                is_enabled: true,
-            });
-            rev.fetch_add(1, Ordering::Relaxed);
-            serde_json::json!({"ok": true, "task_id": task_id})
-        }
+            },
+            schedule,
+        ),
+        AgentTasksAction::CreateFromIntent {
+            title,
+            description,
+            intent,
+            schedule,
+        } => match task_payload_from_intent(&intent) {
+            Ok(payload) => create_task(&mut guard, rev, title, description, payload, schedule),
+            Err(error) => serde_json::json!({"ok": false, "error": error}),
+        },
         AgentTasksAction::Delete { task_id } => {
             let before = guard.len();
             guard.retain(|t| t.id != task_id);
@@ -178,6 +188,68 @@ pub fn handle_tasks_action(
             serde_json::json!({"ok": accepted, "status": status})
         }
     }
+}
+
+struct TaskPayload {
+    action_namespace: String,
+    action_body: String,
+}
+
+fn create_task(
+    guard: &mut Vec<AgentTaskSummary>,
+    rev: &Arc<AtomicU64>,
+    title: String,
+    description: Option<String>,
+    payload: TaskPayload,
+    schedule: String,
+) -> serde_json::Value {
+    let task_id = Uuid::new_v4().to_string();
+    guard.push(AgentTaskSummary {
+        id: task_id.clone(),
+        title,
+        description,
+        action_namespace: payload.action_namespace,
+        action_body: payload.action_body,
+        schedule,
+        next_run_at: None,
+        last_run_at: None,
+        status: "pending".into(),
+        is_enabled: true,
+    });
+    rev.fetch_add(1, Ordering::Relaxed);
+    serde_json::json!({"ok": true, "task_id": task_id})
+}
+
+fn task_payload_from_intent(intent: &AgentTaskIntent) -> Result<TaskPayload, String> {
+    match intent {
+        AgentTaskIntent::InboxTriage => task_payload(
+            <InboxActionModule as ActionModule>::NAMESPACE,
+            &InboxAction::Triage,
+        ),
+        AgentTaskIntent::ClearAgent => task_payload(
+            <AgentActionModule as ActionModule>::NAMESPACE,
+            &AgentChatAction::Clear,
+        ),
+        AgentTaskIntent::RememberMemory { key, value } => task_payload(
+            <MemoryActionModule as ActionModule>::NAMESPACE,
+            &MemoryAction::Remember {
+                key: key.clone(),
+                value: value.clone(),
+                source: Some("task".into()),
+            },
+        ),
+    }
+}
+
+fn task_payload<T: serde::Serialize>(
+    action_namespace: &str,
+    action: &T,
+) -> Result<TaskPayload, String> {
+    Ok(TaskPayload {
+        action_namespace: action_namespace.to_owned(),
+        action_body: serde_json::to_string(action)
+            .map_err(|e| format!("failed to encode task intent action: {e}"))?,
+    })
 }
 
 fn set_enabled(

@@ -1,4 +1,4 @@
-use serde_json::json;
+use serde_json::{json, Value};
 
 use crate::runtime::{AppRuntime, Result};
 
@@ -252,18 +252,17 @@ impl AppRuntime {
         &self,
         title: &str,
         schedule: &str,
-        action_namespace: &str,
-        action_body: &str,
+        intent: &str,
         description: Option<&str>,
     ) -> Result<String> {
+        let intent = task_intent_value(intent)?;
         self.dispatch_action_value(
             "podcast.tasks",
             &json!({
-                "op": "create",
+                "op": "create_from_intent",
                 "title": title,
                 "description": description,
-                "action_namespace": action_namespace,
-                "action_body": action_body,
+                "intent": intent,
                 "schedule": schedule,
             }),
         )
@@ -409,4 +408,26 @@ impl AppRuntime {
             &json!({"op": "set_default_playback_rate", "rate": rate}),
         )
     }
+}
+
+fn task_intent_value(input: &str) -> Result<Value> {
+    let input = input.trim();
+    match input {
+        "inbox_triage" | "triage_inbox" | "triage" => Ok(json!({"type": "inbox_triage"})),
+        "clear_agent" | "agent_clear" | "clear_chat" => Ok(json!({"type": "clear_agent"})),
+        _ => memory_intent_value(input).ok_or_else(|| {
+            "unknown task intent; use inbox_triage, clear_agent, or memory:key=value".to_string()
+        }),
+    }
+}
+
+fn memory_intent_value(input: &str) -> Option<Value> {
+    let rest = input.strip_prefix("memory:")?;
+    let (key, value) = rest.split_once('=')?;
+    let key = key.trim();
+    let value = value.trim();
+    if key.is_empty() || value.is_empty() {
+        return None;
+    }
+    Some(json!({"type": "remember_memory", "key": key, "value": value}))
 }
