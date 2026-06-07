@@ -67,13 +67,13 @@ worktrees currently in flight.
   Rust-owned settings projections/actions. Delete Keychain-only UI fallbacks
   once the kernel can represent the state. Provider HTTP transport is part of
   this ownership boundary: OpenRouter/Ollama chat/completion, embeddings,
-  model catalog discovery, OpenRouter credential validation, and OpenRouter
-  Whisper/STT plus ElevenLabs Scribe/STT multipart upload now live in the
-  shared Rust backend, with iOS/Android/TUI only supplying credentials,
-  selected models, typed audio source intent, and UI. Android now reloads
-  encrypted OpenRouter/Ollama keys
-  into Rust, exposes typed credential settings for those providers, and calls
-  shared Rust OpenRouter key validation through JNI. Swift live
+  model catalog discovery, OpenRouter credential validation, OpenRouter
+  Whisper/STT, ElevenLabs Scribe/STT multipart upload, and AssemblyAI
+  submit/poll STT now live in the shared Rust backend, with iOS/Android/TUI
+  only supplying credentials, selected models, typed audio source intent, and
+  UI. Android now reloads encrypted OpenRouter/Ollama keys into Rust, exposes
+  typed credential settings for those providers, and calls shared Rust
+  OpenRouter key validation through JNI. Swift live
   wiki/title/categorization/chapter/clip completion callers no longer
   preflight OpenRouter/Ollama Keychain keys before invoking the shared Rust
   provider transport, and Swift OpenRouter settings validation no longer
@@ -85,15 +85,18 @@ worktrees currently in flight.
   (`/v1/user`), and ElevenLabs Scribe transcription now uses
   `nmp_app_podcast_elevenlabs_scribe_transcribe` so Rust owns selected Scribe
   model lookup, ElevenLabs auth, local-file/source_url multipart shaping,
-  status handling, and response parsing. iOS/Android/TUI mirror ElevenLabs
-  credentials into the same in-memory provider-key action as OpenRouter/Ollama.
-  Android now mirrors ElevenLabs/STT provider settings, stores ElevenLabs/
-  AssemblyAI keys in its encrypted host store, reports STT key presence to
-  Rust, exposes shared ElevenLabs validation/Scribe JNI calls, and exposes
-  STT/TTS model and ElevenLabs voice settings through typed settings actions.
-  Remaining provider-ownership work is moving AssemblyAI submit/poll STT into
-  the shared backend and deleting any stale Keychain-only UI fallbacks after
-  kernel projections cover them.
+  status handling, and response parsing. AssemblyAI transcription now uses
+  `nmp_app_podcast_assemblyai_transcribe` so Rust owns the selected model
+  fallback list, AssemblyAI auth, `/v2/transcript` submit/poll contract,
+  status handling, response parsing, and usage telemetry normalization.
+  iOS/Android/TUI mirror ElevenLabs and AssemblyAI credentials into the same
+  in-memory provider-key action as OpenRouter/Ollama. Android now mirrors
+  ElevenLabs/STT provider settings, stores ElevenLabs/AssemblyAI keys in its
+  encrypted host store, reports STT key presence to Rust, exposes shared
+  ElevenLabs validation plus Scribe/AssemblyAI JNI calls, and exposes STT/TTS
+  model and ElevenLabs voice settings through typed settings actions.
+  Remaining provider-ownership work is deleting any stale Keychain-only UI
+  fallbacks after kernel projections cover them.
 - **typed-agent-task-intents.** Backend `AgentTaskIntent` creation exists and
   the TUI task editor now submits typed/natural task requests instead of raw
   dispatch namespace/body JSON. Keep raw `create` as compatibility/internal
@@ -344,15 +347,15 @@ worktrees currently in flight.
      device voice. Do NOT wire `eleven_labs_voice_id` into `Speak.voice_id`;
      it looks done and does nothing. A `provider` field (plus a provider-
      scoped voice id) must be added to the schema on both sides first.
-  2. **No iOS provider adapter exists.** The `Capabilities/Tts/{ElevenLabsAdapter,
-     AvSpeechAdapter}` referenced in the `voice.rs` doc comment are unwritten;
-     iOS is `SFSpeechRecognizer` (STT) + `AVSpeechSynthesizer` (TTS) only.
-     There is no ElevenLabs WS/HTTP TTS client, no AssemblyAI STT client, and
-     no OpenRouter Whisper STT client anywhere in Rust or Swift — every
-     `eleven_labs`/`assembly_ai`/`whisper` reference is settings/iCloud-sync/
-     Keychain plumbing, not a call site. A provider-routed TTS path also needs
-     an audio sink (the synthesized bytes must reach `nmp.audio.capability` or
-     the OS audio engine).
+  2. **No iOS voice-mode provider adapter exists.** The
+     `Capabilities/Tts/{ElevenLabsAdapter, AvSpeechAdapter}` referenced in the
+     `voice.rs` doc comment are unwritten; iOS voice mode is
+     `SFSpeechRecognizer` (STT) + `AVSpeechSynthesizer` (TTS) only. Episode
+     transcription now has shared Rust OpenRouter Whisper, ElevenLabs Scribe,
+     and AssemblyAI transports, but those are not voice-mode realtime STT/TTS
+     adapters. A provider-routed TTS path also needs an audio sink (the
+     synthesized bytes must reach `nmp.audio.capability` or the OS audio
+     engine).
   3. **Two referenced settings do not exist.** There is no `tts_provider`
      selector (TTS provider is implicit-from-ElevenLabs-config) and no
      barge-in-threshold setting, and no OpenRouter-TTS-voice setting. The M5
@@ -374,15 +377,16 @@ worktrees currently in flight.
      `TranscriptIngestService.effectiveSTTProvider` also downgrades a keyless
      cloud provider to `.appleNative`, so the reported provider now matches the
      engine that actually runs (cloud transcription is preserved when a key is
-     present). When the AssemblyAI/Scribe STT execution path lands, revisit
-     whether a cloud default is appropriate for key-configured users.
+     present). Episode STT execution paths have since landed for Scribe,
+     AssemblyAI, and OpenRouter Whisper; revisit whether a cloud default is
+     appropriate for key-configured users separately from voice-mode routing.
   Suggested landing order once unblocked: (1) add `provider` + provider-scoped
   voice to the wire schema; (2) iOS ElevenLabs TTS adapter + audio sink behind
   that provider; (3) route `eleven_labs_voice_id`/`eleven_labs_tts_model` in
   `VoiceConversationManager` (D7: Rust decides voice) only when the active
-  provider can honor it; (4) AssemblyAI/Scribe STT execution path + reconcile
-  the cloud `stt_provider` default for key-configured users (the keyless
-  `apple_native` default already landed in PR #178); (5) design
+  provider can honor it; (4) provider-routed voice-mode STT/TTS execution path
+  + reconcile the cloud `stt_provider` default for key-configured users (the
+  keyless `apple_native` default already landed in PR #178); (5) design
   barge-in-threshold + OpenRouter-TTS
   settings, then wire barge-in and OpenRouter TTS.
 - **voice-mode-elevenlabs-tts-playback-sink.** The kernel-driven voice executor
@@ -550,11 +554,12 @@ worktrees currently in flight.
   playback, sleep timer, playback queue, downloads, settings, BYOK nsec import,
   HTTP capability execution, and audio report round-trips now use the NMP
   kernel/capability path. Android can call the shared Rust provider
-  complete/embed/catalog/image/rerank transports through JNI, and model-role
-  settings now load the shared Rust catalog for selection. Android also has
-  encrypted OpenRouter/Ollama credential settings and reloads those keys into
-  the Rust in-memory provider cache, including shared OpenRouter key
-  validation; remaining provider work is the non-LLM STT/voice credential
+  complete/embed/catalog/image/rerank and cloud-STT transports through JNI, and
+  model-role settings now load the shared Rust catalog for selection. Android
+  also has encrypted OpenRouter/Ollama/ElevenLabs/AssemblyAI credential
+  settings and reloads those keys into the Rust in-memory provider cache,
+  including shared OpenRouter/ElevenLabs validation; remaining provider work is
+  voice-mode provider execution/credential
   surface.
 - ~~**android-gradle-wrapper.**~~ Done — `gradlew`, `gradlew.bat`, and the
   wrapper files are present under `android/Podcast/`; `./gradlew assembleDebug`
