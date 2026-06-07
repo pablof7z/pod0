@@ -9,6 +9,7 @@ pub mod assemblyai_transcript;
 pub mod backend;
 pub mod elevenlabs_key_validation;
 pub mod elevenlabs_scribe;
+pub mod elevenlabs_tts;
 pub mod elevenlabs_voice_catalog;
 pub mod factory;
 pub mod image_generation;

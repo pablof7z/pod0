@@ -194,6 +194,14 @@ class KernelBridge {
         if (handle != 0L) nativeElevenLabsVoiceCatalog(handle) else null
 
     /**
+     * Shared ElevenLabs one-shot text-to-speech transport. Android supplies
+     * text/voice/model intent only; Rust owns credentials, request shaping,
+     * provider errors, and audio response normalization.
+     */
+    fun elevenLabsTextToSpeech(intentJson: String): String? =
+        if (handle != 0L) nativeElevenLabsTextToSpeech(handle, intentJson) else null
+
+    /**
      * Shared OpenRouter Whisper transcription transport. Android supplies only
      * the typed audio-source intent; Rust owns OpenRouter HTTP and credentials.
      */
@@ -255,6 +263,7 @@ class KernelBridge {
     private external fun nativeValidateOpenRouterKey(handle: Long): String?
     private external fun nativeValidateElevenLabsKey(handle: Long): String?
     private external fun nativeElevenLabsVoiceCatalog(handle: Long): String?
+    private external fun nativeElevenLabsTextToSpeech(handle: Long, intentJson: String): String?
     private external fun nativeOpenRouterWhisperTranscribe(handle: Long, intentJson: String): String?
     private external fun nativeElevenLabsScribeTranscribe(handle: Long, intentJson: String): String?
     private external fun nativeAssemblyAITranscribe(handle: Long, intentJson: String): String?

@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-07T21:27:00Z",
+      "lines": [
+        "ElevenLabs voice previews, pick narration, and generated podcast speech now use the shared backend for TTS setup and provider errors."
+      ]
+    },
+    {
       "shipped_at": "2026-06-07T21:10:00Z",
       "lines": [
         "ElevenLabs voice discovery now uses the shared backend, so voice lists load consistently across iOS and Android."

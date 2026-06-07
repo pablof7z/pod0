@@ -11,11 +11,11 @@ use nmp_ffi::nmp_app_free_string;
 use super::session_ref;
 use crate::ffi::{
     nmp_app_podcast_assemblyai_transcribe, nmp_app_podcast_chat_complete,
-    nmp_app_podcast_elevenlabs_scribe_transcribe, nmp_app_podcast_generate_image,
-    nmp_app_podcast_elevenlabs_voice_catalog, nmp_app_podcast_openrouter_whisper_transcribe,
-    nmp_app_podcast_perplexity_search, nmp_app_podcast_provider_complete,
-    nmp_app_podcast_provider_embed, nmp_app_podcast_provider_model_catalog,
-    nmp_app_podcast_rerank,
+    nmp_app_podcast_elevenlabs_scribe_transcribe, nmp_app_podcast_elevenlabs_tts_synthesize,
+    nmp_app_podcast_elevenlabs_voice_catalog, nmp_app_podcast_generate_image,
+    nmp_app_podcast_openrouter_whisper_transcribe, nmp_app_podcast_perplexity_search,
+    nmp_app_podcast_provider_complete, nmp_app_podcast_provider_embed,
+    nmp_app_podcast_provider_model_catalog, nmp_app_podcast_rerank,
     nmp_app_podcast_validate_elevenlabs_key, nmp_app_podcast_validate_openrouter_key,
     PodcastHandle,
 };
@@ -194,6 +194,23 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeElevenLabsVoiceCat
     handle: jlong,
 ) -> jstring {
     call_podcast_catalog_ffi(&env, handle, nmp_app_podcast_elevenlabs_voice_catalog)
+}
+
+/// `nativeElevenLabsTextToSpeech(handle, intentJson)` - shared ElevenLabs TTS.
+/// Returns Rust's JSON envelope unchanged, or null on FFI failure.
+#[no_mangle]
+pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeElevenLabsTextToSpeech<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    handle: jlong,
+    intent_json: JString<'l>,
+) -> jstring {
+    call_podcast_json_ffi(
+        &mut env,
+        handle,
+        intent_json,
+        nmp_app_podcast_elevenlabs_tts_synthesize,
+    )
 }
 
 /// `nativeOpenRouterWhisperTranscribe(handle, intentJson)` — shared OpenRouter STT.

@@ -104,7 +104,11 @@ worktrees currently in flight.
   provider/model. The TUI env loader now forwards `ASSEMBLYAI_API_KEY` and
   `PERPLEXITY_API_KEY` into the shared provider-key cache, and its ElevenLabs
   voice row now browses the shared Rust `/v1/voices` catalog instead of making
-  users paste raw voice ids.
+  users paste raw voice ids. Non-realtime ElevenLabs TTS synthesis for voice
+  previews, pick rationale narration, and generated podcast speech turns now
+  uses `nmp_app_podcast_elevenlabs_tts_synthesize`, so Rust owns TTS
+  credentials, selected-model fallback, request shaping, provider status
+  handling, and audio response normalization.
   Remaining provider-ownership work is deleting any stale Keychain-only UI
   fallbacks after kernel projections cover them, plus streaming voice-mode
   STT/TTS once the canonical NMP capability seam lands upstream
@@ -414,7 +418,9 @@ worktrees currently in flight.
   `ElevenLabsTTSClient.synthesizeStream` yields raw audio `Data` frames and the
   only consumer (`AudioConversationManager.beginSpeaking`) records them for
   barge-in and marks playback "future work" — no `AVAudioPlayerNode` route is
-  wired through `AudioCapability`. To make ElevenLabs TTS audible in the
+  wired through `AudioCapability`. Non-realtime ElevenLabs TTS now uses the
+  shared Rust backend; this item is only about realtime voice-mode streaming
+  playback. To make ElevenLabs TTS audible in the
   kernel-driven path: add a player-node sink (likely via `AudioCapability`),
   feed `ElevenLabsTTSClient` frames into it, and emit `started`/`finished`
   `VoiceReport`s from real playback callbacks. Until then the fallback is the

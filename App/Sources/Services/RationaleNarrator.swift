@@ -42,8 +42,8 @@ final class RationaleNarrator {
     /// pause during narration isn't unexpectedly undone.
     private var pausedPlaybackForNarration: Bool = false
     private var playerDelegate: AudioPlayerDelegate?
-    private var activeRequest: URLSessionDataTask?
     private var playback: PlaybackState?
+    private let elevenLabsTTS = ElevenLabsTTSBackendClient()
 
     private init() {}
 
@@ -75,7 +75,7 @@ final class RationaleNarrator {
         narratingPickID = pickID
         capturePlaybackPauseIfNeeded()
 
-        if !voiceID.isEmpty, (try? ElevenLabsCredentialStore.apiKey())??.isEmpty == false {
+        if !voiceID.isEmpty {
             do {
                 try await speakViaElevenLabs(text: trimmed, voiceID: voiceID, ttsModel: ttsModel)
                 return
@@ -95,8 +95,6 @@ final class RationaleNarrator {
         playerDelegate = nil
         fallback?.stopSpeaking()
         fallback = nil
-        activeRequest?.cancel()
-        activeRequest = nil
         if narratingPickID != nil {
             narratingPickID = nil
             restorePlaybackIfPausedByUs()
@@ -124,37 +122,15 @@ final class RationaleNarrator {
         voiceID: String,
         ttsModel: String
     ) async throws {
-        guard let url = URL(string: "https://api.elevenlabs.io/v1/text-to-speech/\(voiceID)") else {
-            throw RationaleNarrationError.invalidURL
-        }
-        guard let apiKey = try ElevenLabsCredentialStore.apiKey(), !apiKey.isEmpty else {
-            throw RationaleNarrationError.missingAPIKey
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("audio/mpeg", forHTTPHeaderField: "Accept")
-        request.timeoutInterval = 20
-
-        // Character Marcus Webb's voice from the system brief — but the user
-        // pre-configures their preferred voice in Settings, so we honour that.
         let effectiveModel = ttsModel.isBlank ? "eleven_turbo_v2_5" : ttsModel.trimmed
-        let body: [String: Any] = [
-            "text": text,
-            "model_id": effectiveModel,
-            "voice_settings": ["stability": 0.5, "similarity_boost": 0.75]
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-            throw RationaleNarrationError.server(http.statusCode)
-        }
+        let audio = try await elevenLabsTTS.synthesize(
+            text: text,
+            voiceID: voiceID,
+            model: effectiveModel
+        )
 
         configureElevenLabsAudioPlaybackSession()
-        let player = try AVAudioPlayer(data: data, fileTypeHint: "mp3")
+        let player = try AVAudioPlayer(data: audio.data, fileTypeHint: "mp3")
         let delegate = AudioPlayerDelegate { [weak self] in
             Task { @MainActor in self?.onPlaybackEnded() }
         }
@@ -189,22 +165,6 @@ final class RationaleNarrator {
         playerDelegate = nil
         fallback = nil
         restorePlaybackIfPausedByUs()
-    }
-}
-
-// MARK: - Errors
-
-enum RationaleNarrationError: LocalizedError {
-    case invalidURL
-    case missingAPIKey
-    case server(Int)
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidURL:        return "Couldn't build the ElevenLabs URL."
-        case .missingAPIKey:     return "No ElevenLabs API key."
-        case .server(let code):  return "ElevenLabs returned HTTP \(code)."
-        }
     }
 }
 

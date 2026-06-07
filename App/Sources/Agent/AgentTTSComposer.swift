@@ -4,24 +4,14 @@ import os.log
 
 // MARK: - AgentTTSComposer
 //
-// Synthesises a sequence of `TTSTurn` values into a single stitched m4a and
-// publishes the result as a new episode on the agent-generated virtual podcast.
-//
-// Turn types:
-//   .speech   — text → ElevenLabs TTS → temp mp3 → stitched in
-//   .snippet  — existing episode clip → time-trimmed via NarrationAudioStitcher
-//
-// After stitching, a `Transcript` is built from the turn text and saved to
-// `TranscriptStore`. Chapters are synthesised directly from the turn structure
-// (consecutive speech turns collapse into a single chapter; each snippet turn
-// gets its own chapter with the source episode's artwork and `sourceEpisodeID`).
-// `adSegments` is set to `[]` so `AIChapterCompiler` skips re-processing.
+// Synthesises speech/snippet turns into one stitched m4a, adds chapters and a
+// transcript, then publishes the result as an agent-generated episode.
 
 final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
 
     // MARK: - Dependencies
 
-    private let ttsClient: ElevenLabsTTSClient
+    private let ttsClient = ElevenLabsTTSBackendClient()
     weak var store: AppStateStore?
     weak var playback: PlaybackState?
 
@@ -34,7 +24,6 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
     init(store: AppStateStore, playback: PlaybackState) {
         self.store = store
         self.playback = playback
-        self.ttsClient = ElevenLabsTTSClient()
     }
 
     func defaultVoiceID() -> String {
@@ -59,10 +48,6 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
         guard !turns.isEmpty else {
             throw AgentTTSError.emptyTurns
         }
-        guard ttsClient.isConfigured else {
-            throw AgentTTSError.notConfigured
-        }
-
         // 1. Build NarrationTrack list (one per turn); skips tracks whose audio
         //    fails to load so chapter math stays in sync with tracks.
         let (tracks, trackDurations, survivingTurns) = try await buildTracks(for: turns)
@@ -355,10 +340,15 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
         let tmpURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("agent-tts-\(index)-\(UUID().uuidString).mp3")
 
-        var collectedData = Data()
-        let stream = ttsClient.synthesizeStream(text: text, voiceID: voiceID)
-        for try await chunk in stream {
-            collectedData.append(chunk)
+        let collectedData: Data
+        do {
+            collectedData = try await ttsClient.synthesize(
+                text: text,
+                voiceID: voiceID,
+                model: nil
+            ).data
+        } catch ElevenLabsTTSBackendError.missingAPIKey {
+            throw AgentTTSError.notConfigured
         }
 
         guard !collectedData.isEmpty else {

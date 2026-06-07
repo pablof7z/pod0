@@ -95,12 +95,12 @@ pub use download::{DownloadItem, DownloadItemState, DownloadQueue, DEFAULT_MAX_C
 pub use ffi::{
     nmp_app_podcast_assemblyai_transcribe, nmp_app_podcast_audio_report,
     nmp_app_podcast_download_report, nmp_app_podcast_elevenlabs_scribe_transcribe,
-    nmp_app_podcast_elevenlabs_voice_catalog, nmp_app_podcast_episode_events,
-    nmp_app_podcast_generate_image, nmp_app_podcast_openrouter_whisper_transcribe,
-    nmp_app_podcast_perplexity_search, nmp_app_podcast_provider_model_catalog,
-    nmp_app_podcast_register, nmp_app_podcast_rerank, nmp_app_podcast_set_data_dir,
-    nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free, nmp_app_podcast_snapshot_rev,
-    nmp_app_podcast_unregister,
+    nmp_app_podcast_elevenlabs_tts_synthesize, nmp_app_podcast_elevenlabs_voice_catalog,
+    nmp_app_podcast_episode_events, nmp_app_podcast_generate_image,
+    nmp_app_podcast_openrouter_whisper_transcribe, nmp_app_podcast_perplexity_search,
+    nmp_app_podcast_provider_model_catalog, nmp_app_podcast_register, nmp_app_podcast_rerank,
+    nmp_app_podcast_set_data_dir, nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free,
+    nmp_app_podcast_snapshot_rev, nmp_app_podcast_unregister,
     nmp_app_podcast_validate_elevenlabs_key, nmp_app_podcast_validate_openrouter_key,
     nmp_app_podcast_voice_report, PodcastHandle,
 };

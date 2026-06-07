@@ -325,6 +325,17 @@ char *nmp_app_podcast_elevenlabs_scribe_transcribe(void *handle, const char *int
 // Threading: this call BLOCKS; call from a background thread / detached Task.
 char *nmp_app_podcast_assemblyai_transcribe(void *handle, const char *intent_json);
 
+// Shared ElevenLabs one-shot text-to-speech transport. Swift passes:
+//   {"text":"...","voice_id":"...","model":"...?"}
+// Rust owns ElevenLabs auth, selected TTS model fallback, request shaping,
+// provider status handling, and audio response normalization. Returns
+// {"result":{"audio_base64":"...","content_type":"audio/mpeg","model":"...",
+//            "voice_id":"...","latency_ms":0}}
+// or {"error":{"kind":"...","message":"...","status_code":...}}.
+// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// Threading: this call BLOCKS; call from a background thread / detached Task.
+char *nmp_app_podcast_elevenlabs_tts_synthesize(void *handle, const char *intent_json);
+
 // ── Provider-blind image generation ─────────────────────────────────────
 //
 // Drives OpenRouter image generation through shared Rust provider transport.

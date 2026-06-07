@@ -26,6 +26,7 @@ pub struct ProviderSettings {
     pub ollama_base_url: String,
     pub openrouter_whisper_model: String,
     pub eleven_labs_stt_model: String,
+    pub eleven_labs_tts_model: String,
     pub assembly_ai_stt_model: String,
 }
 
@@ -43,6 +44,7 @@ impl ProviderSettings {
             ollama_base_url: ollama_base_url_from_chat_url(store.ollama_chat_url()),
             openrouter_whisper_model: store.open_router_whisper_model().to_owned(),
             eleven_labs_stt_model: store.eleven_labs_stt_model().to_owned(),
+            eleven_labs_tts_model: store.eleven_labs_tts_model().to_owned(),
             assembly_ai_stt_model: store.assembly_ai_stt_model().to_owned(),
         })
     }
