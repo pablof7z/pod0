@@ -254,6 +254,15 @@ char *nmp_app_podcast_provider_complete(void *handle, const char *intent_json);
 // or {"error":"..."}.
 char *nmp_app_podcast_provider_embed(void *handle, const char *intent_json);
 
+// Shared provider model catalog. Rust owns OpenRouter/models.dev/Ollama model
+// discovery HTTP, credentials, URL derivation, response DTO parsing, and
+// normalized compatibility metadata. Response:
+//   {"result":{"models":[...]}}
+// or {"error":"..."}.
+// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// Threading: this call BLOCKS; call from a background thread / detached Task.
+char *nmp_app_podcast_provider_model_catalog(void *handle);
+
 // ── Provider-blind image generation ─────────────────────────────────────
 //
 // Drives OpenRouter image generation through shared Rust provider transport.

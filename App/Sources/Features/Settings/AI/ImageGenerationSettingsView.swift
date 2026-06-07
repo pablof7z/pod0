@@ -22,9 +22,6 @@ struct ImageGenerationSettingsView: View {
         .onAppear { settings = store.state.settings }
         .onChange(of: settings) { _, new in store.updateSettings(new) }
         .task {
-            if catalog.models.isEmpty {
-                catalog = OpenRouterModelSelectorViewModel(ollamaChatURL: store.state.settings.ollamaChatURL)
-            }
             await catalog.loadIfNeeded()
         }
         .sheet(isPresented: $selectorPresented) {
@@ -33,8 +30,7 @@ struct ImageGenerationSettingsView: View {
                     selectedModelID: modelIDBinding,
                     selectedModelName: modelNameBinding,
                     role: "Image Generation",
-                    initialCapabilityFilter: .imageOutput,
-                    ollamaChatURL: store.state.settings.ollamaChatURL
+                    initialCapabilityFilter: .imageOutput
                 )
             }
             .presentationDragIndicator(.visible)

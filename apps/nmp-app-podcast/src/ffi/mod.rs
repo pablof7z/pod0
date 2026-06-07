@@ -36,6 +36,7 @@ mod data_dir;
 mod download_report;
 mod provider_complete;
 mod provider_embeddings;
+mod provider_model_catalog;
 pub(crate) mod handle;
 mod helpers;
 mod image_generation;
@@ -102,6 +103,7 @@ pub use download_report::nmp_app_podcast_download_report;
 pub use episode_events::nmp_app_podcast_episode_events;
 pub use provider_complete::nmp_app_podcast_provider_complete;
 pub use provider_embeddings::nmp_app_podcast_provider_embed;
+pub use provider_model_catalog::nmp_app_podcast_provider_model_catalog;
 pub use handle::PodcastHandle;
 pub use image_generation::nmp_app_podcast_generate_image;
 pub use projections::{

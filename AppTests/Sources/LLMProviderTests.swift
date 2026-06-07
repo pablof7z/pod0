@@ -62,19 +62,19 @@ final class LLMProviderTests: XCTestCase {
 
     func testOllamaTagsURLUsesConfiguredChatHost() {
         XCTAssertEqual(
-            OllamaModelCatalogService.tagsURL(from: nil).absoluteString,
+            OllamaModelCatalogURL.tagsURL(from: nil).absoluteString,
             "https://ollama.com/api/tags"
         )
         XCTAssertEqual(
-            OllamaModelCatalogService.tagsURL(from: "http://localhost:11434/api/chat").absoluteString,
+            OllamaModelCatalogURL.tagsURL(from: "http://localhost:11434/api/chat").absoluteString,
             "http://localhost:11434/api/tags"
         )
         XCTAssertEqual(
-            OllamaModelCatalogService.tagsURL(from: "https://ollama.home.arpa/custom/chat").absoluteString,
+            OllamaModelCatalogURL.tagsURL(from: "https://ollama.home.arpa/custom/chat").absoluteString,
             "https://ollama.home.arpa/custom/tags"
         )
         XCTAssertEqual(
-            OllamaModelCatalogService.tagsURL(from: "https://ollama.home.arpa/not-chat").absoluteString,
+            OllamaModelCatalogURL.tagsURL(from: "https://ollama.home.arpa/not-chat").absoluteString,
             "https://ollama.home.arpa/api/tags"
         )
     }

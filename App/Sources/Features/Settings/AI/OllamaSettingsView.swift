@@ -14,8 +14,6 @@ struct OllamaSettingsView: View {
     @State private var byokConnect = BYOKConnectService()
     @State private var chatURLInput = ""
 
-    private var catalog: OllamaModelCatalogService { OllamaModelCatalogService(chatURL: settings.ollamaChatURL) }
-
     var body: some View {
         Form {
             connectionSection
@@ -254,8 +252,8 @@ struct OllamaSettingsView: View {
         defer { isValidating = false }
 
         do {
-            let models = try await catalog.fetchModels()
-            modelCount = models.count
+            let models = try await OpenRouterModelCatalogService().fetchModels()
+            modelCount = models.filter { $0.provider == .ollama }.count
             Haptics.success()
         } catch {
             credentialError = error.localizedDescription

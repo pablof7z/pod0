@@ -9,8 +9,11 @@ pub mod backend;
 pub mod factory;
 pub mod image_generation;
 pub mod local_model_backend;
+pub mod model_catalog;
+mod model_catalog_dtos;
 pub mod ollama_backend;
 pub mod openrouter_backend;
+pub mod provider_config;
 pub mod provider_transport;
 pub mod rerank_backend;
 

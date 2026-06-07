@@ -4,16 +4,16 @@
 //! owns provider URLs, headers, body shapes, credentials, and response decoding.
 
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
+use super::provider_config::{
+    is_ollama_cloud_base_url, ollama_chat_url, ollama_embed_url, strip_provider_prefix,
+    ProviderConfigError, ProviderSettings, OPENROUTER_BASE_URL, REQUEST_TIMEOUT,
+};
 use crate::store::PodcastStore;
-
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
-const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
-const OLLAMA_CLOUD_BASE_URL: &str = "https://ollama.com";
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 pub enum ProviderKind {
@@ -115,6 +115,14 @@ impl std::fmt::Display for ProviderTransportError {
     }
 }
 
+impl From<ProviderConfigError> for ProviderTransportError {
+    fn from(error: ProviderConfigError) -> Self {
+        match error {
+            ProviderConfigError::StoreUnavailable => Self::StoreUnavailable,
+        }
+    }
+}
+
 pub async fn complete(
     store: Arc<Mutex<PodcastStore>>,
     intent: CompletionIntent,
@@ -134,25 +142,6 @@ pub async fn embed(
     match intent.provider {
         ProviderKind::OpenRouter => embed_openrouter(intent, settings).await,
         ProviderKind::Ollama => embed_ollama(intent, settings).await,
-    }
-}
-
-struct ProviderSettings {
-    openrouter_key: Option<String>,
-    ollama_key: Option<String>,
-    ollama_base_url: String,
-}
-
-impl ProviderSettings {
-    fn from_store(store: &Arc<Mutex<PodcastStore>>) -> Result<Self, ProviderTransportError> {
-        let store = store
-            .lock()
-            .map_err(|_| ProviderTransportError::StoreUnavailable)?;
-        Ok(Self {
-            openrouter_key: store.open_router_api_key().map(str::to_owned),
-            ollama_key: store.ollama_api_key().map(str::to_owned),
-            ollama_base_url: ollama_base_url_from_chat_url(store.ollama_chat_url()),
-        })
     }
 }
 
@@ -400,64 +389,9 @@ fn usage_token(usage: &Option<Value>, key: &str) -> u64 {
         .unwrap_or(0)
 }
 
-fn strip_provider_prefix<'a>(model: &'a str, provider: &str) -> &'a str {
-    model
-        .strip_prefix(provider)
-        .and_then(|rest| rest.strip_prefix(':'))
-        .unwrap_or(model)
-}
-
-fn ollama_base_url_from_chat_url(chat_url: &str) -> String {
-    let trimmed = chat_url.trim().trim_end_matches('/');
-    let without_suffix = trimmed.strip_suffix("/api/chat").unwrap_or(trimmed);
-    if without_suffix.is_empty() {
-        OLLAMA_CLOUD_BASE_URL.to_owned()
-    } else if let Some(rest) = without_suffix.strip_prefix("http://localhost:") {
-        format!("http://127.0.0.1:{rest}")
-    } else {
-        without_suffix.to_owned()
-    }
-}
-
-fn ollama_chat_url(base_url: &str) -> String {
-    format!("{}/api/chat", base_url.trim_end_matches('/'))
-}
-
-fn ollama_embed_url(base_url: &str) -> String {
-    format!("{}/api/embed", base_url.trim_end_matches('/'))
-}
-
-fn is_ollama_cloud_base_url(base_url: &str) -> bool {
-    base_url.trim_end_matches('/') == OLLAMA_CLOUD_BASE_URL
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn strips_provider_prefix() {
-        assert_eq!(
-            strip_provider_prefix("openrouter:openai/gpt-4o", "openrouter"),
-            "openai/gpt-4o"
-        );
-        assert_eq!(
-            strip_provider_prefix("ollama:gpt-oss:120b-cloud", "ollama"),
-            "gpt-oss:120b-cloud"
-        );
-        assert_eq!(
-            strip_provider_prefix("openai/gpt-4o", "openrouter"),
-            "openai/gpt-4o"
-        );
-    }
-
-    #[test]
-    fn derives_ollama_urls_from_chat_setting() {
-        let base = ollama_base_url_from_chat_url("http://localhost:11434/api/chat");
-        assert_eq!(base, "http://127.0.0.1:11434");
-        assert_eq!(ollama_chat_url(&base), "http://127.0.0.1:11434/api/chat");
-        assert_eq!(ollama_embed_url(&base), "http://127.0.0.1:11434/api/embed");
-    }
 
     #[test]
     fn completion_intent_decodes_json_format() {

@@ -95,39 +95,44 @@ struct OpenRouterModelRow: View {
 #Preview {
     List {
         OpenRouterModelRow(
-            model: OpenRouterModelOption(
-                openRouter: ORModel(
-                    id: "openai/gpt-4o",
-                    name: "GPT-4o",
-                    created: 1_700_000_000,
-                    description: nil,
-                    contextLength: 128_000,
-                    architecture: ORArchitecture(
-                        inputModalities: ["text", "image"],
-                        outputModalities: ["text"],
-                        tokenizer: "cl100k"
-                    ),
-                    pricing: ORPricing(
-                        prompt: "0.0000025",
-                        completion: "0.00001",
-                        request: nil,
-                        image: nil,
-                        webSearch: nil,
-                        inputCacheRead: nil,
-                        inputCacheWrite: nil
-                    ),
-                    topProvider: ORTopProvider(
-                        contextLength: 128_000,
-                        maxCompletionTokens: 4096,
-                        isModerated: true
-                    ),
-                    supportedParameters: ["tools", "response_format"],
-                    knowledgeCutoff: "2024-04"
-                ),
-                modelsDev: nil
-            ),
+            model: OpenRouterModelOption.preview,
             isSelected: true
         )
     }
     .listStyle(.insetGrouped)
+}
+
+private extension OpenRouterModelOption {
+    static let preview = OpenRouterModelOption(remote: ProviderModelOptionDTO(
+        provider: .openRouter,
+        id: "openai/gpt-4o",
+        name: "GPT-4o",
+        providerID: "openai",
+        providerName: "OpenAI",
+        providerIconURL: nil,
+        modelDescription: nil,
+        promptCostPerMillion: 2.5,
+        completionCostPerMillion: 10,
+        cacheReadCostPerMillion: nil,
+        cacheWriteCostPerMillion: nil,
+        requestCost: nil,
+        imageCost: nil,
+        webSearchCost: nil,
+        contextLength: 128_000,
+        outputLimit: 4096,
+        inputModalities: ["text", "image"],
+        outputModalities: ["text"],
+        tokenizer: "cl100k",
+        supportsTools: true,
+        supportsReasoning: false,
+        supportsResponseFormat: true,
+        supportsStructuredOutputs: false,
+        openWeights: false,
+        isModerated: true,
+        createdAtEpochSecs: 1_700_000_000,
+        knowledgeCutoff: "2024-04",
+        releaseDate: nil,
+        lastUpdated: nil,
+        searchText: "openai/gpt-4o gpt-4o openai"
+    ))
 }

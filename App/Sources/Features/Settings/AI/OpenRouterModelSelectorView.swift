@@ -36,15 +36,14 @@ struct OpenRouterModelSelectorView: View {
         selectedModelID: Binding<String>,
         selectedModelName: Binding<String>,
         role: String = "Model",
-        initialCapabilityFilter: ModelCapabilityFilter = .compatible,
-        ollamaChatURL: String? = nil
+        initialCapabilityFilter: ModelCapabilityFilter = .compatible
     ) {
         self._selectedModelID = selectedModelID
         self._selectedModelName = selectedModelName
         self.role = role
         self.initialCapabilityFilter = initialCapabilityFilter
         self._capabilityFilter = State(initialValue: initialCapabilityFilter)
-        self._viewModel = State(initialValue: OpenRouterModelSelectorViewModel(ollamaChatURL: ollamaChatURL))
+        self._viewModel = State(initialValue: OpenRouterModelSelectorViewModel())
     }
 
     var body: some View {
@@ -301,12 +300,6 @@ final class OpenRouterModelSelectorViewModel {
     private(set) var isLoading = false
     var errorMessage: String?
 
-    private let ollamaChatURL: String?
-
-    init(ollamaChatURL: String? = nil) {
-        self.ollamaChatURL = ollamaChatURL
-    }
-
     func loadIfNeeded() async {
         guard models.isEmpty else { return }
         await reload()
@@ -321,7 +314,7 @@ final class OpenRouterModelSelectorViewModel {
         // (offline is exactly when a local model matters most).
         let localOptions = LocalModelCatalog.downloadedSpecs().map(OpenRouterModelOption.init(local:))
         do {
-            let remote = try await OpenRouterModelCatalogService(ollamaChatURL: ollamaChatURL).fetchModels()
+            let remote = try await OpenRouterModelCatalogService().fetchModels()
             models = localOptions + remote
         } catch {
             models = localOptions
