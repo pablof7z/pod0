@@ -645,6 +645,36 @@ worktrees currently in flight.
 - ~~**android-download-capability-anr.**~~ Done — `detach()` no longer blocks
   the main thread; it marks the capability detached, cancels tracked OkHttp
   `Call`s, cancels jobs, and suppresses late reports after bridge teardown.
+- **android-exoplayer-position-sampling.** DOCUMENTED PLATFORM EXCEPTION
+  (#322). Significant playback-position events on Android are reported
+  event-driven via `Player.Listener` (`onIsPlayingChanged`,
+  `onPlaybackStateChanged(STATE_ENDED)`, `onPositionDiscontinuity` for seeks,
+  `onPlayerError`). Within-segment progress between those events still requires
+  sampling: ExoPlayer (`media3` 1.4.1) exposes no per-second position callback
+  and `getCurrentPosition()` is poll-only. `ExoPlayerReportListener` therefore
+  keeps a `Handler` tick (`POSITION_TICK_MS`) that runs ONLY while playing and
+  stops the instant `isPlayingChanged(false)` fires (no idle wakeups). Reduced
+  from 250 ms (4 Hz) to 1000 ms (1 Hz), matching the iOS executor cadence and
+  staying well under the canonical ≤4 Hz `AudioReport::Playing` ceiling. This
+  is the platform constraint, not a polling hack; revisit only if a future
+  media3 release adds a position-progress callback.
+- **tui-mpv-position-sampling.** DOCUMENTED EXCEPTION + tracked follow-up
+  (#322). The terminal player samples mpv's `playback-time` over the JSON IPC
+  socket every 250 ms (`AudioHost::poll_position`, driven off the UI animation
+  frame clock in `apps/podcast-tui/src/main.rs`). libmpv / mpv IPC expose no
+  per-frame position event, so periodic sampling is the only mechanism the
+  player offers (the sampling cadence is the legitimate exception). The
+  previous fake-progress path (incrementing the position by the tick interval
+  when no mpv backend was present) was removed: with no real backend the
+  position is now left unknown/unchanged rather than fabricated.
+  FOLLOW-UP (not done in #322): the sampled position is currently stored in
+  `last_position_secs` and NOT forwarded to the kernel — there is no
+  `nmp_app_podcast_audio_report` call anywhere in `apps/podcast-tui`, so live
+  mpv progress never reaches the kernel projection. Wiring that single FFI
+  report (so the TUI surfaces real playback progress, the way iOS/Android do
+  via `AudioReport::Playing`) is the remaining work. The TUI is a secondary
+  target; correctness over polish, so this PR fixes the fabrication and
+  documents the gap rather than building the report path.
 
 ## Active P2 - Cross-Cutting Technical Debt
 

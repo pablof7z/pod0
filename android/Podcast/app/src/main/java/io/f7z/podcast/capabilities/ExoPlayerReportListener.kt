@@ -17,14 +17,25 @@ import kotlinx.serialization.json.buildJsonObject
  * soft limit (`AGENTS.md`). The capability owns the player lifecycle and
  * the command-side; this listener owns the report-side.
  *
- * **Throttling (D8):**
+ * **Position reporting — event-driven first, sampled only where forced:**
  *
- * ExoPlayer doesn't fire a position callback on its own — `getCurrentPosition`
- * is poll-only. We schedule a Handler tick at `POSITION_TICK_MS` while
- * playback is active, mirroring the iOS executor's 1 Hz cadence (the
- * canonical schema allows ≤4 Hz; we send at 4 Hz to match the kernel's
- * `emitHz = 4` snapshot rate). The tick stops as soon as
- * `isPlayingChanged(false)` fires, so no idle wakeups.
+ * Significant position events are reported event-driven, with no timer:
+ * `onIsPlayingChanged` (play/pause, incl. audio-focus interruptions),
+ * `onPlaybackStateChanged(STATE_ENDED)` (end-of-track → `Stopped`), and
+ * `onPlayerError` (→ `Failed`). Each reads `getCurrentPosition()` at the
+ * instant of the event, so seeks/starts/stops carry an exact position
+ * without any periodic sampling.
+ *
+ * **Within-segment progress is the one sampled signal (documented platform
+ * exception, `docs/BACKLOG.md` `android-exoplayer-position-sampling`):**
+ *
+ * ExoPlayer fires no per-second position callback — `getCurrentPosition` is
+ * poll-only — so smooth progress between events has no event source on the
+ * platform. We schedule a Handler tick at `POSITION_TICK_MS` ONLY while
+ * playback is active; it stops the instant `isPlayingChanged(false)` fires, so
+ * there are no idle wakeups. The interval is a conservative 1 Hz (mirroring
+ * the iOS executor's cadence); the kernel collapses anything faster into its
+ * next snapshot tick anyway (D8), so a faster rate would only burn wakeups.
  *
  * **Doctrine:**
  *
@@ -84,6 +95,23 @@ internal class ExoPlayerReportListener(
             if (player.playbackState == Player.STATE_ENDED) return
             emit(buildPausedReport())
         }
+    }
+
+    /**
+     * Event-driven exact-position signal for seeks (and other discontinuities
+     * such as auto-transitions). ExoPlayer fires this the moment the playhead
+     * jumps, so we report the new position immediately instead of waiting up to
+     * one sampling interval for the next tick. Only meaningful while playing —
+     * a paused seek is already covered by the kernel's own seek echo, and a
+     * `Playing` report while paused would misrepresent state, so we gate on it.
+     */
+    override fun onPositionDiscontinuity(
+        oldPosition: Player.PositionInfo,
+        newPosition: Player.PositionInfo,
+        reason: Int,
+    ) {
+        val player = playerProvider() ?: return
+        if (player.isPlaying) emit(buildPlayingReport())
     }
 
     /**
@@ -165,11 +193,17 @@ internal class ExoPlayerReportListener(
 
     companion object {
         /**
-         * Position report cadence. ≤4 Hz per the canonical
-         * `AudioReport::Playing` doc (`apps/nmp-app-podcast/src/capability/audio.rs`)
-         * and matches the kernel's default `emit_hz = 4`. Higher rates
-         * would just be collapsed into the next snapshot tick (D8).
+         * Within-segment progress sampling cadence — the documented platform
+         * exception (see the class doc and `docs/BACKLOG.md`
+         * `android-exoplayer-position-sampling`). Conservative 1 Hz, mirroring
+         * the iOS executor and well under the ≤4 Hz ceiling the canonical
+         * `AudioReport::Playing` doc allows
+         * (`apps/nmp-app-podcast/src/capability/audio.rs`). The kernel collapses
+         * anything faster into its next snapshot tick (D8, default
+         * `emit_hz = 4`), so a higher rate would only spend wakeups for no
+         * additional fidelity. Significant position events (seek/play/pause/
+         * end/error) are reported event-driven and do not depend on this tick.
          */
-        private const val POSITION_TICK_MS: Long = 250
+        private const val POSITION_TICK_MS: Long = 1000
     }
 }

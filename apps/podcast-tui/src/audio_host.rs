@@ -2,14 +2,30 @@
 //!
 //! Bridges `nmp.audio.capability` commands to an external audio player.
 //! The default implementation tries `mpv` first, then falls back to a stub
-//! that reports fake position updates so the kernel UI still works.
+//! that accepts commands so the kernel UI still works. The stub never
+//! synthesizes a position — without a real backend the position is unknown
+//! and is left unchanged rather than faked.
 //!
 //! ## mpv IPC
 //!
 //! When mpv is available we spawn it with `--input-ipc-server` and drive
-//! playback through a Unix socket.  A background thread polls
-//! `playback-time` every 250 ms and forwards `AudioReport::Playing`
-//! back to the kernel via the standard `nmp_app_podcast_audio_report` FFI.
+//! playback through a Unix socket.  A sampler reads `playback-time` every
+//! 250 ms in [`AudioHost::poll_position`].
+//!
+//! POSITION-SAMPLING EXCEPTION: libmpv / the mpv JSON IPC expose no per-frame
+//! `playback-time` event, so periodic sampling is the only mechanism the
+//! player offers — that 250 ms sample is a deliberate, documented exception
+//! (see `docs/BACKLOG.md` `tui-mpv-position-sampling`), not a polling
+//! shortcut.
+//!
+//! KNOWN GAP (not fixed here, #322): the sampled position is currently stored
+//! in `last_position_secs` and NOT forwarded back to the kernel — there is no
+//! `nmp_app_podcast_audio_report` call anywhere in this crate. So the TUI does
+//! not yet surface live mpv progress to the kernel projection; the report
+//! wiring is a tracked follow-up (`docs/BACKLOG.md` `tui-mpv-position-sampling`).
+//! This change deliberately does NOT paper over that with fake progress — the
+//! removed stub did exactly that. The TUI is a secondary target;
+//! correctness over polish.
 
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
@@ -231,12 +247,22 @@ impl AudioHost {
         Ok(())
     }
 
-    /// Poll mpv for current position and report back to the kernel.
+    /// Sample mpv's current `playback-time` into `last_position_secs`.
+    ///
+    /// POSITION-SAMPLING EXCEPTION: mpv emits no position event, so this is the
+    /// only way to observe `playback-time` (see the module docs and
+    /// `docs/BACKLOG.md` `tui-mpv-position-sampling`).
+    ///
+    /// NOTE (#322): the sampled value is stored only; it is NOT yet forwarded
+    /// to the kernel (no `nmp_app_podcast_audio_report` call exists in this
+    /// crate). That report wiring is a tracked follow-up.
+    ///
+    /// With no mpv backend there is no real position source. We do NOT
+    /// synthesize progress here — the position is simply unknown and stays
+    /// unchanged. (The old stub incremented `last_position_secs` by the tick
+    /// interval, fabricating playback the player never produced; #322.)
     pub fn poll_position(&mut self) {
         if !self.mpv_available || self.mpv_child.is_none() {
-            if self.is_playing {
-                self.last_position_secs += 0.25;
-            }
             return;
         }
 

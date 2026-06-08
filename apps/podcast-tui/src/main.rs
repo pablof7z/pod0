@@ -30,7 +30,20 @@ enum UiEvent {
     Tick,
 }
 
+/// Animation frame clock, not an audio poll. The tick advances
+/// `AppState::motion_tick`, which drives the terminal's frame-based animations
+/// (spinners, marquee scroll, wave/pulse, animated download bars in `ui/*`).
+/// A terminal UI has no event source that can "advance an animation one frame",
+/// so a periodic frame clock is intrinsic here and is NOT the position-polling
+/// anti-pattern from #322.
 const UI_TICK_MS: u64 = 125;
+/// The mpv position sampler (the documented `tui-mpv-position-sampling`
+/// exception) is opportunistically driven off the animation clock rather than
+/// running a second timer thread. It samples every other frame (~250 ms, mpv's
+/// IPC sampling rate) and is a no-op when no mpv backend is present — it never
+/// fabricates a position (#322). (The sampled value is currently stored but
+/// not yet reported back to the kernel; see `docs/BACKLOG.md`
+/// `tui-mpv-position-sampling`.)
 const AUDIO_POLL_EVERY_TICKS: u64 = 2;
 
 fn main() -> Result<()> {
