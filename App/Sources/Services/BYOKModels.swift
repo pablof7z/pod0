@@ -10,7 +10,6 @@ enum BYOKProvider: String, CaseIterable, Identifiable, Sendable {
     case perplexity = "perplexity"
 
     var id: String { rawValue }
-    var scope: String { "key:\(rawValue)" }
 
     var displayName: String {
         switch self {
@@ -43,28 +42,21 @@ enum BYOKProvider: String, CaseIterable, Identifiable, Sendable {
 
 /// Single in-flight authorization. The `state` and `codeVerifier` must
 /// survive across the web-auth callback for PKCE + CSRF validation.
-struct BYOKPendingAuthorization {
+struct BYOKPendingAuthorization: Codable {
     let provider: String
     let authorizationURL: URL
     let redirectURI: String
     let clientID: String
     let state: String
     let codeVerifier: String
-}
-
-struct BYOKTokenRequest: Encodable {
-    let grantType = "authorization_code"
-    let code: String
-    let codeVerifier: String
-    let clientID: String
-    let redirectURI: String
 
     private enum CodingKeys: String, CodingKey {
-        case grantType = "grant_type"
-        case code
-        case codeVerifier = "code_verifier"
-        case clientID = "client_id"
+        case provider
+        case authorizationURL = "authorization_url"
         case redirectURI = "redirect_uri"
+        case clientID = "client_id"
+        case state
+        case codeVerifier = "code_verifier"
     }
 }
 
@@ -149,10 +141,6 @@ struct BYOKTokenResponse: Decodable, Sendable {
     }
 }
 
-struct BYOKTokenErrorResponse: Decodable {
-    let error: String?
-}
-
 // MARK: - Errors
 
 enum BYOKConnectError: LocalizedError {
@@ -203,17 +191,5 @@ enum BYOKConnectError: LocalizedError {
         case .unexpectedProvider:
             "BYOK returned a credential for the wrong provider."
         }
-    }
-}
-
-// MARK: - Helpers
-
-extension Data {
-    /// RFC 4648 §5 base64url encoding (no padding) — required by OAuth PKCE.
-    func base64URLEncodedString() -> String {
-        base64EncodedString()
-            .replacingOccurrences(of: "+", with: "-")
-            .replacingOccurrences(of: "/", with: "_")
-            .replacingOccurrences(of: "=", with: "")
     }
 }

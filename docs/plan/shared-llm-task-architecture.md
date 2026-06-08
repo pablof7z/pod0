@@ -8,6 +8,7 @@ selection, and agent task creation across iOS, Android, and the TUI.
 Platform shells own:
 
 - Credential capture and secret storage in their platform-native secure store.
+- Native browser presentation and callback capture for BYOK authorization.
 - Delivery of live API keys to Rust through the existing in-memory settings
   action (`podcast.settings`, `set_provider_api_keys`) for OpenRouter, Ollama,
   ElevenLabs, AssemblyAI, and Perplexity.
@@ -24,6 +25,8 @@ The shared Rust backend owns:
 - HTTP request, multipart upload, and response shape for provider speech-to-text
   when the provider is network-owned rather than platform-native.
 - Provider credential requirements and error messages.
+- BYOK provider scope mapping, PKCE state/verifier generation, callback
+  validation, and token exchange request/response parsing.
 - Role-to-model resolution and validation.
 - Agent task intent resolution and dispatch payload construction.
 
@@ -32,6 +35,9 @@ bodies, Perplexity/OpenRouter online-search requests, OpenRouter, ElevenLabs,
 or AssemblyAI speech-to-text requests, ElevenLabs validation requests, provider
 URLs, provider-specific auth headers, or raw backend task namespace/body JSON
 for normal user workflows.
+Platform code may present provider authorization UI and persist returned
+secrets, but must not construct BYOK provider scopes, PKCE challenges, callback
+state validation, or `/api/token` request/response logic.
 
 ## Provider Transport
 
@@ -42,6 +48,10 @@ Current shared Rust provider entry points cover agent chat through
 provider model catalog discovery, image generation, reranking, OpenRouter
 Whisper/STT, ElevenLabs Scribe/STT, AssemblyAI STT, and Perplexity/OpenRouter
 online search through `nmp_app_podcast_perplexity_search`.
+BYOK provider authorization uses `nmp_app_podcast_byok_authorization` and
+`nmp_app_podcast_byok_exchange`; platforms supply app/browser facts and the
+callback URL while Rust owns provider scopes, PKCE, state validation, and token
+exchange parsing.
 Swift live wiki/title/categorization/chapter/clip completion callers now route
 through `ProviderCompletionClient` without preflighting Keychain keys, so missing
 provider credentials are reported by Rust. Swift OpenRouter settings validation
@@ -73,6 +83,8 @@ both provider-native IDs and `selection_model_id`; iOS, Android, and TUI model
 selectors store the selection ID so OpenRouter/Ollama routing survives the
 settings round trip. The TUI loads OpenRouter/Ollama/ElevenLabs/AssemblyAI/
 Perplexity env credentials into the same shared key-cache action.
+Shared routing treats blank and `"none"` credential sources as disconnected so
+platform clear actions cannot route bare model IDs through OpenRouter.
 
 Immediate targets:
 

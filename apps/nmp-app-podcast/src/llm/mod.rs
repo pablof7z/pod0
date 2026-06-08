@@ -7,6 +7,7 @@
 
 pub mod assemblyai_transcript;
 pub mod backend;
+pub mod byok_auth;
 pub mod elevenlabs_key_validation;
 pub mod elevenlabs_scribe;
 pub mod elevenlabs_tts;

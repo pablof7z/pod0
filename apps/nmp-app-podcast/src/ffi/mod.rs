@@ -32,6 +32,7 @@ pub mod actions;
 pub(crate) mod agent_context;
 mod assemblyai_transcript;
 mod audio_report;
+mod byok_auth;
 mod chat_complete;
 mod data_dir;
 mod download_report;
@@ -104,6 +105,7 @@ pub use actions::{
 };
 pub use assemblyai_transcript::nmp_app_podcast_assemblyai_transcribe;
 pub use audio_report::nmp_app_podcast_audio_report;
+pub use byok_auth::{nmp_app_podcast_byok_authorization, nmp_app_podcast_byok_exchange};
 pub use chat_complete::nmp_app_podcast_chat_complete;
 pub use data_dir::nmp_app_podcast_set_data_dir;
 pub use download_report::nmp_app_podcast_download_report;

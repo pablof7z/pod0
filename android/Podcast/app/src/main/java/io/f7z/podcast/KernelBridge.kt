@@ -187,6 +187,22 @@ class KernelBridge {
         if (handle != 0L) nativeLocalModelCatalog(handle) else null
 
     /**
+     * Shared BYOK authorization helper. Android supplies app/browser facts;
+     * Rust owns provider scopes, PKCE state/verifier generation, and URL
+     * construction.
+     */
+    fun byokAuthorization(intentJson: String): String? =
+        nativeByokAuthorization(intentJson)
+
+    /**
+     * Shared BYOK token exchange. Android supplies the Rust-created pending
+     * auth and browser callback URL; Rust validates state/callback and owns
+     * `/api/token` request/response parsing.
+     */
+    fun byokExchange(intentJson: String): String? =
+        if (handle != 0L) nativeByokExchange(handle, intentJson) else null
+
+    /**
      * Shared OpenRouter key validation. Rust owns `/auth/key`, credentials,
      * request shaping, and response parsing; Android receives the JSON envelope.
      */
@@ -276,6 +292,8 @@ class KernelBridge {
     private external fun nativeProviderModelCatalog(handle: Long): String?
     private external fun nativeSpeechModelCatalog(handle: Long): String?
     private external fun nativeLocalModelCatalog(handle: Long): String?
+    private external fun nativeByokAuthorization(intentJson: String): String?
+    private external fun nativeByokExchange(handle: Long, intentJson: String): String?
     private external fun nativeValidateOpenRouterKey(handle: Long): String?
     private external fun nativeValidateElevenLabsKey(handle: Long): String?
     private external fun nativeElevenLabsVoiceCatalog(handle: Long): String?

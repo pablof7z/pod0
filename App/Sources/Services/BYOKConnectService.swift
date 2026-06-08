@@ -1,8 +1,6 @@
 import AuthenticationServices
-import CryptoKit
 import Foundation
 import os.log
-import Security
 import UIKit
 
 @MainActor
@@ -11,14 +9,6 @@ final class BYOKConnectService: NSObject, ASWebAuthenticationPresentationContext
     private static let encoder = JSONEncoder()
     private static let decoder = JSONDecoder()
 
-    private enum Constants {
-        static let stateByteCount: Int = 32
-        static let codeVerifierByteCount: Int = 64
-        static let tokenRequestTimeout: TimeInterval = 60
-    }
-
-    private let authorizationBaseURL = URL(string: "https://byok.f7z.io/authorize")!
-    private let tokenURL = URL(string: "https://byok.f7z.io/api/token")!
     private let redirectScheme = "podcastr"
     private let redirectHost = "byok"
     private var currentSession: ASWebAuthenticationSession?
@@ -32,8 +22,7 @@ final class BYOKConnectService: NSObject, ASWebAuthenticationPresentationContext
         let uniqueProviders = providers.filter { seenProviders.insert($0.rawValue).inserted }
         let pending = try makeAuthorization(providers: uniqueProviders)
         let callbackURL = try await authenticate(url: pending.authorizationURL)
-        let code = try authorizationCode(from: callbackURL, expectedState: pending.state)
-        let response = try await exchangeCode(code, pending: pending)
+        let response = try await exchangeAuthorization(callbackURL: callbackURL, pending: pending)
         let requested = Set(uniqueProviders.map(\.rawValue))
         let returned = response.providers.filter { requested.contains($0.provider) && !$0.apiKey.isEmpty }
         guard !returned.isEmpty else {
@@ -43,82 +32,35 @@ final class BYOKConnectService: NSObject, ASWebAuthenticationPresentationContext
     }
 
     func connectOpenRouter() async throws -> BYOKTokenResponse {
-        let pending = try makeAuthorization(provider: "openrouter", scope: "key:openrouter")
-        let callbackURL = try await authenticate(url: pending.authorizationURL)
-        let code = try authorizationCode(from: callbackURL, expectedState: pending.state)
-        let token = try await exchangeCode(code, pending: pending)
-
-        guard token.provider == "openrouter" else {
-            throw BYOKConnectError.unexpectedProvider
-        }
-        guard token.tokenType == "raw_api_key", !token.apiKey.isEmpty else {
-            throw BYOKConnectError.invalidTokenResponse
-        }
-
-        return token
+        try await connectProvider(.openRouter)
     }
 
     func connectElevenLabs() async throws -> BYOKTokenResponse {
-        let pending = try makeAuthorization(provider: "elevenlabs", scope: "key:elevenlabs")
-        let callbackURL = try await authenticate(url: pending.authorizationURL)
-        let code = try authorizationCode(from: callbackURL, expectedState: pending.state)
-        let token = try await exchangeCode(code, pending: pending)
-
-        guard token.provider == "elevenlabs" else {
-            throw BYOKConnectError.unexpectedProvider
-        }
-        guard token.tokenType == "raw_api_key", !token.apiKey.isEmpty else {
-            throw BYOKConnectError.invalidTokenResponse
-        }
-
-        return token
+        try await connectProvider(.elevenLabs)
     }
 
     func connectAssemblyAI() async throws -> BYOKTokenResponse {
-        let pending = try makeAuthorization(provider: "assemblyai", scope: "key:assemblyai")
-        let callbackURL = try await authenticate(url: pending.authorizationURL)
-        let code = try authorizationCode(from: callbackURL, expectedState: pending.state)
-        let token = try await exchangeCode(code, pending: pending)
-
-        guard token.provider == "assemblyai" else {
-            throw BYOKConnectError.unexpectedProvider
-        }
-        guard token.tokenType == "raw_api_key", !token.apiKey.isEmpty else {
-            throw BYOKConnectError.invalidTokenResponse
-        }
-
-        return token
+        try await connectProvider(.assemblyAI)
     }
 
     func connectOllama() async throws -> BYOKTokenResponse {
-        let pending = try makeAuthorization(provider: "ollama", scope: "key:ollama")
-        let callbackURL = try await authenticate(url: pending.authorizationURL)
-        let code = try authorizationCode(from: callbackURL, expectedState: pending.state)
-        let token = try await exchangeCode(code, pending: pending)
-
-        guard token.provider == "ollama" else {
-            throw BYOKConnectError.unexpectedProvider
-        }
-        guard token.tokenType == "raw_api_key", !token.apiKey.isEmpty else {
-            throw BYOKConnectError.invalidTokenResponse
-        }
-
-        return token
+        try await connectProvider(.ollama)
     }
 
     func connectPerplexity() async throws -> BYOKTokenResponse {
-        let pending = try makeAuthorization(provider: "perplexity", scope: "key:perplexity")
-        let callbackURL = try await authenticate(url: pending.authorizationURL)
-        let code = try authorizationCode(from: callbackURL, expectedState: pending.state)
-        let token = try await exchangeCode(code, pending: pending)
+        try await connectProvider(.perplexity)
+    }
 
-        guard token.provider == "perplexity" else {
+    private func connectProvider(_ provider: BYOKProvider) async throws -> BYOKTokenResponse {
+        let pending = try makeAuthorization(providers: [provider])
+        let callbackURL = try await authenticate(url: pending.authorizationURL)
+        let token = try await exchangeAuthorization(callbackURL: callbackURL, pending: pending)
+        guard token.provider == provider.rawValue else {
             throw BYOKConnectError.unexpectedProvider
         }
         guard token.tokenType == "raw_api_key", !token.apiKey.isEmpty else {
             throw BYOKConnectError.invalidTokenResponse
         }
-
         return token
     }
 
@@ -137,44 +79,34 @@ final class BYOKConnectService: NSObject, ASWebAuthenticationPresentationContext
         preconditionFailure("BYOKConnectService: no UIWindowScene available to present authentication")
     }
 
-    private func makeAuthorization(provider: String, scope: String) throws -> BYOKPendingAuthorization {
-        let state = try Self.randomBase64URL(byteCount: Constants.stateByteCount)
-        let codeVerifier = try Self.randomBase64URL(byteCount: Constants.codeVerifierByteCount)
-        let codeChallenge = Self.sha256Base64URL(codeVerifier)
-        let redirectURI = "\(redirectScheme)://\(redirectHost)"
-
-        // Force-unwrap is safe: authorizationBaseURL is a hardcoded literal URL that
-        // URLComponents can always decompose successfully.
-        var components = URLComponents(url: authorizationBaseURL, resolvingAgainstBaseURL: false)!
-        components.queryItems = [
-            URLQueryItem(name: "response_type", value: "code"),
-            URLQueryItem(name: "client_id", value: clientID),
-            URLQueryItem(name: "app_name", value: appName),
-            URLQueryItem(name: "redirect_uri", value: redirectURI),
-            URLQueryItem(name: "scope", value: scope),
-            URLQueryItem(name: "state", value: state),
-            URLQueryItem(name: "code_challenge", value: codeChallenge),
-            URLQueryItem(name: "code_challenge_method", value: "S256"),
-        ]
-
-        guard let authorizationURL = components.url else {
-            throw BYOKConnectError.invalidAuthorizationURL
+    private func makeAuthorization(providers: [BYOKProvider]) throws -> BYOKPendingAuthorization {
+        guard !providers.isEmpty else {
+            throw BYOKConnectError.noProviderKeysReturned
         }
-
-        return BYOKPendingAuthorization(
-            provider: provider,
-            authorizationURL: authorizationURL,
+        let redirectURI = "\(redirectScheme)://\(redirectHost)"
+        let intent = BYOKAuthorizationIntent(
+            providers: providers.map(\.rawValue),
             redirectURI: redirectURI,
             clientID: clientID,
-            state: state,
-            codeVerifier: codeVerifier
+            appName: appName
         )
-    }
-
-    private func makeAuthorization(providers: [BYOKProvider]) throws -> BYOKPendingAuthorization {
-        let scope = providers.map(\.scope).joined(separator: " ")
-        let provider = providers.map(\.rawValue).joined(separator: ",")
-        return try makeAuthorization(provider: provider, scope: scope)
+        let intentJSON = try Self.encoder.encode(intent)
+        guard let intentString = String(data: intentJSON, encoding: .utf8) else {
+            throw BYOKConnectError.invalidAuthorizationURL
+        }
+        let responseJSON = intentString.withCString { intentPtr in
+            guard let ptr = nmp_app_podcast_byok_authorization(intentPtr) else {
+                return #"{"error":{"kind":"invalid_authorization_url","message":"null response from Rust"}}"#
+            }
+            defer { nmp_app_free_string(ptr) }
+            return String(cString: ptr)
+        }
+        let envelope = try decodeEnvelope(
+            responseJSON,
+            as: BYOKPendingAuthorization.self,
+            fallback: .invalidAuthorizationURL
+        )
+        return envelope
     }
 
     private func authenticate(url: URL) async throws -> URL {
@@ -213,54 +145,37 @@ final class BYOKConnectService: NSObject, ASWebAuthenticationPresentationContext
         }
     }
 
-    private func authorizationCode(from callbackURL: URL, expectedState: String) throws -> String {
-        guard callbackURL.scheme == redirectScheme,
-              callbackURL.host == redirectHost,
-              let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false) else {
-            throw BYOKConnectError.invalidCallback
-        }
-
-        let query = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value ?? "") })
-        if query["state"] != expectedState {
-            throw BYOKConnectError.stateMismatch
-        }
-        if query["error"] == "access_denied" {
-            throw BYOKConnectError.accessDenied
-        }
-        guard let code = query["code"], !code.isEmpty else {
-            throw BYOKConnectError.missingCode
-        }
-        return code
-    }
-
-    private func exchangeCode(_ code: String, pending: BYOKPendingAuthorization) async throws -> BYOKTokenResponse {
-        var request = URLRequest(url: tokenURL)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = Constants.tokenRequestTimeout
-
-        let body = BYOKTokenRequest(
-            code: code,
-            codeVerifier: pending.codeVerifier,
-            clientID: pending.clientID,
-            redirectURI: pending.redirectURI
-        )
-        request.httpBody = try Self.encoder.encode(body)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
+    private func exchangeAuthorization(
+        callbackURL: URL,
+        pending: BYOKPendingAuthorization
+    ) async throws -> BYOKTokenResponse {
+        guard let handleBits = await MainActor.run(body: {
+            KernelModel.shared?.podcastHandlePointer.map { Int(bitPattern: $0) }
+        }) else {
             throw BYOKConnectError.tokenExchangeFailed
         }
-        if !(200..<300).contains(http.statusCode) {
-            let tokenError = try? Self.decoder.decode(BYOKTokenErrorResponse.self, from: data)
-            throw BYOKConnectError.serverRejectedToken(error: tokenError?.error)
-        }
-
-        do {
-            return try Self.decoder.decode(BYOKTokenResponse.self, from: data)
-        } catch {
+        let intent = BYOKExchangeIntent(pending: pending, callbackURL: callbackURL.absoluteString)
+        let intentJSON = try Self.encoder.encode(intent)
+        guard let intentString = String(data: intentJSON, encoding: .utf8) else {
             throw BYOKConnectError.invalidTokenResponse
         }
+        let responseJSON = await Task.detached(priority: .userInitiated) {
+            guard let handle = UnsafeMutableRawPointer(bitPattern: handleBits) else {
+                return #"{"error":{"kind":"token_exchange_failed","message":"Kernel handle unavailable"}}"#
+            }
+            return intentString.withCString { intentPtr in
+                guard let ptr = nmp_app_podcast_byok_exchange(handle, intentPtr) else {
+                    return #"{"error":{"kind":"token_exchange_failed","message":"null response from Rust"}}"#
+                }
+                defer { nmp_app_free_string(ptr) }
+                return String(cString: ptr)
+            }
+        }.value
+        return try decodeEnvelope(
+            responseJSON,
+            as: BYOKTokenResponse.self,
+            fallback: .invalidTokenResponse
+        )
     }
 
     private var clientID: String {
@@ -275,21 +190,94 @@ final class BYOKConnectService: NSObject, ASWebAuthenticationPresentationContext
         return Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "Podcastr"
     }
 
-    private static func randomBase64URL(byteCount: Int) throws -> String {
-        var bytes = [UInt8](repeating: 0, count: byteCount)
-        let status = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
-        guard status == errSecSuccess else {
-            throw BYOKConnectError.randomGenerationFailed
+    private func decodeEnvelope<T: Decodable>(
+        _ responseJSON: String,
+        as type: T.Type,
+        fallback: BYOKConnectError
+    ) throws -> T {
+        guard let responseData = responseJSON.data(using: .utf8) else {
+            throw fallback
         }
-        return Data(bytes).base64URLEncodedString()
+        do {
+            let envelope = try Self.decoder.decode(BYOKBackendEnvelope<T>.self, from: responseData)
+            if let error = envelope.error {
+                throw byokError(from: error, fallback: fallback)
+            }
+            guard let result = envelope.result else {
+                throw fallback
+            }
+            return result
+        } catch let error as BYOKConnectError {
+            throw error
+        } catch {
+            logger.error("BYOK backend response decode failed: \(error, privacy: .public)")
+            throw fallback
+        }
     }
 
-    private static func sha256Base64URL(_ value: String) -> String {
-        let digest = SHA256.hash(data: Data(value.utf8))
-        return Data(digest).base64URLEncodedString()
+    private func byokError(
+        from error: BYOKBackendError,
+        fallback: BYOKConnectError
+    ) -> BYOKConnectError {
+        switch error.kind {
+        case "access_denied":
+            return .accessDenied
+        case "invalid_authorization_url":
+            return .invalidAuthorizationURL
+        case "invalid_callback":
+            return .invalidCallback
+        case "invalid_token_response":
+            return .invalidTokenResponse
+        case "missing_code":
+            return .missingCode
+        case "no_provider_keys_returned", "empty_providers":
+            return .noProviderKeysReturned
+        case "random_generation_failed":
+            return .randomGenerationFailed
+        case "server_rejected_token":
+            return .serverRejectedToken(error: error.message)
+        case "state_mismatch":
+            return .stateMismatch
+        case "token_exchange_failed":
+            return .tokenExchangeFailed
+        case "unexpected_provider":
+            return .unexpectedProvider
+        default:
+            return fallback
+        }
     }
 }
 
-// DTOs (`BYOKPendingAuthorization`, `BYOKTokenRequest`, `BYOKTokenResponse`,
-// `BYOKTokenErrorResponse`, `BYOKConnectError`) and the `Data.base64URLEncodedString`
-// helper live in `BYOKModels.swift`.
+private struct BYOKAuthorizationIntent: Encodable {
+    let providers: [String]
+    let redirectURI: String
+    let clientID: String
+    let appName: String
+
+    private enum CodingKeys: String, CodingKey {
+        case providers
+        case redirectURI = "redirect_uri"
+        case clientID = "client_id"
+        case appName = "app_name"
+    }
+}
+
+private struct BYOKExchangeIntent: Encodable {
+    let pending: BYOKPendingAuthorization
+    let callbackURL: String
+
+    private enum CodingKeys: String, CodingKey {
+        case pending
+        case callbackURL = "callback_url"
+    }
+}
+
+private struct BYOKBackendEnvelope<Result: Decodable>: Decodable {
+    let result: Result?
+    let error: BYOKBackendError?
+}
+
+private struct BYOKBackendError: Decodable {
+    let kind: String
+    let message: String?
+}

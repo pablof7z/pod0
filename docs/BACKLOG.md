@@ -134,7 +134,15 @@ worktrees currently in flight.
   as one shared Rust-routed provider rather than a Swift-owned backend concept.
   The unused Swift `LLMProviderCredentialResolver` policy shim was removed so
   credential requirement decisions cannot drift back into platform code.
-  Remaining provider-ownership work is streaming voice-mode STT/TTS once the
+  BYOK provider authorization now uses shared Rust entry points for
+  provider-scope mapping, PKCE/state generation, callback validation, and
+  `/api/token` exchange; Swift and Android only present native browser/callback
+  UI and persist returned secrets in their secure host stores. Shared model
+  routing now treats blank/`none` credential sources as disconnected, so
+  platform credential clears cannot accidentally route bare model IDs through
+  OpenRouter. Android's ElevenLabs voice picker now consumes the shared Rust
+  voice catalog. Remaining provider-ownership work is AssemblyAI/Perplexity
+  credential metadata parity and streaming voice-mode STT/TTS once the
   canonical NMP capability seam lands upstream
   (`pablof7z/nostr-multi-platform#954`).
 - **typed-agent-task-intents.** Backend `AgentTaskIntent` creation exists and

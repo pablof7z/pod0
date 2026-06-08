@@ -95,6 +95,7 @@ pub use capability::{
 pub use download::{DownloadItem, DownloadItemState, DownloadQueue, DEFAULT_MAX_CONCURRENT};
 pub use ffi::{
     nmp_app_podcast_assemblyai_transcribe, nmp_app_podcast_audio_report,
+    nmp_app_podcast_byok_authorization, nmp_app_podcast_byok_exchange,
     nmp_app_podcast_download_report, nmp_app_podcast_elevenlabs_scribe_transcribe,
     nmp_app_podcast_elevenlabs_tts_synthesize, nmp_app_podcast_elevenlabs_voice_catalog,
     nmp_app_podcast_episode_events, nmp_app_podcast_generate_image,

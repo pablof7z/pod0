@@ -10,19 +10,20 @@ use nmp_ffi::nmp_app_free_string;
 
 use super::session_ref;
 use crate::ffi::{
-    nmp_app_podcast_assemblyai_transcribe, nmp_app_podcast_chat_complete,
+    nmp_app_podcast_assemblyai_transcribe, nmp_app_podcast_byok_authorization,
+    nmp_app_podcast_byok_exchange, nmp_app_podcast_chat_complete,
     nmp_app_podcast_elevenlabs_scribe_transcribe, nmp_app_podcast_elevenlabs_tts_synthesize,
     nmp_app_podcast_elevenlabs_voice_catalog, nmp_app_podcast_generate_image,
     nmp_app_podcast_local_model_catalog, nmp_app_podcast_openrouter_whisper_transcribe,
     nmp_app_podcast_perplexity_search, nmp_app_podcast_provider_complete,
-    nmp_app_podcast_provider_embed,
-    nmp_app_podcast_provider_model_catalog, nmp_app_podcast_rerank,
+    nmp_app_podcast_provider_embed, nmp_app_podcast_provider_model_catalog, nmp_app_podcast_rerank,
     nmp_app_podcast_speech_model_catalog, nmp_app_podcast_validate_elevenlabs_key,
     nmp_app_podcast_validate_openrouter_key, PodcastHandle,
 };
 
 type PodcastJsonFn = extern "C" fn(*mut PodcastHandle, *const c_char) -> *mut c_char;
 type PodcastCatalogFn = extern "C" fn(*mut PodcastHandle) -> *mut c_char;
+type PodcastGlobalJsonFn = extern "C" fn(*const c_char) -> *mut c_char;
 
 fn java_string<'l>(env: &JNIEnv<'l>, value: String) -> jstring {
     match env.new_string(value) {
@@ -62,6 +63,30 @@ fn call_podcast_json_ffi<'l>(
     java_string(env, owned)
 }
 
+fn call_podcast_global_json_ffi<'l>(
+    env: &mut JNIEnv<'l>,
+    request_json: JString<'l>,
+    call: PodcastGlobalJsonFn,
+) -> jstring {
+    let null = std::ptr::null_mut();
+    let request = match env.get_string(&request_json) {
+        Ok(s) => s.to_string_lossy().into_owned(),
+        Err(_) => return null,
+    };
+    let Ok(c_request) = CString::new(request) else {
+        return null;
+    };
+    let result_ptr = call(c_request.as_ptr());
+    if result_ptr.is_null() {
+        return null;
+    }
+    let owned = unsafe { CStr::from_ptr(result_ptr) }
+        .to_string_lossy()
+        .into_owned();
+    nmp_app_free_string(result_ptr);
+    java_string(env, owned)
+}
+
 fn call_podcast_catalog_ffi<'l>(
     env: &JNIEnv<'l>,
     handle: jlong,
@@ -83,6 +108,29 @@ fn call_podcast_catalog_ffi<'l>(
         .into_owned();
     nmp_app_free_string(result_ptr);
     java_string(env, owned)
+}
+
+/// `nativeByokAuthorization(intentJson)` - shared BYOK authorization URL.
+/// Returns Rust's JSON envelope unchanged, or null on FFI failure.
+#[no_mangle]
+pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeByokAuthorization<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    intent_json: JString<'l>,
+) -> jstring {
+    call_podcast_global_json_ffi(&mut env, intent_json, nmp_app_podcast_byok_authorization)
+}
+
+/// `nativeByokExchange(handle, intentJson)` - shared BYOK token exchange.
+/// Returns Rust's JSON envelope unchanged, or null on FFI failure.
+#[no_mangle]
+pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeByokExchange<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    handle: jlong,
+    intent_json: JString<'l>,
+) -> jstring {
+    call_podcast_json_ffi(&mut env, handle, intent_json, nmp_app_podcast_byok_exchange)
 }
 
 /// `nativeChatComplete(handle, messagesJson)` — shared agent chat completion.

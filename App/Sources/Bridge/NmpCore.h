@@ -299,6 +299,22 @@ char *nmp_app_podcast_speech_model_catalog(void *handle);
 // Threading: this call is cheap but may be called from a background thread.
 char *nmp_app_podcast_local_model_catalog(void *handle);
 
+// Shared BYOK authorization helper. Swift passes app/browser capability facts:
+//   {"providers":["openrouter"],"redirect_uri":"podcastr://byok",
+//    "client_id":"...","app_name":"Podcastr"}
+// Rust owns provider scope mapping, PKCE state/verifier generation, and URL
+// construction. Returns {"result":...} or {"error":{"kind":"...","message":"..."}}.
+// The caller MUST free the returned pointer via `nmp_app_free_string`.
+char *nmp_app_podcast_byok_authorization(const char *intent_json);
+
+// Shared BYOK token exchange. Swift passes the Rust-created pending auth and
+// the platform browser callback URL; Rust validates state/callback and owns
+// the /api/token request/response parsing. Returns {"result":...} or
+// {"error":{"kind":"...","message":"..."}}.
+// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// Threading: this call BLOCKS; call from a background thread / detached Task.
+char *nmp_app_podcast_byok_exchange(void *handle, const char *intent_json);
+
 // Shared OpenRouter `/auth/key` validation using mirrored provider credentials.
 // Returns {"result":...} or {"error":{"kind":"...","message":"..."}}.
 // The caller MUST free the returned pointer via `nmp_app_free_string`.

@@ -30,8 +30,13 @@ fn routes_to_openrouter(store: &PodcastStore, model: &str) -> bool {
     } else if model.starts_with("openrouter:") {
         true
     } else {
-        !store.open_router_credential_source().is_empty()
+        provider_source_is_connected(store.open_router_credential_source())
     }
+}
+
+fn provider_source_is_connected(source: &str) -> bool {
+    let normalized = source.trim();
+    !normalized.is_empty() && normalized != "none"
 }
 
 /// Resolve the model string a role should actually run, honoring explicit
@@ -230,6 +235,14 @@ mod tests {
 
         assert!(matches!(err, LlmError::MissingCredential(_)));
         assert!(err.to_string().contains("OPENROUTER_API_KEY"));
+    }
+
+    #[test]
+    fn test_none_credential_source_does_not_route_bare_model_to_openrouter() {
+        let mut store = PodcastStore::new();
+        store.set_open_router_credential("none".to_owned(), None, None, None);
+
+        assert!(!routes_to_openrouter(&store, "deepseek-v4-pro:cloud"));
     }
 
     #[test]
