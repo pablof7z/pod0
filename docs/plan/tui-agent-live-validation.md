@@ -328,6 +328,64 @@ tmux capture-pane -t podcast-tui-glm-architecture -p -S - \
 
 ## Evidence Log
 
+### 2026-06-08T00:52Z-01:16Z
+
+- Worktree: `/Users/customer/podcast-player-tui-glm-final-validation`
+- Branch: `codex/tui-glm-final-validation`
+- Tmux session: `podcast-tui-glm-final`
+- Data directory: `/tmp/podcast-tui-glm-final-data`
+- Capture directory: `/tmp/podcast-tui-glm-final-captures`
+- Model: `glm-5.1:cloud`
+- Local Ollama:
+  - `ollama ls` showed `glm-5.1:cloud` and other `:cloud` models.
+  - The helper verified `tmux`, `ollama`, and the cloud model before launch.
+
+### Final Provider/Task Architecture Scenarios Executed
+
+- Settings > Providers:
+  - Used real TUI input to set the core LLM role rows to
+    `GLM 5.1 Cloud (ollama:glm-5.1:cloud)`.
+  - Set the Ollama URL to `http://localhost:11434/api/chat` and verified the
+    shared projection normalized it to `http://127.0.0.1:11434/api/chat`.
+  - Relaunched from the same data directory and verified provider choices and
+    URL normalization persisted without displaying raw credentials.
+- Agent chat and memory:
+  - Sent a live provider-backed Agent chat prompt through tmux and verified a
+    completed response with no stale busy state.
+  - Saved `validation_topic=GLM final shared provider validation` in Memory.
+  - Asked a follow-up provider-backed chat turn and verified the answer used the
+    persisted memory phrase.
+- Typed task editor:
+  - Created a natural typed task,
+    `Final Memory Task | once | remember task_validation=completed via final GLM validation | final validation task`.
+  - Verified the row showed user-facing typed task detail, not raw
+    namespace/body JSON.
+  - Verified disabled run-now reported `task run error: task disabled`.
+  - Enabled and ran the task, then verified Memory projected
+    `task_validation = completed via final GLM validation`.
+  - Deleted the validation task and verified only the built-in Inbox Triage
+    task remained after relaunch.
+- Library, queue, bookmarks, and player:
+  - Subscribed to `https://feeds.npr.org/510289/podcast.xml` through the TUI.
+  - Verified `Planet Money` projected with 355 episodes.
+  - Starred, queued, and played the selected episode from the real Library UI.
+  - Verified Queue and Stars projections before and after relaunch.
+- Missing prerequisite:
+  - Attempted to publish an Agent Note without identity and verified the TUI
+    reported `agent note error: not signed in`.
+- Persistence:
+  - Relaunched from the same data directory and verified library, queue,
+    bookmarks, provider settings, the built-in task, and the two memory facts
+    persisted.
+
+### Final Validation Result
+
+- No code fixes were required in this final pass.
+- The run used the real TUI in tmux, real persisted kernel state, and the
+  locally configured Ollama Cloud `glm-5.1:cloud` model. It did not use fake
+  agent responses or direct backend action dispatch as a substitute for user
+  interaction.
+
 ### 2026-06-07T20:10Z-20:27Z
 
 - Worktree: `/Users/customer/podcast-player-tui-glm-post-architecture-validation`
