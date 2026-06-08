@@ -467,3 +467,7 @@ fn build_snippet(text: &str, match_pos: usize, match_len: usize) -> String {
 #[cfg(test)]
 #[path = "knowledge_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "knowledge_indexing_tests.rs"]
+mod indexing_tests;
