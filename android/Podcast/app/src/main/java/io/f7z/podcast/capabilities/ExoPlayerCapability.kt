@@ -3,6 +3,8 @@ package io.f7z.podcast.capabilities
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import io.f7z.podcast.KernelBridge
@@ -36,9 +38,11 @@ import kotlinx.serialization.json.jsonPrimitive
  *
  * **Doctrine:**
  *
- *  * D5/D8 — pure executor. No state beyond `lastReportedUrl`, kept
- *    only so the listener can attribute reports to the current item
- *    (ExoPlayer exposes the URI but only after `MediaItem` resolution).
+ *  * D5/D8 — pure executor. The only retained state is `lastReportedUrl`
+ *    (so the listener can attribute reports to the current item — ExoPlayer
+ *    exposes the URI only after `MediaItem` resolution) and the armed
+ *    sleep-timer callback (ExoPlayer has no sleep-timer primitive, so the
+ *    executor holds the wall-clock; the kernel still owns the policy per D9).
  *  * D6 — every entry point degrades silently. Malformed JSON, missing
  *    player, audio-focus refusal — all surface as no-ops; the kernel
  *    notices via the missing report.
@@ -82,6 +86,29 @@ class ExoPlayerCapability(
     @Volatile
     private var lastReportedUrl: String = ""
 
+    /**
+     * Sleep-timer plumbing. ExoPlayer has no sleep-timer primitive (vs.
+     * iOS's `DispatchSourceTimer`), so we hold the wall-clock ourselves with
+     * a main-looper `Handler` — the same looper `ExoPlayerReportListener`
+     * ticks on, which keeps the fired `stop` re-dispatch on the thread the
+     * player commands already assume.
+     *
+     * D9 — the kernel owns sleep-timer *policy*. We only hold the clock: on
+     * expiry we emit a `SleepTimerFired` report and let `crate::player`
+     * decide whether to stop, fade, or extend. We never pause/stop the
+     * player ourselves on expiry. The kernel's reply (`{"type":"stop"}`) is
+     * re-dispatched through `emit`'s follow-up channel, matching the iOS
+     * round-trip.
+     */
+    private val sleepTimerHandler = Handler(Looper.getMainLooper())
+
+    /**
+     * The currently-armed sleep-timer callback, or `null` when no timer is
+     * running. Held so `cancelSleepTimer` can remove the exact pending
+     * callback (and so re-arming replaces rather than stacks).
+     */
+    private var sleepTimerRunnable: Runnable? = null
+
     // ─────────────────────────────────────────────────────────────────────
     // Lifecycle
     // ─────────────────────────────────────────────────────────────────────
@@ -105,6 +132,7 @@ class ExoPlayerCapability(
      * contract. The service self-destructs on `onTaskRemoved` if paused.
      */
     fun detach() {
+        cancelSleepTimer()
         val handle = PlaybackServiceBinder.current() ?: return
         listener?.let { handle.player.removeListener(it) }
         listener = null
@@ -173,13 +201,18 @@ class ExoPlayerCapability(
                 player.setPlaybackSpeed(speed.coerceIn(0.5f, 2.0f))
             }
             "set_sleep_timer" -> {
-                // D9 — the kernel owns sleep-timer policy. ExoPlayer has no
-                // sleep-timer primitive of its own (vs. iOS's
-                // `DispatchSourceTimer`); for now we accept the command and
-                // no-op. The fade-out / lock-screen UI hooks land alongside
-                // `PlayerNotificationManager` in a follow-up PR.
+                // `{"type":"set_sleep_timer","secs":1800}` arms; `secs:null`
+                // or a missing/zero `secs` cancels. Mirrors the iOS executor
+                // `AudioCapability.armSleepTimer`. The kernel decides what to
+                // do on expiry (D9); we only hold the wall-clock.
+                val secs = envelope["secs"]?.jsonPrimitive?.content?.toLongOrNull()
+                armSleepTimer(secs)
             }
             "stop" -> {
+                // A `stop` ends the current item; the sleep timer is no
+                // longer meaningful, so cancel it (mirrors iOS
+                // `playerStop -> cancelSleepTimer`).
+                cancelSleepTimer()
                 player.stop()
                 player.clearMediaItems()
                 val previousUrl = lastReportedUrl
@@ -222,6 +255,41 @@ class ExoPlayerCapability(
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // Sleep timer (D9: Android holds the wall-clock; the kernel decides)
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Arm a wall-clock sleep timer that fires after [secs] seconds, or
+     * cancel any running timer when [secs] is `null`/`0`. Idempotent
+     * re-arm: an existing timer is cancelled first so timers never stack.
+     */
+    private fun armSleepTimer(secs: Long?) {
+        cancelSleepTimer()
+        if (secs == null || secs <= 0L) return
+        val runnable = Runnable { onSleepTimerFire() }
+        sleepTimerRunnable = runnable
+        sleepTimerHandler.postDelayed(runnable, secs * 1000L)
+    }
+
+    /** Cancel the armed sleep timer, if any. Safe to call when none is set. */
+    private fun cancelSleepTimer() {
+        sleepTimerRunnable?.let { sleepTimerHandler.removeCallbacks(it) }
+        sleepTimerRunnable = null
+    }
+
+    /**
+     * Sleep-timer expiry. D7/D9: we do NOT pause/stop the player here — we
+     * only report. The kernel's `PlayerActor` replies with the actual
+     * `{"type":"stop"}` command, which `emit`'s follow-up channel
+     * re-dispatches through `handleCommand`. Clear the runnable ref BEFORE
+     * emitting so a re-arm triggered during that re-dispatch isn't clobbered.
+     */
+    private fun onSleepTimerFire() {
+        sleepTimerRunnable = null
+        emit(buildSleepTimerFiredReport())
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // Report wire
     // ─────────────────────────────────────────────────────────────────────
 
@@ -240,6 +308,14 @@ class ExoPlayerCapability(
     private fun buildStoppedReport(url: String): JsonObject = buildJsonObject {
         put("type", JsonPrimitive("stopped"))
         if (url.isNotBlank()) put("url", JsonPrimitive(url))
+    }
+
+    /**
+     * `AudioReport::SleepTimerFired` — payloadless, tagged `sleep_timer_fired`.
+     * Matches `apps/nmp-app-podcast/src/capability/audio.rs::AudioReport`.
+     */
+    private fun buildSleepTimerFiredReport(): JsonObject = buildJsonObject {
+        put("type", JsonPrimitive("sleep_timer_fired"))
     }
 
     private fun buildFailedReport(url: String, error: String): JsonObject = buildJsonObject {
