@@ -55,6 +55,7 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
         Arc::new(std::sync::atomic::AtomicBool::new(false)),
         Arc::new(Mutex::new(None)),
         Arc::new(Mutex::new(Vec::new())),
+        crate::feed_fetch::FeedFetchCoordinator::new_test(),
     )
 }
 

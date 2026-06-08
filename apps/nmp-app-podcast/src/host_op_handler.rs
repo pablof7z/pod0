@@ -56,6 +56,7 @@ use crate::ffi::projections::{
     AgentNoteSummary, AgentPickSummary, AgentTaskSummary, CommentSummary, KnowledgeSearchResult,
     NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry, VoiceState, WikiArticle,
 };
+use crate::feed_fetch::FeedFetchCoordinator;
 use crate::host_op_handler_queue::handle_queue_action;
 use crate::host_op_publish::handle_publish_action;
 use crate::identity_handler::IdentityHandler;
@@ -173,6 +174,11 @@ pub struct PodcastHostOpHandler {
     /// `PodcastUpdate.agent_notes` (reactive push seam — no polling).
     /// In-memory only; re-fetched on the next `FetchAgentNotes` dispatch.
     pub(crate) agent_notes: Arc<Mutex<Vec<AgentNoteSummary>>>,
+    /// Coordinates optimistic-subscribe async feed fetches. Shared with
+    /// `PodcastHandle` (whose HTTP-report FFI applies the results); this handler
+    /// registers a pending fetch then fire-and-forget dispatches the async HTTP
+    /// command on the actor thread.
+    pub(crate) feed_fetch: Arc<FeedFetchCoordinator>,
     pub(crate) snapshot_signal: Option<SnapshotUpdateSignal>,
 }
 
@@ -217,6 +223,7 @@ impl PodcastHostOpHandler {
         inbox_triage_in_progress: Arc<std::sync::atomic::AtomicBool>,
         social: Arc<Mutex<Option<SocialSnapshot>>>,
         agent_notes: Arc<Mutex<Vec<AgentNoteSummary>>>,
+        feed_fetch: Arc<FeedFetchCoordinator>,
     ) -> Self {
         Self {
             app,
@@ -251,6 +258,7 @@ impl PodcastHostOpHandler {
             inbox_triage_in_progress,
             social,
             agent_notes,
+            feed_fetch,
             snapshot_signal: None,
         }
     }

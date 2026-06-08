@@ -82,7 +82,7 @@ private fun PodcastRoot() {
     val download = remember(bridge) {
         DownloadCapability(bridge = bridge, context = context.applicationContext)
     }
-    val http = remember { HttpCapability() }
+    val http = remember(bridge) { HttpCapability(bridge = bridge) }
     val router = remember(audio, http) {
         AndroidCapabilityRouter(audio = audio, http = http)
     }

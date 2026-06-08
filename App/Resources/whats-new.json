@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-09T01:20:00Z",
+      "lines": [
+        "Subscribing to a podcast is now instant — the show appears in your library the moment you tap, and its episodes fill in a moment later in the background instead of making you wait for the feed to download."
+      ]
+    },
+    {
       "shipped_at": "2026-06-08T13:20:00Z",
       "lines": [
         "Episode Diagnostics now explains when transcription was deliberately skipped — category turned off, AI transcription disabled, a missing provider key, or audio not downloaded yet."

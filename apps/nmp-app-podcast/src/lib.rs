@@ -50,6 +50,7 @@ pub(crate) mod discover_nostr;
 pub mod download;
 pub(crate) mod episode_summary;
 pub(crate) mod episode_summary_llm;
+pub(crate) mod feed_fetch;
 pub(crate) mod feedback_handler;
 pub mod ffi;
 pub(crate) mod host_op_handler;
@@ -96,7 +97,7 @@ pub use download::{DownloadItem, DownloadItemState, DownloadQueue, DEFAULT_MAX_C
 pub use ffi::{
     nmp_app_podcast_assemblyai_transcribe, nmp_app_podcast_audio_report,
     nmp_app_podcast_byok_authorization, nmp_app_podcast_byok_exchange,
-    nmp_app_podcast_download_report, nmp_app_podcast_elevenlabs_scribe_transcribe,
+    nmp_app_podcast_download_report, nmp_app_podcast_elevenlabs_scribe_transcribe, nmp_app_podcast_http_report,
     nmp_app_podcast_elevenlabs_tts_synthesize, nmp_app_podcast_elevenlabs_voice_catalog,
     nmp_app_podcast_episode_events, nmp_app_podcast_generate_image,
     nmp_app_podcast_local_model_catalog, nmp_app_podcast_openrouter_whisper_transcribe,

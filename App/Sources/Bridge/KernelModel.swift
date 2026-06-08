@@ -154,6 +154,7 @@ final class KernelModel {
         })
         kernel.attachAudioReportChannel()
         kernel.attachDownloadReportChannel()
+        kernel.attachHttpReportChannel()
         // Prime Rust's is_on_wifi flag before the first feed refresh.
         kernel.startNetworkMonitor()
         // Reactive replacement for the old 500ms poll: shell-initiated FFI

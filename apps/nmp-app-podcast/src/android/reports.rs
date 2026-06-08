@@ -5,7 +5,9 @@ use jni::sys::{jlong, jstring};
 use jni::JNIEnv;
 use nmp_ffi::nmp_app_free_string;
 
-use crate::ffi::{nmp_app_podcast_audio_report, nmp_app_podcast_download_report};
+use crate::ffi::{
+    nmp_app_podcast_audio_report, nmp_app_podcast_download_report, nmp_app_podcast_http_report,
+};
 
 /// `nativeCapabilityReport(handle, namespace, reportJson)` — handle-aware
 /// host → kernel report channel. Audio reports project into the Rust
@@ -70,6 +72,42 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeDownloadReport<'l>
     };
     let follow_up_ptr = nmp_app_podcast_download_report(s.podcast, c_body.as_ptr());
     response_string(&mut env, follow_up_ptr)
+}
+
+/// `nativeHttpReport(handle, reportJson)` — handle-aware async HTTP report
+/// channel for the optimistic-subscribe feed fetch. The Android executor runs
+/// the RSS fetch off the actor thread (mirroring `nativeDownloadReport`) and
+/// posts the JSON-encoded `HttpReport` here; the kernel resolves the matching
+/// pending fetch and bumps the snapshot rev.
+///
+/// Unlike downloads there is no follow-up command — `nmp_app_podcast_http_report`
+/// always returns NULL — so this entry point is `void` (the Kotlin declaration
+/// is `external fun nativeHttpReport(...): Unit`). Any non-null return is freed
+/// defensively. D6: every failure path returns silently, never panics.
+#[no_mangle]
+pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeHttpReport<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    handle: jlong,
+    report_json: JString<'l>,
+) {
+    let Some(s) = super::session_ref(handle) else {
+        return;
+    };
+    if s.podcast.is_null() {
+        return;
+    }
+    let body = match env.get_string(&report_json) {
+        Ok(s) => s.to_string_lossy().into_owned(),
+        Err(_) => return,
+    };
+    let Ok(c_body) = CString::new(body) else {
+        return;
+    };
+    let ret = nmp_app_podcast_http_report(s.podcast, c_body.as_ptr());
+    if !ret.is_null() {
+        nmp_app_free_string(ret);
+    }
 }
 
 fn response_string(env: &mut JNIEnv<'_>, ptr: *mut std::ffi::c_char) -> jstring {

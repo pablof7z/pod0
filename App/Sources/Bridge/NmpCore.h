@@ -108,6 +108,12 @@ char *nmp_app_podcast_audio_report(void *handle, const char *report_json);
 // `apps/nmp-app-podcast/src/ffi/download_report.rs`). Caller MUST free via
 // `nmp_app_free_string`.
 char *nmp_app_podcast_download_report(void *handle, const char *report_json);
+
+// Deliver a JSON-encoded HttpReport ({"request_id":"…","result":{…}}) to the
+// kernel's feed-fetch coordinator, resolving an optimistic-subscribe async feed
+// fetch. Always returns NULL (no follow-up command). See
+// `apps/nmp-app-podcast/src/ffi/http_report.rs`.
+char *nmp_app_podcast_http_report(void *handle, const char *report_json);
 // ── Identity / NIP-46 remote-signer FFI ───────────────────────────────────
 //
 // `nmp_app_signin_nsec` / `nmp_app_signin_bunker` enqueue the matching

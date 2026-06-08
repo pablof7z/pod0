@@ -218,6 +218,11 @@ pub struct PodcastHandle {
     /// voice manager hold). The snapshot path needs it so `maybe_enqueue_triage`
     /// can spawn proactive background triage off the actor thread.
     pub(super) runtime: Arc<Runtime>,
+    /// Optimistic-subscribe async feed-fetch coordinator (same `Arc` the
+    /// host-op handler holds). The HTTP-report FFI (`nmp_app_podcast_http_report`)
+    /// resolves pending feed fetches through this from the platform transport
+    /// thread.
+    pub(crate) feed_fetch: Arc<crate::feed_fetch::FeedFetchCoordinator>,
 }
 
 // SAFETY: the auto-derived `!Send`/`!Sync` comes solely from the

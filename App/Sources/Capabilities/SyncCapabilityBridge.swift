@@ -34,6 +34,14 @@ final class SyncCapabilityBridge: @unchecked Sendable {
         self.http.start()
     }
 
+    /// Wire the async HTTP report sink onto this bridge's `HttpCapability`
+    /// instance — the one that actually serves `handleAsyncJSON` on the actor
+    /// thread. Called from `PodcastHandle.attachHttpReportChannel()` so the
+    /// `URLSession` completion can push the result to `nmp_app_podcast_http_report`.
+    func attachHttpReport(_ sink: @escaping (String) -> Void) {
+        http.attach(sendReport: sink)
+    }
+
     /// Route the raw kernel `CapabilityRequest` JSON and return a raw
     /// `CapabilityEnvelope` JSON. Never throws, never returns nil (D6).
     func handle(requestJSON: String) -> String {
@@ -48,6 +56,12 @@ final class SyncCapabilityBridge: @unchecked Sendable {
         switch obj.namespace {
         case HttpCapability.namespace:
             return http.handleJSON(requestJSON)
+        case HttpCapability.asyncNamespace:
+            // Fire-and-forget: kicks off a non-blocking URLSession and returns
+            // an immediate ack. The result is delivered out of band via the
+            // report sink → `nmp_app_podcast_http_report`. Safe on the actor
+            // thread because it never blocks.
+            return http.handleAsyncJSON(requestJSON)
         case AudioCapability.namespace:
             // @MainActor; hop to main thread synchronously. Safe: the actor
             // thread is never the main thread, and the main thread is never

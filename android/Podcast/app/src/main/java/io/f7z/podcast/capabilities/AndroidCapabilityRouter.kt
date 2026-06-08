@@ -22,6 +22,7 @@ class AndroidCapabilityRouter(
                 CapabilityWire.ok(request.namespace, request.correlationId)
             }
             HttpCapability.NAMESPACE -> http.handle(request)
+            HttpCapability.ASYNC_NAMESPACE -> http.handleAsync(request)
             DownloadCapability.NAMESPACE -> {
                 // Android downloads are executed from the Rust-projected
                 // `downloads.active` snapshot. Acknowledge the push command so

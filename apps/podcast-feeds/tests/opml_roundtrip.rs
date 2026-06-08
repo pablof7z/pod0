@@ -1,4 +1,4 @@
-use podcast_core::{NostrVisibility, Podcast, PodcastId, PodcastKind};
+use podcast_core::{NostrVisibility, Podcast, PodcastId};
 use podcast_feeds::opml::{export::export_opml_with, import_opml};
 use url::Url;
 
@@ -7,7 +7,6 @@ use chrono::{TimeZone, Utc};
 fn fixture_podcast(title: &str, url: &str, description: &str, language: Option<&str>) -> Podcast {
     Podcast {
         id: PodcastId::generate(),
-        kind: PodcastKind::Rss,
         feed_url: Some(Url::parse(url).unwrap()),
         title: title.to_string(),
         author: String::new(),

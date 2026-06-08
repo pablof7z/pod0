@@ -137,6 +137,34 @@ enum HttpResult: Encodable {
     }
 }
 
+// MARK: - Async HTTP vocabulary (fire-and-forget command + report-back)
+
+/// Async HTTP command — the decoded `payload_json` for
+/// `nmp.http.async.capability`. Mirrors the Rust `HttpCommand`
+/// (`{ "request_id": "…", "request": { … } }`). The executor runs `request`
+/// off-thread and posts an `HttpReport` back via `nmp_app_podcast_http_report`.
+struct HttpCommand: Decodable {
+    let requestID: String
+    let request: HttpRequest
+
+    enum CodingKeys: String, CodingKey {
+        case requestID = "request_id"
+        case request
+    }
+}
+
+/// Async HTTP report — encoded to `report_json` for the report FFI. Mirrors the
+/// Rust `HttpReport` (`{ "request_id": "…", "result": { … } }`).
+struct HttpReport: Encodable {
+    let requestID: String
+    let result: HttpResult
+
+    enum CodingKeys: String, CodingKey {
+        case requestID = "request_id"
+        case result
+    }
+}
+
 // MARK: - URLSession-backed capability
 
 /// `URLSession` implementation of the HTTP capability.
@@ -144,8 +172,31 @@ enum HttpResult: Encodable {
 /// Performs the GET/POST the kernel asks for and reports the raw result. The
 /// call blocks the calling (actor) thread until the HTTP round-trip completes —
 /// see the synchronous-socket note at the top of this file.
-final class HttpCapability {
+// `@unchecked Sendable`: the async report path fires `sendReport` from a
+// `URLSession` completion (a `@Sendable` closure). The capability's mutable
+// state (`started`, `sendReport`) is wired once at startup and then only read,
+// so capturing `self` in that closure is safe — same discipline as the
+// `ResultBox` / `SyncCapabilityBridge` `@unchecked Sendable` uses here.
+final class HttpCapability: @unchecked Sendable {
     static let namespace = "nmp.http.capability"
+
+    /// Async fire-and-forget HTTP namespace. The kernel routes user-initiated,
+    /// latency-sensitive fetches (optimistic subscribe) here so they never
+    /// block the actor thread; results come back via the report channel.
+    static let asyncNamespace = "nmp.http.async.capability"
+
+    /// Report sink wired by `PodcastHandle.attachHttpReportChannel()`. The async
+    /// executor calls this with the JSON-encoded `HttpReport` from the
+    /// `URLSession` completion (a background queue), and the closure forwards it
+    /// to `nmp_app_podcast_http_report`. No-op until attached (early requests
+    /// before wiring simply drop their report — the optimistic row still shows).
+    /// Mirrors the `AudioCapability` / `DownloadCapability` report seam.
+    private var sendReport: (String) -> Void = { _ in }
+
+    /// Wire the report sink. Called once during kernel-bridge setup.
+    func attach(sendReport: @escaping (String) -> Void) {
+        self.sendReport = sendReport
+    }
 
     /// Wall-clock ceiling for a single HTTP call. An LNURL endpoint that never
     /// answers must not stall the actor thread forever — on expiry the request
@@ -228,10 +279,32 @@ final class HttpCapability {
         else {
             return .error(message: "malformed-payload")
         }
-        guard let url = URL(string: httpRequest.url) else {
-            return .error(message: "invalid-url")
+        switch Self.makeURLRequest(httpRequest, timeout: timeout) {
+        case let .success(urlRequest):
+            return perform(urlRequest)
+        case let .failure(result):
+            return result
         }
+    }
 
+    /// Outcome of building a `URLRequest`: either the request, or an
+    /// `HttpResult.error` to report directly (D6). A purpose-built enum rather
+    /// than `Result` because `HttpResult` is intentionally not an `Error`.
+    private enum URLRequestBuild {
+        case success(URLRequest)
+        case failure(HttpResult)
+    }
+
+    /// Build the `URLRequest` for an `HttpRequest`, shared by the synchronous
+    /// and async paths. Returns the request, or an `HttpResult.error` carrying
+    /// the reason (invalid URL / malformed base64 body) per D6.
+    private static func makeURLRequest(
+        _ httpRequest: HttpRequest,
+        timeout: TimeInterval
+    ) -> URLRequestBuild {
+        guard let url = URL(string: httpRequest.url) else {
+            return .failure(.error(message: "invalid-url"))
+        }
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = httpRequest.method.rawValue
         urlRequest.timeoutInterval = timeout
@@ -245,14 +318,81 @@ final class HttpCapability {
         // payload is reported as data, never silently sent as garbage (D6).
         if let bodyBase64 = httpRequest.bodyBase64 {
             guard let data = Data(base64Encoded: bodyBase64) else {
-                return .error(message: "invalid-body-base64")
+                return .failure(.error(message: "invalid-body-base64"))
             }
             urlRequest.httpBody = data
         } else if let body = httpRequest.body {
             urlRequest.httpBody = body.data(using: .utf8)
         }
+        return .success(urlRequest)
+    }
 
-        return perform(urlRequest)
+    // MARK: Async (fire-and-forget) entry point
+
+    /// Decode an async `HttpCommand` and kick off the transport without
+    /// blocking. Returns an immediate ack envelope; the real result is reported
+    /// later via the report channel (`sendReport`). Honors D6: a malformed
+    /// command still returns an ack (the pending kernel request simply times
+    /// out / is retried by a later refresh), never throws.
+    func handleAsyncJSON(_ requestJSON: String) -> String {
+        if let data = requestJSON.data(using: .utf8),
+           let request = try? JSONDecoder().decode(CapabilityRequest.self, from: data),
+           let payload = request.payloadJSON.data(using: .utf8),
+           let command = try? JSONDecoder().decode(HttpCommand.self, from: payload) {
+            executeAsync(command)
+        }
+        // The async capability returns a bare ack — the result is delivered out
+        // of band through `nmp_app_podcast_http_report`.
+        let env = CapabilityEnvelope(
+            namespace: Self.asyncNamespace,
+            correlationID: "",
+            resultJSON: "{\"status\":\"accepted\"}")
+        return Self.encode(env) ?? "{}"
+    }
+
+    /// Run `command.request` on the shared session without blocking. On
+    /// completion, encode an `HttpReport` (echoing `request_id`) and forward it
+    /// to the report sink. The completion runs on the session's private
+    /// background queue, so the FFI call it triggers never touches the main
+    /// thread (no deadlock against the synchronous capability socket).
+    func executeAsync(_ command: HttpCommand) {
+        let requestID = command.requestID
+        guard started else {
+            report(requestID: requestID, result: .error(message: "capability-stopped"))
+            return
+        }
+        let urlRequest: URLRequest
+        switch Self.makeURLRequest(command.request, timeout: timeout) {
+        case let .success(req):
+            urlRequest = req
+        case let .failure(result):
+            report(requestID: requestID, result: result)
+            return
+        }
+        let task = session.dataTask(with: urlRequest) { [weak self] data, response, error in
+            let result: HttpResult
+            if let error {
+                result = .error(message: "transport: \(error.localizedDescription)")
+            } else if let http = response as? HTTPURLResponse {
+                let body = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+                result = .ok(
+                    statusCode: UInt16(clamping: http.statusCode),
+                    headers: Self.headerPairs(from: http),
+                    body: body)
+            } else {
+                result = .error(message: "non-http-response")
+            }
+            self?.report(requestID: requestID, result: result)
+        }
+        task.resume()
+    }
+
+    /// Encode an `HttpReport` and hand it to the wired sink (drops silently if
+    /// the report channel was never attached).
+    private func report(requestID: String, result: HttpResult) {
+        let report = HttpReport(requestID: requestID, result: result)
+        guard let json = Self.encode(report) else { return }
+        sendReport(json)
     }
 
     /// Lock-guarded one-shot result box. The completion handler (running on the

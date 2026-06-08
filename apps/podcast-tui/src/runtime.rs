@@ -4,16 +4,19 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use nmp_app_podcast::ffi::PodcastUpdate;
 use nmp_app_podcast::{
-    nmp_app_podcast_elevenlabs_voice_catalog, nmp_app_podcast_local_model_catalog,
-    nmp_app_podcast_provider_model_catalog, nmp_app_podcast_register, nmp_app_podcast_set_data_dir,
-    nmp_app_podcast_speech_model_catalog, nmp_app_podcast_unregister, nmp_signer_broker_init,
-    PodcastHandle, AUDIO_CAPABILITY_NAMESPACE,
+    nmp_app_podcast_elevenlabs_voice_catalog, nmp_app_podcast_http_report,
+    nmp_app_podcast_local_model_catalog, nmp_app_podcast_provider_model_catalog,
+    nmp_app_podcast_register, nmp_app_podcast_set_data_dir, nmp_app_podcast_speech_model_catalog,
+    nmp_app_podcast_unregister, nmp_signer_broker_init, PodcastHandle, AUDIO_CAPABILITY_NAMESPACE,
 };
 use nmp_ffi::{
     nmp_app_dispatch_action, nmp_app_free, nmp_app_free_string, nmp_app_new,
     nmp_app_set_capability_callback, nmp_app_start, NmpApp,
 };
-use podcast_feeds::http::{HttpMethod, HttpRequest, HttpResult, HTTP_CAPABILITY_NAMESPACE};
+use podcast_feeds::http::{
+    HttpCommand, HttpMethod, HttpReport, HttpRequest, HttpResult, HTTP_ASYNC_CAPABILITY_NAMESPACE,
+    HTTP_CAPABILITY_NAMESPACE,
+};
 use serde_json::Value;
 
 use crate::audio_host::AudioHost;
@@ -24,6 +27,15 @@ use crate::provider_voice_catalog::{decode_elevenlabs_voice_catalog, ProviderCat
 use crate::speech_model_catalog::{decode_speech_model_catalog, SpeechModelCatalog};
 
 static AUDIO_HOST: OnceLock<Arc<Mutex<AudioHost>>> = OnceLock::new();
+
+/// `PodcastHandle` pointer (stored as `usize` so it is `Send`) for the async
+/// HTTP capability executor. The capability callback is a free `extern "C"`
+/// function registered with a null `ctx`, so the off-thread report path cannot
+/// reach the handle through `AppRuntime`; mirroring [`AUDIO_HOST`], we stash the
+/// pointer here when the handle is registered. The handle outlives the process
+/// (it is only freed in `AppRuntime::drop` at shutdown), so casting it back on
+/// the worker thread is sound.
+static PODCAST_HANDLE: OnceLock<usize> = OnceLock::new();
 
 pub struct AppRuntime {
     app: *mut NmpApp,
@@ -52,6 +64,10 @@ impl AppRuntime {
             nmp_app_free(app);
             return Err("nmp_app_podcast_register returned null".to_string());
         }
+        // Publish the handle for the async HTTP capability executor. Set before
+        // `nmp_app_start`, so it is always present by the time any capability
+        // request can be dispatched.
+        let _ = PODCAST_HANDLE.set(podcast as usize);
 
         if let Some(dir) = data_dir {
             let dir_cstr =
@@ -206,6 +222,7 @@ fn dispatch_capability_request(request_str: &str) -> String {
             }
         }
         HTTP_CAPABILITY_NAMESPACE => handle_http(&req.payload_json),
+        HTTP_ASYNC_CAPABILITY_NAMESPACE => handle_http_async(&req.payload_json),
         ns => serde_json::json!({"ok": false, "error": format!("stub: {ns}")}).to_string(),
     };
 
@@ -228,6 +245,68 @@ fn handle_http(payload_json: &str) -> String {
         }
     };
 
+    let res = run_http(http_req);
+    serde_json::to_string(&res).unwrap_or_else(|_| "{}".to_string())
+}
+
+/// Async HTTP capability executor.
+///
+/// Decodes the [`HttpCommand`], runs the transport off the actor thread (so the
+/// kernel actor is never blocked on the RSS download), and reports the result
+/// back through `nmp_app_podcast_http_report`. Returns an immediate `accepted`
+/// ack as the inner `result_json` — `dispatch_capability_request` wraps it in
+/// the [`CapabilityEnvelope`], so this must *not* build an envelope itself.
+fn handle_http_async(payload_json: &str) -> String {
+    let command: HttpCommand = match serde_json::from_str(payload_json) {
+        Ok(c) => c,
+        Err(e) => {
+            // No `request_id` to report back with; degrade as a decode error
+            // (D6 — never panic across the FFI boundary).
+            return serde_json::json!({"ok": false, "error": format!("decode: {e}")}).to_string();
+        }
+    };
+
+    // The capability callback registers a null `ctx`, so the handle is reached
+    // via the published `PODCAST_HANDLE` (stored as `usize` for `Send`).
+    let handle_addr = match PODCAST_HANDLE.get() {
+        Some(addr) => *addr,
+        None => {
+            return serde_json::json!({"ok": false, "error": "podcast handle unavailable"})
+                .to_string()
+        }
+    };
+
+    std::thread::spawn(move || {
+        let result = run_http(command.request);
+        let report = HttpReport {
+            request_id: command.request_id,
+            result,
+        };
+        let report_json = match serde_json::to_string(&report) {
+            Ok(json) => json,
+            Err(_) => return,
+        };
+        let Ok(report_cstr) = CString::new(report_json) else {
+            return;
+        };
+        // SAFETY: the handle outlives the process — it is only freed in
+        // `AppRuntime::drop` at shutdown, after the capability callback is torn
+        // down. `apply_report` touches only the shared store / signal Arcs.
+        let handle = handle_addr as *mut PodcastHandle;
+        let ret = nmp_app_podcast_http_report(handle, report_cstr.as_ptr());
+        // The report FFI always returns NULL (no follow-up), but free defensively.
+        if !ret.is_null() {
+            nmp_app_free_string(ret);
+        }
+    });
+
+    serde_json::json!({"status": "accepted"}).to_string()
+}
+
+/// Run an [`HttpRequest`] over the blocking transport and return an
+/// [`HttpResult`]. Shared by the synchronous ([`handle_http`]) and async
+/// ([`handle_http_async`]) capability paths so transport behavior is identical.
+fn run_http(http_req: HttpRequest) -> HttpResult {
     let client = reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
         .build()
@@ -262,28 +341,19 @@ fn handle_http(payload_json: &str) -> String {
                 .map(|(k, v)| vec![k.as_str().to_owned(), v.to_str().unwrap_or("").to_owned()])
                 .collect();
             match resp.text() {
-                Ok(body) => {
-                    let res = HttpResult::Ok {
-                        status_code,
-                        headers,
-                        body,
-                    };
-                    serde_json::to_string(&res).unwrap_or_else(|_| "{}".to_string())
-                }
-                Err(e) => {
-                    let res = HttpResult::Error {
-                        message: format!("body: {e}"),
-                    };
-                    serde_json::to_string(&res).unwrap_or_else(|_| "{}".to_string())
-                }
+                Ok(body) => HttpResult::Ok {
+                    status_code,
+                    headers,
+                    body,
+                },
+                Err(e) => HttpResult::Error {
+                    message: format!("body: {e}"),
+                },
             }
         }
-        Err(e) => {
-            let res = HttpResult::Error {
-                message: format!("transport: {e}"),
-            };
-            serde_json::to_string(&res).unwrap_or_else(|_| "{}".to_string())
-        }
+        Err(e) => HttpResult::Error {
+            message: format!("transport: {e}"),
+        },
     }
 }
 

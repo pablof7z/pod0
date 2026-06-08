@@ -221,6 +221,57 @@ impl HttpResult {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Async HTTP capability — fire-and-forget command + report-back
+// ---------------------------------------------------------------------------
+//
+// The synchronous capability above (`nmp.http.capability`) blocks the actor
+// thread on the round-trip (see ADR-0023). That is fine for rare, fast calls
+// (zaps), but a feed fetch can take seconds and a user-initiated *subscribe*
+// must feel instant. The async variant mirrors the **download** capability:
+// the kernel emits a fire-and-forget [`HttpCommand`] and the platform runs the
+// transport off-thread, then reports the result back through a dedicated FFI
+// report channel as an [`HttpReport`] carrying the same `request_id`. The
+// kernel correlates the report against a pending request and resumes
+// processing (parse feed, merge episodes, bump the snapshot rev) without ever
+// blocking the actor thread.
+
+/// Capability namespace for the **async** HTTP path. Distinct from
+/// [`HTTP_CAPABILITY_NAMESPACE`] so the platform router can tell a
+/// blocking request from a fire-and-forget command — the two have different
+/// response semantics (sync returns an [`HttpResult`] envelope; async returns
+/// an immediate ack and reports later).
+pub const HTTP_ASYNC_CAPABILITY_NAMESPACE: &str = "nmp.http.async.capability";
+
+/// Fire-and-forget async HTTP command. Travels in
+/// `CapabilityRequest.payload_json` under [`HTTP_ASYNC_CAPABILITY_NAMESPACE`].
+///
+/// The executor runs `request` off its main/actor thread (e.g. a non-blocking
+/// `URLSession` data task on iOS) and, on completion, posts an [`HttpReport`]
+/// back through the platform's HTTP-report FFI bearing the same `request_id`.
+/// The synchronous envelope returned from the capability dispatch is a bare
+/// ack and carries no result.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct HttpCommand {
+    /// Opaque correlation token minted by the kernel. The executor echoes it
+    /// back verbatim in the [`HttpReport`] so the kernel can resolve which
+    /// pending request the result belongs to.
+    pub request_id: String,
+    /// The request to perform — identical shape to the synchronous path.
+    pub request: HttpRequest,
+}
+
+/// Async HTTP result reported back from the platform to the kernel. Travels in
+/// the HTTP-report FFI's `report_json` (e.g.
+/// `nmp_app_podcast_http_report`).
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct HttpReport {
+    /// Echo of the originating [`HttpCommand::request_id`].
+    pub request_id: String,
+    /// The transport outcome — `Ok` (any HTTP status) or `Error` (D6).
+    pub result: HttpResult,
+}
+
 #[cfg(test)]
 #[path = "http_tests.rs"]
 mod tests;

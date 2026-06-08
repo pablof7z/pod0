@@ -119,6 +119,19 @@ class KernelBridge {
         if (handle != 0L) nativeDownloadReport(handle, reportJson) else null
 
     /**
+     * Host -> kernel **async HTTP**-report channel for the optimistic-subscribe
+     * feed fetch. The Android `HttpCapability` async executor runs the RSS
+     * request off the actor thread and posts the JSON-encoded `HttpReport`
+     * here. Unlike downloads there is no follow-up command (the kernel hydrates
+     * the row and bumps the snapshot rev), so this returns nothing. The
+     * `handle != 0L` guard is the report-after-`free()` protection, mirroring
+     * `downloadReport`.
+     */
+    fun httpReport(reportJson: String) {
+        if (handle != 0L) nativeHttpReport(handle, reportJson)
+    }
+
+    /**
      * One-shot sign-in via local nsec. Demonstrates a single capability hop
      * the milestone exit checklist calls for. The PoC UI passes a stub value;
      * a real implementation would prompt for the nsec and route through the
@@ -282,6 +295,7 @@ class KernelBridge {
     private external fun nativeSetCapabilityRouter(handle: Long, router: AndroidCapabilityRouter?)
     private external fun nativeCapabilityReport(handle: Long, namespace: String, reportJson: String): String?
     private external fun nativeDownloadReport(handle: Long, reportJson: String): String?
+    private external fun nativeHttpReport(handle: Long, reportJson: String)
     private external fun nativeSigninNsec(handle: Long, nsec: String)
     private external fun nativeNextUpdate(handle: Long): String?
     private external fun nativePodcastSnapshot(handle: Long): String?

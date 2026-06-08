@@ -36,7 +36,10 @@ pub use dispatch::{
     DispatchOutcome,
 };
 pub use download::{DownloadCommand, DownloadKind, DownloadReport, DOWNLOAD_CAPABILITY_NAMESPACE};
-pub use http::{HttpMethod, HttpRequest, HttpResult, HTTP_CAPABILITY_NAMESPACE};
+pub use http::{
+    HttpCommand, HttpMethod, HttpReport, HttpRequest, HttpResult,
+    HTTP_ASYNC_CAPABILITY_NAMESPACE, HTTP_CAPABILITY_NAMESPACE,
+};
 pub use network::{NetworkReport, NETWORK_CAPABILITY_NAMESPACE};
 pub use nostr_relay::{NostrRelayRequest, NostrRelayResult, NOSTR_RELAY_CAPABILITY_NAMESPACE};
 pub use notification::{

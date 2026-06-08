@@ -141,6 +141,22 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     let app_ref = unsafe { &*app };
     let snapshot_signal = SnapshotUpdateSignal::new(rev.clone(), app_ref.actor_sender());
 
+    // Optimistic-subscribe async feed-fetch coordinator. Shared (one `Arc`)
+    // between the host-op handler (registers a pending fetch + dispatches the
+    // async HTTP command on the actor thread) and the handle (whose HTTP-report
+    // FFI applies the parsed result from the platform transport thread). Holds
+    // the same shared `store` / `rev` / `categories` / `picks` / `runtime` Arcs
+    // the rest of the kernel uses, plus the snapshot signal so it can re-project
+    // from off the actor thread.
+    let feed_fetch = Arc::new(crate::feed_fetch::FeedFetchCoordinator::new(
+        store.clone(),
+        rev.clone(),
+        Some(snapshot_signal.clone()),
+        categories.clone(),
+        picks.clone(),
+        runtime.clone(),
+    ));
+
     let agent_chat = AgentChatHandler::new(
         conversation.clone(),
         agent_busy.clone(),
@@ -246,6 +262,7 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
             Arc::clone(&inbox_triage_in_progress),
             social.clone(),
             agent_notes.clone(),
+            feed_fetch.clone(),
         )
         .with_snapshot_signal(snapshot_signal.clone()),
     ));
@@ -357,6 +374,7 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
         agent_notes,
         feedback_events_cache,
         runtime: runtime_for_handle,
+        feed_fetch,
     });
 
     // Reactive push projection — the canonical snapshot-output seam

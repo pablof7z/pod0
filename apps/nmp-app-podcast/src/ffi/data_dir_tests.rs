@@ -62,6 +62,7 @@ fn make_handle(store: Arc<Mutex<PodcastStore>>, rev: Arc<AtomicU64>) -> Box<Podc
         agent_notes: Arc::new(Mutex::new(Vec::new())),
         feedback_events_cache: Arc::new(Mutex::new(Vec::new())),
         runtime: Arc::new(tokio::runtime::Runtime::new().unwrap()),
+        feed_fetch: crate::feed_fetch::FeedFetchCoordinator::new_test(),
     })
 }
 struct TempDir {

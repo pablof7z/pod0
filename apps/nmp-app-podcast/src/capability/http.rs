@@ -15,7 +15,10 @@
 //! the response-headers / case-insensitive lookup contract. Nothing new
 //! happens at this layer.
 
-pub use podcast_feeds::http::{HttpMethod, HttpRequest, HttpResult, HTTP_CAPABILITY_NAMESPACE};
+pub use podcast_feeds::http::{
+    HttpCommand, HttpMethod, HttpReport, HttpRequest, HttpResult,
+    HTTP_ASYNC_CAPABILITY_NAMESPACE, HTTP_CAPABILITY_NAMESPACE,
+};
 
 #[cfg(test)]
 #[path = "http_tests.rs"]
