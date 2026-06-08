@@ -145,9 +145,10 @@ worktrees currently in flight.
   routing now treats blank/`none` credential sources as disconnected, so
   platform credential clears cannot accidentally route bare model IDs through
   OpenRouter. Android's ElevenLabs voice picker now consumes the shared Rust
-  voice catalog. Remaining provider-ownership work is AssemblyAI/Perplexity
-  credential metadata parity and streaming voice-mode STT/TTS once the
-  canonical NMP capability seam lands upstream
+  voice catalog. AssemblyAI/Perplexity credential metadata now matches
+  OpenRouter/Ollama/ElevenLabs across Rust settings, projections, iOS, Android,
+  and the TUI. Remaining provider-ownership work is streaming voice-mode
+  STT/TTS once the canonical NMP capability seam lands upstream
   (`pablof7z/nostr-multi-platform#954`).
 - **typed-agent-task-intents.** Backend `AgentTaskIntent` creation exists and
   the TUI task editor now submits typed/natural task requests instead of raw
