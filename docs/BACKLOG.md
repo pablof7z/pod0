@@ -404,6 +404,27 @@ worktrees currently in flight.
 - **rag-vector-search-real.** Replace substring search with
   `podcast-knowledge` indexing, embeddings, BM25/KNN retrieval, scoped
   search, provenance, and reindex jobs.
+- **coreml-embeddings-activation (#236).** The on-device Core ML MiniLM
+  embedding path is fully wired but INACTIVE: `CoreMLEmbeddingProvider`
+  (384-dim, `#if os(iOS)`/`@available(iOS 16,*)`) + bundled WordPiece tokenizer
+  (`bert-vocab.txt`) + `LocalEmbeddingsClient` (cloud-fallback adapter) ship in
+  PR for #236 and are composed into `RAGService`, but `LocalEmbeddingsClient`
+  routes to the cloud until BOTH gates clear. Remaining to activate:
+  (1) **Publish the `.mlpackage` asset** — run `coremltools` to convert
+  `sentence-transformers/all-MiniLM-L6-v2`, host it, and add a `LocalModelSpec`
+  for `all-minilm-l6-v2` to the Rust catalog (`apps/nmp-app-podcast/src/llm/
+  local_model_catalog.rs`); note that catalog's test currently pins
+  `.litertlm`/`huggingface.co`, and `DownloadCapability.localModelFileURL`
+  forces `.litertlm` while embedding models use the new `.mlpackage` helper —
+  the unified download executor's `.localModel` destination must learn the
+  embedding-model extension. (2) **Index dimension migration** — the live
+  `VectorIndex` is 1024-dim (`text-embedding-3-large`); MiniLM is 384-dim, so
+  `prefersLocal` stays false on the existing index. Activating on-device
+  embeddings requires opening the index at 384 and re-embedding the corpus (a
+  reindex job), or a side-by-side index. `LocalEmbeddingsClient` deliberately
+  refuses to mix dimensions, so wiring is safe to ship inert. (3) Surface the
+  active/downloading/ready state in the AI settings UI (the readiness plumbing
+  exists via `LocalEmbeddingsClient.prefersLocal` + `EmbeddingProvider.isReady`).
 - **wiki-real-generation.** Replace placeholder wiki articles with RAG-backed
   synthesis, citations, refresh/invalidation, per-podcast storage, and delete
   semantics.

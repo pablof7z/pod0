@@ -79,7 +79,17 @@ final class RAGService {
         // functional even if Application Support is sandboxed off.
         let resolvedURL: URL?
         let openedIndex: VectorIndex
-        let embedder = ProviderEmbeddingsClient()
+        // Cloud embedder (OpenRouter / Ollama via the Rust provider transport).
+        // Held separately because `attach(appStore:)` needs the concrete type to
+        // resolve the selected embedding model from settings.
+        let cloudEmbedder = ProviderEmbeddingsClient()
+        // The embedder the index actually consumes. On iOS, prefer the on-device
+        // Core ML MiniLM provider when it's ready AND its dimensionality matches
+        // the index; otherwise transparently fall back to the cloud provider.
+        // `LocalEmbeddingsClient` enforces the dimension guard so a 384-dim model
+        // never corrupts a 1024-dim index (issue #236). Today the live index is
+        // 1024-dim, so this resolves to the cloud path until the index migrates.
+        let embedder: any EmbeddingsClient = Self.makeEmbedder(cloud: cloudEmbedder)
         let reranker = SettingsAwareRerankerClient(
             base: OpenRouterRerankerClient(),
             isEnabled: {
@@ -115,7 +125,7 @@ final class RAGService {
 
         self.index = openedIndex
         self.embedder = embedder
-        self.providerEmbedder = embedder
+        self.providerEmbedder = cloudEmbedder
         self.reranker = reranker
         self.storeURL = resolvedURL
         self.search = RAGSearch(
@@ -123,5 +133,29 @@ final class RAGService {
             embedder: embedder,
             reranker: reranker
         )
+    }
+
+    // MARK: Embedder composition
+
+    /// Build the embedder the vector index consumes. On iOS, wrap the cloud
+    /// embedder in `LocalEmbeddingsClient` so the on-device Core ML MiniLM
+    /// provider is used when ready and dimension-compatible, with cloud
+    /// fallback. On non-iOS (or if the provider can't be constructed) this is
+    /// just the cloud embedder. The `LocalEmbeddingsClient` dimension guard
+    /// means wiring this in is safe even while the live index is 1024-dim.
+    private static func makeEmbedder(cloud: ProviderEmbeddingsClient) -> any EmbeddingsClient {
+        #if os(iOS)
+        if #available(iOS 16, *) {
+            do {
+                let provider = try CoreMLEmbeddingProvider()
+                return LocalEmbeddingsClient(provider: provider, cloud: cloud)
+            } catch {
+                Self.logger.error(
+                    "CoreMLEmbeddingProvider unavailable (\(error.localizedDescription, privacy: .public)) — using cloud embedder"
+                )
+            }
+        }
+        #endif
+        return cloud
     }
 }

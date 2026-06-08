@@ -79,6 +79,11 @@ let project = Project(
                 "App/Resources/Assets.xcassets",
                 "App/Resources/whats-new.json",
                 "App/Resources/test-episode.mp3",
+                // BERT uncased WordPiece vocab for the on-device MiniLM embedder
+                // (issue #236). The 384-dim Core ML model itself is a post-install
+                // download (not bundled); the vocab is small (~230 KB) so it ships
+                // in the IPA to keep the tokenizer dependency-free.
+                "App/Resources/bert-vocab.txt",
             ],
             entitlements: .file(path: "App/Resources/Podcastr.entitlements"),
             scripts: [
