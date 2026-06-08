@@ -92,6 +92,14 @@ dependencies {
     // against; pinned off 5.x to stay on that baseline (matching the
     // coil/media3 pinning rationale above).
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // ─── JUnit — local JVM unit tests ────────────────────────────────
+    //
+    // Runs on the host JVM (no emulator/NDK). `SnapshotCodecTest` proves the
+    // push-frame envelope decode (issue #320) — that `nextUpdate()`'s
+    // `{"t":"snapshot","v":{...}}` frame unwraps to the same `PodcastSnapshot`
+    // the bare projection pull yields, with `rev` propagating across frames.
+    testImplementation("junit:junit:4.13.2")
 }
 
 // ── cargo-ndk task ───────────────────────────────────────────────────────────

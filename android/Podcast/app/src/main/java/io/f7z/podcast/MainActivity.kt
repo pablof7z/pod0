@@ -20,15 +20,17 @@ import io.f7z.podcast.capabilities.HttpCapability
 import io.f7z.podcast.security.KeystoreManager
 import io.f7z.podcast.ui.AppNavigation
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 
 /**
  * Single-Activity Compose host for the M13 Android surface.
  *
  * The activity itself is a thin owner of the [`KernelBridge`] lifecycle:
- * it starts the Rust actor on composition, polls the snapshot at ~2 Hz,
- * and hands the decoded [`PodcastSnapshot`] down to [`AppNavigation`].
+ * it starts the Rust actor on composition, consumes pushed snapshot frames
+ * as the kernel emits them, and hands the decoded [`PodcastSnapshot`] down
+ * to [`AppNavigation`].
  *
  * D5/D8 — no state is held here beyond the snapshot mirror; every screen
  * derives what it shows from the latest snapshot tick. Action dispatches
@@ -55,13 +57,17 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * Root composable — owns the [`KernelBridge`] lifecycle and the snapshot
- * polling loop, then delegates rendering to [`AppNavigation`].
+ * Root composable — owns the [`KernelBridge`] lifecycle and the reactive
+ * snapshot loop, then delegates rendering to [`AppNavigation`].
  *
- * The polling cadence (~2 Hz) intentionally trails the kernel's 4 Hz emit
- * rate so the snapshot decode work doesn't dominate the main thread. A
- * later milestone will swap this for a push-side callback driven by
- * `KernelBridge.nextUpdate` on a worker coroutine.
+ * Snapshot delivery is push-driven (issue #320): the loop blocks on
+ * `bridge.nextUpdate()`, which drains the kernel's update channel
+ * (`apps/nmp-app-podcast/src/android.rs::on_update` → `nativeNextUpdate`'s
+ * blocking `recv`). It wakes the moment Rust emits a new frame and otherwise
+ * costs nothing — no fixed timer, no repeated `podcastSnapshot()` pulls. This
+ * matches the iOS push path and the NMP rule that there is no polling at any
+ * layer. A single initial `podcastSnapshot()` pull paints the first frame so
+ * the UI isn't blank until the kernel's first emit.
  */
 @Composable
 private fun PodcastRoot() {
@@ -109,11 +115,26 @@ private fun PodcastRoot() {
     }
 
     LaunchedEffect(bridge) {
+        // First paint: one-shot pull off the projection cache so the UI renders
+        // immediately instead of waiting for the kernel's first push frame.
+        withContext(Dispatchers.IO) { bridge.podcastSnapshot() }
+            ?.let { raw ->
+                SnapshotCodec.decode(raw)?.let { first ->
+                    snapshot = first
+                    download.reconcile(first.downloads?.active)
+                }
+            }
+
+        // Steady state: block on the kernel's push channel. `nextUpdate()` parks
+        // on the Rust-side `recv` (≤250 ms bounded so cancellation is prompt) and
+        // returns the moment a new frame arrives — reactive, not timed. A `null`
+        // return means "no new frame yet"; we re-park without touching state.
         while (true) {
-            val raw = withContext(Dispatchers.IO) { bridge.podcastSnapshot() }
-            snapshot = SnapshotCodec.decode(raw)
-            download.reconcile(snapshot?.downloads?.active)
-            delay(SNAPSHOT_POLL_INTERVAL_MS)
+            coroutineContext.ensureActive()
+            val raw = withContext(Dispatchers.IO) { bridge.nextUpdate() } ?: continue
+            val next = SnapshotCodec.decodeEnvelope(raw) ?: continue
+            snapshot = next
+            download.reconcile(next.downloads?.active)
         }
     }
 
@@ -131,5 +152,3 @@ private fun PodcastRoot() {
 
     AppNavigation(snapshot = snapshot, bridge = bridge)
 }
-
-private const val SNAPSHOT_POLL_INTERVAL_MS: Long = 500

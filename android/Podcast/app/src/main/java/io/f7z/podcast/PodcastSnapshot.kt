@@ -412,6 +412,44 @@ object SnapshotCodec {
         coerceInputValues = true
     }
 
+    /**
+     * Decode a bare projection payload — the shape `KernelBridge.podcastSnapshot()`
+     * returns straight off the projection cache (`{"running":...,"rev":...}`).
+     */
     fun decode(raw: String?): PodcastSnapshot? =
         raw?.let { runCatching { json.decodeFromString<PodcastSnapshot>(it) }.getOrNull() }
+
+    /**
+     * Decode a reactive **push-frame** envelope — the shape
+     * `KernelBridge.nextUpdate()` returns after the kernel's update callback
+     * (`apps/nmp-app-podcast/src/android.rs::on_update`) decodes the binary
+     * FlatBuffers frame to JSON: `{"t":"snapshot","v":{...}}`, where `v` is the
+     * same `PodcastUpdate` projection [decode] consumes bare.
+     *
+     * Mirrors iOS `KernelBridge.swift::decodePodcastUpdate(envelopePayload:)`,
+     * which unwraps `v` from the identical envelope. Non-`snapshot` tags (e.g.
+     * `{"t":"panic",...}` from the D7 actor-death contract) and malformed frames
+     * yield `null` so the caller simply keeps the last good snapshot.
+     */
+    fun decodeEnvelope(raw: String?): PodcastSnapshot? =
+        raw?.let {
+            runCatching {
+                val envelope = json.decodeFromString<SnapshotEnvelope>(it)
+                if (envelope.t == "snapshot" && envelope.v != null) {
+                    json.decodeFromJsonElement(PodcastSnapshot.serializer(), envelope.v)
+                } else {
+                    null
+                }
+            }.getOrNull()
+        }
+
+    /**
+     * Push-frame wrapper. `v` is the generic kernel snapshot value; we re-decode
+     * it into the typed [PodcastSnapshot] only when `t == "snapshot"`.
+     */
+    @Serializable
+    private data class SnapshotEnvelope(
+        val t: String = "",
+        val v: kotlinx.serialization.json.JsonElement? = null,
+    )
 }
