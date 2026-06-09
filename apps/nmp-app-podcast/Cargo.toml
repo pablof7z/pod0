@@ -37,7 +37,11 @@ required-features = ["headless"]
 
 [dependencies]
 async-trait = "0.1"
-reqwest = { version = "0.12", features = ["blocking", "json", "multipart", "rustls-tls"] }
+# default-features = false drops reqwest's `default-tls` (native-tls → openssl-sys),
+# which cannot cross-compile to Android. The crate already standardizes on rustls
+# (see tokio-tungstenite + rig-core below); we re-add the other default features
+# (charset/http2/system-proxy/macos-system-configuration) so non-TLS behavior is unchanged.
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "multipart", "rustls-tls", "charset", "http2", "system-proxy", "macos-system-configuration"] }
 tempfile = { version = "3", optional = true }
 # WebSocket client used by the production social-graph relay subscriptions
 # (FetchContacts → kind:3 + kind:0) and by the headless relay_client.
