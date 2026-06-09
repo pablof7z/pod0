@@ -112,7 +112,7 @@ final class ClipBoundaryResolverTests: XCTestCase {
          "quotedText": "So the body's ability to switch substrate is the real measure.",
          "speakerLabel": "Guest"}
         """
-        resolver.clientFactory = { _ in WikiOpenRouterClient.stubbed(json: stub) }
+        resolver.clientFactory = { _ in ProviderCompletionClient.stubbed(json: stub) }
 
         let resolved = await resolver.resolveBoundaries(
             transcript: makeTranscript(),

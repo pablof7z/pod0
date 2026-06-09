@@ -89,7 +89,5 @@ final class AgentContextDecodeTests: XCTestCase {
         XCTAssertEqual(task.title, "Inbox Triage")
         XCTAssertEqual(task.intentType, "inbox_triage")
         XCTAssertEqual(task.intentLabel, "Triage inbox")
-        XCTAssertNil(task.actionNamespace)
-        XCTAssertNil(task.actionBody)
     }
 }

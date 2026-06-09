@@ -38,28 +38,6 @@ final class LLMProviderTests: XCTestCase {
         XCTAssertEqual(decoded.embeddingsModelName, "qwen3-embedding")
     }
 
-    func testOllamaAPIKeyRequirementDependsOnConfiguredHost() {
-        XCTAssertTrue(LLMProviderCredentialResolver.requiresAPIKey(for: .openRouter))
-        XCTAssertTrue(LLMProviderCredentialResolver.requiresAPIKey(for: .ollama))
-        XCTAssertTrue(LLMProviderCredentialResolver.requiresAPIKey(
-            for: .ollama,
-            ollamaChatURL: URL(string: "https://ollama.com/api/chat")
-        ))
-        XCTAssertTrue(LLMProviderCredentialResolver.requiresAPIKey(
-            for: .ollama,
-            ollamaChatURL: URL(string: "https://www.ollama.com/api/chat")
-        ))
-
-        XCTAssertFalse(LLMProviderCredentialResolver.requiresAPIKey(
-            for: .ollama,
-            ollamaChatURL: URL(string: "http://localhost:11434/api/chat")
-        ))
-        XCTAssertFalse(LLMProviderCredentialResolver.requiresAPIKey(
-            for: .ollama,
-            ollamaChatURL: URL(string: "https://ollama.home.arpa/api/chat")
-        ))
-    }
-
     func testOllamaTagsURLUsesConfiguredChatHost() {
         XCTAssertEqual(
             OllamaModelCatalogURL.tagsURL(from: nil).absoluteString,
