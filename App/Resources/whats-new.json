@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-09T13:40:00Z",
+      "lines": [
+        "On-device (Apple) transcription now actually finishes — previously it could start and then hang forever without ever producing a transcript."
+      ]
+    },
+    {
       "shipped_at": "2026-06-09T01:20:00Z",
       "lines": [
         "Subscribing to a podcast is now instant — the show appears in your library the moment you tap, and its episodes fill in a moment later in the background instead of making you wait for the feed to download."

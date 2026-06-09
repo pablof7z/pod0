@@ -96,14 +96,26 @@ actor AppleNativeSTTClient {
         )
 
         // Drive analysis and collect finalized segments concurrently.
-        // `analyzeSequence` feeds audio through the pipeline; when it returns
-        // the transcriber finalizes and its `results` sequence ends naturally.
-        var rawResults: [SpeechTranscriber.Result] = []
-        async let analysisTime: CMTime? = analyzer.analyzeSequence(from: audioFile)
-        for try await result in transcriber.results where result.isFinal {
-            rawResults.append(result)
-        }
-        _ = try await analysisTime
+        //
+        // Consume `transcriber.results` in a child task so we don't deadlock on
+        // result buffering while `analyzeSequence` feeds the file. Crucially, the
+        // `results` sequence does NOT end on its own when `analyzeSequence`
+        // returns — it only terminates once the analyzer is *finished*. So after
+        // the file is fully read we explicitly call
+        // `finalizeAndFinishThroughEndOfInput()`, which flushes the trailing
+        // results and closes the stream, letting the collector return. Without
+        // that finish the `for try await` loop waits forever and the episode is
+        // stuck in `.transcribing` indefinitely (no result, no error).
+        async let collected: [SpeechTranscriber.Result] = {
+            var acc: [SpeechTranscriber.Result] = []
+            for try await result in transcriber.results where result.isFinal {
+                acc.append(result)
+            }
+            return acc
+        }()
+        _ = try await analyzer.analyzeSequence(from: audioFile)
+        try await analyzer.finalizeAndFinishThroughEndOfInput()
+        let rawResults = try await collected
 
         Self.logger.info(
             "on-device transcription complete — episode=\(episodeID, privacy: .public) segments=\(rawResults.count, privacy: .public)"
