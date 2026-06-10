@@ -313,7 +313,13 @@ extension PodcastHandle {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         do {
-            return try decoder.decode(PodcastUpdate.self, from: data)
+            let update = try decoder.decode(PodcastUpdate.self, from: data)
+            guard update.schemaVersion == KERNEL_SCHEMA_VERSION else {
+                kbLog.fault(
+                    "podcastSnapshot REJECTED: schema_version \(update.schemaVersion) != expected \(KERNEL_SCHEMA_VERSION) — failing closed on kernel/shell schema mismatch")
+                return PodcastUpdate()
+            }
+            return update
         } catch {
             kbLog.error("podcastSnapshot decode: \(error, privacy: .public)")
             return PodcastUpdate()

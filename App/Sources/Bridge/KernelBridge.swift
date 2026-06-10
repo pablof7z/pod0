@@ -4,9 +4,11 @@ import os.log
 
 let kbLog = Logger(subsystem: "io.f7z.podcast", category: "KernelBridge")
 
-/// Mirror of `KERNEL_SCHEMA_VERSION` (Rust: `crates/nmp-core/src/update_envelope.rs`).
-/// Must be bumped in lock-step when the Rust constant changes.
-private let KERNEL_SCHEMA_VERSION: UInt32 = 1
+/// Mirror of the kernel's `schema_version` (Rust: `nmp_core::SNAPSHOT_SCHEMA_VERSION`),
+/// emitted on every `PodcastUpdate` projection. Must be bumped in lock-step when the
+/// Rust constant changes; snapshot decoding fails closed on a mismatch (#356) rather
+/// than silently misparsing a newer/older schema.
+let KERNEL_SCHEMA_VERSION = 1
 
 /// Thin C-FFI wrapper around the `nmp_app_podcast` static library.
 final class PodcastHandle: @unchecked Sendable {
@@ -240,7 +242,13 @@ final class PodcastHandle: @unchecked Sendable {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         do {
-            return try decoder.decode(PodcastUpdate.self, from: podcastData)
+            let update = try decoder.decode(PodcastUpdate.self, from: podcastData)
+            guard update.schemaVersion == KERNEL_SCHEMA_VERSION else {
+                kbLog.fault(
+                    "podcast.snapshot REJECTED: schema_version \(update.schemaVersion) != expected \(KERNEL_SCHEMA_VERSION) — failing closed on kernel/shell schema mismatch")
+                return nil
+            }
+            return update
         } catch {
             kbLog.error("podcast.snapshot decode FAILED: \(error) bytes=\(podcastData.count)")
             return nil
