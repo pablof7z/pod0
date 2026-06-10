@@ -382,7 +382,6 @@
 		84DD823D72F4E5C852881AEA /* PlayerQueueSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02AA954731D0DD21C365DB3D /* PlayerQueueSheet.swift */; };
 		84E9DB905BEA2F956935D173 /* KernelBridgeWireTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2BFCB338FF13BAE20FA63D7 /* KernelBridgeWireTests.swift */; };
 		8515BFB3381577D5D436B2F2 /* ScribeBackendAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A36C26B39CDE8EF305D3EA8 /* ScribeBackendAdapterTests.swift */; };
-		853AA3D8AA7F6722529B5054 /* NIP19.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC38B37A2041B6D35C1D4D1 /* NIP19.swift */; };
 		86566F20C645792F76A672CB /* QRCodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AD631AA7BD5660AE2BA6946 /* QRCodeScannerView.swift */; };
 		86D4F2F0B6A5F7414102AB1B /* ChaptersHydrationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86B285F652D6AA574D54A0C8 /* ChaptersHydrationService.swift */; };
 		86F14AE85C55B981590A6D12 /* PlatformCapability.swift in Sources */ = {isa = PBXBuildFile; fileRef = F667BC7E9AEB03AAF8949C6B /* PlatformCapability.swift */; };
@@ -1055,7 +1054,6 @@
 		4C0F339715B33351F119B1B1 /* PlaybackQueueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackQueueTests.swift; sourceTree = "<group>"; };
 		4CA1192EED6A0A07225F1EBC /* KernelBridge+Identity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KernelBridge+Identity.swift"; sourceTree = "<group>"; };
 		4CA6225E0F89D30220E3C7ED /* Note.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Note.swift; sourceTree = "<group>"; };
-		4CC38B37A2041B6D35C1D4D1 /* NIP19.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NIP19.swift; sourceTree = "<group>"; };
 		4D29A45741CE65088F225079 /* FriendAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendAvatar.swift; sourceTree = "<group>"; };
 		4D6DCC04DC0CE6E3621F60EE /* SurveyUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SurveyUITests.swift; sourceTree = "<group>"; };
 		4D8B6EAFFF39F41EE92F964D /* NarrationTrack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NarrationTrack.swift; sourceTree = "<group>"; };
@@ -2497,7 +2495,6 @@
 				AA71289F9189F1E8D3FD7E89 /* ImageGenerationService.swift */,
 				6CC910C51175E874E2D6CE9C /* ITunesSearchClient.swift */,
 				64CCEB4A7701F0ACD3FEA63D /* KeychainStore.swift */,
-				4CC38B37A2041B6D35C1D4D1 /* NIP19.swift */,
 				66E46F2084285735758A2747 /* NostrCredentialStore.swift */,
 				44DB68A2A42D3C0D678256C1 /* NostrEventPublisher.swift */,
 				4F5632893D431A8A00EC3232 /* NostrPeerAgentPrompt.swift */,
@@ -3611,7 +3608,6 @@
 				1617C2B6B61E7ECFD480C2D2 /* ITunesSearchClient.swift in Sources */,
 				5B08E1F1A0F4C28832DA36DB /* ImageGenerationService.swift in Sources */,
 				F5CD6E8D0E84E9CBC1B04141 /* KeychainStore.swift in Sources */,
-				853AA3D8AA7F6722529B5054 /* NIP19.swift in Sources */,
 				DECD0A8C7962344212621873 /* NostrSigner.swift in Sources */,
 				9436D52964A876E80630EE4E /* NostrCredentialStore.swift in Sources */,
 				C4CCDCAA55CAC394EB4F6270 /* NostrEventPublisher.swift in Sources */,
