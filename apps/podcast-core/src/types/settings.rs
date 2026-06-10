@@ -213,7 +213,7 @@ impl Default for Settings {
             auto_mark_played_at_end: true,
             auto_delete_downloads_after_played: false,
             auto_play_next: true,
-            auto_skip_ads: false,
+            auto_skip_ads: true,
             headphone_double_tap_action: HeadphoneGestureAction::SkipForward,
             headphone_triple_tap_action: HeadphoneGestureAction::ClipNow,
 

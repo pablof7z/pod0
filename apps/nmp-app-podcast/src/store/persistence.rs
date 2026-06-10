@@ -91,9 +91,9 @@ pub(super) struct PersistedStore {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(super) struct PersistedSettings {
     /// Mirrors `PodcastStore::auto_skip_ads_enabled`. Defaults to
-    /// `false` so an old payload (no settings block) hydrates with
-    /// the toggle off — never accidentally enabled.
-    #[serde(default)]
+    /// `true` so new installs and users upgrading from a pre-ad-skip build
+    /// get the feature enabled without an explicit opt-in.
+    #[serde(default = "default_true")]
     pub auto_skip_ads_enabled: bool,
     /// When `true`, kernel auto-advances to the next queued episode on `ItemEnd`.
     /// `#[serde(default)]` + `fn default_true` loads absent (old) files as `true`.
@@ -327,7 +327,7 @@ fn default_true() -> bool {
 impl Default for PersistedSettings {
     fn default() -> Self {
         Self {
-            auto_skip_ads_enabled: false,
+            auto_skip_ads_enabled: true,
             auto_play_next: true,
             auto_mark_played_at_end: true,
             headphone_double_tap_action: "skipForward".to_owned(),

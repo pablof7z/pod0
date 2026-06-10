@@ -209,9 +209,9 @@ struct Settings: Codable, Hashable, Sendable {
     var autoPlayNext: Bool = true
     /// When `true`, the player auto-seeks past detected ad segments
     /// (`AIChapterCompiler` output, stored on `Episode.adSegments`).
-    /// Defaults off for v1 — opt-in until detection quality is proven. The
-    /// chapter rail still flags ad-overlapping chapters visually regardless.
-    var autoSkipAds: Bool = false
+    /// Defaults on — ad detection quality is proven. The chapter rail still
+    /// flags ad-overlapping chapters visually regardless.
+    var autoSkipAds: Bool = true
     /// Action fired by an AirPods double-tap / double-squeeze (or any headphone
     /// remote that emits `MPRemoteCommandCenter.nextTrackCommand`). Default
     /// matches the common podcast-player muscle memory: jump forward by the
@@ -355,7 +355,7 @@ struct Settings: Codable, Hashable, Sendable {
         autoMarkPlayedAtEnd = try c.decodeIfPresent(Bool.self, forKey: .autoMarkPlayedAtEnd) ?? true
         autoDeleteDownloadsAfterPlayed = try c.decodeIfPresent(Bool.self, forKey: .autoDeleteDownloadsAfterPlayed) ?? false
         autoPlayNext = try c.decodeIfPresent(Bool.self, forKey: .autoPlayNext) ?? true
-        autoSkipAds = try c.decodeIfPresent(Bool.self, forKey: .autoSkipAds) ?? false
+        autoSkipAds = try c.decodeIfPresent(Bool.self, forKey: .autoSkipAds) ?? true
         headphoneDoubleTapAction = try c.decodeIfPresent(HeadphoneGestureAction.self, forKey: .headphoneDoubleTapAction) ?? .skipForward
         headphoneTripleTapAction = try c.decodeIfPresent(HeadphoneGestureAction.self, forKey: .headphoneTripleTapAction) ?? .clipNow
         wikiAutoGenerateOnTranscriptIngest = try c.decodeIfPresent(Bool.self, forKey: .wikiAutoGenerateOnTranscriptIngest) ?? false

@@ -7,7 +7,7 @@ import Foundation
 /// App-settings projection. Mirrors `ffi::projections::SettingsSnapshot`.
 struct SettingsSnapshot: Equatable {
     var hasCompletedOnboarding: Bool = false
-    var autoSkipAdsEnabled: Bool = false
+    var autoSkipAdsEnabled: Bool = true
     var autoPlayNext: Bool = true
     var autoMarkPlayedAtEnd: Bool = true
     var headphoneDoubleTapAction: String = "skipForward"
@@ -167,7 +167,7 @@ extension SettingsSnapshot: Codable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         hasCompletedOnboarding = try c.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? false
-        autoSkipAdsEnabled = try c.decodeIfPresent(Bool.self, forKey: .autoSkipAdsEnabled) ?? false
+        autoSkipAdsEnabled = try c.decodeIfPresent(Bool.self, forKey: .autoSkipAdsEnabled) ?? true
         autoPlayNext = try c.decodeIfPresent(Bool.self, forKey: .autoPlayNext) ?? true
         autoMarkPlayedAtEnd = try c.decodeIfPresent(Bool.self, forKey: .autoMarkPlayedAtEnd) ?? true
         headphoneDoubleTapAction = try c.decodeIfPresent(String.self, forKey: .headphoneDoubleTapAction) ?? "skipForward"

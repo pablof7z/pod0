@@ -313,7 +313,7 @@ impl PodcastStore {
             metadata_indexed_episodes: HashSet::new(),
             transcript_status_overrides: HashMap::new(),
             episode_events: HashMap::new(),
-            auto_skip_ads_enabled: false,
+            auto_skip_ads_enabled: true,
             auto_play_next: true,
             auto_mark_played_at_end: true,
             headphone_double_tap_action: "skipForward".to_owned(),
