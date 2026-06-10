@@ -31,21 +31,38 @@ impl PodcastHostOpHandler {
                 picture.as_deref(),
                 correlation_id,
             ),
-            SocialAction::PublishNote { content, tags } => {
-                crate::social_publish_handler::handle_publish_note(
-                    self.app,
-                    &self.identity,
-                    &content,
-                    tags.as_ref(),
-                    correlation_id,
-                )
-            }
-            SocialAction::PublishHighlight { content, tags } => {
+            SocialAction::PublishNote {
+                content,
+                episode_coord,
+            } => crate::social_publish_handler::handle_publish_note(
+                self.app,
+                &self.identity,
+                &content,
+                episode_coord.as_deref(),
+                correlation_id,
+            ),
+            SocialAction::PublishHighlight {
+                content,
+                enclosure_url,
+                feed_url,
+                item_guid,
+                start_sec,
+                end_sec,
+                caption,
+            } => {
+                let fields = crate::social_publish_handler::HighlightFields {
+                    enclosure_url: enclosure_url.as_deref(),
+                    feed_url: feed_url.as_deref(),
+                    item_guid: item_guid.as_deref(),
+                    start_sec,
+                    end_sec,
+                    caption: caption.as_deref(),
+                };
                 crate::social_publish_handler::handle_publish_highlight(
                     self.app,
                     &self.identity,
                     &content,
-                    tags.as_ref(),
+                    &fields,
                     correlation_id,
                 )
             }

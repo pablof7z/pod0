@@ -46,56 +46,63 @@ fn publish_profile_decodes_minimal_payload() {
 }
 
 #[test]
-fn publish_note_round_trips_with_tags() {
+fn publish_note_round_trips_with_episode_coord() {
     let action = SocialAction::PublishNote {
         content: "hello".into(),
-        tags: Some(vec![vec!["t".into(), "note".into()]]),
+        episode_coord: Some("30311:abc:def".into()),
     };
     let json = serde_json::to_string(&action).expect("encode");
     assert!(json.contains(r#""op":"publish_note""#));
+    assert!(json.contains(r#""episode_coord":"30311:abc:def""#));
     let decoded: SocialAction = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded, action);
 }
 
 #[test]
-fn publish_note_decodes_without_tags() {
+fn publish_note_decodes_without_episode_coord() {
     let decoded: SocialAction =
         serde_json::from_str(r#"{"op":"publish_note","content":"hi"}"#).expect("decode");
     assert_eq!(
         decoded,
         SocialAction::PublishNote {
             content: "hi".into(),
-            tags: None,
+            episode_coord: None,
         }
     );
 }
 
 #[test]
-fn publish_highlight_round_trips_with_tags() {
+fn publish_highlight_round_trips_with_typed_fields() {
     let action = SocialAction::PublishHighlight {
         content: "quote".into(),
-        tags: Some(vec![
-            vec!["r".into(), "https://example.com/a.mp3".into()],
-            vec!["i".into(), "podcast:item:guid:GUID#t=1,2".into()],
-            vec!["context".into(), "ctx".into()],
-            vec!["alt".into(), "caption".into()],
-        ]),
+        enclosure_url: Some("https://example.com/a.mp3".into()),
+        feed_url: Some("https://example.com/feed.xml".into()),
+        item_guid: Some("GUID".into()),
+        start_sec: Some(1),
+        end_sec: Some(2),
+        caption: Some("caption".into()),
     };
     let json = serde_json::to_string(&action).expect("encode");
     assert!(json.contains(r#""op":"publish_highlight""#));
+    assert!(json.contains(r#""item_guid":"GUID""#));
     let decoded: SocialAction = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded, action);
 }
 
 #[test]
-fn publish_highlight_decodes_without_tags() {
+fn publish_highlight_decodes_minimal_payload() {
     let decoded: SocialAction =
         serde_json::from_str(r#"{"op":"publish_highlight","content":"q"}"#).expect("decode");
     assert_eq!(
         decoded,
         SocialAction::PublishHighlight {
             content: "q".into(),
-            tags: None,
+            enclosure_url: None,
+            feed_url: None,
+            item_guid: None,
+            start_sec: None,
+            end_sec: None,
+            caption: None,
         }
     );
 }
@@ -104,7 +111,7 @@ fn publish_highlight_decodes_without_tags() {
 fn execute_emits_dispatch_host_op() {
     let action = SocialAction::PublishNote {
         content: "hi".into(),
-        tags: None,
+        episode_coord: None,
     };
     let commands = std::sync::Mutex::new(Vec::<ActorCommand>::new());
     SocialActionModule::execute(action, "corr-1", &|cmd| {

@@ -122,30 +122,29 @@ extension UserIdentityStore {
         // account dispatched here (the pubkey lands on the next snapshot tick).
         // The kernel signs with its active account — there is no Swift signer.
         try _ensureGeneratedKey()
-        var tags: [[String]] = [["t", "note"]]
+        // Pass typed fields; the kernel builds the NIP tags (`["t","note"]`
+        // plus an optional `["a", episode_coord]`) — Nostr tag semantics live
+        // in the kernel, matching `LivePeerEventPublisher`'s convention (#355).
+        var body: [String: Any] = ["op": "publish_note", "content": note.text]
         if let episodeCoord, !episodeCoord.isEmpty {
-            tags.insert(["a", episodeCoord], at: 0)
+            body["episode_coord"] = episodeCoord
         }
-        dispatchToKernel(
-            namespace: "podcast.social",
-            body: ["op": "publish_note", "content": note.text, "tags": tags]
-        )
-        return kernelDispatchedEventStub(kind: 1, content: note.text, tags: tags)
+        dispatchToKernel(namespace: "podcast.social", body: body)
+        return kernelDispatchedEventStub(kind: 1, content: note.text, tags: [])
     }
 
     /// Sign + publish a user-authored clip as a kind:9802 highlight (NIP-84)
     /// with NIP-73 external content IDs for the podcast ecosystem.
     ///
-    /// Tag structure:
-    /// - `["r", enclosureURL]` — NIP-84 source URL (the audio file).
-    /// - `["r", feedURL]` — podcast feed reference.
-    /// - `["i", "podcast:item:guid:<guid>#t=<start>,<end>"]` — NIP-73
-    ///   external content ID with media-fragment time offset (seconds).
-    /// - `["context", transcriptText]` — NIP-84 surrounding context.
-    /// - `["alt", caption]` — human-readable description when present.
+    /// Passes typed fields to the `podcast.social` handler; the kernel
+    /// assembles the NIP-73 / NIP-84 tag set (`r` enclosure + feed, `i` item
+    /// guid with media-fragment time range, `context`, `alt`). Nostr tag
+    /// semantics belong in the kernel, matching `LivePeerEventPublisher`'s
+    /// "Swift passes typed values; Rust builds tags" convention (#355).
     ///
     /// `episode` and `podcast` are optional so callers that lack the
-    /// resolved models can still publish a degraded-but-valid event.
+    /// resolved models can still publish a degraded-but-valid event — the
+    /// kernel emits whichever tags the present fields support.
     func publishUserClip(
         _ clip: Clip,
         episode: Episode? = nil,
@@ -156,39 +155,26 @@ extension UserIdentityStore {
         // The kernel signs with its active account — there is no Swift signer.
         try _ensureGeneratedKey()
 
-        var tags: [[String]] = []
-
-        // NIP-84: source URL — the audio enclosure.
+        var body: [String: Any] = [
+            "op": "publish_highlight",
+            "content": clip.transcriptText,
+        ]
         if let enclosureURL = episode?.enclosureURL {
-            tags.append(["r", enclosureURL.absoluteString])
+            body["enclosure_url"] = enclosureURL.absoluteString
         }
-
-        // NIP-73: podcast feed reference (show level).
         if let feedURL = podcast?.feedURL {
-            tags.append(["r", feedURL.absoluteString])
+            body["feed_url"] = feedURL.absoluteString
         }
-
-        // NIP-73: episode external content ID with time-fragment offset.
         if let guid = episode?.guid {
-            let startSec = clip.startMs / 1000
-            let endSec   = clip.endMs   / 1000
-            tags.append(["i", "podcast:item:guid:\(guid)#t=\(startSec),\(endSec)"])
+            body["item_guid"] = guid
+            body["start_sec"] = clip.startMs / 1000
+            body["end_sec"]   = clip.endMs   / 1000
         }
-
-        // NIP-84: surrounding context.
-        tags.append(["context", clip.transcriptText])
-
         if let caption = clip.caption, !caption.isEmpty {
-            tags.append(["alt", caption])
+            body["caption"] = caption
         }
 
-        // Tag assembly stays Swift-side (it holds the resolved episode +
-        // podcast); the sign + publish is the kernel's job for both local-key
-        // and bunker identities.
-        dispatchToKernel(
-            namespace: "podcast.social",
-            body: ["op": "publish_highlight", "content": clip.transcriptText, "tags": tags]
-        )
-        return kernelDispatchedEventStub(kind: 9802, content: clip.transcriptText, tags: tags)
+        dispatchToKernel(namespace: "podcast.social", body: body)
+        return kernelDispatchedEventStub(kind: 9802, content: clip.transcriptText, tags: [])
     }
 }

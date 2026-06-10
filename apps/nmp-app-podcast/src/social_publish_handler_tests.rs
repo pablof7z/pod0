@@ -11,7 +11,8 @@
 use std::sync::{Arc, Mutex};
 
 use crate::social_publish_handler::{
-    build_profile_fields, handle_publish_highlight, handle_publish_note, handle_publish_profile,
+    build_highlight_tags, build_note_tags, build_profile_fields, handle_publish_highlight,
+    handle_publish_note, handle_publish_profile, HighlightFields,
 };
 use crate::store::identity::IdentityStore;
 
@@ -106,10 +107,27 @@ fn publish_note_dispatches_under_null_app() {
     assert_eq!(v["status"], "signed");
 }
 
+fn empty_highlight_fields() -> HighlightFields<'static> {
+    HighlightFields {
+        enclosure_url: None,
+        feed_url: None,
+        item_guid: None,
+        start_sec: None,
+        end_sec: None,
+        caption: None,
+    }
+}
+
 #[test]
 fn publish_highlight_rejects_empty_content() {
     let identity = signed_in_identity();
-    let v = handle_publish_highlight(std::ptr::null_mut(), &identity, "  ", None, "corr");
+    let v = handle_publish_highlight(
+        std::ptr::null_mut(),
+        &identity,
+        "  ",
+        &empty_highlight_fields(),
+        "corr",
+    );
     assert_eq!(v["ok"], false);
     assert_eq!(v["error"], "empty highlight");
 }
@@ -117,14 +135,82 @@ fn publish_highlight_rejects_empty_content() {
 #[test]
 fn publish_highlight_dispatches_under_null_app() {
     let identity = signed_in_identity();
-    let tags = vec![vec!["context".to_string(), "ctx".to_string()]];
     let v = handle_publish_highlight(
         std::ptr::null_mut(),
         &identity,
         "a quote",
-        Some(&tags),
+        &empty_highlight_fields(),
         "corr",
     );
     assert_eq!(v["ok"], true);
     assert_eq!(v["status"], "signed");
+}
+
+// ── pure tag builders (the moved-from-Swift NIP-73/84 assembly) ───────
+
+#[test]
+fn build_note_tags_marks_note_and_omits_absent_coord() {
+    assert_eq!(build_note_tags(None), vec![vec!["t".to_string(), "note".to_string()]]);
+    assert_eq!(build_note_tags(Some("")), vec![vec!["t".to_string(), "note".to_string()]]);
+}
+
+#[test]
+fn build_note_tags_prepends_episode_coord() {
+    assert_eq!(
+        build_note_tags(Some("30311:abc:def")),
+        vec![
+            vec!["a".to_string(), "30311:abc:def".to_string()],
+            vec!["t".to_string(), "note".to_string()],
+        ]
+    );
+}
+
+#[test]
+fn build_highlight_tags_assembles_full_nip73_84_set() {
+    let f = HighlightFields {
+        enclosure_url: Some("https://cdn.example.com/ep.mp3"),
+        feed_url: Some("https://example.com/feed.xml"),
+        item_guid: Some("GUID-1"),
+        start_sec: Some(12),
+        end_sec: Some(34),
+        caption: Some("nice bit"),
+    };
+    assert_eq!(
+        build_highlight_tags("the quote", &f),
+        vec![
+            vec!["r".to_string(), "https://cdn.example.com/ep.mp3".to_string()],
+            vec!["r".to_string(), "https://example.com/feed.xml".to_string()],
+            vec!["i".to_string(), "podcast:item:guid:GUID-1#t=12,34".to_string()],
+            vec!["context".to_string(), "the quote".to_string()],
+            vec!["alt".to_string(), "nice bit".to_string()],
+        ]
+    );
+}
+
+#[test]
+fn build_highlight_tags_degrades_with_only_context() {
+    // No episode/podcast resolved and no caption: just the context tag.
+    assert_eq!(
+        build_highlight_tags("ctx", &empty_highlight_fields()),
+        vec![vec!["context".to_string(), "ctx".to_string()]]
+    );
+}
+
+#[test]
+fn build_highlight_tags_omits_empty_caption_and_defaults_times() {
+    let f = HighlightFields {
+        enclosure_url: None,
+        feed_url: None,
+        item_guid: Some("G"),
+        start_sec: None,
+        end_sec: None,
+        caption: Some(""),
+    };
+    assert_eq!(
+        build_highlight_tags("c", &f),
+        vec![
+            vec!["i".to_string(), "podcast:item:guid:G#t=0,0".to_string()],
+            vec!["context".to_string(), "c".to_string()],
+        ]
+    );
 }

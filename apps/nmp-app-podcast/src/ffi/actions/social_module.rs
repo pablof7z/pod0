@@ -7,9 +7,10 @@
 //! Per D7 the kernel owns the signing policy. The action module is pure
 //! routing: Swift encodes
 //! `{"op":"publish_profile","name":"...","display_name":"...",...}` /
-//! `{"op":"publish_note","content":"...","tags":[["t","note"]]}` /
-//! `{"op":"publish_highlight","content":"...","tags":[["r","..."],["i","..."],["context","..."],["alt","..."]]}`
-//! and the handler does the work.
+//! `{"op":"publish_note","content":"...","episode_coord":"30311:..."}` /
+//! `{"op":"publish_highlight","content":"...","enclosure_url":"...","feed_url":"...","item_guid":"...","start_sec":12,"end_sec":34,"caption":"..."}`
+//! and the kernel handler assembles the NIP-73 / NIP-84 tags from the typed
+//! fields (Swift passes semantic values, Rust builds the tags).
 //!
 //! ## Wire-contract note
 //!
@@ -49,20 +50,33 @@ pub enum SocialAction {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         picture: Option<String>,
     },
-    /// Sign + publish a kind:1 text note. `tags` is passed through verbatim
-    /// (e.g. `[["t","note"],["a","30311:..."]]`).
+    /// Sign + publish a kind:1 text note. The kernel builds the tags: a
+    /// `["t","note"]` marker plus an optional `["a", episode_coord]` tag when
+    /// `episode_coord` (a `30311:<author>:<id>` reference) is present.
     PublishNote {
         content: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        tags: Option<Vec<Vec<String>>>,
+        episode_coord: Option<String>,
     },
-    /// Sign + publish a kind:9802 NIP-84 highlight. `tags` carries the full
-    /// NIP-73 / NIP-84 tag set assembled Swift-side (enclosure + feed `r`
-    /// tags, the `i` episode-coordinate tag, `context`, `alt`).
+    /// Sign + publish a kind:9802 NIP-84 highlight. The kernel assembles the
+    /// NIP-73 / NIP-84 tag set from these typed fields: `["r", enclosure_url]`
+    /// + `["r", feed_url]` source refs, an `["i", "podcast:item:guid:<guid>#t=
+    /// <start_sec>,<end_sec>"]` external content id, a `["context", content]`
+    /// tag, and an optional `["alt", caption]`.
     PublishHighlight {
         content: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        tags: Option<Vec<Vec<String>>>,
+        enclosure_url: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        feed_url: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        item_guid: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        start_sec: Option<i64>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        end_sec: Option<i64>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        caption: Option<String>,
     },
 }
 

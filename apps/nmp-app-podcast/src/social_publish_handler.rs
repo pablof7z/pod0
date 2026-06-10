@@ -97,14 +97,30 @@ pub fn handle_publish_profile(
 
 // ── kind:1 note ──────────────────────────────────────────────────────
 
-/// `podcast.social` `publish_note` — publish a kind:1 text note carrying the
-/// supplied free-form tags verbatim. Rejects empty content (parity with
+/// Build the NIP tags for a kind:1 user note from typed fields. An optional
+/// `["a", episode_coord]` reference precedes the `["t","note"]` marker
+/// (preserving the prior Swift-side ordering). Pure so it can be unit-tested
+/// without a kernel.
+pub(crate) fn build_note_tags(episode_coord: Option<&str>) -> Vec<Vec<String>> {
+    let mut tags: Vec<Vec<String>> = Vec::new();
+    if let Some(coord) = episode_coord {
+        if !coord.is_empty() {
+            tags.push(vec!["a".to_string(), coord.to_string()]);
+        }
+    }
+    tags.push(vec!["t".to_string(), "note".to_string()]);
+    tags
+}
+
+/// `podcast.social` `publish_note` — publish a kind:1 text note. The kernel
+/// builds the NIP tags from `episode_coord` (Nostr tag semantics belong in the
+/// kernel, not the shell). Rejects empty content (parity with
 /// `agent_note_handler`).
 pub fn handle_publish_note(
     app: *mut NmpApp,
     identity: &Arc<Mutex<IdentityStore>>,
     content: &str,
-    tags: Option<&Vec<Vec<String>>>,
+    episode_coord: Option<&str>,
     _correlation_id: &str,
 ) -> serde_json::Value {
     if content.trim().is_empty() {
@@ -113,23 +129,69 @@ pub fn handle_publish_note(
     if let Err(e) = require_signed_in(identity) {
         return e;
     }
-    let tags = tags.cloned().unwrap_or_default();
+    let tags = build_note_tags(episode_coord);
     let status = publish_raw_via_nmp(app, KIND_TEXT_NOTE, &tags, content);
     json!({"ok": true, "status": status})
 }
 
 // ── kind:9802 highlight (NIP-84) ─────────────────────────────────────
 
+/// Typed inputs for a kind:9802 highlight — the resolved episode/podcast
+/// values the shell holds, passed instead of pre-built tags.
+pub(crate) struct HighlightFields<'a> {
+    /// NIP-84 source URL — the audio enclosure (`["r", …]`).
+    pub enclosure_url: Option<&'a str>,
+    /// NIP-73 podcast feed reference (`["r", …]`).
+    pub feed_url: Option<&'a str>,
+    /// NIP-73 episode guid for the `["i", "podcast:item:guid:<guid>…"]` tag.
+    pub item_guid: Option<&'a str>,
+    /// Media-fragment start/end offsets (seconds) appended to the `i` tag.
+    pub start_sec: Option<i64>,
+    pub end_sec: Option<i64>,
+    /// Human-readable caption (`["alt", …]`) when present.
+    pub caption: Option<&'a str>,
+}
+
+/// Build the NIP-73 / NIP-84 tag set for a kind:9802 highlight from typed
+/// fields. `content` (the highlighted text) doubles as the `["context", …]`
+/// value, matching the prior Swift behavior. Tag order: `r`(enclosure),
+/// `r`(feed), `i`(item guid + time fragment), `context`, `alt`(caption).
+/// Pure so it can be unit-tested without a kernel.
+pub(crate) fn build_highlight_tags(content: &str, f: &HighlightFields) -> Vec<Vec<String>> {
+    let mut tags: Vec<Vec<String>> = Vec::new();
+    if let Some(url) = f.enclosure_url {
+        tags.push(vec!["r".to_string(), url.to_string()]);
+    }
+    if let Some(url) = f.feed_url {
+        tags.push(vec!["r".to_string(), url.to_string()]);
+    }
+    if let Some(guid) = f.item_guid {
+        let start = f.start_sec.unwrap_or(0);
+        let end = f.end_sec.unwrap_or(0);
+        tags.push(vec![
+            "i".to_string(),
+            format!("podcast:item:guid:{guid}#t={start},{end}"),
+        ]);
+    }
+    tags.push(vec!["context".to_string(), content.to_string()]);
+    if let Some(caption) = f.caption {
+        if !caption.is_empty() {
+            tags.push(vec!["alt".to_string(), caption.to_string()]);
+        }
+    }
+    tags
+}
+
 /// `podcast.social` `publish_highlight` — publish a kind:9802 NIP-84
-/// highlight carrying the supplied free-form tags verbatim. The caller
-/// (Swift `publishUserClip`) assembles the full NIP-73 / NIP-84 tag set;
-/// tag *assembly* staying Swift-side is not a D7 violation — only signing
-/// moved to the kernel, and the kernel now owns it entirely.
+/// highlight. The kernel assembles the NIP-73 / NIP-84 tag set from typed
+/// fields (Nostr tag semantics belong in the kernel, per the codebase's own
+/// "Swift passes typed values; Rust builds tags" convention). Rejects empty
+/// content.
 pub fn handle_publish_highlight(
     app: *mut NmpApp,
     identity: &Arc<Mutex<IdentityStore>>,
     content: &str,
-    tags: Option<&Vec<Vec<String>>>,
+    fields: &HighlightFields,
     _correlation_id: &str,
 ) -> serde_json::Value {
     if content.trim().is_empty() {
@@ -138,7 +200,7 @@ pub fn handle_publish_highlight(
     if let Err(e) = require_signed_in(identity) {
         return e;
     }
-    let tags = tags.cloned().unwrap_or_default();
+    let tags = build_highlight_tags(content, fields);
     let status = publish_raw_via_nmp(app, KIND_HIGHLIGHT, &tags, content);
     json!({"ok": true, "status": status})
 }
