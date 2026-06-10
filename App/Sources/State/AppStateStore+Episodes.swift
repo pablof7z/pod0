@@ -265,7 +265,17 @@ extension AppStateStore {
     }
 
     /// Updates the episode's transcript ingestion lifecycle.
-    func setEpisodeTranscriptState(_ id: UUID, state newState: TranscriptState) {
+    ///
+    /// `provider` (optional) names the STT service driving the transition — the
+    /// transcription pipeline passes it when moving to `.transcribing` / `.failed`
+    /// so the kernel's `transcript.attempt` / `transcript.failed` Diagnostics
+    /// event can say *which* service is at work. `nil` for callers that don't
+    /// know or don't care (the generic UI state flips).
+    func setEpisodeTranscriptState(
+        _ id: UUID,
+        state newState: TranscriptState,
+        provider: String? = nil
+    ) {
         guard let idx = self.episodes.firstIndex(where: { $0.id == id }) else { return }
         let priorState = self.episodes[idx].transcriptState
         var episodes = self.episodes
@@ -295,7 +305,12 @@ extension AppStateStore {
         if case .ready = newState { return }
         let (status, message) = Self.transcriptStatusReport(for: newState)
         if Self.transcriptStatusReport(for: priorState).0 != status {
-            kernelSetEpisodeTranscriptStatus(episodeID: id, status: status, message: message)
+            kernelSetEpisodeTranscriptStatus(
+                episodeID: id,
+                status: status,
+                message: message,
+                provider: provider
+            )
         }
     }
 

@@ -259,7 +259,21 @@ fn handle_inbox_action_inner(
         },
         InboxAction::MarkListened { episode_id } => match store.lock() {
             Ok(mut s) => {
-                let _flipped = s.mark_episode_played(&episode_id);
+                let flipped = s.mark_episode_played(&episode_id);
+                // Playback completion is the authoritative "I finished this
+                // episode" signal. Every completion route — manual mark, natural
+                // play-to-end, and the sleep-timer end — funnels through
+                // `inbox/mark_listened`, so recording it here covers them all in
+                // one place. Only on a genuine unplayed→played flip, so a repeat
+                // mark on an already-played episode doesn't pile duplicate rows.
+                if flipped {
+                    s.emit_event_simple(
+                        &episode_id,
+                        crate::store::events::stage::PLAYBACK_COMPLETED,
+                        crate::store::events::EventSeverity::Success,
+                        "Marked played",
+                    );
+                }
                 // Delete-after-played is kernel-owned policy (D0). A manual
                 // mark-played (and the sleep-timer-end path, which routes
                 // through `inbox/mark_listened`) honours the user's

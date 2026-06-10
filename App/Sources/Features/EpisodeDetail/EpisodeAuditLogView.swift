@@ -47,6 +47,7 @@ struct EpisodeAuditLogView: View {
         NavigationStack {
             List {
                 summarySection
+                EpisodeDiagnosticsConfigSection(episode: liveEpisode)
                 actionsSection
                 eventsSection
                 metadataSection
@@ -268,7 +269,7 @@ struct EpisodeAuditLogView: View {
         case .queued: return "queued"
         case .fetchingPublisher: return "fetching publisher"
         case .transcribing(let p): return "transcribing (\(Int(p * 100))%)"
-        case .ready(let source): return "ready (\(String(describing: source)))"
+        case .ready(let source): return "ready · \(TranscriptIngestService.sourceDisplayName(source))"
         case .failed(let m): return "failed — \(m)"
         }
     }

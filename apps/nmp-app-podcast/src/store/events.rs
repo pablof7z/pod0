@@ -53,6 +53,18 @@ impl EventSeverity {
             EventSeverity::Failure => "failure",
         }
     }
+
+    /// Parse a wire severity string (as sent by the Swift generic
+    /// record-event FFI). Unknown / absent values fall back to `Info` so a
+    /// malformed severity never drops the event.
+    pub fn from_wire(raw: &str) -> Self {
+        match raw {
+            "success" => EventSeverity::Success,
+            "warning" => EventSeverity::Warning,
+            "failure" => EventSeverity::Failure,
+            _ => EventSeverity::Info,
+        }
+    }
 }
 
 /// Dotted `kind` discriminators. Kept identical to the Swift
@@ -72,12 +84,32 @@ pub mod stage {
     pub const TRANSCRIPT_ATTEMPT: &str = "transcript.attempt";
     pub const TRANSCRIPT_READY: &str = "transcript.ready";
     pub const TRANSCRIPT_FAILED: &str = "transcript.failed";
+    /// Transcript chunks embedded + upserted into the RAG vector index. The
+    /// transcript is readable before this; indexing is a separate best-effort
+    /// stage (needs an embeddings key) whose outcome the user can't otherwise
+    /// see. Both the success and the failure deserve a line in the log.
+    pub const TRANSCRIPT_INDEXED: &str = "transcript.indexed";
+    pub const TRANSCRIPT_INDEX_FAILED: &str = "transcript.index.failed";
 
     // Identification (chapters + ads), compiled from the transcript.
     pub const CHAPTERS_ATTEMPT: &str = "chapters.attempt";
     pub const CHAPTERS_READY: &str = "chapters.ready";
     pub const CHAPTERS_FAILED: &str = "chapters.failed";
     pub const ADS_READY: &str = "ads.ready";
+
+    // Playback lifecycle. Emitted at the authoritative kernel seams (play
+    // dispatch, mark-played) so Diagnostics shows when the user actually
+    // listened and from where, not just the pipeline's processing of the file.
+    pub const PLAYBACK_STARTED: &str = "playback.started";
+    pub const PLAYBACK_COMPLETED: &str = "playback.completed";
+
+    // Clipping lifecycle. The clip composer (Swift) records each stage through
+    // the generic record-event FFI so a failed export is visible here instead
+    // of vanishing into a logger line.
+    pub const CLIP_CREATED: &str = "clip.created";
+    pub const CLIP_EXPORTED: &str = "clip.exported";
+    pub const CLIP_SHARED: &str = "clip.shared";
+    pub const CLIP_FAILED: &str = "clip.failed";
 
     // Auto-download policy decisions, including deliberate skips.
     pub const AUTO_DOWNLOAD_QUEUED: &str = "auto_download.queued";

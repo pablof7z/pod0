@@ -330,6 +330,13 @@ pub enum PodcastAction {
         status: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         message: Option<String>,
+        /// Human-readable name of the STT service the iOS pipeline is using for
+        /// this attempt (e.g. "ElevenLabs Scribe", "Apple Native (on-device)").
+        /// Optional + back-compat: older callers omit it. When present it is
+        /// surfaced as the `Service` detail on the `transcript.attempt` event so
+        /// the Diagnostics log names *which* service is transcribing.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        provider: Option<String>,
     },
     /// Generate an AI summary for an episode (replaces the deleted Swift
     /// `LiveEpisodeSummarizerAdapter`).

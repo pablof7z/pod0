@@ -6,7 +6,57 @@ use crate::capability::{AudioCommand, DownloadCommand};
 use crate::ffi::actions::player_module::PlayerAction;
 use crate::host_op_handler::PodcastHostOpHandler;
 
+/// Format a playback position in seconds as `H:MM:SS` / `M:SS` for a
+/// Diagnostics detail row. Negative / NaN positions clamp to `0:00`.
+fn format_position(secs: f64) -> String {
+    let total = if secs.is_finite() && secs > 0.0 {
+        secs as u64
+    } else {
+        0
+    };
+    let (h, m, s) = (total / 3600, (total % 3600) / 60, total % 60);
+    if h > 0 {
+        format!("{h}:{m:02}:{s:02}")
+    } else {
+        format!("{m}:{s:02}")
+    }
+}
+
 impl PodcastHostOpHandler {
+    /// Record a `playback.started` event the first time an episode becomes the
+    /// staged item — i.e. when `episode_id` differs from whatever the actor had
+    /// loaded before. This dedups the common re-stage churn (the UI calls
+    /// `load` on resume, mini-player restore, chapter seeks) so the log shows
+    /// one "started listening" line per real session start, with the resume
+    /// position. Best-effort: a poisoned store lock simply skips the line.
+    fn record_playback_started_if_new(
+        &self,
+        episode_id: &str,
+        position_secs: f64,
+        prior_episode: Option<&str>,
+    ) {
+        if prior_episode == Some(episode_id) {
+            return;
+        }
+        if let Ok(mut s) = self.store.lock() {
+            let detail = if position_secs > 1.0 {
+                crate::store::events::EventDetail::new(
+                    "Resumed at",
+                    format_position(position_secs),
+                )
+            } else {
+                crate::store::events::EventDetail::new("From", "start")
+            };
+            s.emit_event(
+                episode_id,
+                crate::store::events::stage::PLAYBACK_STARTED,
+                crate::store::events::EventSeverity::Info,
+                "Playback started",
+                vec![detail],
+            );
+        }
+    }
+
     fn handle_play(&self, episode_id: String, correlation_id: &str) -> serde_json::Value {
         let (podcast_id, url, position_secs, needs_download) = {
             match self.store.lock() {
@@ -25,9 +75,14 @@ impl PodcastHostOpHandler {
                 Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
             }
         };
-        if let Ok(mut actor) = self.player_actor.lock() {
+        let prior_episode = if let Ok(mut actor) = self.player_actor.lock() {
+            let prior = actor.state().episode_id.clone();
             actor.stage_load(&episode_id, Some(podcast_id), &url, position_secs);
-        }
+            prior
+        } else {
+            None
+        };
+        self.record_playback_started_if_new(&episode_id, position_secs, prior_episode.as_deref());
         // Push the persisted ad segments + global toggle into the
         // freshly-staged actor so auto-skip can fire on the very first
         // `Playing` report (no extra round-trip via iOS).
@@ -71,9 +126,14 @@ impl PodcastHostOpHandler {
                 Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
             }
         };
-        if let Ok(mut actor) = self.player_actor.lock() {
+        let prior_episode = if let Ok(mut actor) = self.player_actor.lock() {
+            let prior = actor.state().episode_id.clone();
             actor.stage_load(&episode_id, Some(podcast_id), &url, position_secs);
-        }
+            prior
+        } else {
+            None
+        };
+        self.record_playback_started_if_new(&episode_id, position_secs, prior_episode.as_deref());
         hydrate_actor_for_play(&self.store, &self.player_actor, &episode_id);
         self.rev.fetch_add(1, Ordering::Relaxed);
         // Dispatch Load only — no Play. iOS calls Resume when the user taps play.

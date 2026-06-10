@@ -519,17 +519,50 @@ final class KernelModel {
 
     /// Report a completed transcript to the Rust kernel so AI features
     /// can access the plain text without going through Swift's TranscriptStore.
-    func sendTranscriptReport(episodeID: UUID, text: String) {
+    /// `source` names the service that produced it (e.g. "ElevenLabs Scribe");
+    /// the kernel surfaces it on the `transcript.ready` Diagnostics event so
+    /// the log says *which* service finished, not just that one did.
+    func sendTranscriptReport(episodeID: UUID, text: String, source: String? = nil) {
         guard let handle = kernel.podcastHandle else { return }
-        let payload: [String: Any] = [
+        var payload: [String: Any] = [
             "episode_id": episodeID.uuidString,
             "text": text
         ]
+        if let source { payload["source"] = source }
         guard let json = try? JSONSerialization.data(withJSONObject: payload),
               let jsonStr = String(data: json, encoding: .utf8)
         else { return }
         jsonStr.withCString { ptr in
             let result = nmp_app_podcast_transcript_report(handle, ptr)
+            if let result { nmp_app_free_string(result) }
+        }
+    }
+
+    /// Record one host-authored pipeline event onto an episode's Diagnostics
+    /// log via the generic record-event FFI. Used for stages that run in the
+    /// iOS capability layer and carry detail the kernel can't see — STT with a
+    /// named provider, RAG indexing outcome, clip export/share. Fire-and-forget.
+    func recordEpisodeEvent(
+        episodeID: UUID,
+        kind: String,
+        severity: String,
+        summary: String,
+        details: [(String, String)] = []
+    ) {
+        guard let handle = kernel.podcastHandle else { return }
+        let detailObjs = details.map { ["label": $0.0, "value": $0.1] }
+        let payload: [String: Any] = [
+            "episode_id": episodeID.uuidString,
+            "kind": kind,
+            "severity": severity,
+            "summary": summary,
+            "details": detailObjs
+        ]
+        guard let json = try? JSONSerialization.data(withJSONObject: payload),
+              let jsonStr = String(data: json, encoding: .utf8)
+        else { return }
+        jsonStr.withCString { ptr in
+            let result = nmp_app_podcast_record_episode_event(handle, ptr)
             if let result { nmp_app_free_string(result) }
         }
     }

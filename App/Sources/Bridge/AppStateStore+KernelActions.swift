@@ -417,8 +417,28 @@ extension AppStateStore {
     /// Report a completed transcript to the Rust kernel (M5.2).
     /// Delegates to `KernelModel.sendTranscriptReport` which has access to
     /// the raw `podcastHandle` pointer.
-    func kernelTranscriptReport(episodeID: UUID, text: String) {
-        kernel?.sendTranscriptReport(episodeID: episodeID, text: text)
+    func kernelTranscriptReport(episodeID: UUID, text: String, source: String? = nil) {
+        kernel?.sendTranscriptReport(episodeID: episodeID, text: text, source: source)
+    }
+
+    /// Record one host-authored pipeline event onto an episode's Diagnostics
+    /// log (download / transcript / chapters events the kernel emits itself; the
+    /// iOS-capability stages — STT provider, RAG indexing, clip export, etc. —
+    /// come through here). Fire-and-forget; no-op when the kernel is absent.
+    func kernelRecordEpisodeEvent(
+        episodeID: UUID,
+        kind: String,
+        severity: String,
+        summary: String,
+        details: [(String, String)] = []
+    ) {
+        kernel?.recordEpisodeEvent(
+            episodeID: episodeID,
+            kind: kind,
+            severity: severity,
+            summary: summary,
+            details: details
+        )
     }
 
     // MARK: - Diagnostics
@@ -482,7 +502,8 @@ extension AppStateStore {
     func kernelSetEpisodeTranscriptStatus(
         episodeID: UUID,
         status: String,
-        message: String?
+        message: String?,
+        provider: String? = nil
     ) {
         var body: [String: Any] = [
             "op": "set_episode_transcript_status",
@@ -490,6 +511,9 @@ extension AppStateStore {
             "status": status,
         ]
         if let message { body["message"] = message }
+        // Names the STT service on the `transcript.attempt` / `transcript.failed`
+        // Diagnostics event so the log shows *which* provider is running.
+        if let provider { body["provider"] = provider }
         kernel?.dispatch(namespace: "podcast", body: body)
     }
 

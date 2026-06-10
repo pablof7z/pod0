@@ -16,6 +16,11 @@ struct ClipShareSheet: View {
     let episode: Episode
     let podcast: Podcast
 
+    /// Optional so the SwiftUI `#Preview` (which doesn't inject a store) and any
+    /// non-app host still construct the sheet; the Diagnostics events below are
+    /// simply skipped when it's absent.
+    @Environment(AppStateStore.self) private var store: AppStateStore?
+
     @State private var style: ClipExporter.SubtitleStyle = .editorial
     @State private var aspect: ClipVideo.Aspect = .square
 
@@ -239,8 +244,10 @@ struct ClipShareSheet: View {
                 theme: style
             )
             imageURL = url
+            recordClipExport(format: "Image", error: nil)
         } catch {
             lastError = "Couldn't render image: \(error.localizedDescription)"
+            recordClipExport(format: "Image", error: error)
         }
     }
 
@@ -255,10 +262,37 @@ struct ClipShareSheet: View {
                 podcast: podcast
             )
             audioURL = url
+            recordClipExport(format: "Audio", error: nil)
         } catch ClipExporter.ExportError.audioUnavailable {
             lastError = "Download this episode first — audio export needs the local file."
+            recordClipExport(format: "Audio", error: ClipExporter.ExportError.audioUnavailable)
         } catch {
             lastError = "Couldn't render audio: \(error.localizedDescription)"
+            recordClipExport(format: "Audio", error: error)
+        }
+    }
+
+    /// Record a clip export outcome (success or failure) onto the episode's
+    /// Diagnostics log so "I tried to share a clip and it didn't work" leaves a
+    /// trace with the reason. No-op when no store is in the environment.
+    private func recordClipExport(format: String, error: Error?) {
+        guard let store else { return }
+        if let error {
+            store.kernelRecordEpisodeEvent(
+                episodeID: clip.episodeID,
+                kind: "clip.failed",
+                severity: "warning",
+                summary: "Clip \(format.lowercased()) export failed",
+                details: [("Format", format), ("Error", error.localizedDescription)]
+            )
+        } else {
+            store.kernelRecordEpisodeEvent(
+                episodeID: clip.episodeID,
+                kind: "clip.exported",
+                severity: "success",
+                summary: "Clip exported · \(format)",
+                details: [("Format", format), ("Span", AppStateStore.clipSpanLabel(clip))]
+            )
         }
     }
 

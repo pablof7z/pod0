@@ -253,9 +253,19 @@ final class TranscriptIngestService {
             }
             return
         }
-        appStore.setEpisodeTranscriptState(episode.id, state: .transcribing(progress: 0))
+        // Name the provider on the transition so the kernel's
+        // `transcript.attempt` Diagnostics event reads "Transcribing audio ·
+        // ElevenLabs Scribe", not a bare stage.
+        appStore.setEpisodeTranscriptState(
+            episode.id,
+            state: .transcribing(progress: 0),
+            provider: provider.displayName
+        )
         // Prefer the on-disk download when present. Provider-specific upload
-        // and remote-source handling lives behind each provider client.
+        // and remote-source handling lives behind each provider client. The
+        // kernel's status-path already authors the provider-named
+        // `transcript.attempt` event (via the `provider:` we passed above), so
+        // we don't duplicate it here.
         let audioURL: URL
         if EpisodeDownloadStore.shared.exists(for: episode) {
             audioURL = EpisodeDownloadStore.shared.localFileURL(for: episode)
@@ -359,7 +369,13 @@ final class TranscriptIngestService {
         // capability performs the work and reports the result; Rust decides
         // what to do with it.
         let plainText = transcript.segments.map(\.text).joined(separator: " ")
-        appStore.kernelTranscriptReport(episodeID: episode.id, text: plainText)
+        // Name the producing service so the kernel's `transcript.ready`
+        // Diagnostics event reads "Transcript ready · ElevenLabs Scribe".
+        appStore.kernelTranscriptReport(
+            episodeID: episode.id,
+            text: plainText,
+            source: Self.sourceDisplayName(source)
+        )
 
         // STEP 2: Best-effort embed. Failures are logged but don't throw.
         let chunkable = ChunkableTranscript(
@@ -386,9 +402,31 @@ final class TranscriptIngestService {
             Self.logger.info(
                 "ingested transcript for \(episode.id, privacy: .public) — \(chunks.count, privacy: .public) chunks indexed, source=\(String(describing: source), privacy: .public)"
             )
+            // Surface RAG indexing in Diagnostics — the transcript is readable
+            // before this, but whether search can find it is invisible
+            // otherwise. Empty chunks ⇒ nothing to index (still informative).
+            appStore.kernelRecordEpisodeEvent(
+                episodeID: episode.id,
+                kind: "transcript.indexed",
+                severity: "success",
+                summary: chunks.isEmpty
+                    ? "No transcript chunks to index"
+                    : "Indexed for search · \(chunks.count) chunks",
+                details: [("Chunks", String(chunks.count))]
+            )
         } catch {
             Self.logger.notice(
                 "transcript saved for \(episode.id, privacy: .public) but RAG indexing failed: \(String(describing: error), privacy: .public) — episode is readable; search won't find it until the user re-embeds with a configured key"
+            )
+            // A failed embed isn't fatal (the transcript reads fine), but the
+            // user should be able to see *why* search can't find this episode.
+            appStore.kernelRecordEpisodeEvent(
+                episodeID: episode.id,
+                kind: "transcript.index.failed",
+                severity: "warning",
+                summary: "Search indexing failed — transcript still readable",
+                details: [("Error", (error as? LocalizedError)?.errorDescription
+                    ?? error.localizedDescription)]
             )
         }
 

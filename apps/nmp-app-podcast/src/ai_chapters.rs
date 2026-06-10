@@ -148,23 +148,41 @@ fn handle_compile_chapters_inner(
         match outcome {
             SynthOutcome::Chapters(chapters) => {
                 let chapter_count = chapters.len();
+                // Provenance of what we actually produced: `Llm` is the real
+                // transcript-grounded synthesis; `Stub` is the equal-length
+                // fallback emitted when the model was definitively unreachable.
+                // Naming a cloud model on a stub run would be a lie, so branch.
+                let is_stub = chapters
+                    .first()
+                    .map(|c| c.source == ChapterSource::Stub)
+                    .unwrap_or(false);
                 if let Ok(mut s) = store_c2.lock() {
+                    // Read the configured chapter model BEFORE the mutable
+                    // borrow in `set_episode_chapters`.
+                    let model_name = s.chapter_compilation_model_name().to_owned();
+                    let model_id = s.chapter_compilation_model().to_owned();
                     s.set_episode_chapters(&episode_id_c, chapters);
                     // AI chapter identification landed — record it in the
                     // pipeline log (the identification stage of download →
-                    // transcript → chapters/ads).
+                    // transcript → chapters/ads). Name the model so the user
+                    // can see *what* generated the chapters, not just "AI".
+                    use crate::store::events::EventDetail;
+                    let mut details = vec![EventDetail::new("Count", chapter_count.to_string())];
+                    let (summary, source_label) = if is_stub {
+                        ("Chapters identified · equal-length fallback".to_owned(),
+                         "Equal-length fallback (model unavailable)".to_owned())
+                    } else {
+                        details.push(EventDetail::new("Model", model_name.clone()));
+                        details.push(EventDetail::new("Model ID", model_id));
+                        (format!("Chapters identified · {model_name}"), "AI".to_owned())
+                    };
+                    details.push(EventDetail::new("Source", source_label));
                     s.emit_event(
                         &episode_id_c,
                         crate::store::events::stage::CHAPTERS_READY,
                         crate::store::events::EventSeverity::Success,
-                        "Chapters identified",
-                        vec![
-                            crate::store::events::EventDetail::new(
-                                "Count",
-                                chapter_count.to_string(),
-                            ),
-                            crate::store::events::EventDetail::new("Source", "AI".to_owned()),
-                        ],
+                        summary,
+                        details,
                     );
                 }
                 if let Some(signal) = snapshot_signal {

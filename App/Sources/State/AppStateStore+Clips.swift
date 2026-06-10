@@ -17,6 +17,19 @@ extension AppStateStore {
 
     func addClip(_ clip: Clip) {
         state.clips.append(clip)
+        // Every clip funnels through here (composer + auto-snip), so it's the
+        // single seam to record clip creation in the episode's Diagnostics log
+        // — what was clipped, from where, and how.
+        kernelRecordEpisodeEvent(
+            episodeID: clip.episodeID,
+            kind: "clip.created",
+            severity: "info",
+            summary: "Clip created · \(Self.clipSpanLabel(clip))",
+            details: [
+                ("Span", Self.clipSpanLabel(clip)),
+                ("Source", clip.source.rawValue),
+            ]
+        )
         // Wiring contract per `identity-05-synthesis.md` §5.3: every clip
         // source signs and publishes (kind 9802 / NIP-84) except `.agent`,
         // which stays local. Fire-and-forget so a relay outage never blocks
@@ -26,6 +39,15 @@ extension AppStateStore {
             let pod = ep.flatMap { podcast(id: $0.podcastID) }
             Task { try? await identity.publishUserClip(clip, episode: ep, podcast: pod) }
         }
+    }
+
+    /// `M:SS–M:SS` label for a clip's span, used in Diagnostics event summaries.
+    nonisolated static func clipSpanLabel(_ clip: Clip) -> String {
+        func fmt(_ ms: Int) -> String {
+            let total = max(0, ms) / 1000
+            return String(format: "%d:%02d", total / 60, total % 60)
+        }
+        return "\(fmt(clip.startMs))–\(fmt(clip.endMs))"
     }
 
     /// Convenience: build + persist in one call. Used by `AutoSnipController`

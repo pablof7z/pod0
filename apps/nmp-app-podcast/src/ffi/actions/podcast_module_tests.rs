@@ -401,13 +401,29 @@ fn set_episode_transcript_status_action_round_trips() {
         episode_id: "ep-1".into(),
         status: "failed".into(),
         message: Some("network down".into()),
+        provider: Some("ElevenLabs Scribe".into()),
     };
     let json = serde_json::to_string(&action).expect("encode");
     assert!(json.contains(r#""op":"set_episode_transcript_status""#));
     assert!(json.contains(r#""status":"failed""#));
     assert!(json.contains(r#""message":"network down""#));
+    assert!(json.contains(r#""provider":"ElevenLabs Scribe""#));
     let decoded: PodcastAction = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded, action);
+}
+
+#[test]
+fn set_episode_transcript_status_tolerates_absent_provider() {
+    // Older callers omit `provider`; it must default to None.
+    let json =
+        r#"{"op":"set_episode_transcript_status","episode_id":"ep-9","status":"transcribing"}"#;
+    let decoded: PodcastAction = serde_json::from_str(json).expect("decode");
+    match decoded {
+        PodcastAction::SetEpisodeTranscriptStatus { provider, .. } => {
+            assert_eq!(provider, None);
+        }
+        other => panic!("wrong variant: {other:?}"),
+    }
 }
 
 #[test]

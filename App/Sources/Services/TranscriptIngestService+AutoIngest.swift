@@ -10,6 +10,20 @@ import Foundation
 
 extension TranscriptIngestService {
 
+    /// Human-readable name for a resolved transcript `Source`, used to label the
+    /// `transcript.ready` Diagnostics event with *which* service produced it.
+    /// Kept here (not the 497-line main file) to stay under the 500-line cap.
+    static func sourceDisplayName(_ source: TranscriptState.Source) -> String {
+        switch source {
+        case .publisher: return "Publisher feed"
+        case .scribe: return "ElevenLabs Scribe"
+        case .whisper: return "OpenRouter Whisper"
+        case .onDevice: return "Apple on-device"
+        case .assemblyAI: return "AssemblyAI"
+        case .other: return "Transcription service"
+        }
+    }
+
     /// Convenience: walk the store and ingest up to `maxCount` episodes that
     /// are not yet `.ready` and have a publisher transcript URL. Useful as a
     /// background warmup once the user lands on the library.

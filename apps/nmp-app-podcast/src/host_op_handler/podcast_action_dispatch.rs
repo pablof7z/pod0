@@ -177,7 +177,8 @@ impl PodcastHostOpHandler {
                 episode_id,
                 status,
                 message,
-            } => self.handle_set_episode_transcript_status(episode_id, status, message),
+                provider,
+            } => self.handle_set_episode_transcript_status(episode_id, status, message, provider),
             PodcastAction::SummarizeEpisode { episode_id } => {
                 if let Some(signal) = self.snapshot_signal.clone() {
                     crate::episode_summary::handle_summarize_episode_with_signal(

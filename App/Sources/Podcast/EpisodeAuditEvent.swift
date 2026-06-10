@@ -90,10 +90,32 @@ struct EpisodeAuditEvent: Codable, Sendable, Hashable, Identifiable {
         static let transcriptReady: Kind = "transcript.ready"
         /// Terminal failure for the whole pipeline.
         static let transcriptFailed: Kind = "transcript.failed"
+        /// Transcript chunks embedded + upserted into the RAG search index.
+        static let transcriptIndexed: Kind = "transcript.indexed"
         /// RAG embedding/indexing failed (non-fatal — transcript is still readable).
         static let transcriptIndexFailed: Kind = "transcript.index.failed"
         /// User-initiated retry from the Diagnostics sheet.
         static let transcriptRetryRequested: Kind = "transcript.retry"
+
+        // MARK: Identification (chapters + ads)
+        static let chaptersAttempt: Kind = "chapters.attempt"
+        static let chaptersReady: Kind = "chapters.ready"
+        static let chaptersFailed: Kind = "chapters.failed"
+        static let adsReady: Kind = "ads.ready"
+
+        // MARK: Playback lifecycle
+        static let playbackStarted: Kind = "playback.started"
+        static let playbackCompleted: Kind = "playback.completed"
+
+        // MARK: Clipping lifecycle
+        static let clipCreated: Kind = "clip.created"
+        static let clipExported: Kind = "clip.exported"
+        static let clipShared: Kind = "clip.shared"
+        static let clipFailed: Kind = "clip.failed"
+
+        // MARK: Auto-download policy
+        static let autoDownloadQueued: Kind = "auto_download.queued"
+        static let autoDownloadDeferred: Kind = "auto_download.deferred"
 
         /// Human-friendly label for UI rendering. The view falls back to
         /// `rawValue` when the kind is unrecognised so old logs still render.
@@ -111,8 +133,21 @@ struct EpisodeAuditEvent: Codable, Sendable, Hashable, Identifiable {
             case .transcriptPublisherFailed: return "Publisher transcript failed"
             case .transcriptReady: return "Transcript ready"
             case .transcriptFailed: return "Transcription failed"
-            case .transcriptIndexFailed: return "Transcript indexing failed"
+            case .transcriptIndexed: return "Indexed for search"
+            case .transcriptIndexFailed: return "Search indexing failed"
             case .transcriptRetryRequested: return "Retry requested"
+            case .chaptersAttempt: return "Chapter identification started"
+            case .chaptersReady: return "Chapters identified"
+            case .chaptersFailed: return "Chapter identification failed"
+            case .adsReady: return "Ad segments identified"
+            case .playbackStarted: return "Playback started"
+            case .playbackCompleted: return "Playback completed"
+            case .clipCreated: return "Clip created"
+            case .clipExported: return "Clip exported"
+            case .clipShared: return "Clip shared"
+            case .clipFailed: return "Clip export failed"
+            case .autoDownloadQueued: return "Auto-download queued"
+            case .autoDownloadDeferred: return "Auto-download deferred"
             default: return rawValue
             }
         }
@@ -132,8 +167,21 @@ struct EpisodeAuditEvent: Codable, Sendable, Hashable, Identifiable {
             case .transcriptPublisherFailed: return "doc.text.below.ecg"
             case .transcriptReady: return "checkmark.bubble.fill"
             case .transcriptFailed: return "exclamationmark.bubble.fill"
+            case .transcriptIndexed: return "sparkle.magnifyingglass"
             case .transcriptIndexFailed: return "magnifyingglass"
             case .transcriptRetryRequested: return "arrow.clockwise"
+            case .chaptersAttempt: return "list.bullet.rectangle"
+            case .chaptersReady: return "list.bullet.rectangle.fill"
+            case .chaptersFailed: return "list.bullet.rectangle.portrait"
+            case .adsReady: return "dollarsign.circle.fill"
+            case .playbackStarted: return "play.circle"
+            case .playbackCompleted: return "checkmark.seal.fill"
+            case .clipCreated: return "scissors"
+            case .clipExported: return "square.and.arrow.up"
+            case .clipShared: return "square.and.arrow.up.fill"
+            case .clipFailed: return "scissors.badge.ellipsis"
+            case .autoDownloadQueued: return "arrow.down.to.line.circle"
+            case .autoDownloadDeferred: return "pause.circle"
             default: return "circle"
             }
         }

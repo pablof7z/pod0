@@ -223,6 +223,19 @@ char *nmp_app_podcast_transcript_report(void *handle, const char *report_json);
 // result via `nmp_app_free_string`. NULL only on a hard error (D6).
 char *nmp_app_podcast_episode_events(void *handle, const char *episode_id);
 
+// Record one host-authored pipeline event onto an episode's Diagnostics log.
+// The host capability layer (iOS) holds knowledge the kernel never sees — the
+// STT provider actually used, RAG indexing outcome, clip export/share results —
+// so this is the generic channel for it to author a fully-formed event. The
+// kernel just appends it to the episode's off-snapshot event file (no `rev`
+// bump). `event_json` is a single object:
+//   {"episode_id":"<uuid>","kind":"clip.exported","severity":"success",
+//    "summary":"Clip exported","details":[{"label":"Format","value":"audio"}]}
+// `severity` is info|success|warning|failure (unknown -> info); `details` is
+// optional. Fire-and-forget: ALWAYS returns NULL (nothing to read or free).
+// D6: bad pointers / UTF-8 / JSON degrade to a silent no-op.
+char *nmp_app_podcast_record_episode_event(void *handle, const char *event_json);
+
 // ── Provider-blind single-turn LLM completion ─────────────────────────────
 //
 // `nmp_app_podcast_chat_complete` drives one LLM turn through the Rust

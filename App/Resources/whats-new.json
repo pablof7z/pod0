@@ -2,6 +2,13 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-10T00:05:00Z",
+      "lines": [
+        "Episode Diagnostics is now a full picture of an episode: a new “Pipeline configuration” panel spells out exactly what will (or won’t) happen and which services it’ll use — and plainly tells you when nothing is set up to run.",
+        "Every pipeline event now names the service behind it — which transcription provider ran, which model generated the chapters — plus new playback, search-indexing, and clip events so anything that happens to an episode leaves a clear trace."
+      ]
+    },
+    {
       "shipped_at": "2026-06-09T13:40:00Z",
       "lines": [
         "On-device (Apple) transcription now actually finishes — previously it could start and then hang forever without ever producing a transcript."

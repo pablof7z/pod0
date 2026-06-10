@@ -154,6 +154,7 @@ impl PodcastHostOpHandler {
         episode_id: String,
         status: String,
         message: Option<String>,
+        provider: Option<String>,
     ) -> serde_json::Value {
         match self.store.lock() {
             Ok(mut s) => {
@@ -178,28 +179,48 @@ impl PodcastHostOpHandler {
                     // pipeline log so the Diagnostics sheet shows the attempt,
                     // its provider stage, and any failure. The kernel never runs
                     // STT itself — it records what the iOS capability reports.
+                    // A `Service` detail row, present only when iOS named the
+                    // provider. Shared by the attempt + failure arms so the log
+                    // says *which* STT service was running, not just the stage.
+                    let service_detail = provider
+                        .as_deref()
+                        .map(|p| EventDetail::new("Service", p));
                     match status.as_str() {
                         "none" | "" => {} // status cleared — not a pipeline event
-                        "failed" => s.emit_event(
-                            &episode_id,
-                            stage::TRANSCRIPT_FAILED,
-                            EventSeverity::Failure,
-                            "Transcription failed",
-                            message
-                                .map(|m| vec![EventDetail::new("Error", m)])
-                                .unwrap_or_default(),
-                        ),
+                        "failed" => {
+                            let mut details = Vec::with_capacity(2);
+                            if let Some(detail) = service_detail {
+                                details.push(detail);
+                            }
+                            if let Some(m) = message {
+                                details.push(EventDetail::new("Error", m));
+                            }
+                            s.emit_event(
+                                &episode_id,
+                                stage::TRANSCRIPT_FAILED,
+                                EventSeverity::Failure,
+                                provider
+                                    .as_deref()
+                                    .map(|p| format!("Transcription failed · {p}"))
+                                    .unwrap_or_else(|| "Transcription failed".to_owned()),
+                                details,
+                            );
+                        }
                         "fetching_publisher" => s.emit_event_simple(
                             &episode_id,
                             stage::TRANSCRIPT_ATTEMPT,
                             EventSeverity::Info,
                             "Fetching publisher transcript",
                         ),
-                        "transcribing" => s.emit_event_simple(
+                        "transcribing" => s.emit_event(
                             &episode_id,
                             stage::TRANSCRIPT_ATTEMPT,
                             EventSeverity::Info,
-                            "Transcribing audio",
+                            provider
+                                .as_deref()
+                                .map(|p| format!("Transcribing audio · {p}"))
+                                .unwrap_or_else(|| "Transcribing audio".to_owned()),
+                            service_detail.into_iter().collect(),
                         ),
                         "queued" => s.emit_event_simple(
                             &episode_id,

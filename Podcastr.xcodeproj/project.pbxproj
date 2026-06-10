@@ -163,6 +163,7 @@
 		2F17E4D4C948CCAFF534B2E3 /* AgentTools+Ask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91D2FFD85E2E980192DEF396 /* AgentTools+Ask.swift */; };
 		2F4DFD59DF256708120F7BD0 /* BYOKModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F436E45D05D08DEB69988EC1 /* BYOKModels.swift */; };
 		2FA2DA9FCDCFEBD1619C0EE0 /* ObservationAwaitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97D91C71123630981BEEDF38 /* ObservationAwaitTests.swift */; };
+		3015B8442B690C91609A359E /* EpisodeDiagnosticsConfigSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4D1E884D19CD3E8DA887C7B /* EpisodeDiagnosticsConfigSection.swift */; };
 		30463832B96CC282CDC99941 /* AddShowSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C6EBE9282DA4DB22B909C6 /* AddShowSheet.swift */; };
 		305214FD8DFDA906AA4CA76D /* AgentChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8453091EF53D5A0748FEFF31 /* AgentChatView.swift */; };
 		306F83354746C7A73D05CFC5 /* UUIDExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28002BE9B12FD1059A078DAB /* UUIDExtensions.swift */; };
@@ -1435,6 +1436,7 @@
 		D3B26E781D85D5AE64D68D81 /* PlaybackSleepTimerLabelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackSleepTimerLabelTests.swift; sourceTree = "<group>"; };
 		D41965CC3F4A90D6B2C95AC3 /* AgentTools+PodcastActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AgentTools+PodcastActions.swift"; sourceTree = "<group>"; };
 		D49683E5F74E9AF459761FDB /* RAGService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAGService.swift; sourceTree = "<group>"; };
+		D4D1E884D19CD3E8DA887C7B /* EpisodeDiagnosticsConfigSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeDiagnosticsConfigSection.swift; sourceTree = "<group>"; };
 		D4F8B87E49AE8CE274362E96 /* EpisodeAuditEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeAuditEvent.swift; sourceTree = "<group>"; };
 		D511BB26117DB1F3048A0A77 /* ChangePhotoSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangePhotoSheet.swift; sourceTree = "<group>"; };
 		D5B3D200FFBFC6759CF54614 /* PlaybackState+Chapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlaybackState+Chapters.swift"; sourceTree = "<group>"; };
@@ -2583,6 +2585,7 @@
 				D0F7D32A4C6A04F62070DE1B /* EpisodeDetailActionsMenu.swift */,
 				8FFF61D6C8FCAEC14C91F298 /* EpisodeDetailHeroView.swift */,
 				915D04F93B82B999071036C5 /* EpisodeDetailView.swift */,
+				D4D1E884D19CD3E8DA887C7B /* EpisodeDiagnosticsConfigSection.swift */,
 				2B186185610FEBCA338E83C9 /* EpisodeShowNotesFormatter.swift */,
 				8258C6269B8BD4716BA6B259 /* QuoteShareView.swift */,
 				B7A056E1AC34CE401C36BD01 /* TranscribingInProgressView.swift */,
@@ -3297,6 +3300,7 @@
 				92C9DBDDB22405495C072D71 /* EpisodeDetailActionsMenu.swift in Sources */,
 				CC4832B85BE63B52CFEC3135 /* EpisodeDetailHeroView.swift in Sources */,
 				FF8B467D46BED00D186E8C8E /* EpisodeDetailView.swift in Sources */,
+				3015B8442B690C91609A359E /* EpisodeDiagnosticsConfigSection.swift in Sources */,
 				A373E6206B4164B7701AE216 /* EpisodeShowNotesFormatter.swift in Sources */,
 				8391147A7CC7ACC70070F173 /* QuoteShareView.swift in Sources */,
 				8F9B7E848ADCA474F8E99083 /* TranscribingInProgressView.swift in Sources */,
