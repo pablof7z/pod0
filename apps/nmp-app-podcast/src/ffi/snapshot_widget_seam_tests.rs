@@ -68,8 +68,13 @@ fn handler_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> PodcastH
         Arc::new(AtomicBool::new(false)),
         shared.rev.clone(),
     );
+    let state = Arc::new(crate::state::PodcastAppState::new(
+        crate::state::Infra::for_test(),
+        shared.store.clone(),
+    ));
     PodcastHostOpHandler::new(
         app,
+        state,
         shared.store.clone(),
         Arc::new(Mutex::new(IdentityStore::new())),
         shared.player_actor.clone(),
@@ -81,8 +86,6 @@ fn handler_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> PodcastH
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(Vec::new())),
-        Arc::new(Mutex::new(Vec::new())),
-        Arc::new(Mutex::new(podcast_knowledge::KnowledgeStore::new())),
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(HashMap::new())),
         Arc::new(Mutex::new(HashSet::new())),
@@ -108,8 +111,13 @@ fn handler_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> PodcastH
 /// `rev`, pointing at the same real `app` as the handler so
 /// `build_podcast_update`'s configured-relays projection has a live pointer.
 fn handle_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> Box<PodcastHandle> {
+    let state = Arc::new(crate::state::PodcastAppState::new(
+        crate::state::Infra::for_test(),
+        shared.store.clone(),
+    ));
     Box::new(PodcastHandle {
         app,
+        state,
         player_actor: shared.player_actor.clone(),
         store: shared.store.clone(),
         identity: Arc::new(Mutex::new(IdentityStore::new())),
@@ -125,8 +133,6 @@ fn handle_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> Box<Podca
         wiki_search_results: Arc::new(Mutex::new(Vec::new())),
         picks: Arc::new(Mutex::new(Vec::new())),
         agent_tasks: Arc::new(Mutex::new(Vec::new())),
-        knowledge_search_results: Arc::new(Mutex::new(Vec::new())),
-        knowledge_store: Arc::new(Mutex::new(podcast_knowledge::KnowledgeStore::new())),
         clips: Arc::new(Mutex::new(Vec::new())),
         transcripts: Arc::new(Mutex::new(HashMap::new())),
         dismissed_episode_ids: Arc::new(Mutex::new(HashSet::new())),

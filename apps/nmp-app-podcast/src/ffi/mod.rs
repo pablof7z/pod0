@@ -72,6 +72,8 @@ mod snapshot_relays;
 mod snapshot_settings;
 mod snapshot_widget;
 #[cfg(test)]
+mod snapshot_golden_tests;
+#[cfg(test)]
 mod snapshot_tests;
 #[cfg(test)]
 mod snapshot_tests_ext;

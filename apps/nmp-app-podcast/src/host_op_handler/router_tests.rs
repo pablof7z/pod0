@@ -40,8 +40,13 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
         Arc::new(AtomicBool::new(false)),
         rev.clone(),
     );
+    let state = Arc::new(crate::state::PodcastAppState::new(
+        crate::state::Infra::for_test(),
+        store.clone(),
+    ));
     PodcastHostOpHandler::new(
         std::ptr::null_mut(),
+        state,
         store,
         Arc::new(Mutex::new(IdentityStore::new())),
         Arc::new(Mutex::new(PlayerActor::new())),
@@ -53,8 +58,6 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(Vec::new())),
-        Arc::new(Mutex::new(Vec::new())),
-        Arc::new(Mutex::new(podcast_knowledge::KnowledgeStore::new())),
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(HashMap::new())),
         Arc::new(Mutex::new(HashSet::new())),
@@ -145,7 +148,8 @@ fn bad_action_for_known_ns_returns_ok_false() {
 fn knowledge_search_routes_to_knowledge_not_wiki() {
     let handler = empty_handler();
     // Pre-condition: both result slots are empty.
-    assert!(handler.knowledge_search_results.lock().unwrap().is_empty());
+    // Knowledge results now live in state.knowledge (Step 1 migration).
+    assert!(handler.state.knowledge.results_snapshot().is_empty());
     assert!(handler.wiki_search_results.lock().unwrap().is_empty());
 
     let envelope =

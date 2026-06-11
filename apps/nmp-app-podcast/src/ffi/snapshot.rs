@@ -138,12 +138,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         .ok()
         .map(|t| t.clone())
         .unwrap_or_default();
-    let knowledge_search_results = handle
-        .knowledge_search_results
-        .lock()
-        .ok()
-        .map(|r| r.clone())
-        .unwrap_or_default();
+    let knowledge_search_results = handle.state.knowledge.results_snapshot();
     let clips = crate::clip_handler::project_clips(&handle.clips, &library);
     let inbox = build_inbox(
         &handle.store,

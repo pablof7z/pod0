@@ -20,6 +20,8 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
+use crate::state::PodcastAppState;
+
 use tokio::runtime::Runtime;
 
 use nmp_ffi::NmpApp;
@@ -33,7 +35,7 @@ use crate::download::DownloadQueue;
 use crate::feed_fetch::FeedFetchCoordinator;
 use crate::ffi::handle::OwnedPublishState;
 use crate::ffi::projections::{
-    AgentNoteSummary, AgentPickSummary, AgentTaskSummary, CommentSummary, KnowledgeSearchResult,
+    AgentNoteSummary, AgentPickSummary, AgentTaskSummary, CommentSummary,
     NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry, VoiceState, WikiArticle,
 };
 use crate::inbox_llm::TriageResult;
@@ -69,6 +71,9 @@ mod task_actions;
 /// `agent_chat` is the already-constructed `AgentChatHandler`.
 pub struct PodcastHostOpHandler {
     pub(crate) app: *mut NmpApp,
+    /// Step 0 — composed state root (Knowledge substate is active in Step 1;
+    /// remaining substates migrate in Steps 2-N).
+    pub(crate) state: Arc<PodcastAppState>,
     pub(crate) store: Arc<Mutex<PodcastStore>>,
     pub(crate) identity: Arc<Mutex<IdentityStore>>,
     pub(crate) player_actor: Arc<Mutex<PlayerActor>>,
@@ -84,9 +89,8 @@ pub struct PodcastHostOpHandler {
     /// it, so it is not mirrored onto `PodcastHandle`); set in `new()`.
     pub(crate) picks_score_in_progress: Arc<std::sync::atomic::AtomicBool>,
     pub(crate) agent_tasks: Arc<Mutex<Vec<AgentTaskSummary>>>,
-    pub(crate) knowledge_search_results: Arc<Mutex<Vec<KnowledgeSearchResult>>>,
-    /// RAG chunk store (M5.3). Shared with `PodcastHandle.knowledge_store`.
-    pub(crate) knowledge_store: Arc<Mutex<podcast_knowledge::KnowledgeStore>>,
+    // knowledge_search_results and knowledge_store removed in Step 1 —
+    // they are now owned by `state.knowledge` (KnowledgeState).
     pub(crate) clips: Arc<Mutex<Vec<ClipRecord>>>,
     pub(crate) transcripts: Arc<Mutex<HashMap<String, Vec<TranscriptEntry>>>>,
     pub(crate) dismissed_episode_ids: Arc<Mutex<HashSet<String>>>,
@@ -170,6 +174,7 @@ impl PodcastHostOpHandler {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         app: *mut NmpApp,
+        state: Arc<PodcastAppState>,
         store: Arc<Mutex<PodcastStore>>,
         identity: Arc<Mutex<IdentityStore>>,
         player_actor: Arc<Mutex<PlayerActor>>,
@@ -181,8 +186,6 @@ impl PodcastHostOpHandler {
         wiki_search_results: Arc<Mutex<Vec<WikiArticle>>>,
         picks: Arc<Mutex<Vec<AgentPickSummary>>>,
         agent_tasks: Arc<Mutex<Vec<AgentTaskSummary>>>,
-        knowledge_search_results: Arc<Mutex<Vec<KnowledgeSearchResult>>>,
-        knowledge_store: Arc<Mutex<podcast_knowledge::KnowledgeStore>>,
         clips: Arc<Mutex<Vec<ClipRecord>>>,
         transcripts: Arc<Mutex<HashMap<String, Vec<TranscriptEntry>>>>,
         dismissed_episode_ids: Arc<Mutex<HashSet<String>>>,
@@ -204,6 +207,7 @@ impl PodcastHostOpHandler {
     ) -> Self {
         Self {
             app,
+            state,
             store,
             identity,
             player_actor,
@@ -217,8 +221,6 @@ impl PodcastHostOpHandler {
             picks_score_in_progress: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             categorization_in_progress: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             agent_tasks,
-            knowledge_search_results,
-            knowledge_store,
             clips,
             transcripts,
             dismissed_episode_ids,

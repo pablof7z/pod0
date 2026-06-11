@@ -16,8 +16,13 @@ use std::sync::{Arc, Mutex};
 /// exercise the data-dir path, which never touches `app`.
 fn make_handle(store: Arc<Mutex<PodcastStore>>, rev: Arc<AtomicU64>) -> Box<PodcastHandle> {
     use std::collections::HashMap;
+    let state = Arc::new(crate::state::PodcastAppState::new(
+        crate::state::Infra::for_test(),
+        store.clone(),
+    ));
     Box::new(PodcastHandle {
         app: std::ptr::null_mut(),
+        state,
         player_actor: Arc::new(Mutex::new(PlayerActor::new())),
         store: store.clone(),
         identity: Arc::new(Mutex::new(IdentityStore::new())),
@@ -33,8 +38,6 @@ fn make_handle(store: Arc<Mutex<PodcastStore>>, rev: Arc<AtomicU64>) -> Box<Podc
         wiki_search_results: Arc::new(Mutex::new(Vec::new())),
         picks: Arc::new(Mutex::new(Vec::<AgentPickSummary>::new())),
         agent_tasks: Arc::new(Mutex::new(Vec::new())),
-        knowledge_search_results: Arc::new(Mutex::new(Vec::new())),
-        knowledge_store: Arc::new(Mutex::new(podcast_knowledge::KnowledgeStore::new())),
         clips: Arc::new(Mutex::new(Vec::new())),
         transcripts: Arc::new(Mutex::new(HashMap::new())),
         dismissed_episode_ids: Arc::new(Mutex::new(HashSet::new())),

@@ -203,12 +203,15 @@ impl HostOpHandler for PodcastHostOpHandler {
             }
             "podcast.wiki" => {
                 let action = parse!(WikiAction);
+                // Wiki reads the shared knowledge index (Step 2 will move wiki
+                // fully onto KnowledgeState; for now bridge via index_arc()).
+                let knowledge_store = self.state.knowledge.index_arc();
                 if let Some(signal) = self.snapshot_signal.clone() {
                     handle_wiki_action_with_signal(
                         &self.wiki_articles,
                         &self.wiki_search_results,
                         &self.store,
-                        &self.knowledge_store,
+                        &knowledge_store,
                         &self.rev,
                         &self.runtime,
                         action,
@@ -219,7 +222,7 @@ impl HostOpHandler for PodcastHostOpHandler {
                         &self.wiki_articles,
                         &self.wiki_search_results,
                         &self.store,
-                        &self.knowledge_store,
+                        &knowledge_store,
                         &self.rev,
                         &self.runtime,
                         action,
@@ -243,13 +246,7 @@ impl HostOpHandler for PodcastHostOpHandler {
                 }
             }
             "podcast.tasks" => self.handle_task_action(parse!(AgentTasksAction)),
-            "podcast.knowledge" => crate::knowledge::handle_knowledge_action(
-                parse!(KnowledgeAction),
-                &self.store,
-                &self.knowledge_search_results,
-                &self.knowledge_store,
-                &self.rev,
-            ),
+            "podcast.knowledge" => self.state.knowledge.handle(parse!(KnowledgeAction)),
             "podcast.memory" => {
                 memory_handler::handle(parse!(MemoryAction), &self.store, &self.rev)
             }

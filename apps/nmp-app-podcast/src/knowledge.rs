@@ -23,14 +23,11 @@
 //!   `KnowledgeStore` without constructing an `NmpApp`.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
 
 use podcast_knowledge::bm25::{first_term_position, normalize_scores, tokenize, Bm25Index};
 use podcast_knowledge::types::TranscriptChunk;
-use podcast_knowledge::{KnowledgeChunk, KnowledgeStore};
+use podcast_knowledge::KnowledgeStore;
 
-use crate::ffi::actions::knowledge_module::KnowledgeAction;
 use crate::ffi::projections::KnowledgeSearchResult;
 use crate::store::PodcastStore;
 
@@ -39,81 +36,11 @@ use crate::store::PodcastStore;
 /// words is a reasonable RAG-chunk size (a few paragraphs of speech).
 const CHUNK_TARGET_WORDS: usize = 200;
 
-/// Apply a single `podcast.knowledge.*` action against the staged
-/// result slot. Owns the lock discipline so the `host_op_handler`
-/// dispatcher stays a thin router.
-///
-/// Returns the `{"ok":true,...}` envelope the kernel forwards to the
-/// caller (matching every other host-op handler's contract — see D6).
-pub(crate) fn handle_knowledge_action(
-    action: KnowledgeAction,
-    store: &Arc<Mutex<PodcastStore>>,
-    slot: &Arc<Mutex<Vec<KnowledgeSearchResult>>>,
-    knowledge_store: &Arc<Mutex<KnowledgeStore>>,
-    rev: &Arc<AtomicU64>,
-) -> serde_json::Value {
-    match action {
-        KnowledgeAction::Search { query } => {
-            handle_search(query, store, slot, knowledge_store, rev)
-        }
-        KnowledgeAction::ClearResults => handle_clear_results(slot, rev),
-        KnowledgeAction::IndexEpisode { episode_id } => {
-            handle_index_episode(episode_id, store, knowledge_store, rev)
-        }
-    }
-}
-
-/// Chunk the Rust-stored transcript for `episode_id` into the RAG chunk
-/// store (M5.3). Returns `{"ok":true,"status":"no_transcript"}` when no
-/// transcript text has been stored yet, otherwise
-/// `{"ok":true,"status":"indexed","chunk_count":N}`.
-///
-/// Chunks are word-windowed at [`CHUNK_TARGET_WORDS`]. Timing is a
-/// placeholder (`start_secs`/`end_secs = 0.0`) because the plain-text
-/// transcript carries no per-word timestamps — real timing arrives with
-/// the STT pipeline. Upserts are idempotent on `(episode_id, chunk_index)`
-/// (no `delete_episode` first), so re-indexing the same transcript
-/// replaces in place rather than duplicating.
-fn handle_index_episode(
-    episode_id: String,
-    store: &Arc<Mutex<PodcastStore>>,
-    knowledge_store: &Arc<Mutex<KnowledgeStore>>,
-    rev: &Arc<AtomicU64>,
-) -> serde_json::Value {
-    let text = match store.lock() {
-        Ok(s) => match s.transcript_for(&episode_id) {
-            Some(t) => t.to_owned(),
-            None => return serde_json::json!({"ok": true, "status": "no_transcript"}),
-        },
-        Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
-    };
-
-    let chunks = chunk_transcript_text(&episode_id, &text);
-    let chunk_count = chunks.len();
-
-    match knowledge_store.lock() {
-        Ok(mut ks) => {
-            // Delete all prior chunks for this episode before inserting the new
-            // batch. Without this, a re-index with a shorter transcript leaves
-            // stale trailing chunks (old indices N..M) that persist in search
-            // results as if they were current content.
-            ks.delete_episode(&episode_id);
-            for chunk in chunks {
-                ks.upsert(KnowledgeChunk::without_embedding(chunk));
-            }
-        }
-        Err(_) => return serde_json::json!({"ok": false, "error": "knowledge_store poisoned"}),
-    }
-
-    rev.fetch_add(1, Ordering::Relaxed);
-    serde_json::json!({"ok": true, "status": "indexed", "chunk_count": chunk_count})
-}
-
 /// Split `text` into ~[`CHUNK_TARGET_WORDS`]-word [`TranscriptChunk`]s with
 /// sequential `chunk_index`. Whitespace-tokenised; the chunk text rejoins
 /// the words with single spaces (lossy on original spacing, which is fine
 /// for substring search). Empty / whitespace-only input yields no chunks.
-fn chunk_transcript_text(episode_id: &str, text: &str) -> Vec<TranscriptChunk> {
+pub(crate) fn chunk_transcript_text(episode_id: &str, text: &str) -> Vec<TranscriptChunk> {
     let words: Vec<&str> = text.split_whitespace().collect();
     if words.is_empty() {
         return Vec::new();
@@ -130,77 +57,6 @@ fn chunk_transcript_text(episode_id: &str, text: &str) -> Vec<TranscriptChunk> {
             word_count: window.len() as u32,
         })
         .collect()
-}
-
-fn handle_search(
-    query: String,
-    store: &Arc<Mutex<PodcastStore>>,
-    slot: &Arc<Mutex<Vec<KnowledgeSearchResult>>>,
-    knowledge_store: &Arc<Mutex<KnowledgeStore>>,
-    rev: &Arc<AtomicU64>,
-) -> serde_json::Value {
-    let trimmed = query.trim();
-    if trimmed.is_empty() {
-        // Empty query clears the slot — same semantics as
-        // `clear_results` so the UI doesn't have to special-case.
-        return handle_clear_results(slot, rev);
-    }
-    // Title/description matches plus an `episode_id -> (podcast_title,
-    // episode_title)` resolver built from the same library snapshot — the
-    // chunk store only knows `episode_id`, so we resolve labels here while
-    // we already hold the store lock.
-    let (mut rows, labels) = match store.lock() {
-        Ok(s) => (
-            collect_knowledge_matches(&s, trimmed),
-            build_episode_labels(&s),
-        ),
-        Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
-    };
-
-    // Merge in transcript-chunk matches. Chunk hits carry a timestamp slot
-    // and win the dedup over a title/description hit for the same episode.
-    match knowledge_store.lock() {
-        Ok(ks) => merge_chunk_matches(&mut rows, &ks, trimmed, &labels),
-        Err(_) => return serde_json::json!({"ok": false, "error": "knowledge_store poisoned"}),
-    }
-
-    rows.sort_by(|a, b| {
-        b.relevance_score
-            .partial_cmp(&a.relevance_score)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-    rows.truncate(KNOWLEDGE_SEARCH_TOP_K);
-
-    match slot.lock() {
-        Ok(mut out) => {
-            *out = rows;
-            rev.fetch_add(1, Ordering::Relaxed);
-            serde_json::json!({"ok": true})
-        }
-        Err(_) => serde_json::json!({
-            "ok": false,
-            "error": "knowledge_search_results poisoned"
-        }),
-    }
-}
-
-fn handle_clear_results(
-    slot: &Arc<Mutex<Vec<KnowledgeSearchResult>>>,
-    rev: &Arc<AtomicU64>,
-) -> serde_json::Value {
-    match slot.lock() {
-        Ok(mut out) => {
-            if !out.is_empty() {
-                out.clear();
-                rev.fetch_add(1, Ordering::Relaxed);
-            }
-            serde_json::json!({"ok": true})
-        }
-        Err(_) => serde_json::json!({
-            "ok": false,
-            "error": "knowledge_search_results poisoned"
-        }),
-    }
 }
 
 /// Maximum results returned per `podcast.knowledge.search` (stub).
@@ -351,6 +207,10 @@ pub(crate) fn collect_chunk_texts_for_topic(
 /// Build an `episode_id -> (podcast_title, episode_title)` map from the
 /// library so chunk matches (which only carry `episode_id`) can resolve
 /// the labels [`KnowledgeSearchResult`] requires.
+pub(crate) fn build_episode_labels_pub(store: &PodcastStore) -> HashMap<String, (String, String)> {
+    build_episode_labels(store)
+}
+
 fn build_episode_labels(store: &PodcastStore) -> HashMap<String, (String, String)> {
     let mut map = HashMap::new();
     for (podcast, episodes) in store.subscribed_podcasts() {
@@ -378,6 +238,15 @@ fn build_episode_labels(store: &PodcastStore) -> HashMap<String, (String, String
 /// Score uses the same early-in-the-haystack heuristic as title/desc
 /// matches, plus a `0.1` chunk bonus so a transcript hit edges out a bare
 /// description hit of equal position.
+pub(crate) fn merge_chunk_matches_pub(
+    rows: &mut Vec<KnowledgeSearchResult>,
+    knowledge_store: &KnowledgeStore,
+    query: &str,
+    labels: &HashMap<String, (String, String)>,
+) {
+    merge_chunk_matches(rows, knowledge_store, query, labels)
+}
+
 fn merge_chunk_matches(
     rows: &mut Vec<KnowledgeSearchResult>,
     knowledge_store: &KnowledgeStore,

@@ -5,6 +5,8 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
+use crate::state::PodcastAppState;
+
 use nmp_ffi::NmpApp;
 use tokio::runtime::Runtime;
 
@@ -12,7 +14,7 @@ use crate::clip_handler::ClipRecord;
 use crate::download::DownloadQueue;
 use crate::ffi::projections::{
     AgentMessageSummary, AgentNoteSummary, AgentPickSummary, AgentTaskSummary, CommentSummary,
-    KnowledgeSearchResult, NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry,
+    NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry,
     VoiceState, WikiArticle,
 };
 use crate::inbox_llm::TriageResult;
@@ -38,6 +40,9 @@ pub struct OwnedPublishState {
 /// until it calls [`super::nmp_app_podcast_unregister`].
 pub struct PodcastHandle {
     pub(super) app: *mut NmpApp,
+    /// Step 0 — composed state root (currently unused; will replace individual
+    /// Arc fields as migration steps land).  See `docs/design/podcast-app-state-refactor.md`.
+    pub(crate) state: Arc<PodcastAppState>,
     pub(super) player_actor: Arc<Mutex<PlayerActor>>,
     pub(super) store: Arc<Mutex<PodcastStore>>,
     pub(super) identity: Arc<Mutex<IdentityStore>>,
@@ -92,19 +97,8 @@ pub struct PodcastHandle {
     /// Seeded with defaults in `register.rs` so the iOS UI has rows to render
     /// on first launch.
     pub(super) agent_tasks: Arc<Mutex<Vec<AgentTaskSummary>>>,
-    /// Transient RAG / knowledge-search results. Written by
-    /// `handle_knowledge_search` on the actor thread; read by
-    /// `build_snapshot_payload` on the main thread. Mirrors the
-    /// `search_results` shape so the snapshot reads stay symmetric.
-    pub(super) knowledge_search_results: Arc<Mutex<Vec<KnowledgeSearchResult>>>,
-    /// In-memory RAG chunk store (M5.3). `KnowledgeAction::IndexEpisode`
-    /// chunks the Rust-stored transcript into here; `Search` substring-
-    /// matches over the chunks. The handle owns its share of the `Arc` so
-    /// the chunk store outlives any single host-op dispatch and a future
-    /// snapshot projection can read it; today only the handler writes/reads
-    /// it, hence the `allow(dead_code)` on the handle-side owner.
-    #[allow(dead_code)]
-    pub(super) knowledge_store: Arc<Mutex<podcast_knowledge::KnowledgeStore>>,
+    // knowledge_search_results and knowledge_store removed in Step 1 —
+    // they are now owned by `state.knowledge` (KnowledgeState).
     /// User-saved audio clips. Written by `ClipHandler` on the actor
     /// thread; read by `build_snapshot_payload` on the main thread.
     /// In-memory only — clips evaporate on app restart (persistence is

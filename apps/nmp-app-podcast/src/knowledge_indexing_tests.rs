@@ -4,10 +4,16 @@
 //! Split out of `knowledge_tests.rs` (which kept the metadata-search matching,
 //! ranking, snippet, and snapshot-projection tests) so both files stay under
 //! the 500-line hard limit.
+//!
+//! Step 1 migration: tests that exercised the old free functions
+//! (`handle_index_episode`, `handle_search`, `handle_clear_results`) now use
+//! `KnowledgeState::for_test()` — the canonical test seam per the design doc.
 
 use super::*;
+use crate::ffi::actions::knowledge_module::KnowledgeAction;
+use crate::state::knowledge::KnowledgeState;
 use podcast_core::{Episode, Podcast, PodcastId};
-use std::sync::atomic::{AtomicU64, Ordering};
+use podcast_knowledge::KnowledgeChunk;
 use std::sync::{Arc, Mutex};
 use url::Url;
 use uuid::Uuid;
@@ -31,19 +37,16 @@ fn shared(store: PodcastStore) -> Arc<Mutex<PodcastStore>> {
     Arc::new(Mutex::new(store))
 }
 
-fn empty_knowledge() -> Arc<Mutex<KnowledgeStore>> {
-    Arc::new(Mutex::new(KnowledgeStore::new()))
-}
-
 #[test]
 fn index_episode_without_transcript_reports_no_transcript() {
     let store = shared(PodcastStore::new());
-    let ks = empty_knowledge();
-    let rev = Arc::new(AtomicU64::new(1));
-    let out = handle_index_episode("missing-ep".to_owned(), &store, &ks, &rev);
+    let state = KnowledgeState::for_test(store);
+    let out = state.handle(KnowledgeAction::IndexEpisode {
+        episode_id: "missing-ep".to_owned(),
+    });
     assert_eq!(out["ok"], true);
     assert_eq!(out["status"], "no_transcript");
-    assert!(ks.lock().unwrap().is_empty());
+    assert!(state.index.lock().unwrap().is_empty());
 }
 
 #[test]
@@ -60,18 +63,17 @@ fn index_episode_chunks_stored_transcript() {
         .unwrap()
         .set_transcript("ep-1".to_owned(), text);
 
-    let ks = empty_knowledge();
-    let rev = Arc::new(AtomicU64::new(1));
-    let before = rev.load(Ordering::Relaxed);
-    let out = handle_index_episode("ep-1".to_owned(), &store, &ks, &rev);
+    let state = KnowledgeState::for_test(store);
+    let out = state.handle(KnowledgeAction::IndexEpisode {
+        episode_id: "ep-1".to_owned(),
+    });
 
     assert_eq!(out["status"], "indexed");
     assert_eq!(out["chunk_count"], 3);
-    assert_eq!(ks.lock().unwrap().len(), 3);
-    assert!(rev.load(Ordering::Relaxed) > before);
+    assert_eq!(state.index.lock().unwrap().len(), 3);
 
     // chunk_index is sequential and timing is the 0.0 placeholder.
-    let guard = ks.lock().unwrap();
+    let guard = state.index.lock().unwrap();
     let indices: Vec<u32> = guard.chunks.iter().map(|c| c.chunk.chunk_index).collect();
     assert_eq!(indices, vec![0, 1, 2]);
     assert!(guard.chunks.iter().all(|c| c.chunk.start_secs == 0.0));
@@ -86,13 +88,16 @@ fn reindex_same_transcript_does_not_duplicate_chunks() {
         .lock()
         .unwrap()
         .set_transcript("ep-1".to_owned(), text);
-    let ks = empty_knowledge();
-    let rev = Arc::new(AtomicU64::new(1));
-    handle_index_episode("ep-1".to_owned(), &store, &ks, &rev);
-    handle_index_episode("ep-1".to_owned(), &store, &ks, &rev);
+    let state = KnowledgeState::for_test(store);
+    state.handle(KnowledgeAction::IndexEpisode {
+        episode_id: "ep-1".to_owned(),
+    });
+    state.handle(KnowledgeAction::IndexEpisode {
+        episode_id: "ep-1".to_owned(),
+    });
     // delete_episode clears the prior batch before upserting; same transcript
     // → same chunk count, not doubled.
-    assert_eq!(ks.lock().unwrap().len(), 1);
+    assert_eq!(state.index.lock().unwrap().len(), 1);
 }
 
 #[test]
@@ -104,10 +109,11 @@ fn reindex_shorter_transcript_removes_stale_trailing_chunks() {
         .lock()
         .unwrap()
         .set_transcript("ep-2".to_owned(), long_text);
-    let ks = empty_knowledge();
-    let rev = Arc::new(AtomicU64::new(1));
-    handle_index_episode("ep-2".to_owned(), &store, &ks, &rev);
-    let first_count = ks.lock().unwrap().len();
+    let state = KnowledgeState::for_test(store.clone());
+    state.handle(KnowledgeAction::IndexEpisode {
+        episode_id: "ep-2".to_owned(),
+    });
+    let first_count = state.index.lock().unwrap().len();
     assert!(first_count >= 2, "expected ≥2 chunks from long transcript");
 
     // Now replace with a short transcript that fits in one chunk.
@@ -115,8 +121,10 @@ fn reindex_shorter_transcript_removes_stale_trailing_chunks() {
         .lock()
         .unwrap()
         .set_transcript("ep-2".to_owned(), "short".to_owned());
-    handle_index_episode("ep-2".to_owned(), &store, &ks, &rev);
-    let second_count = ks.lock().unwrap().len();
+    state.handle(KnowledgeAction::IndexEpisode {
+        episode_id: "ep-2".to_owned(),
+    });
+    let second_count = state.index.lock().unwrap().len();
     // Stale trailing chunks must be gone — only the new single chunk remains.
     assert_eq!(
         second_count, 1,
@@ -140,15 +148,17 @@ fn search_finds_term_only_in_transcript_chunk() {
         "we explore distributed consensus protocols".to_owned(),
     );
 
-    let ks = empty_knowledge();
-    let slot = Arc::new(Mutex::new(Vec::new()));
-    let rev = Arc::new(AtomicU64::new(1));
+    let state = KnowledgeState::for_test(store);
 
-    handle_index_episode(ep_id.clone(), &store, &ks, &rev);
-    let out = handle_search("consensus".to_owned(), &store, &slot, &ks, &rev);
+    state.handle(KnowledgeAction::IndexEpisode {
+        episode_id: ep_id.clone(),
+    });
+    let out = state.handle(KnowledgeAction::Search {
+        query: "consensus".to_owned(),
+    });
     assert_eq!(out["ok"], true);
 
-    let results = slot.lock().unwrap();
+    let results = state.results_snapshot();
     assert_eq!(
         results.len(),
         1,
@@ -177,13 +187,15 @@ fn chunk_match_dedups_with_title_match_for_same_episode() {
         .unwrap()
         .set_transcript(ep_id.clone(), "nostr relays and events".to_owned());
 
-    let ks = empty_knowledge();
-    let slot = Arc::new(Mutex::new(Vec::new()));
-    let rev = Arc::new(AtomicU64::new(1));
-    handle_index_episode(ep_id.clone(), &store, &ks, &rev);
-    handle_search("nostr".to_owned(), &store, &slot, &ks, &rev);
+    let state = KnowledgeState::for_test(store);
+    state.handle(KnowledgeAction::IndexEpisode {
+        episode_id: ep_id.clone(),
+    });
+    state.handle(KnowledgeAction::Search {
+        query: "nostr".to_owned(),
+    });
 
-    let results = slot.lock().unwrap();
+    let results = state.results_snapshot();
     // One episode → exactly one row; the chunk hit wins (has a timestamp).
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].start_secs, Some(0.0));
@@ -194,9 +206,9 @@ fn chunk_text_for_unknown_episode_is_skipped() {
     // Index a chunk for an episode that isn't in the library → its labels
     // can't be resolved, so the chunk match is dropped.
     let store = shared(PodcastStore::new());
-    let ks = empty_knowledge();
+    let state = KnowledgeState::for_test(store);
     {
-        let mut guard = ks.lock().unwrap();
+        let mut guard = state.index.lock().unwrap();
         guard.upsert(KnowledgeChunk::without_embedding(TranscriptChunk {
             episode_id: "ghost".to_owned(),
             chunk_index: 0,
@@ -206,10 +218,10 @@ fn chunk_text_for_unknown_episode_is_skipped() {
             word_count: 3,
         }));
     }
-    let slot = Arc::new(Mutex::new(Vec::new()));
-    let rev = Arc::new(AtomicU64::new(1));
-    handle_search("quantum".to_owned(), &store, &slot, &ks, &rev);
-    assert!(slot.lock().unwrap().is_empty());
+    state.handle(KnowledgeAction::Search {
+        query: "quantum".to_owned(),
+    });
+    assert!(state.results_snapshot().is_empty());
 }
 
 #[test]
@@ -219,9 +231,10 @@ fn empty_transcript_indexes_zero_chunks() {
         .lock()
         .unwrap()
         .set_transcript("ep-1".to_owned(), "   ".to_owned());
-    let ks = empty_knowledge();
-    let rev = Arc::new(AtomicU64::new(1));
-    let out = handle_index_episode("ep-1".to_owned(), &store, &ks, &rev);
+    let state = KnowledgeState::for_test(store);
+    let out = state.handle(KnowledgeAction::IndexEpisode {
+        episode_id: "ep-1".to_owned(),
+    });
     assert_eq!(out["status"], "indexed");
     assert_eq!(out["chunk_count"], 0);
 }

@@ -5,6 +5,8 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::{Arc, Mutex};
 
+use crate::state::{Infra, PodcastAppState};
+
 use nmp_ffi::NmpApp;
 
 use super::snapshot::build_snapshot_payload;
@@ -98,8 +100,6 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     // before the user has scheduled anything (see
     // `tasks_handler::default_seed`).
     let agent_tasks = Arc::new(Mutex::new(tasks_handler::default_seed()));
-    let knowledge_search_results = Arc::new(Mutex::new(Vec::new()));
-    let knowledge_store = Arc::new(Mutex::new(podcast_knowledge::KnowledgeStore::new()));
     let clips = Arc::new(Mutex::new(Vec::new()));
     let transcripts = Arc::new(Mutex::new(HashMap::new()));
     let dismissed_episode_ids = Arc::new(Mutex::new(HashSet::new()));
@@ -175,6 +175,19 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     )
     .with_snapshot_signal(snapshot_signal.clone());
 
+    // Step 0/1 — composed state root.
+    // `Infra` bundles rev + signal + runtime so substates can bump the
+    // snapshot without receiving extra parameters.  `PodcastAppState::new`
+    // seeds each substate's slots internally.  Both seams receive ONE Arc
+    // clone; the old per-slot Arcs (knowledge slots removed in Step 1) are
+    // no longer needed in register.rs for the migrated features.
+    let app_state_infra = Infra {
+        rev: rev.clone(),
+        signal: Some(snapshot_signal.clone()),
+        runtime: runtime.clone(),
+    };
+    let app_state = Arc::new(PodcastAppState::new(app_state_infra, store.clone()));
+
     // Seed the podcast app's default relay set (NMP v0.2.1, PR #900).
     //
     // As of v0.2.1, `nmp-core` no longer carries a hardcoded onboarding relay
@@ -236,6 +249,7 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     app_ref.set_host_op_handler(Arc::new(
         PodcastHostOpHandler::new(
             app,
+            app_state.clone(),
             store.clone(),
             identity.clone(),
             player_actor.clone(),
@@ -247,8 +261,6 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
             wiki_search_results.clone(),
             picks.clone(),
             agent_tasks.clone(),
-            knowledge_search_results.clone(),
-            knowledge_store.clone(),
             clips.clone(),
             transcripts.clone(),
             dismissed_episode_ids.clone(),
@@ -337,6 +349,7 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
 
     let handle = Arc::new(PodcastHandle {
         app,
+        state: app_state,
         player_actor,
         store,
         identity,
@@ -352,8 +365,6 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
         wiki_search_results,
         picks,
         agent_tasks,
-        knowledge_search_results,
-        knowledge_store,
         clips,
         transcripts,
         dismissed_episode_ids,
