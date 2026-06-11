@@ -89,6 +89,15 @@ private fun PodcastRoot() {
     var snapshot by remember { mutableStateOf<PodcastSnapshot?>(null) }
 
     DisposableEffect(bridge, audio, download, http, router) {
+        // Bind the kernel's persistence directory FIRST — before any write
+        // (identity import below) and before `start` — so the kernel reloads
+        // `podcasts.json`, `identity.json`, the Up-Next queue, per-podcast keys,
+        // relay config, and the triage cache from disk, and so the subsequent
+        // identity write actually persists. Mirrors the iOS register →
+        // set_data_dir → start ordering. Without this the kernel keeps all
+        // state in memory only and loses it on every process restart.
+        bridge.setDataDir(context.filesDir.absolutePath)
+
         // Restore a previously-imported identity before the actor starts so the
         // first snapshot already reflects the signed-in state. Dispatches the
         // canonical `podcast.identity` ImportNsec (the bridge constructor's

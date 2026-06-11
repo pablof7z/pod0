@@ -34,6 +34,21 @@ class KernelBridge {
         handle = nativeNew()
     }
 
+    /**
+     * Bind the kernel's podcast library store to a persistence directory and
+     * reload any saved state (`podcasts.json`, `identity.json`, the Up-Next
+     * queue, per-podcast keys, relay config, inbox-triage cache).
+     *
+     * Mirror of the iOS `KernelBridge.swift` `set_data_dir` call: invoke once,
+     * after construction (`nativeNew` already ran `register`) and **before**
+     * [start], so the actor reloads persisted state before it emits its first
+     * snapshot. Pass `context.filesDir.absolutePath`. The kernel owns what and
+     * when to persist; this shell only supplies the OS path.
+     */
+    fun setDataDir(path: String) {
+        if (handle != 0L) nativeSetDataDir(handle, path)
+    }
+
     /** Start the kernel actor with the given snapshot cadence. */
     fun start(visibleLimit: Int = 80, emitHz: Int = 4) {
         if (handle != 0L) nativeStart(handle, visibleLimit, emitHz)
@@ -286,6 +301,7 @@ class KernelBridge {
     //    `apps/nmp-app-podcast/src/android.rs`. The JNI loader resolves these
     //    against symbols of the form `Java_io_f7z_podcast_KernelBridge_<name>`.
     private external fun nativeNew(): Long
+    private external fun nativeSetDataDir(handle: Long, path: String)
     private external fun nativeStart(handle: Long, visibleLimit: Int, emitHz: Int)
     private external fun nativeStop(handle: Long)
     private external fun nativeIsAlive(handle: Long): Int

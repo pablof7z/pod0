@@ -14,13 +14,16 @@ import androidx.security.crypto.MasterKey
  * ciphertext does — which is what lets the Identity surface claim "your
  * private key never leaves this device".
  *
- * **Why this is the sole persistence on Android:** the Rust kernel's
- * `IdentityStore::import_nsec` writes `identity.json` only when a `data_dir`
- * has been bound via `set_data_dir`. The Android `KernelBridge` exposes no
- * such native (unlike iOS), so the kernel side does not persist across
- * restarts. This manager is therefore the single source of truth for
- * surviving sign-in across process death — there is intentionally no
- * plaintext `identity.json` shadow on Android.
+ * **Why the nsec also lives here, not only in the kernel:** the Rust kernel's
+ * `IdentityStore::import_nsec` now persists `identity.json` on Android too —
+ * `KernelBridge.setDataDir` (wired in `MainActivity` before `start`) binds the
+ * kernel `data_dir`, so kernel-side state survives process restarts the same
+ * way it does on iOS, and the launch-time kernel reload is what restores the
+ * signed-in state into the first snapshot. This manager remains the right home
+ * for the raw `nsec`: it is a hardware-Keystore-backed secret store, whereas the
+ * kernel `identity.json` is a plaintext shadow. `MainActivity` re-imports the
+ * stored nsec into the kernel on launch; that import is idempotent and the
+ * secret never leaves this device in plaintext.
  *
  * All methods tolerate Keystore/crypto failures (corrupted prefs, key-rotation
  * edge cases): a failed read falls back to `null` and self-heals by clearing

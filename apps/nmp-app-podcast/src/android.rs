@@ -32,8 +32,8 @@ use nmp_ffi::{
 };
 
 use crate::ffi::{
-    nmp_app_podcast_register, nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free,
-    nmp_app_podcast_unregister, PodcastHandle,
+    nmp_app_podcast_register, nmp_app_podcast_set_data_dir, nmp_app_podcast_snapshot,
+    nmp_app_podcast_snapshot_free, nmp_app_podcast_unregister, PodcastHandle,
 };
 
 #[path = "android/capability_router.rs"]
@@ -140,6 +140,43 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeNew(
         capability_ctx: Mutex::new(None),
     });
     Box::into_raw(session) as jlong
+}
+
+/// `nativeSetDataDir(handle, path)` — bind the podcast library store to a
+/// persistence directory and reload any saved state (`podcasts.json`,
+/// `identity.json`, the Up-Next queue, per-podcast keys, relay config, and the
+/// inbox-triage cache). Mirror of the iOS `KernelBridge+Callbacks.swift`
+/// `configurePodcastDataDir` call.
+///
+/// Caller contract (same as iOS): invoke once, after `nativeNew` (which runs
+/// `nmp_app_podcast_register`) and **before** `nativeStart`, so persisted state
+/// is reloaded into the actor before it starts emitting snapshots. A null
+/// handle, null/non-UTF-8 path, or a `null` podcast projection is a silent
+/// no-op (D6) — the kernel side decides what and when to persist; the shell
+/// only supplies the OS path.
+#[no_mangle]
+pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeSetDataDir<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    handle: jlong,
+    path: JString<'l>,
+) {
+    let Some(s) = session_ref(handle) else {
+        return;
+    };
+    if s.podcast.is_null() {
+        return;
+    }
+    let path = match env.get_string(&path) {
+        Ok(p) => p.to_string_lossy().into_owned(),
+        Err(_) => return,
+    };
+    let Ok(c_path) = CString::new(path) else {
+        return;
+    };
+    // `nmp_app_podcast_set_data_dir` is the same in-crate symbol iOS calls; it
+    // owns all reload/persist logic and degrades silently on poison/IO error.
+    nmp_app_podcast_set_data_dir(s.podcast, c_path.as_ptr());
 }
 
 /// `nativeStart(handle, visibleLimit, emitHz)` — start the kernel actor.
