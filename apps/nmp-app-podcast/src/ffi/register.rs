@@ -31,15 +31,13 @@ use super::actions::tasks_module::AgentTasksModule;
 use super::actions::voice_module::VoiceActionModule;
 use super::actions::wiki_module::WikiActionModule;
 use super::handle::PodcastHandle;
-use super::projections::VoiceState;
-use crate::agent_handler::AgentChatHandler;
 use crate::download::DownloadQueue;
 use crate::host_op_handler::PodcastHostOpHandler;
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::snapshot_signal::SnapshotUpdateSignal;
 use crate::store::identity::IdentityStore;
-use crate::store::{PodcastKeyStore, PodcastStore};
+use crate::store::PodcastStore;
 
 /// Register Podcast projections and action namespaces against `app`. Returns a
 /// non-null `*mut PodcastHandle` on success; `null` on any failure (null
@@ -100,12 +98,12 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     // transcripts removed in Step 5b — now seeded inside PodcastAppState::new (TranscriptsState).
     // agent_tasks removed in Step 6 — now seeded inside PodcastAppState::new (TasksState).
     let dismissed_episode_ids = Arc::new(Mutex::new(HashSet::new()));
-    let podcast_keys = Arc::new(Mutex::new(PodcastKeyStore::new()));
-    let publish_state = Arc::new(Mutex::new(HashMap::new()));
-    let voice_state = Arc::new(Mutex::new(VoiceState::default()));
-    let conversation = Arc::new(Mutex::new(Vec::new()));
-    let agent_busy = Arc::new(AtomicBool::new(false));
-    let agent_touched = Arc::new(AtomicBool::new(false));
+    // podcast_keys and publish_state removed in Step 13 —
+    // now seeded inside PodcastAppState::new (PublishState).
+    // voice_state and voice_conversation removed in Step 12 —
+    // now seeded inside PodcastAppState::new via VoiceSubstate::new (with real app ptr).
+    // conversation, agent_busy, agent_touched removed in Step 11 —
+    // now seeded inside PodcastAppState::new (AgentChatState).
     // categories and categorization_in_progress removed in Step 4 —
     // they are now seeded inside PodcastAppState::new (CategoriesState).
     // comments_cache, viewed_comments_episode_id removed in Step 8 —
@@ -145,22 +143,18 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
                 move || snapshot_signal.bump()
             }));
 
-    let agent_chat = AgentChatHandler::new(
-        conversation.clone(),
-        agent_busy.clone(),
-        agent_touched.clone(),
-        rev.clone(),
-        runtime.clone(),
-        store.clone(),
-    )
-    .with_snapshot_signal(snapshot_signal.clone());
-
-    // Step 0-3 — composed state root.
+    // Steps 0-12 — composed state root.
     // `Infra` bundles rev + signal + runtime so substates can bump the
     // snapshot without receiving extra parameters.  `PodcastAppState::new`
     // seeds each substate's slots internally.  Both seams receive ONE Arc
-    // clone; the old per-slot Arcs (knowledge/wiki/picks slots removed in
-    // Steps 1-3) are no longer needed in register.rs for the migrated features.
+    // clone; the old per-slot Arcs (knowledge/wiki/picks/agent_chat/voice slots
+    // removed in Steps 1-3/11-12) are no longer needed in register.rs.
+    //
+    // Step 11: AgentChatState::new reads `infra.signal` to wire the snapshot
+    // signal into its inner AgentChatHandler automatically.
+    // Step 12: VoiceSubstate is constructed with null app by default inside
+    // new_with_identity; replaced with the real app pointer below before
+    // sealing into Arc.
     let app_state_infra = Infra {
         rev: rev.clone(),
         signal: Some(snapshot_signal.clone()),
@@ -168,11 +162,20 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     };
     // Steps 8-10: pass the shared identity Arc so CommentsState / SocialState
     // can access it without needing a separate clone in register.rs.
-    let app_state = Arc::new(PodcastAppState::new_with_identity(
-        app_state_infra,
+    let mut app_state_inner = PodcastAppState::new_with_identity(
+        app_state_infra.clone(),
         store.clone(),
         identity.clone(),
-    ));
+    );
+    // Step 12: Replace the default null-app VoiceSubstate with one that holds
+    // the live `app` pointer so `VoiceConversationManager` can dispatch
+    // `VoiceCommand::Speak` back to the iOS TTS executor.
+    app_state_inner.voice = crate::state::voice::VoiceSubstate::new(
+        app_state_infra,
+        store.clone(),
+        app,
+    );
+    let app_state = Arc::new(app_state_inner);
 
     // Optimistic-subscribe async feed-fetch coordinator. Shared (one `Arc`)
     // between the host-op handler (registers a pending fetch + dispatches the
@@ -250,8 +253,10 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     ]);
 
     // Steps 8-10: comments_cache, viewed_comments_episode_id, nostr_results,
-    // search_results, social, agent_notes removed from constructor — now owned
-    // by state.comments / state.discovery / state.social respectively.
+    // Steps 8-10: search_results, social, agent_notes removed from constructor.
+    // Step 11: agent_chat removed — now owned by state.agent_chat (AgentChatState).
+    // Step 12: voice_state removed — now owned by state.voice (VoiceSubstate).
+    // Step 13: podcast_keys + publish_state removed — now owned by state.publish (PublishState).
     app_ref.set_host_op_handler(Arc::new(
         PodcastHostOpHandler::new(
             app,
@@ -262,11 +267,7 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
             queue.clone(),
             download_queue.clone(),
             dismissed_episode_ids.clone(),
-            voice_state.clone(),
             rev.clone(),
-            podcast_keys.clone(),
-            publish_state.clone(),
-            agent_chat,
             runtime.clone(),
             inbox_triage_cache.clone(),
             Arc::clone(&inbox_triage_in_progress),
@@ -327,31 +328,15 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     let _feedback_observer_id =
         app_ref.register_event_observer(std::sync::Arc::new(feedback_runtime.observer()));
 
-    // Keep a clone for the handle before the runtime Arc is moved into the
-    // voice manager below. The snapshot path's proactive triage trigger
-    // (`maybe_enqueue_triage`) spawns onto this same shared runtime.
-    let runtime_for_handle = runtime.clone();
+    // Step 12: voice_state + voice_conversation are now owned by state.voice (VoiceSubstate).
+    // The runtime clone below is still needed for the snapshot path's
+    // proactive triage trigger (`maybe_enqueue_triage`).
+    let runtime_for_handle = runtime;
 
-    // Voice-mode conversation manager (M5.6-voice): owns the STT→LLM→TTS
-    // turn history and dispatches LLM replies back to the iOS voice
-    // executor. Holds clones of the shared store / voice-state / rev plus
-    // the same Tokio runtime so background turns reuse the shared
-    // scheduler. All clones of this `runtime` Arc (handler, voice manager,
-    // handle) point at one runtime, so spawned work is fenced by the
-    // actor-thread join before `nmp_app_free`.
-    let voice_conversation = crate::voice_conversation::VoiceConversationManager::new(
-        app,
-        Arc::new(Mutex::new(Vec::new())),
-        store.clone(),
-        voice_state.clone(),
-        runtime,
-        rev.clone(),
-        Some(snapshot_signal.clone()),
-    );
-
-    // Steps 8-10: search_results, nostr_results, comments_cache,
-    // viewed_comments_episode_id, social, agent_notes removed — now owned by
-    // state.discovery / state.comments / state.social respectively.
+    // Steps 8-13: search_results, nostr_results, comments_cache,
+    // viewed_comments_episode_id, social, agent_notes, voice_state,
+    // voice_conversation, podcast_keys, publish_state removed —
+    // now owned by state.* respectively.
     let handle = Arc::new(PodcastHandle {
         app,
         state: app_state,
@@ -367,13 +352,12 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
         // clips, transcripts, agent_tasks removed in Steps 5a, 5b, 6 —
         // now owned by state.clips / state.transcripts / state.tasks.
         dismissed_episode_ids,
-        podcast_keys,
-        publish_state,
-        voice_state,
-        voice_conversation,
-        conversation,
-        agent_busy,
-        agent_touched,
+        // podcast_keys and publish_state removed in Step 13 —
+        // now owned by state.publish (PublishState).
+        // conversation, agent_busy, agent_touched removed in Step 11 —
+        // now owned by state.agent_chat (AgentChatState).
+        // voice_state, voice_conversation removed in Step 12 —
+        // now owned by state.voice (VoiceSubstate).
         inbox_triage_cache,
         inbox_triage_in_progress,
         feedback: feedback_runtime,

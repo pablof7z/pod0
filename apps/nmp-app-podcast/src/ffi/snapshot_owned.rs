@@ -18,13 +18,16 @@ use super::projections::OwnedPodcastInfo;
 /// `podcast_keys` map just means we surface no owned podcasts that
 /// tick, not a kernel-wide failure.
 pub fn collect_owned_podcasts(handle: &PodcastHandle) -> Vec<OwnedPodcastInfo> {
+    // Step 13: podcast_keys and publish_state now in state.publish (PublishState).
     let pairs = handle
+        .state
+        .publish
         .podcast_keys
         .lock()
         .ok()
         .map(|k| k.iter_pubkeys())
         .unwrap_or_default();
-    let state_map = handle.publish_state.lock().ok();
+    let state_map = handle.state.publish.publish_state.lock().ok();
     pairs
         .into_iter()
         .map(|(podcast_id, podcast_pubkey_hex)| {

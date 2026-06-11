@@ -29,18 +29,23 @@
 //! Step 6:  Tasks substate — `TasksState` owns `tasks` slot + write-through
 //!          persistence via `store::agent_tasks`.
 //!
-//! Steps 7-N are defined in the design doc.
+//! Steps 7-N: see design doc.  Steps 8-10 done (Comments, Discovery, Social).
+//! Step 11: AgentChat substate — `conversation`/`agent_busy`/`agent_touched`
+//!          removed from both god-structs.
 
+pub mod agent_chat;
 pub mod categories;
 pub mod clips;
 pub mod comments;
 pub mod discovery;
 pub mod knowledge;
 pub mod picks;
+pub mod publish;
 pub mod slot;
 pub mod social;
 pub mod tasks;
 pub mod transcripts;
+pub mod voice;
 pub mod wiki;
 
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -146,6 +151,11 @@ impl Infra {
 /// Step 6: tasks substate added; `agent_tasks` field removed from both
 /// god-structs.
 ///
+/// Steps 8-10: comments, discovery, social substates added.
+///
+/// Step 11: agent_chat substate added; `conversation`/`agent_busy`/`agent_touched`
+/// removed from both god-structs.
+///
 /// `picks` and `categories` are wrapped in `Arc` so `FeedFetchCoordinator` can
 /// hold the SAME substate instance (canonical single guard — no duplicate Arcs).
 pub struct PodcastAppState {
@@ -188,6 +198,26 @@ pub struct PodcastAppState {
     /// `AgentNotesObserver` shares `agent_notes` off the actor thread via
     /// `.share()`.  Removes the dead-duplicate `agent_notes` handler Arc.
     pub social: social::SocialState,
+
+    /// AgentChat substate (Step 11).  Owns the conversation transcript +
+    /// `agent_busy` + `agent_touched` flags.  Wraps `AgentChatHandler` so
+    /// the LLM dispatch logic stays in one place.
+    pub agent_chat: agent_chat::AgentChatState,
+
+    /// Voice substate (Step 12).  Owns `voice_state` projection + the
+    /// `VoiceConversationManager` (LLM↔TTS loop).
+    ///
+    /// **Shutdown fence**: `nmp_app_podcast_unregister` MUST call
+    /// `state.voice.shutdown()` before dropping the handle.  This fences
+    /// in-flight Tokio tasks that hold a `*mut NmpApp` deref from
+    /// completing after `nmp_app_free`.  The ordering is identical to the
+    /// previous `reclaimed.voice_conversation.shutdown()` call.
+    pub voice: voice::VoiceSubstate,
+
+    /// Publish substate (Step 13).  Owns the NIP-F4 per-podcast keypairs
+    /// (`podcast_keys`, Persisted) and the diagnostic publish map
+    /// (`publish_state`, Session).
+    pub publish: publish::PublishState,
 }
 
 impl PodcastAppState {
@@ -230,6 +260,16 @@ impl PodcastAppState {
             comments::CommentsState::new(infra.clone(), store.clone(), identity.clone());
         let discovery = discovery::DiscoveryState::new(infra.clone());
         let social = social::SocialState::new(infra.clone());
+        let agent_chat = agent_chat::AgentChatState::new(infra.clone(), store.clone());
+        // Voice is constructed with a null app pointer by default.  In
+        // production (`register.rs`) the caller replaces this field before
+        // wrapping in `Arc` using `with_voice`.
+        let voice = voice::VoiceSubstate::new(
+            infra.clone(),
+            store.clone(),
+            std::ptr::null_mut(),
+        );
+        let publish = publish::PublishState::new(infra.clone(), store.clone());
         Self {
             infra,
             knowledge,
@@ -242,6 +282,9 @@ impl PodcastAppState {
             comments,
             discovery,
             social,
+            agent_chat,
+            voice,
+            publish,
         }
     }
 }

@@ -64,7 +64,8 @@ pub extern "C" fn nmp_app_podcast_voice_report(
         _ => None,
     };
 
-    let changed = match handle_ref.voice_state.lock() {
+    // Step 12: voice_state and voice_conversation now live in state.voice.
+    let changed = match handle_ref.state.voice.voice_state.lock() {
         Ok(mut state) => apply_report(&mut state, report),
         Err(_) => false,
     };
@@ -75,6 +76,8 @@ pub extern "C" fn nmp_app_podcast_voice_report(
     // otherwise, dispatching the spoken reply back to iOS asynchronously.
     if let Some(transcript) = final_transcript {
         handle_ref
+            .state
+            .voice
             .voice_conversation
             .on_transcript_final(transcript);
     }

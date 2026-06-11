@@ -170,7 +170,7 @@ impl HostOpHandler for PodcastHostOpHandler {
             "podcast.voice" => {
                 voice_handler::handle(self, parse!(VoiceAction), correlation_id)
             }
-            "podcast.agent" => self.agent_chat.handle(parse!(AgentChatAction)),
+            "podcast.agent" => self.state.agent_chat.handle(parse!(AgentChatAction)),
             "podcast.settings" => self.handle_settings_action(parse!(SettingsAction)),
             "podcast.siri" => self.handle_siri_action(parse!(SiriAction), correlation_id),
             "podcast.social" => {

@@ -151,7 +151,10 @@ pub fn delete_owned(handler: &PodcastHostOpHandler, podcast_id: String) -> serde
     // Resolve the prior show event id (if we ever published one) so the
     // NIP-09 event can reference it. Absent → no published show to delete;
     // we still tear down local state.
+    // Step 13: publish_state now in state.publish (PublishState).
     let show_event_id = handler
+        .state
+        .publish
         .publish_state
         .lock()
         .ok()
@@ -174,7 +177,10 @@ pub fn delete_owned(handler: &PodcastHostOpHandler, podcast_id: String) -> serde
         .map(|s| s.nostr_enabled())
         .unwrap_or(false);
     if let (Some(event_id), true) = (show_event_id.as_ref(), nostr_enabled) {
+        // Step 13: podcast_keys now in state.publish (PublishState).
         let secret_bytes = handler
+            .state
+            .publish
             .podcast_keys
             .lock()
             .ok()
@@ -199,7 +205,8 @@ pub fn delete_owned(handler: &PodcastHostOpHandler, podcast_id: String) -> serde
     }
 
     // Step 2: drop the per-podcast key (after signing the deletion).
-    if let Ok(mut keys) = handler.podcast_keys.lock() {
+    // Step 13: podcast_keys now in state.publish (PublishState).
+    if let Ok(mut keys) = handler.state.publish.podcast_keys.lock() {
         keys.remove_key(&podcast_id);
     }
     // Step 3: remove the row + episodes.
@@ -207,7 +214,8 @@ pub fn delete_owned(handler: &PodcastHostOpHandler, podcast_id: String) -> serde
         s.remove_podcast_and_episodes(&podcast_id);
     }
     // Step 4: discard publish state.
-    if let Ok(mut state) = handler.publish_state.lock() {
+    // Step 13: publish_state now in state.publish (PublishState).
+    if let Ok(mut state) = handler.state.publish.publish_state.lock() {
         state.remove(&podcast_id);
     }
     handler.rev.fetch_add(1, Ordering::Relaxed);

@@ -73,7 +73,7 @@ pub(crate) fn create_owned(
             "error": format!("podcast not found: {podcast_id}")
         });
     }
-    let pubkey_hex = match handler.podcast_keys.lock() {
+    let pubkey_hex = match handler.state.publish.podcast_keys.lock() {
         Ok(mut keys) => {
             keys.generate_key(&podcast_id);
             let pk = match keys.pubkey_hex(&podcast_id) {
@@ -87,7 +87,7 @@ pub(crate) fn create_owned(
     if let Ok(mut s) = handler.store.lock() {
         s.set_owner_pubkey_hex(&podcast_id, pubkey_hex.clone());
     }
-    if let Ok(mut state) = handler.publish_state.lock() {
+    if let Ok(mut state) = handler.state.publish.publish_state.lock() {
         let _: &mut OwnedPublishState = state.entry(podcast_id).or_default();
     }
     handler.rev.fetch_add(1, Ordering::Relaxed);
@@ -113,7 +113,7 @@ pub(crate) fn publish_show(
         },
         Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
     };
-    let (pubkey_hex, secret_bytes) = match handler.podcast_keys.lock() {
+    let (pubkey_hex, secret_bytes) = match handler.state.publish.podcast_keys.lock() {
         Ok(keys) => {
             let pk = match keys.pubkey_hex(&podcast_id) {
                 Some(pk) => pk,
@@ -148,7 +148,7 @@ pub(crate) fn publish_show(
         Err(e) => return serde_json::json!({"ok": false, "error": format!("signing failed: {e}")}),
     };
 
-    if let Ok(mut state) = handler.publish_state.lock() {
+    if let Ok(mut state) = handler.state.publish.publish_state.lock() {
         let entry: &mut OwnedPublishState = state.entry(podcast_id).or_default();
         entry.show_event_json = Some(event.as_json());
         entry.last_published_at = Some(created_at);
@@ -186,7 +186,7 @@ fn publish_episode(handler: &PodcastHostOpHandler, episode_id: String) -> serde_
         Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
     };
     let podcast_id_str = podcast.id.0.to_string();
-    let (pubkey_hex, secret_bytes) = match handler.podcast_keys.lock() {
+    let (pubkey_hex, secret_bytes) = match handler.state.publish.podcast_keys.lock() {
         Ok(keys) => {
             let pk = match keys.pubkey_hex(&podcast_id_str) {
                 Some(pk) => pk,
@@ -319,7 +319,7 @@ fn publish_author_claim(
     if agent_pubkey_hex.is_empty() {
         return serde_json::json!({"ok": false, "error": "agent_pubkey_hex is empty"});
     }
-    let pairs = match handler.podcast_keys.lock() {
+    let pairs = match handler.state.publish.podcast_keys.lock() {
         Ok(keys) => keys.iter_pubkeys(),
         Err(_) => return serde_json::json!({"ok": false, "error": "podcast_keys poisoned"}),
     };
@@ -341,13 +341,13 @@ fn publish_author_claim(
 /// clear `owner_pubkey_hex` from the podcast row, and discard the
 /// publish state for that podcast.
 fn remove_owned(handler: &PodcastHostOpHandler, podcast_id: String) -> serde_json::Value {
-    if let Ok(mut keys) = handler.podcast_keys.lock() {
+    if let Ok(mut keys) = handler.state.publish.podcast_keys.lock() {
         keys.remove_key(&podcast_id);
     }
     if let Ok(mut s) = handler.store.lock() {
         s.clear_owner_pubkey_hex(&podcast_id);
     }
-    if let Ok(mut state) = handler.publish_state.lock() {
+    if let Ok(mut state) = handler.state.publish.publish_state.lock() {
         state.remove(&podcast_id);
     }
     handler.rev.fetch_add(1, Ordering::Relaxed);

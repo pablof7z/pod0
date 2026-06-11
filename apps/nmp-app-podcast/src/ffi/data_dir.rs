@@ -77,7 +77,8 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(handle: *mut PodcastHandle, path:
     // Bind the per-podcast NIP-F4 key store to the same directory and reload
     // `podcast-keys.json`. Restored keys mean any owned podcast survives an
     // app restart and re-derives the same `owner_pubkey_hex` in the snapshot.
-    let keys_loaded = if let Ok(mut keys) = handle.podcast_keys.lock() {
+    // Step 13: podcast_keys now in state.publish (PublishState).
+    let keys_loaded = if let Ok(mut keys) = handle.state.publish.podcast_keys.lock() {
         keys.set_data_dir(PathBuf::from(&path_str))
     } else {
         0

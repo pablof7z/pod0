@@ -82,6 +82,19 @@ impl<T, D: Durability> Slot<T, D> {
         }
     }
 
+    /// Wrap an **existing** `Arc<Mutex<T>>` in a `Slot`.
+    ///
+    /// Used when a substate must share the exact same `Arc` with another
+    /// component (e.g. `VoiceConversationManager` shares the same
+    /// `voice_state` Arc with `VoiceSubstate` so off-actor writes from the
+    /// manager are visible to the snapshot reader through the slot).
+    pub fn from_arc(arc: Arc<Mutex<T>>) -> Self {
+        Self {
+            inner: arc,
+            _dur: PhantomData,
+        }
+    }
+
     /// Lock the slot.  Named `lock` (not `read`/`write`) because it is the
     /// same `Mutex` — callers supply intent through comments.
     pub fn lock(&self) -> std::sync::LockResult<MutexGuard<'_, T>> {

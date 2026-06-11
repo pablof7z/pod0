@@ -27,17 +27,14 @@ use tokio::runtime::Runtime;
 
 use nmp_ffi::NmpApp;
 
-use crate::agent_handler::AgentChatHandler;
 use crate::download::DownloadQueue;
 use crate::feed_fetch::FeedFetchCoordinator;
-use crate::ffi::handle::OwnedPublishState;
-use crate::ffi::projections::VoiceState;
 use crate::inbox_llm::TriageResult;
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::snapshot_signal::SnapshotUpdateSignal;
 use crate::store::identity::IdentityStore;
-use crate::store::{PodcastKeyStore, PodcastStore};
+use crate::store::PodcastStore;
 
 mod dispatch;
 mod player_actions;
@@ -83,7 +80,7 @@ pub struct PodcastHostOpHandler {
     // clips removed in Step 5a — now owned by `state.clips` (ClipsState).
     // transcripts removed in Step 5b — now owned by `state.transcripts` (TranscriptsState).
     pub(crate) dismissed_episode_ids: Arc<Mutex<HashSet<String>>>,
-    pub(crate) voice_state: Arc<Mutex<VoiceState>>,
+    // voice_state removed in Step 12 — now owned by `state.voice` (VoiceSubstate).
     // categories + categorization_in_progress removed in Step 4 —
     // they are now owned by `state.categories` (CategoriesState).
     // comments_cache + viewed_comments_episode_id removed in Step 8 —
@@ -92,14 +89,9 @@ pub struct PodcastHostOpHandler {
     // agent_notes removed in Step 10 — dead duplicate Arc; observer now shares
     // from `state.social.agent_notes`.
     pub(crate) rev: Arc<AtomicU64>,
-    /// Per-podcast Nostr keypairs for NIP-F4 owned podcasts. Shared with
-    /// `PodcastHandle.podcast_keys` so the snapshot reader sees the same
-    /// data.
-    pub(crate) podcast_keys: Arc<Mutex<PodcastKeyStore>>,
-    /// Diagnostic publish state per podcast (last show event JSON +
-    /// last-published timestamp). Shared with `PodcastHandle.publish_state`.
-    pub(crate) publish_state: Arc<Mutex<HashMap<String, OwnedPublishState>>>,
-    pub(crate) agent_chat: AgentChatHandler,
+    // podcast_keys and publish_state removed in Step 13 —
+    // now owned by `state.publish` (PublishState).
+    // agent_chat removed in Step 11 — now owned by `state.agent_chat` (AgentChatState).
     /// Shared Tokio runtime for async LLM / relay work. Seeded in
     /// `ffi::register` so all host-op handlers share one multi-thread scheduler.
     /// Used by wiki synthesis, agent chat, inbox triage, and social graph fetches.
@@ -145,11 +137,7 @@ impl PodcastHostOpHandler {
         queue: Arc<Mutex<PlaybackQueue>>,
         download_queue: Arc<Mutex<DownloadQueue>>,
         dismissed_episode_ids: Arc<Mutex<HashSet<String>>>,
-        voice_state: Arc<Mutex<VoiceState>>,
         rev: Arc<AtomicU64>,
-        podcast_keys: Arc<Mutex<PodcastKeyStore>>,
-        publish_state: Arc<Mutex<HashMap<String, OwnedPublishState>>>,
-        agent_chat: AgentChatHandler,
         runtime: Arc<Runtime>,
         inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
         inbox_triage_in_progress: Arc<std::sync::atomic::AtomicBool>,
@@ -165,11 +153,7 @@ impl PodcastHostOpHandler {
             queue,
             download_queue,
             dismissed_episode_ids,
-            voice_state,
             rev,
-            podcast_keys,
-            publish_state,
-            agent_chat,
             runtime,
             inbox_triage_cache,
             inbox_triage_in_progress,

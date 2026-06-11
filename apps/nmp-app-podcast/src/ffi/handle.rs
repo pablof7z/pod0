@@ -12,16 +12,12 @@ use nmp_ffi::NmpApp;
 use tokio::runtime::Runtime;
 
 use crate::download::DownloadQueue;
-use crate::ffi::projections::{
-    AgentMessageSummary,
-    VoiceState,
-};
 use crate::inbox_llm::TriageResult;
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::snapshot_signal::SnapshotUpdateSignal;
 use crate::store::identity::IdentityStore;
-use crate::store::{PodcastKeyStore, PodcastStore};
+use crate::store::PodcastStore;
 
 /// Diagnostic publish state retained per-podcast across snapshot ticks.
 ///
@@ -85,45 +81,14 @@ pub struct PodcastHandle {
     /// re-surfaces everything so the user can re-triage. Written by the
     /// inbox handler's `Dismiss` op; read by the inbox projection builder.
     pub(super) dismissed_episode_ids: Arc<Mutex<HashSet<String>>>,
-    /// Per-podcast Nostr keypairs for NIP-F4 owned podcasts (features
-    /// #27/#28). Written by `podcast.publish.create_owned_podcast` and
-    /// cleared by `remove_owned_podcast`; read by every other publish op.
-    pub(super) podcast_keys: Arc<Mutex<PodcastKeyStore>>,
-    /// Diagnostic publish state per podcast (last show event JSON +
-    /// last-published timestamp). Surfaced via `OwnedPodcastInfo` so the
-    /// iOS shell can render "last published at …" without a separate
-    /// FFI accessor. Keyed by `podcast_id` UUID string (matching the
-    /// FFI projection).
-    pub(super) publish_state: Arc<Mutex<HashMap<String, OwnedPublishState>>>,
-    /// Voice-mode projection state. Mutated by the `podcast.voice.*`
-    /// action handler (when the kernel dispatches `VoiceCommand` to the
-    /// iOS executor) and by `nmp_app_podcast_voice_report` (when iOS
-    /// reports translate back into projection updates). Read by the
-    /// snapshot builder on each tick.
-    pub(super) voice_state: Arc<Mutex<VoiceState>>,
-    /// Voice-mode conversation manager (M5.6-voice). Owns the rolling
-    /// STT→LLM→TTS turn history and dispatches LLM replies back to the
-    /// iOS voice executor. Invoked from `nmp_app_podcast_voice_report`
-    /// when a `VoiceReport::TranscriptFinal` arrives (the user finished
-    /// speaking).
-    pub(super) voice_conversation: crate::voice_conversation::VoiceConversationManager,
-    /// Active agent-chat transcript. Written by the
-    /// [`super::actions::agent_module::AgentActionModule`] handler on the
-    /// actor thread; read by `build_snapshot_payload` on the main thread.
-    /// In-memory only — feature #32 is a UI scaffold, real LLM integration
-    /// (and persistence) lands in a follow-up.
-    pub(super) conversation: Arc<Mutex<Vec<AgentMessageSummary>>>,
-    /// `true` while the kernel is composing an assistant reply (mirrored
-    /// into `AgentSnapshot::is_busy`). Stays `false` in the scaffold since
-    /// the canned reply is committed synchronously; the flag exists now so
-    /// the snapshot reader doesn't need rewiring once streaming lands.
-    pub(super) agent_busy: Arc<AtomicBool>,
-    /// `true` once the user has interacted with the agent in this kernel
-    /// lifetime (Send → flips to `true`, Clear keeps it `true`). Used by
-    /// the snapshot builder to keep `agent` `Some` after a clear so the UI
-    /// can tell "cleared" from "never touched". Reset only by a process
-    /// restart.
-    pub(super) agent_touched: Arc<AtomicBool>,
+    // podcast_keys and publish_state removed in Step 13 —
+    // now owned by `state.publish` (PublishState).
+    // voice_state and voice_conversation removed in Step 12 —
+    // now owned by `state.voice` (VoiceSubstate).
+    // conversation, agent_busy, agent_touched removed in Step 11 —
+    // now owned by `state.agent_chat` (AgentChatState).
+    // voice_state and voice_conversation removed in Step 12 —
+    // now owned by `state.voice` (VoiceSubstate).
     // categories removed in Step 4 — now owned by `state.categories` (CategoriesState).
     /// LLM triage cache: `episode_id -> TriageResult`.
     ///
