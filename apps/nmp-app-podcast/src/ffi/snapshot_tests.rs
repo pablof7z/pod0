@@ -238,8 +238,11 @@ fn snapshot_with_widget_round_trips() {
         now_playing_episode_title: Some("Ep 42".into()),
         now_playing_podcast_title: Some("Some Show".into()),
         now_playing_artwork_url: Some("https://ex.com/art.png".into()),
+        now_playing_chapter_title: Some("Chapter 2".into()),
         is_playing: true,
         position_fraction: 0.42,
+        position_secs: 504.0,
+        duration_secs: 1200.0,
         unplayed_count: 7,
     };
     let snap = PodcastUpdate {

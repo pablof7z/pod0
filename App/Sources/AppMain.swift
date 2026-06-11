@@ -43,8 +43,8 @@ struct PodcastrApp: App {
                 .task {
                     kernelModel.start()
                     let platform = PodcastCapabilities.shared.platform
-                    store.onNowPlayingSnapshot = { [platform] snap, lib in
-                        platform.applyNowPlayingSnapshot(snap, library: lib)
+                    store.onNowPlayingSnapshot = { [platform] snap in
+                        platform.applyWidgetSnapshot(snap)
                     }
                     store.onPositionTick = { [platform] pos in
                         platform.applyPositionTick(pos)

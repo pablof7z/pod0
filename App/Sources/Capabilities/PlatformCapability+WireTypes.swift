@@ -26,18 +26,29 @@ struct WidgetSnapshot: Codable, Equatable {
     var nowPlayingEpisodeTitle: String?
     var nowPlayingPodcastTitle: String?
     var nowPlayingArtworkURL: String?
+    /// Active chapter title at the playhead, preferred over the show
+    /// name on the medium widget. `nil` for chapter-less episodes.
+    var nowPlayingChapterTitle: String?
     var isPlaying: Bool
     /// `0.0..=1.0`; pre-computed by Rust so the widget can render
     /// a ring without dividing by a possibly-zero duration.
     var positionFraction: Float
+    /// Current playhead in seconds — paired with `durationSecs` so the
+    /// widget renders the exact "−MM:SS remaining" label the player shows.
+    var positionSecs: Double
+    /// Track duration in seconds; `0` until the capability reports it.
+    var durationSecs: Double
     var unplayedCount: Int
 
     enum CodingKeys: String, CodingKey {
         case nowPlayingEpisodeTitle = "now_playing_episode_title"
         case nowPlayingPodcastTitle = "now_playing_podcast_title"
         case nowPlayingArtworkURL = "now_playing_artwork_url"
+        case nowPlayingChapterTitle = "now_playing_chapter_title"
         case isPlaying = "is_playing"
         case positionFraction = "position_fraction"
+        case positionSecs = "position_secs"
+        case durationSecs = "duration_secs"
         case unplayedCount = "unplayed_count"
     }
 }

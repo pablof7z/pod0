@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-11T18:45:00Z",
+      "lines": [
+        "The Now Playing home-screen widget now stays accurate straight from the player, and shows an \"N to listen\" badge when nothing's playing."
+      ]
+    },
+    {
       "shipped_at": "2026-06-10T20:40:15Z",
       "lines": [
         "The Models settings list is cleaner: each role now shows just its selected model and provider, without extra capability chips."

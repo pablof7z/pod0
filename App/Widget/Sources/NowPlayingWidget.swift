@@ -38,13 +38,16 @@ struct NowPlayingWidgetView: View {
 
     var body: some View {
         Group {
-            if let snapshot = entry.snapshot, !snapshot.episodeTitle.isEmpty {
+            if let snapshot = entry.snapshot, snapshot.hasNowPlaying {
                 switch family {
                 case .systemMedium: NowPlayingMediumView(snapshot: snapshot)
                 default:            NowPlayingSmallView(snapshot: snapshot)
                 }
             } else {
-                NowPlayingEmptyView()
+                // Nothing playing — show the empty state, surfacing the
+                // kernel's unplayed badge ("N to listen") when there are
+                // queued-up episodes worth returning for.
+                NowPlayingEmptyView(unplayedCount: entry.snapshot?.unplayedCount ?? 0)
             }
         }
         .widgetURL(URL(string: "podcastr://"))
@@ -54,14 +57,14 @@ struct NowPlayingWidgetView: View {
 // MARK: - Small variant
 
 private struct NowPlayingSmallView: View {
-    let snapshot: NowPlayingSnapshot
+    let snapshot: WidgetSnapshot
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            NowPlayingArtwork(urlString: snapshot.imageURLString, size: 56)
+            NowPlayingArtwork(urlString: snapshot.nowPlayingArtworkURL, size: 56)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             Spacer(minLength: 0)
-            Text(snapshot.episodeTitle)
+            Text(snapshot.nowPlayingEpisodeTitle ?? "")
                 .font(WidgetTheme.Typography.smallSubtitle)
                 .foregroundStyle(.primary)
                 .lineLimit(2)
@@ -74,15 +77,15 @@ private struct NowPlayingSmallView: View {
 // MARK: - Medium variant
 
 private struct NowPlayingMediumView: View {
-    let snapshot: NowPlayingSnapshot
+    let snapshot: WidgetSnapshot
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            NowPlayingArtwork(urlString: snapshot.imageURLString, size: 76)
+            NowPlayingArtwork(urlString: snapshot.nowPlayingArtworkURL, size: 76)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(snapshot.episodeTitle)
+                Text(snapshot.nowPlayingEpisodeTitle ?? "")
                     .font(WidgetTheme.Typography.itemTitle.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
@@ -90,14 +93,14 @@ private struct NowPlayingMediumView: View {
                 // present because it's the more specific "where am I right
                 // now" signal once playback is in flight. Falls back to
                 // the show name for chapter-less episodes.
-                if let chapter = snapshot.chapterTitle, !chapter.isEmpty {
+                if let chapter = snapshot.nowPlayingChapterTitle, !chapter.isEmpty {
                     Label(chapter, systemImage: "book.pages")
                         .labelStyle(WidgetChapterLabelStyle())
                         .font(WidgetTheme.Typography.accessoryRow)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
-                } else if !snapshot.showName.isEmpty {
-                    Text(snapshot.showName)
+                } else if let show = snapshot.nowPlayingPodcastTitle, !show.isEmpty {
+                    Text(show)
                         .font(WidgetTheme.Typography.accessoryRow)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -112,9 +115,11 @@ private struct NowPlayingMediumView: View {
 
     @ViewBuilder
     private var progressFooter: some View {
-        let total = max(snapshot.duration, 0)
-        let position = max(0, min(snapshot.position, total))
-        let fraction: Double = total > 0 ? position / total : 0
+        let total = max(snapshot.durationSecs, 0)
+        let position = max(0, min(snapshot.positionSecs, total))
+        // Use the kernel's pre-computed, clamped fraction directly so the bar
+        // matches exactly what the in-app player shows.
+        let fraction = Double(snapshot.positionFraction)
         VStack(alignment: .leading, spacing: 4) {
             ProgressView(value: fraction)
                 .progressViewStyle(.linear)
@@ -124,7 +129,7 @@ private struct NowPlayingMediumView: View {
                 // shows a progress bar that looks like it's advancing
                 // even when the user has paused, since timeline refresh
                 // and on-disk position both update on a delay.
-                Image(systemName: (snapshot.isPlaying ?? false) ? "play.fill" : "pause.fill")
+                Image(systemName: snapshot.isPlaying ? "play.fill" : "pause.fill")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -154,6 +159,10 @@ private struct NowPlayingMediumView: View {
 // MARK: - Empty state
 
 private struct NowPlayingEmptyView: View {
+    /// Unplayed episodes across subscribed shows, from the kernel snapshot.
+    /// `0` when nothing is queued (or no snapshot was written yet).
+    var unplayedCount: Int = 0
+
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: "headphones")
@@ -163,6 +172,12 @@ private struct NowPlayingEmptyView: View {
                 .font(WidgetTheme.Typography.emptyTitle)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.primary)
+            if unplayedCount > 0 {
+                Text(unplayedCount == 1 ? "1 to listen" : "\(unplayedCount) to listen")
+                    .font(WidgetTheme.Typography.accessoryRow)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

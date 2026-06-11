@@ -18,6 +18,7 @@ use super::snapshot_downloads::build_downloads_snapshot;
 use super::snapshot_owned::collect_owned_podcasts;
 use super::snapshot_queue::resolve_queue_rows;
 use super::snapshot_settings::build_settings_snapshot;
+use super::snapshot_widget::build_widget_snapshot;
 use crate::inbox_handler::{build_inbox, maybe_enqueue_triage_with_signal};
 
 pub(super) fn provider_key_present(key: Option<&str>) -> bool {
@@ -255,10 +256,18 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         }
     });
 
+    // Kernel-owned widget projection (D4 single source of truth). Built from
+    // the player state + the already-assembled library (per-show
+    // `unplayed_count` is reused, no rescan). The iOS shell serializes this
+    // into the App Group key the widget extension reads; the old Swift-side
+    // `NowPlayingSnapshot` derivation is retired.
+    let widget = build_widget_snapshot(now_playing.as_ref(), &library);
+
     PodcastUpdate {
         rev,
         now_playing,
         library,
+        widget,
         active_account,
         search_results,
         nostr_results,

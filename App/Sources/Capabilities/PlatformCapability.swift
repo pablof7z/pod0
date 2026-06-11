@@ -1,5 +1,6 @@
 import Foundation
 import os.log
+import WidgetKit
 
 // MARK: - PlatformCapability
 //
@@ -53,19 +54,17 @@ final class PlatformCapability {
     /// and the `NowPlayingTimelineProvider.appGroupID` constant
     /// the widget defines locally.
     ///
-    /// This is `group.com.podcastr.app` (matches the legacy
-    /// `NowPlayingSnapshotStore`) — *not* the app's bundle id.
+    /// This is `group.com.podcastr.app` — *not* the app's bundle id.
     /// Per project memory: the bundle id is `io.f7z.podcast`; the
-    /// App Group keeps the legacy `com.podcastr.app` namespace so
-    /// the existing widget binary continues to find the suite.
+    /// App Group keeps the `com.podcastr.app` namespace so the
+    /// widget binary continues to find the suite.
     static let appGroupID = "group.com.podcastr.app"
 
-    /// `UserDefaults` key under which the widget snapshot is
-    /// stored. Suffixed `.v2` to distinguish from the legacy
-    /// `NowPlayingSnapshotStore` key (`now-playing-snapshot.v1`)
-    /// the existing widget binary reads — the new key is for the
-    /// NMP-derived `WidgetSnapshot` shape, written by this
-    /// capability once the widget extension migrates to it.
+    /// `UserDefaults` key under which the kernel-owned `WidgetSnapshot`
+    /// is stored. The widget extension reads exactly this key
+    /// (`NowPlayingTimelineProvider.defaultsKey`); it is the single
+    /// canonical widget channel (D4) — the old Swift-derived
+    /// `now-playing-snapshot.v1` path was deleted.
     static let widgetSnapshotKey = "nmp.widget.snapshot.v1"
 
     private static let logger = Logger.app("PlatformCapability")
@@ -96,19 +95,19 @@ final class PlatformCapability {
     // widget face.
     private var positionTickCount = 0
 
-    // Dedup keys for `applyNowPlayingSnapshot`. All fields written to
-    // `NowPlayingSnapshot` are compared except `positionSecs` (excluded
-    // intentionally — position-only ticks are handled by `applyPositionTick`).
-    // Comparing every written field ensures library-hydration passes
-    // (showName, episodeTitle, imageURL, duration) always write through instead
-    // of being blocked by stale state.
-    private var lastNowPlayingEpisodeId: String? = nil
-    private var lastNowPlayingIsPlaying: Bool = false
-    private var lastNowPlayingChapterTitle: String? = nil
-    private var lastNowPlayingEpisodeTitle: String = ""
-    private var lastNowPlayingShowName: String = ""
-    private var lastNowPlayingImageURLString: String? = nil
-    private var lastNowPlayingDurationSecs: Double = 0
+    // Last `WidgetSnapshot` written to the App Group. The canonical change-gate:
+    // `applyWidgetSnapshot` only writes (+ reloads timelines) when the kernel's
+    // snapshot differs from this, with `positionFraction` compared at 1%
+    // quantization (see `fractionStep`) so a continuously-drifting playhead
+    // doesn't burn a WidgetKit reload on every tick. Nil means "nothing
+    // written yet / cleared".
+    private var lastWrittenWidget: WidgetSnapshot? = nil
+
+    /// Quantization step for `positionFraction` comparison: the widget face
+    /// renders a ~150 pt progress bar, so sub-1% changes are imperceptible.
+    /// Position-only ticks therefore write at most ~100×/episode (once per 1%
+    /// crossed) instead of once per second.
+    private static let fractionStep: Float = 0.01
 
     /// Idempotent. Marks the capability active. Today this is a
     /// no-op besides flipping the flag — the OS resources
@@ -131,101 +130,93 @@ final class PlatformCapability {
 
     var isStarted: Bool { started }
 
-    // MARK: - Now-playing widget (NowPlayingSnapshot path)
+    // MARK: - Now-playing widget (kernel WidgetSnapshot path)
 
-    /// Throttled position-only update for the NowPlayingSnapshot. Wired to
-    /// `AppStateStore.onPositionTick` (1 Hz kernel heartbeat) — fires on every
-    /// 5th tick (~5 s) to keep the widget position fresh without a full
-    /// library lookup. `applyNowPlayingSnapshot` resets `positionTickCount`
-    /// to 0 on every full snapshot write so an episode change always produces
-    /// an immediate position update on the next tick.
+    /// Apply the kernel's `WidgetSnapshot` to the App Group, the single
+    /// canonical widget write path (D4). Wired to `AppStateStore`'s
+    /// `onNowPlayingSnapshot` — a content-changed projection tick (episode /
+    /// play-pause / chapter / library / unplayed change). The kernel owns the
+    /// shape and the derivation; iOS only serializes the kernel's choice.
+    ///
+    /// Change-gated: writes (and triggers a WidgetKit timeline reload) only
+    /// when the snapshot differs from the last write, with `positionFraction`
+    /// compared at 1% quantization (`fractionStep`) so a drifting playhead on
+    /// a metadata-stable tick doesn't burn a reload. A `nil` widget (nothing
+    /// playing and nothing unplayed to badge) clears the App Group key so the
+    /// widget renders its empty state.
+    ///
+    /// Returns `true` when the App Group state changed (a write or a clear
+    /// happened), `false` on a deduplicated no-op — exposed so tests can pin
+    /// the cadence without inspecting `UserDefaults`.
+    @discardableResult
+    func applyWidgetSnapshot(_ snapshot: PodcastUpdate?) -> Bool {
+        guard let widget = snapshot?.widget else {
+            // Kernel says there's nothing to surface — clear once, then no-op
+            // on subsequent nil ticks.
+            guard lastWrittenWidget != nil else { return false }
+            lastWrittenWidget = nil
+            clearWidgetSnapshot()
+            WidgetCenter.shared.reloadAllTimelines()
+            return true
+        }
+        guard widgetChanged(widget, from: lastWrittenWidget) else { return false }
+        lastWrittenWidget = widget
+        writeWidgetSnapshot(widget)
+        WidgetCenter.shared.reloadAllTimelines()
+        // Reset the position-tick throttle so the next tick after a full write
+        // produces a fresh position update promptly.
+        positionTickCount = 0
+        return true
+    }
+
+    /// Throttled position-only update. Wired to `AppStateStore.onPositionTick`
+    /// (1 Hz kernel heartbeat) — fires on every 5th tick (~5 s) to keep the
+    /// widget's progress ring fresh between content-changed snapshots (those
+    /// suppress position-only ticks via the kernel's snapshot content hash, so
+    /// `WidgetSnapshot.positionFraction` would otherwise go stale during a long
+    /// uninterrupted listen). Recomputes the fraction on the last-written
+    /// widget and writes only when the 1%-quantized fraction actually moved.
     func applyPositionTick(_ position: Double) {
         positionTickCount += 1
         guard positionTickCount >= 5 else { return }
         positionTickCount = 0
-        NowPlayingSnapshotStore.updatePosition(position, isPlaying: true)
+        guard var widget = lastWrittenWidget, widget.durationSecs > 0 else { return }
+        let fraction = Float(min(max(position / widget.durationSecs, 0), 1))
+        guard quantizedFraction(fraction) != quantizedFraction(widget.positionFraction) else {
+            // Still update the cached raw position so the next content tick
+            // diff sees the latest playhead, but skip the App Group write +
+            // reload — the ring wouldn't visibly move.
+            widget.positionSecs = position
+            lastWrittenWidget = widget
+            return
+        }
+        widget.positionSecs = position
+        widget.positionFraction = fraction
+        lastWrittenWidget = widget
+        writeWidgetSnapshot(widget)
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
-    /// Translate the kernel's player state into a `NowPlayingSnapshot` and
-    /// write it to the App Group so the widget picks it up. Called by the
-    /// kernel-projection observer on every `onNowPlayingSnapshot` tick.
-    ///
-    /// Deduplicates on all written fields except `positionSecs` — the most
-    /// common ticks during live playback change only position, which is
-    /// excluded so those ticks don't waste App Group writes. Position is kept
-    /// fresh by `applyPositionTick` (throttled to ~5 s). All other fields are
-    /// compared so library-hydration passes always win.
-    func applyNowPlayingSnapshot(_ snapshot: PodcastUpdate?, library: [PodcastSummary]) {
-        guard let nowPlaying = snapshot?.nowPlaying,
-              let episodeIdStr = nowPlaying.episodeId else { return }
-        let isPlaying = nowPlaying.isPlaying
-        let chapterTitle = nowPlaying.currentChapterTitle
-        var episodeTitle = episodeIdStr
-        var showName = ""
-        var imageURLString: String? = nil
-        var libraryDurationSecs: Double? = nil
-        outer: for pod in library {
-            for ep in pod.episodes where ep.id == episodeIdStr {
-                episodeTitle = ep.title
-                showName = pod.title
-                imageURLString = ep.artworkUrl ?? pod.artworkUrl
-                libraryDurationSecs = ep.durationSecs
-                break outer
-            }
+    /// Whether `next` differs from `previous` in any field that affects the
+    /// rendered widget, treating `positionFraction` at 1% granularity.
+    private func widgetChanged(_ next: WidgetSnapshot, from previous: WidgetSnapshot?) -> Bool {
+        guard let previous else { return true }
+        if next.nowPlayingEpisodeTitle != previous.nowPlayingEpisodeTitle { return true }
+        if next.nowPlayingPodcastTitle != previous.nowPlayingPodcastTitle { return true }
+        if next.nowPlayingArtworkURL != previous.nowPlayingArtworkURL { return true }
+        if next.nowPlayingChapterTitle != previous.nowPlayingChapterTitle { return true }
+        if next.isPlaying != previous.isPlaying { return true }
+        if next.durationSecs != previous.durationSecs { return true }
+        if next.unplayedCount != previous.unplayedCount { return true }
+        if quantizedFraction(next.positionFraction) != quantizedFraction(previous.positionFraction) {
+            return true
         }
-        // Prefer library duration (set when feed metadata arrives) over the kernel
-        // snapshot value (only populated once the Rust audio capability emits
-        // Playing reports). Fall back to the cached iOS snapshot for same-episode
-        // refreshes so a hydration pass never regresses a duration that was already
-        // known. Last resort: whatever the kernel reported.
-        let durationSecs: Double
-        if let lib = libraryDurationSecs, lib > 0 {
-            durationSecs = lib
-        } else if let cached = NowPlayingSnapshotStore.lastWrittenSnapshot?.duration,
-                  cached > 0,
-                  episodeIdStr == lastNowPlayingEpisodeId {
-            durationSecs = cached
-        } else {
-            durationSecs = nowPlaying.durationSecs
-        }
-        if episodeIdStr == lastNowPlayingEpisodeId,
-           isPlaying == lastNowPlayingIsPlaying,
-           chapterTitle == lastNowPlayingChapterTitle,
-           episodeTitle == lastNowPlayingEpisodeTitle,
-           showName == lastNowPlayingShowName,
-           imageURLString == lastNowPlayingImageURLString,
-           durationSecs == lastNowPlayingDurationSecs { return }
-        let episodeChanged = (episodeIdStr != lastNowPlayingEpisodeId)
-        lastNowPlayingEpisodeId = episodeIdStr
-        lastNowPlayingIsPlaying = isPlaying
-        lastNowPlayingChapterTitle = chapterTitle
-        lastNowPlayingEpisodeTitle = episodeTitle
-        lastNowPlayingShowName = showName
-        lastNowPlayingImageURLString = imageURLString
-        lastNowPlayingDurationSecs = durationSecs
-        // Preserve the live playhead only on same-episode metadata refreshes.
-        // The kernel snapshot excludes position-only ticks from its content hash,
-        // so nowPlaying.positionSecs can be far behind the real playhead. On an
-        // episode change (Siri / kernel auto-advance), use the kernel position
-        // so a new episode doesn't inherit the old 40-minute playhead.
-        let livePosition: TimeInterval
-        if !episodeChanged, let cached = NowPlayingSnapshotStore.lastWrittenSnapshot?.position {
-            livePosition = cached
-        } else {
-            livePosition = nowPlaying.positionSecs
-        }
-        NowPlayingSnapshotStore.write(NowPlayingSnapshot(
-            episodeTitle: episodeTitle,
-            showName: showName,
-            imageURLString: imageURLString,
-            position: livePosition,
-            duration: durationSecs,
-            chapterTitle: chapterTitle,
-            isPlaying: isPlaying
-        ))
-        // Reset the position-tick throttle so the next tick after a full
-        // snapshot write produces a fresh position update promptly.
-        positionTickCount = 0
+        return false
+    }
+
+    /// Snap a fraction to its 1% bucket for change comparison.
+    private func quantizedFraction(_ fraction: Float) -> Int {
+        Int((fraction / Self.fractionStep).rounded())
     }
 
     // MARK: - Widget snapshot serialization

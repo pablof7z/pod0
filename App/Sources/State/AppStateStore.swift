@@ -217,10 +217,12 @@ final class AppStateStore {
 
     /// Fires on every kernel-projection tick where content changed (position-only
     /// ticks are suppressed by `snapshotContentHash`). Wired in `AppMain` to
-    /// `PlatformCapability.applyNowPlayingSnapshot` so the widget stays current
-    /// without `PlaybackState` owning the widget write path.
+    /// `PlatformCapability.applyWidgetSnapshot` so the home-screen widget stays
+    /// current from the kernel-owned `WidgetSnapshot` without `PlaybackState`
+    /// owning the widget write path. The kernel resolves the widget's
+    /// titles/artwork/unplayed-count, so the library is no longer passed.
     @ObservationIgnored
-    var onNowPlayingSnapshot: ((PodcastUpdate?, [PodcastSummary]) -> Void)?
+    var onNowPlayingSnapshot: ((PodcastUpdate?) -> Void)?
 
     /// Fires on every 1 Hz position tick during active playback. Wired in
     /// `AppMain` to `PlatformCapability.applyPositionTick` so the

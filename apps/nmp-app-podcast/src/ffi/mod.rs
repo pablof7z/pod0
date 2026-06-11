@@ -70,6 +70,7 @@ mod snapshot_owned;
 mod snapshot_queue;
 mod snapshot_relays;
 mod snapshot_settings;
+mod snapshot_widget;
 #[cfg(test)]
 mod snapshot_tests;
 #[cfg(test)]

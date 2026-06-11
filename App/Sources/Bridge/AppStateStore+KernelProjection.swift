@@ -491,11 +491,11 @@ extension AppStateStore {
                 isRemoteSigner: identity.isRemoteSigner)
         }
 
-        // After the batch flushes: the widget path reads only `snapshot` and
-        // `library` (never the episode-projection caches), so running it here —
-        // once the single deferred recompute has already landed — is correct
-        // and keeps it from being counted as another batched mutation.
-        onNowPlayingSnapshot?(snapshot, library)
+        // After the batch flushes: the widget path reads only `snapshot.widget`
+        // (the kernel-owned projection), so running it here — once the single
+        // deferred recompute has already landed — is correct and keeps it from
+        // being counted as another batched mutation.
+        onNowPlayingSnapshot?(snapshot)
     }
 
     /// Snapshot-only projection: the work `applyKernelState` runs when the
@@ -564,7 +564,7 @@ extension AppStateStore {
                 pubkeyHex: identity.activeAccount,
                 isRemoteSigner: identity.isRemoteSigner)
         }
-        onNowPlayingSnapshot?(snapshot, library)
+        onNowPlayingSnapshot?(snapshot)
     }
 
     /// Fold the kernel's resolved-profiles map into `nostrProfileCache`. Each

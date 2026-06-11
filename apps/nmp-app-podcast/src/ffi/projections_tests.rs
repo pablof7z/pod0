@@ -43,14 +43,18 @@ fn widget_snapshot_omits_none_optionals() {
         now_playing_episode_title: None,
         now_playing_podcast_title: None,
         now_playing_artwork_url: None,
+        now_playing_chapter_title: None,
         is_playing: false,
         position_fraction: 0.0,
+        position_secs: 0.0,
+        duration_secs: 0.0,
         unplayed_count: 0,
     };
     let json = serde_json::to_string(&widget).expect("encode");
     assert!(!json.contains("now_playing_episode_title"));
     assert!(!json.contains("now_playing_podcast_title"));
     assert!(!json.contains("now_playing_artwork_url"));
+    assert!(!json.contains("now_playing_chapter_title"));
     assert!(json.contains("\"is_playing\":false"));
     assert!(json.contains("\"position_fraction\":0.0"));
     assert!(json.contains("\"unplayed_count\":0"));
@@ -258,8 +262,11 @@ fn widget_snapshot_round_trips_with_all_fields() {
         now_playing_episode_title: Some("Ep 42".into()),
         now_playing_podcast_title: Some("Some Show".into()),
         now_playing_artwork_url: Some("https://ex.com/art.png".into()),
+        now_playing_chapter_title: Some("Chapter 2".into()),
         is_playing: true,
         position_fraction: 0.42,
+        position_secs: 504.0,
+        duration_secs: 1200.0,
         unplayed_count: 7,
     };
     let json = serde_json::to_string(&widget).expect("encode");

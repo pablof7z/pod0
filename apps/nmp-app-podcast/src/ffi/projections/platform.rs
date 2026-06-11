@@ -28,13 +28,35 @@ pub struct WidgetSnapshot {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub now_playing_podcast_title: Option<String>,
     /// Artwork URL (episode-level preferred, falls back to show).
+    ///
+    /// A *URL*, not pixel data — the widget extension resolves it with
+    /// `AsyncImage`, which the WidgetKit process is allowed to fetch via
+    /// its own `URLSession` (no separate network entitlement is required
+    /// for the extension's image loads). The kernel never ships artwork
+    /// bytes; it ships the same URL the in-app player resolves.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub now_playing_artwork_url: Option<String>,
+    /// Title of the chapter active at the current playhead, when the
+    /// episode has navigable chapters. The widget's medium layout
+    /// prefers this over the show title (it's the more specific
+    /// "where am I right now" signal). `None` for chapter-less episodes —
+    /// the widget then falls back to the podcast title.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub now_playing_chapter_title: Option<String>,
     /// `true` while playback is engaged (the player's `is_playing`).
     pub is_playing: bool,
     /// Pre-computed progress fraction `0.0..=1.0`; the widget renders
     /// this as a ring/bar without re-deriving from secs+duration.
     pub position_fraction: f32,
+    /// Current playhead in seconds. Surfaced alongside the pre-computed
+    /// `position_fraction` so the widget can render the "−MM:SS
+    /// remaining" label without re-deriving secs from the fraction.
+    /// `0.0` when no episode is loaded.
+    pub position_secs: f64,
+    /// Track duration in seconds; `0.0` until the capability reports it.
+    /// Paired with `position_secs` so the widget's remaining-time label
+    /// renders the exact value the in-app player shows.
+    pub duration_secs: f64,
     /// Number of unplayed episodes across all subscribed shows;
     /// drives the badge / "X to listen" line in the widget.
     pub unplayed_count: usize,
