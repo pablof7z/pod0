@@ -1,4 +1,4 @@
-//! NMP dispatch helpers — the two seams all Rust action handlers use to hand
+//! NMP dispatch helpers — the seams Rust action handlers use to hand
 //! work to NMP without naming relay URLs or holding secret keys.
 //!
 //! * [`publish_via_nmp`] — hand a pre-signed `nostr::Event` to `nmp.publish`
@@ -15,7 +15,7 @@
 use std::ffi::CString;
 
 use nmp_core::planner::LogicalInterest;
-use nostr::{Event, JsonUtil};
+use nostr::Event;
 
 /// Hand a pre-signed event to `nmp.publish { Publish, target: Auto }`.
 /// NMP routes through the relay pool; no relay URLs in app code.
@@ -30,7 +30,7 @@ pub(crate) fn publish_via_nmp(app: *mut nmp_ffi::NmpApp, event: &Event) -> &'sta
         "unsigned": {
             "pubkey": event.pubkey.to_hex(),
             "kind": u32::from(event.kind.as_u16()),
-            "created_at": event.created_at.as_u64(),
+            "created_at": event.created_at.as_secs(),
             "tags": event.tags.iter().map(|t| t.as_slice().to_vec()).collect::<Vec<_>>(),
             "content": &*event.content,
         }
@@ -70,37 +70,6 @@ pub(crate) fn publish_raw_via_nmp(
     dispatch_nmp_publish(app, body)
 }
 
-/// Dispatch unsigned event parameters to `nmp.publish { PublishRaw }` with an
-/// **explicit** relay target instead of the user's NIP-65 outbox (`Auto`).
-///
-/// NMP signs with the active signer (user's nsec), stamps `created_at` (D9),
-/// and routes the event only to `relays`. NMP performs NIP-42 AUTH on those
-/// connections automatically — required for relays that demand AUTH to accept
-/// writes (e.g. the feedback relay's protected `["-"]` notes). No secret bytes
-/// in app code; no relay socket opened by the host.
-///
-/// Returns `"queued"` or `"signed"` (null app).
-pub(crate) fn publish_raw_explicit_via_nmp(
-    app: *mut nmp_ffi::NmpApp,
-    kind: u32,
-    tags: &[Vec<String>],
-    content: &str,
-    relays: &[&str],
-) -> &'static str {
-    if app.is_null() {
-        return "signed";
-    }
-    let body = serde_json::json!({
-        "PublishRaw": {
-            "kind": kind,
-            "tags": tags,
-            "content": content,
-            "target": { "Explicit": { "relays": relays } },
-        }
-    });
-    dispatch_nmp_publish(app, body)
-}
-
 /// Dispatch a kind:0 profile metadata update to `nmp.publish { PublishProfile }`.
 /// `fields` is a flat string-valued JSON object (`name`, `display_name`,
 /// `about`, `picture`, …); the kernel serialises it into the kind:0 `content`,
@@ -135,11 +104,9 @@ fn dispatch_nmp_publish(app: *mut nmp_ffi::NmpApp, body: serde_json::Value) -> &
     let Ok(body_c) = CString::new(body.to_string()) else {
         return "signed";
     };
-    // SAFETY: app is non-null (callers check before calling this).
-    let raw = unsafe { nmp_ffi::nmp_app_dispatch_action(app, ns_c.as_ptr(), body_c.as_ptr()) };
+    let raw = nmp_ffi::nmp_app_dispatch_action(app, ns_c.as_ptr(), body_c.as_ptr());
     if !raw.is_null() {
-        // SAFETY: NMP allocated this string; we free it immediately.
-        unsafe { nmp_ffi::nmp_app_free_string(raw) };
+        nmp_ffi::nmp_app_free_string(raw);
     }
     "queued"
 }

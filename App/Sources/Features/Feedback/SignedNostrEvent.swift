@@ -28,6 +28,6 @@ struct SignedNostrEvent: Sendable, Equatable, Codable {
 
 // NIP-10 thread reconstruction (root/reply/`a`-coordinate tag parsing) used to
 // live here as a `SignedNostrEvent` extension consumed by the feedback thread
-// builder. As of #354 that reduction runs kernel-side
-// (`ffi::feedback_threads`), which emits a resolved `feedbackThreads`
+// builder. As of #354 that reduction runs kernel-side through `nmp-feedback`,
+// which emits a resolved `feedbackThreads`
 // projection — the shell no longer parses feedback event tags.

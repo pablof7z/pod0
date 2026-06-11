@@ -95,6 +95,18 @@ data class DownloadDeletePayload(
     val op: String = "delete_download",
 )
 
+@Serializable
+data class FetchFeedbackPayload(val op: String = "fetch_feedback")
+
+@Serializable
+data class PublishFeedbackPayload(
+    val category: String,
+    val content: String,
+    @SerialName("parent_event_id") val parentEventId: String? = null,
+    @SerialName("reply_to_pubkey") val replyToPubkey: String? = null,
+    val op: String = "publish_feedback",
+)
+
 // ── `podcast.player` namespace payloads ───────────────────────────────────
 
 /**

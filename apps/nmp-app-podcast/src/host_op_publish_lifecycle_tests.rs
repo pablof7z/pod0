@@ -44,7 +44,7 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
         Arc::new(Mutex::new(HashSet::new())),
         Arc::new(Mutex::new(Default::default())),
         Arc::new(Mutex::new(HashMap::new())),
-        rev,
+        rev.clone(),
         Arc::new(Mutex::new(PodcastKeyStore::new())),
         Arc::new(Mutex::new(HashMap::new())),
         agent_chat,
@@ -56,6 +56,16 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
         Arc::new(Mutex::new(None)),
         Arc::new(Mutex::new(Vec::new())),
         crate::feed_fetch::FeedFetchCoordinator::new_test(),
+        feedback_runtime(rev),
+    )
+}
+
+fn feedback_runtime(rev: Arc<AtomicU64>) -> nmp_feedback::FeedbackRuntime {
+    nmp_feedback::FeedbackRuntime::new(
+        nmp_feedback::FeedbackConfig::new(crate::PODCAST_FEEDBACK_PROJECT_COORDINATE)
+            .with_interest_namespace(crate::PODCAST_FEEDBACK_INTEREST_NAMESPACE),
+        Arc::new(Mutex::new(Vec::new())),
+        rev,
     )
 }
 

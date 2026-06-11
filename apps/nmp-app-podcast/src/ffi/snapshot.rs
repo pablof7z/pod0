@@ -216,24 +216,10 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         .map(|n| n.clone())
         .unwrap_or_default();
 
-    // In-app feedback events (kind:1 + kind:513 for the TENEX project coord),
-    // cached as SignedNostrEvent-shaped JSON by `FeedbackObserver`. Reactive
-    // push: filled by `FetchFeedback` on the actor thread, projected here on
-    // every tick (no polling, no pull symbols). The iOS `FeedbackStore` rebuilds
-    // threads from this flat list.
-    let feedback_events = handle
-        .feedback_events_cache
-        .lock()
-        .ok()
-        .map(|f| f.clone())
-        .unwrap_or_default();
-    // #354: reduce the raw events into resolved threads kernel-side (NIP-10
-    // thread reconstruction + newest-wins kind:513 metadata) so the shell
-    // renders a typed projection instead of re-running Nostr semantics.
-    let feedback_threads = crate::feedback_threads::reduce_feedback_threads(
-        &feedback_events,
-        crate::feedback_handler::PROJECT_COORDINATE,
-    );
+    // In-app feedback events (kind:1 + kind:513 for this app's project coord),
+    // cached and reduced by `nmp-feedback`.
+    let feedback_events = handle.feedback.snapshot_events();
+    let feedback_threads = handle.feedback.snapshot_threads();
 
     // Configured app relays (NMP v0.2.1). Kernel-owned slot, projected by the
     // sibling helper. SAFETY: `handle.app` is the live `*mut NmpApp` the

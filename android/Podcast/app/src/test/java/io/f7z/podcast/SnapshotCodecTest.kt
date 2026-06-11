@@ -84,4 +84,44 @@ class SnapshotCodecTest {
         assertNotNull(snapshot)
         assertEquals(3L, snapshot!!.rev)
     }
+
+    @Test
+    fun `feedback threads decode from snapshot projection`() {
+        val raw = """
+            {
+              "running": true,
+              "rev": 8,
+              "schema_version": 1,
+              "feedback_threads": [
+                {
+                  "event_id": "root1",
+                  "author_pubkey": "alice",
+                  "category": "bug",
+                  "content": "Crash on launch",
+                  "created_at": 100,
+                  "title": "Launch crash",
+                  "summary": "The app exits immediately.",
+                  "status_label": "open",
+                  "replies": [
+                    {
+                      "event_id": "reply1",
+                      "author_pubkey": "bob",
+                      "content": "Looking at it",
+                      "created_at": 110
+                    }
+                  ]
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val snapshot = SnapshotCodec.decode(raw)
+
+        assertNotNull(snapshot)
+        val thread = snapshot!!.feedbackThreads.single()
+        assertEquals("root1", thread.eventId)
+        assertEquals("Launch crash", thread.title)
+        assertEquals("open", thread.statusLabel)
+        assertEquals("reply1", thread.replies.single().eventId)
+    }
 }

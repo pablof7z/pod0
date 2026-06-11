@@ -1,15 +1,6 @@
 {
-  "originHash" : "74e2075b02a0c9f9394c65fc2feaedf9331615b169f78d31261df12d0d80eb75",
+  "originHash" : "99a3f8588f8270a6d2cf8edcd67add4390d2369fd3136f8cdded0558302a65e0",
   "pins" : [
-    {
-      "identity" : "ios-shake-feedback",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/pablof7z/ios-shake-feedback",
-      "state" : {
-        "revision" : "e39760823e009fab1559f66670333306b1de7ba1",
-        "version" : "1.0.0"
-      }
-    },
     {
       "identity" : "kingfisher",
       "kind" : "remoteSourceControl",

@@ -351,12 +351,11 @@ pub enum PodcastAction {
     SummarizeEpisode {
         episode_id: String,
     },
-    /// Open the in-app feedback subscription (TENEX project notes) through the
-    /// NMP relay pool. Pushes a relay-pinned `OneShot` interest for kind:1 +
-    /// kind:513 events bearing the project `["a"]` coord; results arrive via
-    /// [`crate::feedback_handler::FeedbackObserver`] and surface on
-    /// `PodcastUpdate.feedback_events`. Replaces the deleted Swift
-    /// `FeedbackRelayClient` WebSocket fetch — no iOS relay socket.
+    /// Open the in-app feedback subscription through `nmp-feedback`. The module
+    /// pushes a relay-pinned `OneShot` interest for kind:1 + kind:513 events
+    /// bearing the app's project `["a"]` coord; results surface on
+    /// `PodcastUpdate.feedback_events` and `feedback_threads`. No iOS relay
+    /// socket.
     FetchFeedback,
     /// Sign + publish a feedback note (kind:1) to the feedback relay via NMP.
     /// Rust builds all tags (`["a",coord]`, `["t",category]`, the NIP-70 `["-"]`

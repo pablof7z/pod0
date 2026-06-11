@@ -60,7 +60,12 @@ fn make_handle(store: Arc<Mutex<PodcastStore>>, rev: Arc<AtomicU64>) -> Box<Podc
         viewed_comments_episode_id: Arc::new(Mutex::new(None)),
         social: Arc::new(Mutex::new(None)),
         agent_notes: Arc::new(Mutex::new(Vec::new())),
-        feedback_events_cache: Arc::new(Mutex::new(Vec::new())),
+        feedback: nmp_feedback::FeedbackRuntime::new(
+            nmp_feedback::FeedbackConfig::new(crate::PODCAST_FEEDBACK_PROJECT_COORDINATE)
+                .with_interest_namespace(crate::PODCAST_FEEDBACK_INTEREST_NAMESPACE),
+            Arc::new(Mutex::new(Vec::new())),
+            rev.clone(),
+        ),
         runtime: Arc::new(tokio::runtime::Runtime::new().unwrap()),
         feed_fetch: crate::feed_fetch::FeedFetchCoordinator::new_test(),
     })
@@ -218,16 +223,14 @@ fn cold_load_restores_agent_tasks_through_set_data_dir() {
         intent_label: "Remember memory".to_owned(),
         intent_detail: Some("topic = rust".to_owned()),
         action_namespace: "podcast.memory".to_owned(),
-        action_body: r#"{"op":"remember","key":"topic","value":"rust","source":"task"}"#
-            .to_owned(),
+        action_body: r#"{"op":"remember","key":"topic","value":"rust","source":"task"}"#.to_owned(),
         schedule: "daily".to_owned(),
         next_run_at: Some(1_700_000_000),
         last_run_at: Some(1_699_999_000),
         status: "completed".to_owned(),
         is_enabled: true,
     }];
-    crate::store::agent_tasks::save_agent_tasks(&dir.path, &persisted)
-        .expect("seed agent tasks");
+    crate::store::agent_tasks::save_agent_tasks(&dir.path, &persisted).expect("seed agent tasks");
 
     let store = Arc::new(Mutex::new(PodcastStore::new()));
     let rev = Arc::new(AtomicU64::new(0));

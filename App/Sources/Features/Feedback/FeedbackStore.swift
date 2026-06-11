@@ -204,7 +204,7 @@ private struct ReplyDedupKey: Hashable {
 // MARK: - Feedback relay constants
 //
 // Feedback publish + fetch + profile resolution all run through the Rust
-// kernel now (NMP relay pool — `feedback_handler.rs`, kernel-side NIP-42 AUTH;
+// kernel now (NMP relay pool via `nmp_feedback::FeedbackRuntime`, kernel-side NIP-42 AUTH;
 // profile fetch via `KernelModel.claimProfile`). No iOS WebSocket and no Swift
 // signing remain for feedback. The legacy `FeedbackRelayClient` actor (its
 // WebSocket REQ/AUTH/publish machinery and the `signer.sign` NIP-42 auth path)

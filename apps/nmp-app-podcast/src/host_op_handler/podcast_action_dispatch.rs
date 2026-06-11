@@ -197,21 +197,22 @@ impl PodcastHostOpHandler {
                     )
                 }
             }
-            PodcastAction::FetchFeedback => {
-                crate::feedback_handler::handle_fetch_feedback(self.app)
-            }
+            PodcastAction::FetchFeedback => self.feedback.fetch(self.app).as_json(),
             PodcastAction::PublishFeedback {
                 category,
                 content,
                 parent_event_id,
                 reply_to_pubkey,
-            } => crate::feedback_handler::handle_publish_feedback(
-                self.app,
-                &category,
-                &content,
-                parent_event_id.as_deref(),
-                reply_to_pubkey.as_deref(),
-            ),
+            } => self
+                .feedback
+                .publish(
+                    self.app,
+                    &category,
+                    &content,
+                    parent_event_id.as_deref(),
+                    reply_to_pubkey.as_deref(),
+                )
+                .as_json(),
             // DiscoverNostr is handled in PodcastActionModule::execute via
             // EnsureInterest/DropInterestOwner before reaching the host-op
             // handler; it never arrives here.

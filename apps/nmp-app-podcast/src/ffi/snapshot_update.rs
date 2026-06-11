@@ -5,6 +5,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use nmp_feedback::FeedbackThreadDto;
+
 use super::projections::{
     AccountSummary, AgentContextSnapshot, AgentNoteSummary, AgentPickSummary, AgentSnapshot,
     AgentTaskSummary, CategoryBrowseItem, ClipSummary, CommentSummary, DownloadQueueSnapshot,
@@ -12,7 +14,6 @@ use super::projections::{
     OwnedPodcastInfo, PodcastSummary, SettingsSnapshot, SocialSnapshot, VoiceState, WidgetSnapshot,
     WikiArticle,
 };
-use crate::feedback_threads::FeedbackThreadDto;
 use crate::player::PlayerState;
 
 /// Typed root of the snapshot JSON.

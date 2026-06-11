@@ -51,8 +51,6 @@ pub mod download;
 pub(crate) mod episode_summary;
 pub(crate) mod episode_summary_llm;
 pub(crate) mod feed_fetch;
-pub(crate) mod feedback_handler;
-pub(crate) mod feedback_threads;
 pub mod ffi;
 pub(crate) mod host_op_handler;
 pub(crate) mod host_op_handler_helpers;
@@ -98,9 +96,9 @@ pub use download::{DownloadItem, DownloadItemState, DownloadQueue, DEFAULT_MAX_C
 pub use ffi::{
     nmp_app_podcast_assemblyai_transcribe, nmp_app_podcast_audio_report,
     nmp_app_podcast_byok_authorization, nmp_app_podcast_byok_exchange,
-    nmp_app_podcast_download_report, nmp_app_podcast_elevenlabs_scribe_transcribe, nmp_app_podcast_http_report,
+    nmp_app_podcast_download_report, nmp_app_podcast_elevenlabs_scribe_transcribe,
     nmp_app_podcast_elevenlabs_tts_synthesize, nmp_app_podcast_elevenlabs_voice_catalog,
-    nmp_app_podcast_episode_events, nmp_app_podcast_generate_image,
+    nmp_app_podcast_episode_events, nmp_app_podcast_generate_image, nmp_app_podcast_http_report,
     nmp_app_podcast_local_model_catalog, nmp_app_podcast_openrouter_whisper_transcribe,
     nmp_app_podcast_perplexity_search, nmp_app_podcast_provider_model_catalog,
     nmp_app_podcast_register, nmp_app_podcast_rerank, nmp_app_podcast_set_data_dir,
@@ -115,3 +113,7 @@ pub use nmp_ffi::{
 };
 pub use player::{PlayerActor, PlayerState};
 pub use queue::PlaybackQueue;
+
+pub(crate) const PODCAST_FEEDBACK_PROJECT_COORDINATE: &str =
+    "31933:09d48a1a5dbe13404a729634f1d6ba722d40513468dd713c8ea38ca9b7b6f2c7:podcast";
+pub(crate) const PODCAST_FEEDBACK_INTEREST_NAMESPACE: &str = "podcast.feedback";

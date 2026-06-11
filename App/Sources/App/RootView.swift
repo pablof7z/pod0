@@ -1,5 +1,4 @@
 import CoreSpotlight
-import ShakeFeedbackKit
 import SwiftUI
 
 /// The tabs available at the root navigation level.
@@ -33,7 +32,6 @@ struct RootView: View {
     private var userIdentity: UserIdentityStore { store.identity }
     @State var selectedTab: RootTab = .home
     @State var feedbackWorkflow = FeedbackWorkflow()
-    @State var sharedFeedbackStore = ShakeFeedbackStore(config: .podcastr, namespace: "io.f7z.podcast")
     @State var showFeedback = false
     @State var showSettings = false
     @State var showAgentChat = false
@@ -81,13 +79,8 @@ struct RootView: View {
                 }
                 .onShake { handleShake() }
                 .sheet(isPresented: $showFeedback) {
-                    ShakeFeedbackSheet(store: sharedFeedbackStore)
+                    FeedbackView(workflow: feedbackWorkflow)
                         .presentationDetents([.large])
-                }
-                .task(id: userIdentity.publicKeyHex) {
-                    guard userIdentity.publicKeyHex != nil else { return }
-                    await sharedFeedbackStore.start(
-                        hostSigner: PodcastShakeFeedbackSigner(kernel: store.kernel))
                 }
                 .sheet(isPresented: $showSettings) {
                     NavigationStack { SettingsView() }

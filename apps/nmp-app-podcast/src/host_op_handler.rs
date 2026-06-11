@@ -32,6 +32,7 @@ use crate::categorization::{
 };
 use crate::clip_handler::{ClipHandler, ClipRecord};
 use crate::download::DownloadQueue;
+use crate::feed_fetch::FeedFetchCoordinator;
 use crate::ffi::actions::agent_module::AgentChatAction;
 use crate::ffi::actions::categorization_module::CategorizationAction;
 use crate::ffi::actions::chapters_module::ChaptersAction;
@@ -56,7 +57,6 @@ use crate::ffi::projections::{
     AgentNoteSummary, AgentPickSummary, AgentTaskSummary, CommentSummary, KnowledgeSearchResult,
     NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry, VoiceState, WikiArticle,
 };
-use crate::feed_fetch::FeedFetchCoordinator;
 use crate::host_op_handler_queue::handle_queue_action;
 use crate::host_op_publish::handle_publish_action;
 use crate::identity_handler::IdentityHandler;
@@ -179,6 +179,9 @@ pub struct PodcastHostOpHandler {
     /// registers a pending fetch then fire-and-forget dispatches the async HTTP
     /// command on the actor thread.
     pub(crate) feed_fetch: Arc<FeedFetchCoordinator>,
+    /// App-scoped feedback runtime. Shared with `PodcastHandle` so actions,
+    /// observer pushes, and snapshots read the same cache.
+    pub(crate) feedback: nmp_feedback::FeedbackRuntime,
     pub(crate) snapshot_signal: Option<SnapshotUpdateSignal>,
 }
 
@@ -224,6 +227,7 @@ impl PodcastHostOpHandler {
         social: Arc<Mutex<Option<SocialSnapshot>>>,
         agent_notes: Arc<Mutex<Vec<AgentNoteSummary>>>,
         feed_fetch: Arc<FeedFetchCoordinator>,
+        feedback: nmp_feedback::FeedbackRuntime,
     ) -> Self {
         Self {
             app,
@@ -259,6 +263,7 @@ impl PodcastHostOpHandler {
             social,
             agent_notes,
             feed_fetch,
+            feedback,
             snapshot_signal: None,
         }
     }

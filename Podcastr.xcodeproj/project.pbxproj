@@ -131,7 +131,6 @@
 		26CA1ED1879CA0171EF9E548 /* AppStateStore+Notes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37044BB268D58811BE2C4BB3 /* AppStateStore+Notes.swift */; };
 		2765C4E7686B37B23BE18A50 /* RSSParserDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 754F4110DAAD3E5235DC8D23 /* RSSParserDelegate.swift */; };
 		27C62FDD4D6D7AC3142A8DD0 /* AgentGeneratedPodcastService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E596094BED4B040AFDFB89DD /* AgentGeneratedPodcastService.swift */; };
-		2804DA33E5F23BA3AEC08A93 /* ShakeFeedbackKit in Frameworks */ = {isa = PBXBuildFile; productRef = AAC63C9CFC71DC57E42F547F /* ShakeFeedbackKit */; };
 		287A8E11B89D4992B8588DBD /* ClipComposerHandlesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A5D61A2A2E76A46CCB65B50 /* ClipComposerHandlesView.swift */; };
 		288422098CF725F20400053B /* AgentActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A1E29B99F5D8B00AF50D68B /* AgentActivity.swift */; };
 		28AD653AC4E35663DF0848AB /* NostrDiscoverForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = E49DF698FE6620753CE0570B /* NostrDiscoverForm.swift */; };
@@ -168,7 +167,6 @@
 		30463832B96CC282CDC99941 /* AddShowSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C6EBE9282DA4DB22B909C6 /* AddShowSheet.swift */; };
 		305214FD8DFDA906AA4CA76D /* AgentChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8453091EF53D5A0748FEFF31 /* AgentChatView.swift */; };
 		306F83354746C7A73D05CFC5 /* UUIDExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28002BE9B12FD1059A078DAB /* UUIDExtensions.swift */; };
-		30B5661E6DBB848720641156 /* SharedFeedbackIntegration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 699A33BC5102E65E707C3D32 /* SharedFeedbackIntegration.swift */; };
 		30CF21A3974A36D9672F05C2 /* PlayerShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA095CF43FD309609979982D /* PlayerShareSheet.swift */; };
 		30D9B28570BC40FEAB78A5AD /* SubscriptionsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86E081ED1068D05E15152FF9 /* SubscriptionsListView.swift */; };
 		31A75E21487150525FF473EB /* MarkdownTableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5033A865F81D11EAC26648F /* MarkdownTableView.swift */; };
@@ -1150,7 +1148,6 @@
 		68330F2571B90C7BBD19CA19 /* AgentTools+PodcastExternal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AgentTools+PodcastExternal.swift"; sourceTree = "<group>"; };
 		68C265B444E87753CD0D711E /* WikiView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikiView.swift; sourceTree = "<group>"; };
 		6925D73C7E3292E919C2BC4C /* CarPlayController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayController.swift; sourceTree = "<group>"; };
-		699A33BC5102E65E707C3D32 /* SharedFeedbackIntegration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedFeedbackIntegration.swift; sourceTree = "<group>"; };
 		69E4104A5505FFCE8930AC80 /* ChatHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatHistoryStore.swift; sourceTree = "<group>"; };
 		69E9568CA56A44DBF03A5156 /* AppStateStore+Triage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+Triage.swift"; sourceTree = "<group>"; };
 		69F64DEB22FB825C293F9C88 /* WikiStorageMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikiStorageMigrationTests.swift; sourceTree = "<group>"; };
@@ -1589,7 +1586,6 @@
 				B3970DA45FCC4CB32765FCCD /* SQLiteVec in Frameworks */,
 				DAF43A45B5BEC1A4531656CC /* Kingfisher in Frameworks */,
 				6CC2965885BEB9C1B53478A6 /* LiteRTLM in Frameworks */,
-				2804DA33E5F23BA3AEC08A93 /* ShakeFeedbackKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2865,7 +2861,6 @@
 				8B6D0BB05C58B14E9D83B7D9 /* FeedbackWorkflow.swift */,
 				914928B50E334BA9BE9AEB12 /* Nip46ConnectCard.swift */,
 				20F36C5F6F4D6449A43BD3DD /* ScreenshotAnnotationView.swift */,
-				699A33BC5102E65E707C3D32 /* SharedFeedbackIntegration.swift */,
 				A6A7DC07263EA419C98DDD74 /* SignedNostrEvent.swift */,
 			);
 			path = Feedback;
@@ -2963,7 +2958,6 @@
 				D1C704F1B182FF83C41AAB0F /* SQLiteVec */,
 				AC95E5BC4A660944ADC3109C /* Kingfisher */,
 				C42CCFD0573B346559E36AA9 /* LiteRTLM */,
-				AAC63C9CFC71DC57E42F547F /* ShakeFeedbackKit */,
 			);
 			productName = Podcastr;
 			productReference = 85AB8152D55E6C47E39E9A01 /* Podcastr.app */;
@@ -3018,7 +3012,6 @@
 				CDCFBAF4A865E5D6C8271482 /* XCRemoteSwiftPackageReference "LiteRT-LM" */,
 				E6351A58B45DD67BACED66EE /* XCRemoteSwiftPackageReference "SQLiteVec" */,
 				FD91E0E152391009482BC6AE /* XCRemoteSwiftPackageReference "Kingfisher" */,
-				6ACFB5D253BD310A1239CB8F /* XCRemoteSwiftPackageReference "ios-shake-feedback" */,
 			);
 			productRefGroup = EE8ECCB93F31FD087A3D5446 /* Products */;
 			projectDirPath = "";
@@ -3364,7 +3357,6 @@
 				81B30C7A33A294FF2ABDE9E7 /* FeedbackWorkflow.swift in Sources */,
 				79B00D6FC43CAB05674EA3E8 /* Nip46ConnectCard.swift in Sources */,
 				0BDC681C127FBCBB0996A546 /* ScreenshotAnnotationView.swift in Sources */,
-				30B5661E6DBB848720641156 /* SharedFeedbackIntegration.swift in Sources */,
 				6E053EF0BDD078A3098C2F8F /* SignedNostrEvent.swift in Sources */,
 				DC46894EDCFEA4D5A3601BBA /* FriendAvatar.swift in Sources */,
 				35D5BA503734231C8477C4EC /* FriendConversationTranscriptView.swift in Sources */,
@@ -4316,14 +4308,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		6ACFB5D253BD310A1239CB8F /* XCRemoteSwiftPackageReference "ios-shake-feedback" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/pablof7z/ios-shake-feedback";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.0.0;
-			};
-		};
 		9E67C9C9E4C6EC730548EE88 /* XCRemoteSwiftPackageReference "secp256k1.swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/GigaBitcoin/secp256k1.swift";
@@ -4362,10 +4346,6 @@
 		A865ADD09595500A328B6A66 /* P256K */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = P256K;
-		};
-		AAC63C9CFC71DC57E42F547F /* ShakeFeedbackKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = ShakeFeedbackKit;
 		};
 		AC95E5BC4A660944ADC3109C /* Kingfisher */ = {
 			isa = XCSwiftPackageProductDependency;

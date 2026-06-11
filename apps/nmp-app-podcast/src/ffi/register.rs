@@ -116,8 +116,6 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     let social = Arc::new(Mutex::new(None));
     let agent_notes: Arc<Mutex<Vec<crate::ffi::projections::AgentNoteSummary>>> =
         Arc::new(Mutex::new(Vec::new()));
-    let feedback_events_cache: Arc<Mutex<Vec<serde_json::Value>>> =
-        Arc::new(Mutex::new(Vec::new()));
     // Start at 1 so the first snapshot poll always triggers an iOS update
     // (guard is `update.rev > last_seen_rev`; last_seen_rev starts at 0).
     // Subsequent increments happen in PodcastHostOpHandler on store writes.
@@ -140,6 +138,16 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     // &mut borrow above is released by the block end).
     let app_ref = unsafe { &*app };
     let snapshot_signal = SnapshotUpdateSignal::new(rev.clone(), app_ref.actor_sender());
+    let feedback_events_cache: nmp_feedback::FeedbackEventCache = Arc::new(Mutex::new(Vec::new()));
+    let feedback_config =
+        nmp_feedback::FeedbackConfig::new(crate::PODCAST_FEEDBACK_PROJECT_COORDINATE)
+            .with_interest_namespace(crate::PODCAST_FEEDBACK_INTEREST_NAMESPACE);
+    let feedback_runtime =
+        nmp_feedback::FeedbackRuntime::new(feedback_config, feedback_events_cache, rev.clone())
+            .with_snapshot_bump(Arc::new({
+                let snapshot_signal = snapshot_signal.clone();
+                move || snapshot_signal.bump()
+            }));
 
     // Optimistic-subscribe async feed-fetch coordinator. Shared (one `Arc`)
     // between the host-op handler (registers a pending fetch + dispatches the
@@ -219,15 +227,10 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
             "both,indexer".to_string(),
         ),
         ("wss://purplepag.es".to_string(), "indexer".to_string()),
-        // In-app feedback source relay (TENEX project notes). Seeded as a
-        // read-only relay so NMP opens + NIP-42-AUTHs the connection used by
-        // the feedback fetch (kind:1 / kind:513 events bearing the project
-        // `["a"]` coord), routed here via `relay_pin` (see `feedback_handler`).
-        // Feedback *publishing* targets this relay explicitly via
-        // `PublishTarget::Explicit` (not the user's Auto outbox), so a `read`
-        // role is correct — it must not leak into the Auto write fan-out for
-        // unrelated kinds (agent notes, social).
-        ("wss://relay.tenex.chat".to_string(), "read".to_string()),
+        // In-app feedback source relay. Seeded read-only so NMP opens the
+        // connection used by the relay-pinned feedback subscription; publish
+        // targets the same relay explicitly through `nmp-feedback`.
+        feedback_runtime.config().relay_seed(),
     ]);
 
     app_ref.set_host_op_handler(Arc::new(
@@ -263,6 +266,7 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
             social.clone(),
             agent_notes.clone(),
             feed_fetch.clone(),
+            feedback_runtime.clone(),
         )
         .with_snapshot_signal(snapshot_signal.clone()),
     ));
@@ -303,16 +307,11 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
         .with_snapshot_signal(snapshot_signal.clone()),
     ));
 
-    // In-app feedback observer — receives kind:1 + kind:513 events bearing the
-    // TENEX project `["a"]` coord from the relay-pinned subscription opened by
-    // `handle_fetch_feedback`. Caches them as SignedNostrEvent-shaped JSON for
-    // the snapshot. No iOS WebSocket (replaces the deleted FeedbackRelayClient
-    // fetch path). Unlike agent-notes, it does NOT self-filter — the Feedback
-    // UI shows the user's own threads.
-    let _feedback_observer_id = app_ref.register_event_observer(std::sync::Arc::new(
-        crate::feedback_handler::FeedbackObserver::new(feedback_events_cache.clone(), rev.clone())
-            .with_snapshot_signal(snapshot_signal.clone()),
-    ));
+    // In-app feedback observer. The reusable module owns event filtering,
+    // bounded caching, and snapshot rev bumps. Unlike agent-notes, it does NOT
+    // self-filter — the Feedback UI shows the user's own threads.
+    let _feedback_observer_id =
+        app_ref.register_event_observer(std::sync::Arc::new(feedback_runtime.observer()));
 
     // Keep a clone for the handle before the runtime Arc is moved into the
     // voice manager below. The snapshot path's proactive triage trigger
@@ -372,7 +371,7 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
         viewed_comments_episode_id,
         social,
         agent_notes,
-        feedback_events_cache,
+        feedback: feedback_runtime,
         runtime: runtime_for_handle,
         feed_fetch,
     });

@@ -3,6 +3,7 @@ package io.f7z.podcast
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 
 /**
  * Kotlin mirror of `apps/nmp-app-podcast/src/ffi/snapshot.rs::PodcastUpdate`.
@@ -83,6 +84,13 @@ data class PodcastSnapshot(
     val inbox: List<InboxItem> = emptyList(),
     /** Agent-scheduled task rows. Mirror of `PodcastUpdate.agent_tasks`. */
     @SerialName("agent_tasks") val agentTasks: List<AgentTaskSummary> = emptyList(),
+    /**
+     * Raw feedback events cached by the Rust feedback runtime. Android renders
+     * [feedbackThreads]; this remains decoded for parity/debug surfaces only.
+     */
+    @SerialName("feedback_events") val feedbackEvents: List<JsonElement> = emptyList(),
+    /** Resolved feedback threads emitted by `nmp-feedback`. */
+    @SerialName("feedback_threads") val feedbackThreads: List<FeedbackThreadDto> = emptyList(),
 ) {
     /**
      * Effective subscription list — prefer the new `podcasts` projection, fall
@@ -91,6 +99,29 @@ data class PodcastSnapshot(
     val subscriptions: List<PodcastSummary>
         get() = if (podcasts.isNotEmpty()) podcasts else library
 }
+
+/** One reply row in a resolved feedback thread. */
+@Serializable
+data class FeedbackReplyDto(
+    @SerialName("event_id") val eventId: String = "",
+    @SerialName("author_pubkey") val authorPubkey: String = "",
+    val content: String = "",
+    @SerialName("created_at") val createdAt: Long = 0,
+)
+
+/** Resolved feedback thread projected by `nmp-feedback`. */
+@Serializable
+data class FeedbackThreadDto(
+    @SerialName("event_id") val eventId: String = "",
+    @SerialName("author_pubkey") val authorPubkey: String = "",
+    val category: String = "bug",
+    val content: String = "",
+    @SerialName("created_at") val createdAt: Long = 0,
+    val title: String? = null,
+    val summary: String? = null,
+    @SerialName("status_label") val statusLabel: String? = null,
+    val replies: List<FeedbackReplyDto> = emptyList(),
+)
 
 /**
  * Mirror of `apps/nmp-app-podcast/src/player/state.rs::PlayerState` (M13.C+D name).

@@ -4,14 +4,19 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import io.f7z.podcast.capabilities.AndroidCapabilityRouter
 import io.f7z.podcast.capabilities.DownloadCapability
@@ -19,6 +24,8 @@ import io.f7z.podcast.capabilities.ExoPlayerCapability
 import io.f7z.podcast.capabilities.HttpCapability
 import io.f7z.podcast.security.KeystoreManager
 import io.f7z.podcast.ui.AppNavigation
+import io.f7z.podcast.ui.FeedbackSheet
+import io.f7z.podcast.ui.ShakeFeedbackDetector
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -69,6 +76,7 @@ class MainActivity : ComponentActivity() {
  * layer. A single initial `podcastSnapshot()` pull paints the first frame so
  * the UI isn't blank until the kernel's first emit.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PodcastRoot() {
     val context = LocalContext.current
@@ -87,6 +95,7 @@ private fun PodcastRoot() {
         AndroidCapabilityRouter(audio = audio, http = http)
     }
     var snapshot by remember { mutableStateOf<PodcastSnapshot?>(null) }
+    var feedbackVisible by rememberSaveable { mutableStateOf(false) }
 
     DisposableEffect(bridge, audio, download, http, router) {
         // Bind the kernel's persistence directory FIRST — before any write
@@ -159,5 +168,18 @@ private fun PodcastRoot() {
         }
     }
 
+    ShakeFeedbackDetector { feedbackVisible = true }
+
     AppNavigation(snapshot = snapshot, bridge = bridge)
+
+    if (feedbackVisible) {
+        ModalBottomSheet(onDismissRequest = { feedbackVisible = false }) {
+            FeedbackSheet(
+                snapshot = snapshot,
+                bridge = bridge,
+                onDismiss = { feedbackVisible = false },
+                modifier = Modifier.fillMaxHeight(0.9f),
+            )
+        }
+    }
 }

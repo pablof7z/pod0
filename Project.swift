@@ -55,7 +55,6 @@ let project = Project(
             url: "https://github.com/google-ai-edge/LiteRT-LM",
             requirement: .revision("bbc5181df03c6962d7786ce4ad72c8565232d2b2")
         ),
-        .remote(url: "https://github.com/pablof7z/ios-shake-feedback", requirement: .upToNextMajor(from: "1.0.0")),
     ],
     settings: .settings(
         base: [
@@ -88,8 +87,8 @@ let project = Project(
             entitlements: .file(path: "App/Resources/Podcastr.entitlements"),
             scripts: [
                 // The Rust kernel links dynamically (`-lnmp_app_podcast` resolves
-                // the `.dylib` over the `.a`, avoiding the duplicate-`std`-symbol
-                // clash with `shake_feedback_core` under LiteRTLM's `-all_load`).
+                // the `.dylib` over the `.a`), which keeps the app binary from
+                // absorbing a second Rust archive under LiteRTLM's `-all_load`.
                 // Cargo stamps the dylib's install name as an absolute Mac path,
                 // which does not exist on a device → `dyld` launch crash
                 // ("Library not loaded: /Users/.../libnmp_app_podcast.dylib").
@@ -155,7 +154,6 @@ let project = Project(
                 .package(product: "SQLiteVec"),
                 .package(product: "Kingfisher"),
                 .package(product: "LiteRTLM"),
-                .package(product: "ShakeFeedbackKit"),
                 .target(name: "\(appName)Widget"),
             ],
             settings: .settings(
