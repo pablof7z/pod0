@@ -5,8 +5,8 @@ import os.log
 //
 // iOS half of the iCloud-settings-sync surface (feature #52). Mirrors a
 // curated subset of `podcast.settings` into `NSUbiquitousKeyValueStore` so
-// playback speed, skip intervals, ad-skip toggle, and streaming-only toggle
-// roam across the user's devices and survive a reinstall.
+// playback speed, skip intervals, and the ad-skip toggle roam across the
+// user's devices and survive a reinstall.
 //
 // PASSIVE SHAPE — like `PlatformCapability` / `SpotlightCapability` there
 // is no request/response capability socket here. The capability is driven
@@ -50,7 +50,6 @@ final class iCloudSyncCapability {
         static let skipForwardSecs   = "pcst.skip_forward_secs"
         static let skipBackwardSecs  = "pcst.skip_backward_secs"
         static let autoSkipAds       = "pcst.auto_skip_ads"
-        static let streamingOnly     = "pcst.streaming_only"
         static let autoDeleteDownloadsAfterPlayed = "pcst.auto_delete_downloads_after_played"
         static let agentInitialModel = "pcst.agent_initial_model"
         static let agentInitialModelName = "pcst.agent_initial_model_name"
@@ -95,7 +94,7 @@ final class iCloudSyncCapability {
 
         /// Every key this capability owns.
         static let all: Set<String> = [
-            speed, skipForwardSecs, skipBackwardSecs, autoSkipAds, streamingOnly,
+            speed, skipForwardSecs, skipBackwardSecs, autoSkipAds,
             autoDeleteDownloadsAfterPlayed,
             agentInitialModel, agentInitialModelName, agentThinkingModel, agentThinkingModelName,
             memoryCompilationModel, memoryCompilationModelName, wikiModel, wikiModelName,
@@ -230,11 +229,6 @@ final class iCloudSyncCapability {
            lastWritten[Key.autoSkipAds] != AnyHashable(v) {
             kvs.set(v, forKey: Key.autoSkipAds)
             lastWritten[Key.autoSkipAds] = AnyHashable(v)
-        }
-        if let v = settings.streamingOnly,
-           lastWritten[Key.streamingOnly] != AnyHashable(v) {
-            kvs.set(v, forKey: Key.streamingOnly)
-            lastWritten[Key.streamingOnly] = AnyHashable(v)
         }
         if let v = settings.autoDeleteDownloadsAfterPlayed,
            lastWritten[Key.autoDeleteDownloadsAfterPlayed] != AnyHashable(v) {
@@ -497,16 +491,6 @@ final class iCloudSyncCapability {
             kernel?.dispatchSilent(namespace: "podcast.settings",
                                    body: ["op": "set_auto_skip_ads", "enabled": enabled])
             lastWritten[Key.autoSkipAds] = AnyHashable(enabled)
-            didDispatch = true
-        }
-
-        if touched.contains(Key.streamingOnly),
-           let enabled = (kvs.object(forKey: Key.streamingOnly) as? NSNumber)?.boolValue,
-           lastWritten[Key.streamingOnly] != AnyHashable(enabled) {
-            isApplyingRemoteChange = true
-            kernel?.dispatchSilent(namespace: "podcast.settings",
-                                   body: ["op": "set_streaming_only", "enabled": enabled])
-            lastWritten[Key.streamingOnly] = AnyHashable(enabled)
             didDispatch = true
         }
 

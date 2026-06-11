@@ -18,7 +18,6 @@ struct SettingsKVSnapshot: Equatable {
     var skipForwardSecs: Int?
     var skipBackwardSecs: Int?
     var autoSkipAds: Bool?
-    var streamingOnly: Bool?
     var autoDeleteDownloadsAfterPlayed: Bool?
     var agentInitialModel: String?
     var agentInitialModelName: String?
@@ -81,9 +80,6 @@ struct SettingsKVSnapshot: Equatable {
         }
         if let v = autoSkipAds {
             lastWritten[iCloudSyncCapability.Key.autoSkipAds] = AnyHashable(v)
-        }
-        if let v = streamingOnly {
-            lastWritten[iCloudSyncCapability.Key.streamingOnly] = AnyHashable(v)
         }
         if let v = autoDeleteDownloadsAfterPlayed {
             lastWritten[iCloudSyncCapability.Key.autoDeleteDownloadsAfterPlayed] = AnyHashable(v)
@@ -230,8 +226,8 @@ struct SettingsKVSnapshot: Equatable {
 extension SettingsKVSnapshot {
     /// Build a snapshot from the current kernel `PodcastUpdate`. Returns
     /// `.empty` when the active `PodcastUpdate` does not yet carry the
-    /// playback-rate / skip-interval / auto-skip-ads / streaming-only
-    /// fields on `settings` (the pre-`pr-settings-projection` shape).
+    /// playback-rate / skip-interval / auto-skip-ads fields on `settings`
+    /// (the pre-`pr-settings-projection` shape).
     ///
     /// When the projection lands, replace the body with explicit reads
     /// from the **preference** fields (not from `nowPlaying.speed` —
@@ -242,8 +238,7 @@ extension SettingsKVSnapshot {
     ///     speed: update.settings.playbackSpeed,
     ///     skipForwardSecs: update.settings.skipForwardSecs,
     ///     skipBackwardSecs: update.settings.skipBackwardSecs,
-    ///     autoSkipAds: update.settings.autoSkipAds,
-    ///     streamingOnly: update.settings.streamingOnly)
+    ///     autoSkipAds: update.settings.autoSkipAds)
     /// ```
     static func from(podcastUpdate update: PodcastUpdate) -> SettingsKVSnapshot {
         let s = update.settings
@@ -252,7 +247,6 @@ extension SettingsKVSnapshot {
             skipForwardSecs: Int(s.skipForwardSecs),
             skipBackwardSecs: Int(s.skipBackwardSecs),
             autoSkipAds: s.autoSkipAdsEnabled,
-            streamingOnly: nil,
             autoDeleteDownloadsAfterPlayed: s.autoDeleteDownloadsAfterPlayed,
             agentInitialModel: s.agentInitialModel,
             agentInitialModelName: s.agentInitialModelName,

@@ -711,23 +711,6 @@ worktrees currently in flight.
 
 ## Active P2 - Cross-Cutting Technical Debt
 
-- **dead-streaming-only-setting.** `iCloudSyncCapability` still carries an
-  orphaned `streamingOnly` setting: it defines the KV key
-  `pcst.streaming_only`, mirrors it outbound, and on a remote change dispatches
-  `podcast.settings` `{"op":"set_streaming_only"}`. But there is NO Rust
-  handler (`SettingsAction` has no `SetStreamingOnly` variant; `streaming_only`
-  appears nowhere in `apps/nmp-app-podcast/src/`), NO field on the Swift
-  `Settings` struct, NO UI that writes it, and the projection bridge
-  (`iCloudSyncCapability+Snapshot.swift::from(podcastUpdate:)`) hardcodes
-  `streamingOnly: nil`. With `#[serde(tag="op")]`/no `#[serde(other)]` the
-  dispatch fails `from_str::<SettingsAction>` and is silently dropped. It is
-  dead plumbing, not a domain setting to migrate. Decision needed: either
-  delete the `streamingOnly` KV key + snapshot field + both
-  `applySettingsSnapshot`/remote-apply arms (cleanest), OR build a real
-  streaming-vs-download playback setting end-to-end (Settings field + UI +
-  `SettingsSnapshot` projection + `SetStreamingOnly` op) if the feature is
-  actually wanted. Surfaced during the `settings-completion` (M3) audit;
-  Article VII says do not build the feature speculatively — favor deletion.
 - ~~**provider-api-keys-no-kernel-handler.**~~ Stale audit entry. Live Rust has
   `SettingsAction::SetProviderApiKeys` and
   `settings_actions.rs` stores the in-memory OpenRouter/Ollama secrets via
