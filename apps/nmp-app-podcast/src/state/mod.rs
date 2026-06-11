@@ -24,12 +24,20 @@
 //! Step 4: Categories substate — `CategoriesState` owns `categories` cache +
 //! `in_progress`; the duplicate guard on `FeedFetchCoordinator` is consolidated.
 //!
-//! Steps 5-N are defined in the design doc.
+//! Step 5a: Clips substate — `ClipsState` owns `clips` slot.
+//! Step 5b: Transcripts substate — `TranscriptsState` owns `cache` slot.
+//! Step 6:  Tasks substate — `TasksState` owns `tasks` slot + write-through
+//!          persistence via `store::agent_tasks`.
+//!
+//! Steps 7-N are defined in the design doc.
 
 pub mod categories;
+pub mod clips;
 pub mod knowledge;
 pub mod picks;
 pub mod slot;
+pub mod tasks;
+pub mod transcripts;
 pub mod wiki;
 
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -127,6 +135,14 @@ impl Infra {
 ///
 /// Steps 2-4: wiki + picks + categories substates added; respective god-struct fields removed.
 ///
+/// Step 5a: clips substate added; `clips` field removed from both god-structs.
+///
+/// Step 5b: transcripts substate added; `transcripts` field removed from both
+/// god-structs.
+///
+/// Step 6: tasks substate added; `agent_tasks` field removed from both
+/// god-structs.
+///
 /// `picks` and `categories` are wrapped in `Arc` so `FeedFetchCoordinator` can
 /// hold the SAME substate instance (canonical single guard — no duplicate Arcs).
 pub struct PodcastAppState {
@@ -146,6 +162,15 @@ pub struct PodcastAppState {
     /// Categories substate (Step 4).  Owns categories cache + single guard.
     /// Wrapped in `Arc` so `FeedFetchCoordinator` can hold the canonical instance.
     pub categories: Arc<categories::CategoriesState>,
+
+    /// Clips substate (Step 5a).  Owns the in-memory clip list.
+    pub clips: clips::ClipsState,
+
+    /// Transcripts substate (Step 5b).  Owns the per-episode transcript cache.
+    pub transcripts: transcripts::TranscriptsState,
+
+    /// Tasks substate (Step 6).  Owns agent-task list + write-through persistence.
+    pub tasks: tasks::TasksState,
 }
 
 impl PodcastAppState {
@@ -164,7 +189,10 @@ impl PodcastAppState {
         let knowledge_index = knowledge.index_arc();
         let wiki = wiki::WikiState::new(infra.clone(), store.clone(), knowledge_index);
         let picks = Arc::new(picks::PicksState::new(infra.clone(), store.clone()));
-        let categories = Arc::new(categories::CategoriesState::new(infra.clone(), store));
-        Self { infra, knowledge, wiki, picks, categories }
+        let categories = Arc::new(categories::CategoriesState::new(infra.clone(), store.clone()));
+        let clips = clips::ClipsState::new(infra.clone(), store.clone());
+        let transcripts = transcripts::TranscriptsState::new(infra.clone(), store.clone());
+        let tasks = tasks::TasksState::new(infra.clone(), store);
+        Self { infra, knowledge, wiki, picks, categories, clips, transcripts, tasks }
     }
 }

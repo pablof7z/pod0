@@ -43,12 +43,8 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     });
 
     // Snapshot caches before the store lock so we don't hold two locks at once.
-    let transcripts = handle
-        .transcripts
-        .lock()
-        .ok()
-        .map(|t| t.clone())
-        .unwrap_or_default();
+    // Step 5b: transcripts now read from TranscriptsState.
+    let transcripts = handle.state.transcripts.snapshot();
     // Step 4: categories_cache now read from CategoriesState.
     let categories_cache = handle.state.categories.categories_snapshot();
 
@@ -115,14 +111,11 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     let wiki_search_results = handle.state.wiki.search_results_snapshot();
     // Step 3: picks slot is now owned by `state.picks`.
     let picks = handle.state.picks.picks_snapshot();
-    let agent_tasks = handle
-        .agent_tasks
-        .lock()
-        .ok()
-        .map(|t| t.clone())
-        .unwrap_or_default();
+    // Step 6: agent_tasks now read from TasksState.
+    let agent_tasks = handle.state.tasks.tasks_snapshot();
     let knowledge_search_results = handle.state.knowledge.results_snapshot();
-    let clips = crate::clip_handler::project_clips(&handle.clips, &library);
+    // Step 5a: clips now projected from ClipsState.
+    let clips = handle.state.clips.project(&library);
     let inbox = build_inbox(
         &handle.store,
         &handle.dismissed_episode_ids,

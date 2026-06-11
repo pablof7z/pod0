@@ -8,7 +8,6 @@ use std::sync::atomic::Ordering;
 use crate::chapter::handle_fetch_chapters;
 use crate::ffi::actions::podcast_module::PodcastAction;
 use crate::host_op_handler::PodcastHostOpHandler;
-use crate::transcript::handle_fetch_transcript;
 
 impl PodcastHostOpHandler {
     pub(super) fn handle_podcast_action(
@@ -85,13 +84,10 @@ impl PodcastHostOpHandler {
             PodcastAction::DownloadLocalModel { model_id, url } => {
                 self.handle_download_local_model(model_id, url, correlation_id)
             }
-            PodcastAction::FetchTranscript { episode_id } => handle_fetch_transcript(
-                &self.store,
-                &self.transcripts,
-                &self.rev,
-                episode_id,
-                |req| self.dispatch_http(req, correlation_id),
-            ),
+            PodcastAction::FetchTranscript { episode_id } => self
+                .state
+                .transcripts
+                .handle_fetch(episode_id, |req| self.dispatch_http(req, correlation_id)),
             PodcastAction::FetchChapters { episode_id } => {
                 handle_fetch_chapters(&self.store, &self.rev, episode_id, |req| {
                     self.dispatch_http(req, correlation_id)

@@ -131,9 +131,10 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(handle: *mut PodcastHandle, path:
     // Restore shared agent task rows from `agent-tasks.json`, if present.
     // Missing/corrupt sidecar leaves the register-time seed in place; a valid
     // empty list is loaded so deleting every task remains durable.
+    // Step 6: tasks slot is now owned by `state.tasks` (TasksState).
     let tasks_loaded = match crate::store::agent_tasks::load_agent_tasks(&path_buf) {
         Some(restored) => {
-            if let Ok(mut tasks) = handle.agent_tasks.lock() {
+            if let Ok(mut tasks) = handle.state.tasks.tasks.lock() {
                 *tasks = restored;
                 true
             } else {

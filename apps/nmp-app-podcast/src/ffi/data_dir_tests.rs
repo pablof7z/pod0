@@ -34,9 +34,8 @@ fn make_handle(store: Arc<Mutex<PodcastStore>>, rev: Arc<AtomicU64>) -> Box<Podc
         clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
         queue: Arc::new(Mutex::new(PlaybackQueue::new())),
         download_queue: Arc::new(Mutex::new(DownloadQueue::new())),
-        agent_tasks: Arc::new(Mutex::new(Vec::new())),
-        clips: Arc::new(Mutex::new(Vec::new())),
-        transcripts: Arc::new(Mutex::new(HashMap::new())),
+        // clips, transcripts, agent_tasks removed in Steps 5a, 5b, 6 —
+        // now owned by state.clips / state.transcripts / state.tasks.
         dismissed_episode_ids: Arc::new(Mutex::new(HashSet::new())),
         podcast_keys: Arc::new(Mutex::new(PodcastKeyStore::new())),
         publish_state: Arc::new(Mutex::new(HashMap::new())),
@@ -234,13 +233,14 @@ fn cold_load_restores_agent_tasks_through_set_data_dir() {
     let store = Arc::new(Mutex::new(PodcastStore::new()));
     let rev = Arc::new(AtomicU64::new(0));
     let handle = make_handle(store.clone(), rev.clone());
-    let tasks_arc = handle.agent_tasks.clone();
+    // Step 6: tasks slot is now owned by state.tasks (TasksState).
+    let tasks_slot = handle.state.tasks.tasks.share();
     let ptr = Box::into_raw(handle);
     let cpath = CString::new(dir.path.to_str().unwrap()).unwrap();
 
     nmp_app_podcast_set_data_dir(ptr, cpath.as_ptr());
 
-    let restored = tasks_arc.lock().unwrap();
+    let restored = tasks_slot.lock().unwrap();
     assert_eq!(*restored, persisted);
     assert_eq!(restored[0].action_namespace, "podcast.memory");
     drop(restored);
@@ -257,14 +257,15 @@ fn cold_load_empty_agent_tasks_overrides_seed() {
     let store = Arc::new(Mutex::new(PodcastStore::new()));
     let rev = Arc::new(AtomicU64::new(0));
     let handle = make_handle(store.clone(), rev.clone());
-    let tasks_arc = handle.agent_tasks.clone();
-    *tasks_arc.lock().unwrap() = crate::tasks_handler::default_seed();
+    // Step 6: tasks slot is now owned by state.tasks (TasksState).
+    let tasks_slot = handle.state.tasks.tasks.share();
+    *tasks_slot.lock().unwrap() = crate::tasks_handler::default_seed();
     let ptr = Box::into_raw(handle);
     let cpath = CString::new(dir.path.to_str().unwrap()).unwrap();
 
     nmp_app_podcast_set_data_dir(ptr, cpath.as_ptr());
 
-    assert!(tasks_arc.lock().unwrap().is_empty());
+    assert!(tasks_slot.lock().unwrap().is_empty());
     assert_eq!(rev.load(Ordering::Relaxed), 1);
 
     let _ = unsafe { Box::from_raw(ptr) };

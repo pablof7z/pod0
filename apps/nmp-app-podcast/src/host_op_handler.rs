@@ -9,7 +9,7 @@
 //! * Settings-action dispatch -> `host_op_handler/settings_actions.rs`
 //! * Capability dispatch helpers -> `host_op_handler/dispatch.rs`
 //! * Queue-action dispatch    -> `host_op_handler_queue.rs`
-//! * Task-action dispatch     -> `host_op_handler/task_actions.rs`
+//! * Task-action dispatch     -> `state::tasks::TasksState::handle` (Step 6)
 //! * iTunes search helpers    -> `itunes.rs`
 //! * `merge_episodes`         -> `host_op_handler_helpers.rs`
 //! * Publish-action dispatch  -> `host_op_publish.rs`
@@ -27,13 +27,12 @@ use tokio::runtime::Runtime;
 use nmp_ffi::NmpApp;
 
 use crate::agent_handler::AgentChatHandler;
-use crate::clip_handler::ClipRecord;
 use crate::download::DownloadQueue;
 use crate::feed_fetch::FeedFetchCoordinator;
 use crate::ffi::handle::OwnedPublishState;
 use crate::ffi::projections::{
-    AgentNoteSummary, AgentTaskSummary, CommentSummary,
-    NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry, VoiceState,
+    AgentNoteSummary, CommentSummary,
+    NostrShowSummary, PodcastSummary, SocialSnapshot, VoiceState,
 };
 use crate::inbox_llm::TriageResult;
 use crate::player::PlayerActor;
@@ -53,7 +52,8 @@ mod router;
 mod settings_actions;
 mod siri_actions;
 mod social_actions;
-mod task_actions;
+// task_actions removed in Step 6 — PodcastHostOpHandler::handle_task_action
+// replaced by TasksState::handle in state/tasks.rs.
 
 /// Kernel-side handler owning every `Arc`d state slot the snapshot reader
 /// (in `ffi::handle::PodcastHandle`) projects, plus the `*mut NmpApp` used
@@ -78,11 +78,11 @@ pub struct PodcastHostOpHandler {
     // they are now owned by `state.wiki` (WikiState).
     // picks + picks_score_in_progress removed in Step 3 —
     // they are now owned by `state.picks` (PicksState).
-    pub(crate) agent_tasks: Arc<Mutex<Vec<AgentTaskSummary>>>,
+    // agent_tasks removed in Step 6 — now owned by `state.tasks` (TasksState).
     // knowledge_search_results and knowledge_store removed in Step 1 —
     // they are now owned by `state.knowledge` (KnowledgeState).
-    pub(crate) clips: Arc<Mutex<Vec<ClipRecord>>>,
-    pub(crate) transcripts: Arc<Mutex<HashMap<String, Vec<TranscriptEntry>>>>,
+    // clips removed in Step 5a — now owned by `state.clips` (ClipsState).
+    // transcripts removed in Step 5b — now owned by `state.transcripts` (TranscriptsState).
     pub(crate) dismissed_episode_ids: Arc<Mutex<HashSet<String>>>,
     pub(crate) voice_state: Arc<Mutex<VoiceState>>,
     // categories + categorization_in_progress removed in Step 4 —
@@ -162,9 +162,6 @@ impl PodcastHostOpHandler {
         nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
         queue: Arc<Mutex<PlaybackQueue>>,
         download_queue: Arc<Mutex<DownloadQueue>>,
-        agent_tasks: Arc<Mutex<Vec<AgentTaskSummary>>>,
-        clips: Arc<Mutex<Vec<ClipRecord>>>,
-        transcripts: Arc<Mutex<HashMap<String, Vec<TranscriptEntry>>>>,
         dismissed_episode_ids: Arc<Mutex<HashSet<String>>>,
         voice_state: Arc<Mutex<VoiceState>>,
         rev: Arc<AtomicU64>,
@@ -191,9 +188,6 @@ impl PodcastHostOpHandler {
             nostr_results,
             queue,
             download_queue,
-            agent_tasks,
-            clips,
-            transcripts,
             dismissed_episode_ids,
             voice_state,
             rev,

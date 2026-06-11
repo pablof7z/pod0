@@ -40,7 +40,6 @@ use crate::queue::PlaybackQueue;
 use crate::snapshot_signal::SnapshotUpdateSignal;
 use crate::store::identity::IdentityStore;
 use crate::store::{PodcastKeyStore, PodcastStore};
-use crate::tasks_handler;
 
 /// Register Podcast projections and action namespaces against `app`. Returns a
 /// non-null `*mut PodcastHandle` on success; `null` on any failure (null
@@ -97,12 +96,9 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     // they are now seeded inside PodcastAppState::new (WikiState).
     // picks and picks_score_in_progress removed in Step 3 —
     // they are now seeded inside PodcastAppState::new (PicksState).
-    // Seed the tasks slot with defaults so the iOS UI has rows to render
-    // before the user has scheduled anything (see
-    // `tasks_handler::default_seed`).
-    let agent_tasks = Arc::new(Mutex::new(tasks_handler::default_seed()));
-    let clips = Arc::new(Mutex::new(Vec::new()));
-    let transcripts = Arc::new(Mutex::new(HashMap::new()));
+    // clips removed in Step 5a — now seeded inside PodcastAppState::new (ClipsState).
+    // transcripts removed in Step 5b — now seeded inside PodcastAppState::new (TranscriptsState).
+    // agent_tasks removed in Step 6 — now seeded inside PodcastAppState::new (TasksState).
     let dismissed_episode_ids = Arc::new(Mutex::new(HashSet::new()));
     let podcast_keys = Arc::new(Mutex::new(PodcastKeyStore::new()));
     let publish_state = Arc::new(Mutex::new(HashMap::new()));
@@ -260,9 +256,6 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
             nostr_results.clone(),
             queue.clone(),
             download_queue.clone(),
-            agent_tasks.clone(),
-            clips.clone(),
-            transcripts.clone(),
             dismissed_episode_ids.clone(),
             voice_state.clone(),
             rev.clone(),
@@ -360,9 +353,8 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
         clean_html_cache: Arc::new(Mutex::new(std::collections::HashMap::new())),
         queue,
         download_queue,
-        agent_tasks,
-        clips,
-        transcripts,
+        // clips, transcripts, agent_tasks removed in Steps 5a, 5b, 6 —
+        // now owned by state.clips / state.transcripts / state.tasks.
         dismissed_episode_ids,
         podcast_keys,
         publish_state,

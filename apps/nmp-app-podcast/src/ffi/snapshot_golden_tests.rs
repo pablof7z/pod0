@@ -25,7 +25,7 @@
 //! with a null `app` pointer — the projection path under test never dereferences
 //! `app`.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::{Arc, Mutex};
@@ -43,6 +43,7 @@ use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::store::identity::IdentityStore;
 use crate::store::{PodcastKeyStore, PodcastStore};
+use std::collections::HashSet;
 
 // ── Fixed-ID constants ────────────────────────────────────────────────────────
 
@@ -105,6 +106,11 @@ fn make_golden_handle(app: *mut nmp_ffi::NmpApp) -> Box<PodcastHandle> {
         crate::state::Infra::for_test(),
         store.clone(),
     ));
+    // Clear agent_tasks: default_seed() uses Uuid::new_v4() + Utc::now(), making
+    // the fixture non-deterministic.  The golden test exercises the projection
+    // *shape*, not the task content — leave the slot empty so the fixture is
+    // byte-identical across runs (skip_serializing_if = "Vec::is_empty" omits it).
+    state.tasks.tasks.lock().unwrap().clear();
 
     Box::new(PodcastHandle {
         app,
@@ -120,9 +126,8 @@ fn make_golden_handle(app: *mut nmp_ffi::NmpApp) -> Box<PodcastHandle> {
         clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
         queue: Arc::new(Mutex::new(PlaybackQueue::new())),
         download_queue: Arc::new(Mutex::new(DownloadQueue::new())),
-        agent_tasks: Arc::new(Mutex::new(Vec::new())),
-        clips: Arc::new(Mutex::new(Vec::new())),
-        transcripts: Arc::new(Mutex::new(HashMap::new())),
+        // clips, transcripts, agent_tasks removed in Steps 5a, 5b, 6 —
+        // now owned by state.clips / state.transcripts / state.tasks.
         dismissed_episode_ids: Arc::new(Mutex::new(HashSet::new())),
         podcast_keys: Arc::new(Mutex::new(PodcastKeyStore::new())),
         publish_state: Arc::new(Mutex::new(HashMap::new())),

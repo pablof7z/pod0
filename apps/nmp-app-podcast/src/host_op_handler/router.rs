@@ -28,7 +28,6 @@ use nmp_core::substrate::HostOpHandler;
 
 use super::PodcastHostOpHandler;
 use crate::ai_chapters::{handle_compile_chapters, handle_compile_chapters_with_signal};
-use crate::clip_handler::ClipHandler;
 use crate::ffi::actions::agent_module::AgentChatAction;
 use crate::ffi::actions::categorization_module::CategorizationAction;
 use crate::ffi::actions::chapters_module::ChaptersAction;
@@ -162,15 +161,12 @@ impl HostOpHandler for PodcastHostOpHandler {
             }
             "podcast.wiki" => self.state.wiki.handle(parse!(WikiAction)),
             "podcast.picks" => self.state.picks.handle(parse!(PicksAction)),
-            "podcast.tasks" => self.handle_task_action(parse!(AgentTasksAction)),
+            "podcast.tasks" => self.state.tasks.handle(parse!(AgentTasksAction), self.app),
             "podcast.knowledge" => self.state.knowledge.handle(parse!(KnowledgeAction)),
             "podcast.memory" => {
                 memory_handler::handle(parse!(MemoryAction), &self.store, &self.rev)
             }
-            "podcast.clip" => {
-                ClipHandler::new(self.clips.clone(), self.store.clone(), self.rev.clone())
-                    .handle(parse!(ClipAction))
-            }
+            "podcast.clip" => self.state.clips.handle(parse!(ClipAction)),
             "podcast.voice" => {
                 voice_handler::handle(self, parse!(VoiceAction), correlation_id)
             }

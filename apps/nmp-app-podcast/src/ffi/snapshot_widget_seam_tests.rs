@@ -82,9 +82,8 @@ fn handler_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> PodcastH
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(PlaybackQueue::new())),
         Arc::new(Mutex::new(DownloadQueue::new())),
-        Arc::new(Mutex::new(Vec::new())),
-        Arc::new(Mutex::new(Vec::new())),
-        Arc::new(Mutex::new(HashMap::new())),
+        // agent_tasks, clips, transcripts removed in Steps 5a, 5b, 6 —
+        // now owned by state.tasks / state.clips / state.transcripts.
         Arc::new(Mutex::new(HashSet::new())),
         Arc::new(Mutex::new(VoiceState::default())),
         shared.rev.clone(),
@@ -125,9 +124,8 @@ fn handle_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> Box<Podca
         clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
         queue: Arc::new(Mutex::new(PlaybackQueue::new())),
         download_queue: Arc::new(Mutex::new(DownloadQueue::new())),
-        agent_tasks: Arc::new(Mutex::new(Vec::new())),
-        clips: Arc::new(Mutex::new(Vec::new())),
-        transcripts: Arc::new(Mutex::new(HashMap::new())),
+        // clips, transcripts, agent_tasks removed in Steps 5a, 5b, 6 —
+        // now owned by state.clips / state.transcripts / state.tasks.
         dismissed_episode_ids: Arc::new(Mutex::new(HashSet::new())),
         podcast_keys: Arc::new(Mutex::new(PodcastKeyStore::new())),
         publish_state: Arc::new(Mutex::new(HashMap::new())),

@@ -38,9 +38,7 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(PlaybackQueue::new())),
         Arc::new(Mutex::new(DownloadQueue::new())),
-        Arc::new(Mutex::new(Vec::new())),
-        Arc::new(Mutex::new(Vec::new())),
-        Arc::new(Mutex::new(HashMap::new())),
+        // agent_tasks, clips, transcripts removed in Steps 5a, 5b, 6.
         Arc::new(Mutex::new(HashSet::new())),
         Arc::new(Mutex::new(Default::default())),
         rev.clone(),

@@ -10,11 +10,10 @@ use crate::state::PodcastAppState;
 use nmp_ffi::NmpApp;
 use tokio::runtime::Runtime;
 
-use crate::clip_handler::ClipRecord;
 use crate::download::DownloadQueue;
 use crate::ffi::projections::{
-    AgentMessageSummary, AgentNoteSummary, AgentTaskSummary, CommentSummary,
-    NostrShowSummary, PodcastSummary, SocialSnapshot, TranscriptEntry,
+    AgentMessageSummary, AgentNoteSummary, CommentSummary,
+    NostrShowSummary, PodcastSummary, SocialSnapshot,
     VoiceState,
 };
 use crate::inbox_llm::TriageResult;
@@ -80,27 +79,11 @@ pub struct PodcastHandle {
     // wiki_articles and wiki_search_results removed in Step 2 —
     // they are now owned by `state.wiki` (WikiState).
     // picks removed in Step 3 — now owned by `state.picks` (PicksState).
-    /// Agent-scheduled tasks. Mutated by `podcast.tasks.*` action ops
-    /// (see `tasks_handler.rs`); read by `build_snapshot_payload`.
-    /// Seeded with defaults in `register.rs` so the iOS UI has rows to render
-    /// on first launch.
-    pub(super) agent_tasks: Arc<Mutex<Vec<AgentTaskSummary>>>,
+    // agent_tasks removed in Step 6 — now owned by `state.tasks` (TasksState).
     // knowledge_search_results and knowledge_store removed in Step 1 —
     // they are now owned by `state.knowledge` (KnowledgeState).
-    /// User-saved audio clips. Written by `ClipHandler` on the actor
-    /// thread; read by `build_snapshot_payload` on the main thread.
-    /// In-memory only — clips evaporate on app restart (persistence is
-    /// a follow-up).
-    pub(crate) clips: Arc<Mutex<Vec<ClipRecord>>>,
-    /// Parsed transcript entries keyed by the string form of `EpisodeId`.
-    ///
-    /// Lives on the handle (not the persisted `PodcastStore`) because
-    /// transcripts are per-session, lazy-fetched state — re-fetching on the
-    /// next launch is a cheap network hit and avoids growing
-    /// `podcasts.json`. Written by `handle_fetch_transcript` on the actor
-    /// thread after parsing publisher bytes; read by
-    /// `build_snapshot_payload` on every snapshot tick.
-    pub(super) transcripts: Arc<Mutex<HashMap<String, Vec<TranscriptEntry>>>>,
+    // clips removed in Step 5a — now owned by `state.clips` (ClipsState).
+    // transcripts removed in Step 5b — now owned by `state.transcripts` (TranscriptsState).
     /// Set of episode ids the user has dismissed from the inbox. In-memory
     /// only — the dismissal is a current-session-only signal; cold launch
     /// re-surfaces everything so the user can re-triage. Written by the
