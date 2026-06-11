@@ -377,7 +377,7 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     });
 
     // Reactive push projection — the canonical snapshot-output seam
-    // (`NmpApp::register_snapshot_projection`). Podcast state now rides the
+    // (`NmpApp::register_snapshot_projection_gated`). Podcast state now rides the
     // generic push frame under `projections["podcast.snapshot"]`, delivered to
     // the shell on every tick through the same update callback it already
     // listens on — replacing the bespoke `nmp_app_podcast_snapshot` pull symbol
@@ -393,9 +393,18 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     // path already decodes successfully — avoiding a divergent `to_value(...)`
     // path that yields `null` (and a dropped frame) when the typed value can't
     // serialize (e.g. a non-finite float in real feed data).
+    //
+    // Change-gating (nmp-v0.2.10 / upstream PR #1068): `register_snapshot_projection_gated`
+    // passes `handle.rev` (Arc<AtomicU64>) as the `ChangeGate`. The registry skips
+    // re-invoking the closure — and therefore skips the full library
+    // serialization — when `rev` is unchanged since the last emit. This is
+    // the proper upstream fix superseding the interim local `value_cache`
+    // approach: the gate check now lives in the registry, so the closure
+    // body stays the plain always-correct fallback-to-stub form.
     {
         let proj = Arc::clone(&handle);
-        app_ref.register_snapshot_projection("podcast.snapshot", move || {
+        let gate = Arc::clone(&handle.rev) as std::sync::Arc<dyn nmp_core::ChangeGate>;
+        app_ref.register_snapshot_projection_gated("podcast.snapshot", gate, move || {
             serde_json::from_str(&build_snapshot_payload(&proj)).unwrap_or(serde_json::Value::Null)
         });
     }
