@@ -36,7 +36,7 @@ struct RootView: View {
     @State var showSettings = false
     @State var showAgentChat = false
     @State var showSidebar = false
-    @State var showPodcastsSheet = false
+    @State var showAllPodcasts = false
     @State var showSearch = false
     @State var agentSession: AgentChatSession?
     @State var agentUnseenMessageCount: Int = 0
@@ -133,20 +133,6 @@ struct RootView: View {
                     })
                 }
                 .sheet(isPresented: $showSearch) { searchSheet }
-                .sheet(isPresented: $showPodcastsSheet) {
-                    NavigationStack {
-                        AllPodcastsListView()
-                            .navigationDestination(for: Podcast.self) { podcast in
-                                ShowDetailView(podcast: podcast)
-                            }
-                            .toolbar {
-                                ToolbarItem(placement: .topBarLeading) {
-                                    Button("Done") { showPodcastsSheet = false }
-                                }
-                            }
-                    }
-                    .environment(playbackState)
-                }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                     store.runDueScheduledTasksIfNeeded()
                 }
@@ -221,7 +207,13 @@ struct RootView: View {
             AppSidebarView(
                 selectedTab: $selectedTab,
                 isPresented: $showSidebar,
-                onShowPodcasts: { showPodcastsSheet = true }
+                onShowPodcasts: {
+                    selectedTab = .home
+                    // Defer the push so the tab switch renders first
+                    DispatchQueue.main.async {
+                        showAllPodcasts = true
+                    }
+                }
             )
             .frame(width: sidebarWidth)
             .ignoresSafeArea()
@@ -262,7 +254,7 @@ struct RootView: View {
         switch tab {
         case .home:
             NavigationStack {
-                HomeView()
+                HomeView(showAllPodcasts: $showAllPodcasts)
                     .toolbar { sharedToolbar() }
             }
             .toolbar(.hidden, for: .tabBar)

@@ -36,7 +36,7 @@ struct HomeView: View {
     @State private var showAddShowSheet: Bool = false
     @State private var showCategoryPicker: Bool = false
     @State private var showAllContinueListening: Bool = false
-    @State private var showAllPodcasts: Bool = false
+    @Binding var showAllPodcasts: Bool
     @State private var showInbox: Bool = false
     /// Cached "now" used by the dateline + recency pills. Pinned at body
     /// composition time so a 1Hz playback tick doesn't re-format the

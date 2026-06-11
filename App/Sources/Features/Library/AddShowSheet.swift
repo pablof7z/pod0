@@ -2,11 +2,12 @@ import SwiftUI
 
 // MARK: - AddShowSheet
 
-/// Modal "+ Add Show" sheet for the Library tab. Three segments:
+/// Modal "+ Add Show" sheet for the Library tab. Four segments:
 ///
 ///   - **Search**   — Apple Podcasts directory search → one-tap subscribe.
 ///                    The default segment because most users discover by
 ///                    name, not by URL.
+///   - **Nostr**    — NIP-F4 kind:10154 shows from a configured Nostr relay.
 ///   - **From URL** — paste / type a feed URL → `SubscriptionService.addSubscription`.
 ///   - **OPML**     — hands off to `OPMLImportSheet` for the file picker
 ///                    + per-row enrichment flow.
@@ -31,14 +32,15 @@ struct AddShowSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: AppTheme.Spacing.lg) {
+            VStack(spacing: 0) {
                 LiquidGlassSegmentedPicker(
                     "Add show source",
                     selection: $mode,
                     segments: Mode.allCases.map { ($0, $0.rawValue) }
                 )
                 .padding(.horizontal, AppTheme.Spacing.lg)
-                .padding(.top, AppTheme.Spacing.md)
+                .padding(.top, AppTheme.Spacing.sm)
+                .padding(.bottom, AppTheme.Spacing.sm)
 
                 Group {
                     switch mode {
@@ -47,14 +49,15 @@ struct AddShowSheet: View {
                     case .nostr:
                         NostrDiscoverForm(store: store, onAdded: handleAdded)
                     case .url:
-                        AddByURLForm(store: store, onAdded: handleAddedFromURL)
+                        ScrollView {
+                            AddByURLForm(store: store, onAdded: handleAddedFromURL)
+                        }
+                        .scrollDismissesKeyboard(.interactively)
                     case .opml:
                         OPMLImportContent(store: store, onDismiss: onDismiss)
-                            .padding(.top, -AppTheme.Spacing.md)
                     }
                 }
-
-                Spacer(minLength: 0)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .navigationTitle("Add Show")
             .navigationBarTitleDisplayMode(.inline)
