@@ -58,12 +58,12 @@ impl PodcastHostOpHandler {
     }
 
     fn handle_play(&self, episode_id: String, correlation_id: &str) -> serde_json::Value {
-        let (podcast_id, url, position_secs, needs_download) = {
+        let (canonical_id, podcast_id, url, position_secs, needs_download) = {
             match self.store.lock() {
                 Ok(s) => match s.episode_playback_info(&episode_id) {
-                    Some((pod_id, ep_url, pos)) => {
+                    Some((canon_id, pod_id, ep_url, pos)) => {
                         let downloaded = s.episode_is_downloaded(&episode_id);
-                        (pod_id, ep_url, pos, !downloaded)
+                        (canon_id, pod_id, ep_url, pos, !downloaded)
                     }
                     None => {
                         return serde_json::json!({
@@ -75,6 +75,11 @@ impl PodcastHostOpHandler {
                 Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
             }
         };
+        // Rebind to the store's canonical (lowercase) id. iOS dispatches the
+        // UPPERCASE `UUID.uuidString`; staging the canonical form keeps the
+        // actor's `episode_id` exact-matchable by the widget library lookup and
+        // the position writeback (both `==` against the lowercase store id).
+        let episode_id = canonical_id;
         let prior_episode = if let Ok(mut actor) = self.player_actor.lock() {
             let prior = actor.state().episode_id.clone();
             actor.stage_load(&episode_id, Some(podcast_id), &url, position_secs);
@@ -109,12 +114,12 @@ impl PodcastHostOpHandler {
     }
 
     fn handle_load(&self, episode_id: String, correlation_id: &str) -> serde_json::Value {
-        let (podcast_id, url, position_secs, needs_download) = {
+        let (canonical_id, podcast_id, url, position_secs, needs_download) = {
             match self.store.lock() {
                 Ok(s) => match s.episode_playback_info(&episode_id) {
-                    Some((pod_id, ep_url, pos)) => {
+                    Some((canon_id, pod_id, ep_url, pos)) => {
                         let downloaded = s.episode_is_downloaded(&episode_id);
-                        (pod_id, ep_url, pos, !downloaded)
+                        (canon_id, pod_id, ep_url, pos, !downloaded)
                     }
                     None => {
                         return serde_json::json!({
@@ -126,6 +131,8 @@ impl PodcastHostOpHandler {
                 Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
             }
         };
+        // Rebind to the store's canonical (lowercase) id — see `handle_play`.
+        let episode_id = canonical_id;
         let prior_episode = if let Ok(mut actor) = self.player_actor.lock() {
             let prior = actor.state().episode_id.clone();
             actor.stage_load(&episode_id, Some(podcast_id), &url, position_secs);

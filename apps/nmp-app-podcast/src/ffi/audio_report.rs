@@ -270,8 +270,10 @@ fn maybe_auto_advance(handle: &PodcastHandle) {
             Ok(s) => s.episode_playback_info(&id),
             Err(_) => return,
         };
-        if let Some((pod, ep_url, pos)) = info {
-            break (id, pod, ep_url, pos);
+        // Stage the store's canonical (lowercase) id so the actor's
+        // `episode_id` stays exact-matchable downstream (see `handle_play`).
+        if let Some((canon_id, pod, ep_url, pos)) = info {
+            break (canon_id, pod, ep_url, pos);
         }
         // Stale head already popped; continue to the next entry.
     };

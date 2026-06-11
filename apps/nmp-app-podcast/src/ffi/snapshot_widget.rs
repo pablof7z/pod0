@@ -137,3 +137,10 @@ fn clamp_fraction(position_secs: f64, duration_secs: f64) -> f32 {
 #[cfg(test)]
 #[path = "snapshot_widget_tests.rs"]
 mod tests;
+
+// End-to-end seam test: drives the real `play` host-op + `AudioReport::Playing`
+// FFI and asserts the full `PodcastUpdate` carries a live `now_playing` AND
+// `widget`. Regression pin for the live-simulator idle-widget bug.
+#[cfg(test)]
+#[path = "snapshot_widget_seam_tests.rs"]
+mod seam_tests;

@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-11T19:15:00Z",
+      "lines": [
+        "Fixed the Now Playing home-screen widget showing an idle state while an episode was actually playing — it now updates live with the current episode, progress, and play state."
+      ]
+    },
+    {
       "shipped_at": "2026-06-11T19:10:00Z",
       "lines": [
         "Sidebar Podcasts now navigates to the full list instead of opening a separate sheet — tap back to return home.",

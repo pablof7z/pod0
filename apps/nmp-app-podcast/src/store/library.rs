@@ -169,13 +169,33 @@ impl PodcastStore {
 
     /// Find episode playback info by the string form of its `EpisodeId` UUID.
     ///
-    /// Returns `(podcast_id_str, enclosure_url, position_secs)` or `None` when
-    /// no episode with that id is found. Compares by converting stored UUIDs to
-    /// their hyphenated string form — same format used in `EpisodeSummary.id`.
-    pub fn episode_playback_info(&self, id_str: &str) -> Option<(String, String, f64)> {
+    /// Returns `(canonical_episode_id, podcast_id_str, enclosure_url,
+    /// position_secs)` or `None` when no episode with that id is found.
+    ///
+    /// `canonical_episode_id` is the store's own lowercase `Uuid::to_string`
+    /// form — NOT necessarily the `id_str` the caller passed. The match is
+    /// **case-insensitive** (same rationale as
+    /// [`episode_enclosure_url`](Self::episode_enclosure_url)): the iOS shell
+    /// dispatches `podcast.player` `load`/`play` with `UUID.uuidString`
+    /// (UPPERCASE) while `Uuid::to_string` renders lowercase. A direct `==`
+    /// never matched an iOS-sourced id, so `handle_play`/`handle_load` bailed
+    /// before `actor.stage_load` — leaving the player actor's `episode_id`
+    /// (and therefore `PodcastUpdate.now_playing` + the kernel-owned widget)
+    /// empty even while audio played.
+    ///
+    /// Returning the canonical id lets the caller stage *that* on the actor, so
+    /// every downstream consumer keyed on the actor's `episode_id` — the widget
+    /// library lookup and the position writeback — matches the lowercase store
+    /// form by exact `==` without each needing its own case-folding. A UUID is
+    /// case-insensitive by spec.
+    pub fn episode_playback_info(&self, id_str: &str) -> Option<(String, String, String, f64)> {
         for (podcast_id, episodes) in &self.episodes {
-            if let Some(ep) = episodes.iter().find(|e| e.id.0.to_string() == id_str) {
+            if let Some(ep) = episodes
+                .iter()
+                .find(|e| e.id.0.to_string().eq_ignore_ascii_case(id_str))
+            {
                 return Some((
+                    ep.id.0.to_string(),
                     podcast_id.0.to_string(),
                     ep.enclosure_url.to_string(),
                     ep.position_secs,
@@ -195,7 +215,12 @@ impl PodcastStore {
         id_str: &str,
     ) -> Option<(String, String, Option<f64>)> {
         for (podcast_id, episodes) in &self.episodes {
-            if let Some(ep) = episodes.iter().find(|e| e.id.0.to_string() == id_str) {
+            // Case-insensitive: iOS sends UPPERCASE `UUID.uuidString`; stored
+            // ids render lowercase (see `episode_playback_info`).
+            if let Some(ep) = episodes
+                .iter()
+                .find(|e| e.id.0.to_string().eq_ignore_ascii_case(id_str))
+            {
                 let pod = self.podcasts.get(podcast_id)?;
                 return Some((ep.title.clone(), pod.title.clone(), ep.duration_secs));
             }
@@ -255,9 +280,11 @@ impl PodcastStore {
     /// `None` when the episode is unknown. Used for validation before dispatch.
     pub fn podcast_id_for_episode(&self, episode_id_str: &str) -> Option<podcast_core::PodcastId> {
         for (podcast_id, episodes) in &self.episodes {
+            // Case-insensitive: iOS sends UPPERCASE `UUID.uuidString`; stored
+            // ids render lowercase (see `episode_playback_info`).
             if episodes
                 .iter()
-                .any(|e| e.id.0.to_string() == episode_id_str)
+                .any(|e| e.id.0.to_string().eq_ignore_ascii_case(episode_id_str))
             {
                 return Some(*podcast_id);
             }
@@ -270,7 +297,14 @@ impl PodcastStore {
     /// are streamed rather than played from local storage.
     pub fn episode_is_downloaded(&self, id_str: &str) -> bool {
         for episodes in self.episodes.values() {
-            if let Some(ep) = episodes.iter().find(|e| e.id.0.to_string() == id_str) {
+            // Case-insensitive: iOS sends UPPERCASE `UUID.uuidString`; stored
+            // ids render lowercase (see `episode_playback_info`). A case
+            // mismatch here would mis-report a downloaded episode as needing a
+            // re-download on every play.
+            if let Some(ep) = episodes
+                .iter()
+                .find(|e| e.id.0.to_string().eq_ignore_ascii_case(id_str))
+            {
                 return self.local_paths.contains_key(&ep.id);
             }
         }
