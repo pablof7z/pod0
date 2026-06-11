@@ -12,27 +12,38 @@
 //! 5. Build a `SocialSnapshot` with `ContactSummary` rows (npub bech32-encoded).
 //! 6. Store the snapshot in the `social` slot and bump `rev`.
 
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use nostr::nips::nip19::ToBech32;
 use serde_json::json;
+use tokio::runtime::Runtime;
 
 use crate::ffi::projections::{ContactSummary, SocialSnapshot};
-use crate::host_op_handler::PodcastHostOpHandler;
+use crate::store::identity::IdentityStore;
 
 /// Default relay used for social-graph fetches.
 const RELAY_URL: &str = "wss://relay.primal.net";
 
 /// Fetch the active user's NIP-02 follow list and hydrate kind:0 metadata
-/// for each follow. Stores the resulting [`SocialSnapshot`] in
-/// `handler.social` and increments `handler.rev`.
+/// for each follow. Stores the resulting [`SocialSnapshot`] in `social` and
+/// bumps `rev`.
 ///
-/// Returns `{"ok":true,"following_count":N}` on success, or
+/// Accepts individual Arcs so the caller (Step 10 migration) can supply them
+/// from `state.social.social_slot.share()` / `state.infra.rev` / etc.
+/// rather than from the god-struct fields.
+///
+/// Returns `{"ok":true,"status":"fetch_started"}` on success, or
 /// `{"ok":false,"error":"..."}` on any hard failure.
-pub fn handle_fetch_contacts(handler: &PodcastHostOpHandler) -> serde_json::Value {
+pub fn handle_fetch_contacts(
+    identity: &Arc<Mutex<IdentityStore>>,
+    social: Arc<Mutex<Option<SocialSnapshot>>>,
+    rev: Arc<AtomicU64>,
+    runtime: Arc<Runtime>,
+) -> serde_json::Value {
     // 1. Get the active pubkey — checked synchronously before spawning.
-    let pubkey_hex = match handler.identity.lock() {
+    let pubkey_hex = match identity.lock() {
         Ok(id) => match id.pubkey_hex.clone() {
             Some(pk) => pk,
             None => return json!({"ok": false, "error": "not signed in"}),
@@ -42,10 +53,7 @@ pub fn handle_fetch_contacts(handler: &PodcastHostOpHandler) -> serde_json::Valu
 
     // M5.3: spawn the relay fetches off the actor thread. Each fetch can take
     // up to 8s (8s timeout × 2 round trips = up to 16s blocked). The actor
-    // returns immediately; the snapshot lands in `handler.social` when done.
-    let social = std::sync::Arc::clone(&handler.social);
-    let rev = std::sync::Arc::clone(&handler.rev);
-    let runtime = std::sync::Arc::clone(&handler.runtime);
+    // returns immediately; the snapshot lands in `social` when done.
 
     runtime.spawn(async move {
         let relay_urls = vec![RELAY_URL.to_string()];

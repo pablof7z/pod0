@@ -102,9 +102,11 @@ fn make_golden_handle(app: *mut nmp_ffi::NmpApp) -> Box<PodcastHandle> {
     };
 
     let rev = Arc::new(AtomicU64::new(1));
-    let state = Arc::new(crate::state::PodcastAppState::new(
+    let identity = Arc::new(Mutex::new(IdentityStore::new()));
+    let state = Arc::new(crate::state::PodcastAppState::new_with_identity(
         crate::state::Infra::for_test(),
         store.clone(),
+        identity.clone(),
     ));
     // Clear agent_tasks: default_seed() uses Uuid::new_v4() + Utc::now(), making
     // the fixture non-deterministic.  The golden test exercises the projection
@@ -112,16 +114,17 @@ fn make_golden_handle(app: *mut nmp_ffi::NmpApp) -> Box<PodcastHandle> {
     // byte-identical across runs (skip_serializing_if = "Vec::is_empty" omits it).
     state.tasks.tasks.lock().unwrap().clear();
 
+    // Steps 8-10: search_results, nostr_results, comments_cache,
+    // viewed_comments_episode_id, social, agent_notes removed — now owned by
+    // state.discovery / state.comments / state.social respectively.
     Box::new(PodcastHandle {
         app,
         state,
         player_actor: Arc::new(Mutex::new(PlayerActor::new())),
         store: store.clone(),
-        identity: Arc::new(Mutex::new(IdentityStore::new())),
+        identity,
         rev: rev.clone(),
         snapshot_signal: None,
-        search_results: Arc::new(Mutex::new(Vec::new())),
-        nostr_results: Arc::new(Mutex::new(Vec::new())),
         snapshot_cache: Arc::new(Mutex::new(None)),
         clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
         queue: Arc::new(Mutex::new(PlaybackQueue::new())),
@@ -146,10 +149,6 @@ fn make_golden_handle(app: *mut nmp_ffi::NmpApp) -> Box<PodcastHandle> {
         agent_touched: Arc::new(AtomicBool::new(false)),
         inbox_triage_cache: Arc::new(Mutex::new(HashMap::new())),
         inbox_triage_in_progress: Arc::new(AtomicBool::new(false)),
-        comments_cache: Arc::new(Mutex::new(HashMap::new())),
-        viewed_comments_episode_id: Arc::new(Mutex::new(None)),
-        social: Arc::new(Mutex::new(None)),
-        agent_notes: Arc::new(Mutex::new(Vec::new())),
         feedback: nmp_feedback::FeedbackRuntime::new(
             nmp_feedback::FeedbackConfig::new(crate::PODCAST_FEEDBACK_PROJECT_COORDINATE)
                 .with_interest_namespace(crate::PODCAST_FEEDBACK_INTEREST_NAMESPACE),

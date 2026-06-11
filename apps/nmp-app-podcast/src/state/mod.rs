@@ -33,9 +33,12 @@
 
 pub mod categories;
 pub mod clips;
+pub mod comments;
+pub mod discovery;
 pub mod knowledge;
 pub mod picks;
 pub mod slot;
+pub mod social;
 pub mod tasks;
 pub mod transcripts;
 pub mod wiki;
@@ -171,6 +174,20 @@ pub struct PodcastAppState {
 
     /// Tasks substate (Step 6).  Owns agent-task list + write-through persistence.
     pub tasks: tasks::TasksState,
+
+    /// Comments substate (Step 8).  Owns cache + viewed-episode-id slots.
+    /// `CommentsObserver` shares `cache` off the actor thread via `.share()`.
+    pub comments: comments::CommentsState,
+
+    /// Discovery substate (Step 9).  Owns iTunes + Nostr results slots.
+    /// `NostrDiscoveryObserver` shares `nostr_results` off the actor thread via
+    /// `.share()`.  Removes the dead-duplicate `nostr_results` handler Arc.
+    pub discovery: discovery::DiscoveryState,
+
+    /// Social substate (Step 10).  Owns `social_slot` + `agent_notes` slots.
+    /// `AgentNotesObserver` shares `agent_notes` off the actor thread via
+    /// `.share()`.  Removes the dead-duplicate `agent_notes` handler Arc.
+    pub social: social::SocialState,
 }
 
 impl PodcastAppState {
@@ -184,6 +201,22 @@ impl PodcastAppState {
         infra: Infra,
         store: Arc<std::sync::Mutex<crate::store::PodcastStore>>,
     ) -> Self {
+        Self::new_with_identity(
+            infra,
+            store,
+            Arc::new(std::sync::Mutex::new(
+                crate::store::identity::IdentityStore::new(),
+            )),
+        )
+    }
+
+    /// Full constructor accepting an externally-created identity store so
+    /// `register.rs` can pass the shared Arc rather than creating a new one.
+    pub fn new_with_identity(
+        infra: Infra,
+        store: Arc<std::sync::Mutex<crate::store::PodcastStore>>,
+        identity: Arc<std::sync::Mutex<crate::store::identity::IdentityStore>>,
+    ) -> Self {
         let knowledge = knowledge::KnowledgeState::new(infra.clone(), store.clone());
         // Wiki shares the same KnowledgeStore Arc (Step 2 constraint).
         let knowledge_index = knowledge.index_arc();
@@ -192,7 +225,23 @@ impl PodcastAppState {
         let categories = Arc::new(categories::CategoriesState::new(infra.clone(), store.clone()));
         let clips = clips::ClipsState::new(infra.clone(), store.clone());
         let transcripts = transcripts::TranscriptsState::new(infra.clone(), store.clone());
-        let tasks = tasks::TasksState::new(infra.clone(), store);
-        Self { infra, knowledge, wiki, picks, categories, clips, transcripts, tasks }
+        let tasks = tasks::TasksState::new(infra.clone(), store.clone());
+        let comments =
+            comments::CommentsState::new(infra.clone(), store.clone(), identity.clone());
+        let discovery = discovery::DiscoveryState::new(infra.clone());
+        let social = social::SocialState::new(infra.clone());
+        Self {
+            infra,
+            knowledge,
+            wiki,
+            picks,
+            categories,
+            clips,
+            transcripts,
+            tasks,
+            comments,
+            discovery,
+            social,
+        }
     }
 }

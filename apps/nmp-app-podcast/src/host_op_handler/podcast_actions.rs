@@ -264,10 +264,11 @@ impl PodcastHostOpHandler {
             }
         };
         let results = crate::itunes::parse_itunes_results(body);
-        match self.search_results.lock() {
+        // Step 9: write into DiscoveryState slot (canonical single source).
+        match self.state.discovery.itunes_results.lock() {
             Ok(mut r) => {
                 *r = results;
-                self.rev.fetch_add(1, Ordering::Relaxed);
+                self.state.infra.rev.fetch_add(1, Ordering::Relaxed);
                 serde_json::json!({"ok": true})
             }
             Err(_) => serde_json::json!({"ok": false, "error": "search_results poisoned"}),

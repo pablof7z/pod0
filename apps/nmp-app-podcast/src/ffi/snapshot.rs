@@ -87,18 +87,9 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
             now_unix,
         ))
     };
-    let search_results = handle
-        .search_results
-        .lock()
-        .ok()
-        .map(|r| r.clone())
-        .unwrap_or_default();
-    let nostr_results = handle
-        .nostr_results
-        .lock()
-        .ok()
-        .map(|r| r.clone())
-        .unwrap_or_default();
+    // Step 9: search_results + nostr_results now read from DiscoveryState.
+    let search_results = handle.state.discovery.itunes_snapshot();
+    let nostr_results = handle.state.discovery.nostr_snapshot();
     let queue_ids: Vec<String> = handle
         .queue
         .lock()
@@ -153,39 +144,23 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         .ok()
         .and_then(|q| build_downloads_snapshot(&q));
 
+    // Step 8: comments now read from CommentsState.
     // Project comments for the episode the user is currently viewing
     // (set by `handle_fetch_comments`), falling back to the now-playing
     // episode when the comments section hasn't been opened this session.
-    let viewed_comments_episode_id = handle
-        .viewed_comments_episode_id
-        .lock()
-        .ok()
-        .and_then(|v| v.clone());
-    let comments = handle
-        .comments_cache
-        .lock()
-        .ok()
-        .and_then(|cache| {
-            viewed_comments_episode_id
-                .as_deref()
-                .or_else(|| now_playing.as_ref().and_then(|np| np.episode_id.as_deref()))
-                .and_then(|ep_id| cache.get(ep_id).cloned())
-        })
-        .unwrap_or_default();
+    let comments = handle.state.comments.project(
+        now_playing.as_ref().and_then(|np| np.episode_id.as_deref()),
+    );
 
     let active_account = super::snapshot_identity::build_active_account(handle);
 
-    let social = handle.social.lock().ok().and_then(|s| s.clone());
+    // Step 10: social + agent_notes now read from SocialState.
+    let social = handle.state.social.social_snapshot();
 
     // Feature #44 — inbound agent-to-agent kind:1 notes. Reactive push:
     // the cache is filled by `FetchAgentNotes` on the actor thread and
     // projected here on every tick (no polling, no pull symbols).
-    let agent_notes = handle
-        .agent_notes
-        .lock()
-        .ok()
-        .map(|n| n.clone())
-        .unwrap_or_default();
+    let agent_notes = handle.state.social.agent_notes_snapshot();
 
     // In-app feedback events (kind:1 + kind:513 for this app's project coord),
     // cached and reduced by `nmp-feedback`.

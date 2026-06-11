@@ -68,18 +68,20 @@ fn handler_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> PodcastH
         Arc::new(AtomicBool::new(false)),
         shared.rev.clone(),
     );
-    let state = Arc::new(crate::state::PodcastAppState::new(
+    let identity = Arc::new(Mutex::new(IdentityStore::new()));
+    let state = Arc::new(crate::state::PodcastAppState::new_with_identity(
         crate::state::Infra::for_test(),
         shared.store.clone(),
+        identity.clone(),
     ));
+    // Steps 8-10: search_results, nostr_results, comments_cache,
+    // viewed_comments_episode_id, social, agent_notes removed from constructor.
     PodcastHostOpHandler::new(
         app,
         state,
         shared.store.clone(),
-        Arc::new(Mutex::new(IdentityStore::new())),
+        identity,
         shared.player_actor.clone(),
-        Arc::new(Mutex::new(Vec::new())),
-        Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(PlaybackQueue::new())),
         Arc::new(Mutex::new(DownloadQueue::new())),
         // agent_tasks, clips, transcripts removed in Steps 5a, 5b, 6 —
@@ -90,13 +92,9 @@ fn handler_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> PodcastH
         Arc::new(Mutex::new(PodcastKeyStore::new())),
         Arc::new(Mutex::new(HashMap::new())),
         agent_chat,
-        Arc::new(Mutex::new(HashMap::new())),
-        Arc::new(Mutex::new(None::<String>)),
         Arc::new(tokio::runtime::Runtime::new().unwrap()),
         Arc::new(Mutex::new(HashMap::new())),
         Arc::new(AtomicBool::new(false)),
-        Arc::new(Mutex::new(None)),
-        Arc::new(Mutex::new(Vec::new())),
         crate::feed_fetch::FeedFetchCoordinator::new_test(),
         feedback_runtime(shared.rev.clone()),
     )
@@ -106,20 +104,23 @@ fn handler_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> PodcastH
 /// `rev`, pointing at the same real `app` as the handler so
 /// `build_podcast_update`'s configured-relays projection has a live pointer.
 fn handle_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> Box<PodcastHandle> {
-    let state = Arc::new(crate::state::PodcastAppState::new(
+    let identity = Arc::new(Mutex::new(IdentityStore::new()));
+    let state = Arc::new(crate::state::PodcastAppState::new_with_identity(
         crate::state::Infra::for_test(),
         shared.store.clone(),
+        identity.clone(),
     ));
+    // Steps 8-10: search_results, nostr_results, comments_cache,
+    // viewed_comments_episode_id, social, agent_notes removed — now owned by
+    // state.discovery / state.comments / state.social respectively.
     Box::new(PodcastHandle {
         app,
         state,
         player_actor: shared.player_actor.clone(),
         store: shared.store.clone(),
-        identity: Arc::new(Mutex::new(IdentityStore::new())),
+        identity,
         rev: shared.rev.clone(),
         snapshot_signal: None,
-        search_results: Arc::new(Mutex::new(Vec::new())),
-        nostr_results: Arc::new(Mutex::new(Vec::new())),
         snapshot_cache: Arc::new(Mutex::new(None)),
         clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
         queue: Arc::new(Mutex::new(PlaybackQueue::new())),
@@ -144,10 +145,6 @@ fn handle_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> Box<Podca
         agent_touched: Arc::new(AtomicBool::new(false)),
         inbox_triage_cache: Arc::new(Mutex::new(HashMap::new())),
         inbox_triage_in_progress: Arc::new(AtomicBool::new(false)),
-        comments_cache: Arc::new(Mutex::new(HashMap::new())),
-        viewed_comments_episode_id: Arc::new(Mutex::new(None)),
-        social: Arc::new(Mutex::new(None)),
-        agent_notes: Arc::new(Mutex::new(Vec::new())),
         feedback: feedback_runtime(shared.rev.clone()),
         runtime: Arc::new(tokio::runtime::Runtime::new().unwrap()),
         feed_fetch: crate::feed_fetch::FeedFetchCoordinator::new_test(),

@@ -88,8 +88,8 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     let store = Arc::new(Mutex::new(PodcastStore::new()));
     let identity = Arc::new(Mutex::new(IdentityStore::new()));
     let player_actor = Arc::new(Mutex::new(PlayerActor::new()));
-    let search_results = Arc::new(Mutex::new(Vec::new()));
-    let nostr_results = Arc::new(Mutex::new(Vec::new()));
+    // search_results and nostr_results removed in Step 9 —
+    // now owned by state.discovery (DiscoveryState).
     let queue = Arc::new(Mutex::new(PlaybackQueue::new()));
     let download_queue = Arc::new(Mutex::new(DownloadQueue::new()));
     // wiki_articles and wiki_search_results removed in Step 2 —
@@ -108,12 +108,10 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     let agent_touched = Arc::new(AtomicBool::new(false));
     // categories and categorization_in_progress removed in Step 4 —
     // they are now seeded inside PodcastAppState::new (CategoriesState).
-    let comments_cache: Arc<Mutex<HashMap<String, Vec<crate::ffi::projections::CommentSummary>>>> =
-        Arc::new(Mutex::new(HashMap::new()));
-    let viewed_comments_episode_id: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
-    let social = Arc::new(Mutex::new(None));
-    let agent_notes: Arc<Mutex<Vec<crate::ffi::projections::AgentNoteSummary>>> =
-        Arc::new(Mutex::new(Vec::new()));
+    // comments_cache, viewed_comments_episode_id removed in Step 8 —
+    // they are now owned by PodcastAppState::comments (CommentsState).
+    // social, agent_notes removed in Steps 9-10 —
+    // they are now owned by PodcastAppState::social (SocialState).
     // Start at 1 so the first snapshot poll always triggers an iOS update
     // (guard is `update.rev > last_seen_rev`; last_seen_rev starts at 0).
     // Subsequent increments happen in PodcastHostOpHandler on store writes.
@@ -168,7 +166,13 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
         signal: Some(snapshot_signal.clone()),
         runtime: runtime.clone(),
     };
-    let app_state = Arc::new(PodcastAppState::new(app_state_infra, store.clone()));
+    // Steps 8-10: pass the shared identity Arc so CommentsState / SocialState
+    // can access it without needing a separate clone in register.rs.
+    let app_state = Arc::new(PodcastAppState::new_with_identity(
+        app_state_infra,
+        store.clone(),
+        identity.clone(),
+    ));
 
     // Optimistic-subscribe async feed-fetch coordinator. Shared (one `Arc`)
     // between the host-op handler (registers a pending fetch + dispatches the
@@ -245,6 +249,9 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
         feedback_runtime.config().relay_seed(),
     ]);
 
+    // Steps 8-10: comments_cache, viewed_comments_episode_id, nostr_results,
+    // search_results, social, agent_notes removed from constructor — now owned
+    // by state.comments / state.discovery / state.social respectively.
     app_ref.set_host_op_handler(Arc::new(
         PodcastHostOpHandler::new(
             app,
@@ -252,8 +259,6 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
             store.clone(),
             identity.clone(),
             player_actor.clone(),
-            search_results.clone(),
-            nostr_results.clone(),
             queue.clone(),
             download_queue.clone(),
             dismissed_episode_ids.clone(),
@@ -262,13 +267,9 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
             podcast_keys.clone(),
             publish_state.clone(),
             agent_chat,
-            comments_cache.clone(),
-            viewed_comments_episode_id.clone(),
             runtime.clone(),
             inbox_triage_cache.clone(),
             Arc::clone(&inbox_triage_in_progress),
-            social.clone(),
-            agent_notes.clone(),
             feed_fetch.clone(),
             feedback_runtime.clone(),
         )
@@ -284,17 +285,24 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     // the slot Arcs are moved into the handle. The returned id is dropped: the
     // observer lives for the app's lifetime (mirrors the snapshot projection),
     // and `nmp_app_free` joins the actor before dropping the slot.
+    // Step 9: observer shares from state.discovery.nostr_results (removes the
+    // dead-duplicate handler Arc from PodcastHostOpHandler.nostr_results).
     let _discovery_observer_id = app_ref.register_event_observer(std::sync::Arc::new(
-        crate::discover_nostr::NostrDiscoveryObserver::new(nostr_results.clone(), rev.clone())
-            .with_snapshot_signal(snapshot_signal.clone()),
+        crate::discover_nostr::NostrDiscoveryObserver::new(
+            app_state.discovery.nostr_results.share(),
+            rev.clone(),
+        )
+        .with_snapshot_signal(snapshot_signal.clone()),
     ));
 
     // kind:1111 comments observer — receives events from push_interest_via_nmp
     // subscriptions opened by handle_fetch_comments. No iOS WebSocket.
+    // Step 8: observer shares cache from state.comments.cache (removes the
+    // dead-duplicate handler Arc from PodcastHostOpHandler.comments_cache).
     let _comments_observer_id = app_ref.register_event_observer(std::sync::Arc::new(
         crate::comments_handler::CommentsObserver::new(
             store.clone(),
-            comments_cache.clone(),
+            app_state.comments.cache.share(),
             rev.clone(),
         )
         .with_snapshot_signal(snapshot_signal.clone()),
@@ -302,10 +310,12 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
 
     // kind:1 agent-notes observer — receives events from push_interest_via_nmp
     // subscriptions opened by handle_fetch_agent_notes. No iOS WebSocket.
+    // Step 10: observer shares from state.social.agent_notes (removes the
+    // dead-duplicate handler Arc from PodcastHostOpHandler.agent_notes).
     let _agent_notes_observer_id = app_ref.register_event_observer(std::sync::Arc::new(
         crate::agent_note_handler::AgentNotesObserver::new(
             identity.clone(),
-            agent_notes.clone(),
+            app_state.social.agent_notes.share(),
             rev.clone(),
         )
         .with_snapshot_signal(snapshot_signal.clone()),
@@ -339,6 +349,9 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
         Some(snapshot_signal.clone()),
     );
 
+    // Steps 8-10: search_results, nostr_results, comments_cache,
+    // viewed_comments_episode_id, social, agent_notes removed — now owned by
+    // state.discovery / state.comments / state.social respectively.
     let handle = Arc::new(PodcastHandle {
         app,
         state: app_state,
@@ -347,8 +360,6 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
         identity,
         rev,
         snapshot_signal: Some(snapshot_signal.clone()),
-        search_results,
-        nostr_results,
         snapshot_cache: Arc::new(Mutex::new(None)),
         clean_html_cache: Arc::new(Mutex::new(std::collections::HashMap::new())),
         queue,
@@ -365,10 +376,6 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
         agent_touched,
         inbox_triage_cache,
         inbox_triage_in_progress,
-        comments_cache,
-        viewed_comments_episode_id,
-        social,
-        agent_notes,
         feedback: feedback_runtime,
         runtime: runtime_for_handle,
         feed_fetch,

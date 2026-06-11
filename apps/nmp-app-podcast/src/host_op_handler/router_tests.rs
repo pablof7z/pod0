@@ -34,24 +34,26 @@ fn feedback_runtime(rev: Arc<AtomicU64>) -> nmp_feedback::FeedbackRuntime {
 
 fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
     let rev = Arc::new(AtomicU64::new(1));
+    let identity = Arc::new(Mutex::new(IdentityStore::new()));
     let agent_chat = AgentChatHandler::new_without_runtime(
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(AtomicBool::new(false)),
         Arc::new(AtomicBool::new(false)),
         rev.clone(),
     );
-    let state = Arc::new(crate::state::PodcastAppState::new(
+    let state = Arc::new(crate::state::PodcastAppState::new_with_identity(
         crate::state::Infra::for_test(),
         store.clone(),
+        identity.clone(),
     ));
+    // Steps 8-10: search_results, nostr_results, comments_cache,
+    // viewed_comments_episode_id, social, agent_notes removed from constructor.
     PodcastHostOpHandler::new(
         std::ptr::null_mut(),
         state,
         store,
-        Arc::new(Mutex::new(IdentityStore::new())),
+        identity,
         Arc::new(Mutex::new(PlayerActor::new())),
-        Arc::new(Mutex::new(Vec::new())),
-        Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(PlaybackQueue::new())),
         Arc::new(Mutex::new(DownloadQueue::new())),
         // agent_tasks, clips, transcripts removed in Steps 5a, 5b, 6.
@@ -61,13 +63,9 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
         Arc::new(Mutex::new(PodcastKeyStore::new())),
         Arc::new(Mutex::new(HashMap::new())),
         agent_chat,
-        Arc::new(Mutex::new(HashMap::new())),
-        Arc::new(Mutex::new(None::<String>)),
         Arc::new(tokio::runtime::Runtime::new().unwrap()),
         Arc::new(Mutex::new(HashMap::new())),
         Arc::new(AtomicBool::new(false)),
-        Arc::new(Mutex::new(None)),
-        Arc::new(Mutex::new(Vec::new())),
         crate::feed_fetch::FeedFetchCoordinator::new_test(),
         feedback_runtime(rev),
     )

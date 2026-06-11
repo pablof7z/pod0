@@ -1,7 +1,8 @@
 //! Opaque handle returned by `nmp_app_podcast_register` and consumed by
 //! `nmp_app_podcast_snapshot` / `nmp_app_podcast_unregister`.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -12,8 +13,7 @@ use tokio::runtime::Runtime;
 
 use crate::download::DownloadQueue;
 use crate::ffi::projections::{
-    AgentMessageSummary, AgentNoteSummary, CommentSummary,
-    NostrShowSummary, PodcastSummary, SocialSnapshot,
+    AgentMessageSummary,
     VoiceState,
 };
 use crate::inbox_llm::TriageResult;
@@ -47,13 +47,9 @@ pub struct PodcastHandle {
     pub(super) identity: Arc<Mutex<IdentityStore>>,
     pub(super) rev: Arc<AtomicU64>,
     pub(crate) snapshot_signal: Option<SnapshotUpdateSignal>,
-    /// Transient iTunes search results. Written by `handle_search_itunes` on
-    /// the actor thread; read by `build_snapshot_payload` on the main thread.
-    pub(super) search_results: Arc<Mutex<Vec<PodcastSummary>>>,
-    /// Transient NIP-F4 (`kind:10154`) Nostr discovery results. Written by
-    /// `handle_discover_nostr` on the actor thread; read by
-    /// `build_snapshot_payload` on the main thread.
-    pub(super) nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
+    // search_results removed in Step 9 — now owned by `state.discovery` (DiscoveryState).
+    // nostr_results removed in Step 9 — dead duplicate Arc; observer now shares
+    // from `state.discovery.nostr_results` via register.rs.
     /// Rev-keyed snapshot cache. `build_snapshot_payload` writes `(rev, json)`
     /// here after every rebuild; the next poll hit with the same `rev` returns
     /// the cached string without re-serializing the entire library.
@@ -141,28 +137,11 @@ pub struct PodcastHandle {
     /// Surfaced on `PodcastUpdate.inbox_triage_in_progress` so the iOS UI
     /// can show a spinner on the Inbox tab.
     pub(super) inbox_triage_in_progress: Arc<AtomicBool>,
-    /// NIP-22 (kind 1111) comment cache, keyed by episode_id string.
-    /// Written by `handle_fetch_comments` / `handle_post_comment` on the
-    /// actor thread; read by `build_snapshot_payload` on the main thread.
-    pub(crate) comments_cache: Arc<Mutex<HashMap<String, Vec<CommentSummary>>>>,
-    /// Episode id whose comments the user is currently viewing. Set by
-    /// `handle_fetch_comments` (the comments section opens for an episode);
-    /// read by `build_snapshot_payload` to project that episode's comments
-    /// instead of being limited to the now-playing episode. `None` until the
-    /// first `FetchComments` dispatch, in which case the snapshot falls back
-    /// to the now-playing episode id.
-    pub(crate) viewed_comments_episode_id: Arc<Mutex<Option<String>>>,
-    /// NIP-02 social graph snapshot. `None` until the first
-    /// `FetchContacts` dispatch completes. Written by
-    /// `social_handler::handle_fetch_contacts` on the actor thread; read
-    /// by `build_snapshot_payload` on each tick.
-    pub(super) social: Arc<Mutex<Option<SocialSnapshot>>>,
-    /// Feature #44 — inbound agent-to-agent kind:1 notes addressed to the
-    /// active account. `None`/empty until the first `FetchAgentNotes`
-    /// dispatch. Written by `agent_note_handler::handle_fetch_agent_notes`
-    /// on the actor thread; read by `build_snapshot_payload` on each tick
-    /// and projected onto `PodcastUpdate.agent_notes` (reactive push seam).
-    pub(crate) agent_notes: Arc<Mutex<Vec<AgentNoteSummary>>>,
+    // comments_cache + viewed_comments_episode_id removed in Step 8 —
+    // now owned by `state.comments` (CommentsState).
+    // social removed in Step 10 — now owned by `state.social` (SocialState).
+    // agent_notes removed in Step 10 — dead duplicate Arc; observer now shares
+    // from `state.social.agent_notes` via register.rs.
     /// In-app feedback runtime. The app owns only its project coordinate;
     /// `nmp-feedback` owns the relay-pinned interest, publish tags, event cache,
     /// and thread projection. Empty until the first `FetchFeedback` dispatch.

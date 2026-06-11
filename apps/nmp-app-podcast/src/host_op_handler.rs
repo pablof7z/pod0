@@ -16,7 +16,8 @@
 //! * Voice-action dispatch    -> `voice_handler.rs`
 //! * Namespace-envelope router -> `host_op_handler/router.rs`
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
@@ -30,10 +31,7 @@ use crate::agent_handler::AgentChatHandler;
 use crate::download::DownloadQueue;
 use crate::feed_fetch::FeedFetchCoordinator;
 use crate::ffi::handle::OwnedPublishState;
-use crate::ffi::projections::{
-    AgentNoteSummary, CommentSummary,
-    NostrShowSummary, PodcastSummary, SocialSnapshot, VoiceState,
-};
+use crate::ffi::projections::VoiceState;
 use crate::inbox_llm::TriageResult;
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
@@ -70,8 +68,9 @@ pub struct PodcastHostOpHandler {
     pub(crate) store: Arc<Mutex<PodcastStore>>,
     pub(crate) identity: Arc<Mutex<IdentityStore>>,
     pub(crate) player_actor: Arc<Mutex<PlayerActor>>,
-    pub(crate) search_results: Arc<Mutex<Vec<PodcastSummary>>>,
-    pub(crate) nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
+    // search_results removed in Step 9 — now owned by `state.discovery` (DiscoveryState).
+    // nostr_results removed in Step 9 — dead duplicate Arc; observer now shares
+    // from `state.discovery.nostr_results`.
     pub(crate) queue: Arc<Mutex<PlaybackQueue>>,
     pub(crate) download_queue: Arc<Mutex<DownloadQueue>>,
     // wiki_articles and wiki_search_results removed in Step 2 —
@@ -87,6 +86,11 @@ pub struct PodcastHostOpHandler {
     pub(crate) voice_state: Arc<Mutex<VoiceState>>,
     // categories + categorization_in_progress removed in Step 4 —
     // they are now owned by `state.categories` (CategoriesState).
+    // comments_cache + viewed_comments_episode_id removed in Step 8 —
+    // they are now owned by `state.comments` (CommentsState).
+    // social removed in Step 10 — now owned by `state.social` (SocialState).
+    // agent_notes removed in Step 10 — dead duplicate Arc; observer now shares
+    // from `state.social.agent_notes`.
     pub(crate) rev: Arc<AtomicU64>,
     /// Per-podcast Nostr keypairs for NIP-F4 owned podcasts. Shared with
     /// `PodcastHandle.podcast_keys` so the snapshot reader sees the same
@@ -96,16 +100,6 @@ pub struct PodcastHostOpHandler {
     /// last-published timestamp). Shared with `PodcastHandle.publish_state`.
     pub(crate) publish_state: Arc<Mutex<HashMap<String, OwnedPublishState>>>,
     pub(crate) agent_chat: AgentChatHandler,
-    /// NIP-22 (kind 1111) comment cache, keyed by episode_id string.
-    /// Written by `handle_fetch_comments` / `handle_post_comment` on the
-    /// actor thread; read by `build_snapshot_payload` on the main thread.
-    /// In-memory only — comments re-fetch on next `FetchComments` dispatch.
-    pub(crate) comments_cache: Arc<Mutex<HashMap<String, Vec<CommentSummary>>>>,
-    /// Episode id whose comments the user is currently viewing. Shared with
-    /// `PodcastHandle.viewed_comments_episode_id`. Set by
-    /// `handle_fetch_comments` so the snapshot reader projects the viewed
-    /// episode's comments rather than the now-playing episode's.
-    pub(crate) viewed_comments_episode_id: Arc<Mutex<Option<String>>>,
     /// Shared Tokio runtime for async LLM / relay work. Seeded in
     /// `ffi::register` so all host-op handlers share one multi-thread scheduler.
     /// Used by wiki synthesis, agent chat, inbox triage, and social graph fetches.
@@ -121,16 +115,6 @@ pub struct PodcastHostOpHandler {
     /// Shared with `PodcastHandle.inbox_triage_in_progress`; set `true` when a
     /// background triage task starts, cleared when it finishes.
     pub(crate) inbox_triage_in_progress: Arc<std::sync::atomic::AtomicBool>,
-    /// Active social-graph snapshot, populated by `FetchContacts`. Shared
-    /// with `PodcastHandle.social` so the snapshot reader projects it on
-    /// every tick after the first fetch.
-    pub(crate) social: Arc<Mutex<Option<SocialSnapshot>>>,
-    /// Feature #44 — inbound agent-to-agent kind:1 notes addressed to the
-    /// active account, populated by `FetchAgentNotes`. Shared with
-    /// `PodcastHandle.agent_notes` so the snapshot reader projects them on
-    /// `PodcastUpdate.agent_notes` (reactive push seam — no polling).
-    /// In-memory only; re-fetched on the next `FetchAgentNotes` dispatch.
-    pub(crate) agent_notes: Arc<Mutex<Vec<AgentNoteSummary>>>,
     /// Coordinates optimistic-subscribe async feed fetches. Shared with
     /// `PodcastHandle` (whose HTTP-report FFI applies the results); this handler
     /// registers a pending fetch then fire-and-forget dispatches the async HTTP
@@ -158,8 +142,6 @@ impl PodcastHostOpHandler {
         store: Arc<Mutex<PodcastStore>>,
         identity: Arc<Mutex<IdentityStore>>,
         player_actor: Arc<Mutex<PlayerActor>>,
-        search_results: Arc<Mutex<Vec<PodcastSummary>>>,
-        nostr_results: Arc<Mutex<Vec<NostrShowSummary>>>,
         queue: Arc<Mutex<PlaybackQueue>>,
         download_queue: Arc<Mutex<DownloadQueue>>,
         dismissed_episode_ids: Arc<Mutex<HashSet<String>>>,
@@ -168,13 +150,9 @@ impl PodcastHostOpHandler {
         podcast_keys: Arc<Mutex<PodcastKeyStore>>,
         publish_state: Arc<Mutex<HashMap<String, OwnedPublishState>>>,
         agent_chat: AgentChatHandler,
-        comments_cache: Arc<Mutex<HashMap<String, Vec<CommentSummary>>>>,
-        viewed_comments_episode_id: Arc<Mutex<Option<String>>>,
         runtime: Arc<Runtime>,
         inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
         inbox_triage_in_progress: Arc<std::sync::atomic::AtomicBool>,
-        social: Arc<Mutex<Option<SocialSnapshot>>>,
-        agent_notes: Arc<Mutex<Vec<AgentNoteSummary>>>,
         feed_fetch: Arc<FeedFetchCoordinator>,
         feedback: nmp_feedback::FeedbackRuntime,
     ) -> Self {
@@ -184,8 +162,6 @@ impl PodcastHostOpHandler {
             store,
             identity,
             player_actor,
-            search_results,
-            nostr_results,
             queue,
             download_queue,
             dismissed_episode_ids,
@@ -194,13 +170,9 @@ impl PodcastHostOpHandler {
             podcast_keys,
             publish_state,
             agent_chat,
-            comments_cache,
-            viewed_comments_episode_id,
             runtime,
             inbox_triage_cache,
             inbox_triage_in_progress,
-            social,
-            agent_notes,
             feed_fetch,
             feedback,
             snapshot_signal: None,

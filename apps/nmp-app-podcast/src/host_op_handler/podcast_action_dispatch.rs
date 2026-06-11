@@ -97,12 +97,13 @@ impl PodcastHostOpHandler {
                 has_completed_onboarding,
             } => self.handle_update_settings(has_completed_onboarding),
             PodcastAction::FetchComments { episode_id } => {
+                // Step 8: use CommentsState slots from the shared state.
                 crate::comments_handler::handle_fetch_comments(
                     self.app,
-                    &self.store,
-                    &self.viewed_comments_episode_id,
-                    &self.rev,
-                    self.snapshot_signal.as_ref(),
+                    &self.state.comments.store,
+                    &self.state.comments.viewed_episode_id.share(),
+                    &self.state.infra.rev,
+                    self.state.comments.infra.signal.as_ref(),
                     &episode_id,
                 )
             }
@@ -111,10 +112,10 @@ impl PodcastHostOpHandler {
                 content,
             } => crate::comments_handler::handle_post_comment(
                 self.app,
-                &self.store,
-                &self.identity,
-                &self.comments_cache,
-                &self.rev,
+                &self.state.comments.store,
+                &self.state.comments.identity,
+                &self.state.comments.cache.share(),
+                &self.state.infra.rev,
                 &episode_id,
                 &content,
             ),
@@ -129,7 +130,15 @@ impl PodcastHostOpHandler {
             PodcastAction::AutoDownloadEvaluate => {
                 self.handle_evaluate_auto_downloads(correlation_id)
             }
-            PodcastAction::FetchContacts => crate::social_handler::handle_fetch_contacts(self),
+            PodcastAction::FetchContacts => {
+                // Step 10: use SocialState slots from the shared state.
+                crate::social_handler::handle_fetch_contacts(
+                    &self.identity,
+                    self.state.social.social_slot.share(),
+                    self.state.infra.rev.clone(),
+                    self.state.infra.runtime.clone(),
+                )
+            }
             PodcastAction::PublishAgentNote {
                 recipient_pubkey_hex,
                 content,

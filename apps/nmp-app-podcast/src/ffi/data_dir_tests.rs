@@ -1,9 +1,7 @@
 use super::*;
 use crate::download::DownloadQueue;
 use crate::ffi::handle::PodcastHandle;
-use crate::ffi::projections::{
-    AgentTaskSummary, NostrShowSummary, PodcastSummary, VoiceState,
-};
+use crate::ffi::projections::{AgentTaskSummary, VoiceState};
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::store::identity::IdentityStore;
@@ -16,26 +14,29 @@ use std::sync::{Arc, Mutex};
 /// exercise the data-dir path, which never touches `app`.
 fn make_handle(store: Arc<Mutex<PodcastStore>>, rev: Arc<AtomicU64>) -> Box<PodcastHandle> {
     use std::collections::HashMap;
-    let state = Arc::new(crate::state::PodcastAppState::new(
+    let identity = Arc::new(Mutex::new(IdentityStore::new()));
+    let state = Arc::new(crate::state::PodcastAppState::new_with_identity(
         crate::state::Infra::for_test(),
         store.clone(),
+        identity.clone(),
     ));
     Box::new(PodcastHandle {
         app: std::ptr::null_mut(),
         state,
         player_actor: Arc::new(Mutex::new(PlayerActor::new())),
         store: store.clone(),
-        identity: Arc::new(Mutex::new(IdentityStore::new())),
+        identity,
         rev: rev.clone(),
         snapshot_signal: None,
-        search_results: Arc::new(Mutex::new(Vec::<PodcastSummary>::new())),
-        nostr_results: Arc::new(Mutex::new(Vec::<NostrShowSummary>::new())),
         snapshot_cache: Arc::new(Mutex::new(None)),
         clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
         queue: Arc::new(Mutex::new(PlaybackQueue::new())),
         download_queue: Arc::new(Mutex::new(DownloadQueue::new())),
         // clips, transcripts, agent_tasks removed in Steps 5a, 5b, 6 —
         // now owned by state.clips / state.transcripts / state.tasks.
+        // search_results, nostr_results, comments_cache, viewed_comments_episode_id,
+        // social, agent_notes removed in Steps 8-10 — now owned by
+        // state.discovery / state.comments / state.social.
         dismissed_episode_ids: Arc::new(Mutex::new(HashSet::new())),
         podcast_keys: Arc::new(Mutex::new(PodcastKeyStore::new())),
         publish_state: Arc::new(Mutex::new(HashMap::new())),
@@ -54,10 +55,6 @@ fn make_handle(store: Arc<Mutex<PodcastStore>>, rev: Arc<AtomicU64>) -> Box<Podc
         agent_touched: Arc::new(AtomicBool::new(false)),
         inbox_triage_cache: Arc::new(Mutex::new(HashMap::new())),
         inbox_triage_in_progress: Arc::new(AtomicBool::new(false)),
-        comments_cache: Arc::new(Mutex::new(HashMap::new())),
-        viewed_comments_episode_id: Arc::new(Mutex::new(None)),
-        social: Arc::new(Mutex::new(None)),
-        agent_notes: Arc::new(Mutex::new(Vec::new())),
         feedback: nmp_feedback::FeedbackRuntime::new(
             nmp_feedback::FeedbackConfig::new(crate::PODCAST_FEEDBACK_PROJECT_COORDINATE)
                 .with_interest_namespace(crate::PODCAST_FEEDBACK_INTEREST_NAMESPACE),
