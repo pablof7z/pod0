@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
+import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inbox
@@ -120,6 +121,12 @@ fun AppNavigation(snapshot: PodcastSnapshot?, bridge: KernelBridge) {
                 onBack = { route = AppRoute.Tab(selectedTab) },
                 modifier = contentModifier,
             )
+            AppRoute.AgentChat -> AgentChatScreen(
+                snapshot = snapshot,
+                bridge = bridge,
+                onBack = { route = AppRoute.Tab(selectedTab) },
+                modifier = contentModifier,
+            )
         }
     }
 }
@@ -147,6 +154,15 @@ private fun TabContent(
         BottomTab.Downloads -> DownloadsScreen(snapshot = snapshot, bridge = bridge, modifier = modifier)
         BottomTab.Inbox -> InboxScreen(snapshot = snapshot, bridge = bridge, modifier = modifier)
         BottomTab.Player -> PlayerScreen(snapshot = snapshot, bridge = bridge, modifier = modifier)
+        // Agent tab IS the AgentChatScreen root — onBack navigates Home
+        // (consistent with how other full-page tabs reset to Home if somehow
+        // backed into from a bottom-nav tap rather than a push surface).
+        BottomTab.Agent -> AgentChatScreen(
+            snapshot = snapshot,
+            bridge = bridge,
+            onBack = { /* no-op: already at tab root */ },
+            modifier = modifier,
+        )
         BottomTab.Settings -> SettingsScreen(
             snapshot = snapshot,
             bridge = bridge,
@@ -170,6 +186,7 @@ enum class BottomTab(val label: String, val icon: ImageVector) {
     Downloads("Downloads", Icons.Filled.Download),
     Inbox("Inbox", Icons.Filled.Inbox),
     Player("Player", Icons.Filled.PlayCircle),
+    Agent("Agent", Icons.Filled.AccountBox),
     Settings("Settings", Icons.Filled.Settings),
 }
 
@@ -187,6 +204,7 @@ private sealed interface AppRoute {
     data class EpisodeDetail(val episodeId: String, val podcastId: String) : AppRoute
     data object Identity : AppRoute
     data object ProviderModels : AppRoute
+    data object AgentChat : AppRoute
 
     companion object {
         val Saver: androidx.compose.runtime.saveable.Saver<AppRoute, Any> =
@@ -198,6 +216,7 @@ private sealed interface AppRoute {
                         is EpisodeDetail -> listOf("episode", value.episodeId, value.podcastId)
                         Identity -> listOf("identity")
                         ProviderModels -> listOf("provider_models")
+                        AgentChat -> listOf("agent_chat")
                     }
                 },
                 restore = { raw ->
@@ -213,6 +232,7 @@ private sealed interface AppRoute {
                         }
                         "identity" -> Identity
                         "provider_models" -> ProviderModels
+                        "agent_chat" -> AgentChat
                         else -> null
                     }
                 },

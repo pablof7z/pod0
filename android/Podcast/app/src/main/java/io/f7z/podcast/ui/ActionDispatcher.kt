@@ -46,6 +46,7 @@ object PodcastNamespace {
     const val SETTINGS = "podcast.settings"
     const val TASKS = "podcast.tasks"
     const val INBOX = "podcast.inbox"
+    const val AGENT = "podcast.agent"
 }
 
 // ── `podcast` namespace payloads ──────────────────────────────────────────
@@ -456,6 +457,25 @@ data class SetProviderApiKeysPayload(
 )
 
 // Inbox + transcript payloads live in InboxTranscriptPayloads.kt (file-length split per AGENTS.md).
+
+// ── `podcast.agent` namespace ─────────────────────────────────────────────
+//
+// Verified against `apps/nmp-app-podcast/src/ffi/actions/agent_module.rs`:
+//
+//   AgentChatAction::Send  { message: String }  → op = "send"
+//   AgentChatAction::Clear                       → op = "clear"
+//
+// `#[serde(tag = "op", rename_all = "snake_case")]` maps variant names to
+// the snake_case `op` string. `Send { message }` carries one extra field.
+
+@Serializable
+data class AgentSendPayload(
+    val message: String,
+    val op: String = "send",
+)
+
+@Serializable
+data class AgentClearPayload(val op: String = "clear")
 
 /**
  * Thin wrapper around `KernelBridge.dispatchAction`. Encodes a typed,

@@ -190,14 +190,43 @@ data class DownloadItemSnapshot(
 )
 
 /**
- * Mirror of `ConversationsSnapshot` (named `AgentSnapshot` here to match
- * the field name `agent: AgentSnapshot?` used in `PodcastSnapshot`).
+ * Mirror of `ffi/projections/agent.rs::AgentSnapshot`.
+ *
+ * Holds the full ordered transcript plus an `isBusy` flag used to disable
+ * the send button and render the typing indicator while the kernel LLM loop
+ * is running. `messages` is oldest-first; the UI renders it directly.
+ *
+ * This replaces the earlier (stale) `ConversationsSnapshot`-shaped mirror
+ * that exposed `activeCount`/`latestConversationId` — those fields belong
+ * to the multi-conversation `ConversationsSnapshot` struct, NOT the
+ * single-thread agent-chat `AgentSnapshot` the `podcast.misc` frame carries.
  */
 @Serializable
 data class AgentSnapshot(
-    @SerialName("active_count") val activeCount: Int = 0,
-    @SerialName("pending_approvals") val pendingApprovals: List<PendingApprovalSnapshot> = emptyList(),
-    @SerialName("latest_conversation_id") val latestConversationId: String? = null,
+    /** Ordered transcript, oldest message first. */
+    val messages: List<AgentMessageSummary> = emptyList(),
+    /**
+     * `true` while the kernel is producing a response. UI disables send
+     * and shows a typing indicator; clears when the reply is committed.
+     */
+    @SerialName("is_busy") val isBusy: Boolean = false,
+)
+
+/**
+ * One message in the agent-chat transcript.
+ *
+ * Mirror of `ffi/projections/agent.rs::AgentMessageSummary`.
+ * `role` is `"user"` or `"assistant"`. `isGenerating` is `true` while
+ * the assistant placeholder is still being composed.
+ * `createdAt` is Unix seconds (epoch).
+ */
+@Serializable
+data class AgentMessageSummary(
+    val id: String,
+    val role: String,
+    val content: String,
+    @SerialName("created_at") val createdAt: Long = 0L,
+    @SerialName("is_generating") val isGenerating: Boolean = false,
 )
 
 /**
