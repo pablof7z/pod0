@@ -17,6 +17,37 @@
 //! results in a frame carrying only the `podcast.playback` sidecar — the `podcast.library`
 //! closure sees no change and returns `None`, so the library sidecar is absent from the frame.
 //!
+//! ## Tombstone contract
+//!
+//! Domains whose payload builder returns `Option<Value>` (library, downloads, identity, widget)
+//! must NOT silently drop the sidecar when the domain rev ADVANCED but the state is now empty.
+//! Dropping it would:
+//!  1. Leave shell consumers unable to detect "cleared" state (sign-out, all-unsubscribed, etc.).
+//!  2. Keep `last_emitted < domain_rev` forever, causing a full `build_podcast_update` + store
+//!     lock on EVERY subsequent tick (perpetual rebuild).
+//!
+//! When `domain_rev != last_emitted` AND the payload builder yields `None`, the closure emits a
+//! **tombstone** sidecar — a minimal payload carrying `"rev"` and the domain's primary field set
+//! to `null` — and advances `last_emitted` to the current domain rev.  After the tombstone the
+//! domain idles (last_emitted caught up) until its rev is bumped again.
+//!
+//! Per-domain tombstone shapes (the `null` field is the unambiguous "empty" signal):
+//!  - `podcast.library`:   `{"rev": <u64>, "library": null}`
+//!  - `podcast.downloads`: `{"rev": <u64>, "downloads": null}`
+//!  - `podcast.identity`:  `{"rev": <u64>, "active_account": null}`
+//!  - `podcast.widget`:    `{"rev": <u64>, "widget": null}`
+//!
+//! Domains whose builder is infallible (`podcast.playback`, `podcast.settings`,
+//! `podcast.misc`) never emit tombstones — they always carry a full payload.
+//!
+//! ## Full emit table
+//!
+//! | State                          | Sidecar emitted?          |
+//! |--------------------------------|---------------------------|
+//! | `domain_rev == last_emitted`   | `None` (omitted)          |
+//! | `domain_rev != last_emitted`, payload non-empty | full payload |
+//! | `domain_rev != last_emitted`, payload empty/None | tombstone    |
+//!
 //! ## Decoder contract
 //!
 //! The payload is a JSON-encoded byte vector wrapped in `TypedProjectionData`.
@@ -154,6 +185,32 @@ fn build_misc_payload(handle: &PodcastHandle) -> serde_json::Value {
     })
 }
 
+// ── Tombstone builders ────────────────────────────────────────────────────────
+
+/// Tombstone for `podcast.library`: signals that the library is now empty
+/// (all-unsubscribed). The `library` field is `null`.
+fn library_tombstone(rev: u64) -> serde_json::Value {
+    serde_json::json!({ "rev": rev, "library": null })
+}
+
+/// Tombstone for `podcast.downloads`: signals that all downloads cleared.
+/// The `downloads` field is `null`.
+fn downloads_tombstone(rev: u64) -> serde_json::Value {
+    serde_json::json!({ "rev": rev, "downloads": null })
+}
+
+/// Tombstone for `podcast.identity`: signals sign-out / no active account.
+/// The `active_account` field is `null`.
+fn identity_tombstone(rev: u64) -> serde_json::Value {
+    serde_json::json!({ "rev": rev, "active_account": null })
+}
+
+/// Tombstone for `podcast.widget`: signals that the widget has nothing to show.
+/// The `widget` field is `null`.
+fn widget_tombstone(rev: u64) -> serde_json::Value {
+    serde_json::json!({ "rev": rev, "widget": null })
+}
+
 // ── TypedProjectionData assembly ──────────────────────────────────────────────
 
 fn make_typed(schema_id: &str, payload: serde_json::Value) -> TypedProjectionData {
@@ -179,7 +236,8 @@ fn make_typed(schema_id: &str, payload: serde_json::Value) -> TypedProjectionDat
 /// On every actor tick the closure:
 ///  1. Reads domain rev.
 ///  2. If unchanged since last_emitted → return `None` (sidecar omitted).
-///  3. Otherwise serialize, update last_emitted, return `Some(TypedProjectionData)`.
+///  3. If changed AND payload non-empty → emit full payload, advance last_emitted.
+///  4. If changed AND payload empty/None → emit tombstone, advance last_emitted.
 pub fn register_domain_projections(
     app_ref: &nmp_ffi::NmpApp,
     handle: &Arc<PodcastHandle>,
@@ -197,7 +255,8 @@ pub fn register_domain_projections(
             if current == prev {
                 return None;
             }
-            let payload = build_library_payload(&h)?;
+            let payload = build_library_payload(&h)
+                .unwrap_or_else(|| library_tombstone(current));
             last_emitted.store(current, Ordering::Relaxed);
             Some(make_typed(SCHEMA_LIBRARY, payload))
         });
@@ -231,8 +290,8 @@ pub fn register_domain_projections(
             if current == prev {
                 return None;
             }
-            // Returns None when nothing active — sidecar still omitted.
-            let payload = build_downloads_payload(&h)?;
+            let payload = build_downloads_payload(&h)
+                .unwrap_or_else(|| downloads_tombstone(current));
             last_emitted.store(current, Ordering::Relaxed);
             Some(make_typed(SCHEMA_DOWNLOADS, payload))
         });
@@ -266,8 +325,8 @@ pub fn register_domain_projections(
             if current == prev {
                 return None;
             }
-            // Returns None when no account active.
-            let payload = build_identity_payload(&h)?;
+            let payload = build_identity_payload(&h)
+                .unwrap_or_else(|| identity_tombstone(current));
             last_emitted.store(current, Ordering::Relaxed);
             Some(make_typed(SCHEMA_IDENTITY, payload))
         });
@@ -284,8 +343,8 @@ pub fn register_domain_projections(
             if current == prev {
                 return None;
             }
-            // Returns None when widget has nothing to show.
-            let payload = build_widget_payload(&h)?;
+            let payload = build_widget_payload(&h)
+                .unwrap_or_else(|| widget_tombstone(current));
             last_emitted.store(current, Ordering::Relaxed);
             Some(make_typed(SCHEMA_WIDGET, payload))
         });

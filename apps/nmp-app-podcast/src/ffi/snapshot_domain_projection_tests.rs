@@ -261,8 +261,9 @@ fn domain_projections_emit_valid_json_with_rev_field() {
     // First call emits everything (all domain revs start at 1, last_emitted at 0).
     let projections = app_ref.run_typed_snapshot_projections();
 
-    // There may be 0 projections for downloads/identity/widget (they return None
-    // when empty). settings, playback, and misc must always be present.
+    // With the tombstone contract, downloads/identity/widget always emit on first
+    // run (tombstone if empty, full payload if populated). settings, playback,
+    // library, and misc must also be present.
     let by_key: std::collections::HashMap<String, &TypedProjectionData> = projections
         .iter()
         .map(|p| (p.schema_id.clone(), p))
@@ -295,6 +296,125 @@ fn domain_projections_emit_valid_json_with_rev_field() {
         "podcast.misc must be emitted on initial run; got: {:?}",
         by_key.keys().collect::<Vec<_>>()
     );
+
+    drop(handle);
+    unsafe { drop(Box::from_raw(app)) };
+}
+
+// ── Tombstone contract ────────────────────────────────────────────────────────
+//
+// For each domain whose builder returns Option<Value>, verify:
+//  1. changed→empty emits a tombstone (rev + nulled field).
+//  2. A second tick with the same empty state returns None (no perpetual rebuild).
+
+/// `podcast.library` empty → tombstone on first run (store is empty by default
+/// in `make_test_handle_with_app`), then idles on a second tick.
+#[test]
+fn library_empty_emits_tombstone_then_idles() {
+    let app = nmp_ffi::nmp_app_new();
+    assert!(!app.is_null());
+    let app_ref = unsafe { &*app };
+    let handle = Arc::new(*make_test_handle_with_app(app));
+    register_domain_projections(app_ref, &handle);
+
+    // First run: rev 1 > last_emitted 0; library is empty → tombstone.
+    let first = app_ref.run_typed_snapshot_projections();
+    let lib = first.iter().find(|p| p.schema_id == SCHEMA_LIBRARY)
+        .expect("library tombstone must be emitted when store is empty");
+    let val: serde_json::Value = serde_json::from_slice(&lib.payload).unwrap();
+    assert_eq!(val["library"], serde_json::Value::Null, "tombstone must carry library: null");
+    assert!(val["rev"].is_number(), "tombstone must carry a rev number");
+
+    // Second tick — last_emitted caught up → no library sidecar (no perpetual rebuild).
+    let second = app_ref.run_typed_snapshot_projections();
+    assert!(
+        second.iter().all(|p| p.schema_id != SCHEMA_LIBRARY),
+        "second empty tick must NOT emit library sidecar"
+    );
+
+    drop(handle);
+    unsafe { drop(Box::from_raw(app)) };
+}
+
+/// `podcast.downloads` changed→empty emits tombstone, second empty tick is silent.
+#[test]
+fn downloads_empty_emits_tombstone_then_idles() {
+    let app = nmp_ffi::nmp_app_new();
+    assert!(!app.is_null());
+    let app_ref = unsafe { &*app };
+    let handle = Arc::new(*make_test_handle_with_app(app));
+    let domain_revs = Arc::clone(&handle.state.infra.domain_revs);
+    register_domain_projections(app_ref, &handle);
+
+    // Consume initial run; ensure silence before the targeted bump.
+    let _ = app_ref.run_typed_snapshot_projections();
+    assert!(app_ref.run_typed_snapshot_projections().is_empty());
+
+    // Bump downloads rev; no active downloads in test store.
+    domain_revs.downloads.fetch_add(1, Ordering::Relaxed);
+    let after = app_ref.run_typed_snapshot_projections();
+    let dl = after.iter().find(|p| p.schema_id == SCHEMA_DOWNLOADS)
+        .expect("downloads tombstone must be emitted");
+    let val: serde_json::Value = serde_json::from_slice(&dl.payload).unwrap();
+    assert_eq!(val["downloads"], serde_json::Value::Null, "tombstone must carry downloads: null");
+
+    // Next tick must be silent.
+    let idle = app_ref.run_typed_snapshot_projections();
+    assert!(idle.iter().all(|p| p.schema_id != SCHEMA_DOWNLOADS), "second empty tick must be silent");
+
+    drop(handle);
+    unsafe { drop(Box::from_raw(app)) };
+}
+
+/// `podcast.identity` changed→empty (no active account) emits tombstone, then idles.
+#[test]
+fn identity_empty_emits_tombstone_then_idles() {
+    let app = nmp_ffi::nmp_app_new();
+    assert!(!app.is_null());
+    let app_ref = unsafe { &*app };
+    let handle = Arc::new(*make_test_handle_with_app(app));
+    let domain_revs = Arc::clone(&handle.state.infra.domain_revs);
+    register_domain_projections(app_ref, &handle);
+
+    let _ = app_ref.run_typed_snapshot_projections();
+    assert!(app_ref.run_typed_snapshot_projections().is_empty());
+
+    domain_revs.identity.fetch_add(1, Ordering::Relaxed);
+    let after = app_ref.run_typed_snapshot_projections();
+    let ident = after.iter().find(|p| p.schema_id == SCHEMA_IDENTITY)
+        .expect("identity tombstone must be emitted when no account is active");
+    let val: serde_json::Value = serde_json::from_slice(&ident.payload).unwrap();
+    assert_eq!(val["active_account"], serde_json::Value::Null, "tombstone must carry active_account: null");
+
+    let idle = app_ref.run_typed_snapshot_projections();
+    assert!(idle.iter().all(|p| p.schema_id != SCHEMA_IDENTITY), "second empty tick must be silent");
+
+    drop(handle);
+    unsafe { drop(Box::from_raw(app)) };
+}
+
+/// `podcast.widget` changed→empty (no playback, no episodes) emits tombstone, then idles.
+#[test]
+fn widget_empty_emits_tombstone_then_idles() {
+    let app = nmp_ffi::nmp_app_new();
+    assert!(!app.is_null());
+    let app_ref = unsafe { &*app };
+    let handle = Arc::new(*make_test_handle_with_app(app));
+    let domain_revs = Arc::clone(&handle.state.infra.domain_revs);
+    register_domain_projections(app_ref, &handle);
+
+    let _ = app_ref.run_typed_snapshot_projections();
+    assert!(app_ref.run_typed_snapshot_projections().is_empty());
+
+    domain_revs.widget.fetch_add(1, Ordering::Relaxed);
+    let after = app_ref.run_typed_snapshot_projections();
+    let wgt = after.iter().find(|p| p.schema_id == SCHEMA_WIDGET)
+        .expect("widget tombstone must be emitted when widget is None");
+    let val: serde_json::Value = serde_json::from_slice(&wgt.payload).unwrap();
+    assert_eq!(val["widget"], serde_json::Value::Null, "tombstone must carry widget: null");
+
+    let idle = app_ref.run_typed_snapshot_projections();
+    assert!(idle.iter().all(|p| p.schema_id != SCHEMA_WIDGET), "second empty tick must be silent");
 
     drop(handle);
     unsafe { drop(Box::from_raw(app)) };
