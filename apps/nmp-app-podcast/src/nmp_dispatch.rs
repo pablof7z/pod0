@@ -87,6 +87,41 @@ pub(crate) fn publish_profile_via_nmp(
     dispatch_nmp_publish(app, body)
 }
 
+/// Self-enqueue a `podcast.publish` action back onto the actor queue.
+///
+/// `nmp_app_dispatch_action` only *validates* the action and enqueues an
+/// `ActorCommand::DispatchHostOp` (D8: no actor round-trip, no blocking),
+/// then returns immediately. Calling it from inside a host-op handler
+/// appends a follow-up command to the actor's own queue — so the dispatched
+/// op runs in its OWN later tick and the actor yields in between. This is the
+/// non-blocking way for a handler to fan a single op out into N independent
+/// ops without stalling reactivity (the old Swift loop's per-episode
+/// `kernelPublishEpisode` had this property; this preserves it while keeping
+/// the policy in the kernel — D0).
+///
+/// Returns `true` when the action was accepted (a `correlation_id` was
+/// minted), `false` on a null app (tests / pre-login) or a rejected action.
+pub(crate) fn self_dispatch_publish(app: *mut nmp_ffi::NmpApp, body: serde_json::Value) -> bool {
+    if app.is_null() {
+        return false;
+    }
+    let (Ok(ns_c), Ok(body_c)) = (CString::new("podcast.publish"), CString::new(body.to_string()))
+    else {
+        return false;
+    };
+    let raw = nmp_ffi::nmp_app_dispatch_action(app, ns_c.as_ptr(), body_c.as_ptr());
+    if raw.is_null() {
+        return false;
+    }
+    // SAFETY: `raw` is a heap-owned NUL-terminated C string minted by
+    // `nmp_app_dispatch_action`; read the accept marker, then free it.
+    let accepted = unsafe { std::ffi::CStr::from_ptr(raw) }
+        .to_string_lossy()
+        .contains("\"correlation_id\"");
+    nmp_ffi::nmp_app_free_string(raw);
+    accepted
+}
+
 /// Push a [`LogicalInterest`] into NMP's relay pool. The kernel opens the
 /// subscription through its own connections — no iOS WebSocket ever opened.
 pub(crate) fn push_interest_via_nmp(app: *mut nmp_ffi::NmpApp, interest: LogicalInterest) {

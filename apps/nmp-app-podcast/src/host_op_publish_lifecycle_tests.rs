@@ -291,3 +291,148 @@ fn delete_owned_with_no_published_show_skips_nip09_but_tears_down() {
     assert!(store.lock().unwrap().podcast_by_id_str(&id).is_none());
     assert!(handler.state.publish.podcast_keys.lock().unwrap().get_key(&id).is_none());
 }
+
+/// Private→public flip publishes the show event AND identifies all N episodes
+/// for kind:54 backfill (D0: kernel owns all publish policy). The backfill is
+/// self-enqueued as N separate `publish_episode` actions so the actor yields
+/// between them (D8 — no synchronous upload loop on the actor thread). Checks
+/// that `episodes_queued` (the policy decision) matches the seeded episode
+/// count and that the show republish ran (inner `publish.ok`). With the null
+/// app pointer the self-dispatch is a no-op so `episodes_accepted` is 0 — the
+/// live-kernel fan-out is covered by the headless nipf4 scenario.
+#[test]
+fn private_to_public_flip_backfills_all_episodes_as_kind54() {
+    let store = Arc::new(Mutex::new(PodcastStore::new()));
+    let podcast_id = uuid::Uuid::new_v4().to_string();
+    const EPISODE_COUNT: usize = 3;
+
+    {
+        let mut s = store.lock().unwrap();
+        s.create_podcast(
+            &podcast_id,
+            "Private Show".into(),
+            "d".into(),
+            "Agent".into(),
+            None,
+            None,
+            None,
+            vec![],
+            podcast_core::NostrVisibility::Private,
+            false,
+        );
+        s.set_nostr_enabled(true);
+        // Seed EPISODE_COUNT episodes with http enclosure URLs (no Blossom
+        // upload path in tests — null app pointer skips the upload).
+        for i in 0..EPISODE_COUNT {
+            let eid = uuid::Uuid::new_v4().to_string();
+            s.add_episode(
+                &podcast_id,
+                &eid,
+                format!("Episode {i}"),
+                &format!("https://example.com/ep{i}.mp3"),
+                format!("desc {i}"),
+                Some(120.0),
+                None,
+                vec![],
+                None,
+            );
+        }
+    }
+    let handler = handler_with_store(store.clone());
+    // Claim the per-podcast key so publish_show (and publish_episode) can sign.
+    create_owned(&handler, podcast_id.clone());
+
+    let out = update_owned(
+        &handler,
+        podcast_id.clone(),
+        None,
+        None,
+        None,
+        None,
+        Some("public".into()),
+    );
+
+    assert_eq!(out["ok"], true, "update_owned must succeed");
+    assert_eq!(out["status"], "republished", "visibility flip must trigger republish");
+    // Show event published.
+    assert_eq!(out["publish"]["ok"], true, "show event republish must succeed");
+    // All episodes identified for backfill (one self-dispatched publish_episode
+    // action each — the actor yields between them).
+    assert_eq!(
+        out["episodes_queued"].as_u64().unwrap_or(0),
+        EPISODE_COUNT as u64,
+        "all {EPISODE_COUNT} episodes must be queued for kind:54 backfill"
+    );
+    // Null app in tests → self-dispatch is a no-op → none accepted by the FFI
+    // registry (the live fan-out is exercised by the headless scenario).
+    assert_eq!(
+        out["episodes_accepted"].as_u64().unwrap_or(99),
+        0,
+        "null app pointer must accept 0 self-dispatches"
+    );
+    // Post-state: visibility is public on the kernel row.
+    assert_eq!(
+        store
+            .lock()
+            .unwrap()
+            .podcast_by_id_str(&podcast_id)
+            .unwrap()
+            .nostr_visibility,
+        podcast_core::NostrVisibility::Public
+    );
+}
+
+/// Already-public show update does NOT backfill episodes (not a flip).
+#[test]
+fn already_public_show_update_does_not_backfill_episodes() {
+    let store = Arc::new(Mutex::new(PodcastStore::new()));
+    let podcast_id = uuid::Uuid::new_v4().to_string();
+    {
+        let mut s = store.lock().unwrap();
+        s.create_podcast(
+            &podcast_id,
+            "Public Show".into(),
+            "d".into(),
+            "Agent".into(),
+            None,
+            None,
+            None,
+            vec![],
+            podcast_core::NostrVisibility::Public,
+            false,
+        );
+        s.set_nostr_enabled(true);
+        let eid = uuid::Uuid::new_v4().to_string();
+        s.add_episode(
+            &podcast_id,
+            &eid,
+            "Ep".into(),
+            "https://example.com/ep.mp3",
+            String::new(),
+            None,
+            None,
+            vec![],
+            None,
+        );
+    }
+    let handler = handler_with_store(store.clone());
+    create_owned(&handler, podcast_id.clone());
+
+    let out = update_owned(
+        &handler,
+        podcast_id.clone(),
+        Some("Renamed".into()),
+        None,
+        None,
+        None,
+        None, // no visibility change — stays public
+    );
+    assert_eq!(out["ok"], true);
+    assert_eq!(out["status"], "republished");
+    // No flip → no episodes queued for backfill.
+    assert_eq!(
+        out["episodes_queued"].as_u64().unwrap_or(99),
+        0,
+        "non-flip update must not queue any episodes for backfill"
+    );
+}

@@ -26,7 +26,7 @@ use podcast_discovery::KIND_SHOW;
 use crate::ffi::actions::publish_module::PublishAction;
 use crate::host_op_handler::PodcastHostOpHandler;
 use crate::host_op_publish::{publish_show, sign_event};
-use crate::nmp_dispatch::publish_via_nmp;
+use crate::nmp_dispatch::{publish_via_nmp, self_dispatch_publish};
 
 /// NIP-09 deletion request kind.
 const KIND_DELETION: u32 = 5;
@@ -84,6 +84,21 @@ fn parse_visibility(raw: Option<String>) -> NostrVisibility {
 /// next snapshot push does not revert a Swift-side edit / flip. Because
 /// `visibility` is applied *before* the gate is read, a private→public flip
 /// republishes the show in the same op.
+///
+/// On a private→public flip the kernel also backfills every existing episode
+/// as a `kind:54` event (D0: Rust owns publish policy end-to-end). Rather than
+/// publishing them synchronously in a loop — which would block the actor
+/// thread for N sequential Blossom uploads + relay broadcasts and freeze all
+/// reactivity (D8 stall) — it **self-enqueues** one `podcast.publish`
+/// `publish_episode` action per episode via [`self_dispatch_publish`]. Each
+/// lands as its own `ActorCommand::DispatchHostOp` in the actor queue, so the
+/// per-episode publish runs in its OWN later tick and the actor yields between
+/// them (same responsiveness the old Swift per-episode loop had). The response
+/// includes `"episodes_queued": N` (episodes the flip identified for backfill)
+/// and `"episodes_accepted": M` (self-dispatches the FFI registry accepted —
+/// `M == N` with a live kernel; `0` under a null app in tests). A non-flip
+/// update (already-public show) only republishes the show event;
+/// `episodes_queued` is 0.
 #[allow(clippy::too_many_arguments)]
 pub fn update_owned(
     handler: &PodcastHostOpHandler,
@@ -94,28 +109,57 @@ pub fn update_owned(
     artwork_url: Option<String>,
     visibility: Option<String>,
 ) -> serde_json::Value {
-    let visibility = visibility.map(|v| parse_visibility(Some(v)));
+    let new_visibility = visibility.map(|v| parse_visibility(Some(v)));
     // Mutate the row, then read the gate inputs under the same lock so the
     // republish decision reflects the just-applied update (visibility first).
-    let (updated, should_publish) = match handler.state.library.store.lock() {
-        Ok(mut s) => {
-            let updated = s.update_owned_metadata(
-                &podcast_id,
-                title,
-                description,
-                author,
-                artwork_url,
-                visibility,
-            );
-            let is_public = s
-                .podcast_by_id_str(&podcast_id)
-                .map(|p| p.nostr_visibility == NostrVisibility::Public)
-                .unwrap_or(false);
-            let gate = updated && is_public && s.nostr_enabled();
-            (updated, gate)
-        }
-        Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
-    };
+    // Also capture whether this is a private→public flip so we can backfill
+    // per-episode kind:54 events after the show republish (D0: kernel owns all
+    // publish policy).
+    let (updated, should_publish, episode_ids_to_backfill) =
+        match handler.state.library.store.lock() {
+            Ok(mut s) => {
+                // Capture pre-update visibility to detect the private→public flip.
+                let was_private = s
+                    .podcast_by_id_str(&podcast_id)
+                    .map(|p| p.nostr_visibility != NostrVisibility::Public)
+                    .unwrap_or(false);
+
+                let updated = s.update_owned_metadata(
+                    &podcast_id,
+                    title,
+                    description,
+                    author,
+                    artwork_url,
+                    new_visibility,
+                );
+                let is_public = s
+                    .podcast_by_id_str(&podcast_id)
+                    .map(|p| p.nostr_visibility == NostrVisibility::Public)
+                    .unwrap_or(false);
+                let nostr_enabled = s.nostr_enabled();
+                let gate = updated && is_public && nostr_enabled;
+
+                // Collect episode IDs for backfill when flipping private→public.
+                // We gather them here (under the lock) and publish after releasing
+                // it, since publish_episode re-acquires the store lock.
+                let episode_ids = if gate && was_private {
+                    s.podcast_by_id_str(&podcast_id)
+                        .map(|p| p.id)
+                        .map(|pid| {
+                            s.episodes_for(pid)
+                                .iter()
+                                .map(|e| e.id.0.to_string())
+                                .collect::<Vec<_>>()
+                        })
+                        .unwrap_or_default()
+                } else {
+                    vec![]
+                };
+
+                (updated, gate, episode_ids)
+            }
+            Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+        };
     if !updated {
         return serde_json::json!({
             "ok": false,
@@ -131,10 +175,37 @@ pub fn update_owned(
     // re-implement signing here. `publish_show` stamps the new event JSON
     // onto `publish_state` and bumps `rev`.
     let publish = publish_show(handler, podcast_id);
+
+    // Backfill per-episode kind:54 events on a private→public flip by
+    // SELF-ENQUEUING one `publish_episode` action per episode (NOT a
+    // synchronous loop). Each self-dispatch enqueues an
+    // `ActorCommand::DispatchHostOp` and returns immediately, so each episode
+    // publishes in its own later actor tick and the actor yields in between —
+    // a 50–100 episode flip stays responsive instead of blocking the actor for
+    // N sequential Blossom uploads (D8). The dispatched action reuses the same
+    // `publish_episode` path (Blossom upload + sign + broadcast). Lock is NOT
+    // held here.
+    //
+    // `episodes_queued` is the number of episodes the kernel DECIDED to backfill
+    // (the policy decision — what this op owns under D0). `episodes_accepted`
+    // is how many the FFI registry accepted; in unit tests (null app) the
+    // self-dispatch is a no-op so accepted is 0, but the decision count still
+    // reflects the flip.
+    let episodes_queued = episode_ids_to_backfill.len();
+    let mut episodes_accepted = 0usize;
+    for episode_id in episode_ids_to_backfill {
+        let body = serde_json::json!({ "op": "publish_episode", "episode_id": episode_id });
+        if self_dispatch_publish(handler.app, body) {
+            episodes_accepted += 1;
+        }
+    }
+
     serde_json::json!({
         "ok": true,
         "status": "republished",
         "publish": publish,
+        "episodes_queued": episodes_queued,
+        "episodes_accepted": episodes_accepted,
     })
 }
 

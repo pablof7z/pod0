@@ -168,6 +168,10 @@ pub(crate) fn publish_show(
 /// `podcast.publish.publish_episode` — build and sign a `kind:54` episode
 /// event, then broadcast to `relay.primal.net`. The parent podcast must
 /// have been claimed via `create_owned_podcast`.
+///
+/// Reached either directly via the `podcast.publish` action dispatch, or as
+/// the self-enqueued per-episode backfill the lifecycle handler fans out on a
+/// private→public flip (see [`crate::host_op_publish_lifecycle::update_owned`]).
 fn publish_episode(handler: &PodcastHostOpHandler, episode_id: String) -> serde_json::Value {
     let (podcast, episode, local_path, blossom_url) = match handler.state.library.store.lock() {
         Ok(s) => match s.episode_with_podcast_clone(&episode_id) {

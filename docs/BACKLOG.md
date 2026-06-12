@@ -61,14 +61,9 @@ worktrees currently in flight.
   creates `PodcastSubscription` rows for summaries whose follow flag is true.
   The old Swift-only `FeedClient.fetch` → `store.upsertPodcast` /
   `store.upsertEpisodes` path has no production caller.
-- **owned-podcast-episode-backfill-kernel.** The kernel `update_owned_podcast`
-  op now carries title/description/author/artwork/visibility and republishes
-  the kind:10154 SHOW event itself on a private→public flip. The remaining
-  Swift sequencing in `LiveAgentOwnedPodcastManager.updatePodcast` is the
-  per-episode kind:54 backfill loop (`kernelPublishEpisode` over every existing
-  episode when `wasPrivate && nowPublic && nostrEnabled`). Move that backfill
-  into the kernel `update_owned` handler (iterate the row's episodes and
-  publish each) so the whole flip is one kernel op, then delete the Swift loop.
+- ~~**owned-podcast-episode-backfill-kernel.**~~ Done: kernel `update_owned`
+  now detects a private→public flip and calls `publish_episode` for every
+  episode atomically; the Swift loop deleted (PR #396).
 - **compat-service-stubs-delete.** Delete remaining
   `ios/Podcast/Podcast/Compat/ServiceStubs.swift` sections by replacing them
   with Rust-backed actions/snapshots or real capabilities: BYOK connect,

@@ -8,9 +8,10 @@ import os.log
 // wrapper: it routes create / update / delete through the kernel and lets the
 // next kernel snapshot push reconcile the render store. The only real policy
 // that remains Swift-side is the artwork generation pipeline (image-gen →
-// Blossom upload) and the public-visibility-flip episode backfill (the kernel
-// `Update` op carries no `visibility`, so the retro-publish of existing
-// episodes on a private→public flip is sequenced here).
+// Blossom upload). Per-episode kind:54 backfill on a private→public flip is
+// now owned by the kernel (D0 — update_owned detects the flip and self-enqueues
+// one publish_episode op per episode, so the actor yields between uploads
+// instead of blocking — D8).
 //
 // Lifecycle ownership (Rust kernel):
 //   podcast.create_podcast   — insert the feed-less row into the kernel store
@@ -131,7 +132,6 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
         guard existing.ownerPubkeyHex != nil else {
             throw AgentOwnedPodcastError.notOwned(podcastID)
         }
-        let wasPrivate = existing.nostrVisibility != .public
         var updated = existing
         if let title { updated.title = title }
         if let description { updated.description = description }
@@ -159,23 +159,12 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
             store?.updatePodcast(updated) // render mirror; snapshot push reconciles
         }
 
-        var episodesPublished: Int?
-        // Episode backfill on a private→public flip: the kernel republishes the
-        // SHOW event itself, but per-episode kind:54 publishing is still
-        // orchestrated Swift-side (the kernel update op has no episode-backfill
-        // leg — tracked in BACKLOG owned-podcast-episode-backfill-kernel).
-        if updated.nostrVisibility == .public, let settings = await settings(), settings.nostrEnabled {
-            if wasPrivate {
-                let episodes = await store?.episodes(forPodcast: uuid) ?? []
-                for episode in episodes {
-                    await MainActor.run { store?.kernelPublishEpisode(episodeId: episode.id.uuidString) }
-                }
-                episodesPublished = episodes.count
-                Self.logger.info("Dispatched NIP-F4 publish for \(episodes.count) episodes of '\(updated.title, privacy: .public)'")
-            }
-        }
+        // Episode backfill on a private→public flip is now owned by the kernel:
+        // update_owned detects the flip and self-enqueues one publish_episode op
+        // per episode (D0 — Rust owns publish policy; D8 — the actor yields
+        // between uploads instead of blocking on a synchronous loop).
         return await MainActor.run {
-            info(for: updated, nostrEventID: nil, nostrAddr: nil, episodesPublishedToNostr: episodesPublished)
+            info(for: updated, nostrEventID: nil, nostrAddr: nil)
         }
     }
 
