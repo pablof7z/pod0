@@ -90,8 +90,15 @@ final class UserIdentityWiringTests: XCTestCase {
 
         let call = try XCTUnwrap(kernelDispatches.social(op: "publish_note"))
         XCTAssertEqual(call["content"] as? String, "first user note")
-        let tags = call["tags"] as? [[String]]
-        XCTAssertTrue(tags?.contains(["t", "note"]) ?? false, "User notes must carry [\"t\", \"note\"] tag.")
+        // Tag construction (the `["t","note"]` marker) moved into the Rust
+        // kernel in #355 — Swift dispatches typed fields, the kernel builds
+        // the NIP tags (covered by `build_note_tags` unit tests in
+        // `apps/nmp-app-podcast/src/social_publish_handler_tests.rs`). The
+        // Swift wiring's contract is therefore: dispatch the content and do
+        // NOT pre-build tags. No episode coord is supplied at this call site,
+        // so no `episode_coord` field is dispatched either.
+        XCTAssertNil(call["tags"], "Swift must not pre-build tags; the kernel owns NIP tag construction (#355).")
+        XCTAssertNil(call["episode_coord"], "No episode coord at this call site, so none should be dispatched.")
     }
 
     func testAddNoteExplicitUserAuthorDispatchesKindOneToKernel() async throws {
@@ -149,12 +156,20 @@ final class UserIdentityWiringTests: XCTestCase {
         try await waitForKernelDispatch(op: "publish_highlight")
 
         let call = try XCTUnwrap(kernelDispatches.social(op: "publish_highlight"))
-        XCTAssertEqual(call["content"] as? String, "the prose at the heart of the clip")
-        let tags = call["tags"] as? [[String]]
-        XCTAssertTrue(tags?.contains(["context", "the prose at the heart of the clip"]) ?? false,
-                      "Clip must carry the [\"context\", transcript] tag.")
-        XCTAssertTrue(tags?.contains(["alt", "Worth re-listening"]) ?? false,
-                      "Clip with caption must carry the [\"alt\", caption] tag.")
+        // Tag construction (`["context", transcript]` + `["alt", caption]`)
+        // moved into the Rust kernel in #355 — Swift dispatches typed fields,
+        // the kernel's `build_highlight_tags` assembles the NIP-73/84 tag set
+        // (exact tag output is covered by
+        // `apps/nmp-app-podcast/src/social_publish_handler_tests.rs`). The
+        // Swift wiring's contract is therefore: dispatch the transcript as
+        // `content` (which the kernel turns into the `["context", …]` tag) and
+        // the caption as the typed `caption` field (→ `["alt", …]`), and do
+        // NOT pre-build tags.
+        XCTAssertEqual(call["content"] as? String, "the prose at the heart of the clip",
+                       "Clip transcript must be dispatched as `content` (→ kernel `[\"context\", …]` tag).")
+        XCTAssertEqual(call["caption"] as? String, "Worth re-listening",
+                       "Clip caption must be dispatched as the typed `caption` field (→ kernel `[\"alt\", …]` tag).")
+        XCTAssertNil(call["tags"], "Swift must not pre-build tags; the kernel owns NIP tag construction (#355).")
     }
 
     func testAddClipAutoSourceDispatchesKindNineEightZeroTwoToKernel() async throws {
