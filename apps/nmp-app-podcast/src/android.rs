@@ -128,7 +128,7 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeNew(
     _env: JNIEnv,
     _class: JClass,
 ) -> jlong {
-    ffi_guard("nativeNew", || 0jlong, || {
+    ffi_guard("nativeNew", || 0 as jlong, || {
         let app = nmp_app_new();
         if app.is_null() {
             return 0;
@@ -228,7 +228,7 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeIsAlive(
     _class: JClass,
     handle: jlong,
 ) -> jint {
-    ffi_guard("nativeIsAlive", || 0jint, || {
+    ffi_guard("nativeIsAlive", || 0 as jint, || {
         match session_ref(handle) {
             Some(s) => nmp_app_is_alive(s.app) as jint,
             None => 0,
@@ -413,7 +413,7 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nmpActionDispatch<'l>(
     _class: JClass<'l>,
     action_json: JString<'l>,
 ) -> jint {
-    ffi_guard("nmpActionDispatch", || -1jint, || {
+    ffi_guard("nmpActionDispatch", || -1 as jint, || {
         let Ok(body) = env.get_string(&action_json) else {
             return -1;
         };

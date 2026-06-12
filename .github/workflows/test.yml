@@ -24,3 +24,39 @@ jobs:
 
       - name: Build and test
         run: ./ci_scripts/run_tests.sh
+
+  android-check:
+    name: Android cross-compile check (aarch64-linux-android)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Set up Android NDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-android-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-android-
+
+      - name: cargo check — nmp-app-podcast (aarch64-linux-android)
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
+          CC_aarch64_linux_android: ${{ env.ANDROID_NDK_LATEST_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android35-clang
+          AR_aarch64_linux_android: ${{ env.ANDROID_NDK_LATEST_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
+          CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER: ${{ env.ANDROID_NDK_LATEST_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android35-clang
+        working-directory: apps/nmp-app-podcast
+        run: cargo check --target aarch64-linux-android
