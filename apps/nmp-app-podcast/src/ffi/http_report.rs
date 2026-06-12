@@ -33,6 +33,7 @@ use std::ffi::{c_char, CStr};
 
 use podcast_feeds::http::HttpReport;
 
+use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 
 /// Deliver a JSON-encoded [`HttpReport`] to the kernel's feed-fetch
@@ -46,20 +47,21 @@ pub extern "C" fn nmp_app_podcast_http_report(
     if handle.is_null() || report_json.is_null() {
         return std::ptr::null_mut();
     }
+    ffi_guard("nmp_app_podcast_http_report", std::ptr::null_mut, || {
+        let report_str = match unsafe { CStr::from_ptr(report_json) }.to_str() {
+            Ok(s) => s,
+            Err(_) => return std::ptr::null_mut(),
+        };
 
-    let report_str = match unsafe { CStr::from_ptr(report_json) }.to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
-    };
+        let report: HttpReport = match serde_json::from_str(report_str) {
+            Ok(r) => r,
+            Err(_) => return std::ptr::null_mut(),
+        };
 
-    let report: HttpReport = match serde_json::from_str(report_str) {
-        Ok(r) => r,
-        Err(_) => return std::ptr::null_mut(),
-    };
-
-    // Runs on the platform transport thread — `apply_report` touches only the
-    // shared store / signal Arcs, never `*mut NmpApp`.
-    let handle_ref = unsafe { &*handle };
-    handle_ref.feed_fetch.apply_report(report);
-    std::ptr::null_mut()
+        // Runs on the platform transport thread — `apply_report` touches only the
+        // shared store / signal Arcs, never `*mut NmpApp`.
+        let handle_ref = unsafe { &*handle };
+        handle_ref.feed_fetch.apply_report(report);
+        std::ptr::null_mut()
+    })
 }

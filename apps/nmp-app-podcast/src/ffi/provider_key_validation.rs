@@ -3,6 +3,7 @@
 use std::ffi::{c_char, CString};
 use std::sync::Arc;
 
+use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 use crate::llm::elevenlabs_key_validation::{self, ElevenLabsKeyValidationError};
 use crate::llm::openrouter_key_validation::{self, OpenRouterKeyValidationError};
@@ -15,13 +16,19 @@ pub extern "C" fn nmp_app_podcast_validate_openrouter_key(
     if handle.is_null() {
         return err_envelope("null handle", None, "store_unavailable").into_raw();
     }
-    let handle_ref = unsafe { &*handle };
-    let store = Arc::clone(&handle_ref.store);
-    let runtime = Arc::clone(&handle_ref.runtime);
-    match runtime.block_on(openrouter_key_validation::validate_openrouter_key(store)) {
-        Ok(result) => json_envelope(&serde_json::json!({"result": result})).into_raw(),
-        Err(error) => openrouter_validation_error_envelope(&error).into_raw(),
-    }
+    ffi_guard(
+        "nmp_app_podcast_validate_openrouter_key",
+        || err_envelope("panic", None, "panic").into_raw(),
+        || {
+            let handle_ref = unsafe { &*handle };
+            let store = Arc::clone(&handle_ref.store);
+            let runtime = Arc::clone(&handle_ref.runtime);
+            match runtime.block_on(openrouter_key_validation::validate_openrouter_key(store)) {
+                Ok(result) => json_envelope(&serde_json::json!({"result": result})).into_raw(),
+                Err(error) => openrouter_validation_error_envelope(&error).into_raw(),
+            }
+        },
+    )
 }
 
 #[no_mangle]
@@ -32,13 +39,19 @@ pub extern "C" fn nmp_app_podcast_validate_elevenlabs_key(
     if handle.is_null() {
         return err_envelope("null handle", None, "store_unavailable").into_raw();
     }
-    let handle_ref = unsafe { &*handle };
-    let store = Arc::clone(&handle_ref.store);
-    let runtime = Arc::clone(&handle_ref.runtime);
-    match runtime.block_on(elevenlabs_key_validation::validate_elevenlabs_key(store)) {
-        Ok(result) => json_envelope(&serde_json::json!({"result": result})).into_raw(),
-        Err(error) => elevenlabs_validation_error_envelope(&error).into_raw(),
-    }
+    ffi_guard(
+        "nmp_app_podcast_validate_elevenlabs_key",
+        || err_envelope("panic", None, "panic").into_raw(),
+        || {
+            let handle_ref = unsafe { &*handle };
+            let store = Arc::clone(&handle_ref.store);
+            let runtime = Arc::clone(&handle_ref.runtime);
+            match runtime.block_on(elevenlabs_key_validation::validate_elevenlabs_key(store)) {
+                Ok(result) => json_envelope(&serde_json::json!({"result": result})).into_raw(),
+                Err(error) => elevenlabs_validation_error_envelope(&error).into_raw(),
+            }
+        },
+    )
 }
 
 fn json_envelope(value: &serde_json::Value) -> CString {

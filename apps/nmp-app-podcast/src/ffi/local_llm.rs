@@ -7,6 +7,7 @@
 
 use std::ffi::c_void;
 
+use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 use crate::llm::local_model_backend::{set_registration, LocalLlmRegistration, NmpLocalLlmFn};
 
@@ -29,11 +30,13 @@ pub extern "C" fn nmp_app_register_local_llm(
     context: *mut c_void,
     callback: NmpLocalLlmFn,
 ) {
-    // Register the callback globally.
-    set_registration(Some(LocalLlmRegistration {
-        context: context as usize,
-        callback,
-    }));
+    ffi_guard("nmp_app_register_local_llm", || (), || {
+        // Register the callback globally.
+        set_registration(Some(LocalLlmRegistration {
+            context: context as usize,
+            callback,
+        }));
+    });
 }
 
 /// Clear the local LLM callback globally.
@@ -45,6 +48,8 @@ pub extern "C" fn nmp_app_register_local_llm(
 /// Null handle is silently ignored (registration is global, handle param is API-symmetry only).
 #[no_mangle]
 pub extern "C" fn nmp_app_clear_local_llm(_handle: *mut PodcastHandle) {
-    // Clear the callback globally.
-    set_registration(None);
+    ffi_guard("nmp_app_clear_local_llm", || (), || {
+        // Clear the callback globally.
+        set_registration(None);
+    });
 }

@@ -9,6 +9,7 @@ use std::sync::Arc;
 use base64::Engine;
 use serde::Deserialize;
 
+use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 use crate::llm::image_generation::{generate_openrouter_image, ImageGenerationRequest};
 
@@ -39,26 +40,31 @@ pub extern "C" fn nmp_app_podcast_generate_image(
     if handle.is_null() || request_json.is_null() {
         return err_envelope("null argument").into_raw();
     }
+    ffi_guard(
+        "nmp_app_podcast_generate_image",
+        || err_envelope("panic").into_raw(),
+        || {
+            let json_str = match unsafe { CStr::from_ptr(request_json) }.to_str() {
+                Ok(s) => s,
+                Err(_) => return err_envelope("invalid UTF-8").into_raw(),
+            };
+            let input: GenerateImageInput = match serde_json::from_str(json_str) {
+                Ok(v) => v,
+                Err(e) => return err_envelope(&format!("JSON parse: {e}")).into_raw(),
+            };
+            if input.prompt.is_empty() {
+                return err_envelope("prompt is empty").into_raw();
+            }
 
-    let json_str = match unsafe { CStr::from_ptr(request_json) }.to_str() {
-        Ok(s) => s,
-        Err(_) => return err_envelope("invalid UTF-8").into_raw(),
-    };
-    let input: GenerateImageInput = match serde_json::from_str(json_str) {
-        Ok(v) => v,
-        Err(e) => return err_envelope(&format!("JSON parse: {e}")).into_raw(),
-    };
-    if input.prompt.is_empty() {
-        return err_envelope("prompt is empty").into_raw();
-    }
-
-    let handle_ref = unsafe { &*handle };
-    let request = ImageGenerationRequest {
-        prompt: input.prompt,
-        model: input.model,
-    };
-    match generate_openrouter_image(Arc::clone(&handle_ref.store), &request) {
-        Ok(image) => ok_envelope(&image.bytes).into_raw(),
-        Err(e) => err_envelope(&e.to_string()).into_raw(),
-    }
+            let handle_ref = unsafe { &*handle };
+            let request = ImageGenerationRequest {
+                prompt: input.prompt,
+                model: input.model,
+            };
+            match generate_openrouter_image(Arc::clone(&handle_ref.store), &request) {
+                Ok(image) => ok_envelope(&image.bytes).into_raw(),
+                Err(e) => err_envelope(&e.to_string()).into_raw(),
+            }
+        },
+    )
 }

@@ -40,6 +40,7 @@ mod elevenlabs_scribe;
 mod elevenlabs_tts;
 mod elevenlabs_voice_catalog;
 mod episode_events;
+pub(crate) mod guard;
 pub(crate) mod handle;
 mod helpers;
 mod http_report;

@@ -27,6 +27,7 @@ use std::ffi::{c_char, CStr, CString};
 
 use serde::Deserialize;
 
+use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 use crate::store::events::{EventDetail, EventSeverity};
 
@@ -77,34 +78,39 @@ pub extern "C" fn nmp_app_podcast_record_episode_event(
     if handle.is_null() || event_json.is_null() {
         return std::ptr::null_mut();
     }
+    ffi_guard(
+        "nmp_app_podcast_record_episode_event",
+        std::ptr::null_mut,
+        || {
+            let raw = match unsafe { CStr::from_ptr(event_json) }.to_str() {
+                Ok(s) => s,
+                Err(_) => return std::ptr::null_mut(),
+            };
 
-    let raw = match unsafe { CStr::from_ptr(event_json) }.to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
-    };
+            let req: RecordEventRequest = match serde_json::from_str(raw) {
+                Ok(r) => r,
+                Err(_) => return std::ptr::null_mut(),
+            };
 
-    let req: RecordEventRequest = match serde_json::from_str(raw) {
-        Ok(r) => r,
-        Err(_) => return std::ptr::null_mut(),
-    };
+            let handle_ref = unsafe { &*handle };
+            if let Ok(mut store) = handle_ref.store.lock() {
+                let details = req
+                    .details
+                    .into_iter()
+                    .map(|d| EventDetail::new(d.label, d.value))
+                    .collect();
+                store.emit_event(
+                    &req.episode_id,
+                    &req.kind,
+                    EventSeverity::from_wire(&req.severity),
+                    req.summary,
+                    details,
+                );
+            }
 
-    let handle_ref = unsafe { &*handle };
-    if let Ok(mut store) = handle_ref.store.lock() {
-        let details = req
-            .details
-            .into_iter()
-            .map(|d| EventDetail::new(d.label, d.value))
-            .collect();
-        store.emit_event(
-            &req.episode_id,
-            &req.kind,
-            EventSeverity::from_wire(&req.severity),
-            req.summary,
-            details,
-        );
-    }
-
-    std::ptr::null_mut()
+            std::ptr::null_mut()
+        },
+    )
 }
 
 /// Fetch the JSON-encoded pipeline event log for one episode.
@@ -120,25 +126,26 @@ pub extern "C" fn nmp_app_podcast_episode_events(
     if handle.is_null() || episode_id.is_null() {
         return std::ptr::null_mut();
     }
+    ffi_guard("nmp_app_podcast_episode_events", std::ptr::null_mut, || {
+        let episode_id = match unsafe { CStr::from_ptr(episode_id) }.to_str() {
+            Ok(s) => s,
+            Err(_) => return std::ptr::null_mut(),
+        };
 
-    let episode_id = match unsafe { CStr::from_ptr(episode_id) }.to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
-    };
+        let handle_ref = unsafe { &*handle };
+        let events = match handle_ref.store.lock() {
+            Ok(mut store) => store.episode_events(episode_id),
+            Err(_) => return std::ptr::null_mut(),
+        };
 
-    let handle_ref = unsafe { &*handle };
-    let events = match handle_ref.store.lock() {
-        Ok(mut store) => store.episode_events(episode_id),
-        Err(_) => return std::ptr::null_mut(),
-    };
-
-    match serde_json::to_string(&events) {
-        Ok(json) => match CString::new(json) {
-            Ok(c) => c.into_raw(),
+        match serde_json::to_string(&events) {
+            Ok(json) => match CString::new(json) {
+                Ok(c) => c.into_raw(),
+                Err(_) => std::ptr::null_mut(),
+            },
             Err(_) => std::ptr::null_mut(),
-        },
-        Err(_) => std::ptr::null_mut(),
-    }
+        }
+    })
 }
 
 #[cfg(test)]

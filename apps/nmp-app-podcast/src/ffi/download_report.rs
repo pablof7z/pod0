@@ -60,6 +60,7 @@ use std::ffi::{c_char, CStr, CString};
 
 use serde::Serialize;
 
+use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 use super::projections::DownloadQueueSnapshot;
 use super::snapshot_downloads::build_downloads_snapshot;
@@ -99,46 +100,52 @@ pub extern "C" fn nmp_app_podcast_download_report(
     if handle.is_null() || report_json.is_null() {
         return std::ptr::null_mut();
     }
+    ffi_guard(
+        "nmp_app_podcast_download_report",
+        std::ptr::null_mut,
+        || {
+            let report_str = match unsafe { CStr::from_ptr(report_json) }.to_str() {
+                Ok(s) => s,
+                Err(_) => return std::ptr::null_mut(),
+            };
 
-    let report_str = match unsafe { CStr::from_ptr(report_json) }.to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
-    };
+            let handle_ref = unsafe { &*handle };
+            let response = {
+                let mut store = match handle_ref.store.lock() {
+                    Ok(s) => s,
+                    Err(_) => return std::ptr::null_mut(),
+                };
+                let mut queue = match handle_ref.download_queue.lock() {
+                    Ok(q) => q,
+                    Err(_) => return std::ptr::null_mut(),
+                };
+                let dispatch =
+                    dispatch_download_report_json_with_queue(&mut store, &mut queue, report_str);
+                if dispatch.decode_failed {
+                    return std::ptr::null_mut();
+                }
+                // Snapshot the queue while the lock is held so Swift gets live
+                // progress without a second FFI round-trip.
+                let downloads = build_downloads_snapshot(&queue);
+                drop(queue);
+                drop(store);
+                // Only durable library changes (completion/cancellation) bump the
+                // global `rev`; progress ticks ride the inline `downloads` field.
+                handle_ref.bump_snapshot_rev_if(dispatch.durable_changed);
+                DownloadReportResponse {
+                    follow_up: dispatch.follow_up_json,
+                    downloads,
+                    durable_changed: dispatch.durable_changed,
+                }
+            }; // locks released
 
-    let handle_ref = unsafe { &*handle };
-    let response = {
-        let mut store = match handle_ref.store.lock() {
-            Ok(s) => s,
-            Err(_) => return std::ptr::null_mut(),
-        };
-        let mut queue = match handle_ref.download_queue.lock() {
-            Ok(q) => q,
-            Err(_) => return std::ptr::null_mut(),
-        };
-        let dispatch = dispatch_download_report_json_with_queue(&mut store, &mut queue, report_str);
-        if dispatch.decode_failed {
-            return std::ptr::null_mut();
-        }
-        // Snapshot the queue while the lock is held so Swift gets live progress
-        // without a second FFI round-trip.
-        let downloads = build_downloads_snapshot(&queue);
-        drop(queue);
-        drop(store);
-        // Only durable library changes (completion/cancellation) bump the
-        // global `rev`; progress ticks ride the inline `downloads` field.
-        handle_ref.bump_snapshot_rev_if(dispatch.durable_changed);
-        DownloadReportResponse {
-            follow_up: dispatch.follow_up_json,
-            downloads,
-            durable_changed: dispatch.durable_changed,
-        }
-    }; // locks released
-
-    match serde_json::to_string(&response) {
-        Ok(json) => match CString::new(json) {
-            Ok(c) => c.into_raw(),
-            Err(_) => std::ptr::null_mut(),
+            match serde_json::to_string(&response) {
+                Ok(json) => match CString::new(json) {
+                    Ok(c) => c.into_raw(),
+                    Err(_) => std::ptr::null_mut(),
+                },
+                Err(_) => std::ptr::null_mut(),
+            }
         },
-        Err(_) => std::ptr::null_mut(),
-    }
+    )
 }

@@ -12,6 +12,7 @@
 
 use std::ffi::{c_char, CStr};
 
+use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 use crate::capability::NetworkReport;
 
@@ -26,30 +27,31 @@ pub extern "C" fn nmp_app_podcast_network_report(
     if handle.is_null() || report_json.is_null() {
         return std::ptr::null_mut();
     }
+    ffi_guard("nmp_app_podcast_network_report", std::ptr::null_mut, || {
+        let report_str = match unsafe { CStr::from_ptr(report_json) }.to_str() {
+            Ok(s) => s,
+            Err(_) => return std::ptr::null_mut(),
+        };
 
-    let report_str = match unsafe { CStr::from_ptr(report_json) }.to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
-    };
+        let report: NetworkReport = match serde_json::from_str(report_str) {
+            Ok(r) => r,
+            Err(_) => return std::ptr::null_mut(),
+        };
 
-    let report: NetworkReport = match serde_json::from_str(report_str) {
-        Ok(r) => r,
-        Err(_) => return std::ptr::null_mut(),
-    };
-
-    let handle_ref = unsafe { &*handle };
-    match report {
-        NetworkReport::ConnectivityChanged { is_wifi, .. } => {
-            if let Ok(mut s) = handle_ref.store.lock() {
-                s.set_is_on_wifi(is_wifi);
+        let handle_ref = unsafe { &*handle };
+        match report {
+            NetworkReport::ConnectivityChanged { is_wifi, .. } => {
+                if let Ok(mut s) = handle_ref.store.lock() {
+                    s.set_is_on_wifi(is_wifi);
+                }
+                // When Wi-Fi is restored, pending deferred downloads are drained
+                // and dispatched from `PodcastAction::DispatchDeferredWifiDownloads`.
+                // The iOS NetworkCapability fires that action when `is_wifi` becomes
+                // true so that the dispatch runs through the normal actor-thread path
+                // (which has access to `PodcastHostOpHandler::dispatch_download`).
             }
-            // When Wi-Fi is restored, pending deferred downloads are drained
-            // and dispatched from `PodcastAction::DispatchDeferredWifiDownloads`.
-            // The iOS NetworkCapability fires that action when `is_wifi` becomes
-            // true so that the dispatch runs through the normal actor-thread path
-            // (which has access to `PodcastHostOpHandler::dispatch_download`).
         }
-    }
 
-    std::ptr::null_mut()
+        std::ptr::null_mut()
+    })
 }

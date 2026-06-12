@@ -11,6 +11,7 @@ use std::ffi::{c_char, CString};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
+use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 use super::projections::{AgentSnapshot, PodcastSummary};
 use super::snapshot_categories::build_category_aggregate;
@@ -253,15 +254,17 @@ pub extern "C" fn nmp_app_podcast_snapshot(handle: *mut PodcastHandle) -> *mut c
     if handle.is_null() {
         return std::ptr::null_mut();
     }
-    // SAFETY: caller guarantees `handle` is a valid pointer returned by
-    // `nmp_app_podcast_register` and not yet freed.
-    let handle = unsafe { &*handle };
+    ffi_guard("nmp_app_podcast_snapshot", std::ptr::null_mut, || {
+        // SAFETY: caller guarantees `handle` is a valid pointer returned by
+        // `nmp_app_podcast_register` and not yet freed.
+        let handle = unsafe { &*handle };
 
-    let payload = build_snapshot_payload(handle);
-    let Ok(cstr) = CString::new(payload) else {
-        return std::ptr::null_mut();
-    };
-    cstr.into_raw()
+        let payload = build_snapshot_payload(handle);
+        let Ok(cstr) = CString::new(payload) else {
+            return std::ptr::null_mut();
+        };
+        cstr.into_raw()
+    })
 }
 
 /// Cheap rev probe: reads the atomic counter without serializing the payload.
@@ -273,8 +276,10 @@ pub extern "C" fn nmp_app_podcast_snapshot_rev(handle: *mut PodcastHandle) -> u6
     if handle.is_null() {
         return 0;
     }
-    let handle = unsafe { &*handle };
-    handle.rev.load(std::sync::atomic::Ordering::Relaxed)
+    ffi_guard("nmp_app_podcast_snapshot_rev", || 0u64, || {
+        let handle = unsafe { &*handle };
+        handle.rev.load(std::sync::atomic::Ordering::Relaxed)
+    })
 }
 
 /// Free a snapshot string previously returned by [`nmp_app_podcast_snapshot`].
@@ -285,11 +290,13 @@ pub extern "C" fn nmp_app_podcast_snapshot_free(ptr: *mut c_char) {
     if ptr.is_null() {
         return;
     }
-    // SAFETY: caller guarantees `ptr` came from `CString::into_raw` in
-    // `nmp_app_podcast_snapshot` and has not been freed.
-    unsafe {
-        let _ = CString::from_raw(ptr);
-    }
+    ffi_guard("nmp_app_podcast_snapshot_free", || (), || {
+        // SAFETY: caller guarantees `ptr` came from `CString::into_raw` in
+        // `nmp_app_podcast_snapshot` and has not been freed.
+        unsafe {
+            let _ = CString::from_raw(ptr);
+        }
+    });
 }
 
 /// Drop the handle and free associated resources.
@@ -301,22 +308,24 @@ pub extern "C" fn nmp_app_podcast_unregister(handle: *mut PodcastHandle) {
     if handle.is_null() {
         return;
     }
-    // SAFETY: caller guarantees `handle` came from `nmp_app_podcast_register`
-    // (which now returns `Arc::into_raw`) and has not already been freed. This
-    // reclaims the shell's strong ref; the snapshot-projection closure holds a
-    // second ref that is released when the app's projection registry is dropped.
-    let reclaimed = unsafe { Arc::from_raw(handle as *const PodcastHandle) };
-    // Step 12: Fence the voice-conversation off-thread dispatch UAF: abort +
-    // join any in-flight LLM turn so no spawned Tokio task can dereference
-    // `app` after `nmp_app_free`.  The caller contract guarantees `unregister`
-    // runs before `nmp_app_free`, and (because the snapshot-projection closure
-    // holds a second strong `Arc<PodcastHandle>`) the manager itself does not
-    // drop here — so this explicit drain, not a `Drop` impl, is the fence.
-    //
-    // Teardown ordering: shutdown BEFORE drop (i.e. before the `reclaimed` Arc
-    // falls out of scope) — unchanged from the pre-migration fence.
-    reclaimed.state.voice.shutdown();
-    let _ = reclaimed.app;
+    ffi_guard("nmp_app_podcast_unregister", || (), || {
+        // SAFETY: caller guarantees `handle` came from `nmp_app_podcast_register`
+        // (which now returns `Arc::into_raw`) and has not already been freed. This
+        // reclaims the shell's strong ref; the snapshot-projection closure holds a
+        // second ref that is released when the app's projection registry is dropped.
+        let reclaimed = unsafe { Arc::from_raw(handle as *const PodcastHandle) };
+        // Step 12: Fence the voice-conversation off-thread dispatch UAF: abort +
+        // join any in-flight LLM turn so no spawned Tokio task can dereference
+        // `app` after `nmp_app_free`. The caller contract guarantees `unregister`
+        // runs before `nmp_app_free`, and (because the snapshot-projection closure
+        // holds a second strong `Arc<PodcastHandle>`) the manager itself does not
+        // drop here — so this explicit drain, not a `Drop` impl, is the fence.
+        //
+        // Teardown ordering: shutdown BEFORE drop (i.e. before the `reclaimed`
+        // Arc falls out of scope) — unchanged from the pre-migration fence.
+        reclaimed.state.voice.shutdown();
+        let _ = reclaimed.app;
+    });
 }
 
 /// Decode a binary FlatBuffers update frame into the JSON envelope consumed by
@@ -352,6 +361,7 @@ pub unsafe extern "C" fn nmp_app_podcast_decode_update_frame(
     if bytes.is_null() || len == 0 {
         return std::ptr::null_mut();
     }
+    ffi_guard("nmp_app_podcast_decode_update_frame", std::ptr::null_mut, || {
     // SAFETY: caller guarantees `bytes` is valid for `len` bytes.
     let slice = unsafe { std::slice::from_raw_parts(bytes, len) };
     let envelope = match nmp_core::decode_update_frame(slice) {
@@ -395,6 +405,7 @@ pub unsafe extern "C" fn nmp_app_podcast_decode_update_frame(
         Ok(c) => c.into_raw(),
         Err(_) => std::ptr::null_mut(),
     }
+    }) // ffi_guard
 }
 
 /// Decode the `signed_events` typed FlatBuffer sidecar from a raw update-frame

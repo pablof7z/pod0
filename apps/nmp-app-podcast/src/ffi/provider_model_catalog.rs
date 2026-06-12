@@ -3,6 +3,7 @@
 use std::ffi::{c_char, CString};
 use std::sync::Arc;
 
+use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 use crate::llm::model_catalog;
 
@@ -14,13 +15,19 @@ pub extern "C" fn nmp_app_podcast_provider_model_catalog(
     if handle.is_null() {
         return err_envelope("null handle").into_raw();
     }
-    let handle_ref = unsafe { &*handle };
-    let store = Arc::clone(&handle_ref.store);
-    let runtime = Arc::clone(&handle_ref.runtime);
-    match runtime.block_on(model_catalog::fetch_model_catalog(store)) {
-        Ok(result) => json_envelope(&serde_json::json!({"result": result})).into_raw(),
-        Err(error) => err_envelope(&error.to_string()).into_raw(),
-    }
+    ffi_guard(
+        "nmp_app_podcast_provider_model_catalog",
+        || err_envelope("panic").into_raw(),
+        || {
+            let handle_ref = unsafe { &*handle };
+            let store = Arc::clone(&handle_ref.store);
+            let runtime = Arc::clone(&handle_ref.runtime);
+            match runtime.block_on(model_catalog::fetch_model_catalog(store)) {
+                Ok(result) => json_envelope(&serde_json::json!({"result": result})).into_raw(),
+                Err(error) => err_envelope(&error.to_string()).into_raw(),
+            }
+        },
+    )
 }
 
 fn json_envelope(value: &serde_json::Value) -> CString {

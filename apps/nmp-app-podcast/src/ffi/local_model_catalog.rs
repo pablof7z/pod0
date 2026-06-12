@@ -2,6 +2,7 @@
 
 use std::ffi::{c_char, CString};
 
+use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 use crate::llm::local_model_catalog;
 
@@ -13,8 +14,16 @@ pub extern "C" fn nmp_app_podcast_local_model_catalog(
     if handle.is_null() {
         return err_envelope("null handle").into_raw();
     }
-    json_envelope(&serde_json::json!({"result": local_model_catalog::local_model_catalog()}))
-        .into_raw()
+    ffi_guard(
+        "nmp_app_podcast_local_model_catalog",
+        || err_envelope("panic").into_raw(),
+        || {
+            json_envelope(
+                &serde_json::json!({"result": local_model_catalog::local_model_catalog()}),
+            )
+            .into_raw()
+        },
+    )
 }
 
 fn json_envelope(value: &serde_json::Value) -> CString {

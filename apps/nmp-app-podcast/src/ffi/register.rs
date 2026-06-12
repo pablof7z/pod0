@@ -29,6 +29,7 @@ use super::actions::social_module::SocialActionModule;
 use super::actions::tasks_module::AgentTasksModule;
 use super::actions::voice_module::VoiceActionModule;
 use super::actions::wiki_module::WikiActionModule;
+use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 use crate::download::DownloadQueue;
 use crate::host_op_handler::PodcastHostOpHandler;
@@ -50,7 +51,7 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     if app.is_null() {
         return std::ptr::null_mut();
     }
-
+    ffi_guard("nmp_app_podcast_register", std::ptr::null_mut, || {
     // Wire the canonical NMP composition — NIP-02 / NIP-17 / NIP-57 / NIP-65
     // action modules, the kind:10050 ingest parser, the production routing
     // substrate, and the DM-inbox + zap-receipts runtime controllers.
@@ -58,6 +59,8 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     // SAFETY: caller guarantees `app` is a valid pointer from `nmp_app_new`.
     // No other reference aliases it here — the `&*app` borrow further down is
     // taken only after this exclusive borrow is dropped.
+    // AssertUnwindSafe is sound: all pointer null checks happen before this
+    // closure is constructed; captured raw ptrs are never observed on panic path.
     let app_mut = unsafe { &mut *app };
     nmp_app_template::register_defaults(app_mut);
 
@@ -399,4 +402,5 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     // no projector call is in flight after teardown. The handle is only ever
     // borrowed shared across the FFI (no `&mut`), so `Arc` aliasing is sound.
     Arc::into_raw(handle) as *mut PodcastHandle
+    }) // ffi_guard
 }

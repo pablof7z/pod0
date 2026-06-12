@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use serde::Serialize;
 
+use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 use crate::llm::{rerank_openrouter, RerankError, RerankRequest};
 
@@ -82,31 +83,38 @@ pub extern "C" fn nmp_app_podcast_rerank(
     if handle.is_null() || request_json.is_null() {
         return static_error("invalid_request", "null argument").into_raw();
     }
+    ffi_guard(
+        "nmp_app_podcast_rerank",
+        || static_error("panic", "panic in ffi").into_raw(),
+        || {
+            let json_str = match unsafe { CStr::from_ptr(request_json) }.to_str() {
+                Ok(s) => s,
+                Err(_) => {
+                    return static_error("invalid_request", "invalid UTF-8").into_raw()
+                }
+            };
 
-    let json_str = match unsafe { CStr::from_ptr(request_json) }.to_str() {
-        Ok(s) => s,
-        Err(_) => return static_error("invalid_request", "invalid UTF-8").into_raw(),
-    };
+            let request: RerankRequest = match serde_json::from_str(json_str) {
+                Ok(request) => request,
+                Err(e) => {
+                    let error = RerankError::InvalidRequest(format!("JSON parse: {e}"));
+                    return err_envelope(&error).into_raw();
+                }
+            };
 
-    let request: RerankRequest = match serde_json::from_str(json_str) {
-        Ok(request) => request,
-        Err(e) => {
-            let error = RerankError::InvalidRequest(format!("JSON parse: {e}"));
-            return err_envelope(&error).into_raw();
-        }
-    };
+            let handle_ref = unsafe { &*handle };
+            let store = Arc::clone(&handle_ref.store);
+            let api_key = match store.lock() {
+                Ok(store) => store.open_router_api_key().map(str::to_owned),
+                Err(_) => {
+                    return static_error("transport", "settings store unavailable").into_raw();
+                }
+            };
 
-    let handle_ref = unsafe { &*handle };
-    let store = Arc::clone(&handle_ref.store);
-    let api_key = match store.lock() {
-        Ok(store) => store.open_router_api_key().map(str::to_owned),
-        Err(_) => {
-            return static_error("transport", "settings store unavailable").into_raw();
-        }
-    };
-
-    match rerank_openrouter(api_key, request) {
-        Ok(indices) => ok_envelope(indices).into_raw(),
-        Err(error) => err_envelope(&error).into_raw(),
-    }
+            match rerank_openrouter(api_key, request) {
+                Ok(indices) => ok_envelope(indices).into_raw(),
+                Err(error) => err_envelope(&error).into_raw(),
+            }
+        },
+    )
 }

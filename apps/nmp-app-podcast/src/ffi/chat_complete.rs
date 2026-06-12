@@ -33,6 +33,7 @@
 use std::ffi::{c_char, CStr, CString};
 use std::sync::Arc;
 
+use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 use crate::agent_llm::chat_with_tools;
 
@@ -138,54 +139,59 @@ pub extern "C" fn nmp_app_podcast_chat_complete(
     if handle.is_null() || messages_json.is_null() {
         return err_envelope("null argument").into_raw();
     }
+    ffi_guard(
+        "nmp_app_podcast_chat_complete",
+        || err_envelope("panic").into_raw(),
+        || {
+            let json_str = match unsafe { CStr::from_ptr(messages_json) }.to_str() {
+                Ok(s) => s,
+                Err(_) => return err_envelope("invalid UTF-8").into_raw(),
+            };
 
-    let json_str = match unsafe { CStr::from_ptr(messages_json) }.to_str() {
-        Ok(s) => s,
-        Err(_) => return err_envelope("invalid UTF-8").into_raw(),
-    };
+            let parsed: serde_json::Value = match serde_json::from_str(json_str) {
+                Ok(v) => v,
+                Err(e) => return err_envelope(&format!("JSON parse: {e}")).into_raw(),
+            };
 
-    let parsed: serde_json::Value = match serde_json::from_str(json_str) {
-        Ok(v) => v,
-        Err(e) => return err_envelope(&format!("JSON parse: {e}")).into_raw(),
-    };
+            let (system, history) = match decode_messages(&parsed) {
+                Some(pair) => pair,
+                None => return err_envelope("messages must be a JSON array").into_raw(),
+            };
 
-    let (system, history) = match decode_messages(&parsed) {
-        Some(pair) => pair,
-        None => return err_envelope("messages must be a JSON array").into_raw(),
-    };
+            // Extract last user message to drive the completion.
+            // The history already contains all prior turns including the latest
+            // user turn — split the last user entry off into `user_message` so
+            // the backend sees a well-formed (history, new_user_msg) pair.
+            let (history_without_last, user_message) = match history.split_last() {
+                Some((last, rest)) if last.0 == "user" => (rest.to_vec(), last.1.clone()),
+                _ => {
+                    // No user turn found — pass history as-is with empty user
+                    // message. This is degenerate but we degrade gracefully (D6).
+                    (history, String::new())
+                }
+            };
 
-    // Extract last user message to drive the completion.
-    // The history already contains all prior turns including the latest user
-    // turn — split the last user entry off into `user_message` so the backend
-    // sees a well-formed (history, new_user_msg) pair.
-    let (history_without_last, user_message) = match history.split_last() {
-        Some((last, rest)) if last.0 == "user" => (rest.to_vec(), last.1.clone()),
-        _ => {
-            // No user turn found — pass history as-is with empty user message.
-            // This is degenerate but we degrade gracefully (D6).
-            (history, String::new())
-        }
-    };
+            let handle_ref = unsafe { &*handle };
+            let store = Arc::clone(&handle_ref.store);
+            let runtime = Arc::clone(&handle_ref.runtime);
 
-    let handle_ref = unsafe { &*handle };
-    let store = Arc::clone(&handle_ref.store);
-    let runtime = Arc::clone(&handle_ref.runtime);
+            // Drive the full Rust tool loop (search_library, get_transcript,
+            // get_podcast_info, get_memory_facts) via chat_with_tools. Swift's
+            // turn-loop receives only the final prose answer — it never sees raw
+            // tool_calls from this path, so Swift dispatches upgrade_thinking /
+            // use_skill in its own intercept layer before calling here.
+            let result = match chat_with_tools(
+                &system,
+                &history_without_last,
+                &user_message,
+                store,
+                &runtime,
+            ) {
+                Ok(text) => text,
+                Err(e) => return err_envelope(&e).into_raw(),
+            };
 
-    // Drive the full Rust tool loop (search_library, get_transcript,
-    // get_podcast_info, get_memory_facts) via chat_with_tools.  Swift's
-    // turn-loop receives only the final prose answer — it never sees raw
-    // tool_calls from this path, so Swift dispatches upgrade_thinking /
-    // use_skill in its own intercept layer before calling here.
-    let result = match chat_with_tools(
-        &system,
-        &history_without_last,
-        &user_message,
-        store,
-        &runtime,
-    ) {
-        Ok(text) => text,
-        Err(e) => return err_envelope(&e).into_raw(),
-    };
-
-    ok_envelope(&result).into_raw()
+            ok_envelope(&result).into_raw()
+        },
+    )
 }

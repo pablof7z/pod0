@@ -35,6 +35,7 @@ use crate::ffi::{
     nmp_app_podcast_register, nmp_app_podcast_set_data_dir, nmp_app_podcast_snapshot,
     nmp_app_podcast_snapshot_free, nmp_app_podcast_unregister, PodcastHandle,
 };
+use crate::ffi::guard::ffi_guard;
 
 #[path = "android/capability_router.rs"]
 mod capability_router;
@@ -88,24 +89,30 @@ extern "C" fn on_update(context: *mut c_void, bytes: *const u8, len: usize) {
     if context.is_null() || bytes.is_null() || len == 0 {
         return;
     }
-    // SAFETY: `bytes` is valid for `len` bytes for the duration of this call
-    // (NMP borrows the frame to the callback). `decode_update_frame` returns a
-    // heap-owned C string (or null on a non-decodable frame) that we must
-    // release through `nmp_app_free_string`.
-    let json_ptr = unsafe { crate::ffi::snapshot::nmp_app_podcast_decode_update_frame(bytes, len) };
-    if json_ptr.is_null() {
-        return;
-    }
-    let owned = unsafe { CStr::from_ptr(json_ptr) }
-        .to_string_lossy()
-        .into_owned();
-    nmp_app_free_string(json_ptr);
-    // SAFETY: `context` is the `Box<Sender<String>>` pointer registered in
-    // `nativeNew`; it lives until `nativeFree` clears the callback before
-    // reclaiming the box.
-    let tx = unsafe { &*(context as *const Sender<String>) };
-    // Dead receiver ⇒ silent no-op (D6).
-    let _ = tx.send(owned);
+    ffi_guard("on_update", || (), || {
+        // SAFETY: `bytes` is valid for `len` bytes for the duration of this
+        // call (NMP borrows the frame to the callback).
+        // `decode_update_frame` returns a heap-owned C string (or null on a
+        // non-decodable frame) that we must release through
+        // `nmp_app_free_string`.
+        let json_ptr = unsafe {
+            crate::ffi::snapshot::nmp_app_podcast_decode_update_frame(bytes, len)
+        };
+        if json_ptr.is_null() {
+            return;
+        }
+        let owned = unsafe { CStr::from_ptr(json_ptr) }
+            .to_string_lossy()
+            .into_owned();
+        nmp_app_free_string(json_ptr);
+        // SAFETY: `context` is the `Box<Sender<String>>` pointer registered
+        // in `nativeNew`; it lives until `nativeFree` clears the callback
+        // before reclaiming the box. AssertUnwindSafe is sound: null-checked
+        // above; not observed again on panic path.
+        let tx = unsafe { &*(context as *const Sender<String>) };
+        // Dead receiver ⇒ silent no-op (D6).
+        let _ = tx.send(owned);
+    });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -121,25 +128,27 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeNew(
     _env: JNIEnv,
     _class: JClass,
 ) -> jlong {
-    let app = nmp_app_new();
-    if app.is_null() {
-        return 0;
-    }
-    let (tx, rx) = std::sync::mpsc::channel::<String>();
-    let tx = Box::into_raw(Box::new(tx));
-    // `nmp_app_set_update_callback` is `pub extern "C" fn` (safe Rust at the
-    // call site). `app` is valid (just allocated), `tx` is a fresh box, and
-    // `on_update` matches the kernel's `UpdateCallback` C ABI.
-    nmp_app_set_update_callback(app, tx as *mut c_void, Some(on_update));
-    let podcast = nmp_app_podcast_register(app);
-    let session = Box::new(Session {
-        app,
-        podcast,
-        rx,
-        tx,
-        capability_ctx: Mutex::new(None),
-    });
-    Box::into_raw(session) as jlong
+    ffi_guard("nativeNew", || 0jlong, || {
+        let app = nmp_app_new();
+        if app.is_null() {
+            return 0;
+        }
+        let (tx, rx) = std::sync::mpsc::channel::<String>();
+        let tx = Box::into_raw(Box::new(tx));
+        // `nmp_app_set_update_callback` is `pub extern "C" fn` (safe Rust at
+        // the call site). `app` is valid (just allocated), `tx` is a fresh
+        // box, and `on_update` matches the kernel's `UpdateCallback` C ABI.
+        nmp_app_set_update_callback(app, tx as *mut c_void, Some(on_update));
+        let podcast = nmp_app_podcast_register(app);
+        let session = Box::new(Session {
+            app,
+            podcast,
+            rx,
+            tx,
+            capability_ctx: Mutex::new(None),
+        });
+        Box::into_raw(session) as jlong
+    })
 }
 
 /// `nativeSetDataDir(handle, path)` — bind the podcast library store to a
@@ -161,22 +170,25 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeSetDataDir<'l>(
     handle: jlong,
     path: JString<'l>,
 ) {
-    let Some(s) = session_ref(handle) else {
-        return;
-    };
-    if s.podcast.is_null() {
-        return;
-    }
-    let path = match env.get_string(&path) {
-        Ok(p) => p.to_string_lossy().into_owned(),
-        Err(_) => return,
-    };
-    let Ok(c_path) = CString::new(path) else {
-        return;
-    };
-    // `nmp_app_podcast_set_data_dir` is the same in-crate symbol iOS calls; it
-    // owns all reload/persist logic and degrades silently on poison/IO error.
-    nmp_app_podcast_set_data_dir(s.podcast, c_path.as_ptr());
+    ffi_guard("nativeSetDataDir", || (), || {
+        let Some(s) = session_ref(handle) else {
+            return;
+        };
+        if s.podcast.is_null() {
+            return;
+        }
+        let path = match env.get_string(&path) {
+            Ok(p) => p.to_string_lossy().into_owned(),
+            Err(_) => return,
+        };
+        let Ok(c_path) = CString::new(path) else {
+            return;
+        };
+        // `nmp_app_podcast_set_data_dir` is the same in-crate symbol iOS
+        // calls; it owns all reload/persist logic and degrades silently on
+        // poison/IO error.
+        nmp_app_podcast_set_data_dir(s.podcast, c_path.as_ptr());
+    });
 }
 
 /// `nativeStart(handle, visibleLimit, emitHz)` — start the kernel actor.
@@ -188,9 +200,11 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeStart(
     visible_limit: jint,
     emit_hz: jint,
 ) {
-    if let Some(s) = session_ref(handle) {
-        nmp_app_start(s.app, 0, visible_limit as u32, emit_hz as u32);
-    }
+    ffi_guard("nativeStart", || (), || {
+        if let Some(s) = session_ref(handle) {
+            nmp_app_start(s.app, 0, visible_limit as u32, emit_hz as u32);
+        }
+    });
 }
 
 /// `nativeStop(handle)` — halt the kernel actor (idempotent).
@@ -200,9 +214,11 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeStop(
     _class: JClass,
     handle: jlong,
 ) {
-    if let Some(s) = session_ref(handle) {
-        nmp_app_stop(s.app);
-    }
+    ffi_guard("nativeStop", || (), || {
+        if let Some(s) = session_ref(handle) {
+            nmp_app_stop(s.app);
+        }
+    });
 }
 
 /// `nativeIsAlive(handle)` — actor-liveness probe (D7).
@@ -212,10 +228,12 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeIsAlive(
     _class: JClass,
     handle: jlong,
 ) -> jint {
-    match session_ref(handle) {
-        Some(s) => nmp_app_is_alive(s.app) as jint,
-        None => 0,
-    }
+    ffi_guard("nativeIsAlive", || 0jint, || {
+        match session_ref(handle) {
+            Some(s) => nmp_app_is_alive(s.app) as jint,
+            None => 0,
+        }
+    })
 }
 
 /// `nativeLifecycleForeground(handle)` / `nativeLifecycleBackground(handle)` —
@@ -226,9 +244,11 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeLifecycleForegroun
     _class: JClass,
     handle: jlong,
 ) {
-    if let Some(s) = session_ref(handle) {
-        nmp_app_lifecycle_foreground(s.app);
-    }
+    ffi_guard("nativeLifecycleForeground", || (), || {
+        if let Some(s) = session_ref(handle) {
+            nmp_app_lifecycle_foreground(s.app);
+        }
+    });
 }
 
 #[no_mangle]
@@ -237,9 +257,11 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeLifecycleBackgroun
     _class: JClass,
     handle: jlong,
 ) {
-    if let Some(s) = session_ref(handle) {
-        nmp_app_lifecycle_background(s.app);
-    }
+    ffi_guard("nativeLifecycleBackground", || (), || {
+        if let Some(s) = session_ref(handle) {
+            nmp_app_lifecycle_background(s.app);
+        }
+    });
 }
 
 /// `nativeDispatchAction(handle, namespace, actionJson)` — generic
@@ -253,41 +275,43 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeDispatchAction<'l>
     namespace: JString<'l>,
     action_json: JString<'l>,
 ) -> jstring {
-    let null = std::ptr::null_mut();
-    let Some(s) = session_ref(handle) else {
-        return null;
-    };
-    let ns = match env.get_string(&namespace) {
-        Ok(s) => s.to_string_lossy().into_owned(),
-        Err(_) => return null,
-    };
-    let body = match env.get_string(&action_json) {
-        Ok(s) => s.to_string_lossy().into_owned(),
-        Err(_) => return null,
-    };
-    let Ok(c_ns) = CString::new(ns) else {
-        return null;
-    };
-    let Ok(c_body) = CString::new(body) else {
-        return null;
-    };
-    let envelope_ptr = nmp_app_dispatch_action(s.app, c_ns.as_ptr(), c_body.as_ptr());
-    if envelope_ptr.is_null() {
-        return null;
-    }
-    // SAFETY: `envelope_ptr` is heap-owned by the kernel. Copy out before
-    // returning, then release through the documented `nmp_app_free_string`
-    // path — same convention `KernelBridge.swift` follows. Using
-    // `CString::from_raw` would bypass any future bookkeeping the kernel adds
-    // to that free.
-    let owned = unsafe { CStr::from_ptr(envelope_ptr) }
-        .to_string_lossy()
-        .into_owned();
-    nmp_app_free_string(envelope_ptr);
-    match env.new_string(owned) {
-        Ok(js) => js.into_raw(),
-        Err(_) => null,
-    }
+    let null: jstring = std::ptr::null_mut();
+    ffi_guard("nativeDispatchAction", || null, || {
+        let Some(s) = session_ref(handle) else {
+            return null;
+        };
+        let ns = match env.get_string(&namespace) {
+            Ok(s) => s.to_string_lossy().into_owned(),
+            Err(_) => return null,
+        };
+        let body = match env.get_string(&action_json) {
+            Ok(s) => s.to_string_lossy().into_owned(),
+            Err(_) => return null,
+        };
+        let Ok(c_ns) = CString::new(ns) else {
+            return null;
+        };
+        let Ok(c_body) = CString::new(body) else {
+            return null;
+        };
+        let envelope_ptr = nmp_app_dispatch_action(s.app, c_ns.as_ptr(), c_body.as_ptr());
+        if envelope_ptr.is_null() {
+            return null;
+        }
+        // SAFETY: `envelope_ptr` is heap-owned by the kernel. Copy out before
+        // returning, then release through the documented `nmp_app_free_string`
+        // path — same convention `KernelBridge.swift` follows. Using
+        // `CString::from_raw` would bypass any future bookkeeping the kernel
+        // adds to that free.
+        let owned = unsafe { CStr::from_ptr(envelope_ptr) }
+            .to_string_lossy()
+            .into_owned();
+        nmp_app_free_string(envelope_ptr);
+        match env.new_string(owned) {
+            Ok(js) => js.into_raw(),
+            Err(_) => null,
+        }
+    })
 }
 
 /// `nativeSigninNsec(handle, nsec)` — one-shot sign-in via local nsec.
@@ -299,18 +323,21 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeSigninNsec<'l>(
     handle: jlong,
     nsec: JString<'l>,
 ) {
-    let Some(s) = session_ref(handle) else {
-        return;
-    };
-    let secret = match env.get_string(&nsec) {
-        Ok(s) => s.to_string_lossy().into_owned(),
-        Err(_) => return,
-    };
-    let Ok(c_secret) = CString::new(secret) else {
-        return;
-    };
-    // v0.2.4: make_active = 1 — Android sign-in activates the imported account.
-    nmp_app_signin_nsec(s.app, c_secret.as_ptr(), 1);
+    ffi_guard("nativeSigninNsec", || (), || {
+        let Some(s) = session_ref(handle) else {
+            return;
+        };
+        let secret = match env.get_string(&nsec) {
+            Ok(s) => s.to_string_lossy().into_owned(),
+            Err(_) => return,
+        };
+        let Ok(c_secret) = CString::new(secret) else {
+            return;
+        };
+        // v0.2.4: make_active = 1 — Android sign-in activates the imported
+        // account.
+        nmp_app_signin_nsec(s.app, c_secret.as_ptr(), 1);
+    });
 }
 
 /// `nativeNextUpdate(handle)` — blocking drain of the snapshot channel with a
@@ -322,17 +349,19 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeNextUpdate<'l>(
     _class: JClass<'l>,
     handle: jlong,
 ) -> jstring {
-    let null = std::ptr::null_mut();
-    let Some(s) = session_ref(handle) else {
-        return null;
-    };
-    match s.rx.recv_timeout(Duration::from_millis(250)) {
-        Ok(json) => match env.new_string(json) {
-            Ok(js) => js.into_raw(),
-            Err(_) => null,
-        },
-        Err(RecvTimeoutError::Timeout) | Err(RecvTimeoutError::Disconnected) => null,
-    }
+    let null: jstring = std::ptr::null_mut();
+    ffi_guard("nativeNextUpdate", || null, || {
+        let Some(s) = session_ref(handle) else {
+            return null;
+        };
+        match s.rx.recv_timeout(Duration::from_millis(250)) {
+            Ok(json) => match env.new_string(json) {
+                Ok(js) => js.into_raw(),
+                Err(_) => null,
+            },
+            Err(RecvTimeoutError::Timeout) | Err(RecvTimeoutError::Disconnected) => null,
+        }
+    })
 }
 
 /// `nativePodcastSnapshot(handle)` — pull the Podcast projection JSON. Returns
@@ -343,26 +372,29 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativePodcastSnapshot<'l
     _class: JClass<'l>,
     handle: jlong,
 ) -> jstring {
-    let null = std::ptr::null_mut();
-    let Some(s) = session_ref(handle) else {
-        return null;
-    };
-    if s.podcast.is_null() {
-        return null;
-    }
-    let ptr = nmp_app_podcast_snapshot(s.podcast);
-    if ptr.is_null() {
-        return null;
-    }
-    // SAFETY: `ptr` is a heap-owned `CString` from `nmp_app_podcast_snapshot`.
-    let json = unsafe { CStr::from_ptr(ptr) }
-        .to_string_lossy()
-        .into_owned();
-    nmp_app_podcast_snapshot_free(ptr);
-    match env.new_string(json) {
-        Ok(js) => js.into_raw(),
-        Err(_) => null,
-    }
+    let null: jstring = std::ptr::null_mut();
+    ffi_guard("nativePodcastSnapshot", || null, || {
+        let Some(s) = session_ref(handle) else {
+            return null;
+        };
+        if s.podcast.is_null() {
+            return null;
+        }
+        let ptr = nmp_app_podcast_snapshot(s.podcast);
+        if ptr.is_null() {
+            return null;
+        }
+        // SAFETY: `ptr` is a heap-owned `CString` from
+        // `nmp_app_podcast_snapshot`.
+        let json = unsafe { CStr::from_ptr(ptr) }
+            .to_string_lossy()
+            .into_owned();
+        nmp_app_podcast_snapshot_free(ptr);
+        match env.new_string(json) {
+            Ok(js) => js.into_raw(),
+            Err(_) => null,
+        }
+    })
 }
 
 /// `nmpActionDispatch(actionJson)` — M13.A stub for the namespace-agnostic
@@ -381,28 +413,30 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nmpActionDispatch<'l>(
     _class: JClass<'l>,
     action_json: JString<'l>,
 ) -> jint {
-    let Ok(body) = env.get_string(&action_json) else {
-        return -1;
-    };
-    let body = body.to_string_lossy().into_owned();
-    // The action envelope is `{"id":"...","payload":{...}}`. We only need
-    // the id for the M13.A stub; the kernel-side router lands in M13.B
-    // and will consume the full body via `nmp_app_dispatch_action` once
-    // the namespace mapping is wired in.
-    let parsed: serde_json::Value = match serde_json::from_str(&body) {
-        Ok(v) => v,
-        Err(_) => return -1,
-    };
-    let action_id = parsed
-        .get("id")
-        .and_then(serde_json::Value::as_str)
-        .unwrap_or("<missing>");
-    // No structured logging hook yet (M13.B); a `log::info!` would require
-    // an Android log appender plumbed through the kernel. The action id is
-    // surfaced via the `Debug` repr so a tracing layer added later picks
-    // it up without changing the stub's wire behaviour.
-    let _ = action_id;
-    0
+    ffi_guard("nmpActionDispatch", || -1jint, || {
+        let Ok(body) = env.get_string(&action_json) else {
+            return -1;
+        };
+        let body = body.to_string_lossy().into_owned();
+        // The action envelope is `{"id":"...","payload":{...}}`. We only
+        // need the id for the M13.A stub; the kernel-side router lands in
+        // M13.B and will consume the full body via `nmp_app_dispatch_action`
+        // once the namespace mapping is wired in.
+        let parsed: serde_json::Value = match serde_json::from_str(&body) {
+            Ok(v) => v,
+            Err(_) => return -1,
+        };
+        let action_id = parsed
+            .get("id")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("<missing>");
+        // No structured logging hook yet (M13.B); a `log::info!` would
+        // require an Android log appender plumbed through the kernel. The
+        // action id is surfaced via the `Debug` repr so a tracing layer
+        // added later picks it up without changing the stub's wire behaviour.
+        let _ = action_id;
+        0
+    })
 }
 
 /// `nativeFree(handle)` — tear down the kernel and the projection handle.
@@ -416,18 +450,20 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeFree(
     if handle == 0 {
         return;
     }
-    // SAFETY: `handle` was produced by `nativeNew`; freed exactly once.
-    let s = unsafe { Box::from_raw(handle as *mut Session) };
-    nmp_app_stop(s.app);
-    capability_router::clear_capability_router(&s);
-    if !s.podcast.is_null() {
-        nmp_app_podcast_unregister(s.podcast);
-    }
-    nmp_app_set_update_callback(s.app, std::ptr::null_mut(), None);
-    nmp_app_free(s.app);
-    // SAFETY: callback has been cleared; the `Sender` box is no longer
-    // reachable from the kernel thread.
-    unsafe {
-        drop(Box::from_raw(s.tx));
-    }
+    ffi_guard("nativeFree", || (), || {
+        // SAFETY: `handle` was produced by `nativeNew`; freed exactly once.
+        let s = unsafe { Box::from_raw(handle as *mut Session) };
+        nmp_app_stop(s.app);
+        capability_router::clear_capability_router(&s);
+        if !s.podcast.is_null() {
+            nmp_app_podcast_unregister(s.podcast);
+        }
+        nmp_app_set_update_callback(s.app, std::ptr::null_mut(), None);
+        nmp_app_free(s.app);
+        // SAFETY: callback has been cleared; the `Sender` box is no longer
+        // reachable from the kernel thread.
+        unsafe {
+            drop(Box::from_raw(s.tx));
+        }
+    });
 }

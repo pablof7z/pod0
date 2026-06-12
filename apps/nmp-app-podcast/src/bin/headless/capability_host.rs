@@ -15,6 +15,7 @@
 //! `install` and lives for the process lifetime (the `OnceLock` never drops).
 
 use std::ffi::{c_char, c_void, CStr, CString};
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::OnceLock;
 
 use nmp_core::substrate::{CapabilityEnvelope, CapabilityRequest};
@@ -58,20 +59,34 @@ extern "C" fn capability_handler(
     _ctx: *mut c_void,
     request_json: *const c_char,
 ) -> *mut c_char {
-    let request_str = if request_json.is_null() {
-        ""
-    } else {
-        // SAFETY: kernel guarantees a valid NUL-terminated C string.
-        match unsafe { CStr::from_ptr(request_json) }.to_str() {
-            Ok(s) => s,
-            Err(_) => "",
+    // Local guard mirrors ffi/guard.rs for this binary entry point (pub(crate)
+    // ffi_guard is not reachable from [[bin]] crates). The fallback CString is
+    // constructed ONLY on the panic path — building it eagerly would leak its
+    // heap allocation on every successful call (the success branch returns
+    // `body`'s pointer and the unused raw-pointer fallback drops as a no-op).
+    match catch_unwind(AssertUnwindSafe(|| {
+        let request_str = if request_json.is_null() {
+            ""
+        } else {
+            // SAFETY: kernel guarantees a valid NUL-terminated C string.
+            match unsafe { CStr::from_ptr(request_json) }.to_str() {
+                Ok(s) => s,
+                Err(_) => "",
+            }
+        };
+        let result_json = handle_request(request_str);
+        CString::new(result_json)
+            .unwrap_or_else(|_| CString::new("{}").unwrap())
+            .into_raw()
+    })) {
+        Ok(ptr) => ptr,
+        Err(_) => {
+            eprintln!("[headless] capability_handler caught panic; returning error envelope");
+            CString::new(r#"{"error":"panic"}"#)
+                .expect("static string")
+                .into_raw()
         }
-    };
-
-    let result_json = handle_request(request_str);
-    CString::new(result_json)
-        .unwrap_or_else(|_| CString::new("{}").unwrap())
-        .into_raw()
+    }
 }
 
 /// Route the request JSON to the right handler. Returns the envelope JSON.

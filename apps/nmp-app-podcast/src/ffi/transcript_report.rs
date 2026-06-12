@@ -24,6 +24,7 @@ use std::ffi::{c_char, CStr};
 
 use serde::Deserialize;
 
+use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 
 #[derive(Deserialize)]
@@ -53,52 +54,57 @@ pub extern "C" fn nmp_app_podcast_transcript_report(
     if handle.is_null() || report_json.is_null() {
         return std::ptr::null_mut();
     }
+    ffi_guard(
+        "nmp_app_podcast_transcript_report",
+        std::ptr::null_mut,
+        || {
+            let report_str = match unsafe { CStr::from_ptr(report_json) }.to_str() {
+                Ok(s) => s,
+                Err(_) => return std::ptr::null_mut(),
+            };
 
-    let report_str = match unsafe { CStr::from_ptr(report_json) }.to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
-    };
+            let report: TranscriptReport = match serde_json::from_str(report_str) {
+                Ok(r) => r,
+                Err(_) => return std::ptr::null_mut(),
+            };
 
-    let report: TranscriptReport = match serde_json::from_str(report_str) {
-        Ok(r) => r,
-        Err(_) => return std::ptr::null_mut(),
-    };
+            let handle_ref = unsafe { &*handle };
+            if let Ok(mut s) = handle_ref.store.lock() {
+                let char_count = report.text.chars().count();
+                let source = report.source.clone();
+                s.set_transcript(report.episode_id.clone(), report.text);
+                // Stage 3 → 4 of the pipeline: the transcript landed. Record it so
+                // the Diagnostics sheet shows the transcript stage completing and the
+                // event log reflects the moment chapter/ad identification can begin.
+                // Name the service when the caller supplied it so the log reads
+                // "Transcript ready · ElevenLabs Scribe" rather than a bare count.
+                let mut details = Vec::with_capacity(2);
+                if let Some(service) = source.as_deref() {
+                    details.push(crate::store::events::EventDetail::new("Service", service));
+                }
+                details.push(crate::store::events::EventDetail::new(
+                    "Characters",
+                    char_count.to_string(),
+                ));
+                let summary = match source.as_deref() {
+                    Some(service) => format!("Transcript ready · {service}"),
+                    None => "Transcript ready".to_owned(),
+                };
+                s.emit_event(
+                    &report.episode_id,
+                    crate::store::events::stage::TRANSCRIPT_READY,
+                    crate::store::events::EventSeverity::Success,
+                    summary,
+                    details,
+                );
+            }
+            // Bump rev so the next snapshot tick surfaces the new transcript_entries
+            // and transcript fields on EpisodeSummary.
+            handle_ref.bump_snapshot_rev();
 
-    let handle_ref = unsafe { &*handle };
-    if let Ok(mut s) = handle_ref.store.lock() {
-        let char_count = report.text.chars().count();
-        let source = report.source.clone();
-        s.set_transcript(report.episode_id.clone(), report.text);
-        // Stage 3 → 4 of the pipeline: the transcript landed. Record it so the
-        // Diagnostics sheet shows the transcript stage completing and the event
-        // log reflects the moment chapter/ad identification can begin. Name the
-        // service when the caller supplied it so the log reads
-        // "Transcript ready · ElevenLabs Scribe" rather than a bare count.
-        let mut details = Vec::with_capacity(2);
-        if let Some(service) = source.as_deref() {
-            details.push(crate::store::events::EventDetail::new("Service", service));
-        }
-        details.push(crate::store::events::EventDetail::new(
-            "Characters",
-            char_count.to_string(),
-        ));
-        let summary = match source.as_deref() {
-            Some(service) => format!("Transcript ready · {service}"),
-            None => "Transcript ready".to_owned(),
-        };
-        s.emit_event(
-            &report.episode_id,
-            crate::store::events::stage::TRANSCRIPT_READY,
-            crate::store::events::EventSeverity::Success,
-            summary,
-            details,
-        );
-    }
-    // Bump rev so the next snapshot tick surfaces the new transcript_entries
-    // and transcript fields on EpisodeSummary.
-    handle_ref.bump_snapshot_rev();
-
-    std::ptr::null_mut()
+            std::ptr::null_mut()
+        },
+    )
 }
 
 #[cfg(test)]

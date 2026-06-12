@@ -3,6 +3,7 @@
 use std::ffi::{c_char, CString};
 use std::sync::Arc;
 
+use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 use crate::llm::elevenlabs_voice_catalog::{self, ElevenLabsVoiceCatalogError};
 
@@ -14,13 +15,20 @@ pub extern "C" fn nmp_app_podcast_elevenlabs_voice_catalog(
     if handle.is_null() {
         return err_envelope("null handle", None, "store_unavailable").into_raw();
     }
-    let handle_ref = unsafe { &*handle };
-    let store = Arc::clone(&handle_ref.store);
-    let runtime = Arc::clone(&handle_ref.runtime);
-    match runtime.block_on(elevenlabs_voice_catalog::fetch_elevenlabs_voice_catalog(store)) {
-        Ok(result) => json_envelope(&serde_json::json!({"result": result})).into_raw(),
-        Err(error) => voice_catalog_error_envelope(&error).into_raw(),
-    }
+    ffi_guard(
+        "nmp_app_podcast_elevenlabs_voice_catalog",
+        || err_envelope("panic", None, "panic").into_raw(),
+        || {
+            let handle_ref = unsafe { &*handle };
+            let store = Arc::clone(&handle_ref.store);
+            let runtime = Arc::clone(&handle_ref.runtime);
+            match runtime.block_on(elevenlabs_voice_catalog::fetch_elevenlabs_voice_catalog(store))
+            {
+                Ok(result) => json_envelope(&serde_json::json!({"result": result})).into_raw(),
+                Err(error) => voice_catalog_error_envelope(&error).into_raw(),
+            }
+        },
+    )
 }
 
 fn json_envelope(value: &serde_json::Value) -> CString {

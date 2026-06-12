@@ -3,6 +3,7 @@
 use std::ffi::{c_char, CStr, CString};
 use std::sync::Arc;
 
+use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 use crate::llm::byok_auth::{self, ByokAuthError, ByokAuthorizationIntent, ByokExchangeIntent};
 
@@ -12,14 +13,20 @@ pub extern "C" fn nmp_app_podcast_byok_authorization(intent_json: *const c_char)
     if intent_json.is_null() {
         return err_envelope("null argument", "invalid_request").into_raw();
     }
-    let intent = match decode_intent::<ByokAuthorizationIntent>(intent_json) {
-        Ok(intent) => intent,
-        Err(error) => return err_envelope(&error, "invalid_request").into_raw(),
-    };
-    match byok_auth::make_authorization(intent) {
-        Ok(result) => json_envelope(&serde_json::json!({"result": result})).into_raw(),
-        Err(error) => byok_error_envelope(&error).into_raw(),
-    }
+    ffi_guard(
+        "nmp_app_podcast_byok_authorization",
+        || err_envelope("panic", "panic").into_raw(),
+        || {
+            let intent = match decode_intent::<ByokAuthorizationIntent>(intent_json) {
+                Ok(intent) => intent,
+                Err(error) => return err_envelope(&error, "invalid_request").into_raw(),
+            };
+            match byok_auth::make_authorization(intent) {
+                Ok(result) => json_envelope(&serde_json::json!({"result": result})).into_raw(),
+                Err(error) => byok_error_envelope(&error).into_raw(),
+            }
+        },
+    )
 }
 
 #[no_mangle]
@@ -31,16 +38,22 @@ pub extern "C" fn nmp_app_podcast_byok_exchange(
     if handle.is_null() || intent_json.is_null() {
         return err_envelope("null argument", "invalid_request").into_raw();
     }
-    let intent = match decode_intent::<ByokExchangeIntent>(intent_json) {
-        Ok(intent) => intent,
-        Err(error) => return err_envelope(&error, "invalid_request").into_raw(),
-    };
-    let handle_ref = unsafe { &*handle };
-    let runtime = Arc::clone(&handle_ref.runtime);
-    match runtime.block_on(byok_auth::exchange_authorization(intent)) {
-        Ok(result) => json_envelope(&serde_json::json!({"result": result})).into_raw(),
-        Err(error) => byok_error_envelope(&error).into_raw(),
-    }
+    ffi_guard(
+        "nmp_app_podcast_byok_exchange",
+        || err_envelope("panic", "panic").into_raw(),
+        || {
+            let intent = match decode_intent::<ByokExchangeIntent>(intent_json) {
+                Ok(intent) => intent,
+                Err(error) => return err_envelope(&error, "invalid_request").into_raw(),
+            };
+            let handle_ref = unsafe { &*handle };
+            let runtime = Arc::clone(&handle_ref.runtime);
+            match runtime.block_on(byok_auth::exchange_authorization(intent)) {
+                Ok(result) => json_envelope(&serde_json::json!({"result": result})).into_raw(),
+                Err(error) => byok_error_envelope(&error).into_raw(),
+            }
+        },
+    )
 }
 
 fn decode_intent<T: serde::de::DeserializeOwned>(ptr: *const c_char) -> Result<T, String> {
