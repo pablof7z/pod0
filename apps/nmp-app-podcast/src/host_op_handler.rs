@@ -10,14 +10,13 @@
 //! * Capability dispatch helpers -> `host_op_handler/dispatch.rs`
 //! * Queue-action dispatch    -> `host_op_handler_queue.rs`
 //! * Task-action dispatch     -> `state::tasks::TasksState::handle` (Step 6)
+//! * Inbox-action dispatch    -> `state::inbox::InboxState::handle` (Step 7)
 //! * iTunes search helpers    -> `itunes.rs`
 //! * `merge_episodes`         -> `host_op_handler_helpers.rs`
 //! * Publish-action dispatch  -> `host_op_publish.rs`
 //! * Voice-action dispatch    -> `voice_handler.rs`
 //! * Namespace-envelope router -> `host_op_handler/router.rs`
 
-use std::collections::HashMap;
-use std::collections::HashSet;
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
@@ -29,7 +28,6 @@ use nmp_ffi::NmpApp;
 
 use crate::download::DownloadQueue;
 use crate::feed_fetch::FeedFetchCoordinator;
-use crate::inbox_llm::TriageResult;
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::snapshot_signal::SnapshotUpdateSignal;
@@ -59,8 +57,10 @@ mod social_actions;
 /// `agent_chat` is the already-constructed `AgentChatHandler`.
 pub struct PodcastHostOpHandler {
     pub(crate) app: *mut NmpApp,
-    /// Step 0 — composed state root (Knowledge substate is active in Step 1;
-    /// remaining substates migrate in Steps 2-N).
+    /// Composed state root.  Inbox (Step 7), Knowledge (Step 1), Wiki (Step 2),
+    /// Picks (Step 3), Categories (Step 4), Clips (Step 5a), Transcripts (Step 5b),
+    /// Tasks (Step 6), Comments (Step 8), Discovery (Step 9), Social (Step 10),
+    /// AgentChat (Step 11), Voice (Step 12), Publish (Step 13) all live here.
     pub(crate) state: Arc<PodcastAppState>,
     pub(crate) store: Arc<Mutex<PodcastStore>>,
     pub(crate) identity: Arc<Mutex<IdentityStore>>,
@@ -79,7 +79,7 @@ pub struct PodcastHostOpHandler {
     // they are now owned by `state.knowledge` (KnowledgeState).
     // clips removed in Step 5a — now owned by `state.clips` (ClipsState).
     // transcripts removed in Step 5b — now owned by `state.transcripts` (TranscriptsState).
-    pub(crate) dismissed_episode_ids: Arc<Mutex<HashSet<String>>>,
+    // dismissed_episode_ids removed in Step 7 — now owned by `state.inbox` (InboxState).
     // voice_state removed in Step 12 — now owned by `state.voice` (VoiceSubstate).
     // categories + categorization_in_progress removed in Step 4 —
     // they are now owned by `state.categories` (CategoriesState).
@@ -92,21 +92,12 @@ pub struct PodcastHostOpHandler {
     // podcast_keys and publish_state removed in Step 13 —
     // now owned by `state.publish` (PublishState).
     // agent_chat removed in Step 11 — now owned by `state.agent_chat` (AgentChatState).
+    // inbox_triage_cache removed in Step 7 — now owned by `state.inbox` (InboxState).
+    // inbox_triage_in_progress removed in Step 7 — now owned by `state.inbox` (InboxState).
     /// Shared Tokio runtime for async LLM / relay work. Seeded in
     /// `ffi::register` so all host-op handlers share one multi-thread scheduler.
     /// Used by wiki synthesis, agent chat, inbox triage, and social graph fetches.
     pub(crate) runtime: Arc<Runtime>,
-    /// In-memory triage cache: `episode_id -> TriageResult`.
-    ///
-    /// Populated by `InboxAction::Triage` on the actor thread (running LLM
-    /// triage for each unlistened episode) and read by `build_inbox` to
-    /// overlay LLM scores over the recency-bucket fallback. Shared with
-    /// `PodcastHandle.inbox_triage_cache` so the snapshot reader sees
-    /// results without holding the handler lock.
-    pub(crate) inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
-    /// Shared with `PodcastHandle.inbox_triage_in_progress`; set `true` when a
-    /// background triage task starts, cleared when it finishes.
-    pub(crate) inbox_triage_in_progress: Arc<std::sync::atomic::AtomicBool>,
     /// Coordinates optimistic-subscribe async feed fetches. Shared with
     /// `PodcastHandle` (whose HTTP-report FFI applies the results); this handler
     /// registers a pending fetch then fire-and-forget dispatches the async HTTP
@@ -136,11 +127,8 @@ impl PodcastHostOpHandler {
         player_actor: Arc<Mutex<PlayerActor>>,
         queue: Arc<Mutex<PlaybackQueue>>,
         download_queue: Arc<Mutex<DownloadQueue>>,
-        dismissed_episode_ids: Arc<Mutex<HashSet<String>>>,
         rev: Arc<AtomicU64>,
         runtime: Arc<Runtime>,
-        inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
-        inbox_triage_in_progress: Arc<std::sync::atomic::AtomicBool>,
         feed_fetch: Arc<FeedFetchCoordinator>,
         feedback: nmp_feedback::FeedbackRuntime,
     ) -> Self {
@@ -152,11 +140,8 @@ impl PodcastHostOpHandler {
             player_actor,
             queue,
             download_queue,
-            dismissed_episode_ids,
             rev,
             runtime,
-            inbox_triage_cache,
-            inbox_triage_in_progress,
             feed_fetch,
             feedback,
             snapshot_signal: None,
@@ -183,4 +168,5 @@ impl PodcastHostOpHandler {
     pub(super) fn auto_refresh_picks(&self) {
         let _ = self.state.picks.auto_refresh();
     }
+
 }

@@ -6,9 +6,8 @@ use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::store::identity::IdentityStore;
 use crate::store::PodcastStore;
-use std::collections::HashSet;
 use std::ffi::CString;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 /// Build a `PodcastHandle` with a NULL `app` pointer — these tests only
 /// exercise the data-dir path, which never touches `app`.
@@ -37,15 +36,8 @@ fn make_handle(store: Arc<Mutex<PodcastStore>>, rev: Arc<AtomicU64>) -> Box<Podc
         // search_results, nostr_results, comments_cache, viewed_comments_episode_id,
         // social, agent_notes removed in Steps 8-10 — now owned by
         // state.discovery / state.comments / state.social.
-        dismissed_episode_ids: Arc::new(Mutex::new(HashSet::new())),
-        // podcast_keys and publish_state removed in Step 13 —
-        // now owned by state.publish (PublishState).
-        // voice_state and voice_conversation removed in Step 12 —
-        // now owned by state.voice (VoiceSubstate).
-        // conversation, agent_busy, agent_touched removed in Step 11 —
-        // now owned by state.agent_chat.
-        inbox_triage_cache: Arc::new(Mutex::new(HashMap::new())),
-        inbox_triage_in_progress: Arc::new(AtomicBool::new(false)),
+        // dismissed_episode_ids, inbox_triage_cache, inbox_triage_in_progress removed in Step 7 —
+        // now owned by state.inbox (InboxState).
         feedback: nmp_feedback::FeedbackRuntime::new(
             nmp_feedback::FeedbackConfig::new(crate::PODCAST_FEEDBACK_PROJECT_COORDINATE)
                 .with_interest_namespace(crate::PODCAST_FEEDBACK_INTEREST_NAMESPACE),
@@ -175,7 +167,8 @@ fn cold_load_restores_inbox_triage_cache_through_set_data_dir() {
     let store = Arc::new(Mutex::new(PodcastStore::new()));
     let rev = Arc::new(AtomicU64::new(0));
     let handle = make_handle(store.clone(), rev.clone());
-    let cache_arc = handle.inbox_triage_cache.clone();
+    // Step 7: triage_cache is now owned by state.inbox (InboxState).
+    let cache_arc = handle.state.inbox.triage_cache.share();
     assert!(cache_arc.lock().unwrap().is_empty(), "cache starts empty");
     let ptr = Box::into_raw(handle);
     let cpath = CString::new(dir.path.to_str().unwrap()).unwrap();

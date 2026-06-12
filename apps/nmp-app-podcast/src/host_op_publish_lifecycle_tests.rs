@@ -11,8 +11,7 @@ use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::store::identity::IdentityStore;
 use crate::store::PodcastStore;
-use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicBool, AtomicU64};
+use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
 fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
@@ -37,11 +36,10 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
         // agent_tasks, clips, transcripts removed in Steps 5a, 5b, 6.
         // voice_state removed in Step 12 — now owned by state.voice.
         // podcast_keys and publish_state removed in Step 13 — now owned by state.publish.
-        Arc::new(Mutex::new(HashSet::new())),
+        // dismissed_episode_ids, inbox_triage_cache, inbox_triage_in_progress removed in Step 7 —
+        // now owned by state.inbox (InboxState).
         rev.clone(),
         Arc::new(tokio::runtime::Runtime::new().unwrap()),
-        Arc::new(Mutex::new(HashMap::new())),
-        Arc::new(AtomicBool::new(false)),
         crate::feed_fetch::FeedFetchCoordinator::new_test(),
         feedback_runtime(rev),
     )

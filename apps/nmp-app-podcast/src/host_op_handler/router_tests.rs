@@ -12,8 +12,7 @@ use crate::queue::PlaybackQueue;
 use crate::store::identity::IdentityStore;
 use crate::store::PodcastStore;
 use podcast_core::{Episode, Podcast};
-use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicBool, AtomicU64};
+use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 use url::Url;
 use uuid::Uuid;
@@ -53,11 +52,10 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
         // agent_tasks, clips, transcripts removed in Steps 5a, 5b, 6.
         // voice_state removed in Step 12 — now owned by state.voice.
         // podcast_keys and publish_state removed in Step 13 — now owned by state.publish.
-        Arc::new(Mutex::new(HashSet::new())),
+        // dismissed_episode_ids, inbox_triage_cache, inbox_triage_in_progress removed in Step 7 —
+        // now owned by state.inbox (InboxState).
         rev.clone(),
         Arc::new(tokio::runtime::Runtime::new().unwrap()),
-        Arc::new(Mutex::new(HashMap::new())),
-        Arc::new(AtomicBool::new(false)),
         crate::feed_fetch::FeedFetchCoordinator::new_test(),
         feedback_runtime(rev),
     )
@@ -288,5 +286,60 @@ fn player_download_routes_to_player_not_podcast() {
     assert!(
         handler.download_queue.lock().unwrap().get(&ep_id).is_some(),
         "podcast.player.download must enqueue in DownloadQueue"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// D8 cold-start triage: `auto_download_evaluate` (the op iOS dispatches on the
+// first foreground, where RefreshAll is skipped) must kick a proactive triage
+// pass over the on-disk library. Drives the full envelope router end-to-end so
+// the op→handler→`maybe_enqueue_triage()` wiring is covered, not just the
+// inner function.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn auto_download_evaluate_kicks_cold_start_triage() {
+    use std::sync::atomic::Ordering;
+
+    let store = Arc::new(Mutex::new(PodcastStore::new()));
+    let podcast = Podcast::new("Cold Start Show");
+    let pid = podcast.id;
+    // An unlistened episode with NO triage-cache entry → needs triage.
+    let ep = make_episode(pid);
+    store.lock().unwrap().subscribe(podcast, vec![ep]);
+
+    let handler = handler_with_store(store);
+
+    // Precondition: no triage pass claimed yet.
+    assert!(
+        !handler
+            .state
+            .inbox
+            .triage_in_progress
+            .load(Ordering::Relaxed),
+        "triage must not be in progress before cold-start evaluate"
+    );
+
+    let envelope = serde_json::json!({
+        "ns": "podcast",
+        "action": { "op": "auto_download_evaluate" }
+    });
+    let result = handler.handle(&envelope.to_string(), "corr-ade");
+    assert_eq!(
+        result["ok"],
+        serde_json::json!(true),
+        "auto_download_evaluate should succeed: {result}"
+    );
+
+    // The cold-start seam must have claimed a triage pass over the un-triaged,
+    // unlistened library episode (proves the trigger is wired to this op, not
+    // just to RefreshAll which iOS skips at launch).
+    assert!(
+        handler
+            .state
+            .inbox
+            .triage_in_progress
+            .load(Ordering::Relaxed),
+        "auto_download_evaluate must enqueue a cold-start triage pass"
     );
 }

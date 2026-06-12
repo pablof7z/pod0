@@ -19,7 +19,9 @@ use super::snapshot_owned::collect_owned_podcasts;
 use super::snapshot_queue::resolve_queue_rows;
 use super::snapshot_settings::build_settings_snapshot;
 use super::snapshot_widget::build_widget_snapshot;
-use crate::inbox_handler::{build_inbox, maybe_enqueue_triage_with_signal};
+// inbox_handler imports removed in Step 7 — InboxState now owns the projection
+// and the proactive trigger.  See `state::inbox::InboxState::project()` and
+// `InboxState::maybe_enqueue_triage()`.
 
 pub(super) fn provider_key_present(key: Option<&str>) -> bool {
     key.is_some_and(|value| !value.trim().is_empty())
@@ -107,36 +109,11 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     let knowledge_search_results = handle.state.knowledge.results_snapshot();
     // Step 5a: clips now projected from ClipsState.
     let clips = handle.state.clips.project(&library);
-    let inbox = build_inbox(
-        &handle.store,
-        &handle.dismissed_episode_ids,
-        &handle.inbox_triage_cache,
-    );
-    // Proactive triage: if any unlistened episode lacks a fresh `Ready` score,
-    // spawn a background pass off the actor thread so the cache fills without
-    // an explicit user `Triage` action. Cheap no-op when nothing needs triage
-    // or a pass is already running (re-entrancy-guarded internally).
-    if let Some(signal) = handle.snapshot_signal.clone() {
-        maybe_enqueue_triage_with_signal(
-            &handle.store,
-            &handle.inbox_triage_cache,
-            &handle.rev,
-            &handle.runtime,
-            &handle.inbox_triage_in_progress,
-            signal,
-        );
-    } else {
-        crate::inbox_handler::maybe_enqueue_triage(
-            &handle.store,
-            &handle.inbox_triage_cache,
-            &handle.rev,
-            &handle.runtime,
-            &handle.inbox_triage_in_progress,
-        );
-    }
-    let inbox_triage_in_progress = handle
-        .inbox_triage_in_progress
-        .load(std::sync::atomic::Ordering::Relaxed);
+    // Step 7 / D8: inbox projected from InboxState — pure, no side effects.
+    // Proactive triage trigger was lifted to the feed-refresh path (Commit 2).
+    let inbox = handle.state.inbox.project();
+    // Step 7: inbox_triage_in_progress now read from InboxState.
+    let inbox_triage_in_progress = handle.state.inbox.triage_in_progress_snapshot();
     let owned_podcasts = collect_owned_podcasts(handle);
     let downloads = handle
         .download_queue

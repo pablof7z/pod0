@@ -2,8 +2,7 @@
 //! `nmp_app_podcast_snapshot` / `nmp_app_podcast_unregister`.
 
 use std::collections::HashMap;
-use std::collections::HashSet;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::state::PodcastAppState;
@@ -12,7 +11,6 @@ use nmp_ffi::NmpApp;
 use tokio::runtime::Runtime;
 
 use crate::download::DownloadQueue;
-use crate::inbox_llm::TriageResult;
 use crate::player::PlayerActor;
 use crate::queue::PlaybackQueue;
 use crate::snapshot_signal::SnapshotUpdateSignal;
@@ -35,8 +33,10 @@ pub struct OwnedPublishState {
 /// until it calls [`super::nmp_app_podcast_unregister`].
 pub struct PodcastHandle {
     pub(super) app: *mut NmpApp,
-    /// Step 0 — composed state root (currently unused; will replace individual
-    /// Arc fields as migration steps land).  See `docs/design/podcast-app-state-refactor.md`.
+    /// Composed state root.  Inbox (Step 7), Knowledge (Step 1), Wiki (Step 2),
+    /// Picks (Step 3), Categories (Step 4), Clips (Step 5a), Transcripts (Step 5b),
+    /// Tasks (Step 6), Comments (Step 8), Discovery (Step 9), Social (Step 10),
+    /// AgentChat (Step 11), Voice (Step 12), Publish (Step 13) all live here.
     pub(crate) state: Arc<PodcastAppState>,
     pub(super) player_actor: Arc<Mutex<PlayerActor>>,
     pub(super) store: Arc<Mutex<PodcastStore>>,
@@ -76,32 +76,16 @@ pub struct PodcastHandle {
     // they are now owned by `state.knowledge` (KnowledgeState).
     // clips removed in Step 5a — now owned by `state.clips` (ClipsState).
     // transcripts removed in Step 5b — now owned by `state.transcripts` (TranscriptsState).
-    /// Set of episode ids the user has dismissed from the inbox. In-memory
-    /// only — the dismissal is a current-session-only signal; cold launch
-    /// re-surfaces everything so the user can re-triage. Written by the
-    /// inbox handler's `Dismiss` op; read by the inbox projection builder.
-    pub(super) dismissed_episode_ids: Arc<Mutex<HashSet<String>>>,
+    // dismissed_episode_ids removed in Step 7 — now owned by `state.inbox` (InboxState).
+    // inbox_triage_cache removed in Step 7 — now owned by `state.inbox` (InboxState).
+    // inbox_triage_in_progress removed in Step 7 — now owned by `state.inbox` (InboxState).
     // podcast_keys and publish_state removed in Step 13 —
     // now owned by `state.publish` (PublishState).
     // voice_state and voice_conversation removed in Step 12 —
     // now owned by `state.voice` (VoiceSubstate).
     // conversation, agent_busy, agent_touched removed in Step 11 —
     // now owned by `state.agent_chat` (AgentChatState).
-    // voice_state and voice_conversation removed in Step 12 —
-    // now owned by `state.voice` (VoiceSubstate).
     // categories removed in Step 4 — now owned by `state.categories` (CategoriesState).
-    /// LLM triage cache: `episode_id -> TriageResult`.
-    ///
-    /// Populated by `InboxAction::Triage` on the actor thread (running LLM
-    /// classification for each unlistened episode). Read by `build_inbox`
-    /// to overlay LLM scores and categories over the recency-bucket fallback.
-    /// In-memory only — results are recomputed on each explicit Triage action.
-    pub(super) inbox_triage_cache: Arc<Mutex<HashMap<String, TriageResult>>>,
-    /// `true` while the background LLM triage task is running. Set before
-    /// `tokio::spawn` and cleared when the task completes (or errors out).
-    /// Surfaced on `PodcastUpdate.inbox_triage_in_progress` so the iOS UI
-    /// can show a spinner on the Inbox tab.
-    pub(super) inbox_triage_in_progress: Arc<AtomicBool>,
     // comments_cache + viewed_comments_episode_id removed in Step 8 —
     // now owned by `state.comments` (CommentsState).
     // social removed in Step 10 — now owned by `state.social` (SocialState).
@@ -112,8 +96,8 @@ pub struct PodcastHandle {
     /// and thread projection. Empty until the first `FetchFeedback` dispatch.
     pub(crate) feedback: nmp_feedback::FeedbackRuntime,
     /// Shared multi-thread Tokio runtime (same `Arc` the host-op handler and
-    /// voice manager hold). The snapshot path needs it so `maybe_enqueue_triage`
-    /// can spawn proactive background triage off the actor thread.
+    /// voice manager hold). Kept here for other off-actor work (e.g. wiki,
+    /// social). Triage spawning has moved to InboxState (Step 7).
     pub(super) runtime: Arc<Runtime>,
     /// Optimistic-subscribe async feed-fetch coordinator (same `Arc` the
     /// host-op handler holds). The HTTP-report FFI (`nmp_app_podcast_http_report`)

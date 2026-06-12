@@ -262,6 +262,14 @@ impl PodcastHostOpHandler {
                 );
             }
         }
+        // D8 / cold-start triage: iOS skips `RefreshAll` on first foreground
+        // (see `KernelModel.lifecycleForeground` "Cold start skips RefreshAll"),
+        // so episodes loaded from disk that are un-triaged or have a stale
+        // (>TRIAGE_STALE_SECS) Ready entry would never be triaged at launch.
+        // This op IS the cold-start seam, so kick a catch-up triage pass here.
+        // Internally guarded by `triage_in_progress`/`episodes_needing_triage`
+        // — a cheap no-op when nothing is due.
+        self.state.inbox.maybe_enqueue_triage();
         serde_json::json!({"ok": true, "queued": ready.len(), "deferred": deferred.len()})
     }
 

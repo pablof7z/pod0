@@ -50,7 +50,6 @@ use crate::ffi::actions::wiki_module::WikiAction;
 use crate::host_op_handler_queue::handle_queue_action;
 use crate::host_op_publish::handle_publish_action;
 use crate::identity_handler::IdentityHandler;
-use crate::inbox_handler::{handle_inbox_action, handle_inbox_action_with_signal};
 use crate::memory_handler;
 use crate::voice_handler;
 
@@ -108,31 +107,9 @@ impl HostOpHandler for PodcastHostOpHandler {
             "podcast.player" => {
                 self.handle_player_action(parse!(PlayerAction), correlation_id)
             }
-            "podcast.inbox" => {
-                let action = parse!(InboxAction);
-                if let Some(signal) = self.snapshot_signal.clone() {
-                    handle_inbox_action_with_signal(
-                        action,
-                        &self.store,
-                        &self.dismissed_episode_ids,
-                        &self.rev,
-                        &self.inbox_triage_cache,
-                        &self.runtime,
-                        &self.inbox_triage_in_progress,
-                        signal,
-                    )
-                } else {
-                    handle_inbox_action(
-                        action,
-                        &self.store,
-                        &self.dismissed_episode_ids,
-                        &self.rev,
-                        &self.inbox_triage_cache,
-                        &self.runtime,
-                        &self.inbox_triage_in_progress,
-                    )
-                }
-            }
+            // Step 7: inbox routing delegates to InboxState::handle —
+            // no inline Arc threading, no signal/no-signal fork (InboxState owns infra.signal).
+            "podcast.inbox" => self.state.inbox.handle(parse!(InboxAction)),
             "podcast.queue" => {
                 handle_queue_action(&self.queue, &self.store, &self.rev, parse!(QueueAction))
             }

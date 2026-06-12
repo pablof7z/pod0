@@ -118,7 +118,7 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(handle: *mut PodcastHandle, path:
         let restored = crate::store::inbox_triage_cache::load_triage_cache(&path_buf);
         if restored.is_empty() {
             false
-        } else if let Ok(mut cache) = handle.inbox_triage_cache.lock() {
+        } else if let Ok(mut cache) = handle.state.inbox.triage_cache.lock() {
             // Loaded entries seed the in-memory cache. We only reach this path
             // immediately after `register` (cache constructed empty), so a plain
             // populate is correct — no pre-existing entries to merge against.

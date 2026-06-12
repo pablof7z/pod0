@@ -17,9 +17,8 @@
 //! sets it). If this test is green but the live widget is still idle, the gap
 //! is in what the shell dispatches, not the kernel derivation.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::ffi::CString;
-use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
@@ -66,9 +65,9 @@ fn handler_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> PodcastH
         shared.store.clone(),
         identity.clone(),
     ));
-    // Steps 8-10: search_results, nostr_results, comments_cache,
-    // viewed_comments_episode_id, social, agent_notes removed from constructor.
-    // Step 11: agent_chat removed — now owned by state.agent_chat.
+    // Steps 7-13: dismissed_episode_ids, inbox_triage_cache, inbox_triage_in_progress,
+    // agent_tasks, clips, transcripts, voice_state, podcast_keys, publish_state,
+    // agent_chat removed — now owned by state.inbox / state.* respectively.
     PodcastHostOpHandler::new(
         app,
         state,
@@ -77,15 +76,8 @@ fn handler_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> PodcastH
         shared.player_actor.clone(),
         Arc::new(Mutex::new(PlaybackQueue::new())),
         Arc::new(Mutex::new(DownloadQueue::new())),
-        // agent_tasks, clips, transcripts removed in Steps 5a, 5b, 6 —
-        // now owned by state.tasks / state.clips / state.transcripts.
-        // voice_state removed in Step 12 — now owned by state.voice.
-        // podcast_keys and publish_state removed in Step 13 — now owned by state.publish.
-        Arc::new(Mutex::new(HashSet::new())),
         shared.rev.clone(),
         Arc::new(tokio::runtime::Runtime::new().unwrap()),
-        Arc::new(Mutex::new(HashMap::new())),
-        Arc::new(AtomicBool::new(false)),
         crate::feed_fetch::FeedFetchCoordinator::new_test(),
         feedback_runtime(shared.rev.clone()),
     )
@@ -101,9 +93,10 @@ fn handle_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> Box<Podca
         shared.store.clone(),
         identity.clone(),
     ));
-    // Steps 8-10: search_results, nostr_results, comments_cache,
-    // viewed_comments_episode_id, social, agent_notes removed — now owned by
-    // state.discovery / state.comments / state.social respectively.
+    // Steps 7-13: dismissed_episode_ids, inbox_triage_cache, inbox_triage_in_progress,
+    // search_results, nostr_results, comments_cache, viewed_comments_episode_id, social,
+    // agent_notes, voice_state, voice_conversation, podcast_keys, publish_state removed —
+    // now owned by state.inbox / state.* respectively.
     Box::new(PodcastHandle {
         app,
         state,
@@ -116,17 +109,6 @@ fn handle_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> Box<Podca
         clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
         queue: Arc::new(Mutex::new(PlaybackQueue::new())),
         download_queue: Arc::new(Mutex::new(DownloadQueue::new())),
-        // clips, transcripts, agent_tasks removed in Steps 5a, 5b, 6 —
-        // now owned by state.clips / state.transcripts / state.tasks.
-        dismissed_episode_ids: Arc::new(Mutex::new(HashSet::new())),
-        // podcast_keys and publish_state removed in Step 13 —
-        // now owned by state.publish (PublishState).
-        // voice_state and voice_conversation removed in Step 12 —
-        // now owned by state.voice (VoiceSubstate).
-        // conversation, agent_busy, agent_touched removed in Step 11 —
-        // now owned by state.agent_chat.
-        inbox_triage_cache: Arc::new(Mutex::new(HashMap::new())),
-        inbox_triage_in_progress: Arc::new(AtomicBool::new(false)),
         feedback: feedback_runtime(shared.rev.clone()),
         runtime: Arc::new(tokio::runtime::Runtime::new().unwrap()),
         feed_fetch: crate::feed_fetch::FeedFetchCoordinator::new_test(),

@@ -29,7 +29,9 @@
 //! Step 6:  Tasks substate — `TasksState` owns `tasks` slot + write-through
 //!          persistence via `store::agent_tasks`.
 //!
-//! Steps 7-N: see design doc.  Steps 8-10 done (Comments, Discovery, Social).
+//! Step 7: Inbox substate — `dismissed_episode_ids`/`inbox_triage_cache`/
+//!         `inbox_triage_in_progress` removed from both god-structs.
+//! Steps 8-10 done (Comments, Discovery, Social).
 //! Step 11: AgentChat substate — `conversation`/`agent_busy`/`agent_touched`
 //!          removed from both god-structs.
 
@@ -38,6 +40,7 @@ pub mod categories;
 pub mod clips;
 pub mod comments;
 pub mod discovery;
+pub mod inbox;
 pub mod knowledge;
 pub mod picks;
 pub mod publish;
@@ -151,6 +154,10 @@ impl Infra {
 /// Step 6: tasks substate added; `agent_tasks` field removed from both
 /// god-structs.
 ///
+/// Step 7: inbox substate added; `dismissed_episode_ids`,
+/// `inbox_triage_cache`, and `inbox_triage_in_progress` removed from both
+/// god-structs.
+///
 /// Steps 8-10: comments, discovery, social substates added.
 ///
 /// Step 11: agent_chat substate added; `conversation`/`agent_busy`/`agent_touched`
@@ -184,6 +191,11 @@ pub struct PodcastAppState {
 
     /// Tasks substate (Step 6).  Owns agent-task list + write-through persistence.
     pub tasks: tasks::TasksState,
+
+    /// Inbox substate (Step 7).  Owns `dismissed` + `triage_cache` slots +
+    /// `triage_in_progress` atomic.  Tokio tasks write back scores via
+    /// `triage_cache.share()`.
+    pub inbox: inbox::InboxState,
 
     /// Comments substate (Step 8).  Owns cache + viewed-episode-id slots.
     /// `CommentsObserver` shares `cache` off the actor thread via `.share()`.
@@ -256,6 +268,7 @@ impl PodcastAppState {
         let clips = clips::ClipsState::new(infra.clone(), store.clone());
         let transcripts = transcripts::TranscriptsState::new(infra.clone(), store.clone());
         let tasks = tasks::TasksState::new(infra.clone(), store.clone());
+        let inbox = inbox::InboxState::new(infra.clone(), store.clone());
         let comments =
             comments::CommentsState::new(infra.clone(), store.clone(), identity.clone());
         let discovery = discovery::DiscoveryState::new(infra.clone());
@@ -279,6 +292,7 @@ impl PodcastAppState {
             clips,
             transcripts,
             tasks,
+            inbox,
             comments,
             discovery,
             social,
