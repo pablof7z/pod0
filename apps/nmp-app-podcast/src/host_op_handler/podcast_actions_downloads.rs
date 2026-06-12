@@ -123,7 +123,7 @@ impl PodcastHostOpHandler {
         use crate::capability::DownloadCommand;
         use crate::store::events::{stage, EventDetail, EventSeverity};
 
-        let command = match self.download_queue.lock() {
+        let command = match self.state.playback.downloads.lock() {
             Ok(mut q) => {
                 // Idempotence: skip an episode already active/queued/paused so a
                 // repeated evaluate pass or a double-tap doesn't re-log or
@@ -178,7 +178,7 @@ impl PodcastHostOpHandler {
         url: String,
         correlation_id: &str,
     ) -> serde_json::Value {
-        let command = match self.download_queue.lock() {
+        let command = match self.state.playback.downloads.lock() {
             Ok(mut q) => {
                 q.enqueue_with_kind(model_id, url, crate::capability::DownloadKind::LocalModel)
             }

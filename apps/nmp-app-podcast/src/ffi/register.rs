@@ -31,13 +31,12 @@ use super::actions::voice_module::VoiceActionModule;
 use super::actions::wiki_module::WikiActionModule;
 use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
-use crate::download::DownloadQueue;
 use crate::host_op_handler::PodcastHostOpHandler;
-use crate::player::PlayerActor;
-use crate::queue::PlaybackQueue;
 use crate::snapshot_signal::SnapshotUpdateSignal;
 use crate::store::identity::IdentityStore;
 use crate::store::PodcastStore;
+// player_actor, queue, download_queue removed in Step 14 —
+// now seeded inside PodcastAppState::new (PlaybackState).
 
 /// Register Podcast projections and action namespaces against `app`. Returns a
 /// non-null `*mut PodcastHandle` on success; `null` on any failure (null
@@ -87,11 +86,11 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     // Shared state between the handle (snapshot reader) and the handler (writer).
     let store = Arc::new(Mutex::new(PodcastStore::new()));
     let identity = Arc::new(Mutex::new(IdentityStore::new()));
-    let player_actor = Arc::new(Mutex::new(PlayerActor::new()));
+    // player_actor removed in Step 14 — now seeded inside PlaybackState.
     // search_results and nostr_results removed in Step 9 —
     // now owned by state.discovery (DiscoveryState).
-    let queue = Arc::new(Mutex::new(PlaybackQueue::new()));
-    let download_queue = Arc::new(Mutex::new(DownloadQueue::new()));
+    // queue removed in Step 14 — now seeded inside PlaybackState.
+    // download_queue removed in Step 14 — now seeded inside PlaybackState.
     // wiki_articles and wiki_search_results removed in Step 2 —
     // they are now seeded inside PodcastAppState::new (WikiState).
     // picks and picks_score_in_progress removed in Step 3 —
@@ -259,15 +258,14 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     // Step 13: podcast_keys + publish_state removed — now owned by state.publish (PublishState).
     // Step 7: dismissed_episode_ids, inbox_triage_cache, inbox_triage_in_progress removed —
     // now owned by state.inbox (InboxState).
+    // Step 14: player_actor/queue/download_queue removed from constructor —
+    // now owned by app_state.playback (PlaybackState).
     app_ref.set_host_op_handler(Arc::new(
         PodcastHostOpHandler::new(
             app,
             app_state.clone(),
             store.clone(),
             identity.clone(),
-            player_actor.clone(),
-            queue.clone(),
-            download_queue.clone(),
             rev.clone(),
             runtime.clone(),
             feed_fetch.clone(),
@@ -338,15 +336,15 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     let handle = Arc::new(PodcastHandle {
         app,
         state: app_state,
-        player_actor,
+        // player_actor removed in Step 14 — now owned by state.playback.player.
         store,
         identity,
         rev,
         snapshot_signal: Some(snapshot_signal.clone()),
         snapshot_cache: Arc::new(Mutex::new(None)),
         clean_html_cache: Arc::new(Mutex::new(std::collections::HashMap::new())),
-        queue,
-        download_queue,
+        // queue removed in Step 14 — now owned by state.playback.queue.
+        // download_queue removed in Step 14 — now owned by state.playback.downloads.
         // clips, transcripts, agent_tasks removed in Steps 5a, 5b, 6 —
         // now owned by state.clips / state.transcripts / state.tasks.
         // dismissed_episode_ids, inbox_triage_cache, inbox_triage_in_progress removed in Step 7 —

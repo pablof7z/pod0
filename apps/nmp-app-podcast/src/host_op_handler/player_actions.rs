@@ -6,6 +6,10 @@ use crate::capability::{AudioCommand, DownloadCommand};
 use crate::ffi::actions::player_module::PlayerAction;
 use crate::host_op_handler::PodcastHostOpHandler;
 
+// Convenience aliases so reader can track which slot is being accessed.
+// Step 14: player, queue, and download_queue are now sourced from
+// `self.state.playback.*` instead of god-struct fields.
+
 /// Format a playback position in seconds as `H:MM:SS` / `M:SS` for a
 /// Diagnostics detail row. Negative / NaN positions clamp to `0:00`.
 fn format_position(secs: f64) -> String {
@@ -80,7 +84,8 @@ impl PodcastHostOpHandler {
         // actor's `episode_id` exact-matchable by the widget library lookup and
         // the position writeback (both `==` against the lowercase store id).
         let episode_id = canonical_id;
-        let prior_episode = if let Ok(mut actor) = self.player_actor.lock() {
+        let player = self.state.playback.player.share();
+        let prior_episode = if let Ok(mut actor) = player.lock() {
             let prior = actor.state().episode_id.clone();
             actor.stage_load(&episode_id, Some(podcast_id), &url, position_secs);
             prior
@@ -91,7 +96,7 @@ impl PodcastHostOpHandler {
         // Push the persisted ad segments + global toggle into the
         // freshly-staged actor so auto-skip can fire on the very first
         // `Playing` report (no extra round-trip via iOS).
-        hydrate_actor_for_play(&self.store, &self.player_actor, &episode_id);
+        hydrate_actor_for_play(&self.store, &player, &episode_id);
         self.rev.fetch_add(1, Ordering::Relaxed);
         if let Err(e) = self.dispatch_audio(
             &AudioCommand::load_with_id(&url, position_secs, &episode_id),
@@ -133,7 +138,8 @@ impl PodcastHostOpHandler {
         };
         // Rebind to the store's canonical (lowercase) id — see `handle_play`.
         let episode_id = canonical_id;
-        let prior_episode = if let Ok(mut actor) = self.player_actor.lock() {
+        let player = self.state.playback.player.share();
+        let prior_episode = if let Ok(mut actor) = player.lock() {
             let prior = actor.state().episode_id.clone();
             actor.stage_load(&episode_id, Some(podcast_id), &url, position_secs);
             prior
@@ -141,7 +147,7 @@ impl PodcastHostOpHandler {
             None
         };
         self.record_playback_started_if_new(&episode_id, position_secs, prior_episode.as_deref());
-        hydrate_actor_for_play(&self.store, &self.player_actor, &episode_id);
+        hydrate_actor_for_play(&self.store, &player, &episode_id);
         self.rev.fetch_add(1, Ordering::Relaxed);
         // Dispatch Load only — no Play. iOS calls Resume when the user taps play.
         let dispatch = self.dispatch_audio(
@@ -177,21 +183,21 @@ impl PodcastHostOpHandler {
                 self.dispatch_audio_json(AudioCommand::seek(position_secs), correlation_id)
             }
             PlayerAction::SetSpeed { speed } => {
-                if let Ok(mut a) = self.player_actor.lock() {
+                if let Ok(mut a) = self.state.playback.player.lock() {
                     a.set_speed(speed);
                 }
                 self.rev.fetch_add(1, Ordering::Relaxed);
                 self.dispatch_audio_json(AudioCommand::SetSpeed { speed }, correlation_id)
             }
             PlayerAction::SetVolume { volume } => {
-                if let Ok(mut a) = self.player_actor.lock() {
+                if let Ok(mut a) = self.state.playback.player.lock() {
                     a.set_volume(volume);
                 }
                 self.rev.fetch_add(1, Ordering::Relaxed);
                 self.dispatch_audio_json(AudioCommand::SetVolume { volume }, correlation_id)
             }
             PlayerAction::SetSleepTimer { secs } => {
-                if let Ok(mut a) = self.player_actor.lock() {
+                if let Ok(mut a) = self.state.playback.player.lock() {
                     match secs {
                         Some(s) if s > 0 => {
                             a.arm_sleep_timer(Duration::from_secs(s), SystemTime::now())
@@ -212,7 +218,7 @@ impl PodcastHostOpHandler {
                 segments,
             } => handle_set_ad_segments(
                 &self.store,
-                &self.player_actor,
+                &self.state.playback.player.share(),
                 &self.rev,
                 episode_id,
                 segments,
@@ -312,7 +318,7 @@ impl PodcastHostOpHandler {
     /// separately per iteration (never nested) to avoid lock-order hazards.
     fn handle_play_next(&self, correlation_id: &str) -> serde_json::Value {
         loop {
-            let popped = match self.queue.lock() {
+            let popped = match self.state.playback.queue.lock() {
                 Ok(mut q) => q.next(),
                 Err(_) => return serde_json::json!({"ok": false, "error": "queue poisoned"}),
             };
@@ -337,10 +343,10 @@ impl PodcastHostOpHandler {
 
     /// Apply a mutation to the canonical [`PlaybackQueue`], persist the new
     /// ordering to `podcasts.json`, and bump `rev` so the next snapshot tick
-    /// surfaces it. Mirrors `host_op_handler_queue::handle_queue_action` so the
+    /// surfaces it. Mirrors `PlaybackState::handle_queue_action` so the
     /// `podcast.player` queue ops stay byte-identical to `podcast.queue`.
     fn mutate_queue(&self, f: impl FnOnce(&mut crate::queue::PlaybackQueue)) -> serde_json::Value {
-        let items = match self.queue.lock() {
+        let items = match self.state.playback.queue.lock() {
             Ok(mut q) => {
                 f(&mut q);
                 q.items().to_vec()
@@ -357,7 +363,7 @@ impl PodcastHostOpHandler {
     /// Flush the current canonical queue ordering to `podcasts.json` without
     /// otherwise mutating it. Used after `handle_play_next` pops the head.
     fn persist_queue(&self) {
-        let items = match self.queue.lock() {
+        let items = match self.state.playback.queue.lock() {
             Ok(q) => q.items().to_vec(),
             Err(_) => return,
         };
@@ -370,7 +376,7 @@ impl PodcastHostOpHandler {
     /// Reads the current position from the live actor state so the shell never
     /// needs to track position client-side (D0).
     fn handle_skip(&self, delta_secs: f64, correlation_id: &str) -> serde_json::Value {
-        let current = match self.player_actor.lock() {
+        let current = match self.state.playback.player.lock() {
             Ok(a) => a.state().position_secs,
             Err(_) => return serde_json::json!({"ok": false, "error": "player_actor poisoned"}),
         };
@@ -411,7 +417,7 @@ impl PodcastHostOpHandler {
         f: impl FnOnce(&mut crate::download::DownloadQueue) -> Option<DownloadCommand>,
         correlation_id: &str,
     ) -> serde_json::Value {
-        let command = match self.download_queue.lock() {
+        let command = match self.state.playback.downloads.lock() {
             Ok(mut q) => f(&mut q),
             Err(_) => return serde_json::json!({"ok": false, "error": "download_queue poisoned"}),
         };

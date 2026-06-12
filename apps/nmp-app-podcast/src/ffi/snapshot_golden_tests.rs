@@ -35,11 +35,8 @@ use podcast_core::{Episode, Podcast, PodcastId};
 use url::Url;
 use uuid::Uuid;
 
-use crate::download::DownloadQueue;
 use crate::ffi::handle::PodcastHandle;
 use crate::ffi::snapshot::build_podcast_update;
-use crate::player::PlayerActor;
-use crate::queue::PlaybackQueue;
 use crate::store::identity::IdentityStore;
 use crate::store::PodcastStore;
 
@@ -115,18 +112,20 @@ fn make_golden_handle(app: *mut nmp_ffi::NmpApp) -> Box<PodcastHandle> {
     // Steps 8-10: search_results, nostr_results, comments_cache,
     // viewed_comments_episode_id, social, agent_notes removed — now owned by
     // state.discovery / state.comments / state.social respectively.
+    // Step 14: player_actor, queue, download_queue removed — now owned by
+    // state.playback (PlaybackState).
     Box::new(PodcastHandle {
         app,
         state,
-        player_actor: Arc::new(Mutex::new(PlayerActor::new())),
         store: store.clone(),
         identity,
         rev: rev.clone(),
         snapshot_signal: None,
         snapshot_cache: Arc::new(Mutex::new(None)),
         clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
-        queue: Arc::new(Mutex::new(PlaybackQueue::new())),
-        download_queue: Arc::new(Mutex::new(DownloadQueue::new())),
+        // player_actor removed in Step 14 — now owned by state.playback.player.
+        // queue removed in Step 14 — now owned by state.playback.queue.
+        // download_queue removed in Step 14 — now owned by state.playback.downloads.
         // clips, transcripts, agent_tasks removed in Steps 5a, 5b, 6 —
         // now owned by state.clips / state.transcripts / state.tasks.
         // dismissed_episode_ids, inbox_triage_cache, inbox_triage_in_progress removed in Step 7 —

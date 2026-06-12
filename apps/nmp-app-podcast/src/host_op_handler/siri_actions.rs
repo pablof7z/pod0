@@ -68,7 +68,7 @@ impl PodcastHostOpHandler {
 
     /// Resume the last-staged episode, or fall back to `siri_play_latest`.
     fn siri_resume(&self, correlation_id: &str) -> serde_json::Value {
-        let active_id = match self.player_actor.lock() {
+        let active_id = match self.state.playback.player.lock() {
             Ok(a) => a.state().episode_id.clone(),
             Err(_) => return serde_json::json!({"ok": false, "error": "player_actor poisoned"}),
         };

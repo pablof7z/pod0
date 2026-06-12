@@ -47,7 +47,7 @@ use crate::ffi::actions::social_module::SocialAction;
 use crate::ffi::actions::tasks_module::AgentTasksAction;
 use crate::ffi::actions::voice_module::VoiceAction;
 use crate::ffi::actions::wiki_module::WikiAction;
-use crate::host_op_handler_queue::handle_queue_action;
+// handle_queue_action free fn retired in Step 14 — now PlaybackState::handle_queue_action.
 use crate::host_op_publish::handle_publish_action;
 use crate::identity_handler::IdentityHandler;
 use crate::memory_handler;
@@ -110,9 +110,9 @@ impl HostOpHandler for PodcastHostOpHandler {
             // Step 7: inbox routing delegates to InboxState::handle —
             // no inline Arc threading, no signal/no-signal fork (InboxState owns infra.signal).
             "podcast.inbox" => self.state.inbox.handle(parse!(InboxAction)),
-            "podcast.queue" => {
-                handle_queue_action(&self.queue, &self.store, &self.rev, parse!(QueueAction))
-            }
+            // Step 14: podcast.queue delegates to PlaybackState::handle_queue_action —
+            // no inline Arc threading, infra.bump() owns the rev bump.
+            "podcast.queue" => self.state.playback.handle_queue_action(parse!(QueueAction)),
             "podcast.chapters" => {
                 let action = parse!(ChaptersAction);
                 match action {

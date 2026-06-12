@@ -10,9 +10,6 @@ use crate::state::PodcastAppState;
 use nmp_ffi::NmpApp;
 use tokio::runtime::Runtime;
 
-use crate::download::DownloadQueue;
-use crate::player::PlayerActor;
-use crate::queue::PlaybackQueue;
 use crate::snapshot_signal::SnapshotUpdateSignal;
 use crate::store::identity::IdentityStore;
 use crate::store::PodcastStore;
@@ -36,9 +33,9 @@ pub struct PodcastHandle {
     /// Composed state root.  Inbox (Step 7), Knowledge (Step 1), Wiki (Step 2),
     /// Picks (Step 3), Categories (Step 4), Clips (Step 5a), Transcripts (Step 5b),
     /// Tasks (Step 6), Comments (Step 8), Discovery (Step 9), Social (Step 10),
-    /// AgentChat (Step 11), Voice (Step 12), Publish (Step 13) all live here.
+    /// AgentChat (Step 11), Voice (Step 12), Publish (Step 13),
+    /// Playback (Step 14) all live here.
     pub(crate) state: Arc<PodcastAppState>,
-    pub(super) player_actor: Arc<Mutex<PlayerActor>>,
     pub(super) store: Arc<Mutex<PodcastStore>>,
     pub(super) identity: Arc<Mutex<IdentityStore>>,
     pub(super) rev: Arc<AtomicU64>,
@@ -61,13 +58,9 @@ pub struct PodcastHandle {
     /// wholesale when it exceeds `CLEAN_HTML_CACHE_CAP` so churned descriptions
     /// (re-sync, feed edits) can't leak unboundedly.
     pub(super) clean_html_cache: Arc<Mutex<HashMap<u64, String>>>,
-    /// Playback "Up Next" queue. Mutated by the queue action handler on the
-    /// actor thread; read by the snapshot projection on the main thread.
-    pub(super) queue: Arc<Mutex<PlaybackQueue>>,
-    /// Per-episode download queue state machine. Written by the download
-    /// action handler and the download-report FFI entry point; read by
-    /// `build_snapshot_payload` to populate `PodcastUpdate.downloads`.
-    pub(super) download_queue: Arc<Mutex<DownloadQueue>>,
+    // player_actor removed in Step 14 — now owned by `state.playback.player`.
+    // queue removed in Step 14 — now owned by `state.playback.queue`.
+    // download_queue removed in Step 14 — now owned by `state.playback.downloads`.
     // wiki_articles and wiki_search_results removed in Step 2 —
     // they are now owned by `state.wiki` (WikiState).
     // picks removed in Step 3 — now owned by `state.picks` (PicksState).

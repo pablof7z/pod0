@@ -19,6 +19,12 @@ use crate::store::PodcastStore;
 ///
 /// Returns the canonical `{"ok": true}` envelope on success; a typed error
 /// envelope when the queue mutex is poisoned (D6).
+///
+/// NOTE (Step 14): the router arm `podcast.queue` now delegates to
+/// `PlaybackState::handle_queue_action`.  This free function is preserved for
+/// the unit tests in `host_op_handler_queue_tests.rs` which exercise the logic
+/// at the bare-Arc level.  Non-test callers use the substate method.
+#[cfg_attr(not(test), allow(dead_code))]
 pub(crate) fn handle_queue_action(
     queue: &Arc<Mutex<PlaybackQueue>>,
     store: &Arc<Mutex<PodcastStore>>,

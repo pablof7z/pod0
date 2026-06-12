@@ -5,10 +5,9 @@
 //! the former `PlaybackStateAutoDownloadTests.swift` provided.
 
 use super::*;
-use crate::download::DownloadQueue;
 use crate::ffi::actions::settings_module::SettingsAction;
-use crate::player::PlayerActor;
-use crate::queue::PlaybackQueue;
+// DownloadQueue, PlayerActor, PlaybackQueue removed in Step 14 —
+// now seeded inside PodcastAppState (PlaybackState).
 use crate::store::identity::IdentityStore;
 use crate::store::PodcastStore;
 use podcast_core::{Episode, Podcast, PodcastId};
@@ -30,22 +29,13 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
         store.clone(),
         identity.clone(),
     ));
-    // Steps 8-10: search_results, nostr_results, comments_cache,
-    // viewed_comments_episode_id, social, agent_notes removed from constructor.
-    // Step 11: agent_chat removed — now owned by state.agent_chat.
+    // Steps 8-14: all substates removed from constructor —
+    // player_actor, queue, download_queue now owned by state.playback (Step 14).
     PodcastHostOpHandler::new(
         std::ptr::null_mut(),
         state,
         store,
         identity,
-        Arc::new(Mutex::new(PlayerActor::new())),
-        Arc::new(Mutex::new(PlaybackQueue::new())),
-        Arc::new(Mutex::new(DownloadQueue::new())),
-        // agent_tasks, clips, transcripts removed in Steps 5a, 5b, 6.
-        // voice_state removed in Step 12 — now owned by state.voice.
-        // podcast_keys and publish_state removed in Step 13 — now owned by state.publish.
-        // dismissed_episode_ids, inbox_triage_cache, inbox_triage_in_progress removed in Step 7 —
-        // now owned by state.inbox (InboxState).
         rev.clone(),
         Arc::new(tokio::runtime::Runtime::new().unwrap()),
         crate::feed_fetch::FeedFetchCoordinator::new_test(),
@@ -90,7 +80,7 @@ fn play_enqueues_download_for_not_downloaded_episode() {
     let result = handler.handle_play(ep_id.clone(), "corr-play-1");
 
     assert_eq!(result["ok"], serde_json::json!(true));
-    let dq = handler.download_queue.lock().unwrap();
+    let dq = handler.state.playback.downloads.lock().unwrap();
     assert!(
         dq.get(&ep_id).is_some(),
         "playing a not-downloaded episode must enqueue it for download"
@@ -114,7 +104,7 @@ fn load_enqueues_download_for_not_downloaded_episode() {
     let result = handler.handle_load(ep_id.clone(), "corr-load-1");
 
     assert_eq!(result["ok"], serde_json::json!(true));
-    let dq = handler.download_queue.lock().unwrap();
+    let dq = handler.state.playback.downloads.lock().unwrap();
     assert!(
         dq.get(&ep_id).is_some(),
         "loading a not-downloaded episode must enqueue it for download"
@@ -136,7 +126,7 @@ fn replaying_same_episode_does_not_double_enqueue() {
     let _ = handler.handle_play(ep_id.clone(), "corr-1");
     let _ = handler.handle_play(ep_id.clone(), "corr-2");
 
-    let dq = handler.download_queue.lock().unwrap();
+    let dq = handler.state.playback.downloads.lock().unwrap();
     assert!(dq.get(&ep_id).is_some());
     assert_eq!(
         dq.active_count() + dq.queued_count(),
@@ -226,7 +216,7 @@ fn enqueue_op_appends_to_canonical_playback_queue() {
     assert_eq!(r1["ok"], serde_json::json!(true));
     assert_eq!(r2["ok"], serde_json::json!(true));
 
-    let q = handler.queue.lock().unwrap();
+    let q = handler.state.playback.queue.lock().unwrap();
     assert_eq!(
         q.items(),
         &[ids[0].clone(), ids[1].clone()],
@@ -244,7 +234,7 @@ fn enqueue_op_rejects_unknown_episode() {
         "corr-enq-x",
     );
     assert_eq!(r["ok"], serde_json::json!(false));
-    assert!(handler.queue.lock().unwrap().items().is_empty());
+    assert!(handler.state.playback.queue.lock().unwrap().items().is_empty());
 }
 
 #[test]
@@ -265,7 +255,7 @@ fn dequeue_op_removes_from_canonical_queue() {
         "corr-deq-1",
     );
     assert_eq!(r["ok"], serde_json::json!(true));
-    assert_eq!(handler.queue.lock().unwrap().items(), &[ids[1].clone()]);
+    assert_eq!(handler.state.playback.queue.lock().unwrap().items(), &[ids[1].clone()]);
 }
 
 #[test]
@@ -281,7 +271,7 @@ fn clear_queue_op_empties_canonical_queue() {
     }
     let r = handler.handle_player_action(PlayerAction::ClearQueue, "corr-clear");
     assert_eq!(r["ok"], serde_json::json!(true));
-    assert!(handler.queue.lock().unwrap().items().is_empty());
+    assert!(handler.state.playback.queue.lock().unwrap().items().is_empty());
 }
 
 #[test]
@@ -302,7 +292,7 @@ fn play_next_op_pops_canonical_queue_front() {
         "play_next plays the front id"
     );
     // Front popped; the remaining entry stays queued.
-    assert_eq!(handler.queue.lock().unwrap().items(), &[ids[1].clone()]);
+    assert_eq!(handler.state.playback.queue.lock().unwrap().items(), &[ids[1].clone()]);
 }
 
 #[test]
@@ -325,7 +315,7 @@ fn advance_op_is_play_next_alias() {
     }
     let r = handler.handle_player_action(PlayerAction::Advance, "corr-adv");
     assert_eq!(r["ok"], serde_json::json!(true));
-    assert_eq!(handler.queue.lock().unwrap().items(), &[ids[1].clone()]);
+    assert_eq!(handler.state.playback.queue.lock().unwrap().items(), &[ids[1].clone()]);
 }
 
 #[test]
@@ -334,7 +324,7 @@ fn play_next_op_skips_stale_head() {
     // Front is a stale id with no store entry; the valid second entry must
     // still play rather than strand behind the orphan.
     {
-        let mut q = handler.queue.lock().unwrap();
+        let mut q = handler.state.playback.queue.lock().unwrap();
         q.add_to_end("stale-orphan");
         q.add_to_end(&ids[1]);
     }
@@ -345,7 +335,7 @@ fn play_next_op_skips_stale_head() {
         "play_next must skip the unresolvable head and play the next valid entry"
     );
     assert!(
-        handler.queue.lock().unwrap().items().is_empty(),
+        handler.state.playback.queue.lock().unwrap().items().is_empty(),
         "both the stale head and the played id are popped"
     );
     let _ = &ids[0];

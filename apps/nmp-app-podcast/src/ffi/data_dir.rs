@@ -56,8 +56,9 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(handle: *mut PodcastHandle, path:
 
         // Restore the "Up Next" queue from disk. Even an empty persisted queue
         // is fine — the shared PlaybackQueue starts empty and we just skip.
+        // Step 14: queue sourced from state.playback.queue.
         if !loaded_queue.is_empty() {
-            if let Ok(mut q) = handle.queue.lock() {
+            if let Ok(mut q) = handle.state.playback.queue.lock() {
                 for id in &loaded_queue {
                     q.add_to_end(id);
                 }

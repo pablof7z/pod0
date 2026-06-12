@@ -1,9 +1,6 @@
 use super::*;
-use crate::download::DownloadQueue;
 use crate::ffi::handle::PodcastHandle;
 use crate::ffi::projections::AgentTaskSummary;
-use crate::player::PlayerActor;
-use crate::queue::PlaybackQueue;
 use crate::store::identity::IdentityStore;
 use crate::store::PodcastStore;
 use std::ffi::CString;
@@ -22,15 +19,13 @@ fn make_handle(store: Arc<Mutex<PodcastStore>>, rev: Arc<AtomicU64>) -> Box<Podc
     Box::new(PodcastHandle {
         app: std::ptr::null_mut(),
         state,
-        player_actor: Arc::new(Mutex::new(PlayerActor::new())),
+        // player_actor, queue, download_queue removed in Step 14 — now in state.playback.
         store: store.clone(),
         identity,
         rev: rev.clone(),
         snapshot_signal: None,
         snapshot_cache: Arc::new(Mutex::new(None)),
         clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
-        queue: Arc::new(Mutex::new(PlaybackQueue::new())),
-        download_queue: Arc::new(Mutex::new(DownloadQueue::new())),
         // clips, transcripts, agent_tasks removed in Steps 5a, 5b, 6 —
         // now owned by state.clips / state.transcripts / state.tasks.
         // search_results, nostr_results, comments_cache, viewed_comments_episode_id,

@@ -43,6 +43,7 @@ pub mod discovery;
 pub mod inbox;
 pub mod knowledge;
 pub mod picks;
+pub mod playback;
 pub mod publish;
 pub mod slot;
 pub mod social;
@@ -230,6 +231,14 @@ pub struct PodcastAppState {
     /// (`podcast_keys`, Persisted) and the diagnostic publish map
     /// (`publish_state`, Session).
     pub publish: publish::PublishState,
+
+    /// Playback substate (Step 14).  Owns `player_actor` (Session),
+    /// `queue` (Persisted, write-through to store.cached_queue), and
+    /// `download_queue` (Session).
+    ///
+    /// Cross-thread: the report FFIs (`audio_report`, `download_report`)
+    /// write here from the platform audio/download threads via `.share()`.
+    pub playback: playback::PlaybackState,
 }
 
 impl PodcastAppState {
@@ -283,6 +292,7 @@ impl PodcastAppState {
             std::ptr::null_mut(),
         );
         let publish = publish::PublishState::new(infra.clone(), store.clone());
+        let playback = playback::PlaybackState::new(infra.clone(), store.clone());
         Self {
             infra,
             knowledge,
@@ -299,6 +309,7 @@ impl PodcastAppState {
             agent_chat,
             voice,
             publish,
+            playback,
         }
     }
 }

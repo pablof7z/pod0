@@ -13,7 +13,7 @@ impl PodcastHostOpHandler {
     pub(crate) fn handle_settings_action(&self, action: SettingsAction) -> serde_json::Value {
         match action {
             SettingsAction::SetAutoSkipAds { enabled } => {
-                handle_set_auto_skip_ads(&self.store, &self.player_actor, &self.rev, enabled)
+                handle_set_auto_skip_ads(&self.store, &self.state.playback.player.share(), &self.rev, enabled)
             }
             SettingsAction::SetSkipIntervals {
                 forward_secs,
@@ -29,7 +29,7 @@ impl PodcastHostOpHandler {
                 if let Ok(mut s) = self.store.lock() {
                     s.set_auto_play_next(enabled);
                 }
-                if let Ok(mut a) = self.player_actor.lock() {
+                if let Ok(mut a) = self.state.playback.player.lock() {
                     a.set_auto_play_next(enabled);
                 }
                 self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -39,7 +39,7 @@ impl PodcastHostOpHandler {
                 if let Ok(mut s) = self.store.lock() {
                     s.set_auto_mark_played_at_end(enabled);
                 }
-                if let Ok(mut a) = self.player_actor.lock() {
+                if let Ok(mut a) = self.state.playback.player.lock() {
                     a.set_auto_mark_played_at_end(enabled);
                 }
                 self.rev.fetch_add(1, std::sync::atomic::Ordering::Relaxed);

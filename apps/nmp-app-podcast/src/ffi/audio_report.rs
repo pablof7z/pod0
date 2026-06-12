@@ -118,8 +118,10 @@ pub extern "C" fn nmp_app_podcast_audio_report(
         );
 
         // -- 1. Project the report into the actor; capture fresh now_playing. --
+        // Step 14: player_actor sourced from state.playback.player via .share().
+        // Lock topology UNCHANGED — same Arc<Mutex<PlayerActor>>, sourced differently.
         let (follow_up_json, now_playing, episode_id_for_writeback) = {
-            let mut actor = match handle_ref.player_actor.lock() {
+            let mut actor = match handle_ref.state.playback.player.lock() {
                 Ok(a) => a,
                 Err(_) => return std::ptr::null_mut(),
             };
@@ -243,8 +245,12 @@ fn apply_writeback(store: &mut PodcastStore, report: &AudioReport, episode_id: &
 /// and dispatches `Load` + `Play` back to iOS via the capability channel. Does
 /// nothing (silently) on any lock failure.
 fn maybe_auto_advance(handle: &PodcastHandle) {
+    // Step 14: player, queue, and download_queue are sourced from
+    // state.playback.* via .share() — same Arc<Mutex<_>>, different address.
+    // Lock topology UNCHANGED (never nested; guard dropped before next lock).
+
     // The `auto_play_next` flag lives on the actor (mirrored from settings).
-    let auto_play_next = match handle.player_actor.lock() {
+    let auto_play_next = match handle.state.playback.player.lock() {
         Ok(a) => a.auto_play_next,
         Err(_) => return,
     };
@@ -252,18 +258,12 @@ fn maybe_auto_advance(handle: &PodcastHandle) {
         return;
     }
 
-    // Pop the next episode from the CANONICAL `PlaybackQueue` (`handle.queue`)
-    // — the single queue owner. The UI enqueues into it via both the
-    // `podcast.queue` namespace and the `podcast.player` enqueue ops (which
-    // alias the same queue), and the snapshot renders it as Up Next
-    // (`build_snapshot` reads `handle.queue`).
-    // Pop the next RESOLVABLE episode, skipping stale heads — entries for
-    // episodes removed from the library or unsubscribed shows. The old Swift
-    // `playNext` loop did this; popping once and bailing on a stale head would
-    // strand every valid Up Next entry behind it. Queue and store locks are
-    // taken separately per iteration (never nested) to avoid lock-order hazards.
+    // Pop the next RESOLVABLE episode from the canonical queue, skipping stale
+    // heads (episodes removed from library / unsubscribed shows). Queue and
+    // store locks are taken separately per iteration (never nested) to avoid
+    // lock-order hazards.
     let (episode_id, podcast_id, url, position_secs) = loop {
-        let popped = match handle.queue.lock() {
+        let popped = match handle.state.playback.queue.lock() {
             Ok(mut q) => q.next(),
             Err(_) => return,
         };
@@ -280,8 +280,8 @@ fn maybe_auto_advance(handle: &PodcastHandle) {
         // Stale head already popped; continue to the next entry.
     };
 
-    // Stage the new load on the actor.
-    if let Ok(mut actor) = handle.player_actor.lock() {
+    // Stage the new load on the actor (guard released before next lock).
+    if let Ok(mut actor) = handle.state.playback.player.lock() {
         actor.stage_load(&episode_id, Some(podcast_id), &url, position_secs);
     }
 
@@ -299,7 +299,7 @@ fn maybe_auto_advance(handle: &PodcastHandle) {
         Err(_) => false,
     };
     if needs_dl {
-        let dl_cmd = match handle.download_queue.lock() {
+        let dl_cmd = match handle.state.playback.downloads.lock() {
             Ok(mut q) => q.enqueue(episode_id.clone(), url.clone()),
             Err(_) => None,
         };

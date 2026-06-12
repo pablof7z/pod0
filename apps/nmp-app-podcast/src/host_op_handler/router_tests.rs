@@ -6,9 +6,8 @@
 //! silent-misroute cases each have a dedicated test.
 
 use super::*;
-use crate::download::DownloadQueue;
-use crate::player::PlayerActor;
-use crate::queue::PlaybackQueue;
+// DownloadQueue, PlayerActor, PlaybackQueue removed in Step 14 —
+// now seeded inside PodcastAppState (PlaybackState).
 use crate::store::identity::IdentityStore;
 use crate::store::PodcastStore;
 use podcast_core::{Episode, Podcast};
@@ -38,22 +37,15 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
         store.clone(),
         identity.clone(),
     ));
-    // Steps 8-10: search_results, nostr_results, comments_cache,
-    // viewed_comments_episode_id, social, agent_notes removed from constructor.
-    // Step 11: agent_chat removed — now owned by state.agent_chat.
+    // Steps 8-13: search_results, nostr_results, comments, social, agent_notes,
+    // agent_chat, voice, publish removed from constructor.
+    // Step 14: player_actor, queue, download_queue removed from constructor —
+    // now seeded inside PodcastAppState (PlaybackState).
     PodcastHostOpHandler::new(
         std::ptr::null_mut(),
         state,
         store,
         identity,
-        Arc::new(Mutex::new(PlayerActor::new())),
-        Arc::new(Mutex::new(PlaybackQueue::new())),
-        Arc::new(Mutex::new(DownloadQueue::new())),
-        // agent_tasks, clips, transcripts removed in Steps 5a, 5b, 6.
-        // voice_state removed in Step 12 — now owned by state.voice.
-        // podcast_keys and publish_state removed in Step 13 — now owned by state.publish.
-        // dismissed_episode_ids, inbox_triage_cache, inbox_triage_in_progress removed in Step 7 —
-        // now owned by state.inbox (InboxState).
         rev.clone(),
         Arc::new(tokio::runtime::Runtime::new().unwrap()),
         crate::feed_fetch::FeedFetchCoordinator::new_test(),
@@ -156,14 +148,14 @@ fn knowledge_search_routes_to_knowledge_not_wiki() {
 fn agent_clear_routes_to_agent_not_queue() {
     let handler = empty_handler();
 
-    // Seed the playback queue with one item.
+    // Seed the playback queue with one item (Step 14: via state.playback.queue).
     handler
-        .queue
+        .state.playback.queue
         .lock()
         .unwrap()
         .add_to_end("ep-sentinel");
 
-    assert_eq!(handler.queue.lock().unwrap().items().len(), 1);
+    assert_eq!(handler.state.playback.queue.lock().unwrap().items().len(), 1);
 
     let envelope =
         serde_json::json!({"ns": "podcast.agent", "action": {"op": "clear"}});
@@ -172,7 +164,7 @@ fn agent_clear_routes_to_agent_not_queue() {
     assert_eq!(result["ok"], serde_json::json!(true), "agent.clear should succeed: {result}");
     // Queue must NOT have been cleared — the action went to agent chat, not queue.
     assert_eq!(
-        handler.queue.lock().unwrap().items().len(),
+        handler.state.playback.queue.lock().unwrap().items().len(),
         1,
         "agent.clear must NOT empty the playback queue"
     );
@@ -264,7 +256,8 @@ fn player_download_routes_to_player_not_podcast() {
 
     let handler = handler_with_store(store);
 
-    assert!(handler.download_queue.lock().unwrap().get(&ep_id).is_none());
+    // Step 14: download_queue now at state.playback.downloads.
+    assert!(handler.state.playback.downloads.lock().unwrap().get(&ep_id).is_none());
 
     let envelope = serde_json::json!({
         "ns": "podcast.player",
@@ -284,7 +277,7 @@ fn player_download_routes_to_player_not_podcast() {
     // PlayerAction::Download enqueues the episode in DownloadQueue.
     // PodcastAction::Download (the old hijacker) would have different semantics.
     assert!(
-        handler.download_queue.lock().unwrap().get(&ep_id).is_some(),
+        handler.state.playback.downloads.lock().unwrap().get(&ep_id).is_some(),
         "podcast.player.download must enqueue in DownloadQueue"
     );
 }

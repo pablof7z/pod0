@@ -25,22 +25,25 @@ use std::sync::{Arc, Mutex};
 use podcast_core::{Episode, Podcast};
 use url::Url;
 
-use crate::download::DownloadQueue;
 use crate::ffi::audio_report::nmp_app_podcast_audio_report;
 use crate::ffi::handle::PodcastHandle;
 use crate::ffi::snapshot::build_podcast_update;
 use crate::host_op_handler::PodcastHostOpHandler;
-use crate::player::PlayerActor;
-use crate::queue::PlaybackQueue;
 use crate::store::identity::IdentityStore;
 use crate::store::PodcastStore;
 use nmp_core::substrate::HostOpHandler;
+// DownloadQueue and PlaybackQueue removed in Step 14 — now in PlaybackState.
 
 /// Shared kernel state — the exact Arcs `nmp_app_podcast_register` clones into
 /// both the host-op handler (writer) and the handle (snapshot reader).
+///
+/// Step 14: `player_actor` removed — it now lives inside
+/// `PodcastAppState.playback.player`.  Both seams share the SAME
+/// `Arc<PodcastAppState>` so writes the handler makes are visible when the
+/// handle projects the snapshot.
 struct SharedKernel {
     store: Arc<Mutex<PodcastStore>>,
-    player_actor: Arc<Mutex<PlayerActor>>,
+    state: Arc<crate::state::PodcastAppState>,
     rev: Arc<AtomicU64>,
 }
 
@@ -53,29 +56,19 @@ fn feedback_runtime(rev: Arc<AtomicU64>) -> nmp_feedback::FeedbackRuntime {
     )
 }
 
-/// Build a `PodcastHostOpHandler` that shares the caller's `store`,
-/// `player_actor`, and `rev` so writes it makes are visible to a handle built
-/// from the same Arcs. `app` is a real, fresh `NmpApp` (never started, so no
-/// actor thread): `build_podcast_update` reads its `configured_relays_handle`
-/// and `dispatch_audio` derefs it (a no-op send into an unstarted app).
+/// Build a `PodcastHostOpHandler` that shares the caller's `state` (which
+/// owns `player_actor` in `state.playback.player`) so writes are visible to a
+/// handle built from the same `Arc<PodcastAppState>`.
+///
+/// Step 14: `player_actor`, `queue`, and `download_queue` are no longer
+/// separate constructor args — they live inside `state.playback`.
 fn handler_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> PodcastHostOpHandler {
     let identity = Arc::new(Mutex::new(IdentityStore::new()));
-    let state = Arc::new(crate::state::PodcastAppState::new_with_identity(
-        crate::state::Infra::for_test(),
-        shared.store.clone(),
-        identity.clone(),
-    ));
-    // Steps 7-13: dismissed_episode_ids, inbox_triage_cache, inbox_triage_in_progress,
-    // agent_tasks, clips, transcripts, voice_state, podcast_keys, publish_state,
-    // agent_chat removed — now owned by state.inbox / state.* respectively.
     PodcastHostOpHandler::new(
         app,
-        state,
+        shared.state.clone(),
         shared.store.clone(),
         identity,
-        shared.player_actor.clone(),
-        Arc::new(Mutex::new(PlaybackQueue::new())),
-        Arc::new(Mutex::new(DownloadQueue::new())),
         shared.rev.clone(),
         Arc::new(tokio::runtime::Runtime::new().unwrap()),
         crate::feed_fetch::FeedFetchCoordinator::new_test(),
@@ -83,32 +76,23 @@ fn handler_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> PodcastH
     )
 }
 
-/// Build a `PodcastHandle` sharing the caller's `store`, `player_actor`, and
-/// `rev`, pointing at the same real `app` as the handler so
-/// `build_podcast_update`'s configured-relays projection has a live pointer.
+/// Build a `PodcastHandle` sharing the SAME `Arc<PodcastAppState>` as the
+/// handler so the snapshot reader sees the writer's mutations without any
+/// separate Arc wiring.
 fn handle_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> Box<PodcastHandle> {
     let identity = Arc::new(Mutex::new(IdentityStore::new()));
-    let state = Arc::new(crate::state::PodcastAppState::new_with_identity(
-        crate::state::Infra::for_test(),
-        shared.store.clone(),
-        identity.clone(),
-    ));
-    // Steps 7-13: dismissed_episode_ids, inbox_triage_cache, inbox_triage_in_progress,
-    // search_results, nostr_results, comments_cache, viewed_comments_episode_id, social,
-    // agent_notes, voice_state, voice_conversation, podcast_keys, publish_state removed —
-    // now owned by state.inbox / state.* respectively.
     Box::new(PodcastHandle {
         app,
-        state,
-        player_actor: shared.player_actor.clone(),
+        state: shared.state.clone(),
+        // player_actor removed in Step 14 — now state.playback.player.
         store: shared.store.clone(),
         identity,
         rev: shared.rev.clone(),
         snapshot_signal: None,
         snapshot_cache: Arc::new(Mutex::new(None)),
         clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
-        queue: Arc::new(Mutex::new(PlaybackQueue::new())),
-        download_queue: Arc::new(Mutex::new(DownloadQueue::new())),
+        // queue removed in Step 14 — now state.playback.queue.
+        // download_queue removed in Step 14 — now state.playback.downloads.
         feedback: feedback_runtime(shared.rev.clone()),
         runtime: Arc::new(tokio::runtime::Runtime::new().unwrap()),
         feed_fetch: crate::feed_fetch::FeedFetchCoordinator::new_test(),
@@ -144,10 +128,20 @@ fn seed_one_episode(store: &Arc<Mutex<PodcastStore>>, show: &str, ep_title: &str
 /// `now_playing` and `widget` are populated and consistent.
 #[test]
 fn play_then_playing_report_populates_now_playing_and_widget() {
+    let store = Arc::new(Mutex::new(PodcastStore::new()));
+    let rev = Arc::new(AtomicU64::new(1));
+    let identity = Arc::new(Mutex::new(IdentityStore::new()));
+    // Step 14: both seams share ONE Arc<PodcastAppState> so handler writes
+    // to state.playback.player are visible to the handle's snapshot reader.
+    let state = Arc::new(crate::state::PodcastAppState::new_with_identity(
+        crate::state::Infra::for_test(),
+        store.clone(),
+        identity,
+    ));
     let shared = SharedKernel {
-        store: Arc::new(Mutex::new(PodcastStore::new())),
-        player_actor: Arc::new(Mutex::new(PlayerActor::new())),
-        rev: Arc::new(AtomicU64::new(1)),
+        store: store.clone(),
+        state,
+        rev: rev.clone(),
     };
     let ep_id = seed_one_episode(&shared.store, "The Daily", "Friday, June 6");
 

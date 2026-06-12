@@ -26,10 +26,7 @@ use tokio::runtime::Runtime;
 
 use nmp_ffi::NmpApp;
 
-use crate::download::DownloadQueue;
 use crate::feed_fetch::FeedFetchCoordinator;
-use crate::player::PlayerActor;
-use crate::queue::PlaybackQueue;
 use crate::snapshot_signal::SnapshotUpdateSignal;
 use crate::store::identity::IdentityStore;
 use crate::store::PodcastStore;
@@ -64,12 +61,12 @@ pub struct PodcastHostOpHandler {
     pub(crate) state: Arc<PodcastAppState>,
     pub(crate) store: Arc<Mutex<PodcastStore>>,
     pub(crate) identity: Arc<Mutex<IdentityStore>>,
-    pub(crate) player_actor: Arc<Mutex<PlayerActor>>,
+    // player_actor removed in Step 14 — now owned by `state.playback.player`.
     // search_results removed in Step 9 — now owned by `state.discovery` (DiscoveryState).
     // nostr_results removed in Step 9 — dead duplicate Arc; observer now shares
     // from `state.discovery.nostr_results`.
-    pub(crate) queue: Arc<Mutex<PlaybackQueue>>,
-    pub(crate) download_queue: Arc<Mutex<DownloadQueue>>,
+    // queue removed in Step 14 — now owned by `state.playback.queue`.
+    // download_queue removed in Step 14 — now owned by `state.playback.downloads`.
     // wiki_articles and wiki_search_results removed in Step 2 —
     // they are now owned by `state.wiki` (WikiState).
     // picks + picks_score_in_progress removed in Step 3 —
@@ -124,9 +121,6 @@ impl PodcastHostOpHandler {
         state: Arc<PodcastAppState>,
         store: Arc<Mutex<PodcastStore>>,
         identity: Arc<Mutex<IdentityStore>>,
-        player_actor: Arc<Mutex<PlayerActor>>,
-        queue: Arc<Mutex<PlaybackQueue>>,
-        download_queue: Arc<Mutex<DownloadQueue>>,
         rev: Arc<AtomicU64>,
         runtime: Arc<Runtime>,
         feed_fetch: Arc<FeedFetchCoordinator>,
@@ -137,9 +131,6 @@ impl PodcastHostOpHandler {
             state,
             store,
             identity,
-            player_actor,
-            queue,
-            download_queue,
             rev,
             runtime,
             feed_fetch,

@@ -5,10 +5,7 @@
 //! store + key + state mutations are what these tests exercise.
 
 use super::*;
-use crate::download::DownloadQueue;
 use crate::host_op_publish::{create_owned, publish_show};
-use crate::player::PlayerActor;
-use crate::queue::PlaybackQueue;
 use crate::store::identity::IdentityStore;
 use crate::store::PodcastStore;
 use std::sync::atomic::AtomicU64;
@@ -25,14 +22,12 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
     // Steps 8-10: search_results, nostr_results, comments_cache,
     // viewed_comments_episode_id, social, agent_notes removed from constructor.
     // Step 11: agent_chat removed — now owned by state.agent_chat.
+    // Step 14: player_actor, queue, download_queue removed — now in state.playback.
     PodcastHostOpHandler::new(
         std::ptr::null_mut(),
         state,
         store,
         identity,
-        Arc::new(Mutex::new(PlayerActor::new())),
-        Arc::new(Mutex::new(PlaybackQueue::new())),
-        Arc::new(Mutex::new(DownloadQueue::new())),
         // agent_tasks, clips, transcripts removed in Steps 5a, 5b, 6.
         // voice_state removed in Step 12 — now owned by state.voice.
         // podcast_keys and publish_state removed in Step 13 — now owned by state.publish.

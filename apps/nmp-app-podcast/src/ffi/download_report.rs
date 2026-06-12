@@ -111,11 +111,13 @@ pub extern "C" fn nmp_app_podcast_download_report(
 
             let handle_ref = unsafe { &*handle };
             let response = {
+                // Step 14: download_queue sourced from state.playback.downloads
+                // via the same Arc<Mutex<DownloadQueue>> — lock topology unchanged.
                 let mut store = match handle_ref.store.lock() {
                     Ok(s) => s,
                     Err(_) => return std::ptr::null_mut(),
                 };
-                let mut queue = match handle_ref.download_queue.lock() {
+                let mut queue = match handle_ref.state.playback.downloads.lock() {
                     Ok(q) => q,
                     Err(_) => return std::ptr::null_mut(),
                 };

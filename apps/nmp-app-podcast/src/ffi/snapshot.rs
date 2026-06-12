@@ -36,7 +36,8 @@ pub(super) fn provider_key_present(key: Option<&str>) -> bool {
 pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     let rev = handle.rev.load(Ordering::Relaxed);
 
-    let now_playing = handle.player_actor.lock().ok().and_then(|a| {
+    // Step 14: player_actor now sourced from state.playback.player.
+    let now_playing = handle.state.playback.player.lock().ok().and_then(|a| {
         let s = a.state().clone();
         if s.episode_id.is_some() {
             Some(s)
@@ -93,12 +94,8 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     // Step 9: search_results + nostr_results now read from DiscoveryState.
     let search_results = handle.state.discovery.itunes_snapshot();
     let nostr_results = handle.state.discovery.nostr_snapshot();
-    let queue_ids: Vec<String> = handle
-        .queue
-        .lock()
-        .ok()
-        .map(|q| q.items().to_vec())
-        .unwrap_or_default();
+    // Step 14: queue now read from state.playback.queue.
+    let queue_ids = handle.state.playback.queue_snapshot();
     let queue = resolve_queue_rows(&queue_ids, &library);
     // Step 2: wiki slots are now owned by `state.wiki`.
     let wiki_articles = handle.state.wiki.articles_snapshot();
@@ -116,8 +113,9 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     // Step 7: inbox_triage_in_progress now read from InboxState.
     let inbox_triage_in_progress = handle.state.inbox.triage_in_progress_snapshot();
     let owned_podcasts = collect_owned_podcasts(handle);
+    // Step 14: downloads now read from state.playback.downloads.
     let downloads = handle
-        .download_queue
+        .state.playback.downloads
         .lock()
         .ok()
         .and_then(|q| build_downloads_snapshot(&q));
