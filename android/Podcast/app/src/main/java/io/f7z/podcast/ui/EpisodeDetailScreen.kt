@@ -13,9 +13,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,10 +26,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +47,7 @@ import io.f7z.podcast.ChapterSummary
 import io.f7z.podcast.EpisodeSummary
 import io.f7z.podcast.KernelBridge
 import io.f7z.podcast.PodcastSnapshot
+import io.f7z.podcast.TranscriptEntry
 import java.text.DateFormat
 import java.util.Date
 
@@ -158,6 +167,7 @@ private fun EpisodeDetailBody(
         }
 
         ChapterList(chapters = episode.chapters)
+        TranscriptSection(episode = episode, bridge = bridge)
     }
 }
 
@@ -253,6 +263,154 @@ private fun ChapterList(chapters: List<ChapterSummary>) {
         }
     }
 }
+
+/**
+ * Transcript section for the episode detail view.
+ *
+ * Lifecycle rendering:
+ *  - No `transcript_url` and no entries → hidden (nothing to offer).
+ *  - `transcript_url` present but no transcript yet → "Load Transcript" button
+ *    which dispatches `podcast` `{"op":"fetch_transcript","episode_id":"..."}`.
+ *  - `transcript_status` non-empty → in-progress shimmer or error label.
+ *  - `transcript_entries` non-empty → timestamped segment list (collapsible).
+ *  - `transcript` (raw text) present but no entries → plain text fallback.
+ *
+ * D8 — all state derives from the kernel snapshot; no local business logic.
+ */
+@Composable
+private fun TranscriptSection(episode: EpisodeSummary, bridge: KernelBridge) {
+    val hasUrl = !episode.transcriptUrl.isNullOrBlank()
+    val hasEntries = episode.transcriptEntries.isNotEmpty()
+    val hasText = !episode.transcript.isNullOrBlank()
+    val status = episode.transcriptStatus
+    val statusMsg = episode.transcriptStatusMessage
+
+    if (!hasUrl && !hasEntries && !hasText && status.isBlank()) return
+
+    var expanded by rememberSaveable { mutableStateOf(false) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Subtitles,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = "Transcript",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+            if (hasEntries || hasText) {
+                IconButton(onClick = { expanded = !expanded }, modifier = Modifier.size(32.dp)) {
+                    Text(
+                        text = if (expanded) "Hide" else "Show",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+        }
+
+        when {
+            status == "fetching_publisher" || status == "transcribing" || status == "queued" -> {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Text(
+                    text = when (status) {
+                        "queued" -> "Transcript queued"
+                        "fetching_publisher" -> "Fetching transcript…"
+                        else -> "Transcribing…"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            status == "failed" -> {
+                Text(
+                    text = statusMsg ?: "Transcript failed",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                TranscriptFetchButton(episodeId = episode.id, bridge = bridge)
+            }
+            hasEntries && expanded -> TranscriptEntryList(entries = episode.transcriptEntries)
+            hasText && expanded -> {
+                Text(
+                    text = episode.transcript!!,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            !hasEntries && !hasText && hasUrl -> {
+                TranscriptFetchButton(episodeId = episode.id, bridge = bridge)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TranscriptFetchButton(episodeId: String, bridge: KernelBridge) {
+    OutlinedButton(
+        onClick = {
+            PodcastActionDispatcher.dispatch(
+                bridge = bridge,
+                namespace = PodcastNamespace.PODCAST,
+                payload = FetchTranscriptPayload(episodeId = episodeId),
+            )
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text("Load Transcript")
+    }
+}
+
+@Composable
+private fun TranscriptEntryList(entries: List<TranscriptEntry>) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        entries.take(TRANSCRIPT_PREVIEW_LIMIT).forEach { entry ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = formatTimecodeShort(entry.startSecs),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 1.dp),
+                )
+                Column {
+                    entry.speaker?.takeIf { it.isNotBlank() }?.let { speaker ->
+                        Text(
+                            text = speaker,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    Text(text = entry.text, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        if (entries.size > TRANSCRIPT_PREVIEW_LIMIT) {
+            Text(
+                text = "… ${entries.size - TRANSCRIPT_PREVIEW_LIMIT} more segments",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+private const val TRANSCRIPT_PREVIEW_LIMIT = 50
 
 @Composable
 private fun MissingEpisodeState(modifier: Modifier = Modifier) {

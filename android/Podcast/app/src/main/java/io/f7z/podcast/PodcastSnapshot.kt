@@ -82,6 +82,12 @@ data class PodcastSnapshot(
     val queue: List<EpisodeSummary> = emptyList(),
     /** AI-triaged inbox, highest-priority first. Mirror of `PodcastUpdate.inbox`. */
     val inbox: List<InboxItem> = emptyList(),
+    /**
+     * `true` while the background LLM triage pass is running.
+     * Mirror of `PodcastUpdate.inbox_triage_in_progress`. Drives the shimmer
+     * indicator in the Inbox screen.
+     */
+    @SerialName("inbox_triage_in_progress") val inboxTriageInProgress: Boolean = false,
     /** Agent-scheduled task rows. Mirror of `PodcastUpdate.agent_tasks`. */
     @SerialName("agent_tasks") val agentTasks: List<AgentTaskSummary> = emptyList(),
     /**
@@ -312,6 +318,34 @@ data class EpisodeSummary(
     @SerialName("ai_categories") val aiCategories: List<String> = emptyList(),
     /** AI Inbox triage decision (`"inbox"` | `"archived"`), or `null` if untriaged. */
     @SerialName("triage_decision") val triageDecision: String? = null,
+    /**
+     * Publisher-provided transcript URL from the Podcasting 2.0
+     * `<podcast:transcript>` tag. Non-null signals a transcript is available
+     * to fetch via `podcast` `{"op":"fetch_transcript","episode_id":"..."}`.
+     * Mirror of `EpisodeSummary.transcript_url`.
+     */
+    @SerialName("transcript_url") val transcriptUrl: String? = null,
+    /**
+     * Raw plain-text transcript, populated after a `fetch_transcript` action.
+     * Mirror of `EpisodeSummary.transcript`.
+     */
+    val transcript: String? = null,
+    /**
+     * Structured transcript entries with timestamps.
+     * Mirror of `EpisodeSummary.transcript_entries` (`Vec<TranscriptEntry>`).
+     */
+    @SerialName("transcript_entries") val transcriptEntries: List<TranscriptEntry> = emptyList(),
+    /**
+     * Transient transcript-ingestion status: `""` | `"queued"` | `"fetching_publisher"` |
+     * `"transcribing"` | `"failed"`. Empty string means idle.
+     * Mirror of `EpisodeSummary.transcript_status`.
+     */
+    @SerialName("transcript_status") val transcriptStatus: String = "",
+    /**
+     * User-facing error detail when `transcript_status == "failed"`.
+     * Mirror of `EpisodeSummary.transcript_status_message`.
+     */
+    @SerialName("transcript_status_message") val transcriptStatusMessage: String? = null,
 )
 
 /**
@@ -329,6 +363,21 @@ data class ChapterSummary(
     val title: String = "",
     @SerialName("image_url") val imageUrl: String? = null,
     val url: String? = null,
+)
+
+/**
+ * One time-stamped transcript segment. Mirror of the Rust
+ * `ffi/projections/library.rs::TranscriptEntry`.
+ *
+ * `speaker` is optional (not all ingestors emit per-segment speaker labels).
+ * `endSecs` is optional (some ingestors don't provide segment end times).
+ */
+@Serializable
+data class TranscriptEntry(
+    @SerialName("start_secs") val startSecs: Double = 0.0,
+    @SerialName("end_secs") val endSecs: Double? = null,
+    val speaker: String? = null,
+    val text: String = "",
 )
 
 /**

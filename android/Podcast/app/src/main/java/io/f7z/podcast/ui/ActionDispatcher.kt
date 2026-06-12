@@ -45,6 +45,7 @@ object PodcastNamespace {
     const val QUEUE = "podcast.queue"
     const val SETTINGS = "podcast.settings"
     const val TASKS = "podcast.tasks"
+    const val INBOX = "podcast.inbox"
 }
 
 // ── `podcast` namespace payloads ──────────────────────────────────────────
@@ -453,6 +454,8 @@ data class SetProviderApiKeysPayload(
     val perplexity: String? = null,
     val op: String = "set_provider_api_keys",
 )
+
+// Inbox + transcript payloads live in InboxTranscriptPayloads.kt (file-length split per AGENTS.md).
 
 /**
  * Thin wrapper around `KernelBridge.dispatchAction`. Encodes a typed,

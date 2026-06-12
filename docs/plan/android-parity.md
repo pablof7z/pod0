@@ -39,9 +39,9 @@ in `android/Podcast/app/src/main/java/io/f7z/podcast/`.
 
 | Feature | Status |
 |---|---|
-| Inbox triage | Not started (snapshot field decoded; no inbox UI) |
+| Inbox triage | Shipped (InboxScreen + triage shimmer + dismiss/mark-listened dispatch) |
 | Agent chat | Scaffold |
-| Transcripts | Not started |
+| Transcripts | Shipped (transcript section in EpisodeDetailScreen + fetch dispatch + status lifecycle) |
 | AI chapters | Not started (chapters render in episode detail; no synthesis trigger) |
 | Auto ad-skip | Not started |
 | RAG / wiki | Not started |
