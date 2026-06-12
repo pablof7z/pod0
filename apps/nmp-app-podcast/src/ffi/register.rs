@@ -7,8 +7,6 @@ use crate::state::{Infra, PodcastAppState};
 
 use nmp_ffi::NmpApp;
 
-use super::snapshot::build_snapshot_payload;
-
 use super::actions::agent_module::AgentActionModule;
 use super::actions::categorization_module::CategorizationModule;
 use super::actions::chapters_module::ChaptersActionModule;
@@ -320,39 +318,26 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
         clean_html_cache: Arc::new(Mutex::new(std::collections::HashMap::new())),
     });
 
-    // Reactive push projection — the canonical snapshot-output seam
-    // (`NmpApp::register_snapshot_projection_gated`). Podcast state now rides the
-    // generic push frame under `projections["podcast.snapshot"]`, delivered to
-    // the shell on every tick through the same update callback it already
-    // listens on — replacing the bespoke `nmp_app_podcast_snapshot` pull symbol
-    // and the shell's 500ms poll (a D8 violation / reborn deprecated
-    // `chirp_snapshot` pattern).
+    // NOTE: The `register_snapshot_projection_gated("podcast.snapshot", …)` block
+    // that existed here has been deleted (perf/delete-dead-snapshot-projection).
     //
-    // The closure runs on the actor thread inside `make_update` (D8 — must be
-    // cheap, non-blocking). It reuses `build_snapshot_payload`, the SAME
-    // serialization the pull path uses: that function owns the rev-gated
-    // snapshot-string cache (so an unchanged `rev` is a cheap clone, not a
-    // rebuild) AND the proven fallback-to-stub on a serialization error. Reusing
-    // it makes the pushed projection byte-identical to the JSON the shell's pull
-    // path already decodes successfully — avoiding a divergent `to_value(...)`
-    // path that yields `null` (and a dropped frame) when the typed value can't
-    // serialize (e.g. a non-finite float in real feed data).
+    // Since NMP v0.3.0 typed-first (ADR-0044), the Tier-3 frame encoder
+    // (`nmp-core::update_envelope::tier3_frame::encode_snapshot_with_envelope`)
+    // encodes ONLY the typed envelope + typed-projection FlatBuffer sidecars —
+    // it does NOT encode the generic `KernelSnapshot::projections` JSON map.
+    // The `podcast.snapshot` generic push-projection closure therefore produced
+    // output that was silently DISCARDED on every actor tick: multi-MB JSON
+    // serialize on rev-change, multi-MB `Value::clone` in the registry memo on
+    // rev-unchanged — pure actor-thread waste with no consumer.
     //
-    // Change-gating (nmp-v0.2.10 / upstream PR #1068): `register_snapshot_projection_gated`
-    // passes `handle.rev` (Arc<AtomicU64>) as the `ChangeGate`. The registry skips
-    // re-invoking the closure — and therefore skips the full library
-    // serialization — when `rev` is unchanged since the last emit. This is
-    // the proper upstream fix superseding the interim local `value_cache`
-    // approach: the gate check now lives in the registry, so the closure
-    // body stays the plain always-correct fallback-to-stub form.
-    {
-        let proj = Arc::clone(&handle);
-        // Step N+1: rev is now in state.infra.rev.
-        let gate = Arc::clone(&handle.state.infra.rev) as std::sync::Arc<dyn nmp_core::ChangeGate>;
-        app_ref.register_snapshot_projection_gated("podcast.snapshot", gate, move || {
-            serde_json::from_str(&build_snapshot_payload(&proj)).unwrap_or(serde_json::Value::Null)
-        });
-    }
+    // Every real consumer (iOS `pullPodcastSnapshotIfChanged` →
+    // `nmp_app_podcast_snapshot`, Android `android.rs`, headless, TUI) uses the
+    // PULL symbol (`nmp_app_podcast_snapshot` / `build_snapshot_payload`), which
+    // is kept intact as the cold-start hydration and fallback path.
+    //
+    // Per-domain typed sidecars (podcast.library, podcast.playback, …) will be
+    // registered via `register_typed_snapshot_projection` in a follow-up PR
+    // (`perf/domain-sub-projections-kernel`).
 
     // Ownership: one strong ref is returned to the shell as the opaque handle
     // pointer; the projection closure above holds a second strong ref for the
