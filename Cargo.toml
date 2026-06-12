@@ -20,4 +20,5 @@ nmp-defaults = { version = "0.6.0", git = "https://github.com/pablof7z/nostr-mul
 nmp-core = { version = "0.6.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "4fdcb52d68cf4a7d203de3633620155e06e45ec3" }
 nmp-ffi = { version = "0.6.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "4fdcb52d68cf4a7d203de3633620155e06e45ec3" }
 nmp-signer-broker = { version = "0.6.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "4fdcb52d68cf4a7d203de3633620155e06e45ec3" }
+nmp-blossom = { version = "0.6.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "4fdcb52d68cf4a7d203de3633620155e06e45ec3" }
 nmp-feedback = { git = "https://github.com/pablof7z/nmp-feedback.git", rev = "62370505dcd0e942af14d795beeb0b362aa6ea88" }

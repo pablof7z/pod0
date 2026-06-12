@@ -60,6 +60,12 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     let app_mut = unsafe { &mut *app };
     nmp_defaults::register_defaults(app_mut);
 
+    // Wire the BUD-02 Blossom upload action (`nmp.blossom.upload`).
+    // D13/D0: Rust owns the full Build → Sign → Transport pipeline.
+    // Swift dispatches with a correlation-id and reads the BlobDescriptor
+    // from action_results[correlation_id].result on the next push frame.
+    nmp_blossom::register_actions(app_mut);
+
     app_mut.register_action::<IdentityActionModule>();
     app_mut.register_action::<PodcastActionModule>();
     app_mut.register_action::<PlayerActionModule>();

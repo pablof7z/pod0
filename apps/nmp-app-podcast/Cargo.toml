@@ -69,6 +69,10 @@ nmp-feedback = { workspace = true }
 # controllers. Podcast's `nmp_app_podcast_register` calls `register_defaults`
 # once at app init instead of duplicating the boilerplate.
 nmp-defaults = { workspace = true }
+# BUD-02 blob upload action (`nmp.blossom.upload`). D13/D0 — Rust owns the
+# full Build → Sign → Transport pipeline; Swift dispatches + reads the
+# projected result. Same git rev as the other nmp-* deps (workspace pin).
+nmp-blossom = { workspace = true }
 # `nostr` reconstructs typed `Event` / `Keys` / `PublicKey` / `RelayUrl`
 # values from C-ABI JSON. Pinned to 0.44.
 nostr = { version = "0.44", default-features = false, features = ["std"] }

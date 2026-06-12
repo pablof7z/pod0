@@ -211,19 +211,16 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
         }
         let imageGen = ImageGenerationService()
         let imageData = try await imageGen.generate(prompt: prompt, model: settings.imageGenerationModel)
-        // Auth signing is the kernel's job (D13 sign-for-return): the
-        // KernelSigner signs the kind:24242 auth event with the active account —
-        // no private key in Swift. The artwork blob isn't owned by the
-        // per-podcast key; any valid auth signature the Blossom server accepts
-        // suffices (it only checks the `x` hash tag matches the upload).
+        // D13/D0: kernel owns the kind:24242 auth signing AND the HTTP transport
+        // (nmp.blossom.upload). No private key in Swift; no URLSession in Swift.
+        // Active account signs (artwork blob — no per-podcast key needed).
         guard let kernel = await store?.kernel else {
             throw AgentOwnedPodcastError.storeUnavailable
         }
-        let blossom = BlossomUploader(serverURLString: settings.blossomServerURL)
-        let url = try await blossom.upload(
+        let url = try await kernel.blossomUpload(
             data: imageData,
             contentType: "image/png",
-            signer: KernelSigner(kernel: kernel))
+            servers: [settings.blossomServerURL])
         Self.logger.info("Artwork uploaded to \(url.absoluteString, privacy: .public)")
         return url
     }

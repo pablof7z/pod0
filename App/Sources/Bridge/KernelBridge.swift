@@ -59,6 +59,12 @@ final class PodcastHandle: @unchecked Sendable {
     /// is the kernel's job, the host never holds a private key).
     let signedEventsRegistry = SignedEventsRegistry()
 
+    /// Buffered resolver for async-completing kernel actions. The
+    /// `action_results` projection carries the settled result (e.g. a
+    /// `BlobDescriptor` from `nmp.blossom.upload`) as a drained array in each
+    /// push frame. `BlossomKernelUploader` awaits its correlation-id here.
+    let actionResultsRegistry = ActionResultsRegistry()
+
     init() {
         raw = nmp_app_new()
         // Register the NIP-46 bunker hook BEFORE any sign-in attempt routes
@@ -99,7 +105,9 @@ final class PodcastHandle: @unchecked Sendable {
         onPanic: @escaping () -> Void = {}
     ) {
         let sink = KernelUpdateSink(
-            handler: handler, onPanic: onPanic, signedEvents: signedEventsRegistry)
+            handler: handler, onPanic: onPanic,
+            signedEvents: signedEventsRegistry,
+            actionResults: actionResultsRegistry)
         updateSink = sink
         nmp_app_set_update_callback(
             raw, Unmanaged.passUnretained(sink).toOpaque(), nmpUpdateCallback)
@@ -286,15 +294,18 @@ private final class KernelUpdateSink {
     let handler: (KernelUpdateResult) -> Void
     let onPanic: () -> Void
     let signedEvents: SignedEventsRegistry
+    let actionResults: ActionResultsRegistry
 
     init(
         handler: @escaping (KernelUpdateResult) -> Void,
         onPanic: @escaping () -> Void,
-        signedEvents: SignedEventsRegistry
+        signedEvents: SignedEventsRegistry,
+        actionResults: ActionResultsRegistry
     ) {
         self.handler = handler
         self.onPanic = onPanic
         self.signedEvents = signedEvents
+        self.actionResults = actionResults
     }
 }
 
@@ -394,13 +405,15 @@ private let nmpUpdateCallback: NmpUpdateCallback = { context, bytes, len in
     defer { nmp_free_string(jsonPtr) }
     let payload = String(cString: jsonPtr)
     let sink = Unmanaged<KernelUpdateSink>.fromOpaque(context).takeUnretainedValue()
-    // Drain the `signed_events` projection FIRST — before the panic short-circuit
-    // and before the podcast-decode guard below — so a frame that carries a
-    // sign-for-return result but no `podcast.snapshot` (or even a panic frame
-    // that still flushed a pending sign) never silently drops the result. This
-    // is the drain-once frame the kernel clears on emit; `SignedEventsRegistry`
-    // retains it so a not-yet-registered continuation still resolves.
-    sink.signedEvents.ingest(envelopePayload: Data(payload.utf8))
+    // Drain the `signed_events` and `action_results` projections FIRST — before
+    // the panic short-circuit and before the podcast-decode guard below — so a
+    // frame that carries a result but no `podcast.snapshot` (or even a panic
+    // frame that still flushed a pending sign) never silently drops the result.
+    // Both are drain-once frames the kernel clears on emit; the registries
+    // retain results so a not-yet-registered continuation still resolves.
+    let payloadData = Data(payload.utf8)
+    sink.signedEvents.ingest(envelopePayload: payloadData)
+    sink.actionResults.ingest(envelopePayload: payloadData)
     if payload.contains("\"t\":\"panic\"") {
         kbLog.fault("NMP_ACTOR_PANIC detected bytes=\(len)")
         sink.onPanic()

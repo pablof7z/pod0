@@ -735,32 +735,31 @@ worktrees currently in flight.
   `apps/podcast-feeds/src/http.rs`) and the iOS executor decodes it back to raw
   `Data`, so the Rust audio-upload path is end-to-end functional — the "Rust does
   not use it yet" status this item described is no longer true.
-- **blossom-active-account-upload-kernel.** The two IN-MEMORY Blossom upload
-  callers — avatar (`App/Sources/Features/Identity/ChangePhotoSheet.swift`) and
-  owned-podcast artwork
-  (`App/Sources/Agent/LiveAgentOwnedPodcastManager.generateAndUploadArtwork`) —
-  still run their HTTP transport in Swift (`App/Sources/Services/BlossomUploader.swift`).
-  Signing is already kernel-owned (D13, via `KernelSigner` →
-  `nmp_app_sign_event_for_return`); only the PUT transport remains in Swift.
-  The AUDIO upload path is by contrast already fully Rust-owned
-  (`host_op_publish::publish_episode` → `blossom::upload_to_blossom`), because
-  it signs the kind:24242 auth event **synchronously** with the per-podcast
-  NIP-F4 key (`secret_bytes`). The blocker for the avatar/artwork path is NOT a
-  missing `file_path` (the original TODO's premise — false; bytes-vs-path is
-  irrelevant) but that these uploads sign with the user's **active account**,
-  which may be a NIP-46 bunker. Active-account signing only goes through the
-  **async** sign-and-return seam (correlation-id + host-side continuation,
-  deliberately host-driven so a remote-signer round-trip never blocks the actor
-  thread). A synchronous Rust host-op handler cannot orchestrate that. Moving
-  these uploads into Rust therefore requires a NEW async-bridging capability: a
-  Rust action that registers a `signed_events` observer, oneshot-bridges the
-  signed kind:24242 event, then dispatches the HTTP upload through the capability
-  executor and stamps the resulting blob URL onto a projection (mirror the
-  `summarize_episode`/`discover_nostr` dispatch-then-await-projection pattern,
-  but for sign-and-return rather than relay publish). Until that lands, keep the
-  Swift transport as one coherent path (do NOT do a Swift-signs/Rust-HTTP split —
-  it fragments auth-event construction across the boundary, AGENTS.md
-  anti-fragmentation).
+- ~~**blossom-active-account-upload-kernel.**~~ **DONE (PR feat/blossom-upload-via-nmp).**
+  The avatar (`ChangePhotoSheet`) and artwork (`LiveAgentOwnedPodcastManager.generateAndUploadArtwork`)
+  callers now dispatch `nmp.blossom.upload` through `KernelModel.blossomUpload` and
+  await the `BlobDescriptor` from the drain-once `action_results` typed sidecar.
+  `BlossomUploader.swift` is deleted. The `nmp-blossom` action module (v0.6.0) owns
+  the full Build → Sign → Transport pipeline (D13/D0).
+- **blossom-audio-path-migration.** Migrate the audio upload path
+  (`apps/nmp-app-podcast/src/blossom.rs` → `host_op_publish::publish_episode`) to
+  `nmp.blossom.upload` via `signer_pubkey` roster selection. **BLOCKED:** the
+  per-podcast NIP-F4 keys live in the Podcast-domain `PodcastKeyStore`, NOT in the
+  NMP account roster (`ctx.identity`). `nmp.blossom.upload` with `signer_pubkey`
+  only resolves accounts registered in the NMP kernel's identity roster. This
+  requires registering per-podcast keys as named roster accounts, or an alternate
+  signing seam. Until that capability lands, `blossom.rs` stays (it uses direct
+  `Keys` signing which works without the roster).
+- **kernelsigner-deadcode-removal.** After the Blossom-via-kernel migration
+  (PR feat/blossom-upload-via-nmp) the `KernelSigner` struct
+  (`App/Sources/Services/Nip46/NostrSigner.swift`) has ZERO callers — its only
+  two users (avatar + artwork upload) were converted to `KernelModel.blossomUpload`.
+  Removing it also strands `KernelModel.signEventForReturn` /
+  `PodcastHandle.signEventForReturn` (`KernelBridge.swift`) and the now-conformerless
+  `NostrSigner` protocol + `NostrEventDraft`. Deferred from the PR because the chain
+  reaches into unrelated bridge files and `NostrSignerError` is still referenced by
+  `KernelBridge.swift` + `SignedEventsRegistryTests.swift` — a clean removal needs a
+  focused pass, not a drive-by in the Blossom PR. Non-blocking dead code.
 - **m5-chirp-headers-parity.** Reconcile podcast-player and Chirp HTTP header
   schemas once the canonical `nmp-core::capability::http` shape lands.
 - ~~**m8-blossom-binary-body.**~~ Done (Rust side): `HttpRequest` now carries

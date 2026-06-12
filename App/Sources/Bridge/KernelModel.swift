@@ -715,6 +715,18 @@ final class KernelModel {
             accountPubkeyHex: accountPubkeyHex, unsignedJSON: unsignedJSON)
     }
 
+    // ── action_results registry (nmp.blossom.upload + future async actions) ──
+
+    /// Drain-once resolver for async-completing kernel actions. Populated by
+    /// the `nmpUpdateCallback` on every push frame that carries
+    /// `projections["action_results"]`. `blossomUpload` awaits its
+    /// correlation-id here. Exposed `internal` so `KernelModel+BlossomUpload`
+    /// can capture it without accessing the private `kernel` property.
+    var actionResultsRegistry: ActionResultsRegistry { kernel.actionResultsRegistry }
+
+    // Blossom kernel upload lives in KernelModel+BlossomUpload.swift to keep
+    // this file under the AGENTS.md 500-line soft limit.
+
     // ── Profile resolution (reference-first; rides resolved_profiles) ──────
     //
     // Replaces the host opening its own websocket to fetch kind:0. A view that

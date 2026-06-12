@@ -392,16 +392,27 @@ pub unsafe extern "C" fn nmp_app_podcast_decode_update_frame(
             // keeps working after the v0.3.0 typed-first migration. Decode
             // failure degrades silently (D6 — key absent, not a crash).
             //
+            // Bridge the action_results Tier-2 typed sidecar into
+            // v.projections["action_results"] so Swift can read the drained
+            // BlobDescriptor (or any other async-completing action result)
+            // keyed by correlation_id. Wire shape per action_results_fb.rs:
+            //   [ { "correlation_id": "…", "status": "…", "result": "…" }, … ]
+            // Decode failure degrades silently (D6).
+            //
             // Also inject all podcast.* domain sidecars under
             // v.projections[key] so Swift/Android shells can consume per-domain
             // delta updates without waiting for the pull path.
             let signed_events_json = decode_signed_events_sidecar(slice);
+            let action_results_json = decode_action_results_sidecar(slice);
             let domain_sidecars = super::snapshot_domain_projections::decode_podcast_domain_sidecars(slice);
 
-            if signed_events_json.is_some() || domain_sidecars.is_some() {
+            if signed_events_json.is_some() || action_results_json.is_some() || domain_sidecars.is_some() {
                 let mut projections = serde_json::Map::new();
                 if let Some(se) = signed_events_json {
                     projections.insert("signed_events".to_string(), se);
+                }
+                if let Some(ar) = action_results_json {
+                    projections.insert("action_results".to_string(), ar);
                 }
                 if let Some(domains) = domain_sidecars {
                     for (key, val) in domains {
@@ -452,6 +463,13 @@ fn decode_signed_events_sidecar(slice: &[u8]) -> Option<serde_json::Value> {
     }
     Some(serde_json::Value::Object(map))
 }
+
+// Action-results sidecar decode lives in a sibling file to keep this file
+// under the 500-line AGENTS.md hard limit. The function is `pub(super)` and
+// visible here via the `#[path]`-linked module.
+#[path = "snapshot_action_results.rs"]
+mod snapshot_action_results;
+use snapshot_action_results::decode_action_results_sidecar;
 
 // Tests split into snapshot_tests.rs + snapshot_tests_ext.rs + snapshot_decode_tests.rs;
 // #[path] keeps private items in scope.

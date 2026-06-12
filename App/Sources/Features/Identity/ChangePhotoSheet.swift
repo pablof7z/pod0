@@ -5,8 +5,14 @@ import UIKit
 // MARK: - ChangePhotoSheet
 //
 // Action-sheet-style chooser per identity-05-synthesis §4.4. Three entries:
-// "Choose a style" (curated 6), "Choose from library" (PhotosPicker → Blossom
-// upload), and "Paste image URL". Camera capture lands in a later brief.
+// "Choose a style" (curated 6), "Choose from library" (PhotosPicker →
+// nmp.blossom.upload), and "Paste image URL". Camera capture lands in a later
+// brief.
+//
+// D13/D0 — upload goes through `KernelModel.blossomUpload`: the kernel owns
+// the kind:24242 auth signing and the BUD-02 HTTP transport; Swift writes the
+// JPEG to a temp file, dispatches, and awaits the BlobDescriptor.url from the
+// drain-once `action_results` projection.
 
 struct ChangePhotoSheet: View {
 
@@ -20,11 +26,8 @@ struct ChangePhotoSheet: View {
     @State private var photoItem: PhotosPickerItem?
     @State private var uploadState: UploadState = .idle
 
-    private let uploader: any BlossomUploading
-
-    init(pictureURL: Binding<String>, uploader: any BlossomUploading = BlossomUploader()) {
+    init(pictureURL: Binding<String>) {
         self._pictureURL = pictureURL
-        self.uploader = uploader
     }
 
     private enum UploadState: Equatable {
@@ -113,19 +116,20 @@ struct ChangePhotoSheet: View {
                 uploadState = .failed("Sign in to upload a photo.")
                 return
             }
-            let prepared = try Self.resizeJPEG(raw, maxEdge: 800, quality: 0.85)
-            // Auth signing is the kernel's job (D13 sign-for-return): the
-            // KernelSigner signs the kind:24242 auth event with the active
-            // account — no private key in Swift.
             guard let kernel = store.kernel else {
                 uploadState = .failed("Kernel is not ready.")
                 return
             }
-            let url = try await uploader.upload(
+            let prepared = try Self.resizeJPEG(raw, maxEdge: 800, quality: 0.85)
+            // D13/D0: kernel owns the kind:24242 auth signing AND the HTTP
+            // transport (nmp.blossom.upload). No private key in Swift; no
+            // URLSession call in Swift. The active account signs (no per-podcast
+            // key needed for avatar uploads).
+            let blossomServer = store.state.settings.blossomServerURL
+            let url = try await kernel.blossomUpload(
                 data: prepared,
                 contentType: "image/jpeg",
-                signer: KernelSigner(kernel: kernel)
-            )
+                servers: [blossomServer])
             pictureURL = url.absoluteString
             Haptics.success()
             dismiss()
