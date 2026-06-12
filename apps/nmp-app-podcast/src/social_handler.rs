@@ -1,157 +1,182 @@
-//! Handler for the `podcast.fetch_contacts` action — wires real kind:3
-//! contact-list subscription and kind:0 profile hydration via relay.primal.net.
+//! Reactive NIP-02 social-graph handler.
 //!
-//! ## Flow
+//! ## Design (post-reactive migration)
 //!
-//! 1. Read the active `pubkey_hex` from `IdentityStore`.
-//! 2. Subscribe to `{"kinds":[3],"authors":[pubkey_hex],"limit":1}` —
-//!    grabs the user's NIP-02 follow list.
-//! 3. Parse the `p` tags to extract follow pubkeys.
-//! 4. Batch-fetch `{"kinds":[0],"authors":[...up to 50 pubkeys]}` to hydrate
-//!    NIP-01 profile metadata (display_name, picture, name).
-//! 5. Build a `SocialSnapshot` with `ContactSummary` rows (npub bech32-encoded).
-//! 6. Store the snapshot in the `social` slot and bump `rev`.
+//! The old implementation used a one-shot 8-second-timeout relay pull via a
+//! bespoke `tokio::spawn` + `subscribe_until_eose` loop.  That violates the
+//! D8 push-seam doctrine (no polling, no hardcoded relay URLs in app code).
+//!
+//! The new design is observer-only:
+//!
+//! * [`FollowListObserver`] wraps the upstream [`nmp_nip02::FollowListProjection`]
+//!   (a `KernelEventObserver` for kind:3).  It updates the shared
+//!   `social_slot` (`Option<SocialSnapshot>`) on every kind:3 push frame and
+//!   bumps the snapshot signal so the iOS shell gets an immediate push.
+//!
+//! * The `account_profile_interest` standing subscription that the kernel
+//!   already opens for kind:0 + kind:3 + kind:10002 delivers kind:3 events
+//!   to every registered `KernelEventObserver` without any extra subscription
+//!   request.  No `EnsureInterest` call, no manual relay URL, no polling.
+//!
+//! * [`handle_fetch_contacts`] is kept as a refresh TRIGGER: Swift can call
+//!   `podcast.FetchContacts` to bump the snapshot rev and signal the iOS
+//!   shell to re-render even if no new kind:3 has arrived (e.g. on tab focus).
+//!   It does NOT open a relay connection itself.
+//!
+//! ## Trust gate (lives in the social PROJECTION, not here)
+//!
+//! The trust verdict for inbound agent notes is computed **live at projection
+//! time** in [`crate::state::social::SocialState::agent_notes_snapshot`], by
+//! applying the shared [`nmp_nip02::ActiveFollowSet`] predicate to each cached
+//! note's author hex.  This observer module only materialises the follow-list
+//! snapshot; it does NOT stamp `trusted`.  See `agent_note_handler.rs` for why
+//! the verdict must be recomputed at projection (follow/unfollow must flip the
+//! verdict on every existing note, with no stale freeze).
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 use nostr::nips::nip19::ToBech32;
-use serde_json::json;
-use tokio::runtime::Runtime;
+use nmp_core::substrate::KernelEvent;
+use nmp_core::KernelEventObserver;
+use nmp_nip02::FollowListProjection;
 
 use crate::ffi::projections::{ContactSummary, SocialSnapshot};
-use crate::store::identity::IdentityStore;
+use crate::snapshot_signal::SnapshotUpdateSignal;
 
-/// Default relay used for social-graph fetches.
-const RELAY_URL: &str = "wss://relay.primal.net";
+// ── reactive observer ────────────────────────────────────────────────────────
 
-/// Fetch the active user's NIP-02 follow list and hydrate kind:0 metadata
-/// for each follow. Stores the resulting [`SocialSnapshot`] in `social` and
-/// bumps `rev`.
+/// Wraps [`FollowListProjection`] and materialises a [`SocialSnapshot`] on
+/// every kind:3 push frame, writing it to the shared `social_slot`.
 ///
-/// Accepts individual Arcs so the caller (Step 10 migration) can supply them
-/// from `state.social.social_slot.share()` / `state.infra.rev` / etc.
-/// rather than from the god-struct fields.
-///
-/// Returns `{"ok":true,"status":"fetch_started"}` on success, or
-/// `{"ok":false,"error":"..."}` on any hard failure.
-pub fn handle_fetch_contacts(
-    identity: &Arc<Mutex<IdentityStore>>,
-    social: Arc<Mutex<Option<SocialSnapshot>>>,
+/// Registered as a `KernelEventObserver` via `register.rs`.  The kernel's
+/// standing `account_profile_interest` subscription delivers kind:3 events
+/// without any extra subscription request — no polling, no hardcoded relay
+/// URLs.
+pub struct FollowListObserver {
+    projection: FollowListProjection,
+    social_slot: Arc<Mutex<Option<SocialSnapshot>>>,
     rev: Arc<AtomicU64>,
-    runtime: Arc<Runtime>,
-) -> serde_json::Value {
-    // 1. Get the active pubkey — checked synchronously before spawning.
-    let pubkey_hex = match identity.lock() {
-        Ok(id) => match id.pubkey_hex.clone() {
-            Some(pk) => pk,
-            None => return json!({"ok": false, "error": "not signed in"}),
-        },
-        Err(_) => return json!({"ok": false, "error": "identity lock poisoned"}),
-    };
+    snapshot_signal: Option<SnapshotUpdateSignal>,
+}
 
-    // M5.3: spawn the relay fetches off the actor thread. Each fetch can take
-    // up to 8s (8s timeout × 2 round trips = up to 16s blocked). The actor
-    // returns immediately; the snapshot lands in `social` when done.
+impl FollowListObserver {
+    /// Construct the observer.
+    ///
+    /// * `active_pubkey` — the kernel's shared active-account slot
+    ///   (`NmpApp::active_account_handle()`).
+    /// * `social_slot` — the shared slot written by this observer and read by
+    ///   the snapshot projection.
+    /// * `rev` — shared rev counter; bumped on every kind:3 event when no
+    ///   `snapshot_signal` is present.
+    pub fn new(
+        active_pubkey: Arc<Mutex<Option<String>>>,
+        social_slot: Arc<Mutex<Option<SocialSnapshot>>>,
+        rev: Arc<AtomicU64>,
+    ) -> Self {
+        Self {
+            projection: FollowListProjection::new(active_pubkey),
+            social_slot,
+            rev,
+            snapshot_signal: None,
+        }
+    }
 
-    runtime.spawn(async move {
-        let relay_urls = vec![RELAY_URL.to_string()];
+    /// Attach a `SnapshotUpdateSignal` so the observer can push frames to the
+    /// iOS shell immediately without waiting for the next poll tick.
+    pub fn with_snapshot_signal(mut self, signal: SnapshotUpdateSignal) -> Self {
+        self.snapshot_signal = Some(signal);
+        self
+    }
+}
 
-        // 2. Fetch kind:3 (contact list) for the active user.
-        let kind3_events = fetch_relay_events_async(
-            json!({"kinds": [3], "authors": [&pubkey_hex], "limit": 1}),
-            &relay_urls,
-            8_000,
-        )
-        .await;
+impl KernelEventObserver for FollowListObserver {
+    /// Forward the event to the inner [`FollowListProjection`], then — if the
+    /// event was accepted (kind:3 for the active account) — materialise and
+    /// store a fresh [`SocialSnapshot`] and signal the shell.
+    ///
+    /// Non-kind:3 events return immediately without touching the slot (D8:
+    /// bounded, non-blocking work on the actor thread).
+    fn on_kernel_event(&self, event: &KernelEvent) {
+        if event.kind != 3 {
+            return;
+        }
 
-        // 3. Parse follow pubkeys from `p` tags.
-        let follow_pubkeys: Vec<String> = kind3_events
+        // Delegate to the upstream FollowListProjection.  It applies the author
+        // gate (only kind:3 from the active account updates its map), so we
+        // ask for the snapshot only after it has had a chance to update.
+        self.projection.on_kernel_event(event);
+
+        let snap = self.projection.snapshot();
+
+        // Materialise ContactSummary rows with bech32 npubs.
+        // The inner FollowListProjection stores raw hex pubkeys (aim.md §2 —
+        // presentation in the app layer).  We bech32-encode here since
+        // ContactSummary is the typed shell DTO.
+        let contacts: Vec<ContactSummary> = snap
+            .follows
             .iter()
-            .flat_map(|ev| {
-                ev["tags"].as_array().into_iter().flatten().filter_map(|t| {
-                    let arr = t.as_array()?;
-                    if arr.first()?.as_str()? == "p" {
-                        arr.get(1)?.as_str().map(str::to_string)
-                    } else {
-                        None
-                    }
-                })
-            })
-            .collect();
-
-        let following_count = follow_pubkeys.len();
-
-        // 4. Batch-fetch kind:0 metadata for follows (cap at 50 for speed).
-        let batch: Vec<String> = follow_pubkeys.iter().take(50).cloned().collect();
-        let kind0_events = if !batch.is_empty() {
-            fetch_relay_events_async(json!({"kinds": [0], "authors": batch}), &relay_urls, 8_000)
-                .await
-        } else {
-            vec![]
-        };
-
-        // 5. Build ContactSummary list with bech32-encoded npub.
-        let contacts: Vec<ContactSummary> = follow_pubkeys
-            .iter()
-            .map(|pk| {
-                let npub = nostr::PublicKey::parse(pk)
+            .map(|entry| {
+                let npub = nostr::PublicKey::parse(&entry.pubkey)
                     .ok()
-                    .and_then(|pub_key| pub_key.to_bech32().ok())
-                    .unwrap_or_else(|| pk.clone());
-
-                let meta = kind0_events
-                    .iter()
-                    .find(|ev| ev["pubkey"].as_str() == Some(pk.as_str()));
-
-                let profile = meta.and_then(|ev| {
-                    serde_json::from_str::<serde_json::Value>(
-                        ev["content"].as_str().unwrap_or("{}"),
-                    )
-                    .ok()
-                });
-
-                let display_name = profile
-                    .as_ref()
-                    .and_then(|p| p["display_name"].as_str().or_else(|| p["name"].as_str()))
-                    .map(str::to_string);
-
-                let picture_url = profile
-                    .as_ref()
-                    .and_then(|p| p["picture"].as_str())
-                    .map(str::to_string);
-
+                    .and_then(|pk| pk.to_bech32().ok())
+                    .unwrap_or_else(|| entry.pubkey.clone());
                 ContactSummary {
                     npub,
-                    display_name,
-                    picture_url,
+                    display_name: None,
+                    picture_url: None,
                 }
             })
             .collect();
 
-        // 6. Store the snapshot and bump rev.
-        if let Ok(mut s) = social.lock() {
-            *s = Some(SocialSnapshot {
+        let following_count = contacts.len();
+
+        if let Ok(mut slot) = self.social_slot.lock() {
+            *slot = Some(SocialSnapshot {
                 following: contacts,
                 following_count,
             });
         }
-        rev.fetch_add(1, Ordering::Relaxed);
-    }); // end spawn
 
-    json!({"ok": true, "status": "fetch_started"})
+        // Signal the shell.
+        if let Some(signal) = &self.snapshot_signal {
+            signal.bump();
+        } else {
+            self.rev.fetch_add(1, Ordering::Relaxed);
+        }
+    }
 }
 
-/// Async relay subscription — runs directly in an async context (no block_on).
-async fn fetch_relay_events_async(
-    filter: serde_json::Value,
-    relay_urls: &[String],
-    timeout_ms: u64,
-) -> Vec<serde_json::Value> {
-    let sub_id = uuid::Uuid::new_v4().to_string();
-    let timeout_dur = Duration::from_millis(timeout_ms);
-    crate::relay::subscribe_until_eose(&sub_id, &filter, relay_urls, timeout_dur).await
+// ── refresh trigger ──────────────────────────────────────────────────────────
+
+/// Lightweight refresh trigger for `podcast.FetchContacts`.
+///
+/// The reactive `FollowListObserver` populates `social_slot` automatically
+/// whenever a kind:3 event arrives via the kernel's standing subscription.
+/// This function is kept so Swift can explicitly request a snapshot bump (e.g.
+/// on Social-tab focus) without duplicating an expensive relay pull.
+///
+/// It reads the current `social_slot` and, if already populated, bumps the
+/// rev and signals the shell; if not yet populated, returns
+/// `{"ok":true,"status":"pending"}` — the observer will deliver when kind:3
+/// arrives.
+pub fn handle_fetch_contacts(
+    social: Arc<Mutex<Option<SocialSnapshot>>>,
+    rev: Arc<AtomicU64>,
+    snapshot_signal: Option<&SnapshotUpdateSignal>,
+) -> serde_json::Value {
+    let has_data = social.lock().ok().and_then(|s| s.clone()).is_some();
+    if has_data {
+        // Already populated — bump so the shell re-renders the existing data.
+        if let Some(signal) = snapshot_signal {
+            signal.bump();
+        } else {
+            rev.fetch_add(1, Ordering::Relaxed);
+        }
+        serde_json::json!({"ok": true, "status": "refreshed"})
+    } else {
+        serde_json::json!({"ok": true, "status": "pending"})
+    }
 }
 
 #[cfg(test)]

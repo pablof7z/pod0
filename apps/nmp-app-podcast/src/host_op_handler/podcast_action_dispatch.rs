@@ -133,12 +133,13 @@ impl PodcastHostOpHandler {
                 self.handle_evaluate_auto_downloads(correlation_id)
             }
             PodcastAction::FetchContacts => {
-                // Step 10+15: identity Arc sourced from state.library.identity.
+                // Reactive path: the FollowListObserver registered in register.rs
+                // populates social_slot automatically on every kind:3 push frame.
+                // This call is a lightweight refresh trigger — no relay pull.
                 crate::social_handler::handle_fetch_contacts(
-                    &self.state.library.identity,
                     self.state.social.social_slot.share(),
                     self.state.infra.rev.clone(),
-                    self.state.infra.runtime.clone(),
+                    self.state.infra.signal.as_ref(),
                 )
             }
             PodcastAction::PublishAgentNote {

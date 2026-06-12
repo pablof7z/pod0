@@ -322,9 +322,14 @@ worktrees currently in flight.
 - **episode-comments-relay-wiring.** Replace `comments_handler.rs` stubs with
   real kind-1111 relay subscribe/publish. Map local `EpisodeId` to
   Podcasting 2.0 guid/NIP-73 `i podcast:item:guid:<guid>` anchors.
-- **social-graph-store-wiring.** Replace `social_handler.rs` `nostr_pending`
+- **social-graph-store-wiring.** ~~Replace `social_handler.rs` `nostr_pending`
   with NMP kind:3 contact-list store reads, kind:0 metadata hydration,
-  subscription refresh, and snapshot updates.
+  subscription refresh, and snapshot updates.~~ **CLOSED** — replaced by reactive
+  `FollowListProjection` + `ActiveFollowSet` (nmp-nip02) in PR
+  `feat/social-graph-reactive-trust-gate`. `handle_fetch_contacts` is now a
+  lightweight refresh trigger; the NIP-02 follow list populates via the kernel's
+  standing `account_profile_interest` subscription (no relay pull). Trust gate
+  for `AgentNoteSummary::trusted` wired via `ActiveFollowSet::predicate()`.
 - **nostr-conversations-real-projection.** Replace compat-empty
   conversation/approval surfaces with Rust-owned conversation projection,
   trust-list/approval actions, kind:0 profile cache, and NIP-46
@@ -347,11 +352,17 @@ worktrees currently in flight.
     expected to be **subsumed/replaced** by the Rust-owned conversation
     projection under `nostr-conversations-real-projection`; it is shipped
     now only to give the kind:1 transport an observable output seam.
-  - **OPEN — trust gate.** Every inbound note is projected `trusted:false`;
-    the Rust side cannot classify a sender as an approved peer until the
-    kind:3 contact list + trust list are real (`social-graph-store-wiring`,
-    `nostr-conversations-real-projection`). The iOS shell must route inbound
-    notes to an approval surface and must not auto-respond until then.
+  - **DONE — trust gate (projection-time-live).** `AgentNoteSummary::trusted`
+    is computed at **projection-build time** in
+    `SocialState::agent_notes_snapshot` by applying the shared live
+    `ActiveFollowSet::predicate()` to each cached note's author hex (PR
+    `feat/social-graph-reactive-trust-gate`). The verdict is NEVER frozen at
+    receipt: a note from X received before following X starts untrusted and
+    flips to `trusted: true` on the next projection after the follow lands (and
+    back on unfollow). Per-account social state (`social_slot` + `agent_notes`)
+    is cleared on account switch so no cross-account trust/notes leak.
+    Conversations projection deferred to `nostr-conversations-real-projection`
+    (next cycle).
   - **OPEN — LLM responder loop.** The inbound→model→outbound autopilot
     (dedup via responded-event ids, per-root outgoing turn cap, `wtd-end`
     end-conversation gate, bounded kind:0 profile hydration, owner-consult

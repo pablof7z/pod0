@@ -63,6 +63,10 @@ nmp-core = { workspace = true }
 nmp-ffi = { workspace = true, features = ["signer-broker"] }
 nmp-signer-broker = { workspace = true }
 nmp-feedback = { workspace = true }
+# NIP-02 reactive follow-list projection + ActiveFollowSet trust-gate predicate.
+# Already transitive via nmp-defaults; listed explicitly so social_handler.rs
+# can import FollowListProjection and ActiveFollowSet (D11 — single door).
+nmp-nip02 = { workspace = true }
 # Canonical NMP composition root. One call wires the default action modules
 # (NIP-02 / NIP-17 / NIP-57 / NIP-65), the kind:10050 ingest parser, the
 # production routing substrate, and the DM-inbox + zap-receipts runtime

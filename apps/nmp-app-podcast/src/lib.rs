@@ -71,7 +71,6 @@ pub(crate) mod picks_handler;
 pub(crate) mod picks_llm;
 pub mod player;
 pub mod queue;
-pub(crate) mod relay;
 pub(crate) mod snapshot_signal;
 pub(crate) mod social_handler;
 pub(crate) mod social_publish_handler;
