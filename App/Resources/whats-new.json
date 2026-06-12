@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-12T13:00:00Z",
+      "lines": [
+        "The Inbox section now shows a loading shimmer while the AI triage pass is running — no more silent wait with no feedback."
+      ]
+    },
+    {
       "shipped_at": "2026-06-12T12:00:00Z",
       "lines": [
         "Fixed identity signing (avatar changes, NIP-46 bunker operations) silently failing since the v0.4.0 kernel upgrade — sign-for-return results are now delivered correctly."

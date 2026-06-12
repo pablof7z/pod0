@@ -400,17 +400,13 @@ worktrees currently in flight.
      (only RSS chapters via `fetch_chapters` and the kernel's own
      `ai_chapters` compile do). Resolved once the legacy compiler call sites
      dispatch `podcast.chapters.compile` and the Swift writer is removed.
-- **inbox-triage-progress-projection.** The Swift inbox-triage orchestration
-  was deleted in `feat/delete-swift-triage` (kernel owns triage, M5). Two
-  display-only affordances were dropped because the kernel inbox projection
-  does not surface their inputs: the streaming shimmer on `HomeFeaturedSection`
-  (was `InboxTriageService.isRunning`) and the "triaged Xh ago" subtitle (was
-  `InboxTriageService.lastCompletedAt`). The kernel already tracks
-  `inbox_triage_in_progress` (`host_op_handler.rs`) and a triage cache with
-  timestamps; follow-up is to project an `inbox_triage_in_progress: bool` and
-  `inbox_last_triaged_at: Option<i64>` onto `PodcastUpdate`, then re-wire
-  `HomeFeaturedSection.isStreaming` / `lastTriagedAt` to read them. Requires a
-  Rust change, so out of scope for the Swift-only delete PR.
+- **inbox-triage-progress-projection.** ~~Swift shimmer done~~ The
+  `inbox_triage_in_progress` bool is projected onto `PodcastUpdate` and
+  `HomeFeaturedSection.isStreaming` is now wired to it (Fix B, PR #TBD). The
+  "triaged Xh ago" subtitle (`lastTriagedAt`) is still pending: it requires
+  projecting `inbox_last_triaged_at: Option<i64>` from the triage cache
+  timestamp (`host_op_handler.rs`) onto `PodcastUpdate`, then passing it
+  through `HomeView` → `HomeFeaturedSection.lastTriagedAt`.
 - **agent-chat-real-loop.** Replace canned assistant responses with real LLM
   streaming, tool execution, progress/cancel states, memory/context policy,
   provider errors, and transcripted tool results.

@@ -213,11 +213,7 @@ struct HomeView: View {
                     let triage = triageCounts
                     HomeFeaturedSection(
                         picksBundle: inboxBundle,
-                        // Triage now runs in the Rust kernel (M5). The kernel
-                        // inbox projection does not yet surface an in-progress
-                        // or last-triaged-at signal, so the streaming shimmer
-                        // and "triaged Xh ago" label are omitted until a
-                        // kernel progress field exists. See docs/BACKLOG.md.
+                        isStreaming: store.kernel?.podcastSnapshot?.inboxTriageInProgress ?? false,
                         activeThread: topActiveThread,
                         activeCategoryID: selectedCategoryID,
                         activeCategoryName: activeCategory?.name,

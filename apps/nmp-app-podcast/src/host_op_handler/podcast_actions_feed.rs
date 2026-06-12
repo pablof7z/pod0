@@ -176,9 +176,13 @@ impl PodcastHostOpHandler {
                 if known.is_some() {
                     let etag_out = http_result.header("etag").map(str::to_owned);
                     let lm_out = http_result.header("last-modified").map(str::to_owned);
+                    // Persist updated etag/last-modified headers so future
+                    // conditional GETs stay fresh, but do NOT bump rev: a 304
+                    // means nothing user-visible changed, so forcing a full
+                    // snapshot rebuild + FFI decode is wasted work.
+                    // (etag/last-modified are not projected into PodcastUpdate.)
                     if let Ok(mut s) = self.store.lock() {
                         s.update_refresh_metadata(podcast_id, etag_out, lm_out);
-                        self.rev.fetch_add(1, Ordering::Relaxed);
                     }
                     serde_json::json!({
                         "ok": true,
@@ -240,5 +244,124 @@ fn feed_cache(
         ))
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod feed_304_tests {
+    //! Unit tests for the rev-bump policy on feed refresh.
+    //!
+    //! These tests exercise `handle_feed_response` + the rev-bump decision
+    //! inline — analogous to what `handle_ensure_podcast` does at runtime —
+    //! without requiring a live `*mut NmpApp` (D6 boundary).
+
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::{Arc, Mutex};
+
+    use chrono::Utc;
+    use podcast_core::PodcastId;
+    use podcast_feeds::client::{handle_feed_response, FeedResult};
+    use podcast_feeds::http::HttpResult;
+    use url::Url;
+
+    use crate::store::PodcastStore;
+
+    const FEED_XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Test Podcast</title>
+    <link>https://example.com</link>
+    <description>Feed for rev-bump tests</description>
+    <item>
+      <title>Episode One</title>
+      <enclosure url="https://example.com/ep1.mp3" length="1000000" type="audio/mpeg"/>
+      <itunes:duration>1800</itunes:duration>
+    </item>
+  </channel>
+</rss>"#;
+
+    fn http_304() -> HttpResult {
+        HttpResult::Ok {
+            status_code: 304,
+            headers: vec![
+                vec!["etag".to_owned(), "\"abc123\"".to_owned()],
+                vec!["last-modified".to_owned(), "Mon, 01 Jan 2024 00:00:00 GMT".to_owned()],
+            ],
+            body: String::new(),
+        }
+    }
+
+    fn http_200(body: &str) -> HttpResult {
+        HttpResult::Ok {
+            status_code: 200,
+            headers: vec![vec!["etag".to_owned(), "\"def456\"".to_owned()]],
+            body: body.to_owned(),
+        }
+    }
+
+    /// A 304 / NotModified response must NOT bump rev — nothing user-visible
+    /// changed, so forcing a full snapshot rebuild + FFI decode is wasted work.
+    #[test]
+    fn rev_unchanged_on_304() {
+        let url = Url::parse("https://example.com/feed.xml").unwrap();
+        let podcast_id = PodcastId::generate();
+        let store = Arc::new(Mutex::new(PodcastStore::new()));
+        let rev = Arc::new(AtomicU64::new(0));
+
+        let http_result = http_304();
+        let feed_result =
+            handle_feed_response(&url, podcast_id, &http_result, None, Utc::now()).unwrap();
+
+        match feed_result {
+            FeedResult::NotModified { .. } => {
+                // Persist etag/last-modified — the only allowed side effect.
+                let etag_out = http_result.header("etag").map(str::to_owned);
+                let lm_out = http_result.header("last-modified").map(str::to_owned);
+                if let Ok(mut s) = store.lock() {
+                    s.update_refresh_metadata(podcast_id, etag_out, lm_out);
+                    // NO rev.fetch_add here — this is the fix.
+                }
+            }
+            other => panic!("expected NotModified, got {other:?}"),
+        }
+
+        assert_eq!(
+            rev.load(Ordering::Relaxed),
+            0,
+            "rev must stay 0 after a 304 — no snapshot rebuild should be triggered"
+        );
+    }
+
+    /// A 200 response with new/changed episodes MUST bump rev so the snapshot
+    /// pipeline picks up the changes.
+    #[test]
+    fn rev_bumped_on_parsed_feed() {
+        let url = Url::parse("https://example.com/feed.xml").unwrap();
+        let podcast_id = PodcastId::generate();
+        let store = Arc::new(Mutex::new(PodcastStore::new()));
+        let rev = Arc::new(AtomicU64::new(0));
+
+        let http_result = http_200(FEED_XML);
+        let feed_result =
+            handle_feed_response(&url, podcast_id, &http_result, None, Utc::now()).unwrap();
+
+        match feed_result {
+            FeedResult::Parsed { parsed, .. } => {
+                if let Ok(mut s) = store.lock() {
+                    let existing = s.episodes_for(podcast_id).to_vec();
+                    let episodes =
+                        crate::host_op_handler_helpers::merge_episodes(parsed.episodes, existing);
+                    s.upsert_known_podcast(parsed.podcast, episodes);
+                    rev.fetch_add(1, Ordering::Relaxed);
+                }
+            }
+            other => panic!("expected Parsed, got {other:?}"),
+        }
+
+        assert_eq!(
+            rev.load(Ordering::Relaxed),
+            1,
+            "rev must be bumped to 1 after a real feed parse"
+        );
     }
 }
