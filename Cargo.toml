@@ -16,8 +16,8 @@ resolver = "2"
 # exactly one copy of each NMP crate (one `NmpApp` type). When bumping NMP,
 # bump nmp-feedback in lockstep to a rev that pins the same NMP rev.
 [workspace.dependencies]
-nmp-defaults = { version = "0.5.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "65fd349dd7ff9af9121df7ddea6476d377877880" }
-nmp-core = { version = "0.5.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "65fd349dd7ff9af9121df7ddea6476d377877880" }
-nmp-ffi = { version = "0.5.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "65fd349dd7ff9af9121df7ddea6476d377877880" }
-nmp-signer-broker = { version = "0.5.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "65fd349dd7ff9af9121df7ddea6476d377877880" }
-nmp-feedback = { git = "https://github.com/pablof7z/nmp-feedback.git", rev = "41fd4b4e4de945481ed7e6d9b6a941d0775b7fd6" }
+nmp-defaults = { version = "0.6.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "4fdcb52d68cf4a7d203de3633620155e06e45ec3" }
+nmp-core = { version = "0.6.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "4fdcb52d68cf4a7d203de3633620155e06e45ec3" }
+nmp-ffi = { version = "0.6.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "4fdcb52d68cf4a7d203de3633620155e06e45ec3" }
+nmp-signer-broker = { version = "0.6.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "4fdcb52d68cf4a7d203de3633620155e06e45ec3" }
+nmp-feedback = { git = "https://github.com/pablof7z/nmp-feedback.git", rev = "62370505dcd0e942af14d795beeb0b362aa6ea88" }

@@ -105,7 +105,7 @@ extension PodcastHandle {
                         // Error / degrade path — nothing actionable, don't pull.
                         return
                     }
-                    defer { nmp_app_free_string(result) }
+                    defer { nmp_free_string(result) }
                     let responseJSON = String(cString: result)
                     guard let data = responseJSON.data(using: .utf8) else { return }
                     let decoder = KernelDecoding.makeDecoder()
@@ -158,7 +158,7 @@ extension PodcastHandle {
                     // Error / degrade path — nothing actionable, don't pull.
                     return
                 }
-                defer { nmp_app_free_string(result) }
+                defer { nmp_free_string(result) }
                 let responseJSON = String(cString: result)
                 guard let data = responseJSON.data(using: .utf8) else { return }
                 let decoder = KernelDecoding.makeDecoder()
@@ -196,7 +196,7 @@ extension PodcastHandle {
         guard let handle = podcastHandle else { return }
         syncBridge?.attachHttpReport { reportJSON in
             if let result = nmp_app_podcast_http_report(handle, reportJSON) {
-                nmp_app_free_string(result)
+                nmp_free_string(result)
             }
         }
     }
@@ -239,7 +239,7 @@ extension PodcastHandle {
                     // Reserved: when Rust starts returning a follow-up
                     // `VoiceCommand`, decode + execute it here. For the
                     // capability scaffold the symbol always returns NULL.
-                    nmp_app_free_string(result)
+                    nmp_free_string(result)
                 }
                 self.onSnapshotMaybeChanged?()
             }

@@ -10,7 +10,7 @@
 //! * **Request**: `report_json` is a JSON-encoded [`crate::capability::AudioReport`].
 //! * **Response**: heap-allocated nul-terminated JSON of an
 //!   [`crate::capability::AudioCommand`], or `NULL` when no follow-up is needed.
-//!   The caller MUST free the returned pointer via `nmp_app_free_string`.
+//!   The caller MUST free the returned pointer via `nmp_free_string`.
 //!
 //! ## Position writeback (feature #12)
 //!
@@ -76,7 +76,7 @@ const POSITION_FLUSH_DELTA_SECS: f64 = 30.0;
 /// Deliver a JSON-encoded `AudioReport` to the Rust `PlayerActor` and return
 /// the JSON-encoded follow-up `AudioCommand`, if any.
 ///
-/// Returns a malloc-compatible string the caller MUST free via `nmp_app_free_string`,
+/// Returns a malloc-compatible string the caller MUST free via `nmp_free_string`,
 /// or `NULL` when no follow-up is needed (or on any error).
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)]

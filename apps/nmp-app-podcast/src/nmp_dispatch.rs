@@ -118,7 +118,7 @@ pub(crate) fn self_dispatch_publish(app: *mut nmp_ffi::NmpApp, body: serde_json:
     let accepted = unsafe { std::ffi::CStr::from_ptr(raw) }
         .to_string_lossy()
         .contains("\"correlation_id\"");
-    nmp_ffi::nmp_app_free_string(raw);
+    nmp_ffi::nmp_free_string(raw);
     accepted
 }
 
@@ -141,7 +141,7 @@ fn dispatch_nmp_publish(app: *mut nmp_ffi::NmpApp, body: serde_json::Value) -> &
     };
     let raw = nmp_ffi::nmp_app_dispatch_action(app, ns_c.as_ptr(), body_c.as_ptr());
     if !raw.is_null() {
-        nmp_ffi::nmp_app_free_string(raw);
+        nmp_ffi::nmp_free_string(raw);
     }
     "queued"
 }

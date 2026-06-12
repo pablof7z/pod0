@@ -73,7 +73,7 @@ fn static_error(kind: &'static str, message: &'static str) -> CString {
 /// Returns:
 /// `{"indices":[0,2,1]}` or
 /// `{"error":{"kind":"missing_api_key","message":"..."}}`.
-/// Caller MUST free the pointer via `nmp_app_free_string`.
+/// Caller MUST free the pointer via `nmp_free_string`.
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn nmp_app_podcast_rerank(

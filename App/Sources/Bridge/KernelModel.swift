@@ -564,7 +564,7 @@ final class KernelModel {
         else { return }
         jsonStr.withCString { ptr in
             let result = nmp_app_podcast_transcript_report(handle, ptr)
-            if let result { nmp_app_free_string(result) }
+            if let result { nmp_free_string(result) }
         }
     }
 
@@ -593,7 +593,7 @@ final class KernelModel {
         else { return }
         jsonStr.withCString { ptr in
             let result = nmp_app_podcast_record_episode_event(handle, ptr)
-            if let result { nmp_app_free_string(result) }
+            if let result { nmp_free_string(result) }
         }
     }
 
@@ -609,7 +609,7 @@ final class KernelModel {
         guard let handle = kernel.podcastHandle else { return [] }
         return episodeID.uuidString.withCString { ptr -> [EpisodeAuditEvent] in
             guard let result = nmp_app_podcast_episode_events(handle, ptr) else { return [] }
-            defer { nmp_app_free_string(result) }
+            defer { nmp_free_string(result) }
             guard let data = String(cString: result).data(using: .utf8) else { return [] }
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601

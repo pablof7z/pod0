@@ -191,7 +191,7 @@ fn play_then_playing_report_populates_now_playing_and_widget() {
     let handle_ptr = Box::into_raw(handle);
     let ret = nmp_app_podcast_audio_report(handle_ptr, report_json.as_ptr());
     // The Playing response is a `CString::into_raw` pointer; reclaim it the
-    // same way (not via `nmp_app_free_string`, which is for nmp_ffi malloc
+    // same way (not via `nmp_free_string`, which is for nmp_ffi malloc
     // strings).
     if !ret.is_null() {
         let _ = unsafe { CString::from_raw(ret) };

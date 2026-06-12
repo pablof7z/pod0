@@ -132,7 +132,7 @@ impl TasksState {
             let envelope = unsafe { std::ffi::CStr::from_ptr(raw) }
                 .to_string_lossy()
                 .into_owned();
-            nmp_ffi::nmp_app_free_string(raw);
+            nmp_ffi::nmp_free_string(raw);
             envelope.contains("\"correlation_id\"")
         };
 

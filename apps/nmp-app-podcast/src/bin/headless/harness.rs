@@ -12,7 +12,7 @@ use nmp_app_podcast::{
     PodcastHandle,
 };
 use nmp_ffi::NmpApp;
-use nmp_ffi::{nmp_app_dispatch_action, nmp_app_free_string, nmp_app_new};
+use nmp_ffi::{nmp_app_dispatch_action, nmp_free_string, nmp_app_new};
 
 /// Allocate a new `NmpApp` instance. Panics if the kernel returns null
 /// (should never happen in practice — null only comes from OOM).
@@ -63,7 +63,7 @@ pub fn dispatch(
         .unwrap_or("{}")
         .to_owned();
 
-    nmp_app_free_string(result_ptr);
+    nmp_free_string(result_ptr);
 
     serde_json::from_str(&result_str).unwrap_or(serde_json::Value::Null)
 }

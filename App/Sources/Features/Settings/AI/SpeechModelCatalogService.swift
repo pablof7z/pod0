@@ -55,7 +55,7 @@ struct SpeechModelCatalogService: Sendable {
             guard let ptr = nmp_app_podcast_speech_model_catalog(handle) else {
                 return #"{"error":"null response from Rust"}"#
             }
-            defer { nmp_app_free_string(ptr) }
+            defer { nmp_free_string(ptr) }
             return String(cString: ptr)
         }.value
 

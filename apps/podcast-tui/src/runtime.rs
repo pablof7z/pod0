@@ -10,7 +10,7 @@ use nmp_app_podcast::{
     nmp_app_podcast_unregister, nmp_signer_broker_init, PodcastHandle, AUDIO_CAPABILITY_NAMESPACE,
 };
 use nmp_ffi::{
-    nmp_app_dispatch_action, nmp_app_free, nmp_app_free_string, nmp_app_new,
+    nmp_app_dispatch_action, nmp_app_free, nmp_free_string, nmp_app_new,
     nmp_app_set_capability_callback, nmp_app_start, NmpApp,
 };
 use podcast_feeds::http::{
@@ -102,7 +102,7 @@ impl AppRuntime {
         let text = unsafe { CStr::from_ptr(ptr) }
             .to_string_lossy()
             .into_owned();
-        nmp_app_free_string(ptr);
+        nmp_free_string(ptr);
         let value: Value = serde_json::from_str(&text)
             .map_err(|e| format!("action dispatch returned invalid JSON: {e}"))?;
         parse_dispatch_envelope(&value)
@@ -129,7 +129,7 @@ impl AppRuntime {
         let text = unsafe { CStr::from_ptr(ptr) }
             .to_string_lossy()
             .into_owned();
-        nmp_app_free_string(ptr);
+        nmp_free_string(ptr);
         decode_provider_catalog(&text)
     }
 
@@ -144,7 +144,7 @@ impl AppRuntime {
         let text = unsafe { CStr::from_ptr(ptr) }
             .to_string_lossy()
             .into_owned();
-        nmp_app_free_string(ptr);
+        nmp_free_string(ptr);
         decode_elevenlabs_voice_catalog(&text)
     }
 
@@ -159,7 +159,7 @@ impl AppRuntime {
         let text = unsafe { CStr::from_ptr(ptr) }
             .to_string_lossy()
             .into_owned();
-        nmp_app_free_string(ptr);
+        nmp_free_string(ptr);
         decode_speech_model_catalog(&text)
     }
 
@@ -174,7 +174,7 @@ impl AppRuntime {
         let text = unsafe { CStr::from_ptr(ptr) }
             .to_string_lossy()
             .into_owned();
-        nmp_app_free_string(ptr);
+        nmp_free_string(ptr);
         decode_local_model_catalog(&text)
     }
 
@@ -296,7 +296,7 @@ fn handle_http_async(payload_json: &str) -> String {
         let ret = nmp_app_podcast_http_report(handle, report_cstr.as_ptr());
         // The report FFI always returns NULL (no follow-up), but free defensively.
         if !ret.is_null() {
-            nmp_app_free_string(ret);
+            nmp_free_string(ret);
         }
     });
 

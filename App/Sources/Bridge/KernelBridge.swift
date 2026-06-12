@@ -162,7 +162,7 @@ final class PodcastHandle: @unchecked Sendable {
                 guard let ptr = nmp_app_dispatch_action(raw, nsPtr, jsonPtr) else {
                     return nil
                 }
-                defer { nmp_app_free_string(ptr) }
+                defer { nmp_free_string(ptr) }
                 return String(cString: ptr)
             }
         }
@@ -194,7 +194,7 @@ final class PodcastHandle: @unchecked Sendable {
                 guard let ptr = nmp_app_sign_event_for_return(raw, pkPtr, jsonPtr) else {
                     return nil
                 }
-                defer { nmp_app_free_string(ptr) }
+                defer { nmp_free_string(ptr) }
                 let id = String(cString: ptr)
                 return id.isEmpty ? nil : id
             }
@@ -389,9 +389,9 @@ private let nmpUpdateCallback: NmpUpdateCallback = { context, bytes, len in
     let frameStart = DispatchTime.now().uptimeNanoseconds
     // The kernel's update transport is binary FlatBuffers (NMP commit "Replace
     // update transport with FlatBuffers"). Decode the `(bytes, len)` frame to the
-    // JSON envelope the shell consumes; `nmp_app_free_string` reclaims it.
+    // JSON envelope the shell consumes; `nmp_free_string` reclaims it.
     guard let jsonPtr = nmp_app_podcast_decode_update_frame(bytes, len) else { return }
-    defer { nmp_app_free_string(jsonPtr) }
+    defer { nmp_free_string(jsonPtr) }
     let payload = String(cString: jsonPtr)
     let sink = Unmanaged<KernelUpdateSink>.fromOpaque(context).takeUnretainedValue()
     // Drain the `signed_events` projection FIRST — before the panic short-circuit

@@ -26,7 +26,7 @@ use jni::sys::{jint, jlong, jstring};
 use jni::JNIEnv;
 
 use nmp_ffi::{
-    nmp_app_dispatch_action, nmp_app_free, nmp_app_free_string, nmp_app_is_alive,
+    nmp_app_dispatch_action, nmp_app_free, nmp_free_string, nmp_app_is_alive,
     nmp_app_lifecycle_background, nmp_app_lifecycle_foreground, nmp_app_new,
     nmp_app_set_update_callback, nmp_app_signin_nsec, nmp_app_start, nmp_app_stop, NmpApp,
 };
@@ -94,7 +94,7 @@ extern "C" fn on_update(context: *mut c_void, bytes: *const u8, len: usize) {
         // call (NMP borrows the frame to the callback).
         // `decode_update_frame` returns a heap-owned C string (or null on a
         // non-decodable frame) that we must release through
-        // `nmp_app_free_string`.
+        // `nmp_free_string`.
         let json_ptr = unsafe {
             crate::ffi::snapshot::nmp_app_podcast_decode_update_frame(bytes, len)
         };
@@ -104,7 +104,7 @@ extern "C" fn on_update(context: *mut c_void, bytes: *const u8, len: usize) {
         let owned = unsafe { CStr::from_ptr(json_ptr) }
             .to_string_lossy()
             .into_owned();
-        nmp_app_free_string(json_ptr);
+        nmp_free_string(json_ptr);
         // SAFETY: `context` is the `Box<Sender<String>>` pointer registered
         // in `nativeNew`; it lives until `nativeFree` clears the callback
         // before reclaiming the box. AssertUnwindSafe is sound: null-checked
@@ -299,14 +299,14 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeDispatchAction<'l>
             return null;
         }
         // SAFETY: `envelope_ptr` is heap-owned by the kernel. Copy out before
-        // returning, then release through the documented `nmp_app_free_string`
+        // returning, then release through the documented `nmp_free_string`
         // path — same convention `KernelBridge.swift` follows. Using
         // `CString::from_raw` would bypass any future bookkeeping the kernel
         // adds to that free.
         let owned = unsafe { CStr::from_ptr(envelope_ptr) }
             .to_string_lossy()
             .into_owned();
-        nmp_app_free_string(envelope_ptr);
+        nmp_free_string(envelope_ptr);
         match env.new_string(owned) {
             Ok(js) => js.into_raw(),
             Err(_) => null,

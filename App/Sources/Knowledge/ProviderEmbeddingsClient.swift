@@ -116,7 +116,7 @@ struct RustProviderEmbeddingsClient: EmbeddingsClient {
                 guard let ptr = nmp_app_podcast_provider_embed(handle, intentPtr) else {
                     return #"{"error":"null response from Rust"}"#
                 }
-                defer { nmp_app_free_string(ptr) }
+                defer { nmp_free_string(ptr) }
                 return String(cString: ptr)
             }
         }.value

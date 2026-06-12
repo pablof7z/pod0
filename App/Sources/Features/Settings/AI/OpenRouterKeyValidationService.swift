@@ -46,7 +46,7 @@ struct OpenRouterKeyValidationService: Sendable {
             guard let ptr = nmp_app_podcast_validate_openrouter_key(handle) else {
                 return #"{"error":{"kind":"store_unavailable","message":"null response from Rust"}}"#
             }
-            defer { nmp_app_free_string(ptr) }
+            defer { nmp_free_string(ptr) }
             return String(cString: ptr)
         }.value
 

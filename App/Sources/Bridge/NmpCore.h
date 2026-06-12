@@ -22,7 +22,7 @@ void nmp_app_set_update_callback(void *app, void *context, NmpUpdateCallback cal
 
 // Decode a binary FlatBuffers update frame `(bytes, len)` into the JSON envelope
 // the shell consumes: `{"t":"snapshot","v":...}` or `{"t":"panic","message":...}`.
-// Returns a heap string to free with `nmp_app_free_string`, or NULL on a frame
+// Returns a heap string to free with `nmp_free_string`, or NULL on a frame
 // that isn't decodable.
 char *nmp_app_podcast_decode_update_frame(const uint8_t *bytes, size_t len);
 
@@ -43,14 +43,14 @@ uint8_t nmp_app_is_alive(void *app);
 void nmp_app_lifecycle_foreground(void *app);
 void nmp_app_lifecycle_background(void *app);
 
-void nmp_app_free_string(char *ptr);
+void nmp_free_string(char *ptr);
 
 // ── T151 — generic dispatch ───────────────────────────────────────────────
 //
 // `nmp_app_dispatch_action` is the single namespace-keyed entry point for the
 // ActionModule family. Returns a heap-allocated JSON string
 // `{"correlation_id":"<hex>"}` on accept or `{"error":"..."}` on rejection;
-// the caller MUST release via `nmp_app_free_string`. D6: never NULL for a
+// the caller MUST release via `nmp_free_string`. D6: never NULL for a
 // non-NULL app.
 char *nmp_app_dispatch_action(void *app, const char *namespace, const char *action_json);
 
@@ -99,14 +99,14 @@ void nmp_app_podcast_set_data_dir(void *handle, const char *path);
 
 // Deliver a JSON-encoded AudioReport to the Rust PlayerActor.
 // Returns a malloc-allocated JSON AudioCommand the caller should execute, or
-// NULL when no follow-up is needed. Caller MUST free via `nmp_app_free_string`.
+// NULL when no follow-up is needed. Caller MUST free via `nmp_free_string`.
 char *nmp_app_podcast_audio_report(void *handle, const char *report_json);
 
 // Deliver a JSON-encoded DownloadReport to the Rust PodcastStore.
 // Returns a malloc-allocated JSON DownloadCommand the caller should execute,
 // or NULL when no follow-up is needed (today: always NULL — see
 // `apps/nmp-app-podcast/src/ffi/download_report.rs`). Caller MUST free via
-// `nmp_app_free_string`.
+// `nmp_free_string`.
 char *nmp_app_podcast_download_report(void *handle, const char *report_json);
 
 // Deliver a JSON-encoded HttpReport ({"request_id":"…","result":{…}}) to the
@@ -135,7 +135,7 @@ char *nmp_app_podcast_http_report(void *handle, const char *report_json);
 //
 // `nmp_app_nostrconnect_uri` returns a freshly minted client-initiated
 // `nostrconnect://` URI string. The caller MUST free the returned pointer via
-// `nmp_broker_free_string`. `relay_url` may be NULL — Rust selects the first
+// `nmp_free_string`. `relay_url` may be NULL — Rust selects the first
 // write-capable relay from the kernel relay-edit projection in that case.
 // `callback_scheme` may be NULL — when non-null Rust appends a percent-encoded
 // `&callback=<scheme>` query parameter so the signer app can deep-link back.
@@ -159,7 +159,7 @@ void nmp_app_create_new_account(void *app,
 // to use; pass the empty string ("") to sign with the active account.
 // `unsigned_json` is `{"kind":N,"content":"…","tags":[…],"created_at":N}` —
 // `created_at` is advisory (the kernel re-stamps it, D7). Returns a heap
-// `correlation_id` C string the caller MUST free via `nmp_app_free_string`;
+// `correlation_id` C string the caller MUST free via `nmp_free_string`;
 // the signed flat-NIP-01 JSON is delivered ASYNC in the `signed_events`
 // snapshot projection keyed by that id (`{ "ok": true, "signed_json": "…" }`
 // or `{ "ok": false, "error": "…" }`). The host MUST register its
@@ -171,7 +171,6 @@ char *nmp_app_sign_event_for_return(void *app,
 void nmp_signer_broker_init(void *app);
 void nmp_app_cancel_bunker_handshake(void *app);
 char *nmp_app_nostrconnect_uri(void *app, const char *relay_url, const char *callback_scheme);
-void nmp_broker_free_string(char *ptr);
 
 // `nmp_app_remove_account` enqueues `ActorCommand::RemoveAccount` for the
 // supplied identity id (hex pubkey). The actor drops the row + invalidates
@@ -202,7 +201,7 @@ void nmp_app_release_profile(void *app, const char *pubkey, const char *consumer
 // projection. Currently always returns NULL — voice mode has no
 // synchronous follow-up command surface yet. Reserved as `char*` so
 // future milestones can return a follow-up `VoiceCommand` without an
-// ABI break; caller MUST free a non-NULL result via `nmp_app_free_string`.
+// ABI break; caller MUST free a non-NULL result via `nmp_free_string`.
 char *nmp_app_podcast_voice_report(void *handle, const char *report_json);
 
 // Deliver a JSON-encoded NetworkReport (nmp.network.capability ConnectivityChanged)
@@ -220,7 +219,7 @@ char *nmp_app_podcast_transcript_report(void *handle, const char *report_json);
 // NOT ride the library snapshot. `episode_id` is a hyphenated UUID string.
 // Returns a heap JSON array of event objects (possibly empty `[]`) decoded on
 // the Swift side into `[EpisodeAuditEvent]`; the caller MUST free a non-NULL
-// result via `nmp_app_free_string`. NULL only on a hard error (D6).
+// result via `nmp_free_string`. NULL only on a hard error (D6).
 char *nmp_app_podcast_episode_events(void *handle, const char *episode_id);
 
 // Record one host-authored pipeline event onto an episode's Diagnostics log.
@@ -250,7 +249,7 @@ char *nmp_app_podcast_record_episode_event(void *handle, const char *event_json)
 // Returns a heap-allocated JSON string of the form:
 //   {"text":"<assistant reply>"}   on success
 //   {"error":"<reason>"}           on failure (model unreachable, bad input, …)
-// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// The caller MUST free the returned pointer via `nmp_free_string`.
 // D6: never returns NULL for a non-null handle.
 //
 // Threading: this call BLOCKS the calling thread while the network round-trip
@@ -283,7 +282,7 @@ char *nmp_app_podcast_provider_embed(void *handle, const char *intent_json);
 //   {"result":{"answer":"...","sources":[{"title":"...","url":"..."}],
 //              "provider":"...","model":"...","latency_ms":0,"usage":{...}?}}
 //   {"error":{"kind":"...","message":"...","status_code":401?}}
-// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// The caller MUST free the returned pointer via `nmp_free_string`.
 // Threading: this call BLOCKS; call from a background thread / detached Task.
 char *nmp_app_podcast_perplexity_search(void *handle, const char *intent_json);
 
@@ -292,7 +291,7 @@ char *nmp_app_podcast_perplexity_search(void *handle, const char *intent_json);
 // normalized compatibility metadata. Response:
 //   {"result":{"models":[...]}}
 // or {"error":"..."}.
-// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// The caller MUST free the returned pointer via `nmp_free_string`.
 // Threading: this call BLOCKS; call from a background thread / detached Task.
 char *nmp_app_podcast_provider_model_catalog(void *handle);
 
@@ -302,7 +301,7 @@ char *nmp_app_podcast_provider_model_catalog(void *handle);
 //              "open_router_whisper":[...],"assembly_ai_stt":[...],
 //              "eleven_labs_tts":[...]}}
 // or {"error":"..."}.
-// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// The caller MUST free the returned pointer via `nmp_free_string`.
 // Threading: this call is cheap but may be called from a background thread.
 char *nmp_app_podcast_speech_model_catalog(void *handle);
 
@@ -314,7 +313,7 @@ char *nmp_app_podcast_speech_model_catalog(void *handle);
 //                         "description":"...","size_bytes":0,
 //                         "download_url":"...","min_device_ram_gb":0}]}}
 // or {"error":"..."}.
-// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// The caller MUST free the returned pointer via `nmp_free_string`.
 // Threading: this call is cheap but may be called from a background thread.
 char *nmp_app_podcast_local_model_catalog(void *handle);
 
@@ -323,33 +322,33 @@ char *nmp_app_podcast_local_model_catalog(void *handle);
 //    "client_id":"...","app_name":"Podcastr"}
 // Rust owns provider scope mapping, PKCE state/verifier generation, and URL
 // construction. Returns {"result":...} or {"error":{"kind":"...","message":"..."}}.
-// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// The caller MUST free the returned pointer via `nmp_free_string`.
 char *nmp_app_podcast_byok_authorization(const char *intent_json);
 
 // Shared BYOK token exchange. Swift passes the Rust-created pending auth and
 // the platform browser callback URL; Rust validates state/callback and owns
 // the /api/token request/response parsing. Returns {"result":...} or
 // {"error":{"kind":"...","message":"..."}}.
-// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// The caller MUST free the returned pointer via `nmp_free_string`.
 // Threading: this call BLOCKS; call from a background thread / detached Task.
 char *nmp_app_podcast_byok_exchange(void *handle, const char *intent_json);
 
 // Shared OpenRouter `/auth/key` validation using mirrored provider credentials.
 // Returns {"result":...} or {"error":{"kind":"...","message":"..."}}.
-// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// The caller MUST free the returned pointer via `nmp_free_string`.
 // Threading: this call BLOCKS; call from a background thread / detached Task.
 char *nmp_app_podcast_validate_openrouter_key(void *handle);
 
 // Shared ElevenLabs `/v1/user` validation using mirrored provider credentials.
 // Returns {"result":...} or {"error":{"kind":"...","message":"..."}}.
-// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// The caller MUST free the returned pointer via `nmp_free_string`.
 // Threading: this call BLOCKS; call from a background thread / detached Task.
 char *nmp_app_podcast_validate_elevenlabs_key(void *handle);
 
 // Shared ElevenLabs `/v1/voices` discovery using mirrored provider credentials.
 // Returns {"result":{"provider":"elevenlabs","voices":[...]}} or
 // {"error":{"kind":"...","message":"..."}}.
-// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// The caller MUST free the returned pointer via `nmp_free_string`.
 // Threading: this call BLOCKS; call from a background thread / detached Task.
 char *nmp_app_podcast_elevenlabs_voice_catalog(void *handle);
 
@@ -359,7 +358,7 @@ char *nmp_app_podcast_elevenlabs_voice_catalog(void *handle);
 // Rust owns OpenRouter auth, model selection, upload/download shaping, and
 // response parsing. Returns {"result":...} or
 // {"error":{"kind":"...","message":"...","status_code":...}}.
-// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// The caller MUST free the returned pointer via `nmp_free_string`.
 // Threading: this call BLOCKS; call from a background thread / detached Task.
 char *nmp_app_podcast_openrouter_whisper_transcribe(void *handle, const char *intent_json);
 
@@ -369,7 +368,7 @@ char *nmp_app_podcast_openrouter_whisper_transcribe(void *handle, const char *in
 // Rust owns ElevenLabs auth, model selection, local-file/source_url shaping,
 // provider status handling, and response parsing. Returns {"result":...} or
 // {"error":{"kind":"...","message":"...","status_code":...}}.
-// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// The caller MUST free the returned pointer via `nmp_free_string`.
 // Threading: this call BLOCKS; call from a background thread / detached Task.
 char *nmp_app_podcast_elevenlabs_scribe_transcribe(void *handle, const char *intent_json);
 
@@ -378,7 +377,7 @@ char *nmp_app_podcast_elevenlabs_scribe_transcribe(void *handle, const char *int
 // Rust owns AssemblyAI auth, selected model fallback list, submit/poll HTTP,
 // provider status handling, and response parsing. Returns {"result":...} or
 // {"error":{"kind":"...","message":"...","status_code":...}}.
-// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// The caller MUST free the returned pointer via `nmp_free_string`.
 // Threading: this call BLOCKS; call from a background thread / detached Task.
 char *nmp_app_podcast_assemblyai_transcribe(void *handle, const char *intent_json);
 
@@ -389,7 +388,7 @@ char *nmp_app_podcast_assemblyai_transcribe(void *handle, const char *intent_jso
 // {"result":{"audio_base64":"...","content_type":"audio/mpeg","model":"...",
 //            "voice_id":"...","latency_ms":0}}
 // or {"error":{"kind":"...","message":"...","status_code":...}}.
-// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// The caller MUST free the returned pointer via `nmp_free_string`.
 // Threading: this call BLOCKS; call from a background thread / detached Task.
 char *nmp_app_podcast_elevenlabs_tts_synthesize(void *handle, const char *intent_json);
 
@@ -401,7 +400,7 @@ char *nmp_app_podcast_elevenlabs_tts_synthesize(void *handle, const char *intent
 // and receives:
 //   {"image_base64":"<bytes>"} on success
 //   {"error":"<reason>"}      on failure
-// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// The caller MUST free the returned pointer via `nmp_free_string`.
 // Threading: this call BLOCKS; call from a background thread / detached Task.
 char *nmp_app_podcast_generate_image(void *handle, const char *request_json);
 
@@ -416,7 +415,7 @@ char *nmp_app_podcast_generate_image(void *handle, const char *request_json);
 // Returns a heap-allocated JSON string:
 //   {"indices":[0,2,1]}                                    on success
 //   {"error":{"kind":"missing_api_key","message":"..."}}   on failure
-// The caller MUST free the returned pointer via `nmp_app_free_string`.
+// The caller MUST free the returned pointer via `nmp_free_string`.
 // Threading: this call BLOCKS while the network round-trip completes. Swift
 // MUST call it from a background thread / detached Task.
 char *nmp_app_podcast_rerank(void *handle, const char *request_json);
@@ -425,7 +424,7 @@ char *nmp_app_podcast_rerank(void *handle, const char *request_json);
 //
 // Register a local LLM backend callback. The callback receives a context pointer
 // and a JSON prompt string, and returns a malloc-allocated JSON response string.
-// Rust owns the response string lifetime and frees it via nmp_app_free_string.
+// Rust owns the response string lifetime and frees it via nmp_free_string.
 typedef char* (*NmpLocalLlmFn)(void* context, const char* prompt_json);
 void nmp_app_register_local_llm(void* handle, void* context, NmpLocalLlmFn fn);
 void nmp_app_clear_local_llm(void* handle);

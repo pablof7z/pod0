@@ -123,7 +123,7 @@ actor AssemblyAITranscriptClient {
                 guard let ptr = nmp_app_podcast_assemblyai_transcribe(handle, cRequest) else {
                     return #"{"error":{"kind":"store_unavailable","message":"null response from Rust"}}"#
                 }
-                defer { nmp_app_free_string(ptr) }
+                defer { nmp_free_string(ptr) }
                 return String(cString: ptr)
             }
         }.value

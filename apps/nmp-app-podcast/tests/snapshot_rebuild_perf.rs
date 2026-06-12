@@ -19,7 +19,7 @@ use nmp_app_podcast::{
     nmp_app_podcast_audio_report, nmp_app_podcast_register, nmp_app_podcast_snapshot,
     nmp_app_podcast_snapshot_free, nmp_app_podcast_snapshot_rev,
 };
-use nmp_ffi::{nmp_app_dispatch_action, nmp_app_free_string, nmp_app_new};
+use nmp_ffi::{nmp_app_dispatch_action, nmp_free_string, nmp_app_new};
 
 const DESCRIPTION: &str = "In this episode we sit down with our guest to unpack the \
 week's biggest stories, dig into the research behind the headlines, and answer \
@@ -35,7 +35,7 @@ fn dispatch(app: *mut nmp_ffi::NmpApp, payload: serde_json::Value) -> serde_json
         return serde_json::Value::Null;
     }
     let s = unsafe { CStr::from_ptr(ptr) }.to_str().unwrap_or("{}").to_owned();
-    nmp_app_free_string(ptr);
+    nmp_free_string(ptr);
     serde_json::from_str(&s).unwrap_or(serde_json::Value::Null)
 }
 
@@ -175,7 +175,7 @@ fn measure_populated_library_rebuild_and_rev_discipline() {
             serde_json::json!({"type":"playing","url":"https://traffic.example.com/x.mp3",
                 "position_secs": 12.0, "duration_secs": 3600.0}).to_string()).unwrap();
         let r = nmp_app_podcast_audio_report(handle, play.as_ptr());
-        if !r.is_null() { nmp_app_free_string(r); }
+        if !r.is_null() { nmp_free_string(r); }
         let rev_after_play = nmp_app_podcast_snapshot_rev(handle);
 
         // A durable report (Paused) MUST bump rev.
@@ -183,7 +183,7 @@ fn measure_populated_library_rebuild_and_rev_discipline() {
             serde_json::json!({"type":"paused","url":"https://traffic.example.com/x.mp3",
                 "position_secs": 12.0}).to_string()).unwrap();
         let r = nmp_app_podcast_audio_report(handle, pause.as_ptr());
-        if !r.is_null() { nmp_app_free_string(r); }
+        if !r.is_null() { nmp_free_string(r); }
         let rev_after_pause = nmp_app_podcast_snapshot_rev(handle);
 
         println!("  rev before={} after_Playing={} after_Paused={}",

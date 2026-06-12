@@ -88,7 +88,7 @@ extension PodcastHandle {
             relayCStr.map { UnsafePointer($0) },
             callbackCStr.map { UnsafePointer($0) })
         else { return nil }
-        defer { nmp_broker_free_string(ptr) }
+        defer { nmp_free_string(ptr) }
         return String(cString: ptr)
     }
 

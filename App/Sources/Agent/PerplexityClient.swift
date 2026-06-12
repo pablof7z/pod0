@@ -64,7 +64,7 @@ public actor PerplexityClient: PerplexityClientProtocol {
                 guard let ptr = nmp_app_podcast_perplexity_search(handle, requestPtr) else {
                     return #"{"error":{"kind":"store_unavailable","message":"null response from Rust"}}"#
                 }
-                defer { nmp_app_free_string(ptr) }
+                defer { nmp_free_string(ptr) }
                 return String(cString: ptr)
             }
         }.value

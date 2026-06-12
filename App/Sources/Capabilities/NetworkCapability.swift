@@ -64,7 +64,7 @@ final class NetworkCapability {
               let jsonStr = String(data: json, encoding: .utf8)
         else { return }
         let result = jsonStr.withCString { nmp_app_podcast_network_report(handle, $0) }
-        if let result { nmp_app_free_string(result) }
+        if let result { nmp_free_string(result) }
     }
 }
 

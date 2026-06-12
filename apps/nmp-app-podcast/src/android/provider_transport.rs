@@ -6,7 +6,7 @@ use jni::objects::{JClass, JString};
 use jni::sys::{jlong, jstring};
 use jni::JNIEnv;
 
-use nmp_ffi::nmp_app_free_string;
+use nmp_ffi::nmp_free_string;
 
 use super::session_ref;
 use crate::ffi::guard::ffi_guard;
@@ -61,7 +61,7 @@ fn call_podcast_json_ffi<'l>(
         let owned = unsafe { CStr::from_ptr(result_ptr) }
             .to_string_lossy()
             .into_owned();
-        nmp_app_free_string(result_ptr);
+        nmp_free_string(result_ptr);
         java_string(env, owned)
     })
 }
@@ -87,7 +87,7 @@ fn call_podcast_global_json_ffi<'l>(
         let owned = unsafe { CStr::from_ptr(result_ptr) }
             .to_string_lossy()
             .into_owned();
-        nmp_app_free_string(result_ptr);
+        nmp_free_string(result_ptr);
         java_string(env, owned)
     })
 }
@@ -112,7 +112,7 @@ fn call_podcast_catalog_ffi<'l>(
         let owned = unsafe { CStr::from_ptr(result_ptr) }
             .to_string_lossy()
             .into_owned();
-        nmp_app_free_string(result_ptr);
+        nmp_free_string(result_ptr);
         java_string(env, owned)
     })
 }

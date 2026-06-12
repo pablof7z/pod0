@@ -17,7 +17,7 @@
 //! * **Response**: heap-allocated nul-terminated JSON of a
 //!   [`crate::capability::DownloadCommand`], or `NULL` when no follow-up is
 //!   needed. The caller MUST free the returned pointer via
-//!   `nmp_app_free_string`. This is how the Rust queue starts the next
+//!   `nmp_free_string`. This is how the Rust queue starts the next
 //!   waiting item after iOS reports `Completed`, `Failed`, or `Cancelled`.
 //!
 //! ## Lock discipline
@@ -48,7 +48,7 @@
 //!   "downloads": <DownloadQueueSnapshot or omitted>,
 //!   "durable_changed": <bool> }
 //! ```
-//! The caller MUST free the pointer via `nmp_app_free_string`.
+//! The caller MUST free the pointer via `nmp_free_string`.
 //!
 //! ## D6 — degrade silently
 //!
@@ -90,7 +90,7 @@ struct DownloadReportResponse {
 /// return the JSON-encoded [`DownloadReportResponse`].
 ///
 /// Returns a malloc-compatible string the caller MUST free via
-/// `nmp_app_free_string`, or `NULL` on any error (D6 degrade-silently).
+/// `nmp_free_string`, or `NULL` on any error (D6 degrade-silently).
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn nmp_app_podcast_download_report(

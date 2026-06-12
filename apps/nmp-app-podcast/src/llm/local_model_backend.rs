@@ -103,7 +103,7 @@ impl LlmBackend for LocalModelBackend {
             Ok(s) => s.to_owned(),
             Err(_) => {
                 // Free the pointer before returning error.
-                unsafe { nmp_ffi::nmp_app_free_string(response_ptr) };
+                unsafe { nmp_ffi::nmp_free_string(response_ptr) };
                 return Err(LlmError::Unavailable(
                     "Local model response not valid UTF-8".into(),
                 ));
@@ -111,7 +111,7 @@ impl LlmBackend for LocalModelBackend {
         };
 
         // Free the returned C string via the Rust helper.
-        unsafe { nmp_ffi::nmp_app_free_string(response_ptr) };
+        unsafe { nmp_ffi::nmp_free_string(response_ptr) };
 
         // Parse the response JSON: {"text":..} or {"error":..}
         match serde_json::from_str::<serde_json::Value>(&response_cstr) {

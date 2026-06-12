@@ -330,7 +330,7 @@ pub extern "C" fn nmp_app_podcast_unregister(handle: *mut PodcastHandle) {
 /// Decode a binary FlatBuffers update frame into the JSON envelope consumed by
 /// the iOS shell's C-string callback:
 /// snapshot -> `{"t":"snapshot","v":...}`, panic -> `{"t":"panic","message":...}`.
-/// Returns a heap `CString` (free with `nmp_app_free_string`) or null when the
+/// Returns a heap `CString` (free with `nmp_free_string`) or null when the
 /// frame is invalid.
 ///
 /// **nmp-v0.3.0 migration note (PR-B #991/#979):** The generic `payload:Value`

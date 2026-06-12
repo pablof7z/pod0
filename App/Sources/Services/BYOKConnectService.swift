@@ -98,7 +98,7 @@ final class BYOKConnectService: NSObject, ASWebAuthenticationPresentationContext
             guard let ptr = nmp_app_podcast_byok_authorization(intentPtr) else {
                 return #"{"error":{"kind":"invalid_authorization_url","message":"null response from Rust"}}"#
             }
-            defer { nmp_app_free_string(ptr) }
+            defer { nmp_free_string(ptr) }
             return String(cString: ptr)
         }
         let envelope = try decodeEnvelope(
@@ -167,7 +167,7 @@ final class BYOKConnectService: NSObject, ASWebAuthenticationPresentationContext
                 guard let ptr = nmp_app_podcast_byok_exchange(handle, intentPtr) else {
                     return #"{"error":{"kind":"token_exchange_failed","message":"null response from Rust"}}"#
                 }
-                defer { nmp_app_free_string(ptr) }
+                defer { nmp_free_string(ptr) }
                 return String(cString: ptr)
             }
         }.value

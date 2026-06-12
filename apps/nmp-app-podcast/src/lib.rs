@@ -110,7 +110,7 @@ pub use ffi::{
     nmp_app_podcast_voice_report, PodcastHandle,
 };
 pub use nmp_ffi::{
-    nmp_app_cancel_bunker_handshake, nmp_app_nostrconnect_uri, nmp_broker_free_string,
+    nmp_app_cancel_bunker_handshake, nmp_app_nostrconnect_uri, nmp_free_string,
     nmp_signer_broker_init,
 };
 pub use player::{PlayerActor, PlayerState};

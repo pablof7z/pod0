@@ -3,7 +3,7 @@ use std::ffi::{CStr, CString};
 use jni::objects::{JClass, JString};
 use jni::sys::{jlong, jstring};
 use jni::JNIEnv;
-use nmp_ffi::nmp_app_free_string;
+use nmp_ffi::nmp_free_string;
 
 use crate::ffi::{
     nmp_app_podcast_audio_report, nmp_app_podcast_download_report, nmp_app_podcast_http_report,
@@ -112,7 +112,7 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeHttpReport<'l>(
         };
         let ret = nmp_app_podcast_http_report(s.podcast, c_body.as_ptr());
         if !ret.is_null() {
-            nmp_app_free_string(ret);
+            nmp_free_string(ret);
         }
     });
 }
@@ -124,7 +124,7 @@ fn response_string(env: &mut JNIEnv<'_>, ptr: *mut std::ffi::c_char) -> jstring 
     let owned = unsafe { CStr::from_ptr(ptr) }
         .to_string_lossy()
         .into_owned();
-    nmp_app_free_string(ptr);
+    nmp_free_string(ptr);
     match env.new_string(owned) {
         Ok(js) => js.into_raw(),
         Err(_) => std::ptr::null_mut(),
