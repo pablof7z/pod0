@@ -68,6 +68,8 @@ fun SettingsScreen(
                 PlaybackSpeedRow(settings = settings, bridge = bridge)
                 HorizontalDivider()
                 AutoDeleteRow(settings = settings, bridge = bridge)
+                HorizontalDivider()
+                AutoSkipAdsRow(settings = settings, bridge = bridge)
             }
         }
         item {
@@ -176,6 +178,45 @@ private fun AutoDeleteRow(settings: SettingsSnapshot, bridge: KernelBridge) {
                     bridge = bridge,
                     namespace = PodcastNamespace.SETTINGS,
                     payload = SetAutoDeleteDownloadsPayload(enabled = enabled),
+                )
+            },
+        )
+    }
+}
+
+/**
+ * Auto-skip-ads toggle. Dispatches `podcast.settings`
+ * `{"op":"set_auto_skip_ads","enabled":b}`. Verified against
+ * `SettingsAction::SetAutoSkipAds { enabled: bool }`.
+ *
+ * Current value comes from `SettingsSnapshot.auto_skip_ads_enabled`. The
+ * kernel's `PlayerActor` handles the actual seek-past logic; this toggle
+ * is pure settings metadata — no Android-side skip business logic.
+ */
+@Composable
+private fun AutoSkipAdsRow(settings: SettingsSnapshot, bridge: KernelBridge) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column(modifier = Modifier.fillMaxWidth(0.78f)) {
+            Text(text = "Auto-skip ads", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = "Automatically skip detected ad breaks during playback.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(
+            checked = settings.autoSkipAdsEnabled,
+            onCheckedChange = { enabled ->
+                PodcastActionDispatcher.dispatch(
+                    bridge = bridge,
+                    namespace = PodcastNamespace.SETTINGS,
+                    payload = SetAutoSkipAdsPayload(enabled = enabled),
                 )
             },
         )

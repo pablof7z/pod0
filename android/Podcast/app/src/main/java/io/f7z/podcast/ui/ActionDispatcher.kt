@@ -48,6 +48,8 @@ object PodcastNamespace {
     const val INBOX = "podcast.inbox"
     const val AGENT = "podcast.agent"
     const val PICKS = "podcast.picks"
+    /** AI chapter synthesis namespace. Verified against `ChaptersActionModule::NAMESPACE`. */
+    const val CHAPTERS = "podcast.chapters"
 }
 
 // ── `podcast` namespace payloads ──────────────────────────────────────────
@@ -494,6 +496,9 @@ data class AgentSendPayload(
 
 @Serializable
 data class AgentClearPayload(val op: String = "clear")
+
+// AI feature payloads (podcast.chapters + podcast.settings ad-skip) live in
+// AiFeaturePayloads.kt to keep this file under the 500-line hard limit.
 
 /**
  * Thin wrapper around `KernelBridge.dispatchAction`. Encodes a typed,

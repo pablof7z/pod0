@@ -166,7 +166,7 @@ private fun EpisodeDetailBody(
             Text(text = notes, style = MaterialTheme.typography.bodyMedium)
         }
 
-        ChapterList(chapters = episode.chapters)
+        ChapterSection(episode = episode, bridge = bridge)
         TranscriptSection(episode = episode, bridge = bridge)
     }
 }
@@ -238,27 +238,61 @@ private fun AiCategoryChips(categories: List<String>) {
     }
 }
 
+/**
+ * Chapter section: renders existing chapters when present; otherwise shows a
+ * "Generate Chapters" affordance when the episode has a transcript available.
+ *
+ * D7: the kernel decides whether chapters exist or synthesis is viable —
+ * we surface the action only when there is a transcript to ground it and no
+ * chapters yet (matching the iOS `AIChapterCompiler` guard).
+ *
+ * Dispatches `podcast.chapters` `{"op":"compile","episode_id":"..."}` —
+ * verified against `ChaptersAction::Compile { episode_id: String }`.
+ */
 @Composable
-private fun ChapterList(chapters: List<ChapterSummary>) {
-    if (chapters.isEmpty()) return
+private fun ChapterSection(episode: EpisodeSummary, bridge: KernelBridge) {
+    val hasChapters = episode.chapters.isNotEmpty()
+    val hasTranscript = !episode.transcript.isNullOrBlank() || episode.transcriptEntries.isNotEmpty()
+
+    if (!hasChapters && !hasTranscript) return
+
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(text = "Chapters", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
-        chapters.forEach { chapter ->
-            Row(
+        Text(
+            text = "Chapters",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Medium,
+        )
+        if (hasChapters) {
+            episode.chapters.forEach { chapter ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        text = formatTimecodeShort(chapter.startSecs),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = chapter.title.ifBlank { "Untitled chapter" },
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        } else {
+            OutlinedButton(
+                onClick = {
+                    PodcastActionDispatcher.dispatch(
+                        bridge = bridge,
+                        namespace = PodcastNamespace.CHAPTERS,
+                        payload = CompileChaptersPayload(episodeId = episode.id),
+                    )
+                },
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(
-                    text = formatTimecodeShort(chapter.startSecs),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = chapter.title.ifBlank { "Untitled chapter" },
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Text("Generate Chapters")
             }
         }
     }

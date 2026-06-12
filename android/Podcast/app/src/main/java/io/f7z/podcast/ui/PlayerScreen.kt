@@ -1,19 +1,26 @@
 package io.f7z.podcast.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -29,10 +36,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.f7z.podcast.AdSegment
 import io.f7z.podcast.KernelBridge
 import io.f7z.podcast.NowPlayingState
 import io.f7z.podcast.PodcastSnapshot
@@ -62,6 +71,18 @@ fun PlayerScreen(
 ) {
     val nowPlaying = snapshot?.nowPlaying
 
+    // Resolve ad segments from the episode currently in the player so the
+    // progress bar can paint tinted ad-break regions. D7: the kernel projects
+    // segments; we only render. No local policy.
+    val adSegments: List<AdSegment> = remember(nowPlaying?.episodeId) {
+        if (nowPlaying?.episodeId == null) return@remember emptyList()
+        snapshot?.subscriptions
+            ?.flatMap { it.episodes }
+            ?.firstOrNull { it.id == nowPlaying.episodeId }
+            ?.adSegments
+            ?: emptyList()
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -80,7 +101,7 @@ fun PlayerScreen(
             return@Column
         }
         PlayerHero(nowPlaying)
-        SeekBar(nowPlaying = nowPlaying, bridge = bridge)
+        SeekBar(nowPlaying = nowPlaying, adSegments = adSegments, bridge = bridge)
         TransportRow(nowPlaying = nowPlaying, bridge = bridge)
         SpeedSelector(currentSpeed = nowPlaying.speed, bridge = bridge)
         SleepTimerControl(
@@ -124,8 +145,24 @@ private fun PlayerHero(nowPlaying: NowPlayingState) {
     )
 }
 
+/**
+ * Seek bar with optional ad-break markers.
+ *
+ * Ad segments are rendered as semi-transparent tinted strips below the slider
+ * track via [AdMarkersBar]. The strip uses [BoxWithConstraints] so each
+ * segment's pixel width can be derived from the actual layout width without
+ * polling or side-effects. Touch handling is unaffected — the [Slider] is a
+ * separate composable layered above.
+ *
+ * D7: rendering only. The kernel's `PlayerActor` handles the actual seek-past
+ * when `auto_skip_ads_enabled` is true; no skip logic lives here.
+ */
 @Composable
-private fun SeekBar(nowPlaying: NowPlayingState, bridge: KernelBridge) {
+private fun SeekBar(
+    nowPlaying: NowPlayingState,
+    adSegments: List<AdSegment>,
+    bridge: KernelBridge,
+) {
     // While the user drags, hold the displayed position locally so the slider
     // doesn't jitter against the 4 Hz snapshot tick. Commit to the kernel on
     // release; the next snapshot will catch up. D5/D8 preserved — the kernel
@@ -151,6 +188,9 @@ private fun SeekBar(nowPlaying: NowPlayingState, bridge: KernelBridge) {
             valueRange = 0f..(if (duration > 0f) duration else 1f),
             enabled = duration > 0f,
         )
+        if (adSegments.isNotEmpty() && duration > 0f) {
+            AdMarkersBar(segments = adSegments, durationSecs = duration)
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -164,6 +204,41 @@ private fun SeekBar(nowPlaying: NowPlayingState, bridge: KernelBridge) {
                 text = formatTimecode(nowPlaying.durationSecs),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/**
+ * A thin horizontal bar that paints one tinted strip per ad segment.
+ *
+ * Uses [BoxWithConstraints] so each segment's pixel offset and width can be
+ * computed from the real layout width — avoids the `fillMaxWidth(fraction)`
+ * limitation which anchors at the left edge and can't represent a mid-track
+ * offset without an `absoluteOffset`.
+ */
+@Composable
+private fun AdMarkersBar(segments: List<AdSegment>, durationSecs: Float) {
+    val density = LocalDensity.current.density
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(AD_MARKER_HEIGHT_DP.dp),
+    ) {
+        val totalWidthPx = constraints.maxWidth.toFloat()
+        segments.forEach { segment ->
+            val startFraction = (segment.startSecs / durationSecs).toFloat().coerceIn(0f, 1f)
+            val endFraction = (segment.endSecs / durationSecs).toFloat().coerceIn(0f, 1f)
+            if (endFraction <= startFraction) return@forEach
+            val startOffsetDp = (startFraction * totalWidthPx / density).dp
+            val widthDp = ((endFraction - startFraction) * totalWidthPx / density).dp
+            Box(
+                modifier = Modifier
+                    .offset(x = startOffsetDp)
+                    .width(widthDp)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(1.dp))
+                    .background(AD_MARKER_COLOR),
             )
         }
     }
@@ -259,3 +334,12 @@ private fun formatSpeedLabel(speed: Float): String =
     }
 
 private val SPEED_OPTIONS = listOf(0.5f, 1.0f, 1.25f, 1.5f, 2.0f)
+
+/** Height of the ad-segment marker strip below the seek slider. */
+private const val AD_MARKER_HEIGHT_DP = 4
+
+/**
+ * Colour for ad-break marker strips. Semi-transparent orange/amber so it is
+ * visible over both light and dark track colours without being alarming.
+ */
+private val AD_MARKER_COLOR = Color(0xFFFF9800).copy(alpha = 0.7f)

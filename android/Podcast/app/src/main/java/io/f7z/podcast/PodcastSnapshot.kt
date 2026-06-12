@@ -381,6 +381,35 @@ data class EpisodeSummary(
      * Mirror of `EpisodeSummary.transcript_status_message`.
      */
     @SerialName("transcript_status_message") val transcriptStatusMessage: String? = null,
+    /**
+     * Ad-break intervals detected by the kernel's LLM ad-skip detector.
+     * Per D5 the field is omitted from the wire when empty. The player renders
+     * these as tinted regions on the progress bar; the kernel handles the
+     * actual seek-past via `PlayerActor` when `auto_skip_ads_enabled` is true.
+     * Mirror of `EpisodeSummary.ad_segments` (`Vec<AdSegment>`).
+     */
+    @SerialName("ad_segments") val adSegments: List<AdSegment> = emptyList(),
+)
+
+/**
+ * Ad-break segment for an episode. Mirror of the Rust
+ * `podcast_core::AdSegment` struct (re-exported via `player/ad_segments.rs`).
+ *
+ * Wire shape verified against `apps/podcast-core/src/types/ad_segment.rs`:
+ *  - `id`: UUID serialised as a hyphenated string.
+ *  - `start_secs` / `end_secs`: `f64` seconds.
+ *  - `kind`: one of `"preroll"` | `"midroll"` | `"postroll"` (`snake_case`).
+ *
+ * Used by `EpisodeSummary.ad_segments` (per D5, field omitted when empty).
+ * The player renders these as tinted regions on the progress bar; the kernel
+ * handles the actual skip seek via `PlayerActor` when `auto_skip_ads_enabled`.
+ */
+@Serializable
+data class AdSegment(
+    val id: String = "",
+    @SerialName("start_secs") val startSecs: Double = 0.0,
+    @SerialName("end_secs") val endSecs: Double = 0.0,
+    val kind: String = "midroll",
 )
 
 /**
@@ -423,6 +452,12 @@ data class TranscriptEntry(
 data class SettingsSnapshot(
     @SerialName("default_playback_rate") val defaultPlaybackRate: Float = 1.0f,
     @SerialName("auto_delete_downloads_after_played") val autoDeleteDownloads: Boolean = false,
+    /**
+     * Whether the player actor automatically seeks past detected ad segments.
+     * Mirror of `SettingsSnapshot.auto_skip_ads_enabled` (Rust field name).
+     * Toggled via `podcast.settings` `{"op":"set_auto_skip_ads","enabled":b}`.
+     */
+    @SerialName("auto_skip_ads_enabled") val autoSkipAdsEnabled: Boolean = false,
     @SerialName("agent_initial_model") val agentInitialModel: String = "deepseek-v4-flash:cloud",
     @SerialName("agent_initial_model_name") val agentInitialModelName: String = "DeepSeek Flash",
     @SerialName("agent_thinking_model") val agentThinkingModel: String = "deepseek-v4-pro:cloud",

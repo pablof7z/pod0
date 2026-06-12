@@ -40,13 +40,13 @@ in `android/Podcast/app/src/main/java/io/f7z/podcast/`.
 | Feature | Status |
 |---|---|
 | Inbox triage | Shipped (InboxScreen + triage shimmer + dismiss/mark-listened dispatch) |
-| Agent chat | Scaffold |
+| Agent chat | Shipped (AgentChatScreen + send/clear dispatch — #408) |
 | Transcripts | Shipped (transcript section in EpisodeDetailScreen + fetch dispatch + status lifecycle) |
-| AI chapters | Not started (chapters render in episode detail; no synthesis trigger) |
-| Auto ad-skip | Not started |
+| AI chapters | Shipped (EpisodeDetailScreen shows "Generate Chapters" button when transcript is present + no chapters yet; dispatches `podcast.chapters` `{"op":"compile","episode_id":…}`; projected chapters render reactively from snapshot) |
+| Auto ad-skip | Shipped (SettingsScreen toggle dispatches `podcast.settings` `{"op":"set_auto_skip_ads","enabled":b}`; current value decoded from `SettingsSnapshot.auto_skip_ads_enabled`; ad-break markers rendered on PlayerScreen progress bar) |
 | RAG / wiki | Not started |
 | Voice mode | Scaffold |
-| AI picks / categories | Not started (categories render in episode detail; no picks rail) |
+| AI picks / categories | Shipped (categories render in episode detail; picks rail in HomeScreen via PicksRail.kt — #408/#410) |
 
 ## Tier 3 - Nostr
 
