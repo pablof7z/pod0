@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-12T17:00:00Z",
+      "lines": [
+        "Playback position, library updates, and settings changes now reach the UI in real-time via per-domain push frames — a playback tick is ~1KB instead of multi-MB."
+      ]
+    },
+    {
       "shipped_at": "2026-06-12T13:00:00Z",
       "lines": [
         "The Inbox section now shows a loading shimmer while the AI triage pass is running — no more silent wait with no feedback."

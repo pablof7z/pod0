@@ -227,32 +227,6 @@ final class PodcastHandle: @unchecked Sendable {
         }
     }
 
-    /// Decode the `PodcastUpdate` from the push frame's
-    /// `projections["podcast.snapshot"]` slice (registered via the canonical
-    /// snapshot-projection seam). Returns `nil` when the projection is absent or
-    /// malformed. Mirrors `KernelIdentityProjection.decode`'s raw-read approach.
-    fileprivate static func decodePodcastUpdate(envelopePayload data: Data) -> PodcastUpdate? {
-        guard
-            let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let value = raw["v"] as? [String: Any],
-            let projections = value["projections"] as? [String: Any],
-            let podcast = projections["podcast.snapshot"],
-            let podcastData = try? JSONSerialization.data(withJSONObject: podcast)
-        else { return nil }
-        do {
-            let update = try KernelDecoding.decodePodcastUpdate(from: podcastData)
-            guard update.schemaVersion == KERNEL_SCHEMA_VERSION else {
-                kbLog.fault(
-                    "podcast.snapshot REJECTED: schema_version \(update.schemaVersion) != expected \(KERNEL_SCHEMA_VERSION) — failing closed on kernel/shell schema mismatch")
-                return nil
-            }
-            return update
-        } catch {
-            kbLog.error("podcast.snapshot decode FAILED: \(error) bytes=\(podcastData.count)")
-            return nil
-        }
-    }
-
     fileprivate static func decode(pointer: UnsafePointer<CChar>) -> KernelUpdateResult? {
         let start = ContinuousClock.now
         let payload = String(cString: pointer)
@@ -264,31 +238,29 @@ final class PodcastHandle: @unchecked Sendable {
                 kbLog.error("unknown envelope tag=\(envelope.t) bytes=\(data.count)")
                 return nil
             }
-            // The podcast projection rides the generic push frame under
-            // `projections["podcast.snapshot"]` (registered via the canonical
-            // `register_snapshot_projection` seam). Decode the `PodcastUpdate`
-            // out of it — the envelope's `v` is the generic kernel snapshot, not
-            // the podcast shape.
-            guard let update = Self.decodePodcastUpdate(envelopePayload: data) else {
-                kbLog.error("snapshot frame missing podcast.snapshot projection bytes=\(data.count)")
+            // NMP v0.5.0 per-domain push path: extract whichever
+            // `podcast.*` domain sidecars are present in this frame.
+            // `nmp_app_podcast_decode_update_frame` injects typed sidecars
+            // under `v.projections[schema_id]`; absent domains carry no sidecar
+            // (delta suppression) and MUST NOT overwrite prior state.
+            guard let domainFrames = PodcastDomainFrames.decode(from: data) else {
+                kbLog.error(
+                    "snapshot frame missing all podcast.* domain sidecars bytes=\(data.count)")
                 return nil
             }
-            // Build the identity projection from the already-decoded PodcastUpdate.
-            // `active_account` lives inside projections["podcast.snapshot"], not at
-            // the top-level projections dictionary — KernelIdentityProjection.decode
-            // read the wrong path and always produced .empty, causing "No identity"
-            // to persist across app restarts even when the kernel had a valid account.
-            let identity = KernelIdentityProjection.from(podcastUpdate: update)
-            // Mandatory NMP v0.1.0 surface (V-67): the kernel sets the
-            // top-level `store_open_failure` string when the configured LMDB
-            // store failed to open and it fell back to in-memory. It rides the
-            // generic snapshot (sibling of `projections`), which `PodcastUpdate`
-            // does not model — so read it raw, mirroring the identity decode.
+            // Identity is sourced from the identity domain sidecar when present,
+            // otherwise derived from the playback domain (active_account may also
+            // appear there on older kernels). Fails open to .empty.
+            let identity = KernelIdentityProjection.from(domainFrames: domainFrames)
+            // Mandatory NMP v0.1.0 surface (V-67): `store_open_failure` rides the
+            // generic snapshot (sibling of `projections`). Read raw, mirroring the
+            // identity decode — typed domain envelopes don't model this key.
             let storeOpenFailure = KernelUpdateResult.extractStoreOpenFailure(envelopePayload: data)
             let duration = start.duration(to: .now)
-            kbLog.info("decoded ok rev=\(update.rev)")
+            kbLog.info(
+                "decoded ok domains=\(domainFrames.presentDomainNames())")
             return KernelUpdateResult(
-                update: update,
+                domainFrames: domainFrames,
                 identity: identity,
                 storeOpenFailure: storeOpenFailure,
                 payloadBytes: data.count,
@@ -445,10 +417,13 @@ private let nmpUpdateCallback: NmpUpdateCallback = { context, bytes, len in
 // ─── Swift-side timing wrapper ────────────────────────────────────────────
 
 struct KernelUpdateResult {
-    let update: PodcastUpdate
+    /// Per-domain push-frame sidecars decoded from this tick. Only domains
+    /// that actually changed since the last emit are present (delta
+    /// suppression). Absent domains MUST NOT overwrite prior composite state.
+    let domainFrames: PodcastDomainFrames
     /// Identity slice of the kernel snapshot — `active_account` /
     /// `accounts` / `bunker_handshake` per
-    /// `KernelIdentityProjection.decode`.
+    /// `KernelIdentityProjection`.
     let identity: KernelIdentityProjection
     /// Top-level `store_open_failure` diagnostic (V-67). `nil` in healthy
     /// sessions; `Some(reason)` when the kernel could not open its on-disk

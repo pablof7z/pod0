@@ -117,6 +117,14 @@ final class KernelModel {
     /// this tracks every processed tick so the short-circuit guards stay
     /// accurate.
     private var lastProcessedRev: UInt64 = 0
+    /// Per-domain last-applied rev counters. Each domain frame's `rev` is
+    /// compared here before merging — stale/duplicate frames are dropped
+    /// without touching the composite.
+    private var domainRevTracker = DomainRevTracker()
+    /// Composite `PodcastUpdate` — the current merged state built by
+    /// selectively replacing domains as per-domain push frames arrive. The
+    /// pull path replaces the entire composite on cold-start / fallback.
+    private var compositeUpdate: PodcastUpdate = PodcastUpdate()
     /// Serial queue for the off-MainActor full-library snapshot decode. The
     /// `JSONDecoder` pass measured ~35 ms on the simulator (≈100 ms on device)
     /// at 3.6k episodes — it must never run on the MainActor. Serial so a burst
@@ -233,6 +241,8 @@ final class KernelModel {
         podcastSnapshot = nil
         library = []
         lastProcessedRev = 0
+        domainRevTracker = DomainRevTracker()
+        compositeUpdate = PodcastUpdate()
         kernel.reregisterPodcastProjection()
         lastErrorToast = nil
         storeOpenFailure = nil
@@ -282,7 +292,9 @@ final class KernelModel {
             let update = handle.podcastSnapshot()
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
-                    self?.applyPodcastUpdate(update)
+                    // Pull path always replaces the composite so push merges
+                    // start from the current full state (fromPull: true).
+                    self?.applyPodcastUpdate(update, fromPull: true)
                 }
             }
         }
@@ -348,33 +360,31 @@ final class KernelModel {
         pullPodcastSnapshotIfChanged(synchronous: false)
     }
 
-    /// Apply one `PodcastUpdate` to the observable surface. Shared by the
-    /// reactive push path (`apply(result:)`) and the rev-gated pull
-    /// (`pullPodcastSnapshotIfChanged`). Rev-gated so redundant frames (push at
-    /// emit-Hz, or a pull racing a push) are dropped cheaply.
+    /// Apply one `PodcastUpdate` to the observable surface. Shared by:
+    ///   - The per-domain push path (`apply(result:)` → `mergeDomainFrames`)
+    ///   - The rev-gated pull path (`pullPodcastSnapshotIfChanged`)
     ///
-    /// `update` is ALWAYS produced off the MainActor now — the push path decodes
-    /// on the kernel C-callback thread, the pull path on `snapshotDecodeQueue`.
+    /// Rev-gated so redundant frames (push at emit-Hz, or a pull racing a push)
+    /// are dropped cheaply. For the push path `update` is the already-merged
+    /// `compositeUpdate`; for the pull path it is the full library snapshot.
+    ///
     /// This method runs the cheap, must-be-main work inline (the `@Observable`
     /// `snapshot`/`nowPlaying`/`downloadSnapshot` assignments + Spotlight / Live
     /// Activity / Now-Playing reconcile) and then offloads the O(N×M) content/
     /// library hashing to a detached task, committing `podcastSnapshot`/`library`
-    /// back on the MainActor. There is no longer a "synchronous" same-runloop
-    /// path: no caller reads `library`/`podcastSnapshot`/`episodes` synchronously
-    /// after a dispatch (every dispatch site is fire-and-forget over
-    /// `@Observable`), so the list-view properties always land a hop later, which
-    /// SwiftUI observation tolerates. `nowPlaying`/`snapshot` (live player
-    /// position) are still assigned inline at the top so the player surface stays
-    /// current the moment a frame is accepted.
-    private func applyPodcastUpdate(_ update: PodcastUpdate) {
+    /// back on the MainActor.
+    ///
+    /// `fromPull`: when true, also replace `compositeUpdate` with the full
+    /// snapshot so the push path's incremental merges start from a current base.
+    private func applyPodcastUpdate(_ update: PodcastUpdate, fromPull: Bool = false) {
         guard update.rev > lastProcessedRev else { return }
         lastProcessedRev = UInt64(update.rev)
+        // For the pull path, replace the composite so future push merges start
+        // from the current full state rather than a stale domain-by-domain build.
+        if fromPull { compositeUpdate = update }
         snapshot = update
         if update.downloads != downloadSnapshot { downloadSnapshot = update.downloads }
         let previousNowPlaying = nowPlaying
-        // `nowPlaying` carries live playback position; refresh on every accepted
-        // frame so player views stay current. Stays on the MainActor inline so
-        // the live player surface reflects the frame the moment it's accepted.
         nowPlaying = update.nowPlaying
         PodcastCapabilities.shared.iCloudSync.applySettingsSnapshot(
             SettingsKVSnapshot.from(podcastUpdate: update))
@@ -387,10 +397,7 @@ final class KernelModel {
 
         // Gate `podcastSnapshot` (and `library`) on content hashes that exclude
         // volatile position/buffering fields so list views don't re-render at
-        // the emit rate. Both hashes are O(N×M) (every show × every episode ×
-        // multiple fields), so the *computation* is offloaded to a detached task;
-        // only the cheap comparison and the `@Observable` assignments come back
-        // on the MainActor.
+        // the emit rate. Both hashes are O(N×M) — offloaded off-main.
         let frameRev = UInt64(update.rev)
         Task.detached(priority: .utility) { [weak self] in
             guard let self else { return }
@@ -709,36 +716,56 @@ final class KernelModel {
 
     private func apply(result: KernelUpdateResult) {
         // Perf: time the synchronous main-actor segment of every accepted push
-        // frame (identity diff, spotlight index, live-activity + now-playing
-        // reconcile). The O(N×M) hashing it kicks off is offloaded off-main, so
-        // this measures only the inline main-thread cost. Recorded via `defer`
-        // so it covers every return path.
+        // frame. The O(N×M) hashing it kicks off is offloaded off-main.
         let applyStart = DispatchTime.now().uptimeNanoseconds
         defer {
             PerfMetrics.shared.record(
                 .mainApply,
                 micros: Int((DispatchTime.now().uptimeNanoseconds &- applyStart) / 1_000))
         }
-        // The store-open-failure health flag and the identity slice are
-        // independent of the podcast projection rev — assign them on every
-        // accepted push frame (before the rev-gated podcast-state apply) so the
-        // mandatory store alert fires on the first frame and identity stays live
-        // even on ticks where the podcast projection didn't change.
+        // Store-open-failure fires on every frame (before rev-gating) so the
+        // mandatory store alert fires on the first frame (V-67).
         storeOpenFailure = result.storeOpenFailure
-        // `apply` runs on every accepted push frame (4 Hz during playback), but
-        // the identity slice — accounts, handshake, and the resolved-profiles
-        // map — changes far less often. Gate the `@Observable` write on a real
-        // change so identity observers (and the resolved-profiles → cache pump
-        // in `applyKernelState`) don't fire a full projection rebuild at the
-        // emit rate. Relies on `KernelIdentityProjection: Equatable`.
-        if result.identity != kernelIdentity {
+        // Identity: only update when the identity domain sidecar was present in
+        // this frame (result.identity != .empty). Absent = identity unchanged;
+        // preserve the current kernelIdentity rather than clobbering with .empty.
+        // This is correct because the kernel only emits the identity sidecar when
+        // the identity domain rev advanced (sign-in, sign-out, account change).
+        if result.identity != .empty, result.identity != kernelIdentity {
             kernelIdentity = result.identity
         }
         snapshotCount &+= 1
         lastSnapshotAt = Date()
-        // Drive the podcast observable surface from the pushed projection. The
-        // frame was already decoded off the MainActor (C-callback thread); the
-        // O(N×M) hashing is then also offloaded off-main inside applyPodcastUpdate.
-        applyPodcastUpdate(result.update)
+
+        // Merge each present domain into the composite and flow through
+        // applyPodcastUpdate only when at least one domain was accepted.
+        // The drop-guard inside mergeDomainFrames handles stale/duplicate frames.
+        let accepted = mergeDomainFrames(
+            result.domainFrames,
+            into: &compositeUpdate,
+            tracker: &domainRevTracker)
+        guard accepted else { return }
+
+        // Advance the composite rev to the max accepted domain rev so
+        // applyPodcastUpdate's rev-monotonic guard lets it through. Use the
+        // highest rev across all present domains.
+        let maxDomainRev = maxRev(result.domainFrames)
+        if compositeUpdate.rev < Int(maxDomainRev) {
+            compositeUpdate.rev = Int(maxDomainRev)
+        }
+        // The kernel is running whenever it emits domain frames — set the flag
+        // so `isRunning` stays accurate without a full snapshot pull.
+        compositeUpdate.running = true
+
+        // Pass fromPull: false — the composite is already up-to-date; we do NOT
+        // want to overwrite it with the full pull snapshot.
+        applyPodcastUpdate(compositeUpdate, fromPull: false)
+    }
+
+    /// Highest `rev` across all domain frames present in the push frame.
+    private func maxRev(_ frames: PodcastDomainFrames) -> UInt64 {
+        [frames.library?.rev, frames.playback?.rev, frames.downloads?.rev,
+         frames.settings?.rev, frames.identity?.rev, frames.widget?.rev,
+         frames.misc?.rev].compactMap { $0 }.max() ?? 0
     }
 }

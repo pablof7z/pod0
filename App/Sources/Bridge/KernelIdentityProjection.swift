@@ -142,23 +142,13 @@ struct KernelIdentityProjection: Equatable {
     }
 }
 
-// MARK: - Factory from decoded PodcastUpdate
+// MARK: - Factory from decoded PodcastUpdate (legacy — kept for pull path)
 
 extension KernelIdentityProjection {
     /// Build the identity projection from an already-decoded `PodcastUpdate`.
     ///
-    /// `active_account` is a field on `PodcastUpdate` (inside the
-    /// `projections["podcast.snapshot"]` slice), NOT at the top-level
-    /// `projections` dictionary. Constructing from the typed struct avoids
-    /// the raw-JSON path that previously read the wrong level and returned
-    /// `.empty` for every snapshot tick, causing "No identity" to persist
-    /// across restarts even when the kernel had a saved account.
-    ///
-    /// `accounts`, `bunkerHandshake`, and `resolvedProfiles` remain empty
-    /// until the Rust backend adds dedicated top-level projection slots for
-    /// them. Their absence degrades gracefully: NIP-46 handshake UI is
-    /// hidden when `bunkerHandshake == nil`, and resolved-profile lookups
-    /// fall back to relay fetches.
+    /// Used by the pull path (`podcastSnapshot()`) and cold-start hydration.
+    /// The push path uses `from(domainFrames:)` instead.
     static func from(podcastUpdate update: PodcastUpdate) -> KernelIdentityProjection {
         KernelIdentityProjection(
             activeAccount: update.activeAccount?.pubkeyHex,
@@ -166,5 +156,36 @@ extension KernelIdentityProjection {
             accounts: [],
             bunkerHandshake: nil,
             resolvedProfiles: [:])
+    }
+}
+
+// MARK: - Factory from per-domain push frames
+
+extension KernelIdentityProjection {
+    /// Build the identity projection from per-domain push-frame sidecars.
+    ///
+    /// The `podcast.identity` sidecar carries `active_account`; it is only
+    /// present when the identity domain changed since the last emit. When it
+    /// is absent (no identity change this tick), the caller is responsible for
+    /// preserving the previous `kernelIdentity` value — this factory is called
+    /// only when the identity domain IS present in the frame.
+    ///
+    /// `accounts`, `bunkerHandshake`, and `resolvedProfiles` remain empty until
+    /// the kernel adds dedicated projection slots — their absence degrades
+    /// gracefully (NIP-46 UI hidden, resolved-profile lookups fall back to relay
+    /// fetches).
+    static func from(domainFrames frames: PodcastDomainFrames) -> KernelIdentityProjection {
+        // Identity domain is the authoritative source when present.
+        if let identityFrame = frames.identity {
+            return KernelIdentityProjection(
+                activeAccount: identityFrame.activeAccount?.pubkeyHex,
+                activeNpub: identityFrame.activeAccount?.npub,
+                accounts: [],
+                bunkerHandshake: nil,
+                resolvedProfiles: [:])
+        }
+        // No identity domain sidecar this frame — return empty so the caller
+        // knows to preserve the previous value.
+        return .empty
     }
 }
