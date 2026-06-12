@@ -282,3 +282,129 @@ fn regenerate_podcast_update_widget_fixture() {
     std::fs::write(&path, json).expect("write fixture");
     eprintln!("wrote {}", path.display());
 }
+
+// ── Chapters + transcripts cross-language fixture ─────────────────────────────
+//
+// `tests/fixtures/podcast_update_with_chapters.json` is a Rust-emitted
+// `PodcastUpdate` whose episode carries populated `chapters` and
+// `transcript_entries` — the two embedded-Vec types most likely to trigger the
+// #371-class failure (a required field serialising as `null` under NaN).
+//
+// The Swift `PodcastUpdateChapterDecodeTests` decodes the same bytes through
+// `KernelDecoding.decodePodcastUpdate` and asserts chapters + transcripts
+// survive — so any Rust↔Swift schema divergence (wrong field name, missing
+// CodingKeys, non-Option required field going null) fails CI instead of
+// freezing the app.
+
+/// Build the canonical chapters fixture update.
+fn chapters_fixture_update() -> crate::ffi::snapshot_update::PodcastUpdate {
+    use crate::ffi::projections::ChapterSummary;
+    use crate::ffi::snapshot_update::PodcastUpdate;
+
+    let ep = EpisodeSummary {
+        id: "ep-ch-1".into(),
+        title: "Deep Dive into Metabolic Flexibility".into(),
+        artwork_url: Some("https://ex.com/ch.png".into()),
+        duration_secs: Some(3600.0),
+        chapters: vec![
+            ChapterSummary {
+                start_secs: 0.0,
+                end_secs: Some(300.0),
+                title: "Introduction".into(),
+                image_url: None,
+                url: None,
+                is_ai_generated: false,
+                ..ChapterSummary::default()
+            },
+            ChapterSummary {
+                start_secs: 300.0,
+                end_secs: Some(1200.0),
+                title: "What is Metabolic Flexibility?".into(),
+                image_url: Some("https://ex.com/ch2.png".into()),
+                url: Some("https://ex.com/notes#2".into()),
+                is_ai_generated: false,
+                ..ChapterSummary::default()
+            },
+            ChapterSummary {
+                start_secs: 1200.0,
+                end_secs: Some(3600.0),
+                title: "AI-Generated Deep Dive".into(),
+                is_ai_generated: true,
+                ..ChapterSummary::default()
+            },
+        ],
+        transcript_entries: vec![
+            crate::ffi::projections::TranscriptEntry {
+                start_secs: 0.0,
+                end_secs: Some(15.0),
+                speaker: Some("Host".into()),
+                text: "Welcome back to the show.".into(),
+            },
+            crate::ffi::projections::TranscriptEntry {
+                start_secs: 15.0,
+                end_secs: None,
+                speaker: None,
+                text: "Today we explore metabolic flexibility.".into(),
+            },
+        ],
+        ..Default::default()
+    };
+    let library = vec![show("show-ch-1", "Science Podcast", 3, vec![ep])];
+    let state = playing("ep-ch-1", 600.0, 3600.0);
+    let widget = build_widget_snapshot(Some(&state), &library);
+
+    PodcastUpdate {
+        running: true,
+        rev: 2,
+        schema_version: 1,
+        library,
+        widget,
+        ..PodcastUpdate::default()
+    }
+}
+
+/// Pin the chapters + transcripts wire shape against the committed fixture.
+/// The Swift `PodcastUpdateChapterDecodeTests` decodes the same bytes through
+/// `KernelDecoding` so a schema drift fails CI, not the live app.
+#[test]
+fn podcast_update_with_chapters_matches_fixture() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/podcast_update_with_chapters.json");
+    let actual = serde_json::to_string_pretty(&chapters_fixture_update()).expect("encode");
+
+    if !path.exists() {
+        // First run: generate the fixture. Commit the result.
+        let mut content = actual.clone();
+        content.push('\n');
+        std::fs::write(&path, content).expect("write chapters fixture");
+        eprintln!(
+            "Chapters fixture written ({} bytes). Commit it — subsequent runs assert byte-identical.",
+            actual.len()
+        );
+        return; // First run always green.
+    }
+
+    let expected = std::fs::read_to_string(&path).expect("read chapters fixture");
+    assert_eq!(
+        actual.trim(),
+        expected.trim(),
+        "PodcastUpdate wire shape (chapters/transcripts) drifted from \
+         tests/fixtures/podcast_update_with_chapters.json.\n\
+         If intentional, regenerate:\n\
+         \tcargo test -p nmp-app-podcast regenerate_chapters_fixture -- --ignored --nocapture\n\
+         The Swift PodcastUpdateChapterDecodeTests decodes the same bytes through \
+         KernelDecoding; keep them in sync."
+    );
+}
+
+/// Regeneration helper for [`podcast_update_with_chapters_matches_fixture`].
+#[test]
+#[ignore = "regeneration helper; run with --ignored to rewrite the fixture"]
+fn regenerate_chapters_fixture() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/podcast_update_with_chapters.json");
+    let mut json = serde_json::to_string_pretty(&chapters_fixture_update()).expect("encode");
+    json.push('\n');
+    std::fs::write(&path, json).expect("write chapters fixture");
+    eprintln!("wrote {}", path.display());
+}

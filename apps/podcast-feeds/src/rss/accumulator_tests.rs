@@ -34,6 +34,38 @@ fn parse_duration_handles_three_formats() {
     assert_eq!(parse_duration("bogus"), None);
 }
 
+/// Guard: a feed with `<itunes:duration>NaN</itunes:duration>` must yield
+/// `None` instead of `Some(NaN)`.  Without this, NaN propagates into chapter
+/// math (`ai_chapters::stub_chapters` divides by `duration_secs`), which
+/// serialises `ChapterSummary::start_secs` as JSON `null`, causing the Swift
+/// bridge to throw `keyNotFound` and drop the entire `PodcastUpdate` frame.
+#[test]
+fn parse_duration_rejects_nan() {
+    assert_eq!(parse_duration("NaN"), None, "NaN must be rejected at the inlet");
+    assert_eq!(parse_duration("nan"), None);
+}
+
+#[test]
+fn parse_duration_rejects_infinity() {
+    assert_eq!(parse_duration("inf"), None, "inf must be rejected at the inlet");
+    assert_eq!(parse_duration("Inf"), None);
+    assert_eq!(parse_duration("-inf"), None);
+    assert_eq!(parse_duration("infinity"), None);
+}
+
+#[test]
+fn parse_duration_rejects_negative() {
+    assert_eq!(parse_duration("-1"), None, "negative durations are invalid");
+    assert_eq!(parse_duration("-3600"), None);
+}
+
+#[test]
+fn parse_duration_accepts_zero() {
+    // Zero is technically valid (e.g. a pre-release episode stub with no content).
+    assert_eq!(parse_duration("0"), Some(0.0));
+    assert_eq!(parse_duration("0:00"), Some(0.0));
+}
+
 #[test]
 fn resolve_url_protocol_relative() {
     let feed = Url::parse("https://example.com/feed.xml").unwrap();

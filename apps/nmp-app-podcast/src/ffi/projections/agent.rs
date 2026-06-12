@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::finite_f32_or_zero;
+
 /// Snapshot of the agent-chat projection surfaced via
 /// [`super::snapshot::PodcastUpdate::agent`].
 ///
@@ -134,6 +136,8 @@ pub struct AgentPickSummary {
     pub pick_reason: String,
     /// `0.0..=1.0` — higher is better. Used for sort order; the
     /// projection layer is the sole owner of normalization.
+    /// Non-finite LLM scores clamped to `0.0` at the wire boundary.
+    #[serde(serialize_with = "finite_f32_or_zero")]
     pub pick_score: f32,
 }
 

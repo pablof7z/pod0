@@ -210,13 +210,17 @@ let project = Project(
             sources: ["AppTests/Sources/**"],
             // Cross-language parity fixtures, each emitted by a Rust test and
             // decoded by a matching Swift test:
-            //   - settings_fresh_install.json   → SettingsSnapshotParityTests
-            //   - podcast_update_with_widget.json → PlatformWidgetContractTests
+            //   - settings_fresh_install.json        → SettingsSnapshotParityTests
+            //   - podcast_update_with_widget.json    → PlatformWidgetContractTests
             //     (decoded through the bridge's .convertFromSnakeCase config —
             //     pins Rust-JSON ↔ embedded-WidgetSnapshot compatibility).
+            //   - podcast_update_with_chapters.json  → PodcastUpdateChapterDecodeTests
+            //     (chapters + transcript_entries embedded in PodcastUpdate —
+            //     guards against NaN→null required-field frame-drop; #371-class).
             resources: [
                 "tests/fixtures/settings_fresh_install.json",
                 "tests/fixtures/podcast_update_with_widget.json",
+                "tests/fixtures/podcast_update_with_chapters.json",
             ],
             dependencies: [.target(name: appName)],
             settings: .settings(

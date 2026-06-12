@@ -421,6 +421,80 @@ fn settings_fresh_install_matches_fixture() {
     );
 }
 
+// ── Finite-float wire-boundary guard ──────────────────────────────────────────
+//
+// These tests pin the contract that no required (non-Option) float field ever
+// serialises as JSON `null` (which serde_json emits for NaN/Inf by default).
+// A `null` in a required field causes the Swift bridge decoder to throw
+// `keyNotFound` and drop the entire `PodcastUpdate` frame — the #371-class
+// failure, but remotely triggerable from any RSS feed.
+
+#[test]
+fn chapter_summary_nan_start_secs_serialises_as_zero_not_null() {
+    // A ChapterSummary with a NaN start_secs (e.g. from ai_chapters dividing by
+    // a NaN duration_secs) must NOT produce `"start_secs":null` on the wire.
+    let ch = ChapterSummary {
+        start_secs: f64::NAN,
+        title: "Bad Chapter".into(),
+        ..ChapterSummary::default()
+    };
+    let json = serde_json::to_string(&ch).expect("encode");
+    assert!(
+        !json.contains("null"),
+        "NaN must not serialise as null — wire: {json}"
+    );
+    assert!(
+        json.contains("\"start_secs\":0.0"),
+        "NaN start_secs must be clamped to 0.0 — wire: {json}"
+    );
+}
+
+#[test]
+fn chapter_summary_inf_start_secs_serialises_as_zero_not_null() {
+    let ch = ChapterSummary {
+        start_secs: f64::INFINITY,
+        title: "Inf Chapter".into(),
+        ..ChapterSummary::default()
+    };
+    let json = serde_json::to_string(&ch).expect("encode");
+    assert!(!json.contains("null"), "Inf must not serialise as null — wire: {json}");
+    assert!(json.contains("\"start_secs\":0.0"), "Inf clamped to 0.0 — wire: {json}");
+}
+
+#[test]
+fn transcript_entry_nan_start_secs_serialises_as_zero() {
+    let entry = TranscriptEntry {
+        start_secs: f64::NAN,
+        end_secs: None,
+        speaker: None,
+        text: "Hello".into(),
+    };
+    let json = serde_json::to_string(&entry).expect("encode");
+    assert!(!json.contains("null"), "NaN must not be null in transcript entry — wire: {json}");
+    assert!(json.contains("\"start_secs\":0.0"), "NaN clamped to 0.0 — wire: {json}");
+}
+
+#[test]
+fn widget_nan_position_fraction_serialises_as_zero() {
+    let widget = WidgetSnapshot {
+        is_playing: true,
+        position_fraction: f32::NAN,
+        position_secs: 30.0,
+        duration_secs: 120.0,
+        unplayed_count: 1,
+        ..WidgetSnapshot::default()
+    };
+    let json = serde_json::to_string(&widget).expect("encode");
+    assert!(
+        !json.contains("null"),
+        "NaN position_fraction must not be null — wire: {json}"
+    );
+    assert!(
+        json.contains("\"position_fraction\":0.0"),
+        "NaN position_fraction clamped to 0.0 — wire: {json}"
+    );
+}
+
 /// Regeneration helper for [`settings_fresh_install_matches_fixture`]. Ignored
 /// by default; run explicitly to rewrite the fixture after an intentional
 /// defaults change:

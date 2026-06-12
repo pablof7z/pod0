@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::finite_f32_or_zero;
+
 /// One row in the RAG / vector-search projection surfaced via
 /// [`super::snapshot::PodcastUpdate::knowledge_search_results`].
 ///
@@ -33,6 +35,8 @@ pub struct KnowledgeSearchResult {
     pub snippet: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub start_secs: Option<f64>,
+    /// Relevance score `0.0..=1.0`.  Non-finite AI scores clamped to `0.0`.
+    #[serde(serialize_with = "finite_f32_or_zero")]
     pub relevance_score: f32,
 }
 

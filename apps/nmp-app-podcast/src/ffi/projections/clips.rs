@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::finite_f64_or_zero;
+
 /// User-defined audio clip from an episode, surfaced via
 /// [`super::snapshot::PodcastUpdate::clips`].
 ///
@@ -26,9 +28,13 @@ pub struct ClipSummary {
     pub episode_title: String,
     pub podcast_title: String,
     /// Clip start position in seconds, absolute within the episode.
+    /// Non-finite values clamped to `0.0` at the wire boundary.
+    #[serde(serialize_with = "finite_f64_or_zero")]
     pub start_secs: f64,
     /// Clip end position in seconds, absolute within the episode.
     /// Must satisfy `end_secs > start_secs` (enforced at create time).
+    /// Non-finite values clamped to `0.0` at the wire boundary.
+    #[serde(serialize_with = "finite_f64_or_zero")]
     pub end_secs: f64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,

@@ -116,21 +116,34 @@ pub fn transcript_rank(kind: Option<TranscriptKind>) -> u8 {
 }
 
 /// Parses iTunes durations: `H:MM:SS`, `MM:SS`, or raw seconds.
+///
+/// Rejects non-finite (`NaN`, `Inf`, `-Inf`) and negative values so a
+/// malformed feed cannot propagate a NaN into chapter math, which would
+/// serialise required float fields as JSON `null` and drop the entire
+/// `PodcastUpdate` frame on the Swift side.
 pub fn parse_duration(raw: &str) -> Option<f64> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
         return None;
     }
     let parts: Vec<&str> = trimmed.split(':').collect();
-    if parts.len() == 1 {
-        return parts[0].parse::<f64>().ok();
+    let seconds = if parts.len() == 1 {
+        parts[0].parse::<f64>().ok()?
+    } else {
+        let mut acc: f64 = 0.0;
+        for part in parts {
+            let value: f64 = part.parse().ok()?;
+            acc = acc * 60.0 + value;
+        }
+        acc
+    };
+    // Reject NaN, Inf, -Inf, and negative durations — none are valid
+    // episode lengths and all would corrupt downstream float math.
+    if seconds.is_finite() && seconds >= 0.0 {
+        Some(seconds)
+    } else {
+        None
     }
-    let mut seconds: f64 = 0.0;
-    for part in parts {
-        let value: f64 = part.parse().ok()?;
-        seconds = seconds * 60.0 + value;
-    }
-    Some(seconds)
 }
 
 /// Resolves a URL against the feed URL. Handles three cases:

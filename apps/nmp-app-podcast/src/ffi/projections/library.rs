@@ -1,6 +1,8 @@
 use podcast_core::ChapterSource;
 use serde::{Deserialize, Serialize};
 
+use super::{finite_f64_or_zero};
+
 use crate::player::AdSegment;
 
 /// One known podcast row in the library projection surfaced via
@@ -224,6 +226,10 @@ pub struct EpisodeSummary {
 /// surface entries without inventing a value.
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct TranscriptEntry {
+    /// Transcript segment start time in seconds.  Non-finite values (NaN,
+    /// Inf) are clamped to `0.0` at the wire boundary so the Swift required
+    /// `Double` field never receives JSON `null`.
+    #[serde(serialize_with = "finite_f64_or_zero")]
     pub start_secs: f64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub end_secs: Option<f64>,
@@ -265,6 +271,12 @@ pub struct CategoryBrowseItem {
 /// backward-compatible with decoders that predate the field.
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct ChapterSummary {
+    /// Chapter start time in seconds.  Non-finite values (NaN, Inf) are
+    /// clamped to `0.0` at the wire boundary: if a NaN propagated here (e.g.
+    /// from `ai_chapters::stub_chapters` dividing by a NaN duration), the
+    /// Swift bridge would receive JSON `null` for a required `Double` and
+    /// throw `keyNotFound`, dropping the entire `PodcastUpdate` frame.
+    #[serde(serialize_with = "finite_f64_or_zero")]
     pub start_secs: f64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub end_secs: Option<f64>,

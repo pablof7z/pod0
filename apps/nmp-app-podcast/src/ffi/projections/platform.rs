@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::{finite_f32_or_zero, finite_f64_or_zero};
+
 /// Narrow projection consumed by the M11 platform-integration
 /// executors (widget extension, Live Activity, Handoff,
 /// Siri shortcuts). It is **not** a superset of `now_playing` —
@@ -47,15 +49,20 @@ pub struct WidgetSnapshot {
     pub is_playing: bool,
     /// Pre-computed progress fraction `0.0..=1.0`; the widget renders
     /// this as a ring/bar without re-deriving from secs+duration.
+    /// Non-finite values clamped to `0.0` at the wire boundary.
+    #[serde(serialize_with = "finite_f32_or_zero")]
     pub position_fraction: f32,
     /// Current playhead in seconds. Surfaced alongside the pre-computed
     /// `position_fraction` so the widget can render the "−MM:SS
     /// remaining" label without re-deriving secs from the fraction.
-    /// `0.0` when no episode is loaded.
+    /// `0.0` when no episode is loaded.  Non-finite values clamped to `0.0`.
+    #[serde(serialize_with = "finite_f64_or_zero")]
     pub position_secs: f64,
     /// Track duration in seconds; `0.0` until the capability reports it.
     /// Paired with `position_secs` so the widget's remaining-time label
     /// renders the exact value the in-app player shows.
+    /// Non-finite values clamped to `0.0` at the wire boundary.
+    #[serde(serialize_with = "finite_f64_or_zero")]
     pub duration_secs: f64,
     /// Number of unplayed episodes across all subscribed shows;
     /// drives the badge / "X to listen" line in the widget.

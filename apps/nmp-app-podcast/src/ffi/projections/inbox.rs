@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::finite_f32_or_zero;
+
 /// One row in the AI-triaged inbox surfaced via
 /// [`super::snapshot::PodcastUpdate::inbox`]. The kernel projection is built
 /// by [`crate::inbox_handler::build_inbox`] from the unlistened-∖-dismissed
@@ -16,7 +18,9 @@ pub struct InboxItem {
     pub published_at: i64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub duration_secs: Option<f64>,
-    /// `0.0..=1.0`; higher = more important.
+    /// `0.0..=1.0`; higher = more important.  Non-finite LLM scores clamped
+    /// to `0.0` at the wire boundary.
+    #[serde(serialize_with = "finite_f32_or_zero")]
     pub priority_score: f32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub priority_reason: Option<String>,
