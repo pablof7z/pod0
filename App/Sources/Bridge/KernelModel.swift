@@ -126,7 +126,7 @@ final class KernelModel {
     /// composite. Flipped to `true` inside `applyPodcastUpdate` the
     /// moment the first `fromPull` frame commits; after that the
     /// steady-state `>` guard is restored for both push and pull paths.
-    private var hasHydrated: Bool = false
+    private(set) var hasHydratedPodcastSnapshot: Bool = false
     /// Per-domain last-applied rev counters. Each domain frame's `rev` is
     /// compared here before merging — stale/duplicate frames are dropped
     /// without touching the composite.
@@ -251,7 +251,7 @@ final class KernelModel {
         podcastSnapshot = nil
         library = []
         lastProcessedRev = 0
-        hasHydrated = false
+        hasHydratedPodcastSnapshot = false
         domainRevTracker = DomainRevTracker()
         compositeUpdate = PodcastUpdate()
         kernel.reregisterPodcastProjection()
@@ -392,9 +392,9 @@ final class KernelModel {
         // push frame may have already advanced `lastProcessedRev` to the same rev
         // the startup pull carries. Allow `>=` on the cold-start pull so the full
         // library snapshot still seeds the composite even if a partial push frame
-        // raced it. After `hasHydrated` flips true the normal `>` guard is
+        // raced it. After `hasHydratedPodcastSnapshot` flips true the normal `>` guard is
         // restored for all subsequent push and pull frames.
-        let revPasses = fromPull && !hasHydrated
+        let revPasses = fromPull && !hasHydratedPodcastSnapshot
             ? update.rev >= Int(lastProcessedRev)
             : update.rev > Int(lastProcessedRev)
         guard revPasses else { return }
@@ -403,7 +403,7 @@ final class KernelModel {
         // from the current full state rather than a stale domain-by-domain build.
         if fromPull {
             compositeUpdate = update
-            hasHydrated = true
+            hasHydratedPodcastSnapshot = true
         }
         snapshot = update
         if update.downloads != downloadSnapshot { downloadSnapshot = update.downloads }

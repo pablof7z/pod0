@@ -90,13 +90,15 @@ extension AppStateStore {
                 // advances between `attachKernel` returning and this Task's first
                 // iteration — without this, `withObservationTracking` arms on an
                 // already-final value and never fires, leaving the UI empty.
-                self?.applyKernelState(
-                    library: kernel.library,
-                    snapshot: kernel.podcastSnapshot,
-                    identity: kernel.kernelIdentity,
-                    libraryGeneration: kernel.libraryGeneration,
-                    prevEpisodeSummaries: &prevEpisodeSummaries,
-                    lastProjectedLibraryGeneration: &lastProjectedLibraryGeneration)
+                if kernel.hasHydratedPodcastSnapshot {
+                    self?.applyKernelState(
+                        library: kernel.library,
+                        snapshot: kernel.podcastSnapshot,
+                        identity: kernel.kernelIdentity,
+                        libraryGeneration: kernel.libraryGeneration,
+                        prevEpisodeSummaries: &prevEpisodeSummaries,
+                        lastProjectedLibraryGeneration: &lastProjectedLibraryGeneration)
+                }
                 // Diagnostic tap: one entry per snapshot tick. Logged at the
                 // call site (not inside `applyKernelState`) so it covers both
                 // the full and fast-path projections uniformly. The `message`
@@ -117,6 +119,7 @@ extension AppStateStore {
                     withObservationTracking {
                         _ = kernel.library
                         _ = kernel.podcastSnapshot
+                        _ = kernel.hasHydratedPodcastSnapshot
                         _ = kernel.kernelIdentity
                         // NOTE: `downloadSnapshot` is intentionally NOT observed
                         // here. Download-progress ticks update it ~1 Hz/download
