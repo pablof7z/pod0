@@ -120,3 +120,43 @@ jobs:
             echo "commit the updated files."
             exit 1
           }
+
+  workspace-check:
+    name: Rust workspace build gate (all members, all targets)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      # Cargo.lock is gitignored in this repo, so --locked is not applicable.
+      # The cache key falls back to a fixed restore-key so partial hits are
+      # still useful across dependency bumps.
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-workspace-${{ hashFiles('**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-workspace-
+
+      - name: cargo check — full workspace (all members, all targets)
+        # --workspace compiles all 8 workspace members including podcast-tui
+        # and podcast-agent-core, which the existing android-check and
+        # swift-bridge-codegen-drift jobs never reach (they are scoped to
+        # -p nmp-app-podcast or apps/nmp-app-podcast/).
+        #
+        # --all-targets includes test/bench/example compilation units so that
+        # type removals or renames that only break #[cfg(test)] code are also
+        # caught.
+        #
+        # This gate was introduced after PR #435 removed an FFI DTO that was
+        # still referenced by apps/podcast-tui and auto-merged to a broken main
+        # because no existing CI job compiled that workspace member.
+        run: cargo check --workspace --all-targets
