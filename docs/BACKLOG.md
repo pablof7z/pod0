@@ -56,20 +56,10 @@ worktrees currently in flight.
 - ~~**owned-podcast-episode-backfill-kernel.**~~ Done: kernel `update_owned`
   now detects a private→public flip and calls `publish_episode` for every
   episode atomically; the Swift loop deleted (PR #396).
-- **compat-service-stubs-delete.** Delete remaining
-  `ios/Podcast/Podcast/Compat/ServiceStubs.swift` sections by replacing them
-  with Rust-backed actions/snapshots or real capabilities: BYOK connect,
-  subscription service, LiquidGlassSegmentedPicker shim if still needed,
-  `NostrCredentialStore`, `NostrKeyPair`, NIP-46 connect card, and agent
-  connection settings.
-- **compat-domain-stubs-delete.** Delete
-  `ios/Podcast/Podcast/Compat/DomainStubs.swift` by routing every migrated
-  view through generated snapshot types and real Rust domain projections.
-- **compat-kernelmodel-delete.** Delete `KernelModelCompat.swift` by replacing
-  convenience lookups and no-op agent/social methods with canonical snapshot
-  queries and Rust actions.
-- **compat-useridentity-delete.** Delete `UserIdentityStoreCompat.swift` after
-  identity import/generate/clear/profile/NIP-46 flows are fully Rust/NMP-owned.
+- ~~**compat-service-stubs-delete.**~~ REMOVED — referenced path does not exist at origin/main.
+- ~~**compat-domain-stubs-delete.**~~ REMOVED — referenced path does not exist at origin/main.
+- ~~**compat-kernelmodel-delete.**~~ REMOVED — referenced path does not exist at origin/main.
+- ~~**compat-useridentity-delete.**~~ REMOVED — referenced path does not exist at origin/main.
 - **identity-kernel-actions.** Implement Rust-owned identity actions:
   import nsec, generate, clear, publish profile, connect/disconnect remote
   signer, connect via nostrconnect, cancel handshake, and expose fingerprint
@@ -309,15 +299,17 @@ worktrees currently in flight.
   `context`, `alt`) from those fields. Tag formatting is already kernel-owned
   (#355). Low priority follow-up: pass raw episode/podcast identifiers so Swift
   never formats the `i podcast:item:guid:<guid>#t=<start>,<end>` string.
-- **social-publish-relay-target.** Kernel social publishing targets the kernel's
-  primary relay (`relay.primal.net`, matching `agent_note_handler`/
-  `social_handler`), whereas the old Swift path used
-  `FeedbackRelayClient.profileRelayURLs` (`relay.tenex.chat` + `purplepag.es`).
-  User content arguably belongs on the user's configured write relays, not a
-  hardcoded one — wire `podcast.social` publishing to the configured-relays set.
-- **episode-comments-relay-wiring.** Replace `comments_handler.rs` stubs with
-  real kind-1111 relay subscribe/publish. Map local `EpisodeId` to
-  Podcasting 2.0 guid/NIP-73 `i podcast:item:guid:<guid>` anchors.
+- **social-publish-relay-target.** Kernel social publishing (kind:1, kind:1111, kind:10064)
+  routes via `nmp_dispatch.rs` with `target: Auto`, which uses NMP's relay pool strategy
+  (see `publish_raw_via_nmp` line 55–72). Doc comment at `host_op_publish.rs:169` is
+  stale (mentions `relay.primal.net`); actual routing is pool-aware. Verify whether
+  `Auto` target respects user's configured write relays or remains pool-only.
+- ~~**episode-comments-relay-wiring.**~~ DONE (verified at `apps/nmp-app-podcast/src/comments_handler.rs`).
+  Real kind-1111 relay subscribe/publish is wired: `handle_fetch_comments` 
+  (line 61) subscribes via `push_interest_via_nmp` with kind:1111 + NIP-73 `#i` tag filter;
+  `handle_post_comment` (line 103) publishes via `publish_raw_via_nmp` (line 140);
+  `CommentsObserver` (line 164) receives inbound events and caches by episode.
+  Episodes are mapped to anchors via `episode_nip73_anchor` (line 70, 129).
 - **social-graph-store-wiring.** ~~Replace `social_handler.rs` `nostr_pending`
   with NMP kind:3 contact-list store reads, kind:0 metadata hydration,
   subscription refresh, and snapshot updates.~~ **CLOSED** — replaced by reactive
