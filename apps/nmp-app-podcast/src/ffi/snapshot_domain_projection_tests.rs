@@ -709,3 +709,94 @@ fn social_inbound_note_reemits_on_each_new_note_real_path() {
     drop(handle);
     unsafe { drop(Box::from_raw(app)) };
 }
+
+// ── Slice-local payload key assertions ───────────────────────────────────────
+
+/// Assert that the `podcast.playback` sidecar payload contains ONLY
+/// `now_playing`, `queue`, and `rev` — NOT library-domain fields like
+/// `library`, `settings`, `categories`, `active_account`, or `widget`.
+///
+/// This is the structural proof that `build_playback_payload` is slice-local:
+/// if it were calling `build_podcast_update` it would produce a payload with
+/// all ~30 PodcastUpdate fields, not just the three playback fields.
+#[test]
+fn playback_payload_contains_only_playback_keys() {
+    let app = nmp_ffi::nmp_app_new();
+    assert!(!app.is_null());
+    let app_ref = unsafe { &*app };
+    let handle = Arc::new(*make_test_handle_with_app(app));
+    register_domain_projections(app_ref, &handle);
+
+    // First run emits all domains.
+    let first = app_ref.run_typed_snapshot_projections();
+    let playback = first
+        .iter()
+        .find(|p| p.schema_id == SCHEMA_PLAYBACK)
+        .expect("podcast.playback must be emitted on initial run");
+
+    let val: serde_json::Value =
+        serde_json::from_slice(&playback.payload).expect("playback payload must be valid JSON");
+    let obj = val.as_object().expect("playback payload must be a JSON object");
+
+    // Required keys.
+    assert!(obj.contains_key("rev"),         "playback payload must contain 'rev'");
+    assert!(obj.contains_key("now_playing"), "playback payload must contain 'now_playing'");
+    assert!(obj.contains_key("queue"),       "playback payload must contain 'queue'");
+
+    // Prohibited library-domain keys — their presence means the builder is
+    // still calling build_podcast_update and fan-in is happening.
+    for prohibited in &[
+        "library", "categories", "settings", "active_account", "widget",
+        "wiki_articles", "picks", "agent_tasks", "social", "agent_notes",
+    ] {
+        assert!(
+            !obj.contains_key(*prohibited),
+            "playback payload must NOT contain '{prohibited}' — \
+             this key only exists in build_podcast_update fan-in; \
+             payload keys: {:?}",
+            obj.keys().collect::<Vec<_>>()
+        );
+    }
+
+    drop(handle);
+    unsafe { drop(Box::from_raw(app)) };
+}
+
+/// Assert that the `podcast.settings` sidecar payload contains ONLY
+/// `settings`, `configured_relays`, and `rev` — NOT library/playback fields.
+#[test]
+fn settings_payload_contains_only_settings_keys() {
+    let app = nmp_ffi::nmp_app_new();
+    assert!(!app.is_null());
+    let app_ref = unsafe { &*app };
+    let handle = Arc::new(*make_test_handle_with_app(app));
+    register_domain_projections(app_ref, &handle);
+
+    let first = app_ref.run_typed_snapshot_projections();
+    let settings = first
+        .iter()
+        .find(|p| p.schema_id == SCHEMA_SETTINGS)
+        .expect("podcast.settings must be emitted on initial run");
+
+    let val: serde_json::Value =
+        serde_json::from_slice(&settings.payload).expect("settings payload must be valid JSON");
+    let obj = val.as_object().expect("settings payload must be a JSON object");
+
+    assert!(obj.contains_key("rev"),               "settings payload must contain 'rev'");
+    assert!(obj.contains_key("settings"),          "settings payload must contain 'settings'");
+    assert!(obj.contains_key("configured_relays"), "settings payload must contain 'configured_relays'");
+
+    for prohibited in &[
+        "library", "now_playing", "queue", "downloads", "active_account",
+        "widget", "wiki_articles", "picks",
+    ] {
+        assert!(
+            !obj.contains_key(*prohibited),
+            "settings payload must NOT contain '{prohibited}'; got: {:?}",
+            obj.keys().collect::<Vec<_>>()
+        );
+    }
+
+    drop(handle);
+    unsafe { drop(Box::from_raw(app)) };
+}

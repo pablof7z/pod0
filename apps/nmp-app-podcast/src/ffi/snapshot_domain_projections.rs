@@ -62,6 +62,12 @@
 //! — the bridge decoder uses `convertFromSnakeCase`; explicit CodingKeys override it and
 //! cause `keyNotFound` errors that drop the entire frame. All field names must use Rust
 //! snake_case and rely on the bridge's automatic conversion.
+//!
+//! ## Module layout
+//!
+//! Payload builders live in the sibling `snapshot_domain_builders` module to keep
+//! this file within the 500-line hard limit (AGENTS.md).  Store helpers used by
+//! those builders live in `snapshot_domain_store_helpers`.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -69,7 +75,10 @@ use std::sync::{Arc, Mutex};
 use nmp_core::TypedProjectionData;
 
 use super::handle::PodcastHandle;
-use super::snapshot::build_podcast_update;
+use super::snapshot_domain_builders::{
+    build_downloads_payload, build_identity_payload, build_library_payload, build_misc_payload,
+    build_playback_payload, build_settings_payload, build_social_payload, build_widget_payload,
+};
 
 // ── Schema IDs ────────────────────────────────────────────────────────────────
 
@@ -81,129 +90,6 @@ pub const SCHEMA_IDENTITY: &str = "podcast.identity";
 pub const SCHEMA_WIDGET: &str = "podcast.widget";
 pub const SCHEMA_SOCIAL: &str = "podcast.social";
 pub const SCHEMA_MISC: &str = "podcast.misc";
-
-// ── Payload builders ──────────────────────────────────────────────────────────
-
-/// Build the `podcast.library` domain payload from the current handle state.
-/// Returns `None` when the library is empty (preserves byte-identical pull-path
-/// behaviour for a fresh install).
-///
-/// `inbox` lives here (not in playback) because it is DERIVED from library
-/// episodes — a feed refresh that adds/updates episodes drives the inbox delta,
-/// and both are bumped by `Domain::Library` mutation sites.
-fn build_library_payload(handle: &PodcastHandle) -> Option<serde_json::Value> {
-    let update = build_podcast_update(handle);
-    if update.library.is_empty() {
-        return None;
-    }
-    Some(serde_json::json!({
-        "rev": update.rev,
-        "library": update.library,
-        "categories": update.categories,
-        "search_results": update.search_results,
-        "nostr_results": update.nostr_results,
-        "owned_podcasts": update.owned_podcasts,
-        "inbox": update.inbox,
-        "inbox_triage_in_progress": update.inbox_triage_in_progress,
-    }))
-}
-
-/// Build the `podcast.playback` domain payload.
-fn build_playback_payload(handle: &PodcastHandle) -> serde_json::Value {
-    let update = build_podcast_update(handle);
-    serde_json::json!({
-        "rev": update.rev,
-        "now_playing": update.now_playing,
-        "queue": update.queue,
-    })
-}
-
-/// Build the `podcast.downloads` domain payload. Returns `None` when there
-/// are no active downloads (D5 — omit rather than send an empty struct).
-fn build_downloads_payload(handle: &PodcastHandle) -> Option<serde_json::Value> {
-    let update = build_podcast_update(handle);
-    update.downloads.map(|d| {
-        serde_json::json!({
-            "rev": update.rev,
-            "downloads": d,
-        })
-    })
-}
-
-/// Build the `podcast.settings` domain payload.
-fn build_settings_payload(handle: &PodcastHandle) -> serde_json::Value {
-    let update = build_podcast_update(handle);
-    serde_json::json!({
-        "rev": update.rev,
-        "settings": update.settings,
-        "configured_relays": update.configured_relays,
-    })
-}
-
-/// Build the `podcast.identity` domain payload. Returns `None` when no account
-/// is active (fresh install / logged-out state).
-fn build_identity_payload(handle: &PodcastHandle) -> Option<serde_json::Value> {
-    let update = build_podcast_update(handle);
-    update.active_account.as_ref()?;
-    Some(serde_json::json!({
-        "rev": update.rev,
-        "active_account": update.active_account,
-    }))
-}
-
-/// Build the `podcast.widget` domain payload. Returns `None` when the widget
-/// has nothing to display (no playback, no unplayed episodes).
-fn build_widget_payload(handle: &PodcastHandle) -> Option<serde_json::Value> {
-    let update = build_podcast_update(handle);
-    update.widget.as_ref()?;
-    Some(serde_json::json!({
-        "rev": update.rev,
-        "widget": update.widget,
-    }))
-}
-
-/// Build the `podcast.social` domain payload.
-///
-/// Returns `None` when social, agent_notes, AND nostr_conversations are all
-/// empty (so the domain's first emit is tombstoned rather than silently absent
-/// after a post-sign-out account switch that cleared the slots).
-fn build_social_payload(handle: &PodcastHandle) -> Option<serde_json::Value> {
-    let update = build_podcast_update(handle);
-    let empty = update.social.is_none()
-        && update.agent_notes.is_empty()
-        && update.nostr_conversations.is_empty();
-    if empty {
-        return None;
-    }
-    Some(serde_json::json!({
-        "rev": update.rev,
-        "social": update.social,
-        "agent_notes": update.agent_notes,
-        "nostr_conversations": update.nostr_conversations,
-    }))
-}
-
-/// Build the `podcast.misc` domain payload — the catch-all for everything
-/// not covered by a dedicated domain.
-fn build_misc_payload(handle: &PodcastHandle) -> serde_json::Value {
-    let update = build_podcast_update(handle);
-    serde_json::json!({
-        "rev": update.rev,
-        "wiki_articles": update.wiki_articles,
-        "wiki_search_results": update.wiki_search_results,
-        "picks": update.picks,
-        "agent_tasks": update.agent_tasks,
-        "knowledge_search_results": update.knowledge_search_results,
-        "memory_facts": update.memory_facts,
-        "clips": update.clips,
-        "comments": update.comments,
-        "voice": update.voice,
-        "agent": update.agent,
-        "agent_context": update.agent_context,
-        "feedback_events": update.feedback_events,
-        "feedback_threads": update.feedback_threads,
-    })
-}
 
 // ── Tombstone builders ────────────────────────────────────────────────────────
 
@@ -453,7 +339,9 @@ pub fn register_domain_projections(
 /// Returns `None` when no `podcast.*` sidecar is present (D6 — degrade
 /// silently, never panic). A sidecar whose payload is not valid JSON is
 /// silently skipped (D6).
-pub fn decode_podcast_domain_sidecars(slice: &[u8]) -> Option<serde_json::Map<String, serde_json::Value>> {
+pub fn decode_podcast_domain_sidecars(
+    slice: &[u8],
+) -> Option<serde_json::Map<String, serde_json::Value>> {
     let typed = nmp_core::decode_snapshot_typed_projections(slice).ok()?;
     let mut map = serde_json::Map::new();
     for entry in typed {
@@ -475,3 +363,9 @@ pub fn decode_podcast_domain_sidecars(slice: &[u8]) -> Option<serde_json::Map<St
 #[cfg(test)]
 #[path = "snapshot_domain_projection_tests.rs"]
 mod tests;
+
+/// Byte-identity regression guard for the slice-local playback queue rows —
+/// split into its own file to keep both test files under the 500-line limit.
+#[cfg(test)]
+#[path = "snapshot_domain_queue_identity_tests.rs"]
+mod queue_identity_tests;

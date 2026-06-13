@@ -123,6 +123,13 @@ pub fn build_widget_snapshot(
     })
 }
 
+/// Public alias exposed for the slice-local widget builder in
+/// `snapshot_domain_projections.rs`, which builds the widget directly from
+/// the store without going through `build_widget_snapshot`.
+pub(super) fn clamp_fraction_pub(position_secs: f64, duration_secs: f64) -> f32 {
+    clamp_fraction(position_secs, duration_secs)
+}
+
 /// Clamp `position / duration` to `0.0..=1.0`. Returns `0.0` for a zero or
 /// non-finite duration (freshly-loaded episode, capability hasn't reported a
 /// duration yet) so the widget never divides by zero or renders a NaN ring.
