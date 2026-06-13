@@ -32,9 +32,9 @@ The changelog path must use a generalized versioned template (nmp-v<version>-upg
 
 ## Current Version Pin
 
-NMP v0.6.0 (merged as #414) is the pinned version; it provides nmp-blossom (typed upload action with sign+transport, supporting both nsec and NIP-46 bunker) and nmp-nip02 (reactive FollowListProjection + ActiveFollowSet membership predicate), dissolving the two biggest blockers for Blossom kernel upload and social-graph trust gating. The shipped nmp-blossom and nmp-nip02 implementations make the original BACKLOG designs for these net-new capabilities obsolete. (Previously: v0.2.10 was pinned; it introduced ChangeGate + register_gated for per-projection change-gating. Crates.io publish was skipped because workspace path deps lacked versions, so git-rev pin was the delivery mechanism.)
+NMP v0.6.0 (merged as #414) is the pinned version; it provides nmp-blossom (typed upload action with sign+transport, supporting both nsec and NIP-46 bunker) and nmp-nip02 (reactive FollowListProjection + ActiveFollowSet membership predicate), dissolving the two biggest blockers for Blossom kernel upload and social-graph trust gating. The shipped nmp-blossom and nmp-nip02 implementations make the original BACKLOG designs for these net-new capabilities obsolete. The nmp-nip02 dependency was added explicitly to the workspace and crate Cargo.toml per D11 (single-door deps), at the same pinned rev as the transitive dependency. (Previously: v0.2.10 was pinned; it introduced ChangeGate + register_gated for per-projection change-gating. Crates.io publish was skipped because workspace path deps lacked versions, so git-rev pin was the delivery mechanism.)
 
-<!-- citations: [^c43d5-4] [^c1691-59] [^c1691-75] [^c1691-160] [^c1691-209] -->
+<!-- citations: [^c43d5-4] [^c1691-59] [^c1691-75] [^c1691-160] [^c1691-209] [^c1691-288] -->
 ## Upgrade History
 
 The upgrade from v0.2.1 to v0.2.2 was a pure pin bump with no code changes needed, because the C-ABI breaking rename of timeline_insert_events → timeline_insert_event_batch did not affect the podcast app. <!-- [^c43d5-5] -->

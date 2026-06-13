@@ -19,10 +19,10 @@ sources:
 
 ## Android Check CI Job
 
-The Android jint fix changed invalid Rust numeric literal suffixes (e.g., `0jint`, `-1jint`) to cast syntax (`0 as jint`, `-1 as jint`) and added an `android-check` CI job that runs `cargo check --target aarch64-linux-android` to prevent future invisible Android breakage.
+The Android jint fix changed invalid Rust numeric literal suffixes (e.g., `0jint`, `-1jint`) to cast syntax (`0 as jint`, `-1 as jint`) and added an `android-check` CI job that runs `cargo check --target aarch64-linux-android` to prevent future invisible Android breakage. However, Android Kotlin is never compiled in CI (no Gradle invocation anywhere in .github/); this allowed a DomainFrameWireTest compile break to reach main and required manual Haiku verification.
 
-The Android per-domain frame consumption uses `@SerialName` for snake_case field mapping and `ignoreUnknownKeys = true` on the JSON decoder, so Rust-only fields are safely dropped. <!-- [^c1691-249] -->
+The Android per-domain frame consumption uses `@SerialName` for snake_case field mapping and `ignoreUnknownKeys = true` on the JSON decoder, so Rust-only fields are safely dropped.
 
-On Android, a push frame with no domains returns `null` from `decodeDomainFrames` and never touches state; a frame whose domains are all stale yields `anyAccepted=false` and also never touches state, fully removing the empty-clobber bug. <!-- [^c1691-250] -->
+On Android, a push frame with no domains returns `null` from `decodeDomainFrames` and never touches state; a frame whose domains are all stale yields `anyAccepted=false` and also never touches state, fully removing the empty-clobber bug.
 
-<!-- citations: [^c1691-177] [^c1691-191] [^c1691-219] [^c1691-248] -->
+<!-- citations: [^c1691-249] [^c1691-250] [^c1691-177] [^c1691-191] [^c1691-219] [^c1691-248] [^c1691-296] -->

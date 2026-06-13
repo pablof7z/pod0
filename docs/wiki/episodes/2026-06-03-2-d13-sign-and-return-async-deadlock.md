@@ -4,7 +4,7 @@ date: 2026-06-03
 session: c43d5e77-d667-4e71-a574-47aaab5b6a7a
 transcript: /Users/pablofernandez/.claude/projects/-Users-pablofernandez-Work-podcast-player/c43d5e77-d667-4e71-a574-47aaab5b6a7a.jsonl
 salience: root-cause
-status: active
+status: superseded
 subjects:
   - d13-sign-and-return
   - blossom-auth-signing

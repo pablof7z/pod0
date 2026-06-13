@@ -139,8 +139,11 @@ The PodcastSettingsSnapshot generator emits explicit CodingKeys with per-field s
 
 ## Android Tier-2 Feature Parity
 
-Android has no social/conversations/friends/follow UI surface at all; the kernel emits `podcast.social` and the Android shell decodes it into a DTO, but nothing renders it — this is the clearest durable feature-parity gap. <!-- [^c1691-258] -->
+Android has no social/conversations/friends/follow UI surface at all; DomainFrames.kt decodes the podcast.social payload but nothing renders it — this is the clearest durable feature-parity gap.
 
+<!-- citations: [^c1691-258] [^c1691-301] -->
 ## Backlog Hygiene
 
-Four `compat-*-delete` BACKLOG items target `ios/Podcast/Podcast/Compat/*` paths that do not exist in origin/main, and `episode-comments-relay-wiring` describes stubs that are already real kind:1111 publish code — both are stale and should be marked done/removed. <!-- [^c1691-259] -->
+Four `compat-*-delete` BACKLOG items target `ios/Podcast/Podcast/Compat/*` paths that no longer exist in origin/main, and `episode-comments-relay-wiring` describes stubs that are already real kind:1111 publish code — both are stale and should be marked done/removed.
+
+<!-- citations: [^c1691-259] [^c1691-291] -->

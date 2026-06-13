@@ -29,7 +29,7 @@ sources:
 
 The default branch for this repo is main, not master. Completed integration work is committed to main with test/build context in the commit message. Unrelated live UI changes are committed separately from the main cleanup commit. Parallel workers edit disjoint slices in the codebase, so unrelated files must not be reverted or reformatted.
 
-Reviewers must never run git checkout, restore, stash, or commit in the shared root; they must use read-only commands such as git diff or git show against the object database.
+Reviewers must never run `git checkout`, `git restore`, `git stash`, or any working-tree git operation in the shared root — only `git diff`/`git show` reads from the object DB.
 
 When work is complete, the agent must open a pull request whose description includes a short TLDR, a detailed overview of the work performed, validation performed, and any subjective decisions, tradeoffs, or assumptions. Completed work must not be opened as a draft pull request; draft PRs are only for intentionally incomplete work or when explicitly asked.
 
@@ -41,7 +41,7 @@ Local main must be reconciled with origin/main before continuing implementation 
 
 The long-term correct architecture must be preferred over a local patch that only makes the immediate build green.
 
-<!-- citations: [^rollo-206] [^rollo-207] [^rollo-43] [^c1691-37] [^rollo-116] [^rollo-222] [^rollo-234] [^rollo-258] [^rollo-259] [^c1691-238] -->
+<!-- citations: [^rollo-206] [^rollo-207] [^rollo-43] [^c1691-37] [^rollo-116] [^rollo-222] [^rollo-234] [^rollo-258] [^rollo-259] [^c1691-238] [^c1691-280] -->
 ## Planning File Conventions
 
 The canonical planning files are `docs/plan.md`, `docs/BACKLOG.md`, and root `WIP.md`, with `docs/plan/` for detailed active plans. The WIP tracker must live at root `WIP.md`, not `Plans/WIP.md`. WIP.md must contain only branch/worktree-level entries; milestone checklists, backlog text, and long status reports must not go there. The active planning surface must use `docs/plan.md`, `docs/BACKLOG.md`, and `docs/plan/<slug>.md` for detailed active plans. The existing tracked `Plans/` directory must be treated as historical/reference unless a specific item is promoted; it must not be edited as a live status tracker. When a `Plans/` item becomes active, it must be linked from `docs/plan.md` or moved/summarized into `docs/plan/<slug>.md`, with execution tracked in `docs/BACKLOG.md` and `WIP.md`. <!-- [^rollo-189] -->

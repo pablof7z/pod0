@@ -4,7 +4,7 @@ date: 2026-06-13
 session: c1691db0-d63e-4062-adad-1cfa0d679d09
 transcript: /Users/pablofernandez/.claude/projects/-Users-pablofernandez-Work-podcast-player/c1691db0-d63e-4062-adad-1cfa0d679d09.jsonl
 salience: product
-status: active
+status: superseded
 subjects:
   - podcast-social-domain
   - nostr-conversations-projection

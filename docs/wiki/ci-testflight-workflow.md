@@ -25,10 +25,9 @@ The TestFlight workflow must be gated by tests or use workflow_run. The deploy j
 <!-- citations: [^rollo-130] [^c1691-130] [^c1691-151] [^c1691-152] [^c1691-192] -->
 ## CI Test Command
 
-The CI test command is shared in ci_scripts/run_tests.sh for use by both local and CI workflows. <!-- [^rollo-131] -->
+The CI test command is shared in ci_scripts/run_tests.sh for use by both local and CI workflows. A CI job running cargo check --workspace --all-targets is needed because no current CI gate compiles the full workspace; podcast-tui and podcast-agent-core are never compiled in CI, allowing FFI-DTO removal PRs to break main behind a green check.
 
-
-The Android cross-compile CI guard (android-check job) runs cargo check --target aarch64-linux-android on every PR, closing the class of invisible Android-only Rust breakages (like the jint invalid suffixes from ffi_guard). <!-- [^c1691-131] -->
+<!-- citations: [^rollo-131] [^c1691-131] [^c1691-297] -->
 ## App Store Connect Key Cleanup
 
 App Store Connect key cleanup must remove persisted key material, not just the keychain. The cleanup script removes temporary App Store Connect .p8 key material, not just the keychain. <!-- [^rollo-132] -->

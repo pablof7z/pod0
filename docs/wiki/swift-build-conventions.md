@@ -2,7 +2,7 @@
 title: Swift Build Conventions
 slug: swift-build-conventions
 topic: project-setup
-summary: When deleting Swift files, running `xcodebuild build-for-testing` (the PodcastrTests target, not just the app target) is required to catch orphaned references,
+summary: PRs that delete Swift files must run `xcodebuild build-for-testing` (not just `cargo test` or the app target), because the test target globs `AppTests/Sources/*
 tags:
   - capture
 volatility: warm
@@ -19,8 +19,9 @@ sources:
 
 ## Deleting Swift Files
 
-When deleting Swift files, running `xcodebuild build-for-testing` (the PodcastrTests target, not just the app target) is required to catch orphaned references, because Rust-only and app-only builds mask Swift compile breaks. The test target globs `AppTests/Sources/**` and compiles files that reference deleted production code. This orphaned-overrides trap caught both `AIChapterCompiler.swift`'s `overlapsAd` extension (#413) and `BlossomUploaderTests.swift` (#418), which were masked by app-only or Rust-only builds.
+PRs that delete Swift files must run `xcodebuild build-for-testing` (not just `cargo test` or the app target), because the test target globs `AppTests/Sources/**` and can contain orphaned references that the app-only build misses. The kernel AI chapters + ad-spans port (PR #413) required relocating the `overlapsAd` extension from the deleted `AIChapterCompiler.swift` into a new surviving file to fix a Swift compile failure that Rust-only tests masked. `KernelSigner`, `NostrSigner` protocol, and `NostrEventDraft` are dead code (zero callers after #418) and were deleted; `NostrSignerError` is retained because `KernelBridge.swift` and `SignedEventsRegistryTests.swift` still use it.
 
-KernelSigner struct, NostrSigner protocol, and NostrEventDraft are deleted as dead code (zero callers post-Blossom migration), while NostrSignerError is retained because it is still used by KernelBridge.swift and SignedEventsRegistryTests.swift. <!-- [^c1691-216] -->
+<!-- citations: [^c1691-216] [^c1691-173] [^c1691-188] [^c1691-200] [^c1691-215] [^c1691-293] [^c1691-304] -->
+## Pre-existing Compile Errors Outside CI
 
-<!-- citations: [^c1691-173] [^c1691-188] [^c1691-200] [^c1691-215] -->
+The `DomainFrameWireTest.kt:428` `agent!!.activeCount` reference is a compile error because `AgentSnapshot` has no `activeCount` field — a pre-existing bug from PR #423 that was undetected because Android unit tests are not CI-gated. <!-- [^c1691-294] -->

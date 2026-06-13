@@ -8,13 +8,14 @@ tags:
 volatility: warm
 confidence: medium
 created: 2026-05-13
-updated: 2026-05-13
+updated: 2026-06-13
 verified: 2026-05-13
 compiled-from: conversation
 sources:
   - session:0f3f24f7-54de-49f8-b160-a92f735f6a00
   - session:f11c47b8-a7bd-47d3-9eb0-79dd02904d04
   - session:rollout-2026-05-09T14-56-23-019e0c98-8803-7ef0-b7a2-bf0b605a2360
+  - session:c1691db0-d63e-4062-adad-1cfa0d679d09
 ---
 
 # Live Podcast Agent Tool Deps
@@ -37,3 +38,5 @@ LivePodcastAgentToolDeps.swift is 664 lines, which is 164 lines over the 500-lin
 ## User Interaction
 
 The user can interact with the agent via STT/TTS to give orders and ask questions about podcasts, including playing specific timestamps, finding past podcasts by topic, and generating TLS briefings with conversational follow-up. <!-- [^rollo-14] -->
+
+The Android Agent chat screen uses a Compose UI with transcript LazyColumn, composer, in-flight indicator, and dispatches `podcast.agent` ops through `ActionDispatcher`. <!-- [^c1691-285] -->

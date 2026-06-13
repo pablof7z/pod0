@@ -8,7 +8,7 @@ tags:
 volatility: warm
 confidence: medium
 created: 2026-05-13
-updated: 2026-06-12
+updated: 2026-06-13
 verified: 2026-05-13
 compiled-from: conversation
 sources:
@@ -27,4 +27,6 @@ auto_skip_ads defaults to true (Previously: false.) When enabled, ads that are p
 
 ## Shipped Rails
 
-Android AI-chapters and auto-skip-ads rails are shipped: EpisodeDetailScreen dispatches podcast.chapters compile, SettingsScreen toggles auto_skip_ads_enabled via podcast.settings set_auto_skip_ads, and PlayerScreen renders amber ad-segment markers on the seek bar. <!-- [^c1691-150] -->
+Android AI-chapters and auto-skip-ads rails are shipped: EpisodeDetailScreen dispatches podcast.chapters compile, SettingsScreen toggles auto_skip_ads_enabled via podcast.settings set_auto_skip_ads, and PlayerScreen renders amber ad-segment markers on the seek bar. Empty ad vectors are filtered on disk (`disk.rs:357` `.filter(|(_,v)| !v.is_empty())`), so the ad-detection-ran gate resets across process restart for no-ad episodes, causing one cheap re-run per cold start.
+
+<!-- citations: [^c1691-150] [^c1691-278] -->

@@ -8,13 +8,14 @@ tags:
 volatility: warm
 confidence: medium
 created: 2026-05-26
-updated: 2026-06-12
+updated: 2026-06-13
 verified: 2026-05-26
 compiled-from: conversation
 sources:
   - session:378a594b-f095-461d-a035-4d3afca30d5e
   - session:rollout-2026-05-17T17-57-58-019e3671-a863-7ab1-a96d-6ceb8b541971
   - session:rollout-2026-05-25T12-53-39-019e5e8d-ec64-74f1-a1b1-91055dcab442
+  - session:c1691db0-d63e-4062-adad-1cfa0d679d09
 ---
 
 # NIP-74 Show Events
@@ -26,6 +27,8 @@ NIP-F4 show events do not emit a d tag. They use a "description" tag instead of 
 The NIP74Show type has no d_tag field, and its coordinate() method returns "10154:<pubkey>" with no d-tag component. Its summary field is renamed to description.
 
 The podcast_to_show_tags function parameter changed from agent_pubkey to podcast_pubkey, making the signer the per-podcast key.
+
+NIP-09 deletion for owned podcasts switched from e-tag (specific event id) to k-tag (kind:10154) targeting because the kernel signs and does not return the event id at dispatch time; a per-podcast key authors exactly one kind:10154 show, so kind-targeted deletion removes precisely that event with no over-deletion.
 
 The show parser no longer requires a d tag and does not return MissingTag("d"). It reads the "description" tag (with content fallback) instead of "summary".
 
@@ -41,4 +44,4 @@ Tool/schema/UI/docs copy must be updated from NIP-74/naddr to NIP-F4/event id or
 
 AgentToolsPodcastTests.testPublishEpisodeSuccessReturnsNaddr and MockOwnedPodcasts must be updated to expect event id instead of naddr.
 
-<!-- citations: [^378a5-2] [^378a5-3] [^378a5-4] [^378a5-5] [^378a5-6] [^378a5-7] [^rollo-164] [^rollo-182] -->
+<!-- citations: [^378a5-2] [^378a5-3] [^378a5-4] [^378a5-5] [^378a5-6] [^378a5-7] [^rollo-164] [^rollo-182] [^c1691-299] -->
