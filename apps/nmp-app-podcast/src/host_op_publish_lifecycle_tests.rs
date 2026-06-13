@@ -446,3 +446,81 @@ fn already_public_show_update_does_not_backfill_episodes() {
         "non-flip update must not queue any episodes for backfill"
     );
 }
+
+/// NIP-09 deletion tag coverage — the single kind:5 event MUST carry BOTH
+/// `["k","10154"]` (show) and `["k","54"]` (episodes) so the whole per-podcast
+/// footprint is tombstoned in one dispatch.
+///
+/// We verify two things:
+///   1. The `deletion_tags()` helper (the authoritative tag source) contains
+///      exactly the two required k-tags, in the right positions.
+///   2. The live `delete_owned` path routes through the per-podcast kernel
+///      signer (D13) — confirmed by `deletion_status == "signed"` on a
+///      null-app handler that has a registered key AND a stamped publish record.
+#[test]
+fn delete_owned_nip09_covers_show_and_episodes() {
+    use podcast_discovery::{KIND_EPISODE, KIND_SHOW};
+
+    // ── Part 1: tag shape assertion (pure, no app needed) ─────────────────
+    let tags = super::deletion_tags();
+    assert_eq!(tags.len(), 2, "deletion must carry exactly two k-tags");
+
+    let kind_values: Vec<&str> = tags.iter()
+        .map(|t| {
+            assert_eq!(t.len(), 2, "each tag must be [\"k\", \"<kind>\"]");
+            assert_eq!(t[0], "k", "tag identifier must be \"k\"");
+            t[1].as_str()
+        })
+        .collect();
+
+    let show_str = KIND_SHOW.to_string();
+    let episode_str = KIND_EPISODE.to_string();
+    assert!(
+        kind_values.contains(&show_str.as_str()),
+        "deletion must include k:{KIND_SHOW} (show): {tags:?}"
+    );
+    assert!(
+        kind_values.contains(&episode_str.as_str()),
+        "deletion must include k:{KIND_EPISODE} (episodes): {tags:?}"
+    );
+
+    // ── Part 2: live delete_owned routes via per-podcast signer (D13) ─────
+    // Seed a podcast, claim its key, stamp a publish record, then delete.
+    // Null-app publish_raw_with_signer_via_nmp returns "signed" immediately,
+    // but ONLY when the signer branch is reached (key + publish record both
+    // present). This confirms the deletion is kernel-routed, not skipped.
+    let store = Arc::new(Mutex::new(PodcastStore::new()));
+    let id = uuid::Uuid::new_v4().to_string();
+    {
+        let mut s = store.lock().unwrap();
+        s.create_podcast(
+            &id,
+            "Ephemeral Show".into(),
+            "d".into(),
+            "Agent".into(),
+            None,
+            None,
+            None,
+            vec![],
+            podcast_core::NostrVisibility::Public,
+            false,
+        );
+        s.set_nostr_enabled(true);
+    }
+    let handler = handler_with_store(store.clone());
+    create_owned(&handler, id.clone());
+    publish_show(&handler, id.clone()); // stamp last_published_at
+
+    let out = delete_owned(&handler, id.clone());
+    assert_eq!(out["ok"], true);
+    assert_eq!(
+        out["deletion_status"].as_str().unwrap_or(""),
+        "signed",
+        "deletion must be kernel-routed via per-podcast signer (D13): {out}"
+    );
+    // D13: no raw event id returned — kernel owns signing.
+    assert!(
+        out.get("deletion_event_id").is_none() || out["deletion_event_id"].is_null(),
+        "deletion_event_id must be absent (D13 — kernel-signed, not app-signed): {out}"
+    );
+}

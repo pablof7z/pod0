@@ -19,7 +19,7 @@
 use std::sync::atomic::Ordering;
 
 use podcast_core::NostrVisibility;
-use podcast_discovery::KIND_SHOW;
+use podcast_discovery::{KIND_EPISODE, KIND_SHOW};
 
 use crate::ffi::actions::publish_module::PublishAction;
 use crate::host_op_handler::PodcastHostOpHandler;
@@ -31,6 +31,19 @@ use crate::store::podcast_keys::secret_to_hex;
 
 /// NIP-09 deletion request kind.
 const KIND_DELETION: u32 = 5;
+
+/// Build the NIP-09 `k`-tag array for a full podcast deletion.
+///
+/// Returns a two-element tag list covering BOTH the show kind (10154) and
+/// the episode kind (54) so that a single `kind:5` event tombstones the
+/// entire per-podcast footprint in one dispatch. Exposed as `pub(crate)` for
+/// use in unit tests without a live kernel.
+pub(crate) fn deletion_tags() -> Vec<Vec<String>> {
+    vec![
+        vec!["k".to_string(), KIND_SHOW.to_string()],
+        vec!["k".to_string(), KIND_EPISODE.to_string()],
+    ]
+}
 
 /// Route the update/delete lifecycle variants of [`PublishAction`].
 /// Called from [`crate::host_op_publish::handle_publish_action`] — the
@@ -212,14 +225,16 @@ pub fn update_owned(
 
 /// `podcast.publish.delete_owned_podcast` — full owned-podcast deletion:
 ///
-/// 1. Dispatch a NIP-09 `kind:5` deletion event signed by the *per-podcast*
-///    key via the kernel's `PublishRaw { signer_pubkey }` seam (D13 — no raw
-///    secret bytes in app code). The deletion targets the kind:10154 show via
-///    a `["k","10154"]` tag (NIP-09 "kind-targeted deletion"); the published
-///    kind:54 episode events are NOT deleted (a tracked follow-up — see
-///    docs/BACKLOG.md). Since the kernel now signs show events and the signed
-///    event id is not returned at dispatch time, we use the kind-targeted form
-///    rather than the `e`-tag form. This MUST happen before the key is dropped.
+/// 1. Dispatch a single NIP-09 `kind:5` deletion event signed by the
+///    *per-podcast* key via the kernel's `PublishRaw { signer_pubkey }` seam
+///    (D13 — no raw secret bytes in app code). NIP-09 permits multiple `k`
+///    tags in one deletion event; the single event carries BOTH
+///    `["k","10154"]` (the show) AND `["k","54"]` (all episodes), instructing
+///    relays to tombstone the entire footprint of this per-podcast pubkey.
+///    Since the per-podcast key authors exactly that podcast's show + episodes,
+///    there is no risk of over-deletion. The signed event id is not returned
+///    at dispatch time (the kernel owns signing, D13); the kind-targeted form
+///    is the correct substitute. This MUST happen before the key is dropped.
 /// 2. Drop the per-podcast key.
 /// 3. Remove the podcast row + episodes from the store.
 /// 4. Discard the publish state.
@@ -246,10 +261,13 @@ pub fn delete_owned(handler: &PodcastHostOpHandler, podcast_id: String) -> serde
     // The key is re-registered as a non-active signer immediately before the
     // dispatch; the FIFO actor queue guarantees it lands before the sign request.
     //
-    // NIP-09 form: `k` tag (kind-targeted deletion for kind:10154). Since the
-    // kernel now owns event signing, the signed event id is not returned at
-    // dispatch time; the kind-targeted form is the correct substitute and
-    // instructs relays to delete all kind:10154 events from this pubkey.
+    // NIP-09 form: a SINGLE kind:5 event with BOTH `["k","10154"]` (show) AND
+    // `["k","54"]` (episodes) tags. NIP-09 permits multiple k-tags; relays must
+    // delete all events of each listed kind authored by this pubkey. Since the
+    // per-podcast key authors exactly this podcast's show + its episodes,
+    // the dual-k event tombstones the whole footprint with no over-deletion.
+    // The signed event id is not returned at dispatch time (kernel owns signing,
+    // D13); the kind-targeted form is the correct substitute.
     let mut deletion_status = "skipped";
     let nostr_enabled = handler
         .state.library.store
@@ -271,9 +289,9 @@ pub fn delete_owned(handler: &PodcastHostOpHandler, podcast_id: String) -> serde
                 Some((pk, sk))
             });
         if let Some((pubkey_hex, sk)) = key_pair {
-            // Kind-targeted NIP-09 deletion — references the show kind (10154)
-            // without a specific event id (not available post-kernel-signing).
-            let tags = vec![vec!["k".to_string(), KIND_SHOW.to_string()]];
+            // Single kind:5 deletion covering BOTH kind:10154 (show) and
+            // kind:54 (episodes) — tombstones the full per-podcast footprint.
+            let tags = deletion_tags();
             let secret_hex = secret_to_hex(&sk);
             register_podcast_signer_in_kernel(handler.app, &secret_hex);
             deletion_status = publish_raw_with_signer_via_nmp(
