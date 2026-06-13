@@ -79,8 +79,8 @@ extension KernelModel {
         }
 
         // Await the BlobDescriptor from the drain-once action_results projection.
-        // Race against a 60-second caller-owned deadline (mirrors signEventForReturn
-        // timeout: a bunker round-trip can be slow, but uploads are bounded).
+        // Race against a 60-second caller-owned deadline (a bunker round-trip
+        // can be slow, but uploads are bounded).
         let registry = actionResultsRegistry
         let entry = try await withThrowingTaskGroup(of: ActionResultEntry.self) { group in
             group.addTask {

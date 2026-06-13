@@ -44,17 +44,12 @@ final class PodcastHandle: @unchecked Sendable {
     /// the seam that keeps ~1 Hz playback ticks off the global-`rev` hot path.
     var onAudioReport: ((PlayerState?, Bool) -> Void)?
 
-    /// Deadline (seconds) for a sign-for-return round-trip. Generous — a remote
-    /// (NIP-46 bunker) signer may need a human tap — but bounded so a kernel that
-    /// never resolves the id can't hang an upload indefinitely.
-    private static let signForReturnTimeout: Double = 60
-
     /// Buffered resolver for `nmp_app_sign_event_for_return` round-trips. The
     /// `signed_events` projection that carries each result is drain-once: the
     /// kernel clears it on the first emit tick that carries it. Because the
     /// correlation id is only known AFTER the synchronous FFI return, a slow
     /// `await` could miss that single frame. This registry closes the race by
-    /// retaining every drained result keyed by id, so `signEventForReturn`
+    /// retaining every drained result keyed by id, so any future caller
     /// resolves via find-or-register regardless of thread timing (D13: signing
     /// is the kernel's job, the host never holds a private key).
     let signedEventsRegistry = SignedEventsRegistry()
@@ -178,61 +173,6 @@ final class PodcastHandle: @unchecked Sendable {
             return .failure("dispatch returned a null envelope")
         }
         return DispatchResult.parse(envelope: envelope)
-    }
-
-    // ── Sign-for-return (D13 kernel signing seam) ─────────────────────────
-
-    /// Sign an unsigned NIP-01 event draft through the kernel and await the
-    /// resulting wire event. NO private key ever crosses into Swift (D13): the
-    /// kernel holds the key, signs on the actor thread, and surfaces the result
-    /// in the drain-once `signed_events` projection keyed by the returned
-    /// correlation id.
-    ///
-    /// `accountPubkeyHex` selects the signer (empty string → the active
-    /// account). `unsignedJSON` is the `{ "kind", "content", "tags",
-    /// "created_at"? }` draft shape `nmp_app_sign_event_for_return` accepts —
-    /// `created_at` is advisory (the kernel re-stamps it, D7).
-    ///
-    /// Race-free by construction: the continuation is registered against the id
-    /// the synchronous FFI call returns, and `signedEventsRegistry` retains any
-    /// result that already drained before the registration completes.
-    func signEventForReturn(accountPubkeyHex: String, unsignedJSON: String) async throws -> String {
-        let correlationID: String? = accountPubkeyHex.withCString { pkPtr in
-            unsignedJSON.withCString { jsonPtr in
-                guard let ptr = nmp_app_sign_event_for_return(raw, pkPtr, jsonPtr) else {
-                    return nil
-                }
-                defer { nmp_free_string(ptr) }
-                let id = String(cString: ptr)
-                return id.isEmpty ? nil : id
-            }
-        }
-        guard let correlationID else {
-            throw NostrSignerError.invalidEventForSigning
-        }
-        // Caller-owned timeout (NMP contract: a null/unstarted app never reaches
-        // the kernel, so "the caller's continuation times out"). Race the
-        // registry await against a deadline; on expiry, fail + drop the waiter so
-        // the upload surfaces a thrown error instead of hanging forever.
-        return try await withThrowingTaskGroup(of: String.self) { group in
-            group.addTask { [signedEventsRegistry] in
-                try await signedEventsRegistry.awaitResult(correlationID: correlationID)
-            }
-            group.addTask { [signedEventsRegistry] in
-                try? await Task.sleep(for: .seconds(Self.signForReturnTimeout))
-                signedEventsRegistry.cancel(
-                    correlationID: correlationID, with: NostrSignerError.timedOut)
-                // Park: the cancel above resumes the real waiter (success or
-                // timeout); this task just keeps the group alive until then.
-                try await Task.sleep(for: .seconds(3600))
-                throw NostrSignerError.timedOut
-            }
-            defer { group.cancelAll() }
-            guard let result = try await group.next() else {
-                throw NostrSignerError.timedOut
-            }
-            return result
-        }
     }
 
     fileprivate static func decode(pointer: UnsafePointer<CChar>) -> KernelUpdateResult? {

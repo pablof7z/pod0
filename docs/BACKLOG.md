@@ -183,21 +183,17 @@ worktrees currently in flight.
   Rust prerequisite SHIPPED (`feat/podcast-relay-ops`): `configured_relays`
   projection on `PodcastUpdate` + `add_relay`/`remove_relay`/`set_relay_role`
   ops on `podcast.settings`. iOS App Relays editor now unblocked.
-- **relay-config-c-abi-persistence.** Relay edits made via the new
-  `podcast.settings` relay ops do NOT survive an app restart. The NMP v0.2.1
-  relay-config sidecar (`relay_config::load`/`save`) is invoked only inside
-  `NmpAppBuilder::start`; the podcast app starts via the raw C-ABI
-  (`nmp_app_new` → `nmp_app_podcast_register` → `nmp_app_start`) and
-  `configured_relays` is in-memory kernel state that no restore path reloads.
-  Consequence: the `register.rs` default-relay seed stays UNCONDITIONAL (a
-  genuine seed-if-empty / first-install-only guard is impossible without
-  persistence — the slot is empty on every fresh process, and a `register`-time
-  `is_empty()` check is always true because the actor seeds `initial_relays`
-  only at `Start`, after `register` returns). Wire relay-config sidecar
-  persistence into the C-ABI start path so edits are durable and the seed
-  becomes genuinely first-install-only. Likely needs an upstream NMP seam
-  (expose the sidecar load/save outside the builder, or persist
-  `configured_relays` to the LMDB store on edit).
+- ~~**relay-config-c-abi-persistence.**~~ DONE (commit `0dcf9680`, PR #220
+  "persist relay configuration across app restarts via C-ABI path"). Relay
+  edits now survive restarts via a `.nmp-relay-config.json` sidecar — the same
+  on-disk shape the template builder uses (one canonical file). Load happens in
+  `ffi/data_dir.rs:112` (`store::relay_config::load_relay_config`), called
+  from `nmp_app_podcast_set_data_dir`; save happens in
+  `host_op_handler/settings_actions.rs:391` → `ffi/relay_persist.rs`
+  (`persist_configured_relays`) after each relay mutation. The default-relay
+  seed in `register.rs` remains unconditional (the slot is empty at register
+  time because the actor hasn't run `Start` yet), but persisted edits now
+  correctly override it on subsequent launches.
 - **app-relays-config-ui.** DONE (`feat/app-relays-ui`). The App Relays editor
   ships at Settings → Networking → App Relays: `AppRelaysView` lists
   `configuredRelays` (color-coded role pill, swipe-to-delete → `kernelRemoveRelay`,
@@ -209,7 +205,7 @@ worktrees currently in flight.
   single relay as "Agent Relay". Consumed the Rust prerequisite from
   `feat/podcast-relay-ops` (PR #202): `configured_relays` projection +
   `add_relay`/`remove_relay`/`set_relay_role` on `podcast.settings`. Restart
-  durability of edits remains tracked in `relay-config-c-abi-persistence`.
+  durability of edits is shipped (see `relay-config-c-abi-persistence`, now DONE).
 - **snapshot-push-delivery.** Replace the remaining 500 ms polling dependency
   with push-style delivery through the NMP update sink for autonomous changes,
   while keeping content-hash throttling for volatile playback/download fields.
@@ -363,11 +359,12 @@ worktrees currently in flight.
     is cleared on account switch so no cross-account trust/notes leak.
     Conversations projection deferred to `nostr-conversations-real-projection`
     (next cycle).
-  - **OPEN — LLM responder loop.** The inbound→model→outbound autopilot
-    (dedup via responded-event ids, per-root outgoing turn cap, `wtd-end`
-    end-conversation gate, bounded kind:0 profile hydration, owner-consult
-    `ask` tool) still lives on the Swift `NostrAgentResponder` path. Porting
-    it to the kernel depends on the trust gate landing first.
+  - **OPEN — LLM responder loop.** The Swift `NostrAgentResponder` was deleted
+    in PR #248 (kernel-owned signing / D13 migration). The inbound→model→outbound
+    autopilot (dedup via responded-event ids, per-root outgoing turn cap,
+    `wtd-end` end-conversation gate, bounded kind:0 profile hydration,
+    owner-consult `ask` tool) must be re-implemented in the kernel. A parallel
+    PR `feat/kernel-kind1-auto-responder` is implementing this restoration.
   - Non-goal: NIP-17 (private direct messages) is out of scope for agent
     coordination and will not be used for this purpose.
 
@@ -761,16 +758,12 @@ worktrees currently in flight.
   requires registering per-podcast keys as named roster accounts, or an alternate
   signing seam. Until that capability lands, `blossom.rs` stays (it uses direct
   `Keys` signing which works without the roster).
-- **kernelsigner-deadcode-removal.** After the Blossom-via-kernel migration
-  (PR feat/blossom-upload-via-nmp) the `KernelSigner` struct
-  (`App/Sources/Services/Nip46/NostrSigner.swift`) has ZERO callers — its only
-  two users (avatar + artwork upload) were converted to `KernelModel.blossomUpload`.
-  Removing it also strands `KernelModel.signEventForReturn` /
-  `PodcastHandle.signEventForReturn` (`KernelBridge.swift`) and the now-conformerless
-  `NostrSigner` protocol + `NostrEventDraft`. Deferred from the PR because the chain
-  reaches into unrelated bridge files and `NostrSignerError` is still referenced by
-  `KernelBridge.swift` + `SignedEventsRegistryTests.swift` — a clean removal needs a
-  focused pass, not a drive-by in the Blossom PR. Non-blocking dead code.
+- ~~**kernelsigner-deadcode-removal.**~~ DONE (PR `chore/kernelsigner-deadcode-backlog-truthfulness`).
+  Deleted `KernelSigner` struct, `NostrSigner` protocol, and `NostrEventDraft` from
+  `App/Sources/Services/Nip46/NostrSigner.swift`; removed the now-dead
+  `signEventForReturn` chain from `KernelBridge.swift` + `KernelModel.swift`.
+  `NostrSignerError` kept (used by `KernelBridge.swift` + `SignedEventsRegistryTests.swift`).
+  `SignedEventsRegistry` + `nmp_app_sign_event_for_return` FFI kept (tested; D13 seam).
 - **m5-chirp-headers-parity.** Reconcile podcast-player and Chirp HTTP header
   schemas once the canonical `nmp-core::capability::http` shape lands.
 - ~~**m8-blossom-binary-body.**~~ Done (Rust side): `HttpRequest` now carries

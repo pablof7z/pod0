@@ -230,35 +230,28 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     // `register` returns). These two relays mirror the template's
     // `DEFAULT_APP_RELAYS`; the podcast app declares them explicitly.
     //
-    // SEED-IF-EMPTY (step 4) — investigated, intentionally still unconditional.
+    // SEED-IF-EMPTY — investigated, intentionally still unconditional.
     //
-    // The `configured_relays` projection now exists and `podcast.settings`
-    // exposes add/remove/set_role ops, so the obvious next step is to make this
-    // seed run only on a fresh install. But a seed-if-empty guard is not
-    // reachable from the raw C-ABI start path the podcast app uses, for two
-    // compounding reasons:
+    // The `configured_relays` projection exists and `podcast.settings`
+    // exposes add/remove/set_role ops. Relay edits are now persisted across
+    // restarts via the `.nmp-relay-config.json` sidecar (commit 0dcf9680,
+    // PR #220): `ffi/data_dir.rs` loads saved relays before `nmp_app_start`
+    // and `ffi/relay_persist.rs` saves after each mutation. Despite that, the
+    // seed here remains unconditional for one structural reason:
     //
-    //   1. At `register` time the slot is ALWAYS empty. The actor only
-    //      populates `configured_relays` from `initial_relays` when it handles
-    //      `ActorCommand::Start`, which runs AFTER `register` returns. So
-    //      `unsafe { &*app }.configured_relays_handle().lock().is_empty()` here
-    //      is unconditionally true — a guard reading it would be dead code.
+    //   At `register` time the slot is ALWAYS empty. The actor only populates
+    //   `configured_relays` from `initial_relays` when it handles
+    //   `ActorCommand::Start`, which runs AFTER `register` returns. The load
+    //   in `data_dir.rs` also runs before `Start` and calls
+    //   `set_initial_relays_for_start` — if it finds saved relays, the
+    //   persisted list wins (it is staged last and `Start` takes the final
+    //   staged value). So on subsequent launches the persistence load
+    //   effectively overrides this seed. On a truly fresh install the sidecar
+    //   is absent and this seed provides the correct defaults.
     //
-    //   2. There is no relay persistence on the C-ABI path. The v0.2.1
-    //      relay-config sidecar (`relay_config::load`/`save`) is invoked ONLY
-    //      inside `NmpAppBuilder::start`; the podcast app starts via the raw
-    //      C-ABI (`nmp_app_new` → `nmp_app_podcast_register` → `nmp_app_start`)
-    //      and `configured_relays` is in-memory kernel state that neither
-    //      `kernel.start()` nor `restore_active_session` reloads from the LMDB
-    //      store. So user relay edits do NOT survive an app restart, and there
-    //      is no persisted state for a seed-if-empty to defer to.
-    //
-    // Net: this seed staging the two declared defaults is correct and harmless
-    // — the slot is empty on every fresh process, so the seed never clobbers a
-    // surviving user edit (there are none to clobber). Making relay edits
-    // durable (and the seed genuinely first-install-only) requires wiring
-    // relay-config sidecar persistence into the C-ABI start path; tracked in
-    // BACKLOG (`relay-config-c-abi-persistence`).
+    // Net: this seed is correct and harmless — on fresh installs it provides
+    // the default relay set; on restarts the persistence load overwrites it
+    // with the user's saved configuration.
     app_ref.set_initial_relays_for_start(vec![
         (
             "wss://relay.primal.net".to_string(),

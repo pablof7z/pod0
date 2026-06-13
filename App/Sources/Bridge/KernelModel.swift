@@ -705,16 +705,6 @@ final class KernelModel {
         kernel.removeAccount(identityId: active)
     }
 
-    /// Sign an unsigned NIP-01 event draft through the kernel (D13 — no private
-    /// key in Swift) and await the resulting flat wire-event JSON. `accountPubkeyHex`
-    /// empty selects the active account. Forwards to the `PodcastHandle`
-    /// sign-for-return seam, which resolves against the drain-once
-    /// `signed_events` projection.
-    func signEventForReturn(accountPubkeyHex: String, unsignedJSON: String) async throws -> String {
-        try await kernel.signEventForReturn(
-            accountPubkeyHex: accountPubkeyHex, unsignedJSON: unsignedJSON)
-    }
-
     // ── action_results registry (nmp.blossom.upload + future async actions) ──
 
     /// Drain-once resolver for async-completing kernel actions. Populated by
