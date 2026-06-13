@@ -95,8 +95,7 @@ struct SettingsView: View {
                 SettingsRow(
                     icon: "brain.head.profile",
                     tint: .orange,
-                    title: "Agent",
-                    badge: store.pendingNostrApprovals.count
+                    title: "Agent"
                 )
             }
 

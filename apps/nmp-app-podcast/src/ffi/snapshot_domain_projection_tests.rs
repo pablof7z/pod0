@@ -46,9 +46,57 @@ fn make_test_handle_with_app(app: *mut nmp_ffi::NmpApp) -> Box<PodcastHandle> {
         state,
         responder_cache: Arc::new(Mutex::new(crate::store::agent_note_responder_cache::ResponderCache::default())),
         outbound_turn_cache: Arc::new(Mutex::new(crate::store::outbound_turn_cache::OutboundTurnCache::new())),
+        approved_peer_store: Arc::new(Mutex::new(crate::store::approved_peer_store::ApprovedPeerStore::new())),
         snapshot_cache: Arc::new(Mutex::new(None)),
         clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
     })
+}
+
+/// Build a handle whose `state.social` has an approved-peer store wired (the
+/// production `register.rs` shape), plus return the shared `Arc<PodcastAppState>`
+/// and the shared `ApprovedPeerStore` arc so a `PodcastHostOpHandler` can be
+/// constructed over the SAME state and the test can drive real social actions.
+///
+/// `make_test_handle_with_app` leaves `social.approved == None` (the default
+/// `PodcastAppState::new`), which is fine for inbound-note tests but cannot
+/// exercise the approve/block action seam. This helper replaces `state.social`
+/// the same way `register.rs` does — before the `Arc` wrap — so the action
+/// handler, the trust predicate, and the projection all read one store.
+fn make_handle_and_state_with_approved(
+    app: *mut nmp_ffi::NmpApp,
+) -> (
+    Arc<PodcastHandle>,
+    Arc<PodcastAppState>,
+    Arc<Mutex<crate::store::approved_peer_store::ApprovedPeerStore>>,
+) {
+    let store = Arc::new(Mutex::new(PodcastStore::new()));
+    let mut state_inner = PodcastAppState::new(Infra::for_test(), store.clone());
+    state_inner.tasks.tasks.lock().unwrap().clear();
+
+    let approved = Arc::new(Mutex::new(
+        crate::store::approved_peer_store::ApprovedPeerStore::new(),
+    ));
+    // Replace social with one wired to the shared approved store (register.rs shape).
+    state_inner.social = crate::state::social::SocialState::new(state_inner.social.infra.clone())
+        .with_approved_peers(Arc::clone(&approved));
+
+    let state = Arc::new(state_inner);
+
+    let handle = Arc::new(PodcastHandle {
+        app,
+        state: Arc::clone(&state),
+        responder_cache: Arc::new(Mutex::new(
+            crate::store::agent_note_responder_cache::ResponderCache::default(),
+        )),
+        outbound_turn_cache: Arc::new(Mutex::new(
+            crate::store::outbound_turn_cache::OutboundTurnCache::new(),
+        )),
+        approved_peer_store: Arc::clone(&approved),
+        snapshot_cache: Arc::new(Mutex::new(None)),
+        clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
+    });
+
+    (handle, state, approved)
 }
 
 fn make_frame_with_sidecars(sidecars: &[TypedProjectionData]) -> Vec<u8> {
@@ -706,6 +754,173 @@ fn social_inbound_note_reemits_on_each_new_note_real_path() {
         convo_count, 2,
         "both inbound notes (distinct roots) must appear in the re-emitted payload; got: {val}"
     );
+    drop(handle);
+    unsafe { drop(Box::from_raw(app)) };
+}
+
+/// ACTION-PATH RE-EMIT GUARD (FIX 1, the #423-class end-to-end seam).
+///
+/// Drives `SocialAction::ApprovePeer` through the REAL `handle_social_action`
+/// dispatch (the same entry the FFI router uses) — NOT `state.approve_peer()`
+/// directly and NOT a manual `domain_revs.social.fetch_add`. It proves the full
+/// seam: action → mutate `ApprovedPeerStore` → persist → `infra.bump()` →
+/// `podcast.social` sidecar RE-EMITS with the conversation's `trusted` flipped
+/// to `true`. If a future edit drops the `infra.bump()` from the ApprovePeer
+/// arm, the re-emit `expect` below fails.
+#[test]
+fn approve_peer_action_reemits_social_with_trusted_flipped_real_path() {
+    use crate::ffi::actions::social_module::SocialAction;
+    use crate::host_op_handler::PodcastHostOpHandler;
+
+    let peer = "5555555555555555555555555555555555555555555555555555555555555555";
+
+    let app = nmp_ffi::nmp_app_new();
+    assert!(!app.is_null());
+    let app_ref = unsafe { &*app };
+
+    let (handle, state, _approved) = make_handle_and_state_with_approved(app);
+    register_domain_projections(app_ref, &handle);
+
+    // Seed an inbound note from a NON-followed, NON-approved peer so the
+    // conversation initially projects trusted:false.
+    let observer = make_social_observer(&handle);
+    let _ = app_ref.run_typed_snapshot_projections(); // consume initial tombstone
+    observer.on_kernel_event(&inbound_note("evt-approve-action", peer));
+
+    let before = app_ref.run_typed_snapshot_projections();
+    let soc_before = before
+        .iter()
+        .find(|p| p.schema_id == SCHEMA_SOCIAL)
+        .expect("inbound note must emit podcast.social");
+    let val_before: serde_json::Value = serde_json::from_slice(&soc_before.payload).unwrap();
+    let convos_before = val_before["nostr_conversations"].as_array().cloned().unwrap_or_default();
+    assert_eq!(convos_before.len(), 1, "one conversation expected; got: {val_before}");
+    assert_eq!(
+        convos_before[0]["trusted"], serde_json::Value::Bool(false),
+        "untrusted peer's conversation must project trusted:false before approval"
+    );
+    // Drain so last_emitted catches up → next emit proves a real re-emit.
+    assert!(
+        app_ref.run_typed_snapshot_projections().is_empty(),
+        "social sidecar must idle before the approve action"
+    );
+
+    // Dispatch ApprovePeer through the REAL handler (same state Arc).
+    let handler = PodcastHostOpHandler::new(app, Arc::clone(&state));
+    let resp = handler.handle_social_action(
+        SocialAction::ApprovePeer { pubkey_hex: peer.to_string() },
+        "corr-approve-action",
+    );
+    assert_eq!(resp, serde_json::json!({"ok": true}), "approve action must ack ok");
+
+    // The action's infra.bump() must drive a social re-emit carrying trusted:true.
+    let after = app_ref.run_typed_snapshot_projections();
+    let soc_after = after
+        .iter()
+        .find(|p| p.schema_id == SCHEMA_SOCIAL)
+        .expect("ApprovePeer action MUST re-emit podcast.social (proves the action arm bumps domain_revs.social)");
+    let val_after: serde_json::Value = serde_json::from_slice(&soc_after.payload).unwrap();
+    let convos_after = val_after["nostr_conversations"].as_array().cloned().unwrap_or_default();
+    assert_eq!(convos_after.len(), 1, "still one conversation after approve; got: {val_after}");
+    assert_eq!(
+        convos_after[0]["trusted"], serde_json::Value::Bool(true),
+        "approve action must flip the conversation's trusted flag to true in the re-emitted payload"
+    );
+
+    drop(handle);
+    unsafe { drop(Box::from_raw(app)) };
+}
+
+/// Companion guard for the BLOCK arm: a FOLLOWED peer's conversation projects
+/// trusted:true, then `SocialAction::BlockPeer` (real dispatch) re-emits
+/// podcast.social with trusted flipped to false (block is absolute, overriding
+/// follow). Proves the BlockPeer arm also bumps the social domain rev.
+#[test]
+fn block_peer_action_reemits_social_with_trusted_false_overriding_follow() {
+    use crate::ffi::actions::social_module::SocialAction;
+    use crate::host_op_handler::PodcastHostOpHandler;
+
+    let me = "ee11223344556677889900aabbccddeeff00112233445566778899aabbccddee";
+    let peer = "6666666666666666666666666666666666666666666666666666666666666666";
+
+    let app = nmp_ffi::nmp_app_new();
+    assert!(!app.is_null());
+    let app_ref = unsafe { &*app };
+
+    // Build state with social wired to BOTH a follow set (containing peer) AND
+    // the shared approved store, mirroring register.rs.
+    let store = Arc::new(Mutex::new(PodcastStore::new()));
+    let mut state_inner = PodcastAppState::new(Infra::for_test(), store.clone());
+    state_inner.tasks.tasks.lock().unwrap().clear();
+    let approved = Arc::new(Mutex::new(
+        crate::store::approved_peer_store::ApprovedPeerStore::new(),
+    ));
+    let active_slot = Arc::new(Mutex::new(Some(me.to_string())));
+    let follow_set = nmp_nip02::ActiveFollowSet::new(Arc::clone(&active_slot));
+    follow_set.on_kernel_event(&KernelEvent {
+        id: "0000000000000000000000000000000000000000000000000000000000000003".to_string(),
+        author: me.to_string(),
+        kind: 3,
+        created_at: 200,
+        tags: vec![vec!["p".to_string(), peer.to_string()]],
+        content: String::new(),
+    });
+    state_inner.social = crate::state::social::SocialState::new(state_inner.social.infra.clone())
+        .with_follow_set(follow_set)
+        .with_approved_peers(Arc::clone(&approved));
+    let state = Arc::new(state_inner);
+    let handle = Arc::new(PodcastHandle {
+        app,
+        state: Arc::clone(&state),
+        responder_cache: Arc::new(Mutex::new(
+            crate::store::agent_note_responder_cache::ResponderCache::default(),
+        )),
+        outbound_turn_cache: Arc::new(Mutex::new(
+            crate::store::outbound_turn_cache::OutboundTurnCache::new(),
+        )),
+        approved_peer_store: Arc::clone(&approved),
+        snapshot_cache: Arc::new(Mutex::new(None)),
+        clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
+    });
+    register_domain_projections(app_ref, &handle);
+
+    let observer = make_social_observer(&handle);
+    let _ = app_ref.run_typed_snapshot_projections();
+    observer.on_kernel_event(&inbound_note("evt-block-action", peer));
+
+    let before = app_ref.run_typed_snapshot_projections();
+    let soc_before = before
+        .iter()
+        .find(|p| p.schema_id == SCHEMA_SOCIAL)
+        .expect("inbound note must emit podcast.social");
+    let val_before: serde_json::Value = serde_json::from_slice(&soc_before.payload).unwrap();
+    assert_eq!(
+        val_before["nostr_conversations"][0]["trusted"], serde_json::Value::Bool(true),
+        "followed peer's conversation must project trusted:true before block; got: {val_before}"
+    );
+    assert!(
+        app_ref.run_typed_snapshot_projections().is_empty(),
+        "social sidecar must idle before the block action"
+    );
+
+    let handler = PodcastHostOpHandler::new(app, Arc::clone(&state));
+    let resp = handler.handle_social_action(
+        SocialAction::BlockPeer { pubkey_hex: peer.to_string() },
+        "corr-block-action",
+    );
+    assert_eq!(resp, serde_json::json!({"ok": true}), "block action must ack ok");
+
+    let after = app_ref.run_typed_snapshot_projections();
+    let soc_after = after
+        .iter()
+        .find(|p| p.schema_id == SCHEMA_SOCIAL)
+        .expect("BlockPeer action MUST re-emit podcast.social");
+    let val_after: serde_json::Value = serde_json::from_slice(&soc_after.payload).unwrap();
+    assert_eq!(
+        val_after["nostr_conversations"][0]["trusted"], serde_json::Value::Bool(false),
+        "block action must flip trusted to false even for a followed peer (block is absolute); got: {val_after}"
+    );
+
     drop(handle);
     unsafe { drop(Box::from_raw(app)) };
 }

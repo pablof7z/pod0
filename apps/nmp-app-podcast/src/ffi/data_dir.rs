@@ -173,6 +173,21 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(handle: *mut PodcastHandle, path:
             }
         };
 
+        // ── Approved-peer store (disk → in-memory approved_peer_store Arc) ──
+        //
+        // Loaded here so the trust predicate (`(followed || approved) && !blocked`)
+        // reflects durable user decisions from the first projection after a restart.
+        // Durable: NOT cleared on account switch (per-account data dir means this
+        // file is already account-scoped). The in-memory Arc is shared with
+        // `state.social` (trust predicate) so no extra seeding step is needed.
+        {
+            let restored =
+                crate::store::approved_peer_store::load_approved_peer_store(&path_buf);
+            if let Ok(mut store) = handle.approved_peer_store.lock() {
+                *store = restored;
+            }
+        }
+
         // ── Outbound-turn cache (disk → in-memory + social projection slot) ─
         //
         // Loaded immediately after the responder cache so the social

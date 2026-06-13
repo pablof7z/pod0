@@ -11,6 +11,9 @@
 //! * `outbound_turns` — `Vec<OutboundTurn>` of kernel-published auto-reply
 //!   turns, loaded from disk at init and appended in-session.
 //!   **Session** durability (cleared on account switch).
+//! * `approved` — `Arc<Mutex<ApprovedPeerStore>>` of explicit user
+//!   approve/block decisions. **Durable** (NOT cleared on account switch;
+//!   reloaded from the account-scoped data dir so decisions survive restarts).
 //!
 //! ## Observer wiring (dead-duplicate removal)
 //!
@@ -22,28 +25,31 @@
 //! `crate::social_handler`) on every kind:3 push frame, which obtains its Arc
 //! via `state.social.social_slot.share()`.
 //!
-//! ## Trust gate — live at projection
+//! ## Trust gate — composed predicate (follow OR approve, AND NOT block)
 //!
-//! `agent_notes` caches notes as [`CachedAgentNote`] with the author **hex**
-//! retained and NO `trusted` stamp. [`SocialState::agent_notes_snapshot`]
-//! recomputes the trust verdict at build time by applying the shared live
-//! `ActiveFollowSet` predicate to each note's author hex — so follow/unfollow
-//! flips the verdict on ALL existing notes immediately, with no stale freeze.
+//! `trust(pubkey) = (followed(pubkey) || approved(pubkey)) && !blocked(pubkey)`
 //!
-//! The same live predicate drives the `trusted` field on each
-//! [`NostrConversationDTO`]: the primary counterparty's hex is checked at
-//! projection build time, not frozen at receipt.
+//! * `followed` is the live `ActiveFollowSet` predicate (reactive, NIP-02).
+//! * `approved` is an explicit per-peer user decision persisted in
+//!   `ApprovedPeerStore`. An approved-but-unfollowed sender IS auto-replied to.
+//! * `blocked` is an absolute override: a followed+blocked pubkey is untrusted.
+//!
+//! Both projection paths (`agent_notes_snapshot` and
+//! `nostr_conversations_snapshot`) use [`SocialState::trust_predicate`] which
+//! builds the composed closure once per projection call.
 //!
 //! The `ActiveFollowSet` Arc is injected via [`SocialState::with_follow_set`]
-//! at registration; it is the SAME Arc registered as a `KernelEventObserver`,
-//! so the predicate always reflects the latest kind:3.
+//! at registration; the `ApprovedPeerStore` Arc is injected via
+//! [`SocialState::with_approved_peers`]. Both are the SAME Arcs held in
+//! `register.rs`, so the predicate always reflects the latest kind:3 AND
+//! the latest approve/block action.
 //!
 //! ## File-length ceiling
 //!
 //! AGENTS.md hard limit is 500 lines.
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use nmp_nip02::ActiveFollowSet;
 
@@ -51,6 +57,7 @@ use crate::agent_note_handler::CachedAgentNote;
 use crate::ffi::projections::{AgentNoteSummary, NostrConversationDTO, NostrConversationTurnDTO, SocialSnapshot};
 use crate::state::slot::Session;
 use crate::state::{Infra, Slot};
+use crate::store::approved_peer_store::ApprovedPeerStore;
 use crate::store::outbound_turn_cache::OutboundTurn;
 
 /// Social feature substate.
@@ -76,6 +83,11 @@ pub struct SocialState {
     /// false` (fail-closed, D6).  Set via [`Self::with_follow_set`] at
     /// registration.
     follow_set: Option<Arc<ActiveFollowSet>>,
+    /// Kernel-owned approve/block allow-list. `None` in unit-test / legacy
+    /// paths → only follow-set trust applies.  Set via
+    /// [`Self::with_approved_peers`] at registration.  Durable: NOT cleared
+    /// on account switch; reloaded from disk in `data_dir.rs`.
+    pub approved: Option<Arc<Mutex<ApprovedPeerStore>>>,
     /// Rev + signal + runtime (cloned from `PodcastAppState::infra`).
     pub(crate) infra: Infra,
 }
@@ -88,6 +100,7 @@ impl SocialState {
             agent_notes: Slot::new(Vec::new()),
             outbound_turns: Slot::new(Vec::new()),
             follow_set: None,
+            approved: None,
             infra,
         }
     }
@@ -100,10 +113,119 @@ impl SocialState {
         self
     }
 
+    /// Inject the shared [`ApprovedPeerStore`] so the composed trust predicate
+    /// (`follow || approve`) AND NOT `block` is applied at every projection
+    /// build. Called from `register.rs` after constructing the store Arc;
+    /// the same Arc is stored on `PodcastHandle` for persistence by
+    /// `data_dir.rs`.
+    pub fn with_approved_peers(mut self, store: Arc<Mutex<ApprovedPeerStore>>) -> Self {
+        self.approved = Some(store);
+        self
+    }
+
+    // ── Trust predicate ───────────────────────────────────────────────────
+
+    /// Build the composed trust predicate for one projection call.
+    ///
+    /// `trust(pubkey) = (followed(pubkey) || approved(pubkey)) && !blocked(pubkey)`
+    ///
+    /// The predicate captures a snapshot of the follow-set predicate and a
+    /// snapshot of the approved/blocked sets at the instant of the call,
+    /// then closes over them. Fail-closed (D6): with no follow set AND no
+    /// approved store wired (test paths), the predicate returns `false`.
+    ///
+    /// POISONED-LOCK FAIL-CLOSED: if the `approved` mutex is poisoned we CANNOT
+    /// read the blocklist. Clearing it (treating both sets as empty) would be
+    /// fail-OPEN — a blocked-but-followed peer would silently become trusted,
+    /// violating "block is absolute". Instead we set `fail_closed` so the
+    /// predicate returns `false` for EVERY pubkey: nobody is trusted while we
+    /// cannot prove they are not blocked.
+    fn trust_predicate(&self) -> impl Fn(&str) -> bool + '_ {
+        // Capture follow-set predicate (itself a closure over an Arc<RwLock>).
+        let follow_pred = self.follow_set.as_ref().map(|fs| fs.predicate());
+
+        // Snapshot approved/blocked sets from the mutex. A poisoned lock means
+        // we cannot read the blocklist → fail CLOSED (trust nobody) rather than
+        // dropping blocks.
+        let mut fail_closed = false;
+        let (approved_snap, blocked_snap) = if let Some(ref arc) = self.approved {
+            if let Ok(store) = arc.lock() {
+                (store.approved.clone(), store.blocked.clone())
+            } else {
+                fail_closed = true;
+                (Default::default(), Default::default())
+            }
+        } else {
+            (Default::default(), Default::default())
+        };
+
+        move |pubkey: &str| {
+            // Poisoned approved-store lock: cannot prove the peer is not
+            // blocked → deny everyone (block stays absolute).
+            if fail_closed {
+                return false;
+            }
+            // Block is an absolute override.
+            if blocked_snap.contains(pubkey) {
+                return false;
+            }
+            let followed = follow_pred.as_ref().map(|p| p(pubkey)).unwrap_or(false);
+            let approved = approved_snap.contains(pubkey);
+            followed || approved
+        }
+    }
+
+    // ── Approve / block mutating methods ─────────────────────────────────
+
+    /// Approve `pubkey_hex` — clears any block. Caller MUST persist the store
+    /// to disk and call `self.infra.bump()` after this returns.
+    pub fn approve_peer(&self, pubkey_hex: &str) {
+        if let Some(ref arc) = self.approved {
+            if let Ok(mut store) = arc.lock() {
+                store.approve(pubkey_hex);
+            }
+        }
+    }
+
+    /// Block `pubkey_hex` — clears any approval. Caller MUST persist the store
+    /// to disk and call `self.infra.bump()` after this returns.
+    pub fn block_peer(&self, pubkey_hex: &str) {
+        if let Some(ref arc) = self.approved {
+            if let Ok(mut store) = arc.lock() {
+                store.block(pubkey_hex);
+            }
+        }
+    }
+
+    /// Remove an explicit approval for `pubkey_hex`. Caller MUST persist and bump.
+    pub fn remove_peer_approval(&self, pubkey_hex: &str) {
+        if let Some(ref arc) = self.approved {
+            if let Ok(mut store) = arc.lock() {
+                store.remove_approval(pubkey_hex);
+            }
+        }
+    }
+
+    /// Remove an explicit block for `pubkey_hex`. Caller MUST persist and bump.
+    pub fn remove_peer_block(&self, pubkey_hex: &str) {
+        if let Some(ref arc) = self.approved {
+            if let Ok(mut store) = arc.lock() {
+                store.remove_block(pubkey_hex);
+            }
+        }
+    }
+
     /// Test constructor.
     #[cfg(test)]
     pub fn for_test() -> Self {
         Self::new(Infra::for_test())
+    }
+
+    /// Test constructor with a shared approved-peer store for trust-predicate
+    /// tests that exercise the approve/block path.
+    #[cfg(test)]
+    pub fn for_test_with_approved(store: Arc<Mutex<ApprovedPeerStore>>) -> Self {
+        Self::new(Infra::for_test()).with_approved_peers(store)
     }
 
     /// Seed the outbound-turn slot from a persisted cache loaded at init.
@@ -158,28 +280,24 @@ impl SocialState {
     }
 
     /// Project the cached agent notes into wire DTOs, computing `trusted`
-    /// **live** against the shared `ActiveFollowSet` at build time.
+    /// **live** against the composed trust predicate at build time.
     ///
-    /// A note is `trusted` iff its author hex is in the active account's NIP-02
-    /// follow set at the moment of projection — so a follow/unfollow flips the
-    /// verdict on every existing note immediately. Fail-closed: with no
-    /// follow set wired (tests) or a poisoned lock, the predicate returns
-    /// `false` (D6).
+    /// `trust(pubkey) = (followed(pubkey) || approved(pubkey)) && !blocked(pubkey)`
+    ///
+    /// A follow/unfollow, approve, or block flips the verdict on ALL existing
+    /// notes immediately with no stale freeze. Fail-closed: with no follow set
+    /// AND no approved store wired (tests), the predicate returns `false` (D6).
     pub fn agent_notes_snapshot(&self) -> Vec<AgentNoteSummary> {
         let cached = match self.agent_notes.lock() {
             Ok(n) => n.clone(),
             Err(_) => return Vec::new(),
         };
-        // Build the predicate ONCE per projection (it clones the inner
-        // Arc<RwLock<BTreeSet>>; the lock is read inside the closure per call).
-        let predicate = self.follow_set.as_ref().map(|fs| fs.predicate());
+        // Build the composed predicate ONCE per projection.
+        let predicate = self.trust_predicate();
         cached
             .into_iter()
             .map(|note| {
-                let trusted = predicate
-                    .as_ref()
-                    .map(|p| p(&note.author_hex))
-                    .unwrap_or(false);
+                let trusted = predicate(&note.author_hex);
                 AgentNoteSummary {
                     id: note.id,
                     author_npub: note.author_npub,
@@ -219,8 +337,8 @@ impl SocialState {
             Err(_) => return Vec::new(),
         };
 
-        // Build trust predicate once per projection.
-        let predicate = self.follow_set.as_ref().map(|fs| fs.predicate());
+        // Build composed trust predicate once per projection.
+        let predicate = self.trust_predicate();
 
         // Keyed by root_event_id. Value: (counterparty_hex, participants, turns).
         let mut threads: HashMap<String, (String, Vec<String>, Vec<NostrConversationTurnDTO>)> =
@@ -274,10 +392,7 @@ impl SocialState {
                 turns.sort_by_key(|t| t.created_at);
                 let first_seen = turns.first().map(|t| t.created_at).unwrap_or(0);
                 let last_activity = turns.last().map(|t| t.created_at).unwrap_or(0);
-                let trusted = predicate
-                    .as_ref()
-                    .map(|p| p(&counterparty_hex))
-                    .unwrap_or(false);
+                let trusted = predicate(&counterparty_hex);
                 NostrConversationDTO {
                     root_event_id,
                     counterparty_hex,
@@ -541,6 +656,190 @@ mod tests {
         assert!(
             after[0].trusted,
             "existing note must flip to trusted once its author is followed"
+        );
+    }
+
+    // ── Composed trust predicate truth table ─────────────────────────────────
+
+    fn make_follow_set_with_member(me: &str, member_hex: &str) -> Arc<ActiveFollowSet> {
+        // ActiveFollowSet::new already returns Arc<ActiveFollowSet>.
+        let active_slot = Arc::new(Mutex::new(Some(me.to_string())));
+        let follow_set = ActiveFollowSet::new(Arc::clone(&active_slot));
+        let kind3 = KernelEvent {
+            id: nmp_core::substrate::EventId::from(
+                "0000000000000000000000000000000000000000000000000000000000000002".to_string(),
+            ),
+            author: me.to_string(),
+            kind: 3,
+            created_at: 200,
+            tags: vec![vec!["p".to_string(), member_hex.to_string()]],
+            content: String::new(),
+        };
+        follow_set.on_kernel_event(&kind3);
+        follow_set
+    }
+
+    const ME: &str = "ee11223344556677889900aabbccddeeff00112233445566778899aabbccddee";
+    const PEER: &str = "aa11223344556677889900aabbccddeeff00112233445566778899aabbccddee";
+    const OTHER: &str = "ff11223344556677889900aabbccddeeff00112233445566778899aabbccddee";
+
+    /// followed-only, not approved, not blocked → trusted
+    #[test]
+    fn trust_predicate_followed_only_is_trusted() {
+        let follow_set = make_follow_set_with_member(ME, PEER);
+        let state = SocialState::for_test().with_follow_set(follow_set);
+        let pred = state.trust_predicate();
+        assert!(pred(PEER), "followed-only must be trusted");
+    }
+
+    /// approved-only, not followed, not blocked → trusted
+    #[test]
+    fn trust_predicate_approved_only_is_trusted() {
+        let approved_store = Arc::new(Mutex::new(ApprovedPeerStore::new()));
+        approved_store.lock().unwrap().approve(PEER);
+        let state = SocialState::for_test().with_approved_peers(approved_store);
+        let pred = state.trust_predicate();
+        assert!(pred(PEER), "approved-only must be trusted");
+    }
+
+    /// not followed, not approved → untrusted
+    #[test]
+    fn trust_predicate_neither_is_untrusted() {
+        let state = SocialState::for_test();
+        let pred = state.trust_predicate();
+        assert!(!pred(PEER), "neither followed nor approved must be untrusted");
+    }
+
+    /// blocked overrides follow → untrusted
+    #[test]
+    fn trust_predicate_block_overrides_follow() {
+        let follow_set = make_follow_set_with_member(ME, PEER);
+        let approved_store = Arc::new(Mutex::new(ApprovedPeerStore::new()));
+        approved_store.lock().unwrap().block(PEER);
+        let state = SocialState::for_test()
+            .with_follow_set(follow_set)
+            .with_approved_peers(approved_store);
+        let pred = state.trust_predicate();
+        assert!(!pred(PEER), "blocked must override follow");
+    }
+
+    /// blocked overrides explicit approval → untrusted
+    #[test]
+    fn trust_predicate_block_overrides_approval() {
+        let approved_store = Arc::new(Mutex::new(ApprovedPeerStore::new()));
+        {
+            let mut s = approved_store.lock().unwrap();
+            s.approve(PEER);
+            s.block(PEER); // block clears the approval
+        }
+        let state = SocialState::for_test().with_approved_peers(approved_store);
+        let pred = state.trust_predicate();
+        assert!(!pred(PEER), "block must override approval");
+    }
+
+    /// followed+approved, different peer blocked → followed peer still trusted
+    #[test]
+    fn trust_predicate_unrelated_block_does_not_affect_other_peer() {
+        let follow_set = make_follow_set_with_member(ME, PEER);
+        let approved_store = Arc::new(Mutex::new(ApprovedPeerStore::new()));
+        approved_store.lock().unwrap().block(OTHER);
+        let state = SocialState::for_test()
+            .with_follow_set(follow_set)
+            .with_approved_peers(approved_store);
+        let pred = state.trust_predicate();
+        assert!(pred(PEER), "blocking OTHER must not affect PEER trust");
+        assert!(!pred(OTHER), "OTHER must remain blocked");
+    }
+
+    /// `approve_peer` / `block_peer` mutation helpers change projection live
+    #[test]
+    fn approve_peer_flips_conversation_trusted_to_true() {
+        let approved_store = Arc::new(Mutex::new(ApprovedPeerStore::new()));
+        let state = SocialState::for_test().with_approved_peers(approved_store);
+        // Seed an inbound note from PEER.
+        state
+            .agent_notes
+            .lock()
+            .unwrap()
+            .push(cached_note("noteA", PEER));
+
+        // Before approve: untrusted (no follow, no approve).
+        let before = state.agent_notes_snapshot();
+        assert!(!before[0].trusted, "must be untrusted before approve");
+
+        // Approve via mutating helper.
+        state.approve_peer(PEER);
+
+        // After approve: trusted.
+        let after = state.agent_notes_snapshot();
+        assert!(after[0].trusted, "must be trusted after approve");
+    }
+
+    /// `block_peer` overrides a follow in the live projection
+    #[test]
+    fn block_peer_overrides_follow_in_projection() {
+        let follow_set = make_follow_set_with_member(ME, PEER);
+        let approved_store = Arc::new(Mutex::new(ApprovedPeerStore::new()));
+        let state = SocialState::for_test()
+            .with_follow_set(follow_set)
+            .with_approved_peers(approved_store);
+        state
+            .agent_notes
+            .lock()
+            .unwrap()
+            .push(cached_note("noteB", PEER));
+
+        // Before block: trusted (followed).
+        let before = state.agent_notes_snapshot();
+        assert!(before[0].trusted, "must be trusted before block");
+
+        // Block via mutating helper.
+        state.block_peer(PEER);
+
+        // After block: untrusted despite follow.
+        let after = state.agent_notes_snapshot();
+        assert!(!after[0].trusted, "must be untrusted after block despite follow");
+    }
+
+    /// A poisoned `approved` mutex must fail CLOSED: even a FOLLOWED peer must
+    /// become untrusted, because we can no longer read the blocklist to prove
+    /// they are not blocked. Dropping blocks here (fail-OPEN) would let a
+    /// blocked-but-followed peer be auto-replied to — the bug this guards.
+    #[test]
+    fn trust_predicate_fails_closed_on_poisoned_approved_lock() {
+        let follow_set = make_follow_set_with_member(ME, PEER);
+        let approved_store = Arc::new(Mutex::new(ApprovedPeerStore::new()));
+        let state = SocialState::for_test()
+            .with_follow_set(follow_set)
+            .with_approved_peers(Arc::clone(&approved_store));
+
+        // Sanity: followed peer trusted with a healthy lock.
+        assert!(
+            state.trust_predicate()(PEER),
+            "followed peer must be trusted before poisoning"
+        );
+
+        // Poison the mutex: panic while holding the lock on another thread.
+        let poison_arc = Arc::clone(&approved_store);
+        let _ = std::thread::spawn(move || {
+            let _guard = poison_arc.lock().unwrap();
+            panic!("intentional panic to poison the approved-peer mutex");
+        })
+        .join();
+        assert!(
+            approved_store.lock().is_err(),
+            "mutex must be poisoned for this test to be meaningful"
+        );
+
+        // Fail closed: even the FOLLOWED peer is now untrusted.
+        let pred = state.trust_predicate();
+        assert!(
+            !pred(PEER),
+            "poisoned approved lock must fail closed — followed peer becomes untrusted"
+        );
+        assert!(
+            !pred(OTHER),
+            "poisoned approved lock must deny everyone"
         );
     }
 }

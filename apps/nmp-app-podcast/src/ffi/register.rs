@@ -31,6 +31,7 @@ use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 use crate::host_op_handler::PodcastHostOpHandler;
 use crate::store::agent_note_responder_cache::ResponderCache;
+use crate::store::approved_peer_store::ApprovedPeerStore;
 use crate::store::outbound_turn_cache::OutboundTurnCache;
 use crate::snapshot_signal::SnapshotUpdateSignal;
 use crate::store::identity::IdentityStore;
@@ -203,14 +204,6 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     // is recomputed at projection time, observer-registration order no longer
     // matters for correctness.
     let active_follow_set = ActiveFollowSet::new(app_ref.active_account_handle());
-    // Inject the live follow set into SocialState so agent_notes_snapshot()
-    // computes `trusted` at projection time (not frozen at receipt). Mirrors
-    // the `voice` field-replacement pattern above: the fresh substate's slots
-    // are the ones observers `.share()` from below (the default `social`
-    // substate built in `new_with_identity` was never shared).
-    app_state_inner.social =
-        crate::state::social::SocialState::new(app_state_inner.social.infra.clone())
-            .with_follow_set(Arc::clone(&active_follow_set));
 
     // NOTE: outbound_turn_cache is constructed and seeded from disk below,
     // AFTER data_dir is bound. We keep a placeholder empty Arc here so the
@@ -218,6 +211,22 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     // happens in data_dir.rs (nmp_app_podcast_set_data_dir). The Arc<Mutex>
     // is shared with AgentNotesObserver so the observer can persist turns.
     let outbound_turn_cache = Arc::new(std::sync::Mutex::new(OutboundTurnCache::new()));
+
+    // Approved-peer store: kernel-owned approve/block allow-list.
+    // Constructed empty here; seeded from disk in data_dir.rs after the data
+    // dir is bound. The same Arc is injected into SocialState (trust predicate)
+    // AND stored on PodcastHandle (so data_dir.rs can seed it after load).
+    let approved_peer_store = Arc::new(std::sync::Mutex::new(ApprovedPeerStore::new()));
+
+    // Inject the live follow set AND the approved-peer store into SocialState
+    // so trust_predicate() computes `(followed || approved) && !blocked` at
+    // projection time (not frozen at receipt). Mirrors the `voice`
+    // field-replacement pattern above: the fresh substate's slots are the
+    // ones observers `.share()` from below.
+    app_state_inner.social =
+        crate::state::social::SocialState::new(app_state_inner.social.infra.clone())
+            .with_follow_set(Arc::clone(&active_follow_set))
+            .with_approved_peers(Arc::clone(&approved_peer_store));
 
     let app_state = Arc::new(app_state_inner);
 
@@ -395,6 +404,7 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
         .with_responder(
             app,
             Arc::clone(&active_follow_set),
+            Arc::clone(&approved_peer_store),
             store.clone(),
             Arc::clone(&responder_cache),
             Arc::clone(&outbound_turn_cache),
@@ -423,6 +433,7 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
         state: app_state,
         responder_cache,
         outbound_turn_cache,
+        approved_peer_store,
         snapshot_cache: Arc::new(Mutex::new(None)),
         clean_html_cache: Arc::new(Mutex::new(std::collections::HashMap::new())),
     });

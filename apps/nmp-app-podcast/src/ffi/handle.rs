@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::state::PodcastAppState;
 use crate::store::agent_note_responder_cache::ResponderCache;
+use crate::store::approved_peer_store::ApprovedPeerStore;
 use crate::store::outbound_turn_cache::OutboundTurnCache;
 
 use nmp_ffi::NmpApp;
@@ -54,6 +55,11 @@ pub struct PodcastHandle {
     /// (via `with_responder`) so persisted turns survive app restarts and the
     /// in-memory social state is seeded on boot.
     pub(crate) outbound_turn_cache: Arc<Mutex<OutboundTurnCache>>,
+    /// Kernel-owned peer approve/block allow-list. Seeded from disk in
+    /// `nmp_app_podcast_set_data_dir`; the same Arc is injected into
+    /// `state.social` so the trust predicate reads it live. Held here so
+    /// `data_dir.rs` can seed it after the data dir is bound.
+    pub(crate) approved_peer_store: Arc<Mutex<ApprovedPeerStore>>,
     /// Rev-keyed snapshot cache. `build_snapshot_payload` writes `(rev, json)`
     /// here after every rebuild; the next poll hit with the same `rev` returns
     /// the cached string without re-serializing the entire library.

@@ -32,9 +32,11 @@ struct AppState: Codable, Sendable {
     /// Per-category user preferences keyed by `PodcastCategory.id`.
     var categorySettings: [UUID: CategorySettings] = [:]
     var settings: Settings = Settings()
+    /// Optimistic display mirrors for the kernel-owned `ApprovedPeerStore`.
+    /// Updated immediately on user action; the authoritative state arrives
+    /// via `trusted` flags in the next `podcast.social` domain push.
     var nostrAllowedPubkeys: Set<String> = []
     var nostrBlockedPubkeys: Set<String> = []
-    var nostrPendingApprovals: [NostrPendingApproval] = []
     /// One record per Nostr conversation root (NIP-10) the agent has
     /// participated in. Surfaces in Settings > Agent > Conversations.
     var nostrConversations: [NostrConversationRecord] = []
@@ -78,7 +80,7 @@ struct AppState: Codable, Sendable {
         case podcasts, subscriptions, episodes
         case notes, friends, agentMemories, compiledMemory, settings
         case categories, categorySettings
-        case nostrAllowedPubkeys, nostrBlockedPubkeys, nostrPendingApprovals
+        case nostrAllowedPubkeys, nostrBlockedPubkeys
         case nostrConversations, nostrProfileCache
         case nostrRespondedEventIDs, nostrSinceCursor
         case agentActivity
@@ -119,7 +121,6 @@ struct AppState: Codable, Sendable {
         settings = try c.decodeIfPresent(Settings.self, forKey: .settings) ?? Settings()
         nostrAllowedPubkeys = try c.decodeIfPresent(Set<String>.self, forKey: .nostrAllowedPubkeys) ?? []
         nostrBlockedPubkeys = try c.decodeIfPresent(Set<String>.self, forKey: .nostrBlockedPubkeys) ?? []
-        nostrPendingApprovals = try c.decodeIfPresent([NostrPendingApproval].self, forKey: .nostrPendingApprovals) ?? []
         nostrConversations = try c.decodeIfPresent([NostrConversationRecord].self, forKey: .nostrConversations) ?? []
         nostrProfileCache = try c.decodeIfPresent([String: NostrProfileMetadata].self, forKey: .nostrProfileCache) ?? [:]
         nostrRespondedEventIDs = try c.decodeIfPresent(Set<String>.self, forKey: .nostrRespondedEventIDs) ?? []

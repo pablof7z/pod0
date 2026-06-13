@@ -35,6 +35,9 @@ fn make_test_handle_with_app(app: *mut nmp_ffi::NmpApp) -> Box<PodcastHandle> {
         outbound_turn_cache: Arc::new(Mutex::new(
             crate::store::outbound_turn_cache::OutboundTurnCache::new(),
         )),
+        approved_peer_store: Arc::new(Mutex::new(
+            crate::store::approved_peer_store::ApprovedPeerStore::new(),
+        )),
         snapshot_cache: Arc::new(Mutex::new(None)),
         clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
     })

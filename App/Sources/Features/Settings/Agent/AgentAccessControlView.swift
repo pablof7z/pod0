@@ -9,7 +9,6 @@ struct AgentAccessControlView: View {
 
     private enum AccessTab: String, CaseIterable {
         case allowed = "Allowed"
-        case pending = "Pending"
         case blocked = "Blocked"
     }
 
@@ -32,7 +31,6 @@ struct AgentAccessControlView: View {
             List {
                 switch selectedTab {
                 case .allowed:  allowedContent
-                case .pending:  pendingContent
                 case .blocked:  blockedContent
                 }
             }
@@ -58,9 +56,6 @@ struct AgentAccessControlView: View {
         case .allowed:
             let count = store.state.nostrAllowedPubkeys.count
             return count > 0 ? "Allowed (\(count))" : "Allowed"
-        case .pending:
-            let count = store.pendingNostrApprovals.count
-            return count > 0 ? "Pending (\(count))" : "Pending"
         case .blocked:
             let count = store.state.nostrBlockedPubkeys.count
             return count > 0 ? "Blocked (\(count))" : "Blocked"
@@ -70,7 +65,6 @@ struct AgentAccessControlView: View {
     private var searchPrompt: String {
         switch selectedTab {
         case .allowed:  return "Search allowed peers"
-        case .pending:  return "Search pending peers"
         case .blocked:  return "Search blocked peers"
         }
     }
@@ -90,7 +84,7 @@ struct AgentAccessControlView: View {
                 ContentUnavailableView {
                     Label("No allowed peers", systemImage: "checkmark.shield")
                 } description: {
-                    Text("Peers who contact your agent will appear here for approval.")
+                    Text("Peers you explicitly approve will appear here. Followed contacts are trusted automatically.")
                 } actions: {
                     Button("Add a peer") { showAddSheet = true }
                         .buttonStyle(.glassProminent)
@@ -109,51 +103,6 @@ struct AgentAccessControlView: View {
                                 Label("Remove", systemImage: "trash")
                             }
                         }
-                }
-            }
-        }
-    }
-
-    // MARK: - Pending
-
-    private var filteredPending: [NostrPendingApproval] {
-        let all = store.pendingNostrApprovals
-        let q = searchText.trimmed
-        return q.isEmpty ? all : all.filter { $0.pubkeyHex.localizedCaseInsensitiveContains(q) }
-    }
-
-    @ViewBuilder
-    private var pendingContent: some View {
-        if filteredPending.isEmpty {
-            ContentUnavailableView {
-                Label("No pending approvals", systemImage: "clock.badge.questionmark")
-            } description: {
-                Text("New contacts will appear here when they message your agent.")
-            }
-            .listRowBackground(Color.clear)
-        } else {
-            Section {
-                ForEach(filteredPending) { approval in
-                    PendingApprovalRow(
-                        approval: approval,
-                        onAllow: { store.allowNostrPubkey(approval.pubkeyHex); Haptics.success() },
-                        onBlock: { store.blockNostrPubkey(approval.pubkeyHex); Haptics.selection() },
-                        onDismiss: { store.dismissNostrPendingApproval(approval.id); Haptics.selection() }
-                    )
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button { store.allowNostrPubkey(approval.pubkeyHex); Haptics.success() } label: {
-                            Label("Allow", systemImage: "checkmark.circle.fill")
-                        }.tint(AppTheme.Tint.success)
-
-                        Button { store.blockNostrPubkey(approval.pubkeyHex); Haptics.selection() } label: {
-                            Label("Block", systemImage: "nosign")
-                        }.tint(AppTheme.Tint.error)
-                    }
-                    .swipeActions(edge: .leading) {
-                        Button { store.dismissNostrPendingApproval(approval.id); Haptics.selection() } label: {
-                            Label("Dismiss", systemImage: "xmark")
-                        }.tint(.gray)
-                    }
                 }
             }
         }
@@ -201,7 +150,7 @@ struct AgentAccessControlView: View {
     @ViewBuilder
     private var addSheet: some View {
         switch selectedTab {
-        case .allowed, .pending:
+        case .allowed:
             AllowPeerSheet { hex in store.allowNostrPubkey(hex); Haptics.success() }
         case .blocked:
             BlockPeerSheet { hex in store.blockNostrPubkey(hex); Haptics.success() }

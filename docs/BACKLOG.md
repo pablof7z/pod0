@@ -330,6 +330,15 @@ worktrees currently in flight.
   conversation/approval surfaces with Rust-owned conversation projection,
   trust-list/approval actions, kind:0 profile cache, and NIP-46
   integration.
+  - **DONE — kernel approve/block allowlist.** `ApprovedPeerStore`
+    (BTreeSet JSON, atomic tmp+rename, D6 load) wired into
+    `SocialState::trust_predicate` (`(followed || approved) && !blocked`),
+    `agent_note_handler` responder gate, `data_dir.rs` cold-load, and
+    `social_actions.rs` host-op handler. iOS dispatch shims added
+    (`KernelModel+Social.swift`); `AgentAccessControlView` routes through
+    kernel; dead `NostrPendingApproval` / `NostrApprovalPresenter`
+    scaffolding deleted. Follow-ups: bridge-decode fixture test for
+    `trusted` field; Android access-control UI.
 - **agent-to-agent-kind1 (feature #44).** Agent-to-agent messaging over
   public kind:1 notes threaded with NIP-10.
   - **DONE — raw transport.** `agent_note_handler.rs` (PR for #44) signs +

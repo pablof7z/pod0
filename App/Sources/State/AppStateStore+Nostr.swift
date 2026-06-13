@@ -1,56 +1,46 @@
 import Foundation
 
 // MARK: - Nostr Access Control
+//
+// The kernel (Rust, `ApprovedPeerStore`) is authoritative for approved and
+// blocked pubkeys.  Swift dispatches one-way mutations via `KernelModel` and
+// keeps `nostrAllowedPubkeys` / `nostrBlockedPubkeys` on `AppState` as an
+// optimistic display mirror; the authoritative state re-arrives on the next
+// `podcast.social` domain push as `trusted` flags on each
+// `NostrConversationDTO`.
+//
+// The old `nostrPendingApprovals` / `NostrPendingApproval` scaffolding has
+// been deleted.  Unknown senders are simply untrusted (kernel-gated) until the
+// user explicitly approves them via `AgentAccessControlView`.
 
 extension AppStateStore {
 
+    // MARK: - Kernel-routed mutations
+
     func allowNostrPubkey(_ pubkeyHex: String) {
+        // Optimistic mirror.
         state.nostrAllowedPubkeys.insert(pubkeyHex)
         state.nostrBlockedPubkeys.remove(pubkeyHex)
-        state.nostrPendingApprovals.removeAll { $0.pubkeyHex == pubkeyHex }
+        // Durable kernel write.
+        kernel?.approvePeer(hex: pubkeyHex)
     }
 
     func blockNostrPubkey(_ pubkeyHex: String) {
+        // Optimistic mirror.
         state.nostrBlockedPubkeys.insert(pubkeyHex)
         state.nostrAllowedPubkeys.remove(pubkeyHex)
-        state.nostrPendingApprovals.removeAll { $0.pubkeyHex == pubkeyHex }
+        // Durable kernel write.
+        kernel?.blockPeer(hex: pubkeyHex)
     }
 
     func removeFromNostrAllowlist(_ pubkeyHex: String) {
         state.nostrAllowedPubkeys.remove(pubkeyHex)
+        kernel?.removePeerApproval(hex: pubkeyHex)
     }
 
     func removeFromNostrBlocklist(_ pubkeyHex: String) {
         state.nostrBlockedPubkeys.remove(pubkeyHex)
-    }
-
-    func addNostrPendingApproval(_ approval: NostrPendingApproval) {
-        guard !state.nostrAllowedPubkeys.contains(approval.pubkeyHex),
-              !state.nostrBlockedPubkeys.contains(approval.pubkeyHex),
-              !state.nostrPendingApprovals.contains(where: { $0.pubkeyHex == approval.pubkeyHex })
-        else { return }
-        state.nostrPendingApprovals.append(approval)
-    }
-
-    /// Fills in display name / about / picture for an existing pending
-    /// approval when a kind:0 profile arrives after the inbound has been
-    /// queued. No-op when the pubkey is not pending.
-    func enrichNostrPendingApproval(pubkeyHex: String, from profile: NostrProfileMetadata) {
-        guard let idx = state.nostrPendingApprovals.firstIndex(where: { $0.pubkeyHex == pubkeyHex })
-        else { return }
-        var approval = state.nostrPendingApprovals[idx]
-        approval.displayName = profile.bestLabel ?? approval.displayName
-        approval.about = profile.about ?? approval.about
-        approval.pictureURL = profile.picture ?? approval.pictureURL
-        state.nostrPendingApprovals[idx] = approval
-    }
-
-    func dismissNostrPendingApproval(_ id: UUID) {
-        state.nostrPendingApprovals.removeAll { $0.id == id }
-    }
-
-    var pendingNostrApprovals: [NostrPendingApproval] {
-        state.nostrPendingApprovals
+        kernel?.removePeerBlock(hex: pubkeyHex)
     }
 
     // MARK: - Nostr Conversations

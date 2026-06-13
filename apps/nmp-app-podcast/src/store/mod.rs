@@ -31,6 +31,7 @@ mod disk;
 pub mod events;
 pub mod identity;
 pub mod agent_note_responder_cache;
+pub mod approved_peer_store;
 pub mod inbox_triage_cache;
 pub mod outbound_turn_cache;
 mod library;

@@ -94,8 +94,7 @@ struct AgentSettingsView: View {
                 SettingsRow(
                     icon: "checkmark.shield.fill",
                     tint: .green,
-                    title: "Access Control",
-                    badge: store.pendingNostrApprovals.count
+                    title: "Access Control"
                 )
             }
 

@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-13T14:00:00Z",
+      "lines": [
+        "Agent access control now persists reliably — approved and blocked peers survive app restarts and are enforced at the kernel level"
+      ]
+    },
+    {
       "shipped_at": "2026-06-13T12:00:00Z",
       "lines": [
         "Profile photo and podcast artwork uploads are now faster and more reliable \u2014 they go through the secure kernel upload pipeline instead of Swift HTTP, with NIP-46 bunker support."

@@ -51,6 +51,7 @@ use crate::nmp_dispatch::{publish_raw_via_nmp, push_interest_via_nmp};
 use crate::snapshot_signal::SnapshotUpdateSignal;
 use crate::state::Infra;
 use crate::store::agent_note_responder_cache::ResponderCache;
+use crate::store::approved_peer_store::ApprovedPeerStore;
 use crate::store::identity::IdentityStore;
 use crate::store::outbound_turn_cache::OutboundTurnCache;
 use crate::store::PodcastStore;
@@ -223,6 +224,9 @@ pub struct AgentNotesObserver {
     /// Shared live follow set for trust-gate checks at reception time.
     /// `None` in test / legacy paths → all notes treated as untrusted.
     follow_set: Option<Arc<ActiveFollowSet>>,
+    /// Shared kernel-owned approve/block store for the composed trust gate.
+    /// `None` in test / legacy paths → only follow-set trust applies.
+    approved_peer_store: Option<Arc<Mutex<ApprovedPeerStore>>>,
     /// Shared podcast store (LLM model config for the responder).
     /// `None` in test paths → responder is disabled.
     store: Option<Arc<Mutex<PodcastStore>>>,
@@ -273,6 +277,7 @@ impl AgentNotesObserver {
             rev,
             snapshot_signal: None,
             follow_set: None,
+            approved_peer_store: None,
             store: None,
             responder_cache: None,
             outbound_turn_cache: None,
@@ -326,6 +331,7 @@ impl AgentNotesObserver {
         mut self,
         app: *mut NmpApp,
         follow_set: Arc<ActiveFollowSet>,
+        approved_peer_store: Arc<Mutex<ApprovedPeerStore>>,
         store: Arc<Mutex<PodcastStore>>,
         responder_cache: Arc<Mutex<ResponderCache>>,
         outbound_turn_cache: Arc<Mutex<OutboundTurnCache>>,
@@ -334,6 +340,7 @@ impl AgentNotesObserver {
     ) -> Self {
         self.app = app;
         self.follow_set = Some(follow_set);
+        self.approved_peer_store = Some(approved_peer_store);
         self.store = Some(store);
         self.responder_cache = Some(responder_cache);
         self.outbound_turn_cache = Some(outbound_turn_cache);
@@ -403,8 +410,9 @@ impl KernelEventObserver for AgentNotesObserver {
 
         // ── Auto-responder hook ──────────────────────────────────────────────
         // Fire ONLY for new, trusted notes (avoid double-reply on relay re-delivery).
-        // Trust is checked live against the shared ActiveFollowSet at reception
-        // time; the projection ALSO recomputes it at build time (separate paths).
+        // Trust uses the COMPOSED predicate: (follow || approve) && !block, same
+        // logic as `SocialState::trust_predicate()`. The projection ALSO recomputes
+        // it at build time (two separate consumers, same predicate contract).
         if is_new {
             if let (Some(fs), Some(store), Some(rc), Some(rt)) = (
                 &self.follow_set,
@@ -412,8 +420,31 @@ impl KernelEventObserver for AgentNotesObserver {
                 &self.responder_cache,
                 &self.runtime,
             ) {
-                let predicate = fs.predicate();
-                let trusted = predicate(&note.author_hex);
+                // Build the composed trust predicate for this reception event.
+                //
+                // POISONED-LOCK FAIL-CLOSED: if the approved-store mutex is
+                // poisoned we cannot read the blocklist. Treating both sets as
+                // empty would be fail-OPEN — a blocked-but-followed peer would
+                // get an auto-reply, violating "block is absolute". Instead we
+                // deny (trusted=false) so a poisoned lock never auto-responds.
+                let trusted = {
+                    let follow_pred = fs.predicate();
+                    let mut fail_closed = false;
+                    let (approved_snap, blocked_snap) = if let Some(ref arc) = self.approved_peer_store {
+                        if let Ok(s) = arc.lock() {
+                            (s.approved.clone(), s.blocked.clone())
+                        } else {
+                            fail_closed = true;
+                            (Default::default(), Default::default())
+                        }
+                    } else {
+                        (Default::default(), Default::default())
+                    };
+                    let hex = note.author_hex.as_str();
+                    !fail_closed
+                        && !blocked_snap.contains(hex)
+                        && (follow_pred(hex) || approved_snap.contains(hex))
+                };
                 crate::agent_note_responder::try_respond_to_trusted_note(
                     &note,
                     &event.tags,

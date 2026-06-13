@@ -34,6 +34,14 @@ pub const ACTION_SOCIAL_PUBLISH_PROFILE: &str = "podcast.social.publish_profile"
 pub const ACTION_SOCIAL_PUBLISH_NOTE: &str = "podcast.social.publish_note";
 /// `podcast.social.publish_highlight` — sign + publish a kind:9802 highlight.
 pub const ACTION_SOCIAL_PUBLISH_HIGHLIGHT: &str = "podcast.social.publish_highlight";
+/// `podcast.social.approve_peer` — add a pubkey to the kernel approve list.
+pub const ACTION_SOCIAL_APPROVE_PEER: &str = "podcast.social.approve_peer";
+/// `podcast.social.block_peer` — add a pubkey to the kernel block list.
+pub const ACTION_SOCIAL_BLOCK_PEER: &str = "podcast.social.block_peer";
+/// `podcast.social.remove_approval` — remove an explicit approval.
+pub const ACTION_SOCIAL_REMOVE_APPROVAL: &str = "podcast.social.remove_approval";
+/// `podcast.social.remove_block` — remove an explicit block.
+pub const ACTION_SOCIAL_REMOVE_BLOCK: &str = "podcast.social.remove_block";
 
 /// Wire enum for all `"podcast.social"` namespace actions.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
@@ -77,6 +85,27 @@ pub enum SocialAction {
         end_sec: Option<i64>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         caption: Option<String>,
+    },
+    /// Add `pubkey_hex` to the kernel approve list. Clears any existing block
+    /// for the same key. The kernel persists the store and re-emits
+    /// `podcast.social` with updated `trusted` verdicts on the next tick.
+    ApprovePeer {
+        pubkey_hex: String,
+    },
+    /// Add `pubkey_hex` to the kernel block list. Clears any existing approval
+    /// for the same key. Block is an absolute override of follow status.
+    BlockPeer {
+        pubkey_hex: String,
+    },
+    /// Remove an explicit approval for `pubkey_hex`. The peer reverts to
+    /// follow-only trust.
+    RemoveApproval {
+        pubkey_hex: String,
+    },
+    /// Remove an explicit block for `pubkey_hex`. The peer reverts to
+    /// follow-only trust.
+    RemoveBlock {
+        pubkey_hex: String,
     },
 }
 

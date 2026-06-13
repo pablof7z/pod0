@@ -192,7 +192,6 @@ struct RootView: View {
                         }
                     }
                 }
-                .nostrApprovalPresenter()
                 .nostrAgentSurface()
                 .agentAskPresenter(coordinator: askCoordinator)
                 .onOpenURL { handleDeepLink($0) }
