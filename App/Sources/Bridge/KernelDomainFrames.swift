@@ -151,6 +151,12 @@ struct PodcastDomainFrames {
     var widget:    WidgetDomainFrame?
     var social:    SocialDomainFrame?
     var misc:      MiscDomainFrame?
+    /// Top-level `projections["resolved_profiles"]` map — NOT a `podcast.*`
+    /// domain sidecar. The kernel emits this whenever a claimed pubkey resolves
+    /// to a kind:0 profile. Empty when no profiles resolved this tick.
+    /// Decoded via `.convertFromSnakeCase`; `ResolvedProfile` has no explicit
+    /// CodingKeys so snake_case wire keys map cleanly to camelCase properties.
+    var resolvedProfiles: [String: ResolvedProfile] = [:]
 
     /// `true` when at least one domain sidecar was present in the frame.
     var hasAnyDomain: Bool {
@@ -174,6 +180,7 @@ extension PodcastDomainFrames {
         if widget    != nil { names.append("widget") }
         if social    != nil { names.append("social") }
         if misc      != nil { names.append("misc") }
+        if !resolvedProfiles.isEmpty { names.append("resolved_profiles(\(resolvedProfiles.count))") }
         return names.isEmpty ? "none" : names.joined(separator: ",")
     }
 }
@@ -219,6 +226,18 @@ extension PodcastDomainFrames {
         frames.widget    = tryDecode(DomainSchema.widget)
         frames.social    = tryDecode(DomainSchema.social)
         frames.misc      = tryDecode(DomainSchema.misc)
+
+        // `resolved_profiles` is a TOP-LEVEL projections key (sibling of the
+        // `podcast.*` domain sidecars, not nested inside one). Decode it with
+        // the same `.convertFromSnakeCase` decoder used for all domain frames.
+        // `ResolvedProfile` has NO explicit CodingKeys — wire `display_name` →
+        // `displayName`, `picture_url` → `pictureUrl` via the strategy.
+        // D6: any decode failure yields an empty map, never a frame drop.
+        if let profilesObj = projections["resolved_profiles"],
+           let profilesData = try? JSONSerialization.data(withJSONObject: profilesObj),
+           let decoded = try? decoder.decode([String: ResolvedProfile].self, from: profilesData) {
+            frames.resolvedProfiles = decoded
+        }
 
         guard frames.hasAnyDomain else { return nil }
         return frames

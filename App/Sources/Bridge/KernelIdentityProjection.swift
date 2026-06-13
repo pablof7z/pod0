@@ -2,18 +2,18 @@ import Foundation
 
 // MARK: - Kernel identity projection
 //
-// Swift mirror of the identity fields surfaced via `PodcastUpdate.activeAccount`
-// (inside `projections["podcast.snapshot"]`). Built by
-// `KernelIdentityProjection.from(podcastUpdate:)` in KernelBridge — NOT by
-// parsing the top-level `projections` dictionary, which has no identity keys.
+// Swift mirror of the identity fields surfaced via the kernel push frame.
+// Built by `KernelIdentityProjection.from(domainFrames:)` for the push path
+// and `from(podcastUpdate:)` for the pull/cold-start path.
 //
 // Current wire surface:
-//   PodcastUpdate.active_account  AccountSummary?  — npub + pubkey_hex + mode + display_name
+//   podcast.identity.active_account    AccountSummary?       — npub + pubkey_hex + mode
+//   projections["resolved_profiles"]   [String:ResolvedProfile] — pubkey→kind:0 cache
+//                                       (top-level projections key, NOT a podcast.* sidecar)
 //
 // Future slots (not yet wired in Rust; degrade to nil/empty gracefully):
 //   accounts         [Account]  — all loaded accounts for multi-identity
 //   bunker_handshake DTO?       — NIP-46 handshake progress
-//   resolved_profiles map       — pubkey→profile cache
 
 /// One identity row from `projections.accounts` (per
 /// `crates/nmp-core/src/kernel/identity_state.rs`'s `AccountSummary`).
@@ -88,17 +88,23 @@ struct KernelBunkerHandshake: Decodable, Equatable {
 /// kernel already knows about, so these profiles resolve without a Swift-side
 /// relay round-trip.
 ///
-/// `display` maps to `display_name` on the wire — the kernel's merged best
-/// display name (NIP-05 > display_name > name); `pictureUrl` is the kind:0 picture.
-/// Both are optional — the kernel may have only one or neither.
+/// Wire keys are snake_case from Rust (`display_name`, `picture_url`).
+/// The bridge decoder uses `.convertFromSnakeCase`, so these properties carry
+/// camelCase names (`displayName`, `pictureUrl`) with NO explicit CodingKeys.
+/// Explicit snake_case CodingKeys would override the strategy and cause
+/// `keyNotFound` for every key, silently dropping all profiles (#371 contract).
+///
+/// Android counterpart uses `@SerialName("display_name")` because
+/// kotlinx-serialization does NOT auto-convert snake_case without explicit config.
 struct ResolvedProfile: Decodable, Equatable {
-    let display: String?
+    /// Kernel's merged best display name (`display_name` on the wire).
+    /// Decoded via `.convertFromSnakeCase`: `display_name` → `displayName`.
+    let displayName: String?
+    /// kind:0 picture URL (`picture_url` on the wire).
+    /// Decoded via `.convertFromSnakeCase`: `picture_url` → `pictureUrl`.
     let pictureUrl: String?
-
-    enum CodingKeys: String, CodingKey {
-        case display = "display_name"
-        case pictureUrl = "picture_url"
-    }
+    // NO CodingKeys — .convertFromSnakeCase handles snake_case → camelCase.
+    // Adding explicit snake_case CodingKeys here would silently break decoding.
 }
 
 /// Identity-slice of one kernel snapshot tick. All fields may be empty
@@ -149,6 +155,12 @@ extension KernelIdentityProjection {
     ///
     /// Used by the pull path (`podcastSnapshot()`) and cold-start hydration.
     /// The push path uses `from(domainFrames:)` instead.
+    ///
+    /// `resolvedProfiles` is `[:]` here because the pull path (`PodcastUpdate`)
+    /// does not carry the top-level `projections["resolved_profiles"]` key — that
+    /// key lives in the push-frame envelope and is decoded by `PodcastDomainFrames.decode`.
+    /// The pull path is a cold-start / compatibility path; resolved profiles
+    /// accumulate in `kernelIdentity` via the push path over subsequent ticks.
     static func from(podcastUpdate update: PodcastUpdate) -> KernelIdentityProjection {
         KernelIdentityProjection(
             activeAccount: update.activeAccount?.pubkeyHex,
@@ -170,22 +182,43 @@ extension KernelIdentityProjection {
     /// preserving the previous `kernelIdentity` value — this factory is called
     /// only when the identity domain IS present in the frame.
     ///
-    /// `accounts`, `bunkerHandshake`, and `resolvedProfiles` remain empty until
-    /// the kernel adds dedicated projection slots — their absence degrades
-    /// gracefully (NIP-46 UI hidden, resolved-profile lookups fall back to relay
-    /// fetches).
+    /// `accounts` and `bunkerHandshake` remain empty until the kernel adds
+    /// dedicated projection slots — their absence degrades gracefully (NIP-46
+    /// UI hidden). `resolvedProfiles` is sourced from the top-level
+    /// `projections["resolved_profiles"]` key decoded into `frames.resolvedProfiles`.
+    ///
+    /// This factory is called when the identity domain IS present in the frame.
+    /// When it is absent, `KernelModel.apply` merges resolved profiles directly
+    /// into the cached `kernelIdentity` — that path does not call this factory.
     static func from(domainFrames frames: PodcastDomainFrames) -> KernelIdentityProjection {
-        // Identity domain is the authoritative source when present.
+        // Identity domain is the authoritative source for account fields.
         if let identityFrame = frames.identity {
             return KernelIdentityProjection(
                 activeAccount: identityFrame.activeAccount?.pubkeyHex,
                 activeNpub: identityFrame.activeAccount?.npub,
                 accounts: [],
                 bunkerHandshake: nil,
-                resolvedProfiles: [:])
+                resolvedProfiles: frames.resolvedProfiles)
         }
         // No identity domain sidecar this frame — return empty so the caller
-        // knows to preserve the previous value.
+        // knows to preserve the previous identity value. Any resolved_profiles
+        // present in this frame are handled separately by `KernelModel.apply`
+        // via `merging(resolvedProfiles:)`.
         return .empty
+    }
+
+    /// Return a copy of this identity with the given profiles merged in
+    /// (additive — existing keys are preserved, new keys are inserted).
+    /// Used by `KernelModel.apply` to deliver `resolved_profiles` on ticks
+    /// where the identity domain sidecar is absent.
+    func merging(resolvedProfiles newProfiles: [String: ResolvedProfile]) -> KernelIdentityProjection {
+        guard !newProfiles.isEmpty else { return self }
+        let merged = resolvedProfiles.merging(newProfiles) { _, new in new }
+        return KernelIdentityProjection(
+            activeAccount: activeAccount,
+            activeNpub: activeNpub,
+            accounts: accounts,
+            bunkerHandshake: bunkerHandshake,
+            resolvedProfiles: merged)
     }
 }

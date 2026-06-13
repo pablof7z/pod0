@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-14T00:00:00Z",
+      "lines": [
+        "Conversation and feedback participants now show real names and avatars instead of raw hex keys."
+      ]
+    },
+    {
       "shipped_at": "2026-06-13T15:13:00Z",
       "lines": [
         "Your podcast list no longer flashes to an empty state while the app finishes launching."

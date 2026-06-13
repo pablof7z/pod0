@@ -347,4 +347,136 @@ final class KernelBridgeWireTests: XCTestCase {
         XCTAssertEqual(DomainSchema.widget,    "podcast.widget")
         XCTAssertEqual(DomainSchema.misc,      "podcast.misc")
     }
+
+    // ── resolved_profiles wire-decode tests (mirrors Android DomainFrameWireTest.kt:910-944) ─
+
+    /// The top-level `projections["resolved_profiles"]` map decodes through
+    /// `PodcastDomainFrames.decode` with the bridge's `.convertFromSnakeCase`
+    /// decoder. Wire keys `display_name` / `picture_url` must map to the
+    /// Swift camelCase properties `displayName` / `pictureUrl` WITHOUT explicit
+    /// CodingKeys (which would break under .convertFromSnakeCase — the #371 hazard).
+    ///
+    /// This is the regression guard proving the dead loop is closed: claim → resolve
+    /// → kernel emits → iOS decodes → nostrProfileCache populated → views show names.
+    func testResolvedProfilesTopLevelKeyDecodesSnakeCaseToResolvedProfileMap() throws {
+        // Realistic fixture mirroring the NMP kernel `ProfileCard` wire shape.
+        // Keys are snake_case (plain Rust serde, no rename). The pubkey values
+        // are representative hex strings matching real Nostr pubkey format.
+        let alicePubkey = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+        let bobPubkey   = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+
+        let data = makeEnvelope(projections: [
+            // resolved_profiles is a SIBLING of podcast.* keys, not inside one.
+            "resolved_profiles": [
+                alicePubkey: [
+                    "display_name": "Alice Wonderland",
+                    "picture_url": "https://example.com/alice.jpg"
+                ] as [String: Any],
+                bobPubkey: [
+                    "display_name": "Bob Builder",
+                    "picture_url": NSNull()      // picture absent for this profile
+                ] as [String: Any]
+            ] as [String: Any],
+            // At least one podcast.* sidecar must be present for decode to succeed
+            // (hasAnyDomain guard). Use a minimal playback frame.
+            DomainSchema.playback: playbackProjection(rev: 1)
+        ])
+
+        let frames = try XCTUnwrap(
+            PodcastDomainFrames.decode(from: data),
+            "frame with resolved_profiles + playback sidecar must yield a non-nil PodcastDomainFrames")
+
+        // resolved_profiles map must be non-empty.
+        XCTAssertFalse(
+            frames.resolvedProfiles.isEmpty,
+            "resolvedProfiles must be non-empty when the kernel emits resolved_profiles")
+        XCTAssertEqual(frames.resolvedProfiles.count, 2,
+                       "both pubkey entries must decode")
+
+        // Alice: both display_name and picture_url present.
+        let alice = try XCTUnwrap(
+            frames.resolvedProfiles[alicePubkey],
+            "Alice's pubkey must be present in resolvedProfiles")
+        XCTAssertEqual(alice.displayName, "Alice Wonderland",
+                       "display_name must decode to displayName via .convertFromSnakeCase")
+        XCTAssertEqual(alice.pictureUrl, "https://example.com/alice.jpg",
+                       "picture_url must decode to pictureUrl via .convertFromSnakeCase")
+
+        // Bob: display_name present, picture_url is null.
+        let bob = try XCTUnwrap(
+            frames.resolvedProfiles[bobPubkey],
+            "Bob's pubkey must be present in resolvedProfiles")
+        XCTAssertEqual(bob.displayName, "Bob Builder")
+        XCTAssertNil(bob.pictureUrl,
+                     "null picture_url must decode as nil (decodeIfPresent)")
+    }
+
+    /// `KernelIdentityProjection.from(domainFrames:)` surfaces the decoded
+    /// resolved_profiles map when the identity domain sidecar is also present.
+    func testIdentityProjectionSurfacesResolvedProfilesWhenIdentityDomainPresent() throws {
+        let pubkey = "cafe0000cafe0000cafe0000cafe0000cafe0000cafe0000cafe0000cafe0000"
+        let data = makeEnvelope(projections: [
+            "resolved_profiles": [
+                pubkey: ["display_name": "Café User", "picture_url": "https://cdn.example.com/u.png"]
+            ] as [String: Any],
+            DomainSchema.identity: identityProjection(rev: 1, npub: "npub1test")
+        ])
+
+        let frames = try XCTUnwrap(PodcastDomainFrames.decode(from: data))
+        let identity = KernelIdentityProjection.from(domainFrames: frames)
+
+        XCTAssertFalse(identity.resolvedProfiles.isEmpty,
+                       "KernelIdentityProjection must carry the resolved_profiles map")
+        let profile = try XCTUnwrap(identity.resolvedProfiles[pubkey])
+        XCTAssertEqual(profile.displayName, "Café User")
+        XCTAssertEqual(profile.pictureUrl, "https://cdn.example.com/u.png")
+    }
+
+    /// A resolved_profiles-only frame (no identity domain sidecar) still decodes
+    /// the profiles in `frames.resolvedProfiles`. This validates the additive-
+    /// merge path in `KernelModel.apply` that calls `merging(resolvedProfiles:)`.
+    func testResolvedProfilesDecodeWithoutIdentityDomainSidecar() throws {
+        let pubkey = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+        let data = makeEnvelope(projections: [
+            "resolved_profiles": [
+                pubkey: ["display_name": "Ghost User"]
+            ] as [String: Any],
+            // Provide a podcast.* sidecar so hasAnyDomain passes.
+            DomainSchema.playback: playbackProjection(rev: 5, nowPlayingId: nil)
+        ])
+
+        let frames = try XCTUnwrap(PodcastDomainFrames.decode(from: data))
+        // Identity domain absent — this is the "resolved_profiles arrives on a
+        // non-identity tick" case that the KernelModel.apply merge path handles.
+        XCTAssertNil(frames.identity, "identity domain must be absent from this frame")
+        XCTAssertEqual(frames.resolvedProfiles.count, 1)
+        XCTAssertEqual(frames.resolvedProfiles[pubkey]?.displayName, "Ghost User")
+
+        // from(domainFrames:) returns .empty when identity domain is absent.
+        let identity = KernelIdentityProjection.from(domainFrames: frames)
+        XCTAssertEqual(identity, .empty,
+                       "from(domainFrames:) must return .empty when identity domain is absent")
+
+        // The merging helper must carry the profiles onto an existing identity.
+        let existing = KernelIdentityProjection(
+            activeAccount: "abc123", activeNpub: "npub1existing",
+            accounts: [], bunkerHandshake: nil, resolvedProfiles: [:])
+        let merged = existing.merging(resolvedProfiles: frames.resolvedProfiles)
+        XCTAssertEqual(merged.activeAccount, "abc123",
+                       "merging must preserve existing activeAccount")
+        XCTAssertEqual(merged.resolvedProfiles[pubkey]?.displayName, "Ghost User",
+                       "merging must inject the new resolved profile")
+    }
+
+    /// An absent `resolved_profiles` key in the frame must yield an empty map
+    /// (not a decode error). D6 degrade: absent = no change this tick.
+    func testAbsentResolvedProfilesKeyYieldsEmptyMap() throws {
+        // Frame has a podcast.* sidecar but no resolved_profiles key.
+        let data = makeEnvelope(projections: [
+            DomainSchema.playback: playbackProjection(rev: 2)
+        ])
+        let frames = try XCTUnwrap(PodcastDomainFrames.decode(from: data))
+        XCTAssertTrue(frames.resolvedProfiles.isEmpty,
+                      "absent resolved_profiles key must yield an empty map (D6 degrade)")
+    }
 }

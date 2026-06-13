@@ -751,13 +751,28 @@ final class KernelModel {
         // Store-open-failure fires on every frame (before rev-gating) so the
         // mandatory store alert fires on the first frame (V-67).
         storeOpenFailure = result.storeOpenFailure
-        // Identity: only update when the identity domain sidecar was present in
+        // Identity: only replace when the identity domain sidecar was present in
         // this frame (result.identity != .empty). Absent = identity unchanged;
         // preserve the current kernelIdentity rather than clobbering with .empty.
         // This is correct because the kernel only emits the identity sidecar when
         // the identity domain rev advanced (sign-in, sign-out, account change).
-        if result.identity != .empty, result.identity != kernelIdentity {
-            kernelIdentity = result.identity
+        if result.identity != .empty {
+            if result.identity != kernelIdentity {
+                kernelIdentity = result.identity
+            }
+        } else if !result.domainFrames.resolvedProfiles.isEmpty {
+            // `resolved_profiles` is a TOP-LEVEL projections key (not a
+            // `podcast.*` domain sidecar) that can arrive on any tick —
+            // including ticks where the identity domain sidecar is absent
+            // (result.identity == .empty). Merge the new profiles additively
+            // into the cached kernelIdentity so the consumer (AppStateStore
+            // → mergeResolvedProfiles) receives them on the next observation
+            // tick without clobbering the active-account fields.
+            let merged = kernelIdentity.merging(
+                resolvedProfiles: result.domainFrames.resolvedProfiles)
+            if merged != kernelIdentity {
+                kernelIdentity = merged
+            }
         }
         snapshotCount &+= 1
         lastSnapshotAt = Date()

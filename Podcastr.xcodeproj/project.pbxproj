@@ -709,7 +709,6 @@
 		F03B1C40871F4F7D7C8606B4 /* VectorIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B2D2953E155983C3FEF6301 /* VectorIndex.swift */; };
 		F0F22192EDC2ED57F89C2E80 /* ClipComposerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB7944B0FB7FE399DED84E2A /* ClipComposerSheet.swift */; };
 		F1081CCD8A1C718E1AF1207C /* RAGService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D49683E5F74E9AF459761FDB /* RAGService.swift */; };
-		F1199D808E01A75817CA5DD0 /* AdSegmentDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8685233AADD5B7B1D4130785 /* AdSegmentDetectorTests.swift */; };
 		F1373FDD954AC129FEDF9A51 /* ChangeRelayRoleSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5292676BB2477063BFD5F6E5 /* ChangeRelayRoleSheet.swift */; };
 		F1C6CD8EED14F919A4320FB3 /* OnboardingStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80CB2E8A2ABAE7AF0A229AC9 /* OnboardingStep.swift */; };
 		F1D74AD842C37F08A407C6B4 /* TuistBundle+Podcastr.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A973CC1C68553201DCE3289 /* TuistBundle+Podcastr.swift */; };
@@ -1239,7 +1238,6 @@
 		85AB8152D55E6C47E39E9A01 /* Podcastr.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Podcastr.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		85D22CEE0D129CA7153295CE /* EditTextSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditTextSheet.swift; sourceTree = "<group>"; };
 		85DF179FE13C00153FB2A250 /* TuistBundle+PodcastrTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TuistBundle+PodcastrTests.swift"; sourceTree = "<group>"; };
-		8685233AADD5B7B1D4130785 /* AdSegmentDetectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdSegmentDetectorTests.swift; sourceTree = "<group>"; };
 		86B285F652D6AA574D54A0C8 /* ChaptersHydrationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChaptersHydrationService.swift; sourceTree = "<group>"; };
 		86BF2534C9EEC51CC9AA3C9B /* RelayDiagnosticsRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayDiagnosticsRows.swift; sourceTree = "<group>"; };
 		86D61742C203AD49D6E7493D /* AgentTools+PeerActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AgentTools+PeerActions.swift"; sourceTree = "<group>"; };
@@ -2329,7 +2327,6 @@
 		9DFEBDD0B7DE5B795F2AC05F /* Sources */ = {
 			isa = PBXGroup;
 			children = (
-				8685233AADD5B7B1D4130785 /* AdSegmentDetectorTests.swift */,
 				CF713EAA4C8F766679BB8CE8 /* AgentContextDecodeTests.swift */,
 				BABF75DD82031E22B307B85D /* AgentRunFormatTests.swift */,
 				BBB1EA4A95C6237D6453348F /* AgentRunToolFormatterTests.swift */,
@@ -3792,7 +3789,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F1199D808E01A75817CA5DD0 /* AdSegmentDetectorTests.swift in Sources */,
 				92DC8A9E1419D731FE1B5E82 /* AgentContextDecodeTests.swift in Sources */,
 				2A485631BEA6A53677E9CCCB /* AgentRunFormatTests.swift in Sources */,
 				0B4D0A631532E8A76F1A3F9E /* AgentRunToolFormatterTests.swift in Sources */,

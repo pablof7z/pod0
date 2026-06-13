@@ -608,11 +608,11 @@ extension AppStateStore {
         for (pubkey, profile) in profiles {
             // Skip empty rows — no name and no picture is nothing to surface,
             // and inserting one would only mask a later richer fetch.
-            guard profile.display != nil || profile.pictureUrl != nil else { continue }
+            guard profile.displayName != nil || profile.pictureUrl != nil else { continue }
             setNostrProfile(NostrProfileMetadata(
                 pubkey: pubkey,
                 name: nil,
-                displayName: profile.display,
+                displayName: profile.displayName,
                 about: nil,
                 picture: profile.pictureUrl,
                 nip05: nil,
