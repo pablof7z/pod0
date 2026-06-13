@@ -121,6 +121,105 @@ jobs:
             exit 1
           }
 
+  android-kotlin-check:
+    name: Android Kotlin compile + unit tests
+    # Closes the gap where CI only ran `cargo check` on the Rust lib but never
+    # compiled any Kotlin — allowing breaks like PR #430 (DomainFrameWireTest
+    # compile failure) to reach main undetected.  PR #439's 35 unit tests were
+    # the first Kotlin+Gradle verification on current main; this gate makes that
+    # automatic on every PR going forward.
+    #
+    # Tool-version sources (all pinned to match repo reality):
+    #   JDK 17       — android/Podcast/app/build.gradle.kts compileOptions + jvmTarget
+    #   compileSdk 34 — android/Podcast/app/build.gradle.kts compileSdk
+    #   AGP 8.5.2    — android/Podcast/build.gradle.kts com.android.application version
+    #   Kotlin 1.9.24 — android/Podcast/build.gradle.kts kotlin.android version
+    #   Gradle 8.7   — android/Podcast/gradle/wrapper/gradle-wrapper.properties
+    #   NDK r27c     — matches existing android-check job (test.yml line ~52)
+    #   ABIs         — arm64-v8a + x86_64 from build.gradle.kts abiFilters + cargoNdk task
+    #   Rust targets — aarch64-linux-android + x86_64-linux-android (same ABIs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # JDK 17 — required by android/Podcast/app/build.gradle.kts:
+      #   compileOptions { sourceCompatibility = JavaVersion.VERSION_17
+      #                    targetCompatibility = JavaVersion.VERSION_17 }
+      #   kotlinOptions { jvmTarget = "17" }
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      # Android SDK with build-tools and platform for compileSdk 34
+      # (AGP 8.5.2 requires it; android/Podcast/app/build.gradle.kts compileSdk = 34).
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK platform + build-tools
+        run: |
+          sdkmanager --install \
+            "platforms;android-34" \
+            "build-tools;34.0.0" \
+            "platform-tools"
+
+      # NDK r27c — same version as the existing android-check job (test.yml ~line 52).
+      # cargo-ndk invoked by preBuild (build.gradle.kts cargoNdk task) needs the NDK
+      # to cross-compile libnmp_app_podcast.so for arm64-v8a and x86_64.
+      - name: Set up Android NDK r27c
+        id: setup-ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r27c
+          add-to-path: false
+
+      # Rust stable + both Android targets the cargoNdk task builds:
+      #   -t arm64-v8a  → aarch64-linux-android
+      #   -t x86_64     → x86_64-linux-android
+      # (android/Podcast/app/build.gradle.kts abiFilters + cargoNdk commandLine)
+      - name: Install Rust stable + Android targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,x86_64-linux-android
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --locked
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-kotlin-gate-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-kotlin-gate-
+            ${{ runner.os }}-cargo-android-
+
+      - name: Cache Gradle caches
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-home-cache-cleanup: true
+
+      # preBuild depends on cargoNdk (build.gradle.kts line ~137), so
+      # compileDebugKotlin triggers a full Rust cross-compile as a side-effect.
+      # ANDROID_NDK_HOME must be set so cargo-ndk can locate the toolchain.
+      - name: Compile Kotlin + run unit tests
+        working-directory: android/Podcast
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          ./gradlew \
+            :app:compileDebugKotlin \
+            :app:compileDebugUnitTestKotlin \
+            :app:testDebugUnitTest \
+            --no-daemon \
+            --stacktrace
+
   workspace-check:
     name: Rust workspace build gate (all members, all targets)
     runs-on: ubuntu-latest
