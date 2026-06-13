@@ -1,48 +1,18 @@
-//! Blossom blob upload (BUD-01 / BUD-02) — M8.
+//! Blossom blob response parsing — BUD-01 descriptor deserialization.
 //!
-//! Before a `kind:54` NIP-F4 episode event is published it MUST point at a
-//! real audio URL. This module uploads the episode's local download file to
-//! the user-configured Blossom server and hands back the permanent URL +
-//! SHA-256 hash so [`crate::host_op_publish::publish_episode`] can stamp the
-//! `audio` tag with the hosted blob instead of the original RSS enclosure.
+//! The full Build → Sign → Transport pipeline for Blossom uploads is now
+//! owned by the NMP kernel via `nmp.blossom.upload` (D13). App code dispatches
+//! the action with `signer_pubkey: Some(podcast_pubkey_hex)` and reads the
+//! settled `BlobDescriptor` from the `action_results` snapshot slot.
 //!
-//! ## Protocol (BUD-01 / BUD-02)
+//! This module retains only the response-parsing helper used by the Rust
+//! integration tests and by any future path that needs to decode a blob
+//! descriptor from raw JSON (e.g. a headless scenario asserting upload shape).
 //!
-//! 1. Compute the SHA-256 of the raw file bytes — this is the Blossom "blob
-//!    hash" the server addresses the blob by.
-//! 2. Build a `kind:24242` Nostr auth event signed with the per-podcast
-//!    NIP-F4 secret. Required tags: `["t","upload"]`, `["x",<sha256-hex>]`,
-//!    and `["expiration",<unix-ts>]` (many servers `401` without the
-//!    expiration tag — see the `expiration` constant below).
-//! 3. `PUT`/`POST {server}/upload` with header
-//!    `Authorization: Nostr <base64(event_json)>` and the raw bytes as the
-//!    body. This module uses `POST` to match the only verb the HTTP
-//!    capability `HttpMethod` enum currently exposes.
-//! 4. Parse the JSON descriptor `{"url","sha256","size","type"}`.
-//!
-//! ## Binary transport
-//!
-//! The HTTP capability ([`podcast_feeds::http::HttpRequest`]) carries the
-//! text request body as a UTF-8 `String`, which cannot represent arbitrary
-//! binary audio bytes. The raw blob therefore travels in the dedicated
-//! `body_base64` field: we base64-encode the bytes here and the iOS executor
-//! decodes them back to raw `Data` before sending (`HttpCapability.swift`),
-//! so the wire payload is valid UTF-8 and the bytes arrive intact. `body` is
-//! left `None` so the executor takes the binary path. The unit tests below
-//! exercise auth-event construction and response parsing (the parts that are
-//! transport-agnostic) via an injected `fetch` closure.
-
-use base64::Engine;
-use nostr::{EventBuilder, JsonUtil, Keys, Kind, SecretKey, Tag, Timestamp};
-use podcast_feeds::http::{HttpMethod, HttpRequest, HttpResult};
-use sha2::{Digest, Sha256};
-
-/// `kind:24242` — Blossom authorization event (BUD-01).
-const KIND_BLOSSOM_AUTH: u16 = 24242;
-
-/// Auth-event lifetime in seconds. The `expiration` tag is set this far in
-/// the future from `created_at`; Blossom servers reject already-expired auth.
-const AUTH_EXPIRATION_SECS: i64 = 60 * 60;
+//! The hand-rolled BUD-02 upload path (sha256 + kind:24242 auth-event signing +
+//! base64 Authorization header + PUT) has been deleted. It lived in the old
+//! `upload_to_blossom` function; the commit that removed it is the one that
+//! introduced `nmp_dispatch::blossom_upload_via_nmp`.
 
 /// Outcome of a successful Blossom upload — the blob descriptor the server
 /// returns, normalized into the fields the publish path needs.
@@ -59,121 +29,10 @@ pub struct BlossomUploadResult {
     pub mime_type: String,
 }
 
-/// Upload a local file to a Blossom server and return its permanent URL.
-///
-/// `fetch` is the HTTP transport (in production a closure over
-/// `handler.dispatch_http`). It is injected so the upload logic stays a pure,
-/// unit-testable function with no `*mut NmpApp` dependency.
-pub fn upload_to_blossom(
-    local_path: &str,
-    blossom_url: &str,
-    secret_bytes: &[u8; 32],
-    fetch: impl FnOnce(&HttpRequest) -> Result<HttpResult, String>,
-) -> Result<BlossomUploadResult, String> {
-    let bytes =
-        std::fs::read(local_path).map_err(|e| format!("read local file {local_path}: {e}"))?;
-    if bytes.is_empty() {
-        return Err(format!("local file is empty: {local_path}"));
-    }
-
-    let hash_hex = sha256_hex(&bytes);
-    let now = chrono::Utc::now().timestamp();
-    let auth_event_json = build_auth_event(secret_bytes, &hash_hex, bytes.len(), now)?;
-    let auth_header = format!(
-        "Nostr {}",
-        base64::engine::general_purpose::STANDARD.encode(auth_event_json.as_bytes())
-    );
-
-    let upload_url = format!("{}/upload", blossom_url.trim_end_matches('/'));
-    let req = HttpRequest {
-        method: HttpMethod::Post,
-        url: upload_url,
-        headers: vec![
-            vec!["Authorization".into(), auth_header],
-            vec!["Content-Type".into(), "application/octet-stream".into()],
-        ],
-        // The HTTP capability `body` is a UTF-8 `String`, so the raw blob
-        // travels base64-encoded in the dedicated `body_base64` field. The iOS
-        // executor base64-decodes it back to the original bytes before sending
-        // (`HttpCapability.swift`); `body` stays `None` so the executor takes
-        // the binary path.
-        body: None,
-        body_base64: Some(base64::engine::general_purpose::STANDARD.encode(&bytes)),
-    };
-
-    let result = fetch(&req)?;
-    let body = match result {
-        HttpResult::Ok {
-            status_code, body, ..
-        } => {
-            if !(200..300).contains(&status_code) {
-                return Err(format!("blossom upload http {status_code}: {body}"));
-            }
-            body
-        }
-        HttpResult::Error { message } => {
-            return Err(format!("blossom upload transport: {message}"))
-        }
-    };
-
-    parse_blossom_response(&body)
-}
-
-/// Compute the lowercase SHA-256 hex digest of `bytes`.
-fn sha256_hex(bytes: &[u8]) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(bytes);
-    hex::encode(hasher.finalize())
-}
-
-/// Build and sign the `kind:24242` Blossom authorization event (BUD-01).
-/// Returns the canonical signed event JSON.
-fn build_auth_event(
-    secret_bytes: &[u8; 32],
-    file_hash_hex: &str,
-    byte_count: usize,
-    created_at_secs: i64,
-) -> Result<String, String> {
-    let tags = auth_event_tags(file_hash_hex, byte_count, created_at_secs);
-    let sk = SecretKey::from_slice(secret_bytes).map_err(|e| format!("invalid secret key: {e}"))?;
-    let keys = Keys::new(sk);
-
-    let nostr_tags: Vec<Tag> = tags.iter().filter_map(|t| Tag::parse(t).ok()).collect();
-
-    let event = EventBuilder::new(Kind::from(KIND_BLOSSOM_AUTH), "Upload audio")
-        .tags(nostr_tags)
-        .custom_created_at(Timestamp::from(created_at_secs as u64))
-        .sign_with_keys(&keys)
-        .map_err(|e| format!("sign blossom auth: {e}"))?;
-
-    Ok(event.as_json())
-}
-
-/// The tag set for a Blossom upload auth event. Pure so the test can assert
-/// the exact shape without signing.
-///
-/// Includes the BUD-01-recommended `["size", <byte_count>]` tag so servers
-/// that enforce a max blob size can reject the auth before the body transits.
-fn auth_event_tags(
-    file_hash_hex: &str,
-    byte_count: usize,
-    created_at_secs: i64,
-) -> Vec<Vec<String>> {
-    vec![
-        vec!["t".into(), "upload".into()],
-        vec!["x".into(), file_hash_hex.to_string()],
-        vec!["size".into(), byte_count.to_string()],
-        vec![
-            "expiration".into(),
-            (created_at_secs + AUTH_EXPIRATION_SECS).to_string(),
-        ],
-    ]
-}
-
 /// Parse a Blossom blob descriptor `{"url","sha256","size","type"}`. The
 /// `url` field is mandatory; `sha256` / `size` / `type` fall back to sensible
 /// defaults when a server omits them.
-fn parse_blossom_response(body: &str) -> Result<BlossomUploadResult, String> {
+pub fn parse_blossom_response(body: &str) -> Result<BlossomUploadResult, String> {
     let json: serde_json::Value =
         serde_json::from_str(body).map_err(|e| format!("blossom response not JSON: {e}"))?;
 

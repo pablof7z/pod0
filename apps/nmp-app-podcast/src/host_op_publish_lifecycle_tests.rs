@@ -262,8 +262,18 @@ fn delete_owned_removes_row_key_and_state() {
     // Publish state discarded.
     // Step 13: publish_state now in state.publish (PublishState).
     assert!(handler.state.publish.publish_state.lock().unwrap().get(&id).is_none());
-    // A NIP-09 deletion was signed (null app → relay "signed").
-    assert!(out["deletion_event_id"].is_string());
+    // A NIP-09 deletion was dispatched via the kernel (null app → "signed").
+    // The new architecture does NOT return deletion_event_id (the kernel signs
+    // the event, not the app — so no event id is available at dispatch time).
+    assert!(
+        out.get("deletion_event_id").is_none() || out["deletion_event_id"].is_null(),
+        "deletion_event_id must be absent — kernel handles signing (D13): {out}"
+    );
+    assert_eq!(
+        out["deletion_status"].as_str().unwrap_or(""),
+        "signed",
+        "null-app deletion must report status=signed: {out}"
+    );
 }
 
 #[test]

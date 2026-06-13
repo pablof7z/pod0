@@ -1,17 +1,36 @@
-//! Tests for [`super::host_op_publish`] — create-owned / publish-show / author-claim coverage.
+//! Tests for [`super::host_op_publish`] — create-owned / publish-show /
+//! publish-episode / author-claim coverage.
 //!
-//! Extracted from `host_op_publish.rs` to keep that file under the 500-line hard limit.
+//! Extracted from `host_op_publish.rs` to keep that file under the 500-line
+//! hard limit.
+//!
+//! ## What changed (D13 — retire app-side crypto)
+//!
+//! The old tests asserted that `publish_show` / `publish_episode` returned a
+//! pre-signed `event_json` with a valid `sig` field, and that `resolve_episode_tags`
+//! called an injected `fetch` closure for the Blossom upload.
+//!
+//! Under the new architecture:
+//! - `publish_show` dispatches `PublishRaw { signer_pubkey: Some(pubkey_hex) }`
+//!   to the kernel and returns `{ "status": "signed" }` (null app in tests)
+//!   instead of a `event_json` blob. No app-side signing occurs.
+//! - `publish_episode` dispatches `PublishRaw { signer_pubkey }` similarly.
+//!   Blossom is dispatched through `nmp.blossom.upload` (null app → skipped).
+//! - The response no longer carries `event_json` / `event_id` / `sig`.
+//!
+//! Tests are updated to assert the NEW contract (kernel-dispatch shape) and
+//! explicitly assert that `event_json` / `sig` are NOT in the response (so a
+//! regression back to app-side signing would be caught).
 
 use super::*;
 use crate::store::identity::IdentityStore;
 use crate::store::PodcastStore;
-use chrono::Utc;
 use podcast_core::types::episode::Episode;
 use podcast_core::Podcast;
-use podcast_feeds::http::{HttpMethod, HttpResult};
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 use url::Url;
+use chrono::Utc;
 
 /// Construct a `PodcastHostOpHandler` with a NULL `app` pointer
 /// — the publish handlers never dispatch capabilities, so the
@@ -45,10 +64,17 @@ fn feedback_runtime(rev: Arc<AtomicU64>) -> nmp_feedback::FeedbackRuntime {
     )
 }
 
+// ---------------------------------------------------------------------------
+// create_owned + publish_show round trip (D13 dispatch shape)
+// ---------------------------------------------------------------------------
+
+/// After create_owned the pubkey is stamped on the row; publish_show dispatches
+/// `PublishRaw { signer_pubkey }` via the kernel (null-app → status="signed").
+/// The response must NOT carry `event_json` or `sig` — those only existed when
+/// the app signed locally. The new shape proves the kernel is the signer.
 #[test]
-fn create_owned_then_publish_show_round_trip() {
+fn create_owned_then_publish_show_dispatches_via_kernel() {
     let store = Arc::new(Mutex::new(PodcastStore::new()));
-    // Seed the store with one podcast.
     let podcast = Podcast::new("Round-Trip Show");
     let podcast_id = podcast.id.0.to_string();
     store.lock().unwrap().subscribe(podcast, vec![]);
@@ -57,46 +83,49 @@ fn create_owned_then_publish_show_round_trip() {
 
     // Step 1: create_owned_podcast → returns a pubkey and stamps it on the row.
     let out = create_owned(&handler, podcast_id.clone());
-    assert_eq!(out["ok"], true);
+    assert_eq!(out["ok"], true, "create_owned failed: {out}");
     let pubkey = out["pubkey_hex"]
         .as_str()
-        .expect("pubkey present")
+        .expect("pubkey_hex present")
         .to_owned();
-    assert_eq!(pubkey.len(), 64);
+    assert_eq!(pubkey.len(), 64, "pubkey must be 64-char hex");
+
     // The podcast row now carries the owner pubkey.
     let stored_pk = store
         .lock()
         .unwrap()
         .podcast_by_id_str(&podcast_id)
         .and_then(|p| p.owner_pubkey_hex.clone())
-        .expect("owner pubkey stamped");
+        .expect("owner pubkey stamped on row");
     assert_eq!(stored_pk, pubkey);
 
-    // Step 2: publish_show → returns a signed kind:10154 event with the same pubkey.
-    // With a null app pointer relay dispatch is skipped, so status is "signed".
+    // Step 2: publish_show → kernel dispatch (null-app → "signed").
     let out2 = publish_show(&handler, podcast_id.clone());
-    assert_eq!(out2["ok"], true);
+    assert_eq!(out2["ok"], true, "publish_show failed: {out2}");
     assert_eq!(
         out2["status"], "signed",
         "null-app pointer must yield status=signed"
     );
-    let tags = out2["event_tags"].as_array().expect("event_tags array");
-    // NIP-F4 shows have no `d` tag — first tag is the title.
-    assert_eq!(tags[0][0], "title");
-    // The signer pubkey is threaded into the show tags via the "p" tag.
-    let event: serde_json::Value =
-        serde_json::from_str(out2["event_json"].as_str().unwrap()).unwrap();
-    assert_eq!(event["kind"], 10154);
-    assert_eq!(event["pubkey"], pubkey);
-    // Real secp256k1 signing: id and sig must be non-null 64-char hex strings.
-    let event_id = out2["event_id"].as_str().expect("event_id field present");
-    assert_eq!(event_id.len(), 64, "event_id must be 64-char hex");
-    let sig = event["sig"].as_str().expect("event.sig present");
-    assert_eq!(sig.len(), 128, "sig must be 128-char hex");
-    let id_in_event = event["id"].as_str().expect("event.id present");
+
+    // The response must carry the per-podcast pubkey_hex (used by the kernel
+    // to select the signer) and the event_tags used to build the event.
     assert_eq!(
-        id_in_event, event_id,
-        "event_id in envelope matches event.id field"
+        out2["pubkey_hex"].as_str().expect("pubkey_hex in response"),
+        pubkey,
+        "response pubkey_hex must match the registered per-podcast key"
+    );
+    let tags = out2["event_tags"].as_array().expect("event_tags array");
+    assert_eq!(tags[0][0], "title", "first NIP-F4 show tag is title");
+
+    // CRITICAL: no app-side signed event — event_json / sig / event_id must
+    // NOT be in the response. A regression would re-add these.
+    assert!(
+        out2.get("event_json").is_none() || out2["event_json"].is_null(),
+        "event_json must be absent from the kernel-dispatch response (app-side signing was deleted)"
+    );
+    assert!(
+        out2.get("sig").is_none() || out2["sig"].is_null(),
+        "sig must be absent — the kernel signs, not the app"
     );
 }
 
@@ -121,6 +150,111 @@ fn publish_show_rejects_unowned_podcast() {
     assert_eq!(out["ok"], false);
     assert!(out["error"].as_str().unwrap().contains("podcast not owned"));
 }
+
+// ---------------------------------------------------------------------------
+// publish_episode (D13 dispatch shape)
+// ---------------------------------------------------------------------------
+
+/// Build a minimal episode whose RSS enclosure points at a known URL.
+fn test_episode_for_podcast(podcast: &Podcast) -> Episode {
+    Episode::new(
+        podcast.id.clone(),
+        "https://feed.example/rss.xml",
+        "guid-ep1",
+        "Episode One",
+        Url::parse("https://feed.example/enclosure.mp3").unwrap(),
+        Utc::now(),
+    )
+}
+
+/// publish_episode dispatches `PublishRaw { signer_pubkey }` via the kernel
+/// (null-app → status="signed"). No app-side signing; response has pubkey_hex
+/// but NOT event_json / sig.
+#[test]
+fn publish_episode_dispatches_via_kernel() {
+    let store = Arc::new(Mutex::new(PodcastStore::new()));
+    let podcast = Podcast::new("My Podcast");
+    let podcast_id = podcast.id.0.to_string();
+    let episode = test_episode_for_podcast(&podcast);
+    let episode_id = episode.id.0.to_string();
+    {
+        let mut s = store.lock().unwrap();
+        s.subscribe(podcast, vec![episode]);
+    }
+
+    let handler = handler_with_store(store.clone());
+
+    // Must create_owned first to mint the per-podcast key.
+    let owned_out = create_owned(&handler, podcast_id.clone());
+    assert_eq!(owned_out["ok"], true);
+    let pubkey = owned_out["pubkey_hex"].as_str().unwrap().to_owned();
+
+    let out = handle_publish_action(
+        &handler,
+        PublishAction::PublishEpisode { episode_id: episode_id.clone() },
+    );
+    assert_eq!(out["ok"], true, "publish_episode failed: {out}");
+    assert_eq!(
+        out["status"], "signed",
+        "null-app must yield status=signed"
+    );
+
+    // Response carries the per-podcast pubkey_hex (the signer the kernel will use).
+    assert_eq!(
+        out["pubkey_hex"].as_str().expect("pubkey_hex in response"),
+        pubkey,
+        "response pubkey_hex matches the per-podcast key"
+    );
+
+    // event_tags present (the kernel gets the unsigned tag set).
+    let tags = out["event_tags"].as_array().expect("event_tags array");
+    let audio_tag = tags
+        .iter()
+        .find(|t| t.get(0).and_then(|v| v.as_str()) == Some("audio"))
+        .expect("audio tag present in episode tags");
+    assert!(
+        !audio_tag.get(1).and_then(|v| v.as_str()).unwrap_or("").is_empty(),
+        "audio tag must have a URL"
+    );
+
+    // CRITICAL: no app-side signed event.
+    assert!(
+        out.get("event_json").is_none() || out["event_json"].is_null(),
+        "event_json must be absent from the kernel-dispatch response"
+    );
+    assert!(
+        out.get("sig").is_none() || out["sig"].is_null(),
+        "sig must be absent — the kernel signs, not the app"
+    );
+
+    // blossom_correlation_id is null for a null-app (kernel not reached).
+    assert!(
+        out["blossom_correlation_id"].is_null(),
+        "blossom_correlation_id must be null when app is null: {out}"
+    );
+}
+
+#[test]
+fn publish_episode_rejects_unowned_podcast() {
+    let store = Arc::new(Mutex::new(PodcastStore::new()));
+    let podcast = Podcast::new("Unowned Podcast");
+    let episode = test_episode_for_podcast(&podcast);
+    let episode_id = episode.id.0.to_string();
+    store.lock().unwrap().subscribe(podcast, vec![episode]);
+
+    let handler = handler_with_store(store);
+    // No create_owned → no key → error.
+    let out = handle_publish_action(
+        &handler,
+        PublishAction::PublishEpisode { episode_id },
+    );
+    assert_eq!(out["ok"], false);
+    assert!(out["error"].as_str().unwrap().contains("podcast not owned"));
+}
+
+// ---------------------------------------------------------------------------
+// publish_author_claim
+// ---------------------------------------------------------------------------
 
 #[test]
 fn publish_author_claim_lists_every_owned_pubkey() {
@@ -147,7 +281,7 @@ fn publish_author_claim_lists_every_owned_pubkey() {
         assert_eq!(tag[0], "p");
         assert_eq!(tag[1].as_str().unwrap().len(), 64);
     }
-    // event_json is no longer in the response — NMP builds and signs the event
+    // event_json is not in the response — NMP builds and signs the event
     // via PublishRaw; status is "signed" (null app in unit tests).
     assert_eq!(out["status"], "signed");
 }
@@ -159,6 +293,10 @@ fn publish_author_claim_rejects_empty_agent_pubkey() {
     let out = publish_author_claim(&handler, String::new());
     assert_eq!(out["ok"], false);
 }
+
+// ---------------------------------------------------------------------------
+// remove_owned
+// ---------------------------------------------------------------------------
 
 #[test]
 fn remove_owned_clears_key_and_pubkey_field() {
@@ -179,128 +317,4 @@ fn remove_owned_clears_key_and_pubkey_field() {
         .podcast_by_id_str(&id)
         .and_then(|p| p.owner_pubkey_hex.clone())
         .is_none());
-}
-
-// ---------------------------------------------------------------------------
-// resolve_episode_tags — Blossom upload branch coverage (M8).
-//
-// `resolve_episode_tags` is pure: it takes an injected `fetch` closure (same
-// pattern as `blossom::upload_to_blossom`), so all three branches are tested
-// here without a live `*mut NmpApp`. The closure either succeeds, errors, or
-// panics (to prove it is never reached when there is no local file).
-// ---------------------------------------------------------------------------
-
-/// Build a minimal episode whose RSS enclosure points at a known URL. Used to
-/// assert which URL lands in the `audio` tag.
-fn test_episode() -> Episode {
-    Episode::new(
-        Podcast::new("Tag Test").id,
-        "https://feed.example/rss.xml",
-        "guid-1",
-        "Episode One",
-        Url::parse("https://feed.example/enclosure.mp3").unwrap(),
-        Utc::now(),
-    )
-}
-
-/// Extract the `["audio", url, mime]` tag's URL from a built tag set.
-fn audio_url(tags: &[Vec<String>]) -> &str {
-    tags.iter()
-        .find(|t| t.first().map(String::as_str) == Some("audio"))
-        .and_then(|t| t.get(1))
-        .map(String::as_str)
-        .expect("audio tag present")
-}
-
-/// No local download → publish with the RSS enclosure URL; the fetch closure
-/// is never invoked (no Blossom attempt) and `blossom_error` is None.
-#[test]
-fn resolve_episode_tags_no_local_file_uses_enclosure() {
-    let episode = test_episode();
-    let secret = [9u8; 32];
-    let (tags, blossom_url_used, blossom_error) =
-        resolve_episode_tags(&episode, None, "https://blossom.example", &secret, |_req| {
-            panic!("fetch must not be called when there is no local file")
-        });
-    assert_eq!(audio_url(&tags), "https://feed.example/enclosure.mp3");
-    assert_eq!(blossom_url_used, None, "no Blossom URL when no local file");
-    assert_eq!(blossom_error, None, "no error when no upload attempted");
-}
-
-/// Upload error → fall back to the enclosure URL, `blossom_error` populated,
-/// `blossom_url_used` is None.
-#[test]
-fn resolve_episode_tags_upload_error_falls_back_to_enclosure() {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("ep.mp3");
-    std::fs::write(&path, b"fake audio bytes").unwrap();
-    let episode = test_episode();
-    let secret = [9u8; 32];
-
-    let (tags, blossom_url_used, blossom_error) = resolve_episode_tags(
-        &episode,
-        Some(path.to_str().unwrap()),
-        "https://blossom.example",
-        &secret,
-        // Server rejects the upload — non-2xx status.
-        |_req| {
-            Ok(HttpResult::Ok {
-                status_code: 500,
-                headers: vec![],
-                body: "boom".into(),
-            })
-        },
-    );
-
-    assert_eq!(
-        audio_url(&tags),
-        "https://feed.example/enclosure.mp3",
-        "audio tag must fall back to the enclosure URL on upload error"
-    );
-    assert_eq!(blossom_url_used, None, "no Blossom URL on failed upload");
-    let err = blossom_error.expect("blossom_error must be populated on upload error");
-    assert!(
-        err.contains("500"),
-        "error should surface the http status: {err}"
-    );
-}
-
-/// Success → the Blossom blob URL appears in the `audio` tag,
-/// `blossom_url_used` carries it, and `blossom_error` is None.
-#[test]
-fn resolve_episode_tags_success_uses_blossom_url() {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("ep.mp3");
-    std::fs::write(&path, b"fake audio bytes").unwrap();
-    let episode = test_episode();
-    let secret = [9u8; 32];
-
-    let (tags, blossom_url_used, blossom_error) = resolve_episode_tags(
-        &episode,
-        Some(path.to_str().unwrap()),
-        "https://blossom.example",
-        &secret,
-        |req| {
-            // Sanity: the upload targets {server}/upload via POST.
-            assert_eq!(req.method, HttpMethod::Post);
-            assert_eq!(req.url, "https://blossom.example/upload");
-            Ok(HttpResult::Ok {
-                status_code: 200,
-                headers: vec![],
-                body: r#"{"url":"https://blossom.example/blob.mp3","sha256":"ab","size":16,"type":"audio/mpeg"}"#.into(),
-            })
-        },
-    );
-
-    assert_eq!(
-        audio_url(&tags),
-        "https://blossom.example/blob.mp3",
-        "audio tag must point at the hosted Blossom blob on success"
-    );
-    assert_eq!(
-        blossom_url_used.as_deref(),
-        Some("https://blossom.example/blob.mp3"),
-        "blossom_url_used must carry the hosted URL"
-    );
-    assert_eq!(blossom_error, None, "no error on a successful upload");
 }

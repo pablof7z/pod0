@@ -126,12 +126,11 @@ url = { version = "2.0" }
 uuid = { version = "1.0", features = ["v4"] }
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 getrandom = "0.2"
-# M8 — Blossom audio upload. SHA-256 over file bytes (the Blossom blob hash),
-# base64 for the `Authorization: Nostr <base64(event_json)>` header, hex for
-# the `x` hash tag. Versions match the existing transitive lockfile entries.
+# sha2 + base64 are used by the LLM and image-generation paths (BYOK JWT
+# signing, elevenlabs audio encoding, image b64). The Blossom upload no
+# longer needs them here — that pipeline now lives in nmp-blossom (D13).
 sha2 = "0.10"
 base64 = "0.22"
-hex = "0.4"
 
 [dev-dependencies]
 # Test-support gates expose `nmp_app_new` / `nmp_app_free` so FFI smoke tests

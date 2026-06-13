@@ -18,15 +18,16 @@
 
 use std::sync::atomic::Ordering;
 
-use chrono::Utc;
-use nostr::JsonUtil;
 use podcast_core::NostrVisibility;
 use podcast_discovery::KIND_SHOW;
 
 use crate::ffi::actions::publish_module::PublishAction;
 use crate::host_op_handler::PodcastHostOpHandler;
-use crate::host_op_publish::{publish_show, sign_event};
-use crate::nmp_dispatch::{publish_via_nmp, self_dispatch_publish};
+use crate::host_op_publish::publish_show;
+use crate::nmp_dispatch::{
+    publish_raw_with_signer_via_nmp, register_podcast_signer_in_kernel, self_dispatch_publish,
+};
+use crate::store::podcast_keys::secret_to_hex;
 
 /// NIP-09 deletion request kind.
 const KIND_DELETION: u32 = 5;
@@ -211,67 +212,76 @@ pub fn update_owned(
 
 /// `podcast.publish.delete_owned_podcast` — full owned-podcast deletion:
 ///
-/// 1. Build + sign a NIP-09 `kind:5` deletion event with the *per-podcast*
-///    key, referencing the last-published `kind:10154` show event, and
-///    broadcast it. This MUST happen before the key is dropped (otherwise
-///    we can no longer sign the deletion).
+/// 1. Dispatch a NIP-09 `kind:5` deletion event signed by the *per-podcast*
+///    key via the kernel's `PublishRaw { signer_pubkey }` seam (D13 — no raw
+///    secret bytes in app code). The deletion targets kind:10154/54 by their
+///    `k` tag (NIP-09 "kind-targeted deletion"). Since the kernel now signs
+///    show events and the signed event id is not returned at dispatch time,
+///    we use the kind-targeted form rather than the `e`-tag form. This MUST
+///    happen before the key is dropped.
 /// 2. Drop the per-podcast key.
 /// 3. Remove the podcast row + episodes from the store.
 /// 4. Discard the publish state.
 pub fn delete_owned(handler: &PodcastHostOpHandler, podcast_id: String) -> serde_json::Value {
-    // Resolve the prior show event id (if we ever published one) so the
-    // NIP-09 event can reference it. Absent → no published show to delete;
-    // we still tear down local state.
+    // Check whether a show was ever published (last_published_at is set
+    // by publish_show on every dispatch). Absent → no published show to
+    // delete; we still tear down local state.
     // Step 13: publish_state now in state.publish (PublishState).
-    let show_event_id = handler
+    let show_was_published = handler
         .state
         .publish
         .publish_state
         .lock()
         .ok()
-        .and_then(|state| {
-            state
-                .get(&podcast_id)
-                .and_then(|s| s.show_event_json.clone())
-        })
-        .and_then(|json| event_id_from_json(&json));
+        .and_then(|state| state.get(&podcast_id).and_then(|s| s.last_published_at))
+        .is_some();
 
-    // Step 1: NIP-09 deletion (only when there is a published show event AND
+    // Step 1: NIP-09 deletion (only when a show was ever published AND
     // nostr is enabled — signing a deletion for an event that was never
     // broadcast is pointless).
+    //
+    // The deletion event is signed by the per-podcast NIP-F4 key via the kernel's
+    // PublishRaw { signer_pubkey } seam (D13 — no raw secret bytes in app code).
+    // The key is re-registered as a non-active signer immediately before the
+    // dispatch; the FIFO actor queue guarantees it lands before the sign request.
+    //
+    // NIP-09 form: `k` tag (kind-targeted deletion for kind:10154). Since the
+    // kernel now owns event signing, the signed event id is not returned at
+    // dispatch time; the kind-targeted form is the correct substitute and
+    // instructs relays to delete all kind:10154 events from this pubkey.
     let mut deletion_status = "skipped";
-    let mut deletion_event_id: Option<String> = None;
     let nostr_enabled = handler
         .state.library.store
         .lock()
         .ok()
         .map(|s: std::sync::MutexGuard<'_, crate::store::PodcastStore>| s.nostr_enabled())
         .unwrap_or(false);
-    if let (Some(event_id), true) = (show_event_id.as_ref(), nostr_enabled) {
+    if show_was_published && nostr_enabled {
         // Step 13: podcast_keys now in state.publish (PublishState).
-        let secret_bytes = handler
+        let key_pair = handler
             .state
             .publish
             .podcast_keys
             .lock()
             .ok()
-            .and_then(|keys| keys.get_key(&podcast_id).copied());
-        if let Some(sk) = secret_bytes {
-            let tags = vec![
-                vec!["e".to_string(), event_id.clone()],
-                vec!["k".to_string(), KIND_SHOW.to_string()],
-            ];
-            let created_at = Utc::now().timestamp();
-            match sign_event(&sk, KIND_DELETION, &tags, "", created_at) {
-                Ok((event, ev_id)) => {
-                    deletion_status = publish_via_nmp(handler.app, &event);
-                    deletion_event_id = Some(ev_id);
-                }
-                Err(e) => {
-                    eprintln!("[host_op_publish_lifecycle] NIP-09 sign failed: {e}");
-                    deletion_status = "sign_failed";
-                }
-            }
+            .and_then(|keys| {
+                let pk = keys.pubkey_hex(&podcast_id)?;
+                let sk = keys.get_key(&podcast_id).copied()?;
+                Some((pk, sk))
+            });
+        if let Some((pubkey_hex, sk)) = key_pair {
+            // Kind-targeted NIP-09 deletion — references the show kind (10154)
+            // without a specific event id (not available post-kernel-signing).
+            let tags = vec![vec!["k".to_string(), KIND_SHOW.to_string()]];
+            let secret_hex = secret_to_hex(&sk);
+            register_podcast_signer_in_kernel(handler.app, &secret_hex);
+            deletion_status = publish_raw_with_signer_via_nmp(
+                handler.app,
+                KIND_DELETION,
+                &tags,
+                "",
+                &pubkey_hex,
+            );
         }
     }
 
@@ -294,15 +304,7 @@ pub fn delete_owned(handler: &PodcastHostOpHandler, podcast_id: String) -> serde
     serde_json::json!({
         "ok": true,
         "deletion_status": deletion_status,
-        "deletion_event_id": deletion_event_id,
     })
-}
-
-/// Extract the `id` hex from a signed Nostr event JSON string. Returns
-/// `None` for unsigned placeholders (the `create_owned`/pre-login path) or
-/// malformed JSON.
-fn event_id_from_json(json: &str) -> Option<String> {
-    nostr::Event::from_json(json).ok().map(|e| e.id.to_hex())
 }
 
 #[cfg(test)]
