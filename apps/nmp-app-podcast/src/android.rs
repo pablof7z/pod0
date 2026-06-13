@@ -26,10 +26,10 @@ use jni::sys::{jint, jlong, jstring};
 use jni::JNIEnv;
 
 use nmp_ffi::{
-    nmp_app_dispatch_action, nmp_app_free, nmp_free_string, nmp_app_is_alive,
-    nmp_app_lifecycle_background, nmp_app_lifecycle_foreground, nmp_app_new,
-    nmp_app_set_update_callback, nmp_app_signin_nsec, nmp_app_start, nmp_app_stop,
-    nmp_external_signer_init, NmpApp,
+    nmp_app_claim_profile, nmp_app_dispatch_action, nmp_app_free, nmp_free_string,
+    nmp_app_is_alive, nmp_app_lifecycle_background, nmp_app_lifecycle_foreground,
+    nmp_app_new, nmp_app_release_profile, nmp_app_set_update_callback,
+    nmp_app_signin_nsec, nmp_app_start, nmp_app_stop, nmp_external_signer_init, NmpApp,
 };
 
 use crate::ffi::{
@@ -472,6 +472,84 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nmpActionDispatch<'l>(
         let _ = action_id;
         0
     })
+}
+
+/// `nativeClaimProfile(handle, pubkeyHex, consumerID)` — register a refcounted
+/// interest in a Nostr pubkey's kind:0 profile under the given consumer token.
+/// The kernel fetches the profile over its relay pool and surfaces it in
+/// `projections["resolved_profiles"]` on the next push frame. D6: invalid
+/// pubkey, null/non-UTF-8 arguments, or a null handle are silent no-ops.
+///
+/// Mirrors iOS `PodcastHandle.claimProfile(pubkeyHex:consumerID:)` and the
+/// `nmp_app_claim_profile` C-ABI symbol in `NmpCore.h`.
+#[no_mangle]
+pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeClaimProfile<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    handle: jlong,
+    pubkey_hex: JString<'l>,
+    consumer_id: JString<'l>,
+) {
+    ffi_guard("nativeClaimProfile", || (), || {
+        let Some(s) = session_ref(handle) else {
+            return;
+        };
+        let pubkey = match env.get_string(&pubkey_hex) {
+            Ok(s) => s.to_string_lossy().into_owned(),
+            Err(_) => return,
+        };
+        let consumer = match env.get_string(&consumer_id) {
+            Ok(s) => s.to_string_lossy().into_owned(),
+            Err(_) => return,
+        };
+        let Ok(c_pubkey) = CString::new(pubkey) else {
+            return;
+        };
+        let Ok(c_consumer) = CString::new(consumer) else {
+            return;
+        };
+        // `force = 0` — background / list-row claims never force a re-fetch.
+        // Matches the iOS convention in `ClaimNostrProfiles.swift` which passes
+        // `force: false` for `.onAppear`-driven claims.
+        nmp_app_claim_profile(s.app, c_pubkey.as_ptr(), c_consumer.as_ptr(), 0);
+    });
+}
+
+/// `nativeReleaseProfile(handle, pubkeyHex, consumerID)` — release a previously
+/// claimed profile interest. The kernel drops the pending request when the last
+/// consumer releases. Idempotent / safe when nothing is claimed for this pair.
+/// D6: any invalid argument is a silent no-op.
+///
+/// Mirrors iOS `PodcastHandle.releaseProfile(pubkeyHex:consumerID:)` and the
+/// `nmp_app_release_profile` C-ABI symbol in `NmpCore.h`.
+#[no_mangle]
+pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeReleaseProfile<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    handle: jlong,
+    pubkey_hex: JString<'l>,
+    consumer_id: JString<'l>,
+) {
+    ffi_guard("nativeReleaseProfile", || (), || {
+        let Some(s) = session_ref(handle) else {
+            return;
+        };
+        let pubkey = match env.get_string(&pubkey_hex) {
+            Ok(s) => s.to_string_lossy().into_owned(),
+            Err(_) => return,
+        };
+        let consumer = match env.get_string(&consumer_id) {
+            Ok(s) => s.to_string_lossy().into_owned(),
+            Err(_) => return,
+        };
+        let Ok(c_pubkey) = CString::new(pubkey) else {
+            return;
+        };
+        let Ok(c_consumer) = CString::new(consumer) else {
+            return;
+        };
+        nmp_app_release_profile(s.app, c_pubkey.as_ptr(), c_consumer.as_ptr());
+    });
 }
 
 /// `nativeFree(handle)` — tear down the kernel and the projection handle.

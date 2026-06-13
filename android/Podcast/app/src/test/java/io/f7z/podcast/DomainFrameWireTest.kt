@@ -906,4 +906,151 @@ class DomainFrameWireTest {
         assertEquals("podcast.social",    DomainSchema.SOCIAL)
         assertEquals("podcast.misc",      DomainSchema.MISC)
     }
+
+    // ── 9. resolved_profiles — NMP-level projection decode + additive merge ────
+    //
+    // `projections["resolved_profiles"]` lives at the NMP top level (not inside
+    // any `podcast.*` sub-domain). The Android bridge decodes it additively in
+    // `decodeDomainFrames` so each push frame enriches the running profile map
+    // without clobbering existing entries.
+    //
+    // Contract under test:
+    //  a. ResolvedProfile @SerialName fields: display_name → display,
+    //     picture_url → pictureUrl (no auto camelCase on Android).
+    //  b. Map<String, ResolvedProfile> round-trips from the wire fixture.
+    //  c. mergeFrames additively merges resolved_profiles (new entries win,
+    //     existing entries are retained when absent from the incoming frame).
+    //  d. An envelope with ONLY resolved_profiles (no podcast.* keys) still
+    //     returns a non-null PodcastDomainFrames with resolvedProfiles populated
+    //     — confirming decodeDomainFrames does not require a podcast.* domain.
+
+    private val resolvedProfilesFixture = """
+        {
+          "aabbccdd001": {
+            "display_name": "Alice Nostr",
+            "picture_url": "https://example.com/alice.jpg"
+          },
+          "11223344001": {
+            "display_name": "Bob Relay",
+            "picture_url": "https://example.com/bob.png"
+          }
+        }
+    """.trimIndent()
+
+    @Test
+    fun `ResolvedProfile decodes snake_case fields correctly`() {
+        // resolved_profiles lives under projections["resolved_profiles"] in the
+        // NMP-level envelope alongside podcast.* domains.
+        val raw = envelope("resolved_profiles" to resolvedProfilesFixture)
+        val frames = SnapshotCodec.decodeDomainFrames(raw)
+
+        // Even without a podcast.* key the bridge should accept the frame when
+        // resolved_profiles is non-empty (decodeDomainFrames returns non-null).
+        assertNotNull("frames must not be null when resolved_profiles is present", frames)
+
+        val profiles = frames!!.resolvedProfiles
+        assertEquals("must have 2 resolved profiles", 2, profiles.size)
+
+        val alice = profiles["aabbccdd001"]
+        assertNotNull("Alice's profile must be present", alice)
+        assertEquals("display_name must map to display field", "Alice Nostr", alice!!.display)
+        assertEquals("picture_url must map to pictureUrl field",
+            "https://example.com/alice.jpg", alice.pictureUrl)
+
+        val bob = profiles["11223344001"]
+        assertNotNull("Bob's profile must be present", bob)
+        assertEquals("Bob Relay", bob!!.display)
+        assertEquals("https://example.com/bob.png", bob.pictureUrl)
+    }
+
+    @Test
+    fun `resolved_profiles decodes partially-populated profile (missing fields are null)`() {
+        // Kernel may omit display_name or picture_url for a profile with no metadata.
+        val partial = """{"aabbccdd002":{}}"""
+        val raw = envelope("resolved_profiles" to partial)
+        val frames = SnapshotCodec.decodeDomainFrames(raw)
+        assertNotNull("frames must not be null", frames)
+
+        val profile = frames!!.resolvedProfiles["aabbccdd002"]
+        assertNotNull("partial profile must be present", profile)
+        assertNull("missing display_name must decode as null", profile!!.display)
+        assertNull("missing picture_url must decode as null", profile.pictureUrl)
+    }
+
+    @Test
+    fun `mergeFrames additively merges resolved_profiles (new entries win, old entries survive)`() {
+        // Seed: frame with Alice only.
+        val aliceOnly = """{"aabbccdd001":{"display_name":"Alice Nostr","picture_url":"https://example.com/alice.jpg"}}"""
+        val frames1 = SnapshotCodec.decodeDomainFrames(envelope("resolved_profiles" to aliceOnly))
+        assertNotNull("first frame must decode", frames1)
+
+        val tracker = DomainRevTracker()
+        val (snap1, accepted1) = SnapshotCodec.mergeFrames(frames1!!, PodcastSnapshot(), tracker)
+        assertTrue("first frame must be accepted", accepted1)
+        assertEquals("snap1 must have 1 resolved profile", 1, snap1.resolvedProfiles.size)
+        assertEquals("Alice Nostr", snap1.resolvedProfiles["aabbccdd001"]?.display)
+
+        // Second frame: Bob added, Alice absent (additive — Alice must survive).
+        val bobOnly = """{"11223344001":{"display_name":"Bob Relay","picture_url":"https://example.com/bob.png"}}"""
+        val frames2 = SnapshotCodec.decodeDomainFrames(envelope("resolved_profiles" to bobOnly))
+        assertNotNull("second frame must decode", frames2)
+        val (snap2, accepted2) = SnapshotCodec.mergeFrames(frames2!!, snap1, tracker)
+        assertTrue("second frame must be accepted", accepted2)
+
+        assertEquals("snap2 must have 2 resolved profiles after additive merge",
+            2, snap2.resolvedProfiles.size)
+        // Alice must still be present (additive merge does NOT clear absent keys).
+        assertEquals("Alice Nostr", snap2.resolvedProfiles["aabbccdd001"]?.display)
+        // Bob must be present (newly delivered key).
+        assertEquals("Bob Relay", snap2.resolvedProfiles["11223344001"]?.display)
+    }
+
+    @Test
+    fun `mergeFrames resolved_profiles update overwrites existing entry for same pubkey`() {
+        // Seed: Alice with old display name.
+        val aliceV1 = """{"aabbccdd001":{"display_name":"Alice Old","picture_url":"https://example.com/old.jpg"}}"""
+        val frames1 = SnapshotCodec.decodeDomainFrames(envelope("resolved_profiles" to aliceV1))
+        assertNotNull("first frame must decode", frames1)
+        val tracker = DomainRevTracker()
+        val (snap1, _) = SnapshotCodec.mergeFrames(frames1!!, PodcastSnapshot(), tracker)
+        assertEquals("Alice Old", snap1.resolvedProfiles["aabbccdd001"]?.display)
+
+        // Second frame: same pubkey with updated display name.
+        val aliceV2 = """{"aabbccdd001":{"display_name":"Alice Updated","picture_url":"https://example.com/new.jpg"}}"""
+        val frames2 = SnapshotCodec.decodeDomainFrames(envelope("resolved_profiles" to aliceV2))
+        assertNotNull("second frame must decode", frames2)
+        val (snap2, accepted2) = SnapshotCodec.mergeFrames(frames2!!, snap1, tracker)
+        assertTrue("update frame must be accepted", accepted2)
+
+        // The newer entry for the same key must win.
+        assertEquals("updated entry must overwrite old entry for same pubkey",
+            "Alice Updated", snap2.resolvedProfiles["aabbccdd001"]?.display)
+        assertEquals("https://example.com/new.jpg",
+            snap2.resolvedProfiles["aabbccdd001"]?.pictureUrl)
+    }
+
+    @Test
+    fun `resolved_profiles and podcast-star domain coexist in same envelope`() {
+        // The kernel can emit both resolved_profiles AND podcast.social in one push.
+        val raw = envelope(
+            "podcast.social" to socialFixture,
+            "resolved_profiles" to resolvedProfilesFixture,
+        )
+        val frames = SnapshotCodec.decodeDomainFrames(raw)
+        assertNotNull("combined frame must decode", frames)
+        assertNotNull("social domain must decode", frames!!.social)
+        assertEquals("2 resolved profiles must decode alongside social domain",
+            2, frames.resolvedProfiles.size)
+        assertEquals("Alice Nostr", frames.resolvedProfiles["aabbccdd001"]?.display)
+    }
+
+    @Test
+    fun `resolved_profiles absent from envelope yields empty map (no NPE)`() {
+        // A library-only frame has no resolved_profiles key — map must be empty, not null.
+        val raw = envelope("podcast.library" to libraryFixture)
+        val frames = SnapshotCodec.decodeDomainFrames(raw)
+        assertNotNull("library frame must decode", frames)
+        assertTrue("resolvedProfiles must be empty when absent from envelope",
+            frames!!.resolvedProfiles.isEmpty())
+    }
 }

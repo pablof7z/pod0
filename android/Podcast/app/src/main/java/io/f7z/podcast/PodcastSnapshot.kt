@@ -110,6 +110,20 @@ data class PodcastSnapshot(
      * at least one conversation thread.
      */
     @SerialName("nostr_conversations") val nostrConversations: List<NostrConversationDto> = emptyList(),
+    /**
+     * Kernel-resolved Nostr profiles keyed by hex pubkey.
+     *
+     * Populated by the NMP kernel from `projections["resolved_profiles"]` on
+     * every push frame where claimed profiles have been resolved (T114
+     * reference-first profile resolution). Merging is additive: entries are
+     * never removed from this map mid-session. Conversation screens use this
+     * map to show real names and avatars instead of shortHex fallbacks.
+     *
+     * NOT a `@SerialName` field — populated by [SnapshotCodec.mergeFrames]
+     * directly from the top-level NMP `projections["resolved_profiles"]` key.
+     * It does not ride a `podcast.*` domain sidecar.
+     */
+    val resolvedProfiles: Map<String, ResolvedProfile> = emptyMap(),
 ) {
     /**
      * Effective subscription list — prefer the new `podcasts` projection, fall

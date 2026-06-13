@@ -159,6 +159,8 @@ fun AppNavigation(
                 if (conv != null) {
                     NostrConversationDetailScreen(
                         conversation = conv,
+                        snapshot = snapshot,
+                        bridge = bridge,
                         onBack = { route = AppRoute.NostrConversations },
                         modifier = contentModifier,
                     )

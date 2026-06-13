@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,14 +27,17 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.f7z.podcast.KernelBridge
 import io.f7z.podcast.NostrConversationDto
 import io.f7z.podcast.NostrConversationTurnDto
+import io.f7z.podcast.PodcastSnapshot
+import io.f7z.podcast.ResolvedProfile
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -57,18 +59,36 @@ import java.util.concurrent.TimeUnit
  *
  * No actions dispatched — read-only surface.
  *
- * Profile resolution: sender display name falls back to "Agent" for outbound
- * turns and the shortened hex pubkey for inbound turns (no resolved profile
- * cache on Android yet).
+ * Profile resolution: [snapshot.resolvedProfiles] provides display names and
+ * avatar URLs for inbound senders. Claims all participant pubkeys via
+ * [bridge.claimProfile] on appear; releases on dispose (mirrors iOS
+ * `.claimNostrProfiles(_:consumer:)` lifecycle). Falls back to "Agent" for
+ * outbound turns and shortHex for unresolved inbound senders.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NostrConversationDetailScreen(
     conversation: NostrConversationDto,
+    snapshot: PodcastSnapshot?,
+    bridge: KernelBridge,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
+    val resolvedProfiles = snapshot?.resolvedProfiles ?: emptyMap()
+
+    // Claim all participant pubkeys so the kernel resolves their kind:0 profiles.
+    // Mirrors iOS `.claimNostrProfiles(_:consumer:)` applied to
+    // `conversation.participants`. The consumer ID is stable for this conversation
+    // so the kernel's refcount dedupes. Released on dispose.
+    val consumerID = "NostrConversationDetail:${conversation.rootEventId}"
+    DisposableEffect(conversation.rootEventId) {
+        val pubkeys = (conversation.participants + conversation.counterpartyHex).distinct()
+        pubkeys.forEach { pubkey -> bridge.claimProfile(pubkey, consumerID) }
+        onDispose {
+            pubkeys.forEach { pubkey -> bridge.releaseProfile(pubkey, consumerID) }
+        }
+    }
 
     // Auto-scroll to bottom on first composition, matching iOS .defaultScrollAnchor(.bottom).
     LaunchedEffect(Unit) {
@@ -119,6 +139,7 @@ fun NostrConversationDetailScreen(
                     val showHeader = shouldShowHeader(conversation.turns, index)
                     NostrSlackBubble(
                         turn = turn,
+                        resolvedProfile = resolvedProfiles[turn.pubkeyHex],
                         showHeader = showHeader,
                     )
                 }
@@ -152,6 +173,7 @@ private fun shouldShowHeader(turns: List<NostrConversationTurnDto>, index: Int):
 @Composable
 private fun NostrSlackBubble(
     turn: NostrConversationTurnDto,
+    resolvedProfile: ResolvedProfile?,
     showHeader: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -166,7 +188,10 @@ private fun NostrSlackBubble(
     ) {
         // Avatar slot — fixed 32 dp wide; shown only on header turns.
         if (showHeader) {
-            NostrAvatarPlaceholder(modifier = Modifier.size(32.dp))
+            NostrAvatar(
+                pictureUrl = resolvedProfile?.pictureUrl,
+                modifier = Modifier.size(32.dp),
+            )
         } else {
             Spacer(modifier = Modifier.width(32.dp))
         }
@@ -181,7 +206,7 @@ private fun NostrSlackBubble(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = displayNameForTurn(turn),
+                        text = displayNameForTurn(turn, resolvedProfile),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = if (isOutbound)
@@ -222,15 +247,19 @@ private fun NostrSlackBubble(
 // ── Display-name helper ───────────────────────────────────────────────────────
 
 /**
- * Resolve a human-readable label for a turn's sender. When the Android
- * kernel-resolved profile cache is available this will be extended; for now:
+ * Resolve a human-readable label for a turn's sender.
  *  - outbound ("our" agent) → "Agent"
- *  - inbound → short hex pubkey
+ *  - inbound with resolved profile → resolved display name
+ *  - inbound unresolved → short hex pubkey
  *
- * Mirrors iOS `NostrSlackBubble.displayName`.
+ * Mirrors iOS `NostrSlackBubble.displayName` extended with kernel profile data.
  */
-private fun displayNameForTurn(turn: NostrConversationTurnDto): String =
-    if (turn.direction == "outbound") "Agent" else shortHex(turn.pubkeyHex)
+private fun displayNameForTurn(turn: NostrConversationTurnDto, resolvedProfile: ResolvedProfile?): String =
+    when {
+        turn.direction == "outbound" -> "Agent"
+        resolvedProfile?.display != null -> resolvedProfile.display
+        else -> shortHex(turn.pubkeyHex)
+    }
 
 // ── Timestamp helper ──────────────────────────────────────────────────────────
 

@@ -3,6 +3,8 @@ package io.f7z.podcast
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -111,6 +113,32 @@ data class WidgetDomainFrame(
     val widget: WidgetSnapshot? = null,
 )
 
+// ── NMP resolved_profiles (top-level projections key) ────────────────────────
+
+/**
+ * One entry from the NMP kernel's `projections["resolved_profiles"]` map.
+ *
+ * Populated when the host claims a pubkey via `nmp_app_claim_profile`;
+ * the kernel fetches kind:0 and surfaces the result here on the next push
+ * frame. Mirrors the iOS `ResolvedProfile` struct in
+ * `KernelIdentityProjection.swift`.
+ *
+ * `display` is the kernel's best display name (NIP-05 > display_name > name).
+ * `pictureUrl` is the kind:0 picture field. Both are optional.
+ *
+ * Wire key is snake_case from Rust; `@SerialName` is load-bearing here
+ * because kotlinx-serialization does NOT auto-convert snake_case → camelCase
+ * without explicit configuration (the bridge JSON decoder uses
+ * `convertFromSnakeCase` on iOS but Android uses `ignoreUnknownKeys` without
+ * that strategy — so explicit `@SerialName` is required for every snake_case
+ * field in Android DTO classes).
+ */
+@Serializable
+data class ResolvedProfile(
+    @SerialName("display_name") val display: String? = null,
+    @SerialName("picture_url") val pictureUrl: String? = null,
+)
+
 // ── podcast.social ────────────────────────────────────────────────────────────
 
 /**
@@ -178,6 +206,12 @@ data class MiscDomainFrame(
  * All per-domain frames extracted from one push frame. Only domains present in
  * the kernel's delta emit carry a non-null value. Absent domains MUST NOT
  * overwrite the last-accepted composite state.
+ *
+ * [resolvedProfiles] is extracted from `projections["resolved_profiles"]` in
+ * the same top-level NMP projections map where `podcast.*` sidecars live. It
+ * is NOT a `podcast.*` domain frame — it has no `rev` counter and is merged
+ * additively (never cleared) into [PodcastSnapshot.resolvedProfiles].
+ * An empty map means the kernel emitted no resolved profiles this tick.
  */
 data class PodcastDomainFrames(
     val library:   LibraryDomainFrame? = null,
@@ -188,11 +222,13 @@ data class PodcastDomainFrames(
     val widget:    WidgetDomainFrame? = null,
     val social:    SocialDomainFrame? = null,
     val misc:      MiscDomainFrame? = null,
+    /** Additive resolved-profiles map from `projections["resolved_profiles"]`. */
+    val resolvedProfiles: Map<String, ResolvedProfile> = emptyMap(),
 ) {
     val hasAnyDomain: Boolean get() =
         library != null || playback != null || downloads != null ||
         settings != null || identity != null || widget != null ||
-        social != null || misc != null
+        social != null || misc != null || resolvedProfiles.isNotEmpty()
 
     fun presentDomainNames(): String {
         val names = mutableListOf<String>()
@@ -204,6 +240,7 @@ data class PodcastDomainFrames(
         if (widget    != null) names.add("widget")
         if (social    != null) names.add("social")
         if (misc      != null) names.add("misc")
+        if (resolvedProfiles.isNotEmpty()) names.add("resolved_profiles(${resolvedProfiles.size})")
         return if (names.isEmpty()) "none" else names.joinToString(",")
     }
 }
@@ -296,15 +333,31 @@ object SnapshotCodec {
             val social    = tryDecode(DomainSchema.SOCIAL,     SocialDomainFrame.serializer())
             val misc      = tryDecode(DomainSchema.MISC,       MiscDomainFrame.serializer())
 
+            // `resolved_profiles` lives in the NMP-level projections map (not a
+            // `podcast.*` domain sidecar). Decode it additively — the map is an
+            // object keyed by hex pubkey; absent = no claimed profiles resolved
+            // this tick. D6: any decode error yields an empty map (not a failure).
+            val resolvedProfiles: Map<String, ResolvedProfile> = run decodeProfiles@{
+                val elem = projections["resolved_profiles"]
+                    ?: return@decodeProfiles emptyMap()
+                runCatching {
+                    json.decodeFromJsonElement(
+                        MapSerializer(String.serializer(), ResolvedProfile.serializer()),
+                        elem,
+                    )
+                }.getOrDefault(emptyMap())
+            }
+
             val frames = PodcastDomainFrames(
-                library   = library,
-                playback  = playback,
-                downloads = downloads,
-                settings  = settings,
-                identity  = identity,
-                widget    = widget,
-                social    = social,
-                misc      = misc,
+                library          = library,
+                playback         = playback,
+                downloads        = downloads,
+                settings         = settings,
+                identity         = identity,
+                widget           = widget,
+                social           = social,
+                misc             = misc,
+                resolvedProfiles = resolvedProfiles,
             )
             if (!frames.hasAnyDomain) null else frames
         }.getOrNull()
@@ -431,6 +484,22 @@ object SnapshotCodec {
                     picks           = m.picks ?: snap.picks,
                 )
             }
+        }
+
+        // ── resolved_profiles (additive, no rev gate) ─────────────────────────
+        // The NMP kernel emits `projections["resolved_profiles"]` whenever a
+        // claimed profile resolves (T114 reference-first profile resolution).
+        // Unlike podcast domain sidecars, this map has no `rev` counter — it is
+        // always an additive delta (entries only added, never removed mid-session).
+        // Merging is a simple union: new entries from this frame win (the kernel
+        // never downgrades a profile), existing entries without a new value are
+        // retained from the composite. This mirrors iOS
+        // `AppStateStore.mergeResolvedProfiles`.
+        if (frames.resolvedProfiles.isNotEmpty()) {
+            anyAccepted = true
+            snap = snap.copy(
+                resolvedProfiles = snap.resolvedProfiles + frames.resolvedProfiles,
+            )
         }
 
         return Pair(snap, anyAccepted)

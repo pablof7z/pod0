@@ -198,6 +198,34 @@ class KernelBridge {
         if (handle != 0L) nativeDeliverSignerResponse(handle, responseJson)
     }
 
+    /**
+     * Register a refcounted interest in `pubkeyHex`'s kind:0 profile under
+     * `consumerID`. The kernel fetches the profile over its own relay pool (cold
+     * claim) and surfaces it in `projections["resolved_profiles"]` on the next
+     * push frame. Fire-and-forget (D6): an invalid pubkey is a silent no-op.
+     *
+     * `pubkeyHex` MUST be lowercase hex. `consumerID` is a stable per-view token
+     * so claims dedupe and release matches claim.
+     *
+     * Mirrors iOS `PodcastHandle.claimProfile(pubkeyHex:consumerID:)` and the
+     * `nmp_app_claim_profile` C-ABI symbol declared in `NmpCore.h`.
+     */
+    fun claimProfile(pubkeyHex: String, consumerID: String) {
+        if (handle != 0L) nativeClaimProfile(handle, pubkeyHex, consumerID)
+    }
+
+    /**
+     * Release a previously-claimed profile interest. The kernel drops the
+     * pending request when the last consumer releases. Idempotent / safe when
+     * nothing is claimed for this pubkey+consumer pair (D6 — silent no-op).
+     *
+     * Mirrors iOS `PodcastHandle.releaseProfile(pubkeyHex:consumerID:)` and the
+     * `nmp_app_release_profile` C-ABI symbol declared in `NmpCore.h`.
+     */
+    fun releaseProfile(pubkeyHex: String, consumerID: String) {
+        if (handle != 0L) nativeReleaseProfile(handle, pubkeyHex, consumerID)
+    }
+
     /** Pull the Podcast projection JSON (one-shot, off the projection cache). */
     fun podcastSnapshot(): String? = if (handle != 0L) nativePodcastSnapshot(handle) else null
 
@@ -352,6 +380,8 @@ class KernelBridge {
     private external fun nativeNextSignerRequest(handle: Long): String?
     private external fun nativeDeliverSignerResponse(handle: Long, responseJson: String)
     private external fun nativeNextUpdate(handle: Long): String?
+    private external fun nativeClaimProfile(handle: Long, pubkeyHex: String, consumerID: String)
+    private external fun nativeReleaseProfile(handle: Long, pubkeyHex: String, consumerID: String)
     private external fun nativePodcastSnapshot(handle: Long): String?
     private external fun nativeChatComplete(handle: Long, messagesJson: String): String?
     private external fun nativeProviderComplete(handle: Long, intentJson: String): String?

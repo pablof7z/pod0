@@ -29,15 +29,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import io.f7z.podcast.KernelBridge
 import io.f7z.podcast.NostrConversationDto
 import io.f7z.podcast.PodcastSnapshot
+import io.f7z.podcast.ResolvedProfile
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -76,6 +79,23 @@ fun NostrConversationsScreen(
         ?.sortedByDescending { it.lastActivity }
         ?: emptyList()
 
+    val resolvedProfiles = snapshot?.resolvedProfiles ?: emptyMap()
+
+    // Claim all counterparty pubkeys so the kernel resolves their kind:0
+    // profiles and delivers them in `projections["resolved_profiles"]`. Mirrors
+    // iOS `.claimNostrProfiles(_:consumer:)` lifecycle. The consumer ID is
+    // stable for this screen so the kernel's refcount dedupes across re-entries.
+    // Released on dispose so the kernel can drop inflight requests when the
+    // screen leaves the composition.
+    val consumerID = "NostrConversationsScreen"
+    DisposableEffect(conversations) {
+        val claimed = conversations.map { it.counterpartyHex }.distinct()
+        claimed.forEach { pubkey -> bridge.claimProfile(pubkey, consumerID) }
+        onDispose {
+            claimed.forEach { pubkey -> bridge.releaseProfile(pubkey, consumerID) }
+        }
+    }
+
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -104,6 +124,7 @@ fun NostrConversationsScreen(
                 items(conversations, key = { it.rootEventId }) { conv ->
                     NostrConversationRow(
                         conv = conv,
+                        resolvedProfile = resolvedProfiles[conv.counterpartyHex],
                         onClick = { onConversationSelected(conv) },
                     )
                     HorizontalDivider(modifier = Modifier.padding(start = 72.dp))
@@ -118,13 +139,15 @@ fun NostrConversationsScreen(
 @Composable
 private fun NostrConversationRow(
     conv: NostrConversationDto,
+    resolvedProfile: ResolvedProfile?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val inboundCount = conv.turns.count { it.direction == "inbound" }
     val outboundCount = conv.turns.count { it.direction == "outbound" }
     val lastTurn = conv.turns.lastOrNull()
-    val primaryLabel = shortHex(conv.counterpartyHex)
+    // Show resolved display name when available; fall back to shortHex.
+    val primaryLabel = resolvedProfile?.display ?: shortHex(conv.counterpartyHex)
 
     Row(
         modifier = modifier
@@ -134,9 +157,12 @@ private fun NostrConversationRow(
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Avatar slot — placeholder circle with person icon (no profile cache on
-        // Android yet; matches iOS fallback when nostrProfileCache has no entry).
-        NostrAvatarPlaceholder(modifier = Modifier.size(40.dp))
+        // Avatar slot: show the kernel-resolved picture URL when available via
+        // Coil AsyncImage; fall back to the placeholder on unresolved profiles.
+        NostrAvatar(
+            pictureUrl = resolvedProfile?.pictureUrl,
+            modifier = Modifier.size(40.dp),
+        )
 
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             // Header row: display name + timestamp
@@ -203,13 +229,35 @@ private fun NostrConversationRow(
     }
 }
 
-// ── Avatar placeholder ────────────────────────────────────────────────────────
+// ── Avatar composables ────────────────────────────────────────────────────────
 
 /**
- * Circular person-icon placeholder used when no kernel-resolved profile is
- * available. Android does not yet receive a profiles map on the social frame
- * (iOS uses a separate `.claimNostrProfiles` projection). When the kernel
- * eventually emits a resolved-profile map, replace this with `AsyncImage`.
+ * Circular Nostr avatar: shows the kernel-resolved [pictureUrl] via Coil
+ * [AsyncImage] when available; falls back to [NostrAvatarPlaceholder] on
+ * unresolved profiles or load failures.
+ *
+ * This replaces the old hard-coded [NostrAvatarPlaceholder] call sites now
+ * that the kernel delivers resolved_profiles via the claim/release seam.
+ */
+@Composable
+fun NostrAvatar(
+    pictureUrl: String?,
+    modifier: Modifier = Modifier,
+) {
+    if (!pictureUrl.isNullOrBlank()) {
+        AsyncImage(
+            model = pictureUrl,
+            contentDescription = null,
+            modifier = modifier.clip(CircleShape),
+        )
+    } else {
+        NostrAvatarPlaceholder(modifier = modifier)
+    }
+}
+
+/**
+ * Circular person-icon placeholder used when no kernel-resolved profile
+ * picture is available (unresolved pubkey, or profile has no picture).
  */
 @Composable
 fun NostrAvatarPlaceholder(modifier: Modifier = Modifier) {
