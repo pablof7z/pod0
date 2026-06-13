@@ -115,6 +115,11 @@ final class NostrConversationSocialDomainTests: XCTestCase {
     ///   rootEventId  → rootEventID (uppercase)
     ///   Int unix     → Date
     ///   "inbound"    → .incoming, "outbound" → .outgoing
+    ///
+    /// `@MainActor`: `KernelModel.nostrConversationFromDTO` is main-actor
+    /// isolated (KernelModel is `@MainActor`), so the synchronous call must run
+    /// on the main actor.
+    @MainActor
     func testNostrConversationDTOMapsToDomainRecord() throws {
         let data = makeEnvelope(projections: [
             DomainSchema.social: socialProjection(rev: 9)
