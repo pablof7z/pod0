@@ -302,20 +302,28 @@ final class P1SettingsUITests: XCTestCase {
         let gear = app.buttons["gear"]
         XCTAssertTrue(gear.waitForExistence(timeout: 5)); gear.tap(); sleep(2)
         snap(app, "nostr-01-settings")
-        for label in ["Nostr", "Identity", "Profile", "Keys"] {
-            let row = staticTextContaining(app, label)
-            if row.waitForExistence(timeout: 2) {
-                robustTap(row); sleep(2)
-                snap(app, "nostr-02-\(label.lowercased())")
-                let dumpN = XCTAttachment(string: app.debugDescription)
-                dumpN.name = "nostr-02-tree"; dumpN.lifetime = .keepAlways; add(dumpN)
-                let hasContent = app.staticTexts.count > 3
-                XCTAssertTrue(hasContent, "FAIL nostr-identity-create: Nostr/\(label) screen appears empty")
-                return
-            }
+        // Identity lives in Settings → "Account" as the IdentitySettingsRow, a
+        // combined accessibility element whose label begins with "Identity."
+        // (e.g. "Identity. <name>. <mode>. <npub>"). It pushes IdentityRootView.
+        let identityRow = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH 'Identity'")).firstMatch
+        let row: XCUIElement = identityRow.waitForExistence(timeout: 4)
+            ? identityRow
+            : app.descendants(matching: .any).matching(
+                NSPredicate(format: "label BEGINSWITH 'Identity'")).firstMatch
+        guard row.waitForExistence(timeout: 4) else {
+            snap(app, "nostr-NOSECTION")
+            let dumpN = XCTAttachment(string: app.debugDescription)
+            dumpN.name = "nostr-NOSECTION-tree"; dumpN.lifetime = .keepAlways; add(dumpN)
+            XCTFail("FAIL nostr-identity-create: no Identity row found in Settings → Account")
+            return
         }
-        snap(app, "nostr-NOSECTION")
-        XCTFail("FAIL nostr-identity-create: no Nostr/Identity/Profile/Keys section found in Settings")
+        robustTap(row); sleep(2)
+        snap(app, "nostr-02-identity")
+        let dumpN = XCTAttachment(string: app.debugDescription)
+        dumpN.name = "nostr-02-tree"; dumpN.lifetime = .keepAlways; add(dumpN)
+        let hasContent = app.staticTexts.count > 3
+        XCTAssertTrue(hasContent, "FAIL nostr-identity-create: Identity screen appears empty")
     }
 
     // MARK: - P1: feed-refresh-new-episodes

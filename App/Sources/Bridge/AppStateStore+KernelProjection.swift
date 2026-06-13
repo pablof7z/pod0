@@ -564,16 +564,25 @@ extension AppStateStore {
         // Done before the episode guard so it also *clears* when the last model
         // download finishes (active goes empty → row flips downloaded).
         let modelRows = active.filter { $0.kind == .localModel }
-        let newModelDownloads = Dictionary(uniqueKeysWithValues: modelRows.map { ($0.episodeId, $0) })
+        // `uniquingKeysWith` (keep last) rather than `uniqueKeysWithValues`: the
+        // kernel's active-download list can momentarily carry two rows for the
+        // same id (e.g. a requeued/retried download). A UI projection must never
+        // trap on data shape — `uniqueKeysWithValues` fatalErrors on a dup key,
+        // which crashed the app mid-playback. Last row wins (most recent state).
+        let newModelDownloads = Dictionary(
+            modelRows.map { ($0.episodeId, $0) },
+            uniquingKeysWith: { _, last in last })
         if newModelDownloads != localModelDownloads {
             localModelDownloads = newModelDownloads
         }
         guard !active.isEmpty else { return }
         // Episode rows only — the unified queue also carries non-episode
         // downloads (e.g. local models) whose ids are not episode UUIDs.
-        let byID = Dictionary(uniqueKeysWithValues: active
-            .filter { $0.kind == .episode }
-            .map { ($0.episodeId.uppercased(), $0) })
+        let byID = Dictionary(
+            active
+                .filter { $0.kind == .episode }
+                .map { ($0.episodeId.uppercased(), $0) },
+            uniquingKeysWith: { _, last in last })
         for idx in episodes.indices {
             let key = episodes[idx].id.uuidString.uppercased()
             guard let dl = byID[key] else { continue }

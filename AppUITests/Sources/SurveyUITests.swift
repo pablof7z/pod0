@@ -55,7 +55,7 @@ final class SurveyUITests: XCTestCase {
     func testSurvey_03_Agent() {
         let app = App.make()
         XCTAssertTrue(launchApp(app)); sleep(1)
-        let agent = app.buttons["sparkles"]
+        let agent = app.buttons["agent.open"]
         XCTAssertTrue(agent.waitForExistence(timeout: 5), "no agent button")
         agent.tap(); sleep(2)
         snap(app, "survey-agent"); dump(app, "survey-agent-tree")
