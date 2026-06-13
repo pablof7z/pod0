@@ -218,9 +218,8 @@ class DomainFrameWireTest {
             "is_speaking": false
           },
           "agent": {
-            "active_count": 0,
-            "pending_approvals": [],
-            "latest_conversation_id": null
+            "messages": [],
+            "is_busy": false
           },
           "wiki_articles": [],
           "wiki_search_results": [],
@@ -425,7 +424,12 @@ class DomainFrameWireTest {
 
         val agent = misc.agent
         assertNotNull("agent must decode", agent)
-        assertEquals(0, agent!!.activeCount)  // active_count
+        // AgentSnapshot carries messages + is_busy (Rust AgentSnapshot in agent.rs).
+        // ConversationsSnapshot (active_count / latest_conversation_id) is a separate
+        // struct reserved for the future multi-conversation surface and is NOT what
+        // podcast.misc emits under the "agent" key.
+        assertFalse("is_busy must be false", agent!!.isBusy)  // is_busy
+        assertTrue("messages must be empty", agent.messages.isEmpty())  // messages
     }
 
     // ── 2. Playback-only frame does NOT clear the library slice ───────────────
