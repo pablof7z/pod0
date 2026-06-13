@@ -79,6 +79,7 @@ impl PodcastStore {
                 self.auto_download_cellular_allowed.insert(id);
             }
         }
+        self.hydrate_download_maps(loaded.local_paths, loaded.file_sizes);
         // Settings are stored in the same envelope so onboarding completion
         // survives restart without a second file. `serde(default)` keeps
         // older saved files (predating the field) loading cleanly.
@@ -391,6 +392,8 @@ impl PodcastStore {
             episode_triage,
             metadata_indexed_episodes,
             transcript_status_overrides,
+            local_paths: self.persisted_local_paths(),
+            file_sizes: self.persisted_file_sizes(),
             settings: self.persisted_settings(),
             queue: Vec::new(), // filled by persist() from self.cached_queue after return
             pending_wifi_downloads: self.pending_wifi_downloads.clone(),

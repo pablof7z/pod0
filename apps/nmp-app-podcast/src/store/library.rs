@@ -261,6 +261,7 @@ impl PodcastStore {
     pub fn set_local_path(&mut self, episode_id: EpisodeId, path: String, byte_count: i64) {
         self.local_paths.insert(episode_id, path);
         self.file_sizes.insert(episode_id, byte_count);
+        self.persist();
     }
 
     /// Look up the on-disk path of a downloaded enclosure, if any.
@@ -315,7 +316,11 @@ impl PodcastStore {
     /// was previously stored so the caller can remove the file.
     pub fn clear_local_path(&mut self, episode_id: &EpisodeId) -> Option<String> {
         self.file_sizes.remove(episode_id);
-        self.local_paths.remove(episode_id)
+        let removed = self.local_paths.remove(episode_id);
+        if removed.is_some() {
+            self.persist();
+        }
+        removed
     }
 
     /// Read-only access to the on-disk path side-map. Used by the

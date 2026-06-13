@@ -71,6 +71,14 @@ pub(super) struct PersistedStore {
     /// so pre-M4 files load as empty.
     #[serde(default)]
     pub transcript_status_overrides: Vec<(String, String, Option<String>)>,
+    /// Downloaded enclosure paths keyed by episode id. Stored outside the
+    /// episode rows so feed refreshes cannot wipe downloaded-state.
+    #[serde(default)]
+    pub local_paths: Vec<(String, String)>,
+    /// Downloaded enclosure sizes keyed by episode id. Lifecycle-locked to
+    /// `local_paths`; missing or stale entries hydrate as unknown size.
+    #[serde(default)]
+    pub file_sizes: Vec<(String, i64)>,
     #[serde(default)]
     pub settings: PersistedSettings,
     /// "Up Next" queue — episode ids in play order. `#[serde(default)]` keeps

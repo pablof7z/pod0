@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-13T14:58:00Z",
+      "lines": [
+        "Downloaded episodes now stay marked as downloaded after restarting the app."
+      ]
+    },
+    {
       "shipped_at": "2026-06-13T14:00:00Z",
       "lines": [
         "Agent access control now persists reliably — approved and blocked peers survive app restarts and are enforced at the kernel level"

@@ -28,6 +28,7 @@ pub mod auto_download;
 mod chapters;
 mod credential_metadata;
 mod disk;
+mod download_persistence;
 pub mod events;
 pub mod identity;
 pub mod agent_note_responder_cache;

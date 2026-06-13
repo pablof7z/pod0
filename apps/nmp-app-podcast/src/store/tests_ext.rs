@@ -4,7 +4,7 @@
 //! hard ceiling. Covers agent-memory, persistence integration, and settings.
 use super::tests::{make_episode, make_podcast, TempDir};
 use super::*;
-use podcast_core::PodcastId;
+use podcast_core::{DownloadState, PodcastId};
 
 // ── Auto-download persistence (overflow from tests.rs) ──────────────────
 
@@ -140,6 +140,82 @@ fn fresh_store_can_reload_after_subscribe() {
     assert_eq!(restored.title, "Persistent Show");
     assert_eq!(store2.episodes_for(podcast_id).len(), 2);
     assert_eq!(store2.episodes_for(podcast_id), episodes.as_slice());
+}
+
+#[test]
+fn downloaded_episode_path_and_size_survive_reload() {
+    let dir = TempDir::new();
+    let episode_id;
+    {
+        let mut store = PodcastStore::new();
+        store.set_data_dir(dir.path.clone());
+        let podcast = make_podcast("Downloaded Show");
+        let podcast_id = podcast.id;
+        let episode = make_episode(podcast_id, "Saved Ep");
+        episode_id = episode.id;
+        store.subscribe(podcast, vec![episode]);
+        store.set_local_path(episode_id, "/tmp/saved-ep.mp3".into(), 12_345);
+    }
+
+    let mut store2 = PodcastStore::new();
+    store2.set_data_dir(dir.path.clone());
+    assert_eq!(
+        store2.local_path_for(&episode_id),
+        Some("/tmp/saved-ep.mp3")
+    );
+    assert_eq!(store2.file_size_for(&episode_id), Some(12_345));
+}
+
+#[test]
+fn cleared_download_path_survives_reload() {
+    let dir = TempDir::new();
+    let episode_id;
+    {
+        let mut store = PodcastStore::new();
+        store.set_data_dir(dir.path.clone());
+        let podcast = make_podcast("Cleared Download");
+        let podcast_id = podcast.id;
+        let episode = make_episode(podcast_id, "Saved Ep");
+        episode_id = episode.id;
+        store.subscribe(podcast, vec![episode]);
+        store.set_local_path(episode_id, "/tmp/saved-ep.mp3".into(), 12_345);
+        assert_eq!(
+            store.clear_local_path(&episode_id).as_deref(),
+            Some("/tmp/saved-ep.mp3")
+        );
+    }
+
+    let mut store2 = PodcastStore::new();
+    store2.set_data_dir(dir.path.clone());
+    assert!(store2.local_path_for(&episode_id).is_none());
+    assert!(store2.file_size_for(&episode_id).is_none());
+}
+
+#[test]
+fn legacy_download_state_hydrates_local_path_on_reload() {
+    let dir = TempDir::new();
+    let episode_id;
+    {
+        let mut store = PodcastStore::new();
+        store.set_data_dir(dir.path.clone());
+        let podcast = make_podcast("Legacy Download");
+        let podcast_id = podcast.id;
+        let mut episode = make_episode(podcast_id, "Local Ep");
+        episode_id = episode.id;
+        episode.download_state = DownloadState::Downloaded {
+            local_file_url: url::Url::from_file_path("/tmp/legacy-ep.mp3").unwrap(),
+            byte_count: 55,
+        };
+        store.subscribe(podcast, vec![episode]);
+    }
+
+    let mut store2 = PodcastStore::new();
+    store2.set_data_dir(dir.path.clone());
+    assert_eq!(
+        store2.local_path_for(&episode_id),
+        Some("/tmp/legacy-ep.mp3")
+    );
+    assert_eq!(store2.file_size_for(&episode_id), Some(55));
 }
 
 #[test]
