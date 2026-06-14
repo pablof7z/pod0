@@ -34,7 +34,14 @@ worktrees currently in flight.
   and decisions/tradeoffs. The same contract now checks the changed-file scope
   and requires the Validation section to explicitly cover touched Rust,
   Swift/iOS, and Android code families. Remaining: keep the full simulator
-  suite as the merge/supervisor gate.
+  suite as the merge/supervisor gate. **Blocked:** current Rust workspace
+  validation is not portable because podcast-player consumes live
+  `nmp.blossom.upload` behavior from upstream `nmp-blossom`, but that crate is
+  parked/excluded at the pinned NMP rev and cannot be parsed or built as a
+  dependency without local NMP manifest surgery. Tracked locally in
+  `pablof7z/podcast-player#479` and upstream in
+  `pablof7z/nostr-multi-platform#1408`; do not paper over this with absolute
+  `/tmp` checkout or manifest-rewrite hacks.
 - ~~**p0-ios-test-target-compile.**~~ Fixed across PR #101 and PR #102:
   `Nip46RemoteSignerTests.swift` now accepts an optional bunker pubkey, the
   active Tuist target no longer references the dead `KernelModel` duplicate,
