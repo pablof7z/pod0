@@ -8,7 +8,11 @@
 
 ## Validation
 
-<!-- List exact commands run, or write "Not run: <reason>" for any expected check that could not be run. -->
+<!--
+List exact commands run, or write "Not run: <reason>" for any expected check
+that could not be run. If this touches Rust, Swift/iOS, or Android code, name
+the focused command or CI gate for that family.
+-->
 
 ## Decisions / Tradeoffs
 
