@@ -31,12 +31,12 @@ Detailed implementation plans live under `docs/plan/` and are linked from this f
 
 | Area | Status |
 |---|---|
-| NMP dependency pin | `0.6.2` crates pinned to rev `ac7e307e89b57a73b419ea9588275e599dcb228c` in `Cargo.toml`; PR #488 replaced the non-portable `/tmp/nmp-at-ac7e307e` path patch with reproducible `vendor/nmp-blossom`, so local blocker `pablof7z/podcast-player#479` is closed. Upstream `pablof7z/nostr-multi-platform#1408` remains an upstream packaging cleanup, but current podcast-player `main` validates with `cargo check --workspace --all-targets`. |
+| NMP dependency pin | `0.6.2` crates pinned to rev `ac7e307e89b57a73b419ea9588275e599dcb228c` in `Cargo.toml`; PR #488 replaced the non-portable `/tmp/nmp-at-ac7e307e` path patch with reproducible `vendor/nmp-blossom`, and PR #492 vendors `nmp-core` with the local `publish_ver` fix needed by the headless proof. Local blocker `pablof7z/podcast-player#479` is closed. Upstream `pablof7z/nostr-multi-platform#1408` and `#1412` remain upstream cleanups, but current podcast-player `main` validates the Rust workspace and headless e2e gates. |
 | Feature parity | Not achieved — many merged PRs are scaffolds or heuristics, not full original-app behavior. |
 | Legacy app deletion | Blocked — `App/Sources/` remains the reference implementation until all parity exits pass. |
 | Parked iOS shell | Deleted — there is no `ios/` tree on current `main`; remaining parity debt lives in `App/Sources/` Swift policy/fallback code and the cross-platform surfaces listed in `docs/BACKLOG.md`. |
 | NIP-F4 Keychain flip | Cancelled — `podcast-keys.json` is the canonical and final store for per-podcast secrets. No Keychain migration. |
-| Validation gate | Incomplete — code parity work must run focused Rust/Swift tests plus the merge gate. The old `nmp-blossom` packaging blocker is resolved on `main`; the remaining known runtime proof blocker is upstream `pablof7z/nostr-multi-platform#1412`, where NMP's `publish_outbox` projection changes through `publish_engine` in-flight state without advancing the `publish_ver` source stamp. |
+| Validation gate | Incomplete — code parity work must run focused Rust/Swift tests plus the merge gate, and the full simulator suite still needs to become the supervisor gate before declaring parity. The old `nmp-blossom` packaging blocker is resolved on `main`; the `publish_outbox` projection-rev issue is locally unblocked by the vendored `nmp-core` fix in PR #492, with upstream `pablof7z/nostr-multi-platform#1412` still open for canonical cleanup. |
 
 ## Next Execution Order
 

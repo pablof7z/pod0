@@ -24,9 +24,10 @@ worktrees currently in flight.
   `0.6.2` NMP pin at rev `ac7e307e89b57a73b419ea9588275e599dcb228c`, the
   deleted parked `ios/` shell, the resolved `nmp-blossom` packaging blocker
   (`pablof7z/podcast-player#479`, closed after `cargo check --workspace
-  --all-targets` passed on current `main`), the remaining upstream NMP
-  `publish_outbox` projection-rev blocker (`pablof7z/nostr-multi-platform#1412`),
-  and the fact that remaining parity debt lives in `App/Sources/` Swift
+  --all-targets` passed on current `main`), the local `nmp-core` vendor patch
+  from PR #492 that unblocks the headless proof while upstream
+  `pablof7z/nostr-multi-platform#1412` remains open for canonical cleanup, and
+  the fact that remaining parity debt lives in `App/Sources/` Swift
   policy/fallback code plus the listed platform/AI gaps.
 - **p0-validation-gate.** Establish the merge gate for this migration:
   `git diff --check`, focused Rust tests for touched crates,
@@ -42,14 +43,15 @@ worktrees currently in flight.
   blocker is resolved on `main`: PR #488 replaced the absolute `/tmp`
   dependency with `vendor/nmp-blossom`, and `cargo check --workspace
   --all-targets` passes on `be815f52` with warnings only. Local issue
-  `pablof7z/podcast-player#479` is closed. Upstream
-  `pablof7z/nostr-multi-platform#1408` remains an NMP packaging cleanup, but it
-  no longer blocks podcast-player's Rust workspace gate. **Blocked:** the
-  headless e2e proof is still blocked by upstream
-  `pablof7z/nostr-multi-platform#1412`: NMP's `publish_outbox` projection
-  changes through `publish_engine` in-flight state without advancing the
-  `publish_ver` source stamp. Do not paper over that by adding app-local fake
-  rev bumps, suppressing `publish_outbox`, or disabling the ADR-0055 oracle.
+  `pablof7z/podcast-player#479` is closed. PR #492 vendors `nmp-core` with a
+  targeted `publish_ver` bump when publish-engine relay-state transitions
+  change `publish_outbox`, and the headless e2e proof passed on PR #492 and
+  again after the OPML rebase in PR #493. Upstream
+  `pablof7z/nostr-multi-platform#1412` remains open for the canonical NMP fix,
+  and `pablof7z/nostr-multi-platform#1408` remains an NMP packaging cleanup,
+  but neither currently blocks podcast-player's Rust/headless merge gates. Do
+  not replace the vendored fix with app-local fake rev bumps, `publish_outbox`
+  suppression, or ADR-0055 oracle disablement.
 - ~~**p0-ios-test-target-compile.**~~ Fixed across PR #101 and PR #102:
   `Nip46RemoteSignerTests.swift` now accepts an optional bunker pubkey, the
   active Tuist target no longer references the dead `KernelModel` duplicate,

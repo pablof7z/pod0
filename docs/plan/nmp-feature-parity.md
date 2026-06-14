@@ -20,17 +20,17 @@ delete it until all exit criteria at the bottom of this file pass.
 ## Current Snapshot - 2026-06-14
 
 The large PR stack has merged, but it does not equal feature parity. Current
-main is through PR #489, with zero open PRs and zero open local GitHub issues.
+main is through PR #493, with zero open PRs and zero open local GitHub issues.
 The old local `nmp-blossom` packaging blocker (`#479`) is closed: PR #488
-replaced the `/tmp` path patch with `vendor/nmp-blossom`, and `cargo check
---workspace --all-targets` passes on current `main`. Upstream NMP issue
-`pablof7z/nostr-multi-platform#1408` remains an upstream packaging cleanup, and
-the remaining known runtime proof blocker is
-`pablof7z/nostr-multi-platform#1412` (`publish_outbox` projection rev stale
-stamp). Many branches created screens, projections, action namespaces, and
-local heuristics; several still need real logic, relay/provider integration,
-device validation, or removal of Swift-side policy/fallback code in
-`App/Sources/`.
+replaced the `/tmp` path patch with `vendor/nmp-blossom`, and the Rust
+workspace gate passes on current `main`. PR #492 vendors `nmp-core` with the
+targeted `publish_ver` bump needed when publish-engine relay-state transitions
+change `publish_outbox`, so the headless e2e proof is no longer blocked
+locally. Upstream NMP issues `pablof7z/nostr-multi-platform#1408` and `#1412`
+remain open for canonical packaging/projection-rev cleanup. Many branches
+created screens, projections, action namespaces, and local heuristics; several
+still need real logic, relay/provider integration, device validation, or
+removal of Swift-side policy/fallback code in `App/Sources/`.
 
 Recent corrective PRs changed the status, but not the final exit criteria.
 The active NIP-F4 path now has canonical wire builders/parsers, real
