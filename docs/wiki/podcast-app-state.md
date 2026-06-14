@@ -8,7 +8,7 @@ tags:
 volatility: warm
 confidence: medium
 created: 2026-06-12
-updated: 2026-06-13
+updated: 2026-06-14
 verified: 2026-06-12
 compiled-from: conversation
 sources:
@@ -45,8 +45,9 @@ The namespaced-envelope dispatch router replaces the try-parse cascade, with a m
 
 ## FFI Panic Safety
 
-Every extern "C" / extern "system" FFI entry in the podcast crate wraps its body in ffi_guard with a lazy fallback (impl FnOnce() -> T), so panics degrade to a sentinel rather than aborting across the C ABI; panic="abort" is explicitly rejected to preserve nmp_core's catch_unwind around actor ticks. <!-- [^c1691-8] -->
+Every extern "C" / extern "system" FFI entry in the podcast crate wraps its body in ffi_guard with a lazy fallback (impl FnOnce() -> T), so panics degrade to a sentinel rather than aborting across the C ABI; panic="abort" is explicitly rejected to preserve nmp_core's catch_unwind around actor ticks. dispatch_audio_cmd and dispatch_download_cmd require null-app guards (return early on null app pointer) consistent with PodcastHostOpHandler::dispatch_audio doctrine.
 
+<!-- citations: [^c1691-8] [^c1691-378] -->
 ## Serde & Decoding Guards
 
 Nine required float fields across PodcastUpdate projections have serde serialize_with guards (finite_f64_or_zero / finite_f32_or_zero) so no required float can serialize to JSON null. parse_duration rejects non-finite values (NaN, infinity, negative) at the inlet, and projection-side finite_or_zero serialization guards clamp NaN/Inf to 0.0 on 9 required float fields across 6 files, closing the remotely-triggerable frame-drop vector. Swift XCTest golden-fixture decode tests through KernelDecoding (.convertFromSnakeCase) cover all embedded types, guarding against the #371-class Rust/Swift schema divergence. The golden snapshot byte-identity test (snapshot_bytes_match_golden_fixture) gates every strangler step, asserting PodcastUpdate JSON is byte-identical to a committed fixture (3821 bytes initially, 3789 after inbox_triage_in_progress was removed from the projection).

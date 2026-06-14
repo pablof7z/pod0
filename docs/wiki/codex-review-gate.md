@@ -8,7 +8,7 @@ tags:
 volatility: warm
 confidence: medium
 created: 2026-06-02
-updated: 2026-06-13
+updated: 2026-06-14
 verified: 2026-06-02
 compiled-from: conversation
 sources:
@@ -24,4 +24,8 @@ All references to the deprecated 'codex exec review --base main' CLI must be rep
 
 Reviewers must never perform working-tree git operations (checkout, restore, stash, add) in the shared root; they use read-only `git diff`/`git show` from the object DB to avoid clobbering uncommitted work.
 
-<!-- citations: [^8bfa1-1] [^c1691-17] [^c1691-36] [^c1691-132] [^c1691-203] [^c1691-230] [^c1691-251] -->
+Opus reviews should git grep the entire workspace including podcast-tui when checking for orphan removals, because CI's -p nmp-app-podcast-scoped lint cannot catch breaks in other workspace members.
+
+Opus review caught approximately 6 real defects that CI structurally could not, including a dead-on-arrival domain-rev bump, queue-row byte divergence, an untested action→re-emit seam, a workspace-TUI break from a narrow orphan grep, and false-confidence test assertions.
+
+<!-- citations: [^c1691-337] [^8bfa1-1] [^c1691-17] [^c1691-36] [^c1691-132] [^c1691-203] [^c1691-230] [^c1691-251] [^c1691-401] -->

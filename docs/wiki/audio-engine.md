@@ -2,13 +2,13 @@
 title: Audio Engine
 slug: audio-engine
 topic: playback
-summary: AudioEngine's handleEndOfItem() is intentionally neutral; autoplay-next is deferred to Lane 2/4.
+summary: AudioEngine's handleEndOfItem() is intentionally neutral; autoplay-next is deferred to Lane 2/4
 tags:
   - capture
 volatility: warm
 confidence: medium
 created: 2026-05-13
-updated: 2026-06-12
+updated: 2026-06-14
 verified: 2026-05-13
 compiled-from: conversation
 sources:
@@ -22,6 +22,7 @@ sources:
   - session:rollout-2026-05-11T08-21-01-019e157b-4863-7563-a43b-8405491d88a1
   - session:rollout-2026-05-11T09-10-30-019e15a8-9491-7d33-9bbf-ee806e2f875c
   - session:rollout-2026-05-26T09-10-44-019e62e8-3112-7080-98ca-48ac46d8b8d2
+  - session:c1691db0-d63e-4062-adad-1cfa0d679d09
 ---
 
 # Audio Engine
@@ -50,7 +51,7 @@ During confirmed steady playback, applyKernelState and recomputeEpisodeProjectio
 
 NowPlayingCenter must remove MPRemoteCommandCenter targets and AudioEngine must provide a cleanup path to prevent unit tests from registering global command handlers. Now Playing command registration must be made explicit via either a dedicated teardown method or a singleton command registrar.
 
-The auto-advance gap backlog entry is the same symptom class as the already-fixed lock-screen-play bug (staged-record divergence under poisoned lock).
+maybe_auto_advance in audio_report.rs now returns early if the actor lock is poisoned, preventing the dispatch of Load+Play without a staged record — the exact bug class of the earlier lock-screen-play fix.
 
 PlaybackQueueTests and PlaybackAutoPlayNextTests must be consolidated and include a test case for a stale queue head followed by a valid tail.
 
@@ -58,4 +59,6 @@ PR #373 includes a regression-pin seam test (snapshot_widget_seam_tests.rs) that
 
 Play Latest is intentionally hidden from shortcuts until it routes through the Rust-owned Siri action instead of Swift choosing the episode.
 
-<!-- citations: [^e1ab0-1] [^e1ab0-2] [^e1ab0-3] [^0f3f2-14] [^f11c4-2] [^ce9e0-1] [^c33b9-1] [^38f81-1] [^rollo-53] [^rollo-76] [^rollo-124] [^rollo-221] -->
+Swift symbol deletions must be verified with xcodebuild build-for-testing because the test target globs AppTests/** and may reference deleted symbols that the main target won't catch.
+
+<!-- citations: [^e1ab0-1] [^e1ab0-2] [^e1ab0-3] [^0f3f2-14] [^f11c4-2] [^ce9e0-1] [^c33b9-1] [^38f81-1] [^rollo-53] [^rollo-76] [^rollo-124] [^rollo-221] [^c1691-348] [^c1691-369] [^c1691-381] [^c1691-398] [^c1691-430] -->

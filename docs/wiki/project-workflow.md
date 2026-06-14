@@ -8,7 +8,7 @@ tags:
 volatility: warm
 confidence: medium
 created: 2026-05-25
-updated: 2026-06-13
+updated: 2026-06-14
 verified: 2026-05-25
 compiled-from: conversation
 sources:
@@ -48,11 +48,11 @@ When work is complete, a pull request must be opened before reporting completion
 <!-- citations: [^rollo-210] [^rollo-237] [^rollo-243] [^rollo-250] [^rollo-261] -->
 ## Architecture & Staging Discipline
 
-No temporary hacks are allowed; staged work is acceptable only when the staging is captured in docs/BACKLOG.md with clear follow-up ownership. The long-term correct architecture must be preferred over a local patch that only makes the immediate build green. Every durable concept should have one canonical representation and one code path to avoid fragmentation.
+No temporary hacks or 'for now this is ok' approaches are allowed; proper fixes built on solid ground are required. Staged work is acceptable only when the staging is captured in docs/BACKLOG.md with clear follow-up ownership. The long-term correct architecture must be preferred over a local patch that only makes the immediate build green. Every durable concept should have one canonical representation and one code path to avoid fragmentation.
 
 The NMP doctrine requires Rust to own decisions and UI to execute/render only. The store implementation uses JSON-backed storage rather than the plan's sled. Push delivery is still incomplete relative to the plan.
 
-<!-- citations: [^rollo-211] [^rollo-218] [^rollo-244] [^rollo-265] -->
+<!-- citations: [^rollo-211] [^rollo-218] [^rollo-244] [^rollo-265] [^c1691-367] -->
 ## Stale & Conflicting PRs
 
 Many PRs are experiencing merge conflicts because they were opened in parallel from older snapshots of the NMP migration and edit the same small set of central files (snapshot.rs, projections.rs, host_op_handler.rs, store/mod.rs, store/tests.rs, PodcastTypes.generated.swift, whats-new.json, docs/BACKLOG.md). For dirty PRs, the feature should be reapplied on top of current main rather than blindly resolving old branch structure; PRs whose intent no longer matches the current NMP architecture should be closed or superseded.
@@ -69,11 +69,13 @@ Before starting work, every agent must read WIP.md from the project base directo
 
 WIP.md is gitignored and must never be committed; it lives only in the main checkout directory, is shared across all worktrees, and agents must read and write it at its absolute path without staging, adding, or including it in any commit.
 
-Review agents must never run working-tree git operations (checkout, restore, etc.) in the shared root after an incident wiped uncommitted WIP from host_op_handler.rs and identity_handler.rs.
+Review agents are forbidden from performing working-tree git operations in the shared root; only git diff/git show on object-DB reads are permitted.
 
 After a PR merges, the agent must remove its own entry from WIP.md in the project base directory and clean up its worktree.
 
-<!-- citations: [^rollo-239] [^rollo-251] [^rollo-263] [^c1691-111] -->
+Important notifications must be sent via the say command. <!-- [^c1691-393] -->
+
+<!-- citations: [^rollo-239] [^rollo-251] [^rollo-263] [^c1691-111] [^c1691-368] -->
 ## Implementation & Testing Discipline
 
 The local main branch must be reconciled with origin/main before continuing implementation from the root checkout. After NIP-F4 correctness is fixed, focused Rust tests for podcast-discovery/nmp-app-podcast must be run, then full cargo test --workspace, git diff --check, and the iOS build/test gate.

@@ -8,7 +8,7 @@ tags:
 volatility: warm
 confidence: medium
 created: 2026-06-08
-updated: 2026-06-12
+updated: 2026-06-14
 verified: 2026-06-08
 compiled-from: conversation
 sources:
@@ -42,6 +42,8 @@ Feeds route through the iOS HTTP capability by doctrine (D7 — capabilities exe
 
 The existing synchronous HTTP path remains unchanged for iTunes search, transcripts, and chapters. <!-- [^8eb3f-5] -->
 
+
+The headless async HTTP capability host (capability_host.rs) must handle nmp.http.async.capability by spawning a std thread for reqwest and calling nmp_app_podcast_http_report to feed results back to the kernel's FeedFetchCoordinator; without it RSS subscribes produce empty placeholders. <!-- [^c1691-365] -->
 ## iOS Implementation
 
 The iOS `SyncCapabilityBridge` is the live capability-callback router and must own the async route and report sink (not `PodcastCapabilities.shared`). The iOS `HttpCapability` `Result<URLRequest, HttpResult>` was replaced with a purpose-built enum because `HttpResult` does not conform to `Error`. The iOS async HTTP path uses `executeAsync` on `HttpCapability`, which starts a background URLSession task and returns immediately with an ack envelope. <!-- [^8eb3f-6] -->
@@ -65,3 +67,5 @@ OPML import fetches all feeds first, then commits new subscriptions and episodes
 OPML import's 'background' copy overstates durability because fetched feeds are held in memory and committed only after the whole loop completes, meaning killing the app mid-import loses successful work. <!-- [^rollo-90] -->
 
 Subscription context menus (Refresh/Unsubscribe) must be extracted into a shared `SubscriptionContextMenu` component instead of being duplicated across list rows and grid cells. <!-- [^rollo-102] -->
+
+The feed-304-rev-bump audit item is done: podcast_actions_feed.rs explicitly skips the rev bump on NotModified with a comment. <!-- [^c1691-366] -->

@@ -2,13 +2,13 @@
 title: Nostr Remote Signer
 slug: nostr-remote-signer
 topic: nostr-protocol
-summary: NostrAgentResponder and NostrRelayService use a local-only signer
+summary: "Nostr event signing uses `NostrCredentialStore.privateKey()` + `NostrKeyPair(privateKeyHex:)` to build a `LocalKeySigner`"
 tags:
   - capture
 volatility: warm
 confidence: medium
 created: 2026-05-13
-updated: 2026-06-13
+updated: 2026-06-14
 verified: 2026-05-13
 compiled-from: conversation
 sources:
@@ -58,3 +58,9 @@ UserIdentityStore+NIP46.swift provides `connectViaNostrConnect(relay:onURI:)` th
 ## NostrConnectView UI
 
 NostrConnectView.swift displays a QR code, signer app detection buttons (Amber/Primal), and waiting/connected/error states driven by `remoteSignerState`. NostrConnectView detects installed signer apps via `UIApplication.shared.canOpenURL` for `KnownSigner` cases `.amber` (scheme: `nostrsigner`) and `.primal` (scheme: `primal`). `NostrConnectView.openSignerApp` appends `&callback=podcastr%3A%2F%2Fnip46` to the deep link URL so the signer app returns to the podcast app after approval. The Cancel toolbar button in NostrConnectView is hidden when the signer is already paired (`isPaired == true`), preventing accidental disconnection of a just-paired session. RemoteSignerView includes a 'Scan to connect' row with a navigation destination to NostrConnectView. Info.plist includes `LSApplicationQueriesSchemes` entries for `nostrsigner` and `primal` to enable `canOpenURL` detection on iOS 18+. <!-- [^02078-5] -->
+
+## Android JNI Bindings
+
+Android NIP-46 remote signer support requires new JNI wrappers in android.rs for three existing nmp-ffi symbols (nmp_app_signin_bunker, nmp_app_cancel_bunker_handshake, nmp_app_nostrconnect_uri) because Android's JNI surface did not export them. The Android NIP-46 remote signer screens must gate handshake completion on the transition to an external (remote-signer) active account (mode != local_key) rather than string-matching mode == bunker/nip46, because the identity projection only ever emits local_key or nip55. nmp_signer_broker_init must be called in Android's nativeNew; it was a latent omission that meant NIP-46 bunker handshakes could not function on Android despite the FFI symbols existing.
+
+<!-- citations: [^c1691-411] [^c1691-421] [^c1691-439] [^c1691-456] -->

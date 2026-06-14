@@ -8,12 +8,13 @@ tags:
 volatility: warm
 confidence: medium
 created: 2026-05-13
-updated: 2026-06-12
+updated: 2026-06-14
 verified: 2026-05-13
 compiled-from: conversation
 sources:
   - session:0f3f24f7-54de-49f8-b160-a92f735f6a00
   - session:f3b466c6-7791-44b3-b004-aae2066a9019
+  - session:c1691db0-d63e-4062-adad-1cfa0d679d09
 ---
 
 # NIP-46 Message
@@ -43,3 +44,7 @@ RemoteSigner provides a `finishNostrConnect(relayURL:)` method that opens a fres
 ## State Management
 
 PendingNip46 state is in-memory only; if the user kills the app mid-flow, they re-pair from scratch. <!-- [^f3b46-6] -->
+
+## Testing
+
+The URI validation tests in Nip46UriValidationTest exercise test-file-local helpers, not the production screen's inline checks, so they validate a parallel reimplementation rather than the shipped code path. <!-- [^c1691-416] -->

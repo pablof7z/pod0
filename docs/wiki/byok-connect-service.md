@@ -8,12 +8,13 @@ tags:
 volatility: warm
 confidence: medium
 created: 2026-05-13
-updated: 2026-05-13
+updated: 2026-06-14
 verified: 2026-05-13
 compiled-from: conversation
 sources:
   - session:0f3f24f7-54de-49f8-b160-a92f735f6a00
   - session:rollout-2026-05-09T14-56-23-019e0c98-8803-7ef0-b7a2-bf0b605a2360
+  - session:c1691db0-d63e-4062-adad-1cfa0d679d09
 ---
 
 # BYOK Connect Service
@@ -37,3 +38,7 @@ BYOK's raw key reveal endpoint uses POST only (not GET) to avoid browser/query l
 ## Key Editor UI
 
 BYOK's key editor UI has a raw key reveal panel with Show/Hide/Copy, and does not persist the raw key in app state. <!-- [^rollo-11] -->
+
+## Provider Credentials
+
+Connected_at timestamps on provider credentials are stamped by the kernel clock (D9 doctrine), not by shell wall-clock time; the field is dropped from both iOS and Android payloads. <!-- [^c1691-431] -->

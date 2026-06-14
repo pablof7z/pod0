@@ -7,45 +7,41 @@ salience: root-cause
 status: superseded
 subjects:
   - snapshot-perf
-  - podcast-rev
   - build-snapshot-payload
-supersedes:
-  - 2026-06-13-1-per-domain-projection-gates-kill-snapshot
+  - rev-cache-defeat
+supersedes: []
 related_claims: []
 source_lines:
-  - 30-57
-  - 122-161
-captured_at: 2026-06-13T21:21:24Z
+  - 1-161
+captured_at: 2026-06-13T23:44:31Z
 ---
 
-# Episode: Snapshot cache defeated by global rev — per-domain projections replace whole-library rebuild
+# Episode: Snapshot cache defeated by global rev — full-library re-serialization on every tick
 
 ## Prior State
 
-build_snapshot_payload had a rev-gated snapshot-string cache intended to skip re-serialization when nothing changed. The assumption was that the cache would hit on most ticks, making the push-frame snapshot path cheap.
+The rev-gated snapshot-string cache in build_snapshot_payload was believed to be effective — an unchanged rev would short-circuit serialization.
 
 ## Trigger
 
-Profiling process 21680 showed 57% of samples (~1,633/2,856) inside build_snapshot_payload → serde_json::to_string, plus 14.6 GB physical footprint. Investigation revealed the cache IS structurally correct, but rev.fetch_add(1, Ordering::Relaxed) is called from many handlers (comments_handler, feed_fetch, knowledge, agent_note_handler, social_publish_handler, categorization, etc.), bumping the global rev on essentially every actor tick and defeating the cache entirely.
+sample profiling of process 21680 showed ~57% of CPU time in build_snapshot_payload → serde_json::to_string and a 14.6GB physical footprint; investigation revealed rev fetch_add is called from many handlers (comments, feed_fetch, knowledge, agent_note, etc.) on essentially every actor tick, defeating the cache entirely.
 
 ## Decision
 
-Replace the single global rev + whole-library-serialization model with slice-local payload builders using per-domain/per-podcast revs, so unchanged domains skip serialization entirely. (Implemented as 'slice-local payload builders' — kills the 1 Hz whole-library rebuild.)
+Root cause identified: the cache is structurally correct but rev bumps on every command dispatch, so the full library is re-serialized every tick. No fix was implemented this session, but the diagnosis reframes the problem — the fix must be structural (delta snapshots, per-podcast serialization caching, or pushing individual PodcastSummary updates rather than the full PodcastUpdate envelope on every tick).
 
 ## Consequences
 
-- Each projection domain (downloads, queue, categories, social, etc.) carries its own rev and serializes independently; an unchanged domain's cache hits
-- The global rev's role is eliminated or subsumed by per-domain revs, removing the O(all-podcasts × all-episodes) serialization per tick
-- 14.6 GB memory footprint from accumulated full-library allocations should collapse
-- New per-domain projections must be wired into the same push-frame seam (NmpApp::register_snapshot_projection) already used by the prior monolithic path
+- The perceived 'cache' is a no-op in practice; any perf work must target reducing what gets serialized per tick, not just adding caching
+- 14.6GB physical footprint is likely from accumulated allocations from repeated full-library serializations
+- The string-escaping leaf bottleneck (format_escaped_str) is a symptom, not the cause
 
 ## Open Tail
 
-- Whether the push-projection path fully replaces the old pull-symbol path or leaves a deprecated compat shim
-- Whether per-domain revs introduce ordering risks if projections are delivered at different ticks
+- Which structural fix to adopt (delta snapshots vs per-podcast cache vs structural push change) is unresolved
+- Memory footprint from accumulated allocations needs separate investigation
 
 ## Evidence
 
-- transcript lines 30-57
-- transcript lines 122-161
+- transcript lines 1-161
 

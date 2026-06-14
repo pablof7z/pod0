@@ -8,7 +8,7 @@ tags:
 volatility: warm
 confidence: medium
 created: 2026-05-13
-updated: 2026-06-13
+updated: 2026-06-14
 verified: 2026-05-13
 compiled-from: conversation
 sources:
@@ -50,3 +50,9 @@ The register.rs comment block at lines 233–262 was stale and contradicted the 
 ## Orphaned Approval Scaffolding
 
 iOS NostrPendingApprovals/NostrApprovalPresenter are orphaned dead scaffolding — nothing populates the pending queue, and the allow/block sets gate nothing in the kernel. They are deleted in the v1 conversations vertical. <!-- [^c1691-236] -->
+
+## Agent Notes Wire Field Retirement
+
+The flat agent_notes wire field and AgentNoteSummary DTO are retired across Rust, iOS, and Android; the conversations projection carries the data and the kind:1 transport handler is untouched.
+
+<!-- citations: [^c1691-413] [^c1691-429] -->

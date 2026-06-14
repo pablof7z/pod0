@@ -22,6 +22,8 @@ sources:
 
 The TestFlight workflow must be gated by tests or use workflow_run. The deploy job depends on a test job. PRs that delete or move Swift files must run an actual xcodebuild compile (not just cargo test), because Rust-green can mask orphaned Swift references (as occurred with overlapsAd in AIChapterCompiler deletion). The CI iOS-sim destination fix uses runtime UDID discovery (prefer '* ci' simulator, fallback any available iPhone, exit 70 on none) instead of hardcoded 'iPhone 17' name, preventing future Xcode/simulator version breakage.
 
+Headless scenarios are not run in CI (no workflow invokes cargo run --bin headless --features headless); the nipf4_publish e2e guard is on-demand only unless wired into a CI job. <!-- [^c1691-306] -->
+
 <!-- citations: [^rollo-130] [^c1691-130] [^c1691-151] [^c1691-152] [^c1691-192] -->
 ## CI Test Command
 

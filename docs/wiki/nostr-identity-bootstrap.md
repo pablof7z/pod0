@@ -8,7 +8,7 @@ tags:
 volatility: warm
 confidence: medium
 created: 2026-06-10
-updated: 2026-06-13
+updated: 2026-06-14
 verified: 2026-06-10
 compiled-from: conversation
 sources:
@@ -45,3 +45,7 @@ Social state (following list + agent notes) must be cleared on account switch to
 ## Testing
 
 Seven unit tests in `UserIdentityBootstrapTests.swift` cover both identity bugs (auto-keygen and generate-key dispatch) using `_keygenCallRecorder` and `_pullCallRecorder` test seams rather than `KernelDispatchRecorder`, because `dispatchKernelKeygen` routes through `dispatchToKernel` not direct FFI. The identity fix must be tested on both iOS (Xcode MCP) and Android (ADB) before merging. <!-- [^4243e-10] -->
+
+## Profile Publication Gap
+
+After publishing a kind:0 profile, the published fields never appear in the local identity projection because handle_publish_profile never touches IdentityStore and no kind:0 observer exists to catch relay echoes. <!-- [^c1691-451] -->
