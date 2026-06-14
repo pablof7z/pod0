@@ -31,16 +31,16 @@ Detailed implementation plans live under `docs/plan/` and are linked from this f
 
 | Area | Status |
 |---|---|
-| NMP dependency pin | `nmp-v0.2.2` (rev `6a0c4fda`, workspace version `0.2.1`) |
+| NMP dependency pin | `0.6.2` crates pinned to rev `6418a7acae78b27ecd7a5a5c102db43a05c1cf6c` in `Cargo.toml`. |
 | Feature parity | Not achieved — many merged PRs are scaffolds or heuristics, not full original-app behavior. |
 | Legacy app deletion | Blocked — `App/Sources/` remains the reference implementation until all parity exits pass. |
-| Compat layer | Active debt — `ios/Podcast/Podcast/Compat/` still contains service/domain/identity/utility shims. |
+| Parked iOS shell | Deleted — there is no `ios/` tree on current `main`; remaining parity debt lives in `App/Sources/` Swift policy/fallback code and the cross-platform surfaces listed in `docs/BACKLOG.md`. |
 | NIP-F4 Keychain flip | Cancelled — `podcast-keys.json` is the canonical and final store for per-podcast secrets. No Keychain migration. |
 | Validation gate | Incomplete — code parity work must run focused Rust/Swift tests plus the merge gate. |
 
 ## Next Execution Order
 
 1. Burn down feature-parity scaffolds — replace AI/platform scaffolds with real logic, one PR per backlog item.
-2. Burn down `ios/Podcast/Podcast/Compat/` — replace each shim with Rust-backed snapshot/action behavior.
+2. Burn down remaining Swift policy/fallback code in `App/Sources/` — replace each business decision with Rust-backed snapshot/action behavior.
 3. Broaden the iOS validation gate.
 4. Re-run full validation and only then mark feature-parity done.

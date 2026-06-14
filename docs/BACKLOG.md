@@ -20,7 +20,10 @@ worktrees currently in flight.
 - ~~**p0-nipf4-author-claim.**~~ Done: `publish_author_claim` signs with active agent key and publishes kind:10064. Called after create/update/delete of owned podcasts.
 - **p0-plan-truthfulness.** Keep `docs/plan.md`,
   `docs/plan/nmp-feature-parity.md`, and this backlog synchronized with code.
-  Do not mark scaffolded behavior done.
+  Do not mark scaffolded behavior done. Current audit: docs now reflect the
+  `0.6.2` NMP pin at rev `6418a7acae78b27ecd7a5a5c102db43a05c1cf6c`, the
+  deleted parked `ios/` shell, and the fact that remaining parity debt lives in
+  `App/Sources/` Swift policy/fallback code plus the listed platform/AI gaps.
 - **p0-validation-gate.** Establish the merge gate for this migration:
   `git diff --check`, focused Rust tests for touched crates,
   focused Swift/iOS tests for touched targets, and full-suite validation before
@@ -162,9 +165,9 @@ worktrees currently in flight.
   dispatch namespace/body JSON. Agent task snapshots now expose user-facing
   intent metadata and hide raw dispatch namespace/body fields from serialized
   projection JSON. Android task creation now uses `create_from_intent` with an
-  variant-backed `AgentTaskIntent` payload, and the parked `ios/Podcast` shell's
-  task sheet mirrors the same typed creation path. Swift's scheduled prompt
-  tool/settings surface now creates and edits `agent_prompt` tasks through
+  variant-backed `AgentTaskIntent` payload. The parked `ios/` shell is deleted,
+  and the active Swift scheduled prompt tool/settings surface now creates and
+  edits `agent_prompt` tasks through
   `podcast.tasks` typed intents, renders the shared `agentTasks` projection,
   and dispatches Rust-owned `run_due` on foreground instead of scanning a
   persisted Swift task array. Agent task rows now persist through the shared
@@ -862,16 +865,11 @@ worktrees currently in flight.
 
 _All pending decisions resolved. See Done section for resolutions._
 
-- **legacy-migration-delete.** All "legacy migration" infrastructure is dead —
-  there is no shipped v1 app and no users to migrate. Delete:
-  `App/Sources/Capabilities/PodcastKeysKeychainMigration.swift`,
-  `ios/Podcast/Podcast/Capabilities/LegacyKeychainMigration.swift`,
-  `ios/Podcast/Podcast/Capabilities/LegacyIOCapability.swift`,
-  `ios/Podcast/Podcast/Capabilities/LegacyIOTypes.swift`.
-  Remove the `legacyIO` field + routing from `PodcastCapabilities.swift`,
-  the `runIfNeeded` call from `KernelBridge+Callbacks.swift:78`, and any
-  `pcst.legacy_io.capability` handling on the Rust side. Remove all file
-  references from `project.pbxproj`.
+- **legacy-migration-delete.** Resolved on current `main`: there is no shipped
+  v1 app and no legacy migration surface left to execute. The parked `ios/`
+  shell is gone, `App/Sources/Capabilities/PodcastKeysKeychainMigration.swift`
+  is absent, and `legacyIO` / `pcst.legacy_io.capability` no longer appear in
+  the active source tree.
 
 ## Resolved Decisions
 

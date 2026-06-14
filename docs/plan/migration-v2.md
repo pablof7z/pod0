@@ -3,8 +3,8 @@
 **Status:** Active. **Owner:** principal engineer. **Linked from:** `docs/plan.md`.
 
 This plan replaces the ad-hoc "lane" work with a single ordered milestone
-sequence that ends with `App/Sources/` deletable and `libnmp_app_podcast.a`
-owning every business decision. Per-feature parity remains tracked in
+sequence that ends with `App/Sources/` deletable and the Rust
+`nmp-app-podcast` kernel owning every business decision. Per-feature parity remains tracked in
 `docs/plan/nmp-feature-parity.md`; this document tracks the **plumbing** that
 unblocks that matrix.
 
@@ -19,18 +19,14 @@ unblocks that matrix.
 
 These are not negotiable later in the plan — answer them in M0.
 
-1. **One iOS runtime path wins.** Today: `App/Sources/**` is the Tuist target
-   (`Project.swift:69`, 634 swift files, `@main` in `App/Sources/AppMain.swift`);
-   `ios/Podcast/Podcast/` (160 files, with `Compat/` shims) is the shape we
-   want but is **not** in the Tuist target. Choose **Option B**: refactor
-   `App/Sources/**` in place toward thin-shell shape, keep the Tuist target
-   pointed at `App/Sources/**`, delete `ios/Podcast/Podcast/` once parity
-   confirms there is nothing salvageable there. Rationale: `App/Sources/` ships
-   today and contains the unique reference behavior; rebuilding it in
-   `ios/Podcast/Podcast/` is more risk and more rework. Existing
-   `Compat/<x>Compat.swift` files are useful only insofar as they document the
-   API shape iOS expects — copy any naming we like into `App/Sources/` and
-   then delete the directory.
+1. **One iOS runtime path wins.** `App/Sources/**` is the Tuist target
+   (`Project.swift`, 633 Swift files, `@main` in `App/Sources/AppMain.swift`).
+   The parked `ios/Podcast/Podcast/` tree has been deleted from current
+   `main`, so Option B is now settled: continue refactoring `App/Sources/**`
+   in place toward the thin-shell shape until parity exits prove it can be
+   removed. Rationale: `App/Sources/` ships today and contains the unique
+   reference behavior; rebuilding a deleted parked shell would add risk and
+   rework.
 2. **Audio stays in Swift, behind `AudioCapability`.** `AudioEngine` (AVPlayer
    wrapper) is owned by `PodcastCapabilities.audio` and driven by
    `AudioCommand`s emitted by Rust's `PlayerActor`. `PlaybackState` must read
@@ -54,13 +50,15 @@ Tasks:
 
 1. Add a row to the table in `docs/plan.md` pointing at
    `docs/plan/migration-v2.md`.
-2. Tag every `ios/Podcast/Podcast/Compat/*.swift` file with a one-line
+2. ~~Tag every `ios/Podcast/Podcast/Compat/*.swift` file with a one-line
    "delete after Mn" comment so accidental new references are obvious in
-   review. (No code changes; comment-only.)
+   review.~~ Not applicable on current `main`: the `ios/` tree is gone.
 3. Drain in-flight branches touching `PlaybackState` / `EpisodeDownloadService`
    before opening any M1/M2 PR.
 
-Status: **todo**.
+Status: **done**. `docs/plan.md` links this file, Option B is recorded against
+the current `App/Sources/**` target, and the parked `ios/` tree no longer
+exists.
 
 ---
 
@@ -226,12 +224,11 @@ Status: **todo**.
 
 ## Milestone M2 — Download path unification
 
-**Done when:** `EpisodeDownloadService.swift`,
-`EpisodeDownloadService+Delegate.swift`, and
-`EpisodeDownloadService+AutoDownload.swift` are deleted. The Tuist target
-builds with `DownloadCapability` as the only download owner. The background
-URLSession handoff in `AppDelegate.swift:57` forwards to
-`PodcastCapabilities.shared.download`.
+**Done when:** the Tuist target builds with `DownloadCapability` as the only
+download-transfer owner, the background URLSession handoff in
+`AppDelegate.swift` forwards to `PodcastCapabilities.shared.download`, and any
+remaining Swift file lookup helpers are thin storage/capability adapters rather
+than download policy owners.
 
 Subtask order:
 
@@ -249,34 +246,24 @@ Subtask order:
    without iOS deciding. Implementation lives in a new
    `apps/nmp-app-podcast/src/auto_download.rs` keeping the per-podcast
    policy from `EpisodeDownloadService+AutoDownload.swift` line-by-line.
-3. **Redirect the background URLSession handoff.** Edit
+3. ~~**Redirect the background URLSession handoff.** Edit
    `App/Sources/App/AppDelegate.swift:57-68` to call
    `PodcastCapabilities.shared.download.handleEventsForBackgroundURLSession(...)`.
    `DownloadCapability` already owns a background-aware `URLSession` —
-   verify the session identifier matches.
-4. **Remove every reference to `EpisodeDownloadService` from
-   `App/Sources/`.** Grep tells us the live references are:
-   - `App/Sources/State/AppStateStore.swift:245` (`attach` call)
-   - `App/Sources/State/AppStateStore+Episodes.swift:127-128` (auto-download trigger)
-   - `App/Sources/Features/EpisodeDetail/*` (UI byte formatter,
-     progress badge bindings)
-   - `App/Sources/Features/Library/EpisodeRowContextMenu.swift`
-   - `App/Sources/Features/Player/DownloadProgressBadge.swift`
-   - `App/Sources/Capabilities/DownloadCapability+Delegate.swift:13`
-     (comment only)
-   - `App/Sources/Services/TranscriptIngestService.swift:220`
-     (comment only)
+   verify the session identifier matches.~~ Done on current `main`.
+4. ~~**Remove every reference to `EpisodeDownloadService` from
+   `App/Sources/`.**~~ Done on current `main`: no
+   `EpisodeDownloadService*.swift` files or live references remain.
+5. Audit `EpisodeDownloadStore` readers. It still backs local-file lookup for
+   audio, transcript ingest, clip export, storage settings, UITest seeding, and
+   generated TTS media. Keep it only as a storage helper or fold those reads
+   into `DownloadCapability`/kernel-projected local paths when the call sites
+   can be made policy-free.
 
-   Each call site reads from the snapshot's `downloads.active[...]` entry
-   instead of the Swift dictionary; the byte formatter moves into a free
-   helper.
-5. **Delete the three `EpisodeDownloadService*.swift` files** in one
-   commit. Also delete `App/Sources/Podcast/EpisodeDownloadStore.swift`
-   if it has no remaining readers.
-6. **Delete `Compat/ServiceStubs.swift` shim** that mirrored the old
-   service.
-
-Status: **todo**.
+Status: **partial**. The legacy service owner is gone and background handoff
+routes through `DownloadCapability`; remaining work is storage-helper cleanup,
+offline-first playback validation, background restore validation, and deletion
+failure coverage.
 
 ---
 
@@ -395,59 +382,22 @@ Status (all): **todo**.
 
 ## Milestone M6 — Identity and Nostr key persistence
 
-**Done when:** `apps/nmp-app-podcast/src/store/podcast_keys.rs` no longer
-writes `podcast-keys.json` to plaintext on disk. NIP-F4 per-podcast secrets
-are stored in iOS Keychain via `PcstIdentityCapability`. The on-disk file is
-migrated on first launch and deleted. `UserIdentityStore.shared` and
-`Compat/UserIdentityStoreCompat.swift` are deleted.
-
-Subtasks:
-
-1. **Add keyring slots** for per-podcast NIP-F4 secrets in
-   `PcstIdentityCapability`. Key: `pcst.podcast.<podcast_id>.nipf4`.
-2. **Add a Rust capability request:**
-   `pcst.identity.get_podcast_secret { podcast_id }` →
-   `{ secret_hex }` and a matching `set_podcast_secret`.
-3. **Migrate** existing `podcast-keys.json` entries into Keychain on
-   first launch, then unlink the file.
-4. **Delete `podcast-keys.json` persistence code path** in
-   `PodcastKeyStore` (keep the in-memory store; route reads/writes
-   through the capability).
-5. **Delete `UserIdentityStore` and its compat shim.** Identity reads
-   come from `PodcastUpdate.activeAccount`; writes go through the
-   already-wired `podcast.identity.*` ops.
-6. Validate parity rows 21–25 in `docs/plan/nmp-feature-parity.md`.
-
-Status: **todo**.
+**Status: cancelled/superseded.** The Keychain flip was explicitly cancelled:
+`podcast-keys.json` is the canonical per-podcast NIP-F4 secret store, with no
+Keychain migration. Identity follow-up work now lives under
+`identity-kernel-actions`, `relay-list-ownership`, and the Tier 2 rows in
+`docs/plan/nmp-feature-parity.md`; do not resurrect the old
+`PcstIdentityCapability` keyring-slot migration plan.
 
 ---
 
 ## Milestone M7 — Compat layer burn-down
 
-**Done when:** `ios/Podcast/Podcast/Compat/` is empty and removed. Each
-file maps to a prior milestone that obviates it:
-
-| Compat file | Replaced by | Milestone |
-|---|---|---|
-| `KernelModelCompat.swift` | Generated bridge types | M1 (PodcastUpdate expansion) |
-| `ServiceStubs.swift` | `DownloadCapability` + `AudioCapability` | M2 |
-| `UserIdentityStoreCompat.swift` | `PcstIdentityCapability` + snapshot | M6 |
-| `DomainStubs.swift` | Generated bridge types | M1 + M4 |
-| `EpisodeFormatHelpers.swift` | Move into `App/Sources/` as free helpers | After M2 |
-| `LoggerExtensions.swift` | Move into `App/Sources/` | Any time |
-| `UtilityStubs.swift` | Inline or delete | Any time |
-
-Subtasks:
-
-1. Move `EpisodeFormatHelpers.swift`, `LoggerExtensions.swift`, and any
-   non-shim utilities into `App/Sources/` so the deletion in step 3 is
-   purely subtractive.
-2. Run `grep -r "Compat" App/Sources/` and confirm no transitive imports
-   remain.
-3. `rm -rf ios/Podcast/Podcast/Compat/`.
-4. Verify no test fixture references it.
-
-Status: **todo**.
+**Status: done/obsolete.** The parked `ios/` tree is absent on current `main`;
+there is no `ios/Podcast/Podcast/Compat/` directory to burn down. Remaining
+compatibility debt is no longer a directory milestone: it is the specific
+Swift policy/fallback code still listed in `docs/BACKLOG.md` and
+`docs/plan/nmp-feature-parity.md`.
 
 ---
 
@@ -455,23 +405,19 @@ Status: **todo**.
 
 **Done when:**
 
-- `ios/Podcast/Podcast/` is deleted (Option B from M0).
+- The parked `ios/` shell remains absent.
 - The 7 exit criteria at the bottom of
   `docs/plan/nmp-feature-parity.md` all pass.
 - `cargo test --workspace` and the full Swift merge gate are green.
 
 Subtasks:
 
-1. Walk `ios/Podcast/Podcast/{App,Bridge,Capabilities,Design,Features,Theme}`
-   and confirm no behavior remains that is not represented in
-   `App/Sources/`. Anything missing comes back as a small PR per area
-   before the deletion.
-2. Delete `ios/Podcast/Podcast/` and `ios/Podcast/Podcast.xcodeproj` if
-   present.
-3. Update `Project.swift` if it referenced anything in there (today it
-   does not — verified during M0).
-4. Flip `docs/plan/nmp-feature-parity.md` to `Done`.
-5. Delete `docs/plan/migration-v2.md` once `docs/plan.md` records
+1. Audit `App/Sources/` against the feature-parity matrix. Anything still
+   implemented as Swift policy/fallback code comes back as a small PR per area
+   before `App/Sources/` can be deleted.
+2. Update `Project.swift` only if the active Tuist target shape changes.
+3. Flip `docs/plan/nmp-feature-parity.md` to `Done`.
+4. Delete `docs/plan/migration-v2.md` once `docs/plan.md` records
    the migration as complete (or, preferably, mark it `Archived` to
    preserve the audit trail).
 
@@ -497,5 +443,6 @@ Status: **todo**.
 M0 lock → M1 PlaybackState becomes pure → M2 single download owner → M3
 settings/credentials in Rust → M4 delete preserved-state block → M5 AI
 scaffolds become real (triage → transcripts → RAG → agent → chapters →
-rest) → M6 keys to Keychain → M7 Compat dir deleted → M8
-`ios/Podcast/Podcast/` deleted, parity exit criteria pass.
+rest) → M6 identity/Nostr follow-ups without Keychain migration → M7 parked
+Compat dir already absent → M8 feature parity exits pass and `App/Sources/`
+becomes deletable.

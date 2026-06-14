@@ -17,24 +17,23 @@ delete it until all exit criteria at the bottom of this file pass.
 | Wrong | Current code contradicts the architecture or protocol contract and must be corrected before layering on it. |
 | Blocked | Work depends on another listed item. |
 
-## Current Snapshot - 2026-05-26
+## Current Snapshot - 2026-06-14
 
 The large PR stack has merged, but it does not equal feature parity. GitHub
-reported zero open PRs after PR #105. Many branches created screens,
+reported zero open PRs after PR #463. Many branches created screens,
 projections, action namespaces, and local heuristics; several still need real
-logic, relay/provider integration, or removal of compat shims.
+logic, relay/provider integration, device validation, or removal of Swift-side
+policy/fallback code in `App/Sources/`.
 
-Recent corrective PRs changed the status, but not the final exit criteria:
-PR #89 fixed the current NIP-F4 wire builders/parsers, PR #93 replaced fake
-pubkey derivation with real secp256k1 derivation, PR #95 landed local Ollama
-provider support, and PR #96 fixed restored-playback auto-download behavior.
-PR #101 finished the Rust download queue projection/report loop, and PR #102
-cleared the known iOS focused-test compile blockers. PR #103 briefly restored
-Play Latest, then PR #104 reconciled the AppIntents state by hiding Play
-Latest until it can route through Rust-owned `podcast.siri.play_latest`; PR
-#105 aligned the remaining Pod0 brand test assertions. The remaining NIP-F4
-work is persistence, signing, relay publication, relay-backed discovery,
-author claims, and deletion cleanup.
+Recent corrective PRs changed the status, but not the final exit criteria.
+The active NIP-F4 path now has canonical wire builders/parsers, real
+secp256k1-derived keys, file-backed key persistence, signed show/episode/
+author-claim publishing, key cleanup on owned-podcast deletion, and
+relay-backed kind:10154/kind:54 discovery. Provider ownership, Android parity,
+profile self-application, remote-signer flows, download projection, and several
+validation gaps have also advanced. Remaining NIP-F4 work is configured
+write-relay routing, durable retry, stale NIP74 naming cleanup, and device/
+merge-gate validation.
 
 The stale PR-1 status from the original plan is no longer true: `PodcastHandle`
 has state, snapshot fields exist, actions are registered, and iOS generated
@@ -65,7 +64,7 @@ completion, not absence of all infrastructure.
 
 | Slice | Status | What Still Needs To Happen |
 |---|---|---|
-| PR 1 - Core infrastructure | Partial | Keep JSON persistence if chosen, but document it as the canonical store or migrate to the planned storage. Finish push-style snapshot delivery through the NMP update sink. Unify capability routing so there is one router and capabilities own their threading. Delete replaced compat shims. |
+| PR 1 - Core infrastructure | Partial | Keep JSON persistence if chosen, but document it as the canonical store or migrate to the planned storage. Finish push-style snapshot delivery through the NMP update sink. Unify capability routing so there is one router and capabilities own their threading. Delete or rehome replaced compatibility wrappers in `App/Sources/`. |
 | PR 2 - Library UX | Partial | Verify subscribe, refresh, OPML import/export, iTunes search, show detail, and empty/error states on device and simulator. Remove remaining `SubscriptionService` compat paths once every view reads snapshots/dispatches actions directly. |
 | PR 3 - Full player | Partial | Validate lock-screen metadata, remote commands, queue transitions, sleep timer, speed, position persistence, download-local playback, and AirPlay/route behavior. Fix any remaining iOS-side policy decisions. |
 | PR 4 - Identity | Partial | Finish Rust-owned identity actions, Keychain-backed credential replacement, NIP-46 pairing state, profile publishing, fingerprint/account metadata projection, and removal of `UserIdentityStore` compat surfaces. |
@@ -173,7 +172,7 @@ completion, not absence of all infrastructure.
 1. Every feature above is `Done`.
 2. `App/Sources/` can be deleted without breaking any user flow.
 3. iOS and Android ship from the same Rust kernel build.
-4. No compat stub files remain in `ios/Podcast/Podcast/Compat/`.
+4. No obsolete compat/shim shell remains; the parked `ios/` tree is absent and any remaining Swift compatibility wrappers in `App/Sources/` are either deleted or documented as thin capability/rendering adapters.
 5. All NIP-F4 publish/discovery paths produce and consume canonical NIP-F4 event shapes.
 6. `cargo test --workspace`, focused `xcodebuild test`, and the full merge gate pass.
 7. `docs/plan.md` and `docs/BACKLOG.md` agree with the code state.
