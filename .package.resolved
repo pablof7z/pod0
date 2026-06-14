@@ -6,8 +6,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/onevcat/Kingfisher",
       "state" : {
-        "revision" : "cf8be20d07654570554c8a8a4952bc8a5766a8b0",
-        "version" : "8.9.0"
+        "revision" : "cf8be20d07654570554c8a8a4952bc8a5766a8b0"
       }
     },
     {
@@ -23,8 +22,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jkrukowski/SQLiteVec",
       "state" : {
-        "revision" : "1504246d0900db950a5065f43fce964bf4adceda",
-        "version" : "0.0.14"
+        "revision" : "1504246d0900db950a5065f43fce964bf4adceda"
       }
     }
   ],

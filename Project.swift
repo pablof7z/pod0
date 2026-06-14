@@ -31,17 +31,20 @@ let project = Project(
         // Lane 6 — RAG: on-device vector store via sqlite-vec.
         // Hosts both the `vec0` virtual table for embeddings and `fts5` for
         // hybrid lexical search in a single SQLite file.
+        // Pinned to the 0.0.14 release revision so CI generation does not have
+        // to range-resolve remote tags on the self-hosted runner.
         .remote(
             url: "https://github.com/jkrukowski/SQLiteVec",
-            requirement: .upToNextMinor(from: "0.0.14")
+            requirement: .revision("1504246d0900db950a5065f43fce964bf4adceda")
         ),
         // Kingfisher — memory + disk image cache. Backs `CachedAsyncImage`
         // so artwork URLs (subscription / episode covers, iTunes Search
         // results, etc.) fetch at most once per session instead of
         // re-downloading every appearance like SwiftUI's stock `AsyncImage`.
+        // Pinned to the 8.9.0 release revision for deterministic CI generation.
         .remote(
             url: "https://github.com/onevcat/Kingfisher",
-            requirement: .upToNextMajor(from: "8.0.0")
+            requirement: .revision("cf8be20d07654570554c8a8a4952bc8a5766a8b0")
         ),
         // Pinned to a revision (not a version range) because LiteRTLM declares
         // `unsafeFlags(["-Xlinker", "-all_load"])`, which SwiftPM forbids on a

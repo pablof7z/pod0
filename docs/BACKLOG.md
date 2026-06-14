@@ -73,7 +73,12 @@ worktrees currently in flight.
   `gradle/actions/setup-gradle@v6.2.0` and uses the current `cache-cleanup`
   input so the required Android gate reports the real build result, and removes
   obsolete `/tmp/nmp-at-ac7e307e` clone steps left over from the deleted NMP
-  path patch.
+  path patch. The same PR's non-required full iOS lane then timed out before
+  tests while `tuist generate` was resolving Swift packages. The follow-on
+  bootstrap fix pins the remaining Swift package ranges to their already
+  resolved release revisions and wraps `tuist generate` in bounded retry/cleanup
+  logic so a package-resolution stall cannot consume the entire Build and Test
+  job.
   The old `nmp-blossom` portability blocker is resolved on `main`, PR #498
   removed the temporary `vendor/nmp-core` fork, and the Rust/headless required
   merge gates are locally unblocked by the upstream-pinned NMP rev. Do not
