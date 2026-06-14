@@ -240,11 +240,12 @@ worktrees currently in flight.
   corresponding kernel behavior is real; centralized completed-download history
   when the kernel projects it; and focused TUI integration scenarios beyond the
   current subscribe/queue/settings/agent/download/detail/relay smoke.
-- **bunker-isconnecting-reactive.** `RemoteSignerView.connect()` sets
-  `isConnecting = false` immediately after dispatching `signInBunker` (fire-
-  and-forget). Should clear when `activeAccount` appears in snapshot (or on a
-  timeout), so the spinner stays up while the NIP-46 handshake is in flight.
-  Requires `bunkerHandshake` state surfaced in `IdentityViewModel`.
+- ~~**bunker-isconnecting-reactive.**~~ Done in this PR.
+  `RemoteSignerView` no longer owns a local `isConnecting` flag that clears
+  immediately after the fire-and-forget `signInBunker` dispatch. Remote-signer
+  pairing state now lives in `UserIdentityStore`, stays pending across nil or
+  stale local-key snapshot ticks, clears when a remote `activeAccount` appears,
+  and fails with a timeout if no terminal kernel state arrives.
 - **rss-subscribe-validation.** Validate malformed URLs, duplicate feeds,
   provider errors, restart persistence, Android behavior, and empty/error UI.
 - **opml-import-export-hardening.** Validate large OPML files, partial

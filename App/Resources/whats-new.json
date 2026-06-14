@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-14T05:12:25Z",
+      "lines": [
+        "Remote signer setup now keeps showing connection progress until the signer finishes pairing or the attempt times out."
+      ]
+    },
+    {
       "shipped_at": "2026-06-14T00:00:00Z",
       "lines": [
         "Conversation and feedback participants now show real names and avatars instead of raw hex keys."

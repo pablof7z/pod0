@@ -26,7 +26,7 @@ struct Nip46ConnectCard: View {
     private var identity: UserIdentityStore { store.identity }
     @Environment(\.openURL) private var openURL
     @Binding var bunkerInput: String
-    @Binding var isConnectingRemote: Bool
+    let isConnectingRemote: Bool
     let connect: () async -> Void
     let disconnect: () async -> Void
     var presentation: Presentation = .card

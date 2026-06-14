@@ -12,7 +12,6 @@ struct RemoteSignerView: View {
     @Environment(AppStateStore.self) private var store
     private var identity: UserIdentityStore { store.identity }
     @State private var bunkerInput = ""
-    @State private var isConnecting = false
     @State private var showNostrConnect = false
 
     var body: some View {
@@ -26,7 +25,7 @@ struct RemoteSignerView: View {
 
                 Nip46ConnectCard(
                     bunkerInput: $bunkerInput,
-                    isConnectingRemote: $isConnecting,
+                    isConnectingRemote: identity.remoteSignerState.isInFlight,
                     connect: { await connect() },
                     disconnect: { await identity.disconnectRemoteSigner() },
                     presentation: .primary
@@ -41,6 +40,9 @@ struct RemoteSignerView: View {
         .background(Color(.systemBackground))
         .navigationDestination(isPresented: $showNostrConnect) {
             NostrConnectView()
+        }
+        .onChange(of: identity.remoteSignerState) { _, state in
+            handleRemoteSignerStateChange(state)
         }
     }
 
@@ -96,14 +98,18 @@ struct RemoteSignerView: View {
     private func connect() async {
         let trimmed = bunkerInput.trimmed
         guard !trimmed.isEmpty else { return }
-        isConnecting = true
         await identity.connectRemoteSigner(uri: trimmed)
-        isConnecting = false
-        if identity.isRemoteSigner {
+    }
+
+    private func handleRemoteSignerStateChange(_ state: RemoteSignerState) {
+        switch state {
+        case .connected:
             bunkerInput = ""
             Haptics.success()
-        } else {
+        case .failed:
             Haptics.error()
+        case .idle, .connecting, .reconnecting, .awaitingAuthorization:
+            break
         }
     }
 }

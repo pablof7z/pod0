@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 @testable import Podcastr
 
@@ -157,5 +158,73 @@ final class UserIdentityBootstrapTests: XCTestCase {
         let fakeNsec = "nsec1vl029mgpspedva04g90vltkh6fvh240zqtv9k3lvlrc3a0z4pfc8vqfeg"
         try? identity.importNsec(fakeNsec)
         XCTAssertEqual(pullCallCount, 1, "importNsec must request a snapshot pull.")
+    }
+
+    // MARK: - Remote signer pairing state
+
+    func testRemoteSignerConnectStaysPendingUntilRemoteAccountArrives() async throws {
+        identity._remoteSignerConnectTimeoutNanoseconds = 500_000_000
+
+        await identity.connectRemoteSigner(uri: "bunker://example.test?relay=wss://relay.example.test&secret=abc")
+
+        XCTAssertEqual(identity.remoteSignerState, .connecting)
+
+        // A nil tick can arrive while the NIP-46 broker is still pairing.
+        // It must not auto-generate a local key or clear the spinner.
+        identity.applyKernelIdentity(
+            handshake: nil,
+            activeNpub: nil,
+            pubkeyHex: nil,
+            isRemoteSigner: false
+        )
+        XCTAssertEqual(identity.remoteSignerState, .connecting)
+        XCTAssertEqual(keygenCallCount, 0, "Remote-signer pairing must suppress fresh-install auto-keygen.")
+
+        // A stale local-key tick is also possible during the same window.
+        // It must not downgrade the remote signer attempt to idle.
+        let localPubkey = String(repeating: "c", count: 64)
+        identity.applyKernelIdentity(
+            handshake: nil,
+            activeNpub: "npub1local",
+            pubkeyHex: localPubkey,
+            isRemoteSigner: false
+        )
+        XCTAssertEqual(identity.remoteSignerState, .connecting)
+
+        let remotePubkey = String(repeating: "d", count: 64)
+        identity.applyKernelIdentity(
+            handshake: nil,
+            activeNpub: "npub1remote",
+            pubkeyHex: remotePubkey,
+            isRemoteSigner: true
+        )
+
+        XCTAssertEqual(identity.remoteSignerState, .connected(remotePubkey))
+        try await Task.sleep(nanoseconds: 600_000_000)
+        XCTAssertEqual(identity.remoteSignerState, .connected(remotePubkey), "Terminal success must cancel the timeout.")
+    }
+
+    func testRemoteSignerConnectTimesOutWithoutTerminalKernelState() async throws {
+        identity._remoteSignerConnectTimeoutNanoseconds = 20_000_000
+
+        await identity.connectRemoteSigner(uri: "bunker://example.test?relay=wss://relay.example.test&secret=abc")
+
+        XCTAssertEqual(identity.remoteSignerState, .connecting)
+        let message = try await waitForRemoteSignerFailure()
+        XCTAssertEqual(message, "Remote signer connection timed out.")
+    }
+
+    private func waitForRemoteSignerFailure(
+        timeoutNanoseconds: UInt64 = 500_000_000
+    ) async throws -> String {
+        let deadline = Date().addingTimeInterval(Double(timeoutNanoseconds) / 1_000_000_000)
+        while Date() < deadline {
+            if case .failed(let message) = identity.remoteSignerState {
+                return message
+            }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        XCTFail("Timed out waiting for remote signer failure.")
+        return ""
     }
 }

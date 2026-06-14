@@ -69,6 +69,16 @@ final class UserIdentityStore {
     /// Live state of the NIP-46 connection (UI surfaces this).
     private(set) var remoteSignerState: RemoteSignerState = .idle
 
+    /// Timeout for remote-signer pairing attempts. The kernel may be waiting
+    /// on an external app/relay, so the UI must stay pending after dispatch
+    /// but still eventually recover if no terminal snapshot arrives.
+    @ObservationIgnored var _remoteSignerConnectTimeoutNanoseconds: UInt64 = 60_000_000_000
+
+    /// Client-initiated QR pairing advertises a five-minute expiry in the UI.
+    @ObservationIgnored var _nostrConnectTimeoutNanoseconds: UInt64 = 300_000_000_000
+
+    @ObservationIgnored private var _remoteSignerTimeoutTask: Task<Void, Never>?
+
     /// Cached kind:0 profile fields fetched from relays. `nil` until the
     /// first fetch completes; populated immediately on launch from the
     /// UserDefaults cache so the UI never flashes generated → real.
@@ -124,6 +134,7 @@ final class UserIdentityStore {
     /// bumps rev so the next push frame carries `active_account`).
     func importNsec(_ nsec: String) throws {
         loginError = nil
+        cancelRemoteSignerTimeout()
         let trimmed = nsec.trimmed
         guard !trimmed.isEmpty else {
             loginError = "Invalid nsec — check the key and try again."
@@ -142,6 +153,7 @@ final class UserIdentityStore {
     /// new pubkey arrives via `applyKernelIdentity`.
     func generateKey() throws {
         loginError = nil
+        cancelRemoteSignerTimeout()
         remoteSignerState = .idle
         dispatchKernelKeygen()
     }
@@ -170,6 +182,7 @@ final class UserIdentityStore {
     /// legacy Swift-Keychain slots. Local published state resets immediately;
     /// `applyKernelIdentity` confirms `activeAccount == nil` on the next tick.
     func clearIdentity() {
+        cancelRemoteSignerTimeout()
         try? KeychainStore.deleteString(service: Self.userKeyService, account: Self.generatedProfileAccount)
         purgeLegacyKeychainKeys()
         // Wipe the key from the kernel (else it outlives sign-out in the
@@ -194,6 +207,7 @@ final class UserIdentityStore {
     /// `applyKernelIdentity` on kernel snapshot ticks.
     func connectRemoteSigner(uri: String) async {
         loginError = nil
+        cancelRemoteSignerTimeout()
         let trimmed = uri.trimmed
         guard trimmed.hasPrefix("bunker://") else {
             loginError = "Invalid bunker URI."
@@ -201,6 +215,7 @@ final class UserIdentityStore {
             return
         }
         remoteSignerState = .connecting
+        scheduleRemoteSignerTimeout()
         // Hand off to the kernel — NMP parses, validates, and handles NIP-44,
         // NIP-46, and relay routing. No URI parsing or crypto in Swift.
         syncBunkerToKernel(uri: trimmed)
@@ -208,6 +223,7 @@ final class UserIdentityStore {
 
     /// Disconnect the active remote signer and wipe its kernel identity.
     func disconnectRemoteSigner() async {
+        cancelRemoteSignerTimeout()
         clearIdentityInKernel()
         purgeLegacyKeychainKeys()
         publicKeyHex = nil
@@ -269,18 +285,24 @@ final class UserIdentityStore {
         // Connection state: a live account means connected; reflect it without
         // churning if already in the right terminal state.
         if let pubkey = pubkeyHex {
-            let target: RemoteSignerState = isRemoteSigner ? .connected(pubkey) : .idle
-            if remoteSignerState != target {
-                // Don't downgrade an in-flight bunker handshake to idle on a
-                // local-key tick; only set when we have a real account.
-                remoteSignerState = target
+            if isRemoteSigner {
+                cancelRemoteSignerTimeout()
+                let target: RemoteSignerState = .connected(pubkey)
+                if remoteSignerState != target {
+                    remoteSignerState = target
+                }
+            } else if !remoteSignerState.isInFlight {
+                let target: RemoteSignerState = .idle
+                if remoteSignerState != target {
+                    remoteSignerState = target
+                }
             }
         }
 
         // 3. Auto-generate on the first nil-pubkey tick (fresh install / data
         //    reset). One-shot: `_autoKeygenDispatched` prevents re-dispatch on
         //    subsequent nil ticks while the kernel round-trip is in flight.
-        if pubkeyHex == nil, !_autoKeygenDispatched {
+        if pubkeyHex == nil, !_autoKeygenDispatched, !remoteSignerState.isInFlight {
             _autoKeygenDispatched = true
             dispatchKernelKeygen()
         }
@@ -303,12 +325,37 @@ final class UserIdentityStore {
 
     func _beginNostrConnect() {
         loginError = nil
+        cancelRemoteSignerTimeout()
         remoteSignerState = .connecting
+        scheduleRemoteSignerTimeout(nanoseconds: _nostrConnectTimeoutNanoseconds)
     }
 
     func _failNostrConnect(_ message: String) {
+        cancelRemoteSignerTimeout()
         loginError = message
         remoteSignerState = .failed(message)
+    }
+
+    private func scheduleRemoteSignerTimeout(
+        nanoseconds timeout: UInt64? = nil
+    ) {
+        let timeout = timeout ?? _remoteSignerConnectTimeoutNanoseconds
+        guard timeout > 0 else { return }
+        _remoteSignerTimeoutTask?.cancel()
+        _remoteSignerTimeoutTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: timeout)
+            } catch {
+                return
+            }
+            guard let self, self.remoteSignerState.isInFlight else { return }
+            self._failNostrConnect("Remote signer connection timed out.")
+        }
+    }
+
+    private func cancelRemoteSignerTimeout() {
+        _remoteSignerTimeoutTask?.cancel()
+        _remoteSignerTimeoutTask = nil
     }
 
     private static func placeholderGeneratedProfile() -> [String: String] {
@@ -357,6 +404,15 @@ enum RemoteSignerState: Sendable, Equatable {
     case awaitingAuthorization(URL)
     case connected(String)            // associated value: user pubkey hex
     case failed(String)               // error message
+
+    var isInFlight: Bool {
+        switch self {
+        case .connecting, .reconnecting, .awaitingAuthorization:
+            true
+        case .idle, .connected, .failed:
+            false
+        }
+    }
 }
 
 enum UserIdentityError: LocalizedError {
