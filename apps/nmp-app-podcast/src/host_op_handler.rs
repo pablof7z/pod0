@@ -38,8 +38,7 @@ mod router;
 mod settings_actions;
 mod siri_actions;
 mod social_actions;
-// task_actions removed in Step 6 — PodcastHostOpHandler::handle_task_action
-// replaced by TasksState::handle in state/tasks.rs.
+// Task-action dispatch lives in state/tasks.rs (TasksState::handle).
 
 /// Kernel-side handler owning every `Arc`d state slot the snapshot reader
 /// (in `ffi::handle::PodcastHandle`) projects, plus the `*mut NmpApp` used
