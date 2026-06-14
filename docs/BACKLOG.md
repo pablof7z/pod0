@@ -29,24 +29,31 @@ worktrees currently in flight.
   `pablof7z/nostr-multi-platform#1412` remains open for canonical cleanup, and
   the fact that remaining parity debt lives in `App/Sources/` Swift
   policy/fallback code plus the listed platform/AI gaps.
-- **p0-validation-gate.** Establish the merge gate for this migration:
-  `git diff --check`, focused Rust tests for touched crates,
-  focused Swift/iOS tests for touched targets, and full-suite validation before
-  declaring feature parity. Current audit: the Test workflow now has a
-  `Git diff hygiene` job that runs `git diff --check` against the actual PR or
-  push range instead of a clean checkout, and Migration Lints now enforce a
-  non-empty PR description contract for TLDR, overview, validation evidence,
-  and decisions/tradeoffs. The same contract now checks the changed-file scope
-  and requires the Validation section to explicitly cover touched Rust,
-  Swift/iOS, and Android code families. Remaining: keep the full simulator
-  suite as the merge/supervisor gate. The old `nmp-blossom` portability
-  blocker is resolved on `main`: PR #488 replaced the absolute `/tmp`
-  dependency with `vendor/nmp-blossom`, and `cargo check --workspace
-  --all-targets` passes on `be815f52` with warnings only. Local issue
-  `pablof7z/podcast-player#479` is closed. PR #492 vendors `nmp-core` with a
-  targeted `publish_ver` bump when publish-engine relay-state transitions
-  change `publish_outbox`, and the headless e2e proof passed on PR #492 and
-  again after the OPML rebase in PR #493. Upstream
+- **p0-validation-gate.** Partially established: current branch protection
+  requires deterministic merge contexts for `Git diff hygiene`, `Migration
+  lint gates`, `Rust workspace build gate (all members, all targets)`, `Swift
+  bridge codegen drift gate`, `Android Kotlin compile + unit tests`, `Android
+  cross-compile check (aarch64-linux-android)`, and `Headless e2e kernel
+  proofs (nipf4 signing + offline scenarios)`. Do not mark the full iOS
+  simulator lane established yet. `Build and Test` runs
+  `ci_scripts/run_tests.sh`, which builds the Rust core for
+  `aarch64-apple-ios-sim` and runs `xcodebuild ... test` without
+  `SKIP_UI_TESTS` in the regular Test workflow, but it is not currently a
+  passing required merge gate: PR #495's run
+  `27500102726` failed on the main-equivalent merge commit with the test host
+  restarting during `AppTests.testPositionUpdatesAreDebounced`, a failing
+  `AppStateStorePerformanceTests.testUnplayedCountIsConstantTime`, and a
+  cascade of app-process-loss UI failures in `CoreJourneyUITests`,
+  `P0PlaybackUITests`, `P1SettingsUITests`, and `SetupSubscribeUITests`.
+  Stabilize or split that iOS lane before adding `Build and Test` back to
+  required branch protection. The old `nmp-blossom` portability blocker is
+  resolved on `main`: PR #488 replaced the absolute `/tmp` dependency with
+  `vendor/nmp-blossom`, and `cargo check --workspace --all-targets` passes on
+  `be815f52` with warnings only. Local issue `pablof7z/podcast-player#479` is
+  closed. PR #492 vendors `nmp-core` with a targeted `publish_ver` bump when
+  publish-engine relay-state transitions change `publish_outbox`, and the
+  headless e2e proof passed on PR #492 and again after the OPML rebase in PR
+  #493. Upstream
   `pablof7z/nostr-multi-platform#1412` remains open for the canonical NMP fix,
   and `pablof7z/nostr-multi-platform#1408` remains an NMP packaging cleanup,
   but neither currently blocks podcast-player's Rust/headless merge gates. Do

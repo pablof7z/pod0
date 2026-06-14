@@ -36,11 +36,11 @@ Detailed implementation plans live under `docs/plan/` and are linked from this f
 | Legacy app deletion | Blocked — `App/Sources/` remains the reference implementation until all parity exits pass. |
 | Parked iOS shell | Deleted — there is no `ios/` tree on current `main`; remaining parity debt lives in `App/Sources/` Swift policy/fallback code and the cross-platform surfaces listed in `docs/BACKLOG.md`. |
 | NIP-F4 Keychain flip | Cancelled — `podcast-keys.json` is the canonical and final store for per-podcast secrets. No Keychain migration. |
-| Validation gate | Incomplete — code parity work must run focused Rust/Swift tests plus the merge gate, and the full simulator suite still needs to become the supervisor gate before declaring parity. The old `nmp-blossom` packaging blocker is resolved on `main`; the `publish_outbox` projection-rev issue is locally unblocked by the vendored `nmp-core` fix in PR #492, with upstream `pablof7z/nostr-multi-platform#1412` still open for canonical cleanup. |
+| Validation gate | Partially established — branch protection requires diff hygiene, migration PR-description lint, Rust workspace, Swift bridge codegen drift, Android Kotlin/unit tests, Android cross-compile, and headless e2e. The full iOS simulator `Build and Test` lane is not a passing required merge gate yet: PR #495 run `27500102726` failed on a main-equivalent merge commit with a test-session restart during `AppTests.testPositionUpdatesAreDebounced`, `AppStateStorePerformanceTests.testUnplayedCountIsConstantTime`, and cascading app-process-loss UI failures. Feature parity is still not achieved; each code slice still needs focused local validation plus the required merge gate. The old `nmp-blossom` packaging blocker is resolved on `main`; the `publish_outbox` projection-rev issue is locally unblocked by the vendored `nmp-core` fix in PR #492, with upstream `pablof7z/nostr-multi-platform#1412` still open for canonical cleanup. |
 
 ## Next Execution Order
 
 1. Burn down feature-parity scaffolds — replace AI/platform scaffolds with real logic, one PR per backlog item.
 2. Burn down remaining Swift policy/fallback code in `App/Sources/` — replace each business decision with Rust-backed snapshot/action behavior.
-3. Broaden the iOS validation gate.
+3. Stabilize the iOS simulator lane, then add `Build and Test` back to required branch protection.
 4. Re-run full validation and only then mark feature-parity done.
