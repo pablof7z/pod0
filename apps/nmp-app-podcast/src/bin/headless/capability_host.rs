@@ -1,11 +1,17 @@
-//! Headless capability host: handles `nmp.http.capability` with real
-//! `reqwest::blocking` HTTP and `nostr_relay` capability with a real
-//! `tokio-tungstenite` WebSocket client. Returns no-op stubs for audio,
-//! download, notification, and keyring namespaces.
+//! Headless capability host: handles `nmp.http.capability` (sync) and
+//! `nmp.http.async.capability` (fire-and-forget) with real `reqwest::blocking`
+//! HTTP, `nostr_relay` capability with a real `tokio-tungstenite` WebSocket
+//! client, and no-op stubs for audio, download, and notification namespaces.
 //!
-//! The callback is an `extern "C"` function pointer — all unsafe FFI is
-//! contained here, matching the D6 "errors as data" contract used by the
-//! kernel's `mock_handler` reference implementation.
+//! ## Async HTTP
+//!
+//! The `nmp.http.async.capability` path mirrors the iOS `HttpCapability`:
+//! the kernel fires a fire-and-forget [`HttpCommand`], the host spawns a
+//! std thread to run the transport (using reqwest blocking), then calls
+//! [`nmp_app_podcast_http_report`] to deliver the [`HttpReport`] back to the
+//! kernel's [`FeedFetchCoordinator`]. The handle pointer is stored in a
+//! `OnceLock<usize>` (as a raw address, which is `Send`) and set after
+//! registration.
 //!
 //! ## Tokio runtime lifetime
 //!
@@ -19,11 +25,16 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::OnceLock;
 
 use nmp_core::substrate::{CapabilityEnvelope, CapabilityRequest};
-use nmp_ffi::{nmp_app_set_capability_callback, NmpApp};
+use nmp_ffi::NmpApp;
 use nmp_app_podcast::capability::{
     NostrRelayRequest, NostrRelayResult, NOSTR_RELAY_CAPABILITY_NAMESPACE,
 };
-use podcast_feeds::http::{HttpMethod, HttpRequest, HttpResult, HTTP_CAPABILITY_NAMESPACE};
+use nmp_app_podcast::ffi::PodcastHandle;
+use nmp_app_podcast::nmp_app_podcast_http_report;
+use podcast_feeds::http::{
+    HttpCommand, HttpMethod, HttpReport, HttpRequest, HttpResult,
+    HTTP_ASYNC_CAPABILITY_NAMESPACE, HTTP_CAPABILITY_NAMESPACE,
+};
 use reqwest::header::{HeaderName, HeaderValue};
 
 use super::relay_client;
@@ -31,6 +42,12 @@ use super::relay_client;
 /// Tokio runtime used solely for the Nostr relay capability executor.
 /// Initialised once in `install`; lives for the process lifetime.
 static RELAY_RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+
+/// The `PodcastHandle` pointer stored as a `usize` so it is `Send + Sync`.
+/// Set by [`set_handle`] after `nmp_app_podcast_register` returns. The
+/// capability callback only fires during scenario runs (after `nmp_app_start`),
+/// so the handle is always set by then.
+static PODCAST_HANDLE_ADDR: OnceLock<usize> = OnceLock::new();
 
 /// Install the headless capability callback on `app`. Must be called before
 /// `nmp_app_start`. Also initialises the Tokio relay runtime.
@@ -46,10 +63,22 @@ pub fn install(app: *mut NmpApp) {
 
     nmp_app_set_capability_callback(
         app,
-        std::ptr::null_mut(), // context unused — runtime is in the static
+        std::ptr::null_mut(), // context unused — runtime/handle are in statics
         Some(capability_handler),
     );
 }
+
+/// Register the `PodcastHandle` for the async HTTP report-back path.
+///
+/// Called after `nmp_app_podcast_register` returns the handle. The handle
+/// pointer is stored as a `usize` so it is `Send + Sync`-compatible in the
+/// `OnceLock`. The capability callback retrieves it when it needs to call
+/// `nmp_app_podcast_http_report`.
+pub fn set_handle(handle: *mut PodcastHandle) {
+    PODCAST_HANDLE_ADDR.get_or_init(|| handle as usize);
+}
+
+use nmp_ffi::nmp_app_set_capability_callback;
 
 /// C-ABI capability handler. Receives `CapabilityRequest` JSON, routes by
 /// namespace, and returns a `CapabilityEnvelope` JSON pointer.
@@ -98,6 +127,12 @@ fn handle_request(request_str: &str) -> String {
 
     let result_json = match req.namespace.as_str() {
         HTTP_CAPABILITY_NAMESPACE => handle_http(&req.payload_json),
+        HTTP_ASYNC_CAPABILITY_NAMESPACE => {
+            handle_http_async(&req.payload_json);
+            // Fire-and-forget: return an immediate ack (empty ok envelope).
+            // The actual result arrives via nmp_app_podcast_http_report.
+            serde_json::json!({"ok": true}).to_string()
+        }
         NOSTR_RELAY_CAPABILITY_NAMESPACE => handle_nostr_relay(&req.payload_json),
         "nmp.keyring.capability" => {
             use nmp_core::substrate::KeyringRequest;
@@ -122,6 +157,67 @@ fn handle_request(request_str: &str) -> String {
         result_json,
     })
     .unwrap_or_else(|_| "{}".into())
+}
+
+/// Handle the async HTTP capability path.
+///
+/// Decodes the [`HttpCommand`] from `payload_json`, spawns a std thread to
+/// execute the HTTP request with reqwest blocking, then calls
+/// [`nmp_app_podcast_http_report`] to deliver the result to the kernel's
+/// [`FeedFetchCoordinator`]. Returns immediately (fire-and-forget).
+fn handle_http_async(payload_json: &str) {
+    let cmd: HttpCommand = match serde_json::from_str(payload_json) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("[headless] http_async: decode error: {e}");
+            return;
+        }
+    };
+
+    // Retrieve the handle address stored after nmp_app_podcast_register.
+    let handle_addr = match PODCAST_HANDLE_ADDR.get() {
+        Some(&addr) => addr,
+        None => {
+            eprintln!("[headless] http_async: handle not set; dropping {}", cmd.request_id);
+            return;
+        }
+    };
+
+    // Clone fields needed on the spawned thread.
+    let request_id = cmd.request_id.clone();
+    let http_request = cmd.request;
+
+    std::thread::spawn(move || {
+        // Execute the HTTP request synchronously on this thread.
+        let result = execute_http_request(&http_request);
+
+        let report = HttpReport {
+            request_id: request_id.clone(),
+            result,
+        };
+        let report_json = match serde_json::to_string(&report) {
+            Ok(j) => j,
+            Err(e) => {
+                eprintln!("[headless] http_async: report encode error: {e}");
+                return;
+            }
+        };
+        let c_json = match CString::new(report_json) {
+            Ok(s) => s,
+            Err(_) => {
+                eprintln!("[headless] http_async: report JSON contains NUL byte");
+                return;
+            }
+        };
+
+        // SAFETY: handle_addr was obtained from a valid *mut PodcastHandle
+        // returned by nmp_app_podcast_register. The kernel keeps the handle
+        // alive for the entire binary lifetime (unregister happens after all
+        // scenarios complete). This pointer is valid for the duration of this
+        // call, which completes before the binary tears down.
+        let handle_ptr = handle_addr as *mut PodcastHandle;
+        let _ = nmp_app_podcast_http_report(handle_ptr, c_json.as_ptr());
+    });
 }
 
 /// Execute a real WebSocket Nostr relay operation (publish or subscribe).
@@ -180,7 +276,12 @@ fn handle_http(payload_json: &str) -> String {
             return serde_json::to_string(&res).unwrap_or_else(|_| "{}".into());
         }
     };
+    serde_json::to_string(&execute_http_request(&http_req)).unwrap_or_else(|_| "{}".into())
+}
 
+/// Shared reqwest transport: executes `req` and returns an [`HttpResult`].
+/// Used by both the sync and async HTTP capability paths.
+fn execute_http_request(http_req: &HttpRequest) -> HttpResult {
     let client = reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
         .build()
@@ -202,8 +303,8 @@ fn handle_http(payload_json: &str) -> String {
             }
         }
     }
-    if let Some(body) = http_req.body {
-        builder = builder.body(body);
+    if let Some(body) = &http_req.body {
+        builder = builder.body(body.clone());
     }
 
     match builder.send() {
@@ -215,20 +316,11 @@ fn handle_http(payload_json: &str) -> String {
                 .map(|(k, v)| vec![k.as_str().to_owned(), v.to_str().unwrap_or("").to_owned()])
                 .collect();
             match resp.text() {
-                Ok(body) => {
-                    let res = HttpResult::Ok { status_code, headers, body };
-                    serde_json::to_string(&res).unwrap_or_else(|_| "{}".into())
-                }
-                Err(e) => {
-                    let res = HttpResult::Error { message: format!("body: {e}") };
-                    serde_json::to_string(&res).unwrap_or_else(|_| "{}".into())
-                }
+                Ok(body) => HttpResult::Ok { status_code, headers, body },
+                Err(e) => HttpResult::Error { message: format!("body: {e}") },
             }
         }
-        Err(e) => {
-            let res = HttpResult::Error { message: format!("transport: {e}") };
-            serde_json::to_string(&res).unwrap_or_else(|_| "{}".into())
-        }
+        Err(e) => HttpResult::Error { message: format!("transport: {e}") },
     }
 }
 

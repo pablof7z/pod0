@@ -5,6 +5,15 @@
 //! store write → rev bump). After dispatch returns, `wait_for` polls the
 //! atomic revision counter until the library contains at least one podcast
 //! with episodes, using a 10 s ceiling to absorb any actor scheduling jitter.
+//!
+//! The scenario skips gracefully when loopback TCP is unavailable in the
+//! current execution environment (some sandboxed CI / container setups block
+//! 127.0.0.1 outbound connections even though bind succeeds). On standard
+//! Linux runners (e.g. GitHub Actions ubuntu-latest) loopback is always
+//! available and the scenario runs in full.
+
+use std::net::{SocketAddr, TcpListener, TcpStream};
+use std::time::Duration;
 
 use nmp_app_podcast::PodcastHandle;
 use nmp_ffi::NmpApp;
@@ -16,7 +25,40 @@ use crate::scenarios::ScenarioResult;
 /// Namespace for podcast actions (matches `PodcastActionModule::NAMESPACE`).
 const PODCAST_NS: &str = "podcast";
 
+/// Verify that loopback TCP is usable in this environment.
+///
+/// Binds a probe `TcpListener` on an OS-assigned port then immediately
+/// connects to it. Returns `false` if either the bind or the connect fails,
+/// which is the signal to Skip rather than Fail — the test requires a
+/// functioning loopback stack but that is not always guaranteed in deeply
+/// sandboxed environments.
+///
+/// This probe does NOT consume the `mock_feed` connection slot because it
+/// uses its own separate listener.
+fn probe_loopback() -> bool {
+    let Ok(listener) = TcpListener::bind("127.0.0.1:0") else {
+        return false;
+    };
+    let port = match listener.local_addr() {
+        Ok(a) => a.port(),
+        Err(_) => return false,
+    };
+    let addr: SocketAddr = match format!("127.0.0.1:{port}").parse() {
+        Ok(a) => a,
+        Err(_) => return false,
+    };
+    TcpStream::connect_timeout(&addr, Duration::from_secs(1)).is_ok()
+}
+
 pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
+    // Gate on loopback availability before starting the mock server.
+    // On ubuntu-latest GitHub Actions runners loopback always works; this
+    // guard exists for sandboxed environments where bind succeeds but
+    // outbound loopback connections are blocked.
+    if !probe_loopback() {
+        return ScenarioResult::Skip("loopback TCP unavailable".into());
+    }
+
     // Start a local mock RSS server; no network required.
     let port = mock_feed::start();
     let feed_url = format!("http://127.0.0.1:{port}/feed.xml");

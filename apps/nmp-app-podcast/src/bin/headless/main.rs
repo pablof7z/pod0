@@ -43,6 +43,12 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
+    // 3b. Wire the handle into the capability host so the async HTTP path
+    //     can call nmp_app_podcast_http_report after completing a feed fetch.
+    //     This must happen after register (handle is now valid) and before
+    //     start (capability calls can arrive from the very first kernel tick).
+    capability_host::set_handle(handle);
+
     // 4. Set a temp data dir so store serialisation has somewhere to write.
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let path_cstr = CString::new(

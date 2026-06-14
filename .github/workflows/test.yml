@@ -220,6 +220,58 @@ jobs:
             --no-daemon \
             --stacktrace
 
+  headless-e2e:
+    name: Headless e2e kernel proofs (nipf4 signing + offline scenarios)
+    # Runs the headless scenario binary against the full NMP + Podcast kernel.
+    # The binary exits 0 when every scenario is either Pass or Skip, and exits
+    # 1 when any scenario Fails.  Skip is green by design: scenarios that need
+    # external infra (Ollama, relay, nak) already probe and self-Skip when that
+    # infra is absent; the gate stays honest without requiring special CI env
+    # vars or service containers.
+    #
+    # Scenarios that run unconditionally on ubuntu-latest (no external infra):
+    #   PASS: nipf4_publish  — per-podcast NIP-F4 signing proof (#446)
+    #   PASS: key_persistence — nsec round-trip through the kernel store
+    #   PASS: identity_import — ImportNsec → active_account in snapshot
+    #   PASS: rss_subscribe   — mock RSS feed over 127.0.0.1 (loopback, no WAN)
+    #
+    # Scenarios that self-Skip on ubuntu-latest (no nak / Ollama / relay):
+    #   SKIP: relay_smoke     — nak binary absent
+    #   SKIP: social          — nak binary absent
+    #   SKIP: inbox_triage    — Ollama not present at localhost:11434
+    #   SKIP: wiki_generate   — Ollama not present at localhost:11434
+    #   SKIP: comments        — relay.primal.net probe / nak dependency
+    #   SKIP: agent_chat      — Ollama / relay dependency
+    #   SKIP: agent_notes     — Ollama / relay dependency
+    #   SKIP: discover_nostr  — relay.primal.net probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      # Cache key mirrors workspace-check so builds that run both jobs share
+      # registry downloads.  The headless feature adds a few extra crates
+      # (tempfile, reqwest) so the key suffix distinguishes it.
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-headless-e2e-${{ hashFiles('**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-headless-e2e-
+            ${{ runner.os }}-cargo-workspace-
+
+      - name: Run headless e2e suite
+        working-directory: apps/nmp-app-podcast
+        run: cargo run --bin headless --features headless
+
   workspace-check:
     name: Rust workspace build gate (all members, all targets)
     runs-on: ubuntu-latest
