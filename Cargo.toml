@@ -17,17 +17,19 @@ resolver = "2"
 #   1. Bump all 6 nmp-* rev entries below to the new rev.
 #   2. Bump nmp-feedback to a rev that also pins the new NMP rev.
 #
-# Current rev 45ac8c3e4fd6b4efea1fe8c9c40e18758f41a891 = nmp-v0.7.2. As of this
-# release nmp-blossom is un-parked: it is a first-class [workspace].members crate
-# in the NMP repo, so it resolves as an ordinary git dep at the same rev as the
-# other NMP crates. No vendor/ copy, [patch] redirect, or local-clone workaround
-# is needed any more (the prior vendor/nmp-blossom workaround is obsolete).
-# nmp-feedback@857dedf45 also pins this same rev (bumped in lockstep).
+# Current rev 9df43816da11b19b73ad98d9ff53bbaeff3b700d = nmp-v0.7.2 +
+# ADR-0055 Rung-1 fix (bump publish_ver on relay-state transitions, branch
+# fix/adr0055-publish-ver-bump-v0.7.2 in NMP). Ports fbc0155031 onto v0.7.2
+# to stop the OracleViolation { key: "publish_outbox", kind: StaleStamp }
+# kernel actor panic that was gating all headless e2e scenarios.
+# As of v0.7.2 nmp-blossom is un-parked: it is a first-class [workspace].members
+# crate in the NMP repo, so it resolves as an ordinary git dep at the same rev.
+# nmp-feedback@1e2b0b5e3 also pins this same rev (bumped in lockstep).
 [workspace.dependencies]
-nmp-defaults = { version = "0.7.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "45ac8c3e4fd6b4efea1fe8c9c40e18758f41a891" }
-nmp-core = { version = "0.7.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "45ac8c3e4fd6b4efea1fe8c9c40e18758f41a891" }
-nmp-ffi = { version = "0.7.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "45ac8c3e4fd6b4efea1fe8c9c40e18758f41a891" }
-nmp-signer-broker = { version = "0.7.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "45ac8c3e4fd6b4efea1fe8c9c40e18758f41a891" }
-nmp-blossom = { version = "0.7.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "45ac8c3e4fd6b4efea1fe8c9c40e18758f41a891" }
-nmp-nip02 = { version = "0.7.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "45ac8c3e4fd6b4efea1fe8c9c40e18758f41a891" }
-nmp-feedback = { git = "https://github.com/pablof7z/nmp-feedback.git", rev = "857dedf45be721d748bf4ed55a76144ba89018b9" }
+nmp-defaults = { version = "0.7.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "9df43816da11b19b73ad98d9ff53bbaeff3b700d" }
+nmp-core = { version = "0.7.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "9df43816da11b19b73ad98d9ff53bbaeff3b700d" }
+nmp-ffi = { version = "0.7.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "9df43816da11b19b73ad98d9ff53bbaeff3b700d" }
+nmp-signer-broker = { version = "0.7.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "9df43816da11b19b73ad98d9ff53bbaeff3b700d" }
+nmp-blossom = { version = "0.7.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "9df43816da11b19b73ad98d9ff53bbaeff3b700d" }
+nmp-nip02 = { version = "0.7.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "9df43816da11b19b73ad98d9ff53bbaeff3b700d" }
+nmp-feedback = { git = "https://github.com/pablof7z/nmp-feedback.git", rev = "1e2b0b5e3e023a3d76e2d05db0f91a270811e7d9" }
