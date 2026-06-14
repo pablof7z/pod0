@@ -20,15 +20,15 @@ worktrees currently in flight.
 - ~~**p0-nipf4-author-claim.**~~ Done: `publish_author_claim` signs with active agent key and publishes kind:10064. Called after create/update/delete of owned podcasts.
 - **p0-plan-truthfulness.** Keep `docs/plan.md`,
   `docs/plan/nmp-feature-parity.md`, and this backlog synchronized with code.
-  Do not mark scaffolded behavior done. Current audit: docs now reflect the
-  `0.6.2` NMP pin at rev `fbc0155031fdf862fa47673c5211fc3eebc3863c`, the
-  deleted parked `ios/` shell, the resolved local `nmp-blossom` packaging
-  blocker (`pablof7z/podcast-player#479`), and PR #498's removal of the local
-  `vendor/nmp-core` fork in favor of the upstream ADR-0055 publish-engine fix.
-  Upstream NMP issues `pablof7z/nostr-multi-platform#1408` and `#1412` remain
-  open cleanup/dependency notes, but neither is currently represented as an
-  app-local workaround on `main`. Remaining parity debt lives in `App/Sources/`
-  Swift policy/fallback code plus the listed platform/AI gaps.
+  Do not mark scaffolded behavior done. Current audit: docs reflect the
+  `0.7.2` NMP pin at rev `9df43816da11b19b73ad98d9ff53bbaeff3b700d` (PR #510,
+  ADR-0055 Rung-1 / publish_ver oracle fix), the deleted parked `ios/` shell,
+  the resolved local `nmp-blossom` packaging blocker (`pablof7z/podcast-player#479`),
+  and PR #498's removal of the local `vendor/nmp-core` fork. Upstream NMP issues
+  `pablof7z/nostr-multi-platform#1408` and `#1412` remain open cleanup/dependency
+  notes, but neither is currently represented as an app-local workaround on `main`.
+  Remaining parity debt lives in `App/Sources/` Swift policy/fallback code plus
+  the listed platform/AI gaps.
 - **p0-validation-gate.** Established for current merge gates: branch protection
   requires deterministic merge contexts for `Git diff hygiene`, `Migration
   lint gates`, `Rust workspace build gate (all members, all targets)`, `Swift
@@ -471,12 +471,13 @@ worktrees currently in flight.
     is cleared on account switch so no cross-account trust/notes leak.
     Conversations projection deferred to `nostr-conversations-real-projection`
     (next cycle).
-  - **OPEN — LLM responder loop.** The Swift `NostrAgentResponder` was deleted
-    in PR #248 (kernel-owned signing / D13 migration). The inbound→model→outbound
-    autopilot (dedup via responded-event ids, per-root outgoing turn cap,
-    `wtd-end` end-conversation gate, bounded kind:0 profile hydration,
-    owner-consult `ask` tool) must be re-implemented in the kernel. A parallel
-    PR `feat/kernel-kind1-auto-responder` is implementing this restoration.
+  - ~~**DONE — LLM responder loop (PR #421).**~~ `agent_note_responder.rs` +
+    `agent_note_responder_tests.rs` implement the inbound→LLM→outbound autopilot
+    in the kernel: dedup via `ResponderCache`, per-root turn cap, `wtd-end`
+    end-conversation gate, bounded kind:0 profile hydration, owner-consult `ask`
+    tool. Wired at `agent_note_handler.rs:332` (`with_responder`). The Swift
+    `NostrAgentResponder` deletion is permanent; all auto-reply logic now lives
+    in Rust (D7/D13).
   - Non-goal: NIP-17 (private direct messages) is out of scope for agent
     coordination and will not be used for this purpose.
 
@@ -484,13 +485,12 @@ worktrees currently in flight.
 
 - **episode-pipeline-followups.** Deferrals from the kernel-owned episode
   pipeline event-log + auto-download work (`feat/episode-pipeline-events`):
-  1. **auto-download mode collapse.** The kernel stores auto-download as a
-     single `enabled` bool, collapsing `AutoDownloadPolicy.Mode.latestN(N)` and
-     `.allNew` (Swift `AutoDownloadPolicy.swift`). The new
-     `auto_download_backfill_candidates` scan therefore treats every enabled
-     show as "keep the latest `AUTO_DOWNLOAD_BACKFILL_LIMIT` (=3) undownloaded
-     episodes" rather than honoring a user-chosen N or true all-new. Follow-up:
-     project the mode + N into the kernel store so backfill respects it.
+  1. ~~**auto-download mode collapse.**~~ DONE (PR #503). The kernel now stores
+     typed `AutoDownloadMode { Off / LatestN(n) / AllNew }` — no longer a flat bool.
+     Evidence: `apps/nmp-app-podcast/src/store/auto_download.rs:54` (enum def),
+     `apps/nmp-app-podcast/src/ffi/snapshot_library.rs:122-128` (projection),
+     `App/Sources/Bridge/AppStateStore+KernelActions.swift:410-427` (dispatch),
+     `App/Sources/Bridge/AppStateStore+KernelProjection.swift:281-294` (decode).
   2. ~~**ad detection not in the kernel.**~~ DONE (PR refactor/kernel-ai-chapters-ad-spans).
      `ai_chapters_llm.rs` now emits ad spans; `ai_chapters.rs` persists via
      `set_ad_segments_for` and emits `ads.ready`. `AIChapterCompiler.swift` deleted.
@@ -695,16 +695,18 @@ worktrees currently in flight.
   triage, persisted dismiss/listened state, explainable reasons, and user
   correction loop. Partially done in PR #123 (rig-core + Ollama LLM scoring
   wired; remaining items below).
-- **inbox-triage-async-streaming.** Move `run_llm_triage` off the actor thread
-  into a background Tokio task that streams scored results back incrementally
-  via the rev counter. Currently the actor thread blocks for N×LLM latency
-  while episodes are triaged sequentially; this must be fixed before triage
-  is triggered automatically (not just on explicit user action).
-- **inbox-triage-cache-persist.** Persist `inbox_triage_cache`
-  (`HashMap<String, TriageResult>`) to disk alongside the podcast store so
-  cold launches do not re-triage every episode. Use the existing data-dir
-  path convention; serialize as JSON; reload on `set_data_dir`; invalidate
-  stale entries when episode metadata changes.
+- ~~**inbox-triage-async-streaming.**~~ DONE (PR #173 / M5.1). All LLM triage
+  work runs off the actor thread via `runtime.spawn` → `tokio::task::spawn_blocking`.
+  Evidence: `apps/nmp-app-podcast/src/inbox_handler.rs:43-44` (module doc),
+  `apps/nmp-app-podcast/src/inbox_handler_triage.rs` (spawn paths at lines 130
+  and 238-239). The actor is never blocked; each batch bumps the rev counter
+  incrementally as results land.
+- ~~**inbox-triage-cache-persist.**~~ DONE (PR #244). `inbox_triage_cache`
+  (`HashMap<String, TriageResult>`) is persisted to
+  `<data_dir>/inbox-triage-cache.json` (JSON, atomic write). Evidence:
+  `apps/nmp-app-podcast/src/store/inbox_triage_cache.rs:1-38` (full module:
+  load/save over `Path`, D6 silent-degrade). Cold launches reload prior scores;
+  stale `Pending` entries retry via normal cooldown.
 - **agent-tasks-real-scheduler.** Rust now parses task schedules, projects
   `next_run_at`, supports `run_due`, and owns Swift foreground catch-up policy
   for shared task rows. Rust now persists `agent_tasks` across kernel restarts.
@@ -730,9 +732,11 @@ worktrees currently in flight.
 
 ## Active P1 - Platform And Android
 
-- **platform-widget-snapshot-codegen.** Replace hand-mirrored widget/live
-  activity payloads with generated projection types and Rust-owned widget
-  snapshots.
+- ~~**platform-widget-snapshot-codegen.**~~ DONE (PR #508). `WidgetSnapshot`
+  and `HandoffState` are now under swift-codegen: generated to
+  `App/Sources/Bridge/Generated/PodcastPlatformTypes.generated.swift` from
+  `apps/nmp-app-podcast/src/bin/swift_codegen/emit.rs:1376-1419`. Hand-mirrored
+  copies deleted. The CI drift gate covers this file.
 - **carplay-validation.** Validate templates, now-playing sync, entitlement
   behavior, cold-connect placeholder, and playback dispatch on CarPlay
   simulator/head unit.
@@ -786,23 +790,15 @@ worktrees currently in flight.
   staying well under the canonical ≤4 Hz `AudioReport::Playing` ceiling. This
   is the platform constraint, not a polling hack; revisit only if a future
   media3 release adds a position-progress callback.
-- **tui-mpv-position-sampling.** DOCUMENTED EXCEPTION + tracked follow-up
-  (#322). The terminal player samples mpv's `playback-time` over the JSON IPC
-  socket every 250 ms (`AudioHost::poll_position`, driven off the UI animation
-  frame clock in `apps/podcast-tui/src/main.rs`). libmpv / mpv IPC expose no
-  per-frame position event, so periodic sampling is the only mechanism the
-  player offers (the sampling cadence is the legitimate exception). The
-  previous fake-progress path (incrementing the position by the tick interval
-  when no mpv backend was present) was removed: with no real backend the
-  position is now left unknown/unchanged rather than fabricated.
-  FOLLOW-UP (not done in #322): the sampled position is currently stored in
-  `last_position_secs` and NOT forwarded to the kernel — there is no
-  `nmp_app_podcast_audio_report` call anywhere in `apps/podcast-tui`, so live
-  mpv progress never reaches the kernel projection. Wiring that single FFI
-  report (so the TUI surfaces real playback progress, the way iOS/Android do
-  via `AudioReport::Playing`) is the remaining work. The TUI is a secondary
-  target; correctness over polish, so this PR fixes the fabrication and
-  documents the gap rather than building the report path.
+- ~~**tui-mpv-position-sampling.**~~ DONE (PR #507). The follow-up FFI wiring is
+  landed. `poll_audio_position` in `apps/podcast-tui/src/runtime.rs:116-151`
+  drains `AudioReport`s from `AudioHost` and forwards each one through
+  `nmp_app_podcast_audio_report`. `AudioHost::poll_position`
+  (`apps/podcast-tui/src/audio_host.rs:336`) pushes `AudioReport::Playing` with
+  the real mpv position into `pending_reports`; `drain_reports`
+  (`audio_host.rs:78-82`) flushes them to the runtime. The original platform
+  exception (≤4 Hz IPC sampling) is unchanged and documented — what was missing
+  was the kernel-report call, now present.
 
 ## Active P2 - Cross-Cutting Technical Debt
 
@@ -900,14 +896,10 @@ worktrees currently in flight.
   status behind.
 - **line-limit-audit.** Continue enforcing the 300-line soft and 500-line hard
   limits. Split files before adding logic to near-limit modules.
-  - **appstatestore-split.** `App/Sources/State/AppStateStore.swift` is already
-    over the 500-line hard limit (583 on origin/main; 602 after the
-    `fix/triage-counts-cache` triage-bucket stored properties, which *cannot*
-    move — Swift stored properties must live in the class body, not an
-    extension). The split must relocate *methods* (not the projection-cache
-    stored props) out of the main file. Deferred to avoid conflicting with the
-    in-flight `fix/double-recompute`, `file-size-projection`, and
-    `signpost-instrumentation` branches that all touch this file. Owner: unassigned.
+  - ~~**appstatestore-split.**~~ RESOLVED. `App/Sources/State/AppStateStore.swift`
+    is now 417 lines on origin/main HEAD 12874d7e — under the 500-line hard limit.
+    The blocking in-flight branches have landed and the file is within policy.
+    No further split required unless the file grows again.
   - **kernelprojection-split.** `App/Sources/Bridge/AppStateStore+KernelProjection.swift`
     was already over the 500-line hard limit (533 on origin/main; 603 after the
     `fix/incremental-episode-update` summary-level episode diff, which added the
@@ -922,19 +914,13 @@ worktrees currently in flight.
   `nowPlaying.positionSecs`. At that point `PlatformCapability.applyNowPlayingSnapshot`
   needs a separate position-write path (not gated by the identity dedup) so the
   widget stays live during playback. Owner: M1.6 agent.
-- **episode-metadata-indexer-ownership.** `App/Sources/Services/EpisodeMetadataIndexer.swift`
-  is a Swift-owned RAG embedding-backfill service that holds native batching and
-  rate-limit *policy*: it chunks pending episodes at `batchSize = 32` and sleeps
-  `interBatchDelayNanoseconds = 200_000_000` (0.2s) between batches
-  (`:53`/`:57`, applied in the backfill loop at `:112`–`:119`). Per D7 the
-  rate-limit / batch policy belongs in the Rust kernel, which already owns the
-  providers and the episode store; per D4 the "which episodes are indexed" fact
-  is a kernel write (`MarkEpisodesMetadataIndexed` action exists), yet the
-  selection/ordering policy feeding it is still native. Decision needed: migrate
-  the backfill orchestration into a kernel action/job (kernel owns batch size,
-  inter-batch pacing, and the pending-episode scan), or write an ADR documenting
-  why the embeddings utility is intentionally shell-owned. Surfaced in the
-  2026-06-11 NMP architecture audit.
+- **episode-metadata-indexer-ownership.** IN-FLIGHT (PR #511 open, not yet merged
+  as of origin/main HEAD 12874d7e). PR #511 moves the backfill orchestration
+  (batch size, inter-batch pacing, pending-episode scan) from
+  `App/Sources/Services/EpisodeMetadataIndexer.swift` into the Rust kernel (D7).
+  `App/Sources/Services/EpisodeMetadataIndexer.swift` still owns the policy on
+  current `main`. Do not mark done until #511 merges and the Swift file is
+  deleted or reduced to a thin bridge.
 - ~~**feed-not-modified-rev-bump.**~~ Done in this PR. The shared feed response
   parser now returns a canonical cache for both `200` and `304` results,
   preferring response validators and falling back to prior validators when

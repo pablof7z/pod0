@@ -31,7 +31,7 @@ Detailed implementation plans live under `docs/plan/` and are linked from this f
 
 | Area | Status |
 |---|---|
-| NMP dependency pin | `0.7.2` crates are pinned to rev `45ac8c3e4fd6b4efea1fe8c9c40e18758f41a891` (nmp-v0.7.2) in `Cargo.toml` as ordinary git deps. As of this release `nmp-blossom` is un-parked upstream — a first-class `[workspace].members` crate of the NMP repo — so the prior `vendor/nmp-blossom` workaround (and its `[patch]` redirect) was deleted and `nmp-blossom` now resolves directly via git like every other NMP crate. `nmp-feedback` is pinned in lockstep at `857dedf45be721d748bf4ed55a76144ba89018b9`. `cargo tree` shows exactly one `nmp-core` v0.7.2. |
+| NMP dependency pin | `0.7.2` crates are pinned to rev `9df43816da11b19b73ad98d9ff53bbaeff3b700d` (nmp-v0.7.2 + ADR-0055 Rung-1 publish_ver oracle fix, PR #510) in `Cargo.toml` as ordinary git deps. `nmp-blossom` is un-parked upstream — a first-class `[workspace].members` crate of the NMP repo — so the prior `vendor/nmp-blossom` workaround (and its `[patch]` redirect) was deleted and `nmp-blossom` resolves directly via git. `cargo tree` shows exactly one `nmp-core` v0.7.2. |
 | Feature parity | Not achieved — many merged PRs are scaffolds or heuristics, not full original-app behavior. |
 | Legacy app deletion | Blocked — `App/Sources/` remains the reference implementation until all parity exits pass. |
 | Parked iOS shell | Deleted — there is no `ios/` tree on current `main`; remaining parity debt lives in `App/Sources/` Swift policy/fallback code and the cross-platform surfaces listed in `docs/BACKLOG.md`. |
