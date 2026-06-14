@@ -39,6 +39,53 @@ jobs:
           test -x ci/migration/copy-features.sh
           test -x ci/migration/verify-copy-fidelity.sh
 
+      - name: PR description contract
+        working-directory: podcast-player
+        run: |
+          ruby <<'RUBY'
+          require "json"
+
+          payload = JSON.parse(File.read(ENV.fetch("GITHUB_EVENT_PATH")))
+          pull_request = payload["pull_request"]
+          exit 0 unless pull_request
+
+          body = pull_request["body"].to_s
+          required = {
+            "tldr" => "## TLDR",
+            "overview" => "## Overview",
+            "validation" => "## Validation",
+            "decisions / tradeoffs" => "## Decisions / Tradeoffs"
+          }
+          sections = Hash.new { |hash, key| hash[key] = [] }
+          current = nil
+
+          body.each_line do |line|
+            if (match = line.match(/^##\s+(.+?)\s*$/))
+              current = match[1].strip.downcase
+              next
+            end
+            next unless current
+
+            cleaned = line.gsub(/<!--.*?-->/, "").strip
+            next if cleaned.empty?
+            next if ["-", "*", "- [ ]", "* [ ]"].include?(cleaned)
+
+            sections[current] << cleaned
+          end
+
+          missing = required.select do |key, _heading|
+            sections[key].empty?
+          end.values
+
+          unless missing.empty?
+            warn "::error::PR description is missing required non-empty section(s): #{missing.join(", ")}"
+            warn "Use .github/pull_request_template.md and include exact validation commands or 'Not run: <reason>'."
+            exit 1
+          end
+
+          puts "PR description contract: clean."
+          RUBY
+
       - name: no-business-logic lint
         working-directory: podcast-player
         run: |

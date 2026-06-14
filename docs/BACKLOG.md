@@ -29,9 +29,10 @@ worktrees currently in flight.
   focused Swift/iOS tests for touched targets, and full-suite validation before
   declaring feature parity. Current audit: the Test workflow now has a
   `Git diff hygiene` job that runs `git diff --check` against the actual PR or
-  push range instead of a clean checkout. Remaining: make touched-target test
-  selection explicit and keep the full simulator suite as the merge/supervisor
-  gate.
+  push range instead of a clean checkout, and Migration Lints now enforce a
+  non-empty PR description contract for TLDR, overview, validation evidence,
+  and decisions/tradeoffs. Remaining: make touched-target test selection
+  explicit and keep the full simulator suite as the merge/supervisor gate.
 - ~~**p0-ios-test-target-compile.**~~ Fixed across PR #101 and PR #102:
   `Nip46RemoteSignerTests.swift` now accepts an optional bunker pubkey, the
   active Tuist target no longer references the dead `KernelModel` duplicate,
