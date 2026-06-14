@@ -1,0 +1,70 @@
+# Vendored from https://github.com/pablof7z/nostr-multi-platform
+# rev ac7e307e89b57a73b419ea9588275e599dcb228c crates/nmp-core
+#
+# Patched to fix ADR-0055 Rung 1 oracle violation: relay state transitions
+# inside tick_publish_engine / mark_publish_relay_available /
+# mark_publish_relay_unavailable / resume_publish_engine change the
+# publish_outbox bytes without bumping publish_ver. Added
+# bump_publish_if_engine_view_advanced() helper that reads the engine's
+# view rev before/after and bumps the source version counter if it advanced.
+#
+# Path deps replaced with git deps pointing to the same ac7e307e rev.
+# Workspace-inherited fields replaced with explicit values.
+[package]
+name = "nmp-core"
+version = "0.6.2"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/pablof7z/nostr-multi-platform"
+description = "NMP kernel substrate: actor runtime, state, capabilities, action registry, snapshots, and protocol extension seams."
+
+[lib]
+name = "nmp_core"
+crate-type = ["staticlib", "rlib"]
+
+[features]
+default = ["native"]
+native = [
+    "dep:tungstenite",
+    "nmp-network/native",
+    "nmp-store/lmdb-backend",
+    "chrono/clock",
+]
+test-support = ["nmp-store/test-support"]
+lmdb-backend = ["nmp-store/lmdb-backend", "native"]
+android-ffi = ["native"]
+codegen-schema = ["dep:schemars"]
+
+[dependencies]
+bech32 = "0.11"
+chrono = { version = "0.4", default-features = false }
+flatbuffers = "25.12.19"
+indexmap = "2.14"
+nmp-kinds = { git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ac7e307e89b57a73b419ea9588275e599dcb228c" }
+nmp-nip42-types = { git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ac7e307e89b57a73b419ea9588275e599dcb228c" }
+nmp-nip59 = { git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ac7e307e89b57a73b419ea9588275e599dcb228c" }
+nostr = { version = "0.44", features = ["nip44", "nip59"] }
+nmp-signer-iface = { git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ac7e307e89b57a73b419ea9588275e599dcb228c" }
+nmp-network = { git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ac7e307e89b57a73b419ea9588275e599dcb228c", default-features = false }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["raw_value"] }
+tungstenite = { version = "0.24", default-features = false, features = ["handshake", "rustls-tls-webpki-roots"], optional = true }
+tracing = "0.1"
+zeroize = { version = "1", features = ["derive"] }
+schemars = { version = "0.8", optional = true }
+nmp-store = { git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ac7e307e89b57a73b419ea9588275e599dcb228c" }
+nmp-planner = { git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ac7e307e89b57a73b419ea9588275e599dcb228c" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-time = "1.1"
+
+[dev-dependencies]
+proptest = "1"
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
+tempfile = "3"
+nmp-store = { git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ac7e307e89b57a73b419ea9588275e599dcb228c", features = ["test-support"] }
+
+[[test]]
+name = "nip_tag_conformance"
+path = "tests/nip_tag_conformance.rs"
+required-features = ["test-support"]

@@ -35,3 +35,9 @@ nmp-feedback = { git = "https://github.com/pablof7z/nmp-feedback.git", rev = "f3
 # to the vendor path ensures any transitive reference is unified.
 [patch."https://github.com/pablof7z/nostr-multi-platform.git"]
 nmp-blossom = { path = "vendor/nmp-blossom" }
+# ADR-0055 Rung 1 fix: vendor nmp-core with publish_ver bump on relay-state
+# transitions (tick_publish_engine / mark_publish_relay_available /
+# mark_publish_relay_unavailable / resume_publish_engine). The ac7e307e oracle
+# panics when publish_outbox bytes change without publish_ver advancing — relay
+# state transitions (Pending→InFlight) are the missing bump sites.
+nmp-core = { path = "vendor/nmp-core" }
