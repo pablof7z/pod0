@@ -47,7 +47,10 @@ enum AppStateTestSupport {
             try? FileManager.default.removeItem(at: fileURL)
         }
         let persistence = Persistence(fileURL: fileURL)
-        let store = AppStateStore(persistence: persistence)
+        let store = AppStateStore(
+            persistence: persistence,
+            automaticEpisodeMetadataIndexingEnabled: false
+        )
         return (store, fileURL)
     }
 

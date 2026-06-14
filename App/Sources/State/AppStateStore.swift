@@ -182,6 +182,12 @@ final class AppStateStore {
     /// in-memory suite so fixtures never leak into the real app.
     let persistence: Persistence
 
+    /// Whether Swift-side episode inserts should fire the production metadata
+    /// indexer. Live stores keep this enabled so agent/search coverage stays
+    /// current; isolated unit-test stores turn it off and exercise the indexer
+    /// explicitly with fake vector stores.
+    let automaticEpisodeMetadataIndexingEnabled: Bool
+
     /// Weak handle to the Rust kernel. Set once by `attachKernel`; used by
     /// mutation methods to dispatch actions without requiring every call site
     /// to hold its own reference.
@@ -291,8 +297,12 @@ final class AppStateStore {
     /// position.
     var lastPositionFlush: Date?
 
-    init(persistence: Persistence = .shared) {
+    init(
+        persistence: Persistence = .shared,
+        automaticEpisodeMetadataIndexingEnabled: Bool = true
+    ) {
         self.persistence = persistence
+        self.automaticEpisodeMetadataIndexingEnabled = automaticEpisodeMetadataIndexingEnabled
         var loadedState: AppState
         do {
             loadedState = try persistence.load()

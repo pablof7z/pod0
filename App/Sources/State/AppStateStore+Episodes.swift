@@ -112,13 +112,15 @@ extension AppStateStore {
             self.episodes = updated
             invalidateEpisodeProjections()
         }
-        // Metadata-index the newly-inserted episodes for similarity search —
-        // the agent-synthesized back-catalog needs title/description coverage
-        // exactly like a feed's would.
-        EpisodeMetadataIndexer.shared.indexNewlyInserted(
-            newlyInserted,
-            appStore: self
-        )
+        if automaticEpisodeMetadataIndexingEnabled {
+            // Metadata-index the newly-inserted episodes for similarity search —
+            // the agent-synthesized back-catalog needs title/description coverage
+            // exactly like a feed's would.
+            EpisodeMetadataIndexer.shared.indexNewlyInserted(
+                newlyInserted,
+                appStore: self
+            )
+        }
         return newlyInserted
     }
 

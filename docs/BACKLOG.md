@@ -45,6 +45,18 @@ worktrees currently in flight.
   `AppStateStorePerformanceTests.testUnplayedCountIsConstantTime`, and a
   cascade of app-process-loss UI failures in `CoreJourneyUITests`,
   `P0PlaybackUITests`, `P1SettingsUITests`, and `SetupSubscribeUITests`.
+  PR #496 isolates unit-test stores from automatic episode metadata indexing,
+  adds `xcodebuild` retry-on-failure coverage to `ci_scripts/run_tests.sh`,
+  and skips UI screenshot/tree attachments once the app is no longer
+  foreground. Local validation on 2026-06-14 passed
+  `SKIP_UI_TESTS=1 ./ci_scripts/run_tests.sh` (669 tests, 3 skipped, 0
+  failures) plus focused simulator tests for
+  `AppStateStorePerformanceTests` and
+  `AppTests.testPositionUpdatesAreDebounced`; the full UI lane still failed
+  locally in `CoreJourneyUITests.testP0_03_PlayStartsAudio` and
+  `CoreJourneyUITests.testP0_04_ResumeReopenByTitle`, so full `Build and
+  Test` should remain non-required until the playback UI failures are fixed or
+  split from the deterministic unit lane.
   Stabilize or split that iOS lane before adding `Build and Test` back to
   required branch protection. The old `nmp-blossom` portability blocker is
   resolved on `main`: PR #488 replaced the absolute `/tmp` dependency with

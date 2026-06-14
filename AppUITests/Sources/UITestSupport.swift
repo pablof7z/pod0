@@ -27,7 +27,11 @@ extension XCTestCase {
     }
 
     /// Attach the current screen as a kept screenshot under a step name.
+    /// No-ops when the app is not in the foreground — avoids "lost connection"
+    /// errors from XCTest's screenshot API when the app has crashed or been
+    /// killed during a background/foreground lifecycle test.
     func snap(_ app: XCUIApplication, _ name: String) {
+        guard app.state == .runningForeground else { return }
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = name
         shot.lifetime = .keepAlways
@@ -127,6 +131,7 @@ extension XCTestCase {
 
     /// Attach the full accessibility tree as a kept string attachment.
     func dumpTree(_ app: XCUIApplication, _ name: String) {
+        guard app.state == .runningForeground else { return }
         let t = XCTAttachment(string: app.debugDescription)
         t.name = name; t.lifetime = .keepAlways; add(t)
     }

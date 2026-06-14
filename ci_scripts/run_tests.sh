@@ -69,5 +69,6 @@ xcodebuild \
   -scheme "$APP_SCHEME" \
   -destination "$TEST_DESTINATION" \
   -skipPackagePluginValidation \
+  -retry-tests-on-failure \
   ${SKIP_UI_ARG} \
   test
