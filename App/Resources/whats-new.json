@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-14T11:16:00Z",
+      "lines": [
+        "Feed URL subscriptions now reject unsupported links immediately and catch duplicates even when you omit https://."
+      ]
+    },
+    {
       "shipped_at": "2026-06-14T10:40:41Z",
       "lines": [
         "Feeds that declare non-UTF-8 text encodings now refresh and subscribe with the right titles instead of dropping characters."

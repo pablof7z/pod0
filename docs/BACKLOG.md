@@ -285,8 +285,12 @@ worktrees currently in flight.
   pairing state now lives in `UserIdentityStore`, stays pending across nil or
   stale local-key snapshot ticks, clears when a remote `activeAccount` appears,
   and fails with a timeout if no terminal kernel state arrives.
-- **rss-subscribe-validation.** Validate malformed URLs, duplicate feeds,
-  provider errors, restart persistence, Android behavior, and empty/error UI.
+- **rss-subscribe-validation.** Swift subscribe entry points now share one
+  feed-URL normalizer: unsupported schemes are rejected before kernel dispatch,
+  missing schemes are canonicalized to `https://`, and duplicate followed
+  feeds are detected against that canonical URL even when the user omits the
+  scheme. Remaining: provider errors, restart persistence, Android behavior,
+  and empty/error UI.
 - **opml-import-export-hardening.** Validate large OPML files, partial
   failures, duplicate feeds, export fidelity, and no legacy subscription
   service dependency.

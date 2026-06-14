@@ -121,6 +121,53 @@ final class SubscriptionAddErrorTests: XCTestCase {
         )
     }
 
+    // MARK: - URL validation
+
+    func testNormalizedFeedURLAddsHTTPSScheme() {
+        let url = SubscriptionService.normalizedFeedURL(
+            from: "  feeds.example.com/show.xml  "
+        )
+        XCTAssertEqual(url?.absoluteString, "https://feeds.example.com/show.xml")
+    }
+
+    func testNormalizedFeedURLRejectsNonHTTPFeeds() {
+        XCTAssertNil(SubscriptionService.normalizedFeedURL(from: "ftp://example.com/feed.xml"))
+        XCTAssertNil(SubscriptionService.normalizedFeedURL(from: "mailto:show@example.com"))
+        XCTAssertNil(SubscriptionService.normalizedFeedURL(from: ""))
+    }
+
+    func testKernelSubscribeRejectsInvalidURLBeforeKernelAvailability() async {
+        let made = AppStateTestSupport.makeIsolatedStore()
+        defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
+
+        do {
+            _ = try await made.store.kernelSubscribe(feedURL: "ftp://example.com/feed.xml")
+            XCTFail("Expected invalidURL")
+        } catch let error as SubscriptionService.AddError {
+            XCTAssertEqual(error, .invalidURL)
+        } catch {
+            XCTFail("Expected AddError.invalidURL, got \(error)")
+        }
+    }
+
+    func testKernelSubscribeDetectsDuplicateAfterURLNormalization() async {
+        let made = AppStateTestSupport.makeIsolatedStore()
+        defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
+        let feedURL = URL(string: "https://feeds.example.com/show.xml")!
+        let podcast = Podcast(feedURL: feedURL, title: "Existing Show")
+        made.store.upsertPodcast(podcast)
+        XCTAssertTrue(made.store.addSubscription(podcastID: podcast.id))
+
+        do {
+            _ = try await made.store.kernelSubscribe(feedURL: "feeds.example.com/show.xml")
+            XCTFail("Expected alreadySubscribed")
+        } catch let error as SubscriptionService.AddError {
+            XCTAssertEqual(error, .alreadySubscribed(title: "Existing Show"))
+        } catch {
+            XCTFail("Expected AddError.alreadySubscribed, got \(error)")
+        }
+    }
+
     // MARK: - Equatable contract
 
     func testInvalidURLEqualsItself() {

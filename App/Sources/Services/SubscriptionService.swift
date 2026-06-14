@@ -76,7 +76,7 @@ struct SubscriptionService {
     @discardableResult
     func ensurePodcast(feedURLString: String) async throws -> Podcast {
         let trimmed = feedURLString.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = normalizedURL(from: trimmed) else {
+        guard let url = Self.normalizedFeedURL(from: trimmed) else {
             throw AddError.invalidURL
         }
         return try await store.kernelEnsurePodcast(feedURL: url.absoluteString)
@@ -94,11 +94,16 @@ struct SubscriptionService {
     /// can surface a friendly "you're already subscribed" notice).
     @discardableResult
     func addSubscription(feedURLString: String) async throws -> Podcast {
-        // Delegate entirely to the Rust kernel: it validates, fetches,
-        // ingests episodes, and projects the new podcast into the store.
+        let trimmed = feedURLString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = Self.normalizedFeedURL(from: trimmed) else {
+            throw AddError.invalidURL
+        }
+        // Delegate feed fetching and ingestion to the Rust kernel after the
+        // shell has normalized the user-entered URL into the same canonical
+        // shape used by duplicate detection.
         // `kernelSubscribe` blocks until the podcast appears in the library
         // snapshot (or times out with an informative error).
-        return try await store.kernelSubscribe(feedURL: feedURLString)
+        return try await store.kernelSubscribe(feedURL: url.absoluteString)
     }
 
     // MARK: - Refresh
@@ -113,9 +118,14 @@ struct SubscriptionService {
 
     // MARK: - Helpers
 
-    private func normalizedURL(from input: String) -> URL? {
-        guard !input.isEmpty else { return nil }
-        let candidate = input.contains("://") ? input : "https://\(input)"
+    nonisolated static func normalizedFeedURL(from input: String) -> URL? {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let hasScheme = trimmed.range(
+            of: #"^[A-Za-z][A-Za-z0-9+.-]*:"#,
+            options: .regularExpression
+        ) != nil
+        let candidate = hasScheme ? trimmed : "https://\(trimmed)"
         guard let url = URL(string: candidate),
               let scheme = url.scheme?.lowercased(),
               scheme == "http" || scheme == "https",

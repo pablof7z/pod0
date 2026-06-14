@@ -26,18 +26,19 @@ extension AppStateStore {
     @discardableResult
     func kernelSubscribe(feedURL: String,
                          timeout: Duration = .seconds(30)) async throws -> Podcast {
-        guard let kern = kernel else {
-            throw SubscriptionService.AddError.transport("Kernel not available")
-        }
         let trimmed = feedURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let url = URL(string: trimmed) else {
+        guard let url = SubscriptionService.normalizedFeedURL(from: trimmed) else {
             throw SubscriptionService.AddError.invalidURL
         }
         if let existing = podcast(feedURL: url),
            subscription(podcastID: existing.id) != nil {
             throw SubscriptionService.AddError.alreadySubscribed(title: existing.title)
         }
-        kern.dispatch(PodcastKernelAction.Subscribe(feedUrl: trimmed))
+        guard let kern = kernel else {
+            throw SubscriptionService.AddError.transport("Kernel not available")
+        }
+        let normalizedFeedURL = url.absoluteString
+        kern.dispatch(PodcastKernelAction.Subscribe(feedUrl: normalizedFeedURL))
         // React to the projected library landing the followed feed instead of
         // polling on a 300ms timer. `podcast(feedURL:)` /
         // `subscription(podcastID:)` read `state.podcasts` /

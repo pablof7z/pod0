@@ -148,7 +148,8 @@ final class LivePodcastSubscribeAdapter: PodcastSubscribeProtocol, @unchecked Se
         // row from a prior external play but no `PodcastSubscription`
         // row, the agent's subscribe call still needs to create the
         // follow row (and let the service backfill the show's episodes).
-        if let feedURL = URL(string: feedURLString),
+        let normalizedFeedURL = SubscriptionService.normalizedFeedURL(from: feedURLString)
+        if let feedURL = normalizedFeedURL,
            let existing = await store.podcast(feedURL: feedURL),
            await store.subscription(podcastID: existing.id) != nil {
             let count = await store.episodes(forPodcast: existing.id).count
@@ -156,7 +157,7 @@ final class LivePodcastSubscribeAdapter: PodcastSubscribeProtocol, @unchecked Se
                 podcastID: existing.id.uuidString,
                 title: existing.title,
                 author: existing.author,
-                feedURL: feedURLString,
+                feedURL: feedURL.absoluteString,
                 episodeCount: count,
                 alreadySubscribed: true
             )
@@ -168,7 +169,7 @@ final class LivePodcastSubscribeAdapter: PodcastSubscribeProtocol, @unchecked Se
             podcastID: podcast.id.uuidString,
             title: podcast.title,
             author: podcast.author,
-            feedURL: feedURLString,
+            feedURL: podcast.feedURL?.absoluteString ?? normalizedFeedURL?.absoluteString ?? feedURLString,
             episodeCount: count,
             alreadySubscribed: false
         )

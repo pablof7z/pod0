@@ -185,7 +185,7 @@ struct AddByURLForm: View {
             // behaviour: light haptic, dismiss the sheet via onAdded with
             // the existing record; no angry red banner.
             if case .alreadySubscribed = addError,
-               let url = URL(string: trimmed),
+               let url = SubscriptionService.normalizedFeedURL(from: trimmed),
                let existing = store.podcast(feedURL: url) {
                 Haptics.light()
                 onAdded(existing)
