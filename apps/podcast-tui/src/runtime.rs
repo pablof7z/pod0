@@ -4,9 +4,10 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use nmp_app_podcast::ffi::PodcastUpdate;
 use nmp_app_podcast::{
-    nmp_app_podcast_elevenlabs_voice_catalog, nmp_app_podcast_http_report,
-    nmp_app_podcast_local_model_catalog, nmp_app_podcast_provider_model_catalog,
-    nmp_app_podcast_register, nmp_app_podcast_set_data_dir, nmp_app_podcast_speech_model_catalog,
+    nmp_app_podcast_audio_report, nmp_app_podcast_elevenlabs_voice_catalog,
+    nmp_app_podcast_http_report, nmp_app_podcast_local_model_catalog,
+    nmp_app_podcast_provider_model_catalog, nmp_app_podcast_register,
+    nmp_app_podcast_set_data_dir, nmp_app_podcast_speech_model_catalog,
     nmp_app_podcast_unregister, nmp_signer_broker_init, PodcastHandle, AUDIO_CAPABILITY_NAMESPACE,
 };
 use nmp_ffi::{
@@ -112,9 +113,45 @@ impl AppRuntime {
         self.dispatch_action(namespace, &action.to_string())
     }
 
+    /// Sample mpv's playback position and forward any pending [`AudioReport`]s
+    /// to the kernel via `nmp_app_podcast_audio_report`.
+    ///
+    /// D4/D7: called every 250 ms (≤4 Hz, D8 ceiling). Enqueues a
+    /// `Playing` report on each successful position sample; `Paused` /
+    /// `Stopped` reports are enqueued by the command handlers and flushed
+    /// here as well. The return value (follow-up `AudioCommand` JSON) is
+    /// freed immediately — the TUI already drives mpv directly and does not
+    /// need kernel-initiated follow-up commands at this stage.
     pub fn poll_audio_position(&self) {
-        if let Some(host) = AUDIO_HOST.get() {
-            let _ = host.lock().unwrap().poll_position();
+        let Some(host) = AUDIO_HOST.get() else {
+            return;
+        };
+        let reports = {
+            let mut h = host.lock().unwrap();
+            h.poll_position();
+            h.drain_reports()
+        };
+
+        let handle_addr = match PODCAST_HANDLE.get() {
+            Some(&addr) => addr,
+            None => return,
+        };
+        let handle = handle_addr as *mut PodcastHandle;
+
+        for report in reports {
+            let report_json = match serde_json::to_string(&report) {
+                Ok(j) => j,
+                Err(_) => continue,
+            };
+            let Ok(c_json) = CString::new(report_json) else {
+                continue;
+            };
+            // SAFETY: handle outlives the process (freed only in AppRuntime::drop).
+            // nmp_app_podcast_audio_report degrades silently on any error (D6).
+            let ret = nmp_app_podcast_audio_report(handle, c_json.as_ptr());
+            if !ret.is_null() {
+                nmp_free_string(ret);
+            }
         }
     }
 

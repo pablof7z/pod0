@@ -18,21 +18,21 @@
 //! (see `docs/BACKLOG.md` `tui-mpv-position-sampling`), not a polling
 //! shortcut.
 //!
-//! KNOWN GAP (not fixed here, #322): the sampled position is currently stored
-//! in `last_position_secs` and NOT forwarded back to the kernel — there is no
-//! `nmp_app_podcast_audio_report` call anywhere in this crate. So the TUI does
-//! not yet surface live mpv progress to the kernel projection; the report
-//! wiring is a tracked follow-up (`docs/BACKLOG.md` `tui-mpv-position-sampling`).
-//! This change deliberately does NOT paper over that with fake progress — the
-//! removed stub did exactly that. The TUI is a secondary target;
-//! correctness over polish.
+//! ## Kernel report wiring (D4/D7)
+//!
+//! `poll_position` enqueues an `AudioReport::Playing` after each successful
+//! mpv position sample (≤4 Hz, matching the D8 ceiling).  Pause / Stop
+//! transitions enqueue `AudioReport::Paused` / `AudioReport::Stopped`
+//! immediately. The runtime drains these via [`AudioHost::drain_reports`] and
+//! forwards them through `nmp_app_podcast_audio_report` — the same FFI seam
+//! iOS and Android use — so the kernel projection reflects live TUI progress.
 
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 
-use nmp_app_podcast::{AudioCommand, AUDIO_CAPABILITY_NAMESPACE};
+use nmp_app_podcast::{AudioCommand, AudioReport, AUDIO_CAPABILITY_NAMESPACE};
 use serde::{Deserialize, Serialize};
 
 /// Subprocess-based audio host.
@@ -41,8 +41,13 @@ pub struct AudioHost {
     ipc_path: PathBuf,
     last_url: Option<String>,
     last_position_secs: f64,
+    last_duration_secs: f64,
     is_playing: bool,
     mpv_available: bool,
+    /// D4/D7 report queue. Enqueued by playback state transitions and
+    /// position-sample ticks; drained by the runtime into
+    /// `nmp_app_podcast_audio_report`.
+    pending_reports: Vec<AudioReport>,
 }
 
 fn mpv_is_available() -> bool {
@@ -63,9 +68,19 @@ impl AudioHost {
             ipc_path,
             last_url: None,
             last_position_secs: 0.0,
+            last_duration_secs: 0.0,
             is_playing: false,
             mpv_available: mpv_is_available(),
+            pending_reports: Vec::new(),
         }
+    }
+
+    /// Drain all pending [`AudioReport`]s accumulated since the last call.
+    ///
+    /// The runtime passes each one to `nmp_app_podcast_audio_report` so the
+    /// kernel projection stays in sync with live mpv playback (D4/D7).
+    pub fn drain_reports(&mut self) -> Vec<AudioReport> {
+        std::mem::take(&mut self.pending_reports)
     }
 
     pub fn handle_request(&mut self, request_str: &str) -> String {
@@ -120,6 +135,7 @@ impl AudioHost {
                 self.kill_mpv();
                 self.last_url = Some(url.clone());
                 self.last_position_secs = position_secs;
+                self.last_duration_secs = 0.0;
                 self.is_playing = true;
 
                 let ipc = self.ipc_path.to_string_lossy().to_string();
@@ -153,6 +169,15 @@ impl AudioHost {
             AudioCommand::Pause => {
                 self.is_playing = false;
                 let _ = self.mpv_ipc_set_property("pause", "true");
+                // D7: report the transition immediately so the kernel
+                // projection reflects the paused state and flushes the
+                // position to disk.
+                if let Some(url) = self.last_url.clone() {
+                    self.pending_reports.push(AudioReport::Paused {
+                        url,
+                        position_secs: self.last_position_secs,
+                    });
+                }
                 serde_json::json!({"ok": true}).to_string()
             }
             AudioCommand::Seek { position_secs } => {
@@ -175,6 +200,9 @@ impl AudioHost {
             AudioCommand::Stop => {
                 self.kill_mpv();
                 self.is_playing = false;
+                // D7: report the stop so the kernel flushes the position
+                // checkpoint to disk.
+                self.pending_reports.push(AudioReport::Stopped);
                 serde_json::json!({"ok": true}).to_string()
             }
         }
@@ -187,6 +215,7 @@ impl AudioHost {
             } => {
                 self.last_url = Some(url);
                 self.last_position_secs = position_secs;
+                self.last_duration_secs = 0.0;
                 self.is_playing = true;
             }
             AudioCommand::Play => {
@@ -247,50 +276,69 @@ impl AudioHost {
         Ok(())
     }
 
-    /// Sample mpv's current `playback-time` into `last_position_secs`.
-    ///
-    /// POSITION-SAMPLING EXCEPTION: mpv emits no position event, so this is the
-    /// only way to observe `playback-time` (see the module docs and
-    /// `docs/BACKLOG.md` `tui-mpv-position-sampling`).
-    ///
-    /// NOTE (#322): the sampled value is stored only; it is NOT yet forwarded
-    /// to the kernel (no `nmp_app_podcast_audio_report` call exists in this
-    /// crate). That report wiring is a tracked follow-up.
-    ///
-    /// With no mpv backend there is no real position source. We do NOT
-    /// synthesize progress here — the position is simply unknown and stays
-    /// unchanged. (The old stub incremented `last_position_secs` by the tick
-    /// interval, fabricating playback the player never produced; #322.)
-    pub fn poll_position(&mut self) {
-        if !self.mpv_available || self.mpv_child.is_none() {
-            return;
-        }
-
-        let mut stream = match UnixStream::connect(&self.ipc_path) {
-            Ok(s) => s,
-            Err(_) => return,
-        };
-
-        let req = serde_json::json!({
-            "command": ["get_property", "playback-time"]
-        });
-        if let Ok(line) = serde_json::to_string(&req) {
-            let _ = stream.write_all((line + "\n").as_bytes());
-            let _ = stream.flush();
-        }
+    /// Query mpv for a single numeric property, returning the value on success.
+    fn mpv_ipc_get_number(&self, property: &str) -> Option<f64> {
+        let mut stream = UnixStream::connect(&self.ipc_path).ok()?;
+        let req = serde_json::json!({ "command": ["get_property", property] });
+        let line = req.to_string() + "\n";
+        stream.write_all(line.as_bytes()).ok()?;
+        stream.flush().ok()?;
 
         let reader = BufReader::new(stream);
         for line in reader.lines() {
             if let Ok(line) = line {
                 if let Ok(resp) = serde_json::from_str::<MpvResponse>(&line) {
                     if let Some(data) = resp.data {
-                        if let Ok(pos) = serde_json::from_value::<f64>(data.clone()) {
-                            self.last_position_secs = pos;
-                        }
+                        return serde_json::from_value::<f64>(data).ok();
                     }
                 }
             }
             break;
+        }
+        None
+    }
+
+    /// Sample mpv's current `playback-time` and enqueue an
+    /// `AudioReport::Playing` if playing.
+    ///
+    /// POSITION-SAMPLING EXCEPTION: mpv emits no position event, so this is the
+    /// only way to observe `playback-time` (see the module docs and
+    /// `docs/BACKLOG.md` `tui-mpv-position-sampling`).
+    ///
+    /// D8 cadence: called every 250 ms from the runtime tick loop (≤4 Hz).
+    /// Only fires while mpv is running AND the host considers playback active.
+    ///
+    /// With no mpv backend there is no real position source. We do NOT
+    /// synthesize progress here — the position is simply unknown and stays
+    /// unchanged. (The old stub incremented `last_position_secs` by the tick
+    /// interval, fabricating playback the player never produced; #322.)
+    pub fn poll_position(&mut self) {
+        if !self.mpv_available || self.mpv_child.is_none() || !self.is_playing {
+            return;
+        }
+
+        // Sample position. If mpv is still starting up the IPC socket may not
+        // yet exist; skip silently — the next 250 ms tick will retry.
+        if let Some(pos) = self.mpv_ipc_get_number("playback-time") {
+            self.last_position_secs = pos;
+
+            // Sample duration; mpv returns 0/null before the stream header is
+            // parsed, so keep the last valid value rather than zeroing it.
+            if let Some(dur) = self.mpv_ipc_get_number("duration") {
+                if dur > 0.0 {
+                    self.last_duration_secs = dur;
+                }
+            }
+
+            // D4/D7: forward position to the kernel projection via the same
+            // AudioReport::Playing seam iOS and Android use (D8: ≤4 Hz).
+            if let Some(url) = self.last_url.clone() {
+                self.pending_reports.push(AudioReport::Playing {
+                    url,
+                    position_secs: self.last_position_secs,
+                    duration_secs: self.last_duration_secs,
+                });
+            }
         }
     }
 }
