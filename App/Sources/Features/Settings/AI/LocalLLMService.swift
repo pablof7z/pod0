@@ -1,11 +1,14 @@
 import Foundation
+#if canImport(LiteRTLM)
 // LiteRTLM's Engine/Conversation types predate Swift 6 strict-concurrency
 // auditing (Conversation is a non-Sendable class). @preconcurrency downgrades
 // the cross-actor non-Sendable diagnostics to warnings for this SDK.
 @preconcurrency import LiteRTLM
+#endif
 import os.log
 
 actor LocalLLMService {
+#if canImport(LiteRTLM)
     private var engine: Engine?
 
     /// The model id whose engine is currently loaded, or nil when none. Lets
@@ -177,6 +180,46 @@ actor LocalLLMService {
         nmp_app_clear_local_llm(handle)
         os_log("Local LLM service cleared from kernel", log: .default, type: .debug)
     }
+#else
+    private(set) var loadedModelID: String?
+
+    init() {}
+
+    func ensureLoaded(spec: LocalModelSpec) async throws {
+        throw LocalLLMError.engineInitializationFailed
+    }
+
+    func load(spec: LocalModelSpec) async throws {
+        throw LocalLLMError.engineInitializationFailed
+    }
+
+    func unload() async {
+        loadedModelID = nil
+    }
+
+    func infer(promptJSON: String) async -> String {
+        #"{"error":"LiteRT-LM package unavailable in this build"}"#
+    }
+
+    func registerWithKernel(_ kernel: KernelModel) async {
+        let handleBits = await MainActor.run { Int(bitPattern: kernel.podcastHandlePointer) }
+        guard let handle = UnsafeMutableRawPointer(bitPattern: handleBits) else {
+            os_log("Cannot register local LLM: no kernel handle", log: .default, type: .error)
+            return
+        }
+
+        let ctx = Unmanaged.passUnretained(self).toOpaque()
+        nmp_app_register_local_llm(handle, ctx, localLLMCallback)
+        os_log("Unavailable local LLM service registered with kernel", log: .default, type: .debug)
+    }
+
+    func clearFromKernel(_ kernel: KernelModel) async {
+        let handleBits = await MainActor.run { Int(bitPattern: kernel.podcastHandlePointer) }
+        guard let handle = UnsafeMutableRawPointer(bitPattern: handleBits) else { return }
+        nmp_app_clear_local_llm(handle)
+        os_log("Local LLM service cleared from kernel", log: .default, type: .debug)
+    }
+#endif
 }
 
 // MARK: - C Callback Glue

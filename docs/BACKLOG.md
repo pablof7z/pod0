@@ -78,7 +78,20 @@ worktrees currently in flight.
   bootstrap fix pins the remaining Swift package ranges to their already
   resolved release revisions and wraps `tuist generate` in bounded retry/cleanup
   logic so a package-resolution stall cannot consume the entire Build and Test
-  job.
+  job. The main run at `104ff094` proved the watchdog path still needed one
+  more hardening pass: `tuist generate` timed out at 600s, killed the stalled
+  resolver, but the wrapper treated the killed attempt as success and let
+  `run_tests.sh` continue. `xcodebuild test` then independently hung while
+  fetching `LiteRT-LM` and the job was cancelled before tests. The follow-on
+  fix makes watchdog timeouts return a failed attempt, retries Tuist only after
+  cleaning generated state, and makes `run_tests.sh` perform its own bounded
+  SwiftPM resolve before invoking `xcodebuild test` against the resolved
+  package set/cache. The Test workflow's simulator lane also generates without
+  the LiteRT-LM SwiftPM package by touching `.ci-disable-litertlm-package` before
+  `tuist generate`, because
+  LiteRT-LM's remote binary artifacts exceed the 30-minute simulator lane
+  budget and its device-only local-model probes skip on simulator; default
+  local/TestFlight generation still includes the real package.
   The old `nmp-blossom` portability blocker is resolved on `main`, PR #498
   removed the temporary `vendor/nmp-core` fork, and the Rust/headless required
   merge gates are locally unblocked by the upstream-pinned NMP rev. Do not

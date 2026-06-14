@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/process_helpers.sh"
+
 APP_SCHEME="${APP_SCHEME:-Podcastr}"
 TUIST_GENERATE_ATTEMPTS="${TUIST_GENERATE_ATTEMPTS:-2}"
 TUIST_GENERATE_TIMEOUT_SECONDS="${TUIST_GENERATE_TIMEOUT_SECONDS:-600}"
@@ -22,41 +25,11 @@ clean_generated_project_state() {
     Podcastr.xcodeproj/xcshareddata/swiftpm
 }
 
-kill_process_tree() {
-  local signal="$1"
-  local pid="$2"
-  local child
-
-  while IFS= read -r child; do
-    kill_process_tree "$signal" "$child"
-  done < <(pgrep -P "$pid" 2>/dev/null || true)
-
-  kill "-$signal" "$pid" 2>/dev/null || true
-}
-
 run_tuist_generate_once() {
-  tuist generate --no-open &
-  local tuist_pid=$!
-
-  (
-    sleep "$TUIST_GENERATE_TIMEOUT_SECONDS"
-    if kill -0 "$tuist_pid" 2>/dev/null; then
-      echo "error: tuist generate exceeded ${TUIST_GENERATE_TIMEOUT_SECONDS}s; terminating stalled package resolution" >&2
-      kill_process_tree TERM "$tuist_pid"
-      sleep 10
-      kill_process_tree KILL "$tuist_pid"
-    fi
-  ) &
-  local watchdog_pid=$!
-
-  set +e
-  wait "$tuist_pid"
-  local status=$?
-  set -e
-
-  kill "$watchdog_pid" 2>/dev/null || true
-  wait "$watchdog_pid" 2>/dev/null || true
-  return "$status"
+  run_command_with_timeout \
+    "tuist generate" \
+    "$TUIST_GENERATE_TIMEOUT_SECONDS" \
+    tuist generate --no-open
 }
 
 make_xcode_caches_writable

@@ -1,5 +1,6 @@
 .DS_Store
 WIP.md
+.ci-disable-litertlm-package
 /build/
 target/
 Cargo.lock

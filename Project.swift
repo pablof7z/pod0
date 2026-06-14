@@ -1,3 +1,4 @@
+import Foundation
 import ProjectDescription
 
 // MARK: - Configure these before running `tuist generate`
@@ -6,6 +7,9 @@ let appName = "Podcastr"
 let appDisplayName = "Pod0"
 let appleTeamID = "456SHKPP26"
 let deploymentTarget: DeploymentTargets = .iOS("26.0")
+let manifestDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+let disableLiteRTLMFlag = manifestDirectory.appendingPathComponent(".ci-disable-litertlm-package")
+let enableLiteRTLMPackage = !FileManager.default.fileExists(atPath: disableLiteRTLMFlag.path)
 
 // MARK: - Derived identifiers
 
@@ -18,6 +22,51 @@ let appBundleID = "io.f7z.podcast"
 let appGroupID = "group.com.podcastr.app"
 let widgetBundleID = "\(appBundleID).widget"
 
+var swiftPackages: [Package] = [
+    // Lane 6 — RAG: on-device vector store via sqlite-vec.
+    // Hosts both the `vec0` virtual table for embeddings and `fts5` for
+    // hybrid lexical search in a single SQLite file.
+    // Pinned to the 0.0.14 release revision so CI generation does not have
+    // to range-resolve remote tags on the self-hosted runner.
+    .remote(
+        url: "https://github.com/jkrukowski/SQLiteVec",
+        requirement: .revision("1504246d0900db950a5065f43fce964bf4adceda")
+    ),
+    // Kingfisher — memory + disk image cache. Backs `CachedAsyncImage`
+    // so artwork URLs (subscription / episode covers, iTunes Search
+    // results, etc.) fetch at most once per session instead of
+    // re-downloading every appearance like SwiftUI's stock `AsyncImage`.
+    // Pinned to the 8.9.0 release revision for deterministic CI generation.
+    .remote(
+        url: "https://github.com/onevcat/Kingfisher",
+        requirement: .revision("cf8be20d07654570554c8a8a4952bc8a5766a8b0")
+    ),
+]
+
+if enableLiteRTLMPackage {
+    // Pinned to a revision (not a version range) because LiteRTLM declares
+    // `unsafeFlags(["-Xlinker", "-all_load"])`, which SwiftPM forbids on a
+    // versioned remote dependency. A revision pin is allowed to carry unsafe
+    // flags. Revision = the 0.13.0 release commit.
+    swiftPackages.append(
+        .remote(
+            url: "https://github.com/google-ai-edge/LiteRT-LM",
+            requirement: .revision("bbc5181df03c6962d7786ce4ad72c8565232d2b2")
+        )
+    )
+}
+
+var appDependencies: [TargetDependency] = [
+    .package(product: "SQLiteVec"),
+    .package(product: "Kingfisher"),
+]
+
+if enableLiteRTLMPackage {
+    appDependencies.append(.package(product: "LiteRTLM"))
+}
+
+appDependencies.append(.target(name: "\(appName)Widget"))
+
 // MARK: - Project
 
 let project = Project(
@@ -27,34 +76,7 @@ let project = Project(
         automaticSchemesOptions: .disabled,
         developmentRegion: "en"
     ),
-    packages: [
-        // Lane 6 — RAG: on-device vector store via sqlite-vec.
-        // Hosts both the `vec0` virtual table for embeddings and `fts5` for
-        // hybrid lexical search in a single SQLite file.
-        // Pinned to the 0.0.14 release revision so CI generation does not have
-        // to range-resolve remote tags on the self-hosted runner.
-        .remote(
-            url: "https://github.com/jkrukowski/SQLiteVec",
-            requirement: .revision("1504246d0900db950a5065f43fce964bf4adceda")
-        ),
-        // Kingfisher — memory + disk image cache. Backs `CachedAsyncImage`
-        // so artwork URLs (subscription / episode covers, iTunes Search
-        // results, etc.) fetch at most once per session instead of
-        // re-downloading every appearance like SwiftUI's stock `AsyncImage`.
-        // Pinned to the 8.9.0 release revision for deterministic CI generation.
-        .remote(
-            url: "https://github.com/onevcat/Kingfisher",
-            requirement: .revision("cf8be20d07654570554c8a8a4952bc8a5766a8b0")
-        ),
-        // Pinned to a revision (not a version range) because LiteRTLM declares
-        // `unsafeFlags(["-Xlinker", "-all_load"])`, which SwiftPM forbids on a
-        // versioned remote dependency. A revision pin is allowed to carry unsafe
-        // flags. Revision = the 0.13.0 release commit.
-        .remote(
-            url: "https://github.com/google-ai-edge/LiteRT-LM",
-            requirement: .revision("bbc5181df03c6962d7786ce4ad72c8565232d2b2")
-        ),
-    ],
+    packages: swiftPackages,
     settings: .settings(
         base: [
             "SWIFT_VERSION": "6.0",
@@ -148,12 +170,7 @@ let project = Project(
                     basedOnDependencyAnalysis: false
                 ),
             ],
-            dependencies: [
-                .package(product: "SQLiteVec"),
-                .package(product: "Kingfisher"),
-                .package(product: "LiteRTLM"),
-                .target(name: "\(appName)Widget"),
-            ],
+            dependencies: appDependencies,
             settings: .settings(
                 base: [
                     "APP_BUNDLE_IDENTIFIER": "\(appBundleID)",

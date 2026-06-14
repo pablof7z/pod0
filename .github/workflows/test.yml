@@ -60,6 +60,9 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Disable LiteRT package for simulator CI
+        run: touch .ci-disable-litertlm-package
+
       - name: Bootstrap project
         run: ./ci_scripts/bootstrap_project.sh
 
