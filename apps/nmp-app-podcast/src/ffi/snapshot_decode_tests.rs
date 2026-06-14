@@ -124,6 +124,7 @@ fn malformed_payload_yields_none() {
         schema_version: SIGNED_EVENTS_SCHEMA_VERSION,
         file_identifier: "KSEV".to_string(),
         payload: vec![],
+        ..Default::default()
     };
     let frame = frame_with_typed(&[entry]);
     assert!(

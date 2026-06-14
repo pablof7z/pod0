@@ -1,0 +1,40 @@
+# Vendored from https://github.com/pablof7z/nostr-multi-platform
+# rev ac7e307e89b57a73b419ea9588275e599dcb228c crates/nmp-blossom
+# Vendored because nmp-blossom is excluded from the NMP workspace at ac7e307e
+# (parked post-v1 / M10), so cargo git deps can only find workspace members.
+# Path deps replaced with workspace deps pointing to the same ac7e307e git rev.
+[package]
+name = "nmp-blossom"
+version = "0.6.2"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/pablof7z/nostr-multi-platform"
+description = "Blossom (BUD-02) blob uploads as an NMP protocol crate — kind:24242 auth builder + BlossomUploadCommand (ProtocolCommand) streaming PUT, signing via the generic backend-transparent SignEventForAccount port (ADR-0043). PARKED: post-v1 (M10 / #998)."
+
+[dependencies]
+# Substrate seams: ProtocolCommand / ProtocolCommandContext, ActorCommand,
+# UnsignedEvent / SignedEvent, the generic SignEventForAccount sign port.
+nmp-core = { workspace = true }
+# Layer-0 canonical kind registry — re-exports KIND_BLOSSOM_AUTH (24242)
+# so this crate does not duplicate the value (V-57 / workspace-canonical-kinds).
+nmp-kinds = { git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ac7e307e89b57a73b419ea9588275e599dcb228c" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Off-thread HTTP (streaming PUT). Same crate + feature set as nmp-nip57's
+# LNURL fetcher — runs on a `std::thread::spawn` worker, never the actor thread.
+ureq = { version = "2", default-features = false, features = ["tls"] }
+# Streaming SHA-256 of the blob (the kind:24242 `x` tag). rust-crypto leaf crate.
+sha2 = "0.10"
+# Base64 of the signed kind:24242 for the `Authorization: Nostr <…>` header.
+base64 = "0.22"
+# rust-nostr — kind:24242 construction + signing types. NEVER reimplement crypto
+# (docs/aim.md: rust-nostr is the protocol foundation).
+nostr = { version = "0.44", default-features = false, features = ["std"] }
+tracing = "0.1"
+
+[dev-dependencies]
+nmp-core = { workspace = true, features = ["test-support"] }
+# Crate-level integration test drives the REAL action registry end-to-end via
+# the FFI app (register_action → sign-in nsec → dispatch nmp.blossom.upload).
+nmp-ffi = { workspace = true, features = ["test-support"] }
+serde_json = "1"

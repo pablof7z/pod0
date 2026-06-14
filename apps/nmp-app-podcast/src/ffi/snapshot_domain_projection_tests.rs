@@ -108,6 +108,19 @@ fn make_frame_with_sidecars(sidecars: &[TypedProjectionData]) -> Vec<u8> {
     encode_snapshot_frame(&env, sidecars)
 }
 
+/// Run typed snapshot projections and filter out the always-emitting
+/// `claimed_event_embeds` sidecar registered by nmp-ffi's embed sidecar
+/// (ac7e307e: `install_embed_sidecar_projection` always returns `Some`).
+/// Domain-projection tests assert silence between domain-rev bumps; the
+/// embed sidecar's unconditional emit would cause false failures.
+fn run_domain_projections_only(app_ref: &nmp_ffi::NmpApp) -> Vec<TypedProjectionData> {
+    app_ref
+        .run_typed_snapshot_projections()
+        .into_iter()
+        .filter(|p| p.schema_id != "claimed_event_embeds")
+        .collect()
+}
+
 /// Build a REAL `AgentNotesObserver` wired to the handle's social state — the
 /// SAME `agent_notes` cache the social projection reads AND the SAME
 /// `Domain::Social`-scoped `Infra` whose `bump()` advances `domain_revs.social`.
@@ -222,6 +235,7 @@ fn decode_podcast_playback_sidecar_is_extracted() {
         schema_version: 1,
         file_identifier: String::new(),
         payload: payload_bytes,
+        ..Default::default()
     };
     let frame = make_frame_with_sidecars(&[sidecar]);
     let map = decode_podcast_domain_sidecars(&frame)
@@ -248,6 +262,7 @@ fn decode_ignores_non_podcast_sidecars() {
         schema_version: 1,
         file_identifier: "KSEV".to_string(),
         payload: other_payload,
+        ..Default::default()
     };
     let frame = make_frame_with_sidecars(&[other_sidecar]);
     assert!(
@@ -265,6 +280,7 @@ fn decode_malformed_sidecar_payload_is_silently_skipped() {
         schema_version: 1,
         file_identifier: String::new(),
         payload: b"not json {{{".to_vec(),
+        ..Default::default()
     };
     let frame = make_frame_with_sidecars(&[bad]);
     // The single sidecar has a bad payload; the map ends up empty → None (D6).
@@ -298,7 +314,7 @@ fn playback_tick_excludes_library_sidecar() {
     let _ = app_ref.run_typed_snapshot_projections();
 
     // Second call without any rev bump → ALL closures return None (no change).
-    let no_change = app_ref.run_typed_snapshot_projections();
+    let no_change = run_domain_projections_only(app_ref);
     assert!(
         no_change.is_empty(),
         "second run with no domain rev bump must emit nothing (all closures return None); got {:?}",
@@ -351,8 +367,12 @@ fn domain_projections_emit_valid_json_with_rev_field() {
     // With the tombstone contract, downloads/identity/widget always emit on first
     // run (tombstone if empty, full payload if populated). settings, playback,
     // library, and misc must also be present.
+    // Filter claimed_event_embeds: it's an nmp-ffi sidecar (ac7e307e) that emits
+    // FlatBuffer bytes (not JSON), so including it in the JSON-validity loop below
+    // would fail. Domain-projection tests only care about podcast.* sidecars.
     let by_key: std::collections::HashMap<String, &TypedProjectionData> = projections
         .iter()
+        .filter(|p| p.schema_id != "claimed_event_embeds")
         .map(|p| (p.schema_id.clone(), p))
         .collect();
 
@@ -435,7 +455,7 @@ fn downloads_empty_emits_tombstone_then_idles() {
 
     // Consume initial run; ensure silence before the targeted bump.
     let _ = app_ref.run_typed_snapshot_projections();
-    assert!(app_ref.run_typed_snapshot_projections().is_empty());
+    assert!(run_domain_projections_only(app_ref).is_empty());
 
     // Bump downloads rev; no active downloads in test store.
     domain_revs.downloads.fetch_add(1, Ordering::Relaxed);
@@ -464,7 +484,7 @@ fn identity_empty_emits_tombstone_then_idles() {
     register_domain_projections(app_ref, &handle);
 
     let _ = app_ref.run_typed_snapshot_projections();
-    assert!(app_ref.run_typed_snapshot_projections().is_empty());
+    assert!(run_domain_projections_only(app_ref).is_empty());
 
     domain_revs.identity.fetch_add(1, Ordering::Relaxed);
     let after = app_ref.run_typed_snapshot_projections();
@@ -491,7 +511,7 @@ fn widget_empty_emits_tombstone_then_idles() {
     register_domain_projections(app_ref, &handle);
 
     let _ = app_ref.run_typed_snapshot_projections();
-    assert!(app_ref.run_typed_snapshot_projections().is_empty());
+    assert!(run_domain_projections_only(app_ref).is_empty());
 
     domain_revs.widget.fetch_add(1, Ordering::Relaxed);
     let after = app_ref.run_typed_snapshot_projections();
@@ -534,7 +554,7 @@ fn identity_surfaces_kernel_active_account_without_rev_bump() {
 
     // Prime: first emit drains the initial sidecars; the next tick is silent.
     let _ = app_ref.run_typed_snapshot_projections();
-    assert!(app_ref.run_typed_snapshot_projections().is_empty());
+    assert!(run_domain_projections_only(app_ref).is_empty());
 
     let rev_before = domain_revs.identity.load(Ordering::Relaxed);
 
@@ -655,7 +675,7 @@ fn social_inbound_note_excludes_library_and_playback_sidecars() {
     // Consume initial state (all domains fire once).
     let _ = app_ref.run_typed_snapshot_projections();
     // Second run with no bumps → all closures return None.
-    let no_change = app_ref.run_typed_snapshot_projections();
+    let no_change = run_domain_projections_only(app_ref);
     assert!(
         no_change.is_empty(),
         "second run with no bump must emit nothing; got {:?}",
@@ -717,7 +737,7 @@ fn social_inbound_note_reemits_on_each_new_note_real_path() {
     // Consume the initial tombstone tick, then confirm silence.
     let _ = app_ref.run_typed_snapshot_projections();
     assert!(
-        app_ref.run_typed_snapshot_projections().is_empty(),
+        run_domain_projections_only(app_ref).is_empty(),
         "no social sidecar should emit before any note arrives"
     );
 
@@ -733,7 +753,7 @@ fn social_inbound_note_reemits_on_each_new_note_real_path() {
     );
     // Idle confirms last_emitted caught up.
     assert!(
-        app_ref.run_typed_snapshot_projections().is_empty(),
+        run_domain_projections_only(app_ref).is_empty(),
         "social sidecar must idle after the first note is emitted"
     );
 
@@ -801,7 +821,7 @@ fn approve_peer_action_reemits_social_with_trusted_flipped_real_path() {
     );
     // Drain so last_emitted catches up → next emit proves a real re-emit.
     assert!(
-        app_ref.run_typed_snapshot_projections().is_empty(),
+        run_domain_projections_only(app_ref).is_empty(),
         "social sidecar must idle before the approve action"
     );
 
@@ -899,7 +919,7 @@ fn block_peer_action_reemits_social_with_trusted_false_overriding_follow() {
         "followed peer's conversation must project trusted:true before block; got: {val_before}"
     );
     assert!(
-        app_ref.run_typed_snapshot_projections().is_empty(),
+        run_domain_projections_only(app_ref).is_empty(),
         "social sidecar must idle before the block action"
     );
 

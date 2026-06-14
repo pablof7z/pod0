@@ -52,6 +52,7 @@ fn malformed_payload_yields_none() {
         schema_version: ACTION_RESULTS_SCHEMA_VERSION,
         file_identifier: "KARS".to_string(),
         payload: vec![],
+        ..Default::default()
     };
     let frame = frame_with_typed(&[entry]);
     assert!(
@@ -116,6 +117,7 @@ fn blob_upload_result_round_trips_to_reachable_url() {
         schema_version: ACTION_RESULTS_SCHEMA_VERSION,
         file_identifier: "KARS".to_string(),
         payload: KARS_BLOB_UPLOAD_FIXTURE.to_vec(),
+        ..Default::default()
     };
     let frame = frame_with_typed(&[entry]);
 

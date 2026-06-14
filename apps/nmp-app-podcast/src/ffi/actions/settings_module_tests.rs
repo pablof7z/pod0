@@ -3,6 +3,31 @@ use super::*;
 /// D9 gate: the shell action payload omits `connected_at` (shells no longer
 /// stamp time). The kernel uses `Option<i64>` so the wire tolerates the field
 /// being absent — decode must succeed and the value arrives as `None`.
+
+/// Test helper: extract `(action_json, correlation_id)` from an
+/// `ActorCommand::Protocol(HostOpCommand { .. })` via its `Debug` output.
+/// HostOpCommand fields are private in nmp-core; this avoids direct access.
+#[cfg(test)]
+#[allow(dead_code)]
+fn extract_host_op_parts(cmd: &ActorCommand) -> (String, String) {
+    let dbg = format!("{cmd:?}");
+    // Debug fmt: Protocol(HostOpCommand { action_json: "{..}", correlation_id: "corr" })
+    // The outer string delimiters are literal " in the Debug output; inner " are \".
+    let jm = concat!("action_json: ", r#"""#);
+    let js = dbg.find(jm).expect("action_json") + jm.len();
+    let after = &dbg[js..];
+    let je = after.find(concat!(r#"""#, ", correlation_id:")).expect("json end");
+    let raw = &after[..je];
+    // Unescape \" → " and \\\\ → \\
+    let tmp = raw.replace(r#"\\"#, "\x01BSLASH\x01");
+    let action_json = tmp.replace(r#"\""#, r#"""#).replace("\x01BSLASH\x01", "\\");
+    let cm = concat!("correlation_id: ", r#"""#);
+    let cs = dbg.find(cm).expect("corr_id") + cm.len();
+    let after_c = &dbg[cs..];
+    let ce = after_c.find(concat!(r#"""#, " }")).expect("corr end");
+    (action_json, after_c[..ce].to_string())
+}
+
 #[test]
 fn credential_action_tolerates_absent_connected_at() {
     // Shells will send this exact shape after the D9 fix.
@@ -107,21 +132,17 @@ fn provider_credential_metadata_round_trips() {
 fn execute_emits_dispatch_host_op() {
     let action = SettingsAction::SetAutoSkipAds { enabled: false };
     let commands = std::sync::Mutex::new(Vec::<ActorCommand>::new());
-    SettingsActionModule::execute(action, "corr-1", &|cmd| {
+    SettingsActionModule.execute(action, "corr-1", &|cmd| {
         commands.lock().unwrap().push(cmd);
     })
     .expect("execute ok");
     let commands = commands.into_inner().unwrap();
     assert_eq!(commands.len(), 1);
-    let ActorCommand::DispatchHostOp {
-        action_json,
-        correlation_id,
-    } = &commands[0]
-    else {
-        panic!("expected DispatchHostOp");
-    };
-    assert_eq!(correlation_id, "corr-1");
-    let v: serde_json::Value = serde_json::from_str(action_json).expect("json");
+    let ActorCommand::Protocol(_) = &commands[0]
+    else { panic!("expected Protocol command"); };
+    let (action_json, correlation_id) = extract_host_op_parts(&commands[0]);
+    assert_eq!(correlation_id.as_str(), "corr-1");
+    let v: serde_json::Value = serde_json::from_str(&action_json).expect("json");
     assert_eq!(v["ns"], "podcast.settings");
     assert_eq!(v["action"]["op"], "set_auto_skip_ads");
     assert_eq!(v["action"]["enabled"], false);
@@ -176,7 +197,7 @@ fn execute_add_relay_emits_add_relay_then_dispatch_host_op() {
         role: "write".into(),
     };
     let commands = std::sync::Mutex::new(Vec::<ActorCommand>::new());
-    SettingsActionModule::execute(action, "corr-2", &|cmd| {
+    SettingsActionModule.execute(action, "corr-2", &|cmd| {
         commands.lock().unwrap().push(cmd);
     })
     .expect("execute ok");
@@ -188,16 +209,14 @@ fn execute_add_relay_emits_add_relay_then_dispatch_host_op() {
     };
     assert_eq!(url, "wss://relay.example");
     assert_eq!(role, "write");
-    // 2) Rev-bump companion.
-    let ActorCommand::DispatchHostOp {
-        action_json,
-        correlation_id,
-    } = &commands[1]
+    // 2) Rev-bump companion (now Protocol/HostOpCommand, not DispatchHostOp).
+    let ActorCommand::Protocol(_) = &commands[1]
     else {
-        panic!("expected DispatchHostOp second, got {:?}", commands[1]);
+        panic!("expected Protocol second, got {:?}", commands[1]);
     };
-    assert_eq!(correlation_id, "corr-2");
-    let v: serde_json::Value = serde_json::from_str(action_json).expect("json");
+    let (action_json, correlation_id) = extract_host_op_parts(&commands[1]);
+    assert_eq!(correlation_id.as_str(), "corr-2");
+    let v: serde_json::Value = serde_json::from_str(&action_json).expect("json");
     assert_eq!(v["ns"], "podcast.settings");
     assert_eq!(v["action"]["op"], "add_relay");
 }
@@ -211,7 +230,7 @@ fn execute_set_relay_role_emits_add_relay_then_dispatch_host_op() {
         role: "read".into(),
     };
     let commands = std::sync::Mutex::new(Vec::<ActorCommand>::new());
-    SettingsActionModule::execute(action, "corr-3", &|cmd| {
+    SettingsActionModule.execute(action, "corr-3", &|cmd| {
         commands.lock().unwrap().push(cmd);
     })
     .expect("execute ok");
@@ -222,10 +241,10 @@ fn execute_set_relay_role_emits_add_relay_then_dispatch_host_op() {
     };
     assert_eq!(url, "wss://relay.example");
     assert_eq!(role, "read");
-    let ActorCommand::DispatchHostOp { action_json, .. } = &commands[1] else {
-        panic!("expected DispatchHostOp second, got {:?}", commands[1]);
-    };
-    let v: serde_json::Value = serde_json::from_str(action_json).expect("json");
+    let ActorCommand::Protocol(_) = &commands[1]
+    else { panic!("expected Protocol command (got {:?})", commands[1]); };
+    let (action_json, _) = extract_host_op_parts(&commands[1]);
+    let v: serde_json::Value = serde_json::from_str(&action_json).expect("json");
     assert_eq!(v["ns"], "podcast.settings");
     assert_eq!(v["action"]["op"], "set_relay_role");
 }
@@ -236,7 +255,7 @@ fn execute_remove_relay_emits_remove_relay_then_dispatch_host_op() {
         url: "wss://relay.example".into(),
     };
     let commands = std::sync::Mutex::new(Vec::<ActorCommand>::new());
-    SettingsActionModule::execute(action, "corr-4", &|cmd| {
+    SettingsActionModule.execute(action, "corr-4", &|cmd| {
         commands.lock().unwrap().push(cmd);
     })
     .expect("execute ok");
@@ -246,10 +265,10 @@ fn execute_remove_relay_emits_remove_relay_then_dispatch_host_op() {
         panic!("expected RemoveRelay first, got {:?}", commands[0]);
     };
     assert_eq!(url, "wss://relay.example");
-    let ActorCommand::DispatchHostOp { action_json, .. } = &commands[1] else {
-        panic!("expected DispatchHostOp second, got {:?}", commands[1]);
-    };
-    let v: serde_json::Value = serde_json::from_str(action_json).expect("json");
+    let ActorCommand::Protocol(_) = &commands[1]
+    else { panic!("expected Protocol command (got {:?})", commands[1]); };
+    let (action_json, _) = extract_host_op_parts(&commands[1]);
+    let v: serde_json::Value = serde_json::from_str(&action_json).expect("json");
     assert_eq!(v["ns"], "podcast.settings");
     assert_eq!(v["action"]["op"], "remove_relay");
 }

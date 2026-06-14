@@ -22,8 +22,10 @@ worktrees currently in flight.
   `docs/plan/nmp-feature-parity.md`, and this backlog synchronized with code.
   Do not mark scaffolded behavior done. Current audit: docs now reflect the
   `0.6.2` NMP pin at rev `ac7e307e89b57a73b419ea9588275e599dcb228c`, the
-  deleted parked `ios/` shell, and the fact that remaining parity debt lives in
-  `App/Sources/` Swift policy/fallback code plus the listed platform/AI gaps.
+  deleted parked `ios/` shell, the split between the `nmp-blossom` packaging
+  blocker and the NMP `publish_outbox` projection-rev blocker, and the fact
+  that remaining parity debt lives in `App/Sources/` Swift policy/fallback
+  code plus the listed platform/AI gaps.
 - **p0-validation-gate.** Establish the merge gate for this migration:
   `git diff --check`, focused Rust tests for touched crates,
   focused Swift/iOS tests for touched targets, and full-suite validation before
@@ -34,14 +36,21 @@ worktrees currently in flight.
   and decisions/tradeoffs. The same contract now checks the changed-file scope
   and requires the Validation section to explicitly cover touched Rust,
   Swift/iOS, and Android code families. Remaining: keep the full simulator
-  suite as the merge/supervisor gate. **Blocked:** current Rust workspace
-  validation is not portable because podcast-player consumes live
+  suite as the merge/supervisor gate. **Blocked:** current `main` Rust
+  workspace validation is not portable because podcast-player consumes live
   `nmp.blossom.upload` behavior from upstream `nmp-blossom`, but that crate is
   parked/excluded at the pinned NMP rev and cannot be parsed or built as a
   dependency without local NMP manifest surgery. Tracked locally in
   `pablof7z/podcast-player#479` and upstream in
   `pablof7z/nostr-multi-platform#1408`; do not paper over this with absolute
-  `/tmp` checkout or manifest-rewrite hacks.
+  `/tmp` checkout or manifest-rewrite hacks. PR #488 removes the `/tmp` path
+  dependency and gets the Rust workspace, Android cross-compile, Swift bridge
+  codegen, migration lint, and diff hygiene gates green, but its headless e2e
+  gate is now blocked by upstream `pablof7z/nostr-multi-platform#1412`:
+  NMP's `publish_outbox` projection changes through `publish_engine`
+  in-flight state without advancing the `publish_ver` source stamp. Do not
+  paper over that by adding app-local fake rev bumps, suppressing
+  `publish_outbox`, or disabling the ADR-0055 oracle.
 - ~~**p0-ios-test-target-compile.**~~ Fixed across PR #101 and PR #102:
   `Nip46RemoteSignerTests.swift` now accepts an optional bunker pubkey, the
   active Tuist target no longer references the dead `KernelModel` duplicate,

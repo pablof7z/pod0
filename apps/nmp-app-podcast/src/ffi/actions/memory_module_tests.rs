@@ -1,4 +1,29 @@
 use super::*;
+
+/// Test helper: extract `(action_json, correlation_id)` from an
+/// `ActorCommand::Protocol(HostOpCommand { .. })` via its `Debug` output.
+/// HostOpCommand fields are private in nmp-core; this avoids direct access.
+#[cfg(test)]
+#[allow(dead_code)]
+fn extract_host_op_parts(cmd: &ActorCommand) -> (String, String) {
+    let dbg = format!("{cmd:?}");
+    // Debug fmt: Protocol(HostOpCommand { action_json: "{..}", correlation_id: "corr" })
+    // The outer string delimiters are literal " in the Debug output; inner " are \".
+    let jm = concat!("action_json: ", r#"""#);
+    let js = dbg.find(jm).expect("action_json") + jm.len();
+    let after = &dbg[js..];
+    let je = after.find(concat!(r#"""#, ", correlation_id:")).expect("json end");
+    let raw = &after[..je];
+    // Unescape \" → " and \\\\ → \\
+    let tmp = raw.replace(r#"\\"#, "\x01BSLASH\x01");
+    let action_json = tmp.replace(r#"\""#, r#"""#).replace("\x01BSLASH\x01", "\\");
+    let cm = concat!("correlation_id: ", r#"""#);
+    let cs = dbg.find(cm).expect("corr_id") + cm.len();
+    let after_c = &dbg[cs..];
+    let ce = after_c.find(concat!(r#"""#, " }")).expect("corr end");
+    (action_json, after_c[..ce].to_string())
+}
+
 #[test]
 fn remember_action_round_trips_with_explicit_source() {
     let a = MemoryAction::Remember {
@@ -67,21 +92,17 @@ fn execute_emits_dispatch_host_op() {
         source: None,
     };
     let commands = std::sync::Mutex::new(Vec::<ActorCommand>::new());
-    MemoryActionModule::execute(action, "corr-7", &|cmd| {
+    MemoryActionModule.execute(action, "corr-7", &|cmd| {
         commands.lock().unwrap().push(cmd);
     })
     .expect("execute ok");
     let commands = commands.into_inner().unwrap();
     assert_eq!(commands.len(), 1);
-    let ActorCommand::DispatchHostOp {
-        action_json,
-        correlation_id,
-    } = &commands[0]
-    else {
-        panic!("expected DispatchHostOp");
-    };
-    assert_eq!(correlation_id, "corr-7");
-    let v: serde_json::Value = serde_json::from_str(action_json).expect("json");
+    let ActorCommand::Protocol(_) = &commands[0]
+    else { panic!("expected Protocol command"); };
+    let (action_json, correlation_id) = extract_host_op_parts(&commands[0]);
+    assert_eq!(correlation_id.as_str(), "corr-7");
+    let v: serde_json::Value = serde_json::from_str(&action_json).expect("json");
     assert_eq!(v["ns"], "podcast.memory");
     assert_eq!(v["action"]["op"], "remember");
 }

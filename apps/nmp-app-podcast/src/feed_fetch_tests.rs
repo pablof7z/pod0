@@ -68,8 +68,11 @@ fn coordinator_with_inbox(
     // which `bump` already ignores (`let _ = self.actor_tx.send(...)`).
     // The important thing is that `snapshot_signal.is_some()` is `true` so the
     // `maybe_enqueue_triage` gate opens — this matches the production path.
-    let (tx, _rx) = std::sync::mpsc::channel();
-    let signal = SnapshotUpdateSignal::new(infra.rev.clone(), tx);
+    // CommandSender wraps Sender<ActorMail>; create a throw-away channel.
+    // The receiver is dropped immediately so send() returns Err(Disconnected),
+    // which bump() already ignores (`let _ = self.actor_tx.send(...)`).
+    let (tx, _rx) = std::sync::mpsc::channel::<nmp_core::ActorMail>();
+    let signal = SnapshotUpdateSignal::new(infra.rev.clone(), nmp_core::CommandSender::new(tx));
     // Wire InboxState to the shared store so maybe_enqueue_triage sees the
     // episodes applied by apply_subscribe_result.
     let inbox = Arc::new(InboxState::new(infra.clone(), store.clone()));
