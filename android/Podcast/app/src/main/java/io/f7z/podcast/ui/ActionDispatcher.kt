@@ -360,7 +360,8 @@ data class SetOpenRouterCredentialPayload(
     val source: String,
     @SerialName("key_id") val keyId: String? = null,
     @SerialName("key_label") val keyLabel: String? = null,
-    @SerialName("connected_at") val connectedAt: Long? = null,
+    // connected_at removed: kernel stamps time (D9); field is authoritative in
+    // the projection but must not be supplied in the action payload.
     val op: String = "set_open_router_credential",
 )
 
@@ -369,7 +370,7 @@ data class SetOllamaCredentialPayload(
     val source: String,
     @SerialName("key_id") val keyId: String? = null,
     @SerialName("key_label") val keyLabel: String? = null,
-    @SerialName("connected_at") val connectedAt: Long? = null,
+    // connected_at removed: kernel stamps time (D9).
     val op: String = "set_ollama_credential",
 )
 
@@ -384,7 +385,7 @@ data class SetElevenLabsCredentialPayload(
     val source: String,
     @SerialName("key_id") val keyId: String? = null,
     @SerialName("key_label") val keyLabel: String? = null,
-    @SerialName("connected_at") val connectedAt: Long? = null,
+    // connected_at removed: kernel stamps time (D9).
     val op: String = "set_eleven_labs_credential",
 )
 
@@ -393,7 +394,7 @@ data class SetAssemblyAiCredentialPayload(
     val source: String,
     @SerialName("key_id") val keyId: String? = null,
     @SerialName("key_label") val keyLabel: String? = null,
-    @SerialName("connected_at") val connectedAt: Long? = null,
+    // connected_at removed: kernel stamps time (D9).
     val op: String = "set_assembly_ai_credential",
 )
 
@@ -402,7 +403,7 @@ data class SetPerplexityCredentialPayload(
     val source: String,
     @SerialName("key_id") val keyId: String? = null,
     @SerialName("key_label") val keyLabel: String? = null,
-    @SerialName("connected_at") val connectedAt: Long? = null,
+    // connected_at removed: kernel stamps time (D9).
     val op: String = "set_perplexity_credential",
 )
 

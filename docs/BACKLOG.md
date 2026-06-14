@@ -842,16 +842,7 @@ worktrees currently in flight.
   inter-batch pacing, and the pending-episode scan), or write an ADR documenting
   why the embeddings utility is intentionally shell-owned. Surfaced in the
   2026-06-11 NMP architecture audit.
-- **provider-credential-connected-at-kernel-time.** Android
-  `android/Podcast/app/src/main/java/io/f7z/podcast/ProviderCredentialActions.kt`
-  stamps the credential `connectedAt` field natively: `epochSeconds()` (`:286`,
-  `System.currentTimeMillis() / 1000`) is read at `:73`, `:119`, `:163`, `:209`,
-  and `:255` and passed through the credential payloads into the kernel. D9 says
-  the kernel owns time, so the kernel should stamp `connectedAt` on receipt and
-  the field should be dropped from the shell payloads entirely. When picked up,
-  check whether iOS does the same for the equivalent provider-credential ops and
-  fix both shells together so the native-clock value cannot re-enter from either
-  side. Surfaced in the 2026-06-11 NMP architecture audit.
+- **provider-credential-connected-at-kernel-time.** Fixed in PR fix/connected-at-kernel-time (merged 2026-06-14): kernel stamps `connected_at` via `chrono::Utc::now().timestamp()` in `settings_actions.rs`; `epochSeconds()` removed from Android `ProviderCredentialActions.kt`; `connectedAt: Date()` parameter removed from iOS `Settings+Helpers.swift`; field dropped from both shell action payloads. D9 violation closed. **DONE — remove this line after PR merges.**
 - **feed-not-modified-rev-bump.** `apps/nmp-app-podcast/src/host_op_handler/podcast_actions_feed.rs`
   (`:175`–`:182`) handles a `304 NotModified` feed refresh by updating
   etag/last-modified via `update_refresh_metadata` and then unconditionally

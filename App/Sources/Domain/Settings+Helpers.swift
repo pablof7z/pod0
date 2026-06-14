@@ -22,18 +22,18 @@ extension Settings {
         return id
     }
 
-    mutating func markOpenRouterManual(connectedAt: Date = Date()) {
+    mutating func markOpenRouterManual() {
         openRouterCredentialSource = .manual
         openRouterBYOKKeyID = nil
         openRouterBYOKKeyLabel = nil
-        openRouterConnectedAt = connectedAt
+        // connected_at is stamped by the kernel (D9); do not set it here.
     }
 
-    mutating func markOpenRouterBYOK(keyID: String?, keyLabel: String?, connectedAt: Date = Date()) {
+    mutating func markOpenRouterBYOK(keyID: String?, keyLabel: String?) {
         openRouterCredentialSource = .byok
         openRouterBYOKKeyID = keyID
         openRouterBYOKKeyLabel = keyLabel
-        openRouterConnectedAt = connectedAt
+        // connected_at is stamped by the kernel (D9); do not set it here.
     }
 
     mutating func clearOpenRouterCredential() {
@@ -43,18 +43,18 @@ extension Settings {
         openRouterConnectedAt = nil
     }
 
-    mutating func markOllamaManual(connectedAt: Date = Date()) {
+    mutating func markOllamaManual() {
         ollamaCredentialSource = .manual
         ollamaBYOKKeyID = nil
         ollamaBYOKKeyLabel = nil
-        ollamaConnectedAt = connectedAt
+        // connected_at is stamped by the kernel (D9); do not set it here.
     }
 
-    mutating func markOllamaBYOK(keyID: String?, keyLabel: String?, connectedAt: Date = Date()) {
+    mutating func markOllamaBYOK(keyID: String?, keyLabel: String?) {
         ollamaCredentialSource = .byok
         ollamaBYOKKeyID = keyID
         ollamaBYOKKeyLabel = keyLabel
-        ollamaConnectedAt = connectedAt
+        // connected_at is stamped by the kernel (D9); do not set it here.
     }
 
     mutating func clearOllamaCredential() {
@@ -64,18 +64,18 @@ extension Settings {
         ollamaConnectedAt = nil
     }
 
-    mutating func markElevenLabsManual(connectedAt: Date = Date()) {
+    mutating func markElevenLabsManual() {
         elevenLabsCredentialSource = .manual
         elevenLabsBYOKKeyID = nil
         elevenLabsBYOKKeyLabel = nil
-        elevenLabsConnectedAt = connectedAt
+        // connected_at is stamped by the kernel (D9); do not set it here.
     }
 
-    mutating func markElevenLabsBYOK(keyID: String?, keyLabel: String?, connectedAt: Date = Date()) {
+    mutating func markElevenLabsBYOK(keyID: String?, keyLabel: String?) {
         elevenLabsCredentialSource = .byok
         elevenLabsBYOKKeyID = keyID
         elevenLabsBYOKKeyLabel = keyLabel
-        elevenLabsConnectedAt = connectedAt
+        // connected_at is stamped by the kernel (D9); do not set it here.
     }
 
     mutating func clearElevenLabsCredential() {
@@ -85,18 +85,18 @@ extension Settings {
         elevenLabsConnectedAt = nil
     }
 
-    mutating func markAssemblyAIManual(connectedAt: Date = Date()) {
+    mutating func markAssemblyAIManual() {
         assemblyAICredentialSource = .manual
         assemblyAIBYOKKeyID = nil
         assemblyAIBYOKKeyLabel = nil
-        assemblyAIConnectedAt = connectedAt
+        // connected_at is stamped by the kernel (D9); do not set it here.
     }
 
-    mutating func markAssemblyAIBYOK(keyID: String?, keyLabel: String?, connectedAt: Date = Date()) {
+    mutating func markAssemblyAIBYOK(keyID: String?, keyLabel: String?) {
         assemblyAICredentialSource = .byok
         assemblyAIBYOKKeyID = keyID
         assemblyAIBYOKKeyLabel = keyLabel
-        assemblyAIConnectedAt = connectedAt
+        // connected_at is stamped by the kernel (D9); do not set it here.
     }
 
     mutating func clearAssemblyAICredential() {
@@ -106,18 +106,18 @@ extension Settings {
         assemblyAIConnectedAt = nil
     }
 
-    mutating func markPerplexityManual(connectedAt: Date = Date()) {
+    mutating func markPerplexityManual() {
         perplexityCredentialSource = .manual
         perplexityBYOKKeyID = nil
         perplexityBYOKKeyLabel = nil
-        perplexityConnectedAt = connectedAt
+        // connected_at is stamped by the kernel (D9); do not set it here.
     }
 
-    mutating func markPerplexityBYOK(keyID: String?, keyLabel: String?, connectedAt: Date = Date()) {
+    mutating func markPerplexityBYOK(keyID: String?, keyLabel: String?) {
         perplexityCredentialSource = .byok
         perplexityBYOKKeyID = keyID
         perplexityBYOKKeyLabel = keyLabel
-        perplexityConnectedAt = connectedAt
+        // connected_at is stamped by the kernel (D9); do not set it here.
     }
 
     mutating func clearPerplexityCredential() {

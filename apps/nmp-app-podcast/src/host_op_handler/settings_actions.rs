@@ -9,6 +9,15 @@ use crate::ad_skip_handler::handle_set_auto_skip_ads;
 use crate::ffi::actions::settings_module::SettingsAction;
 use crate::host_op_handler::PodcastHostOpHandler;
 
+/// Unix-epoch seconds from the kernel clock (D9: kernel owns time).
+///
+/// Used by the credential-metadata arms to stamp `connected_at` server-side
+/// so shell wall-clocks never reach the store.
+#[inline]
+fn kernel_now_secs() -> i64 {
+    chrono::Utc::now().timestamp()
+}
+
 impl PodcastHostOpHandler {
     pub(crate) fn handle_settings_action(&self, action: SettingsAction) -> serde_json::Value {
         match action {
@@ -150,8 +159,11 @@ impl PodcastHostOpHandler {
                 source,
                 key_id,
                 key_label,
-                connected_at,
+                connected_at: _shell_connected_at,
             } => {
+                // D9: kernel owns time — ignore any shell-supplied timestamp;
+                // stamp with the kernel clock on connect, clear on disconnect.
+                let connected_at = if source == "none" { None } else { Some(kernel_now_secs()) };
                 if let Ok(mut s) = self.state.library.store.lock() {
                     s.set_open_router_credential(source, key_id, key_label, connected_at);
                 }
@@ -162,8 +174,9 @@ impl PodcastHostOpHandler {
                 source,
                 key_id,
                 key_label,
-                connected_at,
+                connected_at: _shell_connected_at,
             } => {
+                let connected_at = if source == "none" { None } else { Some(kernel_now_secs()) };
                 if let Ok(mut s) = self.state.library.store.lock() {
                     s.set_ollama_credential(source, key_id, key_label, connected_at);
                 }
@@ -181,8 +194,9 @@ impl PodcastHostOpHandler {
                 source,
                 key_id,
                 key_label,
-                connected_at,
+                connected_at: _shell_connected_at,
             } => {
+                let connected_at = if source == "none" { None } else { Some(kernel_now_secs()) };
                 if let Ok(mut s) = self.state.library.store.lock() {
                     s.set_eleven_labs_credential(source, key_id, key_label, connected_at);
                 }
@@ -193,8 +207,9 @@ impl PodcastHostOpHandler {
                 source,
                 key_id,
                 key_label,
-                connected_at,
+                connected_at: _shell_connected_at,
             } => {
+                let connected_at = if source == "none" { None } else { Some(kernel_now_secs()) };
                 if let Ok(mut s) = self.state.library.store.lock() {
                     s.set_assembly_ai_credential(source, key_id, key_label, connected_at);
                 }
@@ -205,8 +220,9 @@ impl PodcastHostOpHandler {
                 source,
                 key_id,
                 key_label,
-                connected_at,
+                connected_at: _shell_connected_at,
             } => {
+                let connected_at = if source == "none" { None } else { Some(kernel_now_secs()) };
                 if let Ok(mut s) = self.state.library.store.lock() {
                     s.set_perplexity_credential(source, key_id, key_label, connected_at);
                 }

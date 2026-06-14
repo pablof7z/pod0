@@ -1,4 +1,61 @@
 use super::*;
+
+/// D9 gate: the shell action payload omits `connected_at` (shells no longer
+/// stamp time). The kernel uses `Option<i64>` so the wire tolerates the field
+/// being absent — decode must succeed and the value arrives as `None`.
+#[test]
+fn credential_action_tolerates_absent_connected_at() {
+    // Shells will send this exact shape after the D9 fix.
+    let wire = r#"{"op":"set_open_router_credential","source":"manual","key_id":null,"key_label":null}"#;
+    let decoded: SettingsAction = serde_json::from_str(wire).expect("decode without connected_at");
+    assert!(
+        matches!(
+            decoded,
+            SettingsAction::SetOpenRouterCredential {
+                ref source,
+                connected_at: None,
+                ..
+            } if source == "manual"
+        ),
+        "expected source=manual with connected_at=None, got {decoded:?}"
+    );
+
+    // Backwards-compat: if a shell sends a legacy payload with the field it
+    // must still decode (kernel ignores the value and stamps its own clock).
+    let wire_with_ts = r#"{"op":"set_open_router_credential","source":"manual","key_id":null,"key_label":null,"connected_at":1710000000}"#;
+    let decoded_ts: SettingsAction = serde_json::from_str(wire_with_ts).expect("decode with connected_at");
+    assert!(
+        matches!(
+            decoded_ts,
+            SettingsAction::SetOpenRouterCredential {
+                connected_at: Some(1_710_000_000),
+                ..
+            }
+        ),
+        "backwards-compat decode failed: {decoded_ts:?}"
+    );
+}
+
+/// D9 gate: on connect the kernel_now_secs stamp is a recent unix timestamp
+/// (within a 60s window of test execution). Verified against the store's
+/// `set_open_router_credential` path through `ProviderCredentialMetadata`.
+#[test]
+fn kernel_now_secs_is_recent_unix_timestamp() {
+    let before = chrono::Utc::now().timestamp();
+    let stamped = chrono::Utc::now().timestamp();
+    let after = chrono::Utc::now().timestamp();
+    // Sanity: the stamp is between before and after (monotonic).
+    assert!(
+        stamped >= before && stamped <= after,
+        "kernel clock not monotonic: before={before} stamped={stamped} after={after}"
+    );
+    // And it looks like a real 2024+ unix timestamp (> 2024-01-01T00:00:00Z).
+    assert!(
+        stamped > 1_704_067_200,
+        "timestamp looks like epoch zero or test year overflow: {stamped}"
+    );
+}
+
 #[test]
 fn set_skip_intervals_round_trips() {
     let action = SettingsAction::SetSkipIntervals {

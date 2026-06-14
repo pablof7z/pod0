@@ -154,26 +154,23 @@ extension AppStateStore {
         }
         if settings.openRouterCredentialSource != prior.openRouterCredentialSource
             || settings.openRouterBYOKKeyID != prior.openRouterBYOKKeyID
-            || settings.openRouterBYOKKeyLabel != prior.openRouterBYOKKeyLabel
-            || settings.openRouterConnectedAt != prior.openRouterConnectedAt {
+            || settings.openRouterBYOKKeyLabel != prior.openRouterBYOKKeyLabel {
+            // connected_at is stamped by the kernel (D9); omit from payload.
             dispatchCredentialMetadata(
                 op: "set_open_router_credential",
                 source: settings.openRouterCredentialSource.rawValue,
                 keyID: settings.openRouterBYOKKeyID,
-                keyLabel: settings.openRouterBYOKKeyLabel,
-                connectedAt: settings.openRouterConnectedAt
+                keyLabel: settings.openRouterBYOKKeyLabel
             )
         }
         if settings.ollamaCredentialSource != prior.ollamaCredentialSource
             || settings.ollamaBYOKKeyID != prior.ollamaBYOKKeyID
-            || settings.ollamaBYOKKeyLabel != prior.ollamaBYOKKeyLabel
-            || settings.ollamaConnectedAt != prior.ollamaConnectedAt {
+            || settings.ollamaBYOKKeyLabel != prior.ollamaBYOKKeyLabel {
             dispatchCredentialMetadata(
                 op: "set_ollama_credential",
                 source: settings.ollamaCredentialSource.rawValue,
                 keyID: settings.ollamaBYOKKeyID,
-                keyLabel: settings.ollamaBYOKKeyLabel,
-                connectedAt: settings.ollamaConnectedAt
+                keyLabel: settings.ollamaBYOKKeyLabel
             )
         }
         if settings.ollamaChatURL != prior.ollamaChatURL {
@@ -182,38 +179,32 @@ extension AppStateStore {
         }
         if settings.elevenLabsCredentialSource != prior.elevenLabsCredentialSource
             || settings.elevenLabsBYOKKeyID != prior.elevenLabsBYOKKeyID
-            || settings.elevenLabsBYOKKeyLabel != prior.elevenLabsBYOKKeyLabel
-            || settings.elevenLabsConnectedAt != prior.elevenLabsConnectedAt {
+            || settings.elevenLabsBYOKKeyLabel != prior.elevenLabsBYOKKeyLabel {
             dispatchCredentialMetadata(
                 op: "set_eleven_labs_credential",
                 source: settings.elevenLabsCredentialSource.rawValue,
                 keyID: settings.elevenLabsBYOKKeyID,
-                keyLabel: settings.elevenLabsBYOKKeyLabel,
-                connectedAt: settings.elevenLabsConnectedAt
+                keyLabel: settings.elevenLabsBYOKKeyLabel
             )
         }
         if settings.assemblyAICredentialSource != prior.assemblyAICredentialSource
             || settings.assemblyAIBYOKKeyID != prior.assemblyAIBYOKKeyID
-            || settings.assemblyAIBYOKKeyLabel != prior.assemblyAIBYOKKeyLabel
-            || settings.assemblyAIConnectedAt != prior.assemblyAIConnectedAt {
+            || settings.assemblyAIBYOKKeyLabel != prior.assemblyAIBYOKKeyLabel {
             dispatchCredentialMetadata(
                 op: "set_assembly_ai_credential",
                 source: settings.assemblyAICredentialSource.rawValue,
                 keyID: settings.assemblyAIBYOKKeyID,
-                keyLabel: settings.assemblyAIBYOKKeyLabel,
-                connectedAt: settings.assemblyAIConnectedAt
+                keyLabel: settings.assemblyAIBYOKKeyLabel
             )
         }
         if settings.perplexityCredentialSource != prior.perplexityCredentialSource
             || settings.perplexityBYOKKeyID != prior.perplexityBYOKKeyID
-            || settings.perplexityBYOKKeyLabel != prior.perplexityBYOKKeyLabel
-            || settings.perplexityConnectedAt != prior.perplexityConnectedAt {
+            || settings.perplexityBYOKKeyLabel != prior.perplexityBYOKKeyLabel {
             dispatchCredentialMetadata(
                 op: "set_perplexity_credential",
                 source: settings.perplexityCredentialSource.rawValue,
                 keyID: settings.perplexityBYOKKeyID,
-                keyLabel: settings.perplexityBYOKKeyLabel,
-                connectedAt: settings.perplexityConnectedAt
+                keyLabel: settings.perplexityBYOKKeyLabel
             )
         }
         if settings.sttProvider != prior.sttProvider {
@@ -320,16 +311,15 @@ extension AppStateStore {
         op: String,
         source: String,
         keyID: String?,
-        keyLabel: String?,
-        connectedAt: Date?
+        keyLabel: String?
+        // connected_at intentionally omitted: kernel stamps time (D9).
     ) {
         kernel?.dispatch(namespace: "podcast.settings",
                          body: [
                              "op": op,
                              "source": source,
                              "key_id": keyID.map { $0 as Any } ?? NSNull(),
-                             "key_label": keyLabel.map { $0 as Any } ?? NSNull(),
-                             "connected_at": connectedAt.map { Int($0.timeIntervalSince1970) as Any } ?? NSNull()
+                             "key_label": keyLabel.map { $0 as Any } ?? NSNull()
                          ])
     }
 

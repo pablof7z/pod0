@@ -68,9 +68,9 @@ object ProviderCredentialActions {
         val metadata = PodcastActionDispatcher.dispatch(
             bridge = bridge,
             namespace = PodcastNamespace.SETTINGS,
+            // connected_at intentionally omitted: kernel stamps time (D9).
             payload = SetOpenRouterCredentialPayload(
                 source = SOURCE_MANUAL,
-                connectedAt = epochSeconds(),
             ),
         )
         val reload = reloadProviderApiKeys(context, bridge)
@@ -114,9 +114,9 @@ object ProviderCredentialActions {
         val metadata = PodcastActionDispatcher.dispatch(
             bridge = bridge,
             namespace = PodcastNamespace.SETTINGS,
+            // connected_at intentionally omitted: kernel stamps time (D9).
             payload = SetOllamaCredentialPayload(
                 source = SOURCE_MANUAL,
-                connectedAt = epochSeconds(),
             ),
         )
         val reload = reloadProviderApiKeys(context, bridge)
@@ -158,9 +158,9 @@ object ProviderCredentialActions {
         val metadata = PodcastActionDispatcher.dispatch(
             bridge = bridge,
             namespace = PodcastNamespace.SETTINGS,
+            // connected_at intentionally omitted: kernel stamps time (D9).
             payload = SetElevenLabsCredentialPayload(
                 source = SOURCE_MANUAL,
-                connectedAt = epochSeconds(),
             ),
         )
         val reload = reloadProviderApiKeys(context, bridge)
@@ -204,9 +204,9 @@ object ProviderCredentialActions {
         val metadata = PodcastActionDispatcher.dispatch(
             bridge = bridge,
             namespace = PodcastNamespace.SETTINGS,
+            // connected_at intentionally omitted: kernel stamps time (D9).
             payload = SetAssemblyAiCredentialPayload(
                 source = SOURCE_MANUAL,
-                connectedAt = epochSeconds(),
             ),
         )
         val reload = reloadProviderApiKeys(context, bridge)
@@ -250,9 +250,9 @@ object ProviderCredentialActions {
         val metadata = PodcastActionDispatcher.dispatch(
             bridge = bridge,
             namespace = PodcastNamespace.SETTINGS,
+            // connected_at intentionally omitted: kernel stamps time (D9).
             payload = SetPerplexityCredentialPayload(
                 source = SOURCE_MANUAL,
-                connectedAt = epochSeconds(),
             ),
         )
         val reload = reloadProviderApiKeys(context, bridge)
@@ -282,8 +282,6 @@ object ProviderCredentialActions {
             ProviderCredentialActionResult(false, "Perplexity key deleted, but provider state did not update.")
         }
     }
-
-    private fun epochSeconds(): Long = System.currentTimeMillis() / 1000L
 
     private const val SOURCE_NONE = "none"
     private const val SOURCE_MANUAL = "manual"
