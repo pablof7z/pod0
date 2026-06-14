@@ -63,8 +63,8 @@ const USER_AGENT: &str = "Podcastr/1.0";
 pub enum FeedResult {
     /// Server returned `304 Not Modified`. The caller updates
     /// `last_refreshed` but does *not* touch the parsed-episode set.
-    /// `cache` carries forward the existing ETag / Last-Modified;
-    /// `last_refreshed` is bumped to `now`.
+    /// `cache` carries refreshed response validators, falling back to the
+    /// existing ETag / Last-Modified when the response omits them.
     NotModified { cache: EtagCache },
     /// Server returned `200` with a body. The body parsed cleanly; the
     /// caller adopts the new podcast metadata + episodes and persists
@@ -152,9 +152,9 @@ pub fn build_feed_request(feed_url: &Url, cache: Option<&EtagCache>) -> HttpRequ
 /// `now` is the caller's notion of wall time — the kernel injects it so
 /// `EtagCache::last_refreshed` is deterministic against a test clock.
 ///
-/// `prior_cache` carries the *previous* ETag/Last-Modified so a `304`
-/// or a `200` with omitted response headers can preserve them. Pass
-/// `None` for the first refresh.
+/// `prior_cache` carries the *previous* ETag/Last-Modified so a response with
+/// omitted validator headers can preserve them. Pass `None` for the first
+/// refresh.
 pub fn handle_feed_response(
     feed_url: &Url,
     podcast_id: PodcastId,
@@ -169,7 +169,7 @@ pub fn handle_feed_response(
             headers: _,
             body: _,
         } if *status_code == 304 => {
-            let cache = carry_forward_cache(prior_cache, now);
+            let cache = response_cache(response, prior_cache, now);
             Ok(FeedResult::NotModified { cache })
         }
         HttpResult::Ok {
@@ -181,21 +181,13 @@ pub fn handle_feed_response(
         }),
         HttpResult::Ok { headers, body, .. } => {
             let parsed = parse_feed(body.as_bytes(), feed_url, podcast_id)?;
-            let etag = response
-                .header("ETag")
-                .map(str::to_owned)
-                .or_else(|| prior_cache.and_then(|c| c.etag.clone()));
-            let last_modified = response
-                .header("Last-Modified")
-                .map(str::to_owned)
-                .or_else(|| prior_cache.and_then(|c| c.last_modified.clone()));
+            let cache = response_cache(response, prior_cache, now);
             // We deliberately replicated `headers` / `body` in the match arms
             // above to keep the borrow checker happy when we then call
             // `response.header(...)` here, which needs an immutable borrow of
             // the whole `response`.
             let _ = headers;
             let _ = body;
-            let cache = EtagCache::with_headers(now, etag, last_modified);
             Ok(FeedResult::Parsed {
                 feed_url: feed_url.clone(),
                 parsed,
@@ -205,9 +197,93 @@ pub fn handle_feed_response(
     }
 }
 
-fn carry_forward_cache(prior: Option<&EtagCache>, now: DateTime<Utc>) -> EtagCache {
-    match prior {
-        Some(c) => EtagCache::with_headers(now, c.etag.clone(), c.last_modified.clone()),
-        None => EtagCache::new(now),
+fn response_cache(
+    response: &HttpResult,
+    prior: Option<&EtagCache>,
+    now: DateTime<Utc>,
+) -> EtagCache {
+    let etag = response
+        .header("ETag")
+        .map(str::to_owned)
+        .or_else(|| prior.and_then(|c| c.etag.clone()));
+    let last_modified = response
+        .header("Last-Modified")
+        .map(str::to_owned)
+        .or_else(|| prior.and_then(|c| c.last_modified.clone()));
+    if etag.is_some() || last_modified.is_some() {
+        EtagCache::with_headers(now, etag, last_modified)
+    } else {
+        EtagCache::new(now)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn ok(status_code: u16, headers: Vec<Vec<String>>, body: &str) -> HttpResult {
+        HttpResult::Ok {
+            status_code,
+            headers,
+            body: body.to_owned(),
+        }
+    }
+
+    #[test]
+    fn not_modified_cache_prefers_response_validators() {
+        let url = Url::parse("https://example.com/feed.xml").unwrap();
+        let podcast_id = PodcastId::generate();
+        let now = Utc::now();
+        let prior = EtagCache::with_headers(
+            now,
+            Some("\"old\"".to_owned()),
+            Some("Mon, 01 Jan 2024 00:00:00 GMT".to_owned()),
+        );
+        let response = ok(
+            304,
+            vec![
+                vec!["ETag".to_owned(), "\"new\"".to_owned()],
+                vec![
+                    "Last-Modified".to_owned(),
+                    "Tue, 02 Jan 2024 00:00:00 GMT".to_owned(),
+                ],
+            ],
+            "",
+        );
+
+        let result = handle_feed_response(&url, podcast_id, &response, Some(&prior), now).unwrap();
+        let FeedResult::NotModified { cache } = result else {
+            panic!("expected NotModified");
+        };
+
+        assert_eq!(cache.etag.as_deref(), Some("\"new\""));
+        assert_eq!(
+            cache.last_modified.as_deref(),
+            Some("Tue, 02 Jan 2024 00:00:00 GMT")
+        );
+    }
+
+    #[test]
+    fn not_modified_cache_carries_prior_validators_when_response_omits_them() {
+        let url = Url::parse("https://example.com/feed.xml").unwrap();
+        let podcast_id = PodcastId::generate();
+        let now = Utc::now();
+        let prior = EtagCache::with_headers(
+            now,
+            Some("\"old\"".to_owned()),
+            Some("Mon, 01 Jan 2024 00:00:00 GMT".to_owned()),
+        );
+        let response = ok(304, vec![], "");
+
+        let result = handle_feed_response(&url, podcast_id, &response, Some(&prior), now).unwrap();
+        let FeedResult::NotModified { cache } = result else {
+            panic!("expected NotModified");
+        };
+
+        assert_eq!(cache.etag.as_deref(), Some("\"old\""));
+        assert_eq!(
+            cache.last_modified.as_deref(),
+            Some("Mon, 01 Jan 2024 00:00:00 GMT")
+        );
     }
 }

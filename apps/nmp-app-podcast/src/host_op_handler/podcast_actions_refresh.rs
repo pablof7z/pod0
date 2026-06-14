@@ -8,6 +8,7 @@ use std::collections::HashSet;
 use chrono::Utc;
 use podcast_core::{Episode, EpisodeId, PodcastId};
 use podcast_feeds::client::{build_feed_request, handle_feed_response, FeedResult};
+use podcast_feeds::refresh::policy::EtagCache;
 
 use crate::capability::NotificationCommand;
 use crate::host_op_handler::PodcastHostOpHandler;
@@ -153,7 +154,6 @@ impl PodcastHostOpHandler {
         last_modified: Option<&str>,
         correlation_id: &str,
     ) -> serde_json::Value {
-        use podcast_feeds::refresh::policy::EtagCache;
         let cache = if etag.is_some() || last_modified.is_some() {
             Some(EtagCache::with_headers(
                 Utc::now(),
@@ -168,8 +168,19 @@ impl PodcastHostOpHandler {
             Ok(r) => r,
             Err(e) => return serde_json::json!({"ok": false, "error": e}),
         };
-        match handle_feed_response(url, podcast_id, &http_result, None, Utc::now()) {
-            Ok(FeedResult::Parsed { parsed, .. }) => {
+        self.apply_refresh_result(podcast_id, url, http_result, cache.as_ref(), correlation_id)
+    }
+
+    pub(super) fn apply_refresh_result(
+        &self,
+        podcast_id: PodcastId,
+        url: &url::Url,
+        http_result: podcast_feeds::http::HttpResult,
+        prior_cache: Option<&EtagCache>,
+        correlation_id: &str,
+    ) -> serde_json::Value {
+        match handle_feed_response(url, podcast_id, &http_result, prior_cache, Utc::now()) {
+            Ok(FeedResult::Parsed { parsed, cache, .. }) => {
                 // Single lock window: snapshot existing list, compute the
                 // notification set + auto-download set, then merge forward.
                 let (
@@ -235,12 +246,10 @@ impl PodcastHostOpHandler {
                         Vec::new(),
                     ),
                 };
-                let etag_out = http_result.header("etag").map(str::to_owned);
-                let lm_out = http_result.header("last-modified").map(str::to_owned);
                 let write_ok = match self.state.library.store.lock() {
                     Ok(mut s) => {
                         s.upsert_known_podcast(parsed.podcast, episodes);
-                        s.update_refresh_metadata(podcast_id, etag_out, lm_out);
+                        s.update_refresh_metadata(podcast_id, cache.etag, cache.last_modified);
                         self.bump_domain(crate::state::Domain::Library);
                         true
                     }
@@ -272,7 +281,11 @@ impl PodcastHostOpHandler {
                 );
                 serde_json::json!({"ok": true})
             }
-            Ok(FeedResult::NotModified { .. }) => {
+            Ok(FeedResult::NotModified { cache }) => {
+                let Ok(mut s) = self.state.library.store.lock() else {
+                    return serde_json::json!({"ok": false, "error": "store poisoned"});
+                };
+                s.update_refresh_metadata(podcast_id, cache.etag, cache.last_modified);
                 serde_json::json!({"ok": true, "not_modified": true})
             }
             Err(e) => serde_json::json!({"ok": false, "error": format!("{e:?}")}),

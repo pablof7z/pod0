@@ -92,6 +92,20 @@ fn ok_result(body: &str) -> HttpResult {
     }
 }
 
+fn not_modified_result() -> HttpResult {
+    HttpResult::Ok {
+        status_code: 304,
+        headers: vec![
+            vec!["ETag".into(), "\"fresh-etag\"".into()],
+            vec![
+                "Last-Modified".into(),
+                "Tue, 02 Jan 2024 00:00:00 GMT".into(),
+            ],
+        ],
+        body: String::new(),
+    }
+}
+
 /// A report for an unregistered / already-resolved request id is a silent
 /// no-op (D6) — never panics, mutates nothing.
 #[test]
@@ -147,7 +161,10 @@ fn subscribe_report_hydrates_episodes() {
         3,
         "episodes should hydrate from the parsed feed"
     );
-    assert!(s.is_subscribed(podcast_id), "still followed after hydration");
+    assert!(
+        s.is_subscribed(podcast_id),
+        "still followed after hydration"
+    );
     assert_eq!(
         s.podcast(podcast_id).unwrap().title,
         "Mock Podcast",
@@ -190,6 +207,57 @@ fn duplicate_report_is_dropped() {
         result: ok_result(FEED_XML),
     });
     assert_eq!(store.lock().unwrap().episodes_for(podcast_id).len(), 3);
+}
+
+/// A known-feed re-subscribe can legitimately receive 304: the optimistic
+/// follow flip already surfaced the row, but the transport continuation must
+/// still persist refreshed validators for the next conditional GET.
+#[test]
+fn known_subscribe_not_modified_updates_refresh_metadata_without_bump() {
+    use std::sync::atomic::Ordering;
+
+    let store = Arc::new(Mutex::new(PodcastStore::new()));
+    let url = Url::parse("https://example.com/feed.xml").unwrap();
+    let podcast_id = PodcastId::generate();
+    {
+        let mut podcast = Podcast::new("Known Podcast");
+        podcast.id = podcast_id;
+        podcast.feed_url = Some(url.clone());
+        podcast.etag = Some("\"old-etag\"".into());
+        podcast.last_modified = Some("Mon, 01 Jan 2024 00:00:00 GMT".into());
+        store.lock().unwrap().subscribe(podcast, Vec::new());
+    }
+    let coord = coordinator_over(store.clone());
+    let rev_before = coord.rev.load(Ordering::Relaxed);
+    let request_id = "req-known-304".to_string();
+    coord.register(
+        request_id.clone(),
+        PendingFeedFetch {
+            mode: FeedFetchMode::Subscribe,
+            podcast_id,
+            url,
+            known: true,
+        },
+    );
+
+    coord.apply_report(HttpReport {
+        request_id,
+        result: not_modified_result(),
+    });
+
+    assert_eq!(
+        coord.rev.load(Ordering::Relaxed),
+        rev_before,
+        "304 metadata-only async subscribe result should not rebuild snapshots"
+    );
+    let store = store.lock().unwrap();
+    let podcast = store.podcast(podcast_id).expect("podcast should remain");
+    assert_eq!(podcast.etag.as_deref(), Some("\"fresh-etag\""));
+    assert_eq!(
+        podcast.last_modified.as_deref(),
+        Some("Tue, 02 Jan 2024 00:00:00 GMT")
+    );
+    assert!(podcast.last_refreshed_at.is_some());
 }
 
 /// D8 trigger re-homing: an async subscribe report that delivers fresh

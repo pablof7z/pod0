@@ -278,15 +278,11 @@ worktrees currently in flight.
   gate, provider settings, and persistence migration.
 - **notification-hardening.** Validate authorization, schedule/update/cancel,
   deep links, duplicate prevention, and quiet failure behavior.
-- **stale-subscription-refresh-test.** `SubscriptionRefreshServiceTests`
-  (`testSubscriptionServiceRefreshUsesSharedRefreshSemantics`) injects a Swift
-  `FeedClient(session:)` stub, but `SubscriptionService.refresh` now delegates to
-  `store.kernelRefresh` (Rust), which fetches via its own HTTP capability and
-  ignores the injected client — so the stubbed feed never reaches the kernel and
-  the assertions (Fresh Title / etag / episode-1) fail. Pre-existing on main
-  (test last touched by PR #131, before refresh moved to the kernel). Rewrite to
-  stub the Rust HTTP capability (or move to a headless scenario) or delete; it no
-  longer exercises the live path.
+- ~~**stale-subscription-refresh-test.**~~ Done in this PR. The stale Swift
+  `SubscriptionRefreshServiceTests` coverage was replaced with Rust-owned
+  refresh result tests for the live path: parsed `200` results update podcast
+  metadata and episodes, while `304 NotModified` results persist refreshed
+  validators without touching episodes or bumping the snapshot revision.
 
 ## Active P1 - Social/Nostr Real Logic
 
@@ -847,17 +843,12 @@ worktrees currently in flight.
   inter-batch pacing, and the pending-episode scan), or write an ADR documenting
   why the embeddings utility is intentionally shell-owned. Surfaced in the
   2026-06-11 NMP architecture audit.
-- **feed-not-modified-rev-bump.** `apps/nmp-app-podcast/src/host_op_handler/podcast_actions_feed.rs`
-  (`:175`–`:182`) handles a `304 NotModified` feed refresh by updating
-  etag/last-modified via `update_refresh_metadata` and then unconditionally
-  `self.rev.fetch_add(1, ...)`. That rev bump forces a full snapshot rebuild +
-  FFI decode on every shell for a tick where nothing user-visible changed —
-  multiplied across N feeds on a refresh-all, this is pure main-thread churn
-  (compare the snapshot-decode hot-path entries). Fix: skip the bump when only
-  refresh metadata changed (etag/last-modified are not projected to the shells),
-  or route conditional-GET metadata through a metadata-only path that does not
-  participate in the snapshot rev. Surfaced in the 2026-06-11 NMP architecture
-  audit.
+- ~~**feed-not-modified-rev-bump.**~~ Done in this PR. The shared feed response
+  parser now returns a canonical cache for both `200` and `304` results,
+  preferring response validators and falling back to prior validators when
+  omitted. Ensure-feed refresh, kernel refresh, and async known-feed subscribe
+  continuations persist that cache through `update_refresh_metadata`; `304`
+  results update metadata without a snapshot revision bump.
 - ~~**auto-advance-actor-stage-resilience.**~~ Fixed: `maybe_auto_advance`
   now acquires the actor lock atomically with staging — if staging fails (lock
   poisoned), Load+Play are not dispatched. `dispatch_audio_cmd` and

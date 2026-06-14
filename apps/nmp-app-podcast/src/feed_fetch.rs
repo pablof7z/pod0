@@ -28,6 +28,7 @@ use chrono::Utc;
 use podcast_core::{Episode, PodcastId};
 use podcast_feeds::client::{handle_feed_response, FeedResult};
 use podcast_feeds::http::{HttpReport, HttpResult};
+use podcast_feeds::refresh::policy::EtagCache;
 use url::Url;
 
 use crate::host_op_handler_helpers::merge_episodes;
@@ -138,22 +139,50 @@ impl FeedFetchCoordinator {
     }
 
     fn apply_subscribe_result(&self, pending: PendingFeedFetch, result: HttpResult) {
-        let parsed = match handle_feed_response(
+        let prior_cache = if pending.known {
+            match self.store.lock() {
+                Ok(s) => s.podcast(pending.podcast_id).and_then(|p| {
+                    if p.etag.is_some() || p.last_modified.is_some() {
+                        Some(EtagCache::with_headers(
+                            Utc::now(),
+                            p.etag.clone(),
+                            p.last_modified.clone(),
+                        ))
+                    } else {
+                        None
+                    }
+                }),
+                Err(_) => return,
+            }
+        } else {
+            None
+        };
+        let (parsed, cache) = match handle_feed_response(
             &pending.url,
             pending.podcast_id,
             &result,
-            None,
+            prior_cache.as_ref(),
             Utc::now(),
         ) {
-            Ok(FeedResult::Parsed { parsed, .. }) => parsed,
+            Ok(FeedResult::Parsed { parsed, cache, .. }) => (parsed, cache),
+            Ok(FeedResult::NotModified { cache }) => {
+                if pending.known {
+                    if let Ok(mut s) = self.store.lock() {
+                        s.update_refresh_metadata(
+                            pending.podcast_id,
+                            cache.etag,
+                            cache.last_modified,
+                        );
+                    }
+                }
+                return;
+            }
             // NotModified (a 304 on a known re-subscribe — existing episodes
             // were preserved by `mark_subscribed`) or a transport error: the
             // optimistic row is already visible, so there's nothing to merge.
             // Surfacing the error on the row is a tracked follow-up (BACKLOG).
             _ => return,
         };
-        let etag_out = result.header("etag").map(str::to_owned);
-        let lm_out = result.header("last-modified").map(str::to_owned);
 
         {
             let mut s = match self.store.lock() {
@@ -170,7 +199,7 @@ impl FeedFetchCoordinator {
             // placeholder metadata with the parsed feed and keeps the follow
             // membership added at optimistic-insert time.
             s.subscribe(parsed.podcast, episodes);
-            s.update_refresh_metadata(pending.podcast_id, etag_out, lm_out);
+            s.update_refresh_metadata(pending.podcast_id, cache.etag, cache.last_modified);
         } // store lock released before any re-projection / re-lock
 
         // Wake the projection so the hydrated episodes reach the shell.

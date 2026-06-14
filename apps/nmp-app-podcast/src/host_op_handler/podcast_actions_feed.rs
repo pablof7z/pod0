@@ -163,16 +163,14 @@ impl PodcastHostOpHandler {
             Err(e) => return serde_json::json!({"ok": false, "error": e}),
         };
 
-        match handle_feed_response(&url, podcast_id, &http_result, None, Utc::now()) {
-            Ok(FeedResult::Parsed { parsed, .. }) => {
-                let etag_out = http_result.header("etag").map(str::to_owned);
-                let lm_out = http_result.header("last-modified").map(str::to_owned);
+        match handle_feed_response(&url, podcast_id, &http_result, cache.as_ref(), Utc::now()) {
+            Ok(FeedResult::Parsed { parsed, cache, .. }) => {
                 let write_ok = match self.state.library.store.lock() {
                     Ok(mut s) => {
                         let existing = s.episodes_for(podcast_id).to_vec();
                         let episodes = merge_episodes(parsed.episodes, existing);
                         s.upsert_known_podcast(parsed.podcast, episodes);
-                        s.update_refresh_metadata(podcast_id, etag_out, lm_out);
+                        s.update_refresh_metadata(podcast_id, cache.etag, cache.last_modified);
                         self.bump_domain(crate::state::Domain::Library);
                         true
                     }
@@ -184,17 +182,15 @@ impl PodcastHostOpHandler {
                     serde_json::json!({"ok": false, "error": "store poisoned"})
                 }
             }
-            Ok(FeedResult::NotModified { .. }) => {
+            Ok(FeedResult::NotModified { cache }) => {
                 if known.is_some() {
-                    let etag_out = http_result.header("etag").map(str::to_owned);
-                    let lm_out = http_result.header("last-modified").map(str::to_owned);
                     // Persist updated etag/last-modified headers so future
                     // conditional GETs stay fresh, but do NOT bump rev: a 304
                     // means nothing user-visible changed, so forcing a full
                     // snapshot rebuild + FFI decode is wasted work.
                     // (etag/last-modified are not projected into PodcastUpdate.)
                     if let Ok(mut s) = self.state.library.store.lock() {
-                        s.update_refresh_metadata(podcast_id, etag_out, lm_out);
+                        s.update_refresh_metadata(podcast_id, cache.etag, cache.last_modified);
                     }
                     serde_json::json!({
                         "ok": true,
@@ -301,7 +297,10 @@ mod feed_304_tests {
             status_code: 304,
             headers: vec![
                 vec!["etag".to_owned(), "\"abc123\"".to_owned()],
-                vec!["last-modified".to_owned(), "Mon, 01 Jan 2024 00:00:00 GMT".to_owned()],
+                vec![
+                    "last-modified".to_owned(),
+                    "Mon, 01 Jan 2024 00:00:00 GMT".to_owned(),
+                ],
             ],
             body: String::new(),
         }

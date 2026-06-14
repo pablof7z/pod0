@@ -32,6 +32,8 @@ mod podcast_actions;
 mod podcast_actions_downloads;
 mod podcast_actions_feed;
 mod podcast_actions_refresh;
+#[cfg(test)]
+mod podcast_actions_refresh_tests;
 mod router;
 mod settings_actions;
 mod siri_actions;
