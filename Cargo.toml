@@ -8,35 +8,26 @@ members = [
     "apps/podcast-knowledge",
     "apps/podcast-transcripts",
     "apps/podcast-tui",
-    "vendor/nmp-blossom",
 ]
 resolver = "2"
 
 # NMP pin discipline: all NMP crates (workspace deps + nmp-feedback's internal
 # pins) reference the SAME nostr-multi-platform rev so the whole graph compiles
 # exactly one copy of each NMP crate (one `NmpApp` type). When bumping NMP:
-#   1. Bump all 5 nmp-* rev entries below to the new rev.
+#   1. Bump all 6 nmp-* rev entries below to the new rev.
 #   2. Bump nmp-feedback to a rev that also pins the new NMP rev.
 #
-# Current rev fbc0155031fdf862fa47673c5211fc3eebc3863c = ac7e307e + ADR-0055
-# Rung-1 fix (bump_publish_if_engine_view_advanced at 5 relay-state-transition
-# entry points in publish_engine.rs); upstream NMP branch fix/adr0055-publish-ver-bump.
-# nmp-feedback@630d1a9f also pins this same rev (bumped in lockstep).
+# Current rev 45ac8c3e4fd6b4efea1fe8c9c40e18758f41a891 = nmp-v0.7.2. As of this
+# release nmp-blossom is un-parked: it is a first-class [workspace].members crate
+# in the NMP repo, so it resolves as an ordinary git dep at the same rev as the
+# other NMP crates. No vendor/ copy, [patch] redirect, or local-clone workaround
+# is needed any more (the prior vendor/nmp-blossom workaround is obsolete).
+# nmp-feedback@857dedf45 also pins this same rev (bumped in lockstep).
 [workspace.dependencies]
-nmp-defaults = { version = "0.6.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "fbc0155031fdf862fa47673c5211fc3eebc3863c" }
-nmp-core = { version = "0.6.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "fbc0155031fdf862fa47673c5211fc3eebc3863c" }
-nmp-ffi = { version = "0.6.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "fbc0155031fdf862fa47673c5211fc3eebc3863c" }
-nmp-signer-broker = { version = "0.6.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "fbc0155031fdf862fa47673c5211fc3eebc3863c" }
-nmp-blossom = { version = "0.6.2", path = "vendor/nmp-blossom" }
-nmp-nip02 = { version = "0.6.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "fbc0155031fdf862fa47673c5211fc3eebc3863c" }
-nmp-feedback = { git = "https://github.com/pablof7z/nmp-feedback.git", rev = "630d1a9f0e3256c9fe0ab1480f2a35e058f8c9e0" }
-
-# nmp-blossom is vendored at vendor/nmp-blossom (see vendor/nmp-blossom/Cargo.toml).
-# It is excluded from the NMP upstream workspace (parked post-v1 / M10), so
-# cargo git deps cannot resolve it. Vendoring is the reproducible alternative.
-# The vendor copy is taken verbatim from ac7e307e crates/nmp-blossom with only
-# the workspace-inherited fields replaced by explicit values and path deps by
-# workspace refs — the Rust source is untouched. nmp-core is NOT vendored here
-# (un-vendored in PR #498; the fix lives upstream at fbc0155031...).
-[patch."https://github.com/pablof7z/nostr-multi-platform.git"]
-nmp-blossom = { path = "vendor/nmp-blossom" }
+nmp-defaults = { version = "0.7.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "45ac8c3e4fd6b4efea1fe8c9c40e18758f41a891" }
+nmp-core = { version = "0.7.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "45ac8c3e4fd6b4efea1fe8c9c40e18758f41a891" }
+nmp-ffi = { version = "0.7.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "45ac8c3e4fd6b4efea1fe8c9c40e18758f41a891" }
+nmp-signer-broker = { version = "0.7.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "45ac8c3e4fd6b4efea1fe8c9c40e18758f41a891" }
+nmp-blossom = { version = "0.7.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "45ac8c3e4fd6b4efea1fe8c9c40e18758f41a891" }
+nmp-nip02 = { version = "0.7.2", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "45ac8c3e4fd6b4efea1fe8c9c40e18758f41a891" }
+nmp-feedback = { git = "https://github.com/pablof7z/nmp-feedback.git", rev = "857dedf45be721d748bf4ed55a76144ba89018b9" }
