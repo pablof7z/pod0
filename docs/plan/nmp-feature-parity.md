@@ -19,8 +19,10 @@ delete it until all exit criteria at the bottom of this file pass.
 
 ## Current Snapshot - 2026-06-14
 
-The large PR stack has merged, but it does not equal feature parity. GitHub
-reported zero open PRs after PR #463. Many branches created screens,
+The large PR stack has merged, but it does not equal feature parity. Current
+main is through PR #480, with zero open PRs and one open local blocker issue
+(`#479`) that depends on upstream NMP issue
+`pablof7z/nostr-multi-platform#1408`. Many branches created screens,
 projections, action namespaces, and local heuristics; several still need real
 logic, relay/provider integration, device validation, or removal of Swift-side
 policy/fallback code in `App/Sources/`.

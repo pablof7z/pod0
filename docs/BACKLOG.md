@@ -21,7 +21,7 @@ worktrees currently in flight.
 - **p0-plan-truthfulness.** Keep `docs/plan.md`,
   `docs/plan/nmp-feature-parity.md`, and this backlog synchronized with code.
   Do not mark scaffolded behavior done. Current audit: docs now reflect the
-  `0.6.2` NMP pin at rev `6418a7acae78b27ecd7a5a5c102db43a05c1cf6c`, the
+  `0.6.2` NMP pin at rev `ac7e307e89b57a73b419ea9588275e599dcb228c`, the
   deleted parked `ios/` shell, and the fact that remaining parity debt lives in
   `App/Sources/` Swift policy/fallback code plus the listed platform/AI gaps.
 - **p0-validation-gate.** Establish the merge gate for this migration:
@@ -323,7 +323,7 @@ worktrees currently in flight.
   `podcast.social` → kernel `publish_unsigned_event` → `sign_active_nonblocking`
   → `PendingSign` park for remote signers. There was never a Swift NIP-46 signing
   branch in `UserIdentityStore+Publishing.swift`; the stale comment that claimed
-  one was removed in this PR. Verified against NMP v0.6.2 rev 6418a7ac
+  one was removed in this PR. Verified against NMP v0.6.2 rev ac7e307e
   `crates/nmp-core/src/actor/commands/publish.rs` + `pending_sign.rs` +
   `nip46_bunker_signing.rs` integration test.
 - ~~**nip73-formatting-kernel.**~~ Done. `publishUserClip` sends typed
