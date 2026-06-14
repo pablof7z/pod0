@@ -183,6 +183,13 @@ struct HomeView: View {
         return store.triageRollup(allowed: allowedSubscriptionIDs)
     }
 
+    private var inboxLastTriagedAt: Date? {
+        guard let timestamp = store.kernel?.podcastSnapshot?.inboxLastTriagedAt else {
+            return nil
+        }
+        return Date(timeIntervalSince1970: TimeInterval(timestamp))
+    }
+
     // MARK: - Layout
 
     @ViewBuilder
@@ -220,6 +227,7 @@ struct HomeView: View {
                         inboxCount: triage.inbox,
                         archivedCount: triage.archived,
                         showCount: triage.shows,
+                        lastTriagedAt: inboxLastTriagedAt,
                         isExpanded: $featuredExpanded,
                         onPlayEpisode: playEpisode,
                         onLongPressEpisode: { relatedSheetEpisode = $0 },

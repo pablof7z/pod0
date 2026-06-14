@@ -74,7 +74,8 @@ class DomainFrameWireTest {
               "priority_reason": "High relevance"
             }
           ],
-          "inbox_triage_in_progress": true
+          "inbox_triage_in_progress": true,
+          "inbox_last_triaged_at": 1717200123
         }
     """.trimIndent()
 
@@ -271,6 +272,11 @@ class DomainFrameWireTest {
 
         // inbox_triage_in_progress
         assertTrue("inbox_triage_in_progress must decode", lib.inboxTriageInProgress!!)
+        assertEquals(
+            "inbox_last_triaged_at must decode",
+            1717200123L,
+            lib.inboxLastTriagedAt
+        )
 
         // Other domains must be absent
         assertNull("playback must be absent in library-only frame", frames.playback)
@@ -445,6 +451,7 @@ class DomainFrameWireTest {
         assertTrue("library frame must be accepted", libAccepted)
         assertEquals(1, afterLib.library.size)
         assertEquals("The Daily", afterLib.library.single().title)
+        assertEquals(1717200123L, afterLib.inboxLastTriagedAt)
 
         // Now merge a playback-only frame — library domain is absent.
         val playEnvelope = envelope("podcast.playback" to playbackFixture)
@@ -494,6 +501,8 @@ class DomainFrameWireTest {
         assertTrue("tombstone must be accepted (rev=99 > rev=2)", accepted)
         assertEquals("library tombstone must clear composite.library to empty",
                      0, cleared.library.size)
+        assertNull("library tombstone must clear inbox timestamp",
+                   cleared.inboxLastTriagedAt)
         assertEquals(99L, tracker.library)
     }
 

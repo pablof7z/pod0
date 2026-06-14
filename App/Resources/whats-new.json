@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-14T06:35:13Z",
+      "lines": [
+        "Home Inbox now shows when the agent last finished triaging your episodes."
+      ]
+    },
+    {
       "shipped_at": "2026-06-14T05:50:17Z",
       "lines": [
         "Saved shows and downloaded badges now stay visible while the app finishes launching."

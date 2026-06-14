@@ -74,6 +74,7 @@ extension KernelModel {
                 composite.ownedPodcasts    = lib.ownedPodcasts ?? []
                 composite.inbox            = lib.inbox ?? []
                 composite.inboxTriageInProgress = lib.inboxTriageInProgress ?? false
+                composite.inboxLastTriagedAt = lib.inboxLastTriagedAt
                 dmLog.debug("library accepted rev=\(lib.rev)")
             } else {
                 dmLog.debug("library DROPPED stale rev=\(lib.rev) last=\(lastRev)")

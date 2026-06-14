@@ -112,6 +112,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     let inbox = handle.state.inbox.project();
     // Step 7: inbox_triage_in_progress now read from InboxState.
     let inbox_triage_in_progress = handle.state.inbox.triage_in_progress_snapshot();
+    let inbox_last_triaged_at = handle.state.inbox.last_triaged_at_snapshot();
     let owned_podcasts = collect_owned_podcasts(handle);
     // Step 14: downloads now read from state.playback.downloads.
     let downloads = handle
@@ -192,6 +193,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         clips,
         inbox,
         inbox_triage_in_progress,
+        inbox_last_triaged_at,
         owned_podcasts,
         downloads,
         voice,

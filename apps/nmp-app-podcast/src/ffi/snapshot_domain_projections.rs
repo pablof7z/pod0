@@ -364,6 +364,10 @@ pub fn decode_podcast_domain_sidecars(
 #[path = "snapshot_domain_projection_tests.rs"]
 mod tests;
 
+#[cfg(test)]
+#[path = "snapshot_domain_inbox_tests.rs"]
+mod inbox_tests;
+
 /// Byte-identity regression guard for the slice-local playback queue rows —
 /// split into its own file to keep both test files under the 500-line limit.
 #[cfg(test)]

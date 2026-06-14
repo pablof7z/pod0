@@ -36,7 +36,7 @@ use crate::ffi::projections::InboxItem;
 use crate::inbox_handler::{
     build_inbox, handle_inbox_action, handle_inbox_action_with_signal,
 };
-use crate::inbox_llm::TriageResult;
+use crate::inbox_llm::{TriageResult, TriageStatus};
 use crate::state::slot::Session;
 use crate::state::{Infra, Slot};
 use crate::store::PodcastStore;
@@ -120,6 +120,20 @@ impl InboxState {
     pub fn triage_in_progress_snapshot(&self) -> bool {
         self.triage_in_progress
             .load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// Most recent successful triage attempt, in Unix seconds.
+    ///
+    /// Pending entries are retry placeholders, not completed triage results,
+    /// so they do not drive the user-facing "Triaged ..." status line.
+    pub fn last_triaged_at_snapshot(&self) -> Option<i64> {
+        self.triage_cache.lock().ok().and_then(|cache| {
+            cache
+                .values()
+                .filter(|result| result.status == TriageStatus::Ready)
+                .map(|result| result.attempted_at)
+                .max()
+        })
     }
 
     // ── Proactive trigger ─────────────────────────────────────────────────
@@ -289,6 +303,37 @@ mod tests {
     fn triage_in_progress_snapshot_starts_false() {
         let state = InboxState::for_test();
         assert!(!state.triage_in_progress_snapshot());
+    }
+
+    #[test]
+    fn last_triaged_at_snapshot_uses_latest_ready_entry_only() {
+        let state = InboxState::for_test();
+        {
+            let mut cache = state.triage_cache.lock().unwrap();
+            cache.insert("pending".into(), TriageResult::pending(2_000));
+            cache.insert(
+                "old-ready".into(),
+                TriageResult::ready(0.5, "old".into(), vec![], 1_000),
+            );
+            cache.insert(
+                "new-ready".into(),
+                TriageResult::ready(0.9, "new".into(), vec![], 1_500),
+            );
+        }
+
+        assert_eq!(state.last_triaged_at_snapshot(), Some(1_500));
+    }
+
+    #[test]
+    fn last_triaged_at_snapshot_ignores_pending_only_cache() {
+        let state = InboxState::for_test();
+        state
+            .triage_cache
+            .lock()
+            .unwrap()
+            .insert("pending".into(), TriageResult::pending(2_000));
+
+        assert_eq!(state.last_triaged_at_snapshot(), None);
     }
 
     #[test]

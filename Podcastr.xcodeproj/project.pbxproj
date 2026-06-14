@@ -315,7 +315,6 @@
 		69FC64E17DC2499B40E99290 /* AppTheme+Shadow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF3A133724C43297F9DE492E /* AppTheme+Shadow.swift */; };
 		6A74F4F679BE1BC52B0A2728 /* OnboardingAISetupPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8200C9B29F01A8001A49ADF1 /* OnboardingAISetupPage.swift */; };
 		6C28CF9B51C30CF58AE1F7F4 /* FeedbackComposeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 550E3BE6D19553B2E714C8F9 /* FeedbackComposeView.swift */; };
-		6CC2965885BEB9C1B53478A6 /* LiteRTLM in Frameworks */ = {isa = PBXBuildFile; productRef = C42CCFD0573B346559E36AA9 /* LiteRTLM */; };
 		6D703EBB91024FAA8CDE300F /* AskAgentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29B7C2595F8831855C66B0B5 /* AskAgentView.swift */; };
 		6E053EF0BDD078A3098C2F8F /* SignedNostrEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6A7DC07263EA419C98DDD74 /* SignedNostrEvent.swift */; };
 		6E3092214365D7320359F8B9 /* NumberExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B6878A00045AF65BAE84954 /* NumberExtensions.swift */; };
@@ -535,7 +534,7 @@
 		B389C5108FE832C3F0F5FB34 /* AgentNotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF30CFCB7607AB17F8205471 /* AgentNotesView.swift */; };
 		B3911A6DDB986C6528C2C4F1 /* RSSParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252381473A916661CCBA523E /* RSSParserTests.swift */; };
 		B393A6C44BAFB3C3AD1E6CDA /* FeedbackStatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 716427A88DC40761944F1873 /* FeedbackStatusBadge.swift */; };
-		B3970DA45FCC4CB32765FCCD /* SQLiteVec in Frameworks */ = {isa = PBXBuildFile; productRef = D1C704F1B182FF83C41AAB0F /* SQLiteVec */; };
+		B3970DA45FCC4CB32765FCCD /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = AC95E5BC4A660944ADC3109C /* Kingfisher */; };
 		B3D650CB33926951017490CF /* ElevenLabsVoiceRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDD80384C741138D608DAECE /* ElevenLabsVoiceRow.swift */; };
 		B3E189C5BA5D59D07FF8FC37 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCDBEC4F0E2BBCFFB096BEFD /* AppDelegate.swift */; };
 		B3EE2F4ADAF22225C7D457C9 /* WikiCitation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F71D89644FF06B08E16A5FF2 /* WikiCitation.swift */; };
@@ -623,7 +622,7 @@
 		D1DAE67483500585606A457E /* AgentToolsPodcastActionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F422EDC3520DE2E220B30E2E /* AgentToolsPodcastActionTests.swift */; };
 		D267AAD91FB152332C541626 /* LiquidGlassSegmentedPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 383F11D22FF9F026C79AF15B /* LiquidGlassSegmentedPicker.swift */; };
 		D26DF3D8B662DFD8B6861453 /* EmbeddingsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D323573C621187F4835D5223 /* EmbeddingsClient.swift */; };
-		D296A3A113B7CA431F3F4B45 /* P256K in Frameworks */ = {isa = PBXBuildFile; productRef = A865ADD09595500A328B6A66 /* P256K */; };
+		D296A3A113B7CA431F3F4B45 /* SQLiteVec in Frameworks */ = {isa = PBXBuildFile; productRef = D1C704F1B182FF83C41AAB0F /* SQLiteVec */; };
 		D2D54D3179907500C2BFE6A0 /* SurveyUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D6DCC04DC0CE6E3621F60EE /* SurveyUITests.swift */; };
 		D3782D13906D7E20094FB022 /* VoiceCapability+Synthesizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52228D50085F0D3BDBF92839 /* VoiceCapability+Synthesizer.swift */; };
 		D3B81AFC980EC24C46045423 /* AgentSkillsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDDF3A789DB0A1A01D1B4229 /* AgentSkillsTests.swift */; };
@@ -645,7 +644,7 @@
 		D95527C23F53B938EA0E0C88 /* AppStateStore+Clips.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98A1693ABB19FC728B784A91 /* AppStateStore+Clips.swift */; };
 		DA46EC218909BD2B96E68E67 /* WikiResponseParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5D45F30673832A40C2EF7A /* WikiResponseParser.swift */; };
 		DACDC30D47FA9CB617CDE2C0 /* AgentLLMClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A638E5BA5F728BAED5DA9EC /* AgentLLMClient.swift */; };
-		DAF43A45B5BEC1A4531656CC /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = AC95E5BC4A660944ADC3109C /* Kingfisher */; };
+		DAF43A45B5BEC1A4531656CC /* LiteRTLM in Frameworks */ = {isa = PBXBuildFile; productRef = C42CCFD0573B346559E36AA9 /* LiteRTLM */; };
 		DB0AD05493472369070D66D5 /* DiscoverResultRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A4AC7F407D64C7EECAC6FB /* DiscoverResultRow.swift */; };
 		DB2763E2701880BFF7EDABE4 /* AudioCapability.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9755482A5F563171C8C1343 /* AudioCapability.swift */; };
 		DBA312581B01A490BC812FC3 /* EpisodeMetadataIndexerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D03BA94540C205987D9B6D /* EpisodeMetadataIndexerTests.swift */; };
@@ -1594,10 +1593,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D296A3A113B7CA431F3F4B45 /* P256K in Frameworks */,
-				B3970DA45FCC4CB32765FCCD /* SQLiteVec in Frameworks */,
-				DAF43A45B5BEC1A4531656CC /* Kingfisher in Frameworks */,
-				6CC2965885BEB9C1B53478A6 /* LiteRTLM in Frameworks */,
+				D296A3A113B7CA431F3F4B45 /* SQLiteVec in Frameworks */,
+				B3970DA45FCC4CB32765FCCD /* Kingfisher in Frameworks */,
+				DAF43A45B5BEC1A4531656CC /* LiteRTLM in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2972,7 +2970,6 @@
 			);
 			name = Podcastr;
 			packageProductDependencies = (
-				A865ADD09595500A328B6A66 /* P256K */,
 				D1C704F1B182FF83C41AAB0F /* SQLiteVec */,
 				AC95E5BC4A660944ADC3109C /* Kingfisher */,
 				C42CCFD0573B346559E36AA9 /* LiteRTLM */,
@@ -3026,7 +3023,6 @@
 			);
 			mainGroup = 26AC729818BDCD33D4152DB0;
 			packageReferences = (
-				9E67C9C9E4C6EC730548EE88 /* XCRemoteSwiftPackageReference "secp256k1.swift" */,
 				CDCFBAF4A865E5D6C8271482 /* XCRemoteSwiftPackageReference "LiteRT-LM" */,
 				E6351A58B45DD67BACED66EE /* XCRemoteSwiftPackageReference "SQLiteVec" */,
 				FD91E0E152391009482BC6AE /* XCRemoteSwiftPackageReference "Kingfisher" */,
@@ -4332,14 +4328,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		9E67C9C9E4C6EC730548EE88 /* XCRemoteSwiftPackageReference "secp256k1.swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/GigaBitcoin/secp256k1.swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.23.1;
-			};
-		};
 		CDCFBAF4A865E5D6C8271482 /* XCRemoteSwiftPackageReference "LiteRT-LM" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/google-ai-edge/LiteRT-LM";
@@ -4367,10 +4355,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		A865ADD09595500A328B6A66 /* P256K */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = P256K;
-		};
 		AC95E5BC4A660944ADC3109C /* Kingfisher */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Kingfisher;

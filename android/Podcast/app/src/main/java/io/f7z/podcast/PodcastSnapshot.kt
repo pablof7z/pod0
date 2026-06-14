@@ -87,6 +87,11 @@ data class PodcastSnapshot(
      * indicator in the Inbox screen.
      */
     @SerialName("inbox_triage_in_progress") val inboxTriageInProgress: Boolean = false,
+    /**
+     * Unix seconds for the latest completed inbox triage pass.
+     * Mirror of `PodcastUpdate.inbox_last_triaged_at`.
+     */
+    @SerialName("inbox_last_triaged_at") val inboxLastTriagedAt: Long? = null,
     /** Agent-scheduled task rows. Mirror of `PodcastUpdate.agent_tasks`. */
     @SerialName("agent_tasks") val agentTasks: List<AgentTaskSummary> = emptyList(),
     /**

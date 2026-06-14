@@ -417,13 +417,13 @@ worktrees currently in flight.
      `set_ad_segments_for` and emits `ads.ready`. `AIChapterCompiler.swift` deleted.
   3. ~~**AI chapters not reported to the kernel from the legacy path.**~~ DONE (same PR).
      All call sites dispatch `podcast.chapters.compile`; the Swift writer is removed.
-- **inbox-triage-progress-projection.** ~~Swift shimmer done~~ The
+- ~~**inbox-triage-progress-projection.**~~ DONE in this PR. The
   `inbox_triage_in_progress` bool is projected onto `PodcastUpdate` and
-  `HomeFeaturedSection.isStreaming` is now wired to it (Fix B, PR #TBD). The
-  "triaged Xh ago" subtitle (`lastTriagedAt`) is still pending: it requires
-  projecting `inbox_last_triaged_at: Option<i64>` from the triage cache
-  timestamp (`host_op_handler.rs`) onto `PodcastUpdate`, then passing it
-  through `HomeView` → `HomeFeaturedSection.lastTriagedAt`.
+  `HomeFeaturedSection.isStreaming` is wired to it. Rust now also projects
+  `inbox_last_triaged_at: Option<i64>` from the latest Ready triage-cache entry
+  through the full snapshot and `podcast.library` domain sidecar; Swift decodes
+  and passes it into `HomeFeaturedSection.lastTriagedAt`, and Android mirrors
+  the same full/domain field.
 - **agent-chat-real-loop.** Replace canned assistant responses with real LLM
   streaming, tool execution, progress/cancel states, memory/context policy,
   provider errors, and transcripted tool results.

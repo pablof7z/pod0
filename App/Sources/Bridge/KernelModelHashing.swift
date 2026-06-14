@@ -58,6 +58,7 @@ extension KernelModel {
         for p in update.picks { h.combine(p.id) }
         for q in update.queue { h.combine(q.id) }
         for i in update.inbox { h.combine(i.id) }
+        h.combine(update.inboxLastTriagedAt)
         for t in update.agentTasks { h.combine(t.id); h.combine(t.status) }
 
         // Wiki / knowledge

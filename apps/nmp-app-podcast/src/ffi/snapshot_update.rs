@@ -137,6 +137,12 @@ pub struct PodcastUpdate {
     /// Omitted from the wire when `false` (D5).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub inbox_triage_in_progress: bool,
+    /// Unix seconds for the most recent successful inbox triage pass.
+    ///
+    /// `None` until the first Ready triage cache entry exists. Pending retry
+    /// placeholders do not count as completed triage.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inbox_last_triaged_at: Option<i64>,
     /// User-owned podcasts (NIP-F4).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub owned_podcasts: Vec<OwnedPodcastInfo>,
@@ -218,6 +224,7 @@ impl Default for PodcastUpdate {
             clips: Vec::new(),
             inbox: Vec::new(),
             inbox_triage_in_progress: false,
+            inbox_last_triaged_at: None,
             owned_podcasts: Vec::new(),
             categories: Vec::new(),
             nostr_conversations: Vec::new(),

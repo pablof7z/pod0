@@ -31,7 +31,8 @@ import kotlinx.serialization.json.jsonPrimitive
  *
  * Domain builders in `apps/nmp-app-podcast/src/ffi/snapshot_domain_projections.rs`:
  *   podcast.library   — rev, library, categories, search_results, nostr_results,
- *                       owned_podcasts, inbox, inbox_triage_in_progress
+ *                       owned_podcasts, inbox, inbox_triage_in_progress,
+ *                       inbox_last_triaged_at
  *   podcast.playback  — rev, now_playing, queue
  *   podcast.downloads — rev, downloads (null = no active downloads / tombstone)
  *   podcast.settings  — rev, settings, configured_relays
@@ -67,6 +68,7 @@ data class LibraryDomainFrame(
     @SerialName("search_results") val searchResults: List<PodcastSummary>? = null,
     val inbox: List<InboxItem>? = null,
     @SerialName("inbox_triage_in_progress") val inboxTriageInProgress: Boolean? = null,
+    @SerialName("inbox_last_triaged_at") val inboxLastTriagedAt: Long? = null,
 )
 
 // ── podcast.playback ──────────────────────────────────────────────────────────
@@ -407,6 +409,7 @@ object SnapshotCodec {
                     searchResults      = lib.searchResults ?: emptyList(),
                     inbox              = lib.inbox ?: emptyList(),
                     inboxTriageInProgress = lib.inboxTriageInProgress ?: false,
+                    inboxLastTriagedAt = lib.inboxLastTriagedAt,
                 )
             }
         }

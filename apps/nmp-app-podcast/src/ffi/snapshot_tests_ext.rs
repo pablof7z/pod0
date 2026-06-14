@@ -234,3 +234,19 @@ fn snapshot_with_inbox_round_trips_and_empty_is_omitted() {
     let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded.inbox, vec![item]);
 }
+
+#[test]
+fn snapshot_with_inbox_last_triaged_at_round_trips_and_none_is_omitted() {
+    let empty_json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
+    assert!(!empty_json.contains("inbox_last_triaged_at"));
+
+    let snap = PodcastUpdate {
+        inbox_last_triaged_at: Some(1_717_200_123),
+        ..PodcastUpdate::default()
+    };
+    let json = serde_json::to_string(&snap).expect("encode");
+    assert!(json.contains(r#""inbox_last_triaged_at":1717200123"#));
+
+    let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded.inbox_last_triaged_at, Some(1_717_200_123));
+}

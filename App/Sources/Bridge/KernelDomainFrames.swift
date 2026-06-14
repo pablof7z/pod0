@@ -21,7 +21,8 @@ import Foundation
 //
 // Source domains (from apps/nmp-app-podcast/src/ffi/snapshot_domain_projections.rs):
 //   podcast.library   — library, categories, search_results, nostr_results,
-//                       owned_podcasts, inbox, inbox_triage_in_progress
+//                       owned_podcasts, inbox, inbox_triage_in_progress,
+//                       inbox_last_triaged_at
 //   podcast.playback  — now_playing, queue
 //   podcast.downloads — downloads (may arrive nil = no active downloads)
 //   podcast.settings  — settings, configured_relays
@@ -56,6 +57,7 @@ struct LibraryDomainFrame: Decodable {
     var ownedPodcasts: [OwnedPodcastInfo]?
     var inbox: [InboxItem]?
     var inboxTriageInProgress: Bool?
+    var inboxLastTriagedAt: Int?
 }
 
 // ─── podcast.playback ─────────────────────────────────────────────────────────

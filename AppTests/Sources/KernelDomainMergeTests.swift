@@ -51,7 +51,8 @@ final class KernelDomainMergeTests: XCTestCase {
                 "nostr_results": [],
                 "owned_podcasts": [],
                 "inbox": [],
-                "inbox_triage_in_progress": false
+                "inbox_triage_in_progress": false,
+                "inbox_last_triaged_at": 1_717_200_123
             ] as [String: Any]
         ])
         let seedFrames = try XCTUnwrap(
@@ -63,6 +64,7 @@ final class KernelDomainMergeTests: XCTestCase {
             seedFrames, into: &composite, tracker: &tracker)
         XCTAssertTrue(seedAccepted, "seed frame must be accepted")
         XCTAssertEqual(composite.library.count, 1, "composite must carry one show after seeding")
+        XCTAssertEqual(composite.inboxLastTriagedAt, 1_717_200_123)
 
         // Tombstone: library = null at rev=2.
         let tombstoneData = makeEnvelope(projections: [
@@ -83,6 +85,8 @@ final class KernelDomainMergeTests: XCTestCase {
         XCTAssertTrue(tombAccepted, "tombstone frame must be accepted (rev=2 > rev=1)")
         XCTAssertEqual(composite.library, [],
                        "library tombstone must clear composite.library to empty")
+        XCTAssertNil(composite.inboxLastTriagedAt,
+                     "library tombstone must clear the inbox triage timestamp")
     }
 
     // ── downloads tombstone ───────────────────────────────────────────────────

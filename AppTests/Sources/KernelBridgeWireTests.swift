@@ -31,7 +31,11 @@ private func playbackProjection(rev: Int, nowPlayingId: String? = "ep-1") -> [St
     return proj
 }
 
-private func libraryProjection(rev: Int, podcastTitle: String = "The Daily") -> [String: Any] {
+private func libraryProjection(
+    rev: Int,
+    podcastTitle: String = "The Daily",
+    lastTriagedAt: Int = 1_717_200_123
+) -> [String: Any] {
     [
         "rev": rev,
         "library": [[
@@ -48,7 +52,8 @@ private func libraryProjection(rev: Int, podcastTitle: String = "The Daily") -> 
         "nostr_results": [],
         "owned_podcasts": [],
         "inbox": [],
-        "inbox_triage_in_progress": false
+        "inbox_triage_in_progress": false,
+        "inbox_last_triaged_at": lastTriagedAt
     ]
 }
 
@@ -202,6 +207,7 @@ final class KernelBridgeWireTests: XCTestCase {
         XCTAssertEqual(lib.library?.first?.title, "My Show")
         // isSubscribed decodes snake_case via .convertFromSnakeCase
         XCTAssertEqual(lib.library?.first?.isSubscribed, true)
+        XCTAssertEqual(lib.inboxLastTriagedAt, 1_717_200_123)
         // Other domains absent.
         XCTAssertNil(frames.playback)
         XCTAssertNil(frames.settings)

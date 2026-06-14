@@ -21,8 +21,8 @@
 //!  |           | (store for unplayed_count + ep title/artwork)          |
 //!  | social    | social.social_slot, social.agent_notes (via convos),   |
 //!  |           | social.outbound_turns                                  |
-//!  | misc      | wiki, picks, tasks, knowledge, clips, inbox (triage),  |
-//!  |           | comments, voice, agent_chat, feedback                  |
+//!  | misc      | wiki, picks, tasks, knowledge, clips, comments, voice, |
+//!  |           | agent_chat, feedback                                   |
 //!
 //! The `rev` field in each payload is the GLOBAL rev (state.infra.rev), matching
 //! the pull-path `build_podcast_update` behaviour so byte identity is preserved.
@@ -84,6 +84,7 @@ pub(super) fn build_library_payload(handle: &PodcastHandle) -> Option<serde_json
     let owned_podcasts = collect_owned_podcasts(handle);
     let inbox = handle.state.inbox.project();
     let inbox_triage_in_progress = handle.state.inbox.triage_in_progress_snapshot();
+    let inbox_last_triaged_at = handle.state.inbox.last_triaged_at_snapshot();
 
     Some(serde_json::json!({
         "rev": rev,
@@ -94,6 +95,7 @@ pub(super) fn build_library_payload(handle: &PodcastHandle) -> Option<serde_json
         "owned_podcasts": owned_podcasts,
         "inbox": inbox,
         "inbox_triage_in_progress": inbox_triage_in_progress,
+        "inbox_last_triaged_at": inbox_last_triaged_at,
     }))
 }
 

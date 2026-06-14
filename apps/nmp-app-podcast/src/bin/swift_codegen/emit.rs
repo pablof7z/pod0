@@ -846,6 +846,8 @@ struct PodcastUpdate {
     @DefaultEmptyArray var inbox: [InboxItem] = []
     /// `true` while a background LLM triage pass is running. D5: omitted when false.
     @DefaultFalse var inboxTriageInProgress: Bool = false
+    /// Unix seconds for the most recent completed inbox triage pass.
+    var inboxLastTriagedAt: Int? = nil
     @DefaultEmptyArray var ownedPodcasts: [OwnedPodcastInfo] = []
     @DefaultEmptyArray var categories: [CategoryBrowseItem] = []
     /// NIP-10-threaded Nostr conversations (inbound + outbound merged), newest-first
@@ -1004,6 +1006,7 @@ extension PodcastUpdate: Codable {
         clips = try c.decodeIfPresent([ClipSummary].self, forKey: .clips) ?? []
         inbox = try c.decodeIfPresent([InboxItem].self, forKey: .inbox) ?? []
         inboxTriageInProgress = try c.decodeIfPresent(Bool.self, forKey: .inboxTriageInProgress) ?? false
+        inboxLastTriagedAt = try c.decodeIfPresent(Int.self, forKey: .inboxLastTriagedAt)
         ownedPodcasts = try c.decodeIfPresent([OwnedPodcastInfo].self, forKey: .ownedPodcasts) ?? []
         categories = try c.decodeIfPresent([CategoryBrowseItem].self, forKey: .categories) ?? []
         nostrConversations = try c.decodeIfPresent([NostrConversationDTO].self, forKey: .nostrConversations) ?? []
