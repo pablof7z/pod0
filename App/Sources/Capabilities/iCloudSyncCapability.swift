@@ -87,7 +87,6 @@ final class iCloudSyncCapability {
         static let autoFallbackToScribe = "pcst.auto_fallback_to_scribe"
         static let notifyOnNewEpisodes = "pcst.notify_on_new_episodes"
         static let nostrRelayUrl = "pcst.nostr_relay_url"
-        static let nostrPublicRelays = "pcst.nostr_public_relays"
         static let nostrProfileName = "pcst.nostr_profile_name"
         static let nostrProfileAbout = "pcst.nostr_profile_about"
         static let nostrProfilePicture = "pcst.nostr_profile_picture"
@@ -105,7 +104,7 @@ final class iCloudSyncCapability {
             blossomServerUrl, youtubeExtractorUrl, autoMarkPlayedAtEnd, autoPlayNext,
             headphoneDoubleTapAction, headphoneTripleTapAction, wikiAutoGenerateOnTranscriptIngest,
             autoIngestPublisherTranscripts, autoFallbackToScribe, notifyOnNewEpisodes,
-            nostrRelayUrl, nostrPublicRelays, nostrProfileName, nostrProfileAbout, nostrProfilePicture,
+            nostrRelayUrl, nostrProfileName, nostrProfileAbout, nostrProfilePicture,
         ]
     }
 
@@ -414,11 +413,6 @@ final class iCloudSyncCapability {
            lastWritten[Key.nostrRelayUrl] != AnyHashable(v) {
             kvs.set(v, forKey: Key.nostrRelayUrl)
             lastWritten[Key.nostrRelayUrl] = AnyHashable(v)
-        }
-        if let v = settings.nostrPublicRelays,
-           lastWritten[Key.nostrPublicRelays] != AnyHashable(v) {
-            kvs.set(v, forKey: Key.nostrPublicRelays)
-            lastWritten[Key.nostrPublicRelays] = AnyHashable(v)
         }
         if let v = settings.nostrProfileName,
            lastWritten[Key.nostrProfileName] != AnyHashable(v) {
@@ -827,16 +821,6 @@ final class iCloudSyncCapability {
             kernel?.dispatchSilent(namespace: "podcast.settings",
                                    body: ["op": "set_nostr_relay_url", "url": url])
             lastWritten[Key.nostrRelayUrl] = AnyHashable(url)
-            didDispatch = true
-        }
-
-        if touched.contains(Key.nostrPublicRelays),
-           let relays = (kvs.object(forKey: Key.nostrPublicRelays) as? [String]),
-           lastWritten[Key.nostrPublicRelays] != AnyHashable(relays) {
-            isApplyingRemoteChange = true
-            kernel?.dispatchSilent(namespace: "podcast.settings",
-                                   body: ["op": "set_nostr_public_relays", "relays": relays])
-            lastWritten[Key.nostrPublicRelays] = AnyHashable(relays)
             didDispatch = true
         }
 

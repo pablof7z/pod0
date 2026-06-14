@@ -88,7 +88,6 @@ struct SettingsSnapshot: Equatable {
     var notifyOnNewEpisodes: Bool = true
     var nostrEnabled: Bool = false
     var nostrRelayURL: String = ""
-    var nostrPublicRelays: [String] = []
     var nostrProfileName: String = ""
     var nostrProfileAbout: String = ""
     var nostrProfilePicture: String = ""
@@ -168,7 +167,6 @@ extension SettingsSnapshot: Codable {
         case notifyOnNewEpisodes = "notify_on_new_episodes"
         case nostrEnabled = "nostr_enabled"
         case nostrRelayURL = "nostr_relay_url"
-        case nostrPublicRelays = "nostr_public_relays"
         case nostrProfileName = "nostr_profile_name"
         case nostrProfileAbout = "nostr_profile_about"
         case nostrProfilePicture = "nostr_profile_picture"
@@ -233,7 +231,6 @@ extension SettingsSnapshot: Codable {
         if let v = try c.decodeIfPresent(Bool.self, forKey: .notifyOnNewEpisodes) { notifyOnNewEpisodes = v }
         if let v = try c.decodeIfPresent(Bool.self, forKey: .nostrEnabled) { nostrEnabled = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .nostrRelayURL) { nostrRelayURL = v }
-        if let v = try c.decodeIfPresent([String].self, forKey: .nostrPublicRelays) { nostrPublicRelays = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .nostrProfileName) { nostrProfileName = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .nostrProfileAbout) { nostrProfileAbout = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .nostrProfilePicture) { nostrProfilePicture = v }

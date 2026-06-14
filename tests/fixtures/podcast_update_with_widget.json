@@ -103,7 +103,6 @@
     "notify_on_new_episodes": true,
     "nostr_enabled": false,
     "nostr_relay_url": "",
-    "nostr_public_relays": [],
     "nostr_profile_name": "",
     "nostr_profile_about": "",
     "nostr_profile_picture": "",

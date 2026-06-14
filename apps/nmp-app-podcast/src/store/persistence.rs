@@ -264,8 +264,6 @@ pub(super) struct PersistedSettings {
     pub nostr_enabled: bool,
     /// Primary Nostr relay URL for publishing and event distribution. Default empty.
     pub nostr_relay_url: String,
-    /// List of public Nostr relay URLs for broadcast and subscription. Default empty.
-    pub nostr_public_relays: Vec<String>,
     /// User's display name in Nostr profile metadata. Default empty.
     pub nostr_profile_name: String,
     /// User's about/bio text in Nostr profile metadata. Default empty.

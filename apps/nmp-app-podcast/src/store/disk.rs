@@ -290,7 +290,6 @@ impl PodcastStore {
         self.notify_on_new_episodes = loaded.settings.notify_on_new_episodes;
         self.nostr_enabled = loaded.settings.nostr_enabled;
         self.nostr_relay_url = loaded.settings.nostr_relay_url;
-        self.nostr_public_relays = loaded.settings.nostr_public_relays;
         self.nostr_profile_name = loaded.settings.nostr_profile_name;
         self.nostr_profile_about = loaded.settings.nostr_profile_about;
         self.nostr_profile_picture = loaded.settings.nostr_profile_picture;
@@ -469,7 +468,6 @@ impl PodcastStore {
             notify_on_new_episodes: self.notify_on_new_episodes,
             nostr_enabled: self.nostr_enabled,
             nostr_relay_url: self.nostr_relay_url.clone(),
-            nostr_public_relays: self.nostr_public_relays.clone(),
             nostr_profile_name: self.nostr_profile_name.clone(),
             nostr_profile_about: self.nostr_profile_about.clone(),
             nostr_profile_picture: self.nostr_profile_picture.clone(),

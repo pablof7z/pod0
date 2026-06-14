@@ -340,13 +340,6 @@ impl PodcastHostOpHandler {
                 self.bump_domain(crate::state::Domain::Settings);
                 serde_json::json!({"ok": true})
             }
-            SettingsAction::SetNostrPublicRelays { relays } => {
-                if let Ok(mut s) = self.state.library.store.lock() {
-                    s.set_nostr_public_relays(relays);
-                }
-                self.bump_domain(crate::state::Domain::Settings);
-                serde_json::json!({"ok": true})
-            }
             SettingsAction::SetNostrProfile {
                 name,
                 about,

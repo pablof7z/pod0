@@ -89,7 +89,6 @@ pub(crate) fn build_settings_snapshot(s: &PodcastStore) -> SettingsSnapshot {
         notify_on_new_episodes: s.notify_on_new_episodes(),
         nostr_enabled: s.nostr_enabled(),
         nostr_relay_url: s.nostr_relay_url().to_owned(),
-        nostr_public_relays: s.nostr_public_relays().to_vec(),
         nostr_profile_name: s.nostr_profile_name().to_owned(),
         nostr_profile_about: s.nostr_profile_about().to_owned(),
         nostr_profile_picture: s.nostr_profile_picture().to_owned(),

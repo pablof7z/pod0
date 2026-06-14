@@ -151,8 +151,6 @@ pub enum SettingsAction {
     SetNostrEnabled { enabled: bool },
     /// Set the Nostr relay URL.
     SetNostrRelayUrl { url: String },
-    /// Set the list of public Nostr relays.
-    SetNostrPublicRelays { relays: Vec<String> },
     /// Set Nostr profile metadata (name, about, picture).
     SetNostrProfile {
         name: String,

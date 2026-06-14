@@ -186,11 +186,14 @@ worktrees currently in flight.
   compatibility/internal only; remaining work is a durable background-agent
   execution/history model for prompt tasks if they should remain isolated from
   the main agent chat.
-- **relay-list-ownership.** Replace `@AppStorage("nip65.relays")` seed state
-  with NMP relay-list store reads/writes and real NIP-65 publish/refresh flow.
-  Rust prerequisite SHIPPED (`feat/podcast-relay-ops`): `configured_relays`
-  projection on `PodcastUpdate` + `add_relay`/`remove_relay`/`set_relay_role`
-  ops on `podcast.settings`. iOS App Relays editor now unblocked.
+- **relay-list-ownership.** App relay configuration now has one owner:
+  the NMP `configured_relays` projection plus `add_relay`/`remove_relay`/
+  `set_relay_role` ops on `podcast.settings`. The old Swift/Rust
+  `nostrPublicRelays` / `nostr_public_relays` settings mirror and Agent
+  Podcasts relay editor have been removed; legacy saved keys are ignored and
+  dropped on the next persistence write. Remaining NIP-65 work is the real
+  user/agent kind:10002 publish/refresh model, not another app-side relay
+  array.
 - ~~**relay-config-c-abi-persistence.**~~ DONE (commit `0dcf9680`, PR #220
   "persist relay configuration across app restarts via C-ABI path"). Relay
   edits now survive restarts via a `.nmp-relay-config.json` sidecar — the same

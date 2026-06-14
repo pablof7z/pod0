@@ -269,10 +269,6 @@ extension AppStateStore {
             kernel?.dispatch(namespace: "podcast.settings",
                              body: ["op": "set_nostr_relay_url", "url": settings.nostrRelayURL])
         }
-        if settings.nostrPublicRelays != prior.nostrPublicRelays {
-            kernel?.dispatch(namespace: "podcast.settings",
-                             body: ["op": "set_nostr_public_relays", "relays": settings.nostrPublicRelays])
-        }
         // Profile name/about/picture are carried in a single atomic op
         // (`SetNostrProfile { name, about, picture }`) — the kernel has no
         // per-field profile ops, so the previous three separate

@@ -55,7 +55,6 @@ struct SettingsKVSnapshot: Equatable {
     var autoFallbackToScribe: Bool?
     var notifyOnNewEpisodes: Bool?
     var nostrRelayUrl: String?
-    var nostrPublicRelays: [String]?
     var nostrProfileName: String?
     var nostrProfileAbout: String?
     var nostrProfilePicture: String?
@@ -192,9 +191,6 @@ struct SettingsKVSnapshot: Equatable {
         if let v = nostrRelayUrl {
             lastWritten[iCloudSyncCapability.Key.nostrRelayUrl] = AnyHashable(v)
         }
-        if let v = nostrPublicRelays {
-            lastWritten[iCloudSyncCapability.Key.nostrPublicRelays] = AnyHashable(v)
-        }
         if let v = nostrProfileName {
             lastWritten[iCloudSyncCapability.Key.nostrProfileName] = AnyHashable(v)
         }
@@ -284,7 +280,6 @@ extension SettingsKVSnapshot {
             autoFallbackToScribe: s.autoFallbackToScribe,
             notifyOnNewEpisodes: s.notifyOnNewEpisodes,
             nostrRelayUrl: s.nostrRelayURL,
-            nostrPublicRelays: s.nostrPublicRelays,
             nostrProfileName: s.nostrProfileName,
             nostrProfileAbout: s.nostrProfileAbout,
             nostrProfilePicture: s.nostrProfilePicture)

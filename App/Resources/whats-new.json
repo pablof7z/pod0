@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-14T08:48:42Z",
+      "lines": [
+        "Relay editing now lives in one kernel-backed App Relays screen instead of a duplicate Agent Podcasts list."
+      ]
+    },
+    {
       "shipped_at": "2026-06-14T08:05:00Z",
       "lines": [
         "Download rows now appear immediately after you tap Download."

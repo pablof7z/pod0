@@ -344,20 +344,6 @@ impl PodcastStore {
         self.persist();
     }
 
-    /// List of public Nostr relay URLs for broadcast and subscription.
-    pub fn nostr_public_relays(&self) -> &[String] {
-        &self.nostr_public_relays
-    }
-
-    /// Set the list of public Nostr relays and persist. Idempotent.
-    pub fn set_nostr_public_relays(&mut self, relays: Vec<String>) {
-        if self.nostr_public_relays == relays {
-            return;
-        }
-        self.nostr_public_relays = relays;
-        self.persist();
-    }
-
     /// User's display name in Nostr profile metadata.
     pub fn nostr_profile_name(&self) -> &str {
         &self.nostr_profile_name

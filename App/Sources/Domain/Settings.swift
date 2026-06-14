@@ -254,9 +254,6 @@ struct Settings: Codable, Hashable, Sendable {
     // Nostr identity (private key stored in Keychain via NostrCredentialStore)
     var nostrEnabled: Bool = Settings.kernelDefaults.nostrEnabled
     var nostrRelayURL: String = Settings.kernelDefaults.nostrRelayURL
-    /// Relay list used when publishing NIP-74 podcast events. Initialized from the
-    /// user's NIP-65 kind:10002 outbox relays; falls back to primal + damus when empty.
-    var nostrPublicRelays: [String] = Settings.kernelDefaults.nostrPublicRelays
     var nostrProfileName: String = Settings.kernelDefaults.nostrProfileName
     var nostrProfileAbout: String = Settings.kernelDefaults.nostrProfileAbout
     var nostrProfilePicture: String = Settings.kernelDefaults.nostrProfilePicture
@@ -296,7 +293,7 @@ struct Settings: Codable, Hashable, Sendable {
         case wikiAutoGenerateOnTranscriptIngest
         case autoIngestPublisherTranscripts, autoFallbackToScribe
         case notifyOnNewEpisodes
-        case nostrEnabled, nostrRelayURL, nostrPublicRelays
+        case nostrEnabled, nostrRelayURL
         case nostrProfileName, nostrProfileAbout, nostrProfilePicture
         case nostrPublicKeyHex
         case hasCompletedOnboarding
@@ -379,7 +376,6 @@ struct Settings: Codable, Hashable, Sendable {
         if let v = try c.decodeIfPresent(Bool.self, forKey: .notifyOnNewEpisodes) { notifyOnNewEpisodes = v }
         if let v = try c.decodeIfPresent(Bool.self, forKey: .nostrEnabled) { nostrEnabled = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .nostrRelayURL) { nostrRelayURL = v }
-        if let v = try c.decodeIfPresent([String].self, forKey: .nostrPublicRelays) { nostrPublicRelays = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .nostrProfileName) { nostrProfileName = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .nostrProfileAbout) { nostrProfileAbout = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .nostrProfilePicture) { nostrProfilePicture = v }
@@ -452,7 +448,6 @@ struct Settings: Codable, Hashable, Sendable {
         try c.encode(notifyOnNewEpisodes, forKey: .notifyOnNewEpisodes)
         try c.encode(nostrEnabled, forKey: .nostrEnabled)
         try c.encode(nostrRelayURL, forKey: .nostrRelayURL)
-        try c.encode(nostrPublicRelays, forKey: .nostrPublicRelays)
         try c.encode(nostrProfileName, forKey: .nostrProfileName)
         try c.encode(nostrProfileAbout, forKey: .nostrProfileAbout)
         try c.encode(nostrProfilePicture, forKey: .nostrProfilePicture)

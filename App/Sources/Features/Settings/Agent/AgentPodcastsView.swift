@@ -6,25 +6,13 @@ import SwiftUI
 // the AI agent) and lets the user toggle per-podcast Nostr visibility between
 // private (library only) and public (published as NIP-F4 kind:10154 show events
 // via the Rust kernel's `podcast.publish` namespace).
-//
-// Also manages the user's Nostr write relay list — initialised from the user's
-// NIP-65 kind:10002 outbox relays, falling back to relay.primal.net and
-// relay.damus.io when none are found. (NIP-F4 publishing itself routes through
-// the kernel relay pool; this list is the user's broader relay configuration.)
 
 struct AgentPodcastsView: View {
     @Environment(AppStateStore.self) private var store
-    @State private var isAddingRelay = false
-    @State private var newRelayURL = ""
-    @State private var isFetchingRelays = false
 
     private var ownedPodcasts: [Podcast] {
         store.allPodcasts.filter { $0.ownerPubkeyHex != nil }
             .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
-    }
-
-    private var publicRelays: [String] {
-        store.state.settings.nostrPublicRelays
     }
 
     var body: some View {
@@ -34,19 +22,10 @@ struct AgentPodcastsView: View {
             } else {
                 podcastsSection
             }
-            relaySection
         }
         .settingsListStyle()
         .navigationTitle("Agent Podcasts")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $isAddingRelay) {
-            addRelaySheet
-        }
-        .task {
-            if publicRelays.isEmpty {
-                await initializeRelays()
-            }
-        }
     }
 
     // MARK: - Sections
@@ -82,106 +61,6 @@ struct AgentPodcastsView: View {
         }
     }
 
-    private var relaySection: some View {
-        Section {
-            ForEach(publicRelays, id: \.self) { relay in
-                HStack {
-                    Image(systemName: "antenna.radiowaves.left.and.right")
-                        .foregroundStyle(.secondary)
-                        .frame(width: 20)
-                    Text(relay)
-                        .font(AppTheme.Typography.monoCaption)
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-            }
-            .onDelete { indexSet in
-                var relays = publicRelays
-                relays.remove(atOffsets: indexSet)
-                updateRelays(relays)
-            }
-
-            if isFetchingRelays {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    Text("Fetching your relay list…")
-                        .font(AppTheme.Typography.caption)
-                        .foregroundStyle(.secondary)
-                }
-            } else {
-                Button {
-                    isAddingRelay = true
-                } label: {
-                    Label("Add relay", systemImage: "plus.circle.fill")
-                        .foregroundStyle(Color.accentColor)
-                }
-            }
-        } header: {
-            Label("Publishing Relays", systemImage: "network")
-        } footer: {
-            Text("Your Nostr write relays, initialized from your NIP-65 relay list. Swipe a row to remove.")
-        }
-    }
-
-    // MARK: - Add relay sheet
-
-    private var addRelaySheet: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField("wss://relay.example.com", text: $newRelayURL)
-                        .font(AppTheme.Typography.monoCallout)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.URL)
-                } header: {
-                    Text("Relay URL")
-                } footer: {
-                    Text("WebSocket relay URL starting with wss://")
-                }
-            }
-            .navigationTitle("Add Relay")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        newRelayURL = ""
-                        isAddingRelay = false
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
-                        let trimmed = newRelayURL.trimmed
-                        if !trimmed.isEmpty, !publicRelays.contains(trimmed) {
-                            updateRelays(publicRelays + [trimmed])
-                        }
-                        newRelayURL = ""
-                        isAddingRelay = false
-                    }
-                    .disabled(newRelayURL.trimmed.isEmpty)
-                }
-            }
-        }
-        .presentationDetents([.medium])
-    }
-
-    // MARK: - Helpers
-
-    private func updateRelays(_ relays: [String]) {
-        var settings = store.state.settings
-        settings.nostrPublicRelays = relays
-        store.updateSettings(settings)
-    }
-
-    private func initializeRelays() async {
-        // NMP owns relay configuration — just read the configured relays from
-        // the kernel snapshot. No WebSocket, no relay logic in Swift.
-        let relays = await MainActor.run {
-            store.kernel?.podcastSnapshot?.configuredRelays.map(\.url).filter { !$0.isEmpty } ?? []
-        }
-        await MainActor.run { updateRelays(relays) }
-    }
 }
 
 // MARK: - AgentPodcastRow

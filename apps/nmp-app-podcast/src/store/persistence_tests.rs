@@ -211,6 +211,28 @@ fn round_trip_preserves_ad_segments_and_settings() {
 }
 
 #[test]
+fn legacy_nostr_public_relays_setting_loads_and_drops_on_save() {
+    let dir = TempDir::new();
+    let raw = serde_json::json!({
+        "schema_version": PERSIST_SCHEMA_VERSION,
+        "podcasts": [],
+        "settings": {
+            "nostr_public_relays": ["wss://legacy.example"]
+        }
+    });
+    std::fs::write(podcasts_path(&dir.path), serde_json::to_vec(&raw).unwrap()).unwrap();
+
+    let loaded = load(&dir.path).unwrap().expect("file present");
+    save(&dir.path, &loaded).unwrap();
+
+    let saved = std::fs::read_to_string(podcasts_path(&dir.path)).unwrap();
+    assert!(
+        !saved.contains("nostr_public_relays"),
+        "legacy relay mirror must not be persisted again: {saved}"
+    );
+}
+
+#[test]
 fn pre_ad_skip_payload_loads_with_defaults() {
     // An on-disk file written before this PR landed has no
     // `ad_segments` or `settings` fields. The decoder must hydrate

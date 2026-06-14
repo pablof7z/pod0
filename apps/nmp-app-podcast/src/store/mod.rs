@@ -245,8 +245,6 @@ pub struct PodcastStore {
     pub(super) nostr_enabled: bool,
     /// Primary Nostr relay URL for publishing and event distribution. Default empty.
     pub(super) nostr_relay_url: String,
-    /// List of public Nostr relay URLs for broadcast and subscription. Default empty.
-    pub(super) nostr_public_relays: Vec<String>,
     /// User's display name in Nostr profile metadata. Default empty.
     pub(super) nostr_profile_name: String,
     /// User's about/bio text in Nostr profile metadata. Default empty.
@@ -375,7 +373,6 @@ impl PodcastStore {
             notify_on_new_episodes: true,
             nostr_enabled: false,
             nostr_relay_url: String::new(),
-            nostr_public_relays: Vec::new(),
             nostr_profile_name: String::new(),
             nostr_profile_about: String::new(),
             nostr_profile_picture: String::new(),
