@@ -269,6 +269,16 @@ impl PodcastStore {
         self.local_paths.get(episode_id).map(String::as_str)
     }
 
+    /// Resolve the episode and cloned local path for a user-requested or
+    /// policy-driven delete. Does not mutate state: callers must first remove
+    /// the file, then call [`clear_local_path`](Self::clear_local_path) only
+    /// when the filesystem operation succeeds or the path is already stale.
+    pub fn download_delete_candidate(&self, id_str: &str) -> Option<(EpisodeId, String)> {
+        let (episode_id, _url) = self.episode_enclosure_url(id_str)?;
+        let path = self.local_path_for(&episode_id)?.to_owned();
+        Some((episode_id, path))
+    }
+
     /// Look up the recorded byte size of a downloaded enclosure. Returns
     /// `None` when the episode has no tracked download (mirrors
     /// [`local_path_for`](Self::local_path_for)); the projection treats that

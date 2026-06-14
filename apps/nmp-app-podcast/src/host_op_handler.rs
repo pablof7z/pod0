@@ -30,6 +30,8 @@ mod player_actions;
 mod podcast_action_dispatch;
 mod podcast_actions;
 mod podcast_actions_downloads;
+#[cfg(test)]
+mod podcast_actions_downloads_tests;
 mod podcast_actions_feed;
 mod podcast_actions_refresh;
 #[cfg(test)]

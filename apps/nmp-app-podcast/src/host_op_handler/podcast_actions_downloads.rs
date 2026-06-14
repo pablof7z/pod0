@@ -272,30 +272,40 @@ impl PodcastHostOpHandler {
     }
 
     pub(super) fn handle_delete_download(&self, episode_id_str: String) -> serde_json::Value {
-        let removed_path = {
-            match self.state.library.store.lock() {
-                Ok(mut s) => match s.episode_enclosure_url(&episode_id_str) {
-                    Some((ep_id, _url)) => {
-                        let path = s.clear_local_path(&ep_id);
-                        if path.is_some() {
-                            s.emit_event_simple(
-                                &episode_id_str,
-                                crate::store::events::stage::DOWNLOAD_DELETED,
-                                crate::store::events::EventSeverity::Info,
-                                "Downloaded file deleted",
-                            );
-                        }
-                        path
-                    }
-                    None => None,
-                },
-                Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
-            }
+        use crate::download::{
+            record_download_delete_failure, record_download_delete_success, remove_download_file,
+            DownloadFileDeleteOutcome,
         };
-        if let Some(path) = removed_path {
-            let _ = std::fs::remove_file(&path);
-            self.bump_domain(crate::state::Domain::Library);
+
+        let Some((episode_id, path)) = (match self.state.library.store.lock() {
+            Ok(s) => s.download_delete_candidate(&episode_id_str),
+            Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+        }) else {
+            return serde_json::json!({"ok": true});
+        };
+
+        match remove_download_file(&path) {
+            DownloadFileDeleteOutcome::Removed | DownloadFileDeleteOutcome::AlreadyMissing => {
+                let changed = match self.state.library.store.lock() {
+                    Ok(mut s) => record_download_delete_success(
+                        &mut s,
+                        &episode_id_str,
+                        episode_id,
+                        "Downloaded file deleted",
+                    ),
+                    Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+                };
+                if changed {
+                    self.bump_domain(crate::state::Domain::Library);
+                }
+                serde_json::json!({"ok": true})
+            }
+            DownloadFileDeleteOutcome::Failed(error) => {
+                if let Ok(mut s) = self.state.library.store.lock() {
+                    record_download_delete_failure(&mut s, &episode_id_str, &path, &error);
+                }
+                serde_json::json!({"ok": false, "error": format!("delete failed: {error}")})
+            }
         }
-        serde_json::json!({"ok": true})
     }
 }

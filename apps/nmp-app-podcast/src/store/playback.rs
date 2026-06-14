@@ -71,28 +71,17 @@ impl PodcastStore {
         false
     }
 
-    /// Apply the **delete-after-played** policy for a just-played episode.
-    ///
-    /// When the `auto_delete_downloads_after_played` setting is on and the
-    /// episode (by stringified `EpisodeId`) has a tracked local download, drop
-    /// the local-path mapping and return the removed path so the caller can
-    /// remove the file from disk. Returns `None` when the setting is off, the
-    /// episode is unknown, or it had no local download.
-    ///
-    /// This is the kernel-owned policy seam (D0 — Rust decides). It is called
-    /// from every mark-played choke point — the `ItemEnd` audio-report
-    /// writeback (natural end) and the `inbox/mark_listened` handler (manual
-    /// mark, and the sleep-timer-end path which routes through it) — so the
-    /// policy fires identically regardless of how the episode reached "played".
-    /// File removal stays at the call site (`std::fs::remove_file`), matching
-    /// the existing `handle_delete_download` idiom where the store owns only the
-    /// `local_paths`/`file_sizes` maps and the handler owns the filesystem.
-    pub fn clear_local_path_if_auto_delete(&mut self, id_str: &str) -> Option<String> {
+    /// Return the tracked local path for delete-after-played, without mutating
+    /// download state. The caller removes the file first and clears the mapping
+    /// only when deletion succeeds or the path was already stale.
+    pub fn auto_delete_download_candidate(
+        &self,
+        id_str: &str,
+    ) -> Option<(podcast_core::EpisodeId, String)> {
         if !self.auto_delete_downloads_after_played() {
             return None;
         }
-        let (episode_id, _url) = self.episode_enclosure_url(id_str)?;
-        self.clear_local_path(&episode_id)
+        self.download_delete_candidate(id_str)
     }
 
     /// Mark an episode (by stringified `EpisodeId`) as unlistened. Returns

@@ -139,7 +139,8 @@ pub extern "C" fn nmp_app_podcast_audio_report(
             } else {
                 None
             };
-            drop(actor); // release before rev bump and store lock
+            // Release before rev bump and store lock.
+            drop(actor);
             // A durable audio report (mark-played-at-end, sleep-timer stop)
             // changes the episode's played/position state — both live in the
             // `podcast.library` payload — so route the delta there.
@@ -223,9 +224,11 @@ fn apply_writeback(store: &mut PodcastStore, report: &AudioReport, episode_id: &
                 // local download and removing the file. Only runs when the
                 // mark actually happened (i.e. `auto_mark_played_at_end` is on),
                 // matching the prior Swift `onItemEnd` gate.
-                if let Some(path) = store.clear_local_path_if_auto_delete(episode_id) {
-                    let _ = std::fs::remove_file(&path);
-                }
+                crate::download::apply_auto_delete_download(
+                    store,
+                    episode_id,
+                    "Downloaded file deleted after playback",
+                );
             }
             // Rewind to the start on natural completion so the next play begins
             // from 0 instead of resuming at the end. `mark_episode_played` only
@@ -362,6 +365,9 @@ fn dispatch_download_cmd(handle: &PodcastHandle, cmd: &DownloadCommand) {
 }
 
 // Tests split into audio_report_tests.rs; #[path] keeps private items in scope.
+#[cfg(test)]
+#[path = "audio_report_delete_tests.rs"]
+mod delete_tests;
 #[cfg(test)]
 #[path = "audio_report_tests.rs"]
 mod tests;

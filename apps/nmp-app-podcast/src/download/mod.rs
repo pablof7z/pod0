@@ -42,7 +42,12 @@ use std::collections::HashMap;
 
 use crate::capability::{DownloadCommand, DownloadKind, DownloadReport};
 
+mod delete;
 mod item;
+pub(crate) use delete::{
+    apply_auto_delete_download, record_download_delete_failure, record_download_delete_success,
+    remove_download_file, DownloadFileDeleteOutcome,
+};
 pub use item::{DownloadItem, DownloadItemState};
 
 #[cfg(test)]

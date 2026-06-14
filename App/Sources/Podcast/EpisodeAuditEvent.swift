@@ -76,6 +76,7 @@ struct EpisodeAuditEvent: Codable, Sendable, Hashable, Identifiable {
         static let downloadFailed: Kind = "download.failed"
         static let downloadCancelled: Kind = "download.cancelled"
         static let downloadDeleted: Kind = "download.deleted"
+        static let downloadDeleteFailed: Kind = "download.delete_failed"
 
         // MARK: Transcript lifecycle
         /// We chose not to attempt transcription. `details` carries the reason.
@@ -127,6 +128,7 @@ struct EpisodeAuditEvent: Codable, Sendable, Hashable, Identifiable {
             case .downloadFailed: return "Download failed"
             case .downloadCancelled: return "Download cancelled"
             case .downloadDeleted: return "Download deleted"
+            case .downloadDeleteFailed: return "Download delete failed"
             case .transcriptSkipped: return "Transcription skipped"
             case .transcriptAttempt: return "Transcription started"
             case .transcriptPublisherFetch: return "Publisher transcript fetch"
@@ -161,6 +163,7 @@ struct EpisodeAuditEvent: Codable, Sendable, Hashable, Identifiable {
             case .downloadFailed: return "exclamationmark.triangle.fill"
             case .downloadCancelled: return "xmark.circle"
             case .downloadDeleted: return "trash"
+            case .downloadDeleteFailed: return "trash.slash"
             case .transcriptSkipped: return "minus.circle"
             case .transcriptAttempt: return "waveform.badge.magnifyingglass"
             case .transcriptPublisherFetch: return "doc.text.magnifyingglass"

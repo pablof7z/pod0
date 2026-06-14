@@ -303,8 +303,10 @@ worktrees currently in flight.
   paused/failed rows instead of only completed local paths. Cold-start full
   pulls now accept the first equal-rev snapshot so a partial push cannot hide
   the disk-restored library, and projection coverage proves reloaded completed
-  downloads still surface `download_path`/size. Remaining: validate background
-  URLSession restore, deletion failure, and offline-first playback on device.
+  downloads still surface `download_path`/size. Delete failures now keep the
+  episode projected as downloaded and emit diagnostics until a later delete
+  succeeds or the file is already gone. Remaining: validate background
+  URLSession restore and offline-first playback on device.
 - **settings-completion.** Finish playback/settings projection parity:
   skip intervals, auto-skip ads, streaming/offline preferences, onboarding
   gate, provider settings, and persistence migration.

@@ -78,6 +78,7 @@ pub mod stage {
     pub const DOWNLOAD_FAILED: &str = "download.failed";
     pub const DOWNLOAD_CANCELLED: &str = "download.cancelled";
     pub const DOWNLOAD_DELETED: &str = "download.deleted";
+    pub const DOWNLOAD_DELETE_FAILED: &str = "download.delete_failed";
 
     // Transcript lifecycle.
     pub const TRANSCRIPT_SKIPPED: &str = "transcript.skipped";
