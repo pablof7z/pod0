@@ -5,7 +5,7 @@ import Foundation
 // Decoupled snapshot of the kernel-side fields the iCloud sync capability
 // mirrors. Defined here (not on `SettingsSnapshot`) so the capability does
 // not need to wait for `pr-settings-projection` to land the playback fields
-// on the projection. The snapshot poll constructs one of these from
+// on the projection. The snapshot bridge constructs one of these from
 // whatever subset of fields the current `SettingsSnapshot` exposes; missing
 // fields stay `nil` and are simply skipped on the outbound path.
 

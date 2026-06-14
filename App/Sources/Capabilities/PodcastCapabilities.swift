@@ -27,7 +27,7 @@ import Foundation
 ///   - `SpotlightCapability`   — passive CoreSpotlight indexer
 ///                                (`pcst.spotlight.capability`). Driven by
 ///                                `KernelModel.library` deltas in the
-///                                snapshot poll; same passive shape as
+///                                snapshot bridge; same passive shape as
 ///                                `PlatformCapability`. Held via
 ///                                `SpotlightCapability.shared` so the
 ///                                deep-link router can reach it from
@@ -64,7 +64,7 @@ final class PodcastCapabilities {
     let notification: NotificationCapability
     let platform: PlatformCapability
     /// iCloud settings sync (`pcst.icloud_sync.capability`). Passive —
-    /// driven by KVS notifications and the snapshot poll, not by
+    /// driven by KVS notifications and the snapshot bridge, not by
     /// kernel-issued requests. Started separately from `start()` because
     /// the inbound dispatch path needs a `KernelModel` reference; see
     /// `startICloudSync(kernel:)`.

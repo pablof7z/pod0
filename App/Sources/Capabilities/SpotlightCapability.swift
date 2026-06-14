@@ -36,7 +36,7 @@ final class SpotlightCapability {
 
     /// Process-wide instance. The capability holds no per-instance
     /// state besides the `lastIndexedLibrary` snapshot used for delta
-    /// detection — sharing the same instance across the snapshot-poll
+    /// detection — sharing the same instance across the snapshot-delivery
     /// caller and the (test) suite avoids a parallel "did we
     /// reindex" cache.
     static let shared = SpotlightCapability()
@@ -169,8 +169,8 @@ final class SpotlightCapability {
     /// Remove a single podcast (and its episodes) from the index.
     /// Called when the user unsubscribes — the next library delta
     /// would do the same work via the full rebuild, but firing the
-    /// targeted delete keeps the Spotlight surface in sync inside the
-    /// snapshot-poll window instead of waiting up to 500 ms.
+    /// targeted delete keeps the Spotlight surface in sync immediately
+    /// instead of waiting for the next snapshot frame.
     func deindex(podcastId: String) {
         let podcastUID = Self.podcastIdentifier(podcastId)
         // Walk the cached library to find this podcast's episode ids;

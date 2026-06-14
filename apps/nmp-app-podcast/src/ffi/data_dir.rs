@@ -6,7 +6,7 @@
 //! `<app-container>/Library/Application Support/PodcastLibrary/`).
 //!
 //! After a successful load the function bumps the shared `rev` counter so the
-//! next snapshot poll on the main thread surfaces the restored library
+//! next snapshot delivery on the main thread surfaces the restored library
 //! without waiting for a write to land.
 
 use std::ffi::c_char;
@@ -68,7 +68,7 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(handle: *mut PodcastHandle, path:
 
         // Bind the identity store to the same directory. If `identity.json` exists
         // this loads the saved secret key and derives `pubkey_hex` + `npub` so
-        // the next snapshot poll surfaces `active_account` without a write.
+        // the next snapshot frame surfaces `active_account` without a write.
         let identity_loaded = if let Ok(mut id) = handle.state.library.identity.lock() {
             let was_empty = id.secret_hex.is_none();
             id.set_data_dir(&PathBuf::from(&path_str));
@@ -222,7 +222,7 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(handle: *mut PodcastHandle, path:
             || responder_loaded
             || outbound_loaded
         {
-            // Force the next snapshot poll to pick up the restored library,
+            // Force the next snapshot frame to pick up the restored library,
             // queue, identity, owned-podcast keys, triage cache, and/or tasks
             // even though no write happened here.
             handle.bump_snapshot_rev();

@@ -19,8 +19,7 @@ use crate::ffi::actions::memory_module::MemoryAction;
 use crate::store::PodcastStore;
 
 /// Dispatch the typed [`MemoryAction`] to the shared `store`, bumping `rev`
-/// when something actually changed so the iOS snapshot poll picks it up on
-/// the next 500ms tick.
+/// when something actually changed so the next iOS snapshot frame picks it up.
 ///
 /// `source` defaults to `"user"` when the wire payload omits it — matches
 /// the [`MemoryAction::Remember.source`] doc-comment and keeps Settings'

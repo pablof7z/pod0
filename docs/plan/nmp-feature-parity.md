@@ -53,8 +53,13 @@ completion, not absence of all infrastructure.
 - **D7 capabilities report; they never decide:** watch capability code for
   policy drift, especially iCloud sync, Spotlight, CarPlay, notifications,
   Live Activity, voice, and HTTP provider integration.
-- **D8 reactivity <= 60 Hz:** current polling/content-hash improvements reduce
-  churn, but full push delivery through the NMP update sink remains open.
+- **D8 reactivity <= 60 Hz:** the active Swift bridge no longer depends on the
+  old fixed 500 ms snapshot poll. Per-domain typed sidecars arrive through the
+  NMP update sink, autonomous background changes wake that sink with
+  `SnapshotUpdateSignal`, and volatile playback/download fields stay on narrow
+  report channels plus content-hash gates. Remaining D8 work lives in the
+  documented platform-specific follow-ups such as TUI snapshot-revision polling
+  and unrelated native sleep/check loops.
 - **NIP-F4 is canonical:** PR #89 corrected the active NIP-F4 builders/parsers to
   the canonical wire shape, and the active Rust path now signs/publishes shows,
   episodes, and author claims while relay-backed discovery covers both kind:10154
@@ -66,7 +71,7 @@ completion, not absence of all infrastructure.
 
 | Slice | Status | What Still Needs To Happen |
 |---|---|---|
-| PR 1 - Core infrastructure | Partial | Keep JSON persistence if chosen, but document it as the canonical store or migrate to the planned storage. Finish push-style snapshot delivery through the NMP update sink. Unify capability routing so there is one router and capabilities own their threading. Delete or rehome replaced compatibility wrappers in `App/Sources/`. |
+| PR 1 - Core infrastructure | Partial | Keep JSON persistence if chosen, but document it as the canonical store or migrate to the planned storage. Push-style snapshot delivery through the NMP update sink is shipped for the active Swift bridge; remaining core work is to unify capability routing so there is one router, ensure capabilities own their threading, and delete or rehome replaced compatibility wrappers in `App/Sources/`. |
 | PR 2 - Library UX | Partial | Verify subscribe, refresh, OPML import/export, iTunes search, show detail, and empty/error states on device and simulator. Remove remaining `SubscriptionService` compat paths once every view reads snapshots/dispatches actions directly. |
 | PR 3 - Full player | Partial | Validate lock-screen metadata, remote commands, queue transitions, sleep timer, speed, position persistence, download-local playback, and AirPlay/route behavior. Fix any remaining iOS-side policy decisions. |
 | PR 4 - Identity | Partial | Finish Rust-owned identity actions, Keychain-backed credential replacement, NIP-46 pairing state, profile publishing, fingerprint/account metadata projection, and removal of `UserIdentityStore` compat surfaces. |

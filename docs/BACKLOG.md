@@ -224,9 +224,14 @@ worktrees currently in flight.
   `feat/podcast-relay-ops` (PR #202): `configured_relays` projection +
   `add_relay`/`remove_relay`/`set_relay_role` on `podcast.settings`. Restart
   durability of edits is shipped (see `relay-config-c-abi-persistence`, now DONE).
-- **snapshot-push-delivery.** Replace the remaining 500 ms polling dependency
-  with push-style delivery through the NMP update sink for autonomous changes,
-  while keeping content-hash throttling for volatile playback/download fields.
+- ~~**snapshot-push-delivery.**~~ Done across the per-domain typed sidecar and
+  report-channel follow-ups: the active Swift bridge consumes NMP update-sink
+  pushes through `PodcastHandle.listen`, uses `SnapshotUpdateSignal` /
+  `ActorCommand::MarkChangedSinceEmit` to wake autonomous background changes,
+  and keeps volatile playback/download ticks on narrow report channels plus
+  content-hash gates instead of the old fixed 500 ms snapshot poll. Remaining
+  terminal-client snapshot-revision polling is tracked separately in
+  `docs/plan/shared-llm-task-architecture.md`.
 - **capability-router-unify.** Collapse `SyncCapabilityBridge` and
   `PodcastCapabilities.shared.handleJSON()` into one routing contract. Each
   capability owns its threading; Rust has one path to dispatch commands and

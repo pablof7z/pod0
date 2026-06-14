@@ -83,7 +83,7 @@ impl FollowListObserver {
     }
 
     /// Attach a `SnapshotUpdateSignal` so the observer can push frames to the
-    /// iOS shell immediately without waiting for the next poll tick.
+    /// iOS shell immediately without waiting for unrelated actor traffic.
     pub fn with_snapshot_signal(mut self, signal: SnapshotUpdateSignal) -> Self {
         self.snapshot_signal = Some(signal);
         self

@@ -173,7 +173,7 @@ fn cold_load_restores_inbox_triage_cache_through_set_data_dir() {
     assert_eq!(restored.get("ep-2").unwrap().status, TriageStatus::Pending);
     drop(restored);
 
-    // ...and the restore bumped rev so the first snapshot poll surfaces it.
+    // ...and the restore bumped rev so the first snapshot frame surfaces it.
     assert_eq!(rev.load(Ordering::Relaxed), 1);
 
     let _ = unsafe { Box::from_raw(ptr) };

@@ -16,7 +16,7 @@ extension KernelModel {
     ///   - `library[*].playbackPositionSecs`  (library has its own hash gate)
     ///
     /// Everything else in `PodcastUpdate` is hashed so any real content change
-    /// triggers a `podcastSnapshot` update on the next poll.
+    /// triggers a `podcastSnapshot` update on the next pushed/pulled frame.
     ///
     /// `nonisolated`: reads only the `update` parameter and a local `Hasher`,
     /// never `self`, so it is safe to run off the MainActor. `applyPodcastUpdate`

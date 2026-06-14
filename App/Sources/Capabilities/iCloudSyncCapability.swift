@@ -853,7 +853,7 @@ final class iCloudSyncCapability {
     }
 }
 
-// `SettingsKVSnapshot` (the value the snapshot-poll bridge produces) and
+// `SettingsKVSnapshot` (the value the snapshot bridge produces) and
 // the `from(podcastUpdate:)` bridge live in
 // `iCloudSyncCapability+Snapshot.swift`.
 

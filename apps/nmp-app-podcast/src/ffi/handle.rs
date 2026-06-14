@@ -61,8 +61,8 @@ pub struct PodcastHandle {
     /// `data_dir.rs` can seed it after the data dir is bound.
     pub(crate) approved_peer_store: Arc<Mutex<ApprovedPeerStore>>,
     /// Rev-keyed snapshot cache. `build_snapshot_payload` writes `(rev, json)`
-    /// here after every rebuild; the next poll hit with the same `rev` returns
-    /// the cached string without re-serializing the entire library.
+    /// here after every rebuild; a later same-`rev` request returns the cached
+    /// string without re-serializing the entire library.
     pub(super) snapshot_cache: Arc<Mutex<Option<(u64, String)>>>,
     /// Memoized `strip_html` results keyed by a 64-bit content hash of the raw
     /// RSS description. `build_podcast_update` rebuilds the *entire* library on

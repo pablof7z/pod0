@@ -126,7 +126,7 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     // signal is also wired here and stored in infra.signal.  Neither is a
     // separate local variable anymore — the Infra is the canonical owner.
     //
-    // Start at 1 so the first snapshot poll always triggers an iOS update
+    // Start at 1 so the first snapshot delivery always triggers an iOS update
     // (guard is `update.rev > last_seen_rev`; last_seen_rev starts at 0).
     let rev = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(1));
     let snapshot_signal = SnapshotUpdateSignal::new(rev.clone(), app_ref.actor_sender());

@@ -96,7 +96,7 @@ pub enum AgentTaskIntent {
 /// `execute` serializes the typed `AgentTasksAction` back to JSON and
 /// hands it to the actor as `ActorCommand::DispatchHostOp`. The
 /// installed `PodcastHostOpHandler` deserializes it, mutates the
-/// `agent_tasks` slot, bumps `rev` so the next snapshot poll picks up
+/// `agent_tasks` slot, bumps `rev` so the next snapshot frame picks up
 /// the change, and returns a `{"ok":true}` envelope. All policy lives
 /// in the handler; the action module is pure routing — matching the
 /// pattern established by `PodcastActionModule` / `PlayerActionModule`.

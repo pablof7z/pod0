@@ -3,7 +3,7 @@
 //! Mutates the `Arc<Mutex<Vec<AgentTaskSummary>>>` slot shared with
 //! [`crate::ffi::handle::PodcastHandle`] via [`crate::ffi::actions::AgentTasksAction`]
 //! dispatches. Each op bumps the supplied `rev` AtomicU64 so the next
-//! snapshot poll picks up the change without an extra wake-up signal.
+//! snapshot frame picks up the change without an extra wake-up signal.
 //!
 //! Pulled into its own module so `host_op_handler.rs` stays under the
 //! 500-line hard limit (it was at 499 before the M14 task ops landed).

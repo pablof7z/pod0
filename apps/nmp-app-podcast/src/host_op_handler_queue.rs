@@ -15,7 +15,7 @@ use crate::queue::PlaybackQueue;
 use crate::store::PodcastStore;
 
 /// Apply a [`QueueAction`] to the shared queue, flush the new ordering to
-/// disk, and bump `rev` so the next snapshot poll surfaces the change.
+/// disk, and bump `rev` so the next snapshot frame surfaces the change.
 ///
 /// Returns the canonical `{"ok": true}` envelope on success; a typed error
 /// envelope when the queue mutex is poisoned (D6).

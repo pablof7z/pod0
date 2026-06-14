@@ -59,7 +59,7 @@ pub fn handle_publish_action(
 
 /// `podcast.publish.create_owned_podcast` — generate a per-podcast
 /// keypair, stamp `owner_pubkey_hex` onto the podcast row, and bump
-/// `rev` so the iOS snapshot poll picks it up.
+/// `rev` so the next iOS snapshot frame picks it up.
 pub(crate) fn create_owned(
     handler: &PodcastHostOpHandler,
     podcast_id: String,

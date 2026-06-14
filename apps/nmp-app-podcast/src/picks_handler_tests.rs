@@ -141,7 +141,7 @@ fn refresh_picks_on_empty_store_yields_empty_slot() {
     let rev = Arc::new(AtomicU64::new(0));
     refresh_picks_into_slot(&store, &slot, &rev);
     assert!(slot.lock().unwrap().is_empty());
-    // Slot rev still bumps — keeps the iOS poll loop simple.
+    // Slot rev still bumps so the next snapshot frame observes the slot.
     assert_eq!(rev.load(Ordering::Relaxed), 1);
 }
 
