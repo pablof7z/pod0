@@ -48,6 +48,7 @@ fun SettingsScreen(
     onNavigateToModels: () -> Unit,
     onNavigateToNostrConversations: () -> Unit = {},
     onNavigateToClips: () -> Unit = {},
+    onNavigateToBookmarks: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val settings = snapshot?.settings ?: SettingsSnapshot()
@@ -96,6 +97,15 @@ fun SettingsScreen(
                 val clipCount = snapshot?.clips?.size ?: 0
                 val label = if (clipCount > 0) "My Clips ($clipCount)" else "My Clips"
                 SettingsNavRow(label = label, onClick = onNavigateToClips)
+            }
+        }
+        item {
+            SettingsSection(title = "Bookmarks") {
+                val bookmarkCount = snapshot?.subscriptions
+                    ?.flatMap { it.episodes }
+                    ?.count { it.starred } ?: 0
+                val label = if (bookmarkCount > 0) "Starred Episodes ($bookmarkCount)" else "Starred Episodes"
+                SettingsNavRow(label = label, onClick = onNavigateToBookmarks)
             }
         }
         item {

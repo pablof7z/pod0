@@ -76,6 +76,7 @@ fun AppNavigation(
     }
 
     val onOpenClips: () -> Unit = { route = AppRoute.ClipList }
+    val onOpenBookmarks: () -> Unit = { route = AppRoute.Bookmarks }
 
     Scaffold(
         bottomBar = {
@@ -102,6 +103,7 @@ fun AppNavigation(
                 onOpenModels = { route = AppRoute.ProviderModels },
                 onOpenNostrConversations = { route = AppRoute.NostrConversations },
                 onOpenClips = onOpenClips,
+                onOpenBookmarks = onOpenBookmarks,
                 modifier = contentModifier,
             )
             is AppRoute.ShowDetail -> ShowDetailScreen(
@@ -201,6 +203,18 @@ fun AppNavigation(
                 onBack = { route = AppRoute.Tab(selectedTab) },
                 modifier = contentModifier,
             )
+            AppRoute.Bookmarks -> BookmarksScreen(
+                snapshot = snapshot,
+                bridge = bridge,
+                onBack = { route = AppRoute.Tab(selectedTab) },
+                onEpisodeSelected = { episode ->
+                    route = AppRoute.EpisodeDetail(
+                        episodeId = episode.id,
+                        podcastId = episode.podcastId ?: "",
+                    )
+                },
+                modifier = contentModifier,
+            )
         }
     }
 }
@@ -215,6 +229,7 @@ private fun TabContent(
     onOpenModels: () -> Unit,
     onOpenNostrConversations: () -> Unit,
     onOpenClips: () -> Unit,
+    onOpenBookmarks: () -> Unit,
     modifier: Modifier,
 ) {
     when (tab) {
@@ -246,6 +261,7 @@ private fun TabContent(
             onNavigateToModels = onOpenModels,
             onNavigateToNostrConversations = onOpenNostrConversations,
             onNavigateToClips = onOpenClips,
+            onNavigateToBookmarks = onOpenBookmarks,
             modifier = modifier,
         )
     }
@@ -295,6 +311,8 @@ private sealed interface AppRoute {
     data object NostrConnect : AppRoute
     /** Global clip list — reachable from Settings (mirrors iOS Clippings tab). */
     data object ClipList : AppRoute
+    /** Global bookmarks list — starred episodes, reachable from Settings (mirrors iOS Bookmarks tab). */
+    data object Bookmarks : AppRoute
 
     companion object {
         val Saver: androidx.compose.runtime.saveable.Saver<AppRoute, Any> =
@@ -313,6 +331,7 @@ private sealed interface AppRoute {
                         RemoteSigner -> listOf("remote_signer")
                         NostrConnect -> listOf("nostr_connect")
                         ClipList -> listOf("clip_list")
+                        Bookmarks -> listOf("bookmarks")
                     }
                 },
                 restore = { raw ->
@@ -335,6 +354,7 @@ private sealed interface AppRoute {
                         "remote_signer" -> RemoteSigner
                         "nostr_connect" -> NostrConnect
                         "clip_list" -> ClipList
+                        "bookmarks" -> Bookmarks
                         else -> null
                     }
                 },
