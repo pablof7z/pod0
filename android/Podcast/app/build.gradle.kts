@@ -93,6 +93,18 @@ dependencies {
     // coil/media3 pinning rationale above).
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+    // ─── ZXing Core — QR code generation for NIP-46 nostrconnect:// ──────
+    //
+    // `ui/NostrConnectScreen.kt` renders a `nostrconnect://` URI as a QR code
+    // the user scans in a signer app (Amber, nsec.app, etc.). We use the core
+    // encoder only — no Android-specific ZXing UI dep (those pull in old View
+    // stack we don't use). The output is an `android.graphics.Bitmap` painted
+    // from the QrCodeWriter pixel matrix, matching iOS CIFilter.qrCodeGenerator.
+    //
+    // 3.5.3 is the last stable 3.x release; matches the baseline available on
+    // all Android targets in this module (minSdk 26).
+    implementation("com.google.zxing:core:3.5.3")
+
     // ─── JUnit — local JVM unit tests ────────────────────────────────
     //
     // Runs on the host JVM (no emulator/NDK). `SnapshotCodecTest` proves the

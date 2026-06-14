@@ -26,10 +26,12 @@ use jni::sys::{jint, jlong, jstring};
 use jni::JNIEnv;
 
 use nmp_ffi::{
-    nmp_app_claim_profile, nmp_app_dispatch_action, nmp_app_free, nmp_free_string,
-    nmp_app_is_alive, nmp_app_lifecycle_background, nmp_app_lifecycle_foreground,
-    nmp_app_new, nmp_app_release_profile, nmp_app_set_update_callback,
-    nmp_app_signin_nsec, nmp_app_start, nmp_app_stop, nmp_external_signer_init, NmpApp,
+    nmp_app_cancel_bunker_handshake, nmp_app_claim_profile, nmp_app_dispatch_action,
+    nmp_app_free, nmp_free_string, nmp_app_is_alive, nmp_app_lifecycle_background,
+    nmp_app_lifecycle_foreground, nmp_app_new, nmp_app_nostrconnect_uri,
+    nmp_app_release_profile, nmp_app_set_update_callback, nmp_app_signin_bunker,
+    nmp_app_signin_nsec, nmp_app_start, nmp_app_stop, nmp_external_signer_init,
+    nmp_signer_broker_init, NmpApp,
 };
 
 use crate::ffi::{
@@ -172,6 +174,12 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeNew(
         // the trampoline. Safe to call before the callback exists — no request
         // is built until sign-in.
         nmp_external_signer_init(app);
+        // NIP-46 signer broker — registers the bunker hook + relay listener so
+        // `nativeSignInBunker` / `nativeNostrconnectUri` are live. Idempotent;
+        // mirrors the iOS `PodcastHandle.init` call to `nmp_signer_broker_init`.
+        // MUST be called once after `nmp_app_new()` and before any bunker://
+        // or nostrconnect:// sign-in attempt (D6 — no-op if already init'd).
+        nmp_signer_broker_init(app);
         let (signer_tx, signer_rx) = std::sync::mpsc::channel::<String>();
         let session = Box::new(Session {
             app,
@@ -550,6 +558,116 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeReleaseProfile<'l>
         };
         nmp_app_release_profile(s.app, c_pubkey.as_ptr(), c_consumer.as_ptr());
     });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NIP-46 remote-signer JNI wrappers (bunker:// + nostrconnect://)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// `nativeSignInBunker(handle, uri, makeActive)` — enqueue
+/// `ActorCommand::SignInBunker` with the supplied `bunker://` URI.
+/// Silent no-op (D6) if the broker has not been initialised — which it always
+/// is because `nativeNew` calls `nmp_signer_broker_init`.
+///
+/// `makeActive = true` is the only meaningful value for the UX (the user chose
+/// this signer to be their active account); pass `true` from Kotlin.
+///
+/// Mirrors iOS `PodcastHandle.signInBunker(uri:)` and the
+/// `nmp_app_signin_bunker` C-ABI symbol in `NmpCore.h`.
+#[no_mangle]
+pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeSignInBunker<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    handle: jlong,
+    uri: JString<'l>,
+    make_active: jint,
+) {
+    ffi_guard("nativeSignInBunker", || (), || {
+        let Some(s) = session_ref(handle) else {
+            return;
+        };
+        let uri_str = match env.get_string(&uri) {
+            Ok(s) => s.to_string_lossy().into_owned(),
+            Err(_) => return,
+        };
+        let Ok(c_uri) = CString::new(uri_str) else {
+            return;
+        };
+        nmp_app_signin_bunker(s.app, c_uri.as_ptr(), if make_active != 0 { 1 } else { 0 });
+    });
+}
+
+/// `nativeCancelBunkerHandshake(handle)` — abort the in-flight NIP-46
+/// handshake. Idempotent / safe when no handshake is in flight (D6).
+///
+/// Mirrors iOS `PodcastHandle.cancelBunkerHandshake()` and the
+/// `nmp_app_cancel_bunker_handshake` C-ABI symbol in `NmpCore.h`.
+#[no_mangle]
+pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeCancelBunkerHandshake(
+    _env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+) {
+    ffi_guard("nativeCancelBunkerHandshake", || (), || {
+        if let Some(s) = session_ref(handle) {
+            nmp_app_cancel_bunker_handshake(s.app);
+        }
+    });
+}
+
+/// `nativeNostrconnectUri(handle, relayUrl, callbackScheme)` — allocate a
+/// freshly-generated `nostrconnect://` URI from the broker, copy it to a Java
+/// `String`, and free the C buffer.
+///
+/// Returns `null` when the broker is not initialised or Rust returns a null
+/// pointer (D6).
+///
+/// `relayUrl` / `callbackScheme` are passed through verbatim — pass `null`
+/// for either to use the Rust-side default (kernel-selected relay or no
+/// callback). Mirrors iOS `PodcastHandle.nostrconnectURI(relayURL:callbackScheme:)`
+/// and `nmp_app_nostrconnect_uri` in `NmpCore.h`.
+#[no_mangle]
+pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeNostrconnectUri<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    handle: jlong,
+    relay_url: JString<'l>,
+    callback_scheme: JString<'l>,
+) -> jstring {
+    let null: jstring = std::ptr::null_mut();
+    ffi_guard("nativeNostrconnectUri", || null, || {
+        let Some(s) = session_ref(handle) else {
+            return null;
+        };
+        // Convert optional JString args — null JString (from Kotlin `null`)
+        // becomes a Rust null pointer that the FFI accepts per its contract.
+        let relay_cstring: Option<CString> = env
+            .get_string(&relay_url)
+            .ok()
+            .and_then(|js| CString::new(js.to_string_lossy().into_owned()).ok());
+        let callback_cstring: Option<CString> = env
+            .get_string(&callback_scheme)
+            .ok()
+            .and_then(|js| CString::new(js.to_string_lossy().into_owned()).ok());
+
+        let relay_ptr = relay_cstring.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null());
+        let callback_ptr = callback_cstring.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null());
+
+        let uri_ptr = nmp_app_nostrconnect_uri(s.app, relay_ptr, callback_ptr);
+        if uri_ptr.is_null() {
+            return null;
+        }
+        // SAFETY: `uri_ptr` is a heap-owned C string from `nmp_app_nostrconnect_uri`;
+        // the caller (us) MUST free via `nmp_free_string`. Copy to Java String first.
+        let owned = unsafe { CStr::from_ptr(uri_ptr) }
+            .to_string_lossy()
+            .into_owned();
+        nmp_free_string(uri_ptr);
+        match env.new_string(owned) {
+            Ok(js) => js.into_raw(),
+            Err(_) => null,
+        }
+    })
 }
 
 /// `nativeFree(handle)` — tear down the kernel and the projection handle.

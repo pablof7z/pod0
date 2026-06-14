@@ -163,6 +163,48 @@ class KernelBridge {
      */
     fun nextUpdate(): String? = if (handle != 0L) nativeNextUpdate(handle) else null
 
+    // ── NIP-46 remote signer (bunker:// + nostrconnect://) ─────────────────
+
+    /**
+     * Enqueue `ActorCommand::SignInBunker` with the supplied `bunker://` URI.
+     * Silent no-op (D6) if the URI is malformed; the kernel validates it.
+     * The handshake result surfaces on the next snapshot tick as an EXTERNAL
+     * (remote-signer) `activeAccount` — the projection emits it as mode
+     * `"nip55"`, never a distinct "bunker" token (D6 — fire-and-forget, no
+     * return value). Detect completion via `Nip46Uri.handshakeCompleted`.
+     *
+     * Mirrors iOS `PodcastHandle.signInBunker(uri:)`.
+     */
+    fun signInBunker(uri: String, makeActive: Boolean = true) {
+        if (handle != 0L) nativeSignInBunker(handle, uri, if (makeActive) 1 else 0)
+    }
+
+    /**
+     * Cancel the in-flight NIP-46 handshake. Idempotent / safe when no
+     * handshake is in flight (D6 — silent no-op in that case).
+     *
+     * Mirrors iOS `PodcastHandle.cancelBunkerHandshake()`.
+     */
+    fun cancelBunkerHandshake() {
+        if (handle != 0L) nativeCancelBunkerHandshake(handle)
+    }
+
+    /**
+     * Generate a brand-new `nostrconnect://` URI from the broker. Returns the
+     * URI string, or `null` when the broker is not initialised or Rust returns
+     * a null pointer (D6).
+     *
+     * `relayUrl` — pass `null` to let the kernel pick the first write-capable
+     * relay from its relay-edit projection.
+     * `callbackScheme` — pass `null` unless the host's URL scheme is registered
+     * with the OS (Android deep link); when non-null Rust appends a
+     * percent-encoded `&callback=<scheme>` query parameter.
+     *
+     * Mirrors iOS `PodcastHandle.nostrconnectURI(relayURL:callbackScheme:)`.
+     */
+    fun nostrconnectUri(relayUrl: String? = null, callbackScheme: String? = null): String? =
+        if (handle != 0L) nativeNostrconnectUri(handle, relayUrl, callbackScheme) else null
+
     // ── NIP-55 external signer (ADR-0048) ──────────────────────────────────
 
     /**
@@ -376,6 +418,9 @@ class KernelBridge {
     private external fun nativeDownloadReport(handle: Long, reportJson: String): String?
     private external fun nativeHttpReport(handle: Long, reportJson: String)
     private external fun nativeSigninNsec(handle: Long, nsec: String)
+    private external fun nativeSignInBunker(handle: Long, uri: String, makeActive: Int)
+    private external fun nativeCancelBunkerHandshake(handle: Long)
+    private external fun nativeNostrconnectUri(handle: Long, relayUrl: String?, callbackScheme: String?): String?
     private external fun nativeSignInNip55(handle: Long, signerPackage: String?)
     private external fun nativeNextSignerRequest(handle: Long): String?
     private external fun nativeDeliverSignerResponse(handle: Long, responseJson: String)

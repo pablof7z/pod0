@@ -71,6 +71,7 @@ fun IdentityScreen(
     onSignInWithAmber: (() -> Unit)? = null,
     onSnapshotPull: suspend () -> Unit = {},
     onEditProfile: () -> Unit = {},
+    onOpenRemoteSigner: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -102,6 +103,7 @@ fun IdentityScreen(
                     bridge = bridge,
                     onSignInWithAmber = onSignInWithAmber,
                     onSnapshotPull = onSnapshotPull,
+                    onOpenRemoteSigner = onOpenRemoteSigner,
                 )
             } else {
                 SignedInState(account = account, bridge = bridge, onEditProfile = onEditProfile)
@@ -186,6 +188,7 @@ private fun NotSignedInState(
     bridge: KernelBridge,
     onSignInWithAmber: (() -> Unit)? = null,
     onSnapshotPull: suspend () -> Unit = {},
+    onOpenRemoteSigner: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -227,6 +230,15 @@ private fun NotSignedInState(
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text("Sign in with Amber") }
             }
+            // NIP-46 remote signer (bunker:// + nostrconnect://).
+            // The private key lives in a separate signer app (Amber, nsec.app,
+            // etc.) and this device only holds the pubkey. Mirrors iOS
+            // IdentityRootView which surfaces RemoteSignerView from the sign-in
+            // options alongside the local-key + NIP-55 paths.
+            OutlinedButton(
+                onClick = onOpenRemoteSigner,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Use a remote signer (NIP-46)") }
         }
     }
 
@@ -247,16 +259,24 @@ private fun NotSignedInState(
 }
 
 /**
- * Local pill matching the iOS `ModeBadge`. Tagging visible "Local Key"
- * vs "Bunker" so the user knows whether the kernel holds the private
- * key directly or proxies through an external signer.
+ * Local pill matching the iOS `ModeBadge`. Tags whether the kernel holds the
+ * private key directly ("Local Key") or proxies through an external signer
+ * ("Remote Signer").
+ *
+ * NOTE: the Android identity projection (`snapshot_identity.rs`) emits only two
+ * `mode` tokens — `"local_key"` and `"nip55"` — and collapses BOTH NIP-55
+ * (Amber) and NIP-46 (bunker) external signers into `"nip55"` (it has no
+ * distinct bunker token). So this badge cannot distinguish Amber from bunker;
+ * it shows the honest "Remote Signer" for any external account rather than
+ * mislabeling a bunker account as "Amber". A distinct badge would need a
+ * projection field (`signer_is_remote` / a bunker token), which is a
+ * cross-shell golden change scoped separately.
  */
 @Composable
 private fun ModeBadge(mode: String) {
-    val label = when (mode.lowercase()) {
-        "bunker", "nip46", "nip-46" -> "Bunker"
-        "nip55", "nip-55", "amber" -> "Amber"
-        else -> "Local Key"
+    val label = when (mode.trim().lowercase()) {
+        "local_key", "local key", "" -> "Local Key"
+        else -> "Remote Signer"
     }
     AssistChip(
         onClick = { /* read-only badge — no action */ },

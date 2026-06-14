@@ -129,6 +129,20 @@ fun AppNavigation(
                 onSignInWithAmber = onSignInWithAmber,
                 onSnapshotPull = onSnapshotPull,
                 onEditProfile = { route = AppRoute.EditProfile },
+                onOpenRemoteSigner = { route = AppRoute.RemoteSigner },
+                modifier = contentModifier,
+            )
+            AppRoute.RemoteSigner -> RemoteSignerScreen(
+                snapshot = snapshot,
+                bridge = bridge,
+                onBack = { route = AppRoute.Identity },
+                onOpenNostrConnect = { route = AppRoute.NostrConnect },
+                modifier = contentModifier,
+            )
+            AppRoute.NostrConnect -> NostrConnectScreen(
+                snapshot = snapshot,
+                bridge = bridge,
+                onBack = { route = AppRoute.RemoteSigner },
                 modifier = contentModifier,
             )
             AppRoute.EditProfile -> EditProfileScreen(
@@ -264,6 +278,10 @@ private sealed interface AppRoute {
     data object NostrConversations : AppRoute
     /** Nostr conversation detail — reached from [NostrConversations]. */
     data class NostrConversationDetail(val rootEventId: String) : AppRoute
+    /** NIP-46 bunker:// paste-and-connect flow — reached from [Identity]. */
+    data object RemoteSigner : AppRoute
+    /** NIP-46 nostrconnect:// QR pairing flow — reached from [RemoteSigner]. */
+    data object NostrConnect : AppRoute
 
     companion object {
         val Saver: androidx.compose.runtime.saveable.Saver<AppRoute, Any> =
@@ -279,6 +297,8 @@ private sealed interface AppRoute {
                         AgentChat -> listOf("agent_chat")
                         NostrConversations -> listOf("nostr_conversations")
                         is NostrConversationDetail -> listOf("nostr_conversation_detail", value.rootEventId)
+                        RemoteSigner -> listOf("remote_signer")
+                        NostrConnect -> listOf("nostr_connect")
                     }
                 },
                 restore = { raw ->
@@ -298,6 +318,8 @@ private sealed interface AppRoute {
                         "agent_chat" -> AgentChat
                         "nostr_conversations" -> NostrConversations
                         "nostr_conversation_detail" -> list.getOrNull(1)?.let { NostrConversationDetail(it) }
+                        "remote_signer" -> RemoteSigner
+                        "nostr_connect" -> NostrConnect
                         else -> null
                     }
                 },
