@@ -178,6 +178,7 @@ class DomainFrameWireTest {
           "active_account": {
             "npub": "npub1testuser",
             "pubkey_hex": "deadbeef1234",
+            "fingerprint": "sha256:abc123def4567890",
             "display_name": "Test User",
             "mode": "local_key",
             "picture_url": "https://example.com/avatar.jpg"
@@ -378,6 +379,7 @@ class DomainFrameWireTest {
         assertNotNull("active_account must decode", acct)
         assertEquals("npub1testuser", acct!!.npub)
         assertEquals("deadbeef1234", acct.pubkeyHex)    // pubkey_hex → pubkeyHex
+        assertEquals("sha256:abc123def4567890", acct.fingerprint)
         assertEquals("Test User", acct.displayName)     // display_name → displayName
         assertEquals("local_key", acct.mode)
         assertEquals("https://example.com/avatar.jpg", acct.pictureUrl) // picture_url

@@ -13,6 +13,8 @@ pub struct AccountSummary {
     /// for display. Hosts must use this field for signing, profile lookup,
     /// filter construction, allowlists, and account removal.
     pub pubkey_hex: String,
+    /// Short stable account fingerprint derived from SHA-256(pubkey bytes).
+    pub fingerprint: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display_name: Option<String>,
     pub mode: String,

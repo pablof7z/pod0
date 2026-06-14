@@ -958,6 +958,8 @@ struct AccountSummary: Codable {
     /// Lowercase 64-hex pubkey. This is the canonical account id; `npub` is
     /// for display.
     var pubkeyHex: String
+    /// Short stable account fingerprint derived by Rust from SHA-256(pubkey bytes).
+    var fingerprint: String? = nil
     var displayName: String? = nil
     var mode: String
     var pictureUrl: String? = nil

@@ -1,5 +1,4 @@
 import SwiftUI
-import CryptoKit
 
 // MARK: - AccountDetailsView
 //
@@ -112,22 +111,7 @@ struct AccountDetailsView: View {
         }
     }
 
-    /// First 16 hex chars of SHA-256(pubkey-bytes). Stable, short, useful
-    /// for distinguishing accounts when multi-account lands in v2.
-    ///
-    /// Hashes the **decoded byte payload**, not the hex string's UTF-8.
-    /// Hashing the ASCII hex (the previous behaviour) meant the
-    /// fingerprint depended on the case of the hex characters — two
-    /// callers that surface the same pubkey in different case would
-    /// see different fingerprints. The decoded-bytes path is also what
-    /// any other Nostr client computing a key fingerprint will agree
-    /// with, in case we ever surface this for cross-app verification.
     private var fingerprintLine: String {
-        guard let hex = identity.publicKeyHex,
-              let bytes = Data(hexString: hex)
-        else { return "—" }
-        let digest = SHA256.hash(data: bytes)
-        let prefix = digest.prefix(8).map { String(format: "%02x", $0) }.joined()
-        return "sha256:\(prefix)"
+        store.kernel?.podcastSnapshot?.activeAccount?.fingerprint ?? "—"
     }
 }

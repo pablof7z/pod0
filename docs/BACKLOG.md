@@ -75,10 +75,13 @@ worktrees currently in flight.
 - ~~**compat-domain-stubs-delete.**~~ REMOVED — referenced path does not exist at origin/main.
 - ~~**compat-kernelmodel-delete.**~~ REMOVED — referenced path does not exist at origin/main.
 - ~~**compat-useridentity-delete.**~~ REMOVED — referenced path does not exist at origin/main.
-- **identity-kernel-actions.** Implement Rust-owned identity actions:
-  import nsec, generate, clear, publish profile, connect/disconnect remote
-  signer, connect via nostrconnect, cancel handshake, and expose fingerprint
-  data in `AccountSummary`.
+- ~~**identity-kernel-actions.**~~ Done in this PR. The active Swift and
+  Android identity flows dispatch kernel-owned import nsec, generate, clear,
+  publish profile, bunker connect/disconnect, nostrconnect, and cancel-handshake
+  paths. `AccountSummary` now also carries the Rust-derived short fingerprint
+  (`sha256:` + first 16 hex chars of SHA-256 over decoded pubkey bytes), and
+  the iOS account details screen renders that projection instead of hashing in
+  Swift.
 - **settings-provider-ownership.** Move OpenRouter mode, BYOK-imported
   credentials metadata, provider settings, and onboarding gate decisions into
   Rust-owned settings projections/actions. Delete Keychain-only UI fallbacks

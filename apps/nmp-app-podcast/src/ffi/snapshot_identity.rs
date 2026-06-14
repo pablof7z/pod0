@@ -1,6 +1,7 @@
 use super::handle::PodcastHandle;
 use super::projections::AccountSummary;
 use crate::store::identity::IdentityStore;
+use std::fmt::Write;
 
 /// Mode token for an account whose secret key lives inside this app's
 /// [`IdentityStore`] (the `podcast.identity ImportNsec` / generate path).
@@ -115,9 +116,11 @@ fn read_kernel_active_account(handle: &PodcastHandle) -> Option<String> {
 fn local_key_summary(id: &IdentityStore) -> Option<AccountSummary> {
     let npub = id.npub.as_ref()?;
     let pubkey_hex = id.pubkey_hex.as_ref()?;
+    let fingerprint = account_fingerprint(pubkey_hex)?;
     Some(AccountSummary {
         npub: npub.clone(),
         pubkey_hex: pubkey_hex.clone(),
+        fingerprint,
         mode: MODE_LOCAL_KEY.into(),
         display_name: id.display_name.clone(),
         picture_url: id.picture_url.clone(),
@@ -131,9 +134,11 @@ fn local_key_summary(id: &IdentityStore) -> Option<AccountSummary> {
 /// (degrades silently per D6 rather than surfacing a malformed account).
 fn external_account_summary(active_hex: &str) -> Option<AccountSummary> {
     let npub = npub_from_hex(active_hex)?;
+    let fingerprint = account_fingerprint(active_hex)?;
     Some(AccountSummary {
         npub,
         pubkey_hex: active_hex.to_string(),
+        fingerprint,
         mode: MODE_NIP55.into(),
         display_name: None,
         picture_url: None,
@@ -150,6 +155,24 @@ fn npub_from_hex(hex: &str) -> Option<String> {
     pubkey.to_bech32().ok()
 }
 
+/// Derive the stable short account fingerprint surfaced to every host.
+///
+/// The hash input is the decoded 32-byte Nostr public key, not the UTF-8 hex
+/// string. That keeps the value independent of hex casing and aligned with
+/// clients that fingerprint the key payload itself.
+fn account_fingerprint(hex: &str) -> Option<String> {
+    use sha2::{Digest, Sha256};
+
+    let pubkey = nostr::PublicKey::parse(hex).ok()?;
+    let digest = Sha256::digest(pubkey.as_bytes());
+    let mut fingerprint = String::with_capacity("sha256:".len() + 16);
+    fingerprint.push_str("sha256:");
+    for byte in digest.iter().take(8) {
+        write!(&mut fingerprint, "{byte:02x}").ok()?;
+    }
+    Some(fingerprint)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -158,11 +181,13 @@ mod tests {
     const TEST_PUBKEY_HEX: &str =
         "c7f5c9fc41894086a2fd8c3e542c1d6e6beeb2175ba41813de38bd02936bd4ff";
     const TEST_NPUB: &str = "npub1cl6unlzp39qgdgha3sl9gtqade47avshtwjpsy778z7s9ymt6nls2thmtl";
+    const TEST_FINGERPRINT: &str = "sha256:cf09e55b002a2b12";
 
     // The Amber test key proven on the emulator (see PR #417 evidence).
     const AMBER_PUBKEY_HEX: &str =
         "d6070609432b666c51677f606a0961e5f40730fe44b1c3bbd7ce29d5fa25b0a6";
     const AMBER_NPUB: &str = "npub16crsvz2r9dnxc5t80asx5ztpuh6qwv87gjcu8w7hec5at739kznqzxadlu";
+    const AMBER_FINGERPRINT: &str = "sha256:72573f81ed78740b";
 
     fn local_store_with_key() -> IdentityStore {
         let mut identity = IdentityStore::new();
@@ -179,6 +204,7 @@ mod tests {
         let account = local_key_summary(&identity).expect("active account");
         assert_eq!(account.pubkey_hex, TEST_PUBKEY_HEX);
         assert_eq!(account.npub, TEST_NPUB);
+        assert_eq!(account.fingerprint, TEST_FINGERPRINT);
         assert_eq!(account.display_name.as_deref(), Some("Pod0 User"));
         assert_eq!(account.mode, MODE_LOCAL_KEY);
     }
@@ -200,6 +226,7 @@ mod tests {
         let account = external_account_summary(AMBER_PUBKEY_HEX).expect("external account");
         assert_eq!(account.pubkey_hex, AMBER_PUBKEY_HEX);
         assert_eq!(account.npub, AMBER_NPUB);
+        assert_eq!(account.fingerprint, AMBER_FINGERPRINT);
         assert_eq!(account.mode, MODE_NIP55);
         assert!(account.display_name.is_none());
         assert!(account.picture_url.is_none());
@@ -215,6 +242,19 @@ mod tests {
     fn npub_from_hex_round_trips_amber_key() {
         assert_eq!(npub_from_hex(AMBER_PUBKEY_HEX).as_deref(), Some(AMBER_NPUB));
         assert_eq!(npub_from_hex(TEST_PUBKEY_HEX).as_deref(), Some(TEST_NPUB));
+    }
+
+    #[test]
+    fn account_fingerprint_hashes_pubkey_bytes_not_hex_text() {
+        assert_eq!(
+            account_fingerprint(TEST_PUBKEY_HEX).as_deref(),
+            Some(TEST_FINGERPRINT)
+        );
+        assert_eq!(
+            account_fingerprint(&TEST_PUBKEY_HEX.to_uppercase()).as_deref(),
+            Some(TEST_FINGERPRINT)
+        );
+        assert!(account_fingerprint("not-hex").is_none());
     }
 
     // ---- resolution policy (the real decision path) -----------------------

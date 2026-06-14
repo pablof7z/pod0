@@ -43,6 +43,7 @@ extension KernelModel {
         // Misc
         h.combine(update.toast)
         h.combine(update.activeAccount?.pubkeyHex)
+        h.combine(update.activeAccount?.fingerprint)
 
         // Downloads (state, not progress)
         h.combine(update.downloads?.active.count)
