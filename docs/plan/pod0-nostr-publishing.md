@@ -2,7 +2,7 @@
 
 Canonical status: tracked from `docs/plan.md` and `docs/BACKLOG.md`.
 
-## Current Status - 2026-06-03
+## Current Status - 2026-06-14
 
 NIP-F4 publishing is **substantially complete**. The following are done:
 - Per-podcast secp256k1 key generation + file-backed persistence (`podcast-keys.json`, atomic write, reload on restart, cleanup on delete)
@@ -11,8 +11,10 @@ NIP-F4 publishing is **substantially complete**. The following are done:
 - Blossom audio upload for episode events (with RSS enclosure fallback)
 - Author claims (kind:10064) signed with agent key and published to relay
 - kind:10154 show discovery via NMP relay pool (`NostrDiscoveryObserver` + `EnsureInterest`)
+- feedless kind:54 episode fetch via NMP relay pool (`SubscribeNostr` +
+  `push_interest_via_nmp` + `NostrEpisodesObserver`)
 
-The remaining work is:
+The remaining NIP-F4 work is:
 
 The repo still has stale code names and old parser paths (`NIP74Show`,
 `NIP74Episode`, `parse_episode_event`, and related comments/tests) alongside
@@ -48,13 +50,12 @@ or explicitly quarantined as a read-only compatibility path.
 - `apps/nmp-app-podcast/src/store/podcast_keys.rs` now uses
   `nostr::Keys::generate()` / secp256k1 key material for per-podcast pubkey
   derivation.
+- `apps/nmp-app-podcast/src/nostr_episodes.rs` now subscribes to kind:54
+  events by podcast pubkey through NMP's relay pool and upserts inbound
+  feedless episodes into the shared podcast store.
 
 ## Remaining Work
 
-- **kind:54 episode fetch by pubkey via relay.** When a user subscribes to a
-  Nostr-only podcast (no RSS `feed_url`), episodes must be fetched by querying
-  kind:54 events with `authors: [podcast_pubkey]` via the NMP relay pool. RSS
-  podcasts discovered via NIP-F4 are unaffected (existing subscribe path).
 - **Hardcoded relay URL.** `dispatch_nostr_relay` publishes to
   `wss://relay.primal.net` only. Should read the app's configured write relays.
   Currently a no-op because primal.net is the only configured write relay.
@@ -65,10 +66,9 @@ or explicitly quarantined as a read-only compatibility path.
 
 ## Next Steps
 
-1. Implement kind:54 episode fetch by podcast pubkey via NMP relay pool (same `EnsureInterest` + `KernelEventObserver` pattern as kind:10154 discovery).
-2. Fix `dispatch_nostr_relay` to read configured write relays instead of hardcoding primal.net.
-3. Validate end-to-end on device: publish a show, confirm relay returns `"published"`, fetch it back.
-4. Clean up `NIP74Show`/`NIP74Episode` naming in `podcast-discovery`.
+1. Fix `dispatch_nostr_relay` to read configured write relays instead of hardcoding primal.net.
+2. Validate end-to-end on device: publish a show, confirm relay returns `"published"`, fetch it back.
+3. Clean up `NIP74Show`/`NIP74Episode` naming in `podcast-discovery`.
 
 ## Done Criteria
 

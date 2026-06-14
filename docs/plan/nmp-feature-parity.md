@@ -55,8 +55,11 @@ completion, not absence of all infrastructure.
 - **D8 reactivity <= 60 Hz:** current polling/content-hash improvements reduce
   churn, but full push delivery through the NMP update sink remains open.
 - **NIP-F4 is canonical:** PR #89 corrected the active NIP-F4 builders/parsers to
-  the canonical wire shape. Relay publish/discovery, author claims, and terminology
-  still need validation before this doctrine check can be marked satisfied.
+  the canonical wire shape, and the active Rust path now signs/publishes shows,
+  episodes, and author claims while relay-backed discovery covers both kind:10154
+  shows and feedless kind:54 episodes. Remaining NIP-F4 work is relay routing
+  policy (`dispatch_nostr_relay` still hardcodes primal.net), durable retry, and
+  stale NIP74 naming cleanup.
 
 ## Core PR Sequence Status
 
@@ -67,7 +70,7 @@ completion, not absence of all infrastructure.
 | PR 3 - Full player | Partial | Validate lock-screen metadata, remote commands, queue transitions, sleep timer, speed, position persistence, download-local playback, and AirPlay/route behavior. Fix any remaining iOS-side policy decisions. |
 | PR 4 - Identity | Partial | Finish Rust-owned identity actions, Keychain-backed credential replacement, NIP-46 pairing state, profile publishing, fingerprint/account metadata projection, and removal of `UserIdentityStore` compat surfaces. |
 | PR 5 - Downloads/auto-download | Partial | Rust now projects active/queued/paused/failed queue state and starts the next queued item from reports. Remaining: make offline-first playback explicit, validate background URLSession restore, and add deletion/auto-download regression coverage. |
-| PR 6 - NIP-F4 | Partial/Scaffold | Wire tags and real pubkey derivation are corrected. Still implement persisted per-podcast secrets, signing, relay publish, relay-backed episode fetch, author claims, and deletion cleanup. See `docs/plan/pod0-nostr-publishing.md`. |
+| PR 6 - NIP-F4 | Partial | Wire tags, real pubkey derivation, persisted per-podcast secrets, signing, relay publish, author claims, deletion cleanup, and relay-backed kind:10154/kind:54 discovery are implemented. Remaining: configured write-relay routing, durable retry, and stale NIP74 naming cleanup. See `docs/plan/pod0-nostr-publishing.md`. |
 | PRs 7-N - AI/platform | Scaffold/Partial | Treat each merged surface as a starting point. Replace heuristics/placeholders with real provider, knowledge, relay, scheduling, and platform logic before marking any feature done. |
 
 ## Feature Parity Matrix
@@ -106,7 +109,7 @@ completion, not absence of all infrastructure.
 | 23 | NIP-46 remote signer | Partial | Broker wiring exists; finish live handshake, nostrconnect URI lifecycle, cancellation, error states, and account projection. |
 | 24 | Profile editing + kind:0 publish | Partial | Current local `@AppStorage` fallback must become Rust/Nostr-owned profile publish plus relay confirmation/profile cache hydration. |
 | 25 | NIP-65 relay list | Partial | UI exists; persist/read via NMP substrate relay-list store, publish real list, and remove `@AppStorage` seed fallback. |
-| 26 | NIP-F4 discovery | Partial | kind:10154 show discovery is relay-backed via `NostrDiscoveryObserver` + `EnsureInterest` (NMP relay pool, not HTTP socket). Remaining: kind:54 episode fetch by podcast pubkey via relay for Nostr-only podcasts without RSS. |
+| 26 | NIP-F4 discovery | Done | kind:10154 show discovery is relay-backed via `NostrDiscoveryObserver` + `EnsureInterest`, and feedless Nostr-only subscription opens a kind:54 author-filtered relay interest through `SubscribeNostr`/`NostrEpisodesObserver`. RSS-backed NIP-F4 shows still use the existing feed subscribe path. |
 | 27 | NIP-F4 publish owned shows | Partial | Signing (real secp256k1), file-backed key persistence, relay dispatch, author claims, and key cleanup on delete are all implemented. Remaining: relay URL is hardcoded to primal.net; no durable retry queue on relay rejection. |
 | 28 | NIP-F4 publish episodes | Partial | Signing, Blossom upload (with enclosure fallback), and relay dispatch are implemented. Same relay-URL hardcode caveat as #27. |
 | 29 | Nostr episode comments | Scaffold | Replace `nostr_relay_pending` stubs with kind-1111 relay subscribe/publish and map local `EpisodeId` to NIP-73 podcast item anchors. |
@@ -155,7 +158,7 @@ completion, not absence of all infrastructure.
 
 ## Immediate Priority Order
 
-1. NIP-F4 secret persistence, signing, relay publish/discovery, and author claims.
+1. Finish remaining NIP-F4 hardening: configured write-relay routing, durable retry, stale NIP74 naming cleanup, and device validation.
 2. iOS validation gate: broaden Swift test coverage now that the focused NIP-46 test and AppIntents compile blockers are cleared.
 3. Remaining compat shims and identity/settings ownership.
 4. Capability push/routing cleanup and validation gate.

@@ -11,7 +11,12 @@ worktrees currently in flight.
   `d`/`a`/`published_at`/`imeta` tags; round-trip tests verify absence.
 - ~~**p0-nipf4-real-keys.**~~ Done: file-backed persistence to `podcast-keys.json` (atomic write/rename), reload on restart, key cleanup on `remove_owned_podcast`. Keychain migration deferred indefinitely — file storage is the canonical path.
 - ~~**p0-nipf4-sign-and-publish.**~~ Done: `sign_event` produces real secp256k1-signed events with valid `id`/`pubkey`/`sig`; `dispatch_nostr_relay` publishes to `relay.primal.net` and returns `"published"` on relay acceptance. Relay URL is hardcoded but matches the only configured write relay. `relay_pending` status removed.
-- **p0-nipf4-relay-discovery.** kind:10154 show discovery via relay IS wired (`NostrDiscoveryObserver` + `EnsureInterest` pattern; relay pool, not HTTP socket). Remaining: kind:54 episode fetch by podcast pubkey via relay (Nostr-only podcasts without RSS). HTTP gateway search remains a convenience path.
+- ~~**p0-nipf4-relay-discovery.**~~ Done: kind:10154 show discovery
+  uses `NostrDiscoveryObserver` + `EnsureInterest` through the NMP relay pool,
+  and feedless NIP-F4 subscription dispatches `SubscribeNostr`, opens a kind:54
+  author-filtered interest through `push_interest_via_nmp`, then upserts
+  inbound episodes via `NostrEpisodesObserver`. HTTP gateway search remains a
+  convenience path; the Nostr-only subscribe path no longer depends on RSS.
 - ~~**p0-nipf4-author-claim.**~~ Done: `publish_author_claim` signs with active agent key and publishes kind:10064. Called after create/update/delete of owned podcasts.
 - **p0-plan-truthfulness.** Keep `docs/plan.md`,
   `docs/plan/nmp-feature-parity.md`, and this backlog synchronized with code.
@@ -842,7 +847,6 @@ worktrees currently in flight.
   inter-batch pacing, and the pending-episode scan), or write an ADR documenting
   why the embeddings utility is intentionally shell-owned. Surfaced in the
   2026-06-11 NMP architecture audit.
-- **provider-credential-connected-at-kernel-time.** Fixed in PR fix/connected-at-kernel-time (merged 2026-06-14): kernel stamps `connected_at` via `chrono::Utc::now().timestamp()` in `settings_actions.rs`; `epochSeconds()` removed from Android `ProviderCredentialActions.kt`; `connectedAt: Date()` parameter removed from iOS `Settings+Helpers.swift`; field dropped from both shell action payloads. D9 violation closed. **DONE — remove this line after PR merges.**
 - **feed-not-modified-rev-bump.** `apps/nmp-app-podcast/src/host_op_handler/podcast_actions_feed.rs`
   (`:175`–`:182`) handles a `304 NotModified` feed refresh by updating
   etag/last-modified via `update_refresh_metadata` and then unconditionally
