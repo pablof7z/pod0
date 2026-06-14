@@ -48,9 +48,10 @@ import kotlinx.coroutines.delay
  *     `{"op":"search_itunes","query":…}` to the `podcast` namespace.
  *  2. Results arrive on `snapshot.searchResults` (a `List<PodcastSummary>`,
  *     each row carrying `feedUrl` + `artworkUrl` + `author`).
- *  3. The subscribe button dispatches `{"op":"subscribe","feed_url":…}`. The
- *     screen then watches `snapshot.subscriptions` for a row whose `feedUrl`
- *     matches the one it subscribed; when it appears, [onSubscribed] navigates
+ *  3. The subscribe button normalizes valid HTTP(S) feed URLs, then dispatches
+ *     `{"op":"subscribe","feed_url":…}`. The screen then watches
+ *     `snapshot.subscriptions` for a row whose normalized `feedUrl` matches
+ *     the one it subscribed; when it appears, [onSubscribed] navigates
  *     to the show-detail surface.
  *  4. Tapping a result row (anywhere but the button) calls [onResultTapped]
  *     for the host to push a detail surface.
@@ -88,7 +89,9 @@ fun SearchScreen(
     val subscriptions = snapshot?.subscriptions.orEmpty()
     LaunchedEffect(pendingFeedUrl, subscriptions) {
         val feed = pendingFeedUrl ?: return@LaunchedEffect
-        subscriptions.firstOrNull { it.feedUrl == feed }?.let { show ->
+        subscriptions.firstOrNull {
+            FeedUrlNormalizer.normalizedFeedUrl(it.feedUrl) == feed
+        }?.let { show ->
             pendingFeedUrl = null
             onSubscribed(show.id)
         }
@@ -115,7 +118,8 @@ fun SearchScreen(
                 results = results,
                 pendingFeedUrl = pendingFeedUrl,
                 onSubscribe = { show ->
-                    val feed = show.feedUrl ?: return@SearchResultList
+                    val feed = FeedUrlNormalizer.normalizedFeedUrl(show.feedUrl)
+                        ?: return@SearchResultList
                     pendingFeedUrl = feed
                     PodcastActionDispatcher.dispatch(
                         bridge = bridge,
@@ -143,9 +147,11 @@ private fun SearchResultList(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(results, key = { it.id }) { show ->
+            val normalizedFeedUrl = FeedUrlNormalizer.normalizedFeedUrl(show.feedUrl)
             SearchResultRow(
                 show = show,
-                isSubscribing = pendingFeedUrl != null && pendingFeedUrl == show.feedUrl,
+                isSubscribing = pendingFeedUrl != null && pendingFeedUrl == normalizedFeedUrl,
+                canSubscribe = normalizedFeedUrl != null,
                 onSubscribe = { onSubscribe(show) },
                 onTap = { onResultTapped(show) },
             )
@@ -157,6 +163,7 @@ private fun SearchResultList(
 private fun SearchResultRow(
     show: PodcastSummary,
     isSubscribing: Boolean,
+    canSubscribe: Boolean,
     onSubscribe: () -> Unit,
     onTap: () -> Unit,
 ) {
@@ -190,7 +197,7 @@ private fun SearchResultRow(
         }
         Button(
             onClick = onSubscribe,
-            enabled = !isSubscribing && show.feedUrl != null,
+            enabled = !isSubscribing && canSubscribe,
         ) {
             if (isSubscribing) {
                 CircularProgressIndicator(
