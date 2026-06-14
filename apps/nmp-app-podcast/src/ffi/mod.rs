@@ -52,6 +52,8 @@ mod openrouter_whisper;
 mod perplexity_search;
 pub mod projections;
 #[cfg(test)]
+mod platform_bridge_tests;
+#[cfg(test)]
 mod projections_tests;
 #[cfg(test)]
 mod projections_tests_ext;

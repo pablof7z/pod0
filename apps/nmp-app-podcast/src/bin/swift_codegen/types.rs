@@ -142,3 +142,74 @@ pub struct Struct {
     pub fields: Vec<Field>,
     pub doc: Option<&'static str>,
 }
+
+// ── Platform type manifests ────────────────────────────────────────────────────
+//
+// Source of truth for `PodcastPlatformTypes.generated.swift`.
+//
+// `WidgetSnapshot` — embedded in `PodcastUpdate` (and `WidgetDomainFrame`),
+// decoded by the bridge with `.convertFromSnakeCase`.  NO explicit CodingKeys —
+// the synthesised camelCase names are exactly what the strategy produces.
+// Acronym rule: Rust `artwork_url` → `.convertFromSnakeCase` → `artworkUrl`
+// (all-lowercase after the first character of each word), NOT `artworkURL`.
+//
+// `HandoffState` — constructed in Swift, NOT decoded from Rust JSON via the
+// bridge decoder. Carries explicit snake_case `CodingKeys` for the two fields
+// whose Swift names use uppercase-acronym suffixes (`episodeID`, `podcastID`)
+// that `.convertFromSnakeCase` would map differently (`Id` vs `ID`). The
+// `coding_key_override` mechanic documents this explicitly.
+//
+// Source of truth:
+//   apps/nmp-app-podcast/src/ffi/projections/platform.rs — WidgetSnapshot
+//   apps/podcast-core/src/types/handoff.rs               — HandoffState
+
+/// Manifest for `WidgetSnapshot`.
+///
+/// All fields are camelCase (synthesised keys, no explicit CodingKeys).
+/// Decoded embedded in `PodcastUpdate` via `.convertFromSnakeCase`.
+pub fn widget_snapshot_fields() -> Vec<Field> {
+    vec![
+        Field::opt("nowPlayingEpisodeTitle", "String")
+            .with_doc("Title of the active episode, when one is loaded."),
+        Field::opt("nowPlayingPodcastTitle", "String")
+            .with_doc("Title of the podcast/show the active episode belongs to."),
+        Field::opt("nowPlayingArtworkUrl", "String")
+            .with_doc("Artwork URL (episode-level preferred, falls back to show). \
+                       Rust: `now_playing_artwork_url` → camelCase `nowPlayingArtworkUrl` \
+                       (NOT `artworkURL` — `.convertFromSnakeCase` lowercases acronyms)."),
+        Field::opt("nowPlayingChapterTitle", "String")
+            .with_doc("Active chapter title at the playhead; nil for chapter-less episodes."),
+        Field::default_val("isPlaying", "Bool", "false")
+            .with_doc("`true` while playback is engaged."),
+        Field::default_val("positionFraction", "Float", "0")
+            .with_doc("Pre-computed progress fraction 0.0..=1.0."),
+        Field::default_val("positionSecs", "Double", "0")
+            .with_doc("Current playhead in seconds."),
+        Field::default_val("durationSecs", "Double", "0")
+            .with_doc("Track duration in seconds; 0 until reported."),
+        Field::default_val("unplayedCount", "Int", "0")
+            .with_doc("Unplayed episode count across subscribed shows."),
+    ]
+}
+
+/// Manifest for `HandoffState`.
+///
+/// Uses explicit `CodingKeys` for the two fields whose Swift names use
+/// uppercase-acronym suffixes (`episodeID`, `podcastID`) that the
+/// `.convertFromSnakeCase` strategy would otherwise map to `Id` (lowercase d).
+/// Source: apps/podcast-core/src/types/handoff.rs.
+pub fn handoff_state_fields() -> Vec<Field> {
+    vec![
+        Field::required("activityType", "String")
+            .with_doc("`io.f7z.podcast.playing` or `io.f7z.podcast.browsing`."),
+        Field::opt("episodeID", "String")
+            .with_key("episode_id")
+            .with_doc("Episode identifier; present for the `playing` activity."),
+        Field::opt("podcastID", "String")
+            .with_key("podcast_id")
+            .with_doc("Podcast identifier; present for `browsing` activity."),
+        Field::opt("positionSecs", "Double")
+            .with_key("position_secs")
+            .with_doc("Playhead position in seconds; present when activity is `playing`."),
+    ]
+}
