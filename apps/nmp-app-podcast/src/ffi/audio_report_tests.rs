@@ -6,6 +6,7 @@ use super::*;
 use podcast_core::{Episode, Podcast, PodcastId};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 use url::Url;
 use uuid::Uuid;
 
@@ -408,4 +409,92 @@ fn item_end_serde_round_trips() {
     assert!(json.contains("\"type\":\"item_end\""));
     let decoded: AudioReport = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded, report);
+}
+// maybe_auto_advance: stage-and-dispatch atomicity (D6 null-app guard).
+fn make_handle_for_advance(store: Arc<Mutex<crate::store::PodcastStore>>) -> Box<crate::ffi::handle::PodcastHandle> {
+    use std::collections::HashMap;
+    use std::sync::atomic::AtomicU64;
+    let rev = Arc::new(AtomicU64::new(1));
+    let identity = Arc::new(Mutex::new(crate::store::identity::IdentityStore::new()));
+    let feedback = nmp_feedback::FeedbackRuntime::new(
+        nmp_feedback::FeedbackConfig::new(crate::PODCAST_FEEDBACK_PROJECT_COORDINATE)
+            .with_interest_namespace(crate::PODCAST_FEEDBACK_INTEREST_NAMESPACE),
+        Arc::new(Mutex::new(Vec::new())),
+        rev.clone(),
+    );
+    let state = Arc::new(crate::state::PodcastAppState::new_with_identity(
+        crate::state::Infra::for_test_with_rev(rev.clone()),
+        store.clone(),
+        identity.clone(),
+        feedback,
+    ));
+    Box::new(crate::ffi::handle::PodcastHandle {
+        app: std::ptr::null_mut(),
+        state,
+        responder_cache: Arc::new(Mutex::new(crate::store::agent_note_responder_cache::ResponderCache::default())),
+        outbound_turn_cache: Arc::new(Mutex::new(crate::store::outbound_turn_cache::OutboundTurnCache::new())),
+        approved_peer_store: Arc::new(Mutex::new(crate::store::approved_peer_store::ApprovedPeerStore::new())),
+        snapshot_cache: Arc::new(Mutex::new(None)),
+        clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
+    })
+}
+
+fn actor_episode_id(handle: &crate::ffi::handle::PodcastHandle) -> Option<String> {
+    handle.state.playback.player.lock().unwrap().state().episode_id.clone()
+}
+
+/// Happy-path: `maybe_auto_advance` must stage the next episode on the actor.
+///
+/// Before the fix, staging was in a separate guarded block from the dispatch —
+/// on a poisoned lock, staging was skipped but dispatch still fired, leaving
+/// `episode_id` as `None` while playback started (position never persists).
+#[test]
+fn auto_advance_stages_next_episode_on_actor() {
+    let store = Arc::new(Mutex::new(crate::store::PodcastStore::new()));
+    let podcast = podcast_core::Podcast::new("Auto-advance Show");
+    let pid = podcast.id;
+    let ep1 = make_episode(pid, "Episode 1");
+    let ep2 = make_episode(pid, "Episode 2");
+    let ep2_id = ep2.id.0.to_string();
+    store.lock().unwrap().subscribe(podcast, vec![ep1, ep2]);
+    let handle = make_handle_for_advance(store.clone());
+    handle.state.playback.player.lock().unwrap().set_auto_play_next(true);
+    handle.state.playback.queue.lock().unwrap().add_to_end(&ep2_id);
+    maybe_auto_advance(&handle);
+    assert_eq!(
+        actor_episode_id(&handle),
+        Some(ep2_id.to_lowercase()),
+        "auto-advance must stage the next episode on the actor"
+    );
+}
+
+/// Empty-queue: `maybe_auto_advance` must return early — no staging, no
+/// dispatch.  With a null `app` pointer the pre-fix unconditional dispatch
+/// path would crash (no D6 guard in the free functions).
+#[test]
+fn auto_advance_no_op_when_queue_is_empty() {
+    let store = Arc::new(Mutex::new(crate::store::PodcastStore::new()));
+    let podcast = podcast_core::Podcast::new("Single Show");
+    let pid = podcast.id;
+    store.lock().unwrap().subscribe(podcast, vec![make_episode(pid, "Only")]);
+    let handle = make_handle_for_advance(store.clone());
+    handle.state.playback.player.lock().unwrap().set_auto_play_next(true);
+    maybe_auto_advance(&handle); // must not crash or stage anything
+    assert_eq!(actor_episode_id(&handle), None);
+}
+
+/// `auto_play_next = false`: the flag gate must prevent staging and dispatch.
+#[test]
+fn auto_advance_no_op_when_auto_play_next_disabled() {
+    let store = Arc::new(Mutex::new(crate::store::PodcastStore::new()));
+    let podcast = podcast_core::Podcast::new("No-advance Show");
+    let pid = podcast.id;
+    let ep2 = make_episode(pid, "Ep 2");
+    let ep2_id = ep2.id.0.to_string();
+    store.lock().unwrap().subscribe(podcast, vec![make_episode(pid, "Ep 1"), ep2]);
+    let handle = make_handle_for_advance(store.clone());
+    handle.state.playback.player.lock().unwrap().set_auto_play_next(false);
+    handle.state.playback.queue.lock().unwrap().add_to_end(&ep2_id);
+    maybe_auto_advance(&handle);
+    assert_eq!(actor_episode_id(&handle), None);
 }

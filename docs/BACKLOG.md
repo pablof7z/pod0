@@ -863,20 +863,12 @@ worktrees currently in flight.
   or route conditional-GET metadata through a metadata-only path that does not
   participate in the snapshot rev. Surfaced in the 2026-06-11 NMP architecture
   audit.
-- **auto-advance-actor-stage-resilience.** In
-  `apps/nmp-app-podcast/src/ffi/audio_report.rs`, `maybe_auto_advance`
-  (`:263`–`:307`) pops the next episode from the canonical queue and resolves its
-  playback info, then stages it on the player actor under
-  `if let Ok(mut actor) = handle.player_actor.lock() { actor.stage_load(...) }`
-  (`:280`). On a lock failure (poison-only, near-theoretical) the `stage_load`
-  is silently skipped, but the `Load` + `Play` dispatch at `:285`–`:289` still
-  fire — leaving the actor with no staged record for the now-playing episode.
-  That is the same symptom class as the fixed lock-screen-play bug: position
-  never persists and the episode is never marked played. Cheap hardening:
-  acquire the actor lock before popping the queue, or fold the staging into the
-  same lock acquisition as the `auto_play_next` read at `:245`, so the staged
-  record and the dispatched Load can never diverge. Surfaced in the 2026-06-11
-  NMP architecture audit.
+- ~~**auto-advance-actor-stage-resilience.**~~ Fixed: `maybe_auto_advance`
+  now acquires the actor lock atomically with staging — if staging fails (lock
+  poisoned), Load+Play are not dispatched. `dispatch_audio_cmd` and
+  `dispatch_download_cmd` gained D6 null-app guards (matching
+  `PodcastHostOpHandler::dispatch_audio`). Three behavioral tests added to
+  `audio_report_tests.rs`. PR: `fix/auto-advance-stage-divergence`.
 
 ## Pending Decisions
 

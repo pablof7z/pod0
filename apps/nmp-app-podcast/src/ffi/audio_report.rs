@@ -283,9 +283,18 @@ fn maybe_auto_advance(handle: &PodcastHandle) {
         // Stale head already popped; continue to the next entry.
     };
 
-    // Stage the new load on the actor (guard released before next lock).
-    if let Ok(mut actor) = handle.state.playback.player.lock() {
-        actor.stage_load(&episode_id, Some(podcast_id), &url, position_secs);
+    // Stage the new load on the actor and dispatch Load + Play atomically:
+    // both must happen together or not at all. If the actor lock is poisoned
+    // we cannot record the staged episode (position will never persist, the
+    // episode will never be marked played), so we bail entirely rather than
+    // starting playback in an unrecorded state. This mirrors the doctrine
+    // applied to the lock-screen-play divergence: stage-and-dispatch are one
+    // atomic decision; an unrecordable advance is better skipped than started.
+    match handle.state.playback.player.lock() {
+        Ok(mut actor) => {
+            actor.stage_load(&episode_id, Some(podcast_id), &url, position_secs);
+        }
+        Err(_) => return, // poisoned lock — bail before dispatching Load/Play
     }
 
     // Dispatch Load + Play. Failures degrade silently per D6.
@@ -317,6 +326,11 @@ fn maybe_auto_advance(handle: &PodcastHandle) {
 }
 
 fn dispatch_audio_cmd(handle: &PodcastHandle, cmd: &AudioCommand) {
+    // D6: a null/uninitialized app pointer (unit tests, pre-`nmp_app_start`)
+    // degrades to a no-op rather than dereferencing null.
+    if handle.app.is_null() {
+        return;
+    }
     let payload_json = match serde_json::to_string(cmd) {
         Ok(j) => j,
         Err(_) => return,
@@ -330,6 +344,11 @@ fn dispatch_audio_cmd(handle: &PodcastHandle, cmd: &AudioCommand) {
 }
 
 fn dispatch_download_cmd(handle: &PodcastHandle, cmd: &DownloadCommand) {
+    // D6: a null/uninitialized app pointer (unit tests, pre-`nmp_app_start`)
+    // degrades to a no-op rather than dereferencing null.
+    if handle.app.is_null() {
+        return;
+    }
     let payload_json = match serde_json::to_string(cmd) {
         Ok(j) => j,
         Err(_) => return,
