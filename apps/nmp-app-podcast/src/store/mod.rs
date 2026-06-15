@@ -214,9 +214,9 @@ pub struct PodcastStore {
     pub(super) chapter_compilation_model: String,
     /// Human-readable name for `chapter_compilation_model`. Default: "DeepSeek Flash".
     pub(super) chapter_compilation_model_name: String,
-    /// LLM model ID for embeddings generation. Default: "deepseek-v4-flash:cloud".
+    /// LLM model ID for embeddings generation. Default: "openai/text-embedding-3-large".
     pub(super) embeddings_model: String,
-    /// Human-readable name for `embeddings_model`. Default: "DeepSeek Flash".
+    /// Human-readable name for `embeddings_model`. Default: "text-embedding-3-large".
     pub(super) embeddings_model_name: String,
     /// LLM model ID for image generation. Default: "google/gemini-2.5-flash-image".
     pub(super) image_generation_model: String,
@@ -372,8 +372,8 @@ impl PodcastStore {
             categorization_model_name: "DeepSeek Flash".to_owned(),
             chapter_compilation_model: "deepseek-v4-flash:cloud".to_owned(),
             chapter_compilation_model_name: "DeepSeek Flash".to_owned(),
-            embeddings_model: "deepseek-v4-flash:cloud".to_owned(),
-            embeddings_model_name: "DeepSeek Flash".to_owned(),
+            embeddings_model: "openai/text-embedding-3-large".to_owned(),
+            embeddings_model_name: "text-embedding-3-large".to_owned(),
             image_generation_model: "google/gemini-2.5-flash-image".to_owned(),
             image_generation_model_name: "Gemini 2.5 Flash".to_owned(),
             reranker_enabled: false,

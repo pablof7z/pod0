@@ -129,12 +129,12 @@ impl PodcastStore {
         self.persist();
     }
 
-    /// LLM model ID for embeddings generation. Default "deepseek-v4-flash:cloud".
+    /// LLM model ID for embeddings generation. Default "openai/text-embedding-3-large".
     pub fn embeddings_model(&self) -> &str {
         &self.embeddings_model
     }
 
-    /// Human-readable name for the embeddings model. Default "DeepSeek Flash".
+    /// Human-readable name for the embeddings model. Default "text-embedding-3-large".
     pub fn embeddings_model_name(&self) -> &str {
         &self.embeddings_model_name
     }

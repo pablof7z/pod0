@@ -42,10 +42,10 @@ use crate::store::PodcastStore;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
-/// Process-global guard so a misconfigured `embeddings_model` (e.g. the default
-/// chat model `deepseek-v4-flash:cloud`, which is not an embedding model) logs
-/// the "not a usable embedding model" warning at most ONCE per process instead
-/// of once per indexed episode (a bulk re-index would otherwise spam the log).
+/// Process-global guard so a misconfigured `embeddings_model` (e.g. a bare chat
+/// model string with no `/` and not ending in `:cloud`) logs the "not a usable
+/// embedding model" warning at most ONCE per process instead of once per indexed
+/// episode (a bulk re-index would otherwise spam the log).
 /// Gates both the ingest-task and backfill no-op branches.
 static EMBED_MODEL_WARNED: AtomicBool = AtomicBool::new(false);
 
@@ -55,7 +55,7 @@ fn warn_unusable_embedding_model_once(model: &str) {
         log::warn!(
             "[knowledge] embeddings_model '{model}' is not a usable embedding model \
              — skipping embed (NULL rows remain, BM25 works). This warning fires \
-             once per process. Follow-up: flip default to openai/text-embedding-3-large."
+             once per process."
         );
     }
 }

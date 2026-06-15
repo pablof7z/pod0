@@ -1152,8 +1152,8 @@ struct SettingsSnapshot: Equatable {
     var categorizationModelName: String = "DeepSeek Flash"
     var chapterCompilationModel: String = "deepseek-v4-flash:cloud"
     var chapterCompilationModelName: String = "DeepSeek Flash"
-    var embeddingsModel: String = "deepseek-v4-flash:cloud"
-    var embeddingsModelName: String = "DeepSeek Flash"
+    var embeddingsModel: String = "openai/text-embedding-3-large"
+    var embeddingsModelName: String = "text-embedding-3-large"
     var imageGenerationModel: String = "google/gemini-2.5-flash-image"
     var imageGenerationModelName: String = "Gemini 2.5 Flash"
     var rerankerEnabled: Bool = false

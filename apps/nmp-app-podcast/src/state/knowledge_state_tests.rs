@@ -210,10 +210,10 @@ fn index_episode_chunks_persist_with_null_embedding() {
     }
 }
 
-/// backfill_embeddings with the default chat model (deepseek-v4-flash:cloud,
-/// which does not contain '/' and ends with ':cloud' -> Ollama path) will
-/// attempt an Ollama embed call that fails because there is no server --
-/// the backfill task must terminate gracefully (no panic, no deadlock).
+/// backfill_embeddings with no OpenRouter key configured (the default
+/// `openai/text-embedding-3-large` routes to OpenRouter but the embed call
+/// returns MissingCredential in-test) must terminate gracefully — no panic,
+/// no deadlock.
 ///
 /// We verify this indirectly: after set_data_dir the state is usable.
 #[test]
@@ -248,8 +248,8 @@ fn backfill_picks_up_null_rows_gracefully() {
     assert_eq!(out["ok"], true);
 }
 
-/// Calling index_episode with the default chat model leaves chunks with NULL
-/// embedding and does not panic -- the graceful no-op path is covered.
+/// Calling index_episode without an OpenRouter key leaves chunks with NULL
+/// embedding and does not panic -- the async embed task fails gracefully.
 #[test]
 fn embed_wiring_no_op_on_chat_model() {
     let mut store = PodcastStore::new();
@@ -269,18 +269,18 @@ fn embed_wiring_no_op_on_chat_model() {
     let ks = state.index.lock().unwrap();
     let chunks = ks.chunks_for_episode("ep-noop");
     assert!(!chunks.is_empty(), "chunks must exist");
-    // All NULL embedding -- the async embed no-oped (Ollama path, no server).
+    // All NULL embedding -- the async embed fails gracefully (no key in test).
     for c in &chunks {
         assert!(c.embedding.is_none(), "no-op path must leave NULL embedding");
     }
 }
 
-/// `search` with the default `:cloud` model writes BM25 results synchronously
+/// `search` with the default embedding model writes BM25 results synchronously
 /// and emits exactly one rev bump before returning `{"ok":true}`. The spawned
-/// async task resolves `:cloud` → Ollama, attempts an embed, and (with no
-/// Ollama server) degrades via the embed-Err branch — BM25 results remain,
-/// no second bump. The execution-driven variant lives in `knowledge_search`
-/// tests (`degrade_*` via `block_on`); this asserts the synchronous contract.
+/// async task routes to OpenRouter but (with no key in tests) returns
+/// MissingCredential and degrades — BM25 results remain, no second bump.
+/// The execution-driven variant lives in `knowledge_search` tests
+/// (`degrade_*` via `block_on`); this asserts the synchronous contract.
 #[test]
 fn search_degrade_on_chat_model_no_panic() {
     let mut store = PodcastStore::new();
