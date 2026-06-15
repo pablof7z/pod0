@@ -109,6 +109,11 @@ final class PodcastCategorizationService {
         )
 
         store.setCategories(categories)
+        // Mirror the fresh assignments into the kernel-owned substate the UI
+        // reads from. Reconcile against the followed set so podcasts dropped
+        // from all categories by this recompute have their stale kernel labels
+        // cleared (not just the ones that gained labels).
+        store.syncUserCategoriesToKernel(reconcilingFollowed: followedPodcastIDs)
         lastRun = generatedAt
         Self.logger.info("recompute complete categories=\(categories.count, privacy: .public)")
     }

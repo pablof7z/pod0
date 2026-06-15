@@ -62,8 +62,36 @@ extension AppStateStore {
     func migrateUserCategoriesToKernel() {
         guard !UserDefaults.standard.bool(forKey: Self.migrationFlagKey) else { return }
 
-        // Accumulate every legacy category name per podcast (preserving order,
-        // de-duplicated) so a podcast in multiple categories migrates all labels
+        // Purely-additive seed from the legacy model (no reconcile set: a fresh
+        // kernel has nothing to clear).
+        syncUserCategoriesToKernel()
+
+        // Set the run-once guard only AFTER every assignment has been dispatched
+        // (each dispatch persists synchronously kernel-side). Setting it before
+        // the loop would strand a partial migration permanently if the app
+        // crashed mid-loop — the flag would already be true on next launch and
+        // the remaining podcasts would never migrate. `set_podcast_user_categories`
+        // is idempotent (replaces the value), so re-running after a crash is safe.
+        UserDefaults.standard.set(true, forKey: Self.migrationFlagKey)
+    }
+
+    /// Mirror the user-curated category assignments held in the legacy Swift
+    /// `state.categories` model into the kernel-owned `podcast_user_categories`
+    /// substate (one idempotent `set_podcast_user_categories` op per podcast).
+    /// This is the single bridge that keeps the kernel — which the UI now reads
+    /// from (`PodcastSummary.userCategories`) — in sync with every writer of the
+    /// legacy model: the one-shot launch migration AND the AI recompute path.
+    /// Without it an AI re-categorization would update only the Swift copy and
+    /// silently never surface in the kernel-backed UI.
+    ///
+    /// - Parameter reconcilingFollowed: when non-nil, every podcast in this set
+    ///   that ends up with NO labels is dispatched with an empty list so the
+    ///   kernel clears its now-stale assignment. Pass the authoritative followed
+    ///   set after a recompute (which can drop a podcast from all categories).
+    ///   When nil (the migration seed) only non-empty assignments are dispatched.
+    func syncUserCategoriesToKernel(reconcilingFollowed followed: Set<UUID>? = nil) {
+        // Accumulate every category name per podcast (preserving order,
+        // de-duplicated) so a podcast in multiple categories carries all labels
         // in one dispatch rather than clobbering with the last one.
         var labelsByPodcast: [UUID: [String]] = [:]
         for category in state.categories {
@@ -78,6 +106,15 @@ extension AppStateStore {
             }
         }
 
+        // Reconcile: clear kernel labels for followed podcasts that no longer
+        // belong to any category (empty list = clear), only when an
+        // authoritative set is supplied.
+        if let followed {
+            for podcastUUID in followed where labelsByPodcast[podcastUUID] == nil {
+                labelsByPodcast[podcastUUID] = []
+            }
+        }
+
         for (podcastUUID, labels) in labelsByPodcast {
             kernel?.dispatch(namespace: "podcast",
                              body: [
@@ -86,13 +123,5 @@ extension AppStateStore {
                                  "categories": labels,
                              ])
         }
-
-        // Set the run-once guard only AFTER every assignment has been dispatched
-        // (each dispatch persists synchronously kernel-side). Setting it before
-        // the loop would strand a partial migration permanently if the app
-        // crashed mid-loop — the flag would already be true on next launch and
-        // the remaining podcasts would never migrate. `set_podcast_user_categories`
-        // is idempotent (replaces the value), so re-running after a crash is safe.
-        UserDefaults.standard.set(true, forKey: Self.migrationFlagKey)
     }
 }
