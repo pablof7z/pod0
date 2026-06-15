@@ -7,15 +7,17 @@ final class PodcastSearchViewModel {
     var query: String = ""
     /// Lags `query` by the debounce interval; drives local + wiki search.
     var debouncedQuery: String = ""
-    private(set) var transcriptResults: [PodcastTranscriptSearchHit] = []
-    private(set) var wikiPages: [WikiPage] = []
+    /// True from the moment a `search` dispatch fires until the store
+    /// delivers the first result batch for that query.
     private(set) var isSearchingTranscripts = false
-    private(set) var transcriptError: String?
+    private(set) var wikiPages: [WikiPage] = []
     private(set) var wikiLoadError: String?
 
     let wikiStorage: WikiStorage
+    /// Dormant fallback for agent + wiki adapters (slice 5 territory).
+    /// The Search tab no longer drives `rag.search` — kernel results arrive
+    /// reactively via `store.kernel?.podcastSnapshot?.knowledgeSearchResults`.
     private let rag: RAGSearch
-    private var activeTranscriptQuery: String?
 
     init(rag: RAGSearch? = nil, wikiStorage: WikiStorage = .shared) {
         self.rag = rag ?? RAGService.shared.search
@@ -49,51 +51,33 @@ final class PodcastSearchViewModel {
         wikiPages.removeAll { $0.id == id }
     }
 
-    func searchTranscripts() async {
+    // MARK: - Kernel transcript search (Slice 4)
+
+    /// Dispatch a kernel knowledge search or clear, using `store` as the
+    /// dispatch bridge. Results arrive reactively on
+    /// `store.kernel?.podcastSnapshot?.knowledgeSearchResults` — no polling
+    /// (project rule). Keeps the debounce gate from the calling view.
+    ///
+    /// - Empty / cleared query: dispatches `clear_results`, resets spinner.
+    /// - Non-empty query: dispatches `search`, sets `isSearchingTranscripts`.
+    ///   The view clears the spinner via `didReceiveKernelResults()` once
+    ///   the reactive projection delivers results.
+    func searchTranscripts(store: AppStateStore) {
         let trimmed = query.trimmed
         guard !trimmed.isEmpty else {
-            activeTranscriptQuery = nil
-            transcriptResults = []
-            transcriptError = nil
+            store.kernel?.dispatch(namespace: "podcast.knowledge",
+                                   body: ["op": "clear_results"])
             isSearchingTranscripts = false
             return
         }
-
-        activeTranscriptQuery = trimmed
         isSearchingTranscripts = true
-        transcriptError = nil
-        defer {
-            if activeTranscriptQuery == trimmed {
-                isSearchingTranscripts = false
-                activeTranscriptQuery = nil
-            }
-        }
+        store.kernel?.dispatch(namespace: "podcast.knowledge",
+                               body: ["op": "search", "query": trimmed])
+    }
 
-        do {
-            // rerank: false — search fires on every debounced keystroke, so
-            // the extra ~220 ms the Cohere reranker adds (per RAGSearch.swift
-            // latency budget) exceeds the perceptual threshold for live
-            // typing. HomeRelatedSheet can afford rerank: true because it
-            // runs a single query on sheet open, not per-keystroke.
-            let matches = try await rag.search(
-                query: trimmed,
-                scope: .all,
-                options: .init(k: 8, overfetchMultiplier: 3, hybrid: true, rerank: false)
-            )
-            guard activeTranscriptQuery == trimmed, query.trimmed == trimmed else { return }
-            transcriptResults = matches.map { match in
-                PodcastTranscriptSearchHit(
-                    chunk: match.chunk,
-                    score: match.score,
-                    snippet: match.chunk.text
-                )
-            }
-        } catch is CancellationError {
-            return
-        } catch {
-            guard activeTranscriptQuery == trimmed, query.trimmed == trimmed else { return }
-            transcriptResults = []
-            transcriptError = error.localizedDescription
-        }
+    /// Called by the view when the kernel projection delivers a new batch.
+    /// Clears the `isSearchingTranscripts` indicator.
+    func didReceiveKernelResults() {
+        isSearchingTranscripts = false
     }
 }

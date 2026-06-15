@@ -82,6 +82,48 @@ struct PodcastTranscriptSearchRow: View {
     }
 }
 
+/// Row for a kernel `KnowledgeSearchResult` (Slice 4).
+///
+/// `KnowledgeSearchResult` is episode-level (one row per episode, not per
+/// chunk), so there is no chunk-start timestamp in the common case. When
+/// the kernel does carry `startSecs` (future semantic indexing with
+/// position info), the footnote shows it; otherwise only the relevance
+/// score is shown. Tapping the row navigates to the episode detail (see
+/// `PodcastSearchView.openKernelHit`).
+struct PodcastKernelSearchRow: View {
+    let hit: KnowledgeSearchResult
+    let query: String
+
+    var body: some View {
+        SearchResultRow(
+            icon: "sparkle.magnifyingglass",
+            tint: AppTheme.Tint.agentSurface,
+            title: hit.episodeTitle,
+            subtitle: hit.podcastTitle,
+            bodyText: hit.snippet,
+            footnote: footnoteText,
+            query: query
+        )
+    }
+
+    private var footnoteText: String {
+        let score = String(format: "%.2f", hit.relevanceScore)
+        if let secs = hit.startSecs, secs > 0 {
+            return "\(formatTime(secs)) · \(score)"
+        }
+        return score
+    }
+
+    private func formatTime(_ secs: Double) -> String {
+        let total = max(0, Int(secs))
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        let s = total % 60
+        if h > 0 { return "\(h):\(String(format: "%02d:%02d", m, s))" }
+        return "\(m):\(String(format: "%02d", s))"
+    }
+}
+
 struct PodcastWikiSearchRow: View {
     let hit: PodcastWikiSearchHit
     let query: String

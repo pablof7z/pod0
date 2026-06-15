@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-16T00:01:00Z",
+      "lines": [
+        "Search now powered by the kernel: transcript search runs a hybrid BM25 + semantic pass directly in the kernel — no external vector store needed."
+      ]
+    },
+    {
       "shipped_at": "2026-06-15T11:00:00Z",
       "lines": [
         "Per-show transcription toggle now lives in the kernel — overrides survive library rebuilds."

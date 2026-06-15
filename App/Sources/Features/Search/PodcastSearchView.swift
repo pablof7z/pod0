@@ -10,14 +10,19 @@ struct PodcastSearchView: View {
         PodcastSearchEngine.localResults(query: model.debouncedQuery, state: store.composedState)
     }
 
+    /// Kernel knowledge-search results for the current query. Reactively
+    /// read from `store.kernel?.podcastSnapshot?.knowledgeSearchResults` —
+    /// SwiftUI's `@Observable` tracking re-renders on every new batch.
+    private var kernelTranscriptResults: [KnowledgeSearchResult] {
+        store.kernel?.podcastSnapshot?.knowledgeSearchResults ?? []
+    }
+
     private var hasAnyResults: Bool {
-        !localResults.isEmpty || !model.transcriptResults.isEmpty || !model.wikiResults.isEmpty
+        !localResults.isEmpty || !kernelTranscriptResults.isEmpty || !model.wikiResults.isEmpty
     }
 
     private var shouldShowTranscriptSection: Bool {
-        model.isSearchingTranscripts
-            || !model.transcriptResults.isEmpty
-            || (model.transcriptError != nil && localResults.isEmpty && model.wikiResults.isEmpty)
+        model.isSearchingTranscripts || !kernelTranscriptResults.isEmpty
     }
 
     var body: some View {
@@ -44,9 +49,10 @@ struct PodcastSearchView: View {
         )
         .task { await model.loadWikiPages() }
         .task(id: model.query) {
+            // Keep existing debounce: 300 ms after the last keystroke.
             guard !model.query.trimmed.isEmpty else {
                 model.debouncedQuery = ""
-                await model.searchTranscripts()
+                model.searchTranscripts(store: store)
                 return
             }
             do {
@@ -55,7 +61,13 @@ struct PodcastSearchView: View {
                 return
             }
             model.debouncedQuery = model.query
-            await model.searchTranscripts()
+            model.searchTranscripts(store: store)
+        }
+        // Clear the spinner when the kernel projection delivers results.
+        // `kernelTranscriptResults` is observed via @Observable — this fires
+        // on every new batch without any polling.
+        .onChange(of: kernelTranscriptResults) { _, _ in
+            model.didReceiveKernelResults()
         }
         .navigationDestination(item: $destination) { destination in
             destinationView(destination)
@@ -102,7 +114,7 @@ struct PodcastSearchView: View {
             }
         }
 
-        transcriptSection
+        kernelTranscriptSection
 
         if !model.wikiResults.isEmpty {
             Section("Wiki") {
@@ -120,29 +132,19 @@ struct PodcastSearchView: View {
     }
 
     @ViewBuilder
-    private var transcriptSection: some View {
+    private var kernelTranscriptSection: some View {
         if shouldShowTranscriptSection {
             Section("Transcripts") {
                 if model.isSearchingTranscripts {
                     ProgressView()
                 }
-                ForEach(model.transcriptResults) { hit in
+                ForEach(kernelTranscriptResults) { hit in
                     Button {
-                        openTranscriptHit(hit)
+                        openKernelHit(hit)
                     } label: {
-                        PodcastTranscriptSearchRow(
-                            hit: hit,
-                            episode: store.episode(id: hit.chunk.episodeID),
-                            podcast: store.podcast(id: hit.chunk.podcastID),
-                            query: model.query
-                        )
+                        PodcastKernelSearchRow(hit: hit, query: model.query)
                     }
                     .buttonStyle(.plain)
-                }
-                if let error = model.transcriptError {
-                    Label(error, systemImage: "exclamationmark.triangle")
-                        .font(AppTheme.Typography.caption)
-                        .foregroundStyle(.secondary)
                 }
             }
         }
@@ -151,26 +153,24 @@ struct PodcastSearchView: View {
     private var resultCount: Int {
         localResults.shows.count
             + localResults.episodes.count
-            + model.transcriptResults.count
+            + kernelTranscriptResults.count
             + model.wikiResults.count
     }
 
-    private func openTranscriptHit(_ hit: PodcastTranscriptSearchHit) {
+    /// Navigate to an episode from a kernel search hit. When `startSecs` is
+    /// available, seeks to that position and starts playback (the same
+    /// "play this moment" contract as the old chunk-level transcript hit).
+    /// Without `startSecs` (the common case for BM25 episode-level results),
+    /// just opens the episode detail.
+    private func openKernelHit(_ hit: KnowledgeSearchResult) {
         Haptics.selection()
-        if let episode = store.episode(id: hit.chunk.episodeID) {
-            // Tapping a transcript hit reads as "play this moment" — load
-            // the episode, seek to the chunk's start, and start playback.
-            // Previously this only set + seeked, leaving the user on a
-            // paused episode with no obvious cue why nothing was rolling.
-            // setEpisode is idempotent on same-id, so calling it when the
-            // episode is already loaded is a no-op and won't re-buffer.
+        guard let uuid = UUID(uuidString: hit.episodeId) else { return }
+        if let episode = store.episode(id: uuid), let secs = hit.startSecs, secs > 0 {
             playback.setEpisode(episode)
-            playback.seek(to: Double(hit.chunk.startMS) / 1000)
-            if !playback.isPlaying {
-                playback.play()
-            }
+            playback.seek(to: secs)
+            if !playback.isPlaying { playback.play() }
         }
-        destination = .episode(hit.chunk.episodeID)
+        destination = .episode(uuid)
     }
 
     @ViewBuilder
