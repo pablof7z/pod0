@@ -61,7 +61,6 @@ extension AppStateStore {
     /// persists. A no-op on fresh installs (no legacy categories).
     func migrateUserCategoriesToKernel() {
         guard !UserDefaults.standard.bool(forKey: Self.migrationFlagKey) else { return }
-        UserDefaults.standard.set(true, forKey: Self.migrationFlagKey)
 
         // Accumulate every legacy category name per podcast (preserving order,
         // de-duplicated) so a podcast in multiple categories migrates all labels
@@ -87,5 +86,13 @@ extension AppStateStore {
                                  "categories": labels,
                              ])
         }
+
+        // Set the run-once guard only AFTER every assignment has been dispatched
+        // (each dispatch persists synchronously kernel-side). Setting it before
+        // the loop would strand a partial migration permanently if the app
+        // crashed mid-loop — the flag would already be true on next launch and
+        // the remaining podcasts would never migrate. `set_podcast_user_categories`
+        // is idempotent (replaces the value), so re-running after a crash is safe.
+        UserDefaults.standard.set(true, forKey: Self.migrationFlagKey)
     }
 }
