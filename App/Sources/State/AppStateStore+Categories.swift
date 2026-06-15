@@ -124,4 +124,43 @@ extension AppStateStore {
                              ])
         }
     }
+
+    // MARK: - Transcription settings kernel migration (D4/D7)
+
+    private static let transcriptionMigrationFlagKey = "transcriptionSettingsMigratedToKernel"
+
+    /// One-shot migration: seed the kernel-owned per-podcast transcription
+    /// disabled set from the legacy `CategorySettings.transcriptionEnabled`
+    /// model. Guarded by a `UserDefaults` flag — runs exactly once; a no-op
+    /// on fresh installs (all defaults are `true`, no dispatches needed).
+    ///
+    /// CRITICAL: flag is set AFTER the dispatch loop, never before, so a crash
+    /// mid-loop retries correctly on the next launch (idempotent dispatches).
+    func migrateTranscriptionSettingsToKernel() {
+        guard !UserDefaults.standard.bool(forKey: Self.transcriptionMigrationFlagKey) else { return }
+
+        syncTranscriptionSettingsToKernel()
+
+        // Flag set AFTER dispatch loop — see migrateUserCategoriesToKernel comment.
+        UserDefaults.standard.set(true, forKey: Self.transcriptionMigrationFlagKey)
+    }
+
+    /// Mirror per-category `transcriptionEnabled = false` into the kernel as
+    /// per-podcast `set_podcast_transcription_enabled enabled:false` ops. Only
+    /// dispatches for podcasts whose effective transcription is `false` (the
+    /// non-default case), to keep the wire quiet for the typical all-enabled state.
+    func syncTranscriptionSettingsToKernel() {
+        for category in state.categories {
+            let settings = state.categorySettings[category.id] ?? .default(for: category.id)
+            guard !settings.transcriptionEnabled else { continue }
+            for podcastUUID in category.subscriptionIDs {
+                kernel?.dispatch(namespace: "podcast",
+                                 body: [
+                                     "op": "set_podcast_transcription_enabled",
+                                     "podcast_id": podcastUUID.uuidString.lowercased(),
+                                     "enabled": false,
+                                 ])
+            }
+        }
+    }
 }

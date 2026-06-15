@@ -253,6 +253,10 @@ impl PodcastHostOpHandler {
                 podcast_id,
                 categories,
             } => self.handle_set_podcast_user_categories(podcast_id, categories),
+            PodcastAction::SetPodcastTranscriptionEnabled {
+                podcast_id,
+                enabled,
+            } => self.handle_set_podcast_transcription_enabled(podcast_id, enabled),
         }
     }
 }

@@ -78,6 +78,8 @@ pub(crate) fn parse_itunes_results(body: &str) -> Vec<PodcastSummary> {
                 cellular_allowed: false,
                 // iTunes search rows have no user-curated categories.
                 user_categories: Vec::new(),
+                // iTunes search rows default to transcription enabled.
+                transcription_enabled: true,
                 episodes: vec![],
             })
         })

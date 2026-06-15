@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-15T11:00:00Z",
+      "lines": [
+        "Per-show transcription toggle now lives in the kernel — overrides survive library rebuilds."
+      ]
+    },
+    {
       "shipped_at": "2026-06-15T10:00:00Z",
       "lines": [
         "Podcast categories are now stored in the kernel for durability and sync."

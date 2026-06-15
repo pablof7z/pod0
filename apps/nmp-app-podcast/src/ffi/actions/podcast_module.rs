@@ -416,6 +416,14 @@ pub enum PodcastAction {
         #[serde(default)]
         categories: Vec<String>,
     },
+    /// Set the per-podcast transcription enabled flag.
+    /// Wire: `{"op":"set_podcast_transcription_enabled","podcast_id":"<uuid>","enabled":false}`
+    /// `enabled: true` removes the podcast from the disabled set (default);
+    /// `enabled: false` inserts it.
+    SetPodcastTranscriptionEnabled {
+        podcast_id: String,
+        enabled: bool,
+    },
 }
 
 /// One chapter for an [`PodcastAction::AddEpisode`] op. `image_url` +

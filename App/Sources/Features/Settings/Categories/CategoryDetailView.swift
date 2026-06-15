@@ -25,7 +25,7 @@ struct CategoryDetailView: View {
                     descriptionSection(category)
                 }
                 autoDownloadSection
-                featuresSection
+                featuresSection(for: category)
                 subscriptionsSection(category)
             } else {
                 missingCategorySection
@@ -54,9 +54,9 @@ struct CategoryDetailView: View {
         )
     }
 
-    private var featuresSection: some View {
+    private func featuresSection(for category: PodcastCategory) -> some View {
         Section {
-            Toggle(isOn: toggleBinding(\.transcriptionEnabled)) {
+            Toggle(isOn: transcriptionToggleBinding(for: category)) {
                 Label("Transcription", systemImage: "captions.bubble.fill")
             }
             Toggle(isOn: toggleBinding(\.ragEnabled)) {
@@ -113,6 +113,37 @@ struct CategoryDetailView: View {
     }
 
     // MARK: - Bindings
+
+    private func transcriptionToggleBinding(for category: PodcastCategory) -> Binding<Bool> {
+        Binding(
+            get: {
+                // Aggregate: true if ALL podcasts in category have transcription on
+                let pods = category.subscriptionIDs.compactMap { uuid in
+                    self.store.state.podcasts.first(where: { UUID(uuidString: $0.id) == uuid })
+                }
+                if pods.isEmpty {
+                    return self.store.categorySettings(for: self.categoryID).transcriptionEnabled
+                }
+                return pods.allSatisfy { $0.transcriptionEnabled }
+            },
+            set: { newValue in
+                // 1. Update legacy category settings
+                self.store.updateCategorySettings(self.categoryID) { settings in
+                    settings.transcriptionEnabled = newValue
+                }
+                // 2. Fan-out to kernel for each podcast in the category
+                for podcastUUID in category.subscriptionIDs {
+                    self.store.kernel?.dispatch(namespace: "podcast",
+                        body: [
+                            "op": "set_podcast_transcription_enabled",
+                            "podcast_id": podcastUUID.uuidString.lowercased(),
+                            "enabled": newValue,
+                        ])
+                }
+                Haptics.selection()
+            }
+        )
+    }
 
     private func toggleBinding(_ keyPath: WritableKeyPath<CategorySettings, Bool>) -> Binding<Bool> {
         Binding(

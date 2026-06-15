@@ -42,9 +42,15 @@ extension AppStateStore {
     // took over the decision; it has been removed rather than left as a trap.
 
     /// True when transcription should run for episodes of `podcastID`.
-    /// Defaults to `true` in every "no category info yet" path so users
-    /// who haven't run the categorizer still see transcripts ingested.
+    /// Prefers the kernel-owned per-podcast override (`PodcastSummary.transcriptionEnabled`)
+    /// which survives library rebuilds. Falls back to the legacy category scan
+    /// when no kernel snapshot is available yet.
     func effectiveTranscriptionEnabled(forPodcast podcastID: UUID) -> Bool {
+        // Prefer the kernel-owned per-podcast flag (D4/D7).
+        if let summary = state.podcasts.first(where: { $0.id == podcastID }) {
+            return summary.transcriptionEnabled
+        }
+        // Legacy fallback: scan categories (pre-kernel path, kept for safety).
         guard let category = state.categories.first(where: { $0.subscriptionIDs.contains(podcastID) }) else {
             return true
         }

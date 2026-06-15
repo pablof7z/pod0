@@ -125,6 +125,12 @@ pub struct PodcastStore {
     /// applies: Wi-Fi-only (matching `AutoDownloadPolicy.default.wifiOnly`).
     /// Cleared by `unsubscribe`.
     auto_download_cellular_allowed: HashSet<PodcastId>,
+    /// Per-podcast transcription disabled set. Stores the IDs of podcasts for
+    /// which the user has explicitly disabled transcription. Absence means
+    /// enabled (the default). Persisted in `podcasts.json` as
+    /// `transcription_disabled`.
+    /// Cleared by `unsubscribe` so a re-subscribe starts fresh.
+    transcription_disabled: HashSet<PodcastId>,
     /// Episodes deferred because the device was on cellular when the feed
     /// refreshed and the show is Wi-Fi-only. These are dispatched as a batch
     /// the next time `NetworkReport::ConnectivityChanged { is_wifi: true }`
@@ -337,6 +343,7 @@ impl PodcastStore {
             auto_download_enabled: HashSet::new(),
             auto_download_modes: HashMap::new(),
             auto_download_cellular_allowed: HashSet::new(),
+            transcription_disabled: HashSet::new(),
             pending_wifi_downloads: Vec::new(),
             memory_facts: HashMap::new(),
             ad_segments: HashMap::new(),

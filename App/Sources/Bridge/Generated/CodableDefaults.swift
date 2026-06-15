@@ -62,11 +62,13 @@ extension KeyedDecodingContainer {
 // MARK: - Default sources
 
 enum BoolFalse: CodableDefaultSource { static let defaultValue = false }
+enum BoolTrue: CodableDefaultSource { static let defaultValue = true }
 
 enum EmptyStringArray: CodableDefaultSource { static let defaultValue: [String] = [] }
 
 /// Convenience aliases used by the projection mirrors.
 typealias DefaultFalse = CodableDefault<BoolFalse>
+typealias DefaultTrue = CodableDefault<BoolTrue>
 typealias DefaultEmptyStrings = CodableDefault<EmptyStringArray>
 
 // MARK: - Generic empty-array wrapper

@@ -91,6 +91,42 @@ impl PodcastStore {
         }
     }
 
+    /// Set the per-podcast transcription enabled flag.
+    ///
+    /// Stores disabled podcast IDs in `transcription_disabled`
+    /// (the negative set) so the default — no entry — means enabled (`true`).
+    ///
+    /// Returns `true` when the stored value actually changed, so the caller
+    /// can bump Domain::Library. Idempotent: writing the same value is a
+    /// no-op and does NOT call `persist()`.
+    pub fn set_transcription_enabled(&mut self, podcast_id: PodcastId, enabled: bool) -> bool {
+        let changed = if enabled {
+            self.transcription_disabled.remove(&podcast_id)
+        } else {
+            self.transcription_disabled.insert(podcast_id)
+        };
+        if changed {
+            self.persist();
+        }
+        changed
+    }
+
+    /// Returns `true` when transcription is enabled for a podcast.
+    /// Defaults to `true` (not in disabled set).
+    pub fn is_transcription_enabled(&self, podcast_id: &PodcastId) -> bool {
+        !self.transcription_disabled.contains(podcast_id)
+    }
+
+    /// Look up the transcription enabled flag by the string form of a podcast
+    /// id. Helper for FFI action handlers, which receive UUIDs as strings.
+    /// Returns `true` (default) when the id fails to parse.
+    pub fn is_transcription_enabled_str(&self, id_str: &str) -> bool {
+        match id_str.parse::<uuid::Uuid>() {
+            Ok(uuid) => self.is_transcription_enabled(&PodcastId::new(uuid)),
+            Err(_) => true,
+        }
+    }
+
     /// Whether to auto-advance to the next queued episode on `ItemEnd`.
     /// Default `true`. Controlled via `podcast.settings.set_auto_play_next`.
     pub fn auto_play_next(&self) -> bool {

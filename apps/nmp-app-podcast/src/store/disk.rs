@@ -62,6 +62,12 @@ impl PodcastStore {
         self.transcript_status_overrides.clear();
         self.podcast_user_categories =
             loaded.podcast_user_categories.into_iter().collect();
+        self.transcription_disabled.clear();
+        for id_str in &loaded.transcription_disabled {
+            if let Ok(uuid) = id_str.parse::<uuid::Uuid>() {
+                self.transcription_disabled.insert(podcast_core::PodcastId::new(uuid));
+            }
+        }
         for row in loaded.podcasts {
             let id = row.podcast.id;
             for ep in &row.episodes {
@@ -426,6 +432,13 @@ impl PodcastStore {
                 .podcast_user_categories
                 .iter()
                 .map(|(k, v)| (k.clone(), v.clone()))
+                .collect(),
+            transcription_disabled: self
+                .transcription_disabled
+                .iter()
+                .map(|id| id.0.to_string())
+                .collect::<std::collections::BTreeSet<_>>()
+                .into_iter()
                 .collect(),
         }
     }

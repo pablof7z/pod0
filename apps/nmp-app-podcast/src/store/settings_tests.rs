@@ -199,3 +199,60 @@ fn auto_skip_ads_persists_through_store_reload() {
     store2.set_data_dir(dir.path.clone());
     assert!(!store2.auto_skip_ads_enabled());
 }
+
+#[test]
+fn transcription_enabled_defaults_true() {
+    let store = PodcastStore::new();
+    let id = podcast_core::PodcastId::new(uuid::Uuid::new_v4());
+    assert!(store.is_transcription_enabled(&id));
+}
+
+#[test]
+fn set_transcription_enabled_false_inserts_to_disabled_set() {
+    let mut store = PodcastStore::new();
+    let id = podcast_core::PodcastId::new(uuid::Uuid::new_v4());
+    assert!(store.set_transcription_enabled(id, false));
+    assert!(!store.is_transcription_enabled(&id));
+}
+
+#[test]
+fn set_transcription_enabled_true_removes_from_disabled_set() {
+    let mut store = PodcastStore::new();
+    let id = podcast_core::PodcastId::new(uuid::Uuid::new_v4());
+    store.set_transcription_enabled(id, false);
+    assert!(store.set_transcription_enabled(id, true));
+    assert!(store.is_transcription_enabled(&id));
+}
+
+#[test]
+fn set_transcription_enabled_idempotent() {
+    let mut store = PodcastStore::new();
+    let id = podcast_core::PodcastId::new(uuid::Uuid::new_v4());
+    // Already enabled by default; setting true again returns false (no change)
+    assert!(!store.set_transcription_enabled(id, true));
+    // Set false, then set false again → no change
+    store.set_transcription_enabled(id, false);
+    assert!(!store.set_transcription_enabled(id, false));
+}
+
+#[test]
+fn transcription_disabled_persists_and_reloads() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static SEQ: AtomicU64 = AtomicU64::new(0);
+    let n = SEQ.fetch_add(1, Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("nmp-transcription-persist-{}-{n}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+
+    let id = podcast_core::PodcastId::new(uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap());
+    {
+        let mut store = PodcastStore::new();
+        store.set_data_dir(dir.clone());
+        store.set_transcription_enabled(id, false);
+    }
+
+    let mut store2 = PodcastStore::new();
+    store2.set_data_dir(dir.clone());
+    assert!(!store2.is_transcription_enabled(&id));
+
+    let _ = std::fs::remove_dir_all(&dir);
+}

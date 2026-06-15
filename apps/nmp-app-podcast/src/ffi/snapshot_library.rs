@@ -132,6 +132,7 @@ pub(super) fn build_library_snapshot(
             user_categories: store
                 .podcast_user_categories_for(&podcast.id.0.to_string())
                 .to_vec(),
+            transcription_enabled: store.is_transcription_enabled(&podcast.id),
             episodes: episodes
                 .iter()
                 .map(|ep| episode_summary(handle, store, podcast, ep, transcripts, categories_cache))

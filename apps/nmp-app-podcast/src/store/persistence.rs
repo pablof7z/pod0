@@ -98,6 +98,10 @@ pub(super) struct PersistedStore {
     /// value is a Vec of label strings. `#[serde(default)]` for backward compat.
     #[serde(default)]
     pub podcast_user_categories: Vec<(String, Vec<String>)>,
+    /// Per-podcast transcription disabled set. UUIDs of podcasts for which
+    /// transcription is disabled. `#[serde(default)]` for backward compat.
+    #[serde(default)]
+    pub transcription_disabled: Vec<String>,
 }
 
 /// On-disk settings envelope.

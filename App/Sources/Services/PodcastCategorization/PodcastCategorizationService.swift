@@ -114,6 +114,9 @@ final class PodcastCategorizationService {
         // from all categories by this recompute have their stale kernel labels
         // cleared (not just the ones that gained labels).
         store.syncUserCategoriesToKernel(reconcilingFollowed: followedPodcastIDs)
+        // Mirror per-category transcription disabled state into per-podcast kernel
+        // overrides so both projection fields stay in sync after AI recompute.
+        store.syncTranscriptionSettingsToKernel()
         lastRun = generatedAt
         Self.logger.info("recompute complete categories=\(categories.count, privacy: .public)")
     }

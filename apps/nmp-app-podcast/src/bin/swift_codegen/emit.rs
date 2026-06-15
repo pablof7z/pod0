@@ -257,6 +257,10 @@ struct PodcastSummary: Identifiable, Equatable, Hashable {
     /// Rust omits the key when empty (D5 — `skip_serializing_if`); decoded
     /// with a `?? []` fallback so absent keys deserialise to an empty array.
     @DefaultEmptyStrings var userCategories: [String] = []
+    /// Per-podcast transcription enabled flag. `true` (the default) means
+    /// transcription is allowed for this show. The Rust projection omits this
+    /// key when `true` (D5 — `skip_serializing_if = "is_true"`).
+    @DefaultTrue var transcriptionEnabled: Bool = true
     @DefaultEmptyArray var episodes: [EpisodeSummary] = []
 }
 
@@ -410,6 +414,7 @@ extension PodcastSummary: Codable {
         ownerPubkeyHex = try c.decodeIfPresent(String.self, forKey: .ownerPubkeyHex)
         nostrVisibility = try c.decodeIfPresent(String.self, forKey: .nostrVisibility) ?? "public"
         userCategories = try c.decodeIfPresent([String].self, forKey: .userCategories) ?? []
+        transcriptionEnabled = try c.decodeIfPresent(Bool.self, forKey: .transcriptionEnabled) ?? true
         episodes = try c.decodeIfPresent([EpisodeSummary].self, forKey: .episodes) ?? []
     }
 }

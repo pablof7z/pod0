@@ -49,6 +49,9 @@ extension AppStateStore {
         // kernel-owned `podcast_user_categories` substate (D0/D4). Guarded by a
         // UserDefaults flag so it runs exactly once; a no-op on fresh installs.
         migrateUserCategoriesToKernel()
+        // One-shot migration of legacy per-category transcription settings into
+        // the kernel-owned per-podcast transcription disabled set (D4/D7).
+        migrateTranscriptionSettingsToKernel()
         // Register the local LLM service callback so Rust can invoke Swift-side
         // inference through the loaded LiteRT-LM engine.
         let localService = localLLMService

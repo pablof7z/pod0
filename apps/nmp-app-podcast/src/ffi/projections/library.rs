@@ -12,7 +12,7 @@ use crate::player::AdSegment;
 /// rows are embedded so the show-detail view doesn't need a second pull.
 /// `is_subscribed` distinguishes followed rows from known-but-unfollowed
 /// feeds ingested for external listing/playback.
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct PodcastSummary {
     /// `PodcastId` as a hyphenated UUID string. For iTunes search results this
     /// is the `collectionId` stringified (no UUID — the feed_url is the key).
@@ -90,8 +90,43 @@ pub struct PodcastSummary {
     /// user has not assigned any. Per D5 omitted from the wire when empty.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub user_categories: Vec<String>,
+    /// Per-podcast transcription enabled flag. `true` (the default) means
+    /// transcription is allowed; `false` means it was explicitly disabled by the
+    /// user. Omitted from the wire when `true` (D5 — `skip_serializing_if`).
+    #[serde(default = "default_true", skip_serializing_if = "is_true")]
+    pub transcription_enabled: bool,
     /// Recent episodes — ordered newest-first by the projection layer.
     pub episodes: Vec<EpisodeSummary>,
+}
+
+impl Default for PodcastSummary {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            title: String::new(),
+            episode_count: 0,
+            unplayed_count: 0,
+            is_subscribed: false,
+            artwork_url: None,
+            feed_url: None,
+            author: None,
+            description: None,
+            last_refreshed_at: None,
+            title_is_placeholder: false,
+            auto_download: false,
+            auto_download_mode: String::new(),
+            auto_download_count: 0,
+            cellular_allowed: false,
+            owner_pubkey_hex: None,
+            nostr_visibility: String::new(),
+            user_categories: Vec::new(),
+            // The semantic default is `true` (transcription on).
+            // serde's `#[serde(default = "default_true")]` applies at deserialization;
+            // this manual impl covers Rust's `Default::default()` (e.g. struct-update syntax).
+            transcription_enabled: true,
+            episodes: Vec::new(),
+        }
+    }
 }
 
 /// D5 skip predicate: omit `nostr_visibility` when it is the `"public"` default.
@@ -109,6 +144,16 @@ fn zero_i64(v: &i64) -> bool {
 /// `latest_n` mode).
 fn zero_u32(v: &u32) -> bool {
     *v == 0
+}
+
+/// D5 skip predicate: omit `transcription_enabled` when `true` (the default).
+fn is_true(v: &bool) -> bool {
+    *v
+}
+
+/// Default value for `transcription_enabled` — always `true`.
+fn default_true() -> bool {
+    true
 }
 
 /// One episode row embedded in [`PodcastSummary::episodes`].

@@ -310,4 +310,23 @@ impl PodcastHostOpHandler {
         serde_json::json!({"ok": true})
     }
 
+    pub(super) fn handle_set_podcast_transcription_enabled(
+        &self,
+        podcast_id: String,
+        enabled: bool,
+    ) -> serde_json::Value {
+        let id = match podcast_id.parse::<uuid::Uuid>() {
+            Ok(uuid) => podcast_core::PodcastId::new(uuid),
+            Err(_) => return serde_json::json!({"ok": false, "error": "invalid podcast_id"}),
+        };
+        let changed = match self.state.library.store.lock() {
+            Ok(mut s) => s.set_transcription_enabled(id, enabled),
+            Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+        };
+        if changed {
+            self.bump_domain(crate::state::Domain::Library);
+        }
+        serde_json::json!({"ok": true})
+    }
+
 }
