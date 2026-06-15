@@ -14,6 +14,7 @@
 pub mod actions;
 pub mod bm25;
 pub mod search;
+pub mod sqlite;
 pub mod store;
 pub mod types;
 
@@ -22,3 +23,6 @@ pub use bm25::{normalize_scores, tokenize, Bm25Index};
 pub use search::{cosine_similarity, top_k_search};
 pub use store::KnowledgeStore;
 pub use types::{EmbeddingVector, KnowledgeChunk, SearchResult, TranscriptChunk};
+
+#[cfg(test)]
+mod sqlite_tests;

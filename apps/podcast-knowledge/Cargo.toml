@@ -11,5 +11,9 @@ name = "podcast_knowledge"
 [dependencies]
 podcast-core = { path = "../podcast-core" }
 podcast-transcripts = { path = "../podcast-transcripts" }
+rusqlite = { version = "0.31", features = ["bundled"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+
+[dev-dependencies]
+tempfile = "3"

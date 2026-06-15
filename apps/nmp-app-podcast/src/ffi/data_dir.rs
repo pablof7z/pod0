@@ -213,6 +213,11 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(handle: *mut PodcastHandle, path:
             non_empty
         };
 
+        // Bind the knowledge SQLite sidecar and cold-load any persisted chunks.
+        // `set_data_dir` opens `knowledge.sqlite`, runs migrations, and seeds the
+        // in-memory KnowledgeStore — same data-dir, separate sidecar file (D6).
+        let knowledge_loaded = handle.state.knowledge.set_data_dir(&path_buf);
+
         if loaded > 0
             || !loaded_queue.is_empty()
             || identity_loaded
@@ -221,6 +226,7 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(handle: *mut PodcastHandle, path:
             || tasks_loaded
             || responder_loaded
             || outbound_loaded
+            || knowledge_loaded > 0
         {
             // Force the next snapshot frame to pick up the restored library,
             // queue, identity, owned-podcast keys, triage cache, and/or tasks

@@ -25,8 +25,10 @@
 //! if additional Knowledge actions are added, split into a sibling
 //! `knowledge_actions.rs` before reaching the 300-line soft limit.
 
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
+use podcast_knowledge::sqlite::KnowledgeSqliteStore;
 use podcast_knowledge::KnowledgeStore;
 
 use crate::ffi::actions::knowledge_module::KnowledgeAction;
@@ -52,6 +54,10 @@ pub struct KnowledgeState {
     /// The canonical persisted library.  Knowledge reads transcripts from
     /// here for indexing.
     store: Arc<Mutex<PodcastStore>>,
+    /// SQLite durable sidecar.  `None` until `set_data_dir` is called.
+    /// Interior-mutable so `set_data_dir` can take `&self` like all other
+    /// methods on this type.
+    sqlite: Arc<Mutex<Option<KnowledgeSqliteStore>>>,
 }
 
 impl KnowledgeState {
@@ -62,6 +68,7 @@ impl KnowledgeState {
             index: Slot::new(KnowledgeStore::new()),
             infra,
             store,
+            sqlite: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -81,6 +88,38 @@ impl KnowledgeState {
     /// that needs the bare `Arc` via `.share()`.
     pub fn index_arc(&self) -> Arc<Mutex<KnowledgeStore>> {
         self.index.share()
+    }
+
+    /// Bind the knowledge sidecar to `dir/knowledge.sqlite`.
+    ///
+    /// Opens (or creates) the SQLite file, runs migrations, then cold-loads
+    /// all persisted chunks into the in-memory `KnowledgeStore`.  Called
+    /// from `nmp_app_podcast_set_data_dir` after the main library store is
+    /// bound — same data-dir, separate sidecar file.
+    ///
+    /// Returns the number of chunks reloaded from disk so the FFI layer can
+    /// decide whether to bump the snapshot rev.
+    ///
+    /// If the file is corrupt the sidecar degrades to an in-memory no-op
+    /// (quarantine handled inside `KnowledgeSqliteStore::open`).  Errors
+    /// from the SQLite layer never propagate outward (D6).
+    pub fn set_data_dir(&self, dir: &Path) -> usize {
+        let sqlite_path = dir.join("knowledge.sqlite");
+        let sq = KnowledgeSqliteStore::open(&sqlite_path);
+        let chunks = sq.load_all();
+        let count = chunks.len();
+
+        // Seed the in-memory working set with the persisted chunks.
+        if let Ok(mut ks) = self.index.lock() {
+            ks.upsert_many(chunks);
+        }
+
+        // Store the live SQLite handle so write-through can reach it.
+        if let Ok(mut guard) = self.sqlite.lock() {
+            *guard = Some(sq);
+        }
+
+        count
     }
 
     // ── Snapshot projection ───────────────────────────────────────────────
@@ -125,17 +164,36 @@ impl KnowledgeState {
         let chunks = crate::knowledge::chunk_transcript_text(&episode_id, &text);
         let chunk_count = chunks.len();
 
+        // Build KnowledgeChunk wrappers once; we need them for both the
+        // in-memory store and the SQLite write-through.
+        let kchunks: Vec<KnowledgeChunk> = chunks
+            .into_iter()
+            .map(KnowledgeChunk::without_embedding)
+            .collect();
+
         match self.index.lock() {
             Ok(mut ks) => {
                 // Delete all prior chunks for this episode before inserting the
                 // new batch — without this a re-index with a shorter transcript
                 // leaves stale trailing chunks.
                 ks.delete_episode(&episode_id);
-                for chunk in chunks {
-                    ks.upsert(KnowledgeChunk::without_embedding(chunk));
+                for chunk in &kchunks {
+                    ks.upsert(chunk.clone());
                 }
             }
             Err(_) => return serde_json::json!({"ok": false, "error": "knowledge_store poisoned"}),
+        }
+
+        // Write-through to SQLite (D6 — errors silently ignored; in-memory
+        // store is authoritative).  Guard is acquired and released before the
+        // infra.bump() below (lock-order rule §6.2).
+        if let Ok(guard) = self.sqlite.lock() {
+            if let Some(sq) = guard.as_ref() {
+                let _ = sq.delete_episode(&episode_id);
+                for chunk in &kchunks {
+                    let _ = sq.upsert(chunk);
+                }
+            }
         }
 
         // Drop guard before bump (lock-order rule §6.2).
@@ -314,5 +372,66 @@ mod tests {
         assert_eq!(out["status"], "indexed");
         assert!(out["chunk_count"].as_u64().unwrap() > 0);
         assert!(state.infra.rev() > rev0);
+    }
+
+    /// Verify that indexed chunks survive a simulated restart: index an
+    /// episode, construct a new `KnowledgeState` (simulating cold start),
+    /// call `set_data_dir` on the same temp dir, and confirm search returns
+    /// results without re-indexing.
+    #[test]
+    fn knowledge_state_durability_round_trip() {
+        let dir = tempfile::tempdir().expect("tempdir");
+
+        // Build a podcast + episode so the label map is populated for
+        // chunk-match deduplication (merge_chunk_matches skips chunks whose
+        // episode id is absent from the label map).
+        let podcast = Podcast::new("Tech Podcast");
+        let podcast_id = podcast.id;
+        let transcript_text =
+            "machine learning neural networks deep dive transcript text".to_owned();
+        let ep = make_episode(podcast_id, "ML Episode", "deep dive into ML");
+        let episode_id = ep.id.0.to_string();
+
+        let mut store = PodcastStore::new();
+        store.subscribe(podcast, vec![ep]);
+        store.set_transcript(episode_id.clone(), transcript_text);
+        let shared_store = Arc::new(Mutex::new(store));
+
+        // ── Session 1: index the episode ──────────────────────────────────
+        let state1 = KnowledgeState::for_test(shared_store.clone());
+        let loaded = state1.set_data_dir(dir.path());
+        // Fresh dir — nothing pre-loaded yet.
+        assert_eq!(loaded, 0, "fresh dir should have 0 pre-loaded chunks");
+
+        let out = state1.handle(KnowledgeAction::IndexEpisode {
+            episode_id: episode_id.clone(),
+        });
+        assert_eq!(out["ok"], true, "index should succeed");
+        assert!(out["chunk_count"].as_u64().unwrap() > 0);
+
+        // Verify in-memory search finds the episode in session 1.
+        let out_search = state1.handle(KnowledgeAction::Search {
+            query: "machine learning".to_owned(),
+        });
+        assert_eq!(out_search["ok"], true);
+        assert!(!state1.results_snapshot().is_empty(), "search1 should have hits");
+
+        // ── Session 2: cold start — new KnowledgeState, same data dir ─────
+        // Drop state1 to release the SQLite connection.
+        drop(state1);
+
+        let state2 = KnowledgeState::for_test(shared_store.clone());
+        let reloaded = state2.set_data_dir(dir.path());
+        assert!(reloaded > 0, "cold start must reload chunks from SQLite (got {reloaded})");
+
+        // Search WITHOUT re-indexing — chunks must come from disk.
+        let out_search2 = state2.handle(KnowledgeAction::Search {
+            query: "machine learning".to_owned(),
+        });
+        assert_eq!(out_search2["ok"], true);
+        assert!(
+            !state2.results_snapshot().is_empty(),
+            "search after cold reload must return hits without re-indexing"
+        );
     }
 }
