@@ -47,7 +47,8 @@ extension AppStateStore {
     /// when no kernel snapshot is available yet.
     func effectiveTranscriptionEnabled(forPodcast podcastID: UUID) -> Bool {
         // Prefer the kernel-owned per-podcast flag (D4/D7).
-        if let summary = state.podcasts.first(where: { $0.id == podcastID }) {
+        // kernel.library holds [PodcastSummary] (id: String); state.podcasts holds [Podcast] which lacks transcriptionEnabled.
+        if let summary = kernel?.library.first(where: { UUID(uuidString: $0.id) == podcastID }) {
             return summary.transcriptionEnabled
         }
         // Legacy fallback: scan categories (pre-kernel path, kept for safety).
