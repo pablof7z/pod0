@@ -175,42 +175,6 @@ pub struct PodcastUpdate {
     /// directly instead of re-running the Nostr reduction.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub feedback_threads: Vec<FeedbackThreadDto>,
-    /// Next batch of episode IDs that require metadata indexing (D7).
-    ///
-    /// The kernel owns candidate-selection + batch-size policy
-    /// (`store::metadata_index_backfill`). The shell (`EpisodeMetadataIndexer`)
-    /// drains this list: embeds the chunks, then dispatches
-    /// `MarkEpisodesMetadataIndexed` on success. On failure the shell stops;
-    /// the kernel re-surfaces the same candidates on the next frame.
-    ///
-    /// Empty when all episodes are already indexed (the shell must stop its
-    /// loop). Per D5 omitted from the wire when empty.
-    ///
-    /// Rides the `podcast.library` domain: `MarkEpisodesMetadataIndexed`
-    /// calls `bump_domain(Domain::Library)`, which triggers a new projection
-    /// frame with the next batch.
-    ///
-    /// Wire contract: no explicit CodingKeys — the bridge decoder uses
-    /// `.convertFromSnakeCase` which turns `pending_metadata_index_ids` →
-    /// `pendingMetadataIndexIds` on the Swift side.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub pending_metadata_index_ids: Vec<String>,
-    /// Inter-batch pacing hint for the metadata-index backfill executor (ms).
-    ///
-    /// The serialized driver waits this many milliseconds before claiming the
-    /// next batch, gating successive embed calls to avoid rate-limiting the
-    /// embeddings provider. Omitted when `0` per D5
-    /// (but the kernel always emits a non-zero constant alongside a non-empty
-    /// `pending_metadata_index_ids`).
-    ///
-    /// Wire contract: `.convertFromSnakeCase` → `metadataIndexInterBatchDelayMs`.
-    #[serde(default, skip_serializing_if = "zero_u32_update")]
-    pub metadata_index_inter_batch_delay_ms: u32,
-}
-
-/// D5 skip predicate: omit `metadata_index_inter_batch_delay_ms` when zero.
-fn zero_u32_update(v: &u32) -> bool {
-    *v == 0
 }
 
 /// One row of the `configured_relays` projection: a relay URL plus its
@@ -259,8 +223,6 @@ impl Default for PodcastUpdate {
             configured_relays: Vec::new(),
             feedback_events: Vec::new(),
             feedback_threads: Vec::new(),
-            pending_metadata_index_ids: Vec::new(),
-            metadata_index_inter_batch_delay_ms: 0,
         }
     }
 }

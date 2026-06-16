@@ -198,27 +198,6 @@ fn frame_without_signed_events_has_no_projections_key_in_output() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// Metadata-index backfill decode contract (D7)
-// ---------------------------------------------------------------------------
-//
-// MEMORY ffi_decode_snakecase_contract: types embedded in `PodcastUpdate` must
-// rely on the bridge's `.convertFromSnakeCase`, NOT explicit snake_case
-// CodingKeys (which double-convert → keyNotFound → ALL frames dropped → UI
-// freeze). These tests prove the two new fields decode correctly:
-//
-//  1. `metadata_index_fields_serialize_as_snake_case` — the Rust wire shape
-//     carries `pending_metadata_index_ids` + `metadata_index_inter_batch_delay_ms`.
-//  2. `metadata_index_keys_convert_to_swift_property_names` — applying the SAME
-//     `.convertFromSnakeCase` algorithm the Swift bridge uses yields exactly the
-//     camelCase property names the generated Swift struct declares
-//     (`pendingMetadataIndexIds`, `metadataIndexInterBatchDelayMs`).
-//  3. `metadata_index_fields_omitted_when_default` — D5: empty/zero are omitted.
-//
-// The Swift-side counterpart (`AppTests/.../MetadataIndexDecodeContractTests`)
-// decodes the SAME wire JSON through `KernelDecoding.decodePodcastUpdate` and
-// asserts the values land in the struct — closing the loop end-to-end.
-
 /// Faithful port of Swift's `JSONDecoder.KeyDecodingStrategy.convertFromSnakeCase`
 /// (the algorithm the bridge decoder is configured with). Splits on `_`,
 /// lowercases the leading run, and capitalizes the first letter of each
@@ -245,102 +224,6 @@ fn convert_from_snake_case(key: &str) -> String {
         }
     }
     out
-}
-
-/// (1) + (2): the new fields serialize as snake_case AND the bridge's
-/// `.convertFromSnakeCase` maps them to the exact Swift property names.
-#[test]
-fn metadata_index_keys_convert_to_swift_property_names() {
-    use crate::ffi::snapshot_update::PodcastUpdate;
-
-    let update = PodcastUpdate {
-        running: true,
-        rev: 7,
-        schema_version: 1,
-        pending_metadata_index_ids: vec![
-            "16368e87-66b8-5631-9f89-5059212a4e9b".to_string(),
-            "00000000-0000-0000-0000-000000000001".to_string(),
-        ],
-        metadata_index_inter_batch_delay_ms: 200,
-        ..PodcastUpdate::default()
-    };
-
-    let json = serde_json::to_string(&update).expect("encode PodcastUpdate");
-    let v: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
-    let obj = v.as_object().expect("PodcastUpdate is a JSON object");
-
-    // (1) snake_case keys present on the wire.
-    assert!(
-        obj.contains_key("pending_metadata_index_ids"),
-        "wire must carry snake_case pending_metadata_index_ids"
-    );
-    assert!(
-        obj.contains_key("metadata_index_inter_batch_delay_ms"),
-        "wire must carry snake_case metadata_index_inter_batch_delay_ms"
-    );
-
-    // (2) Applying the bridge's convertFromSnakeCase yields the EXACT camelCase
-    // property names the generated Swift struct declares.
-    assert_eq!(
-        convert_from_snake_case("pending_metadata_index_ids"),
-        "pendingMetadataIndexIds",
-        "bridge key conversion must match the Swift property name"
-    );
-    assert_eq!(
-        convert_from_snake_case("metadata_index_inter_batch_delay_ms"),
-        "metadataIndexInterBatchDelayMs",
-        "bridge key conversion must match the Swift property name"
-    );
-
-    // Values round-trip with the expected types/contents.
-    assert_eq!(
-        obj["pending_metadata_index_ids"]
-            .as_array()
-            .expect("ids is an array")
-            .len(),
-        2
-    );
-    assert_eq!(
-        obj["metadata_index_inter_batch_delay_ms"]
-            .as_u64()
-            .expect("delay is a number"),
-        200
-    );
-
-    // Re-decoding the JSON back into PodcastUpdate preserves the values (proves
-    // there are no explicit snake_case CodingKeys breaking the serde round-trip).
-    let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode round-trip");
-    assert_eq!(decoded.pending_metadata_index_ids.len(), 2);
-    assert_eq!(decoded.metadata_index_inter_batch_delay_ms, 200);
-}
-
-/// (3) D5: both fields are omitted from the wire when empty/zero, so snapshots
-/// that predate the field (or carry no backfill work) stay byte-compatible.
-#[test]
-fn metadata_index_fields_omitted_when_default() {
-    use crate::ffi::snapshot_update::PodcastUpdate;
-
-    let update = PodcastUpdate {
-        running: true,
-        rev: 1,
-        schema_version: 1,
-        ..PodcastUpdate::default()
-    };
-    let json = serde_json::to_string(&update).expect("encode");
-    assert!(
-        !json.contains("pending_metadata_index_ids"),
-        "empty ids must be omitted from the wire (D5)"
-    );
-    assert!(
-        !json.contains("metadata_index_inter_batch_delay_ms"),
-        "zero delay must be omitted from the wire (D5)"
-    );
-
-    // A legacy snapshot without the fields decodes cleanly to the defaults.
-    let legacy = r#"{"running":true,"rev":1,"schema_version":1}"#;
-    let decoded: PodcastUpdate = serde_json::from_str(legacy).expect("decode legacy");
-    assert!(decoded.pending_metadata_index_ids.is_empty());
-    assert_eq!(decoded.metadata_index_inter_batch_delay_ms, 0);
 }
 
 /// Sanity: the convertFromSnakeCase port matches a few known Swift conversions.

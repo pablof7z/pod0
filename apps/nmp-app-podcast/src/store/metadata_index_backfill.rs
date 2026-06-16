@@ -1,38 +1,35 @@
 //! Pure metadata-index backfill policy helpers.
 //!
-//! Lifted out of the Swift `EpisodeMetadataIndexer.runBackfill` shell so the
-//! decision of *which* episodes should be embedded (and in what batch size /
-//! pacing) is kernel-owned and unit-testable without the iOS executor.
+//! The kernel owns the decision of *which* episodes need metadata indexing
+//! (and in what batch size / pacing). The backfill runs kernel-side via
+//! `knowledge::spawn_metadata_index_backfill` — the Swift shell no longer
+//! drives this process (the former `EpisodeMetadataIndexer` was retired in
+//! slice 5f / #533 when the kernel took over as sole RAG owner).
 //!
 //! ## Doctrine
 //!
-//! * **D0 — Rust owns policy.** This module is the policy. The iOS
-//!   `EpisodeMetadataIndexer` only executes the embed call + dispatches
-//!   `MarkEpisodesMetadataIndexed` on success.
+//! * **D0 — Rust owns policy.** This module is the policy.
 //! * **D6 — pure data in/out.** No I/O, no logging, no side effects.
 //!
-//! ## How it surfaces to the shell
+//! ## How it is used
 //!
-//! `metadata_index_backfill_candidates` is called from the Library domain
-//! payload builder and its result rides the push frame as
-//! `PodcastUpdate.pending_metadata_index_ids`.  The shell drains this list,
-//! calls `upsert(chunks:)`, and dispatches `MarkEpisodesMetadataIndexed` on
-//! success.  On failure it stops (halt-on-failure parity) and waits for the
-//! next frame — the kernel will re-surface the same candidates until they are
-//! marked indexed.
+//! `metadata_index_backfill_candidates` is called by the kernel's internal
+//! metadata-index backfill driver (`knowledge_search::spawn_metadata_index_backfill`).
+//! It scans for un-indexed episodes, indexes their metadata chunks, and
+//! dispatches `MarkEpisodesMetadataIndexed` internally.
 //!
 //! ## Ordering
 //!
 //! Episodes are returned in publication-date order (oldest-first within each
 //! podcast, pods iterated by internal HashMap order — consistent within a
 //! single run but not guaranteed across restarts).  A stable ordering is not
-//! required for correctness; the shell is free to re-order for UX.
+//! required for correctness.
 //!
 //! ## Why a flat batch instead of per-show batches
 //!
-//! Metadata indexing is a library-wide concern (the Swift `EpisodeMetadataIndexer`
-//! already treated it that way).  Grouping by podcast adds no correctness benefit
-//! and complicates the shell executor without improving the user experience.
+//! Metadata indexing is a library-wide concern. Grouping by podcast adds no
+//! correctness benefit and complicates the executor without improving the
+//! user experience.
 
 use super::PodcastStore;
 
@@ -48,11 +45,11 @@ pub const METADATA_INDEX_BACKFILL_BATCH_SIZE: usize = 32;
 
 /// Pause between backfill batches in milliseconds.
 ///
-/// Surfaces to Swift as `PodcastUpdate.metadata_index_inter_batch_delay_ms`.
-/// The shell uses this as the sleep duration between successive embed calls.
-/// Chosen to match the former Swift constant (`interBatchDelayNanoseconds =
-/// 200_000_000`, i.e. 200 ms) — cheap insurance against rate-limiting the
-/// embeddings provider on a cold launch with a large library.
+/// Used by the kernel-internal metadata-index backfill driver as the sleep
+/// duration between successive embed calls. Chosen to match the former Swift
+/// constant (`interBatchDelayNanoseconds = 200_000_000`, i.e. 200 ms) —
+/// cheap insurance against rate-limiting the embeddings provider on a cold
+/// launch with a large library.
 pub const METADATA_INDEX_INTER_BATCH_DELAY_MS: u32 = 200;
 
 impl PodcastStore {

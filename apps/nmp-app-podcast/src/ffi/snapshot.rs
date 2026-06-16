@@ -52,8 +52,8 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     // Step 4: categories_cache now read from CategoriesState.
     let categories_cache = handle.state.categories.categories_snapshot();
 
-    // Single store lock → library + memory_facts + settings + backfill candidates.
-    let (library, memory_facts, settings, pending_metadata_index_ids) = handle
+    // Single store lock → library + memory_facts + settings.
+    let (library, memory_facts, settings) = handle
         .state.library.store
         .lock()
         .ok()
@@ -65,15 +65,9 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
                 &categories_cache,
             );
             let settings = build_settings_snapshot(&s);
-            let backfill = s.metadata_index_backfill_candidates();
-            (library, s.all_memory_facts(), settings, backfill)
+            (library, s.all_memory_facts(), settings)
         })
         .unwrap_or_default();
-    let metadata_index_inter_batch_delay_ms: u32 = if pending_metadata_index_ids.is_empty() {
-        0
-    } else {
-        crate::store::METADATA_INDEX_INTER_BATCH_DELAY_MS
-    };
 
     let subscribed_library: Vec<PodcastSummary> = library
         .iter()
@@ -206,8 +200,6 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         configured_relays,
         feedback_events,
         feedback_threads,
-        pending_metadata_index_ids,
-        metadata_index_inter_batch_delay_ms,
         ..PodcastUpdate::default()
     }
 }

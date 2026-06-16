@@ -870,24 +870,6 @@ struct PodcastUpdate {
     /// reduction + newest-wins kind:513 metadata; `FeedbackStore` renders these
     /// directly instead of rebuilding threads from `feedbackEvents`.
     @DefaultEmptyArray var feedbackThreads: [FeedbackThreadDTO] = []
-    /// Next batch of episode IDs to embed into the RAG index (D7 kernel policy).
-    ///
-    /// The kernel owns candidate-selection + batch-size policy. The shell
-    /// (`EpisodeMetadataIndexer`) drains this list: embeds the chunks, then
-    /// dispatches `MarkEpisodesMetadataIndexed` on success. On embed failure
-    /// the shell stops; the kernel re-surfaces the same IDs on the next frame
-    /// (after `MarkEpisodesMetadataIndexed` bumps `Domain::Library`).
-    ///
-    /// Empty when all episodes are already indexed — the shell must stop its
-    /// loop when this is empty.
-    @DefaultEmptyArray var pendingMetadataIndexIds: [String] = []
-    /// Inter-batch pacing hint for the metadata-index backfill executor (ms).
-    ///
-    /// The serialized driver in `EpisodeMetadataIndexer` waits this many
-    /// milliseconds before claiming the next batch, gating successive embed
-    /// calls to avoid rate-limiting the embeddings provider. `0` (and omitted)
-    /// when `pendingMetadataIndexIds` is empty.
-    var metadataIndexInterBatchDelayMs: Int = 0
 }
 
 /// Snapshot-decode mirror of a raw feedback Nostr event, retained for the
@@ -1029,8 +1011,6 @@ extension PodcastUpdate: Codable {
         configuredRelays = try c.decodeIfPresent([AppRelayRow].self, forKey: .configuredRelays) ?? []
         feedbackEvents = try c.decodeIfPresent([FeedbackEventDTO].self, forKey: .feedbackEvents) ?? []
         feedbackThreads = try c.decodeIfPresent([FeedbackThreadDTO].self, forKey: .feedbackThreads) ?? []
-        pendingMetadataIndexIds = try c.decodeIfPresent([String].self, forKey: .pendingMetadataIndexIds) ?? []
-        metadataIndexInterBatchDelayMs = try c.decodeIfPresent(Int.self, forKey: .metadataIndexInterBatchDelayMs) ?? 0
     }
 }
 
