@@ -495,6 +495,27 @@ extension AppStateStore {
         kernel?.sendTranscriptReport(episodeID: episodeID, transcript: transcript, source: source)
     }
 
+    /// Dispatch `podcast.knowledge.index_episode` for a single episode so the
+    /// kernel KnowledgeStore gains that episode's transcript chunks immediately
+    /// after the timed transcript has been mirrored via `kernelTranscriptReport`.
+    ///
+    /// Caller contract: `kernelTranscriptReport` MUST precede this call on the
+    /// same episode — the kernel chunks the stored transcript text synchronously
+    /// on the actor thread, so the text must already be in the store. A call
+    /// without a prior report is a silent no-op (no transcript to chunk).
+    ///
+    /// Fire-and-forget + idempotent: `index_episode` deletes then re-upserts
+    /// chunks, so repeat calls are safe. Live STT completion is one episode at a
+    /// time; the single-episode bump cost (actor chunk pass + main-thread snapshot
+    /// decode + embed spawn) is acceptable. No pacing is needed here — contrast
+    /// with the launch-time backfill migration (slice 4) which dispatches N
+    /// episodes in paced batches.
+    func kernelIndexEpisodeKnowledge(episodeID: UUID) {
+        kernel?.dispatch(namespace: "podcast.knowledge",
+                         body: ["op": "index_episode",
+                                "episode_id": episodeID.uuidString])
+    }
+
     /// Record one host-authored pipeline event onto an episode's Diagnostics
     /// log (download / transcript / chapters events the kernel emits itself; the
     /// iOS-capability stages — STT provider, RAG indexing, clip export, etc. —

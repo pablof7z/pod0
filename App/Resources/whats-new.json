@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-16T00:02:00Z",
+      "lines": [
+        "Search now indexes newly-transcribed episodes immediately — new content is findable without a re-launch."
+      ]
+    },
+    {
       "shipped_at": "2026-06-16T00:01:00Z",
       "lines": [
         "Search now powered by the kernel: transcript search runs a hybrid BM25 + semantic pass directly in the kernel — no external vector store needed."

@@ -379,6 +379,18 @@ final class TranscriptIngestService {
             transcript: transcript,
             source: Self.sourceDisplayName(source)
         )
+        // Slice 5c: index this episode in the kernel KnowledgeStore so kernel
+        // Search (the iOS Search tab) can find newly-transcribed content without
+        // waiting for a re-launch.  Ordering: `kernelTranscriptReport` above
+        // stores the timed segments on the Rust actor FIRST; `index_episode`
+        // chunks the stored text synchronously and embeds off-actor.
+        // Fire-and-forget + idempotent (deletes + re-upserts).  Live STT
+        // completes one episode at a time, so the single per-episode bump cost
+        // (actor chunk pass + main-thread snapshot decode + embed spawn) is fine
+        // with no pacing needed — the batch-pacing in the launch-time backfill
+        // migration (slice 4) is only necessary because that path dispatches N
+        // episodes in a tight loop at cold start.
+        appStore.kernelIndexEpisodeKnowledge(episodeID: episode.id)
 
         // STEP 2: Best-effort embed. Failures are logged but don't throw.
         let chunkable = ChunkableTranscript(
