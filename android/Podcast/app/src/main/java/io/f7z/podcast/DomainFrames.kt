@@ -210,7 +210,20 @@ data class NostrConversationDto(
     @SerialName("counterparty_hex") val counterpartyHex: String = "",
     val participants: List<String> = emptyList(),
     val turns: List<NostrConversationTurnDto> = emptyList(),
+    /** Composed trust verdict: `(followed || approved) && !blocked`. */
     val trusted: Boolean = false,
+    /**
+     * Explicit block on the counterparty in the kernel `ApprovedPeerStore`.
+     * Distinct from `trusted` so the trust menu can offer Unblock as the
+     * recovery action. Mirror of `NostrConversationDTO.peer_blocked`.
+     */
+    @SerialName("peer_blocked")  val peerBlocked: Boolean = false,
+    /**
+     * Explicit approval on the counterparty (NOT follow-derived). A pure-follow
+     * trusted peer reports `false`, so the menu avoids offering a no-op
+     * "Remove approval". Mirror of `NostrConversationDTO.peer_approved`.
+     */
+    @SerialName("peer_approved") val peerApproved: Boolean = false,
     @SerialName("first_seen")   val firstSeen: Long = 0L,
     @SerialName("last_activity") val lastActivity: Long = 0L,
 )

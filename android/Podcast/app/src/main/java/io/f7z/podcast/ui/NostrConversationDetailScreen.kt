@@ -57,7 +57,10 @@ import java.util.concurrent.TimeUnit
  * The screen auto-scrolls to the bottom on first appearance (parity with iOS
  * `.defaultScrollAnchor(.bottom)`).
  *
- * No actions dispatched — read-only surface.
+ * Trust controls: the TopAppBar carries a [NostrConversationTrustMenu] overflow
+ * menu with Approve / Remove-Approval / Block for the conversation's counterparty.
+ * Trust state comes from the reactive snapshot (`NostrConversationDto.trusted`);
+ * no local state is mutated — the kernel pushes the updated verdict on the next tick.
  *
  * Profile resolution: [snapshot.resolvedProfiles] provides display names and
  * avatar URLs for inbound senders. Claims all participant pubkeys via
@@ -106,6 +109,15 @@ fun NostrConversationDetailScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
+                },
+                actions = {
+                    NostrConversationTrustMenu(
+                        counterpartyHex = conversation.counterpartyHex,
+                        trusted = conversation.trusted,
+                        peerBlocked = conversation.peerBlocked,
+                        peerApproved = conversation.peerApproved,
+                        bridge = bridge,
+                    )
                 },
             )
         },

@@ -59,6 +59,20 @@ use crate::state::{Infra, Slot};
 use crate::store::approved_peer_store::ApprovedPeerStore;
 use crate::store::outbound_turn_cache::OutboundTurn;
 
+/// A one-shot snapshot of the `ApprovedPeerStore`'s approved + blocked sets,
+/// captured under a single lock acquisition. Shared by `trust_predicate` and
+/// `peer_flags_predicate` so the composed verdict and the explicit per-peer
+/// flags are always derived from identical state.
+struct ApprovedBlockedSnapshot {
+    /// `true` when the store mutex was poisoned and could not be read. Callers
+    /// fail CLOSED (deny trust / report no explicit verdict), never fail-OPEN.
+    fail_closed: bool,
+    /// Explicitly approved hex pubkeys at snapshot time.
+    approved: std::collections::BTreeSet<String>,
+    /// Explicitly blocked hex pubkeys at snapshot time.
+    blocked: std::collections::BTreeSet<String>,
+}
+
 /// Social feature substate.
 ///
 /// Constructed once in `PodcastAppState::new` and referenced via
@@ -146,17 +160,11 @@ impl SocialState {
         // Snapshot approved/blocked sets from the mutex. A poisoned lock means
         // we cannot read the blocklist → fail CLOSED (trust nobody) rather than
         // dropping blocks.
-        let mut fail_closed = false;
-        let (approved_snap, blocked_snap) = if let Some(ref arc) = self.approved {
-            if let Ok(store) = arc.lock() {
-                (store.approved.clone(), store.blocked.clone())
-            } else {
-                fail_closed = true;
-                (Default::default(), Default::default())
-            }
-        } else {
-            (Default::default(), Default::default())
-        };
+        let ApprovedBlockedSnapshot {
+            fail_closed,
+            approved: approved_snap,
+            blocked: blocked_snap,
+        } = self.approved_blocked_snapshot();
 
         move |pubkey: &str| {
             // Poisoned approved-store lock: cannot prove the peer is not
@@ -171,6 +179,64 @@ impl SocialState {
             let followed = follow_pred.as_ref().map(|p| p(pubkey)).unwrap_or(false);
             let approved = approved_snap.contains(pubkey);
             followed || approved
+        }
+    }
+
+    /// Snapshot the approved + blocked sets under a single lock acquisition.
+    ///
+    /// Shared by [`Self::trust_predicate`] (composed verdict) and
+    /// [`Self::peer_flags_predicate`] (explicit per-peer flags) so both read
+    /// from the SAME `ApprovedPeerStore` state via the SAME accessor — neither
+    /// reimplements the block/approve lookup independently.
+    ///
+    /// A poisoned lock sets `fail_closed`: `trust_predicate` denies everyone
+    /// (block stays absolute) and `peer_flags_predicate` reports no explicit
+    /// verdict — never fail-OPEN.
+    fn approved_blocked_snapshot(&self) -> ApprovedBlockedSnapshot {
+        if let Some(ref arc) = self.approved {
+            if let Ok(store) = arc.lock() {
+                return ApprovedBlockedSnapshot {
+                    fail_closed: false,
+                    approved: store.approved.clone(),
+                    blocked: store.blocked.clone(),
+                };
+            }
+            return ApprovedBlockedSnapshot {
+                fail_closed: true,
+                approved: Default::default(),
+                blocked: Default::default(),
+            };
+        }
+        ApprovedBlockedSnapshot {
+            fail_closed: false,
+            approved: Default::default(),
+            blocked: Default::default(),
+        }
+    }
+
+    /// Build a predicate returning EXPLICIT per-peer trust flags
+    /// `(peer_blocked, peer_approved)` for the conversation projection.
+    ///
+    /// `peer_blocked` = the pubkey is in the `ApprovedPeerStore` blocklist.
+    /// `peer_approved` = the pubkey has an EXPLICIT approval (NOT follow-derived,
+    /// so a pure-follow trusted peer reports `false`).
+    ///
+    /// Reads the same `approved_blocked_snapshot` as the composed
+    /// `trust_predicate`. On a poisoned lock (fail-closed) reports `(false,
+    /// false)` — no explicit verdict — while `trust_predicate` independently
+    /// denies trust, so the shell falls back to the safe untrusted UI.
+    fn peer_flags_predicate(&self) -> impl Fn(&str) -> (bool, bool) + '_ {
+        let ApprovedBlockedSnapshot {
+            fail_closed,
+            approved: approved_snap,
+            blocked: blocked_snap,
+        } = self.approved_blocked_snapshot();
+
+        move |pubkey: &str| {
+            if fail_closed {
+                return (false, false);
+            }
+            (blocked_snap.contains(pubkey), approved_snap.contains(pubkey))
         }
     }
 
@@ -305,8 +371,10 @@ impl SocialState {
             Err(_) => return Vec::new(),
         };
 
-        // Build composed trust predicate once per projection.
+        // Build composed trust predicate + explicit per-peer flag predicate
+        // once per projection. Both read the same approved/blocked snapshot.
         let predicate = self.trust_predicate();
+        let flags = self.peer_flags_predicate();
 
         // Keyed by root_event_id. Value: (counterparty_hex, participants, turns).
         let mut threads: HashMap<String, (String, Vec<String>, Vec<NostrConversationTurnDTO>)> =
@@ -361,12 +429,15 @@ impl SocialState {
                 let first_seen = turns.first().map(|t| t.created_at).unwrap_or(0);
                 let last_activity = turns.last().map(|t| t.created_at).unwrap_or(0);
                 let trusted = predicate(&counterparty_hex);
+                let (peer_blocked, peer_approved) = flags(&counterparty_hex);
                 NostrConversationDTO {
                     root_event_id,
                     counterparty_hex,
                     participants,
                     turns,
                     trusted,
+                    peer_blocked,
+                    peer_approved,
                     first_seen,
                     last_activity,
                 }
@@ -825,5 +896,71 @@ mod tests {
             !pred(OTHER),
             "poisoned approved lock must deny everyone"
         );
+    }
+
+    // ── Explicit per-peer conversation flags (peer_blocked / peer_approved) ────
+    //
+    // These drive the Android conversation-trust state machine, which must
+    // distinguish blocked vs explicitly-approved vs follow-only — a distinction
+    // the composed `trusted` bool alone cannot express.
+
+    /// Blocked peer → `peer_blocked == true` AND composed `trusted == false`.
+    #[test]
+    fn conversation_blocked_peer_sets_peer_blocked_and_untrusted() {
+        let approved_store = Arc::new(Mutex::new(ApprovedPeerStore::new()));
+        approved_store.lock().unwrap().block(PEER);
+        let state = SocialState::for_test().with_approved_peers(approved_store);
+        state
+            .agent_notes
+            .lock()
+            .unwrap()
+            .push(cached_note("noteBlk", PEER));
+
+        let conv = &state.nostr_conversations_snapshot()[0];
+        assert!(conv.peer_blocked, "explicitly blocked peer must set peer_blocked");
+        assert!(!conv.peer_approved, "blocked peer is not approved");
+        assert!(!conv.trusted, "blocked peer must be untrusted");
+    }
+
+    /// Explicitly-approved (NOT followed) peer → `peer_approved == true` AND
+    /// composed `trusted == true`, with `peer_blocked == false`.
+    #[test]
+    fn conversation_approved_peer_sets_peer_approved_and_trusted() {
+        let approved_store = Arc::new(Mutex::new(ApprovedPeerStore::new()));
+        approved_store.lock().unwrap().approve(PEER);
+        let state = SocialState::for_test().with_approved_peers(approved_store);
+        state
+            .agent_notes
+            .lock()
+            .unwrap()
+            .push(cached_note("noteApp", PEER));
+
+        let conv = &state.nostr_conversations_snapshot()[0];
+        assert!(conv.peer_approved, "explicitly approved peer must set peer_approved");
+        assert!(!conv.peer_blocked, "approved peer is not blocked");
+        assert!(conv.trusted, "approved peer must be trusted");
+    }
+
+    /// Follow-only peer (no explicit approval/block) → `trusted == true` but
+    /// `peer_approved == false` and `peer_blocked == false`. This is the case
+    /// that makes a "Remove approval" action a no-op dead-end on the shell, so
+    /// the flags MUST distinguish it from explicit approval.
+    #[test]
+    fn conversation_follow_only_peer_is_trusted_but_not_explicitly_approved() {
+        let follow_set = make_follow_set_with_member(ME, PEER);
+        let state = SocialState::for_test().with_follow_set(follow_set);
+        state
+            .agent_notes
+            .lock()
+            .unwrap()
+            .push(cached_note("noteFollow", PEER));
+
+        let conv = &state.nostr_conversations_snapshot()[0];
+        assert!(conv.trusted, "follow-only peer must be trusted");
+        assert!(
+            !conv.peer_approved,
+            "follow-only trust must NOT report explicit approval"
+        );
+        assert!(!conv.peer_blocked, "follow-only peer is not blocked");
     }
 }

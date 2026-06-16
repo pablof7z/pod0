@@ -36,6 +36,11 @@ private func socialProjection(rev: Int) -> [String: Any] {
                 "counterparty_hex": "aabbccdd001",
                 "participants": ["aabbccdd001", "11223344001"],
                 "trusted": true,
+                // Explicit per-peer flags — always present on the wire (serde
+                // serializes all struct fields). trusted=true via explicit
+                // approval here: peer_approved=true, peer_blocked=false.
+                "peer_approved": true,
+                "peer_blocked": false,
                 "first_seen": 1_717_200_000,
                 "last_activity": 1_717_286_400,
                 "turns": [
@@ -86,6 +91,9 @@ final class NostrConversationSocialDomainTests: XCTestCase {
         // counterparty_hex → counterpartyHex
         XCTAssertEqual(convo.counterpartyHex, "aabbccdd001")
         XCTAssertTrue(convo.trusted)
+        // peer_approved → peerApproved, peer_blocked → peerBlocked (.convertFromSnakeCase)
+        XCTAssertTrue(convo.peerApproved, "peer_approved must decode to peerApproved")
+        XCTAssertFalse(convo.peerBlocked, "peer_blocked must decode to peerBlocked")
         XCTAssertEqual(convo.firstSeen, 1_717_200_000)   // first_seen
         XCTAssertEqual(convo.lastActivity, 1_717_286_400) // last_activity
         XCTAssertEqual(convo.participants.count, 2)

@@ -685,6 +685,8 @@ struct NostrConversationDTO: Codable, Identifiable, Equatable, Hashable {
     @DefaultEmptyArray var participants: [String] = []
     @DefaultEmptyArray var turns: [NostrConversationTurnDTO] = []
     var trusted: Bool = false
+    var peerBlocked: Bool = false
+    var peerApproved: Bool = false
     var firstSeen: Int = 0
     var lastActivity: Int = 0
 
