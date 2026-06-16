@@ -170,7 +170,7 @@ final class AutoSnipController {
         // playhead. When it returns, overwrite the mechanical bounds in
         // place. Runs as a detached @MainActor task so the lock-screen
         // bookmarkCommand path (which can't await UI) still gets refinement.
-        let modelID = store.state.settings.wikiModel
+        let modelID = store.state.settings.agentInitialModel
         let playheadAtCapture = now
         Task { @MainActor in
             await refine(

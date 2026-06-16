@@ -5,7 +5,6 @@ struct AIModelsSettingsView: View {
     @State private var agentSelectorPresented = false
     @State private var thinkingSelectorPresented = false
     @State private var memorySelectorPresented = false
-    @State private var wikiSelectorPresented = false
     @State private var categorizationSelectorPresented = false
     @State private var chapterSelectorPresented = false
     @State private var embeddingsSelectorPresented = false
@@ -45,12 +44,6 @@ struct AIModelsSettingsView: View {
         .sheet(isPresented: $memorySelectorPresented) {
             NavigationStack {
                 ProviderModelSelectorView(selectedModelID: memoryModelBinding, selectedModelName: memoryModelNameBinding, role: "Memory Compilation")
-            }
-            .presentationDragIndicator(.visible)
-        }
-        .sheet(isPresented: $wikiSelectorPresented) {
-            NavigationStack {
-                ProviderModelSelectorView(selectedModelID: wikiModelBinding, selectedModelName: wikiModelNameBinding, role: "Wiki")
             }
             .presentationDragIndicator(.visible)
         }
@@ -106,16 +99,6 @@ struct AIModelsSettingsView: View {
                 modelName: store.state.settings.memoryCompilationModelName
             ) {
                 memorySelectorPresented = true
-            }
-
-            modelRow(
-                icon: "book.closed.fill",
-                tint: .indigo,
-                role: "Wiki",
-                modelID: store.state.settings.wikiModel,
-                modelName: store.state.settings.wikiModelName
-            ) {
-                wikiSelectorPresented = true
             }
 
             modelRow(
@@ -255,20 +238,6 @@ struct AIModelsSettingsView: View {
         )
     }
 
-    private var wikiModelBinding: Binding<String> {
-        Binding(
-            get: { store.state.settings.wikiModel },
-            set: { v in var s = store.state.settings; s.wikiModel = v; store.updateSettings(s) }
-        )
-    }
-
-    private var wikiModelNameBinding: Binding<String> {
-        Binding(
-            get: { store.state.settings.wikiModelName },
-            set: { v in var s = store.state.settings; s.wikiModelName = v; store.updateSettings(s) }
-        )
-    }
-
     private var categorizationModelBinding: Binding<String> {
         Binding(
             get: { store.state.settings.categorizationModel },
@@ -346,10 +315,6 @@ struct AIModelsSettingsView: View {
         }
         if s.memoryCompilationModelName.isEmpty, let match = catalog.models.first(where: { $0.matchesStoredID(s.memoryCompilationModel) }) {
             s.memoryCompilationModelName = match.name
-            changed = true
-        }
-        if s.wikiModelName.isEmpty, let match = catalog.models.first(where: { $0.matchesStoredID(s.wikiModel) }) {
-            s.wikiModelName = match.name
             changed = true
         }
         if s.categorizationModelName.isEmpty, let match = catalog.models.first(where: { $0.matchesStoredID(s.categorizationModel) }) {

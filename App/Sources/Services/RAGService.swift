@@ -8,7 +8,7 @@ import os.log
 // and the `RAGSearch` orchestrator that wires them together.
 //
 // Why a `@MainActor` singleton:
-//   - The wiki and search surfaces want a stable, ready-on-launch handle.
+//   - The search surface wants a stable, ready-on-launch handle.
 //   - State the rest of the app cares about (where the SQLite file lives,
 //     when the index was opened) is UI-adjacent.
 //   - The underlying `VectorIndex` is itself an `actor`, so DB work stays
@@ -63,14 +63,6 @@ final class RAGService {
         providerEmbedder.attach(appStore: appStore)
     }
 
-    // MARK: Adapters (defined in RAGService+Adapters.swift)
-
-    /// Adapter that conforms to `WikiRAGSearchProtocol` so `WikiGenerator`
-    /// and `WikiVerifier` can take it directly.
-    var wikiRAG: any WikiRAGSearchProtocol {
-        WikiRAGSearchAdapter(search: search, index: index)
-    }
-
     // MARK: Init
 
     private init() {
@@ -111,7 +103,7 @@ final class RAGService {
                 "failed to open on-disk vectors.sqlite (\(String(describing: error), privacy: .public)) — falling back to in-memory store"
             )
             // The in-memory `VectorIndex` keeps the app runnable; data won't
-            // survive a relaunch but the wiki/search code paths still work.
+            // survive a relaunch but the search code paths still work.
             do {
                 openedIndex = try VectorIndex(embedder: embedder, inMemory: true)
                 resolvedURL = nil

@@ -132,16 +132,6 @@ struct SettingsView: View {
                 )
             }
 
-            NavigationLink {
-                WikiSettingsView()
-            } label: {
-                SettingsRow(
-                    icon: "book.closed.fill",
-                    tint: .indigo,
-                    title: "Wiki",
-                    value: wikiRowValue
-                )
-            }
         }
     }
 
@@ -309,10 +299,6 @@ struct SettingsView: View {
             s.ollamaCredentialSource != .none,
         ].filter { $0 }.count
         return connected == 0 ? "Not set up" : "\(connected) connected"
-    }
-
-    private var wikiRowValue: String {
-        "Manual"
     }
 
     private var dataStorageSummary: String? {

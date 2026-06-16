@@ -48,8 +48,6 @@ extension AppStateStore {
         next.settings.agentThinkingModelName = ks.agentThinkingModelName
         next.settings.memoryCompilationModel = ks.memoryCompilationModel
         next.settings.memoryCompilationModelName = ks.memoryCompilationModelName
-        next.settings.wikiModel = ks.wikiModel
-        next.settings.wikiModelName = ks.wikiModelName
         next.settings.categorizationModel = ks.categorizationModel
         next.settings.categorizationModelName = ks.categorizationModelName
         next.settings.chapterCompilationModel = ks.chapterCompilationModel

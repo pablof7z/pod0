@@ -8,7 +8,6 @@ impl ProviderSettingItem {
             Self::AgentInitialModel
                 | Self::AgentThinkingModel
                 | Self::MemoryCompilationModel
-                | Self::WikiModel
                 | Self::CategorizationModel
                 | Self::ChapterCompilationModel
                 | Self::EmbeddingsModel
@@ -42,10 +41,6 @@ impl ProviderSettingItem {
             Self::MemoryCompilationModel => {
                 runtime.set_memory_compilation_model(selection_id, display_name)?;
                 Ok("memory model updated".to_owned())
-            }
-            Self::WikiModel => {
-                runtime.set_wiki_model(selection_id, display_name)?;
-                Ok("wiki model updated".to_owned())
             }
             Self::CategorizationModel => {
                 runtime.set_categorization_model(selection_id, display_name)?;

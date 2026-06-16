@@ -94,18 +94,12 @@ struct Settings: Codable, Hashable, Sendable {
     var agentThinkingModelName: String = Settings.kernelDefaults.agentThinkingModelName
     var memoryCompilationModel: String = Settings.kernelDefaults.memoryCompilationModel
     var memoryCompilationModelName: String = Settings.kernelDefaults.memoryCompilationModelName
-    /// Model used by `WikiGenerator`. Kept distinct so users can pick a
-    /// cheaper / faster model for wiki compilation than for live agent chat — same pattern
-    /// as `memoryCompilationModel`.
-    var wikiModel: String = Settings.kernelDefaults.wikiModel
-    var wikiModelName: String = Settings.kernelDefaults.wikiModelName
     /// Model used by `PodcastCategorizationService`. Kept distinct so users can pick a
     /// cheaper model for one-shot categorization without affecting live agent chat.
     var categorizationModel: String = Settings.kernelDefaults.categorizationModel
     var categorizationModelName: String = Settings.kernelDefaults.categorizationModelName
     /// Model used by the kernel's `podcast.chapters.compile` action to synthesise
-    /// chapter boundaries from a ready transcript. Kept distinct from `wikiModel`
-    /// so users can pick a cheaper / faster model for compile without affecting wiki quality.
+    /// chapter boundaries from a ready transcript.
     var chapterCompilationModel: String = Settings.kernelDefaults.chapterCompilationModel
     var chapterCompilationModelName: String = Settings.kernelDefaults.chapterCompilationModelName
     var embeddingsModel: String = Settings.kernelDefaults.embeddingsModel
@@ -226,17 +220,11 @@ struct Settings: Codable, Hashable, Sendable {
     var headphoneTripleTapAction: HeadphoneGestureAction =
         HeadphoneGestureAction(rawValue: Settings.kernelDefaults.headphoneTripleTapAction) ?? .clipNow
 
-    // Wiki
-    /// When `true`, `WikiGenerator` runs (or refreshes) the relevant wiki pages as soon as
-    /// a new transcript finishes ingesting. Defaults off so first-run users don't burn
-    /// tokens before deciding to opt in.
-    var wikiAutoGenerateOnTranscriptIngest: Bool = Settings.kernelDefaults.wikiAutoGenerateOnTranscriptIngest
-
     // Transcripts
     /// When `true`, the app pre-fetches publisher-supplied transcripts in the
     /// background as soon as new episodes appear (called from
     /// `AppStateStore.upsertEpisodes` after a feed refresh). Default-on
-    /// because the agent layer (RAG, wiki, summarisation) only
+    /// because the agent layer (RAG, summarisation) only
     /// works once the transcript exists; publisher transcripts are typically
     /// tens of KB so the bandwidth cost is small. Toggle off in
     /// Settings → Transcripts to defer everything to manual fetch.
@@ -271,7 +259,7 @@ struct Settings: Codable, Hashable, Sendable {
         case agentInitialModelName = "llmModelName"
         case agentThinkingModel, agentThinkingModelName
         case memoryCompilationModel, memoryCompilationModelName
-        case wikiModel, wikiModelName, categorizationModel, categorizationModelName
+        case categorizationModel, categorizationModelName
         case chapterCompilationModel, chapterCompilationModelName
         case embeddingsModel, embeddingsModelName, rerankerEnabled
         case imageGenerationModel, imageGenerationModelName
@@ -290,7 +278,6 @@ struct Settings: Codable, Hashable, Sendable {
         case defaultPlaybackRate, skipForwardSeconds, skipBackwardSeconds, autoMarkPlayedAtEnd
         case autoDeleteDownloadsAfterPlayed, autoPlayNext, autoSkipAds
         case headphoneDoubleTapAction, headphoneTripleTapAction
-        case wikiAutoGenerateOnTranscriptIngest
         case autoIngestPublisherTranscripts, autoFallbackToScribe
         case notifyOnNewEpisodes
         case nostrEnabled, nostrRelayURL
@@ -321,8 +308,6 @@ struct Settings: Codable, Hashable, Sendable {
         if let v = try c.decodeIfPresent(String.self, forKey: .agentThinkingModelName) { agentThinkingModelName = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .memoryCompilationModel) { memoryCompilationModel = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .memoryCompilationModelName) { memoryCompilationModelName = v }
-        if let v = try c.decodeIfPresent(String.self, forKey: .wikiModel) { wikiModel = v }
-        if let v = try c.decodeIfPresent(String.self, forKey: .wikiModelName) { wikiModelName = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .categorizationModel) { categorizationModel = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .categorizationModelName) { categorizationModelName = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .chapterCompilationModel) { chapterCompilationModel = v }
@@ -370,7 +355,6 @@ struct Settings: Codable, Hashable, Sendable {
         if let v = try c.decodeIfPresent(Bool.self, forKey: .autoSkipAds) { autoSkipAds = v }
         if let v = try c.decodeIfPresent(HeadphoneGestureAction.self, forKey: .headphoneDoubleTapAction) { headphoneDoubleTapAction = v }
         if let v = try c.decodeIfPresent(HeadphoneGestureAction.self, forKey: .headphoneTripleTapAction) { headphoneTripleTapAction = v }
-        if let v = try c.decodeIfPresent(Bool.self, forKey: .wikiAutoGenerateOnTranscriptIngest) { wikiAutoGenerateOnTranscriptIngest = v }
         if let v = try c.decodeIfPresent(Bool.self, forKey: .autoIngestPublisherTranscripts) { autoIngestPublisherTranscripts = v }
         if let v = try c.decodeIfPresent(Bool.self, forKey: .autoFallbackToScribe) { autoFallbackToScribe = v }
         if let v = try c.decodeIfPresent(Bool.self, forKey: .notifyOnNewEpisodes) { notifyOnNewEpisodes = v }
@@ -393,8 +377,6 @@ struct Settings: Codable, Hashable, Sendable {
         try c.encode(agentThinkingModelName, forKey: .agentThinkingModelName)
         try c.encode(memoryCompilationModel, forKey: .memoryCompilationModel)
         try c.encode(memoryCompilationModelName, forKey: .memoryCompilationModelName)
-        try c.encode(wikiModel, forKey: .wikiModel)
-        try c.encode(wikiModelName, forKey: .wikiModelName)
         try c.encode(categorizationModel, forKey: .categorizationModel)
         try c.encode(categorizationModelName, forKey: .categorizationModelName)
         try c.encode(chapterCompilationModel, forKey: .chapterCompilationModel)
@@ -442,7 +424,6 @@ struct Settings: Codable, Hashable, Sendable {
         try c.encode(autoSkipAds, forKey: .autoSkipAds)
         try c.encode(headphoneDoubleTapAction, forKey: .headphoneDoubleTapAction)
         try c.encode(headphoneTripleTapAction, forKey: .headphoneTripleTapAction)
-        try c.encode(wikiAutoGenerateOnTranscriptIngest, forKey: .wikiAutoGenerateOnTranscriptIngest)
         try c.encode(autoIngestPublisherTranscripts, forKey: .autoIngestPublisherTranscripts)
         try c.encode(autoFallbackToScribe, forKey: .autoFallbackToScribe)
         try c.encode(notifyOnNewEpisodes, forKey: .notifyOnNewEpisodes)

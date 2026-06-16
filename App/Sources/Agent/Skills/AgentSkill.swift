@@ -36,7 +36,6 @@ struct AgentSkill: Sendable {
 
 enum AgentSkillID {
     static let podcastGeneration = "podcast_generation"
-    static let wikiResearch = "wiki_research"
     static let conversationHistory = "conversation_history"
     static let youtubeIngestion = "youtube_ingestion"
 }

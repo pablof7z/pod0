@@ -119,7 +119,7 @@ enum NostrPeerAgentPrompt {
           context, treat the owner as a third party in the conversation.
         • Address the peer by their display name (`\(peerName)`) when it \
           fits naturally; don't pretend they're the owner.
-        • Your library, notes, memories, wiki, and skills are the OWNER's, \
+        • Your library, notes, memories, and skills are the OWNER's, \
           not the peer's. If the peer asks about "my podcasts" or "my \
           notes", clarify that you only have access to the owner's data.
 

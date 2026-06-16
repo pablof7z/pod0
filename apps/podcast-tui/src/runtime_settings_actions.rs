@@ -15,10 +15,6 @@ impl AppRuntime {
         self.set_named_model("set_memory_compilation_model", model, model_name)
     }
 
-    pub fn set_wiki_model(&self, model: &str, model_name: &str) -> Result<String> {
-        self.set_named_model("set_wiki_model", model, model_name)
-    }
-
     pub fn set_categorization_model(&self, model: &str, model_name: &str) -> Result<String> {
         self.set_named_model("set_categorization_model", model, model_name)
     }

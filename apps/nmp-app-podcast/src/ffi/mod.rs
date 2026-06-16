@@ -101,7 +101,7 @@ pub use actions::{
     SendAgentMessageAction, SetSleepTimerAction, SetSpeedAction, SetVoiceAction, SetVolumeAction,
     SettingsAction, SettingsActionModule, SiriAction, SiriActionModule, SiriPlayLatestAction,
     SiriResumeAction, SpeakAction, StopAction, StopVoiceAction, VoiceAction, VoiceActionModule,
-    WikiAction, WikiActionModule, ACTION_AGENT_APPROVE, ACTION_AGENT_CLEAR, ACTION_AGENT_DENY,
+    ACTION_AGENT_APPROVE, ACTION_AGENT_CLEAR, ACTION_AGENT_DENY,
     ACTION_AGENT_SEND, ACTION_CLIP_AUTO_SNIP, ACTION_CLIP_CREATE, ACTION_CLIP_DELETE,
     ACTION_INBOX_DISMISS, ACTION_INBOX_MARK_LISTENED, ACTION_INBOX_TRIAGE,
     ACTION_KNOWLEDGE_CLEAR_RESULTS, ACTION_KNOWLEDGE_INDEX_EPISODE, ACTION_KNOWLEDGE_SEARCH,
@@ -139,7 +139,6 @@ pub use projections::{
     ConversationsSnapshot, DownloadItemSnapshot, DownloadQueueSnapshot, EpisodeSummary, InboxItem,
     KnowledgeSearchResult, MemoryFact, NostrShowSummary, OwnedPodcastInfo, PendingApprovalSnapshot,
     PodcastSummary, SettingsSnapshot, SocialSnapshot, TranscriptEntry, VoiceState, WidgetSnapshot,
-    WikiArticle,
 };
 pub use provider_complete::nmp_app_podcast_provider_complete;
 pub use knowledge_query::{nmp_app_podcast_knowledge_chunk, nmp_app_podcast_knowledge_query};

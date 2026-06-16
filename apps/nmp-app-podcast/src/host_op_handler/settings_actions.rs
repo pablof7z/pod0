@@ -113,13 +113,6 @@ impl PodcastHostOpHandler {
                 self.bump_domain(crate::state::Domain::Settings);
                 serde_json::json!({"ok": true})
             }
-            SettingsAction::SetWikiModel { model, model_name } => {
-                if let Ok(mut s) = self.state.library.store.lock() {
-                    s.set_wiki_model(model, model_name);
-                }
-                self.bump_domain(crate::state::Domain::Settings);
-                serde_json::json!({"ok": true})
-            }
             SettingsAction::SetCategorizationModel { model, model_name } => {
                 if let Ok(mut s) = self.state.library.store.lock() {
                     s.set_categorization_model(model, model_name);
@@ -294,13 +287,6 @@ impl PodcastHostOpHandler {
             SettingsAction::SetLocalModel { model_id } => {
                 if let Ok(mut s) = self.state.library.store.lock() {
                     s.set_local_model_id(model_id);
-                }
-                self.bump_domain(crate::state::Domain::Settings);
-                serde_json::json!({"ok": true})
-            }
-            SettingsAction::SetWikiAutoGenerateOnTranscriptIngest { enabled } => {
-                if let Ok(mut s) = self.state.library.store.lock() {
-                    s.set_wiki_auto_generate_on_transcript_ingest(enabled);
                 }
                 self.bump_domain(crate::state::Domain::Settings);
                 serde_json::json!({"ok": true})

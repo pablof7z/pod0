@@ -12,7 +12,7 @@ use super::projections::{
     AgentTaskSummary, CategoryBrowseItem, ClipSummary, CommentSummary, DownloadQueueSnapshot,
     EpisodeSummary, InboxItem, KnowledgeSearchResult, MemoryFact, NostrConversationDTO,
     NostrShowSummary, OwnedPodcastInfo, PodcastSummary, SettingsSnapshot, SocialSnapshot,
-    VoiceState, WidgetSnapshot, WikiArticle,
+    VoiceState, WidgetSnapshot,
 };
 use crate::player::PlayerState;
 
@@ -108,12 +108,6 @@ pub struct PodcastUpdate {
     /// Playback "Up Next" queue, front-first.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub queue: Vec<EpisodeSummary>,
-    /// AI-wiki articles surfaced to the iOS reader.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub wiki_articles: Vec<WikiArticle>,
-    /// Filtered result of the most recent `podcast.wiki.search` dispatch.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub wiki_search_results: Vec<WikiArticle>,
     /// AI agent picks for the Home rail.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub picks: Vec<AgentPickSummary>,
@@ -251,8 +245,6 @@ impl Default for PodcastUpdate {
             settings: SettingsSnapshot::default(),
             comments: Vec::new(),
             queue: Vec::new(),
-            wiki_articles: Vec::new(),
-            wiki_search_results: Vec::new(),
             picks: Vec::new(),
             agent_tasks: Vec::new(),
             knowledge_search_results: Vec::new(),

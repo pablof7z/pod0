@@ -51,10 +51,6 @@ pub struct SettingsSnapshot {
     pub memory_compilation_model: String,
     /// Human-readable name for memory compilation model.
     pub memory_compilation_model_name: String,
-    /// LLM model ID for wiki synthesis.
-    pub wiki_model: String,
-    /// Human-readable name for wiki model.
-    pub wiki_model_name: String,
     /// LLM model ID for episode categorization.
     pub categorization_model: String,
     /// Human-readable name for categorization model.
@@ -164,8 +160,6 @@ pub struct SettingsSnapshot {
     pub youtube_extractor_url: Option<String>,
     /// Local on-device LLM model ID (optional).
     pub local_model_id: Option<String>,
-    /// Whether to auto-generate wiki entries when transcripts are ingested.
-    pub wiki_auto_generate_on_transcript_ingest: bool,
     /// Whether to auto-ingest publisher-provided transcripts.
     pub auto_ingest_publisher_transcripts: bool,
     /// Whether to fall back to Scribe (STT) when publisher transcript ingestion fails.

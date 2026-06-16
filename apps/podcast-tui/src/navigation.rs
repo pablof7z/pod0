@@ -15,7 +15,6 @@ pub enum Tab {
     Bookmarks,
     Clips,
     Agent,
-    Wiki,
     Social,
     Settings,
 }
@@ -31,7 +30,6 @@ impl Tab {
             Self::Bookmarks,
             Self::Clips,
             Self::Agent,
-            Self::Wiki,
             Self::Social,
             Self::Settings,
         ]
@@ -47,7 +45,6 @@ impl Tab {
             Self::Bookmarks => "stars",
             Self::Clips => "clips",
             Self::Agent => "agent",
-            Self::Wiki => "wiki",
             Self::Social => "social",
             Self::Settings => "settings",
         }

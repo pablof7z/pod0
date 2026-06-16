@@ -79,10 +79,6 @@ struct AppSidebarView: View {
                 selectedTab = .clippings
                 dismiss()
             }
-            navRow("Wiki", icon: "book.closed.fill", isActive: selectedTab == .wiki) {
-                selectedTab = .wiki
-                dismiss()
-            }
         }
     }
 

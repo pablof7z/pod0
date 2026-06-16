@@ -25,10 +25,6 @@ pub fn configure_glm_ollama(app: *mut NmpApp) -> Result<(), String> {
     )?;
     dispatch_setting(
         app,
-        json!({"op": "set_wiki_model", "model": GLM_MODEL, "model_name": GLM_MODEL_NAME}),
-    )?;
-    dispatch_setting(
-        app,
         json!({"op": "set_categorization_model", "model": GLM_MODEL, "model_name": GLM_MODEL_NAME}),
     )?;
     Ok(())

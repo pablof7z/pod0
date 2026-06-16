@@ -56,7 +56,7 @@ pub use clips::ClipSummary;
 pub use download::{DownloadItemSnapshot, DownloadQueueSnapshot};
 pub use identity::{AccountSummary, OwnedPodcastInfo};
 pub use inbox::InboxItem;
-pub use knowledge::{KnowledgeSearchResult, MemoryFact, WikiArticle};
+pub use knowledge::{KnowledgeSearchResult, MemoryFact};
 pub use library::{
     CategoryBrowseItem, ChapterSummary, EpisodeSummary, NostrShowSummary, PodcastSummary,
     TranscriptEntry,

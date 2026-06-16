@@ -33,8 +33,6 @@ struct SettingsSnapshot: Equatable {
     var agentThinkingModelName: String = "DeepSeek Pro"
     var memoryCompilationModel: String = "deepseek-v4-flash:cloud"
     var memoryCompilationModelName: String = "DeepSeek Flash"
-    var wikiModel: String = "deepseek-v4-flash:cloud"
-    var wikiModelName: String = "DeepSeek Flash"
     var categorizationModel: String = "deepseek-v4-flash:cloud"
     var categorizationModelName: String = "DeepSeek Flash"
     var chapterCompilationModel: String = "deepseek-v4-flash:cloud"
@@ -82,7 +80,6 @@ struct SettingsSnapshot: Equatable {
     var blossomServerURL: String = "https://blossom.primal.net"
     var youtubeExtractorURL: String? = nil
     var localModelID: String? = nil
-    var wikiAutoGenerateOnTranscriptIngest: Bool = false
     var autoIngestPublisherTranscripts: Bool = true
     var autoFallbackToScribe: Bool = true
     var notifyOnNewEpisodes: Bool = true
@@ -112,8 +109,6 @@ extension SettingsSnapshot: Codable {
         case agentThinkingModelName
         case memoryCompilationModel
         case memoryCompilationModelName
-        case wikiModel
-        case wikiModelName
         case categorizationModel
         case categorizationModelName
         case chapterCompilationModel
@@ -161,7 +156,6 @@ extension SettingsSnapshot: Codable {
         case blossomServerURL = "blossom_server_url"
         case youtubeExtractorURL = "youtube_extractor_url"
         case localModelID = "local_model_id"
-        case wikiAutoGenerateOnTranscriptIngest = "wiki_auto_generate_on_transcript_ingest"
         case autoIngestPublisherTranscripts = "auto_ingest_publisher_transcripts"
         case autoFallbackToScribe = "auto_fallback_to_scribe"
         case notifyOnNewEpisodes = "notify_on_new_episodes"
@@ -196,8 +190,6 @@ extension SettingsSnapshot: Codable {
         if let v = try c.decodeIfPresent(String.self, forKey: .agentThinkingModelName) { agentThinkingModelName = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .memoryCompilationModel) { memoryCompilationModel = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .memoryCompilationModelName) { memoryCompilationModelName = v }
-        if let v = try c.decodeIfPresent(String.self, forKey: .wikiModel) { wikiModel = v }
-        if let v = try c.decodeIfPresent(String.self, forKey: .wikiModelName) { wikiModelName = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .categorizationModel) { categorizationModel = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .categorizationModelName) { categorizationModelName = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .chapterCompilationModel) { chapterCompilationModel = v }
@@ -225,7 +217,6 @@ extension SettingsSnapshot: Codable {
         if let v = try c.decodeIfPresent(String.self, forKey: .blossomServerURL) { blossomServerURL = v }
         youtubeExtractorURL = try c.decodeIfPresent(String.self, forKey: .youtubeExtractorURL)
         localModelID = try c.decodeIfPresent(String.self, forKey: .localModelID)
-        if let v = try c.decodeIfPresent(Bool.self, forKey: .wikiAutoGenerateOnTranscriptIngest) { wikiAutoGenerateOnTranscriptIngest = v }
         if let v = try c.decodeIfPresent(Bool.self, forKey: .autoIngestPublisherTranscripts) { autoIngestPublisherTranscripts = v }
         if let v = try c.decodeIfPresent(Bool.self, forKey: .autoFallbackToScribe) { autoFallbackToScribe = v }
         if let v = try c.decodeIfPresent(Bool.self, forKey: .notifyOnNewEpisodes) { notifyOnNewEpisodes = v }

@@ -124,23 +124,6 @@ extension AgentTools {
                 required: ["query"]
             ),
             podcastTool(
-                name: PodcastNames.queryWiki,
-                description: "Look up a topic in the LLM-generated podcast wiki. Use this for definitional questions ('what is Zone 2?') or to surface cross-episode context the user has already built up.",
-                properties: [
-                    "topic": ["type": "string", "description": "Topic, person, place, or concept to look up."],
-                    "scope": ["type": "string", "description": "Optional podcast ID to constrain the wiki lookup to one show's wiki."],
-                    "limit": ["type": "integer", "description": "Maximum pages returned (1–10). Defaults to 5."],
-                ],
-                required: ["topic"]
-            ),
-            // NOTE: `create_wiki_page`, `list_wiki_pages`, and
-            // `delete_wiki_page` live under the `wiki_research` skill
-            // (see `App/Sources/Agent/Skills/WikiResearchSkill.swift`).
-            // Their tool name constants stay in `PodcastNames.all` so
-            // `dispatchPodcast` can route them; the LLM only sees their
-            // schemas when the skill is enabled.
-            // `query_wiki` stays always-on as a cheap lookup.
-            podcastTool(
                 name: PodcastNames.queryTranscripts,
                 description: "RAG search over transcript chunks. Returns timestamped excerpts with speaker labels. Use this when the user asks 'what did they say about X?' and you need direct quotes to ground the answer.",
                 properties: [

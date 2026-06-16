@@ -324,13 +324,6 @@ impl AppRuntime {
         self.dispatch_action_value("podcast.memory", &json!({"op": "forget_all"}))
     }
 
-    pub fn delete_wiki_article(&self, article_id: &str) -> Result<String> {
-        self.dispatch_action_value(
-            "podcast.wiki",
-            &json!({"op": "delete", "article_id": article_id}),
-        )
-    }
-
     pub fn set_auto_play_next(&self, enabled: bool) -> Result<String> {
         self.dispatch_action_value(
             "podcast.settings",
@@ -363,13 +356,6 @@ impl AppRuntime {
         self.dispatch_action_value(
             "podcast.settings",
             &json!({"op": "set_notify_on_new_episodes", "enabled": enabled}),
-        )
-    }
-
-    pub fn set_wiki_auto_generate(&self, enabled: bool) -> Result<String> {
-        self.dispatch_action_value(
-            "podcast.settings",
-            &json!({"op": "set_wiki_auto_generate_on_transcript_ingest", "enabled": enabled}),
         )
     }
 

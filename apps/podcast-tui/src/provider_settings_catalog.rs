@@ -11,7 +11,6 @@ pub(crate) enum ProviderSettingItem {
     AgentInitialModel,
     AgentThinkingModel,
     MemoryCompilationModel,
-    WikiModel,
     CategorizationModel,
     ChapterCompilationModel,
     EmbeddingsModel,
@@ -32,12 +31,11 @@ pub(crate) enum ProviderSettingItem {
     LocalModel,
 }
 
-pub(crate) const PROVIDER_SETTINGS_ITEMS: [ProviderSettingItem; 23] = [
+pub(crate) const PROVIDER_SETTINGS_ITEMS: [ProviderSettingItem; 22] = [
     ProviderSettingItem::LoadEnvCredentials,
     ProviderSettingItem::AgentInitialModel,
     ProviderSettingItem::AgentThinkingModel,
     ProviderSettingItem::MemoryCompilationModel,
-    ProviderSettingItem::WikiModel,
     ProviderSettingItem::CategorizationModel,
     ProviderSettingItem::ChapterCompilationModel,
     ProviderSettingItem::EmbeddingsModel,
@@ -65,7 +63,6 @@ impl ProviderSettingItem {
             Self::AgentInitialModel => "Agent initial model",
             Self::AgentThinkingModel => "Agent thinking model",
             Self::MemoryCompilationModel => "Memory compilation model",
-            Self::WikiModel => "Wiki model",
             Self::CategorizationModel => "Categorization model",
             Self::ChapterCompilationModel => "Chapter compilation model",
             Self::EmbeddingsModel => "Embeddings model",
@@ -107,7 +104,6 @@ impl ProviderSettingItem {
                 &settings.memory_compilation_model,
                 &settings.memory_compilation_model_name,
             ),
-            Self::WikiModel => model_summary(&settings.wiki_model, &settings.wiki_model_name),
             Self::CategorizationModel => model_summary(
                 &settings.categorization_model,
                 &settings.categorization_model_name,
@@ -201,7 +197,6 @@ impl ProviderSettingItem {
             Self::AgentInitialModel
             | Self::AgentThinkingModel
             | Self::MemoryCompilationModel
-            | Self::WikiModel
             | Self::CategorizationModel
             | Self::ChapterCompilationModel
             | Self::EmbeddingsModel
@@ -253,7 +248,6 @@ impl ProviderSettingItem {
                 &settings.memory_compilation_model,
                 &settings.memory_compilation_model_name,
             ),
-            Self::WikiModel => model_input(&settings.wiki_model, &settings.wiki_model_name),
             Self::CategorizationModel => model_input(
                 &settings.categorization_model,
                 &settings.categorization_model_name,
@@ -349,11 +343,6 @@ impl ProviderSettingItem {
                 let (model, name) = parse_model_input(input)?;
                 runtime.set_memory_compilation_model(&model, &name)?;
                 Ok("memory model updated".to_owned())
-            }
-            Self::WikiModel => {
-                let (model, name) = parse_model_input(input)?;
-                runtime.set_wiki_model(&model, &name)?;
-                Ok("wiki model updated".to_owned())
             }
             Self::CategorizationModel => {
                 let (model, name) = parse_model_input(input)?;

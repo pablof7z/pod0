@@ -62,9 +62,7 @@ extension KernelModel {
         h.combine(update.inboxLastTriagedAt)
         for t in update.agentTasks { h.combine(t.id); h.combine(t.status) }
 
-        // Wiki / knowledge
-        for w in update.wikiArticles { h.combine(w.id); h.combine(w.isGenerating) }
-        for w in update.wikiSearchResults { h.combine(w.id) }
+        // Knowledge
         for k in update.knowledgeSearchResults { h.combine(k.id) }
 
         // Categories (include topEpisodeIds — their order/content can change)

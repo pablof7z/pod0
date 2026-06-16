@@ -17,4 +17,3 @@ pub mod settings;
 pub mod social;
 pub mod theme;
 pub mod topbar;
-pub mod wiki;

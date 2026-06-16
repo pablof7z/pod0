@@ -315,13 +315,6 @@ data class SetMemoryCompilationModelPayload(
 )
 
 @Serializable
-data class SetWikiModelPayload(
-    val model: String,
-    @SerialName("model_name") val modelName: String,
-    val op: String = "set_wiki_model",
-)
-
-@Serializable
 data class SetCategorizationModelPayload(
     val model: String,
     @SerialName("model_name") val modelName: String,

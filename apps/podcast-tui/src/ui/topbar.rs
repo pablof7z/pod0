@@ -131,7 +131,6 @@ fn compact_tab_label(tab: &Tab) -> &'static str {
         Tab::Bookmarks => "stars",
         Tab::Clips => "clip",
         Tab::Agent => "ai",
-        Tab::Wiki => "wiki",
         Tab::Social => "soc",
         Tab::Settings => "cfg",
     }

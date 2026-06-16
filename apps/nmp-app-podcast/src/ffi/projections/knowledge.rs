@@ -40,53 +40,6 @@ pub struct KnowledgeSearchResult {
     pub relevance_score: f32,
 }
 
-/// One row in [`super::snapshot::PodcastUpdate::wiki_articles`].
-///
-/// A `WikiArticle` is the AI-synthesised, per-podcast knowledge entry the user
-/// builds up over time. Each article is keyed by `id` (UUID) and scoped to a
-/// single `podcast_id`; `topic` is the user-supplied subject line and
-/// `summary` is the LLM-rendered body (1-2 paragraphs in the scaffold; real
-/// synthesis is a follow-up).
-///
-/// `source_episode_ids` lists the episode ids the synthesis drew from, so the
-/// iOS reader can render tappable provenance rows that jump to the relevant
-/// episode detail screen. `last_updated_at` is unix seconds — Swift can
-/// compare against `Date()` without a formatter round-trip, mirroring the
-/// pattern used by [`PendingApprovalSnapshot::requested_at`].
-///
-/// `is_generating` is the lifecycle flag the UI flips on while a generation
-/// is in flight. In the scaffold the action handler completes synchronously
-/// (`is_generating = false`); the field exists so the LLM-backed follow-up
-/// can mutate it without renegotiating the wire shape.
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
-pub struct WikiArticle {
-    /// Stable UUID for the article (hyphenated). The iOS reader uses this
-    /// as the `Identifiable.id` and as the argument to
-    /// `podcast.wiki.delete`.
-    pub id: String,
-    /// Owning podcast id (matches [`PodcastSummary::id`]). Used to filter
-    /// the article list down to the current show on the iOS side.
-    pub podcast_id: String,
-    /// User-supplied subject — what the article is *about*.
-    pub topic: String,
-    /// Rendered body (1-2 paragraph summary in the scaffold).
-    pub summary: String,
-    /// Episode ids the synthesis drew from. Empty in the scaffold —
-    /// populated once the LLM follow-up wires real retrieval.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub source_episode_ids: Vec<String>,
-    /// Unix seconds — see struct-level comment.
-    pub last_updated_at: i64,
-    /// `true` while a generation is in flight; `false` once the article is
-    /// readable. Lets the UI render a progress indicator without polling.
-    pub is_generating: bool,
-    /// Set when the LLM call fails (e.g. Ollama offline). The article is
-    /// still committed to the snapshot with the placeholder summary so the
-    /// user can retry later; the iOS shell can surface this as an inline
-    /// error banner on the article detail screen.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub generation_error: Option<String>,
-}
 
 /// One row in the agent-memory projection surfaced via
 /// [`super::snapshot::PodcastUpdate::memory_facts`].

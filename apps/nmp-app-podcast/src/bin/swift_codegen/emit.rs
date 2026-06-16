@@ -45,7 +45,7 @@ fn emit_podcast_types() -> String {
 //                                        AgentTaskSummary, AgentPickSummary,
 //                                        TtsEpisodeSummary, ClipSummary
 //   PodcastSocialTypes.generated.swift — InboxItem, CommentSummary, ContactSummary,
-//                                        SocialSnapshot, CategoryBrowseItem, WikiArticle,
+//                                        SocialSnapshot, CategoryBrowseItem,
 //                                        KnowledgeSearchResult, MemoryFact
 //
 // Intended regeneration command (once the dumper exists):
@@ -631,7 +631,7 @@ extension AgentPickSummary: Codable {
 
 fn emit_social_types() -> String {
     r#"// PodcastSocialTypes.generated.swift
-// Social + discovery types: inbox, comments, contacts, categories, wiki, knowledge.
+// Social + discovery types: inbox, comments, contacts, categories, knowledge.
 // Hand-maintained mirror of Rust projection types. See PodcastUpdate.generated.swift.
 
 import Foundation
@@ -717,17 +717,6 @@ struct CategoryBrowseItem: Identifiable, Equatable, Hashable {
     var id: String { category }
 }
 
-/// One AI-synthesised, per-podcast knowledge entry in `PodcastUpdate.wikiArticles`.
-struct WikiArticle: Identifiable, Equatable, Hashable {
-    var id: String
-    var podcastId: String
-    var topic: String
-    var summary: String
-    var sourceEpisodeIds: [String]? = nil
-    var lastUpdatedAt: Int = 0
-    var isGenerating: Bool = false
-}
-
 /// One row in the RAG / vector-search projection.
 struct KnowledgeSearchResult: Identifiable, Equatable, Hashable {
     var episodeId: String
@@ -790,19 +779,6 @@ extension CategoryBrowseItem: Codable {
     }
 }
 
-extension WikiArticle: Codable {
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        id = try c.decode(String.self, forKey: .id)
-        podcastId = try c.decode(String.self, forKey: .podcastId)
-        topic = try c.decode(String.self, forKey: .topic)
-        summary = try c.decode(String.self, forKey: .summary)
-        sourceEpisodeIds = try c.decodeIfPresent([String].self, forKey: .sourceEpisodeIds)
-        lastUpdatedAt = try c.decodeIfPresent(Int.self, forKey: .lastUpdatedAt) ?? 0
-        isGenerating = try c.decodeIfPresent(Bool.self, forKey: .isGenerating) ?? false
-    }
-}
-
 extension KnowledgeSearchResult: Codable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -859,8 +835,6 @@ struct PodcastUpdate {
     @DefaultSettings var settings: SettingsSnapshot = SettingsSnapshot()
     @DefaultEmptyArray var comments: [CommentSummary] = []
     @DefaultEmptyArray var queue: [EpisodeSummary] = []
-    @DefaultEmptyArray var wikiArticles: [WikiArticle] = []
-    @DefaultEmptyArray var wikiSearchResults: [WikiArticle] = []
     @DefaultEmptyArray var picks: [AgentPickSummary] = []
     @DefaultEmptyArray var agentTasks: [AgentTaskSummary] = []
     @DefaultEmptyArray var knowledgeSearchResults: [KnowledgeSearchResult] = []
@@ -1040,8 +1014,6 @@ extension PodcastUpdate: Codable {
         settings = try c.decodeIfPresent(SettingsSnapshot.self, forKey: .settings) ?? SettingsSnapshot()
         comments = try c.decodeIfPresent([CommentSummary].self, forKey: .comments) ?? []
         queue = try c.decodeIfPresent([EpisodeSummary].self, forKey: .queue) ?? []
-        wikiArticles = try c.decodeIfPresent([WikiArticle].self, forKey: .wikiArticles) ?? []
-        wikiSearchResults = try c.decodeIfPresent([WikiArticle].self, forKey: .wikiSearchResults) ?? []
         picks = try c.decodeIfPresent([AgentPickSummary].self, forKey: .picks) ?? []
         agentTasks = try c.decodeIfPresent([AgentTaskSummary].self, forKey: .agentTasks) ?? []
         knowledgeSearchResults = try c.decodeIfPresent([KnowledgeSearchResult].self, forKey: .knowledgeSearchResults) ?? []
@@ -1146,8 +1118,6 @@ struct SettingsSnapshot: Equatable {
     var agentThinkingModelName: String = "DeepSeek Pro"
     var memoryCompilationModel: String = "deepseek-v4-flash:cloud"
     var memoryCompilationModelName: String = "DeepSeek Flash"
-    var wikiModel: String = "deepseek-v4-flash:cloud"
-    var wikiModelName: String = "DeepSeek Flash"
     var categorizationModel: String = "deepseek-v4-flash:cloud"
     var categorizationModelName: String = "DeepSeek Flash"
     var chapterCompilationModel: String = "deepseek-v4-flash:cloud"
@@ -1195,7 +1165,6 @@ struct SettingsSnapshot: Equatable {
     var blossomServerURL: String = "https://blossom.primal.net"
     var youtubeExtractorURL: String? = nil
     var localModelID: String? = nil
-    var wikiAutoGenerateOnTranscriptIngest: Bool = false
     var autoIngestPublisherTranscripts: Bool = true
     var autoFallbackToScribe: Bool = true
     var notifyOnNewEpisodes: Bool = true
@@ -1225,8 +1194,6 @@ extension SettingsSnapshot: Codable {
         case agentThinkingModelName
         case memoryCompilationModel
         case memoryCompilationModelName
-        case wikiModel
-        case wikiModelName
         case categorizationModel
         case categorizationModelName
         case chapterCompilationModel
@@ -1274,7 +1241,6 @@ extension SettingsSnapshot: Codable {
         case blossomServerURL = "blossom_server_url"
         case youtubeExtractorURL = "youtube_extractor_url"
         case localModelID = "local_model_id"
-        case wikiAutoGenerateOnTranscriptIngest = "wiki_auto_generate_on_transcript_ingest"
         case autoIngestPublisherTranscripts = "auto_ingest_publisher_transcripts"
         case autoFallbackToScribe = "auto_fallback_to_scribe"
         case notifyOnNewEpisodes = "notify_on_new_episodes"
@@ -1309,8 +1275,6 @@ extension SettingsSnapshot: Codable {
         if let v = try c.decodeIfPresent(String.self, forKey: .agentThinkingModelName) { agentThinkingModelName = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .memoryCompilationModel) { memoryCompilationModel = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .memoryCompilationModelName) { memoryCompilationModelName = v }
-        if let v = try c.decodeIfPresent(String.self, forKey: .wikiModel) { wikiModel = v }
-        if let v = try c.decodeIfPresent(String.self, forKey: .wikiModelName) { wikiModelName = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .categorizationModel) { categorizationModel = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .categorizationModelName) { categorizationModelName = v }
         if let v = try c.decodeIfPresent(String.self, forKey: .chapterCompilationModel) { chapterCompilationModel = v }
@@ -1338,7 +1302,6 @@ extension SettingsSnapshot: Codable {
         if let v = try c.decodeIfPresent(String.self, forKey: .blossomServerURL) { blossomServerURL = v }
         youtubeExtractorURL = try c.decodeIfPresent(String.self, forKey: .youtubeExtractorURL)
         localModelID = try c.decodeIfPresent(String.self, forKey: .localModelID)
-        if let v = try c.decodeIfPresent(Bool.self, forKey: .wikiAutoGenerateOnTranscriptIngest) { wikiAutoGenerateOnTranscriptIngest = v }
         if let v = try c.decodeIfPresent(Bool.self, forKey: .autoIngestPublisherTranscripts) { autoIngestPublisherTranscripts = v }
         if let v = try c.decodeIfPresent(Bool.self, forKey: .autoFallbackToScribe) { autoFallbackToScribe = v }
         if let v = try c.decodeIfPresent(Bool.self, forKey: .notifyOnNewEpisodes) { notifyOnNewEpisodes = v }

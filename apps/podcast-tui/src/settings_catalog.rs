@@ -8,20 +8,18 @@ pub enum SettingItem {
     AutoSkipAds,
     AutoDeleteDownloads,
     NotifyOnNewEpisodes,
-    WikiAutoGenerate,
     AutoIngestTranscripts,
     AutoFallbackToScribe,
     NostrEnabled,
     DefaultPlaybackRate,
 }
 
-pub const SETTINGS_ITEMS: [SettingItem; 10] = [
+pub const SETTINGS_ITEMS: [SettingItem; 9] = [
     SettingItem::AutoPlayNext,
     SettingItem::AutoMarkPlayedAtEnd,
     SettingItem::AutoSkipAds,
     SettingItem::AutoDeleteDownloads,
     SettingItem::NotifyOnNewEpisodes,
-    SettingItem::WikiAutoGenerate,
     SettingItem::AutoIngestTranscripts,
     SettingItem::AutoFallbackToScribe,
     SettingItem::NostrEnabled,
@@ -36,7 +34,6 @@ impl SettingItem {
             Self::AutoSkipAds => "Auto-skip ads",
             Self::AutoDeleteDownloads => "Delete downloads after played",
             Self::NotifyOnNewEpisodes => "Notify on new episodes",
-            Self::WikiAutoGenerate => "Auto-generate wiki on transcript",
             Self::AutoIngestTranscripts => "Auto-ingest publisher transcripts",
             Self::AutoFallbackToScribe => "Fallback to Scribe",
             Self::NostrEnabled => "Nostr features",
@@ -53,9 +50,6 @@ impl SettingItem {
                 bool_label(state.settings.auto_delete_downloads_after_played)
             }
             Self::NotifyOnNewEpisodes => bool_label(state.settings.notify_on_new_episodes),
-            Self::WikiAutoGenerate => {
-                bool_label(state.settings.wiki_auto_generate_on_transcript_ingest)
-            }
             Self::AutoIngestTranscripts => {
                 bool_label(state.settings.auto_ingest_publisher_transcripts)
             }
@@ -78,8 +72,6 @@ impl SettingItem {
             Self::NotifyOnNewEpisodes => {
                 runtime.set_notify_on_new_episodes(!state.settings.notify_on_new_episodes)
             }
-            Self::WikiAutoGenerate => runtime
-                .set_wiki_auto_generate(!state.settings.wiki_auto_generate_on_transcript_ingest),
             Self::AutoIngestTranscripts => runtime.set_auto_ingest_publisher_transcripts(
                 !state.settings.auto_ingest_publisher_transcripts,
             ),

@@ -254,13 +254,13 @@ pub(super) fn build_social_payload(handle: &PodcastHandle) -> Option<serde_json:
 
 /// Build the `podcast.misc` domain payload — slice-local.
 ///
-/// Reads: wiki, picks, tasks, knowledge, clips, comments, voice, agent_chat,
+/// Reads: picks, tasks, knowledge, clips, comments, voice, agent_chat,
 /// feedback, and library.store (for memory_facts, clips resolution, and
 /// agent_context).  Does NOT call `build_podcast_update`.
 ///
 /// `clips.project` and `agent_context` both need the `PodcastSummary` library
 /// slice, so we build it ONCE under a single store lock and reuse it for both.
-/// This is still correct because `misc` domain bumps are infrequent (wiki/picks/
+/// This is still correct because `misc` domain bumps are infrequent (picks/
 /// tasks/clips/agent/voice) — NOT the 1 Hz playback ticks.  The library pass
 /// here is isolated to misc's own domain tick, not playback's.
 ///
@@ -272,8 +272,6 @@ pub(super) fn build_misc_payload(handle: &PodcastHandle) -> serde_json::Value {
 
     let rev = handle.state.infra.rev.load(Ordering::Relaxed);
 
-    let wiki_articles = handle.state.wiki.articles_snapshot();
-    let wiki_search_results = handle.state.wiki.search_results_snapshot();
     let picks = handle.state.picks.picks_snapshot();
     let agent_tasks = handle.state.tasks.tasks_snapshot();
     let knowledge_search_results = handle.state.knowledge.results_snapshot();
@@ -335,8 +333,6 @@ pub(super) fn build_misc_payload(handle: &PodcastHandle) -> serde_json::Value {
 
     serde_json::json!({
         "rev": rev,
-        "wiki_articles": wiki_articles,
-        "wiki_search_results": wiki_search_results,
         "picks": picks,
         "agent_tasks": agent_tasks,
         "knowledge_search_results": knowledge_search_results,

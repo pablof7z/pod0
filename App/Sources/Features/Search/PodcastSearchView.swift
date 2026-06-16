@@ -18,7 +18,7 @@ struct PodcastSearchView: View {
     }
 
     private var hasAnyResults: Bool {
-        !localResults.isEmpty || !kernelTranscriptResults.isEmpty || !model.wikiResults.isEmpty
+        !localResults.isEmpty || !kernelTranscriptResults.isEmpty
     }
 
     private var shouldShowTranscriptSection: Bool {
@@ -47,7 +47,6 @@ struct PodcastSearchView: View {
             placement: .navigationBarDrawer(displayMode: .always),
             prompt: "Shows, episodes, transcripts"
         )
-        .task { await model.loadWikiPages() }
         .task(id: model.query) {
             // Keep existing debounce: 300 ms after the last keystroke.
             guard !model.query.trimmed.isEmpty else {
@@ -115,20 +114,6 @@ struct PodcastSearchView: View {
         }
 
         kernelTranscriptSection
-
-        if !model.wikiResults.isEmpty {
-            Section("Wiki") {
-                ForEach(model.wikiResults) { hit in
-                    Button {
-                        Haptics.selection()
-                        destination = .wiki(hit.page)
-                    } label: {
-                        PodcastWikiSearchRow(hit: hit, query: model.query)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
     }
 
     @ViewBuilder
@@ -154,7 +139,6 @@ struct PodcastSearchView: View {
         localResults.shows.count
             + localResults.episodes.count
             + kernelTranscriptResults.count
-            + model.wikiResults.count
     }
 
     /// Navigate to an episode from a kernel search hit. When `startSecs` is
@@ -188,13 +172,6 @@ struct PodcastSearchView: View {
             } else {
                 missingView("Episode not found")
             }
-        case .wiki(let page):
-            WikiPageView(
-                page: page,
-                storage: model.wikiStorage,
-                onDeleted: { id in model.removeWikiPage(id: id) },
-                onRegenerated: { page in model.upsertWikiPage(page) }
-            )
         }
     }
 

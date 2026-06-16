@@ -18,7 +18,6 @@ mod profile;
 mod relay_smoke;
 mod rss_subscribe;
 mod social;
-mod wiki;
 
 /// Per-scenario outcome.
 #[derive(Debug)]
@@ -50,7 +49,6 @@ pub fn run_all(
         ("key_persistence", key_persistence::run(app, handle)),
         ("identity_import", identity::run(app, handle)),
         ("relay_smoke", relay_smoke::run(app, handle)),
-        ("wiki_generate", wiki::run(app, handle)),
         ("inbox_triage", inbox_triage::run(app, handle)),
         ("agent_chat", agent_chat::run(app, handle)),
         ("nipf4_publish", nipf4_publish::run(app, handle)),

@@ -13,7 +13,7 @@
 //                                        AgentTaskSummary, AgentPickSummary,
 //                                        TtsEpisodeSummary, ClipSummary
 //   PodcastSocialTypes.generated.swift — InboxItem, CommentSummary, ContactSummary,
-//                                        SocialSnapshot, CategoryBrowseItem, WikiArticle,
+//                                        SocialSnapshot, CategoryBrowseItem,
 //                                        KnowledgeSearchResult, MemoryFact
 //
 // Intended regeneration command (once the dumper exists):

@@ -103,9 +103,6 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     // Step 14: queue now read from state.playback.queue.
     let queue_ids = handle.state.playback.queue_snapshot();
     let queue = resolve_queue_rows(&queue_ids, &library);
-    // Step 2: wiki slots are now owned by `state.wiki`.
-    let wiki_articles = handle.state.wiki.articles_snapshot();
-    let wiki_search_results = handle.state.wiki.search_results_snapshot();
     // Step 3: picks slot is now owned by `state.picks`.
     let picks = handle.state.picks.picks_snapshot();
     // Step 6: agent_tasks now read from TasksState.
@@ -190,8 +187,6 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         settings,
         comments,
         queue,
-        wiki_articles,
-        wiki_search_results,
         picks,
         agent_tasks,
         knowledge_search_results,

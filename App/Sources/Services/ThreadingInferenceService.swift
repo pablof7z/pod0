@@ -31,7 +31,7 @@ final class ThreadingInferenceService {
 
     // MARK: Singleton
 
-    /// Process-wide handle. Mirrors `RAGService.shared` / `WikiStorage.shared`
+    /// Process-wide handle. Mirrors `RAGService.shared`
     /// so views can reach the service without dependency injection.
     static let shared = ThreadingInferenceService()
 
@@ -161,16 +161,15 @@ final class ThreadingInferenceService {
 
     /// Idempotent get-or-create. If a topic with the canonicalised `slug`
     /// already exists, returns it untouched; otherwise inserts a fresh row
-    /// and returns the stored instance. Used by deep-links from the wiki
-    /// ("open thread for X") and by the in-episode agent. Returns the input
-    /// topic verbatim if no store is attached — callers should `attach`
-    /// before relying on persistence.
+    /// and returns the stored instance. Used by the in-episode agent.
+    /// Returns the input topic verbatim if no store is attached — callers
+    /// should `attach` before relying on persistence.
     @discardableResult
     func ensureTopic(
         slug: String,
         displayName: String
     ) -> ThreadingTopic {
-        let normalized = WikiPage.normalize(slug: slug)
+        let normalized = ThreadingInferenceService.normalizeSlug(slug)
         let fresh = ThreadingTopic(
             slug: normalized,
             displayName: displayName,
@@ -183,6 +182,30 @@ final class ThreadingInferenceService {
             return existing
         }
         return store.upsertThreadingTopic(fresh)
+    }
+
+
+    // MARK: - Slug normalisation
+
+    private static func normalizeSlug(_ slug: String) -> String {
+        let folded = slug
+            .folding(options: .diacriticInsensitive, locale: .current)
+            .lowercased()
+        let allowed = Set("abcdefghijklmnopqrstuvwxyz0123456789-")
+        var out = ""
+        var lastWasDash = false
+        for char in folded {
+            if allowed.contains(char) {
+                out.append(char)
+                lastWasDash = char == "-"
+            } else if char.isWhitespace || char == "_" {
+                if !lastWasDash {
+                    out.append("-")
+                    lastWasDash = true
+                }
+            }
+        }
+        return out.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
     }
 
     // MARK: - Mock seeding (debug-only)

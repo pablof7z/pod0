@@ -79,7 +79,6 @@ fn render_body(frame: &mut Frame<'_>, area: Rect, state: &AppState) {
         Tab::Bookmarks => ui::bookmarks::render(frame, area, state),
         Tab::Clips => ui::clips::render(frame, area, state),
         Tab::Agent => ui::agent::render(frame, area, state),
-        Tab::Wiki => ui::wiki::render(frame, area, state),
         Tab::Social => ui::social::render(frame, area, state),
         Tab::Settings => ui::settings::render(frame, area, state),
     }

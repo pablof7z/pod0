@@ -5,7 +5,7 @@
 
 use super::projections::{
     AgentPickSummary, AgentTaskSummary, CategoryBrowseItem, ChapterSummary, ClipSummary,
-    CommentSummary, EpisodeSummary, KnowledgeSearchResult, MemoryFact, SocialSnapshot, WikiArticle,
+    CommentSummary, EpisodeSummary, KnowledgeSearchResult, MemoryFact, SocialSnapshot,
 };
 
 #[test]
@@ -294,22 +294,6 @@ fn social_snapshot_default_is_empty() {
     let json = serde_json::to_string(&snap).expect("encode");
     assert!(json.contains("\"following\":[]"));
     assert!(json.contains("\"following_count\":0"));
-}
-
-#[test]
-fn wiki_article_omits_empty_sources_on_wire() {
-    let article = WikiArticle {
-        id: "art-1".into(),
-        podcast_id: "pod-1".into(),
-        topic: "Bitcoin halvings".into(),
-        summary: "Stub summary.".into(),
-        source_episode_ids: vec![],
-        last_updated_at: 1_700_000_000,
-        is_generating: false,
-        generation_error: None,
-    };
-    let json = serde_json::to_string(&article).expect("encode");
-    assert!(!json.contains("source_episode_ids"));
 }
 
 #[test]

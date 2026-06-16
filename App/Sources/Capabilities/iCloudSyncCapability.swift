@@ -57,8 +57,6 @@ final class iCloudSyncCapability {
         static let agentThinkingModelName = "pcst.agent_thinking_model_name"
         static let memoryCompilationModel = "pcst.memory_compilation_model"
         static let memoryCompilationModelName = "pcst.memory_compilation_model_name"
-        static let wikiModel = "pcst.wiki_model"
-        static let wikiModelName = "pcst.wiki_model_name"
         static let categorizationModel = "pcst.categorization_model"
         static let categorizationModelName = "pcst.categorization_model_name"
         static let chapterCompilationModel = "pcst.chapter_compilation_model"
@@ -82,7 +80,6 @@ final class iCloudSyncCapability {
         static let autoPlayNext = "pcst.auto_play_next"
         static let headphoneDoubleTapAction = "pcst.headphone_double_tap_action"
         static let headphoneTripleTapAction = "pcst.headphone_triple_tap_action"
-        static let wikiAutoGenerateOnTranscriptIngest = "pcst.wiki_auto_generate_on_transcript_ingest"
         static let autoIngestPublisherTranscripts = "pcst.auto_ingest_publisher_transcripts"
         static let autoFallbackToScribe = "pcst.auto_fallback_to_scribe"
         static let notifyOnNewEpisodes = "pcst.notify_on_new_episodes"
@@ -96,13 +93,13 @@ final class iCloudSyncCapability {
             speed, skipForwardSecs, skipBackwardSecs, autoSkipAds,
             autoDeleteDownloadsAfterPlayed,
             agentInitialModel, agentInitialModelName, agentThinkingModel, agentThinkingModelName,
-            memoryCompilationModel, memoryCompilationModelName, wikiModel, wikiModelName,
+            memoryCompilationModel, memoryCompilationModelName,
             categorizationModel, categorizationModelName, chapterCompilationModel, chapterCompilationModelName,
             embeddingsModel, embeddingsModelName, imageGenerationModel, imageGenerationModelName,
             rerankerEnabled, ollamaChatUrl, sttProvider, openRouterWhisperModel,
             assemblyAiSttModel, elevenLabsSttModel, elevenLabsTtsModel, elevenLabsVoiceId, elevenLabsVoiceName,
             blossomServerUrl, youtubeExtractorUrl, autoMarkPlayedAtEnd, autoPlayNext,
-            headphoneDoubleTapAction, headphoneTripleTapAction, wikiAutoGenerateOnTranscriptIngest,
+            headphoneDoubleTapAction, headphoneTripleTapAction,
             autoIngestPublisherTranscripts, autoFallbackToScribe, notifyOnNewEpisodes,
             nostrRelayUrl, nostrProfileName, nostrProfileAbout, nostrProfilePicture,
         ]
@@ -264,16 +261,6 @@ final class iCloudSyncCapability {
             kvs.set(v, forKey: Key.memoryCompilationModelName)
             lastWritten[Key.memoryCompilationModelName] = AnyHashable(v)
         }
-        if let v = settings.wikiModel,
-           lastWritten[Key.wikiModel] != AnyHashable(v) {
-            kvs.set(v, forKey: Key.wikiModel)
-            lastWritten[Key.wikiModel] = AnyHashable(v)
-        }
-        if let v = settings.wikiModelName,
-           lastWritten[Key.wikiModelName] != AnyHashable(v) {
-            kvs.set(v, forKey: Key.wikiModelName)
-            lastWritten[Key.wikiModelName] = AnyHashable(v)
-        }
         if let v = settings.categorizationModel,
            lastWritten[Key.categorizationModel] != AnyHashable(v) {
             kvs.set(v, forKey: Key.categorizationModel)
@@ -388,11 +375,6 @@ final class iCloudSyncCapability {
            lastWritten[Key.headphoneTripleTapAction] != AnyHashable(v) {
             kvs.set(v, forKey: Key.headphoneTripleTapAction)
             lastWritten[Key.headphoneTripleTapAction] = AnyHashable(v)
-        }
-        if let v = settings.wikiAutoGenerateOnTranscriptIngest,
-           lastWritten[Key.wikiAutoGenerateOnTranscriptIngest] != AnyHashable(v) {
-            kvs.set(v, forKey: Key.wikiAutoGenerateOnTranscriptIngest)
-            lastWritten[Key.wikiAutoGenerateOnTranscriptIngest] = AnyHashable(v)
         }
         if let v = settings.autoIngestPublisherTranscripts,
            lastWritten[Key.autoIngestPublisherTranscripts] != AnyHashable(v) {
@@ -553,22 +535,6 @@ final class iCloudSyncCapability {
             ])
             lastWritten[Key.memoryCompilationModel] = AnyHashable(model)
             lastWritten[Key.memoryCompilationModelName] = AnyHashable(modelName)
-            didDispatch = true
-        }
-
-        if touched.contains(Key.wikiModel) || touched.contains(Key.wikiModelName),
-           let model = (kvs.object(forKey: Key.wikiModel) as? String),
-           let modelName = (kvs.object(forKey: Key.wikiModelName) as? String),
-           lastWritten[Key.wikiModel] != AnyHashable(model)
-             || lastWritten[Key.wikiModelName] != AnyHashable(modelName) {
-            isApplyingRemoteChange = true
-            kernel?.dispatchSilent(namespace: "podcast.settings", body: [
-                "op": "set_wiki_model",
-                "model": model,
-                "model_name": modelName,
-            ])
-            lastWritten[Key.wikiModel] = AnyHashable(model)
-            lastWritten[Key.wikiModelName] = AnyHashable(modelName)
             didDispatch = true
         }
 
@@ -771,16 +737,6 @@ final class iCloudSyncCapability {
             ])
             lastWritten[Key.headphoneDoubleTapAction] = AnyHashable(doubleTap)
             lastWritten[Key.headphoneTripleTapAction] = AnyHashable(tripleTap)
-            didDispatch = true
-        }
-
-        if touched.contains(Key.wikiAutoGenerateOnTranscriptIngest),
-           let enabled = (kvs.object(forKey: Key.wikiAutoGenerateOnTranscriptIngest) as? NSNumber)?.boolValue,
-           lastWritten[Key.wikiAutoGenerateOnTranscriptIngest] != AnyHashable(enabled) {
-            isApplyingRemoteChange = true
-            kernel?.dispatchSilent(namespace: "podcast.settings",
-                                   body: ["op": "set_wiki_auto_generate_on_transcript_ingest", "enabled": enabled])
-            lastWritten[Key.wikiAutoGenerateOnTranscriptIngest] = AnyHashable(enabled)
             didDispatch = true
         }
 

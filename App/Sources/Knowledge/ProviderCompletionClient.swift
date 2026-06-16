@@ -53,13 +53,13 @@ struct ProviderCompletionClient: Sendable {
 
     /// Sends a system + user prompt to the selected provider and returns the raw
     /// JSON content of the assistant message. Caller is responsible for
-    /// decoding (see `WikiResponseParser`).
+    /// decoding.
     ///
     /// In stubbed mode returns the stored fixture JSON unchanged.
     func compile(
         systemPrompt: String,
         userPrompt: String,
-        feature: String = CostFeature.wikiCompile
+        feature: String = "llm.compile"
     ) async throws -> String {
         switch mode {
         case .stubbed(let json):

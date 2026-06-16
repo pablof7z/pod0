@@ -103,15 +103,6 @@ extension AppStateStore {
                                  "model_name": settings.memoryCompilationModelName
                              ])
         }
-        if settings.wikiModel != prior.wikiModel
-            || settings.wikiModelName != prior.wikiModelName {
-            kernel?.dispatch(namespace: "podcast.settings",
-                             body: [
-                                 "op": "set_wiki_model",
-                                 "model": settings.wikiModel,
-                                 "model_name": settings.wikiModelName
-                             ])
-        }
         if settings.categorizationModel != prior.categorizationModel
             || settings.categorizationModelName != prior.categorizationModelName {
             kernel?.dispatch(namespace: "podcast.settings",
@@ -245,10 +236,6 @@ extension AppStateStore {
             kernel?.dispatch(namespace: "podcast.settings",
                              body: ["op": "set_youtube_extractor_url", "url": settings.youtubeExtractorURL as Any])
         }
-        if settings.wikiAutoGenerateOnTranscriptIngest != prior.wikiAutoGenerateOnTranscriptIngest {
-            kernel?.dispatch(namespace: "podcast.settings",
-                             body: ["op": "set_wiki_auto_generate_on_transcript_ingest", "enabled": settings.wikiAutoGenerateOnTranscriptIngest])
-        }
         if settings.autoIngestPublisherTranscripts != prior.autoIngestPublisherTranscripts {
             kernel?.dispatch(namespace: "podcast.settings",
                              body: ["op": "set_auto_ingest_publisher_transcripts", "enabled": settings.autoIngestPublisherTranscripts])
@@ -333,7 +320,6 @@ extension AppStateStore {
         let roleModels = [
             s.agentInitialModel,
             s.agentThinkingModel,
-            s.wikiModel,
             s.categorizationModel,
             s.chapterCompilationModel,
         ]

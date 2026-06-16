@@ -62,4 +62,3 @@ extension SocialSnapshot: @unchecked Sendable {}
 extension TranscriptEntry: @unchecked Sendable {}
 extension TtsEpisodeSummary: @unchecked Sendable {}
 extension VoiceSnapshot: @unchecked Sendable {}
-extension WikiArticle: @unchecked Sendable {}

@@ -23,10 +23,6 @@ struct CategoryFeaturesChipStrip: View {
                  enabled: settings.ragEnabled,
                  enabledTint: .purple,
                  accessibility: "RAG indexing")
-            chip(systemImage: "book.closed.fill",
-                 enabled: settings.wikiGenerationEnabled,
-                 enabledTint: .indigo,
-                 accessibility: "Wiki generation")
             chip(systemImage: "bell.fill",
                  enabled: settings.notificationsEnabled,
                  enabledTint: .red,

@@ -373,24 +373,6 @@ fn clear_agent_section(state: &mut AppState, runtime: &AppRuntime) {
     }
 }
 
-pub(super) fn handle_wiki_keys(state: &mut AppState, runtime: &AppRuntime, key: KeyEvent) {
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => state.next_wiki(),
-        KeyCode::Char('k') | KeyCode::Up => state.previous_wiki(),
-        KeyCode::Char('g') | KeyCode::Home => state.selected_wiki = 0,
-        KeyCode::Char('G') | KeyCode::End => {
-            state.selected_wiki = state.wiki_articles.len().saturating_sub(1);
-        }
-        KeyCode::Char('d') => {
-            if let Some(id) = state.selected_wiki_id() {
-                let _ = runtime.delete_wiki_article(&id);
-                state.push_toast("wiki article deleted");
-            }
-        }
-        _ => {}
-    }
-}
-
 pub(super) fn handle_social_keys(state: &mut AppState, runtime: &AppRuntime, key: KeyEvent) {
     match key.code {
         KeyCode::Char('r') => {

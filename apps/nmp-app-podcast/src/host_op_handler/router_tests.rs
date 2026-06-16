@@ -108,32 +108,6 @@ fn bad_action_for_known_ns_returns_ok_false() {
 }
 
 // ---------------------------------------------------------------------------
-// Collision fix: podcast.knowledge.search must NOT be hijacked by wiki
-// ---------------------------------------------------------------------------
-
-#[test]
-fn knowledge_search_routes_to_knowledge_not_wiki() {
-    let handler = empty_handler();
-    // Pre-condition: both result slots are empty.
-    // Knowledge results now live in state.knowledge (Step 1 migration).
-    assert!(handler.state.knowledge.results_snapshot().is_empty());
-    // Wiki results now live in state.wiki (Step 2 migration).
-    assert!(handler.state.wiki.search_results_snapshot().is_empty());
-
-    let envelope =
-        serde_json::json!({"ns": "podcast.knowledge", "action": {"op": "search", "query": "rust"}});
-    let result = handler.handle(&envelope.to_string(), "corr-ks");
-
-    // The knowledge handler returns ok:true (no results for empty store, but ok).
-    assert_eq!(result["ok"], serde_json::json!(true), "knowledge search should succeed: {result}");
-    // Wiki results must remain empty — search was NOT misrouted.
-    assert!(
-        handler.state.wiki.search_results_snapshot().is_empty(),
-        "wiki_search_results must remain empty when routing podcast.knowledge.search"
-    );
-}
-
-// ---------------------------------------------------------------------------
 // Collision fix: podcast.agent.clear must NOT empty the playback queue
 // ---------------------------------------------------------------------------
 

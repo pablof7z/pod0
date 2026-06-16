@@ -69,7 +69,6 @@ pub fn handle_key(state: &mut AppState, runtime: &AppRuntime, key: KeyEvent) -> 
         Tab::Bookmarks => tabs::handle_bookmark_keys(state, runtime, key),
         Tab::Clips => tabs::handle_clips_keys(state, runtime, key),
         Tab::Agent => tabs::handle_agent_keys(state, runtime, key),
-        Tab::Wiki => tabs::handle_wiki_keys(state, runtime, key),
         Tab::Social => tabs::handle_social_keys(state, runtime, key),
         Tab::Settings => settings::handle_settings_keys(state, runtime, key),
     }

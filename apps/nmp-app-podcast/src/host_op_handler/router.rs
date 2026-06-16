@@ -46,7 +46,6 @@ use crate::ffi::actions::siri_module::SiriAction;
 use crate::ffi::actions::social_module::SocialAction;
 use crate::ffi::actions::tasks_module::AgentTasksAction;
 use crate::ffi::actions::voice_module::VoiceAction;
-use crate::ffi::actions::wiki_module::WikiAction;
 // handle_queue_action free fn retired in Step 14 — now PlaybackState::handle_queue_action.
 use crate::host_op_publish::handle_publish_action;
 // Step 15: IdentityHandler now sources identity from state.library.identity.
@@ -142,7 +141,6 @@ impl HostOpHandler for PodcastHostOpHandler {
                     }
                 }
             }
-            "podcast.wiki" => self.state.wiki.handle(parse!(WikiAction)),
             "podcast.picks" => self.state.picks.handle(parse!(PicksAction)),
             "podcast.tasks" => self.state.tasks.handle(parse!(AgentTasksAction), self.app),
             "podcast.knowledge" => self.state.knowledge.handle(parse!(KnowledgeAction)),

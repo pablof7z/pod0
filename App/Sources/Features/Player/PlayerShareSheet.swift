@@ -151,7 +151,7 @@ struct PlayerShareSheet: View {
             return
         }
         Haptics.light()
-        let modelID = store.state.settings.wikiModel
+        let modelID = store.state.settings.agentInitialModel
         quoteResolving = true
         let playhead = state.currentTime
         Task { @MainActor in

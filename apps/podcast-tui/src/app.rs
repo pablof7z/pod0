@@ -2,7 +2,6 @@ use nmp_app_podcast::ffi::projections::NostrConversationDTO;
 use nmp_app_podcast::ffi::{
     AccountSummary, AgentMessageSummary, AgentPickSummary, AgentTaskSummary, AppRelayRow,
     CategoryBrowseItem, ClipSummary, CommentSummary, ContactSummary, MemoryFact, SettingsSnapshot,
-    WikiArticle,
 };
 
 pub use crate::agent_state::AgentSection;
@@ -62,9 +61,6 @@ pub struct AppState {
     pub selected_inbox: usize,
     pub clips: Vec<ClipSummary>,
     pub selected_clip: usize,
-    pub wiki_articles: Vec<WikiArticle>,
-    pub wiki_search_results: Vec<WikiArticle>,
-    pub selected_wiki: usize,
     pub agent_section: AgentSection,
     pub agent_messages: Vec<AgentMessageSummary>,
     pub agent_is_busy: bool,
@@ -135,9 +131,6 @@ impl Default for AppState {
             selected_inbox: 0,
             clips: Vec::new(),
             selected_clip: 0,
-            wiki_articles: Vec::new(),
-            wiki_search_results: Vec::new(),
-            selected_wiki: 0,
             agent_section: AgentSection::Chat,
             agent_messages: Vec::new(),
             agent_is_busy: false,
@@ -258,12 +251,6 @@ impl AppState {
             .and_then(|r| r.feed_url.clone())
     }
 
-    pub fn selected_wiki_id(&self) -> Option<String> {
-        self.wiki_articles
-            .get(self.selected_wiki)
-            .map(|w| w.id.clone())
-    }
-
     pub fn push_toast(&mut self, msg: &str) {
         self.toasts.push(Toast {
             message: msg.to_string(),
@@ -354,14 +341,6 @@ impl AppState {
 
     pub fn previous_clip(&mut self) {
         retreat_index(&mut self.selected_clip);
-    }
-
-    pub fn next_wiki(&mut self) {
-        advance_index(&mut self.selected_wiki, self.wiki_articles.len());
-    }
-
-    pub fn previous_wiki(&mut self) {
-        retreat_index(&mut self.selected_wiki);
     }
 
     pub fn next_search_result(&mut self) {

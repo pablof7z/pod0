@@ -40,7 +40,7 @@ import kotlinx.serialization.json.jsonPrimitive
  *   podcast.widget    — rev, widget (null = nothing to show / tombstone)
  *   podcast.social    — rev, social (SocialSnapshot | null), nostr_conversations
  *   podcast.misc      — rev, agent_tasks, feedback_threads, feedback_events, voice,
- *                       agent, wiki_articles, wiki_search_results, picks,
+ *                       agent, picks,
  *                       knowledge_search_results, memory_facts, clips, comments, agent_context
  *                       (social moved to podcast.social; flat agent_notes retired)
  */

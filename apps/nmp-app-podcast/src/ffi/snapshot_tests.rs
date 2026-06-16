@@ -2,7 +2,7 @@
 //! byte-identity coverage (part 1/2).
 //!
 //! Split out of `snapshot.rs` to keep that file under the 500-line hard
-//! limit. Comments, queue, wiki, picks, memory, clips, and inbox
+//! limit. Comments, queue, picks, memory, clips, and inbox
 //! tests live in `snapshot_tests_ext.rs`.
 
 use super::PodcastUpdate;

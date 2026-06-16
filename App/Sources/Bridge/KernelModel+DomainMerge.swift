@@ -181,8 +181,6 @@ extension KernelModel {
             if m.rev > lastRev {
                 tracker.misc = m.rev
                 anyAccepted = true
-                if let v = m.wikiArticles           { composite.wikiArticles = v }
-                if let v = m.wikiSearchResults      { composite.wikiSearchResults = v }
                 if let v = m.picks                  { composite.picks = v }
                 if let v = m.agentTasks             { composite.agentTasks = v }
                 if let v = m.knowledgeSearchResults { composite.knowledgeSearchResults = v }

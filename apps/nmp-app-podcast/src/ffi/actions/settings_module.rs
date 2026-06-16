@@ -54,8 +54,6 @@ pub enum SettingsAction {
     SetAgentThinkingModel { model: String, model_name: String },
     /// Set both the model ID and name for memory compilation. Atomic update.
     SetMemoryCompilationModel { model: String, model_name: String },
-    /// Set both the model ID and name for wiki synthesis. Atomic update.
-    SetWikiModel { model: String, model_name: String },
     /// Set both the model ID and name for episode categorization. Atomic update.
     SetCategorizationModel { model: String, model_name: String },
     /// Set both the model ID and name for chapter compilation. Atomic update.
@@ -139,8 +137,6 @@ pub enum SettingsAction {
     /// Set the local on-device LLM model ID (optional). When set, this dominates
     /// all other provider selections in the LLM factory.
     SetLocalModel { model_id: Option<String> },
-    /// Toggle wiki auto-generation on transcript ingest.
-    SetWikiAutoGenerateOnTranscriptIngest { enabled: bool },
     /// Toggle auto-ingest of publisher-provided transcripts.
     SetAutoIngestPublisherTranscripts { enabled: bool },
     /// Toggle auto-fallback to Scribe when publisher transcript ingestion fails.

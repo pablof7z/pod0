@@ -7,7 +7,6 @@ import os.log
 // real services that ship in the app:
 //
 //   • `PodcastAgentRAGSearchProtocol`  → `LivePodcastRAGAdapter`
-//   • `WikiStorageProtocol`            → `LiveWikiStorageAdapter`
 //   • `EpisodeSummaryProviding`        → `LiveEpisodeSummaryAdapter` (kernel)
 //   • `EpisodeFetcherProtocol`         → `LiveEpisodeFetcherAdapter`
 //   • `PlaybackHostProtocol`           → `LivePlaybackHostAdapter`
@@ -35,7 +34,6 @@ enum LivePodcastAgentToolDeps {
         let inventory = LivePodcastInventoryAdapter(store: store)
         return PodcastAgentToolDeps(
             rag: LivePodcastRAGAdapter(store: store),
-            wiki: LiveWikiStorageAdapter(store: store),
             summarizer: LiveEpisodeSummaryAdapter(store: store),
             fetcher: LiveEpisodeFetcherAdapter(store: store),
             playback: LivePlaybackHostAdapter(store: store, playback: playback),

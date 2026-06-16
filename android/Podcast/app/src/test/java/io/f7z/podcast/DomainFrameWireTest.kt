@@ -136,8 +136,6 @@ class DomainFrameWireTest {
             "agent_thinking_model_name": "DeepSeek Pro",
             "memory_compilation_model": "deepseek-v4-flash:cloud",
             "memory_compilation_model_name": "DeepSeek Flash",
-            "wiki_model": "deepseek-v4-flash:cloud",
-            "wiki_model_name": "DeepSeek Flash",
             "categorization_model": "deepseek-v4-flash:cloud",
             "categorization_model_name": "DeepSeek Flash",
             "chapter_compilation_model": "deepseek-v4-flash:cloud",
@@ -223,8 +221,6 @@ class DomainFrameWireTest {
             "messages": [],
             "is_busy": false
           },
-          "wiki_articles": [],
-          "wiki_search_results": [],
           "picks": [],
           "knowledge_search_results": [],
           "memory_facts": [],

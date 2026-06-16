@@ -26,7 +26,6 @@ use super::actions::siri_module::SiriActionModule;
 use super::actions::social_module::SocialActionModule;
 use super::actions::tasks_module::AgentTasksModule;
 use super::actions::voice_module::VoiceActionModule;
-use super::actions::wiki_module::WikiActionModule;
 use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 use crate::host_op_handler::PodcastHostOpHandler;
@@ -75,7 +74,6 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     app_mut.register_action(PlayerActionModule);
     app_mut.register_action(QueueActionModule);
     app_mut.register_action(ChaptersActionModule);
-    app_mut.register_action(WikiActionModule);
     app_mut.register_action(AgentPicksModule);
     app_mut.register_action(AgentTasksModule);
     app_mut.register_action(KnowledgeActionModule);
@@ -98,8 +96,6 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     // now owned by state.discovery (DiscoveryState).
     // queue removed in Step 14 — now seeded inside PlaybackState.
     // download_queue removed in Step 14 — now seeded inside PlaybackState.
-    // wiki_articles and wiki_search_results removed in Step 2 —
-    // they are now seeded inside PodcastAppState::new (WikiState).
     // picks and picks_score_in_progress removed in Step 3 —
     // they are now seeded inside PodcastAppState::new (PicksState).
     // clips removed in Step 5a — now seeded inside PodcastAppState::new (ClipsState).

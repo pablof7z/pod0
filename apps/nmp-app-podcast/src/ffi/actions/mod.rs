@@ -40,9 +40,6 @@
 //! podcast.agent.clear                  — ClearConversationAction { conversation_id }
 //! podcast.siri.play_latest             — SiriPlayLatestAction    { podcast_id? }
 //! podcast.siri.resume                  — SiriResumeAction
-//! podcast.wiki.generate                — WikiAction::Generate     { podcast_id, topic }
-//! podcast.wiki.delete                  — WikiAction::Delete       { article_id }
-//! podcast.wiki.search                  — WikiAction::Search       { query }
 //! ```
 //!
 //! Each id is exposed as a `pub const` so the iOS shell, the lint gate,
@@ -75,7 +72,6 @@ pub mod social_module;
 pub mod tasks_module;
 pub mod voice;
 pub mod voice_module;
-pub mod wiki_module;
 
 pub use agent_module::{AgentActionModule, AgentChatAction};
 pub use categorization_module::{
@@ -110,7 +106,6 @@ pub use social_module::{
 };
 pub use tasks_module::{AgentTaskIntent, AgentTasksAction, AgentTasksModule};
 pub use voice_module::{VoiceAction, VoiceActionModule};
-pub use wiki_module::{WikiAction, WikiActionModule};
 
 use serde::{Deserialize, Serialize};
 

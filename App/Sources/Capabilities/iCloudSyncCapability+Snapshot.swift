@@ -25,8 +25,6 @@ struct SettingsKVSnapshot: Equatable {
     var agentThinkingModelName: String?
     var memoryCompilationModel: String?
     var memoryCompilationModelName: String?
-    var wikiModel: String?
-    var wikiModelName: String?
     var categorizationModel: String?
     var categorizationModelName: String?
     var chapterCompilationModel: String?
@@ -50,7 +48,6 @@ struct SettingsKVSnapshot: Equatable {
     var autoPlayNext: Bool?
     var headphoneDoubleTapAction: String?
     var headphoneTripleTapAction: String?
-    var wikiAutoGenerateOnTranscriptIngest: Bool?
     var autoIngestPublisherTranscripts: Bool?
     var autoFallbackToScribe: Bool?
     var notifyOnNewEpisodes: Bool?
@@ -100,12 +97,6 @@ struct SettingsKVSnapshot: Equatable {
         }
         if let v = memoryCompilationModelName {
             lastWritten[iCloudSyncCapability.Key.memoryCompilationModelName] = AnyHashable(v)
-        }
-        if let v = wikiModel {
-            lastWritten[iCloudSyncCapability.Key.wikiModel] = AnyHashable(v)
-        }
-        if let v = wikiModelName {
-            lastWritten[iCloudSyncCapability.Key.wikiModelName] = AnyHashable(v)
         }
         if let v = categorizationModel {
             lastWritten[iCloudSyncCapability.Key.categorizationModel] = AnyHashable(v)
@@ -175,9 +166,6 @@ struct SettingsKVSnapshot: Equatable {
         }
         if let v = headphoneTripleTapAction {
             lastWritten[iCloudSyncCapability.Key.headphoneTripleTapAction] = AnyHashable(v)
-        }
-        if let v = wikiAutoGenerateOnTranscriptIngest {
-            lastWritten[iCloudSyncCapability.Key.wikiAutoGenerateOnTranscriptIngest] = AnyHashable(v)
         }
         if let v = autoIngestPublisherTranscripts {
             lastWritten[iCloudSyncCapability.Key.autoIngestPublisherTranscripts] = AnyHashable(v)
@@ -250,8 +238,6 @@ extension SettingsKVSnapshot {
             agentThinkingModelName: s.agentThinkingModelName,
             memoryCompilationModel: s.memoryCompilationModel,
             memoryCompilationModelName: s.memoryCompilationModelName,
-            wikiModel: s.wikiModel,
-            wikiModelName: s.wikiModelName,
             categorizationModel: s.categorizationModel,
             categorizationModelName: s.categorizationModelName,
             chapterCompilationModel: s.chapterCompilationModel,
@@ -275,7 +261,6 @@ extension SettingsKVSnapshot {
             autoPlayNext: s.autoPlayNext,
             headphoneDoubleTapAction: s.headphoneDoubleTapAction,
             headphoneTripleTapAction: s.headphoneTripleTapAction,
-            wikiAutoGenerateOnTranscriptIngest: s.wikiAutoGenerateOnTranscriptIngest,
             autoIngestPublisherTranscripts: s.autoIngestPublisherTranscripts,
             autoFallbackToScribe: s.autoFallbackToScribe,
             notifyOnNewEpisodes: s.notifyOnNewEpisodes,

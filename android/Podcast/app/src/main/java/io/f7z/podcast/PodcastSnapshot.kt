@@ -505,8 +505,6 @@ data class SettingsSnapshot(
     @SerialName("agent_thinking_model_name") val agentThinkingModelName: String = "DeepSeek Pro",
     @SerialName("memory_compilation_model") val memoryCompilationModel: String = "deepseek-v4-flash:cloud",
     @SerialName("memory_compilation_model_name") val memoryCompilationModelName: String = "DeepSeek Flash",
-    @SerialName("wiki_model") val wikiModel: String = "deepseek-v4-flash:cloud",
-    @SerialName("wiki_model_name") val wikiModelName: String = "DeepSeek Flash",
     @SerialName("categorization_model") val categorizationModel: String = "deepseek-v4-flash:cloud",
     @SerialName("categorization_model_name") val categorizationModelName: String = "DeepSeek Flash",
     @SerialName("chapter_compilation_model") val chapterCompilationModel: String = "deepseek-v4-flash:cloud",

@@ -29,9 +29,9 @@ import Foundation
 //   podcast.identity  — active_account (may arrive nil = logged out)
 //   podcast.widget    — widget (may arrive nil = nothing to show)
 //   podcast.social    — social, nostr_conversations
-//   podcast.misc      — wiki_articles, wiki_search_results, picks, agent_tasks,
-//                       knowledge_search_results, memory_facts, clips, comments,
-//                       voice, agent, agent_context, feedback_events, feedback_threads
+//   podcast.misc      — picks, agent_tasks, knowledge_search_results, memory_facts,
+//                       clips, comments, voice, agent, agent_context,
+//                       feedback_events, feedback_threads
 
 // ─── Schema IDs ──────────────────────────────────────────────────────────────
 
@@ -123,8 +123,6 @@ struct SocialDomainFrame: Decodable {
 
 struct MiscDomainFrame: Decodable {
     var rev: UInt64 = 0
-    var wikiArticles: [WikiArticle]?
-    var wikiSearchResults: [WikiArticle]?
     var picks: [AgentPickSummary]?
     var agentTasks: [AgentTaskSummary]?
     var knowledgeSearchResults: [KnowledgeSearchResult]?

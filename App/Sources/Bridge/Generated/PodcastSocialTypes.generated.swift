@@ -1,5 +1,5 @@
 // PodcastSocialTypes.generated.swift
-// Social + discovery types: inbox, comments, contacts, categories, wiki, knowledge.
+// Social + discovery types: inbox, comments, contacts, categories, knowledge.
 // Hand-maintained mirror of Rust projection types. See PodcastUpdate.generated.swift.
 
 import Foundation
@@ -85,17 +85,6 @@ struct CategoryBrowseItem: Identifiable, Equatable, Hashable {
     var id: String { category }
 }
 
-/// One AI-synthesised, per-podcast knowledge entry in `PodcastUpdate.wikiArticles`.
-struct WikiArticle: Identifiable, Equatable, Hashable {
-    var id: String
-    var podcastId: String
-    var topic: String
-    var summary: String
-    var sourceEpisodeIds: [String]? = nil
-    var lastUpdatedAt: Int = 0
-    var isGenerating: Bool = false
-}
-
 /// One row in the RAG / vector-search projection.
 struct KnowledgeSearchResult: Identifiable, Equatable, Hashable {
     var episodeId: String
@@ -155,19 +144,6 @@ extension CategoryBrowseItem: Codable {
         podcastCount = try c.decodeIfPresent(Int.self, forKey: .podcastCount) ?? 0
         topEpisodeIds = try c.decodeIfPresent([String].self, forKey: .topEpisodeIds) ?? []
         adSegments = try c.decodeIfPresent([AdSegment].self, forKey: .adSegments)
-    }
-}
-
-extension WikiArticle: Codable {
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        id = try c.decode(String.self, forKey: .id)
-        podcastId = try c.decode(String.self, forKey: .podcastId)
-        topic = try c.decode(String.self, forKey: .topic)
-        summary = try c.decode(String.self, forKey: .summary)
-        sourceEpisodeIds = try c.decodeIfPresent([String].self, forKey: .sourceEpisodeIds)
-        lastUpdatedAt = try c.decodeIfPresent(Int.self, forKey: .lastUpdatedAt) ?? 0
-        isGenerating = try c.decodeIfPresent(Bool.self, forKey: .isGenerating) ?? false
     }
 }
 

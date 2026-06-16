@@ -162,21 +162,6 @@ public struct TranscriptHit: Sendable, Equatable {
     }
 }
 
-/// A wiki page hit returned by `query_wiki`.
-public struct WikiHit: Sendable, Equatable {
-    public let pageID: String
-    public let title: String
-    public let excerpt: String
-    public let score: Double?
-
-    public init(pageID: String, title: String, excerpt: String, score: Double? = nil) {
-        self.pageID = pageID
-        self.title = title
-        self.excerpt = excerpt
-        self.score = score
-    }
-}
-
 // MARK: - Composer / external lookup
 
 /// A Perplexity search result.

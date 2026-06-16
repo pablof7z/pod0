@@ -49,9 +49,6 @@ impl AppState {
         self.clips = update.clips;
         clamp_index(&mut self.selected_clip, self.clips.len());
 
-        self.wiki_articles = update.wiki_articles;
-        self.wiki_search_results = update.wiki_search_results;
-        clamp_index(&mut self.selected_wiki, self.wiki_articles.len());
 
         if let Some(agent) = update.agent {
             self.agent_messages = agent.messages;

@@ -60,20 +60,6 @@ extension AppStateStore {
             episodes.removeAll { $0.podcastID == podcastID }
             invalidateEpisodeProjections()
         }
-
-        // Wiki citation invalidation — same fan-out as before.
-        Task { @MainActor in
-            let inventory = (try? WikiStorage.shared.loadInventory()) ?? WikiInventory()
-            var jobs: [WikiTriggers.WikiRefreshJob] = []
-            for episodeID in removedEpisodeIDs {
-                jobs.append(contentsOf: WikiTriggers.jobs(
-                    for: .episodeRemoved(episodeID: episodeID, podcastID: podcastID),
-                    inventory: inventory
-                ))
-            }
-            guard !jobs.isEmpty else { return }
-            WikiRefreshExecutor.shared.run(jobs: jobs)
-        }
     }
 
     /// Toggles new-episode notifications for a subscribed podcast.

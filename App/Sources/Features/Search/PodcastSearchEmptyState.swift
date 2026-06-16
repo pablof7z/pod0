@@ -10,7 +10,7 @@ import UIKit
 ///     "Sample Marquee User Stories" so the user immediately sees what the
 ///     app can do beyond literal text matching.
 ///   - `noResults` — shown when a typed query returns zero hits across
-///     shows / episodes / transcripts / wiki. Lets the user hand the query
+///     shows / episodes / transcripts. Lets the user hand the query
 ///     off to the conversational agent without retyping.
 ///
 /// Both surfaces use the shared editorial typography (New York serif body)

@@ -15,9 +15,6 @@
 //! Step 1: Knowledge substate — `KnowledgeState` owns the two knowledge
 //! `Arc`s, which are removed from both god-structs in the same PR.
 //!
-//! Step 2: Wiki substate — `WikiState` owns `articles` + `search_results`,
-//! shares `KnowledgeState.index` Arc for RAG context.
-//!
 //! Step 3: Picks substate — `PicksState` owns `picks` + `score_in_progress`;
 //! the duplicate guard on `FeedFetchCoordinator` is consolidated here.
 //!
@@ -55,7 +52,6 @@ pub mod social;
 pub mod tasks;
 pub mod transcripts;
 pub mod voice;
-pub mod wiki;
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -224,8 +220,6 @@ impl Infra {
 /// added in Steps 2-N per the design doc.  At each step the corresponding
 /// god-struct fields are REMOVED in the same PR (no overlap window).
 ///
-/// Steps 2-4: wiki + picks + categories substates added; respective god-struct fields removed.
-///
 /// Step 5a: clips substate added; `clips` field removed from both god-structs.
 ///
 /// Step 5b: transcripts substate added; `transcripts` field removed from both
@@ -257,9 +251,6 @@ pub struct PodcastAppState {
 
     /// Knowledge substate (Step 1).
     pub knowledge: knowledge::KnowledgeState,
-
-    /// Wiki substate (Step 2).  Shares `knowledge.index` Arc for RAG context.
-    pub wiki: wiki::WikiState,
 
     /// Picks substate (Step 3).  Owns picks slot + the single scoring guard.
     /// Wrapped in `Arc` so `FeedFetchCoordinator` can hold the canonical instance.
@@ -404,9 +395,6 @@ impl PodcastAppState {
         //   - everything else      → Misc
         let library = library::LibraryState::new(store.clone(), identity.clone());
         let knowledge = knowledge::KnowledgeState::new(infra.clone(), store.clone());
-        // Wiki shares the same KnowledgeStore Arc (Step 2 constraint).
-        let knowledge_index = knowledge.index_arc();
-        let wiki = wiki::WikiState::new(infra.clone(), store.clone(), knowledge_index);
         let picks = Arc::new(picks::PicksState::new(infra.clone(), store.clone()));
         let categories = Arc::new(categories::CategoriesState::new(
             infra.with_domain(Domain::Library),
@@ -450,7 +438,6 @@ impl PodcastAppState {
             infra,
             library,
             knowledge,
-            wiki,
             picks,
             categories,
             clips,
