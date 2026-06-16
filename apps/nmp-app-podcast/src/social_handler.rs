@@ -162,20 +162,25 @@ impl KernelEventObserver for FollowListObserver {
 
         let snap = self.projection.snapshot();
 
-        // Materialise ContactSummary rows with bech32 npubs.
+        // Materialise ContactSummary rows with bech32 npubs + raw hex.
         // The inner FollowListProjection stores raw hex pubkeys (aim.md §2 —
         // presentation in the app layer).  We bech32-encode here since
-        // ContactSummary is the typed shell DTO.
+        // ContactSummary is the typed shell DTO.  pubkey_hex carries the
+        // raw hex so Android can call bridge.claimProfile(pubkeyHex) to
+        // trigger kind:0 resolution via the resolved_profiles seam.
         let contacts: Vec<ContactSummary> = snap
             .follows
             .iter()
             .map(|entry| {
+                // entry.pubkey is already lowercase hex — clone for pubkey_hex.
+                let pubkey_hex = entry.pubkey.clone();
                 let npub = nostr::PublicKey::parse(&entry.pubkey)
                     .ok()
                     .and_then(|pk| pk.to_bech32().ok())
                     .unwrap_or_else(|| entry.pubkey.clone());
                 ContactSummary {
                     npub,
+                    pubkey_hex,
                     display_name: None,
                     picture_url: None,
                 }

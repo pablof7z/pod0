@@ -110,6 +110,8 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
     h.headless_inject_social_snapshot(SocialSnapshot {
         following: vec![ContactSummary {
             npub: "npub1xtscya34g58tk0z605fvr788k263gsu6cy9x0mhnm87echrgufzsevkk5s".to_string(),
+            pubkey_hex: "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245"
+                .to_string(),
             display_name: None,
             picture_url: None,
         }],

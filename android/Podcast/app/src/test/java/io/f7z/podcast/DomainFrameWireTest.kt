@@ -1063,16 +1063,20 @@ class DomainFrameWireTest {
 
     // ── 10. social domain — SocialSnapshot.following (NIP-02 follow list) ───────
     //
-    // These tests guard the `ContactSummaryDto` / `SocialSnapshotDto` wire contract
-    // added in feat/android-following-screen (SLICE 1).
+    // These tests guard the `ContactSummaryDto` / `SocialSnapshotDto` wire contract.
+    // Slice 1 added ContactSummaryDto / SocialSnapshotDto (npub stubs).
+    // Slice 2 adds `pubkey_hex` → `pubkeyHex` (@SerialName load-bearing on Android)
+    // for bridge.claimProfile(pubkeyHex) profile hydration via resolved_profiles.
     //
     // Contract under test:
     //  a. A `podcast.social` frame with a populated `social` object decodes
-    //     `ContactSummaryDto` fields including snake_case `display_name` and
-    //     `picture_url`.
+    //     `ContactSummaryDto` fields including snake_case `display_name`,
+    //     `picture_url`, and (new in slice 2) `pubkey_hex`.
     //  b. `mergeFrames` wires `social.following` into `PodcastSnapshot.following`.
     //  c. A tombstone `{"rev":N,"social":null}` clears both `following` AND
     //     `nostrConversations` atomically (same rev gate).
+    //  d. (slice 2) pubkey_hex → pubkeyHex @SerialName decodes correctly;
+    //     old frames that omit pubkey_hex default to "".
 
     private val socialWithFollowingFixture = """
         {
@@ -1081,16 +1085,19 @@ class DomainFrameWireTest {
             "following": [
               {
                 "npub": "npub1alice000000",
+                "pubkey_hex": "aabbccddeeff0011aabbccddeeff0011aabbccddeeff0011aabbccddeeff0011",
                 "display_name": "Alice",
                 "picture_url": "https://example.com/alice.jpg"
               },
               {
                 "npub": "npub1bob000000",
+                "pubkey_hex": "bbccddeeff0011aabbccddeeff0011aabbccddeeff0011aabbccddeeff001122",
                 "display_name": null,
                 "picture_url": null
               },
               {
-                "npub": "npub1carol000000"
+                "npub": "npub1carol000000",
+                "pubkey_hex": "ccddeeff0011aabbccddeeff0011aabbccddeeff0011aabbccddeeff00112233"
               }
             ],
             "following_count": 3
@@ -1118,17 +1125,53 @@ class DomainFrameWireTest {
         assertEquals("npub1alice000000", alice.npub)
         assertEquals("Alice", alice.displayName)  // display_name → displayName
         assertEquals("https://example.com/alice.jpg", alice.pictureUrl) // picture_url
+        // slice-2: pubkey_hex → pubkeyHex (@SerialName load-bearing on Android)
+        assertEquals(
+            "aabbccddeeff0011aabbccddeeff0011aabbccddeeff0011aabbccddeeff0011",
+            alice.pubkeyHex,
+        )
 
         val bob = snap.following[1]
         assertEquals("npub1bob000000", bob.npub)
         assertNull("bob display_name must be null", bob.displayName)
         assertNull("bob picture_url must be null", bob.pictureUrl)
+        assertEquals(
+            "bbccddeeff0011aabbccddeeff0011aabbccddeeff0011aabbccddeeff001122",
+            bob.pubkeyHex,
+        )
 
-        // Carol: fields omitted from wire — must default to null (not absent key crash)
+        // Carol: optional fields omitted from wire — must default to null/""
         val carol = snap.following[2]
         assertEquals("npub1carol000000", carol.npub)
         assertNull("carol display_name must default to null", carol.displayName)
         assertNull("carol picture_url must default to null", carol.pictureUrl)
+        assertEquals(
+            "ccddeeff0011aabbccddeeff0011aabbccddeeff0011aabbccddeeff00112233",
+            carol.pubkeyHex,
+        )
+    }
+
+    @Test
+    fun `ContactSummaryDto pubkey_hex defaults to empty string when field absent`() {
+        // Old kernel builds (pre-slice-2) may omit pubkey_hex; must not crash.
+        val oldFrame = """
+            {
+              "rev": 5,
+              "social": {
+                "following": [
+                  { "npub": "npub1old000000" }
+                ],
+                "following_count": 1
+              }
+            }
+        """.trimIndent()
+        val frames = SnapshotCodec.decodeDomainFrames(envelope("podcast.social" to oldFrame))
+        assertNotNull("old frame must decode (forward compat)", frames)
+        val contact = frames!!.social?.social?.following?.firstOrNull()
+        assertNotNull("contact must be present", contact)
+        assertEquals("npub1old000000", contact!!.npub)
+        // Must default to "" — not throw / not crash on missing key.
+        assertEquals("pubkey_hex absent must default to empty string", "", contact.pubkeyHex)
     }
 
     @Test
@@ -1148,6 +1191,11 @@ class DomainFrameWireTest {
         )
         assertEquals("npub1alice000000", snap.following[0].npub)
         assertEquals("Alice", snap.following[0].displayName)
+        // slice-2: pubkeyHex must survive through mergeFrames into PodcastSnapshot.
+        assertEquals(
+            "aabbccddeeff0011aabbccddeeff0011aabbccddeeff0011aabbccddeeff0011",
+            snap.following[0].pubkeyHex,
+        )
         assertEquals("npub1bob000000", snap.following[1].npub)
         assertNull(snap.following[1].displayName)
         assertEquals("npub1carol000000", snap.following[2].npub)

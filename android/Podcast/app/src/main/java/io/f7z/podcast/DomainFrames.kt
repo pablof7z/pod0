@@ -147,9 +147,9 @@ data class ResolvedProfile(
  * One contact in the NIP-02 (kind:3) follow list.
  *
  * Mirror of `apps/nmp-app-podcast/src/ffi/projections/social.rs::ContactSummary`.
- * `npub` is pre-encoded bech32 for direct rendering. `displayName` and
- * `pictureUrl` are currently always `null` (hydration is slice-2); the UI
- * falls back to a truncated npub stub.
+ * `npub` is pre-encoded bech32 for direct rendering. `pubkeyHex` is the raw
+ * lowercase-hex pubkey used for `bridge.claimProfile(pubkeyHex)` to trigger
+ * kind:0 profile resolution via the `resolved_profiles` seam (slice 2).
  *
  * Wire contract: `@SerialName` is load-bearing — Android does NOT
  * auto-convert snake_case → camelCase (no `convertFromSnakeCase` strategy).
@@ -157,6 +157,8 @@ data class ResolvedProfile(
 @Serializable
 data class ContactSummaryDto(
     val npub: String = "",
+    /** Raw lowercase-hex pubkey — used to call bridge.claimProfile for kind:0 resolution. */
+    @SerialName("pubkey_hex") val pubkeyHex: String = "",
     @SerialName("display_name") val displayName: String? = null,
     @SerialName("picture_url") val pictureUrl: String? = null,
 )

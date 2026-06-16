@@ -7,11 +7,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -21,6 +21,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -29,28 +30,30 @@ import androidx.compose.ui.unit.dp
 import io.f7z.podcast.ContactSummaryDto
 import io.f7z.podcast.KernelBridge
 import io.f7z.podcast.PodcastSnapshot
+import io.f7z.podcast.ResolvedProfile
 
 /**
- * Following screen — read-only NIP-02 follow list (iOS social parity, slice 1).
+ * Following screen — NIP-02 follow list with real display names and avatars
+ * (iOS social parity, slice 2).
  *
  * Renders the kernel-projected follow list from `snapshot.following` (the
- * `podcast.social` domain frame's `SocialSnapshot.following` field).
+ * `podcast.social` domain frame's `SocialSnapshot.following` field). For each
+ * contact, the screen calls `bridge.claimProfile(pubkeyHex)` on entry so the
+ * kernel fetches kind:0 metadata and delivers it in
+ * `snapshot.resolvedProfiles[pubkeyHex]`. Claims are released on dispose.
  *
- * Slice 1: npub stubs only. `ContactSummary.display_name` and `picture_url` are
- * currently always `null` from the kernel's `FollowListObserver` — profile
- * hydration (kind:0 metadata fetch) is deferred to slice 2. The short-npub
- * fallback label (first 8 + … + last 8 chars) matches the iOS
- * `NostrNpub.shortNpub` pattern used by the conversations screen.
+ * Profile hydration mirrors [NostrConversationsScreen] exactly:
+ *  - DisposableEffect on `following` keys claim/release on the kernel.
+ *  - [NostrAvatar] renders the Coil-backed picture or placeholder.
+ *  - Display name from `resolvedProfile.display`, falling back to
+ *    `shortNpubLabel` when unresolved.
+ *
+ * LazyColumn key guards against duplicate/empty pubkeys: uses
+ * `pubkeyHex.ifEmpty { npub }.ifEmpty { "$index" }`.
  *
  * Empty states:
- *  - Signed-out (`snapshot == null` or `activeAccount == null`) — shows a
- *    "Sign in to see your following list" prompt.
- *  - Signed-in but zero follows — shows "No accounts followed yet."
- *
- * The kernel already maintains this projection reactively via
- * `FollowListObserver` (kind:3 events); no polling is required on Android.
- * The follow list rides the same `podcast.social` domain frame as
- * `nostrConversations` (atomic co-emit, same rev gate).
+ *  - Signed-out (`activeAccount == null`) — "Sign in to see your following list."
+ *  - Signed-in but zero follows — "No accounts followed yet."
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +65,21 @@ fun FollowingScreen(
 ) {
     val isSignedIn = snapshot?.activeAccount != null
     val following = snapshot?.following ?: emptyList()
+    val resolvedProfiles = snapshot?.resolvedProfiles ?: emptyMap()
+
+    // Claim pubkeys so the kernel resolves kind:0 profiles and delivers them
+    // in projections["resolved_profiles"]. Mirrors NostrConversationsScreen
+    // claim/release lifecycle. Consumer ID is stable → kernel dedupes across
+    // re-entries. Released on dispose so inflight requests are cancelled when
+    // the screen leaves the composition.
+    val consumerID = "FollowingScreen"
+    DisposableEffect(following) {
+        val claimed = following.map { it.pubkeyHex }.filter { it.isNotEmpty() }.distinct()
+        claimed.forEach { pubkey -> bridge.claimProfile(pubkey, consumerID) }
+        onDispose {
+            claimed.forEach { pubkey -> bridge.releaseProfile(pubkey, consumerID) }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -87,6 +105,7 @@ fun FollowingScreen(
             following.isEmpty() -> ZeroFollowsEmptyState(Modifier.fillMaxSize().padding(inner))
             else -> FollowingList(
                 following = following,
+                resolvedProfiles = resolvedProfiles,
                 modifier = Modifier.fillMaxSize().padding(inner),
             )
         }
@@ -96,18 +115,29 @@ fun FollowingScreen(
 @Composable
 private fun FollowingList(
     following: List<ContactSummaryDto>,
+    resolvedProfiles: Map<String, ResolvedProfile>,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(modifier = modifier) {
-        items(following, key = { it.npub }) { contact ->
-            ContactRow(contact = contact)
+        itemsIndexed(
+            items = following,
+            // Guard against duplicate/empty pubkeys from malformed kind:3 events.
+            key = { index, contact ->
+                contact.pubkeyHex.ifEmpty { contact.npub }.ifEmpty { "$index" }
+            },
+        ) { _, contact ->
+            val resolvedProfile = resolvedProfiles[contact.pubkeyHex]
+            ContactRow(contact = contact, resolvedProfile = resolvedProfile)
             HorizontalDivider()
         }
     }
 }
 
 @Composable
-private fun ContactRow(contact: ContactSummaryDto) {
+private fun ContactRow(
+    contact: ContactSummaryDto,
+    resolvedProfile: ResolvedProfile?,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -115,22 +145,26 @@ private fun ContactRow(contact: ContactSummaryDto) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(
-            imageVector = Icons.Filled.Person,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        // Avatar: show kernel-resolved picture via Coil; fall back to placeholder.
+        NostrAvatar(
+            pictureUrl = resolvedProfile?.pictureUrl,
+            modifier = Modifier.size(40.dp),
         )
+
         Column(modifier = Modifier.weight(1f)) {
-            val label = contact.displayName?.takeIf { it.isNotBlank() }
+            // Primary label: resolved display name → short npub fallback.
+            val displayLabel = resolvedProfile?.display?.takeIf { it.isNotBlank() }
+                ?: contact.displayName?.takeIf { it.isNotBlank() }
                 ?: shortNpubLabel(contact.npub)
             Text(
-                text = label,
+                text = displayLabel,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (contact.displayName != null) {
+            // Secondary: show npub stub when a real name is present.
+            if (resolvedProfile?.display != null || contact.displayName != null) {
                 Text(
                     text = shortNpubLabel(contact.npub),
                     style = MaterialTheme.typography.bodySmall,

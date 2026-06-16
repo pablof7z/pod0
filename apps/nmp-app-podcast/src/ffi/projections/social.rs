@@ -98,11 +98,21 @@ pub struct NostrConversationDTO {
 ///
 /// `npub` is pre-encoded so the iOS shell doesn't need a bech32 dependency
 /// just to render the avatar fallback (truncated key).
+///
+/// `pubkey_hex` is the raw lowercase-hex encoding of the same pubkey that
+/// `npub` bech32-encodes.  Android calls `bridge.claimProfile(pubkeyHex)`
+/// to trigger kind:0 resolution via the NMP `resolved_profiles` seam;
+/// iOS decodes it via `convertFromSnakeCase` (pubkey_hex → pubkeyHex).
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
 pub struct ContactSummary {
     /// Author bech32 (`npub1…`) — pre-encoded so iOS can render the
     /// truncated-key fallback without a bech32 dep.
     pub npub: String,
+    /// Raw lowercase-hex encoding of the pubkey — required by Android's
+    /// `bridge.claimProfile(pubkeyHex)` to trigger kind:0 profile resolution
+    /// via the `resolved_profiles` seam.  Empty string only when the hex
+    /// encoding fails (should never occur for a valid Nostr pubkey).
+    pub pubkey_hex: String,
     /// Cached display name from the contact's NIP-01 metadata, when
     /// known. `None` means the grid renders the truncated npub instead.
     #[serde(default, skip_serializing_if = "Option::is_none")]
