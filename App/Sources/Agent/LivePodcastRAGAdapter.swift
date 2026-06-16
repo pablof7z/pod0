@@ -2,136 +2,163 @@ import Foundation
 
 // MARK: - LivePodcastRAGAdapter
 //
-// Bridges `RAGService.shared.search` (which returns `[ChunkMatch]`) to the
-// agent-tool's `[EpisodeHit]` / `[TranscriptHit]` value types. Episode-level
-// rollup groups chunk hits by `episodeID`, keeps the best score per episode,
-// then joins against `AppStateStore` to hydrate titles and durations.
+// Bridges `KernelKnowledgeClient` (which calls `nmp_app_podcast_knowledge_query`)
+// to the agent-tool's `[EpisodeHit]` / `[TranscriptHit]` value types.
 //
-// `findSimilarEpisodes` reuses the seed episode's title + truncated description
-// as the retrieval query, then drops the seed itself from the result so the
-// agent never recommends the episode the user is already on.
+// Slice 5d: all three adapter methods now call the kernel knowledge-query FFI
+// (slice 5b) instead of `RAGService.shared.search`. The Swift RAGSearch stack
+// is kept dormant (deleted in slice 5f).
+//
+// `findSimilarEpisodes` is implemented as a semantic query using the seed
+// episode's own title + description excerpt with no scope, then filtering the
+// seed from results. There is no dedicated "similar" FFI in slice 5b; this
+// approximates similarity via the seed episode's own text.
+//
+// `queryTranscripts` passes speaker=nil — the kernel chunk row carries no
+// diarisation field; speaker attribution is a future extension.
 
 struct LivePodcastRAGAdapter: PodcastAgentRAGSearchProtocol {
 
-    /// Weak handle on the live store so `EpisodeHit` rows can be filled in
-    /// with real podcast titles / durations / publish dates.
+    /// Weak handle on the live store — used to hydrate optional per-episode
+    /// metadata (publishedAt, durationSeconds) and to disambiguate scope UUIDs
+    /// in `queryTranscripts`. Does not gate the core search path; if nil the
+    /// optional fields are omitted from results.
     weak var store: AppStateStore?
 
     init(store: AppStateStore) {
         self.store = store
     }
 
+    // MARK: - PodcastAgentRAGSearchProtocol
+
     func searchEpisodes(query: String, scope: PodcastID?, limit: Int) async throws -> [EpisodeHit] {
-        let chunkScope = Self.chunkScope(podcastID: scope)
         // Over-fetch so the per-episode rollup still returns `limit` distinct
         // episodes when several chunks come from the same show.
-        let opts = RAGSearch.Options(k: max(1, limit) * 4, hybrid: true, rerank: true)
-        let matches = try await RAGService.shared.search.search(
+        let rows = try await KernelKnowledgeClient.query(
             query: query,
-            scope: chunkScope,
-            options: opts
+            podcastId: scope,
+            episodeId: nil,
+            limit: max(1, limit) * 4
         )
-        return await rollUpToEpisodes(matches: matches, limit: limit)
+        return await rollUpToEpisodes(rows: rows, limit: limit)
     }
 
     func queryTranscripts(query: String, scope: String?, limit: Int) async throws -> [TranscriptHit] {
-        let chunkScope = await Self.chunkScope(transcriptScope: scope, store: store)
-        let opts = RAGSearch.Options(k: max(1, limit), hybrid: true, rerank: true)
-        let matches = try await RAGService.shared.search.search(
+        // Resolve scope UUID → podcast or episode on the main actor (store
+        // access), then call the FFI off-main via KernelKnowledgeClient.
+        let (podcastId, episodeId) = await MainActor.run { [store] in
+            Self.resolveTranscriptScope(scope: scope, store: store)
+        }
+        let rows = try await KernelKnowledgeClient.query(
             query: query,
-            scope: chunkScope,
-            options: opts
+            podcastId: podcastId,
+            episodeId: episodeId,
+            limit: max(1, limit)
         )
-        return matches.map(Self.makeTranscriptHit)
+        return rows.map(Self.makeTranscriptHit)
     }
 
     func findSimilarEpisodes(seedEpisodeID: EpisodeID, k: Int) async throws -> [EpisodeHit] {
-        guard let seedUUID = UUID(uuidString: seedEpisodeID),
-              let seed = await store?.episode(id: seedUUID) else {
-            return []
+        // Build the retrieval query from the seed episode's metadata on the
+        // main actor, then issue a library-wide semantic search (no scope).
+        // Limitation: no dedicated "similar" FFI exists in slice 5b; this
+        // approximates similarity using the seed's own title + description text.
+        let seedQuery = await MainActor.run { [store] in
+            guard let uuid = UUID(uuidString: seedEpisodeID),
+                  let ep = store?.episode(id: uuid) else { return "" }
+            return [ep.title, String(ep.description.prefix(400))]
+                .filter { !$0.isEmpty }
+                .joined(separator: " ")
         }
-        let queryParts = [seed.title, String(seed.description.prefix(400))]
-            .filter { !$0.isEmpty }
-        let query = queryParts.joined(separator: " ")
-        let opts = RAGSearch.Options(k: max(1, k) * 4, hybrid: true, rerank: true)
-        let matches = try await RAGService.shared.search.search(
-            query: query,
-            scope: nil,
-            options: opts
+        guard !seedQuery.isEmpty else { return [] }
+
+        let rows = try await KernelKnowledgeClient.query(
+            query: seedQuery,
+            podcastId: nil,
+            episodeId: nil,
+            limit: max(1, k) * 4
         )
-        let hits = await rollUpToEpisodes(matches: matches, limit: k + 1)
+        let hits = await rollUpToEpisodes(rows: rows, limit: k + 1)
         return Array(hits.filter { $0.episodeID != seedEpisodeID }.prefix(k))
     }
 
-    // MARK: Private rollup
+    // MARK: - Private rollup
 
+    /// Collapse chunk rows to episode-level hits, keeping the best-scoring
+    /// chunk snippet per episode. Hydrates publishedAt/durationSeconds from the
+    /// store (best-effort — both are nil when the store doesn't hold the episode).
     @MainActor
-    private func rollUpToEpisodes(matches: [ChunkMatch], limit: Int) -> [EpisodeHit] {
-        guard let store else { return [] }
-        var bestPerEpisode: [UUID: (score: Float, snippet: String)] = [:]
-        var orderedEpisodeIDs: [UUID] = []
-        for match in matches {
-            let id = match.chunk.episodeID
-            let entry = bestPerEpisode[id]
-            if entry == nil {
-                orderedEpisodeIDs.append(id)
-                bestPerEpisode[id] = (match.score, match.chunk.text)
-            } else if let prior = entry, match.score > prior.score {
-                bestPerEpisode[id] = (match.score, match.chunk.text)
+    private func rollUpToEpisodes(rows: [KnowledgeQueryRow], limit: Int) -> [EpisodeHit] {
+        var bestPerEpisode: [String: KnowledgeQueryRow] = [:]
+        var orderedIDs: [String] = []
+
+        for row in rows {
+            if let prior = bestPerEpisode[row.episodeId] {
+                if row.relevanceScore > prior.relevanceScore {
+                    bestPerEpisode[row.episodeId] = row
+                }
+            } else {
+                orderedIDs.append(row.episodeId)
+                bestPerEpisode[row.episodeId] = row
             }
-            if orderedEpisodeIDs.count >= limit { break }
+            if orderedIDs.count >= limit { break }
         }
-        return orderedEpisodeIDs.compactMap { episodeID -> EpisodeHit? in
-            guard let entry = bestPerEpisode[episodeID],
-                  let episode = store.episode(id: episodeID) else { return nil }
-            let podcast = store.podcast(id: episode.podcastID)
+
+        return orderedIDs.prefix(limit).compactMap { id -> EpisodeHit? in
+            guard let row = bestPerEpisode[id] else { return nil }
+            var pubDate: Date?
+            var duration: Int?
+            if let uuid = UUID(uuidString: id), let ep = store?.episode(id: uuid) {
+                pubDate = ep.pubDate
+                duration = ep.duration.map { Int($0) }
+            }
             return EpisodeHit(
-                episodeID: episodeID.uuidString,
-                podcastID: episode.podcastID.uuidString,
-                title: episode.title,
-                podcastTitle: podcast?.title ?? "",
-                publishedAt: episode.pubDate,
-                durationSeconds: episode.duration.map { Int($0) },
-                snippet: String(entry.snippet.prefix(280)),
-                score: Double(entry.score)
+                episodeID: row.episodeId,
+                podcastID: row.podcastId,
+                title: row.episodeTitle,
+                podcastTitle: row.podcastTitle,
+                publishedAt: pubDate,
+                durationSeconds: duration,
+                snippet: String(row.text.prefix(280)),
+                score: row.relevanceScore
             )
         }
     }
 
-    // MARK: Helpers
+    // MARK: - Helpers
 
-    /// `searchEpisodes` only narrows by podcast — translate the optional
-    /// podcast-id string into a `ChunkScope` (or `nil` for "everything").
-    static func chunkScope(podcastID: PodcastID?) -> ChunkScope? {
-        guard let raw = podcastID, let uuid = UUID(uuidString: raw) else { return nil }
-        return .podcast(uuid)
-    }
-
-    /// `queryTranscripts` accepts either an episode UUID or a podcast UUID in
-    /// the `scope` field. We disambiguate via the live `AppStateStore`:
-    /// episode lookup wins (defensive — never widen an episode-id to its whole
-    /// show by accident); a UUID matching a subscription falls through to
-    /// `.podcast`. UUIDs that match neither are treated as episode scopes so
-    /// the search hard-fails to empty rather than silently widening to the
-    /// whole library.
-    @MainActor
-    static func chunkScope(transcriptScope: String?, store: AppStateStore?) -> ChunkScope? {
-        guard let raw = transcriptScope, let uuid = UUID(uuidString: raw) else { return nil }
-        if store?.episode(id: uuid) != nil { return .episode(uuid) }
-        if store?.state.subscriptions.contains(where: { $0.id == uuid }) == true {
-            return .podcast(uuid)
-        }
-        return .episode(uuid)
-    }
-
-    static func makeTranscriptHit(_ match: ChunkMatch) -> TranscriptHit {
+    /// Map a `KnowledgeQueryRow` chunk to a `TranscriptHit`.
+    /// `speaker` is `nil` — kernel chunk rows carry no diarisation field.
+    private static func makeTranscriptHit(_ row: KnowledgeQueryRow) -> TranscriptHit {
         TranscriptHit(
-            episodeID: match.chunk.episodeID.uuidString,
-            startSeconds: TimeInterval(match.chunk.startMS) / 1000.0,
-            endSeconds: TimeInterval(match.chunk.endMS) / 1000.0,
+            episodeID: row.episodeId,
+            startSeconds: row.startSecs,
+            endSeconds: row.endSecs,
             speaker: nil,
-            text: match.chunk.text,
-            score: Double(match.score)
+            text: row.text,
+            score: row.relevanceScore
         )
+    }
+
+    /// Disambiguate a scope UUID string as either a podcast_id or episode_id.
+    ///
+    /// Resolution order (mirrors the legacy `ChunkScope` logic):
+    /// 1. Episode-first: a UUID that resolves via `store.episode(id:)` → episode scope.
+    /// 2. Subscription: a UUID present in `store.state.subscriptions` → podcast scope.
+    /// 3. Default fallback: treat as episode scope (defensive — narrows rather than widens).
+    @MainActor
+    private static func resolveTranscriptScope(
+        scope: String?,
+        store: AppStateStore?
+    ) -> (podcastId: String?, episodeId: String?) {
+        guard let raw = scope, UUID(uuidString: raw) != nil else {
+            return (nil, nil)
+        }
+        guard let uuid = UUID(uuidString: raw) else { return (nil, nil) }
+        if store?.episode(id: uuid) != nil { return (nil, raw) }
+        if store?.state.subscriptions.contains(where: { $0.id == uuid }) == true {
+            return (raw, nil)
+        }
+        return (nil, raw)
     }
 }
