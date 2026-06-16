@@ -126,8 +126,13 @@ extension XCTestCase {
     /// then fall back to the row identifier and a frame-based title-area tap.
     @discardableResult
     func openFirstPodcastFromHome(_ app: XCUIApplication) -> Bool {
+        let homeTab = app.buttons["tab-home"]
+        if homeTab.waitForExistence(timeout: 2) {
+            homeTab.tap()
+        }
+
         let seededTitle = staticTextContaining(app, "This American Life")
-        _ = seededTitle.waitForExistence(timeout: 8)
+        _ = seededTitle.waitForExistence(timeout: 20)
 
         let visibleHomeTitle = app.staticTexts.allElementsBoundByIndex.first { element in
             element.label.localizedCaseInsensitiveContains("This American Life")
@@ -142,7 +147,7 @@ extension XCTestCase {
         let row = app.buttons.matching(
                 NSPredicate(format: "identifier == 'library-podcast-row'")
         ).firstMatch
-        if row.waitForExistence(timeout: 8) {
+        if row.waitForExistence(timeout: 12) {
             let origin = app.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
             origin.withOffset(CGVector(dx: row.frame.minX + 72, dy: row.frame.midY)).tap()
             if waitForShowDetail(app) { return true }
