@@ -52,11 +52,6 @@ extension AppStateStore {
         dispatchTaskAction(["op": "run_now", "task_id": id])
     }
 
-    @discardableResult
-    func runDueScheduledTasksIfNeeded() -> DispatchResult {
-        dispatchTaskAction(["op": "run_due"])
-    }
-
     private func dispatchTaskAction(_ body: [String: Any]) -> DispatchResult {
         guard let kernel else {
             return .failure("Rust kernel is not ready.")

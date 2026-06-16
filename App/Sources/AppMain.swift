@@ -50,7 +50,6 @@ struct PodcastrApp: App {
                         platform.applyPositionTick(pos)
                     }
                     store.attachKernel(kernelModel)
-                    store.runDueScheduledTasksIfNeeded()
                     PodcastCapabilities.shared.startICloudSync(kernel: kernelModel, appStore: store)
                 }
                 .task { store.identity.start() }
