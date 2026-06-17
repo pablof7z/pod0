@@ -626,18 +626,19 @@ worktrees currently in flight.
   renders the `voice` snapshot projection (`isListening`/`isSpeaking`/
   `partialTranscript`/`lastResponse`), mirroring the Android `VoiceScreen`. One
   canonical voice path across platforms.
-- **voice-stub-stack-retire — FOLLOW-UP.** After `voice-view-kernel-reconcile`,
-  the `AudioConversationManager` stub stack is dormant (only inbound comment refs
-  + tests/previews). Retire it: `AudioConversationManager`, `SpeechRecognizerService`,
-  `BargeInDetector`, `VoiceTurnDelegate`/`StubVoiceTurnDelegate`/`VoiceTurnEvent`,
-  `VoiceCaption`/`VoiceCaptionLog`, `VoiceTypes` (`AudioConversationState`,
-  `VoiceError`), `VoiceAudioSessionBridge`, and the voice-only
-  `AudioSessionCoordinatorProtocol`/`NoopAudioSessionCoordinator`. NOT clean to
-  delete blindly: `AVSpeechFallback` is used by `RationaleNarrator`, and
-  `ElevenLabsTTSClient.defaultVoiceID` (static const) is referenced by
-  `AgentTTSComposer` — relocate those before deletion. Deletion touches symbols the
-  test target globs, so it needs `xcodebuild build-for-testing` (AppTests/**), not
-  just an app compile, per the Swift-delete rule.
+- **voice-stub-stack-retire — DONE (stacked on #552).** Deleted the dormant
+  `AudioConversationManager` stub stack now that `VoiceView` is kernel-driven:
+  `AudioConversationManager`, `SpeechRecognizerService`(+`SpeechRecognizerServiceProtocol`/`SpeechRecognizerError`),
+  `BargeInDetector`(+protocol), `VoiceTurnDelegate`/`StubVoiceTurnDelegate`/`VoiceTurnEvent`,
+  `VoiceCaption`/`VoiceCaptionLog`, `VoiceTypes` (`AudioConversationState`,`VoiceError`),
+  and `VoiceAudioSessionBridge` (which owned the voice-only
+  `AudioSessionCoordinatorProtocol`/`NoopAudioSessionCoordinator`) — 7 files removed.
+  KEPT: `AVSpeechFallback` (used by `RationaleNarrator.synthesizeStream`),
+  `ElevenLabsTTSBackendClient`, `ElevenLabsTTSClient` (incl. `defaultVoiceID` ref'd by
+  `AgentTTSComposer`, and `TTSClientProtocol` still conformed by the two kept clients —
+  no relocation needed, lowest churn). The separate `App/Sources/Audio/AudioSessionCoordinator.swift`
+  (`VoiceSessionClient`/`NoopVoiceSessionClient`) is unrelated and untouched. No test/preview/
+  android/apps refs existed. Verified via `xcodebuild build-for-testing` (AppTests/**) green.
 - **tts-episodes-reconcile-two-mechanisms (feature #43) — RESOLVED.**
   **Option A chosen — kernel stub deleted, Swift `AgentTTSComposer` is
   canonical.** The orphaned kernel `podcast.tts` vertical (`tts.rs`,
