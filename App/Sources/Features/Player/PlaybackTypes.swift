@@ -24,12 +24,13 @@ struct QueueItem: Identifiable, Equatable, Sendable {
     let label: String?
 
     init(
+        id: UUID = UUID(),
         episodeID: UUID,
         startSeconds: Double? = nil,
         endSeconds: Double? = nil,
         label: String? = nil
     ) {
-        self.id = UUID()
+        self.id = id
         self.episodeID = episodeID
         self.startSeconds = startSeconds
         self.endSeconds = endSeconds
@@ -83,7 +84,7 @@ enum PlaybackRate: Double, CaseIterable, Identifiable {
 // MARK: - PlaybackSleepTimer
 
 /// Sleep-timer presets surfaced in the sleep-timer sheet. Mapped onto the
-/// engine's `SleepTimer.Mode` at the boundary.
+/// Rust `podcast.player.set_sleep_timer` action at the boundary.
 enum PlaybackSleepTimer: Hashable, Identifiable {
     case off
     case minutes(Int)
@@ -109,11 +110,4 @@ enum PlaybackSleepTimer: Hashable, Identifiable {
         .off, .minutes(5), .minutes(15), .minutes(30), .minutes(45), .minutes(60), .endOfEpisode
     ]
 
-    var engineMode: SleepTimer.Mode {
-        switch self {
-        case .off: return .off
-        case .minutes(let m): return .duration(TimeInterval(m * 60))
-        case .endOfEpisode: return .endOfEpisode
-        }
-    }
 }

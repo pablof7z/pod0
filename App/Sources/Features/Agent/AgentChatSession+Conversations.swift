@@ -116,11 +116,12 @@ extension AgentChatSession {
         guard hasUser, hasAssistant else { return }
 
         let conversationID = currentConversationID
-        let model = store.state.settings.memoryCompilationModel
-        let snippet = AgentChatTitleGenerator.buildTranscriptSnippet(from: messages)
+        guard let plan = AgentChatTitleGenerator.makePlan(from: messages, store: store) else {
+            return
+        }
         let store = self.history
         titleTask = Task { [weak self] in
-            let title = await AgentChatTitleGenerator.generate(transcript: snippet, model: model)
+            let title = await AgentChatTitleGenerator.generate(plan: plan)
             await MainActor.run {
                 if let title, !title.isEmpty {
                     store.setTitle(title, for: conversationID)

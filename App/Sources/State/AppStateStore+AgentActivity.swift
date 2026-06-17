@@ -4,70 +4,42 @@ import Foundation
 
 extension AppStateStore {
 
-    // MARK: - Limits
+    // MARK: - Rust policy bridge
 
-    /// Maximum number of activity entries retained in memory and on disk.
-    ///
-    /// When the log exceeds this cap, `recordAgentActivity` evicts the oldest
-    /// entries first — preferring fully-undone batches so active undo state is
-    /// preserved as long as possible. Mirrors the 100-message cap in
-    /// `ChatHistoryStore`.
-    private static let maxActivityEntries = 200
+    private struct AgentActivityEntriesResponse: Decodable {
+        let entries: [AgentActivityEntry]
+    }
 
-    /// Age threshold (in seconds) after which entries are pruned at app launch.
-    /// 30 days — entries older than this carry no useful undo state and only
-    /// bloat the persisted JSON file.
-    private static let activityMaxAgeSecs: TimeInterval = 30 * 24 * 3_600
+    private struct AgentActivityCountResponse: Decodable {
+        let count: Int
+    }
+
+    private struct AgentActivityIDsResponse: Decodable {
+        let ids: [UUID]
+    }
+
+    private static let agentActivityMaxAgeSecs: TimeInterval = 30 * 24 * 3_600
+
+    private static let agentActivityEncoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }()
+
+    private static let agentActivityDecoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
 
     // MARK: - Recording
 
     func recordAgentActivity(_ entry: AgentActivityEntry) {
-        state.agentActivity.append(entry)
-        trimActivityLogIfNeeded()
-    }
-
-    /// Drops the oldest entries when the log exceeds `maxActivityEntries`.
-    ///
-    /// Eviction order (youngest surviving):
-    /// 1. Fully-undone entries — undo state is already applied; they carry no
-    ///    further actionable information.
-    /// 2. Oldest entries by timestamp — keeps the most recent batches intact.
-    ///
-    /// This is done as a single array assignment so it fires exactly one
-    /// `state.didSet` (and therefore one Persistence.save / Spotlight reindex).
-    private func trimActivityLogIfNeeded() {
-        let count = state.agentActivity.count
-        guard count > Self.maxActivityEntries else { return }
-        let excess = count - Self.maxActivityEntries
-        var log = state.agentActivity
-
-        // First pass: remove fully-undone entries (oldest first) to fill the quota.
-        var removed = 0
-        var indicesToRemove: [Int] = []
-        for (idx, entry) in log.enumerated() {
-            guard removed < excess else { break }
-            if entry.undone {
-                indicesToRemove.append(idx)
-                removed += 1
-            }
-        }
-
-        // Second pass: if still over cap, remove the oldest entries regardless.
-        if removed < excess {
-            for (idx, _) in log.enumerated() {
-                guard removed < excess else { break }
-                if !indicesToRemove.contains(idx) {
-                    indicesToRemove.append(idx)
-                    removed += 1
-                }
-            }
-        }
-
-        let removeSet = Set(indicesToRemove)
-        log = log.enumerated()
-            .filter { !removeSet.contains($0.offset) }
-            .map(\.element)
-        state.agentActivity = log
+        guard let entries = agentActivityPolicyEntries(
+            op: "agent_activity_record",
+            extra: ["entry": agentActivityObject(entry)]
+        ) else { return }
+        state.agentActivity = entries
     }
 
     /// Prunes activity entries older than `activityMaxAgeSecs`.
@@ -76,23 +48,28 @@ extension AppStateStore {
     /// many months of use. This is a single state mutation so it fires only one
     /// `Persistence.save`.
     func pruneStaleActivityEntries() {
-        let cutoff = Date().addingTimeInterval(-Self.activityMaxAgeSecs)
-        let trimmed = state.agentActivity.filter { $0.timestamp >= cutoff }
-        guard trimmed.count != state.agentActivity.count else { return }
-        state.agentActivity = trimmed
+        let cutoff = Date().addingTimeInterval(-Self.agentActivityMaxAgeSecs)
+        guard let entries = agentActivityPolicyEntries(
+            op: "agent_activity_prune",
+            extra: ["cutoff": Self.agentActivityISO8601(cutoff)]
+        ),
+              entries != state.agentActivity
+        else { return }
+        state.agentActivity = entries
     }
 
     func agentActivity(forBatch batchID: UUID) -> [AgentActivityEntry] {
-        state.agentActivity
-            .filter { $0.batchID == batchID }
-            .sorted { $0.timestamp > $1.timestamp }
+        agentActivityPolicyEntries(
+            op: "agent_activity_for_batch",
+            extra: ["batch_id": batchID.uuidString]
+        ) ?? []
     }
 
     /// All activity entries sorted newest-first — the canonical display order.
-    /// Mirrors `activeMemories` / `activeNotes` so callers avoid touching
-    /// `state.agentActivity` directly in view code.
+    /// Mirrors `activeNotes` so callers avoid touching `state.agentActivity`
+    /// directly in view code.
     var sortedAgentActivity: [AgentActivityEntry] {
-        state.agentActivity.sorted { $0.timestamp > $1.timestamp }
+        agentActivityPolicyEntries(op: "agent_activity_sorted") ?? []
     }
 
     /// Count of active (not-yet-undone) activity entries.
@@ -100,7 +77,7 @@ extension AppStateStore {
     /// Used as the badge count on the Activity Log settings row and anywhere
     /// else that needs a quick summary of outstanding agent actions.
     var activeAgentActivityCount: Int {
-        state.agentActivity.filter { !$0.undone }.count
+        agentActivityPolicyCount(op: "agent_activity_active_count") ?? 0
     }
 
     /// Reverses the side-effect of an agent activity entry and marks it `undone`.
@@ -112,15 +89,105 @@ extension AppStateStore {
         case .noteCreated(let noteID):
             deleteNote(noteID)
         case .memoryRecorded(let memoryID):
-            deleteAgentMemory(memoryID)
+            // Legacy Swift-owned memories are no longer imported into runtime
+            // state. Preserve decode/display of old activity entries, but do
+            // not resurrect the removed Swift memory store.
+            _ = memoryID
+        case .memoryFactRecorded(let key):
+            kernel?.dispatch(namespace: "podcast.memory",
+                             body: ["op": "forget", "key": key])
         }
-        state.agentActivity[idx].undone = true
+        if let entries = agentActivityPolicyEntries(
+            op: "agent_activity_mark_undone",
+            extra: ["entry_id": entryID.uuidString]
+        ) {
+            state.agentActivity = entries
+        }
     }
 
     func undoAgentActivityBatch(_ batchID: UUID) {
-        let ids = state.agentActivity
-            .filter { $0.batchID == batchID && !$0.undone }
-            .map(\.id)
+        let ids = agentActivityPolicyIDs(
+            op: "agent_activity_undo_batch_ids",
+            extra: ["batch_id": batchID.uuidString]
+        ) ?? []
         for id in ids { undoAgentActivity(id) }
+    }
+
+    private func agentActivityPolicyEntries(
+        op: String,
+        extra: [String: Any] = [:]
+    ) -> [AgentActivityEntry]? {
+        guard let data = agentActivityPolicy(op: op, extra: extra),
+              let decoded = try? Self.agentActivityDecoder.decode(
+                AgentActivityEntriesResponse.self,
+                from: data
+              )
+        else { return nil }
+        return decoded.entries
+    }
+
+    private func agentActivityPolicyCount(op: String) -> Int? {
+        guard let data = agentActivityPolicy(op: op),
+              let decoded = try? Self.agentActivityDecoder.decode(
+                AgentActivityCountResponse.self,
+                from: data
+              )
+        else { return nil }
+        return decoded.count
+    }
+
+    private func agentActivityPolicyIDs(
+        op: String,
+        extra: [String: Any] = [:]
+    ) -> [UUID]? {
+        guard let data = agentActivityPolicy(op: op, extra: extra),
+              let decoded = try? Self.agentActivityDecoder.decode(
+                AgentActivityIDsResponse.self,
+                from: data
+              )
+        else { return nil }
+        return decoded.ids
+    }
+
+    private func agentActivityPolicy(op: String, extra: [String: Any] = [:]) -> Data? {
+        var payload: [String: Any] = [
+            "op": op,
+            "entries": agentActivityObjects(state.agentActivity),
+        ]
+        for (key, value) in extra {
+            payload[key] = value
+        }
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        return json.withCString { ptr -> Data? in
+            guard let result = nmp_app_podcast_agent_action_policy(ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            return String(cString: result).data(using: .utf8)
+        }
+    }
+
+    private func agentActivityObjects(_ entries: [AgentActivityEntry]) -> [[String: Any]] {
+        guard let data = try? Self.agentActivityEncoder.encode(entries),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+        else { return [] }
+        return object
+    }
+
+    private func agentActivityObject(_ entry: AgentActivityEntry) -> [String: Any] {
+        guard let data = try? Self.agentActivityEncoder.encode(entry),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return [:] }
+        return object
+    }
+
+    private static func agentActivityISO8601(_ date: Date) -> String {
+        guard let data = try? agentActivityEncoder.encode(["date": date]),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: String],
+              let encoded = object["date"]
+        else { return "" }
+        return encoded
     }
 }

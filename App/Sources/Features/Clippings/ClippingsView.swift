@@ -173,23 +173,6 @@ private struct EpisodeNavTarget: Identifiable, Hashable {
     store.state.podcasts = [podcast]
     store.state.subscriptions = [PodcastSubscription(podcastID: podcast.id)]
     store.episodes = [episode]
-    store.addClip(Clip(
-        episodeID: episode.id,
-        subscriptionID: podcast.id,
-        startMs: 14 * 60_000 + 31_000,
-        endMs: 14 * 60_000 + 58_000,
-        caption: "On metabolism",
-        transcriptText: "Metabolic flexibility isn't a diet — it's a property of the mitochondria.",
-        source: .touch
-    ))
-    store.addClip(Clip(
-        episodeID: episode.id,
-        subscriptionID: podcast.id,
-        startMs: 32 * 60_000,
-        endMs: 32 * 60_000 + 15_000,
-        transcriptText: "Zone 2 training is the bedrock of aerobic capacity.",
-        source: .auto
-    ))
     return NavigationStack {
         ClippingsView()
             .environment(store)

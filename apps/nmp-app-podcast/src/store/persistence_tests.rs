@@ -87,6 +87,7 @@ fn save_then_load_round_trips_podcasts_and_episodes() {
             auto_download: false,
             auto_download_mode: None,
             cellular_allowed: false,
+            notifications_disabled: false,
         }],
         has_completed_onboarding: false,
         memory_facts: vec![],

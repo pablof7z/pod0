@@ -97,6 +97,52 @@ impl PodcastHostOpHandler {
         serde_json::json!({"ok": true})
     }
 
+    /// Queue all episodes for a podcast that are not already downloaded.
+    /// Eligibility lives here rather than in Swift so platform shells send one
+    /// show-level intent and the kernel applies the same idempotent queue policy
+    /// as single-episode downloads and auto-download evaluation.
+    pub(super) fn handle_download_podcast(
+        &self,
+        podcast_id_str: String,
+        correlation_id: &str,
+    ) -> serde_json::Value {
+        let podcast_id = match Uuid::parse_str(&podcast_id_str) {
+            Ok(uuid) => podcast_core::PodcastId::new(uuid),
+            Err(_) => {
+                return serde_json::json!({
+                    "ok": false,
+                    "error": format!("invalid podcast id: {podcast_id_str}")
+                })
+            }
+        };
+        let candidates: Vec<(String, String)> = match self.state.library.store.lock() {
+            Ok(s) => {
+                if s.podcast(podcast_id).is_none() {
+                    return serde_json::json!({
+                        "ok": false,
+                        "error": format!("podcast not found: {podcast_id_str}")
+                    });
+                }
+                s.episodes_for(podcast_id)
+                    .iter()
+                    .filter(|ep| !s.episode_is_downloaded(&ep.id.0.to_string()))
+                    .map(|ep| (ep.id.0.to_string(), ep.enclosure_url.to_string()))
+                    .collect()
+            }
+            Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+        };
+        let mut accepted = 0usize;
+        for (episode_id, url) in candidates {
+            if self
+                .start_episode_download(&episode_id, &url, correlation_id, false)
+                .is_ok()
+            {
+                accepted += 1;
+            }
+        }
+        serde_json::json!({"ok": true, "accepted": accepted})
+    }
+
     /// The single canonical path to start an episode download. Enqueues through
     /// the concurrency-bounded [`DownloadQueue`] (so auto-downloads and
     /// user-initiated downloads share one queue, honour `max_concurrent`, and
@@ -244,6 +290,26 @@ impl PodcastHostOpHandler {
             self.handle_evaluate_auto_downloads(correlation_id);
         }
         serde_json::json!({"ok": true})
+    }
+
+    pub(super) fn handle_set_podcast_notifications_enabled(
+        &self,
+        podcast_id_str: String,
+        enabled: bool,
+    ) -> serde_json::Value {
+        let uuid = match podcast_id_str.parse::<Uuid>() {
+            Ok(u) => u,
+            Err(_) => return serde_json::json!({"ok": false, "error": "invalid podcast_id"}),
+        };
+        let podcast_id = podcast_core::PodcastId::new(uuid);
+        match self.state.library.store.lock() {
+            Ok(mut s) => {
+                s.set_podcast_notifications_enabled(podcast_id, enabled);
+                self.bump_domain(crate::state::Domain::Library);
+                serde_json::json!({"ok": true})
+            }
+            Err(_) => serde_json::json!({"ok": false, "error": "store poisoned"}),
+        }
     }
 
     /// Catch-up auto-download evaluation over the *current* library (op

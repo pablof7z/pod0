@@ -15,6 +15,7 @@ use std::path::PathBuf;
 use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 use super::helpers::c_string_opt;
+use crate::nmp_dispatch::activate_local_signer_in_kernel;
 
 /// Bind `handle`'s store to the directory at `path` and reload `podcasts.json`.
 ///
@@ -58,25 +59,28 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(handle: *mut PodcastHandle, path:
         // Restore the "Up Next" queue from disk. Even an empty persisted queue
         // is fine — the shared PlaybackQueue starts empty and we just skip.
         // Step 14: queue sourced from state.playback.queue.
-        if !loaded_queue.is_empty() {
+        let queue_loaded = !loaded_queue.is_empty();
+        if queue_loaded {
             if let Ok(mut q) = handle.state.playback.queue.lock() {
-                for id in &loaded_queue {
-                    q.add_to_end(id);
-                }
+                q.restore_items(loaded_queue);
             }
         }
 
         // Bind the identity store to the same directory. If `identity.json` exists
         // this loads the saved secret key and derives `pubkey_hex` + `npub` so
         // the next snapshot frame surfaces `active_account` without a write.
-        let identity_loaded = if let Ok(mut id) = handle.state.library.identity.lock() {
+        let (identity_loaded, loaded_identity_secret) = if let Ok(mut id) = handle.state.library.identity.lock() {
             let was_empty = id.secret_hex.is_none();
             id.set_data_dir(&PathBuf::from(&path_str));
             // Only bump rev if we just loaded a key that wasn't present before.
-            was_empty && id.secret_hex.is_some()
+            let loaded = was_empty && id.secret_hex.is_some();
+            (loaded, id.secret_hex.clone())
         } else {
-            false
+            (false, None)
         };
+        if let Some(secret_hex) = loaded_identity_secret.as_deref() {
+            activate_local_signer_in_kernel(handle.app, secret_hex);
+        }
 
         // Bind the per-podcast NIP-F4 key store to the same directory and reload
         // `podcast-keys.json`. Restored keys mean any owned podcast survives an
@@ -149,6 +153,11 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(handle: *mut PodcastHandle, path:
             None => false,
         };
 
+        // Restore Rust-owned clips from `clips.json`, if present. Swift no
+        // longer persists a parallel `AppState.clips` mirror; this sidecar is
+        // the only durable clip list.
+        let clips_loaded = handle.state.clips.set_data_dir(&path_buf);
+
         // Restore the auto-responder dedup + turn-count cache from
         // `agent-note-responder-cache.json`, if present. A missing file is a
         // fresh start (cold install / process restart), not an error (D6). The
@@ -219,11 +228,12 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(handle: *mut PodcastHandle, path:
         let knowledge_loaded = handle.state.knowledge.set_data_dir(&path_buf);
 
         if loaded > 0
-            || !loaded_queue.is_empty()
+            || queue_loaded
             || identity_loaded
             || keys_loaded > 0
             || triage_loaded
             || tasks_loaded
+            || clips_loaded
             || responder_loaded
             || outbound_loaded
             || knowledge_loaded > 0

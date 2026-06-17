@@ -6,18 +6,14 @@ import os.log
 
 // MARK: - AutoSnipController
 //
-// Captures the currently playing moment as a `Clip` by dispatching the kernel
-// `podcast.clip auto_snip` action. Boundary resolution (chapter-snap →
-// transcript-refine → ±30s fallback) now lives entirely in the Rust kernel
-// (D7 — shell-side policy retired in SLICE 3b). The clip is created and
-// persisted by the kernel and surfaces reactively via ClipSummary on the
-// podcast snapshot. Triggered three ways:
+// Dispatches an autosnip request for the current playhead. Rust owns the clip
+// window, transcript refinement, pending-transcript retry, and projection.
+// Triggered three ways:
 //
 //   1. **Lock-screen / Control Center** via `MPRemoteCommandCenter.bookmarkCommand`
 //      — a dedicated MPFeedbackCommand, distinct from the play/pause and skip
 //      commands `NowPlayingCenter` already wires. Multiple targets per command
-//      are safe; we only own this one. Returns `.success` optimistically;
-//      the clip lands reactively via the kernel projection.
+//      are safe; we only own this one.
 //   2. **In-app button** (`AutoSnipButton`) on the player controls row — this is
 //      the universal fallback. iOS does not expose AirPods double-tap or wired
 //      headphone middle-button as a discrete remote command, so the button is
@@ -40,6 +36,8 @@ final class AutoSnipController {
     // MARK: - Logger
 
     nonisolated private static let logger = Logger.app("AutoSnipController")
+
+    // MARK: - Tunables
 
     // MARK: - Wiring
 
@@ -99,60 +97,42 @@ final class AutoSnipController {
         bookmark.localizedTitle = "Snip last 30s"
         bookmark.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
-            // Fire-and-forget: dispatch to kernel is synchronous; the clip
-            // lands reactively. Return .success optimistically — the kernel
-            // creates the clip in the background.
-            let dispatched = self.captureSnip(source: .auto)
-            return dispatched ? .success : .noActionableNowPlayingItem
+            let captured = self.captureSnip(source: .auto)
+            return captured == nil ? .noActionableNowPlayingItem : .success
         }
         Self.logger.debug("AutoSnipController: bookmarkCommand wired")
     }
 
     // MARK: - Capture
 
-    /// Dispatch a kernel `auto_snip` action at the live playhead.
-    ///
-    /// Boundary resolution (chapter-snap → transcript-refine → ±30s fallback)
-    /// is owned entirely by the Rust kernel (D7 — SLICE 3b). The clip is
-    /// created and persisted by the kernel and surfaces reactively on the next
-    /// snapshot tick via ClipSummary. This method is fire-and-forget for UX
-    /// purposes: the haptic + toast fire immediately; the resolved clip arrives
-    /// reactively a moment later.
-    ///
-    /// Returns `true` on successful dispatch (episode + kernel attached),
-    /// `false` otherwise. The lock-screen `bookmarkCommand` path maps this to
-    /// `.success` / `.noActionableNowPlayingItem` optimistically.
+    /// Capture a snip from the live playhead. Returns `true` on dispatch
+    /// success, or `nil` when there's nothing to capture (no episode loaded,
+    /// no store attached, etc.).
     @discardableResult
-    func captureSnip(source: Clip.Source = .touch) -> Bool {
+    func captureSnip(source: Clip.Source = .touch) -> Bool? {
         guard let playback, let store, let episode = playback.episode else {
             Self.logger.notice("captureSnip: no episode / playback not attached")
-            return false
+            return nil
         }
-        let positionSecs = playback.currentTime
-        store.kernel?.dispatch(
-            namespace: "podcast.clip",
-            body: [
-                "op": "auto_snip",
-                "episode_id": episode.id.uuidString,
-                "position_secs": positionSecs,
-            ]
-        )
+        let now = playback.currentTime
+        guard let clipID = store.kernelAutoSnip(episodeID: episode.id, positionSecs: now, source: source) else {
+            Self.logger.notice("captureSnip: kernel not attached")
+            return nil
+        }
+
         Haptics.success()
-        // Optimistic toast: surface a "Snipping…" banner immediately so the
-        // user gets instant feedback. The kernel-resolved clip lands reactively
-        // on the next snapshot tick.
-        let now = Date()
         lastCapture = CaptureResult(
             id: UUID(),
-            clipID: UUID(),  // placeholder — kernel owns the real clip id
+            clipID: clipID,
             episodeID: episode.id,
-            createdAt: now,
-            summary: "Snipped"
+            createdAt: Date(),
+            summary: "Snipped · refining in kernel"
         )
         captureGeneration &+= 1
         Self.logger.info(
-            "captureSnip dispatched kernel auto_snip episodeID=\(episode.id, privacy: .public) pos=\(positionSecs, privacy: .public)"
+            "dispatched autosnip episode=\(episode.id, privacy: .public) position=\(now, privacy: .public) source=\(String(describing: source), privacy: .public)"
         )
+
         return true
     }
 
@@ -163,4 +143,5 @@ final class AutoSnipController {
             lastCapture = nil
         }
     }
+
 }

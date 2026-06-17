@@ -8,12 +8,11 @@
 //! ## Storage model
 //!
 //! Clips are kept in process memory on the actor thread, behind the same
-//! `Arc<Mutex<…>>` discipline as `search_results`. After every create /
-//! delete the handler writes through to `PodcastStore::set_clips` which
-//! atomically persists the clip list to `podcasts.json` — clips survive
-//! app restart (D0). The wire shape (`ffi::projections::ClipSummary`) is
-//! what the iOS shell reads; the internal `ClipRecord` captures everything
-//! the snapshot builder needs to re-project on every tick.
+//! `Arc<Mutex<…>>` discipline as `search_results`. Persistence to disk is
+//! out of scope for this PR — clips evaporate on app restart. The wire
+//! shape (`ffi::projections::ClipSummary`) is what the iOS shell reads;
+//! the internal `ClipRecord` captures everything the snapshot builder
+//! needs to re-project on every tick.
 //!
 //! ## Title freshness
 //!
@@ -28,21 +27,23 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use chrono::Utc;
-use uuid::Uuid;
+use serde::{Deserialize, Serialize};
 
-use podcast_core::Chapter;
-use podcast_transcripts::TranscriptEntry;
-
+use crate::clip_boundaries::{
+    fallback_auto_snip_bounds, resolve_auto_snip_bounds, resolve_manual_clip_bounds,
+    resolve_quote_bounds, usable_clip_id, AutoSnipBounds, ClipText,
+};
 use crate::ffi::actions::clip_module::ClipAction;
 use crate::ffi::projections::{ClipSummary, PodcastSummary};
 use crate::store::PodcastStore;
+use crate::store::events::{stage, EventDetail, EventSeverity};
 
 /// Internal clip record — what the actor thread mutates.
 ///
 /// `episode_title` / `podcast_title` are the values at create time;
 /// they're only surfaced when the live library join in
 /// `ffi::snapshot::project_clips` misses (episode unsubscribed).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct ClipRecord {
     pub id: String,
     pub episode_id: String,
@@ -51,6 +52,11 @@ pub struct ClipRecord {
     pub start_secs: f64,
     pub end_secs: f64,
     pub title: Option<String>,
+    pub transcript_text: String,
+    pub speaker: Option<String>,
+    pub source: String,
+    pub refinement_status: String,
+    pub auto_snip_anchor_secs: Option<f64>,
     pub created_at: i64,
 }
 
@@ -80,12 +86,29 @@ impl ClipHandler {
                 start_secs,
                 end_secs,
                 title,
-            } => self.handle_create(episode_id, start_secs, end_secs, title),
+                source,
+                transcript_text,
+                client_clip_id,
+            } => self.handle_create(
+                episode_id,
+                start_secs,
+                end_secs,
+                title,
+                source,
+                transcript_text,
+                client_clip_id,
+            ),
             ClipAction::Delete { clip_id } => self.handle_delete(clip_id),
             ClipAction::AutoSnip {
                 episode_id,
                 position_secs,
-            } => self.handle_auto_snip(episode_id, position_secs),
+                source,
+                client_clip_id,
+            } => self.handle_auto_snip(episode_id, position_secs, source, client_clip_id),
+            ClipAction::ResolveQuote {
+                episode_id,
+                position_secs,
+            } => self.handle_resolve_quote(episode_id, position_secs),
         }
     }
 
@@ -95,6 +118,9 @@ impl ClipHandler {
         start_secs: f64,
         end_secs: f64,
         title: Option<String>,
+        source: Option<String>,
+        transcript_text: Option<String>,
+        client_clip_id: Option<String>,
     ) -> serde_json::Value {
         let Some((ep_title, pod_title, _duration)) = self.episode_meta(&episode_id) else {
             return serde_json::json!({
@@ -103,13 +129,47 @@ impl ClipHandler {
             });
         };
         let (start, end) = normalize_range(start_secs, end_secs);
+        if start < 0.0 {
+            return serde_json::json!({
+                "ok": false,
+                "error": "clip start must be >= 0"
+            });
+        }
         if end <= start {
             return serde_json::json!({
                 "ok": false,
                 "error": "clip end must be greater than start"
             });
         }
-        let id = Uuid::new_v4().to_string();
+        let transcript_bounds = self
+            .timed_entries(&episode_id)
+            .and_then(|entries| resolve_manual_clip_bounds(&entries, start, end, _duration));
+        let start = transcript_bounds
+            .as_ref()
+            .map(|bounds| bounds.start_secs)
+            .unwrap_or(start);
+        let end = transcript_bounds
+            .as_ref()
+            .map(|bounds| bounds.end_secs)
+            .unwrap_or(end);
+        let derived = transcript_bounds
+            .map(|bounds| ClipText {
+                transcript_text: bounds.transcript_text,
+                speaker: bounds.speaker,
+            })
+            .or_else(|| {
+                transcript_text
+                    .filter(|text| !text.trim().is_empty())
+                    .map(|text| ClipText {
+                        transcript_text: text,
+                        speaker: None,
+                    })
+            });
+        let id = usable_clip_id(client_clip_id);
+        let source = source
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or_else(|| "touch".to_owned());
+        let event_episode_id = episode_id.clone();
         let record = ClipRecord {
             id: id.clone(),
             episode_id,
@@ -118,19 +178,26 @@ impl ClipHandler {
             start_secs: start,
             end_secs: end,
             title,
+            transcript_text: derived
+                .as_ref()
+                .map(|text| text.transcript_text.clone())
+                .unwrap_or_default(),
+            speaker: derived.and_then(|text| text.speaker),
+            source: source.clone(),
+            refinement_status: "manual".to_owned(),
+            auto_snip_anchor_secs: None,
             created_at: Utc::now().timestamp(),
         };
         match self.clips.lock() {
             Ok(mut c) => {
                 c.push(record);
-                self.rev.fetch_add(1, Ordering::Relaxed);
-                let snapshot = c.clone();
-                drop(c); // release clips lock before acquiring store lock
-                self.persist_clips(snapshot);
-                serde_json::json!({"ok": true, "clip_id": id})
             }
-            Err(_) => serde_json::json!({"ok": false, "error": "clips poisoned"}),
+            Err(_) => return serde_json::json!({"ok": false, "error": "clips poisoned"}),
         }
+        self.persist_clips();
+        self.record_clip_created(&event_episode_id, start, end, &source);
+        self.rev.fetch_add(1, Ordering::Relaxed);
+        serde_json::json!({"ok": true, "clip_id": id})
     }
 
     fn handle_delete(&self, clip_id: String) -> serde_json::Value {
@@ -139,12 +206,9 @@ impl ClipHandler {
                 let before = c.len();
                 c.retain(|rec| rec.id != clip_id);
                 if c.len() != before {
-                    self.rev.fetch_add(1, Ordering::Relaxed);
-                    let snapshot = c.clone();
-                    drop(c); // release clips lock before acquiring store lock
-                    self.persist_clips(snapshot);
-                } else {
                     drop(c);
+                    self.persist_clips();
+                    self.rev.fetch_add(1, Ordering::Relaxed);
                 }
                 serde_json::json!({"ok": true})
             }
@@ -152,54 +216,135 @@ impl ClipHandler {
         }
     }
 
-    /// Persist `clips` snapshot to disk via the store's atomic write path.
-    ///
-    /// Lock ordering: clips lock must be **released** before calling this
-    /// (callers `drop(c)` first) to avoid a potential inversion with the
-    /// store's own Mutex.
-    fn persist_clips(&self, clips: Vec<ClipRecord>) {
-        if let Ok(mut store) = self.store.lock() {
-            store.set_clips(clips);
-        }
-        // Silently degrade on poison — the in-memory slot stays authoritative (D6).
-    }
-
-    /// Transcript-refined, chapter-snapped AutoSnip.
-    ///
-    /// Pipeline (in priority order):
-    /// 1. **Chapter snap** — resolve `position_secs` to the enclosing chapter's
-    ///    `[start, end)` using `chapter_snap`.
-    /// 2. **Transcript refine** — when a timed transcript exists, pass the
-    ///    chapter-derived range through `transcript_refine` to snap start
-    ///    backward to a segment boundary and end forward to a segment end.
-    ///    When refine returns `None` (degenerate or no entries) keep the chapter
-    ///    range.
-    /// 3. **Fallback** — when no chapter range can be produced, use the legacy
-    ///    ±30 s window (S2 behaviour, unchanged).
-    ///
-    /// No wire shape change — result is forwarded to `handle_create`.
-    fn handle_auto_snip(&self, episode_id: String, position_secs: f64) -> serde_json::Value {
-        let Some((_, _, chapters, duration, timed_entries)) =
-            self.episode_snip_context(&episode_id)
-        else {
+    fn handle_auto_snip(
+        &self,
+        episode_id: String,
+        position_secs: f64,
+        source: Option<String>,
+        client_clip_id: Option<String>,
+    ) -> serde_json::Value {
+        let Some((_, _, duration)) = self.episode_meta(&episode_id) else {
             return serde_json::json!({
                 "ok": false,
                 "error": format!("episode not found: {episode_id}")
             });
         };
+        let pos = position_secs.max(0.0);
+        let fallback = fallback_auto_snip_bounds(pos, duration);
+        let resolved = self
+            .timed_entries(&episode_id)
+            .and_then(|entries| resolve_auto_snip_bounds(&entries, pos, duration));
+        let bounds = resolved.unwrap_or_else(|| AutoSnipBounds {
+            start_secs: fallback.0,
+            end_secs: fallback.1,
+            transcript_text: String::new(),
+            speaker: None,
+            status: "pending_transcript".to_owned(),
+        });
+        let start_secs = bounds.start_secs;
+        let end_secs = bounds.end_secs;
+        let id = usable_clip_id(client_clip_id);
+        let Some((ep_title, pod_title, _)) = self.episode_meta(&episode_id) else {
+            return serde_json::json!({
+                "ok": false,
+                "error": format!("episode not found: {episode_id}")
+            });
+        };
+        let source = source
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or_else(|| "auto".to_owned());
+        let event_episode_id = episode_id.clone();
+        let record = ClipRecord {
+            id: id.clone(),
+            episode_id,
+            episode_title: ep_title,
+            podcast_title: pod_title,
+            start_secs,
+            end_secs,
+            title: None,
+            transcript_text: bounds.transcript_text,
+            speaker: bounds.speaker,
+            source: source.clone(),
+            refinement_status: bounds.status,
+            auto_snip_anchor_secs: Some(pos),
+            created_at: Utc::now().timestamp(),
+        };
+        match self.clips.lock() {
+            Ok(mut c) => {
+                c.push(record);
+            }
+            Err(_) => return serde_json::json!({"ok": false, "error": "clips poisoned"}),
+        }
+        self.persist_clips();
+        self.record_clip_created(&event_episode_id, start_secs, end_secs, &source);
+        self.rev.fetch_add(1, Ordering::Relaxed);
+        serde_json::json!({"ok": true, "clip_id": id})
+    }
 
-        let (cs_start, cs_end, chapter_title) =
-            chapter_snap(position_secs, chapters.as_deref(), duration);
-
-        // Transcript-refine post-pass: snap to nearest utterance boundaries.
-        // Falls back to the chapter/±30 s range when absent or degenerate.
-        let (start, end) =
-            match transcript_refine(cs_start, cs_end, timed_entries.as_deref(), duration) {
-                Some((rs, re)) => (rs, re),
-                None => (cs_start, cs_end),
+    pub fn refine_pending_for_episode(&self, episode_id: &str) -> Vec<ClipRecord> {
+        let Some((_, _, duration)) = self.episode_meta(episode_id) else {
+            return Vec::new();
+        };
+        let Some(entries) = self.timed_entries(episode_id) else {
+            return Vec::new();
+        };
+        let Ok(mut clips) = self.clips.lock() else {
+            return Vec::new();
+        };
+        let mut changed = false;
+        let mut refined = Vec::new();
+        for rec in clips.iter_mut().filter(|rec| {
+            rec.episode_id == episode_id && rec.refinement_status == "pending_transcript"
+        }) {
+            let Some(anchor) = rec.auto_snip_anchor_secs else {
+                continue;
             };
+            let Some(bounds) = resolve_auto_snip_bounds(&entries, anchor, duration) else {
+                continue;
+            };
+            rec.start_secs = bounds.start_secs;
+            rec.end_secs = bounds.end_secs;
+            rec.transcript_text = bounds.transcript_text;
+            rec.speaker = bounds.speaker;
+            rec.refinement_status = bounds.status;
+            refined.push(rec.clone());
+            changed = true;
+        }
+        if changed {
+            drop(clips);
+            self.persist_clips();
+            self.rev.fetch_add(1, Ordering::Relaxed);
+        }
+        refined
+    }
 
-        self.handle_create(episode_id, start, end, chapter_title)
+    fn handle_resolve_quote(&self, episode_id: String, position_secs: f64) -> serde_json::Value {
+        let Some((_, _, duration)) = self.episode_meta(&episode_id) else {
+            return serde_json::json!({
+                "ok": false,
+                "error": format!("episode not found: {episode_id}")
+            });
+        };
+        let Some(entries) = self.timed_entries(&episode_id) else {
+            return serde_json::json!({
+                "ok": false,
+                "error": "timed transcript unavailable"
+            });
+        };
+        let Some(bounds) = resolve_quote_bounds(&entries, position_secs.max(0.0), duration) else {
+            return serde_json::json!({
+                "ok": false,
+                "error": "quote boundaries unavailable"
+            });
+        };
+        serde_json::json!({
+            "ok": true,
+            "start_secs": bounds.start_secs,
+            "end_secs": bounds.end_secs,
+            "transcript_text": bounds.transcript_text,
+            "speaker": bounds.speaker,
+            "refinement_status": bounds.status,
+        })
     }
 
     /// Look up `(episode_title, podcast_title, duration_secs)` for an
@@ -209,88 +354,45 @@ impl ClipHandler {
         store.episode_titles_and_duration(episode_id)
     }
 
-    /// Fetch all AutoSnip context in one lock acquisition:
-    /// `(episode_title, podcast_title, chapters, duration_secs, timed_entries)`.
-    ///
-    /// Single store-lock acquisition — handler drops it before clips work.
-    fn episode_snip_context(
+    fn timed_entries(
         &self,
         episode_id: &str,
-    ) -> Option<(String, String, Option<Vec<Chapter>>, Option<f64>, Option<Vec<TranscriptEntry>>)>
-    {
+    ) -> Option<Vec<podcast_transcripts::TranscriptEntry>> {
         let store = self.store.lock().ok()?;
-        store.episode_auto_snip_context(episode_id)
-    }
-}
-
-/// Snap `[start, end]` to the nearest transcript-entry boundaries.
-///
-/// - **START (backward bias):** last entry whose `start_secs <= start`; if
-///   before the first entry, snap to `entries[0].start_secs`.
-/// - **END (forward bias):** first entry whose `end_secs >= end`; if past
-///   the last entry, snap to `entries.last().end_secs`.
-/// - Both clamped to `[0, duration]` when duration is known.
-/// - Returns `None` for `None`/empty entries or a degenerate range after
-///   snapping — caller keeps the pre-refine (chapter/±30 s) range.
-pub(crate) fn transcript_refine(
-    start: f64,
-    end: f64,
-    entries: Option<&[TranscriptEntry]>,
-    duration: Option<f64>,
-) -> Option<(f64, f64)> {
-    let entries = entries?;
-    if entries.is_empty() {
-        return None;
+        store.timed_transcript_for(episode_id).map(|entries| entries.to_vec())
     }
 
-    // Stable sort by start_secs (same pattern as chapter_snap_range).
-    let mut sorted: Vec<&TranscriptEntry> = entries.iter().collect();
-    sorted.sort_by(|a, b| {
-        a.start_secs
-            .partial_cmp(&b.start_secs)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-
-    // START: last entry starting at/before `start` (backward bias).
-    let snapped_start = if start < sorted[0].start_secs {
-        sorted[0].start_secs
-    } else {
-        let mut best = sorted[0];
-        for e in &sorted {
-            if e.start_secs <= start {
-                best = e;
-            } else {
-                break;
-            }
-        }
-        best.start_secs
-    };
-
-    // END: first entry ending at/after `end` (forward bias).
-    let last = sorted[sorted.len() - 1];
-    let snapped_end = if end >= last.end_secs {
-        last.end_secs
-    } else if end < sorted[0].start_secs {
-        sorted[0].end_secs
-    } else {
-        let mut found = last;
-        for e in &sorted {
-            if e.end_secs >= end {
-                found = e;
-                break;
-            }
-        }
-        found.end_secs
-    };
-
-    let snapped_start = clamp_duration(snapped_start.max(0.0), duration);
-    let snapped_end = clamp_duration(snapped_end.max(0.0), duration);
-
-    if snapped_end <= snapped_start {
-        return None;
+    fn persist_clips(&self) {
+        let Some(dir) = self
+            .store
+            .lock()
+            .ok()
+            .and_then(|store| store.data_dir().map(std::path::Path::to_path_buf))
+        else {
+            return;
+        };
+        let Ok(clips) = self.clips.lock() else {
+            return;
+        };
+        let _ = crate::store::clip_records::save_clip_records(&dir, &clips);
     }
 
-    Some((snapped_start, snapped_end))
+    fn record_clip_created(&self, episode_id: &str, start: f64, end: f64, source: &str) {
+        let span = clip_span_label(start, end);
+        let Ok(mut store) = self.store.lock() else {
+            return;
+        };
+        store.emit_event(
+            episode_id,
+            stage::CLIP_CREATED,
+            EventSeverity::Info,
+            format!("Clip created · {span}"),
+            vec![
+                EventDetail::new("Span", span),
+                EventDetail::new("Source", source.to_owned()),
+            ],
+        );
+    }
 }
 
 fn normalize_range(a: f64, b: f64) -> (f64, f64) {
@@ -301,138 +403,12 @@ fn normalize_range(a: f64, b: f64) -> (f64, f64) {
     }
 }
 
-/// Compute `(start, end, title)` for an AutoSnip at `position_secs`.
-///
-/// ## Chapter path
-///
-/// When `chapters` is `Some` and non-empty the chapters are sorted by
-/// `start_secs` and the one whose half-open interval
-/// `[chapter.start, next_chapter.start)` contains `position_secs` is
-/// selected. Edge cases:
-///
-/// - `pos` before the first chapter's start → `[0.0, first.start_secs]`
-///   (or `[0.0, duration]` if the first chapter starts at 0).
-/// - `pos` inside the last chapter → `[last.start_secs, duration]`
-///   (or unclamped `last.start_secs + 30.0` when duration is unknown).
-/// - `pos` past duration → same as last chapter rule, clamped by duration.
-///
-/// The chapter's `title` is returned so the `ClipRecord` can surface it
-/// as the clip title (optional nice-to-have; nil when no match).
-///
-/// ## Fallback path
-///
-/// The legacy ±30 s window (clamped to `[0, duration]` when known) is used
-/// whenever a chapter-derived range cannot be produced:
-/// - `chapters` is `None` or empty, OR
-/// - the chosen chapter range is **degenerate** (`end <= start`). This can
-///   happen when the last chapter's `start_secs == duration` (a chapter that
-///   begins exactly at episode end → `[duration, duration]`) or when two
-///   chapters share a start (a zero-length interval). Emitting such a range
-///   would make `handle_create` reject the clip ("end must be greater than
-///   start"), silently failing the AutoSnip — so we fall back to a usable
-///   window instead.
-pub(crate) fn chapter_snap(
-    position_secs: f64,
-    chapters: Option<&[Chapter]>,
-    duration: Option<f64>,
-) -> (f64, f64, Option<String>) {
-    let pos = position_secs.max(0.0);
-
-    // Try the chapter path first; it yields `Some` only when it produces a
-    // non-degenerate `(start, end)` (`end > start`). Any degenerate result
-    // falls through to the ±30 s window below so AutoSnip always emits a
-    // usable clip.
-    if let Some(snap) = chapter_snap_range(pos, chapters, duration) {
-        return snap;
+fn clip_span_label(start: f64, end: f64) -> String {
+    fn fmt(secs: f64) -> String {
+        let total = secs.max(0.0).round() as i64;
+        format!("{}:{:02}", total / 60, total % 60)
     }
-
-    // Fallback: ±30 s window clamped to [0, duration].
-    let raw_start = pos - 30.0;
-    let raw_end = pos + 30.0;
-    let start = raw_start.max(0.0);
-    let end = match duration {
-        Some(d) if d > 0.0 => raw_end.min(d),
-        _ => raw_end,
-    };
-    (start, end, None)
-}
-
-/// Resolve `pos` to a chapter-snapped `(start, end, title)`, or `None` when no
-/// usable (non-degenerate) chapter range exists. Kept separate from
-/// [`chapter_snap`] so the degenerate-range guard lives in one place and the
-/// caller can cleanly fall through to the ±30 s window.
-fn chapter_snap_range(
-    pos: f64,
-    chapters: Option<&[Chapter]>,
-    duration: Option<f64>,
-) -> Option<(f64, f64, Option<String>)> {
-    let chs = chapters?;
-    if chs.is_empty() {
-        return None;
-    }
-
-    // Sort chapters by start time for reliable interval arithmetic. Stable
-    // sort keeps duplicate-start chapters in their original order so the
-    // result is deterministic.
-    let mut sorted: Vec<&Chapter> = chs.iter().collect();
-    sorted.sort_by(|a, b| {
-        a.start_secs
-            .partial_cmp(&b.start_secs)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-
-    // pos before the first chapter's start → pre-chapter segment
-    // [0, first.start_secs]. (When first.start_secs == 0 this is degenerate
-    // and the guard below returns None → ±30 s fallback.)
-    if pos < sorted[0].start_secs {
-        let end = clamp_duration(sorted[0].start_secs, duration);
-        return non_degenerate(0.0, end, None);
-    }
-
-    // Find the chapter containing pos under half-open [start, next_start)
-    // semantics: a pos exactly on a boundary belongs to the chapter that
-    // *starts* at it. We therefore advance past any chapter whose end is
-    // <= pos, landing on the one whose interval contains pos (or the last).
-    for (i, ch) in sorted.iter().enumerate() {
-        let next_start = sorted.get(i + 1).map(|n| n.start_secs);
-        let ch_end = next_start.or(duration).unwrap_or(ch.start_secs + 30.0);
-
-        // `pos < ch_end` → strictly inside this chapter (half-open).
-        // `next_start.is_none()` → last chapter: it owns everything from its
-        // start onward, including pos == ch_end.
-        if pos < ch_end || next_start.is_none() {
-            let start = ch.start_secs;
-            let end = clamp_duration(ch_end, duration);
-            return non_degenerate(start, end, Some(ch.title.clone()));
-        }
-    }
-
-    None
-}
-
-/// Return `Some((start, end, title))` only when the range is usable
-/// (`end > start`); otherwise `None` so the caller falls back to the ±30 s
-/// window. Centralizes the degenerate-range guard (FIX 1).
-#[inline]
-fn non_degenerate(
-    start: f64,
-    end: f64,
-    title: Option<String>,
-) -> Option<(f64, f64, Option<String>)> {
-    if end > start {
-        Some((start, end, title))
-    } else {
-        None
-    }
-}
-
-/// Clamp `value` to at most `duration` when duration is known and positive.
-#[inline]
-fn clamp_duration(value: f64, duration: Option<f64>) -> f64 {
-    match duration {
-        Some(d) if d > 0.0 => value.min(d),
-        _ => value,
-    }
+    format!("{}–{}", fmt(start), fmt(end))
 }
 
 /// Project the in-memory `Vec<ClipRecord>` into wire-format
@@ -452,9 +428,8 @@ pub(crate) fn project_clips(
     let Ok(clips) = clips.lock() else {
         return Vec::new();
     };
-    clips
+    let mut rows: Vec<ClipSummary> = clips
         .iter()
-        .rev()
         .map(|rec| {
             let (ep_title, pod_title) = lookup_titles(library, &rec.episode_id)
                 .unwrap_or_else(|| (rec.episode_title.clone(), rec.podcast_title.clone()));
@@ -466,10 +441,16 @@ pub(crate) fn project_clips(
                 start_secs: rec.start_secs,
                 end_secs: rec.end_secs,
                 title: rec.title.clone(),
+                transcript_text: rec.transcript_text.clone(),
+                speaker: rec.speaker.clone(),
+                source: rec.source.clone(),
+                refinement_status: rec.refinement_status.clone(),
                 created_at: rec.created_at,
             }
         })
-        .collect()
+        .collect();
+    rows.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    rows
 }
 
 fn lookup_titles(library: &[PodcastSummary], episode_id: &str) -> Option<(String, String)> {

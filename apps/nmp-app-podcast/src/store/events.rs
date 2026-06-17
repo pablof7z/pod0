@@ -104,9 +104,9 @@ pub mod stage {
     pub const PLAYBACK_STARTED: &str = "playback.started";
     pub const PLAYBACK_COMPLETED: &str = "playback.completed";
 
-    // Clipping lifecycle. The clip composer (Swift) records each stage through
-    // the generic record-event FFI so a failed export is visible here instead
-    // of vanishing into a logger line.
+    // Clipping lifecycle. Clip creation is recorded by the Rust clip handler;
+    // export/share failures still arrive through the generic record-event FFI
+    // because media rendering is a native capability.
     pub const CLIP_CREATED: &str = "clip.created";
     pub const CLIP_EXPORTED: &str = "clip.exported";
     pub const CLIP_SHARED: &str = "clip.shared";

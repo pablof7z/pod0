@@ -24,6 +24,7 @@ enum DataExport {
         var buildNumber: String?
         var sourceBundleIdentifier: String?
         var state: AppState
+        var memoryFacts: [MemoryFact]
     }
 
     static let currentSchemaVersion = 1
@@ -60,7 +61,11 @@ enum DataExport {
     }
 
     /// Builds the export payload from the live in-memory state.
-    static func makePayload(from state: AppState, now: Date = Date()) -> Payload {
+    static func makePayload(
+        from state: AppState,
+        memoryFacts: [MemoryFact] = [],
+        now: Date = Date()
+    ) -> Payload {
         let info = Bundle.main.infoDictionary
         return Payload(
             schemaVersion: currentSchemaVersion,
@@ -68,7 +73,8 @@ enum DataExport {
             appVersion: info?["CFBundleShortVersionString"] as? String,
             buildNumber: info?["CFBundleVersion"] as? String,
             sourceBundleIdentifier: Bundle.main.bundleIdentifier,
-            state: redactedState(from: state)
+            state: redactedState(from: state),
+            memoryFacts: memoryFacts
         )
     }
 
@@ -94,8 +100,12 @@ enum DataExport {
     }
 
     /// Convenience: build payload, encode, and write a temp file in one shot.
-    static func writeExport(of state: AppState, now: Date = Date()) throws -> URL {
-        let payload = makePayload(from: state, now: now)
+    static func writeExport(
+        of state: AppState,
+        memoryFacts: [MemoryFact] = [],
+        now: Date = Date()
+    ) throws -> URL {
+        let payload = makePayload(from: state, memoryFacts: memoryFacts, now: now)
         let data = try encode(payload)
         let filename = suggestedFilename(at: now)
         return try writeTemporaryFile(data, filename: filename)
@@ -117,13 +127,18 @@ enum DataExport {
         }
     }
 
-    static func stats(for state: AppState) -> Stats {
+    static func stats(
+        for state: AppState,
+        subscriptionCount: Int? = nil,
+        episodeCount: Int? = nil,
+        memoryFactsCount: Int = 0
+    ) -> Stats {
         Stats(
-            subscriptions: state.subscriptions.count,
-            episodes: state.episodes.count,
+            subscriptions: subscriptionCount ?? state.subscriptions.count,
+            episodes: episodeCount ?? state.episodes.count,
             notes: state.notes.filter { !$0.deleted }.count,
             friends: state.friends.count,
-            memories: state.agentMemories.filter { !$0.deleted }.count,
+            memories: memoryFactsCount,
             agentActivity: state.agentActivity.count
         )
     }

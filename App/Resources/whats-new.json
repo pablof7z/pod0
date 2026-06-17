@@ -8,9 +8,81 @@
       ]
     },
     {
+      "shipped_at": "2026-06-17T00:12:00Z",
+      "lines": [
+        "Agent-owned podcast visibility changes now go through the kernel, so private and public states stay consistent after refresh."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:11:00Z",
+      "lines": [
+        "Category settings now only show controls backed by the kernel, so toggles reflect behavior the app can actually apply."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:10:00Z",
+      "lines": [
+        "Related episode sheets now use the kernel's matching policy, so topic and source suggestions stay consistent across platforms."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:09:00Z",
+      "lines": [
+        "Threads now come from the kernel's library analysis instead of a local preview seed, so cross-episode topic surfaces stay consistent across platforms."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:08:00Z",
+      "lines": [
+        "Add Show search and Popular Now now use the kernel-backed Apple Podcasts directory, keeping discovery behavior consistent across platforms."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:07:00Z",
+      "lines": [
+        "Assistant podcast-directory searches now run through the kernel, so show and episode lookups use the same discovery rules across platforms."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:06:00Z",
+      "lines": [
+        "Spotlight podcast and episode results now open from the kernel-backed library index, keeping search in sync with your current library."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:05:00Z",
+      "lines": [
+        "Siri playback shortcuts now route through the kernel, so pause, resume, and skip follow the same playback rules as the app."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:04:00Z",
+      "lines": [
+        "Sleep timer decisions now run through the kernel, so end-of-episode stops follow the same playback policy as every other platform."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:03:00Z",
+      "lines": [
+        "Sharing a new clip now opens the real image, audio, and link share sheet instead of a placeholder."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:02:01Z",
+      "lines": [
+        "Clips are now saved by the kernel, so your clipped moments survive app restarts."
+      ]
+    },
+    {
       "shipped_at": "2026-06-17T00:02:00Z",
       "lines": [
         "Voice mode now actually talks to your podcasts — ask a question out loud and the assistant listens, thinks, and answers in your selected voice."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:01:00Z",
+      "lines": [
+        "Quote sharing now uses kernel-aligned transcript boundaries for cleaner excerpts."
       ]
     },
     {
@@ -238,14 +310,6 @@
       ]
     },
     {
-      "shipped_at": "2026-06-08T00:01:00Z",
-      "lines": [
-        "Download now shows a progress bar immediately when queued — no more silent waiting",
-        "Swiping on a queued download now shows Cancel instead of a second Download button",
-        "OS-interrupted downloads (network drop, backgrounding) now properly surface as paused instead of silently vanishing"
-      ]
-    },
-    {
       "shipped_at": "2026-06-08T02:03:44Z",
       "lines": [
         "AssemblyAI and Perplexity settings now show whether keys were connected manually or through BYOK."
@@ -261,6 +325,14 @@
       "shipped_at": "2026-06-08T00:13:00Z",
       "lines": [
         "Agent scheduled tasks now use the shared backend scheduler, so prompt tasks and run timing stay consistent across platforms."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-08T00:01:00Z",
+      "lines": [
+        "Download now shows a progress bar immediately when queued — no more silent waiting",
+        "Swiping on a queued download now shows Cancel instead of a second Download button",
+        "OS-interrupted downloads (network drop, backgrounding) now properly surface as paused instead of silently vanishing"
       ]
     },
     {
@@ -681,24 +753,6 @@
       ]
     },
     {
-      "shipped_at": "2026-05-26T08:16:00Z",
-      "lines": [
-        "Downloads now report live queued, paused, active, and failed states from the Rust kernel."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-26T07:54:00Z",
-      "lines": [
-        "Show pages now explain why Follow failed instead of silently dismissing the error."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-26T07:30:00Z",
-      "lines": [
-        "Home Inbox now shows when the agent last triaged episodes, how many picks it kept, and how many it archived."
-      ]
-    },
-    {
       "shipped_at": "2026-05-26T08:24:00Z",
       "lines": [
         "What's New sheet now surfaces recent changes so you always know what landed since your last launch."
@@ -711,9 +765,27 @@
       ]
     },
     {
+      "shipped_at": "2026-05-26T08:16:00Z",
+      "lines": [
+        "Downloads now report live queued, paused, active, and failed states from the Rust kernel."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-26T07:54:00Z",
+      "lines": [
+        "Show pages now explain why Follow failed instead of silently dismissing the error."
+      ]
+    },
+    {
       "shipped_at": "2026-05-26T07:33:00Z",
       "lines": [
         "Fixed: restored mini-player episodes wait until you press play before starting the background download."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-26T07:30:00Z",
+      "lines": [
+        "Home Inbox now shows when the agent last triaged episodes, how many picks it kept, and how many it archived."
       ]
     },
     {
@@ -765,9 +837,45 @@
       ]
     },
     {
+      "shipped_at": "2026-05-26T03:00:00Z",
+      "lines": [
+        "AI Episodes — generate short narrated episodes about any topic from Identity → Advanced → Agent. Tap to listen via on-device speech."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-26T02:00:00Z",
+      "lines": [
+        "Episode transcripts: tap the speech-bubble in the episode detail toolbar to read a time-synced transcript, with the current segment highlighted and tap-to-seek on every row."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-26T01:55:00Z",
+      "lines": [
+        "Inbox tab: a new \"what to listen to next\" view ranks fresh episodes across every show you follow — swipe to dismiss, swipe right to mark listened."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-26T01:50:00Z",
+      "lines": [
+        "Capture and share clips from any episode — open the player and tap the scissors chip to set start/end manually or hit Auto Snip to grab the current ±30 seconds."
+      ]
+    },
+    {
       "shipped_at": "2026-05-26T01:45:00Z",
       "lines": [
         "Episodes without published chapters now offer a Generate Chapters button — once a transcript is fetched, the kernel synthesizes evenly-spaced AI chapters with a sparkles badge so you can tell them apart from publisher chapters."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-26T01:36:00Z",
+      "lines": [
+        "New Home tab with AI agent picks — newest episodes across your shows surfaced in a horizontal rail, plus a Continue Listening row and a fresh New Episodes list."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-26T01:30:00Z",
+      "lines": [
+        "Search across your podcast library — a new magnifying-glass button in Library lets you find episodes by topic, host, or any text in the show notes."
       ]
     },
     {
@@ -813,21 +921,27 @@
       ]
     },
     {
-      "shipped_at": "2026-05-26T02:00:00Z",
-      "lines": [
-        "Episode transcripts: tap the speech-bubble in the episode detail toolbar to read a time-synced transcript, with the current segment highlighted and tap-to-seek on every row."
-      ]
-    },
-    {
       "shipped_at": "2026-05-26T00:30:00Z",
       "lines": [
         "Chat with the agent from the new Agent tab — ask a question and the agent replies in a chat thread (LLM coming soon)."
       ]
     },
     {
+      "shipped_at": "2026-05-26T00:25:00Z",
+      "lines": [
+        "Episode comments: read and post Nostr comments on any episode."
+      ]
+    },
+    {
       "shipped_at": "2026-05-26T00:20:00Z",
       "lines": [
         "Downloads: manage all your saved episodes in one place."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-26T00:16:00Z",
+      "lines": [
+        "Per-show auto-download — open any show, tap the ••• menu, and turn on Auto-download to have new episodes queued for offline listening automatically on the next feed refresh."
       ]
     },
     {
@@ -867,12 +981,6 @@
       ]
     },
     {
-      "shipped_at": "2026-05-26T01:55:00Z",
-      "lines": [
-        "Inbox tab: a new \"what to listen to next\" view ranks fresh episodes across every show you follow — swipe to dismiss, swipe right to mark listened."
-      ]
-    },
-    {
       "shipped_at": "2026-05-25T23:06:00Z",
       "lines": [
         "Full-screen playback now shows episode chapter markers when a show publishes them, with one-tap seeking between chapters."
@@ -894,42 +1002,6 @@
       "shipped_at": "2026-05-25T23:02:00Z",
       "lines": [
         "Up Next: build a playback queue from any show — swipe right on an episode (or long-press) to add it, then tap the new queue button on the mini-player to play next or remove items."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-26T00:25:00Z",
-      "lines": [
-        "Episode comments: read and post Nostr comments on any episode."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-26T00:16:00Z",
-      "lines": [
-        "Per-show auto-download — open any show, tap the ••• menu, and turn on Auto-download to have new episodes queued for offline listening automatically on the next feed refresh."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-26T01:36:00Z",
-      "lines": [
-        "New Home tab with AI agent picks — newest episodes across your shows surfaced in a horizontal rail, plus a Continue Listening row and a fresh New Episodes list."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-26T01:30:00Z",
-      "lines": [
-        "Search across your podcast library — a new magnifying-glass button in Library lets you find episodes by topic, host, or any text in the show notes."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-26T03:00:00Z",
-      "lines": [
-        "AI Episodes — generate short narrated episodes about any topic from Identity → Advanced → Agent. Tap to listen via on-device speech."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-26T01:50:00Z",
-      "lines": [
-        "Capture and share clips from any episode — open the player and tap the scissors chip to set start/end manually or hit Auto Snip to grab the current ±30 seconds."
       ]
     },
     {
@@ -1305,18 +1377,6 @@
       ]
     },
     {
-      "shipped_at": "2026-05-13T12:01:00Z",
-      "lines": [
-        "Episode titles in the player are no longer displayed in all-caps."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-13T11:00:00Z",
-      "lines": [
-        "Opening a show you don't follow now adapts to that state: the toolbar offers a Follow action instead of subscription toggles, and the destructive option reads Delete (removes the podcast plus its episodes) rather than Unsubscribe. Settings stays hidden until you actually follow the show — there's no subscription row to mutate yet."
-      ]
-    },
-    {
       "shipped_at": "2026-05-13T13:30:00Z",
       "lines": [
         "Fixed: when you ask the agent about a podcast you don't follow, it can now list its episodes without secretly subscribing you to it. Previously the only way for the agent to look up episodes was to subscribe to the show first, which left unwanted follows behind.",
@@ -1330,9 +1390,9 @@
       ]
     },
     {
-      "shipped_at": "2026-05-13T09:15:00Z",
+      "shipped_at": "2026-05-13T12:01:00Z",
       "lines": [
-        "Home's Subscriptions section now has a See All entry that opens an All Podcasts list — every podcast the app knows about, including shows from one-off external plays you never subscribed to. Swipe any row to delete the podcast plus all its episodes; a Following chip marks the ones you actively follow."
+        "Episode titles in the player are no longer displayed in all-caps."
       ]
     },
     {
@@ -1348,15 +1408,21 @@
       ]
     },
     {
+      "shipped_at": "2026-05-13T11:00:00Z",
+      "lines": [
+        "Opening a show you don't follow now adapts to that state: the toolbar offers a Follow action instead of subscription toggles, and the destructive option reads Delete (removes the podcast plus its episodes) rather than Unsubscribe. Settings stays hidden until you actually follow the show — there's no subscription row to mutate yet."
+      ]
+    },
+    {
       "shipped_at": "2026-05-13T10:00:00Z",
       "lines": [
         "Podcast identity is now decoupled from your follow list. Episodes the agent added without subscribing to the show — including external plays and AI-generated shows — now carry the source podcast's real artwork and title everywhere on Home, Library, and Player. The library is about episodes; subscribing is a separate user choice."
       ]
     },
     {
-      "shipped_at": "2026-05-12T12:00:00Z",
+      "shipped_at": "2026-05-13T09:15:00Z",
       "lines": [
-        "Home now shows a Continue Listening strip at the top — up to 3 in-progress episodes from the last 2 weeks, with a See All screen where you can swipe to dismiss any you're done with. The Featured section now shows only agent picks, and the podcast list is slightly larger."
+        "Home's Subscriptions section now has a See All entry that opens an All Podcasts list — every podcast the app knows about, including shows from one-off external plays you never subscribed to. Swipe any row to delete the podcast plus all its episodes; a Following chip marks the ones you actively follow."
       ]
     },
     {
@@ -1372,33 +1438,9 @@
       ]
     },
     {
-      "shipped_at": "2026-05-13T00:05:00Z",
+      "shipped_at": "2026-05-13T00:11:00Z",
       "lines": [
-        "Your Nostr agent now actually replies. When an approved pubkey messages your agent, it reads the thread, asks your configured LLM for a response, signs and publishes a NIP-10 kind:1 reply, and stamps both turns into the Conversations transcript — with a hard 10-outgoing-turn cap per thread and built-in dedup so a flaky relay can't trigger duplicate replies."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-13T00:06:00Z",
-      "lines": [
-        "Friend detail now shows your full Nostr conversation history with that friend."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-13T00:07:00Z",
-      "lines": [
-        "Agent consolidates accumulated memories into a tight summary it carries forward."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-13T00:08:00Z",
-      "lines": [
-        "Agent run history is now saved across launches, with filters by source, outcome, and tool."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-13T00:09:00Z",
-      "lines": [
-        "Your agent can now pause to ask you a question mid-task: a modal sheet pops over whatever tab you're on with the question (and optional context), you type or decline, and the agent resumes with your answer — important for safe peer-agent flows where an inbound Nostr request needs your consent before anything sensitive runs."
+        "Your agent can now end a Nostr conversation cleanly with `end_conversation` and send a kind:1 note to a friend with `send_friend_message` — both are peer-only and surface inside the active conversation thread."
       ]
     },
     {
@@ -1408,9 +1450,33 @@
       ]
     },
     {
-      "shipped_at": "2026-05-13T00:11:00Z",
+      "shipped_at": "2026-05-13T00:09:00Z",
       "lines": [
-        "Your agent can now end a Nostr conversation cleanly with `end_conversation` and send a kind:1 note to a friend with `send_friend_message` — both are peer-only and surface inside the active conversation thread."
+        "Your agent can now pause to ask you a question mid-task: a modal sheet pops over whatever tab you're on with the question (and optional context), you type or decline, and the agent resumes with your answer — important for safe peer-agent flows where an inbound Nostr request needs your consent before anything sensitive runs."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-13T00:08:00Z",
+      "lines": [
+        "Agent run history is now saved across launches, with filters by source, outcome, and tool."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-13T00:07:00Z",
+      "lines": [
+        "Agent consolidates accumulated memories into a tight summary it carries forward."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-13T00:06:00Z",
+      "lines": [
+        "Friend detail now shows your full Nostr conversation history with that friend."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-13T00:05:00Z",
+      "lines": [
+        "Your Nostr agent now actually replies. When an approved pubkey messages your agent, it reads the thread, asks your configured LLM for a response, signs and publishes a NIP-10 kind:1 reply, and stamps both turns into the Conversations transcript — with a hard 10-outgoing-turn cap per thread and built-in dedup so a flaky relay can't trigger duplicate replies."
       ]
     },
     {
@@ -1481,21 +1547,15 @@
       ]
     },
     {
+      "shipped_at": "2026-05-12T12:00:00Z",
+      "lines": [
+        "Home now shows a Continue Listening strip at the top — up to 3 in-progress episodes from the last 2 weeks, with a See All screen where you can swipe to dismiss any you're done with. The Featured section now shows only agent picks, and the podcast list is slightly larger."
+      ]
+    },
+    {
       "shipped_at": "2026-05-12T02:00:00Z",
       "lines": [
         "The agent now starts on a fast, cheap model and self-escalates to a stronger one when a task needs serious reasoning. Pick both the Initial and Thinking models in Settings → Models. Once the agent upgrades, the conversation stays on the stronger model until you start a new chat."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-11T04:00:00Z",
-      "lines": [
-        "The assistant can now play any podcast episode without a subscription — just ask it to find and play a guest appearance or one-off episode. New tools: search the global podcast directory, subscribe to any show by feed URL, and play external episodes directly."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-11T00:00:00Z",
-      "lines": [
-        "Agent chat toolbar now shows a + button to start a new conversation instead of a trash/delete button."
       ]
     },
     {
@@ -1511,87 +1571,9 @@
       ]
     },
     {
-      "shipped_at": "2026-05-11T23:31:00Z",
-      "lines": [
-        "Ask the agent to generate a custom audio episode — it can narrate a TLDR in any voice, weave in clips from your podcasts, or produce a multi-speaker fake interview — and the episode appears in your library ready to play."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-11T23:01:00Z",
-      "lines": [
-        "The agent can now download and transcribe an episode in one step — ask it to transcribe something and it will wait until the transcript is ready before answering."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-11T22:31:00Z",
-      "lines": [
-        "Episode pages now have a comments section powered by Nostr — replies appear under every episode and are shared across podcast apps that support Podcasting 2.0."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-11T22:01:00Z",
-      "lines": [
-        "Tap targets fixed on all glass buttons. Speed now lives in the top-bar trailing cluster. Voice note mic anchors the left side of the transport row."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-11T21:01:00Z",
-      "lines": [
-        "Ask the agent to play specific sections of an episode — it queues them in order with a subtle sound cue between each, so you can hear just the parts you care about."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-11T20:01:00Z",
-      "lines": [
-        "The scrubber now shows your clips as highlights on the timeline — tap one to jump straight to it. Chapter breaks appear as faint tick marks. A new '< Jump back' button lets you return to where you were before any seek, like browser back."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-11T19:01:00Z",
-      "lines": [
-        "AI-compiled chapters and ad-skip markers now survive feed refreshes — no more \"Compiling chapters\" flicker every time you reopen a podcast."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-11T18:30:00Z",
-      "lines": [
-        "Tap the mic button in the player to record a voice note — the agent gets the timestamp, chapter, and what you said, then decides what to do with it (take a note, clip the moment, find a reference, whatever you need)."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-11T15:01:00Z",
-      "lines": [
-        "The in-app assistant can now save clips for you — just ask it to clip a moment and it'll appear in your Clippings tab."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-11T14:00:00Z",
-      "lines": [
-        "New Clippings tab: every clip you've ever made, beautifully laid out with one tap to play from the exact moment."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-11T13:00:00Z",
-      "lines": [
-        "Tap an episode to open its detail page; use the play button on the right to start playback directly from the list."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-11T12:00:00Z",
-      "lines": [
-        "AssemblyAI is now available for transcription. Connect it with BYOK or a manual key, then choose it under Settings > Intelligence > Models > Speech."
-      ]
-    },
-    {
       "shipped_at": "2026-05-12T00:30:00Z",
       "lines": [
         "Smarter clips and quotes: tap Snip or Share Quote and the LLM picks clean sentence boundaries from the surrounding transcript — no more mid-sentence cuts or missing the punchline you reacted to. Needs an AI key under Settings → AI keys."
-      ]
-    },
-    {
-      "shipped_at": "2026-05-12T00:00:00Z",
-      "lines": [
-        "New: Diagnostics sheet on every episode (••• → Diagnostics) shows the full audit log — what was downloaded, when, whether transcription was attempted, which provider, why it was skipped, and the exact error if it failed. Retry buttons let you re-run the pipeline and watch fresh events stream in."
       ]
     },
     {
@@ -1601,9 +1583,27 @@
       ]
     },
     {
+      "shipped_at": "2026-05-12T00:00:00Z",
+      "lines": [
+        "New: Diagnostics sheet on every episode (••• → Diagnostics) shows the full audit log — what was downloaded, when, whether transcription was attempted, which provider, why it was skipped, and the exact error if it failed. Retry buttons let you re-run the pipeline and watch fresh events stream in."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-11T23:31:00Z",
+      "lines": [
+        "Ask the agent to generate a custom audio episode — it can narrate a TLDR in any voice, weave in clips from your podcasts, or produce a multi-speaker fake interview — and the episode appears in your library ready to play."
+      ]
+    },
+    {
       "shipped_at": "2026-05-11T23:30:00Z",
       "lines": [
         "Player redesigned — compact artwork and episode info at the top, AirPlay and share in the toolbar, sleep timer in the ••• menu."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-11T23:01:00Z",
+      "lines": [
+        "The agent can now download and transcribe an episode in one step — ask it to transcribe something and it will wait until the transcript is ready before answering."
       ]
     },
     {
@@ -1613,9 +1613,21 @@
       ]
     },
     {
+      "shipped_at": "2026-05-11T22:31:00Z",
+      "lines": [
+        "Episode pages now have a comments section powered by Nostr — replies appear under every episode and are shared across podcast apps that support Podcasting 2.0."
+      ]
+    },
+    {
       "shipped_at": "2026-05-11T22:30:00Z",
       "lines": [
         "What's New now stays out of the way — once you've seen an entry, you won't see it again, even after reinstalling. Fresh installs start silent; only entries shipped from now on will pop the sheet."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-11T22:01:00Z",
+      "lines": [
+        "Tap targets fixed on all glass buttons. Speed now lives in the top-bar trailing cluster. Voice note mic anchors the left side of the transport row."
       ]
     },
     {
@@ -1631,6 +1643,12 @@
       ]
     },
     {
+      "shipped_at": "2026-05-11T21:01:00Z",
+      "lines": [
+        "Ask the agent to play specific sections of an episode — it queues them in order with a subtle sound cue between each, so you can hear just the parts you care about."
+      ]
+    },
+    {
       "shipped_at": "2026-05-11T21:00:00Z",
       "lines": [
         "Fixed a hard crash when Apple's on-device transcription kicked off — the analyzer was being driven twice through different init paths."
@@ -1643,15 +1661,33 @@
       ]
     },
     {
+      "shipped_at": "2026-05-11T20:01:00Z",
+      "lines": [
+        "The scrubber now shows your clips as highlights on the timeline — tap one to jump straight to it. Chapter breaks appear as faint tick marks. A new '< Jump back' button lets you return to where you were before any seek, like browser back."
+      ]
+    },
+    {
       "shipped_at": "2026-05-11T20:00:00Z",
       "lines": [
         "Apple on-device transcription is now available — uses iOS 26 SpeechTranscriber on Apple Silicon with no API key required. Switch to it under Settings → Intelligence → Models → Speech."
       ]
     },
     {
+      "shipped_at": "2026-05-11T19:01:00Z",
+      "lines": [
+        "AI-compiled chapters and ad-skip markers now survive feed refreshes — no more \"Compiling chapters\" flicker every time you reopen a podcast."
+      ]
+    },
+    {
       "shipped_at": "2026-05-11T19:00:00Z",
       "lines": [
         "Transcription now supports OpenRouter Whisper in addition to ElevenLabs Scribe — switch providers under Settings → Intelligence → Models → Speech."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-11T18:30:00Z",
+      "lines": [
+        "Tap the mic button in the player to record a voice note — the agent gets the timestamp, chapter, and what you said, then decides what to do with it (take a note, clip the moment, find a reference, whatever you need)."
       ]
     },
     {
@@ -1679,15 +1715,21 @@
       ]
     },
     {
+      "shipped_at": "2026-05-11T15:03:00Z",
+      "lines": [
+        "Perplexity online search now works with just your OpenRouter key — no separate Perplexity account required."
+      ]
+    },
+    {
       "shipped_at": "2026-05-11T15:02:00Z",
       "lines": [
         "Home screen is cleaner — removed unplayed count badges on artwork, the date header, and filter chips."
       ]
     },
     {
-      "shipped_at": "2026-05-11T15:03:00Z",
+      "shipped_at": "2026-05-11T15:01:00Z",
       "lines": [
-        "Perplexity online search now works with just your OpenRouter key — no separate Perplexity account required."
+        "The in-app assistant can now save clips for you — just ask it to clip a moment and it'll appear in your Clippings tab."
       ]
     },
     {
@@ -1697,15 +1739,21 @@
       ]
     },
     {
+      "shipped_at": "2026-05-11T14:02:00Z",
+      "lines": [
+        "The full-screen player now shows clearly readable elapsed and remaining times (e.g. 12:34 / -47:26) under the waveform scrubber."
+      ]
+    },
+    {
       "shipped_at": "2026-05-11T14:01:00Z",
       "lines": [
         "Removed the filter and layout menu from the home toolbar for a cleaner look."
       ]
     },
     {
-      "shipped_at": "2026-05-11T14:02:00Z",
+      "shipped_at": "2026-05-11T14:00:00Z",
       "lines": [
-        "The full-screen player now shows clearly readable elapsed and remaining times (e.g. 12:34 / -47:26) under the waveform scrubber."
+        "New Clippings tab: every clip you've ever made, beautifully laid out with one tap to play from the exact moment."
       ]
     },
     {
@@ -1721,15 +1769,39 @@
       ]
     },
     {
+      "shipped_at": "2026-05-11T13:00:00Z",
+      "lines": [
+        "Tap an episode to open its detail page; use the play button on the right to start playback directly from the list."
+      ]
+    },
+    {
       "shipped_at": "2026-05-11T12:01:00Z",
       "lines": [
         "Tap the Home title to browse categories — each category shows podcast artwork, a description, and your unplayed count. Tap the gear on any category to set its transcription preferences independently. Selecting a category scopes the whole feed to that section."
       ]
     },
     {
+      "shipped_at": "2026-05-11T12:00:00Z",
+      "lines": [
+        "AssemblyAI is now available for transcription. Connect it with BYOK or a manual key, then choose it under Settings > Intelligence > Models > Speech."
+      ]
+    },
+    {
+      "shipped_at": "2026-05-11T04:00:00Z",
+      "lines": [
+        "The assistant can now play any podcast episode without a subscription — just ask it to find and play a guest appearance or one-off episode. New tools: search the global podcast directory, subscribe to any show by feed URL, and play external episodes directly."
+      ]
+    },
+    {
       "shipped_at": "2026-05-11T01:35:00Z",
       "lines": [
         "Notification settings refresh when you come back from iOS Settings — flipping permission no longer leaves the banner stuck on 'Denied' until you reload the screen"
+      ]
+    },
+    {
+      "shipped_at": "2026-05-11T00:00:00Z",
+      "lines": [
+        "Agent chat toolbar now shows a + button to start a new conversation instead of a trash/delete button."
       ]
     },
     {
@@ -1815,15 +1887,15 @@
       ]
     },
     {
-      "shipped_at": "2026-05-10T20:56:47Z",
-      "lines": [
-        "Long-press any transcript line to ask the agent about that exact moment"
-      ]
-    },
-    {
       "shipped_at": "2026-05-10T20:57:15Z",
       "lines": [
         "Settings now has a Downloads Manager so you can see and free up space from cached episodes"
+      ]
+    },
+    {
+      "shipped_at": "2026-05-10T20:56:47Z",
+      "lines": [
+        "Long-press any transcript line to ask the agent about that exact moment"
       ]
     },
     {

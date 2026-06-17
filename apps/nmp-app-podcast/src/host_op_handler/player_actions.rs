@@ -25,6 +25,39 @@ fn format_position(secs: f64) -> String {
     }
 }
 
+fn resolve_play_bounds(
+    saved_position_secs: f64,
+    start_secs: Option<f64>,
+    end_secs: Option<f64>,
+) -> Result<(f64, Option<f64>), String> {
+    let start = match start_secs {
+        Some(start) => {
+            if !start.is_finite() {
+                return Err("playback start must be finite".to_owned());
+            }
+            if start < 0.0 {
+                return Err("playback start must be >= 0".to_owned());
+            }
+            start
+        }
+        None => saved_position_secs.max(0.0),
+    };
+    if !start.is_finite() {
+        return Err("playback start must be finite".to_owned());
+    }
+    if let Some(end) = end_secs {
+        if !end.is_finite() {
+            return Err("playback end must be finite".to_owned());
+        }
+        if end <= start {
+            return Err("playback end must be greater than start".to_owned());
+        }
+        Ok((start, Some(end)))
+    } else {
+        Ok((start, None))
+    }
+}
+
 impl PodcastHostOpHandler {
     /// Record a `playback.started` event the first time an episode becomes the
     /// staged item — i.e. when `episode_id` differs from whatever the actor had
@@ -60,7 +93,24 @@ impl PodcastHostOpHandler {
         }
     }
 
-    fn handle_play(&self, episode_id: String, correlation_id: &str) -> serde_json::Value {
+    /// User intent to load/play an episode is also a rescue signal for AI Inbox
+    /// triage. If the agent previously archived or inbox-ranked the episode,
+    /// clear that decision in Rust so the next projection no longer treats it
+    /// as hidden or pending.
+    fn clear_triage_on_user_play(&self, episode_id: &str) -> bool {
+        match self.state.library.store.lock() {
+            Ok(mut s) => s.set_episode_triage(episode_id, "none", false, None),
+            Err(_) => false,
+        }
+    }
+
+    fn handle_play(
+        &self,
+        episode_id: String,
+        start_secs: Option<f64>,
+        end_secs: Option<f64>,
+        correlation_id: &str,
+    ) -> serde_json::Value {
         let (canonical_id, podcast_id, url, position_secs, needs_download) = {
             match self.state.library.store.lock() {
                 Ok(s) => match s.episode_playback_info(&episode_id) {
@@ -78,20 +128,30 @@ impl PodcastHostOpHandler {
                 Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
             }
         };
+        let (position_secs, segment_end_secs) =
+            match resolve_play_bounds(position_secs, start_secs, end_secs) {
+                Ok(bounds) => bounds,
+                Err(error) => return serde_json::json!({"ok": false, "error": error}),
+        };
         // Rebind to the store's canonical (lowercase) id. iOS dispatches the
         // UPPERCASE `UUID.uuidString`; staging the canonical form keeps the
         // actor's `episode_id` exact-matchable by the widget library lookup and
         // the position writeback (both `==` against the lowercase store id).
         let episode_id = canonical_id;
+        let triage_cleared = self.clear_triage_on_user_play(&episode_id);
         let player = self.state.playback.player.share();
         let prior_episode = if let Ok(mut actor) = player.lock() {
             let prior = actor.state().episode_id.clone();
             actor.stage_load(&episode_id, Some(podcast_id), &url, position_secs);
+            actor.set_segment_end_secs(segment_end_secs);
             prior
         } else {
             None
         };
         self.record_playback_started_if_new(&episode_id, position_secs, prior_episode.as_deref());
+        if triage_cleared {
+            self.bump_domain(crate::state::Domain::Library);
+        }
         // Push the persisted ad segments + global toggle into the
         // freshly-staged actor so auto-skip can fire on the very first
         // `Playing` report (no extra round-trip via iOS).
@@ -117,7 +177,13 @@ impl PodcastHostOpHandler {
         serde_json::json!({"ok": true})
     }
 
-    fn handle_load(&self, episode_id: String, correlation_id: &str) -> serde_json::Value {
+    fn handle_load(
+        &self,
+        episode_id: String,
+        start_secs: Option<f64>,
+        end_secs: Option<f64>,
+        correlation_id: &str,
+    ) -> serde_json::Value {
         let (canonical_id, podcast_id, url, position_secs, needs_download) = {
             match self.state.library.store.lock() {
                 Ok(s) => match s.episode_playback_info(&episode_id) {
@@ -135,17 +201,27 @@ impl PodcastHostOpHandler {
                 Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
             }
         };
+        let (position_secs, segment_end_secs) =
+            match resolve_play_bounds(position_secs, start_secs, end_secs) {
+                Ok(bounds) => bounds,
+                Err(error) => return serde_json::json!({"ok": false, "error": error}),
+        };
         // Rebind to the store's canonical (lowercase) id — see `handle_play`.
         let episode_id = canonical_id;
+        let triage_cleared = self.clear_triage_on_user_play(&episode_id);
         let player = self.state.playback.player.share();
         let prior_episode = if let Ok(mut actor) = player.lock() {
             let prior = actor.state().episode_id.clone();
             actor.stage_load(&episode_id, Some(podcast_id), &url, position_secs);
+            actor.set_segment_end_secs(segment_end_secs);
             prior
         } else {
             None
         };
         self.record_playback_started_if_new(&episode_id, position_secs, prior_episode.as_deref());
+        if triage_cleared {
+            self.bump_domain(crate::state::Domain::Library);
+        }
         hydrate_actor_for_play(&self.state.library.store, &player, &episode_id);
         self.bump_domain(crate::state::Domain::Playback);
         // Dispatch Load only — no Play. iOS calls Resume when the user taps play.
@@ -174,12 +250,32 @@ impl PodcastHostOpHandler {
         correlation_id: &str,
     ) -> serde_json::Value {
         match action {
-            PlayerAction::Play { episode_id } => self.handle_play(episode_id, correlation_id),
-            PlayerAction::Load { episode_id } => self.handle_load(episode_id, correlation_id),
+            PlayerAction::Play {
+                episode_id,
+                start_secs,
+                end_secs,
+            } => self.handle_play(episode_id, start_secs, end_secs, correlation_id),
+            PlayerAction::Load {
+                episode_id,
+                start_secs,
+                end_secs,
+            } => self.handle_load(episode_id, start_secs, end_secs, correlation_id),
             PlayerAction::Resume => self.dispatch_audio_json(AudioCommand::Play, correlation_id),
             PlayerAction::Pause => self.dispatch_audio_json(AudioCommand::Pause, correlation_id),
             PlayerAction::Seek { position_secs } => {
-                self.dispatch_audio_json(AudioCommand::seek(position_secs), correlation_id)
+                let target = match self.state.playback.player.lock() {
+                    Ok(mut a) => {
+                        if a.state().episode_id.is_none() {
+                            return serde_json::json!({"ok": false, "error": "nothing is currently loaded"});
+                        }
+                        a.seek_target(position_secs)
+                    }
+                    Err(_) => {
+                        return serde_json::json!({"ok": false, "error": "player_actor poisoned"})
+                    }
+                };
+                self.bump_domain(crate::state::Domain::Playback);
+                self.dispatch_audio_json(AudioCommand::seek(target), correlation_id)
             }
             PlayerAction::SetSpeed { speed } => {
                 if let Ok(mut a) = self.state.playback.player.lock() {
@@ -195,21 +291,46 @@ impl PodcastHostOpHandler {
                 self.bump_domain(crate::state::Domain::Playback);
                 self.dispatch_audio_json(AudioCommand::SetVolume { volume }, correlation_id)
             }
-            PlayerAction::SetSleepTimer { secs } => {
+            PlayerAction::SetSleepTimer {
+                secs,
+                end_of_episode,
+            } => {
                 if let Ok(mut a) = self.state.playback.player.lock() {
-                    match secs {
-                        Some(s) if s > 0 => {
+                    match (end_of_episode, secs) {
+                        (true, _) => a.arm_sleep_timer_end_of_episode(),
+                        (false, Some(s)) if s > 0 => {
                             a.arm_sleep_timer(Duration::from_secs(s), SystemTime::now())
                         }
                         _ => a.cancel_sleep_timer(),
                     }
                 }
                 self.bump_domain(crate::state::Domain::Playback);
-                self.dispatch_audio_json(AudioCommand::SetSleepTimer { secs }, correlation_id)
+                let native_secs = if end_of_episode { None } else { secs };
+                self.dispatch_audio_json(
+                    AudioCommand::SetSleepTimer { secs: native_secs },
+                    correlation_id,
+                )
             }
             PlayerAction::Stop => self.dispatch_audio_json(AudioCommand::Stop, correlation_id),
             PlayerAction::Enqueue { episode_id } => self.handle_enqueue(episode_id),
+            PlayerAction::EnqueueNext { episode_id } => self.handle_enqueue_next(episode_id),
+            PlayerAction::EnqueueSegment {
+                episode_id,
+                start_secs,
+                end_secs,
+            } => self.handle_enqueue_segment(episode_id, start_secs, end_secs, false),
+            PlayerAction::EnqueueSegmentNext {
+                episode_id,
+                start_secs,
+                end_secs,
+            } => self.handle_enqueue_segment(episode_id, start_secs, end_secs, true),
             PlayerAction::Dequeue { episode_id } => self.handle_dequeue(episode_id),
+            PlayerAction::DequeueSlot { queue_slot_id } => {
+                self.handle_dequeue_slot(queue_slot_id)
+            }
+            PlayerAction::ReorderQueue { queue_slot_ids } => {
+                self.handle_reorder_queue(queue_slot_ids)
+            }
             PlayerAction::ClearQueue => self.handle_clear_queue(),
             PlayerAction::PlayNext => self.handle_play_next(correlation_id),
             PlayerAction::SetAdSegments {
@@ -222,8 +343,28 @@ impl PodcastHostOpHandler {
                 episode_id,
                 segments,
             ),
-            PlayerAction::SkipForward { secs } => self.handle_skip(secs, correlation_id),
-            PlayerAction::SkipBackward { secs } => self.handle_skip(-secs, correlation_id),
+            PlayerAction::SkipForward { secs } => {
+                let resolved = secs.unwrap_or_else(|| {
+                    self.state
+                        .library
+                        .store
+                        .lock()
+                        .map(|s| s.skip_forward_secs())
+                        .unwrap_or(30.0)
+                });
+                self.handle_skip(resolved, correlation_id)
+            }
+            PlayerAction::SkipBackward { secs } => {
+                let resolved = secs.unwrap_or_else(|| {
+                    self.state
+                        .library
+                        .store
+                        .lock()
+                        .map(|s| s.skip_backward_secs())
+                        .unwrap_or(15.0)
+                });
+                self.handle_skip(-resolved, correlation_id)
+            }
             PlayerAction::Download { episode_id, url } => {
                 self.handle_player_download(episode_id, url, correlation_id)
             }
@@ -296,10 +437,74 @@ impl PodcastHostOpHandler {
         self.mutate_queue(|q| q.add_to_end(&episode_id))
     }
 
+    /// `podcast.player.enqueue_next` — validates the episode exists, then pushes
+    /// it to the front of the canonical queue.
+    fn handle_enqueue_next(&self, episode_id: String) -> serde_json::Value {
+        let exists = match self.state.library.store.lock() {
+            Ok(s) => s.episode_playback_info(&episode_id).is_some(),
+            Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+        };
+        if !exists {
+            return serde_json::json!({"ok": false, "error": format!("episode not found: {episode_id}")});
+        }
+        self.mutate_queue(|q| q.add_to_front(&episode_id))
+    }
+
+    /// Validate and enqueue a bounded segment. Bounds are revalidated at play
+    /// time against the latest stored resume point when `start_secs` is omitted.
+    fn handle_enqueue_segment(
+        &self,
+        episode_id: String,
+        start_secs: Option<f64>,
+        end_secs: f64,
+        next: bool,
+    ) -> serde_json::Value {
+        let exists = match self.state.library.store.lock() {
+            Ok(s) => s.episode_playback_info(&episode_id).is_some(),
+            Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
+        };
+        if !exists {
+            return serde_json::json!({"ok": false, "error": format!("episode not found: {episode_id}")});
+        }
+        if let Some(start) = start_secs {
+            if !start.is_finite() {
+                return serde_json::json!({"ok": false, "error": "playback start must be finite"});
+            }
+            if start < 0.0 {
+                return serde_json::json!({"ok": false, "error": "playback start must be >= 0"});
+            }
+            if end_secs <= start {
+                return serde_json::json!({"ok": false, "error": "playback end must be greater than start"});
+            }
+        }
+        if !end_secs.is_finite() {
+            return serde_json::json!({"ok": false, "error": "playback end must be finite"});
+        }
+        if next {
+            self.mutate_queue(|q| q.add_segment_to_front(&episode_id, start_secs, Some(end_secs)))
+        } else {
+            self.mutate_queue(|q| q.add_segment_to_end(&episode_id, start_secs, Some(end_secs)))
+        }
+    }
+
     /// `podcast.player.dequeue` — alias for `podcast.queue.remove`. Removes the
     /// id from anywhere in the canonical queue (silent no-op when absent).
     fn handle_dequeue(&self, episode_id: String) -> serde_json::Value {
         self.mutate_queue(|q| q.remove(&episode_id))
+    }
+
+    /// Remove one queue slot by Rust-owned slot id. This is the lossless path
+    /// for duplicate bounded segments of the same episode.
+    fn handle_dequeue_slot(&self, queue_slot_id: String) -> serde_json::Value {
+        self.mutate_queue(|q| q.remove_slot(&queue_slot_id))
+    }
+
+    /// Reorder existing queue slots by Rust-owned slot ids. Unknown/stale ids
+    /// are ignored by the queue model and omitted existing ids are preserved at
+    /// the tail, so Swift cannot accidentally drop queued work by sending a
+    /// partial visible ordering.
+    fn handle_reorder_queue(&self, queue_slot_ids: Vec<String>) -> serde_json::Value {
+        self.mutate_queue(|q| q.reorder_by_slot_ids(&queue_slot_ids))
     }
 
     /// `podcast.player.clear_queue` — alias for `podcast.queue.clear`. Empties
@@ -321,20 +526,25 @@ impl PodcastHostOpHandler {
                 Ok(mut q) => q.next(),
                 Err(_) => return serde_json::json!({"ok": false, "error": "queue poisoned"}),
             };
-            let Some(id) = popped else {
+            let Some(item) = popped else {
                 self.persist_queue();
                 self.bump_domain(crate::state::Domain::Playback);
                 return serde_json::json!({"ok": false, "error": "queue is empty"});
             };
             let resolvable = match self.state.library.store.lock() {
-                Ok(s) => s.episode_playback_info(&id).is_some(),
+                Ok(s) => s.episode_playback_info(&item.episode_id).is_some(),
                 Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
             };
             if resolvable {
                 // Persist the new (popped) queue ordering before handing off to
                 // `handle_play`, which dispatches Load+Play and bumps `rev`.
                 self.persist_queue();
-                return self.handle_play(id, correlation_id);
+                return self.handle_play(
+                    item.episode_id,
+                    item.start_secs,
+                    item.end_secs,
+                    correlation_id,
+                );
             }
             // Stale head already popped; continue to the next entry.
         }
@@ -348,7 +558,7 @@ impl PodcastHostOpHandler {
         let items = match self.state.playback.queue.lock() {
             Ok(mut q) => {
                 f(&mut q);
-                q.items().to_vec()
+                q.playback_items()
             }
             Err(_) => return serde_json::json!({"ok": false, "error": "queue poisoned"}),
         };
@@ -363,7 +573,7 @@ impl PodcastHostOpHandler {
     /// otherwise mutating it. Used after `handle_play_next` pops the head.
     fn persist_queue(&self) {
         let items = match self.state.playback.queue.lock() {
-            Ok(q) => q.items().to_vec(),
+            Ok(q) => q.playback_items(),
             Err(_) => return,
         };
         if let Ok(mut s) = self.state.library.store.lock() {
@@ -376,7 +586,13 @@ impl PodcastHostOpHandler {
     /// needs to track position client-side (D0).
     fn handle_skip(&self, delta_secs: f64, correlation_id: &str) -> serde_json::Value {
         let current = match self.state.playback.player.lock() {
-            Ok(a) => a.state().position_secs,
+            Ok(a) => {
+                let state = a.state();
+                if state.episode_id.is_none() {
+                    return serde_json::json!({"ok": false, "error": "nothing is currently loaded"});
+                }
+                state.position_secs
+            }
             Err(_) => return serde_json::json!({"ok": false, "error": "player_actor poisoned"}),
         };
         let target = (current + delta_secs).max(0.0);

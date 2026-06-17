@@ -4,15 +4,14 @@ import SwiftUI
 
 /// "Up Next" sheet presented from the player's Queue chip.
 ///
-/// Renders a SwiftUI `List` over `state.queue` (`[QueueItem]`), resolves each
+/// Renders a SwiftUI `List` over the Rust-projected `state.queue` (`[QueueItem]`), resolves each
 /// entry to a live `Episode` via the store, and supports tap-to-play,
 /// drag-to-reorder, and swipe-to-delete. Bounded segment items show their
 /// time range in the row. Footer summarises total runtime and exposes a
 /// destructive "Clear queue" action.
 ///
-/// The queue model lives on `PlaybackState`; this view is purely
-/// presentational. Adding/removing episodes elsewhere (e.g. from a list row's
-/// context menu) goes through `PlaybackState.enqueue(_:)` directly.
+/// Rust owns queue identity/order and playback decisions; this view is a
+/// native rendering and intent surface.
 struct PlayerQueueSheet: View {
 
     @Environment(AppStateStore.self) private var store
@@ -191,12 +190,11 @@ struct PlayerQueueSheet: View {
     private func play(item: QueueItem, episode: Episode) {
         Haptics.medium()
         state.removeFromQueue(itemID: item.id)
-        state.currentSegmentEndTime = item.endSeconds
-        state.setEpisode(episode)
-        if let start = item.startSeconds {
-            state.engine.seek(to: start)
-        }
-        state.play()
+        store.kernelPlay(
+            episodeID: episode.id,
+            startSeconds: item.startSeconds,
+            endSeconds: item.endSeconds
+        )
         dismiss()
     }
 

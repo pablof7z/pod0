@@ -12,6 +12,7 @@ use std::collections::HashMap;
 
 use super::handle::PodcastHandle;
 use super::projections::TranscriptEntry;
+use crate::queue::QueuedPlaybackItem;
 
 /// Build `EpisodeSummary` rows for the given queued episode IDs by reading the
 /// store directly — slice-local over ONLY the queued episodes, never a full
@@ -36,13 +37,13 @@ use super::projections::TranscriptEntry;
 /// [`episode_summary`]: super::snapshot_library::episode_summary
 pub(super) fn build_queue_rows_from_store(
     handle: &PodcastHandle,
-    ids: &[String],
+    items: &[QueuedPlaybackItem],
     transcripts: &HashMap<String, Vec<TranscriptEntry>>,
     categories_cache: &HashMap<String, Vec<String>>,
 ) -> Vec<super::projections::EpisodeSummary> {
     use super::snapshot_library::episode_summary;
 
-    if ids.is_empty() {
+    if items.is_empty() {
         return Vec::new();
     }
 
@@ -59,20 +60,25 @@ pub(super) fn build_queue_rows_from_store(
     // Case-insensitive comparison: iOS sends UPPERCASE UUID strings; stored IDs
     // are lowercase (matching episode_playback_info behaviour in the store).
     let all_pods = store.all_podcasts();
-    ids.iter()
-        .filter_map(|id| {
-            let id_lower = id.to_lowercase();
+    items
+        .iter()
+        .filter_map(|item| {
+            let id_lower = item.episode_id.to_lowercase();
             for (podcast, episodes) in &all_pods {
                 for ep in *episodes {
                     if ep.id.0.to_string() == id_lower {
-                        return Some(episode_summary(
+                        let mut row = episode_summary(
                             handle,
                             &store,
                             podcast,
                             ep,
                             transcripts,
                             categories_cache,
-                        ));
+                        );
+                        row.queue_start_secs = item.start_secs;
+                        row.queue_end_secs = item.end_secs;
+                        row.queue_slot_id = Some(item.slot_id.clone());
+                        return Some(row);
                     }
                 }
             }

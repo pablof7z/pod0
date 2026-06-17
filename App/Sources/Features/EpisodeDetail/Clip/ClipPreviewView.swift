@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - ClipSubtitleStyle
 
 /// Subtitle style toggle from UX-03 §6.6. The composer offers Editorial
-/// (serif body, calm) and Bold (rounded display weight, social-first).
+/// (calm SF body) and Bold (rounded display weight, social-first).
 enum ClipSubtitleStyle: String, CaseIterable, Identifiable, Sendable {
     case editorial
     case bold

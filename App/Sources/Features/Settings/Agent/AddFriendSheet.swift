@@ -43,16 +43,12 @@ struct AddFriendSheet: View {
     }
 
     private var cleanedIdentifier: String {
-        let trimmed = identifier.trimmed
-        if trimmed.lowercased().hasPrefix("npub1") {
-            return String(trimmed.dropFirst("npub1".count))
-        }
-        return trimmed
+        NostrNpub.pubkeyHex(from: identifier.trimmed) ?? identifier.trimmed
     }
 
     private var isValid: Bool {
         !displayName.isBlank &&
-        cleanedIdentifier.count >= 32
+        NostrNpub.pubkeyHex(from: identifier.trimmed) != nil
     }
 
     var body: some View {
@@ -178,8 +174,10 @@ struct AddFriendSheet: View {
 
     private func add() {
         let name = displayName.trimmed
-        guard isValid else { return }
-        _ = store.addFriend(displayName: name, identifier: cleanedIdentifier)
+        guard isValid,
+              let pubkeyHex = NostrNpub.pubkeyHex(from: identifier.trimmed)
+        else { return }
+        _ = store.addFriend(displayName: name, identifier: pubkeyHex)
         Haptics.success()
         dismiss()
     }

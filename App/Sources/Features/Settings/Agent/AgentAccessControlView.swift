@@ -54,10 +54,10 @@ struct AgentAccessControlView: View {
     private func tabLabel(_ tab: AccessTab) -> String {
         switch tab {
         case .allowed:
-            let count = store.state.nostrAllowedPubkeys.count
+            let count = approvedPubkeys.count
             return count > 0 ? "Allowed (\(count))" : "Allowed"
         case .blocked:
-            let count = store.state.nostrBlockedPubkeys.count
+            let count = blockedPubkeys.count
             return count > 0 ? "Blocked (\(count))" : "Blocked"
         }
     }
@@ -71,10 +71,23 @@ struct AgentAccessControlView: View {
 
     // MARK: - Allowed
 
+    private var approvedPubkeys: [String] {
+        if let social = store.kernel?.podcastSnapshot?.social {
+            return social.approvedPubkeys.sorted()
+        }
+        return store.state.nostrAllowedPubkeys.sorted()
+    }
+
+    private var blockedPubkeys: [String] {
+        if let social = store.kernel?.podcastSnapshot?.social {
+            return social.blockedPubkeys.sorted()
+        }
+        return store.state.nostrBlockedPubkeys.sorted()
+    }
+
     private var filteredAllowed: [String] {
-        let all = store.state.nostrAllowedPubkeys.sorted()
         let q = searchText.trimmed
-        return q.isEmpty ? all : all.filter { $0.localizedCaseInsensitiveContains(q) }
+        return q.isEmpty ? approvedPubkeys : approvedPubkeys.filter { $0.localizedCaseInsensitiveContains(q) }
     }
 
     @ViewBuilder
@@ -111,9 +124,8 @@ struct AgentAccessControlView: View {
     // MARK: - Blocked
 
     private var filteredBlocked: [String] {
-        let all = store.state.nostrBlockedPubkeys.sorted()
         let q = searchText.trimmed
-        return q.isEmpty ? all : all.filter { $0.localizedCaseInsensitiveContains(q) }
+        return q.isEmpty ? blockedPubkeys : blockedPubkeys.filter { $0.localizedCaseInsensitiveContains(q) }
     }
 
     @ViewBuilder
@@ -169,7 +181,7 @@ struct AgentAccessControlView: View {
         Button { copyToClipboard(key, isCopied: $isCopied) } label: {
             HStack(spacing: AppTheme.Spacing.sm) {
                 Image(systemName: "nosign").foregroundStyle(AppTheme.Tint.error)
-                Text("npub1\(key.prefix(NostrPubkeyDisplay.prefixLength))…")
+                Text(NostrNpub.shortNpub(fromHex: key))
                     .font(AppTheme.Typography.monoCallout)
                     .foregroundStyle(.primary)
                 Spacer()

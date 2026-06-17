@@ -132,9 +132,9 @@ struct ShowDetailView: View {
             isPresented: $showDownloadAllConfirm
         ) {
             Button("Cancel", role: .cancel) {}
-            Button("Download \(notDownloadedCount)") { downloadAllEpisodes() }
+            Button("Download") { downloadAllEpisodes() }
         } message: {
-            Text("This will download \(notDownloadedCount) episode\(notDownloadedCount == 1 ? "" : "s") (\(liveSubscription.title)). Transcripts will be generated automatically after each download.")
+            Text("Rust will queue every currently eligible episode in \(liveSubscription.title). Transcripts will be generated automatically after each completed download.")
         }
         .alert(
             "Could Not Follow",
@@ -164,7 +164,9 @@ struct ShowDetailView: View {
     }
 
     private var episodes: [Episode] {
-        store.episodes(forPodcast: podcast.id)
+        LibraryShowEpisodesProjection
+            .load(podcastID: podcast.id, store: store)
+            .episodes(in: store)
     }
 
     private var filteredEpisodes: [Episode] {
@@ -260,7 +262,6 @@ struct ShowDetailView: View {
                     } label: {
                         Label("Download all episodes", systemImage: "arrow.down.circle")
                     }
-                    .disabled(notDownloadedCount == 0)
                 }
                 if !isFollowed, liveSubscription.feedURL != nil {
                     // Unfollowed but has a real RSS feed — offer to follow.
@@ -315,7 +316,7 @@ struct ShowDetailView: View {
     }
 
     private var isFollowed: Bool {
-        store.subscription(podcastID: podcast.id) != nil
+        store.rustIsAlreadySubscribed(feedURL: nil, ownerPubkey: nil, podcastID: podcast.id)
     }
 
     private func follow() async {
@@ -357,23 +358,35 @@ struct ShowDetailView: View {
         await SubscriptionService(store: store).refresh(podcast)
     }
 
-    /// Episodes that still need downloading (excludes in-flight and already downloaded).
-    private var notDownloadedCount: Int {
-        episodes.filter {
-            switch $0.downloadState {
-            case .downloaded, .downloading, .queued: return false
-            default: return true
-            }
-        }.count
-    }
-
     private func downloadAllEpisodes() {
-        for episode in episodes {
-            switch episode.downloadState {
-            case .downloaded, .downloading, .queued: continue
-            default: store.kernelDownload(episode.id)
-            }
-        }
+        store.kernelDownloadPodcast(podcast.id)
         Haptics.success()
     }
+}
+
+private struct LibraryShowEpisodesProjection: Decodable {
+    let episodeIds: [UUID]
+
+    static func load(podcastID: UUID, store: AppStateStore) -> LibraryShowEpisodesProjection {
+        guard let envelope = store.kernel?.libraryShowEpisodesEnvelope(podcastID: podcastID, limit: 10_000),
+              let data = envelope.data(using: .utf8),
+              let decoded = try? JSONDecoder.libraryShowEpisodes.decode(
+                LibraryShowEpisodesProjection.self,
+                from: data
+              )
+        else { return LibraryShowEpisodesProjection(episodeIds: []) }
+        return decoded
+    }
+
+    func episodes(in store: AppStateStore) -> [Episode] {
+        episodeIds.compactMap { store.episode(id: $0) }
+    }
+}
+
+private extension JSONDecoder {
+    static let libraryShowEpisodes: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
+    }()
 }

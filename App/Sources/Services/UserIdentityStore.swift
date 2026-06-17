@@ -160,9 +160,9 @@ final class UserIdentityStore {
 
     /// Dispatch a make-active account-generate to the app-local identity store
     /// via the `podcast.identity Generate` action. The store generates a fresh
-    /// keypair, persists it to `PodcastLibrary/identity.json`, and bumps the
-    /// snapshot rev — so the next push frame carries `active_account` and the
-    /// identity surfaces immediately.
+    /// keypair, persists it to `PodcastLibrary/identity.json`, registers the
+    /// same key as NMP's active signer, and bumps the snapshot rev — so the next
+    /// push frame carries `active_account` and Rust-owned publish paths can sign.
     ///
     /// Note: `nmp_app_create_new_account` is the NMP-core multi-account FFI
     /// (Nostr relay publishing). It does NOT update the app-local `IdentityStore`
@@ -376,11 +376,8 @@ final class UserIdentityStore {
     /// gates the kernel publish dispatches.
     func _setActiveAccountForTesting(_ pubkeyHex: String, mode: Mode = .localKey) {
         self.publicKeyHex = pubkeyHex
-        if let bytes = Data(hexString: pubkeyHex), bytes.count == 32 {
-            self.activeNpub = Bech32.encode(hrp: "npub", data: bytes)
-        } else {
-            self.activeNpub = nil
-        }
+        let npub = NostrNpub.encode(fromHex: pubkeyHex)
+        self.activeNpub = npub == pubkeyHex ? nil : npub
         self.mode = mode
     }
 

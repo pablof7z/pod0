@@ -41,7 +41,7 @@ use std::sync::{Arc, Mutex};
 use crate::download::DownloadQueue;
 use crate::ffi::actions::queue_module::QueueAction;
 use crate::player::PlayerActor;
-use crate::queue::PlaybackQueue;
+use crate::queue::{PlaybackQueue, QueuedPlaybackItem};
 use crate::state::slot::{Persisted, Session};
 use crate::state::{Infra, Slot};
 use crate::store::PodcastStore;
@@ -121,7 +121,7 @@ impl PlaybackState {
                 QueueAction::Remove { episode_id } => q.remove(&episode_id),
                 QueueAction::Clear => q.clear(),
             }
-            q.items().to_vec()
+            q.playback_items()
         }; // guard released
         self.persist_queue_items(&items);
         self.infra.bump();
@@ -130,14 +130,18 @@ impl PlaybackState {
 
     /// Flush the given queue ordering to `PodcastStore::persist_with_queue`.
     /// Does NOT bump rev — callers do that after releasing all guards.
-    pub(crate) fn persist_queue_items(&self, items: &[String]) {
+    pub(crate) fn persist_queue_items(&self, items: &[QueuedPlaybackItem]) {
         if let Ok(mut s) = self.store.lock() {
             s.persist_with_queue(items);
         }
     }
 
     /// Clone the current queue item list for snapshot projection.
-    pub fn queue_snapshot(&self) -> Vec<String> {
-        self.queue.lock().ok().map(|q| q.items().to_vec()).unwrap_or_default()
+    pub fn queue_snapshot(&self) -> Vec<QueuedPlaybackItem> {
+        self.queue
+            .lock()
+            .ok()
+            .map(|q| q.playback_items())
+            .unwrap_or_default()
     }
 }

@@ -18,11 +18,7 @@ public actor PerplexityClient: PerplexityClientProtocol {
     // MARK: - PerplexityClientProtocol
 
     public func search(query: String) async throws -> PerplexityResult {
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            throw PerplexityClientError.invalidQuery
-        }
-        return try await searchViaRust(query: trimmed)
+        try await searchViaRust(query: query)
     }
 
     // MARK: - Legacy response parser

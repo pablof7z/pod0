@@ -98,9 +98,13 @@ struct SubscriptionsListView: View {
     }
 
     private var subscriptionsSection: some View {
+        let libraryStats = LibraryPodcastStatsProjection.load(
+            podcastIDs: store.sortedFollowedPodcasts.map(\.id),
+            store: store
+        )
         Section {
             ForEach(store.sortedFollowedPodcasts) { sub in
-                row(for: sub)
+                row(for: sub, libraryStats: libraryStats)
             }
         } header: {
             Text("\(store.sortedFollowedPodcasts.count) show\(store.sortedFollowedPodcasts.count == 1 ? "" : "s")")
@@ -152,7 +156,7 @@ struct SubscriptionsListView: View {
     // MARK: - Row
 
     @ViewBuilder
-    private func row(for sub: Podcast) -> some View {
+    private func row(for sub: Podcast, libraryStats: LibraryPodcastStatsProjection) -> some View {
         VStack(spacing: AppTheme.Spacing.xs) {
             HStack(spacing: AppTheme.Spacing.sm) {
                 artwork(for: sub)
@@ -170,7 +174,7 @@ struct SubscriptionsListView: View {
                     // not Off). Surfaces here so a user managing many subs
                     // can see at a glance which feeds are pulling bytes
                     // automatically without diving into per-show settings.
-                    statusRow(for: sub)
+                    statusRow(for: sub, libraryStats: libraryStats)
                 }
                 Spacer(minLength: 0)
             }
@@ -194,8 +198,8 @@ struct SubscriptionsListView: View {
         }
     }
 
-    private func statusRow(for sub: Podcast) -> some View {
-        let count = store.episodes(forPodcast: sub.id).count
+    private func statusRow(for sub: Podcast, libraryStats: LibraryPodcastStatsProjection) -> some View {
+        let count = libraryStats.episodeCount(for: sub.id)
         let countLabel = count == 1 ? "1 episode" : "\(count) episodes"
         let autoDownloadLabel = store.subscription(podcastID: sub.id)?.autoDownload.summaryLabel
         return HStack(spacing: 6) {

@@ -7,6 +7,11 @@ import os.log
 ///   2. Adding a case to `dispatch` below
 ///   3. Implementing the handler in the appropriate `AgentTools+*.swift` extension
 enum AgentTools {
+    private struct AskPlan: Decodable {
+        let error: String?
+        let question: String?
+        let context: String?
+    }
 
     static let logger = Logger.app("AgentTools")
 
@@ -97,15 +102,18 @@ enum AgentTools {
             return await dispatchConversations(name: name, args: args, store: store)
 
         case Names.ask:
-            // Pull the primitives off the non-Sendable `[String: Any]`
-            // synchronously so nothing crosses the upcoming `await` —
-            // same pattern `dispatchPodcast` uses for its routing call.
-            let askQuestion = (args["question"] as? String) ?? ""
-            let askContext = args["context"] as? String
+            guard let askPlan = await actionPlan(AskPlan.self, op: "ask_plan", args: args) else {
+                return toolError("ask planning is unavailable")
+            }
+            if let error = askPlan.error { return toolError(error) }
+            guard let askQuestion = askPlan.question else {
+                return toolError("ask plan was incomplete")
+            }
             return await askOwnerTool(
                 question: askQuestion,
-                context: askContext,
-                coordinator: askCoordinator
+                context: askPlan.context,
+                coordinator: askCoordinator,
+                kernel: store.kernel
             )
 
         default:
@@ -134,6 +142,9 @@ enum AgentTools {
 
     /// Builds a JSON success response, merging `payload` into `{"success": true}`.
     static func toolSuccess(_ payload: [String: Any] = [:]) -> String {
+        if let envelope = syncActionTool(op: "success_envelope", payload: ["payload": payload]) {
+            return envelope
+        }
         var result: [String: Any] = ["success": true]
         result.merge(payload) { _, new in new }
         do {
@@ -146,6 +157,9 @@ enum AgentTools {
 
     /// Builds a JSON error response with the given message.
     static func toolError(_ message: String) -> String {
+        if let envelope = syncActionTool(op: "error_envelope", payload: ["message": message]) {
+            return envelope
+        }
         let payload: [String: Any] = ["error": message]
         do {
             return try String(data: JSONSerialization.data(withJSONObject: payload), encoding: .utf8) ?? "{\"error\":\"unknown\"}"
@@ -162,5 +176,31 @@ enum AgentTools {
         s.count > summaryTruncationLength
             ? "\(s.prefix(summaryTruncationLength))…"
             : s
+    }
+
+    private static func actionPlan<T: Decodable>(
+        _ type: T.Type,
+        op: String,
+        args: [String: Any]
+    ) async -> T? {
+        guard let envelope = await actionTool(op: op, payload: args),
+              let data = envelope.data(using: .utf8)
+        else { return nil }
+        return try? JSONDecoder().decode(T.self, from: data)
+    }
+
+    private static func syncActionTool(op: String, payload: [String: Any]) -> String? {
+        var request = payload
+        request["op"] = op
+        guard let data = try? JSONSerialization.data(withJSONObject: request),
+              let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        return json.withCString { ptr in
+            guard let result = nmp_app_podcast_agent_action_policy(ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            return String(cString: result)
+        }
     }
 }

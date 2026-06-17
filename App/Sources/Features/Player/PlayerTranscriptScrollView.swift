@@ -250,8 +250,8 @@ struct PlayerTranscriptScrollView: View {
     // MARK: - Ingest gating
 
     private func isIngestActionable(for episode: Episode) -> Bool {
-        if episode.publisherTranscriptURL != nil { return true }
-        return providerReady(for: effectiveSTTProvider, episode: episode)
+        guard let plan = transcriptPlan(for: episode) else { return false }
+        return plan.status == "publisher" || plan.status == "stt"
     }
 
     private func isIngestEnabled(for episode: Episode) -> Bool {
@@ -283,48 +283,41 @@ struct PlayerTranscriptScrollView: View {
         case .failed(let message):
             return message
         case .ready, .none:
-            if episode.publisherTranscriptURL != nil {
+            guard let plan = transcriptPlan(for: episode) else {
+                return "Transcript planner is not available yet."
+            }
+            switch plan.status {
+            case "ready":
+                return "Transcript is already available."
+            case "publisher":
                 return "We can pull the publisher's transcript for this episode."
-            }
-            let selected = selectedSTTProvider
-            let provider = effectiveSTTProvider
-            let ready = providerReady(for: provider, episode: episode)
-            if selected != provider {
-                if ready {
-                    return "Selected \(selected.displayName) needs a key; we'll use \(provider.displayName) instead."
+            case "stt":
+                let provider = providerDisplayName(plan.provider)
+                if plan.requiresLocalFile && !EpisodeDownloadStore.shared.exists(for: episode) {
+                    return "Download the episode to use \(provider), or wait for a publisher transcript."
                 }
-                if provider == .appleNative {
-                    return "Selected \(selected.displayName) needs a key. Download the episode for Apple on-device transcription, or connect the provider key."
-                }
+                return "We'll transcribe with \(provider)."
+            case "skipped":
+                return plan.reason ?? "Transcription is not configured for this episode."
+            default:
+                return plan.reason ?? "Transcript planning failed."
             }
-            if ready {
-                if provider == .appleNative {
-                    return "We'll transcribe with Apple on-device."
-                }
-                return "We'll transcribe with \(provider.displayName) using your stored key."
-            }
-            if provider == .appleNative {
-                return "Download the episode to use Apple on-device transcription, or wait for a publisher transcript."
-            }
-            return "Add a \(provider.displayName) key in Settings, or wait for a publisher transcript."
         }
     }
 
-    private var selectedSTTProvider: STTProvider {
-        store.kernel?.podcastSnapshot?.settings.selectedSTTProvider ?? store.state.settings.sttProvider
+    private func transcriptPlan(for episode: Episode) -> KernelModel.TranscriptIngestPlan? {
+        store.kernel?.transcriptIngestPlan(
+            episodeID: episode.id,
+            forceProvider: nil,
+            localAudioAvailable: EpisodeDownloadStore.shared.exists(for: episode),
+            allowPublisher: true
+        )
     }
 
-    private var effectiveSTTProvider: STTProvider {
-        store.kernel?.podcastSnapshot?.settings.resolvedSTTProvider ?? selectedSTTProvider
-    }
-
-    private func providerReady(for provider: STTProvider, episode: Episode) -> Bool {
-        switch provider {
-        case .appleNative:
-            return EpisodeDownloadStore.shared.exists(for: episode)
-        case .elevenLabsScribe, .assemblyAI, .openRouterWhisper:
-            return store.kernel?.podcastSnapshot?.settings.hasLoadedKey(for: provider) ?? false
-        }
+    private func providerDisplayName(_ raw: String?) -> String {
+        guard let raw else { return "the selected provider" }
+        guard let provider = STTProvider(rawValue: raw) else { return raw }
+        return TranscriptIngestService.providerDisplayName(provider, kernel: store.kernel) ?? raw
     }
 
     private func requestIngest(for episode: Episode) {

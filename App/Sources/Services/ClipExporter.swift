@@ -51,7 +51,7 @@ actor ClipExporter {
     // MARK: - Style
 
     /// Drives subtitle font selection and the image card's pull-quote
-    /// rendering. New York serif vs SF Pro semibold per the brief.
+    /// rendering. Both styles use SF/system typography per app rules.
     enum SubtitleStyle: String, Sendable, CaseIterable {
         case editorial
         case bold

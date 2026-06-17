@@ -9,19 +9,26 @@ struct AgentMemoriesView: View {
 
     @State private var searchText = ""
     @State private var showClearConfirm = false
-    @State private var editingMemory: AgentMemory? = nil
+    @State private var editingMemory: MemoryFact? = nil
 
     // MARK: - Derived data
 
-    private var filteredMemories: [AgentMemory] {
-        let all = store.activeMemories.sorted { $0.createdAt > $1.createdAt }
+    private var memoryFacts: [MemoryFact] {
+        store.kernel?.podcastSnapshot?.memoryFacts ?? []
+    }
+
+    private var filteredMemories: [MemoryFact] {
+        let all = memoryFacts.sorted { $0.createdAt > $1.createdAt }
         if searchText.isEmpty { return all }
-        return all.filter { $0.content.localizedCaseInsensitiveContains(searchText) }
+        return all.filter {
+            $0.value.localizedCaseInsensitiveContains(searchText)
+                || $0.key.localizedCaseInsensitiveContains(searchText)
+        }
     }
 
     /// Memories grouped by relative-date bucket, preserving reverse-chron order within each group.
-    private var groupedMemories: [(bucket: RelativeDateBucket, items: [AgentMemory])] {
-        RelativeDateBucket.grouped(filteredMemories, dateKey: \.createdAt)
+    private var groupedMemories: [(bucket: RelativeDateBucket, items: [MemoryFact])] {
+        RelativeDateBucket.grouped(filteredMemories, dateKey: { Date(timeIntervalSince1970: TimeInterval($0.createdAt)) })
     }
 
     // MARK: - Body
@@ -39,13 +46,13 @@ struct AgentMemoriesView: View {
         .searchable(text: $searchText, prompt: "Search memories")
         .toolbar { toolbarContent }
         .sheet(item: $editingMemory) { memory in
-            EditTextSheet(title: "Edit Memory", initialText: memory.content) { newContent in
-                store.updateAgentMemory(memory.id, content: newContent)
+            EditTextSheet(title: "Edit Memory", initialText: memory.value) { newContent in
+                remember(key: memory.key, value: newContent, source: memory.source)
             }
         }
         .alert("Clear All Memories?", isPresented: $showClearConfirm) {
             Button("Clear All", role: .destructive) {
-                store.clearAllAgentMemories()
+                forgetAll()
                 Haptics.bulkAction()
             }
             Button("Cancel", role: .cancel) {}
@@ -62,7 +69,7 @@ struct AgentMemoriesView: View {
     /// memory has since been deleted.
     private func openSpotlightTargetIfNeeded() {
         guard let id = spotlightTargetID,
-              let memory = store.activeMemories.first(where: { $0.id == id })
+              let memory = memoryFacts.first(where: { $0.id == id.uuidString })
         else { return }
         Haptics.selection()
         Task { @MainActor in
@@ -77,7 +84,7 @@ struct AgentMemoriesView: View {
         if searchText.isEmpty {
             ContentUnavailableView {
                 Label("No memories yet", systemImage: "brain")
-                    .symbolEffect(.pulse, isActive: store.activeMemories.isEmpty)
+                    .symbolEffect(.pulse, isActive: memoryFacts.isEmpty)
             } description: {
                 Text("The agent will remember things about you as you interact.")
             }
@@ -96,8 +103,8 @@ struct AgentMemoriesView: View {
                     MemoryRow(memory: memory, query: searchText)
                         .agentContentRowActions(
                             onEdit: { editingMemory = memory },
-                            copyText: memory.content,
-                            onDelete: { store.deleteAgentMemory(memory.id) }
+                            copyText: memory.value,
+                            onDelete: { forget(key: memory.key) }
                         )
                 }
             } header: {
@@ -113,7 +120,7 @@ struct AgentMemoriesView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        if !store.activeMemories.isEmpty {
+        if !memoryFacts.isEmpty {
             ToolbarItem(placement: .destructiveAction) {
                 Button("Clear All", role: .destructive) {
                     showClearConfirm = true
@@ -122,18 +129,34 @@ struct AgentMemoriesView: View {
         }
     }
 
+    private func remember(key: String, value: String, source: String) {
+        store.kernel?.dispatch(namespace: "podcast.memory",
+                               body: ["op": "remember", "key": key, "value": value, "source": source])
+    }
+
+    private func forget(key: String) {
+        store.kernel?.dispatch(namespace: "podcast.memory",
+                               body: ["op": "forget", "key": key])
+    }
+
+    private func forgetAll() {
+        store.kernel?.dispatch(namespace: "podcast.memory",
+                               body: ["op": "forget_all"])
+    }
+
     // MARK: - MemoryRow
 
     private struct MemoryRow: View {
-        let memory: AgentMemory
+        let memory: MemoryFact
         var query: String = ""
 
         var body: some View {
             AgentContentRow(
                 icon: "brain",
                 iconColor: .purple,
-                text: memory.content,
-                date: memory.createdAt,
+                text: memory.value,
+                date: Date(timeIntervalSince1970: TimeInterval(memory.createdAt)),
+                badge: memory.key,
                 query: query
             )
         }

@@ -82,10 +82,6 @@ struct ProviderCompletionClient: Sendable {
         feature: String,
         modelReference: LLMModelReference
     ) async throws -> String {
-        guard modelReference.provider != .local else {
-            throw ProviderCompletionClientError.missingCredential(provider: modelReference.provider.displayName)
-        }
-
         guard let handleBits = await MainActor.run(body: {
             KernelModel.shared?.podcastHandlePointer.map { Int(bitPattern: $0) }
         }) else {
@@ -194,15 +190,12 @@ struct ProviderCompletionClient: Sendable {
 // MARK: - Errors
 
 enum ProviderCompletionClientError: LocalizedError {
-    case missingCredential(provider: String)
     case httpError(status: Int, body: String)
     case malformedResponse
     case providerError(String)
 
     var errorDescription: String? {
         switch self {
-        case .missingCredential(let provider):
-            "\(provider) is not connected. Add a key in Settings."
         case .httpError(let status, let body):
             "Provider completion error (\(status)): \(body.prefix(200))"
         case .malformedResponse:

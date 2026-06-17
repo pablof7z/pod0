@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::ffi::actions::queue_module::QueueAction;
-use crate::queue::PlaybackQueue;
+use crate::queue::{PlaybackQueue, QueuedPlaybackItem};
 use crate::store::PodcastStore;
 
 /// Apply a [`QueueAction`] to the shared queue, flush the new ordering to
@@ -41,7 +41,7 @@ pub(crate) fn handle_queue_action(
         QueueAction::Remove { episode_id } => q.remove(&episode_id),
         QueueAction::Clear => q.clear(),
     }
-    let items: Vec<String> = q.items().to_vec();
+    let items: Vec<QueuedPlaybackItem> = q.playback_items();
     drop(q);
     rev.fetch_add(1, Ordering::Relaxed);
     if let Ok(mut s) = store.lock() {

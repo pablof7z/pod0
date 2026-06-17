@@ -121,6 +121,7 @@ pub extern "C" fn nmp_app_podcast_transcript_report(
             };
 
             let handle_ref = unsafe { &*handle };
+            let episode_id = report.episode_id.clone();
             if let Ok(mut s) = handle_ref.state.library.store.lock() {
                 let source = report.source.clone();
 
@@ -129,7 +130,7 @@ pub extern "C" fn nmp_app_podcast_transcript_report(
                 // Preference order:
                 //  1. Timed form ("entries"): convert entries, store them, derive text.
                 //  2. Legacy form ("text"): store text only; no timing data.
-                let (plain_text, maybe_entries) = match (report.entries, report.text) {
+                        let (plain_text, maybe_entries) = match (report.entries, report.text) {
                     (Some(entries), _) => {
                         // New timed form — derive plain text from entries.
                         let text = entries
@@ -178,6 +179,16 @@ pub extern "C" fn nmp_app_podcast_transcript_report(
                     crate::store::events::EventSeverity::Success,
                     summary,
                     details,
+                );
+            }
+            let refined_clips = handle_ref.state.clips.refine_pending_for_episode(&episode_id);
+            for clip in refined_clips {
+                crate::social_publish_handler::publish_clip_highlight_if_user_visible(
+                    handle_ref.app,
+                    &handle_ref.state.library.identity,
+                    &handle_ref.state.library.store,
+                    &clip,
+                    "transcript_report",
                 );
             }
             // Bump rev so the next snapshot tick surfaces the new transcript_entries

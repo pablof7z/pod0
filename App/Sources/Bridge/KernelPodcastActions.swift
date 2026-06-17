@@ -153,7 +153,7 @@ enum PodcastKernelAction {
     }
 }
 
-struct KernelEpisodeChapterPayload: Encodable, Equatable {
+struct KernelEpisodeChapterPayload: Codable, Equatable {
     let startSecs: Double
     let title: String
     let imageUrl: String?

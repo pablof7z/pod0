@@ -2,17 +2,10 @@ import SwiftUI
 
 // MARK: - CategoryDetailView
 //
-// Settings → Categories → <one category>. Form with the full set of
-// per-category knobs:
-//   • Auto-download override (off when the toggle is off; falls back to
-//     the per-subscription policy as it stands today).
-//   • Per-feature toggles: transcription, RAG, notifs.
-//   • Read-only list of subscriptions in this category.
-//
-// The auto-download picker mirrors `ShowDetailSettingsSheet`'s 3-way
-// segmented control + Wi-Fi toggle + latest-N stepper, gated behind an
-// "Override app default" toggle so the spec's `nil = inherit` semantic
-// is preserved without re-implementing a custom 4-way picker.
+// Settings → Categories → <one category>. Rust owns runtime category policy.
+// Until Rust has durable category-level auto-download/RAG/notification policy,
+// this screen exposes only the category control that is wired to Rust today:
+// transcription fan-out to the member podcasts.
 
 struct CategoryDetailView: View {
     @Environment(AppStateStore.self) private var store
@@ -24,7 +17,6 @@ struct CategoryDetailView: View {
                 if !category.description.isEmpty {
                     descriptionSection(category)
                 }
-                autoDownloadSection
                 featuresSection(for: category)
                 subscriptionsSection(category)
             } else {
@@ -45,30 +37,15 @@ struct CategoryDetailView: View {
         }
     }
 
-    private var autoDownloadSection: some View {
-        CategoryAutoDownloadSection(
-            settings: store.categorySettings(for: categoryID),
-            onUpdate: { block in
-                store.updateCategorySettings(categoryID, block)
-            }
-        )
-    }
-
     private func featuresSection(for category: PodcastCategory) -> some View {
         Section {
             Toggle(isOn: transcriptionToggleBinding(for: category)) {
                 Label("Transcription", systemImage: "captions.bubble.fill")
             }
-            Toggle(isOn: toggleBinding(\.ragEnabled)) {
-                Label("RAG indexing", systemImage: "brain")
-            }
-            Toggle(isOn: toggleBinding(\.notificationsEnabled)) {
-                Label("Notifications", systemImage: "bell.fill")
-            }
         } header: {
             Text("Features")
         } footer: {
-            Text("Disable features for categories you don't want analysed — entertainment shows, for example, often don't need transcripts.")
+            Text("Disable transcription for categories you don't want analysed — entertainment shows, for example, often don't need transcripts.")
         }
     }
 
@@ -114,43 +91,22 @@ struct CategoryDetailView: View {
     private func transcriptionToggleBinding(for category: PodcastCategory) -> Binding<Bool> {
         Binding(
             get: {
-                // Aggregate: true if ALL podcasts in the category have transcription
-                // on. The per-podcast flag lives on the kernel `PodcastSummary`
-                // projection (`id` is the lowercased UUID string), not on the host
-                // `Podcast` model.
-                let summaries = category.subscriptionIDs.compactMap { uuid in
-                    self.store.kernel?.library.first(where: { $0.id == uuid.uuidString.lowercased() })
-                }
-                if summaries.isEmpty {
-                    return self.store.categorySettings(for: self.categoryID).transcriptionEnabled
-                }
-                return summaries.allSatisfy { $0.transcriptionEnabled }
+                CategoryLibraryProjection
+                    .load(categories: [category], store: self.store)
+                    .allTranscriptionEnabled(in: category.id)
+                    ?? true
             },
             set: { newValue in
-                // 1. Update legacy category settings
-                self.store.updateCategorySettings(self.categoryID) { settings in
-                    settings.transcriptionEnabled = newValue
-                }
-                // 2. Fan-out to kernel for each podcast in the category
-                for podcastUUID in category.subscriptionIDs {
+                // Fan out to Rust per-podcast policy. Swift does not persist
+                // category-level behavior; the category row reads the kernel
+                // projection after the mutation.
+                for podcast in podcasts(in: category) {
                     self.store.kernel?.dispatch(namespace: "podcast",
                         body: [
                             "op": "set_podcast_transcription_enabled",
-                            "podcast_id": podcastUUID.uuidString.lowercased(),
+                            "podcast_id": podcast.id.uuidString.lowercased(),
                             "enabled": newValue,
                         ])
-                }
-                Haptics.selection()
-            }
-        )
-    }
-
-    private func toggleBinding(_ keyPath: WritableKeyPath<CategorySettings, Bool>) -> Binding<Bool> {
-        Binding(
-            get: { store.categorySettings(for: categoryID)[keyPath: keyPath] },
-            set: { newValue in
-                store.updateCategorySettings(categoryID) { settings in
-                    settings[keyPath: keyPath] = newValue
                 }
                 Haptics.selection()
             }
@@ -167,8 +123,8 @@ struct CategoryDetailView: View {
     /// entries the user may have unsubscribed from since the categorizer
     /// last ran. Sorted by title to match every other management surface.
     private func podcasts(in category: PodcastCategory) -> [Podcast] {
-        category.subscriptionIDs
-            .compactMap { store.podcast(id: $0) }
-            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        CategoryLibraryProjection
+            .load(categories: [category], store: store)
+            .podcasts(in: category.id, store: store)
     }
 }

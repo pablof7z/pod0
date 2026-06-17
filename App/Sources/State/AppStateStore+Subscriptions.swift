@@ -4,17 +4,11 @@ import Foundation
 
 extension AppStateStore {
 
-    /// Podcasts the user actively follows, sorted alphabetically by title.
-    /// Feed-less podcasts (Agent Generated, Unknown) are excluded by virtue
-    /// of having no `PodcastSubscription` row in the new model — they're
-    /// `Podcast`-only. The `feedURL != nil` filter additionally guards against
-    /// a stray subscription row pointing at a feed-less show.
+    /// Podcasts the user actively follows. Rust owns follow membership,
+    /// feed-backed eligibility, and alphabetical ordering; Swift resolves ids
+    /// for native rendering and OPML export.
     var sortedFollowedPodcasts: [Podcast] {
-        let podcastByID = Dictionary(uniqueKeysWithValues: state.podcasts.map { ($0.id, $0) })
-        return state.subscriptions
-            .compactMap { podcastByID[$0.podcastID] }
-            .filter { $0.feedURL != nil }
-            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        rustFollowedPodcasts()
     }
 
     /// Returns the subscription row for a podcast, or `nil` if the user does
@@ -28,50 +22,24 @@ extension AppStateStore {
         podcast(id: subscription.podcastID)
     }
 
-    /// Inserts a follow row for the given podcast. Returns `false` if the
-    /// user already follows this podcast. The podcast row must already
-    /// exist (tests may call `upsertPodcast`; production should use a kernel
-    /// action such as `kernelSubscribe` / `kernelEnsurePodcast`).
-    @discardableResult
-    func addSubscription(podcastID: UUID) -> Bool {
-        guard state.podcasts.contains(where: { $0.id == podcastID }) else { return false }
-        guard !state.subscriptions.contains(where: { $0.podcastID == podcastID }) else { return false }
-        state.subscriptions.append(PodcastSubscription(podcastID: podcastID))
-        return true
-    }
-
-    /// Fully removes a podcast — its metadata row, any follow row, and
-    /// every episode that belonged to it. Used both by the "Unsubscribe"
-    /// destructive action on followed podcasts and by the swipe-to-delete
-    /// on the all-podcasts list for podcasts the user never followed.
+    /// Fully removes a podcast through the Rust kernel. The snapshot
+    /// projection removes the podcast row, follow row, and episodes from Swift.
     func deletePodcast(podcastID: UUID) {
         kernelUnsubscribe(podcastID: podcastID)
-        let removedEpisodeIDs = episodes
-            .filter { $0.podcastID == podcastID }
-            .map(\.id)
-
-        var next = state
-        next.subscriptions.removeAll { $0.podcastID == podcastID }
-        next.podcasts.removeAll { $0.id == podcastID }
-        performMutationBatch {
-            state = next
-            // Episodes are a separate stored property now — remove them
-            // directly rather than through the `next` DTO copy.
-            episodes.removeAll { $0.podcastID == podcastID }
-            invalidateEpisodeProjections()
-        }
     }
 
     /// Toggles new-episode notifications for a subscribed podcast.
     func setSubscriptionNotificationsEnabled(_ podcastID: UUID, enabled: Bool) {
-        guard let idx = state.subscriptions.firstIndex(where: { $0.podcastID == podcastID }) else { return }
-        state.subscriptions[idx].notificationsEnabled = enabled
+        kernel?.dispatch(namespace: "podcast",
+                         body: [
+                            "op": "set_podcast_notifications_enabled",
+                            "podcast_id": podcastID.uuidString,
+                            "enabled": enabled,
+                         ])
     }
 
     /// Replaces the per-podcast auto-download policy.
     func setSubscriptionAutoDownload(_ podcastID: UUID, policy: AutoDownloadPolicy) {
-        guard let idx = state.subscriptions.firstIndex(where: { $0.podcastID == podcastID }) else { return }
-        state.subscriptions[idx].autoDownload = policy
         kernelSetAutoDownload(podcastID: podcastID, policy: policy)
     }
 }

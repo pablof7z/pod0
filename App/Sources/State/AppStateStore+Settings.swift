@@ -279,8 +279,8 @@ extension AppStateStore {
         // roles point at a local model, and push it as `set_local_model`. This
         // drives engine load/unload; per-role routing itself happens in the
         // kernel's `backend_for` off each role's own model string.
-        let priorLocal = Self.effectiveLocalModelID(prior)
-        let nextLocal = Self.effectiveLocalModelID(settings)
+        let priorLocal = effectiveLocalModelID(prior)
+        let nextLocal = effectiveLocalModelID(settings)
         if nextLocal != priorLocal {
             kernel?.dispatch(namespace: "podcast.settings",
                              body: ["op": "set_local_model", "model_id": nextLocal as Any])
@@ -306,27 +306,46 @@ extension AppStateStore {
                          ])
     }
 
-    /// The single on-device model id the kernel should keep loaded, derived
-    /// from the role assignments. Returns the first role pointing at a `local:`
-    /// model (Agent Initial takes precedence), or nil when no role uses one.
-    ///
-    /// Only roles with a wired on-device completion call site in the kernel are
-    /// considered — otherwise a `local:` selection would load an engine no role
-    /// can invoke (wasted RAM), or let a non-routable role's precedence starve a
-    /// routable one. Memory Compilation and Embeddings have no `backend_for`
-    /// call site yet, so a `local:` selection there is a no-op (stays on cloud)
-    /// until those paths are threaded.
-    static func effectiveLocalModelID(_ s: Settings) -> String? {
-        let roleModels = [
-            s.agentInitialModel,
-            s.agentThinkingModel,
-            s.categorizationModel,
-            s.chapterCompilationModel,
-        ]
-        for stored in roleModels {
-            let ref = LLMModelReference(storedID: stored)
-            if ref.provider == .local, !ref.isEmpty { return ref.modelID }
+    private struct LocalModelSelectionResponse: Decodable {
+        let modelID: String?
+        let error: String?
+
+        enum CodingKeys: String, CodingKey {
+            case modelID = "model_id"
+            case error
         }
-        return nil
+    }
+
+    /// The single on-device model id the kernel wants Swift to keep loaded.
+    /// Swift passes raw role model selections; Rust owns routable-role
+    /// precedence and local-provider parsing. Swift only loads/unloads the
+    /// native engine matching the returned id.
+    func effectiveLocalModelID(_ s: Settings) -> String? {
+        guard let handle = kernel?.podcastHandlePointer else { return nil }
+        let request: [String: Any] = [
+            "op": "local_model_selection",
+            "agent_initial_model": s.agentInitialModel,
+            "agent_thinking_model": s.agentThinkingModel,
+            "memory_compilation_model": s.memoryCompilationModel,
+            "categorization_model": s.categorizationModel,
+            "chapter_compilation_model": s.chapterCompilationModel,
+            "embeddings_model": s.embeddingsModel,
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: request),
+              let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        let envelope = json.withCString { ptr -> String? in
+            guard let result = nmp_app_podcast_agent_action_tool(handle, ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            return String(cString: result)
+        }
+        guard let envelope,
+              let responseData = envelope.data(using: .utf8),
+              let response = try? JSONDecoder().decode(LocalModelSelectionResponse.self, from: responseData),
+              response.error == nil
+        else { return nil }
+        return response.modelID
     }
 }

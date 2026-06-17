@@ -173,7 +173,13 @@ fn queue_persists_across_restart() {
     let mut store2 = PodcastStore::new();
     store2.set_data_dir(tmp.path.clone());
     let restored = store2.take_loaded_queue();
-    assert_eq!(restored, vec!["ep-a".to_owned(), "ep-b".to_owned()]);
+    assert_eq!(
+        restored
+            .into_iter()
+            .map(|item| item.episode_id)
+            .collect::<Vec<_>>(),
+        vec!["ep-a".to_owned(), "ep-b".to_owned()]
+    );
 }
 
 #[test]

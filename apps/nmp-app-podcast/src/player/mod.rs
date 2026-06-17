@@ -50,6 +50,8 @@ pub struct PlayerActor {
     /// Wall-clock instant at which the sleep timer should fire, when
     /// armed. `None` outside of timer mode.
     sleep_deadline: Option<SystemTime>,
+    /// Stop at the next natural episode end instead of auto-advancing.
+    sleep_timer_end_of_episode: bool,
     /// Ad-break intervals for the currently-loaded episode. Set by
     /// the FFI layer at `play` time (and via `set_ad_segments`); empty
     /// when the upstream ingest hasn't annotated this episode.
@@ -72,6 +74,10 @@ pub struct PlayerActor {
     /// the writeback layer marks the episode listened on `ItemEnd`.
     /// Pushed from the store at `play` time.
     pub(crate) auto_mark_played_at_end: bool,
+    /// Set for one report turn when a bounded segment reaches its Rust-owned
+    /// end boundary. The FFI layer consumes this to decide whether to advance
+    /// the canonical queue or send the native executor a plain Stop.
+    segment_end_reached: bool,
 }
 
 impl PlayerActor {
@@ -81,11 +87,13 @@ impl PlayerActor {
         Self {
             state: PlayerState::idle(),
             sleep_deadline: None,
+            sleep_timer_end_of_episode: false,
             ad_segments: Vec::new(),
             auto_skip_ads: false,
             skipped_ad_ids: HashSet::new(),
             auto_play_next: true,
             auto_mark_played_at_end: true,
+            segment_end_reached: false,
         }
     }
 
@@ -139,13 +147,25 @@ impl PlayerActor {
     /// emit `AudioCommand::Stop`.
     pub fn arm_sleep_timer(&mut self, duration: Duration, now: SystemTime) {
         self.sleep_deadline = Some(now + duration);
+        self.sleep_timer_end_of_episode = false;
+        self.state.sleep_timer_end_of_episode = false;
         self.refresh_sleep_remaining(now);
+    }
+
+    /// Arm the "stop at end of episode" sleep timer mode.
+    pub fn arm_sleep_timer_end_of_episode(&mut self) {
+        self.sleep_deadline = None;
+        self.state.sleep_timer_remaining_secs = None;
+        self.sleep_timer_end_of_episode = true;
+        self.state.sleep_timer_end_of_episode = true;
     }
 
     /// Cancel any active sleep timer.
     pub fn cancel_sleep_timer(&mut self) {
         self.sleep_deadline = None;
+        self.sleep_timer_end_of_episode = false;
         self.state.sleep_timer_remaining_secs = None;
+        self.state.sleep_timer_end_of_episode = false;
     }
 
     /// Stage a `Load` request: stash the episode/podcast/url so future
@@ -169,11 +189,42 @@ impl PlayerActor {
         self.state.buffering_fraction = None;
         self.state.did_reach_natural_end = false;
         self.state.segment_end_secs = None;
+        self.segment_end_reached = false;
+    }
+
+    /// Set or clear the current bounded segment end. The caller owns validating
+    /// that the boundary is greater than the staged start position.
+    pub fn set_segment_end_secs(&mut self, end_secs: Option<f64>) {
+        self.state.segment_end_secs = end_secs;
+        self.segment_end_reached = false;
+    }
+
+    /// Consume the one-shot bounded-segment terminal marker.
+    pub(crate) fn take_segment_end_reached(&mut self) -> bool {
+        let reached = self.segment_end_reached;
+        self.segment_end_reached = false;
+        reached
     }
 
     /// Project a `set_speed` action into state. Clamped to `0.5..=3.0`.
     pub fn set_speed(&mut self, speed: f32) {
         self.state.speed = speed.clamp(0.5, 3.0);
+    }
+
+    /// Project a seek action into state and return the applied target.
+    ///
+    /// Clamps to `0` and, when the player knows a positive duration, to the
+    /// track duration. If duration is still unknown (`0.0`), upper-bound
+    /// clamping waits for the capability's next report.
+    pub fn seek_target(&mut self, position_secs: f64) -> f64 {
+        let lower = position_secs.max(0.0);
+        let target = if self.state.duration_secs > 0.0 {
+            lower.min(self.state.duration_secs)
+        } else {
+            lower
+        };
+        self.state.position_secs = target;
+        target
     }
 
     /// Project a `set_volume` action into state. Clamped to `0.0..=1.0`.

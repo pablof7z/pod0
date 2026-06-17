@@ -116,7 +116,7 @@ struct AgentSettingsView: View {
                     icon: "brain",
                     tint: .purple,
                     title: "Memories",
-                    badge: store.activeMemories.count
+                    badge: store.kernel?.podcastSnapshot?.memoryFacts.count ?? 0
                 )
             }
 
@@ -171,7 +171,7 @@ struct AgentSettingsView: View {
                     icon: "mic.fill",
                     tint: .red,
                     title: "Podcasts",
-                    badge: store.allPodcasts.filter { $0.ownerPubkeyHex != nil }.count
+                    badge: store.rustOwnedPodcasts().count
                 )
             }
         }

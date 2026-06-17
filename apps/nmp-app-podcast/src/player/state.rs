@@ -38,6 +38,11 @@ pub struct PlayerState {
     /// Wall-clock seconds remaining on the sleep timer, when armed.
     /// Recomputed on every report from the stored deadline.
     pub sleep_timer_remaining_secs: Option<u64>,
+    /// `true` when the sleep timer should stop at the next natural episode
+    /// end. Rust owns this policy so shells never suppress `ItemEnd` or
+    /// auto-advance locally.
+    #[serde(default)]
+    pub sleep_timer_end_of_episode: bool,
     /// Buffering progress in `0.0..=1.0` from the most recent
     /// `BufferingProgress` report; `None` once playback resumes.
     pub buffering_fraction: Option<f32>,

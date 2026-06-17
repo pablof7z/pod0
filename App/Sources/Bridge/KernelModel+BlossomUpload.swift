@@ -79,27 +79,9 @@ extension KernelModel {
         }
 
         // Await the BlobDescriptor from the drain-once action_results projection.
-        // Race against a 60-second caller-owned deadline (a bunker round-trip
-        // can be slow, but uploads are bounded).
-        let registry = actionResultsRegistry
-        let entry = try await withThrowingTaskGroup(of: ActionResultEntry.self) { group in
-            group.addTask {
-                return try await registry.awaitResult(correlationID: correlationID)
-            }
-            group.addTask {
-                try? await Task.sleep(for: .seconds(60))
-                registry.cancel(
-                    correlationID: correlationID,
-                    with: BlossomUploadError.serverRejected("upload timed out"))
-                try await Task.sleep(for: .seconds(3600))
-                throw BlossomUploadError.serverRejected("upload timed out")
-            }
-            defer { group.cancelAll() }
-            guard let first = try await group.next() else {
-                throw BlossomUploadError.serverRejected("upload timed out")
-            }
-            return first
-        }
+        // Timeout/failure semantics belong to the Rust/NMP action owner; Swift
+        // only waits for the settled action result and decodes the returned URL.
+        let entry = try await actionResultsRegistry.awaitResult(correlationID: correlationID)
 
         // The `result` field carries the serialised BlobDescriptor JSON
         // (`{ "url": "…", "sha256": "…", "size": N, "uploaded": N }`).

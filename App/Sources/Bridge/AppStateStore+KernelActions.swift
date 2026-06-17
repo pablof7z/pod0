@@ -30,24 +30,26 @@ extension AppStateStore {
         guard let url = SubscriptionService.normalizedFeedURL(from: trimmed) else {
             throw SubscriptionService.AddError.invalidURL
         }
-        if let existing = podcast(feedURL: url),
-           subscription(podcastID: existing.id) != nil {
-            throw SubscriptionService.AddError.alreadySubscribed(title: existing.title)
-        }
         guard let kern = kernel else {
             throw SubscriptionService.AddError.transport("Kernel not available")
         }
         let normalizedFeedURL = url.absoluteString
-        kern.dispatch(PodcastKernelAction.Subscribe(feedUrl: normalizedFeedURL))
+        let dispatch = kern.dispatch(PodcastKernelAction.Subscribe(feedUrl: normalizedFeedURL))
+        if case let .failure(message) = dispatch {
+            if message.localizedCaseInsensitiveContains("already subscribed"),
+               let existing = podcast(feedURL: url) {
+                throw SubscriptionService.AddError.alreadySubscribed(title: existing.title)
+            }
+            throw SubscriptionService.AddError.transport(message)
+        }
         // React to the projected library landing the followed feed instead of
-        // polling on a 300ms timer. `podcast(feedURL:)` /
-        // `subscription(podcastID:)` read `state.podcasts` /
-        // `state.subscriptions`, so the awaiter re-fires the instant
-        // `applyKernelState` writes them.
+        // polling on a 300ms timer. `podcast(feedURL:)` and the Rust-owned
+        // subscription status projection re-fire the instant `applyKernelState`
+        // writes the subscribed feed.
         if let podcast = await awaitState(timeout: timeout, body: { [weak self] () -> Podcast? in
             guard let self,
                   let p = self.podcast(feedURL: url),
-                  self.subscription(podcastID: p.id) != nil else { return nil }
+                  self.rustIsAlreadySubscribed(feedURL: normalizedFeedURL, ownerPubkey: nil) else { return nil }
             return p
         }) {
             return podcast
@@ -69,6 +71,13 @@ extension AppStateStore {
     /// Refresh a single podcast feed.
     func kernelRefresh(podcastID: UUID) {
         kernel?.dispatch(PodcastKernelAction.Refresh(podcastId: podcastID.uuidString))
+    }
+
+    /// Queue every currently eligible episode in a podcast. Rust owns the
+    /// eligibility pass and queue idempotence; Swift only sends the show intent.
+    func kernelDownloadPodcast(_ id: UUID) {
+        kernel?.dispatch(namespace: "podcast",
+                         body: ["op": "download_podcast", "podcast_id": id.uuidString])
     }
 
     /// Dispatch a NIP-F4 (`kind:10154`) Nostr podcast discovery sweep
@@ -120,7 +129,7 @@ extension AppStateStore {
         // The Rust handler calls `subscribe_feedless_show`, which creates the
         // row and bumps rev; the next snapshot push frame lands the podcast.
         if let podcast = await awaitState(timeout: timeout, body: { [weak self] () -> Podcast? in
-            self?.state.podcasts.first(where: { $0.ownerPubkeyHex == pubkey })
+            self?.rustPodcastForOwnerPubkey(pubkey)
         }) {
             return podcast
         }
@@ -145,14 +154,57 @@ extension AppStateStore {
     }
 
     /// Pause playback.
-    func kernelPause() {
+    @discardableResult
+    func kernelPause() -> DispatchResult? {
         kernel?.dispatch(namespace: "podcast.player", body: ["op": "pause"])
     }
 
+    /// Arm or clear the Rust-owned sleep timer. Duration mode configures the
+    /// native OS timer through a Rust `AudioCommand`; end-of-episode mode stays
+    /// entirely in the Rust player actor and suppresses auto-advance on ItemEnd.
+    @discardableResult
+    func kernelSetSleepTimer(_ timer: PlaybackSleepTimer) -> DispatchResult? {
+        var body: [String: Any] = ["op": "set_sleep_timer"]
+        switch timer {
+        case .off:
+            body["secs"] = NSNull()
+        case .minutes(let minutes):
+            body["secs"] = max(1, minutes) * 60
+        case .endOfEpisode:
+            body["secs"] = NSNull()
+            body["end_of_episode"] = true
+        }
+        return kernel?.dispatch(namespace: "podcast.player", body: body)
+    }
+
+    /// Set playback speed through the Rust player actor.
+    @discardableResult
+    func kernelSetSpeed(_ speed: Double) -> DispatchResult? {
+        kernel?.dispatch(namespace: "podcast.player",
+                         body: ["op": "set_speed", "speed": speed])
+    }
+
     /// Seek to `positionSecs`.
-    func kernelSeek(positionSecs: Double) {
+    @discardableResult
+    func kernelSeek(positionSecs: Double) -> DispatchResult? {
         kernel?.dispatch(namespace: "podcast.player",
                          body: ["op": "seek", "position_secs": positionSecs])
+    }
+
+    /// Skip forward by `secs` from Rust's current player position.
+    @discardableResult
+    func kernelSkipForward(secs: Double?) -> DispatchResult? {
+        var body: [String: Any] = ["op": "skip_forward"]
+        if let secs { body["secs"] = secs }
+        return kernel?.dispatch(namespace: "podcast.player", body: body)
+    }
+
+    /// Skip backward by `secs` from Rust's current player position.
+    @discardableResult
+    func kernelSkipBackward(secs: Double?) -> DispatchResult? {
+        var body: [String: Any] = ["op": "skip_backward"]
+        if let secs { body["secs"] = secs }
+        return kernel?.dispatch(namespace: "podcast.player", body: body)
     }
 
     /// Write `positionSecs` for `episodeID` directly to the store without
@@ -169,9 +221,31 @@ extension AppStateStore {
 
     /// Play an episode from its saved position (or beginning).
     /// Rust stages the actor and dispatches `AudioCommand::Load + Play`.
-    func kernelPlay(episodeID: UUID) {
-        kernel?.dispatch(namespace: "podcast.player",
-                         body: ["op": "play", "episode_id": episodeID.uuidString])
+    @discardableResult
+    func kernelPlay(
+        episodeID: UUID,
+        startSeconds: Double? = nil,
+        endSeconds: Double? = nil
+    ) -> DispatchResult? {
+        kernelPlay(
+            episodeID: episodeID.uuidString,
+            startSeconds: startSeconds,
+            endSeconds: endSeconds
+        )
+    }
+
+    /// Play a raw episode id. Rust owns episode lookup, resume position, and
+    /// optional bounded-segment enforcement.
+    @discardableResult
+    func kernelPlay(
+        episodeID: String,
+        startSeconds: Double? = nil,
+        endSeconds: Double? = nil
+    ) -> DispatchResult? {
+        var body: [String: Any] = ["op": "play", "episode_id": episodeID]
+        if let startSeconds { body["start_secs"] = startSeconds }
+        if let endSeconds { body["end_secs"] = endSeconds }
+        return kernel?.dispatch(namespace: "podcast.player", body: body)
     }
 
     // MARK: - Inbox triage
@@ -192,15 +266,29 @@ extension AppStateStore {
     // MARK: - Episode state
 
     /// Mark an episode as fully played (namespace: podcast.inbox).
-    func kernelMarkPlayed(_ id: UUID) {
+    @discardableResult
+    func kernelMarkPlayed(_ id: UUID) -> DispatchResult? {
+        kernelMarkPlayed(episodeID: id.uuidString)
+    }
+
+    /// Mark an episode as fully played by raw id. Rust owns id validation.
+    @discardableResult
+    func kernelMarkPlayed(episodeID: String) -> DispatchResult? {
         kernel?.dispatch(namespace: "podcast.inbox",
-                         body: ["op": "mark_listened", "episode_id": id.uuidString])
+                         body: ["op": "mark_listened", "episode_id": episodeID])
     }
 
     /// Revert an accidental mark-played (namespace: podcast.inbox).
-    func kernelMarkUnplayed(_ id: UUID) {
+    @discardableResult
+    func kernelMarkUnplayed(_ id: UUID) -> DispatchResult? {
+        kernelMarkUnplayed(episodeID: id.uuidString)
+    }
+
+    /// Revert an accidental mark-played by raw id. Rust owns id validation.
+    @discardableResult
+    func kernelMarkUnplayed(episodeID: String) -> DispatchResult? {
         kernel?.dispatch(namespace: "podcast.inbox",
-                         body: ["op": "mark_unlistened", "episode_id": id.uuidString])
+                         body: ["op": "mark_unlistened", "episode_id": episodeID])
     }
 
     /// Reset the playback position to zero without marking the episode played (namespace: podcast.player).
@@ -233,23 +321,33 @@ extension AppStateStore {
     /// `kernelSubscribe`'s dispatch-then-await-projection pattern). Returns
     /// `nil` on timeout (e.g. Ollama offline); the caller falls back to the
     /// publisher description.
-    func kernelSummarizeEpisode(episodeID: UUID,
-                                timeout: Duration = .seconds(30)) async -> String? {
-        if let cached = episode(id: episodeID)?.summary, !cached.isEmpty {
-            return cached
+    func kernelSummarizeEpisode(episodeID: String,
+                                timeout: Duration = .seconds(30)) async -> (summary: String?, error: String?) {
+        let projectionID = UUID(uuidString: episodeID)
+        if let projectionID,
+           let cached = episode(id: projectionID)?.summary,
+           !cached.isEmpty {
+            return (cached, nil)
         }
-        kernel?.dispatch(namespace: "podcast",
-                         body: ["op": "summarize_episode",
-                                "episode_id": episodeID.uuidString])
+        let result = kernel?.dispatch(namespace: "podcast",
+                                      body: ["op": "summarize_episode",
+                                             "episode_id": episodeID])
+        if case let .some(.failure(message)) = result {
+            return (nil, message)
+        }
+        guard let projectionID else {
+            return (nil, nil)
+        }
         // React to the summary landing on the projected episode instead of
         // polling on a 300ms timer. `episode(id:)` reads `self.episodes`, so
         // the awaiter re-fires the instant `applyKernelState` stamps the
         // summary. Returns `nil` on timeout (e.g. Ollama offline).
-        return await awaitState(timeout: timeout, body: { [weak self] () -> String? in
-            guard let summary = self?.episode(id: episodeID)?.summary,
+        let summary = await awaitState(timeout: timeout, body: { [weak self] () -> String? in
+            guard let summary = self?.episode(id: projectionID)?.summary,
                   !summary.isEmpty else { return nil }
             return summary
         })
+        return (summary, nil)
     }
 
     // MARK: - Comments (NIP-22 / kind:1111)
@@ -298,21 +396,85 @@ extension AppStateStore {
     // MARK: - Queue (podcast.queue namespace)
 
     /// Push an episode to the back of the Rust-owned Up Next queue.
-    func kernelEnqueueLast(episodeID: UUID) {
-        kernel?.dispatch(namespace: "podcast.queue",
-                         body: ["op": "add_last", "episode_id": episodeID.uuidString])
+    @discardableResult
+    func kernelEnqueueLast(episodeID: UUID) -> DispatchResult? {
+        kernelEnqueueLast(episodeID: episodeID.uuidString)
+    }
+
+    /// Push a raw episode id to the back of the Rust-owned Up Next queue.
+    @discardableResult
+    func kernelEnqueueLast(episodeID: String) -> DispatchResult? {
+        kernel?.dispatch(namespace: "podcast.player",
+                         body: ["op": "enqueue", "episode_id": episodeID])
+    }
+
+    /// Push a bounded raw episode segment to the back of the Rust-owned queue.
+    @discardableResult
+    func kernelEnqueueSegmentLast(
+        episodeID: String,
+        startSeconds: Double?,
+        endSeconds: Double
+    ) -> DispatchResult? {
+        var body: [String: Any] = [
+            "op": "enqueue_segment",
+            "episode_id": episodeID,
+            "end_secs": endSeconds,
+        ]
+        if let startSeconds { body["start_secs"] = startSeconds }
+        return kernel?.dispatch(namespace: "podcast.player", body: body)
     }
 
     /// Push an episode to the front of the Rust-owned Up Next queue (Play Next).
-    func kernelEnqueueNext(episodeID: UUID) {
-        kernel?.dispatch(namespace: "podcast.queue",
-                         body: ["op": "add_next", "episode_id": episodeID.uuidString])
+    @discardableResult
+    func kernelEnqueueNext(episodeID: UUID) -> DispatchResult? {
+        kernelEnqueueNext(episodeID: episodeID.uuidString)
+    }
+
+    /// Push a raw episode id to the front of the Rust-owned Up Next queue.
+    @discardableResult
+    func kernelEnqueueNext(episodeID: String) -> DispatchResult? {
+        kernel?.dispatch(namespace: "podcast.player",
+                         body: ["op": "enqueue_next", "episode_id": episodeID])
+    }
+
+    /// Push a bounded raw episode segment to the front of the Rust-owned queue.
+    @discardableResult
+    func kernelEnqueueSegmentNext(
+        episodeID: String,
+        startSeconds: Double?,
+        endSeconds: Double
+    ) -> DispatchResult? {
+        var body: [String: Any] = [
+            "op": "enqueue_segment_next",
+            "episode_id": episodeID,
+            "end_secs": endSeconds,
+        ]
+        if let startSeconds { body["start_secs"] = startSeconds }
+        return kernel?.dispatch(namespace: "podcast.player", body: body)
     }
 
     /// Remove all occurrences of an episode from the Rust-owned Up Next queue.
     func kernelDequeueEpisode(episodeID: UUID) {
         kernel?.dispatch(namespace: "podcast.queue",
                          body: ["op": "remove", "episode_id": episodeID.uuidString])
+    }
+
+    /// Remove one Rust-owned queue slot from Up Next.
+    func kernelDequeueQueueItem(queueSlotID: UUID) {
+        kernel?.dispatch(namespace: "podcast.player",
+                         body: [
+                            "op": "dequeue_slot",
+                            "queue_slot_id": queueSlotID.uuidString,
+                         ])
+    }
+
+    /// Reorder existing Rust-owned queue slots.
+    func kernelReorderQueue(queueSlotIDs: [UUID]) {
+        kernel?.dispatch(namespace: "podcast.player",
+                         body: [
+                            "op": "reorder_queue",
+                            "queue_slot_ids": queueSlotIDs.map(\.uuidString),
+                         ])
     }
 
     /// Empty the Rust-owned Up Next queue.
@@ -430,24 +592,20 @@ extension AppStateStore {
     // MARK: - Downloads
 
     /// Queue a download (namespace: podcast).
-    /// Passes the episode enclosure URL directly in the dispatch to avoid
-    /// relying on Rust store lookup (which may not have the episode yet).
+    /// Rust owns episode lookup, URL resolution, and unknown-id rejection.
     func kernelDownload(_ id: UUID) {
-        guard let episode = episode(id: id) else {
-            os_log(.error, log: OSLog(subsystem: "io.f7z.podcast", category: "AppStateStore"),
-                   "kernelDownload: episode not found: %{public}s", id.uuidString)
-            return
-        }
+        kernelDownload(episodeID: id.uuidString)
+    }
 
-        let enclosureURL = episode.enclosureURL.absoluteString
-        os_log(.debug, log: OSLog(subsystem: "io.f7z.podcast", category: "AppStateStore"),
-               "kernelDownload: queuing episode=%{public}s url=%{public}s",
-               id.uuidString, enclosureURL)
+    /// Queue a download by raw episode id. Rust owns episode lookup and URL
+    /// resolution for agent/tool callers.
+    @discardableResult
+    func kernelDownload(episodeID: String) -> DispatchResult? {
         DiagnosticLog.shared.append(
             level: .info, category: "dispatch",
-            message: "download episode_id=\(id)")
-        kernel?.dispatch(namespace: "podcast",
-                         body: ["op": "download", "episode_id": id.uuidString, "url": enclosureURL])
+            message: "download episode_id=\(episodeID)")
+        return kernel?.dispatch(namespace: "podcast",
+                                body: ["op": "download", "episode_id": episodeID])
     }
 
     /// Cancel an in-progress or queued download (namespace: podcast.player).
@@ -584,22 +742,38 @@ extension AppStateStore {
     /// / failed / cleared states here. `status` is `"queued"` |
     /// `"fetching_publisher"` | `"transcribing"` | `"failed"` | `"none"`
     /// (clear). `message` carries the user-facing error for `"failed"`.
+    @discardableResult
     func kernelSetEpisodeTranscriptStatus(
         episodeID: UUID,
         status: String,
         message: String?,
         provider: String? = nil
-    ) {
+    ) -> DispatchResult? {
+        kernelSetEpisodeTranscriptStatus(
+            episodeID: episodeID.uuidString,
+            status: status,
+            message: message,
+            provider: provider
+        )
+    }
+
+    @discardableResult
+    func kernelSetEpisodeTranscriptStatus(
+        episodeID: String,
+        status: String,
+        message: String?,
+        provider: String? = nil
+    ) -> DispatchResult? {
         var body: [String: Any] = [
             "op": "set_episode_transcript_status",
-            "episode_id": episodeID.uuidString,
+            "episode_id": episodeID,
             "status": status,
         ]
         if let message { body["message"] = message }
         // Names the STT service on the `transcript.attempt` / `transcript.failed`
         // Diagnostics event so the log shows *which* provider is running.
         if let provider { body["provider"] = provider }
-        kernel?.dispatch(namespace: "podcast", body: body)
+        return kernel?.dispatch(namespace: "podcast", body: body)
     }
 
     /// Record that the transcript pipeline deliberately *skipped* an episode,

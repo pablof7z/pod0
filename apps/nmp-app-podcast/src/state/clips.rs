@@ -3,8 +3,8 @@
 //! Owns the single slot that was previously mirrored between
 //! `PodcastHandle` and `PodcastHostOpHandler`:
 //!
-//! * `clips` — in-memory list of user-saved audio clips.  **Persisted**
-//!   durability — survives app restart via `PodcastStore::set_clips`.
+//! * `clips` — user-saved audio clips, persisted to `clips.json` when a data
+//!   directory is bound.
 //!
 //! `ClipHandler` (the existing struct in `crate::clip_handler`) already
 //! encapsulates the action logic.  This substate composes it: the slot and
@@ -32,9 +32,7 @@ use crate::store::PodcastStore;
 /// Constructed once in `PodcastAppState::new` and referenced via
 /// `state.clips` on both seams.  All methods are `&self`.
 pub struct ClipsState {
-    /// In-memory clip list.  Persisted durability — survives app restart.
-    /// Hydrated from `PodcastStore` at construction time; written back on
-    /// every create / delete via `ClipHandler::persist_clips`.
+    /// Rust-owned clip list, persisted to `clips.json`.
     pub clips: Slot<Vec<ClipRecord>, Persisted>,
     /// Rev + signal + runtime (cloned from `PodcastAppState::infra`).
     infra: Infra,
@@ -45,16 +43,9 @@ pub struct ClipsState {
 
 impl ClipsState {
     /// Production constructor — called from `PodcastAppState::new`.
-    ///
-    /// Seeds the in-memory slot from any clips already persisted in the
-    /// store so user-saved clips survive app restart.
     pub fn new(infra: Infra, store: Arc<Mutex<PodcastStore>>) -> Self {
-        let initial = store
-            .lock()
-            .map(|s| s.clips().to_vec())
-            .unwrap_or_default();
         Self {
-            clips: Slot::new(initial),
+            clips: Slot::new(Vec::new()),
             infra,
             store,
         }
@@ -76,6 +67,12 @@ impl ClipsState {
         crate::clip_handler::project_clips(&self.clips.share(), library)
     }
 
+    /// Return the current clip row for `id`, if present.
+    pub fn clip(&self, id: &str) -> Option<ClipRecord> {
+        let clips = self.clips.lock().ok()?;
+        clips.iter().find(|rec| rec.id == id).cloned()
+    }
+
     // ── Action handler ────────────────────────────────────────────────────
 
     /// Route a single `podcast.clip.*` action.
@@ -95,6 +92,31 @@ impl ClipsState {
             self.infra.rev.clone(),
         )
         .handle(action)
+    }
+
+    /// Re-run kernel-owned autosnip refinement for clips that were captured
+    /// before timed transcript entries arrived.
+    pub fn refine_pending_for_episode(&self, episode_id: &str) -> Vec<ClipRecord> {
+        ClipHandler::new(
+            self.clips.share(),
+            self.store.clone(),
+            self.infra.rev.clone(),
+        )
+        .refine_pending_for_episode(episode_id)
+    }
+
+    /// Hydrate persisted clips from `<data_dir>/clips.json`.
+    ///
+    /// Returns true when a valid sidecar existed and was applied.
+    pub fn set_data_dir(&self, dir: &std::path::Path) -> bool {
+        let Some(restored) = crate::store::clip_records::load_clip_records(dir) else {
+            return false;
+        };
+        let Ok(mut clips) = self.clips.lock() else {
+            return false;
+        };
+        *clips = restored;
+        true
     }
 }
 
@@ -149,6 +171,9 @@ mod tests {
             start_secs: 10.0,
             end_secs: 40.0,
             title: Some("test clip".into()),
+            source: None,
+            transcript_text: None,
+            client_clip_id: None,
         });
         assert_eq!(out["ok"], true, "create must succeed");
         assert!(out["clip_id"].is_string(), "must return clip_id");
@@ -168,6 +193,9 @@ mod tests {
             start_secs: 0.0,
             end_secs: 60.0,
             title: None,
+            source: None,
+            transcript_text: None,
+            client_clip_id: None,
         });
         let clip_id = out["clip_id"].as_str().unwrap().to_owned();
         let rev1 = state.infra.rev();
@@ -188,6 +216,9 @@ mod tests {
             start_secs: 0.0,
             end_secs: 10.0,
             title: None,
+            source: None,
+            transcript_text: None,
+            client_clip_id: None,
         });
         assert_eq!(out["ok"], false);
     }

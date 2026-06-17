@@ -3,22 +3,12 @@ import Observation
 import os.log
 
 /// Mediates the agent's `ask` tool: when the model wants to consult the
-/// owner mid-loop, the dispatcher calls `ask(question:context:)`, which
-/// suspends until the owner answers, declines, or the 5-minute timeout
-/// fires.
+/// owner mid-loop, the dispatcher calls `ask(question:context:kernel:)`, which
+/// suspends until the owner answers, declines, or the timeout fires.
 ///
-/// One sheet at a time. Concurrent asks (e.g. two peer-agent conversations
-/// landing simultaneously) FIFO-queue; the head is published as `current`
-/// and `RootView` presents it via `.sheet(item:)` through
-/// `AgentAskPresenter`. Each ask resolves through its
-/// `CheckedContinuation` exactly once — `resolve` and `decline` are no-ops
-/// if the id is already settled, so a late timeout (or a swipe-dismiss
-/// after a resolve) cannot double-resume.
-///
-/// Ported from the win-the-day app's `AgentAskCoordinator` and adapted
-/// to podcast's `@Observable` / Swift Concurrency style. Keeps the same
-/// invariants: FIFO queue, 5-minute timeout, late-event dedup, single
-/// continuation resume per ask.
+/// Rust owns FIFO ordering, current-row promotion, timeout expiry, and the final
+/// tool-result envelope. Swift owns only modal presentation, continuation
+/// parking, and reporting raw owner actions back to Rust.
 @MainActor
 @Observable
 final class AgentAskCoordinator {
@@ -32,51 +22,58 @@ final class AgentAskCoordinator {
         let question: String
         let context: String?
         let createdAt: Date
+        let timeoutSeconds: UInt64
     }
 
     /// Drives the presenter's `.sheet(item:)`. Always equals `queue.first`.
     /// Read-only from the view layer; mutated only inside this type.
     private(set) var current: PendingAsk?
 
-    /// 5-minute hard timeout. Matches the spec contract returned to the
-    /// agent ("user did not respond within 5 minutes"). Static so callers
-    /// can reference it in tests without instantiating the coordinator.
-    static let timeoutSeconds: TimeInterval = 5 * 60
-
     @ObservationIgnored private let logger = Logger.app("AgentAskCoordinator")
-    @ObservationIgnored private var queue: [PendingAsk] = []
     @ObservationIgnored private var continuations: [UUID: CheckedContinuation<String, Never>] = [:]
-    @ObservationIgnored private var timeoutTasks: [UUID: Task<Void, Never>] = [:]
+    @ObservationIgnored private weak var kernel: KernelModel?
 
     init() {}
 
     // MARK: - Tool surface
 
-    /// Suspends until the owner answers, declines, or the 5-minute
-    /// timeout fires. Always returns a string (never throws) so the
-    /// dispatcher can wrap the result in a small JSON envelope. The
-    /// caller observes one of three sentinel outcomes:
-    ///   • the owner's transcribed / typed answer,
-    ///   • `"user declined to answer"` on explicit decline / dismiss,
-    ///   • `"user did not respond within 5 minutes"` on timeout.
-    func ask(question: String, context: String?) async -> String {
-        let trimmedQuestion = question.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedContext = context?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let id = UUID()
-        let pending = PendingAsk(
-            id: id,
-            question: trimmedQuestion.isEmpty ? "(no question)" : trimmedQuestion,
-            context: (trimmedContext?.isEmpty ?? true) ? nil : trimmedContext,
-            createdAt: Date()
-        )
-
-        return await withCheckedContinuation { (cont: CheckedContinuation<String, Never>) in
-            continuations[id] = cont
-            queue.append(pending)
-            promoteHeadIfNeeded()
-            armTimeout(for: id)
-            logger.debug("Enqueued ask \(id.uuidString, privacy: .public); queue depth \(self.queue.count)")
+    /// Suspends until the owner answers, declines, or the timeout fires.
+    /// Returns Rust's already-serialized tool envelope.
+    func ask(question: String, context: String?, kernel: KernelModel?) async -> String {
+        guard let kernel else {
+            return "{\"error\":\"ask is unavailable in this context — no kernel surface to prompt the owner.\"}"
         }
+        self.kernel = kernel
+        kernel.onAgentAskEvent = { [weak self] response in
+            self?.handleKernelAskEvent(response)
+        }
+        guard let response = kernel.agentAskEnqueue(question: question, context: context) else {
+            return "{\"error\":\"ask is unavailable in this context — kernel ask queue unavailable.\"}"
+        }
+        if let result = response.result {
+            applyCurrent(response.current)
+            return result
+        }
+        guard response.ok, let pending = makePending(response.enqueued) else {
+            return response.result ?? "{\"error\":\"ask was rejected by the kernel.\"}"
+        }
+        return await withCheckedContinuation { (cont: CheckedContinuation<String, Never>) in
+            continuations[pending.id] = cont
+            applyCurrent(response.current)
+            logger.debug("Enqueued ask \(pending.id.uuidString, privacy: .public)")
+        }
+    }
+
+    func handleKernelAskEvent(_ response: KernelModel.AgentAskResponse) {
+        guard let settledID = response.settledId,
+              let id = UUID(uuidString: settledID),
+              let cont = continuations.removeValue(forKey: id)
+        else {
+            applyCurrent(response.current)
+            return
+        }
+        applyCurrent(response.current)
+        cont.resume(returning: response.result ?? "{\"error\":\"ask did not return a result\"}")
     }
 
     // MARK: - UI surface
@@ -85,49 +82,48 @@ final class AgentAskCoordinator {
     /// answer. Idempotent: a second call for the same id is a no-op
     /// (covers swipe-dismiss after resolve, double-tap on Send, etc.).
     func resolve(_ id: UUID, with answer: String) {
-        finish(id, with: answer, reason: "answered")
+        finish(id, outcome: "answer", answer: answer, reason: "answered")
     }
 
     /// Called when the owner taps Decline or swipes the sheet down
     /// without answering. Idempotent for the same reason as `resolve`.
     func decline(_ id: UUID) {
-        finish(id, with: "user declined to answer", reason: "declined")
+        finish(id, outcome: "decline", answer: nil, reason: "declined")
     }
 
     // MARK: - Internals
 
-    private func promoteHeadIfNeeded() {
-        if current == nil {
-            current = queue.first
-        }
-    }
-
-    private func armTimeout(for id: UUID) {
-        // The Task inherits this type's `@MainActor` isolation, so
-        // `finish` is a direct (non-suspending) call — the only real
-        // suspend point is `Task.sleep`.
-        let task = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(Self.timeoutSeconds * 1_000_000_000))
-            guard !Task.isCancelled else { return }
-            self?.finish(id, with: "user did not respond within 5 minutes", reason: "timeout")
-        }
-        timeoutTasks[id] = task
-    }
-
     /// Single resolution path. Resumes the continuation exactly once
     /// (the `removeValue` ensures the second caller finds nothing) and
-    /// keeps queue / current / timeout state consistent.
-    private func finish(_ id: UUID, with answer: String, reason: String) {
-        guard let cont = continuations.removeValue(forKey: id) else {
-            // Already resolved — late timeout, double swipe, etc.
+    /// keeps current / timeout state consistent with Rust.
+    private func finish(_ id: UUID, outcome: String, answer: String?, reason: String) {
+        guard let response = kernel?.agentAskSettle(id: id.uuidString, outcome: outcome, answer: answer) else {
             return
         }
-        timeoutTasks.removeValue(forKey: id)?.cancel()
-        queue.removeAll { $0.id == id }
-        if current?.id == id {
-            current = queue.first
+        guard let cont = continuations.removeValue(forKey: id) else {
+            // Already resolved — late timeout, double swipe, etc.
+            applyCurrent(response.current)
+            return
         }
+        applyCurrent(response.current)
         logger.debug("Resolved ask \(id.uuidString, privacy: .public) via \(reason, privacy: .public)")
-        cont.resume(returning: answer)
+        cont.resume(returning: response.result ?? "{\"error\":\"ask did not return a result\"}")
+    }
+
+    private func applyCurrent(_ pending: KernelModel.AgentAskPending?) {
+        current = makePending(pending)
+    }
+
+    private func makePending(_ pending: KernelModel.AgentAskPending?) -> PendingAsk? {
+        guard let pending,
+              let id = UUID(uuidString: pending.id)
+        else { return nil }
+        return PendingAsk(
+            id: id,
+            question: pending.question,
+            context: pending.context,
+            createdAt: Date(timeIntervalSince1970: TimeInterval(pending.createdAt)),
+            timeoutSeconds: pending.timeoutSeconds
+        )
     }
 }

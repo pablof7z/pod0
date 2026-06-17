@@ -214,10 +214,10 @@ struct SettingsView: View {
     // MARK: - Derived values
 
     private var dataRecordCount: Int {
-        store.state.subscriptions.count
-            + store.episodes.count
+        store.rustFollowedPodcastCount()
+            + store.rustEpisodeCount()
             + store.activeNotes.count
-            + store.activeMemories.count
+            + (store.kernel?.podcastSnapshot?.memoryFacts.count ?? 0)
             + store.state.friends.count
             + store.activeAgentActivityCount
     }
@@ -230,7 +230,7 @@ struct SettingsView: View {
     }
 
     private var subscriptionCountLabel: String? {
-        let count = store.state.subscriptions.count
+        let count = store.rustFollowedPodcastCount()
         guard count > 0 else { return nil }
         return "\(count)"
     }
@@ -242,21 +242,10 @@ struct SettingsView: View {
     }
 
     private var downloadsSummaryLabel: String? {
-        var active = 0
-        var failed = 0
-        var downloaded = 0
-        for episode in store.episodes {
-            switch episode.downloadState {
-            case .queued, .downloading:
-                active += 1
-            case .failed:
-                failed += 1
-            case .downloaded:
-                downloaded += 1
-            case .notDownloaded:
-                break
-            }
-        }
+        let projection = DownloadsManagerProjection.load(store: store)
+        let active = projection.activeCount
+        let failed = projection.failedCount
+        let downloaded = projection.downloadedCount
         if active > 0 { return "\(active) active" }
         if failed > 0 { return "\(failed) failed" }
         if downloaded > 0 { return "\(downloaded) saved" }

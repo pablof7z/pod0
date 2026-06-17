@@ -389,14 +389,21 @@ fn queue_survives_unrelated_persist() {
     let mut store = PodcastStore::new();
     store.set_data_dir(dir.path.clone());
 
-    store.persist_with_queue(&["ep-1".to_owned(), "ep-2".to_owned()]);
+    store.persist_with_queue(&[
+        crate::queue::QueuedPlaybackItem::whole_episode("ep-1"),
+        crate::queue::QueuedPlaybackItem::whole_episode("ep-2"),
+    ]);
     // subscribe triggers an internal persist() — must not erase the queue
     store.subscribe(make_podcast("Side Show"), vec![]);
 
     let mut store2 = PodcastStore::new();
     store2.set_data_dir(dir.path.clone());
     assert_eq!(
-        store2.take_loaded_queue(),
+        store2
+            .take_loaded_queue()
+            .into_iter()
+            .map(|item| item.episode_id)
+            .collect::<Vec<_>>(),
         vec!["ep-1".to_owned(), "ep-2".to_owned()]
     );
 }

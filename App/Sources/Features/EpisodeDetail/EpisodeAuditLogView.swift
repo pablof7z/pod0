@@ -269,7 +269,9 @@ struct EpisodeAuditLogView: View {
         case .queued: return "queued"
         case .fetchingPublisher: return "fetching publisher"
         case .transcribing(let p): return "transcribing (\(Int(p * 100))%)"
-        case .ready(let source): return "ready · \(TranscriptIngestService.sourceDisplayName(source))"
+        case .ready(let source):
+            let label = TranscriptIngestService.sourceDisplayName(source, kernel: store.kernel) ?? source.rawValue
+            return "ready · \(label)"
         case .failed(let m): return "failed — \(m)"
         }
     }

@@ -13,12 +13,13 @@ struct CategoriesListView: View {
     @State private var recomputeSheetPresented = false
 
     var body: some View {
+        let projection = categoryProjection
         List {
             actionsSection
-            if sortedCategories.isEmpty {
+            if sortedCategories(projection: projection).isEmpty {
                 emptyStateSection
             } else {
-                categoriesSection
+                categoriesSection(projection: projection)
             }
         }
         .settingsListStyle()
@@ -68,53 +69,63 @@ struct CategoriesListView: View {
         }
     }
 
-    private var categoriesSection: some View {
+    private func categoriesSection(projection: CategoryLibraryProjection) -> some View {
+        let categories = sortedCategories(projection: projection)
         Section {
-            ForEach(sortedCategories) { category in
+            ForEach(categories) { category in
                 NavigationLink {
                     CategoryDetailView(categoryID: category.id)
                 } label: {
-                    row(for: category)
+                    row(for: category, projection: projection)
                 }
             }
         } header: {
-            Text("\(sortedCategories.count) categor\(sortedCategories.count == 1 ? "y" : "ies")")
+            Text("\(categories.count) categor\(categories.count == 1 ? "y" : "ies")")
         } footer: {
-            Text("Tap a category to override auto-download, transcription, RAG, and notifications for every show inside.")
+            Text("Tap a category to control transcription for every show inside. Other category-level policies will return once they are Rust-owned.")
         }
     }
 
     // MARK: - Row
 
     @ViewBuilder
-    private func row(for category: PodcastCategory) -> some View {
+    private func row(for category: PodcastCategory, projection: CategoryLibraryProjection) -> some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
             HStack(spacing: AppTheme.Spacing.sm) {
                 Text(category.name.isEmpty ? category.slug : category.name)
                     .font(AppTheme.Typography.body)
                 Spacer(minLength: 0)
-                Text(subscriptionCountLabel(for: category))
+                Text(subscriptionCountLabel(for: category, projection: projection))
                     .font(AppTheme.Typography.caption2)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
-            CategoryFeaturesChipStrip(settings: store.categorySettings(for: category.id))
+            CategoryFeaturesChipStrip(
+                transcriptionEnabled: projection.allTranscriptionEnabled(in: category.id) ?? true
+            )
         }
         .padding(.vertical, 2)
     }
 
     // MARK: - Derived
 
-    /// Categories sorted by display name (case-insensitive). Stable across
-    /// re-renders so navigation pushes don't reshuffle siblings.
-    private var sortedCategories: [PodcastCategory] {
-        store.state.categories.sorted {
-            $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
-        }
+    private var categoryProjection: CategoryLibraryProjection {
+        CategoryLibraryProjection
+            .load(categories: store.state.categories, store: store)
     }
 
-    private func subscriptionCountLabel(for category: PodcastCategory) -> String {
-        let n = category.subscriptionIDs.count
+    /// Categories sorted by Rust-owned category projection. Stable across
+    /// re-renders so navigation pushes don't reshuffle siblings.
+    private func sortedCategories(projection: CategoryLibraryProjection) -> [PodcastCategory] {
+        projection
+            .sortedCategories(from: store.state.categories)
+    }
+
+    private func subscriptionCountLabel(
+        for category: PodcastCategory,
+        projection: CategoryLibraryProjection
+    ) -> String {
+        let n = projection.podcastCount(in: category.id)
         return n == 1 ? "1 show" : "\(n) shows"
     }
 

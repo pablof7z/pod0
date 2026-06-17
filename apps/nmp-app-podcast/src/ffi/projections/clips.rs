@@ -19,6 +19,10 @@ use super::finite_f64_or_zero;
 /// distinct from `episode_title`. `None` when the user did not name
 /// the clip (e.g. AutoSnip with no follow-up rename).
 ///
+/// `transcript_text`, `speaker`, `source`, and `refinement_status` are
+/// kernel-owned autosnip metadata. Native shells render these values; they do
+/// not compute or revise clip boundaries locally.
+///
 /// `created_at` is Unix seconds — matches the timestamp convention
 /// already used by `PendingApprovalSnapshot::requested_at`.
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
@@ -38,6 +42,14 @@ pub struct ClipSummary {
     pub end_secs: f64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    #[serde(default)]
+    pub transcript_text: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speaker: Option<String>,
+    #[serde(default)]
+    pub source: String,
+    #[serde(default)]
+    pub refinement_status: String,
     /// Unix seconds when the clip was created. Set by the kernel
     /// (`chrono::Utc::now()` in the action handler) — never by the
     /// host.

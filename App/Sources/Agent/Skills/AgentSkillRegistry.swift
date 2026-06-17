@@ -64,6 +64,17 @@ enum AgentSkillRegistry {
         let updatedEnabledSkills: Set<String>
     }
 
+    private struct RustActivationResult: Decodable {
+        let success: Bool?
+        let error: String?
+        let enabledSkills: [String]?
+
+        enum CodingKeys: String, CodingKey {
+            case success, error
+            case enabledSkills = "enabled_skills"
+        }
+    }
+
     /// Processes a `use_skill` tool call: parses the args JSON, validates
     /// against the registry, and returns the JSON-encoded tool response plus
     /// the updated `enabledSkills` set. Single source of truth used by both
@@ -74,38 +85,46 @@ enum AgentSkillRegistry {
         currentEnabledSkills enabled: Set<String>
     ) -> ActivationResult {
         let args = (try? JSONSerialization.jsonObject(with: Data(argsJSON.utf8))) as? [String: Any] ?? [:]
-        let raw = args["skill_id"] as? String
-        let skillID = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !skillID.isEmpty else {
-            return ActivationResult(
-                resultJSON: AgentTools.toolError("Missing or empty 'skill_id'"),
-                updatedEnabledSkills: enabled
-            )
-        }
-        guard let s = skill(id: skillID) else {
-            let known = all.map(\.id).joined(separator: ", ")
-            return ActivationResult(
-                resultJSON: AgentTools.toolError("Unknown skill '\(skillID)'. Known skills: \(known)."),
-                updatedEnabledSkills: enabled
-            )
-        }
-        let alreadyEnabled = enabled.contains(s.id)
-        var updated = enabled
-        updated.insert(s.id)
         var payload: [String: Any] = [
-            "skill_id": s.id,
-            "display_name": s.displayName,
-            "already_enabled": alreadyEnabled,
-            "tools_unlocked": s.toolNames,
+            "skill_id": (args["skill_id"] as? String) ?? "",
+            "enabled_skills": Array(enabled),
+            "skills": all.map { skill in
+                [
+                    "skill_id": skill.id,
+                    "display_name": skill.displayName,
+                    "tool_names": skill.toolNames,
+                    "manual": skill.manual,
+                ]
+            },
         ]
-        // Skip re-sending the (large) manual when the skill was already
-        // active — the LLM already received it earlier in the conversation.
-        if !alreadyEnabled {
-            payload["manual"] = s.manual
+        guard let resultJSON = syncActionTool(op: "skill_activation", payload: payload),
+              let data = resultJSON.data(using: .utf8),
+              let decoded = try? JSONDecoder().decode(RustActivationResult.self, from: data)
+        else {
+            return ActivationResult(
+                resultJSON: AgentTools.toolError("Skill activation is unavailable"),
+                updatedEnabledSkills: enabled
+            )
         }
+        let updated = Set(decoded.enabledSkills ?? Array(enabled))
         return ActivationResult(
-            resultJSON: AgentTools.toolSuccess(payload),
+            resultJSON: resultJSON,
             updatedEnabledSkills: updated
         )
+    }
+
+    private static func syncActionTool(op: String, payload: [String: Any]) -> String? {
+        var request = payload
+        request["op"] = op
+        guard let data = try? JSONSerialization.data(withJSONObject: request),
+              let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        return json.withCString { ptr in
+            guard let result = nmp_app_podcast_agent_action_policy(ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            return String(cString: result)
+        }
     }
 }

@@ -24,8 +24,14 @@ import Foundation
 /// RAG search across transcripts (lane 4/7).
 public protocol PodcastAgentRAGSearchProtocol: Sendable {
     /// Semantic + keyword episode discovery. `scope` is an optional podcast ID
-    /// to constrain the search. Limit defaults to 10.
-    func searchEpisodes(query: String, scope: PodcastID?, limit: Int) async throws -> [EpisodeHit]
+    /// to constrain the search. `retrievalLimit` is Rust-planned and may exceed
+    /// the display `limit` so Rust rollup can still return distinct episodes.
+    func searchEpisodes(
+        query: String,
+        scope: PodcastID?,
+        limit: Int,
+        retrievalLimit: Int
+    ) async throws -> [EpisodeHit]
 
     /// Semantic transcript chunk lookup. `scope` may be an `EpisodeID` (single
     /// episode), a `PodcastID` (whole podcast), or `nil` (everything).
@@ -42,20 +48,20 @@ public protocol PodcastAgentRAGSearchProtocol: Sendable {
 /// Thin kernel-dispatch seam: the live implementation forwards to the Rust
 /// kernel's `podcast.summarize_episode` LLM pipeline (replacing the deleted
 /// Swift `LiveEpisodeSummarizerAdapter`) and awaits the summary on the snapshot
-/// projection. Returns a plain summary string, or `nil` when the kernel could
-/// not produce one (e.g. Ollama offline) so the caller can fall back to the
-/// publisher description.
-public protocol EpisodeSummaryProviding: Sendable {
-    func summarize(episodeID: EpisodeID) async -> String?
+/// projection. Rust owns the fallback decision when the kernel summary is
+/// unavailable.
+public enum EpisodeSummaryOutcome: Sendable, Equatable {
+    case summary(String)
+    case rejected(String)
+    case unavailable
 }
 
-/// Episode metadata + existence check (lane 2/3).
-public protocol EpisodeFetcherProtocol: Sendable {
-    /// Returns `true` iff an episode with the given ID exists in the local
-    /// library (any Podcast row, subscribed or not). Used by `play_episode`
-    /// to validate before touching the player.
-    func episodeExists(episodeID: EpisodeID) async -> Bool
+public protocol EpisodeSummaryProviding: Sendable {
+    func summarize(episodeID: EpisodeID) async -> EpisodeSummaryOutcome
+}
 
+/// Episode metadata lookup for tool result envelopes.
+public protocol EpisodeFetcherProtocol: Sendable {
     /// Returns `(podcastTitle, episodeTitle, durationSeconds?)` for an episode,
     /// or nil if not found. Best-effort metadata for tool result envelopes.
     func episodeMetadata(episodeID: EpisodeID) async -> (podcastTitle: String, episodeTitle: String, durationSeconds: Int?)?
@@ -81,7 +87,7 @@ public protocol PlaybackHostProtocol: Sendable {
         startSeconds: Double?,
         endSeconds: Double?,
         queuePosition: QueuePosition
-    ) async -> PlayEpisodeResult?
+    ) async -> PlayEpisodeOutcome
 
     /// Pause active playback and flush persisted position state.
     /// Returns `true` when the command was applied; `false` when no active
@@ -251,8 +257,8 @@ public protocol PerplexityClientProtocol: Sendable {
 
 /// TTS episode generation and voice configuration (lane 10).
 protocol TTSPublisherProtocol: Sendable {
-    func defaultVoiceID() -> String
-    func setDefaultVoiceID(_ voiceID: String)
+    func defaultVoiceID() async -> String
+    func setDefaultVoiceID(_ voiceID: String) async
     func generateAndPublish(
         title: String,
         description: String?,

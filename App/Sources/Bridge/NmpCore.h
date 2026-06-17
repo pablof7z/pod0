@@ -45,6 +45,21 @@ void nmp_app_lifecycle_background(void *app);
 
 void nmp_free_string(char *ptr);
 
+// Feed URL normalization shared by native shells. Rust owns trimming, default
+// HTTPS scheme insertion, allowed schemes, and host validation. Returns
+// `{"url":"..."}` or `{"error":"invalid_url"}`; caller frees with
+// `nmp_free_string`.
+char *nmp_app_podcast_normalize_feed_url(const char *input);
+
+// Nostr identity formatting shared by native shells. Rust owns NIP-19 public
+// key encoding via the same Nostr library used by the kernel identity store.
+// Returns `{"npub":"npub1..."}` or `{"error":"invalid_pubkey"}`; caller frees
+// with `nmp_free_string`.
+char *nmp_app_podcast_npub_from_hex(const char *pubkey_hex);
+// Parses either raw hex or `npub1...` into the canonical lowercase hex pubkey
+// plus its npub representation. Caller frees with `nmp_free_string`.
+char *nmp_app_podcast_parse_pubkey(const char *input);
+
 // ── T151 — generic dispatch ───────────────────────────────────────────────
 //
 // `nmp_app_dispatch_action` is the single namespace-keyed entry point for the
@@ -114,6 +129,153 @@ char *nmp_app_podcast_download_report(void *handle, const char *report_json);
 // fetch. Always returns NULL (no follow-up command). See
 // `apps/nmp-app-podcast/src/ffi/http_report.rs`.
 char *nmp_app_podcast_http_report(void *handle, const char *report_json);
+
+// Apple Podcasts directory helpers. Swift provides user intent and executes
+// the raw HTTP capability; Rust owns endpoint shape, limit clamping, and JSON
+// parsing. Return heap JSON envelopes freed with `nmp_free_string`.
+char *nmp_app_podcast_itunes_directory_search(void *handle, const char *intent_json);
+char *nmp_app_podcast_itunes_lookup_feed_url(void *handle, const char *intent_json);
+char *nmp_app_podcast_itunes_top_podcasts(void *handle, const char *intent_json);
+
+// Cross-episode threading projection. Rust owns topic/mention derivation from
+// kernel library, transcript, and categorization facts; Swift renders rows.
+char *nmp_app_podcast_threading_projection(void *handle);
+char *nmp_app_podcast_threading_active_topics(void *handle, const char *request_json);
+
+// Agent inventory. Swift owns the tool protocol surface; Rust owns inventory
+// scoping, filtering, ordering, and counts.
+char *nmp_app_podcast_agent_inventory(void *handle, const char *request_json);
+char *nmp_app_podcast_agent_empty_state(void *handle);
+char *nmp_app_podcast_agent_inventory_list(void *handle, const char *request_json);
+
+// Local show/episode search for the Search tab. Rust owns followed-feed scope,
+// scoring, snippets, archived-episode visibility, ranking, and caps. Swift
+// resolves returned ids and renders native rows.
+char *nmp_app_podcast_local_search(void *handle, const char *request_json);
+
+// Home projections. Rust owns Home product filters; Swift resolves ids and
+// renders native rows.
+char *nmp_app_podcast_home_continue_listening(void *handle, const char *request_json);
+char *nmp_app_podcast_home_triage_rollup(void *handle, const char *request_json);
+char *nmp_app_podcast_home_subscription_list(void *handle, const char *request_json);
+char *nmp_app_podcast_home_category_cards(void *handle, const char *request_json);
+
+// CarPlay projections. Rust owns section membership, feed scope, triage
+// visibility, ordering, and caps; Swift resolves ids and renders CP templates.
+char *nmp_app_podcast_carplay_listen_now(void *handle, const char *request_json);
+char *nmp_app_podcast_carplay_shows(void *handle, const char *request_json);
+char *nmp_app_podcast_carplay_show_episodes(void *handle, const char *request_json);
+char *nmp_app_podcast_carplay_downloads(void *handle, const char *request_json);
+
+// Library projections. Rust owns membership, archive visibility, ordering, and
+// caps; Swift resolves ids and renders native rows.
+char *nmp_app_podcast_library_show_episodes(void *handle, const char *request_json);
+char *nmp_app_podcast_library_podcast_stats(void *handle, const char *request_json);
+char *nmp_app_podcast_library_episode_for_audio_url(void *handle, const char *request_json);
+char *nmp_app_podcast_library_summary(void *handle);
+char *nmp_app_podcast_library_all_episodes(void *handle, const char *request_json);
+char *nmp_app_podcast_library_all_podcasts(void *handle, const char *request_json);
+char *nmp_app_podcast_library_followed_podcasts(void *handle);
+char *nmp_app_podcast_library_owned_podcasts(void *handle);
+char *nmp_app_podcast_library_categories(void *handle, const char *request_json);
+char *nmp_app_podcast_library_download_rows(void *handle);
+char *nmp_app_podcast_library_starred_episodes(void *handle);
+char *nmp_app_podcast_library_episode_lookup(void *handle, const char *request_json);
+char *nmp_app_podcast_library_subscription_status(void *handle, const char *request_json);
+char *nmp_app_podcast_library_podcast_for_owner_pubkey(void *handle, const char *request_json);
+char *nmp_app_podcast_library_categorization_prompt(void *handle);
+char *nmp_app_podcast_library_categorization_parse(void *handle, const char *request_json);
+char *nmp_app_podcast_library_category_change(void *handle, const char *request_json);
+
+// Agent chat title generation. Swift executes provider transport; Rust owns
+// message selection, prompt construction, title limits, and response parsing.
+char *nmp_app_podcast_agent_chat_title_prompt(void *handle, const char *request_json);
+char *nmp_app_podcast_agent_chat_title_parse(void *handle, const char *request_json);
+
+// Nostr peer-agent prompt framing. Swift supplies raw peer/profile/owner facts;
+// Rust owns peer-channel semantics, identity encoding, and fallback wording.
+char *nmp_app_podcast_agent_nostr_peer_prompt(void *handle, const char *request_json);
+
+// Main in-app agent system prompt. Swift supplies raw context facts; Rust owns
+// prompt prose, section ordering, caps, truncation, and fallback wording.
+char *nmp_app_podcast_agent_system_prompt(void *handle, const char *request_json);
+
+// Agent conversation-history tools. Swift supplies raw in-app/Nostr facts;
+// Rust owns source filtering, caps, ordering, search, snippets, and row shape.
+char *nmp_app_podcast_agent_conversation_history(void *handle, const char *request_json);
+
+// Agent voice-list tool. Swift supplies raw voice catalog rows; Rust owns query
+// matching, caps, row shaping, and tool-result counters.
+char *nmp_app_podcast_agent_voice_list(void *handle, const char *request_json);
+
+// Agent YouTube search tool. Swift executes the extractor capability; Rust owns
+// arg normalization, caps, and final tool-result shaping.
+char *nmp_app_podcast_agent_youtube_search_plan(void *handle, const char *request_json);
+char *nmp_app_podcast_agent_youtube_search_results(void *handle, const char *request_json);
+
+// Agent podcast-directory search tool. Swift executes the directory capability;
+// Rust owns arg normalization, type fallback, caps, and final row shaping.
+char *nmp_app_podcast_agent_directory_search_plan(void *handle, const char *request_json);
+char *nmp_app_podcast_agent_directory_search_results(void *handle, const char *request_json);
+
+// Agent category-list tool. Swift supplies raw category summaries from the
+// Rust-owned library projection; Rust owns caps, include flags, and row shape.
+char *nmp_app_podcast_agent_category_list(void *handle, const char *request_json);
+
+// Agent episode-list tool. Swift executes directory/feed capabilities; Rust
+// owns argument validation, identifier interpretation, caps, errors, and rows.
+char *nmp_app_podcast_agent_episode_list_plan(void *handle, const char *request_json);
+char *nmp_app_podcast_agent_episode_list_results(void *handle, const char *request_json);
+char *nmp_app_podcast_agent_episode_list_error(void *handle, const char *request_json);
+
+char *nmp_app_podcast_agent_owned_podcast_tool(void *handle, const char *request_json);
+
+char *nmp_app_podcast_agent_search_tool(void *handle, const char *request_json);
+
+char *nmp_app_podcast_agent_action_tool(void *handle, const char *request_json);
+char *nmp_app_podcast_agent_action_policy(const char *request_json);
+
+// Storage projections. Swift enumerates raw local files as a native capability;
+// Rust owns the join, orphan classification, totals, grouping, and ordering.
+char *nmp_app_podcast_storage_breakdown(void *handle, const char *request_json);
+
+// Agent-generated TTS episode metadata planner. Swift executes raw native
+// capabilities (TTS synthesis, duration loading, audio stitching, source fact
+// lookup); Rust owns generated chapter/transcript/artwork derivation.
+//
+// Request JSON:
+//   {"turns":[{"kind":"speech","text":"...","duration_secs":1.2},
+//             {"kind":"snippet","episode_id":"...","start_seconds":90,
+//              "duration_secs":15,"label":"...","source_episode_title":"...",
+//              "image_url":"https://..."}]}
+//
+// Response JSON:
+//   {"result":{"chapters":[{"start_secs":0,"title":"..."}],
+//              "transcript_segments":[{"start":0,"end":1.2,"text":"..."}],
+//              "transcript_text":"...","inherited_artwork_url":"..."}}
+// or {"error":"..."}.
+// The caller MUST free the returned pointer via `nmp_free_string`.
+char *nmp_app_podcast_agent_tts_episode_plan(void *handle, const char *request_json);
+
+char *nmp_app_podcast_agent_tts_tool_plan(void *handle, const char *request_json);
+char *nmp_app_podcast_agent_tts_tool_result(void *handle, const char *request_json);
+char *nmp_app_podcast_agent_voice_configure_plan(void *handle, const char *request_json);
+char *nmp_app_podcast_agent_voice_configure_result(void *handle, const char *request_json);
+
+// Effective default ElevenLabs voice for agent-generated TTS episodes. Rust
+// owns the fallback from empty settings to the product default.
+// Response JSON: {"result":{"voice_id":"..."}} or {"error":"..."}.
+// The caller MUST free the returned pointer via `nmp_free_string`.
+char *nmp_app_podcast_agent_tts_default_voice(void *handle);
+
+// Rust-owned descriptor for the default feed-less "Agent Generated" podcast.
+// Swift inserts this row through the existing create_podcast action.
+// Response JSON: {"result":{"podcast_id":"...","title":"...","description":"...",
+//                           "author":"...","visibility":"private",
+//                           "title_is_placeholder":false,"categories":[]}}
+// or {"error":"..."}.
+// The caller MUST free the returned pointer via `nmp_free_string`.
+char *nmp_app_podcast_agent_generated_podcast_descriptor(void *handle);
 // ── Identity / NIP-46 remote-signer FFI ───────────────────────────────────
 //
 // `nmp_app_signin_nsec` / `nmp_app_signin_bunker` enqueue the matching
@@ -213,6 +375,18 @@ char *nmp_app_podcast_network_report(void *handle, const char *report_json);
 // can access it. JSON shape: {"episode_id":"<uuid>","text":"<plain text>"}.
 // Always returns NULL.
 char *nmp_app_podcast_transcript_report(void *handle, const char *report_json);
+char *nmp_app_podcast_transcript_ingest_plan(void *handle, const char *request_json);
+char *nmp_app_podcast_transcript_auto_ingest_candidates(void *handle, const char *request_json);
+char *nmp_app_podcast_transcript_tool_result(void *handle, const char *request_json);
+char *nmp_app_podcast_episode_mutation_tool_result(void *handle, const char *request_json);
+char *nmp_app_podcast_playback_tool_result(void *handle, const char *request_json);
+char *nmp_app_podcast_now_playing_tool_result(void *handle);
+char *nmp_app_podcast_external_play_plan(void *handle, const char *request_json);
+char *nmp_app_podcast_agent_ask_enqueue(void *handle, const char *request_json);
+char *nmp_app_podcast_agent_ask_settle(void *handle, const char *request_json);
+typedef void (*NmpPodcastAgentAskCallback)(void *context, const char *event_json);
+void nmp_app_podcast_agent_ask_set_callback(void *handle, void *context, NmpPodcastAgentAskCallback callback);
+char *nmp_app_podcast_memory_remember_text(void *handle, const char *request_json);
 
 // Fetch the kernel's per-episode pipeline event log (download / transcript /
 // identify lifecycle) for one episode, lazily — these events deliberately do
@@ -290,6 +464,33 @@ char *nmp_app_podcast_provider_embed(void *handle, const char *intent_json);
 // Threading: BLOCKS (block_on). Call from a background thread / detached Task.
 char *nmp_app_podcast_knowledge_query(void *handle, const char *request_json);
 
+// Synchronous similar-episode lookup. Rust resolves the seed episode, derives
+// the seed query from Rust-owned episode metadata, runs the shared hybrid RAG
+// path, and filters the seed episode from results.
+//
+// Request JSON:
+//   {"episode_id":"…","limit":10}
+//
+// Response JSON: same row shape as nmp_app_podcast_knowledge_query.
+// The caller MUST free the returned pointer via `nmp_free_string`.
+// Threading: BLOCKS (block_on). Call from a background thread / detached Task.
+char *nmp_app_podcast_knowledge_similar_episode(void *handle, const char *request_json);
+
+// Home Related sheet projection. Rust owns seed-query construction, lens
+// policy, seed filtering, topic dedupe, and no-index category fallback.
+//
+// Request JSON:
+//   {"episode_id":"…","lens":"topic"|"sources","limit":8}
+//
+// Response JSON:
+//   {"result":[{"id":"…","episode_id":"…","podcast_id":"…",
+//               "episode_title":"…","podcast_title":"…",
+//               "chunk_index":0,"text":"…"},...]}
+// or {"error":"…"}.
+// The caller MUST free the returned pointer via `nmp_free_string`.
+// Threading: BLOCKS (block_on). Call from a background thread / detached Task.
+char *nmp_app_podcast_knowledge_home_related(void *handle, const char *request_json);
+
 // Synchronous chunk lookup by (episode_id, chunk_index). Read-only in-memory lookup.
 //
 // Request JSON:
@@ -303,6 +504,17 @@ char *nmp_app_podcast_knowledge_query(void *handle, const char *request_json);
 // The caller MUST free the returned pointer via `nmp_free_string`.
 // Threading: cheap in-memory lookup; callable from any non-actor thread.
 char *nmp_app_podcast_knowledge_chunk(void *handle, const char *request_json);
+
+// Resolve a raw agent transcript-search scope reference into either podcast_id
+// or episode_id. Rust owns canonical episode/podcast existence checks.
+//
+// Request JSON:
+//   {"scope":"…"}
+//
+// Response JSON:
+//   {"podcast_id":"…"} or {"episode_id":"…"} or {}
+// The caller MUST free the returned pointer via `nmp_free_string`.
+char *nmp_app_podcast_knowledge_resolve_scope(void *handle, const char *request_json);
 
 // Shared online-search transport. Swift passes a typed query intent:
 //   {"query":"..."}

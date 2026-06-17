@@ -4,6 +4,10 @@ import OSLog
 
 @MainActor
 final class AgentRunLogger: ObservableObject {
+    private struct AgentRunsResponse: Decodable {
+        let runs: [AgentRun]
+    }
+
     static let shared = AgentRunLogger()
     nonisolated static let logger = Logger.app("AgentRunLogger")
 
@@ -11,15 +15,6 @@ final class AgentRunLogger: ObservableObject {
 
     let directoryURL: URL
     let fileURL: URL
-
-    /// Cap on how many run records we keep on disk. A power user who
-    /// drives the agent dozens of times a day across months would
-    /// otherwise grow `runs` (and the on-disk JSON) unboundedly — each
-    /// record holds the full system prompt + per-turn message history
-    /// + tool-call payloads (often several KB). 500 is plenty of
-    /// diagnostic history without making `save()` a multi-MB write
-    /// on every new run.
-    static let maxRetainedRuns: Int = 500
 
     /// Configured once and reused — every `log(run:)` triggered a save
     /// that allocated a fresh encoder, configured it (`.iso8601` +
@@ -34,6 +29,12 @@ final class AgentRunLogger: ObservableObject {
         e.dateEncodingStrategy = .iso8601
         e.outputFormatting = [.sortedKeys]
         return e
+    }()
+
+    nonisolated static let decoder: JSONDecoder = {
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = .iso8601
+        return d
     }()
 
     /// Serial queue that owns every encode + write to `runs.json`.
@@ -56,18 +57,78 @@ final class AgentRunLogger: ObservableObject {
             Self.logger.error("AgentRunLogger: failed to create directory at \(path, privacy: .public) — \(error.localizedDescription, privacy: .public)")
         }
         runs = Self.load(from: fileURL)
+        runs = normalizeLoadedRuns(runs)
     }
 
     func log(run: AgentRun) {
-        runs.insert(run, at: 0)
-        if runs.count > Self.maxRetainedRuns {
-            runs.removeLast(runs.count - Self.maxRetainedRuns)
-        }
+        guard let normalized = agentRunPolicyRuns(
+            op: "agent_run_record",
+            extra: ["run": agentRunObject(run)]
+        ) else { return }
+        runs = normalized
         scheduleSave()
     }
 
     func clear() {
         runs = []
         scheduleSave()
+    }
+
+    func filteredRuns(filter: AgentRunFilter) -> [AgentRun] {
+        guard !filter.isEmpty else { return runs }
+        return agentRunPolicyRuns(
+            op: "agent_run_filter",
+            extra: [
+                "sources": filter.sources.map(\.rawValue),
+                "outcomes": filter.outcomes.map(\.rawValue),
+                "tool_name_query": filter.toolNameQuery,
+            ]
+        ) ?? []
+    }
+
+    func normalizeLoadedRuns(_ loadedRuns: [AgentRun]) -> [AgentRun] {
+        agentRunPolicyRuns(op: "agent_run_normalize", runs: loadedRuns) ?? []
+    }
+
+    private func agentRunPolicyRuns(
+        op: String,
+        runs inputRuns: [AgentRun]? = nil,
+        extra: [String: Any] = [:]
+    ) -> [AgentRun]? {
+        var payload: [String: Any] = [
+            "op": op,
+            "runs": agentRunObjects(inputRuns ?? runs),
+        ]
+        for (key, value) in extra {
+            payload[key] = value
+        }
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        return json.withCString { ptr -> [AgentRun]? in
+            guard let result = nmp_app_podcast_agent_action_policy(ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            let response = String(cString: result)
+            guard let data = response.data(using: .utf8),
+                  let decoded = try? Self.decoder.decode(AgentRunsResponse.self, from: data)
+            else { return nil }
+            return decoded.runs
+        }
+    }
+
+    private func agentRunObjects(_ runs: [AgentRun]) -> [[String: Any]] {
+        guard let data = try? Self.encoder.encode(runs),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+        else { return [] }
+        return object
+    }
+
+    private func agentRunObject(_ run: AgentRun) -> [String: Any] {
+        guard let data = try? Self.encoder.encode(run),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return [:] }
+        return object
     }
 }

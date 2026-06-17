@@ -13,26 +13,48 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
 
     private let ttsClient = ElevenLabsTTSBackendClient()
     weak var store: AppStateStore?
-    weak var playback: PlaybackState?
 
     private static let logger = Logger.app("AgentTTSComposer")
 
-    // MARK: - Voice configuration
-
-    private static let defaultVoiceIDKey = "io.f7z.podcast.agent.defaultVoiceID"
-
-    init(store: AppStateStore, playback: PlaybackState) {
+    init(store: AppStateStore) {
         self.store = store
-        self.playback = playback
     }
 
-    func defaultVoiceID() -> String {
-        UserDefaults.standard.string(forKey: Self.defaultVoiceIDKey)
-            ?? ElevenLabsTTSClient.defaultVoiceID
+    func defaultVoiceID() async -> String {
+        await MainActor.run { [weak self] in
+            guard let response = self?.store?.kernel?.agentTTSDefaultVoiceEnvelope(),
+                  let data = response.data(using: .utf8),
+                  let envelope = try? KernelDecoding.makeDecoder().decode(DefaultVoiceEnvelope.self, from: data),
+                  envelope.error == nil
+            else {
+                return ""
+            }
+            return envelope.result?.voiceID ?? ""
+        }
     }
 
-    func setDefaultVoiceID(_ voiceID: String) {
-        UserDefaults.standard.set(voiceID, forKey: Self.defaultVoiceIDKey)
+    func setDefaultVoiceID(_ voiceID: String) async {
+        await MainActor.run { [weak self] in
+            guard let store = self?.store else { return }
+            _ = store.kernel?.dispatch(namespace: "podcast.settings", body: [
+                "op": "set_eleven_labs_voice",
+                "voice_id": voiceID,
+                "voice_name": "",
+            ])
+        }
+    }
+
+    private struct DefaultVoiceEnvelope: Decodable {
+        let result: DefaultVoiceResult?
+        let error: String?
+    }
+
+    private struct DefaultVoiceResult: Decodable {
+        let voiceID: String
+
+        enum CodingKeys: String, CodingKey {
+            case voiceID = "voice_id"
+        }
     }
 
     // MARK: - TTSPublisherProtocol
@@ -57,33 +79,27 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
         let outputURL = try AgentGeneratedPodcastService.audioFileURL(episodeID: episodeID)
         let durationSeconds = try await NarrationAudioStitcher.stitch(tracks: tracks, outputURL: outputURL)
 
-        // 3. Build chapters and transcript from SURVIVING turns + resolved
-        //    durations — uses the filtered list so indices stay aligned.
-        let (chapters, transcript) = await buildChaptersAndTranscript(
+        // 3. Ask Rust to plan generated-episode metadata from raw host facts.
+        //    Swift executed the capabilities above (TTS, durations, stitching);
+        //    Rust owns chapter grouping, fallback labels, transcript segments,
+        //    flat transcript text, and inherited-artwork selection.
+        let plan = try await buildGeneratedEpisodePlan(
             turns: survivingTurns,
             trackDurations: trackDurations,
             episodeID: episodeID
         )
 
-        // 3b. Inherit artwork from the first snippet chapter that has one —
-        // covers the typical case where the TTS-stitched episode includes
-        // clips from a real show, so the result carries that show's image
-        // even though the "Agent Generated" podcast itself has
-        // none.
-        let inheritedArtwork = chapters.first(where: { $0.imageURL != nil })?.imageURL
-
         // 4. Add the episode to the Rust kernel store (the source of truth) so
         //    it survives the `applyKernelState` full-replace tick and
         //    `publish_episode` can later resolve it by id. The kernel owns the
-        //    episode lifecycle now; Swift only writes the audio file (already
-        //    done above) and builds the chapter structure. Chapter building
-        //    stays here because the artwork / source-episode-title resolution it
-        //    needs reads the Swift store. Chapters carry `imageUrl` +
-        //    `sourceEpisodeId` for parity (mid-play artwork swap + source chip).
+        //    episode lifecycle and generated metadata now; Swift only writes
+        //    the audio file and reports raw source facts to the planner.
         let podcastID: String = await MainActor.run {
             guard let store else { return "" }
-            let resolvedPodcastID = targetPodcastID
-                ?? AgentGeneratedPodcastService.ensurePodcastID(in: store)
+            guard let resolvedPodcastID = targetPodcastID
+                ?? AgentGeneratedPodcastService.ensurePodcastID(in: store) else {
+                return ""
+            }
             store.kernelAddEpisode(
                 podcastId: resolvedPodcastID.uuidString,
                 episodeId: episodeID.uuidString,
@@ -91,15 +107,14 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
                 enclosureUrl: outputURL.absoluteString,
                 description: description ?? "",
                 durationSecs: durationSeconds,
-                imageUrl: inheritedArtwork?.absoluteString,
-                chapters: chapters.map(Self.chapterWire),
-                transcript: transcript.segments.map(\.text)
-                    .joined(separator: " ").nilIfEmpty
+                imageUrl: plan.inheritedArtworkURL,
+                chapters: plan.chapters,
+                transcript: plan.transcriptText.nilIfEmpty
             )
             // Persist the timed transcript to the Swift TranscriptStore (file
             // I/O stays in Swift). The kernel holds the flat text for the
             // projection; the timed segments back the iOS transcript view.
-            try? TranscriptStore.shared.save(transcript)
+            try? TranscriptStore.shared.save(plan.transcript(episodeID: episodeID))
             return resolvedPodcastID.uuidString
         }
 
@@ -107,35 +122,12 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
             throw AgentTTSError.storeUnavailable
         }
 
-        // 5. Optionally start playback. The episode is not yet in the Swift
-        //    store (it rides the next projection push), so drive the player off
-        //    a locally-built `Episode` value — `PlaybackState.setEpisode`
-        //    retains its own reference and loads from the (already-downloaded)
-        //    local file, so it does not read this back from the store.
+        // 5. Optionally start playback. Rust owns the generated episode row
+        //    after `kernelAddEpisode`, so play through the player action path
+        //    instead of constructing a local Swift-only `Episode`.
         if playNow {
-            let episode = Episode(
-                id: episodeID,
-                podcastID: targetPodcastID ?? AgentGeneratedPodcastService.defaultPodcastID,
-                guid: episodeID.uuidString,
-                title: title,
-                description: description ?? "",
-                pubDate: Date(),
-                duration: durationSeconds,
-                enclosureURL: outputURL,
-                enclosureMimeType: "audio/mp4",
-                imageURL: inheritedArtwork,
-                chapters: chapters,
-                downloadState: .downloaded(
-                    localFileURL: outputURL,
-                    byteCount: (try? FileManager.default.attributesOfItem(atPath: outputURL.path)[.size] as? Int64) ?? 0
-                ),
-                generationSource: generationSource
-            )
             await MainActor.run {
-                guard let playback else { return }
-                playback.setEpisode(episode)
-                playback.seek(to: 0)
-                playback.play()
+                store?.kernelPlay(episodeID: episodeID, startSeconds: 0)
             }
         }
 
@@ -146,14 +138,6 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
             durationSeconds: durationSeconds,
             publishedToLibrary: true
         )
-    }
-
-    /// Convert an `Episode.Chapter` into the typed `add_episode` wire payload. Carries
-    /// the parity fields (`image_url`, `source_episode_id`) the kernel stores
-    /// and projects back onto the episode's chapters. One canonical chapter-wire
-    /// representation.
-    static func chapterWire(_ chapter: Episode.Chapter) -> KernelEpisodeChapterPayload {
-        KernelEpisodeChapterPayload(chapter)
     }
 
     // MARK: - Track building
@@ -178,7 +162,7 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
         for (index, turn) in turns.enumerated() {
             switch turn.kind {
             case .speech(let text, let voiceIDOverride):
-                let voice = voiceIDOverride ?? defaultVoiceID()
+                let voice = voiceIDOverride ?? await defaultVoiceID()
                 let audioURL = try await synthesizeSpeech(text: text, voiceID: voice, index: index)
                 let duration: TimeInterval
                 do {
@@ -225,113 +209,119 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
         return (tracks, durations, survivingTurns)
     }
 
-    // MARK: - Chapter + transcript building
+    // MARK: - Rust metadata planning
 
-    /// Converts the turn sequence into `Episode.Chapter` values and a
-    /// `Transcript`. Consecutive speech turns collapse into a single chapter;
-    /// each snippet turn gets its own chapter with the source episode's
-    /// artwork URL and `sourceEpisodeID` set for the player chip.
-    private func buildChaptersAndTranscript(
+    /// Build the Rust planner request from raw host facts. Swift reads source
+    /// episode title/artwork because those are already-rendered snapshot facts;
+    /// Rust decides how to turn them into generated chapters/transcript.
+    private func buildGeneratedEpisodePlan(
         turns: [TTSTurn],
         trackDurations: [Double],
         episodeID: UUID
-    ) async -> ([Episode.Chapter], Transcript) {
-        var chapters: [Episode.Chapter] = []
-        var transcriptSegments: [Segment] = []
-        var cursor: TimeInterval = 0
-
-        // Accumulator for consecutive speech turns.
-        var speechStart: TimeInterval?
-        var speechTexts: [String] = []
-
-        func flushSpeechChapter() {
-            guard !speechTexts.isEmpty, let start = speechStart else { return }
-            let combinedText = speechTexts.joined(separator: " ")
-            let preview = String(combinedText.prefix(60))
-            let chapterTitle = combinedText.count <= 60 ? combinedText : preview + "…"
-            chapters.append(Episode.Chapter(
-                startTime: start,
-                title: chapterTitle,
-                isAIGenerated: true
-            ))
-            speechStart = nil
-            speechTexts = []
-        }
-
-        // turns and trackDurations are guaranteed to be parallel and
-        // contain only positive durations (buildTracks filters skipped tracks).
+    ) async throws -> GeneratedTTSEpisodePlan {
+        var plannedTurns: [[String: Any]] = []
         for (index, turn) in turns.enumerated() {
             let duration = index < trackDurations.count ? trackDurations[index] : 0
-
             switch turn.kind {
             case .speech(let text, _):
-                if speechStart == nil { speechStart = cursor }
-                speechTexts.append(text)
-
-                // Each speech turn is a transcript segment.
-                transcriptSegments.append(Segment(
-                    start: cursor,
-                    end: cursor + duration,
-                    text: text
-                ))
+                plannedTurns.append([
+                    "kind": "speech",
+                    "text": text,
+                    "duration_secs": duration,
+                ])
 
             case .snippet(let sourceID, let snippetStart, _, let label):
-                // Close any open speech chapter first.
-                flushSpeechChapter()
-
-                // Resolve the source episode's artwork for the mid-play swap.
-                let artworkURL = await MainActor.run { [weak self] () -> URL? in
-                    guard let self, let store = self.store else { return nil }
-                    guard let uuid = UUID(uuidString: sourceID),
-                          let ep = store.episode(id: uuid) else { return nil }
-                    return ep.imageURL ?? store.podcast(id: ep.podcastID)?.imageURL
-                }
-
-                let chapterTitle: String
-                if let nonEmpty = label, !nonEmpty.isEmpty {
-                    chapterTitle = nonEmpty
-                } else if let resolved = await resolveEpisodeTitle(episodeID: sourceID) {
-                    chapterTitle = resolved
-                } else {
-                    // Episode not in store — use a time-anchored fallback so
-                    // the chapter still has a meaningful label.
-                    let minutes = Int(snippetStart) / 60
-                    let seconds = Int(snippetStart) % 60
-                    chapterTitle = String(format: "Quote at %d:%02d", minutes, seconds)
-                }
-
-                chapters.append(Episode.Chapter(
-                    startTime: cursor,
-                    title: chapterTitle,
-                    imageURL: artworkURL,
-                    isAIGenerated: true,
-                    sourceEpisodeID: sourceID
-                ))
-
-                // Snippet text becomes a transcript segment too.
-                if let labelText = label, !labelText.isEmpty {
-                    transcriptSegments.append(Segment(
-                        start: cursor,
-                        end: cursor + duration,
-                        text: labelText
-                    ))
-                }
+                var row: [String: Any] = [
+                    "kind": "snippet",
+                    "episode_id": sourceID,
+                    "start_seconds": snippetStart,
+                    "duration_secs": duration,
+                ]
+                if let label { row["label"] = label }
+                let facts = await sourceEpisodeFacts(episodeID: sourceID)
+                if let title = facts.title { row["source_episode_title"] = title }
+                if let imageURL = facts.imageURL { row["image_url"] = imageURL }
+                plannedTurns.append(row)
             }
-
-            cursor += duration
         }
 
-        // Flush any trailing speech turns.
-        flushSpeechChapter()
+        let request: [String: Any] = ["turns": plannedTurns]
+        let response = await MainActor.run { [weak self] in
+            self?.store?.kernel?.agentTTSEpisodePlanEnvelope(request: request)
+        }
+        guard let response else {
+            throw AgentTTSError.storeUnavailable
+        }
+        guard let data = response.data(using: .utf8) else {
+            throw AgentTTSError.plannerFailed("invalid UTF-8 response")
+        }
+        do {
+            let envelope = try KernelDecoding.makeDecoder().decode(GeneratedTTSPlanEnvelope.self, from: data)
+            if let error = envelope.error {
+                throw AgentTTSError.plannerFailed(error)
+            }
+            guard let result = envelope.result else {
+                throw AgentTTSError.plannerFailed("missing result")
+            }
+            return result
+        } catch let error as AgentTTSError {
+            throw error
+        } catch {
+            throw AgentTTSError.plannerFailed(error.localizedDescription)
+        }
+    }
 
-        let transcript = Transcript(
-            episodeID: episodeID,
-            language: "en",
-            source: .onDevice,
-            segments: transcriptSegments
-        )
+    private func sourceEpisodeFacts(episodeID: String) async -> (title: String?, imageURL: String?) {
+        await MainActor.run { [weak self] in
+            guard let self,
+                  let store = self.store,
+                  let uuid = UUID(uuidString: episodeID),
+                  let episode = store.episode(id: uuid)
+            else {
+                Self.logger.error(
+                    "AgentTTSComposer: episode not found for source fact lookup — episodeID=\(episodeID, privacy: .public)"
+                )
+                return (nil, nil)
+            }
+            let imageURL = episode.imageURL ?? store.podcast(id: episode.podcastID)?.imageURL
+            return (episode.title, imageURL?.absoluteString)
+        }
+    }
 
-        return (chapters, transcript)
+    private struct GeneratedTTSPlanEnvelope: Decodable {
+        let result: GeneratedTTSEpisodePlan?
+        let error: String?
+    }
+
+    private struct GeneratedTTSEpisodePlan: Decodable {
+        let chapters: [KernelEpisodeChapterPayload]
+        let transcriptSegments: [GeneratedTranscriptSegment]
+        let transcriptText: String
+        let inheritedArtworkURL: String?
+
+        enum CodingKeys: String, CodingKey {
+            case chapters
+            case transcriptSegments = "transcript_segments"
+            case transcriptText = "transcript_text"
+            case inheritedArtworkURL = "inherited_artwork_url"
+        }
+
+        func transcript(episodeID: UUID) -> Transcript {
+            Transcript(
+                episodeID: episodeID,
+                language: "en",
+                source: .onDevice,
+                segments: transcriptSegments.map {
+                    Segment(start: $0.start, end: $0.end, text: $0.text)
+                }
+            )
+        }
+    }
+
+    private struct GeneratedTranscriptSegment: Decodable {
+        let start: Double
+        let end: Double
+        let text: String
     }
 
     // MARK: - Speech synthesis → temp file
@@ -431,22 +421,6 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
             default:
                 return nil
             }
-        }
-    }
-
-    /// Returns the episode title for the given ID, or `nil` when the episode
-    /// cannot be found in the store. `nil` lets the caller compose a more
-    /// meaningful fallback than a generic string.
-    private func resolveEpisodeTitle(episodeID: String) async -> String? {
-        await MainActor.run {
-            guard let uuid = UUID(uuidString: episodeID),
-                  let episode = store?.episode(id: uuid) else {
-                Self.logger.error(
-                    "AgentTTSComposer: episode not found for chapter title lookup — episodeID=\(episodeID, privacy: .public)"
-                )
-                return nil
-            }
-            return episode.title
         }
     }
 

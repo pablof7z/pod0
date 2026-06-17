@@ -269,9 +269,7 @@ struct OnboardingSubscribePage: View {
     }
 
     private func isAlreadySubscribed(to suggestion: Suggestion) -> Bool {
-        guard let url = URL(string: suggestion.feed),
-              let podcast = store.podcast(feedURL: url) else { return false }
-        return store.subscription(podcastID: podcast.id) != nil
+        store.rustIsAlreadySubscribed(feedURL: suggestion.feed, ownerPubkey: nil)
     }
 }
 

@@ -31,6 +31,7 @@ struct AgentActivityLogView: View {
                 return false
             case .memories:
                 if case .memoryRecorded = entry.kind { return true }
+                if case .memoryFactRecorded = entry.kind { return true }
                 return false
             }
         }
@@ -254,4 +255,3 @@ struct AgentActivityLogView: View {
     }
     }
 }
-

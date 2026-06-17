@@ -58,6 +58,7 @@ impl PodcastStore {
         self.auto_download_enabled.clear();
         self.auto_download_modes.clear();
         self.auto_download_cellular_allowed.clear();
+        self.notifications_disabled.clear();
         self.memory_facts.clear();
         self.ad_segments.clear();
         self.clips.clear();
@@ -104,6 +105,9 @@ impl PodcastStore {
             }
             if row.cellular_allowed {
                 self.auto_download_cellular_allowed.insert(id);
+            }
+            if row.notifications_disabled {
+                self.notifications_disabled.insert(id);
             }
         }
         self.hydrate_download_maps(loaded.local_paths, loaded.file_sizes);
@@ -324,8 +328,9 @@ impl PodcastStore {
         self.nostr_profile_picture = loaded.settings.nostr_profile_picture;
         // nostr_public_key_hex is read-only (from Keychain), never hydrate from persisted state
         self.nostr_public_key_hex = None;
-        self.cached_queue = loaded.queue.clone();
-        self.loaded_queue = loaded.queue;
+        let loaded_queue: Vec<_> = loaded.queue.into_iter().map(Into::into).collect();
+        self.cached_queue = loaded_queue.clone();
+        self.loaded_queue = loaded_queue;
         // Restore deferred Wi-Fi downloads that were pending when the app was
         // last killed. These survive restart and are dispatched on the next
         // Wi-Fi connectivity event.
@@ -337,7 +342,7 @@ impl PodcastStore {
     /// `set_data_dir` call. Returns an empty vec on all subsequent calls
     /// (and before any load). The FFI layer seeds `PlaybackQueue` from this
     /// value immediately after `set_data_dir` returns.
-    pub fn take_loaded_queue(&mut self) -> Vec<String> {
+    pub fn take_loaded_queue(&mut self) -> Vec<crate::queue::QueuedPlaybackItem> {
         std::mem::take(&mut self.loaded_queue)
     }
 
@@ -349,14 +354,19 @@ impl PodcastStore {
             return;
         };
         let mut payload = self.to_persisted();
-        payload.queue = self.cached_queue.clone();
+        payload.queue = self
+            .cached_queue
+            .clone()
+            .into_iter()
+            .map(Into::into)
+            .collect();
         let _ = persistence::save(dir, &payload);
     }
 
     /// Update the cached queue and flush to `data_dir/podcasts.json`. Called
     /// by the queue action handler after every mutation so the queue survives
     /// app restart. Silent no-op when no data dir is set (D6).
-    pub(crate) fn persist_with_queue(&mut self, queue_items: &[String]) {
+    pub(crate) fn persist_with_queue(&mut self, queue_items: &[crate::queue::QueuedPlaybackItem]) {
         self.cached_queue = queue_items.to_vec();
         self.persist();
     }
@@ -380,6 +390,7 @@ impl PodcastStore {
                     .copied()
                     .filter(|m| m.is_enabled()),
                 cellular_allowed: self.auto_download_cellular_allowed.contains(id),
+                notifications_disabled: self.notifications_disabled.contains(id),
             })
             .collect();
         // Stable order so two consecutive saves produce identical bytes —

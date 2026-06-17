@@ -13,7 +13,6 @@ struct ThreadingTopicListView: View {
 
     @Environment(AppStateStore.self) private var store
     @State private var service = ThreadingInferenceService.shared
-    @State private var hasSeeded = false
 
     var body: some View {
         content
@@ -22,12 +21,6 @@ struct ThreadingTopicListView: View {
             .toolbar { toolbar }
             .task {
                 service.attach(store: store)
-#if DEBUG
-                if !hasSeeded {
-                    hasSeeded = true
-                    service.seedMockIfEmpty(store: store)
-                }
-#endif
             }
     }
 

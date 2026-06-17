@@ -151,14 +151,14 @@ extension AgentActivityKind {
     var icon: String {
         switch self {
         case .noteCreated: "note.text"
-        case .memoryRecorded: "brain"
+        case .memoryRecorded, .memoryFactRecorded: "brain"
         }
     }
 
     var tint: Color {
         switch self {
         case .noteCreated: .purple
-        case .memoryRecorded: .indigo
+        case .memoryRecorded, .memoryFactRecorded: .indigo
         }
     }
 }

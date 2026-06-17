@@ -10,7 +10,7 @@ import os.log
 // nothing on main loaded one (PR #253 called this out as UI-ahead-of-backend).
 //
 // This is the missing reaction: it keeps exactly one on-device engine resident,
-// matching the single `effectiveLocalModelID` derived from the role selections.
+// matching the single Rust-selected local model id derived from role selections.
 // It runs on every settings change and once at kernel attach.
 
 extension AppStateStore {
@@ -33,7 +33,7 @@ extension AppStateStore {
         }
         let service = localLLMService
 
-        guard let targetID = Self.effectiveLocalModelID(settings) else {
+        guard let targetID = effectiveLocalModelID(settings) else {
             Task { await service.unload() }
             return
         }

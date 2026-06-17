@@ -29,8 +29,6 @@ extension AgentRunLogger {
 
     static func load(from url: URL) -> [AgentRun] {
         guard let data = try? Data(contentsOf: url) else { return [] }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
         return (try? decoder.decode([AgentRun].self, from: data)) ?? []
     }
 }

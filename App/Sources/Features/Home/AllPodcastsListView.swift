@@ -19,6 +19,10 @@ struct AllPodcastsListView: View {
     @State private var showAddShowSheet: Bool = false
 
     var body: some View {
+        let libraryStats = LibraryPodcastStatsProjection.load(
+            podcastIDs: podcasts.map(\.id),
+            store: store
+        )
         List {
             if filteredPodcasts.isEmpty {
                 ContentUnavailableView(
@@ -33,7 +37,7 @@ struct AllPodcastsListView: View {
             } else {
                 ForEach(filteredPodcasts) { podcast in
                     NavigationLink(value: podcast) {
-                        row(for: podcast)
+                        row(for: podcast, libraryStats: libraryStats)
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
@@ -80,7 +84,7 @@ struct AllPodcastsListView: View {
             }
             Button("Cancel", role: .cancel) { pendingDelete = nil }
         } message: { podcast in
-            let episodes = store.episodes(forPodcast: podcast.id).count
+            let episodes = libraryStats.episodeCount(for: podcast.id)
             let count = episodes == 1 ? "1 episode" : "\(episodes) episodes"
             Text("This removes \(podcast.title.isEmpty ? "the podcast" : podcast.title) and \(count) from your library. This cannot be undone.")
         }
@@ -89,7 +93,7 @@ struct AllPodcastsListView: View {
     // MARK: - Rows
 
     @ViewBuilder
-    private func row(for podcast: Podcast) -> some View {
+    private func row(for podcast: Podcast, libraryStats: LibraryPodcastStatsProjection) -> some View {
         HStack(spacing: AppTheme.Spacing.md) {
             artwork(for: podcast)
             VStack(alignment: .leading, spacing: 2) {
@@ -97,10 +101,10 @@ struct AllPodcastsListView: View {
                     .font(AppTheme.Typography.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                metaLine(for: podcast)
+                metaLine(for: podcast, libraryStats: libraryStats)
             }
             Spacer(minLength: 0)
-            if store.subscription(podcastID: podcast.id) != nil {
+            if store.rustIsAlreadySubscribed(feedURL: nil, ownerPubkey: nil, podcastID: podcast.id) {
                 Text("Following")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
@@ -149,8 +153,8 @@ struct AllPodcastsListView: View {
             .foregroundStyle(.white.opacity(0.92))
     }
 
-    private func metaLine(for podcast: Podcast) -> some View {
-        let count = store.episodes(forPodcast: podcast.id).count
+    private func metaLine(for podcast: Podcast, libraryStats: LibraryPodcastStatsProjection) -> some View {
+        let count = libraryStats.episodeCount(for: podcast.id)
         let countLabel = count == 1 ? "1 episode" : "\(count) episodes"
         var parts: [String] = [countLabel]
         if !podcast.author.isEmpty { parts.append(podcast.author) }
@@ -167,23 +171,11 @@ struct AllPodcastsListView: View {
     /// surfacing it in this list would invite the user to delete the
     /// fallback row and break subsequent external plays).
     private var podcasts: [Podcast] {
-        store.allPodcasts
-            .filter { $0.id != Podcast.unknownID }
-            .sorted { lhs, rhs in
-                lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
-            }
+        store.rustAllPodcasts()
     }
 
     private var filteredPodcasts: [Podcast] {
-        guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return podcasts
-        }
-        let needle = searchText.lowercased()
-        return podcasts.filter {
-            $0.title.lowercased().contains(needle) ||
-            $0.author.lowercased().contains(needle) ||
-            ($0.feedURL?.host?.lowercased().contains(needle) ?? false)
-        }
+        store.rustAllPodcasts(query: searchText)
     }
 
     private var pendingDeleteBinding: Binding<Bool> {

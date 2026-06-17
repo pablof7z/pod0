@@ -98,9 +98,9 @@ struct SubscriptionService {
         guard let url = Self.normalizedFeedURL(from: trimmed) else {
             throw AddError.invalidURL
         }
-        // Delegate feed fetching and ingestion to the Rust kernel after the
-        // shell has normalized the user-entered URL into the same canonical
-        // shape used by duplicate detection.
+        // Rust normalizes the user-entered URL into the same canonical shape
+        // used by duplicate detection, then the kernel owns feed fetching and
+        // ingestion.
         // `kernelSubscribe` blocks until the podcast appears in the library
         // snapshot (or times out with an informative error).
         return try await store.kernelSubscribe(feedURL: url.absoluteString)

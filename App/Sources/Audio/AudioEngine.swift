@@ -25,7 +25,6 @@ struct EngineError: Error, Equatable, Sendable, CustomStringConvertible {
 /// - The active `AVPlayer` and its `AVPlayerItem`
 /// - `AudioSessionCoordinator` activation for `.podcastPlayback`
 /// - A `NowPlayingCenter` instance (lock-screen + Control Center bridge)
-/// - A `SleepTimer` (duration / end-of-episode / fade-out)
 ///
 /// Lifecycle: `idle → loading(Episode) → playing | paused → buffering → playing`,
 /// with `failed(EngineError)` reachable from any state. Observer wiring lives
@@ -66,14 +65,6 @@ final class AudioEngine {
     /// can flip it from `handleEndOfItem`.
     var didReachNaturalEnd: Bool = false
 
-    /// Sleep-timer surface so the player UI can render the countdown.
-    let sleepTimer = SleepTimer()
-
-    /// Called when `SleepTimer` fires. `PlaybackState` overrides this so timer
-    /// pauses travel through the same persistence and snapshot side effects as
-    /// an in-app pause.
-    var onSleepTimerFire: () -> Void = {}
-
     // ── Kernel-bridge throttle state (M1 Part 3) ────────────────────────
     // Throttle `onPlayingTick` to ≤1 Hz per D8. Track the last-reported
     // whole second so duplicate ticks within the same second are dropped.
@@ -91,11 +82,6 @@ final class AudioEngine {
     var onPauseEvent: ((String, Double) -> Void)?
     // url — fires on natural end of item.
     var onItemEnd: ((String) -> Void)?
-    // fires when the sleep timer stops playback at the natural end of an episode.
-    // Position is already flushed via onPauseEvent; this signals the caller to
-    // mark the episode played without triggering auto-advance.
-    var onSleepTimerEpisodeEnd: (() -> Void)?
-
     /// NowPlaying surface — exposed so the player can push artwork mid-playback
     /// once Lane 4 has it loaded (artwork isn't on `Episode` yet — Lane 2 owns).
     let nowPlaying = NowPlayingCenter()
@@ -160,16 +146,10 @@ final class AudioEngine {
     var endObserver: NSObjectProtocol?
     var fadeBaseVolume: Float = 1.0
 
-    /// Per-effect multiplier that composes into `player.volume` via
-    /// `applyEffectiveVolume`. Sleep timer drives `sleepFadeMultiplier`.
-    private var sleepFadeMultiplier: Float = 1.0
-
     // MARK: - Init / deinit
 
     init() {
         configureNowPlayingCallbacks()
-        onSleepTimerFire = { [weak self] in self?.pause() }
-        configureSleepTimerHooks()
         nowPlaying.setSkipIntervals(forward: skipForwardSeconds, backward: skipBackwardSeconds)
     }
 
@@ -248,7 +228,7 @@ final class AudioEngine {
             state = .failed(EngineError("Could not activate audio session: \(error.localizedDescription)"))
             return
         }
-        applyEffectiveVolume()
+        player.volume = fadeBaseVolume
         player.playImmediately(atRate: Float(rate))
         if state != .buffering { state = .playing }
         publishNowPlaying()
@@ -318,11 +298,6 @@ final class AudioEngine {
         publishNowPlaying()
     }
 
-    /// Arm a sleep-timer mode. See `SleepTimer.Mode`.
-    func setSleepTimer(_ mode: SleepTimer.Mode) {
-        sleepTimer.set(mode)
-    }
-
     func setNowPlayingCallbacks(_ callbacks: NowPlayingCenter.Callbacks) {
         nowPlaying.setCallbacks(callbacks)
     }
@@ -345,24 +320,6 @@ final class AudioEngine {
         cb.nextTrack     = { [weak self] in self?.skip(forward: nil) }
         cb.previousTrack = { [weak self] in self?.skip(back: nil) }
         nowPlaying.setCallbacks(cb)
-    }
-
-    private func configureSleepTimerHooks() {
-        sleepTimer.onFadeTick = { [weak self] multiplier in
-            guard let self else { return }
-            self.sleepFadeMultiplier = multiplier
-            self.applyEffectiveVolume()
-        }
-        sleepTimer.onFire = { [weak self] in
-            guard let self else { return }
-            self.onSleepTimerFire()
-            self.sleepFadeMultiplier = 1.0
-            self.applyEffectiveVolume()
-        }
-    }
-
-    private func applyEffectiveVolume() {
-        player.volume = fadeBaseVolume * sleepFadeMultiplier
     }
 
     // MARK: - Internal Now Playing helpers (used from +Observers extension)

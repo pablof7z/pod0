@@ -32,6 +32,8 @@ extension KernelModel {
         h.combine(update.nowPlaying?.durationSecs)
         h.combine(update.nowPlaying?.url)
         h.combine(update.nowPlaying?.volume)
+        h.combine(update.nowPlaying?.sleepTimerRemainingSecs)
+        h.combine(update.nowPlaying?.sleepTimerEndOfEpisode)
         h.combine(update.nowPlaying?.currentChapterTitle)
 
         // Settings
@@ -57,7 +59,12 @@ extension KernelModel {
 
         // Picks, queue, inbox, tasks
         for p in update.picks { h.combine(p.id) }
-        for q in update.queue { h.combine(q.id) }
+        for q in update.queue {
+            h.combine(q.id)
+            h.combine(q.queueStartSecs)
+            h.combine(q.queueEndSecs)
+            h.combine(q.queueSlotId)
+        }
         for i in update.inbox { h.combine(i.id) }
         h.combine(update.inboxLastTriagedAt)
         for t in update.agentTasks { h.combine(t.id); h.combine(t.status) }
@@ -75,7 +82,14 @@ extension KernelModel {
         // Memory, TTS, clips
         for m in update.memoryFacts { h.combine(m.id); h.combine(m.value) }
         for t in update.ttsEpisodes { h.combine(t.id); h.combine(t.status) }
-        for c in update.clips { h.combine(c.id) }
+        for c in update.clips {
+            h.combine(c.id)
+            h.combine(c.startSecs)
+            h.combine(c.endSecs)
+            h.combine(c.title)
+            h.combine(c.transcriptText)
+            h.combine(c.refinementStatus)
+        }
 
         // Ownership, search
         for o in update.ownedPodcasts { h.combine(o.id) }
@@ -113,6 +127,8 @@ extension KernelModel {
 
         // Social
         h.combine(update.social?.followingCount)
+        update.social?.approvedPubkeys.forEach { h.combine($0) }
+        update.social?.blockedPubkeys.forEach { h.combine($0) }
 
         // Widget (positionFraction excluded — too volatile)
         h.combine(update.widget?.nowPlayingEpisodeTitle)

@@ -31,17 +31,6 @@ enum AllEpisodesFilter: String, CaseIterable, Identifiable {
         }
     }
 
-    func matches(_ episode: Episode) -> Bool {
-        switch self {
-        case .all:        return true
-        case .unplayed:   return !episode.played && !episode.isInProgress
-        case .inProgress: return episode.isInProgress
-        case .downloaded:
-            if case .downloaded = episode.downloadState { return true }
-            return false
-        case .starred:    return episode.isStarred
-        }
-    }
 }
 
 // MARK: - AllEpisodesView
@@ -60,14 +49,19 @@ struct AllEpisodesView: View {
 
     var body: some View {
         let podcasts = podcastsByID
-        let filtered = filteredEpisodes
-        let visible = Array(filtered.prefix(visibleCount))
+        let projection = AllEpisodesProjection.load(
+            filter: filter,
+            query: searchText,
+            limit: visibleCount,
+            store: store
+        )
+        let visible = projection.episodes(in: store)
 
         List {
             filterRailSection
             episodeListSection(
                 visible: visible,
-                totalCount: filtered.count,
+                totalCount: projection.totalCount,
                 podcasts: podcasts
             )
         }
@@ -95,16 +89,7 @@ struct AllEpisodesView: View {
     // MARK: - Computed data
 
     private var podcastsByID: [UUID: Podcast] {
-        Dictionary(uniqueKeysWithValues: store.allPodcasts.map { ($0.id, $0) })
-    }
-
-    private var filteredEpisodes: [Episode] {
-        let byFilter = store.allEpisodesSorted.filter { filter.matches($0) }
-        guard !searchText.isEmpty else { return byFilter }
-        return byFilter.filter {
-            $0.title.localizedCaseInsensitiveContains(searchText) ||
-            $0.description.localizedCaseInsensitiveContains(searchText)
-        }
+        Dictionary(uniqueKeysWithValues: store.rustAllPodcasts().map { ($0.id, $0) })
     }
 
     // MARK: - Sections

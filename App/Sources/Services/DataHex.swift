@@ -5,8 +5,8 @@ import Foundation
 // Generic, dependency-free hex codec. Not crypto — it performs no key
 // derivation or signing, only byte ↔ ASCII-hex conversion. Relocated here
 // from the (deleted) Nostr key-pair file when key ownership moved to the
-// kernel; many call sites across the app (npub/pubkey rendering, blob hashes,
-// NIP-19 encoding) depend on it.
+// kernel; call sites across the app still use it for generic byte identifiers
+// such as blob hashes. Nostr pubkey/npub parsing and formatting is Rust-owned.
 
 extension Data {
     /// Lowercase hex string of the bytes (`%02x` per byte).

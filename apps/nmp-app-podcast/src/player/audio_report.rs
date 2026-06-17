@@ -56,6 +56,9 @@ impl PlayerActor {
                 Some(AudioCommand::Stop)
             }
             AudioReport::ItemEnd { .. } => {
+                let stop_at_end = self.sleep_timer_end_of_episode;
+                self.sleep_timer_end_of_episode = false;
+                self.state.sleep_timer_end_of_episode = false;
                 // Natural play-to-completion: set the natural-end flag so
                 // the snapshot surface and M1.3 business logic can
                 // distinguish this from a user-initiated stop. The flag is
@@ -64,7 +67,15 @@ impl PlayerActor {
                 // timer, clear skipped ads, set is_playing = false).
                 self.state.did_reach_natural_end = true;
                 self.on_stopped();
-                None
+                if stop_at_end {
+                    // Signal the FFI writeback layer to suppress auto-advance.
+                    // The engine is already paused at natural end; Pause is a
+                    // harmless executor command and keeps the public command
+                    // vocabulary unchanged.
+                    Some(AudioCommand::Pause)
+                } else {
+                    None
+                }
             }
         }
     }
@@ -84,6 +95,15 @@ impl PlayerActor {
         self.state.is_playing = true;
         self.state.buffering_fraction = None;
         self.state.last_error = None;
+
+        if let Some(end_secs) = self.state.segment_end_secs {
+            if position_secs >= end_secs {
+                self.state.segment_end_secs = None;
+                self.segment_end_reached = true;
+                self.on_stopped();
+                return Some(AudioCommand::Stop);
+            }
+        }
 
         // D9: check the authoritative sleep-timer deadline here, not
         // on the iOS side. If we've elapsed, ask iOS to stop and clear
@@ -137,7 +157,9 @@ impl PlayerActor {
         self.state.buffering_fraction = None;
         // Clear the timer on a hard stop so re-arming is required.
         self.sleep_deadline = None;
+        self.sleep_timer_end_of_episode = false;
         self.state.sleep_timer_remaining_secs = None;
+        self.state.sleep_timer_end_of_episode = false;
         // End-of-session: forget which ads we already auto-skipped so
         // a re-listen of the same episode starts with a clean slate.
         self.skipped_ad_ids.clear();

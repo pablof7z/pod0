@@ -660,6 +660,10 @@ data class ClipSummary(
     @SerialName("start_secs")   val startSecs: Double = 0.0,
     @SerialName("end_secs")     val endSecs: Double = 0.0,
     val title: String? = null,
+    @SerialName("transcript_text") val transcriptText: String = "",
+    val speaker: String? = null,
+    val source: String = "",
+    @SerialName("refinement_status") val refinementStatus: String = "",
     @SerialName("created_at")   val createdAt: Long = 0L,
 )
 

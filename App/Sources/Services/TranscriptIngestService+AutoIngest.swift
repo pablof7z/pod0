@@ -1,42 +1,96 @@
 import Foundation
 
-// MARK: - TranscriptIngestService auto-ingest decision logic
+// MARK: - TranscriptIngestService auto-ingest scheduling
 //
 // Split out from TranscriptIngestService.swift so the main file stays under
-// AGENTS.md's 500-line hard cap. These methods don't touch the per-episode
-// `inFlight`/`ingest` machinery - they only decide *which* episodes to push
-// into `ingest()`. The unit tests in `TranscriptAutoIngestTests` lean on the
-// `autoIngestCandidates` pure-function entry point.
+// AGENTS.md's 500-line hard cap. Swift supplies native file-availability facts,
+// asks Rust which episodes are actionable, and schedules host-side ingest
+// execution for the returned ids.
 
 extension TranscriptIngestService {
 
-    /// Human-readable name for a resolved transcript `Source`, used to label the
-    /// `transcript.ready` Diagnostics event with *which* service produced it.
-    /// Kept here (not the 497-line main file) to stay under the 500-line cap.
-    static func sourceDisplayName(_ source: TranscriptState.Source) -> String {
-        switch source {
-        case .publisher: return "Publisher feed"
-        case .scribe: return "ElevenLabs Scribe"
-        case .whisper: return "OpenRouter Whisper"
-        case .onDevice: return "Apple on-device"
-        case .assemblyAI: return "AssemblyAI"
-        case .other: return "Transcription service"
-        }
+    private struct TranscriptSourceLabelResponse: Decodable {
+        let label: String?
+        let error: String?
     }
 
-    /// Convenience: walk the store and ingest up to `maxCount` episodes that
-    /// are not yet `.ready` and have a publisher transcript URL. Useful as a
-    /// background warmup once the user lands on the library.
+    /// Ask Rust for the human-readable label used on the `transcript.ready`
+    /// Diagnostics event. Swift only passes the raw source tag.
+    static func sourceDisplayName(
+        _ source: TranscriptState.Source,
+        kernel: KernelModel?
+    ) -> String? {
+        guard let handle = kernel?.podcastHandlePointer else { return nil }
+        let request: [String: Any] = [
+            "op": "transcript_source_label",
+            "source": source.rawValue,
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: request),
+              let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        let envelope = json.withCString { ptr -> String? in
+            guard let result = nmp_app_podcast_agent_action_tool(handle, ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            return String(cString: result)
+        }
+        guard let envelope,
+              let responseData = envelope.data(using: .utf8),
+              let response = try? JSONDecoder().decode(TranscriptSourceLabelResponse.self, from: responseData),
+              response.error == nil
+        else { return nil }
+        return response.label
+    }
+
+    /// Ask Rust for the provider label attached to transcript attempt/failure
+    /// Diagnostics. Swift only passes the raw provider tag.
+    static func providerDisplayName(
+        _ provider: STTProvider,
+        kernel: KernelModel?
+    ) -> String? {
+        guard let handle = kernel?.podcastHandlePointer else { return nil }
+        let request: [String: Any] = [
+            "op": "stt_provider_label",
+            "provider": provider.rawValue,
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: request),
+              let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        let envelope = json.withCString { ptr -> String? in
+            guard let result = nmp_app_podcast_agent_action_tool(handle, ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            return String(cString: result)
+        }
+        guard let envelope,
+              let responseData = envelope.data(using: .utf8),
+              let response = try? JSONDecoder().decode(TranscriptSourceLabelResponse.self, from: responseData),
+              response.error == nil
+        else { return nil }
+        return response.label
+    }
+
+    /// Convenience: ask Rust for up to `maxCount` actionable episodes and
+    /// execute host-side ingest for the returned ids. Useful as a background
+    /// warmup once the user lands on the library.
     func ingestPending(maxCount: Int = 5) async {
         guard let appStore = appStore else {
             return
         }
-        let candidates = appStore.episodes
-            .filter { $0.publisherTranscriptURL != nil && !Self.isReady($0.transcriptState) }
-            .sorted { $0.pubDate > $1.pubDate }
-            .prefix(maxCount)
-        for episode in candidates {
-            await ingest(episodeID: episode.id)
+        let localAudio = Dictionary(
+            appStore.episodes.map { episode in
+                (episode.id, EpisodeDownloadStore.shared.exists(for: episode))
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let candidateIDs = appStore.kernel?.transcriptAutoIngestCandidates(
+            maxCount: maxCount,
+            localAudioAvailable: localAudio
+        ) ?? []
+        for episodeID in candidateIDs {
+            await ingest(episodeID: episodeID)
         }
     }
 
@@ -44,67 +98,30 @@ extension TranscriptIngestService {
     /// surfaces brand-new episode IDs. Filters to episodes the user would
     /// benefit from ingesting and dispatches an async `ingest` per candidate.
     ///
-    /// **Inclusion rule** (the unlock for cross-episode RAG):
-    ///   - Episode is not already `.ready`.
-    ///   - At least one path is available - either a `publisherTranscriptURL`
-    ///     with `autoIngestPublisherTranscripts` on, OR the Rust kernel
-    ///     resolves a cloud STT provider with `autoFallbackToScribe` on.
-    ///
-    /// `ingest()` itself handles per-category opt-out, dedup, and the
-    /// publisher -> Scribe fallback inside one call - so this method only has
-    /// to decide *whether to bother trying*. Without the relaxed filter,
-    /// shows that don't ship `<podcast:transcript>` (most indie podcasts)
-    /// get NOTHING auto-fetched even with Scribe configured, and the agent's
-    /// RAG layer comes up dark for those subscriptions.
+    /// Rust owns the inclusion rule, ordering, and cap: per-category opt-out,
+    /// publisher auto-ingest toggle, AI fallback toggle, provider resolution,
+    /// key presence, and local-file requirements. Swift schedules only the ids
+    /// Rust returns.
     func evaluateAutoIngest(newEpisodeIDs: [UUID]) {
         guard !newEpisodeIDs.isEmpty else { return }
         guard let appStore = appStore else { return }
         let episodes = newEpisodeIDs.compactMap { appStore.episode(id: $0) }
-        let effectiveRaw = appStore.kernel?.podcastSnapshot?.settings.effectiveSttProvider
-            ?? STTProvider.appleNative.rawValue
-        let effectiveProvider = STTProvider(rawValue: effectiveRaw) ?? .appleNative
-        let candidates = Self.autoIngestCandidates(
-            among: episodes,
-            settings: appStore.state.settings,
-            effectiveSttProvider: effectiveProvider
+        let localAudio = Dictionary(
+            episodes.map { episode in
+                (episode.id, EpisodeDownloadStore.shared.exists(for: episode))
+            },
+            uniquingKeysWith: { first, _ in first }
         )
+        let candidates = appStore.kernel?.transcriptAutoIngestCandidates(
+            maxCount: newEpisodeIDs.count,
+            episodeIDs: newEpisodeIDs,
+            localAudioAvailable: localAudio
+        ) ?? []
         guard !candidates.isEmpty else { return }
         for episodeID in candidates {
             Task { @MainActor [weak self] in
                 await self?.ingest(episodeID: episodeID)
             }
-        }
-    }
-
-    /// Pure decision logic for `evaluateAutoIngest`. Exposed `internal` so
-    /// `TranscriptAutoIngestTests` can pin the branching without driving the
-    /// full ingest pipeline (which needs network + ElevenLabs + sqlite-vec).
-    ///
-    /// Inclusion rule:
-    ///   - Episode is not already `.ready`.
-    ///   - At least one path is available - either the publisher transcript
-    ///     URL is present and `autoIngestPublisherTranscripts` is on, OR the
-    ///     ElevenLabs key is configured and `autoFallbackToScribe` is on.
-    static func autoIngestCandidates(
-        among episodes: [Episode],
-        settings: Settings,
-        effectiveSttProvider: STTProvider
-    ) -> [UUID] {
-        let publisherOn = settings.autoIngestPublisherTranscripts
-        // STT readiness for *feed-refresh-time* candidate selection is derived
-        // from the kernel's provider policy, not platform Keychain checks.
-        // `.appleNative` requires a local download; brand-new feed episodes
-        // do not have one yet, so bare episodes should wait for the
-        // post-download re-entry into `ingest()`.
-        let sttReady = effectiveSttProvider != .appleNative
-        let scribeOn = settings.autoFallbackToScribe && sttReady
-        guard publisherOn || scribeOn else { return [] }
-        return episodes.compactMap { episode -> UUID? in
-            guard !Self.isReady(episode.transcriptState) else { return nil }
-            if episode.publisherTranscriptURL != nil {
-                return publisherOn ? episode.id : nil
-            }
-            return scribeOn ? episode.id : nil
         }
     }
 }

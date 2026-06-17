@@ -26,10 +26,9 @@ struct HomeActiveFilterChip: Identifiable, Equatable, Sendable {
 enum HomeActiveFilters {
 
     /// Build the chip list from the current filter selections. Pure function
-    /// — `categoryName` resolves the category id to a display name (the
-    /// store's `category(id:)` lookup is what the caller passes in). The
-    /// `.all` library filter is treated as the unfiltered default and never
-    /// surfaces a chip.
+    /// — `categoryName` resolves the category id to a display name. The `.all`
+    /// library filter is treated as the unfiltered default and never surfaces
+    /// a chip.
     static func chips(
         filter: LibraryFilter,
         categoryID: UUID?,

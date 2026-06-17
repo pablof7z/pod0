@@ -47,9 +47,6 @@ struct ImageGenerationService: ImageGenerating {
             throw ImageGenerationError.malformedResponse
         }
         if let error = response["error"] as? String {
-            if error.localizedCaseInsensitiveContains("api key") {
-                throw ImageGenerationError.noAPIKey
-            }
             throw ImageGenerationError.serverError(error)
         }
         if let b64 = response["image_base64"] as? String,
@@ -61,14 +58,12 @@ struct ImageGenerationService: ImageGenerating {
 }
 
 enum ImageGenerationError: LocalizedError {
-    case noAPIKey
     case invalidResponse
     case serverError(String)
     case malformedResponse
 
     var errorDescription: String? {
         switch self {
-        case .noAPIKey: return "No OpenRouter API key configured."
         case .invalidResponse: return "Image generation server did not respond."
         case .serverError(let msg): return "Image generation failed: \(msg)"
         case .malformedResponse: return "Image generation returned unexpected data."

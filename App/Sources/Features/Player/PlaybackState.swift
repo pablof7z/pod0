@@ -21,7 +21,7 @@ final class PlaybackState {
     let engine: AudioEngine
 
     /// Injected by RootView at `.onAppear`. Used for kernel dispatch
-    /// (queue persistence, triage, download) without a retained cycle.
+    /// (queue persistence and playback state) without a retained cycle.
     weak var store: AppStateStore?
 
     // MARK: - Observable surface
@@ -30,16 +30,13 @@ final class PlaybackState {
     var sleepTimer: PlaybackSleepTimer = .off
 
     var sleepTimerChipLabel: String {
-        switch engine.sleepTimer.phase {
-        case .idle:
-            return "Sleep"
-        case .armed(let remaining), .fading(let remaining):
-            return Self.formatRemaining(remaining)
-        case .armedEndOfEpisode:
+        if store?.kernel?.podcastSnapshot?.nowPlaying?.sleepTimerEndOfEpisode == true {
             return "End"
-        case .fired:
-            return "Sleep"
         }
+        if let remaining = store?.kernel?.podcastSnapshot?.nowPlaying?.sleepTimerRemainingSecs {
+            return Self.formatRemaining(TimeInterval(remaining))
+        }
+        return "Sleep"
     }
 
     private static func formatRemaining(_ seconds: TimeInterval) -> String {
@@ -53,7 +50,6 @@ final class PlaybackState {
     }
 
     var queue: [QueueItem] = []
-    var currentSegmentEndTime: Double? = nil
     var seekHistory: [SeekHistoryEntry] = []
     var canJumpBack: Bool { !seekHistory.isEmpty }
 
@@ -73,7 +69,7 @@ final class PlaybackState {
 
     var rate: PlaybackRate {
         get { PlaybackRate.bestFit(for: engine.rate) }
-        set { engine.setRate(newValue.rawValue) }
+        set { setRate(newValue) }
     }
 
     // MARK: - Headphone gesture config
@@ -98,17 +94,10 @@ final class PlaybackState {
     /// point if the engine reached its natural end.
     func setEpisode(
         _ newEpisode: Episode,
-        enqueueDownloadIfNeeded: Bool = true,
         playAfterLoad: Bool = false
     ) {
         let isSameEpisode = (episode?.id == newEpisode.id)
-        if !isSameEpisode {
-            currentSegmentEndTime = nil
-        }
         episode = newEpisode
-        if newEpisode.isTriageArchived {
-            store?.clearTriageDecision(newEpisode.id)
-        }
         if !isSameEpisode {
             engine.load(newEpisode)
             if newEpisode.playbackPosition > 0 {
@@ -120,17 +109,6 @@ final class PlaybackState {
                 let resume = newEpisode.playbackPosition
                 let target = resume > 0 && resume < max(0, duration - 5) ? resume : 0
                 engine.seek(to: target)
-            }
-        }
-        if !isSameEpisode, enqueueDownloadIfNeeded {
-            // Only enqueue when the episode isn't already local or in flight —
-            // the Rust `podcast.download` handler enqueues on existence alone,
-            // so an unguarded dispatch would re-download a completed file.
-            switch newEpisode.downloadState {
-            case .notDownloaded, .failed:
-                store?.kernelDownload(newEpisode.id)
-            case .queued, .downloading, .downloaded:
-                break
             }
         }
         if playAfterLoad { play() }
@@ -187,7 +165,7 @@ final class PlaybackState {
     }
 
     func setRate(_ newRate: PlaybackRate) {
-        engine.setRate(newRate.rawValue)
+        store?.kernelSetSpeed(newRate.rawValue)
         Haptics.selection()
     }
 
@@ -206,7 +184,7 @@ final class PlaybackState {
 
     func setSleepTimer(_ timer: PlaybackSleepTimer) {
         sleepTimer = timer
-        engine.setSleepTimer(timer.engineMode)
+        store?.kernelSetSleepTimer(timer)
         Haptics.selection()
     }
 }

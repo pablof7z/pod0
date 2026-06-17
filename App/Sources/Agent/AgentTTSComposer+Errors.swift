@@ -18,6 +18,7 @@ enum AgentTTSError: LocalizedError {
     case snippetDownloadFailed(episodeID: String, message: String)
     case snippetDownloadTimeout(episodeID: String)
     case noPlayableContent
+    case plannerFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -37,6 +38,8 @@ enum AgentTTSError: LocalizedError {
             return "Timed out waiting for snippet episode \(episodeID) to download (5 min limit)."
         case .noPlayableContent:
             return "All TTS tracks failed audio loading; nothing to stitch."
+        case .plannerFailed(let message):
+            return "Generated episode planner failed: \(message)"
         }
     }
 }

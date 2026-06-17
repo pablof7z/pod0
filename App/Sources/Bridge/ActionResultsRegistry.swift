@@ -16,7 +16,7 @@ import Foundation
 //
 // Used by `BlossomKernelUploader` to await the `BlobDescriptor` URL after
 // dispatching `nmp.blossom.upload`. The pattern is structurally identical to
-// `SignedEventsRegistry` (drain-once, race-free, caller-timeout bounded).
+// `SignedEventsRegistry` (drain-once, race-free, kernel-settled).
 
 /// An individual settled action result as decoded from the wire frame.
 struct ActionResultEntry {
@@ -78,27 +78,37 @@ final class ActionResultsRegistry: @unchecked Sendable {
     }
 
     /// Await the settled `ActionResultEntry` for `correlationID`. Throws if the
-    /// action failed or if `cancel(correlationID:with:)` is called first.
+    /// action failed in the kernel-settled action result.
     func awaitResult(correlationID: String) async throws -> ActionResultEntry {
-        try await withCheckedThrowingContinuation { continuation in
-            lock.lock()
-            if let buffered = buffered.removeValue(forKey: correlationID) {
+        try Task.checkCancellation()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                lock.lock()
+                if Task.isCancelled {
+                    lock.unlock()
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
+                if let buffered = buffered.removeValue(forKey: correlationID) {
+                    lock.unlock()
+                    continuation.resume(with: buffered)
+                    return
+                }
+                waiters[correlationID] = continuation
                 lock.unlock()
-                continuation.resume(with: buffered)
-                return
             }
-            waiters[correlationID] = continuation
-            lock.unlock()
+        } onCancel: {
+            cancelWaiter(correlationID: correlationID)
         }
     }
 
-    /// Fail an outstanding waiter with `error` and drop any buffered result.
-    /// No-op when no waiter is registered for `correlationID`.
-    func cancel(correlationID: String, with error: Error) {
+    /// Drop a Swift task-local waiter when the awaiting task is cancelled.
+    /// This is lifecycle cleanup, not action failure policy; settled kernel
+    /// failures still arrive through `action_results`.
+    private func cancelWaiter(correlationID: String) {
         lock.lock()
         let waiter = waiters.removeValue(forKey: correlationID)
-        buffered.removeValue(forKey: correlationID)
         lock.unlock()
-        waiter?.resume(throwing: error)
+        waiter?.resume(throwing: CancellationError())
     }
 }

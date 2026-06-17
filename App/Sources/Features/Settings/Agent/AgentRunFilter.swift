@@ -22,19 +22,6 @@ struct AgentRunFilter: Equatable {
         sources.isEmpty && outcomes.isEmpty && toolNameQuery.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    func matches(_ run: AgentRun) -> Bool {
-        if !sources.isEmpty, !sources.contains(run.source) { return false }
-        if !outcomes.isEmpty, !outcomes.contains(run.finalOutcome) { return false }
-        let q = toolNameQuery.trimmingCharacters(in: .whitespaces)
-        if !q.isEmpty {
-            let needle = q.lowercased()
-            let hit = run.turns.contains { turn in
-                turn.toolDispatches.contains { $0.toolName.lowercased().contains(needle) }
-            }
-            if !hit { return false }
-        }
-        return true
-    }
 }
 
 /// `@AppStorage`-backed binding for `AgentRunFilter`. `@AppStorage`

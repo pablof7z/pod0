@@ -18,10 +18,9 @@ import Foundation
 // self-heals to a generated local key via `_ensureGeneratedKey`, then takes
 // the kernel path.
 //
-// The `author == .user` / `source != .agent` gate that keeps the user's
-// identity off agent-authored artefacts lives UPSTREAM in
-// `AppStateStore.addNote` / `addClip` — these methods only run for
-// user-authored content, so the kernel path inherits the same property.
+// The `author == .user` gate that keeps the user's identity off agent-authored
+// notes lives UPSTREAM in `AppStateStore.addNote`; this file only runs for
+// user-authored note content, so the kernel path inherits the same property.
 //
 // Lives in a separate file purely to keep `UserIdentityStore.swift` under
 // the 500-line hard cap defined in `AGENTS.md`.
@@ -131,48 +130,4 @@ extension UserIdentityStore {
         return kernelDispatchedEventStub(kind: 1, content: note.text, tags: [])
     }
 
-    /// Sign + publish a user-authored clip as a kind:9802 highlight (NIP-84)
-    /// with NIP-73 external content IDs for the podcast ecosystem.
-    ///
-    /// Passes typed fields to the `podcast.social` handler; the kernel
-    /// assembles the NIP-73 / NIP-84 tag set (`r` enclosure + feed, `i` item
-    /// guid with media-fragment time range, `context`, `alt`). Nostr tag
-    /// semantics belong in the kernel, matching `LivePeerEventPublisher`'s
-    /// "Swift passes typed values; Rust builds tags" convention (#355).
-    ///
-    /// `episode` and `podcast` are optional so callers that lack the
-    /// resolved models can still publish a degraded-but-valid event — the
-    /// kernel emits whichever tags the present fields support.
-    func publishUserClip(
-        _ clip: Clip,
-        episode: Episode? = nil,
-        podcast: Podcast? = nil
-    ) async throws -> SignedNostrEvent {
-        // Self-heal: a fresh user with no identity gets a kernel-generated
-        // account dispatched here (the pubkey lands on the next snapshot tick).
-        // The kernel signs with its active account — there is no Swift signer.
-        try _ensureGeneratedKey()
-
-        var body: [String: Any] = [
-            "op": "publish_highlight",
-            "content": clip.transcriptText,
-        ]
-        if let enclosureURL = episode?.enclosureURL {
-            body["enclosure_url"] = enclosureURL.absoluteString
-        }
-        if let feedURL = podcast?.feedURL {
-            body["feed_url"] = feedURL.absoluteString
-        }
-        if let guid = episode?.guid {
-            body["item_guid"] = guid
-            body["start_sec"] = clip.startMs / 1000
-            body["end_sec"]   = clip.endMs   / 1000
-        }
-        if let caption = clip.caption, !caption.isEmpty {
-            body["caption"] = caption
-        }
-
-        dispatchToKernel(namespace: "podcast.social", body: body)
-        return kernelDispatchedEventStub(kind: 9802, content: clip.transcriptText, tags: [])
-    }
 }

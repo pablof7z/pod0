@@ -98,14 +98,15 @@ struct HomeThreadedTodayView: View {
     // MARK: - Derivation
 
     /// Mentions of this topic restricted to *unplayed* episodes, in playback
-    /// (publish-newest-first) order. Drops dead-id mentions silently —
-    /// `threadingMentions(forTopic:)` already filters those, but we also
-    /// re-check `played` here because the store accessor doesn't.
+    /// (publish-newest-first) order. Rust owns the unplayed/archive/category
+    /// eligibility and returns the exact mention ids for this active topic;
+    /// Swift only resolves those ids to projected episodes for rendering.
     private var rows: [Row] {
-        // AI Inbox: archived episodes are silently soft-hidden from threading topics.
-        let unplayedIDs = Set(store.episodes.filter { !$0.played && !$0.isTriageArchived }.map(\.id))
-        return store.threadingMentions(forTopic: active.topic.id)
-            .filter { unplayedIDs.contains($0.episodeID) }
+        let mentionsByID = Dictionary(
+            uniqueKeysWithValues: store.threadingProjection.mentions.map { ($0.id, $0) }
+        )
+        return active.mentionIDs
+            .compactMap { mentionsByID[$0] }
             .compactMap { mention in
                 guard let ep = store.episode(id: mention.episodeID) else { return nil }
                 return Row(

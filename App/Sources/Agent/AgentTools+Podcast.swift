@@ -9,6 +9,42 @@ import Foundation
 // loop's `role:tool` message round-trip is unchanged.
 
 extension AgentTools {
+    private struct SearchPlan: Decodable {
+        let error: String?
+        let query: String?
+        let scope: String?
+        let limit: Int?
+        let retrievalLimit: Int?
+
+        enum CodingKeys: String, CodingKey {
+            case error
+            case query
+            case scope
+            case limit
+            case retrievalLimit = "retrieval_limit"
+        }
+    }
+
+    private struct SimilarSearchPlan: Decodable {
+        let error: String?
+        let seedEpisodeID: String?
+        let k: Int?
+
+        enum CodingKeys: String, CodingKey {
+            case error, k
+            case seedEpisodeID = "seed_episode_id"
+        }
+    }
+
+    private struct SummaryPlan: Decodable {
+        let error: String?
+        let episodeID: String?
+
+        enum CodingKeys: String, CodingKey {
+            case error
+            case episodeID = "episode_id"
+        }
+    }
 
     // MARK: - Tool name constants
 
@@ -246,19 +282,27 @@ extension AgentTools {
     // MARK: - search_episodes
 
     private static func searchEpisodesTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        guard let query = (args["query"] as? String)?.trimmed, !query.isEmpty else {
-            return toolError("Missing or empty 'query'")
+        guard let plan = await searchPlan(op: "search_plan", args: args) else {
+            return toolError("search_episodes planning is unavailable")
         }
-        let scope = (args["scope"] as? String)?.trimmed.nilIfEmpty
-        let limit = clampedLimit(args["limit"], default: podcastSearchDefaultLimit, max: podcastSearchMaxLimit)
+        if let error = plan.error { return toolError(error) }
+        guard let query = plan.query, let limit = plan.limit else {
+            return toolError("search_episodes plan was incomplete")
+        }
         do {
-            let hits = try await deps.rag.searchEpisodes(query: query, scope: scope, limit: limit)
-            let rows = hits.map(serializeEpisodeHit)
-            return toolSuccess([
+            let hits = try await deps.rag.searchEpisodes(
+                query: query,
+                scope: plan.scope,
+                limit: limit,
+                retrievalLimit: plan.retrievalLimit ?? limit
+            )
+            return await searchTool(
+                op: "episode_results",
+                payload: [
                 "query": query,
-                "total_found": rows.count,
-                "results": rows,
-            ])
+                    "results": hits.map(rawEpisodeHit),
+                ]
+            ) ?? toolError("search_episodes result shaping is unavailable")
         } catch {
             return toolError("search_episodes failed: \(error.localizedDescription)")
         }
@@ -267,29 +311,22 @@ extension AgentTools {
     // MARK: - query_transcripts
 
     private static func queryTranscriptsTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        guard let query = (args["query"] as? String)?.trimmed, !query.isEmpty else {
-            return toolError("Missing or empty 'query'")
+        guard let plan = await searchPlan(op: "transcript_plan", args: args) else {
+            return toolError("query_transcripts planning is unavailable")
         }
-        let scope = (args["scope"] as? String)?.trimmed.nilIfEmpty
-        let limit = clampedLimit(args["limit"], default: podcastTranscriptDefaultLimit, max: podcastSearchMaxLimit)
+        if let error = plan.error { return toolError(error) }
+        guard let query = plan.query, let limit = plan.limit else {
+            return toolError("query_transcripts plan was incomplete")
+        }
         do {
-            let hits = try await deps.rag.queryTranscripts(query: query, scope: scope, limit: limit)
-            let rows = hits.map { hit -> [String: Any] in
-                var row: [String: Any] = [
-                    "episode_id": hit.episodeID,
-                    "start_seconds": hit.startSeconds,
-                    "end_seconds": hit.endSeconds,
-                    "text": hit.text,
-                ]
-                if let speaker = hit.speaker { row["speaker"] = speaker }
-                if let s = hit.score { row["score"] = s }
-                return row
-            }
-            return toolSuccess([
+            let hits = try await deps.rag.queryTranscripts(query: query, scope: plan.scope, limit: limit)
+            return await searchTool(
+                op: "transcript_results",
+                payload: [
                 "query": query,
-                "total_found": rows.count,
-                "results": rows,
-            ])
+                    "results": hits.map(rawTranscriptHit),
+                ]
+            ) ?? toolError("query_transcripts result shaping is unavailable")
         } catch {
             return toolError("query_transcripts failed: \(error.localizedDescription)")
         }
@@ -298,19 +335,21 @@ extension AgentTools {
     // MARK: - perplexity_search
 
     private static func perplexitySearchTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        guard let query = (args["query"] as? String)?.trimmed, !query.isEmpty else {
-            return toolError("Missing or empty 'query'")
+        guard let plan = await searchPlan(op: "perplexity_plan", args: args) else {
+            return toolError("perplexity_search planning is unavailable")
         }
+        if let error = plan.error { return toolError(error) }
+        guard let query = plan.query else { return toolError("perplexity_search plan was incomplete") }
         do {
             let result = try await deps.perplexity.search(query: query)
             let sources = result.sources.map { src -> [String: Any] in
                 ["title": src.title, "url": src.url]
             }
-            return toolSuccess([
+            return await searchTool(op: "perplexity_results", payload: [
                 "query": query,
                 "answer": result.answer,
                 "sources": sources,
-            ])
+            ]) ?? toolError("perplexity_search result shaping is unavailable")
         } catch {
             return toolError("perplexity_search failed: \(error.localizedDescription)")
         }
@@ -319,47 +358,48 @@ extension AgentTools {
     // MARK: - summarize_episode
 
     private static func summarizeEpisodeTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        guard let episodeID = (args["episode_id"] as? String)?.trimmed, !episodeID.isEmpty else {
-            return toolError("Missing or empty 'episode_id'")
+        guard let plan = await summaryPlan(args: args) else {
+            return toolError("summarize_episode planning is unavailable")
         }
-        let exists = await deps.fetcher.episodeExists(episodeID: episodeID)
-        guard exists else {
-            return toolError("Episode not found: \(episodeID)")
-        }
+        if let error = plan.error { return toolError(error) }
+        guard let episodeID = plan.episodeID else { return toolError("summarize_episode plan was incomplete") }
         // Dispatches `podcast.summarize_episode` to the Rust kernel and awaits
-        // the summary on the snapshot projection (with a description fallback in
-        // the adapter). The fixed "2-3 sentences" kernel prompt has no length /
+        // the summary on the snapshot projection. Rust owns the fallback
+        // decision when the kernel summary is unavailable. The fixed "2-3 sentences" kernel prompt has no length /
         // bullet options, so the payload is a plain `{episode_id, summary}`.
-        guard let summary = await deps.summarizer.summarize(episodeID: episodeID),
-              !summary.isEmpty else {
+        switch await deps.summarizer.summarize(episodeID: episodeID) {
+        case let .summary(summary) where !summary.isEmpty:
+            return await searchTool(op: "summary_result", payload: [
+                "episode_id": episodeID,
+                "summary": summary,
+            ]) ?? toolError("summarize_episode result shaping is unavailable")
+        case let .rejected(message):
+            return toolError("summarize_episode rejected: \(message)")
+        case .summary, .unavailable:
             return toolError("summarize_episode failed: no summary available for \(episodeID)")
         }
-        return toolSuccess([
-            "episode_id": episodeID,
-            "summary": summary,
-        ])
     }
 
     // MARK: - find_similar_episodes
 
     private static func findSimilarEpisodesTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        guard let seed = (args["seed_episode_id"] as? String)?.trimmed, !seed.isEmpty else {
-            return toolError("Missing or empty 'seed_episode_id'")
+        guard let plan = await similarSearchPlan(args: args) else {
+            return toolError("find_similar_episodes planning is unavailable")
         }
-        let exists = await deps.fetcher.episodeExists(episodeID: seed)
-        guard exists else {
-            return toolError("Seed episode not found: \(seed)")
+        if let error = plan.error { return toolError(error) }
+        guard let seed = plan.seedEpisodeID, let k = plan.k else {
+            return toolError("find_similar_episodes plan was incomplete")
         }
-        let k = clampedLimit(args["k"], default: findSimilarDefaultK, max: 20)
         do {
             let hits = try await deps.rag.findSimilarEpisodes(seedEpisodeID: seed, k: k)
-            let rows = hits.map(serializeEpisodeHit)
-            return toolSuccess([
+            return await searchTool(
+                op: "episode_results",
+                payload: [
                 "seed_episode_id": seed,
                 "k": k,
-                "total_found": rows.count,
-                "results": rows,
-            ])
+                    "results": hits.map(rawEpisodeHit),
+                ]
+            ) ?? toolError("find_similar_episodes result shaping is unavailable")
         } catch {
             return toolError("find_similar_episodes failed: \(error.localizedDescription)")
         }
@@ -386,9 +426,7 @@ extension AgentTools {
         return Swift.max(1, Swift.min(max, asInt))
     }
 
-    /// Build the JSON-serializable row for an `EpisodeHit`. Shared by
-    /// `search_episodes` and `find_similar_episodes`.
-    private static func serializeEpisodeHit(_ hit: EpisodeHit) -> [String: Any] {
+    private static func rawEpisodeHit(_ hit: EpisodeHit) -> [String: Any] {
         var row: [String: Any] = [
             "episode_id": hit.episodeID,
             "podcast_id": hit.podcastID,
@@ -396,7 +434,7 @@ extension AgentTools {
             "podcast_title": hit.podcastTitle,
         ]
         if let publishedAt = hit.publishedAt {
-            row["published_at"] = iso8601Basic.string(from: publishedAt)
+            row["published_at"] = Int(publishedAt.timeIntervalSince1970)
         }
         if let dur = hit.durationSeconds {
             row["duration_seconds"] = dur
@@ -408,6 +446,63 @@ extension AgentTools {
             row["score"] = score
         }
         return row
+    }
+
+    private static func rawTranscriptHit(_ hit: TranscriptHit) -> [String: Any] {
+        var row: [String: Any] = [
+            "episode_id": hit.episodeID,
+            "start_seconds": hit.startSeconds,
+            "end_seconds": hit.endSeconds,
+            "text": hit.text,
+        ]
+        if let speaker = hit.speaker { row["speaker"] = speaker }
+        if let score = hit.score { row["score"] = score }
+        return row
+    }
+
+    private static func searchPlan(op: String, args: [String: Any]) async -> SearchPlan? {
+        guard let envelope = await searchTool(op: op, payload: ["args": args]),
+              let data = envelope.data(using: .utf8)
+        else { return nil }
+        return try? JSONDecoder().decode(SearchPlan.self, from: data)
+    }
+
+    private static func similarSearchPlan(args: [String: Any]) async -> SimilarSearchPlan? {
+        guard let envelope = await searchTool(op: "similar_plan", payload: ["args": args]),
+              let data = envelope.data(using: .utf8)
+        else { return nil }
+        return try? JSONDecoder().decode(SimilarSearchPlan.self, from: data)
+    }
+
+    private static func summaryPlan(args: [String: Any]) async -> SummaryPlan? {
+        guard let envelope = await searchTool(op: "summary_plan", payload: ["args": args]),
+              let data = envelope.data(using: .utf8)
+        else { return nil }
+        return try? JSONDecoder().decode(SummaryPlan.self, from: data)
+    }
+
+    private static func searchTool(op: String, payload: [String: Any]) async -> String? {
+        let handleBits = await MainActor.run {
+            KernelModel.shared?.podcastHandlePointer.map { Int(bitPattern: $0) }
+        }
+        guard let handleBits else { return nil }
+        var request = payload
+        request["op"] = op
+        guard let data = try? JSONSerialization.data(withJSONObject: request),
+              let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        return await Task.detached(priority: .userInitiated) {
+            guard let handle = UnsafeMutableRawPointer(bitPattern: handleBits) else {
+                return nil
+            }
+            return json.withCString { ptr in
+                guard let result = nmp_app_podcast_agent_search_tool(handle, ptr) else {
+                    return nil
+                }
+                defer { nmp_free_string(result) }
+                return String(cString: result)
+            }
+        }.value
     }
 }
 

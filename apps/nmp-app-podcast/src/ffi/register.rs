@@ -449,6 +449,8 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
         responder_cache,
         outbound_turn_cache,
         approved_peer_store,
+        ask_state: Arc::new(Mutex::new(super::agent_ask::AgentAskState::default())),
+        ask_callback: Arc::new(Mutex::new(super::agent_ask::AgentAskCallbackState::default())),
         snapshot_cache: Arc::new(Mutex::new(None)),
         clean_html_cache: Arc::new(Mutex::new(std::collections::HashMap::new())),
     });

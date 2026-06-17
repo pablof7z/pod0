@@ -26,8 +26,8 @@ import UIKit
 //           `AVVideoCompositionInstruction` that paints from the
 //           CALayer hierarchy each frame.
 //
-//   2. **Audio source.** Local-only via
-//      `EpisodeDownloadStore.shared.localFileURL(for:)`; throw
+//   2. **Audio source.** Local-only via the Rust-projected
+//      `Episode.downloadState.downloaded(localFileURL:)`; throw
 //      `ClipExporter.ExportError.audioUnavailable` when the file is
 //      missing. Streaming the enclosure would work but makes export
 //      time unpredictable; better to surface a "download first" error.
@@ -78,11 +78,11 @@ enum ClipVideoComposer {
     // MARK: - Audio resolution (used by the real export path; kept stable)
 
     private static func resolveLocalAudioURL(for episode: Episode) throws -> URL {
-        let store = EpisodeDownloadStore.shared
-        guard store.exists(for: episode) else {
+        guard case let .downloaded(localFileURL, _) = episode.downloadState,
+              FileManager.default.fileExists(atPath: localFileURL.path) else {
             throw ClipExporter.ExportError.audioUnavailable
         }
-        return store.localFileURL(for: episode)
+        return localFileURL
     }
 
     // MARK: - Background layer (used by the real export path; kept stable)

@@ -129,6 +129,7 @@ struct HomeView: View {
             }
             .onAppear { renderedAt = Date() }
             .task(id: topActiveThreadKey) {
+                store.refreshThreadingProjection()
                 cachedTopActiveThread = threadingService.topActiveTopics(
                     limit: 1,
                     subscriptionFilter: allowedSubscriptionIDs
@@ -147,20 +148,23 @@ struct HomeView: View {
 
     private var topActiveThreadKey: TopActiveThreadKey {
         TopActiveThreadKey(
-            episodeCount: store.episodes.count,
-            totalUnplayed: store.unplayedCountByShow.values.reduce(0, +),
-            mentionCount: store.state.threadingMentions.count,
+            episodeCount: store.rustEpisodeCount(),
+            totalUnplayed: store.rustTotalUnplayedCount(),
+            mentionCount: store.threadingProjection.mentions.count,
             categoryID: selectedCategoryID
         )
     }
 
+    private var categoryProjection: CategoryLibraryProjection {
+        CategoryLibraryProjection.load(categories: store.state.categories, store: store)
+    }
+
     /// Subscription-id set for the active category, or `nil` for All.
-    /// Resolved once and passed down so the featured surface, dateline,
-    /// and threaded-today rail all narrow to the same set of shows.
+    /// Rust resolves valid category membership; Swift passes the renderer
+    /// scope through to Rust-owned Home projections and native row builders.
     private var allowedSubscriptionIDs: Set<UUID>? {
-        guard let id = selectedCategoryID,
-              let category = store.category(id: id) else { return nil }
-        return Set(category.subscriptionIDs)
+        guard let id = selectedCategoryID else { return nil }
+        return Set(categoryProjection.podcastIDsByCategory[id] ?? [])
     }
 
     /// Resolved `PodcastCategory` for the active filter, or `nil` for All.
@@ -170,17 +174,19 @@ struct HomeView: View {
     }
 
     /// Roll-up of the agent's triage decisions for the subtitle under the
-    /// Inbox section header. Scopes counts to the active category so the
-    /// line reads consistently with the magazine-mode UI. Unplayed-only on
-    /// the inbox side — listened episodes drop off the surface anyway, so
-    /// counting them reads as stale.
+    /// Inbox section header. Rust owns the count semantics and active-category
+    /// scope; Swift passes only the renderer's podcast-id scope and displays
+    /// the returned values.
     private var triageCounts: (inbox: Int, archived: Int, shows: Int) {
         let interval = signposter.beginInterval("triageCounts")
         defer { signposter.endInterval("triageCounts", interval) }
-        // O(1) for All, O(category size) when scoped — reads the per-show
-        // triage buckets precomputed once in `recomputeEpisodeProjections`,
-        // instead of rescanning every episode on every `body` pass.
-        return store.triageRollup(allowed: allowedSubscriptionIDs)
+        let podcastIDs = allowedSubscriptionIDs.map { Array($0) } ?? []
+        let decoder = JSONDecoder()
+        guard let envelope = store.kernel?.homeTriageRollupEnvelope(podcastIDs: podcastIDs),
+              let data = envelope.data(using: .utf8),
+              let decoded = try? decoder.decode(HomeTriageRollupEnvelope.self, from: data)
+        else { return (0, 0, 0) }
+        return (decoded.inbox, decoded.archived, decoded.shows)
     }
 
     private var inboxLastTriagedAt: Date? {
@@ -242,22 +248,28 @@ struct HomeView: View {
         }
     }
 
-    /// In-progress episodes from the last 2 weeks, scoped to the active
-    /// category. Used by the Continue Listening section.
+    /// In-progress episodes for the Continue Listening section. Rust owns the
+    /// product filter (unplayed, non-archived, started, last two weeks, active
+    /// category scope) and returns ordered episode ids; Swift resolves them for
+    /// native row rendering.
     private var continueListeningEpisodes: [Episode] {
-        let twoWeeksAgo = Date().addingTimeInterval(-14 * 24 * 3600)
-        let scoped = HomeCategoryScope.episodesInCategory(
-            store.inProgressEpisodes,
-            allowedSubscriptionIDs: allowedSubscriptionIDs
-        )
-        return scoped.filter { $0.pubDate >= twoWeeksAgo }
+        let podcastIDs = allowedSubscriptionIDs.map { Array($0) } ?? []
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        guard let envelope = store.kernel?.homeContinueListeningEnvelope(limit: 20, podcastIDs: podcastIDs),
+              let data = envelope.data(using: .utf8),
+              let decoded = try? decoder.decode(HomeContinueListeningEnvelope.self, from: data)
+        else { return [] }
+        return decoded.episodeIds
+            .compactMap { UUID(uuidString: $0) }
+            .compactMap { store.episode(id: $0) }
     }
 
     // MARK: - Subscription surface
 
     @ViewBuilder
     private var subscriptionsSurface: some View {
-        if store.state.subscriptions.isEmpty {
+        if store.rustFollowedPodcastCount() == 0 {
             VStack(spacing: AppTheme.Spacing.lg) {
                 HomeFirstRunEmptyState(onAddShow: { showAddShowSheet = true })
                 // Even with zero follows the user can have podcasts in the
@@ -302,39 +314,34 @@ struct HomeView: View {
     /// be reachable only after the user follows something, which defeats
     /// the point of surfacing unfollowed shows.
     private var hasUnfollowedPodcasts: Bool {
-        let followed = Set(store.state.subscriptions.map(\.podcastID))
-        return store.allPodcasts.contains {
-            $0.id != Podcast.unknownID && !followed.contains($0.id)
-        }
+        store.rustHasUnfollowedPodcasts()
     }
 
     // MARK: - Filter derivation
     //
     // Filters apply to the subscription list ONLY — featured is curated.
-    // Pure derivation kept inline so the `body` getter stays straightforward
-    // without an extra service indirection for trivial in-memory work.
+    // Rust owns subscription visibility and ordering; Swift passes the active
+    // filter/category scope and resolves the returned ids for native rows.
 
     private var filteredSubs: [Podcast] {
-        let recencySorted = store.sortedFollowedPodcastsByRecency
-        let categoryScoped = applyCategoryFilter(recencySorted)
-        switch filter {
-        case .all:         return categoryScoped
-        case .unplayed:    return categoryScoped.filter { store.unplayedCount(forPodcast: $0.id) > 0 }
-        case .downloaded:  return categoryScoped.filter { store.hasDownloadedEpisode(forPodcast: $0.id) }
-        case .transcribed: return categoryScoped.filter { store.hasTranscribedEpisode(forPodcast: $0.id) }
-        }
-    }
-
-    private func applyCategoryFilter(_ subs: [Podcast]) -> [Podcast] {
-        guard let id = selectedCategoryID,
-              let category = store.category(id: id) else { return subs }
-        let allowed = Set(category.subscriptionIDs)
-        return subs.filter { allowed.contains($0.id) }
+        let podcastIDs = allowedSubscriptionIDs.map { Array($0) } ?? []
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        guard let envelope = store.kernel?.homeSubscriptionListEnvelope(
+            filter: filter.rawValue,
+            podcastIDs: podcastIDs
+        ),
+              let data = envelope.data(using: .utf8),
+              let decoded = try? decoder.decode(HomeSubscriptionListEnvelope.self, from: data)
+        else { return [] }
+        return decoded.podcastIds
+            .compactMap { UUID(uuidString: $0) }
+            .compactMap { store.podcast(id: $0) }
     }
 
     private var selectedCategoryID: UUID? {
         guard let id = UUID(uuidString: categoryFilterID),
-              store.category(id: id) != nil else { return nil }
+              categoryProjection.categoryIDs.contains(id) else { return nil }
         return id
     }
 
@@ -362,22 +369,18 @@ struct HomeView: View {
     /// read straight off the live snapshot. Picks are ephemeral kernel output
     /// folded into `podcastSnapshot`'s content hash, so reading them here (the
     /// same way `EpisodeDetailView` reads `downloads`) makes the rail recompute
-    /// whenever the kernel re-scores. Scoped to the active category so the rail
-    /// stays consistent with the rest of Home, then sorted by `pickScore`
-    /// (highest first). Empty ⇒ the section is hidden by the `scrollContent`
-    /// guard.
+    /// whenever the kernel re-scores. Rust owns pick ordering/score
+    /// normalization; Swift only applies the active category renderer scope.
+    /// Empty ⇒ the section is hidden by the `scrollContent` guard.
     private var recommendedPicks: [AgentPickSummary] {
         let picks = store.kernel?.podcastSnapshot?.picks ?? []
-        let scoped: [AgentPickSummary]
         if let allowed = allowedSubscriptionIDs {
-            scoped = picks.filter { pick in
+            return picks.filter { pick in
                 guard let podcastUUID = UUID(uuidString: pick.podcastId) else { return false }
                 return allowed.contains(podcastUUID)
             }
-        } else {
-            scoped = picks
         }
-        return scoped.sorted { $0.pickScore > $1.pickScore }
+        return picks
     }
 
     // MARK: - Toolbar
@@ -415,4 +418,23 @@ struct HomeView: View {
     private func refreshAllFeeds() async {
         store.kernelRefreshAll()
     }
+}
+
+private struct HomeContinueListeningEnvelope: Decodable {
+    var episodeIds: [String] = []
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        episodeIds = try c.decodeIfPresent([String].self, forKey: .episodeIds) ?? []
+    }
+}
+
+private struct HomeTriageRollupEnvelope: Decodable {
+    var inbox: Int = 0
+    var archived: Int = 0
+    var shows: Int = 0
+}
+
+private struct HomeSubscriptionListEnvelope: Decodable {
+    var podcastIds: [String] = []
 }

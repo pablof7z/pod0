@@ -9,8 +9,8 @@ import SwiftUI
 /// Usage:
 /// ```swift
 /// .sheet(isPresented: $showEdit) {
-///     EditTextSheet(title: "Edit Memory", initialText: memory.content) { newText in
-///         store.updateAgentMemory(memory.id, content: newText)
+///     EditTextSheet(title: "Edit Note", initialText: note.text) { newText in
+///         store.updateNote(note.id, text: newText)
 ///     }
 /// }
 /// ```

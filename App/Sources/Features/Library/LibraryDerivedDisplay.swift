@@ -107,27 +107,25 @@ extension Episode {
 extension AppStateStore {
 
     /// Episodes the user has not played for the given podcast.
-    ///
-    /// O(1) dict lookup against `unplayedCountByShow`. The 10k-episode
-    /// reduce that used to dominate `LibraryView`'s grid render path is
-    /// gone — see `AppStateStore+EpisodeProjections.swift`.
     func unplayedCount(forPodcast id: UUID) -> Int {
-        unplayedCountByShow[id] ?? 0
+        LibraryPodcastStatsProjection
+            .load(podcastIDs: [id], store: self)
+            .unplayedCount(for: id)
     }
 
     /// `true` when at least one episode for the podcast has any download in
     /// flight or already on disk.
-    ///
-    /// O(1) Set membership against `hasDownloadedByShow`.
     func hasDownloadedEpisode(forPodcast id: UUID) -> Bool {
-        hasDownloadedByShow.contains(id)
+        LibraryPodcastStatsProjection
+            .load(podcastIDs: [id], store: self)
+            .hasDownloadedEpisode(for: id)
     }
 
     /// `true` when at least one episode for the podcast has a ready
     /// transcript. Drives the Library "Transcribed" filter chip.
-    ///
-    /// O(1) Set membership against `hasTranscribedByShow`.
     func hasTranscribedEpisode(forPodcast id: UUID) -> Bool {
-        hasTranscribedByShow.contains(id)
+        LibraryPodcastStatsProjection
+            .load(podcastIDs: [id], store: self)
+            .hasTranscribedEpisode(for: id)
     }
 }

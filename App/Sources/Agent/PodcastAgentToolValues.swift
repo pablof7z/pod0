@@ -56,6 +56,12 @@ public struct PlayEpisodeResult: Sendable, Equatable {
     }
 }
 
+public enum PlayEpisodeOutcome: Sendable, Equatable {
+    case played(PlayEpisodeResult)
+    case rejected(String)
+    case unavailable
+}
+
 /// Result returned by `get_now_playing`.
 public struct NowPlayingState: Sendable, Equatable {
     /// The currently-loaded episode's stable library ID. `nil` when nothing is loaded.

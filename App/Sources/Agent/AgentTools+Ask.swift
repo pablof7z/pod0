@@ -19,19 +19,12 @@ extension AgentTools {
     static func askOwnerTool(
         question: String,
         context: String?,
-        coordinator: AgentAskCoordinator?
+        coordinator: AgentAskCoordinator?,
+        kernel: KernelModel?
     ) async -> String {
         guard let coordinator else {
             return toolError("ask is unavailable in this context — no UI surface to prompt the owner.")
         }
-        let trimmedQuestion = question.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedQuestion.isEmpty else {
-            return toolError("Missing or empty 'question'")
-        }
-        let trimmedContext = context?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalizedContext = (trimmedContext?.isEmpty ?? true) ? nil : trimmedContext
-
-        let answer = await coordinator.ask(question: trimmedQuestion, context: normalizedContext)
-        return toolSuccess(["answer": answer])
+        return await coordinator.ask(question: question, context: context, kernel: kernel)
     }
 }

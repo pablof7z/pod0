@@ -13,7 +13,7 @@ import UIKit
 ///     shows / episodes / transcripts. Lets the user hand the query
 ///     off to the conversational agent without retyping.
 ///
-/// Both surfaces use the shared editorial typography (New York serif body)
+/// Both surfaces use the shared editorial typography (SF system body)
 /// and the existing `glassSurface` modifier so the pills feel like part of
 /// the calm-on-the-outside aesthetic the rest of the app commits to.
 enum PodcastSearchEmptyState {

@@ -9,20 +9,76 @@ import Foundation
 // (slice 5b) instead of `RAGService.shared.search`. The Swift RAGSearch stack
 // is kept dormant (deleted in slice 5f).
 //
-// `findSimilarEpisodes` is implemented as a semantic query using the seed
-// episode's own title + description excerpt with no scope, then filtering the
-// seed from results. There is no dedicated "similar" FFI in slice 5b; this
-// approximates similarity via the seed episode's own text.
+// `findSimilarEpisodes` calls the kernel's similar-episode FFI. Rust resolves
+// the seed episode, derives the search text, runs retrieval, and filters the
+// seed from results.
 //
 // `queryTranscripts` passes speaker=nil — the kernel chunk row carries no
 // diarisation field; speaker attribution is a future extension.
 
 struct LivePodcastRAGAdapter: PodcastAgentRAGSearchProtocol {
+    private struct EpisodeRollupEnvelope: Decodable {
+        let result: [EpisodeRollupHit]?
+        let error: String?
+    }
 
-    /// Weak handle on the live store — used to hydrate optional per-episode
-    /// metadata (publishedAt, durationSeconds) and to disambiguate scope UUIDs
-    /// in `queryTranscripts`. Does not gate the core search path; if nil the
-    /// optional fields are omitted from results.
+    private struct EpisodeRollupHit: Decodable {
+        let episodeID: String
+        let podcastID: String
+        let title: String
+        let podcastTitle: String
+        let publishedAt: Int?
+        let durationSeconds: Int?
+        let snippet: String?
+        let score: Double?
+
+        enum CodingKeys: String, CodingKey {
+            case title, snippet, score
+            case episodeID = "episode_id"
+            case podcastID = "podcast_id"
+            case podcastTitle = "podcast_title"
+            case publishedAt = "published_at"
+            case durationSeconds = "duration_seconds"
+        }
+    }
+
+    private struct TranscriptHitsEnvelope: Decodable {
+        let result: [TranscriptHitDTO]?
+        let error: String?
+    }
+
+    private struct TranscriptHitDTO: Decodable {
+        let episodeID: String
+        let startSeconds: Double
+        let endSeconds: Double
+        let speaker: String?
+        let text: String
+        let score: Double?
+
+        enum CodingKeys: String, CodingKey {
+            case episodeID = "episode_id"
+            case startSeconds = "start_seconds"
+            case endSeconds = "end_seconds"
+            case speaker
+            case text
+            case score
+        }
+
+        var hit: TranscriptHit {
+            TranscriptHit(
+                episodeID: episodeID,
+                startSeconds: startSeconds,
+                endSeconds: endSeconds,
+                speaker: speaker,
+                text: text,
+                score: score
+            )
+        }
+    }
+
+    /// Weak handle on the live store — used only to hydrate optional
+    /// per-episode metadata (publishedAt, durationSeconds). Scope
+    /// disambiguation is Rust-owned via `KernelKnowledgeClient.resolveScope`.
     weak var store: AppStateStore?
 
     init(store: AppStateStore) {
@@ -31,55 +87,38 @@ struct LivePodcastRAGAdapter: PodcastAgentRAGSearchProtocol {
 
     // MARK: - PodcastAgentRAGSearchProtocol
 
-    func searchEpisodes(query: String, scope: PodcastID?, limit: Int) async throws -> [EpisodeHit] {
-        // Over-fetch so the per-episode rollup still returns `limit` distinct
-        // episodes when several chunks come from the same show.
+    func searchEpisodes(
+        query: String,
+        scope: PodcastID?,
+        limit: Int,
+        retrievalLimit: Int
+    ) async throws -> [EpisodeHit] {
         let rows = try await KernelKnowledgeClient.query(
             query: query,
             podcastId: scope,
             episodeId: nil,
-            limit: max(1, limit) * 4
+            limit: retrievalLimit
         )
-        return await rollUpToEpisodes(rows: rows, limit: limit)
+        return try await rollUpToEpisodes(rows: rows, limit: limit)
     }
 
     func queryTranscripts(query: String, scope: String?, limit: Int) async throws -> [TranscriptHit] {
-        // Resolve scope UUID → podcast or episode on the main actor (store
-        // access), then call the FFI off-main via KernelKnowledgeClient.
-        let (podcastId, episodeId) = await MainActor.run { [store] in
-            Self.resolveTranscriptScope(scope: scope, store: store)
-        }
+        let (podcastId, episodeId) = try await KernelKnowledgeClient.resolveScope(scope)
         let rows = try await KernelKnowledgeClient.query(
             query: query,
             podcastId: podcastId,
             episodeId: episodeId,
             limit: max(1, limit)
         )
-        return rows.map(Self.makeTranscriptHit)
+        return try await transcriptHits(rows: rows)
     }
 
     func findSimilarEpisodes(seedEpisodeID: EpisodeID, k: Int) async throws -> [EpisodeHit] {
-        // Build the retrieval query from the seed episode's metadata on the
-        // main actor, then issue a library-wide semantic search (no scope).
-        // Limitation: no dedicated "similar" FFI exists in slice 5b; this
-        // approximates similarity using the seed's own title + description text.
-        let seedQuery = await MainActor.run { [store] in
-            guard let uuid = UUID(uuidString: seedEpisodeID),
-                  let ep = store?.episode(id: uuid) else { return "" }
-            return [ep.title, String(ep.description.prefix(400))]
-                .filter { !$0.isEmpty }
-                .joined(separator: " ")
-        }
-        guard !seedQuery.isEmpty else { return [] }
-
-        let rows = try await KernelKnowledgeClient.query(
-            query: seedQuery,
-            podcastId: nil,
-            episodeId: nil,
-            limit: max(1, k) * 4
+        let rows = try await KernelKnowledgeClient.similarEpisodes(
+            episodeId: seedEpisodeID,
+            limit: max(1, k)
         )
-        let hits = await rollUpToEpisodes(rows: rows, limit: k + 1)
-        return Array(hits.filter { $0.episodeID != seedEpisodeID }.prefix(k))
+        return try await rollUpToEpisodes(rows: rows, limit: k)
     }
 
     // MARK: - Private rollup
@@ -87,78 +126,172 @@ struct LivePodcastRAGAdapter: PodcastAgentRAGSearchProtocol {
     /// Collapse chunk rows to episode-level hits, keeping the best-scoring
     /// chunk snippet per episode. Hydrates publishedAt/durationSeconds from the
     /// store (best-effort — both are nil when the store doesn't hold the episode).
-    @MainActor
-    private func rollUpToEpisodes(rows: [KnowledgeQueryRow], limit: Int) -> [EpisodeHit] {
-        var bestPerEpisode: [String: KnowledgeQueryRow] = [:]
-        var orderedIDs: [String] = []
-
-        for row in rows {
-            if let prior = bestPerEpisode[row.episodeId] {
-                if row.relevanceScore > prior.relevanceScore {
-                    bestPerEpisode[row.episodeId] = row
-                }
-            } else {
-                orderedIDs.append(row.episodeId)
-                bestPerEpisode[row.episodeId] = row
-            }
-            if orderedIDs.count >= limit { break }
+    private func rollUpToEpisodes(rows: [KnowledgeQueryRow], limit: Int) async throws -> [EpisodeHit] {
+        let metadata = await episodeMetadataRows(for: rows)
+        let payload: [String: Any] = [
+            "op": "episode_rollup",
+            "limit": limit,
+            "rows": rows.map(Self.rawKnowledgeRow),
+            "metadata": metadata,
+        ]
+        let envelope = try await searchTool(payload: payload)
+        guard let result = envelope.result else {
+            throw NSError(
+                domain: "LivePodcastRAGAdapter",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: envelope.error ?? "Rust episode rollup failed"]
+            )
         }
-
-        return orderedIDs.prefix(limit).compactMap { id -> EpisodeHit? in
-            guard let row = bestPerEpisode[id] else { return nil }
-            var pubDate: Date?
-            var duration: Int?
-            if let uuid = UUID(uuidString: id), let ep = store?.episode(id: uuid) {
-                pubDate = ep.pubDate
-                duration = ep.duration.map { Int($0) }
-            }
-            return EpisodeHit(
-                episodeID: row.episodeId,
-                podcastID: row.podcastId,
-                title: row.episodeTitle,
-                podcastTitle: row.podcastTitle,
-                publishedAt: pubDate,
-                durationSeconds: duration,
-                snippet: String(row.text.prefix(280)),
-                score: row.relevanceScore
+        return result.map { hit in
+            EpisodeHit(
+                episodeID: hit.episodeID,
+                podcastID: hit.podcastID,
+                title: hit.title,
+                podcastTitle: hit.podcastTitle,
+                publishedAt: hit.publishedAt.map { Date(timeIntervalSince1970: TimeInterval($0)) },
+                durationSeconds: hit.durationSeconds,
+                snippet: hit.snippet,
+                score: hit.score
             )
         }
     }
 
     // MARK: - Helpers
 
-    /// Map a `KnowledgeQueryRow` chunk to a `TranscriptHit`.
-    /// `speaker` is `nil` — kernel chunk rows carry no diarisation field.
-    private static func makeTranscriptHit(_ row: KnowledgeQueryRow) -> TranscriptHit {
-        TranscriptHit(
-            episodeID: row.episodeId,
-            startSeconds: row.startSecs,
-            endSeconds: row.endSecs,
-            speaker: nil,
-            text: row.text,
-            score: row.relevanceScore
-        )
+    private func episodeMetadataRows(for rows: [KnowledgeQueryRow]) async -> [[String: Any]] {
+        await MainActor.run {
+            var seen = Set<String>()
+            return rows.compactMap { row -> [String: Any]? in
+                guard seen.insert(row.episodeId).inserted,
+                      let uuid = UUID(uuidString: row.episodeId),
+                      let episode = store?.episode(id: uuid)
+                else { return nil }
+                var metadata: [String: Any] = ["episode_id": row.episodeId]
+                if let pubDate = episode.pubDate {
+                    metadata["published_at"] = Int(pubDate.timeIntervalSince1970)
+                }
+                if let duration = episode.duration {
+                    metadata["duration_seconds"] = Int(duration)
+                }
+                return metadata
+            }
+        }
     }
 
-    /// Disambiguate a scope UUID string as either a podcast_id or episode_id.
-    ///
-    /// Resolution order (episode-first, then subscription, then fallback):
-    /// 1. Episode-first: a UUID that resolves via `store.episode(id:)` → episode scope.
-    /// 2. Subscription: a UUID present in `store.state.subscriptions` → podcast scope.
-    /// 3. Default fallback: treat as episode scope (defensive — narrows rather than widens).
-    @MainActor
-    private static func resolveTranscriptScope(
-        scope: String?,
-        store: AppStateStore?
-    ) -> (podcastId: String?, episodeId: String?) {
-        guard let raw = scope, UUID(uuidString: raw) != nil else {
-            return (nil, nil)
+    private func transcriptHits(rows: [KnowledgeQueryRow]) async throws -> [TranscriptHit] {
+        let payload: [String: Any] = [
+            "op": "transcript_hits",
+            "rows": rows.map(Self.rawKnowledgeRow),
+        ]
+        let envelope = try await transcriptHitTool(payload: payload)
+        guard let result = envelope.result else {
+            throw NSError(
+                domain: "LivePodcastRAGAdapter",
+                code: 5,
+                userInfo: [NSLocalizedDescriptionKey: envelope.error ?? "Rust transcript hit projection failed"]
+            )
         }
-        guard let uuid = UUID(uuidString: raw) else { return (nil, nil) }
-        if store?.episode(id: uuid) != nil { return (nil, raw) }
-        if store?.state.subscriptions.contains(where: { $0.id == uuid }) == true {
-            return (raw, nil)
-        }
-        return (nil, raw)
+        return result.map(\.hit)
     }
+
+    private static func rawKnowledgeRow(_ row: KnowledgeQueryRow) -> [String: Any] {
+        [
+            "episode_id": row.episodeId,
+            "podcast_id": row.podcastId,
+            "episode_title": row.episodeTitle,
+            "podcast_title": row.podcastTitle,
+            "chunk_index": row.chunkIndex,
+            "start_secs": row.startSecs,
+            "end_secs": row.endSecs,
+            "text": row.text,
+            "relevance_score": row.relevanceScore,
+        ]
+    }
+
+    private func searchTool(payload: [String: Any]) async throws -> EpisodeRollupEnvelope {
+        guard let handleBits = await MainActor.run(body: {
+            KernelModel.shared?.podcastHandlePointer.map { Int(bitPattern: $0) }
+        }) else {
+            throw NSError(
+                domain: "LivePodcastRAGAdapter",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "kernel handle unavailable"]
+            )
+        }
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8)
+        else {
+            throw NSError(
+                domain: "LivePodcastRAGAdapter",
+                code: 3,
+                userInfo: [NSLocalizedDescriptionKey: "Could not encode episode rollup request"]
+            )
+        }
+        let response = await Task.detached(priority: .userInitiated) {
+            guard let handle = UnsafeMutableRawPointer(bitPattern: handleBits) else {
+                return #"{"error":"kernel handle unavailable"}"#
+            }
+            return json.withCString { ptr -> String in
+                guard let result = nmp_app_podcast_agent_search_tool(handle, ptr) else {
+                    return #"{"error":"null response from nmp_app_podcast_agent_search_tool"}"#
+                }
+                defer { nmp_free_string(result) }
+                return String(cString: result)
+            }
+        }.value
+        guard let responseData = response.data(using: .utf8),
+              let envelope = try? JSONDecoder().decode(EpisodeRollupEnvelope.self, from: responseData)
+        else {
+            throw NSError(
+                domain: "LivePodcastRAGAdapter",
+                code: 4,
+                userInfo: [NSLocalizedDescriptionKey: "Could not decode episode rollup response"]
+            )
+        }
+        return envelope
+    }
+
+    private func transcriptHitTool(payload: [String: Any]) async throws -> TranscriptHitsEnvelope {
+        guard let handleBits = await MainActor.run(body: {
+            KernelModel.shared?.podcastHandlePointer.map { Int(bitPattern: $0) }
+        }) else {
+            throw NSError(
+                domain: "LivePodcastRAGAdapter",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "kernel handle unavailable"]
+            )
+        }
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8)
+        else {
+            throw NSError(
+                domain: "LivePodcastRAGAdapter",
+                code: 3,
+                userInfo: [NSLocalizedDescriptionKey: "Could not encode transcript hit request"]
+            )
+        }
+        let response = await Task.detached(priority: .userInitiated) {
+            guard let handle = UnsafeMutableRawPointer(bitPattern: handleBits) else {
+                return #"{"error":"kernel handle unavailable"}"#
+            }
+            return json.withCString { ptr -> String in
+                guard let result = nmp_app_podcast_agent_search_tool(handle, ptr) else {
+                    return #"{"error":"null response from nmp_app_podcast_agent_search_tool"}"#
+                }
+                defer { nmp_free_string(result) }
+                return String(cString: result)
+            }
+        }.value
+        guard let responseData = response.data(using: .utf8),
+              let envelope = try? JSONDecoder().decode(TranscriptHitsEnvelope.self, from: responseData)
+        else {
+            throw NSError(
+                domain: "LivePodcastRAGAdapter",
+                code: 4,
+                userInfo: [NSLocalizedDescriptionKey: "Could not decode transcript hit response"]
+            )
+        }
+        return envelope
+    }
+
 }

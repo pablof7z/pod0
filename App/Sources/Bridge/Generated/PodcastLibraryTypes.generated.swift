@@ -50,6 +50,9 @@ struct PodcastSummary: Identifiable, Equatable, Hashable {
     /// uses this to reconstruct `AutoDownloadPolicy.wifiOnly` from the
     /// snapshot rather than hardcoding `wifiOnly: true` for all enabled rows.
     @DefaultFalse var cellularAllowed: Bool = false
+    /// Per-podcast notification policy projected from Rust. `true` is the
+    /// default; `false` suppresses new-episode notifications for this show.
+    @DefaultTrue var notificationsEnabled: Bool = true
     /// Hex public key of the per-podcast NIP-F4 signing key, set once the
     /// podcast has been claimed via `create_owned_podcast`. Drives owned-
     /// podcast UI (the agent's `listOwnedPodcasts` filters on its presence).
@@ -130,6 +133,12 @@ struct EpisodeSummary: Identifiable, Equatable, Hashable {
     var transcriptStatus: String = ""
     /// User-facing error text for `transcriptStatus == "failed"`; `nil` otherwise.
     var transcriptStatusMessage: String? = nil
+    /// Queue-only start boundary for a bounded playback item.
+    var queueStartSecs: Double? = nil
+    /// Queue-only end boundary for a bounded playback item.
+    var queueEndSecs: Double? = nil
+    /// Queue-only Rust-owned slot id.
+    var queueSlotId: String? = nil
 }
 
 /// One time-stamped transcript row for a single episode.
@@ -217,6 +226,7 @@ extension PodcastSummary: Codable {
         autoDownloadMode = try c.decodeIfPresent(String.self, forKey: .autoDownloadMode) ?? ""
         autoDownloadCount = try c.decodeIfPresent(Int.self, forKey: .autoDownloadCount) ?? 0
         cellularAllowed = try c.decodeIfPresent(Bool.self, forKey: .cellularAllowed) ?? false
+        notificationsEnabled = try c.decodeIfPresent(Bool.self, forKey: .notificationsEnabled) ?? true
         ownerPubkeyHex = try c.decodeIfPresent(String.self, forKey: .ownerPubkeyHex)
         nostrVisibility = try c.decodeIfPresent(String.self, forKey: .nostrVisibility) ?? "public"
         userCategories = try c.decodeIfPresent([String].self, forKey: .userCategories) ?? []
@@ -255,6 +265,9 @@ extension EpisodeSummary: Codable {
         metadataIndexed = try c.decodeIfPresent(Bool.self, forKey: .metadataIndexed) ?? false
         transcriptStatus = try c.decodeIfPresent(String.self, forKey: .transcriptStatus) ?? ""
         transcriptStatusMessage = try c.decodeIfPresent(String.self, forKey: .transcriptStatusMessage)
+        queueStartSecs = try c.decodeIfPresent(Double.self, forKey: .queueStartSecs)
+        queueEndSecs = try c.decodeIfPresent(Double.self, forKey: .queueEndSecs)
+        queueSlotId = try c.decodeIfPresent(String.self, forKey: .queueSlotId)
     }
 }
 

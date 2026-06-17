@@ -6,8 +6,7 @@ private let intentLog = Logger(subsystem: "io.f7z.podcast", category: "AppIntent
 
 // MARK: - PausePlaybackIntent
 
-/// "Pause podcast" — posts `.pausePlaybackRequested`. The kernel drops the
-/// pause silently when nothing is playing (D6).
+/// "Pause podcast" — dispatches the Rust-owned player action directly.
 struct PausePlaybackIntent: AppIntent {
 
     static let title: LocalizedStringResource = "Pause podcast"
@@ -21,16 +20,20 @@ struct PausePlaybackIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        NotificationCenter.default.post(name: .pausePlaybackRequested, object: nil)
-        intentLog.info("PausePlaybackIntent: posted pausePlaybackRequested")
-        return .result(dialog: "Paused.")
+        let dialog = dispatchPlaybackIntent(
+            namespace: "podcast.player",
+            body: ["op": "pause"],
+            successDialog: "Paused."
+        )
+        return .result(dialog: IntentDialog(stringLiteral: dialog))
     }
 }
 
 // MARK: - ResumePlaybackIntent
 
-/// "Resume podcast" — posts `.resumePlaybackRequested`. `RootView` resumes
-/// `PlaybackState`, which replays the last-staged episode.
+/// "Resume podcast" — dispatches the Rust-owned Siri resume policy. Rust
+/// resumes the staged episode when present, otherwise it selects the latest
+/// unplayed episode.
 struct ResumePlaybackIntent: AppIntent {
 
     static let title: LocalizedStringResource = "Resume podcast"
@@ -44,16 +47,19 @@ struct ResumePlaybackIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        NotificationCenter.default.post(name: .resumePlaybackRequested, object: nil)
-        intentLog.info("ResumePlaybackIntent: posted resumePlaybackRequested")
-        return .result(dialog: "Resuming.")
+        let dialog = dispatchPlaybackIntent(
+            namespace: "podcast.siri",
+            body: ["op": "resume"],
+            successDialog: "Resuming."
+        )
+        return .result(dialog: IntentDialog(stringLiteral: dialog))
     }
 }
 
 // MARK: - SkipForwardIntent
 
-/// "Skip forward" — posts `.skipForwardRequested`. `PlaybackState.skipForward()`
-/// reads the user-configured interval; the intent stays stateless (D0).
+/// "Skip forward" — dispatches the Rust-owned relative seek. Rust reads the
+/// user-configured interval when the intent supplies no explicit seconds.
 struct SkipForwardIntent: AppIntent {
 
     static let title: LocalizedStringResource = "Skip forward"
@@ -67,19 +73,34 @@ struct SkipForwardIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        NotificationCenter.default.post(name: .skipForwardRequested, object: nil)
-        intentLog.info("SkipForwardIntent: posted skipForwardRequested")
-        return .result(dialog: "Skipped forward.")
+        let dialog = dispatchPlaybackIntent(
+            namespace: "podcast.player",
+            body: ["op": "skip_forward"],
+            successDialog: "Skipped forward."
+        )
+        return .result(dialog: IntentDialog(stringLiteral: dialog))
     }
 }
 
-// MARK: - Notification names
+// MARK: - Kernel dispatch
 
-extension Notification.Name {
-    static let pausePlaybackRequested =
-        Notification.Name("io.f7z.podcast.pausePlaybackRequested")
-    static let resumePlaybackRequested =
-        Notification.Name("io.f7z.podcast.resumePlaybackRequested")
-    static let skipForwardRequested =
-        Notification.Name("io.f7z.podcast.skipForwardRequested")
+@MainActor
+private func dispatchPlaybackIntent(
+    namespace: String,
+    body: [String: Any],
+    successDialog: String
+) -> String {
+    guard let kernel = KernelModel.shared else {
+        intentLog.error("Playback AppIntent invoked without a live KernelModel")
+        return "Open Pod0 first, then try again."
+    }
+
+    switch kernel.dispatch(namespace: namespace, body: body) {
+    case .accepted:
+        intentLog.info("Playback AppIntent dispatched \(namespace, privacy: .public)")
+        return successDialog
+    case .failure(let message):
+        intentLog.error("Playback AppIntent rejected: \(message, privacy: .public)")
+        return message
+    }
 }

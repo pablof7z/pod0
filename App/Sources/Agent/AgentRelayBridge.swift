@@ -3,6 +3,21 @@ import os.log
 
 @MainActor
 final class AgentRelayBridge {
+    private struct PeerPromptEnvelope: Decodable {
+        let error: String?
+        let systemPreamble: String?
+
+        enum CodingKeys: String, CodingKey {
+            case error
+            case systemPreamble = "system_preamble"
+        }
+    }
+
+    private struct PeerLabelEnvelope: Decodable {
+        let label: String?
+        let error: String?
+    }
+
     private let logger = Logger.app("AgentRelayBridge")
     private let store: AppStateStore
     /// Live podcast-tool dependencies. Nil only for callers that don't have a
@@ -84,13 +99,11 @@ final class AgentRelayBridge {
             peerContext = nil
         }
 
-        let preamble = NostrPeerAgentPrompt.peerContextPreamble(
-            for: store,
-            peerPubkey: peerPubkey
-        )
+        guard let preamble = peerContextPreamble(peerPubkey: peerPubkey) else { return nil }
         let ownerPrompt = AgentPrompt.build(
             for: store.state,
-            agentContext: store.kernel?.podcastSnapshot?.agentContext
+            agentContext: store.kernel?.podcastSnapshot?.agentContext,
+            memoryFacts: store.kernel?.podcastSnapshot?.memoryFacts ?? []
         )
         let systemPrompt = preamble + "\n\n" + ownerPrompt
 
@@ -118,7 +131,8 @@ final class AgentRelayBridge {
         let senderName = displayName(for: senderPubkey)
         let systemPrompt = AgentPrompt.build(
             for: store.state,
-            agentContext: store.kernel?.podcastSnapshot?.agentContext
+            agentContext: store.kernel?.podcastSnapshot?.agentContext,
+            memoryFacts: store.kernel?.podcastSnapshot?.memoryFacts ?? []
         )
         let userText = "[from \(senderName) via Nostr]\n\(trimmed)"
         var messages: [[String: Any]] = [
@@ -204,10 +218,10 @@ final class AgentRelayBridge {
                 let resultJSON: String
                 if toolCall.name == AgentTools.Names.upgradeThinking {
                     isUpgraded = true
-                    resultJSON = AgentTools.toolSuccess([
+                    resultJSON = await AgentTools.actionTool(op: "upgrade_thinking_result", payload: [
                         "upgraded": true,
                         "model": store.state.settings.agentThinkingModel,
-                    ])
+                    ]) ?? AgentTools.toolError("upgrade_thinking result shaping is unavailable")
                 } else if toolCall.name == AgentTools.Names.useSkill {
                     let activation = AgentSkillRegistry.activate(
                         argsJSON: toolCall.arguments,
@@ -280,6 +294,50 @@ final class AgentRelayBridge {
     }
 
     private func displayName(for pubkey: String) -> String {
-        store.friend(identifier: pubkey)?.displayName ?? "Nostr contact \(String(pubkey.prefix(8)))"
+        let friendDisplayName = store.friend(identifier: pubkey)?.displayName
+        var request: [String: Any] = [
+            "op": "nostr_peer_label",
+            "pubkey": pubkey,
+        ]
+        if let friendDisplayName {
+            request["display_name"] = friendDisplayName
+        }
+        guard let data = try? JSONSerialization.data(withJSONObject: request),
+              let json = String(data: data, encoding: .utf8)
+        else { return "" }
+        let envelope = json.withCString { ptr -> String? in
+            guard let result = nmp_app_podcast_agent_action_policy(ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            return String(cString: result)
+        }
+        guard let envelope,
+              let responseData = envelope.data(using: .utf8),
+              let response = try? JSONDecoder().decode(PeerLabelEnvelope.self, from: responseData),
+              response.error == nil,
+              let label = response.label,
+              !label.isEmpty
+        else { return "" }
+        return label
+    }
+
+    private func peerContextPreamble(peerPubkey: String) -> String? {
+        let profile = store.state.nostrProfileCache[peerPubkey]
+        guard let envelope = store.kernel?.agentNostrPeerPromptEnvelope(
+            peerPubkey: peerPubkey,
+            peerDisplayName: profile?.bestLabel,
+            peerAbout: profile?.about,
+            ownerPubkey: store.state.settings.nostrPublicKeyHex
+        ),
+              let data = envelope.data(using: .utf8),
+              let decoded = try? JSONDecoder().decode(PeerPromptEnvelope.self, from: data),
+              decoded.error == nil,
+              let preamble = decoded.systemPreamble,
+              !preamble.isEmpty
+        else {
+            return nil
+        }
+        return preamble
     }
 }
