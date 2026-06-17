@@ -30,6 +30,8 @@ use std::sync::{Arc, Mutex};
 use chrono::Utc;
 use uuid::Uuid;
 
+use podcast_core::Chapter;
+
 use crate::ffi::actions::clip_module::ClipAction;
 use crate::ffi::projections::{ClipSummary, PodcastSummary};
 use crate::store::PodcastStore;
@@ -161,22 +163,24 @@ impl ClipHandler {
         // Silently degrade on poison — the in-memory slot stays authoritative (D6).
     }
 
+    /// Chapter-snapped AutoSnip: resolve `position_secs` to the chapter that
+    /// contains it, then clip `[chapter.start_secs, next_chapter.start_secs)`.
+    ///
+    /// Falls back to the legacy ±30 s window when the episode has no chapters
+    /// (field absent or empty). This preserves existing behaviour for
+    /// chapter-less episodes and does not change any wire shape.
     fn handle_auto_snip(&self, episode_id: String, position_secs: f64) -> serde_json::Value {
-        let Some((_, _, duration)) = self.episode_meta(&episode_id) else {
+        let Some((_, _, chapters, duration)) = self.episode_snip_context(&episode_id) else {
             return serde_json::json!({
                 "ok": false,
                 "error": format!("episode not found: {episode_id}")
             });
         };
-        let pos = position_secs.max(0.0);
-        let raw_start = pos - 30.0;
-        let raw_end = pos + 30.0;
-        let start = raw_start.max(0.0);
-        let end = match duration {
-            Some(d) if d > 0.0 => raw_end.min(d),
-            _ => raw_end,
-        };
-        self.handle_create(episode_id, start, end, None)
+
+        let (start, end, chapter_title) =
+            chapter_snap(position_secs, chapters.as_deref(), duration);
+
+        self.handle_create(episode_id, start, end, chapter_title)
     }
 
     /// Look up `(episode_title, podcast_title, duration_secs)` for an
@@ -185,6 +189,16 @@ impl ClipHandler {
         let store = self.store.lock().ok()?;
         store.episode_titles_and_duration(episode_id)
     }
+
+    /// Fetch all AutoSnip context in one lock acquisition:
+    /// `(episode_title, podcast_title, chapters, duration_secs)`.
+    fn episode_snip_context(
+        &self,
+        episode_id: &str,
+    ) -> Option<(String, String, Option<Vec<Chapter>>, Option<f64>)> {
+        let store = self.store.lock().ok()?;
+        store.episode_auto_snip_context(episode_id)
+    }
 }
 
 fn normalize_range(a: f64, b: f64) -> (f64, f64) {
@@ -192,6 +206,140 @@ fn normalize_range(a: f64, b: f64) -> (f64, f64) {
         (a, b)
     } else {
         (b, a)
+    }
+}
+
+/// Compute `(start, end, title)` for an AutoSnip at `position_secs`.
+///
+/// ## Chapter path
+///
+/// When `chapters` is `Some` and non-empty the chapters are sorted by
+/// `start_secs` and the one whose half-open interval
+/// `[chapter.start, next_chapter.start)` contains `position_secs` is
+/// selected. Edge cases:
+///
+/// - `pos` before the first chapter's start → `[0.0, first.start_secs]`
+///   (or `[0.0, duration]` if the first chapter starts at 0).
+/// - `pos` inside the last chapter → `[last.start_secs, duration]`
+///   (or unclamped `last.start_secs + 30.0` when duration is unknown).
+/// - `pos` past duration → same as last chapter rule, clamped by duration.
+///
+/// The chapter's `title` is returned so the `ClipRecord` can surface it
+/// as the clip title (optional nice-to-have; nil when no match).
+///
+/// ## Fallback path
+///
+/// The legacy ±30 s window (clamped to `[0, duration]` when known) is used
+/// whenever a chapter-derived range cannot be produced:
+/// - `chapters` is `None` or empty, OR
+/// - the chosen chapter range is **degenerate** (`end <= start`). This can
+///   happen when the last chapter's `start_secs == duration` (a chapter that
+///   begins exactly at episode end → `[duration, duration]`) or when two
+///   chapters share a start (a zero-length interval). Emitting such a range
+///   would make `handle_create` reject the clip ("end must be greater than
+///   start"), silently failing the AutoSnip — so we fall back to a usable
+///   window instead.
+pub(crate) fn chapter_snap(
+    position_secs: f64,
+    chapters: Option<&[Chapter]>,
+    duration: Option<f64>,
+) -> (f64, f64, Option<String>) {
+    let pos = position_secs.max(0.0);
+
+    // Try the chapter path first; it yields `Some` only when it produces a
+    // non-degenerate `(start, end)` (`end > start`). Any degenerate result
+    // falls through to the ±30 s window below so AutoSnip always emits a
+    // usable clip.
+    if let Some(snap) = chapter_snap_range(pos, chapters, duration) {
+        return snap;
+    }
+
+    // Fallback: ±30 s window clamped to [0, duration].
+    let raw_start = pos - 30.0;
+    let raw_end = pos + 30.0;
+    let start = raw_start.max(0.0);
+    let end = match duration {
+        Some(d) if d > 0.0 => raw_end.min(d),
+        _ => raw_end,
+    };
+    (start, end, None)
+}
+
+/// Resolve `pos` to a chapter-snapped `(start, end, title)`, or `None` when no
+/// usable (non-degenerate) chapter range exists. Kept separate from
+/// [`chapter_snap`] so the degenerate-range guard lives in one place and the
+/// caller can cleanly fall through to the ±30 s window.
+fn chapter_snap_range(
+    pos: f64,
+    chapters: Option<&[Chapter]>,
+    duration: Option<f64>,
+) -> Option<(f64, f64, Option<String>)> {
+    let chs = chapters?;
+    if chs.is_empty() {
+        return None;
+    }
+
+    // Sort chapters by start time for reliable interval arithmetic. Stable
+    // sort keeps duplicate-start chapters in their original order so the
+    // result is deterministic.
+    let mut sorted: Vec<&Chapter> = chs.iter().collect();
+    sorted.sort_by(|a, b| {
+        a.start_secs
+            .partial_cmp(&b.start_secs)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    // pos before the first chapter's start → pre-chapter segment
+    // [0, first.start_secs]. (When first.start_secs == 0 this is degenerate
+    // and the guard below returns None → ±30 s fallback.)
+    if pos < sorted[0].start_secs {
+        let end = clamp_duration(sorted[0].start_secs, duration);
+        return non_degenerate(0.0, end, None);
+    }
+
+    // Find the chapter containing pos under half-open [start, next_start)
+    // semantics: a pos exactly on a boundary belongs to the chapter that
+    // *starts* at it. We therefore advance past any chapter whose end is
+    // <= pos, landing on the one whose interval contains pos (or the last).
+    for (i, ch) in sorted.iter().enumerate() {
+        let next_start = sorted.get(i + 1).map(|n| n.start_secs);
+        let ch_end = next_start.or(duration).unwrap_or(ch.start_secs + 30.0);
+
+        // `pos < ch_end` → strictly inside this chapter (half-open).
+        // `next_start.is_none()` → last chapter: it owns everything from its
+        // start onward, including pos == ch_end.
+        if pos < ch_end || next_start.is_none() {
+            let start = ch.start_secs;
+            let end = clamp_duration(ch_end, duration);
+            return non_degenerate(start, end, Some(ch.title.clone()));
+        }
+    }
+
+    None
+}
+
+/// Return `Some((start, end, title))` only when the range is usable
+/// (`end > start`); otherwise `None` so the caller falls back to the ±30 s
+/// window. Centralizes the degenerate-range guard (FIX 1).
+#[inline]
+fn non_degenerate(
+    start: f64,
+    end: f64,
+    title: Option<String>,
+) -> Option<(f64, f64, Option<String>)> {
+    if end > start {
+        Some((start, end, title))
+    } else {
+        None
+    }
+}
+
+/// Clamp `value` to at most `duration` when duration is known and positive.
+#[inline]
+fn clamp_duration(value: f64, duration: Option<f64>) -> f64 {
+    match duration {
+        Some(d) if d > 0.0 => value.min(d),
+        _ => value,
     }
 }
 

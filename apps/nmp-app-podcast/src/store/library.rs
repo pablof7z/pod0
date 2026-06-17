@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use podcast_core::{Episode, EpisodeId, Podcast, PodcastId};
+use podcast_core::{Chapter, Episode, EpisodeId, Podcast, PodcastId};
 
 use super::PodcastStore;
 
@@ -224,6 +224,37 @@ impl PodcastStore {
             {
                 let pod = self.podcasts.get(podcast_id)?;
                 return Some((ep.title.clone(), pod.title.clone(), ep.duration_secs));
+            }
+        }
+        None
+    }
+
+    /// All context needed for chapter-snapped AutoSnip — titles, chapters, and
+    /// duration — fetched in a **single store-lock acquisition**.
+    ///
+    /// Returns `(episode_title, podcast_title, chapters, duration_secs)`.
+    /// `chapters` is `None` when the episode carries no chapter metadata; an
+    /// explicitly empty `Vec` is returned as `Some(vec![])` so the caller can
+    /// distinguish the two (both fall back to the ±30 s window, but they are
+    /// semantically different). Neither case changes the wire shape.
+    pub fn episode_auto_snip_context(
+        &self,
+        id_str: &str,
+    ) -> Option<(String, String, Option<Vec<Chapter>>, Option<f64>)> {
+        for (podcast_id, episodes) in &self.episodes {
+            // Case-insensitive: iOS sends UPPERCASE `UUID.uuidString`; stored
+            // ids render lowercase.
+            if let Some(ep) = episodes
+                .iter()
+                .find(|e| e.id.0.to_string().eq_ignore_ascii_case(id_str))
+            {
+                let pod = self.podcasts.get(podcast_id)?;
+                return Some((
+                    ep.title.clone(),
+                    pod.title.clone(),
+                    ep.chapters.clone(),
+                    ep.duration_secs,
+                ));
             }
         }
         None
