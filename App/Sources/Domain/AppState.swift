@@ -18,12 +18,6 @@ struct AppState: Codable, Sendable {
     var episodes: [Episode] = []
     var notes: [Note] = []
     var friends: [Friend] = []
-    var agentMemories: [AgentMemory] = []
-    /// LLM-consolidated paragraph summarizing the active `agentMemories`.
-    /// Produced by `AgentMemoryCompiler` after agent turns. When non-nil,
-    /// `AgentPrompt` injects this single paragraph in place of the raw
-    /// memory bullets so the prompt stays compact as memories accumulate.
-    var compiledMemory: CompiledAgentMemory?
     /// Categories produced by `PodcastCategorizationService`. The other
     /// agent owns generation; we store them here so settings + UI surfaces
     /// share one source of truth. Defaults to empty so an uncategorized
@@ -54,17 +48,6 @@ struct AppState: Codable, Sendable {
     /// `nostrRespondedEventIDs` covers the small overlap window).
     var nostrSinceCursor: Int?
     var agentActivity: [AgentActivityEntry] = []
-    /// User-authored transcript excerpts. See `Clip` and the composer in
-    /// `App/Sources/Features/EpisodeDetail/Clip/`.
-    var clips: [Clip] = []
-    /// Cross-episode threading topics inferred by `ThreadingInferenceService`.
-    /// Empty until the user runs a recompute (or the seed-mock path fires in
-    /// Debug). UX-09 surfaces are reserved for >=3-mention patterns.
-    var threadingTopics: [ThreadingTopic] = []
-    /// Per-topic mentions powering the timeline view. One row per transcript
-    /// span. Carries its own `topicID` so adapters can build the mention list
-    /// without scanning the topic array.
-    var threadingMentions: [ThreadingMention] = []
     /// Outbound `send_friend_message` events awaiting a reply. When the
     /// friend's kind:1 response arrives, `NostrAgentResponder` claims the
     /// matching entry and re-invokes the originating conversation.
@@ -78,14 +61,12 @@ struct AppState: Codable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case podcasts, subscriptions, episodes
-        case notes, friends, agentMemories, compiledMemory, settings
+        case notes, friends, settings
         case categories, categorySettings
         case nostrAllowedPubkeys, nostrBlockedPubkeys
         case nostrConversations, nostrProfileCache
         case nostrRespondedEventIDs, nostrSinceCursor
         case agentActivity
-        case clips
-        case threadingTopics, threadingMentions
         case pendingFriendMessages
         case lastPlayedEpisodeID
     }
@@ -114,8 +95,6 @@ struct AppState: Codable, Sendable {
         episodes = try c.decodeIfPresent([Episode].self, forKey: .episodes) ?? []
         notes = try c.decodeIfPresent([Note].self, forKey: .notes) ?? []
         friends = try c.decodeIfPresent([Friend].self, forKey: .friends) ?? []
-        agentMemories = try c.decodeIfPresent([AgentMemory].self, forKey: .agentMemories) ?? []
-        compiledMemory = try c.decodeIfPresent(CompiledAgentMemory.self, forKey: .compiledMemory)
         categories = try c.decodeIfPresent([PodcastCategory].self, forKey: .categories) ?? []
         categorySettings = try c.decodeIfPresent([UUID: CategorySettings].self, forKey: .categorySettings) ?? [:]
         settings = try c.decodeIfPresent(Settings.self, forKey: .settings) ?? Settings()
@@ -126,9 +105,6 @@ struct AppState: Codable, Sendable {
         nostrRespondedEventIDs = try c.decodeIfPresent(Set<String>.self, forKey: .nostrRespondedEventIDs) ?? []
         nostrSinceCursor = try c.decodeIfPresent(Int.self, forKey: .nostrSinceCursor)
         agentActivity = try c.decodeIfPresent([AgentActivityEntry].self, forKey: .agentActivity) ?? []
-        clips = try c.decodeIfPresent([Clip].self, forKey: .clips) ?? []
-        threadingTopics = try c.decodeIfPresent([ThreadingTopic].self, forKey: .threadingTopics) ?? []
-        threadingMentions = try c.decodeIfPresent([ThreadingMention].self, forKey: .threadingMentions) ?? []
         pendingFriendMessages = try c.decodeIfPresent([PendingFriendMessage].self, forKey: .pendingFriendMessages) ?? []
         lastPlayedEpisodeID = try c.decodeIfPresent(UUID.self, forKey: .lastPlayedEpisodeID)
     }

@@ -8,13 +8,10 @@ import Foundation
 /// / headphone path) and later rendered as audio + waveform card, video, or
 /// deep link by the share-target stack.
 ///
-/// `startMs` / `endMs` are sentence-snapped at composer-commit time so the
-/// excerpt always lands on prose boundaries; the optional word-snap mode
-/// belongs to v2 of the composer. `transcriptText` is captured *at creation
-/// time* so the sharable surface can render even if the underlying transcript
-/// is later re-ingested or relocated. `speakerID` is a string (display label
-/// or the transcript's `Speaker.id.uuidString`) chosen by the composer when
-/// the clip falls inside a single speaker's run; otherwise `nil`.
+/// `startMs` / `endMs`, `transcriptText`, and `speakerID` are projected from
+/// Rust-owned clip records. The Swift type is a rendering/share DTO only:
+/// creation, transcript alignment, refinement, and persistence route through
+/// `podcast.clip` actions.
 struct Clip: Codable, Sendable, Hashable, Identifiable {
     let id: UUID
     let episodeID: UUID

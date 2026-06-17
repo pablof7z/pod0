@@ -20,7 +20,8 @@ extension RootView {
         case .episode(let uuid):
             spotlightSheet = .episode(uuid)
         case .episodeByGUID(let guid, let startTime):
-            if let episode = store.episodes.first(where: { $0.id.uuidString == guid || $0.guid == guid }) {
+            if let episodeID = store.rustEpisodeID(reference: guid),
+               let episode = store.episode(id: episodeID) {
                 if let startTime {
                     playbackState.setEpisode(episode)
                     playbackState.navigationalSeek(to: startTime)
@@ -42,8 +43,21 @@ extension RootView {
     }
 
     func handleSpotlight(_ activity: NSUserActivity) {
-        guard let link = SpotlightIndexer.deepLink(from: activity) else { return }
-        spotlightSheet = link
+        if let kernelLink = SpotlightCapability.deepLink(fromActivity: activity) {
+            switch kernelLink {
+            case .podcast(let id):
+                if let uuid = UUID(uuidString: id) {
+                    spotlightSheet = .subscription(uuid)
+                }
+            case .episode(let id):
+                if let uuid = UUID(uuidString: id) {
+                    spotlightSheet = .episode(uuid)
+                }
+            }
+            return
+        }
+        guard let legacyLink = SpotlightIndexer.deepLink(from: activity) else { return }
+        spotlightSheet = legacyLink
     }
 
     @ViewBuilder
@@ -51,8 +65,6 @@ extension RootView {
         switch link {
         case .note(let id):
             AgentNotesView(spotlightTargetID: id)
-        case .memory(let id):
-            AgentMemoriesView(spotlightTargetID: id)
         case .subscription(let id):
             if let podcast = store.podcast(id: id) {
                 ShowDetailView(podcast: podcast)

@@ -55,11 +55,12 @@ struct HomeCategoryPickerSheet: View {
     }
 
     private var categoriesSection: some View {
+        let cardProjections = categoryCardProjections
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             sectionLabel("Categories")
                 .padding(.top, AppTheme.Spacing.md)
             ForEach(sortedCategories) { category in
-                categoryCard(category)
+                categoryCard(category, projection: cardProjections[category.id])
             }
         }
     }
@@ -104,7 +105,7 @@ struct HomeCategoryPickerSheet: View {
             Text("Home")
                 .font(AppTheme.Typography.subheadline.weight(.semibold))
                 .foregroundStyle(.primary)
-            Text("All categories · \(store.state.subscriptions.count) shows")
+            Text("All categories · \(store.rustFollowedPodcastCount()) shows")
                 .font(AppTheme.Typography.caption)
                 .foregroundStyle(.secondary)
         }
@@ -136,12 +137,12 @@ struct HomeCategoryPickerSheet: View {
     // NavigationStack) while tapping elsewhere on the card selects the
     // category and dismisses the sheet.
 
-    private func categoryCard(_ category: PodcastCategory) -> some View {
+    private func categoryCard(_ category: PodcastCategory, projection: CategoryCardProjection?) -> some View {
         ZStack(alignment: .topTrailing) {
             HomeCategoryCard(
                 category: category,
-                subscriptions: subscriptions(in: category),
-                unplayedTotal: unplayedTotal(for: category),
+                subscriptions: projection?.subscriptions(in: store) ?? [],
+                unplayedTotal: projection?.unplayedTotal ?? 0,
                 isSelected: selectedCategoryID == category.id,
                 onTap: {
                     Haptics.light()
@@ -170,16 +171,44 @@ struct HomeCategoryPickerSheet: View {
     }
 
     private var sortedCategories: [PodcastCategory] {
-        store.state.categories.sorted {
-            $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        CategoryLibraryProjection
+            .load(categories: store.state.categories, store: store)
+            .sortedCategories(from: store.state.categories)
+    }
+
+    private var categoryCardProjections: [UUID: CategoryCardProjection] {
+        let request = sortedCategories.map { category in
+            [
+                "category_id": category.id.uuidString,
+                "podcast_ids": category.subscriptionIDs.map(\.uuidString),
+            ] as [String: Any]
         }
+        guard let envelope = store.kernel?.homeCategoryCardsEnvelope(categories: request),
+              let data = envelope.data(using: .utf8),
+              let response = try? JSONDecoder.homeCategoryCards.decode(CategoryCardsResponse.self, from: data)
+        else { return [:] }
+        return Dictionary(uniqueKeysWithValues: response.categories.map { ($0.categoryId, $0) })
     }
+}
 
-    private func subscriptions(in category: PodcastCategory) -> [Podcast] {
-        category.subscriptionIDs.compactMap { store.podcast(id: $0) }
-    }
+private struct CategoryCardsResponse: Decodable {
+    let categories: [CategoryCardProjection]
+}
 
-    private func unplayedTotal(for category: PodcastCategory) -> Int {
-        category.subscriptionIDs.reduce(0) { $0 + store.unplayedCount(forPodcast: $1) }
+private struct CategoryCardProjection: Decodable {
+    let categoryId: UUID
+    let podcastIds: [UUID]
+    let unplayedTotal: Int
+
+    func subscriptions(in store: AppStateStore) -> [Podcast] {
+        podcastIds.compactMap { store.podcast(id: $0) }
     }
+}
+
+private extension JSONDecoder {
+    static let homeCategoryCards: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
+    }()
 }

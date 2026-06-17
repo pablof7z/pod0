@@ -116,6 +116,8 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
             picture_url: None,
         }],
         following_count: 1,
+        approved_pubkeys: Vec::new(),
+        blocked_pubkeys: Vec::new(),
     });
 
     h.headless_inject_agent_note(CachedAgentNote {

@@ -72,7 +72,7 @@ struct BookmarksView: View {
     // MARK: - Data
 
     private func bookmarkedEntries() -> [BookmarkEntry] {
-        let clipsByEpisode = Dictionary(grouping: store.state.clips, by: \.episodeID)
+        let clipsByEpisode = Dictionary(grouping: store.allClips(), by: \.episodeID)
         let notesByEpisode: [UUID: [Note]] = {
             var result: [UUID: [Note]] = [:]
             for note in store.state.notes where !note.deleted {
@@ -83,7 +83,11 @@ struct BookmarksView: View {
         }()
 
         var entries: [BookmarkEntry] = []
-        for episode in store.episodes {
+        let candidateIDs = Set(store.rustStarredEpisodeIDs())
+            .union(clipsByEpisode.keys)
+            .union(notesByEpisode.keys)
+        for episodeID in candidateIDs {
+            guard let episode = store.episode(id: episodeID) else { continue }
             let clips = clipsByEpisode[episode.id] ?? []
             let notes = notesByEpisode[episode.id] ?? []
             guard episode.isStarred || !clips.isEmpty || !notes.isEmpty else { continue }

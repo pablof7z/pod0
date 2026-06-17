@@ -11,8 +11,7 @@ struct AgentPodcastsView: View {
     @Environment(AppStateStore.self) private var store
 
     private var ownedPodcasts: [Podcast] {
-        store.allPodcasts.filter { $0.ownerPubkeyHex != nil }
-            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        store.rustOwnedPodcasts()
     }
 
     var body: some View {
@@ -105,20 +104,15 @@ private struct AgentPodcastRow: View {
             Toggle("", isOn: Binding(
                 get: { isPublic },
                 set: { newValue in
-                    var updated = podcast
-                    updated.nostrVisibility = newValue ? .public : .private
-                    store.updatePodcast(updated)
                     Haptics.selection()
-                    if newValue {
-                        let podcastID = podcast.id.uuidString
-                        Task {
-                            let mgr = LiveAgentOwnedPodcastManager(store: store)
-                            _ = try? await mgr.updatePodcast(
-                                podcastID: podcastID,
-                                title: nil, description: nil, author: nil,
-                                imageURL: nil, visibility: .public
-                            )
-                        }
+                    let podcastID = podcast.id.uuidString
+                    Task {
+                        let mgr = LiveAgentOwnedPodcastManager(store: store)
+                        _ = try? await mgr.updatePodcast(
+                            podcastID: podcastID,
+                            title: nil, description: nil, author: nil,
+                            imageURL: nil, visibility: newValue ? .public : .private
+                        )
                     }
                 }
             ))

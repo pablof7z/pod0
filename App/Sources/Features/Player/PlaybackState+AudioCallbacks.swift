@@ -29,7 +29,6 @@ extension PlaybackState {
             self.performHeadphoneGesture(self.headphoneTripleTapAction)
         }
         engine.setNowPlayingCallbacks(callbacks)
-        engine.onSleepTimerFire = { [weak self] in self?.pause() }
 
         // ── Kernel bridge: AudioEngine → AudioCapability → Rust ──────────
         let audio = PodcastCapabilities.shared.audio
@@ -43,18 +42,6 @@ extension PlaybackState {
             // idempotent: AppStateStore guards against duplicate values.
             if let episodeID = self.episode?.id {
                 self.store?.setEpisodePlaybackPosition(episodeID, position: position)
-            }
-            // Advance bounded-segment queue items (clips, agent segments) that
-            // are not in the Rust queue. Rust handles whole-episode auto-advance
-            // via maybe_auto_advance; this path covers start/end-bounded items.
-            if let end = self.currentSegmentEndTime, position >= end {
-                self.currentSegmentEndTime = nil
-                let store = self.store
-                if !self.queue.isEmpty {
-                    _ = self.playNext(resolve: { store?.episode(id: $0) })
-                } else {
-                    self.engine.pause()
-                }
             }
         }
         engine.onPauseEvent = { [weak audio] url, position in
@@ -72,27 +59,6 @@ extension PlaybackState {
             // projection. So no Swift reaction is needed here; doing it would
             // duplicate kernel-owned decisions (D0).
         }
-        engine.onSleepTimerEpisodeEnd = { [weak self] in
-            // Sleep timer stopped at end of episode: position was already flushed
-            // via onPauseEvent. This path deliberately skips emitting `itemEnd`
-            // so Rust's `maybe_auto_advance` doesn't fire.
-            guard let self, let episodeID = self.episode?.id else { return }
-            // UNLIKE `onItemEnd`, this path cannot delegate mark-played to the
-            // kernel: suppressing `itemEnd` (to avoid auto-advance) also means
-            // Rust's `apply_writeback` ItemEnd branch — the only kernel path
-            // that honours `auto_mark_played_at_end` — never runs. A bare
-            // `kernelMarkPlayed` dispatch (`inbox/mark_listened`) is
-            // unconditional and would ignore the user's setting. So the Swift
-            // `markEpisodePlayed` stays the marker here, gated on the setting to
-            // match the natural-end semantics. It also routes the gated
-            // delete-after-played policy. The position rewind for this completed
-            // episode is handled in `AudioEngine.handleEndOfItem`, which reports
-            // the final paused position as 0 on the ordered audio-report channel.
-            if self.store?.state.settings.autoMarkPlayedAtEnd == true {
-                self.store?.markEpisodePlayed(episodeID)
-            }
-        }
-
         // ── Kernel bridge: Rust AudioCommand → AudioEngine ───────────────
         // Commands from Rust (auto-advance, Siri, CarPlay) route here so
         // AudioEngine — the real player — acts on them, not AudioCapability's
@@ -153,11 +119,7 @@ extension PlaybackState {
             case let .setSpeed(speed):
                 self.engine.setRate(Double(speed))
             case let .setSleepTimer(secs):
-                if let secs, secs > 0 {
-                    self.engine.setSleepTimer(.duration(TimeInterval(secs)))
-                } else {
-                    self.engine.setSleepTimer(.off)
-                }
+                _ = secs
             case .setVolume:
                 break // AudioEngine has no volume API
             }
@@ -165,7 +127,7 @@ extension PlaybackState {
     }
 
     func setRate(_ newRate: Double) {
-        engine.setRate(newRate)
+        store?.kernelSetSpeed(newRate)
     }
 
     static func restoredEpisodeIDToStageBeforeRemotePlay(

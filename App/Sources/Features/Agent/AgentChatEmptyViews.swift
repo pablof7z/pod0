@@ -158,13 +158,14 @@ struct AgentChatWelcomeView: View {
     /// reflect the agent's actual capability *for them right now* — not
     /// generic memory prompts.
     private func suggestionPool() -> [String] {
-        if !store.inProgressEpisodes.isEmpty {
+        switch AgentEmptyStateProjection.load(store: store).suggestionContext {
+        case .resume:
             return Self.resumeSuggestions
-        }
-        if !store.state.subscriptions.isEmpty {
+        case .subscribed:
             return Self.subscribedSuggestions
+        case .onboarding:
+            return Self.onboardingSuggestions
         }
-        return Self.onboardingSuggestions
     }
 
     private var timeOfDayGreeting: String {

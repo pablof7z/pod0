@@ -14,7 +14,7 @@ struct AllowedRow: View {
                 Image(systemName: "checkmark.shield.fill")
                     .foregroundStyle(AppTheme.Tint.success)
 
-                Text("npub1\(key.prefix(NostrPubkeyDisplay.prefixLength))…")
+                Text(NostrNpub.shortNpub(fromHex: key))
                     .font(AppTheme.Typography.monoCallout)
                     .foregroundStyle(.primary)
 

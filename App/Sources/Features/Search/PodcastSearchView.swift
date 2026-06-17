@@ -7,7 +7,7 @@ struct PodcastSearchView: View {
     @State private var destination: PodcastSearchDestination?
 
     private var localResults: PodcastLocalSearchResults {
-        PodcastSearchEngine.localResults(query: model.debouncedQuery, state: store.composedState)
+        PodcastSearchEngine.localResults(query: model.debouncedQuery, store: store)
     }
 
     /// Kernel knowledge-search results for the current query. Reactively

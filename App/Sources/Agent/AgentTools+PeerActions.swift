@@ -8,21 +8,44 @@ import Foundation
 // well-defined effect.
 
 extension AgentTools {
+    private struct PeerEndPlan: Decodable {
+        let error: String?
+        let reason: String?
+        let rootEventID: String?
+
+        enum CodingKeys: String, CodingKey {
+            case error, reason
+            case rootEventID = "root_event_id"
+        }
+    }
+
+    private struct PeerMessagePlan: Decodable {
+        let error: String?
+        let friendPubkey: String?
+        let message: String?
+
+        enum CodingKeys: String, CodingKey {
+            case error, message
+            case friendPubkey = "friend_pubkey"
+        }
+    }
 
     // MARK: - end_conversation
 
     static func endConversationTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        guard let peerContext = deps.peerContext else {
-            return toolError("end_conversation requires a peer conversation context")
+        var payload = args
+        if let rootEventID = deps.peerContext?.rootEventID { payload["root_event_id"] = rootEventID }
+        guard let plan = await peerActionPlan(PeerEndPlan.self, op: "peer_end_plan", payload: payload) else {
+            return toolError("end_conversation planning is unavailable")
         }
-        guard let reason = (args["reason"] as? String)?.trimmed, !reason.isEmpty else {
-            return toolError("Missing or empty 'reason'")
+        if let error = plan.error { return toolError(error) }
+        guard let reason = plan.reason, let rootEventID = plan.rootEventID else {
+            return toolError("end_conversation plan was incomplete")
         }
-        return toolSuccess([
-            "no_reply": true,
-            "reason": reason,
-            "root_event_id": peerContext.rootEventID,
-        ])
+        return await actionTool(
+            op: "peer_end_result",
+            payload: ["reason": reason, "root_event_id": rootEventID]
+        ) ?? toolError("end_conversation result shaping is unavailable")
     }
 
     // MARK: - send_friend_message
@@ -33,11 +56,12 @@ extension AgentTools {
     /// tool error. Inside a peer turn, the reply is threaded under the
     /// active conversation root via NIP-10 tags.
     static func sendFriendMessageTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        guard let input = (args["friend_pubkey"] as? String)?.trimmed, !input.isEmpty else {
-            return toolError("Missing or empty 'friend_pubkey'")
+        guard let plan = await peerActionPlan(PeerMessagePlan.self, op: "peer_message_plan", payload: args) else {
+            return toolError("send_friend_message planning is unavailable")
         }
-        guard let message = (args["message"] as? String)?.trimmed, !message.isEmpty else {
-            return toolError("Missing or empty 'message'")
+        if let error = plan.error { return toolError(error) }
+        guard let input = plan.friendPubkey, let message = plan.message else {
+            return toolError("send_friend_message plan was incomplete")
         }
         // Resolve prefix or full pubkey — also gates on the Friends list so
         // the agent cannot fire kind:1 events at arbitrary pubkeys.
@@ -73,14 +97,25 @@ extension AgentTools {
             var result: [String: Any] = [
                 "event_id": eventID,
                 "friend_pubkey": friendPubkey,
-                "re_invocation": "Message sent. Once the other agent responds you will be automatically re-invoked in this conversation with their reply.",
             ]
             if let rootID = deps.peerContext?.rootEventID {
                 result["root_event_id"] = rootID
             }
-            return toolSuccess(result)
+            return await actionTool(op: "peer_message_result", payload: result)
+                ?? toolError("send_friend_message result shaping is unavailable")
         } catch {
             return toolError("send_friend_message failed: \(error.localizedDescription)")
         }
+    }
+
+    private static func peerActionPlan<T: Decodable>(
+        _ type: T.Type,
+        op: String,
+        payload: [String: Any]
+    ) async -> T? {
+        guard let envelope = await actionTool(op: op, payload: payload),
+              let data = envelope.data(using: .utf8)
+        else { return nil }
+        return try? JSONDecoder().decode(T.self, from: data)
     }
 }

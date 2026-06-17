@@ -67,7 +67,7 @@ enum CarPlayNowPlaying {
         store: AppStateStore
     ) -> [Episode.Chapter] {
         guard let episodeID = playback.episode?.id,
-              let episode = store.episodes.first(where: { $0.id == episodeID })
+              let episode = store.episode(id: episodeID)
         else { return [] }
         return (episode.chapters ?? []).filter(\.includeInTableOfContents)
     }

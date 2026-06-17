@@ -113,20 +113,33 @@ pub extern "C" fn nmp_app_podcast_audio_report(
         // Every other report is structural (play/pause/stop, track end,
         // sleep-timer) and bumps `rev` so the full library projection re-runs.
         let durable_changed = !matches!(
-            report,
+            &report,
             AudioReport::Playing { .. } | AudioReport::BufferingProgress { .. }
         );
 
         // -- 1. Project the report into the actor; capture fresh now_playing. --
         // Step 14: player_actor sourced from state.playback.player via .share().
         // Lock topology UNCHANGED — same Arc<Mutex<PlayerActor>>, sourced differently.
-        let (follow_up_json, now_playing, episode_id_for_writeback) = {
+        let (
+            mut follow_up_json,
+            mut now_playing,
+            episode_id_for_writeback,
+            suppress_auto_advance,
+            segment_end_reached,
+        ) = {
             let mut actor = match handle_ref.state.playback.player.lock() {
                 Ok(a) => a,
                 Err(_) => return std::ptr::null_mut(),
             };
             let follow_up = actor.handle_audio_report(report.clone(), SystemTime::now());
-            let follow_up_json = follow_up.and_then(|cmd| serde_json::to_string(&cmd).ok());
+            let segment_end_reached = actor.take_segment_end_reached();
+            let suppress_auto_advance = matches!(
+                (&report, &follow_up),
+                (AudioReport::ItemEnd { .. }, Some(AudioCommand::Pause))
+            );
+            let follow_up_json = follow_up
+                .as_ref()
+                .and_then(|cmd| serde_json::to_string(cmd).ok());
             let state = actor.state();
             // The episode id stays in actor state across `Playing` / `Paused`
             // ticks (it's only cleared on `Stopped`); read it here so the
@@ -144,12 +157,22 @@ pub extern "C" fn nmp_app_podcast_audio_report(
             // A durable audio report (mark-played-at-end, sleep-timer stop)
             // changes the episode's played/position state — both live in the
             // `podcast.library` payload — so route the delta there.
-            handle_ref.bump_snapshot_rev_domain_if(crate::state::Domain::Library, durable_changed);
-            (follow_up_json, now_playing, episode_id)
+            handle_ref.bump_snapshot_rev_domain_if(
+                crate::state::Domain::Library,
+                durable_changed || segment_end_reached,
+            );
+            (
+                follow_up_json,
+                now_playing,
+                episode_id,
+                suppress_auto_advance,
+                segment_end_reached,
+            )
         };
+        let durable_changed = durable_changed || segment_end_reached;
 
         // -- 2. Mirror the playhead into the store. ----------------------------
-        let is_item_end = matches!(report, AudioReport::ItemEnd { .. });
+        let is_item_end = matches!(&report, AudioReport::ItemEnd { .. });
         if let Some(ref episode_id) = episode_id_for_writeback {
             if let Ok(mut store) = handle_ref.state.library.store.lock() {
                 apply_writeback(&mut store, &report, episode_id);
@@ -162,8 +185,22 @@ pub extern "C" fn nmp_app_podcast_audio_report(
         // not do this internally because it has no access to the store (URLs)
         // or the capability dispatcher. (`ItemEnd` is durable, so `rev` already
         // bumped above; `maybe_auto_advance` bumps again after staging the load.)
-        if is_item_end {
-            maybe_auto_advance(handle_ref);
+        let should_auto_advance =
+            (is_item_end && !suppress_auto_advance) || segment_end_reached;
+        if should_auto_advance && maybe_auto_advance(handle_ref) && segment_end_reached {
+            // Segment-boundary `Playing` reports initially produce Stop so the
+            // native executor can halt when there is no next item. If Rust did
+            // advance the queue, suppress that Stop response or it can race and
+            // stop the newly loaded item after Load+Play dispatch.
+            follow_up_json = None;
+            if let Ok(actor) = handle_ref.state.playback.player.lock() {
+                let state = actor.state();
+                now_playing = if state.episode_id.is_some() {
+                    Some(state.clone())
+                } else {
+                    None
+                };
+            }
         }
 
         let response = AudioReportResponse {
@@ -250,7 +287,7 @@ fn apply_writeback(store: &mut PodcastStore, report: &AudioReport, episode_id: &
 /// next episode from the canonical playback queue, stages a load in the actor,
 /// and dispatches `Load` + `Play` back to iOS via the capability channel. Does
 /// nothing (silently) on any lock failure.
-fn maybe_auto_advance(handle: &PodcastHandle) {
+fn maybe_auto_advance(handle: &PodcastHandle) -> bool {
     // Step 14: player, queue, and download_queue are sourced from
     // state.playback.* via .share() — same Arc<Mutex<_>>, different address.
     // Lock topology UNCHANGED (never nested; guard dropped before next lock).
@@ -258,30 +295,39 @@ fn maybe_auto_advance(handle: &PodcastHandle) {
     // The `auto_play_next` flag lives on the actor (mirrored from settings).
     let auto_play_next = match handle.state.playback.player.lock() {
         Ok(a) => a.auto_play_next,
-        Err(_) => return,
+        Err(_) => return false,
     };
     if !auto_play_next {
-        return;
+        return false;
     }
 
     // Pop the next RESOLVABLE episode from the canonical queue, skipping stale
     // heads (episodes removed from library / unsubscribed shows). Queue and
     // store locks are taken separately per iteration (never nested) to avoid
     // lock-order hazards.
-    let (episode_id, podcast_id, url, position_secs) = loop {
+    let (episode_id, podcast_id, url, position_secs, segment_end_secs) = loop {
         let popped = match handle.state.playback.queue.lock() {
             Ok(mut q) => q.next(),
-            Err(_) => return,
+            Err(_) => return false,
         };
-        let Some(id) = popped else { return }; // queue exhausted — nothing to play
+        let Some(item) = popped else { return false }; // queue exhausted — nothing to play
         let info = match handle.state.library.store.lock() {
-            Ok(s) => s.episode_playback_info(&id),
-            Err(_) => return,
+            Ok(s) => s.episode_playback_info(&item.episode_id),
+            Err(_) => return false,
         };
         // Stage the store's canonical (lowercase) id so the actor's
         // `episode_id` stays exact-matchable downstream (see `handle_play`).
         if let Some((canon_id, pod, ep_url, pos)) = info {
-            break (canon_id, pod, ep_url, pos);
+            let start = item.start_secs.unwrap_or(pos).max(0.0);
+            if !start.is_finite() {
+                continue;
+            }
+            if let Some(end) = item.end_secs {
+                if !end.is_finite() || end <= start {
+                    continue;
+                }
+            }
+            break (canon_id, pod, ep_url, start, item.end_secs);
         }
         // Stale head already popped; continue to the next entry.
     };
@@ -296,8 +342,9 @@ fn maybe_auto_advance(handle: &PodcastHandle) {
     match handle.state.playback.player.lock() {
         Ok(mut actor) => {
             actor.stage_load(&episode_id, Some(podcast_id), &url, position_secs);
+            actor.set_segment_end_secs(segment_end_secs);
         }
-        Err(_) => return, // poisoned lock — bail before dispatching Load/Play
+        Err(_) => return false, // poisoned lock — bail before dispatching Load/Play
     }
 
     // Dispatch Load + Play. Failures degrade silently per D6.
@@ -326,6 +373,7 @@ fn maybe_auto_advance(handle: &PodcastHandle) {
     // Auto-advance staged a new now_playing episode → the `podcast.playback`
     // delta. (The departing episode's mark-played already bumped library above.)
     handle.bump_snapshot_rev_domain(crate::state::Domain::Playback);
+    true
 }
 
 fn dispatch_audio_cmd(handle: &PodcastHandle, cmd: &AudioCommand) {

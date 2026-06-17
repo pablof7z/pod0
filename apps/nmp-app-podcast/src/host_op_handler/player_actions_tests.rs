@@ -72,7 +72,7 @@ fn play_enqueues_download_for_not_downloaded_episode() {
     store.lock().unwrap().subscribe(podcast, vec![ep]);
 
     let handler = handler_with_store(store);
-    let result = handler.handle_play(ep_id.clone(), "corr-play-1");
+    let result = handler.handle_play(ep_id.clone(), None, None, "corr-play-1");
 
     assert_eq!(result["ok"], serde_json::json!(true));
     let dq = handler.state.playback.downloads.lock().unwrap();
@@ -96,7 +96,7 @@ fn load_enqueues_download_for_not_downloaded_episode() {
     store.lock().unwrap().subscribe(podcast, vec![ep]);
 
     let handler = handler_with_store(store);
-    let result = handler.handle_load(ep_id.clone(), "corr-load-1");
+    let result = handler.handle_load(ep_id.clone(), None, None, "corr-load-1");
 
     assert_eq!(result["ok"], serde_json::json!(true));
     let dq = handler.state.playback.downloads.lock().unwrap();
@@ -118,8 +118,8 @@ fn replaying_same_episode_does_not_double_enqueue() {
     store.lock().unwrap().subscribe(podcast, vec![ep]);
 
     let handler = handler_with_store(store);
-    let _ = handler.handle_play(ep_id.clone(), "corr-1");
-    let _ = handler.handle_play(ep_id.clone(), "corr-2");
+    let _ = handler.handle_play(ep_id.clone(), None, None, "corr-1");
+    let _ = handler.handle_play(ep_id.clone(), None, None, "corr-2");
 
     let dq = handler.state.playback.downloads.lock().unwrap();
     assert!(dq.get(&ep_id).is_some());

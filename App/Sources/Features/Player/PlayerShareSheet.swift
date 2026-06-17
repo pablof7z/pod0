@@ -10,10 +10,8 @@ import UIKit
 ///   - **Copy link with timestamp** — same, with `?t=<seconds>` appended so
 ///     a recipient lands at the current playhead.
 ///   - **Share via system** — SwiftUI `ShareLink` over the deep link.
-///   - **Share quote** — presents `QuoteShareView` for the segment at the
-///     current time. Gated on `episode.transcriptState == .ready` (which
-///     means hidden in this lane until lane 5 / transcript ingestion lands —
-///     `PlayerTranscriptScrollView` is also a placeholder in this build).
+///   - **Share quote** — asks Rust to resolve transcript-aligned quote
+///     boundaries at the current time, then presents `QuoteShareView`.
 struct PlayerShareSheet: View {
 
     @Environment(\.dismiss) private var dismiss
@@ -33,7 +31,7 @@ struct PlayerShareSheet: View {
     /// requires.
     @State private var quotingSegment: Segment?
 
-    /// True while the LLM is resolving boundaries for "Share quote". The row
+    /// True while the kernel resolves boundaries for "Share quote". The row
     /// swaps its glyph for a spinner so the user sees the latency is purposeful
     /// instead of dead-air.
     @State private var quoteResolving: Bool = false
@@ -138,41 +136,33 @@ struct PlayerShareSheet: View {
         .disabled(quoteResolving)
     }
 
-    /// Load the persisted transcript for this episode, ask the LLM to pick
-    /// semantic boundaries around the playhead, and present `QuoteShareView`
-    /// for the resulting span. On any failure (provider error, network blip,
-    /// malformed response, no transcript) we fall back to today's
-    /// single-segment behavior so the share affordance still works — same
-    /// defensive path the previous implementation took, just preceded by an
-    /// LLM round-trip when possible.
+    /// Ask the Rust kernel to pick transcript-aligned boundaries around the
+    /// playhead, and present `QuoteShareView` for the resulting span. Swift
+    /// does not compute fallback quote boundaries; kernel failure leaves the
+    /// sheet closed so Rust remains the only quote-boundary owner.
     private func presentQuoteAtPlayhead() {
-        guard let transcript = EpisodeDetailView.readyTranscript(for: episode) else {
+        guard hasReadyTranscript else {
             Haptics.error()
             return
         }
         Haptics.light()
-        let modelID = store.state.settings.agentInitialModel
         quoteResolving = true
         let playhead = state.currentTime
         Task { @MainActor in
             defer { quoteResolving = false }
-            let resolved = await ClipBoundaryResolver.shared.resolveBoundaries(
-                transcript: transcript,
-                playheadSeconds: playhead,
-                intent: .quote,
-                modelID: modelID
+            let resolved = await store.kernelResolveQuote(
+                episodeID: episode.id,
+                positionSecs: playhead
             )
             if let resolved {
                 quotingSegment = Segment(
-                    start: resolved.startSeconds,
-                    end: resolved.endSeconds,
+                    start: resolved.startSecs,
+                    end: resolved.endSecs,
                     speakerID: resolved.speakerID,
-                    text: resolved.quotedText
+                    text: resolved.transcriptText
                 )
             } else {
-                // Mechanical fallback so a failed LLM call still lets the
-                // user share something. Same shape as the pre-LLM behavior.
-                quotingSegment = transcript.segment(at: playhead)
+                Haptics.error()
             }
         }
     }

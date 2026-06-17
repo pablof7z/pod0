@@ -85,15 +85,15 @@ enum ClipAudioComposer {
     // MARK: - Helpers
 
     /// Same precondition shape as `ClipVideoComposer.resolveLocalAudioURL`.
-    /// Kept independent (rather than reaching across files) so the
-    /// audio path stays self-contained and the video stub is free to
-    /// evolve without coupling them.
+    /// Uses the Rust-projected downloaded path on `Episode.downloadState`;
+    /// `FileManager` is only an OS capability guard that the projected file
+    /// still exists before AVFoundation opens it.
     private static func resolveLocalAudioURL(for episode: Episode) throws -> URL {
-        let store = EpisodeDownloadStore.shared
-        guard store.exists(for: episode) else {
+        guard case let .downloaded(localFileURL, _) = episode.downloadState,
+              FileManager.default.fileExists(atPath: localFileURL.path) else {
             throw ClipExporter.ExportError.audioUnavailable
         }
-        return store.localFileURL(for: episode)
+        return localFileURL
     }
 
     /// Metadata embedded in the exported `.m4a` so when the recipient

@@ -7,10 +7,9 @@ import SwiftUI
 // with which services — answering the other half of "why doesn't this episode
 // have a transcript / chapters?" before the user has to read a single event.
 //
-// Everything here is derived live from `settings` + the kernel snapshot — no
-// kernel round-trip — so it always reflects the current configuration. When
-// nothing is configured to run, that is stated plainly (the whole point: "if
-// nothing is configured it should be said there").
+// The transcript verdict comes from Rust's transcript ingest planner. Swift
+// renders the returned semantics, but does not mirror provider fallback,
+// per-show opt-out, publisher/AI fallback, key, or local-file policy.
 struct EpisodeDiagnosticsConfigSection: View {
 
     let episode: Episode
@@ -66,103 +65,104 @@ struct EpisodeDiagnosticsConfigSection: View {
 
     private var snapshot: SettingsSnapshot? { store.kernel?.podcastSnapshot?.settings }
 
+    private var transcriptionPlan: KernelModel.TranscriptIngestPlan? {
+        store.kernel?.transcriptIngestPlan(
+            episodeID: episode.id,
+            forceProvider: nil,
+            localAudioAvailable: isDownloaded,
+            allowPublisher: true
+        )
+    }
+
     private var isDownloaded: Bool {
         if case .downloaded = episode.downloadState { return true }
         return false
     }
 
-    /// Decide, from the live config, what this episode's transcript pipeline
-    /// will actually do. Mirrors the gating order in `TranscriptIngestService`.
+    /// Render Rust's transcript planner verdict. The planner owns the policy;
+    /// this view only maps semantic statuses to UI copy and color.
     private var transcriptionVerdict: Verdict {
-        // Already done.
-        if case .ready(let source) = episode.transcriptState {
+        guard let plan = transcriptionPlan else {
             return Verdict(
-                message: "Already transcribed via \(TranscriptIngestService.sourceDisplayName(source)).",
-                icon: "checkmark.seal.fill",
-                tint: AppTheme.Tint.success)
-        }
-        // Category opt-out wins over everything.
-        if !store.effectiveTranscriptionEnabled(forPodcast: episode.podcastID) {
-            return Verdict(
-                message: "Won't transcribe — transcription is turned off for this show's category.",
-                icon: "minus.circle",
-                tint: AppTheme.Tint.warning)
-        }
-        let settings = store.state.settings
-        // Publisher transcript path.
-        if episode.publisherTranscriptURL != nil {
-            if settings.autoIngestPublisherTranscripts {
-                return Verdict(
-                    message: "Will use the publisher-supplied transcript from the feed.",
-                    icon: "doc.text.magnifyingglass",
-                    tint: AppTheme.Tint.success)
-            }
-            // Publisher transcript exists but auto-ingest is off; fall through
-            // to the AI verdict, which may still cover it.
-        }
-        // AI fallback path.
-        guard settings.autoFallbackToScribe else {
-            return Verdict(
-                message: "Won't transcribe automatically — AI transcription fallback is OFF (turn it on in Settings → Transcripts).",
-                icon: "exclamationmark.triangle.fill",
-                tint: AppTheme.Tint.warning)
-        }
-        guard let snap = snapshot else {
-            return Verdict(
-                message: "AI transcription is on; the provider will resolve once the kernel is ready.",
+                message: "Transcript planner is not available yet.",
                 icon: "hourglass",
                 tint: .secondary)
         }
-        let resolved = snap.resolvedSTTProvider
-        let selected = snap.selectedSTTProvider
-        // Selected provider downgraded for a missing key.
-        if selected != resolved {
+        switch plan.status {
+        case "ready":
+            if case .ready(let source) = episode.transcriptState {
+                let label = TranscriptIngestService.sourceDisplayName(source, kernel: store.kernel) ?? source.rawValue
+                return Verdict(
+                    message: "Already transcribed via \(label).",
+                    icon: "checkmark.seal.fill",
+                    tint: AppTheme.Tint.success)
+            }
             return Verdict(
-                message: "\(selected.displayName) needs a key; will use \(resolved.displayName) instead (connect \(selected.displayName) in Settings → Providers).",
-                icon: "key.slash",
+                message: "Already transcribed.",
+                icon: "checkmark.seal.fill",
+                tint: AppTheme.Tint.success)
+        case "publisher":
+            return Verdict(
+                message: "Will use the publisher-supplied transcript from the feed.",
+                icon: "doc.text.magnifyingglass",
+                tint: AppTheme.Tint.success)
+        case "stt":
+            let provider = providerDisplayName(plan.provider)
+            if plan.requiresLocalFile && !isDownloaded {
+                return Verdict(
+                    message: "Will transcribe on-device with \(provider) once the episode finishes downloading.",
+                    icon: "arrow.down.circle",
+                    tint: .secondary)
+            }
+            return Verdict(
+                message: "Will transcribe with \(provider).",
+                icon: "waveform.badge.magnifyingglass",
+                tint: AppTheme.Tint.success)
+        case "skipped":
+            return Verdict(
+                message: plan.reason ?? "Transcription is not configured for this episode.",
+                icon: "exclamationmark.triangle.fill",
                 tint: AppTheme.Tint.warning)
-        }
-        // Resolved provider requires a key it doesn't have.
-        if snap.effectiveSttProviderRequiresKey && !snap.hasLoadedKey(for: resolved) {
+        default:
             return Verdict(
-                message: "Won't transcribe — \(resolved.displayName) needs an API key (connect it in Settings → Providers).",
+                message: plan.reason ?? "Transcript planning failed.",
                 icon: "exclamationmark.triangle.fill",
                 tint: AppTheme.Tint.warning)
         }
-        // Apple on-device needs the file first.
-        if resolved == .appleNative && !isDownloaded {
-            return Verdict(
-                message: "Will transcribe on-device with \(resolved.displayName) once the episode finishes downloading.",
-                icon: "arrow.down.circle",
-                tint: .secondary)
-        }
-        return Verdict(
-            message: "Will transcribe with \(resolved.displayName).",
-            icon: "waveform.badge.magnifyingglass",
-            tint: AppTheme.Tint.success)
     }
 
     private var transcriptionDetails: [(String, String)] {
-        let settings = store.state.settings
         var rows: [(String, String)] = []
-        rows.append(("AI fallback", settings.autoFallbackToScribe ? "On" : "Off"))
-        rows.append(("Publisher auto-ingest", settings.autoIngestPublisherTranscripts ? "On" : "Off"))
-        if let snap = snapshot {
-            rows.append(("Selected provider", snap.selectedSTTProvider.displayName))
-            if snap.resolvedSTTProvider != snap.selectedSTTProvider {
-                rows.append(("Effective provider", snap.resolvedSTTProvider.displayName))
+        if let plan = transcriptionPlan {
+            rows.append(("Rust plan", plan.status))
+            if let reason = plan.reason {
+                rows.append(("Plan reason", reason))
             }
-            let needsKey = snap.effectiveSttProviderRequiresKey
-            let hasKey = snap.hasLoadedKey(for: snap.resolvedSTTProvider)
-            rows.append(("Provider key", needsKey ? (hasKey ? "Configured" : "Missing") : "Not required"))
+            if let provider = plan.provider {
+                rows.append(("Planned provider", providerDisplayName(provider)))
+            }
+            if plan.requiresLocalFile {
+                rows.append(("Local audio", isDownloaded ? "Available" : "Required"))
+            }
+        } else {
+            rows.append(("Rust plan", "Unavailable"))
         }
-        rows.append((
-            "Category transcription",
-            store.effectiveTranscriptionEnabled(forPodcast: episode.podcastID) ? "Enabled" : "Disabled"))
+        if let snap = snapshot {
+            rows.append(("Selected provider", providerDisplayName(snap.selectedSTTProvider.rawValue)))
+            if snap.resolvedSTTProvider != snap.selectedSTTProvider {
+                rows.append(("Effective provider", providerDisplayName(snap.resolvedSTTProvider.rawValue)))
+            }
+        }
         rows.append((
             "Publisher transcript",
             episode.publisherTranscriptURL != nil ? "Available in feed" : "None in feed"))
         return rows
+    }
+
+    private func providerDisplayName(_ raw: String?) -> String {
+        guard let raw else { return "the selected provider" }
+        guard let provider = STTProvider(rawValue: raw) else { return raw }
+        return TranscriptIngestService.providerDisplayName(provider, kernel: store.kernel) ?? raw
     }
 
     // MARK: - Chapters + search

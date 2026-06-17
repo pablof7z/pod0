@@ -67,10 +67,10 @@ struct DataStorageSettingsView: View {
     }
 
     private var dataRecordCount: Int {
-        store.state.subscriptions.count
-            + store.episodes.count
+        store.rustFollowedPodcastCount()
+            + store.rustEpisodeCount()
             + store.activeNotes.count
-            + store.activeMemories.count
+            + (store.kernel?.podcastSnapshot?.memoryFacts.count ?? 0)
             + store.state.friends.count
             + store.activeAgentActivityCount
     }

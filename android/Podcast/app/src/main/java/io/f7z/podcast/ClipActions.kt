@@ -13,9 +13,11 @@ import kotlinx.serialization.json.Json
  * `apps/nmp-app-podcast/src/ffi/actions/clip_module.rs`:
  *
  *  `podcast.clip.create`  — `{"op":"create","episode_id":"…","start_secs":N,"end_secs":N}`
- *                            optional: `"title":"…"` (omitted when blank)
+ *                            optional: `"title":"…"`, `"source":"…"`,
+ *                            `"transcript_text":"…"`, `"client_clip_id":"…"`
  *  `podcast.clip.delete`  — `{"op":"delete","clip_id":"…"}`
  *  `podcast.clip.auto_snip` — `{"op":"auto_snip","episode_id":"…","position_secs":N}`
+ *                             optional: `"source":"…"`, `"client_clip_id":"…"`
  *
  * The Rust enum uses `#[serde(tag = "op", rename_all = "snake_case")]`, so:
  *  - `Create` variant → `"op":"create"`
@@ -143,15 +145,26 @@ object ClipActions {
      * {"op":"auto_snip","episode_id":"<uuid>","position_secs":N}
      * ```
      */
-    fun buildAutoSnipPayload(episodeId: String, positionSecs: Double): String =
+    fun buildAutoSnipPayload(
+        episodeId: String,
+        positionSecs: Double,
+        source: String? = null,
+        clientClipId: String? = null,
+    ): String =
         json.encodeToString(
             JsonObject.serializer(),
             JsonObject(
-                mapOf(
-                    "op"           to JsonPrimitive("auto_snip"),
-                    "episode_id"   to JsonPrimitive(episodeId),
-                    "position_secs" to JsonPrimitive(positionSecs),
-                ),
+                buildMap {
+                    put("op", JsonPrimitive("auto_snip"))
+                    put("episode_id", JsonPrimitive(episodeId))
+                    put("position_secs", JsonPrimitive(positionSecs))
+                    source?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                        put("source", JsonPrimitive(it))
+                    }
+                    clientClipId?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                        put("client_clip_id", JsonPrimitive(it))
+                    }
+                },
             ),
         )
 }

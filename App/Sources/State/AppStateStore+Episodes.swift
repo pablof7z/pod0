@@ -33,41 +33,22 @@ extension AppStateStore {
     }
 
     /// Episodes belonging to the given podcast, newest publish-date first.
-    ///
-    /// O(1) lookup against `episodeIndexesByShow` plus an O(K) position-cache fold
-    /// (K = pending position writes, typically ≤ 1). Was O(N) filter + O(N
-    /// log N) sort, called from `ShowDetailView`'s body for every render —
-    /// 2,853 episodes for "The Daily" alone.
+    /// Rust owns membership, archive visibility, ordering, and caps; Swift
+    /// resolves the returned ids for native rendering and legacy test callers.
     func episodes(forPodcast id: UUID) -> [Episode] {
-        episodesForShowView(id)
+        rustEpisodes(forPodcast: id)
     }
 
-    /// Episodes the user has started but not finished, ordered by most recent
-    /// activity. "Started" is `playbackPosition > 0`. "Finished" is `played`.
-    /// Used by the Home tab's in-progress carousel.
-    ///
-    /// Backed by `inProgressEpisodesCached`. The read-side helper folds the
-    /// position-debounce cache so an episode whose first tick hasn't flushed
-    /// yet still surfaces here.
+    /// Episodes the user has started but not finished. Rust owns the
+    /// in-progress membership and ordering.
     var inProgressEpisodes: [Episode] {
-        inProgressEpisodesView()
+        rustInProgressEpisodes()
     }
 
-    /// Recently published, unplayed episodes across all subscriptions.
-    /// Used by the Home tab's "new" feed.
-    ///
-    /// Backed by `recentEpisodesCached` (top `Self.recentEpisodesCacheLimit`).
-    /// Larger limits fall back to a one-off recompute against `self.episodes`.
+    /// Recently published, unplayed episodes across subscriptions. Rust owns
+    /// membership and ordering.
     func recentEpisodes(limit: Int = 30) -> [Episode] {
-        recentEpisodesView(limit: limit)
-    }
-
-    /// All episodes across every podcast, sorted newest-first.
-    /// Used by the Library "All Episodes" view. Not cached — call sites should
-    /// slice via `prefix(_:)` or paginate to avoid materialising the full array
-    /// on every render.
-    var allEpisodesSorted: [Episode] {
-        self.episodes.sorted { $0.pubDate > $1.pubDate }
+        rustRecentEpisodes(limit: limit)
     }
 
     // MARK: - Writes
@@ -136,20 +117,7 @@ extension AppStateStore {
     func markEpisodePlayed(_ id: UUID) {
         kernelMarkPlayed(id)
         flushPendingPositions()
-        guard let idx = self.episodes.firstIndex(where: { $0.id == id }) else { return }
-        var episodes = self.episodes
-        episodes[idx].played = true
-        episodes[idx].playbackPosition = 0
-        // The cache entry for this episode (if any) is now stale — we
-        // just persisted position=0 deliberately. Drop it so the next
-        // tick (e.g. a stray engine observer firing post-end) doesn't
-        // resurrect a non-zero position on its first eager save.
-        performMutationBatch {
-            self.episodes = episodes
-            positionCache.removeValue(forKey: id)
-            // Cached unplayed counts + in-progress feed must drop this episode.
-            invalidateEpisodeProjections()
-        }
+        positionCache.removeValue(forKey: id)
         // Delete-after-played is now kernel-owned policy (D0). `kernelMarkPlayed`
         // dispatches `inbox/mark_listened`, whose Rust handler reads
         // `auto_delete_downloads_after_played` and removes the local download
@@ -163,27 +131,12 @@ extension AppStateStore {
     func resetEpisodeProgress(_ id: UUID) {
         kernelResetEpisodeProgress(id)
         flushPendingPositions()
-        guard let idx = self.episodes.firstIndex(where: { $0.id == id }) else { return }
-        var episodes = self.episodes
-        episodes[idx].playbackPosition = 0
-        performMutationBatch {
-            self.episodes = episodes
-            positionCache.removeValue(forKey: id)
-            invalidateEpisodeProjections()
-        }
+        positionCache.removeValue(forKey: id)
     }
 
     /// Reverts an accidental "mark played".
     func markEpisodeUnplayed(_ id: UUID) {
         kernelMarkUnplayed(id)
-        guard let idx = self.episodes.firstIndex(where: { $0.id == id }) else { return }
-        var episodes = self.episodes
-        episodes[idx].played = false
-        performMutationBatch {
-            self.episodes = episodes
-            // Cached unplayed counts + recent feed must re-include this episode.
-            invalidateEpisodeProjections()
-        }
     }
 
     /// Flips the user-set "starred" flag for an episode.
@@ -191,11 +144,6 @@ extension AppStateStore {
         guard let idx = self.episodes.firstIndex(where: { $0.id == id }) else { return }
         let current = self.episodes[idx].isStarred
         kernelToggleStar(id, currentlyStarred: current)
-        var episodes = self.episodes
-        episodes[idx].isStarred.toggle()
-        performMutationBatch {
-            self.episodes = episodes
-        }
     }
 
     /// Sets the user-set "starred" flag explicitly.
@@ -203,11 +151,6 @@ extension AppStateStore {
         guard let idx = self.episodes.firstIndex(where: { $0.id == id }) else { return }
         guard self.episodes[idx].isStarred != starred else { return }
         kernelToggleStar(id, currentlyStarred: !starred)
-        var episodes = self.episodes
-        episodes[idx].isStarred = starred
-        performMutationBatch {
-            self.episodes = episodes
-        }
     }
 
     /// Updates the episode's local download lifecycle (queued / downloading /
@@ -228,7 +171,7 @@ extension AppStateStore {
         episodes[idx].downloadState = newState
         performMutationBatch {
             self.episodes = episodes
-            // Cached `hasDownloadedByShow` set may now need to add or drop this subscription.
+            // Compatibility no-op; Rust owns downloaded-show projections.
             invalidateEpisodeProjections()
         }
     }
@@ -251,7 +194,7 @@ extension AppStateStore {
         episodes[idx].transcriptState = newState
         performMutationBatch {
             self.episodes = episodes
-            // Cached `hasTranscribedByShow` set may now need to add or drop this subscription.
+            // Compatibility no-op; Rust owns transcribed-show projections.
             invalidateEpisodeProjections()
         }
         // M4 / D7: report the transient status to Rust so it survives a feed
@@ -272,32 +215,81 @@ extension AppStateStore {
         // the transcript first, so a stale `"transcribing"` never surfaces
         // once the transcript lands.
         if case .ready = newState { return }
-        let (status, message) = Self.transcriptStatusReport(for: newState)
-        if Self.transcriptStatusReport(for: priorState).0 != status {
-            kernelSetEpisodeTranscriptStatus(
-                episodeID: id,
-                status: status,
-                message: message,
-                provider: provider
-            )
+        guard let report = Self.transcriptStatusReport(for: newState, kernel: kernel) else { return }
+        if Self.transcriptStatusReport(for: priorState, kernel: kernel)?.status != report.status {
+            kernelSetEpisodeTranscriptStatus(episodeID: id, report: report, provider: provider)
         }
     }
 
-    /// Map a `TranscriptState` to the coarse `(status, message)` pair reported
-    /// to Rust. `.none` clears the override (`"none"`). `.ready` is never
-    /// reported (see `setEpisodeTranscriptState`) — it's derived by Rust from
-    /// the stored transcript — but is mapped to `"none"` here for completeness
-    /// so the prior-state comparison treats a `.ready → X` transition cleanly.
+    @discardableResult
+    func kernelReportEpisodeTranscriptState(
+        episodeID id: UUID,
+        state: TranscriptState,
+        provider: String? = nil
+    ) -> DispatchResult? {
+        guard let report = Self.transcriptStatusReport(for: state, kernel: kernel) else { return nil }
+        return kernelSetEpisodeTranscriptStatus(episodeID: id, report: report, provider: provider)
+    }
+
+    private struct TranscriptStatusReport: Decodable {
+        let status: String?
+        let message: String?
+        let error: String?
+    }
+
+    /// Ask Rust to map a raw `TranscriptState` tag into the coarse status
+    /// override reported back to the kernel. Swift only serializes the local
+    /// enum and performs the callback; Rust owns the status/message policy.
     private static func transcriptStatusReport(
-        for state: TranscriptState
-    ) -> (String, String?) {
-        switch state {
-        case .none, .ready: return ("none", nil)
-        case .queued: return ("queued", nil)
-        case .fetchingPublisher: return ("fetching_publisher", nil)
-        case .transcribing: return ("transcribing", nil)
-        case .failed(let message): return ("failed", message)
+        for state: TranscriptState,
+        kernel: KernelModel?
+    ) -> (status: String, message: String?)? {
+        guard let handle = kernel?.podcastHandlePointer else { return nil }
+        var request = transcriptStatePayload(for: state)
+        request["op"] = "transcript_status_report"
+        guard let data = try? JSONSerialization.data(withJSONObject: request),
+              let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        let envelope = json.withCString { ptr -> String? in
+            guard let result = nmp_app_podcast_agent_action_tool(handle, ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            return String(cString: result)
         }
+        guard let envelope,
+              let responseData = envelope.data(using: .utf8),
+              let response = try? JSONDecoder().decode(TranscriptStatusReport.self, from: responseData),
+              response.error == nil,
+              let status = response.status,
+              !status.isEmpty
+        else { return nil }
+        return (status, response.message)
+    }
+
+    static func transcriptStatePayload(for state: TranscriptState) -> [String: Any] {
+        switch state {
+        case .none: return ["state": "none"]
+        case .ready: return ["state": "ready"]
+        case .queued: return ["state": "queued"]
+        case .fetchingPublisher: return ["state": "fetching_publisher"]
+        case .transcribing: return ["state": "transcribing"]
+        case .failed(let message): return ["state": "failed", "message": message]
+        }
+    }
+
+    @discardableResult
+    private func kernelSetEpisodeTranscriptStatus(
+        episodeID id: UUID,
+        report: (status: String, message: String?),
+        provider: String?
+    ) -> DispatchResult? {
+        kernelSetEpisodeTranscriptStatus(
+            episodeID: id,
+            status: report.status,
+            message: report.message,
+            provider: provider
+        )
     }
 
     /// Records the most-recently-loaded episode so the mini-player can be
@@ -307,18 +299,4 @@ extension AppStateStore {
         state.lastPlayedEpisodeID = id
     }
 
-    /// Persist hydrated chapters for an episode. Used by
-    /// `ChaptersHydrationService` after asynchronously fetching the JSON
-    /// referenced by `episode.chaptersURL`. No-op when `chapters` is empty
-    /// AND the episode already has chapters — we never overwrite real data
-    /// with an empty result.
-    func setEpisodeChapters(_ id: UUID, chapters: [Episode.Chapter]) {
-        guard let idx = self.episodes.firstIndex(where: { $0.id == id }) else { return }
-        if chapters.isEmpty, let existing = self.episodes[idx].chapters, !existing.isEmpty {
-            return
-        }
-        var episodes = self.episodes
-        episodes[idx].chapters = chapters.isEmpty ? nil : chapters
-        self.episodes = episodes
-    }
 }

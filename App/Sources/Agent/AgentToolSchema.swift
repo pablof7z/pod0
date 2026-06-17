@@ -68,7 +68,7 @@ extension AgentTools {
                     "prompt": ["type": "string", "description": "The full task prompt to run on each scheduled execution."],
                     "label": ["type": "string", "description": "Short human-readable name shown in the scheduled tasks list (e.g. 'Daily HN check'). Defaults to the first 40 characters of the prompt."],
                     "interval_seconds": ["type": "integer", "description": "How often to run the task, in seconds. Omit if using 'cadence'."],
-                    "cadence": ["type": "string", "enum": ["hourly", "daily", "weekly"], "description": "Convenience shorthand for common intervals. Omit if using 'interval_seconds'."],
+                    "cadence": ["type": "string", "enum": ["hourly", "daily", "weekly", "once"], "description": "Convenience shorthand for common schedules accepted by the Rust scheduler. Omit if using 'interval_seconds'."],
                 ],
                 required: ["prompt"]
             ),

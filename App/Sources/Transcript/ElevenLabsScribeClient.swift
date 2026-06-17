@@ -63,8 +63,8 @@ actor ElevenLabsScribeClient {
 
     /// Submits an audio source for transcription. The shared Rust endpoint
     /// returns the full Scribe result inline; we preserve the old job wrapper
-    /// so `TranscriptionQueue` and `TranscriptIngestService` keep one lifecycle
-    /// for submit/poll style STT providers.
+    /// so `TranscriptIngestService` keeps one lifecycle for submit/poll style
+    /// STT providers.
     func submit(
         audioURL: URL,
         episodeID: UUID,

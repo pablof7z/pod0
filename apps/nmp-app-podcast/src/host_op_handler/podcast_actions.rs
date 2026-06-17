@@ -157,6 +157,12 @@ impl PodcastHostOpHandler {
         match self.state.library.store.lock() {
             Ok(mut s) => {
                 use crate::store::events::{stage, EventDetail, EventSeverity};
+                if !s.has_episode(&episode_id) {
+                    return serde_json::json!({
+                        "ok": false,
+                        "error": format!("episode not found: {episode_id}")
+                    });
+                }
                 // "skipped" is an event-only signal: the iOS pipeline declined
                 // to transcribe (per-category opt-out, automatic AI transcription
                 // off, no provider key, on-device audio missing). Record *why* in
@@ -246,10 +252,8 @@ impl PodcastHostOpHandler {
         query: String,
         correlation_id: &str,
     ) -> serde_json::Value {
-        let encoded = crate::itunes::url_encode(&query);
-        let search_url = format!(
-            "https://itunes.apple.com/search?media=podcast&entity=podcast&limit=25&term={encoded}"
-        );
+        let search_url =
+            crate::itunes::search_url(&query, crate::itunes::ItunesSearchKind::Podcast, 25);
         let req = HttpRequest::get(search_url, [("Accept", "application/json")]);
         let http_result = match self.dispatch_http(&req, correlation_id) {
             Ok(r) => r,

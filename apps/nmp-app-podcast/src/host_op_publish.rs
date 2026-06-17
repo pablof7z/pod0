@@ -21,6 +21,7 @@ use podcast_discovery::{
     episode_to_episode_tags, podcast_to_show_tags, show_content, KIND_AUTHOR_CLAIM, KIND_EPISODE,
     KIND_SHOW,
 };
+use podcast_core::NostrVisibility;
 
 use crate::ffi::actions::publish_module::PublishAction;
 use crate::ffi::handle::OwnedPublishState;
@@ -184,14 +185,14 @@ pub(crate) fn publish_show(
 /// the self-enqueued per-episode backfill the lifecycle handler fans out on a
 /// private→public flip (see [`crate::host_op_publish_lifecycle::update_owned`]).
 fn publish_episode(handler: &PodcastHostOpHandler, episode_id: String) -> serde_json::Value {
-    let (podcast, episode, local_path, blossom_servers) = match handler.state.library.store.lock() {
+    let (podcast, episode, local_path, blossom_servers, nostr_enabled) = match handler.state.library.store.lock() {
         Ok(s) => match s.episode_with_podcast_clone(&episode_id) {
             Some((podcast, episode)) => {
                 let local_path = s.local_path_for(&episode.id).map(str::to_owned);
                 // Wrap the single blossom_server_url in a vec for the kernel action.
                 let server = s.blossom_server_url().to_owned();
                 let servers = if server.is_empty() { vec![] } else { vec![server] };
-                (podcast, episode, local_path, servers)
+                (podcast, episode, local_path, servers, s.nostr_enabled())
             }
             None => {
                 return serde_json::json!({
@@ -202,6 +203,18 @@ fn publish_episode(handler: &PodcastHostOpHandler, episode_id: String) -> serde_
         },
         Err(_) => return serde_json::json!({"ok": false, "error": "store poisoned"}),
     };
+    if podcast.nostr_visibility != NostrVisibility::Public {
+        return serde_json::json!({
+            "ok": false,
+            "error": "podcast visibility is not public"
+        });
+    }
+    if !nostr_enabled {
+        return serde_json::json!({
+            "ok": false,
+            "error": "nostr publishing is disabled"
+        });
+    }
     let podcast_id_str = podcast.id.0.to_string();
     let (pubkey_hex, secret_hex) = match handler.state.publish.podcast_keys.lock() {
         Ok(keys) => {

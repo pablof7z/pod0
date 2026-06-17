@@ -16,8 +16,9 @@ import os.log
 //
 // Constructed once per `AgentChatSession` / `AgentRelayBridge`, the bundle
 // holds weak references to `AppStateStore` and `PlaybackState` so the agent
-// adapters never extend their lifetimes. Heavy adapters (RAG) live in their
-// own files; the small ones live here.
+// adapters never extend their lifetimes. Playback intent and agent-visible
+// playback state route through Rust.
+// Heavy adapters (RAG) live in their own files; the small ones live here.
 
 @MainActor
 enum LivePodcastAgentToolDeps {
@@ -36,7 +37,7 @@ enum LivePodcastAgentToolDeps {
             rag: LivePodcastRAGAdapter(store: store),
             summarizer: LiveEpisodeSummaryAdapter(store: store),
             fetcher: LiveEpisodeFetcherAdapter(store: store),
-            playback: LivePlaybackHostAdapter(store: store, playback: playback),
+            playback: LivePlaybackHostAdapter(store: store),
             library: LivePodcastLibraryAdapter(
                 store: store,
                 transcriptService: .shared
@@ -47,8 +48,8 @@ enum LivePodcastAgentToolDeps {
             friendDirectory: LiveFriendDirectoryAdapter(store: store),
             pendingRegistrar: LivePendingFriendMessageRegistrar(store: store),
             perplexity: PerplexityClient(),
-            ttsPublisher: AgentTTSComposer(store: store, playback: playback),
-            directory: LivePodcastDirectoryAdapter(),
+            ttsPublisher: AgentTTSComposer(store: store),
+            directory: LivePodcastDirectoryAdapter(store: store),
             subscribe: LivePodcastSubscribeAdapter(store: store),
             youtubeIngestion: LiveYouTubeIngestionAdapter(store: store),
             ownedPodcasts: LiveAgentOwnedPodcastManager(store: store),
@@ -64,10 +65,14 @@ enum LivePodcastAgentToolDeps {
 /// projection (`AppStateStore.kernelSummarizeEpisode`). Replaces the deleted
 /// Swift `LiveEpisodeSummarizerAdapter`, which ran its own OpenRouter call.
 ///
-/// On a kernel miss (e.g. Ollama offline → `nil`) it falls back to the
-/// publisher description, reproducing the old adapter's `.publisherDescription`
-/// behaviour so the agent tool always returns *something* useful.
+/// On a kernel miss, Swift supplies the publisher description as a raw fact and
+/// Rust decides whether that fallback is a valid summary outcome.
 struct LiveEpisodeSummaryAdapter: EpisodeSummaryProviding {
+    private struct RustSummaryPolicy: Decodable {
+        let outcome: String
+        let summary: String?
+        let message: String?
+    }
 
     weak var store: AppStateStore?
 
@@ -75,15 +80,52 @@ struct LiveEpisodeSummaryAdapter: EpisodeSummaryProviding {
         self.store = store
     }
 
-    func summarize(episodeID: EpisodeID) async -> String? {
-        guard let store, let uuid = UUID(uuidString: episodeID) else { return nil }
-        if let summary = await store.kernelSummarizeEpisode(episodeID: uuid) {
-            return summary
+    func summarize(episodeID: EpisodeID) async -> EpisodeSummaryOutcome {
+        guard let store else { return .unavailable }
+        let outcome = await store.kernelSummarizeEpisode(episodeID: episodeID)
+        let description: String?
+        if let uuid = UUID(uuidString: episodeID) {
+            description = await store.episode(id: uuid)?.description
+        } else {
+            description = nil
         }
-        // Kernel could not produce a summary (offline / timeout) — fall back to
-        // the publisher description, mirroring the old `.publisherDescription`.
-        let description = await store.episode(id: uuid)?.description
-        return description?.isEmpty == false ? description : nil
+        return Self.summaryPolicy(
+            summary: outcome.summary,
+            error: outcome.error,
+            publisherDescription: description
+        )
+    }
+
+    private static func summaryPolicy(
+        summary: String?,
+        error: String?,
+        publisherDescription: String?
+    ) -> EpisodeSummaryOutcome {
+        var request: [String: Any] = ["op": "episode_summary_policy"]
+        if let summary { request["summary"] = summary }
+        if let error { request["error"] = error }
+        if let publisherDescription { request["publisher_description"] = publisherDescription }
+        guard let data = try? JSONSerialization.data(withJSONObject: request),
+              let json = String(data: data, encoding: .utf8)
+        else { return .unavailable }
+        return json.withCString { ptr -> EpisodeSummaryOutcome in
+            guard let result = nmp_app_podcast_agent_action_policy(ptr) else {
+                return .unavailable
+            }
+            defer { nmp_free_string(result) }
+            let envelope = String(cString: result)
+            guard let data = envelope.data(using: .utf8),
+                  let decoded = try? JSONDecoder().decode(RustSummaryPolicy.self, from: data)
+            else { return .unavailable }
+            switch decoded.outcome {
+            case "summary":
+                return decoded.summary.map(EpisodeSummaryOutcome.summary) ?? .unavailable
+            case "rejected":
+                return .rejected(decoded.message ?? "")
+            default:
+                return .unavailable
+            }
+        }
     }
 }
 
@@ -98,11 +140,6 @@ struct LiveEpisodeFetcherAdapter: EpisodeFetcherProtocol {
 
     init(store: AppStateStore) {
         self.store = store
-    }
-
-    func episodeExists(episodeID: EpisodeID) async -> Bool {
-        guard let uuid = UUID(uuidString: episodeID) else { return false }
-        return await store?.episode(id: uuid) != nil
     }
 
     func episodeMetadata(
@@ -120,8 +157,9 @@ struct LiveEpisodeFetcherAdapter: EpisodeFetcherProtocol {
 
     func episodeIDForAudioURL(_ audioURLString: String, podcastID: PodcastID) async -> EpisodeID? {
         guard let store, let podcastUUID = UUID(uuidString: podcastID) else { return nil }
-        let episodes = await store.episodes(forPodcast: podcastUUID)
-        return episodes.first { $0.enclosureURL.absoluteString == audioURLString }?.id.uuidString
+        return await MainActor.run {
+            store.rustEpisodeIDForAudioURL(audioURLString, podcastID: podcastUUID)?.uuidString
+        }
     }
 }
 
@@ -133,6 +171,7 @@ struct LiveEpisodeFetcherAdapter: EpisodeFetcherProtocol {
 /// `LivePodcastInventoryAdapter`.
 enum PodcastAgentToolAdapterError: LocalizedError {
     case unavailable(String)
+    case rejected(String)
     case invalidID(String)
     case missingEpisode(String)
     case missingPodcast(String)
@@ -140,6 +179,7 @@ enum PodcastAgentToolAdapterError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unavailable(let name): return "\(name) is unavailable."
+        case .rejected(let message): return message
         case .invalidID(let value): return "Invalid UUID: \(value)"
         case .missingEpisode(let id): return "Episode not found: \(id)"
         case .missingPodcast(let id): return "Podcast not found: \(id)"

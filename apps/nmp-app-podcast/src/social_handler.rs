@@ -193,6 +193,8 @@ impl KernelEventObserver for FollowListObserver {
             *slot = Some(SocialSnapshot {
                 following: contacts,
                 following_count,
+                approved_pubkeys: Vec::new(),
+                blocked_pubkeys: Vec::new(),
             });
         }
 

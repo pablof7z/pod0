@@ -24,6 +24,10 @@ use crate::player::AdSegment;
 pub enum PlayerAction {
     Play {
         episode_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        start_secs: Option<f64>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        end_secs: Option<f64>,
     },
     /// Stage an episode for playback without starting audio. Rust looks up
     /// the URL and position, calls `actor.stage_load`, and dispatches
@@ -31,6 +35,10 @@ pub enum PlayerAction {
     /// with a `Resume` action (or a `Play { episode_id }` to restart).
     Load {
         episode_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        start_secs: Option<f64>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        end_secs: Option<f64>,
     },
     /// Resume playback of the currently-staged episode. Dispatches
     /// `AudioCommand::Play` only — no reload, no position reset.
@@ -48,6 +56,8 @@ pub enum PlayerAction {
     SetSleepTimer {
         #[serde(default)]
         secs: Option<u64>,
+        #[serde(default)]
+        end_of_episode: bool,
     },
     Stop,
     /// Append `episode_id` to the end of the playback queue if not
@@ -56,9 +66,37 @@ pub enum PlayerAction {
     Enqueue {
         episode_id: String,
     },
+    /// Insert `episode_id` at the front of the playback queue if not already
+    /// present. Kernel-owned ordered list of episode ids surfaced via
+    /// `PodcastUpdate.queue`.
+    EnqueueNext {
+        episode_id: String,
+    },
+    /// Append a bounded episode segment to the end of the playback queue.
+    EnqueueSegment {
+        episode_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        start_secs: Option<f64>,
+        end_secs: f64,
+    },
+    /// Insert a bounded episode segment at the front of the playback queue.
+    EnqueueSegmentNext {
+        episode_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        start_secs: Option<f64>,
+        end_secs: f64,
+    },
     /// Remove the first occurrence of `episode_id` from the queue.
     Dequeue {
         episode_id: String,
+    },
+    /// Remove one queue slot by Rust-owned queue slot id.
+    DequeueSlot {
+        queue_slot_id: String,
+    },
+    /// Reorder existing queue slots by Rust-owned queue slot ids.
+    ReorderQueue {
+        queue_slot_ids: Vec<String>,
     },
     /// Empty the entire playback queue.
     ClearQueue,
@@ -82,11 +120,13 @@ pub enum PlayerAction {
     /// The kernel reads the live `PlayerActor` position so the iOS/Android
     /// shell never needs to know the current time (D0 — policy in Rust).
     SkipForward {
-        secs: f64,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        secs: Option<f64>,
     },
     /// Step the playhead back by `secs` seconds (clamped to 0).
     SkipBackward {
-        secs: f64,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        secs: Option<f64>,
     },
     /// Enqueue an episode audio file for offline download.
     Download {

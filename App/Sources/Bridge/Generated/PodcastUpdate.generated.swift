@@ -135,6 +135,7 @@ struct PlayerState {
     var speed: Float = 1
     var volume: Float = 1
     var sleepTimerRemainingSecs: Int? = nil
+    var sleepTimerEndOfEpisode: Bool = false
     var lastError: String? = nil
     /// Set to `true` when AVPlayer fires `AVPlayerItemDidPlayToEndTime`.
     /// Cleared when the next episode loads. Used by the UI to distinguish
@@ -226,6 +227,7 @@ extension PlayerState: Codable {
         speed = try c.decodeIfPresent(Float.self, forKey: .speed) ?? 1
         volume = try c.decodeIfPresent(Float.self, forKey: .volume) ?? 1
         sleepTimerRemainingSecs = try c.decodeIfPresent(Int.self, forKey: .sleepTimerRemainingSecs)
+        sleepTimerEndOfEpisode = try c.decodeIfPresent(Bool.self, forKey: .sleepTimerEndOfEpisode) ?? false
         lastError = try c.decodeIfPresent(String.self, forKey: .lastError)
         didReachNaturalEnd = try c.decodeIfPresent(Bool.self, forKey: .didReachNaturalEnd) ?? false
         segmentEndSecs = try c.decodeIfPresent(Double.self, forKey: .segmentEndSecs)

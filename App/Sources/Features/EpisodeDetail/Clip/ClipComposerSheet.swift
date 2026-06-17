@@ -8,9 +8,9 @@ import SwiftUI
 /// future toggle). Caption + speaker-label + style toggles drive the live
 /// preview rendered by `ClipPreviewView`.
 ///
-/// Save persists through `AppStateStore.addClip` and dismisses. Share is a
-/// placeholder until the share-targets sister agent's branch lands; we route
-/// through `pendingShareClip` so the wiring point is obvious.
+/// Save persists through the Rust `podcast.clip.create` action and dismisses.
+/// Share dispatches the same kernel create action, then presents the native
+/// share/export capability surface for the committed clip.
 struct ClipComposerSheet: View {
 
     // MARK: Inputs
@@ -31,7 +31,11 @@ struct ClipComposerSheet: View {
     @State private var caption: String = ""
     @State private var showSpeakerLabel: Bool = true
     @State private var subtitleStyle: ClipSubtitleStyle = .editorial
-    @State private var pendingShareClip: Clip?
+    @State private var pendingShareClip: PendingShareClip?
+
+    private struct PendingShareClip: Identifiable {
+        let id: UUID
+    }
 
     // MARK: Body
 
@@ -64,8 +68,15 @@ struct ClipComposerSheet: View {
                 }
             }
             .onAppear(perform: bootstrapDraft)
-            .sheet(item: $pendingShareClip) { _ in
-                shareTargetPlaceholder
+            .sheet(item: $pendingShareClip) { pending in
+                if let clip = store.clip(id: pending.id),
+                   let podcast = store.podcast(id: episode.podcastID) {
+                    ClipShareSheet(clip: clip, episode: episode, podcast: podcast)
+                } else if store.clip(id: pending.id) == nil {
+                    sharePreparingPlaceholder
+                } else {
+                    shareUnavailablePlaceholder
+                }
             }
         }
     }
@@ -162,20 +173,33 @@ struct ClipComposerSheet: View {
         .background(.ultraThinMaterial)
     }
 
-    // MARK: - Share placeholder
+    // MARK: - Share fallback
 
-    /// Stand-in until the sister share-targets agent's branch lands. Lives
-    /// here so the wiring point is obvious — once the share stack ships,
-    /// swap this for the real route (`AudioCardShareView`, `VideoShareView`,
-    /// `LinkShareView`).
-    private var shareTargetPlaceholder: some View {
+    private var shareUnavailablePlaceholder: some View {
         VStack(spacing: AppTheme.Spacing.lg) {
             Image(systemName: "square.and.arrow.up")
                 .font(.system(size: 44))
                 .foregroundStyle(.secondary)
-            Text("Share targets coming soon")
+            Text("Share unavailable")
                 .font(.system(.headline, design: .rounded))
-            Text("Audio cards, subtitled video, and deep links land in a follow-up.")
+            Text("The source show is no longer available in your library.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button("Done") { pendingShareClip = nil; dismiss() }
+                .buttonStyle(.borderedProminent)
+        }
+        .padding(AppTheme.Spacing.xl)
+        .presentationDetents([.medium])
+    }
+
+    private var sharePreparingPlaceholder: some View {
+        VStack(spacing: AppTheme.Spacing.lg) {
+            ProgressView()
+                .controlSize(.large)
+            Text("Preparing clip")
+                .font(.system(.headline, design: .rounded))
+            Text("The kernel is saving the clip before sharing.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -199,30 +223,30 @@ struct ClipComposerSheet: View {
     // MARK: - Actions
 
     private func save() {
-        let clip = buildClip()
-        store.addClip(clip)
+        let clipID = UUID()
+        store.kernelCreateClip(
+            id: clipID,
+            episodeID: episode.id,
+            startSecs: TimeInterval(startMs) / 1000,
+            endSecs: TimeInterval(endMs) / 1000,
+            title: caption.isEmpty ? nil : caption,
+            source: .touch
+        )
         Haptics.success()
         dismiss()
     }
 
     private func share() {
-        let clip = buildClip()
-        store.addClip(clip)
-        // Hand off to the sister agent's share stack when it lands. Until
-        // then we surface a placeholder sheet so the path is testable.
-        pendingShareClip = clip
-    }
-
-    private func buildClip() -> Clip {
-        Clip(
+        let clipID = UUID()
+        store.kernelCreateClip(
+            id: clipID,
             episodeID: episode.id,
-            subscriptionID: episode.podcastID,
-            startMs: startMs,
-            endMs: endMs,
-            caption: caption.isEmpty ? nil : caption,
-            speakerID: speakerIDString,
-            transcriptText: currentTranscriptText
+            startSecs: TimeInterval(startMs) / 1000,
+            endSecs: TimeInterval(endMs) / 1000,
+            title: caption.isEmpty ? nil : caption,
+            source: .touch
         )
+        pendingShareClip = PendingShareClip(id: clipID)
     }
 
     // MARK: - Derived
@@ -263,12 +287,6 @@ struct ClipComposerSheet: View {
         guard ids.count == 1, let only = ids.first else { return nil }
         let speaker = transcript.speaker(for: only)
         return speaker?.displayName ?? speaker?.label
-    }
-
-    private var speakerIDString: String? {
-        let ids = Set(selectedSegments.compactMap(\.speakerID))
-        guard ids.count == 1, let only = ids.first else { return nil }
-        return only.uuidString
     }
 
     private var timestampLabel: String {

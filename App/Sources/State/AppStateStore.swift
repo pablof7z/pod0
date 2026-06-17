@@ -116,66 +116,10 @@ final class AppStateStore {
     /// Empty when no model download is active.
     var localModelDownloads: [String: DownloadItemSnapshot] = [:]
 
-    // MARK: - Episode projections (cache)
-    //
-    // These mirror `state.episodes` so the per-cell O(N) helpers in the
-    // Library grid + Home feeds become O(1) dict/Set lookups. See
-    // `AppStateStore+EpisodeProjections.swift` for the recompute logic and
-    // the read-side adapters that fold the position cache.
-    //
-    // Stored properties have to live on the class itself (extensions can't
-    // add stored state); the methods that build them live in the
-    // `+EpisodeProjections` extension.
-
-    /// Unplayed-episode count per subscription. Drives `LibraryGridCell`'s
-    /// red dot and the Library "Unplayed" filter chip.
-    var unplayedCountByShow: [UUID: Int] = [:]
-
-    /// Subscriptions that have at least one episode in `.downloaded` state.
-    /// Drives the Library "Downloaded" filter chip.
-    var hasDownloadedByShow: Set<UUID> = []
-
-    /// Subscriptions that have at least one episode with a ready transcript.
-    /// Drives the Library "Transcribed" filter chip.
-    var hasTranscribedByShow: Set<UUID> = []
-
-    /// Episode array indexes per subscription, pre-sorted newest first.
-    /// Drives `ShowDetailView` without duplicating every `Episode` in memory.
-    var episodeIndexesByShow: [UUID: [Int]] = [:]
-
-    /// Episodes whose persisted `playbackPosition > 0` and `played == false`,
-    /// pre-sorted newest first. Reads merge the position-cache so an episode
-    /// the user *just* started (cache > 0, persisted == 0) shows up too.
-    var inProgressEpisodesCached: [Episode] = []
-
-    /// Top 30 unplayed episodes across all shows, pre-sorted newest first.
-    /// `recentEpisodes(limit:)` returns a prefix of this slice. The fixed
-    /// 30 cap matches Home's hard upper bound — anything beyond that the
-    /// Home feed never renders, and a smaller cap keeps the cache cheap.
-    var recentEpisodesCached: [Episode] = []
-
-    /// Cap used when building `recentEpisodesCached`. Matches Home's
-    /// rendered limit; if a caller asks for more we recompute on the fly.
-    static let recentEpisodesCacheLimit = 30
-
-    /// Per-show count of *unplayed* episodes the agent triaged into the
-    /// inbox (`triageDecision == .inbox && !played`). Backs the inbox-count
-    /// roll-up under Home's Inbox header. Played `.inbox` episodes are
-    /// excluded — they drop off the surface anyway, so counting them reads
-    /// as stale (mirrors the source `triageCounts` semantics).
-    var triageInboxCountByShow: [UUID: Int] = [:]
-
-    /// Per-show count of episodes the agent silently archived
-    /// (`triageDecision == .archived`). Played state is irrelevant here —
-    /// the archived roll-up counts every archived episode regardless.
-    var triageArchivedCountByShow: [UUID: Int] = [:]
-
-    /// Shows that have *any* triaged episode (inbox or archived, played or
-    /// not). Drives the "across N shows" roll-up. Not derivable from the two
-    /// count dicts: a show whose only decided episodes are played `.inbox`
-    /// is "covered" yet contributes 0 to both counts, so the covered-show
-    /// set is tracked explicitly to reproduce the source `coveredShows.count`.
-    var triageDecidedShows: Set<UUID> = []
+    /// Rust-owned cross-episode threading projection. The kernel derives this
+    /// from library/transcript/category facts; Swift keeps it transient and
+    /// renders native rows only.
+    var threadingProjection: ThreadingProjection = .empty
 
     /// Storage backing this store. Production code uses `Persistence.shared`
     /// (the App Group suite); tests inject an instance over a unique
@@ -203,17 +147,17 @@ final class AppStateStore {
     @ObservationIgnored
     var downloadOverlayTask: Task<Void, Never>?
 
-    /// Episode IDs from the first kernel snapshot queue, stashed here so
+    /// Queue items from the first kernel snapshot queue, stashed here so
     /// `RootView+Setup` can seed `PlaybackState.queue` even if `attachKernel`
     /// fires before the setup hook is wired. Consumed once and cleared.
     @ObservationIgnored
-    var pendingKernelQueue: [UUID] = []
+    var pendingKernelQueue: [QueueItem] = []
 
     /// Fires once — when the kernel's initial snapshot arrives — with the
-    /// persisted Up Next episode IDs. Wired by `RootView+Setup` to seed
+    /// persisted Up Next queue items. Wired by `RootView+Setup` to seed
     /// `PlaybackState.queue`. Set to nil after first call.
     @ObservationIgnored
-    var onQueueFromKernel: (([UUID]) -> Void)?
+    var onQueueFromKernel: (([QueueItem]) -> Void)?
 
     /// Fires on every kernel-projection tick where content changed (position-only
     /// ticks are suppressed by `snapshotContentHash`). Wired in `AppMain` to
@@ -325,12 +269,9 @@ final class AppStateStore {
         self.episodes = loadedState.episodes
         loadedState.episodes = []
         self.state = loadedState
-        // The `didSet`s above don't fire from inside `init` until all stored
-        // properties are initialised, and even then they skip the very first
-        // assignment in init. Build the projections by hand from the freshly-
-        // loaded episodes so the first SwiftUI render after launch already
-        // sees populated caches — otherwise the Library grid would briefly
-        // read empty unplayed dots until the first mutation.
+        // Historical compatibility hook. Episode-derived product projections
+        // are Rust-owned now, but mutation/init paths still call this no-op
+        // while the surrounding store lifecycle is being simplified.
         recomputeEpisodeProjections()
         // Prune agent-activity entries older than 30 days so the persisted log
         // doesn't grow unboundedly across many months of use. This fires one
@@ -371,6 +312,8 @@ final class AppStateStore {
         performMutationBatch {
             state = AppState()
             state.settings = preserved
+            kernel?.dispatch(namespace: "podcast.memory",
+                             body: ["op": "forget_all"])
             // Episodes now live in their own stored property — `state = AppState()`
             // no longer zeroes them, so wipe them explicitly. The `episodes.didSet`
             // fingerprint catches the N→0 count change and rebuilds the projections

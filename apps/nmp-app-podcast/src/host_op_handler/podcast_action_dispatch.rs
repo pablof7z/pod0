@@ -78,6 +78,9 @@ impl PodcastHostOpHandler {
             PodcastAction::Download { episode_id, url } => {
                 self.handle_download(episode_id, url, correlation_id)
             }
+            PodcastAction::DownloadPodcast { podcast_id } => {
+                self.handle_download_podcast(podcast_id, correlation_id)
+            }
             PodcastAction::DeleteDownload { episode_id } => self.handle_delete_download(episode_id),
             PodcastAction::DownloadLocalModel { model_id, url } => {
                 self.handle_download_local_model(model_id, url, correlation_id)
@@ -128,6 +131,10 @@ impl PodcastHostOpHandler {
                 enabled,
                 wifi_only,
             } => self.handle_set_auto_download(podcast_id, mode, count, enabled, wifi_only, correlation_id),
+            PodcastAction::SetPodcastNotificationsEnabled {
+                podcast_id,
+                enabled,
+            } => self.handle_set_podcast_notifications_enabled(podcast_id, enabled),
             PodcastAction::DispatchDeferredWifiDownloads => {
                 self.handle_dispatch_deferred_wifi_downloads(correlation_id)
             }

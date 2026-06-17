@@ -3,8 +3,8 @@ import SwiftUI
 // MARK: - HomeRelatedSheet
 //
 // "Find related across my library" — long-press affordance on a featured
-// episode. Queries the kernel knowledge index using the seed episode's title
-// + chapter titles as the query.
+// episode. Rust owns the related-episode query and lens policy; Swift renders
+// the returned rows.
 //
 // Three lenses:
 //   • `topic`   — default. Cross-show pivot: dedupe by subscription, surface
@@ -49,7 +49,7 @@ struct HomeRelatedSheet: View {
 
     /// One result row. Carries the matched chunk's metadata + the snippet.
     struct Match: Identifiable, Equatable {
-        let id: UUID
+        let id: String
         let episode: Episode
         let podcast: Podcast?
         let snippet: String
@@ -165,134 +165,39 @@ struct HomeRelatedSheet: View {
     private func loadRelated() async {
         phase = .loading
         matches = []
-        let query = buildQuery()
-        let viaKernel = await searchKernel(query: query)
-        if !viaKernel.isEmpty {
-            matches = viaKernel
-            phase = .ready
-            return
-        }
-        let viaThreading = threadingMatches()
-        if !viaThreading.isEmpty {
-            matches = viaThreading
+        let related = await relatedRows()
+        if !related.isEmpty {
+            matches = related
             phase = .ready
             return
         }
         phase = .empty
     }
 
-    /// Compose the retrieval query: episode title plus any non-ad chapter
-    /// titles. Ad-flagged chapters (`includeInTableOfContents == false`)
-    /// are intentionally skipped — their text would just bias the search
-    /// toward sponsor content.
-    private func buildQuery() -> String {
-        var parts: [String] = [seedEpisode.title]
-        if let chapters = seedEpisode.chapters {
-            let titles = chapters
-                .filter { $0.includeInTableOfContents }
-                .map(\.title)
-                .filter { !$0.isEmpty }
-            parts.append(contentsOf: titles.prefix(8))
-        }
-        return parts.joined(separator: " · ")
-    }
-
-    /// Query the kernel knowledge index and convert results to Match rows.
-    /// Sources lens: over-fetch and keep multiple hits per show.
-    /// Topic lens: dedupe by subscription (one episode per show, best score).
-    private func searchKernel(query: String) async -> [Match] {
-        let limit = (lens == .sources) ? 24 : 48
+    private func relatedRows() async -> [Match] {
+        let limit = (lens == .sources) ? 24 : 8
         do {
-            let rows = try await KernelKnowledgeClient.query(
-                query: query,
-                podcastId: nil,
-                episodeId: nil,
+            let rows = try await KernelKnowledgeClient.homeRelated(
+                episodeId: seedEpisode.id.uuidString,
+                lens: lens.rawValue,
                 limit: limit
             )
-            switch lens {
-            case .topic:    return await collapseByShow(rows)
-            case .sources:  return await keepPerRow(rows)
-            }
+            return await MainActor.run { rows.compactMap(rowToMatch) }
         } catch {
             return []
         }
     }
 
-    /// Topic lens: dedupe by podcast, drop the seed. One episode per show.
     @MainActor
-    private func collapseByShow(_ rows: [KnowledgeQueryRow]) -> [Match] {
-        var seenSubs: Set<String> = [seedEpisode.podcastID.uuidString]
-        var collected: [Match] = []
-        for row in rows {
-            guard row.episodeId != seedEpisode.id.uuidString,
-                  !seenSubs.contains(row.podcastId),
-                  let ep = store.episode(id: UUID(uuidString: row.episodeId) ?? UUID())
-            else { continue }
-            seenSubs.insert(row.podcastId)
-            collected.append(Match(
-                id: ep.id,
-                episode: ep,
-                podcast: store.podcast(id: ep.podcastID),
-                snippet: String(row.text.prefix(220))
-            ))
-            if collected.count >= 8 { break }
-        }
-        return collected
-    }
-
-    /// Sources lens: keep every row, drop the seed itself.
-    /// Match ids are synthesised from episodeId + chunkIndex for `ForEach` uniqueness.
-    @MainActor
-    private func keepPerRow(_ rows: [KnowledgeQueryRow]) -> [Match] {
-        var collected: [Match] = []
-        for row in rows {
-            guard row.episodeId != seedEpisode.id.uuidString,
-                  let ep = store.episode(id: UUID(uuidString: row.episodeId) ?? UUID())
-            else { continue }
-            // Derive a stable UUID from the episode UUID + chunkIndex so
-            // the same episode can appear as multiple rows in this lens.
-            let syntheticID = UUID(uuidString: row.episodeId)?.hashValue
-                .advanced(by: row.chunkIndex)
-            let matchID = syntheticID.flatMap { _ in UUID() } ?? ep.id
-            collected.append(Match(
-                id: matchID,
-                episode: ep,
-                podcast: store.podcast(id: ep.podcastID),
-                snippet: String(row.text.prefix(220))
-            ))
-            if collected.count >= 24 { break }
-        }
-        return collected
-    }
-
-    /// Fallback when no transcripts are indexed yet: surface episodes
-    /// from threading topics that mention the seed episode. Cheap-but-
-    /// useful: the user gets *something* even before they request
-    /// transcript ingestion for any show.
-    private func threadingMatches() -> [Match] {
-        let mentions = store.state.threadingMentions
-            .filter { $0.episodeID == seedEpisode.id }
-        let topicIDs = Set(mentions.map(\.topicID))
-        guard !topicIDs.isEmpty else { return [] }
-        var seenSubs: Set<UUID> = [seedEpisode.podcastID]
-        var collected: [Match] = []
-        for topicID in topicIDs {
-            for mention in store.threadingMentions(forTopic: topicID) {
-                guard mention.episodeID != seedEpisode.id,
-                      let ep = store.episode(id: mention.episodeID),
-                      (lens == .sources || !seenSubs.contains(ep.podcastID)) else { continue }
-                seenSubs.insert(ep.podcastID)
-                collected.append(Match(
-                    id: mention.id,
-                    episode: ep,
-                    podcast: store.podcast(id: ep.podcastID),
-                    snippet: mention.snippet
-                ))
-                if collected.count >= 8 { break }
-            }
-            if collected.count >= 8 { break }
-        }
-        return collected
+    private func rowToMatch(_ row: HomeRelatedKernelRow) -> Match? {
+        guard let episodeID = UUID(uuidString: row.episodeId),
+              let ep = store.episode(id: episodeID) else { return nil }
+        return Match(
+            id: row.id,
+            episode: ep,
+            podcast: store.podcast(id: ep.podcastID),
+            snippet: row.text
+        )
     }
 }
 

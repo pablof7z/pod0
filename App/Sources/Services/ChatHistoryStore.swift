@@ -5,18 +5,16 @@ import os.log
 @MainActor
 @Observable
 final class ChatHistoryStore {
+    private struct RustChatHistoryResponse: Decodable {
+        let conversations: [ChatConversation]
+        let error: String?
+    }
+
     private let logger = Logger.app("ChatHistoryStore")
 
     static let shared = ChatHistoryStore()
 
     private static let filename = "chat_history.json"
-    /// Per-conversation message cap — matches the previous single-conversation
-    /// behaviour where the history file was truncated to the last 100.
-    private static let maxMessagesPerConversation = 100
-    /// Total-conversation cap. Oldest by `updatedAt` are evicted when exceeded.
-    /// Picked high enough that a heavy user never bumps into it accidentally
-    /// while still bounding the on-disk index file.
-    private static let maxConversations = 50
 
     private let fileURL: URL?
 
@@ -57,27 +55,9 @@ final class ChatHistoryStore {
     /// Empty conversations (no messages) are ignored so transient sessions
     /// don't pollute the history list.
     func upsert(_ conversation: ChatConversation) {
-        guard !conversation.messages.isEmpty else {
-            // If an existing conversation was emptied, remove it instead.
-            if let idx = conversations.firstIndex(where: { $0.id == conversation.id }) {
-                conversations.remove(at: idx)
-                save()
-            }
-            return
-        }
-        var convo = conversation
-        if convo.messages.count > Self.maxMessagesPerConversation {
-            convo.messages = Array(convo.messages.suffix(Self.maxMessagesPerConversation))
-        }
-        if let idx = conversations.firstIndex(where: { $0.id == convo.id }) {
-            conversations[idx] = convo
-        } else {
-            conversations.append(convo)
-        }
-        conversations.sort { $0.updatedAt > $1.updatedAt }
-        if conversations.count > Self.maxConversations {
-            conversations = Array(conversations.prefix(Self.maxConversations))
-        }
+        guard let normalized = rustChatHistory(op: "chat_history_upsert", conversation: conversation)
+        else { return }
+        conversations = normalized
         save()
     }
 
@@ -109,18 +89,21 @@ final class ChatHistoryStore {
             let data = try Data(contentsOf: fileURL)
             // New format: bare array of ChatConversation
             if let v = try? Self.decoder.decode([ChatConversation].self, from: data) {
-                conversations = v.sorted { $0.updatedAt > $1.updatedAt }
+                conversations = rustChatHistory(op: "chat_history_normalize", conversations: v)
+                    ?? []
                 return
             }
             // Legacy snapshot envelope: `{ messages, isUpgraded }`
             if let snap = try? Self.decoder.decode(LegacySnapshot.self, from: data) {
-                conversations = Self.wrap(messages: snap.messages, isUpgraded: snap.isUpgraded)
+                conversations = rustWrapLegacy(messages: snap.messages, isUpgraded: snap.isUpgraded)
+                    ?? []
                 save()
                 return
             }
             // Oldest format: bare `[ChatMessage]`
             if let legacy = try? Self.decoder.decode([ChatMessage].self, from: data) {
-                conversations = Self.wrap(messages: legacy, isUpgraded: false)
+                conversations = rustWrapLegacy(messages: legacy, isUpgraded: false)
+                    ?? []
                 save()
                 return
             }
@@ -142,25 +125,70 @@ final class ChatHistoryStore {
         }
     }
 
-    private static func wrap(messages: [ChatMessage], isUpgraded: Bool) -> [ChatConversation] {
-        guard !messages.isEmpty else { return [] }
-        let stamp = messages.last?.timestamp ?? Date()
-        return [
-            ChatConversation(
-                id: UUID(),
-                title: "",
-                messages: messages,
-                isUpgraded: isUpgraded,
-                createdAt: messages.first?.timestamp ?? stamp,
-                updatedAt: stamp
-            ),
-        ]
-    }
-
     /// Decoded shape of the previous single-snapshot file. Kept private here
     /// because nothing outside the store needs it after migration.
     private struct LegacySnapshot: Codable {
         var messages: [ChatMessage]
         var isUpgraded: Bool
+    }
+
+    private func rustChatHistory(
+        op: String,
+        conversations: [ChatConversation]? = nil,
+        conversation: ChatConversation? = nil
+    ) -> [ChatConversation]? {
+        var payload: [String: Any] = ["op": op]
+        payload["conversations"] = conversationsObject(conversations ?? self.conversations)
+        if let conversation {
+            payload["conversation"] = conversationObject(conversation)
+        }
+        return rustChatHistory(payload: payload)
+    }
+
+    private func rustWrapLegacy(messages: [ChatMessage], isUpgraded: Bool) -> [ChatConversation]? {
+        rustChatHistory(payload: [
+            "op": "chat_history_wrap_legacy",
+            "messages": messagesObject(messages),
+            "is_upgraded": isUpgraded,
+        ])
+    }
+
+    private func rustChatHistory(payload: [String: Any]) -> [ChatConversation]? {
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        return json.withCString { ptr -> [ChatConversation]? in
+            guard let result = nmp_app_podcast_agent_action_policy(ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            let envelope = String(cString: result)
+            guard let data = envelope.data(using: .utf8),
+                  let decoded = try? Self.decoder.decode(RustChatHistoryResponse.self, from: data),
+                  decoded.error == nil
+            else { return nil }
+            return decoded.conversations
+        }
+    }
+
+    private func conversationsObject(_ conversations: [ChatConversation]) -> [[String: Any]] {
+        guard let data = try? Self.encoder.encode(conversations),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+        else { return [] }
+        return object
+    }
+
+    private func conversationObject(_ conversation: ChatConversation) -> [String: Any] {
+        guard let data = try? Self.encoder.encode(conversation),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return [:] }
+        return object
+    }
+
+    private func messagesObject(_ messages: [ChatMessage]) -> [[String: Any]] {
+        guard let data = try? Self.encoder.encode(messages),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+        else { return [] }
+        return object
     }
 }

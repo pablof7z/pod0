@@ -341,7 +341,23 @@ impl SocialState {
 
     /// Clone the current social snapshot for projection.
     pub fn social_snapshot(&self) -> Option<SocialSnapshot> {
-        self.social_slot.lock().ok().and_then(|s| s.clone())
+        let ApprovedBlockedSnapshot { approved, blocked } = self.approved_blocked_snapshot();
+        let approved_pubkeys: Vec<String> = approved.into_iter().collect();
+        let blocked_pubkeys: Vec<String> = blocked.into_iter().collect();
+        match self.social_slot.lock().ok().and_then(|s| s.clone()) {
+            Some(mut snapshot) => {
+                snapshot.approved_pubkeys = approved_pubkeys;
+                snapshot.blocked_pubkeys = blocked_pubkeys;
+                Some(snapshot)
+            }
+            None if approved_pubkeys.is_empty() && blocked_pubkeys.is_empty() => None,
+            None => Some(SocialSnapshot {
+                following: Vec::new(),
+                following_count: 0,
+                approved_pubkeys,
+                blocked_pubkeys,
+            }),
+        }
     }
 
     /// Project inbound agent notes + outbound turns into NIP-10-threaded
@@ -499,6 +515,8 @@ mod tests {
             *guard = Some(SocialSnapshot {
                 following: vec![],
                 following_count: 3,
+                approved_pubkeys: Vec::new(),
+                blocked_pubkeys: Vec::new(),
             });
         }
         let snap = state.social_snapshot().unwrap();
@@ -542,6 +560,8 @@ mod tests {
         *state.social_slot.lock().unwrap() = Some(SocialSnapshot {
             following: vec![],
             following_count: 2,
+            approved_pubkeys: Vec::new(),
+            blocked_pubkeys: Vec::new(),
         });
         state
             .agent_notes

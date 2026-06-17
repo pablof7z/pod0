@@ -3,11 +3,11 @@ import os.log
 
 // MARK: - TranscriptIngestService
 //
-// Owns the end-to-end transcript ingestion pipeline:
-//   1. Pick a publisher transcript URL (or fall back to the selected STT provider).
-//   2. Fetch + parse via `PublisherTranscriptIngestor`.
+// Executes the host-side transcript ingestion pipeline from a Rust-owned plan:
+//   1. Ask Rust whether to skip, fetch publisher transcript, or run STT.
+//   2. Execute the returned native/network capability branch.
 //   3. Persist the parsed `Transcript` JSON to disk for the EpisodeDetail view.
-//   4. Update `Episode.transcriptState` on the live `AppStateStore`.
+//   4. Report the result/status back to the kernel.
 //
 // The service stays `@MainActor` because every input + output it touches
 // (state store, episode model, status flips) lives on the main actor; the
@@ -74,12 +74,11 @@ final class TranscriptIngestService {
     /// Idempotent — repeat calls for the same episode no-op while a prior
     /// call is in flight.
     ///
-    /// - Parameter forceProvider: When non-nil, bypass the publisher fetch
-    ///   path and the `autoFallbackToScribe` gate, and use this provider
-    ///   instead of `settings.sttProvider` for AI transcription. Used by the
-    ///   Diagnostics "Retry with…" menu so the user can try an alternative
-    ///   provider for one call without flipping their global setting. `nil`
-    ///   preserves existing publisher-first behaviour.
+    /// - Parameter forceProvider: When non-nil, asks Rust to plan an explicit
+    ///   one-off STT retry with this provider instead of the global provider.
+    ///   Used by the Diagnostics "Retry with…" menu so the user can try an
+    ///   alternative provider for one call without flipping their global
+    ///   setting. `nil` preserves Rust's publisher-first behaviour.
     func ingest(episodeID: UUID, forceProvider: STTProvider? = nil) async {
         guard let appStore = appStore else {
             Self.logger.warning(
@@ -99,75 +98,47 @@ final class TranscriptIngestService {
             )
             return
         }
-        // Skip episodes that already have a transcript unless the caller forced
-        // a specific provider (an explicit Diagnostics "Retry with…", which
-        // resets state to `.none` first). This makes `ingest()` safe to fire
-        // unconditionally from the post-download hook and every other auto
-        // caller without re-running a transcription that already succeeded.
-        if forceProvider == nil, Self.isReady(episode.transcriptState) {
-            Self.logger.debug(
-                "ingest(\(episodeID, privacy: .public)): already has a transcript — skipping"
-            )
-            return
-        }
-        // Per-category opt-out: if the user has disabled transcription for
-        // the category this show belongs to, skip ingestion entirely.
-        // Defaults to allow when the show isn't yet categorised.
-        guard appStore.effectiveTranscriptionEnabled(forPodcast: episode.podcastID) else {
-            Self.logger.info(
-                "ingest(\(episodeID, privacy: .public)): transcription disabled for category — skipping"
-            )
-            appStore.kernelRecordTranscriptSkip(
-                episodeID: episodeID,
-                reason: "Transcription is turned off for this show's category."
-            )
-            return
-        }
-
         inFlight.insert(episodeID)
         defer { inFlight.remove(episodeID) }
 
-        // Force-provider path: the user picked a specific provider in
-        // Diagnostics. Skip the publisher fetch and the autoFallback gate
-        // and go straight to the chosen STT provider.
-        if let forced = forceProvider {
-            // The Diagnostics "Retry with…" override is an explicit user pick,
-            // NOT the fallback policy — so it bypasses the kernel-resolved
-            // provider and runs exactly what was chosen. Shared-backend-owned
-            // providers report missing-key/provider errors from Rust.
-            guard forcedProviderHasKey(forced) else {
-                Self.logger.info(
-                    "forceProvider=\(forced.displayName, privacy: .public) but no key configured — leaving transcriptState=.none"
-                )
-                appStore.kernelRecordTranscriptSkip(
-                    episodeID: episodeID,
-                    reason: "No API key is configured for \(forced.displayName)."
-                )
-                appStore.setEpisodeTranscriptState(episodeID, state: .none)
-                return
-            }
-            await runAITranscription(
-                for: episode, provider: forced, appStore: appStore, explicit: true
-            )
+        let localAudioAvailable = EpisodeDownloadStore.shared.exists(for: episode)
+        guard let plan = appStore.kernel?.transcriptIngestPlan(
+            episodeID: episodeID,
+            forceProvider: forceProvider,
+            localAudioAvailable: localAudioAvailable,
+            allowPublisher: forceProvider == nil
+        ) else {
+            Self.logger.warning("ingest(\(episodeID, privacy: .public)): Rust plan unavailable")
             return
         }
-
-        // Path A: publisher transcript URL.
-        //
-        // Two error stages here, kept distinct so the log reflects which
-        // step actually failed. The fetch+parse stage tells us whether
-        // the publisher URL was usable at all; the persist stage tells
-        // us whether on-disk storage worked. With the persistAndIndex
-        // refactor, embedding failures no longer throw — so a thrown
-        // error from `persistAndIndex` is a real disk problem, not a
-        // missing-key one, and falling through to Scribe wouldn't help.
-        if let url = episode.publisherTranscriptURL {
+        switch plan.status {
+        case "ready":
+            return
+        case "skipped":
+            appStore.kernelRecordTranscriptSkip(
+                episodeID: episodeID,
+                reason: plan.reason ?? "Transcription skipped."
+            )
+            appStore.setEpisodeTranscriptState(episodeID, state: .none)
+            return
+        case "stt":
+            await executeSTTPlan(plan, episode: episode, appStore: appStore, explicit: forceProvider != nil)
+            return
+        case "publisher":
+            guard let urlString = plan.publisherUrl,
+                  let url = URL(string: urlString) else {
+                appStore.setEpisodeTranscriptState(
+                    episodeID,
+                    state: .failed(message: "Publisher transcript URL was invalid.")
+                )
+                return
+            }
             appStore.setEpisodeTranscriptState(episodeID, state: .fetchingPublisher)
             let fetched: Transcript?
             do {
                 fetched = try await ingestor.ingest(
                     url: url,
-                    mimeHint: episode.publisherTranscriptType?.rawValue,
+                    mimeHint: plan.mimeHint,
                     episodeID: episodeID,
                     language: "en-US"
                 )
@@ -199,35 +170,62 @@ final class TranscriptIngestService {
                     return
                 }
             }
-            // fetched == nil: fetch threw above; let the Scribe path below run.
-        }
-
-        // Path B: AI transcription fallback (ElevenLabs Scribe or OpenRouter Whisper).
-        guard appStore.state.settings.autoFallbackToScribe else {
-            Self.logger.info(
-                "publisher transcript missing for \(episodeID, privacy: .public) and AI transcription disabled in settings — leaving transcriptState=.none"
-            )
-            appStore.kernelRecordTranscriptSkip(
+            // fetched == nil: ask Rust for the next plan with publisher disabled.
+            guard let fallbackPlan = appStore.kernel?.transcriptIngestPlan(
                 episodeID: episodeID,
-                reason: "No publisher transcript, and automatic AI transcription is off (turn it on in Settings)."
+                forceProvider: nil,
+                localAudioAvailable: localAudioAvailable,
+                allowPublisher: false
+            ) else { return }
+            if fallbackPlan.status == "stt" {
+                await executeSTTPlan(fallbackPlan, episode: episode, appStore: appStore, explicit: false)
+            } else if fallbackPlan.status == "skipped" {
+                appStore.kernelRecordTranscriptSkip(
+                    episodeID: episodeID,
+                    reason: fallbackPlan.reason ?? "Transcription skipped."
+                )
+                appStore.setEpisodeTranscriptState(episodeID, state: .none)
+            } else if fallbackPlan.status == "ready" {
+                return
+            } else {
+                appStore.setEpisodeTranscriptState(
+                    episodeID,
+                    state: .failed(message: fallbackPlan.reason ?? "Transcription could not start.")
+                )
+            }
+            return
+        default:
+            appStore.setEpisodeTranscriptState(
+                episodeID,
+                state: .failed(message: plan.reason ?? "Transcription could not start.")
             )
-            appStore.setEpisodeTranscriptState(episodeID, state: .none)
             return
         }
-        // The STT provider fallback policy is kernel-owned. Read the resolved
-        // provider the kernel computed (selection + key-presence) rather than
-        // re-deriving it in Swift. `effectiveSttProvider` already downgrades a
-        // key-requiring provider whose key is absent to `apple_native`; an
-        // empty/missing snapshot defaults to `.appleNative` (always available).
-        let resolvedRaw = appStore.kernel?.podcastSnapshot?.settings.effectiveSttProvider
-            ?? STTProvider.appleNative.rawValue
-        let provider = STTProvider(rawValue: resolvedRaw) ?? .appleNative
-        await runAITranscription(
-            for: episode, provider: provider, appStore: appStore, explicit: false
-        )
     }
 
     // MARK: - Private pipeline
+
+    private func executeSTTPlan(
+        _ plan: KernelModel.TranscriptIngestPlan,
+        episode: Episode,
+        appStore: AppStateStore,
+        explicit: Bool
+    ) async {
+        guard let raw = plan.provider,
+              let provider = STTProvider(rawValue: raw) else {
+            appStore.setEpisodeTranscriptState(
+                episode.id,
+                state: .failed(message: plan.reason ?? "Transcription provider was unavailable.")
+            )
+            return
+        }
+        await runAITranscription(
+            for: episode,
+            provider: provider,
+            appStore: appStore,
+            explicit: explicit
+        )
+    }
 
     private func runAITranscription(
         for episode: Episode,
@@ -235,19 +233,11 @@ final class TranscriptIngestService {
         appStore: AppStateStore,
         explicit: Bool
     ) async {
-        // Apple on-device STT requires a local file. Skip silently rather than
-        // setting `.failed` — the post-download hook in `DownloadCapability`
-        // re-enters `ingest()` once the file lands, at which point this guard
-        // passes and the AI run proceeds. Setting `.failed` here at
-        // feed-refresh time would mark every Apple-Native-bound episode as
-        // failed before the user has
-        // done anything, which is misleading.
+        // Defensive race guard only: Rust's transcript plan owns the
+        // Apple-native local-file policy. If the file disappears between
+        // planning and execution, avoid invoking the native recognizer with a
+        // dead URL.
         if provider == .appleNative && !EpisodeDownloadStore.shared.exists(for: episode) {
-            // A speculative (auto-ingest) run stays silent so undownloaded
-            // episodes don't flood the log — the post-download re-entry handles
-            // them. But when the user *explicitly* picked on-device transcription
-            // from the Diagnostics "Retry with…" menu, a missing file is a dead
-            // end they asked about, so surface it in the event log.
             if explicit {
                 appStore.kernelRecordTranscriptSkip(
                     episodeID: episode.id,
@@ -262,7 +252,7 @@ final class TranscriptIngestService {
         appStore.setEpisodeTranscriptState(
             episode.id,
             state: .transcribing(progress: 0),
-            provider: provider.displayName
+            provider: Self.providerDisplayName(provider, kernel: appStore.kernel) ?? provider.rawValue
         )
         // Prefer the on-disk download when present. Provider-specific upload
         // and remote-source handling lives behind each provider client. The
@@ -321,23 +311,6 @@ final class TranscriptIngestService {
         }
     }
 
-    /// Whether the force-chosen STT provider has a usable Keychain key.
-    ///
-    /// Only used by the Diagnostics "Retry with…" override path. The general
-    /// fallback policy (which provider to use when a key is missing) is
-    /// kernel-owned — see `effective_stt_provider` in the Rust kernel and the
-    /// `settings.effectiveSttProvider` snapshot field. `.appleNative` is
-    /// keyless and always available. Shared STT transports also return `true`
-    /// here because Rust owns their credential error reporting.
-    private func forcedProviderHasKey(_ provider: STTProvider) -> Bool {
-        switch provider {
-        case .elevenLabsScribe: return true
-        case .openRouterWhisper: return true
-        case .assemblyAI: return true
-        case .appleNative: return true
-        }
-    }
-
     private func persistAndIndex(
         transcript: Transcript,
         episode: Episode,
@@ -380,7 +353,7 @@ final class TranscriptIngestService {
         appStore.kernelTranscriptReport(
             episodeID: episode.id,
             transcript: transcript,
-            source: Self.sourceDisplayName(source)
+            source: Self.sourceDisplayName(source, kernel: appStore.kernel)
         )
         // Slice 5c: index this episode in the kernel KnowledgeStore so kernel
         // Search (the iOS Search tab) can find newly-transcribed content without
@@ -408,10 +381,4 @@ final class TranscriptIngestService {
 
     }
 
-    // MARK: - Helpers
-
-    static func isReady(_ state: TranscriptState) -> Bool {
-        if case .ready = state { return true }
-        return false
-    }
 }

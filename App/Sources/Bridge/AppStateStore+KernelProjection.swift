@@ -69,15 +69,14 @@ extension AppStateStore {
         }
         // Seed the Up Next queue from the kernel's persisted snapshot. The
         // handler may not be wired yet (setupPlaybackHandlers runs on .onAppear
-        // which can fire after this task), so stash the IDs in pendingKernelQueue
+        // which can fire after this task), so stash the items in pendingKernelQueue
         // as a fallback; setupPlaybackHandlers drains it on first access.
-        let queueIDs = (kernel.podcastSnapshot?.queue ?? []).compactMap { UUID(uuidString: $0.id) }
-        if !queueIDs.isEmpty {
+        let queueItems = Self.queueItems(from: kernel.podcastSnapshot)
+        if !queueItems.isEmpty {
             if let handler = onQueueFromKernel {
-                handler(queueIDs)
-                onQueueFromKernel = nil
+                handler(queueItems)
             } else {
-                pendingKernelQueue = queueIDs
+                pendingKernelQueue = queueItems
             }
         }
         kernelObservationTask = Task { @MainActor [weak self] in
@@ -307,7 +306,8 @@ extension AppStateStore {
                 }
                 subscriptions.append(PodcastSubscription(
                     podcastID: uuid,
-                    autoDownload: autoDownload
+                    autoDownload: autoDownload,
+                    notificationsEnabled: summary.notificationsEnabled
                 ))
             }
         }
@@ -503,6 +503,7 @@ extension AppStateStore {
         // (the kernel-owned projection), so running it here — once the single
         // deferred recompute has already landed — is correct and keeps it from
         // being counted as another batched mutation.
+        onQueueFromKernel?(Self.queueItems(from: snapshot))
         onNowPlayingSnapshot?(snapshot)
     }
 
@@ -572,7 +573,21 @@ extension AppStateStore {
                 pubkeyHex: identity.activeAccount,
                 isRemoteSigner: identity.isRemoteSigner)
         }
+        onQueueFromKernel?(Self.queueItems(from: snapshot))
         onNowPlayingSnapshot?(snapshot)
+    }
+
+    private static func queueItems(from snapshot: PodcastUpdate?) -> [QueueItem] {
+        (snapshot?.queue ?? []).compactMap { row -> QueueItem? in
+            guard let id = UUID(uuidString: row.id) else { return nil }
+            let slotID = row.queueSlotId.flatMap(UUID.init(uuidString:)) ?? UUID()
+            return QueueItem(
+                id: slotID,
+                episodeID: id,
+                startSeconds: row.queueStartSecs,
+                endSeconds: row.queueEndSecs
+            )
+        }
     }
 
     /// Fold the kernel's resolved-profiles map into `nostrProfileCache`. Each

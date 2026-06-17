@@ -11,9 +11,9 @@ import Foundation
 //   * bunker pairing (`signInBunker`) — hand the broker a `bunker://` URI.
 //
 // There is NO key forwarding from Swift to the kernel anymore: the kernel
-// generates / imports / persists keys itself (via `createNewAccount` /
-// `signInNsec` / `signInBunker`), so Swift never holds or transmits private
-// bytes.
+// generates / imports / persists keys itself (`podcast.identity`) and mirrors
+// local keys into NMP's active signer roster; Swift never holds or transmits
+// private bytes.
 
 extension UserIdentityStore {
 

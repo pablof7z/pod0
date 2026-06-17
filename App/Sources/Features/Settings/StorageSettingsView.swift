@@ -12,9 +12,10 @@ import SwiftUI
 ///                                  destructive footer
 ///   • "How much disk?"           — total + per-show, biggest first
 ///
-/// The aggregation walks the downloads directory directly so orphaned
-/// files (downloads whose subscription was unsubscribed, leaving the
-/// episode out of `state.episodes`) still show up under "Other / orphan".
+/// Swift enumerates the downloads directory as a native file-system
+/// capability, then sends those raw file facts to Rust. Rust owns the join
+/// against the podcast library, orphan classification, totals, grouping, and
+/// ordering so the UI stays a renderer.
 struct StorageSettingsView: View {
 
     @Environment(AppStateStore.self) private var store
@@ -95,11 +96,17 @@ struct StorageSettingsView: View {
     }
 
     private var lifecycleSection: some View {
-        @Bindable var bindable = store
-        return Section {
+        Section {
             Toggle(
                 "Delete after played",
-                isOn: $bindable.state.settings.autoDeleteDownloadsAfterPlayed
+                isOn: Binding(
+                    get: { store.state.settings.autoDeleteDownloadsAfterPlayed },
+                    set: { enabled in
+                        var settings = store.state.settings
+                        settings.autoDeleteDownloadsAfterPlayed = enabled
+                        store.updateSettings(settings)
+                    }
+                )
             )
         } header: {
             Text("Lifecycle")
@@ -220,96 +227,35 @@ struct StorageSettingsView: View {
         Task { await refresh() }
     }
 
-    /// Re-walks the on-disk artifacts and removes only those whose
-    /// `episodeID` no longer resolves to a live `Episode` in the store.
-    /// Tracked downloads are untouched. Snapshot URLs aren't cached on
-    /// `Snapshot` (only the count + total bytes) — re-enumerating is
-    /// cheap and avoids a stale-URL race if a tracked episode was just
-    /// added.
+    /// Removes only files Rust classified as orphaned in the current storage
+    /// snapshot. Tracked downloads are untouched.
     private func deleteOrphans() {
-        let store = EpisodeDownloadStore.shared
-        for file in store.enumerateOnDisk() {
-            let isOrphan: Bool
-            if let id = file.episodeID {
-                isOrphan = self.store.episode(id: id) == nil
-            } else {
-                isOrphan = true
-            }
-            if isOrphan {
-                try? FileManager.default.removeItem(at: file.url)
-            }
+        for url in snapshot.orphanURLs {
+            try? FileManager.default.removeItem(at: url)
         }
         Task { await refresh() }
     }
 
     private func deleteAll() {
-        // Walk every artifact (including orphans). Kernel handles tracked
-        // episodes; orphans (no live episode row) are removed directly.
-        let downloadStore = EpisodeDownloadStore.shared
-        for file in downloadStore.enumerateOnDisk() {
-            if let id = file.episodeID, self.store.episode(id: id) != nil {
-                self.store.kernelDeleteDownload(id)
-            } else {
-                try? FileManager.default.removeItem(at: file.url)
+        for row in snapshot.shows {
+            for episodeID in row.episodeIDs {
+                store.kernelDeleteDownload(episodeID)
             }
+        }
+        for url in snapshot.orphanURLs {
+            try? FileManager.default.removeItem(at: url)
         }
         Task { await refresh() }
     }
 
     // MARK: - Computation
 
-    /// Joins the on-disk file list against `state.episodes` /
-    /// `state.subscriptions` to produce the per-show breakdown plus the
-    /// orphan tally. Static so it's straightforward to drive from a
-    /// detached `Task` without holding `self`.
+    /// Enumerates local files as an OS capability and asks Rust to produce the
+    /// semantic storage snapshot.
     static func compute(store: AppStateStore) async -> Snapshot {
         let files = EpisodeDownloadStore.shared.enumerateOnDisk()
         guard !files.isEmpty else { return .empty }
-
-        // Pre-build lookup tables.
-        let episodes = Dictionary(uniqueKeysWithValues: store.episodes.map { ($0.id, $0) })
-        let podcasts = Dictionary(uniqueKeysWithValues: store.state.podcasts.map { ($0.id, $0) })
-
-        var byShow: [UUID: (title: String, bytes: Int64, episodes: Set<UUID>)] = [:]
-        var orphanBytes: Int64 = 0
-        var orphanFiles: Set<URL> = []
-        var totalBytes: Int64 = 0
-
-        for file in files {
-            totalBytes += file.bytes
-            guard let episodeID = file.episodeID, let episode = episodes[episodeID] else {
-                orphanBytes += file.bytes
-                orphanFiles.insert(file.url)
-                continue
-            }
-            let title = podcasts[episode.podcastID]?.title ?? "Unknown show"
-            var entry = byShow[episode.podcastID] ?? (title, 0, [])
-            entry.bytes += file.bytes
-            entry.episodes.insert(episodeID)
-            // Title may have arrived stable from the first file; refresh anyway
-            // in case the first file we hit was an orphan-titled fallback.
-            entry.title = title
-            byShow[episode.podcastID] = entry
-        }
-
-        let shows = byShow
-            .map { (subID, entry) in
-                ShowRow(
-                    subscriptionID: subID,
-                    title: entry.title,
-                    bytes: entry.bytes,
-                    episodeCount: entry.episodes.count,
-                    episodeIDs: Array(entry.episodes)
-                )
-            }
-            .sorted { $0.bytes > $1.bytes }
-
-        return Snapshot(
-            totalBytes: totalBytes,
-            shows: shows,
-            orphanBytes: orphanBytes,
-            orphanCount: orphanFiles.count
-        )
+        return store.rustStorageBreakdown(files: files)
     }
 
     // MARK: - Snapshot
@@ -319,7 +265,14 @@ struct StorageSettingsView: View {
         let shows: [ShowRow]
         let orphanBytes: Int64
         let orphanCount: Int
-        static let empty = Snapshot(totalBytes: 0, shows: [], orphanBytes: 0, orphanCount: 0)
+        let orphanURLs: [URL]
+        static let empty = Snapshot(
+            totalBytes: 0,
+            shows: [],
+            orphanBytes: 0,
+            orphanCount: 0,
+            orphanURLs: []
+        )
     }
 
     struct ShowRow: Identifiable, Sendable {

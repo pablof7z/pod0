@@ -144,9 +144,15 @@ final class AudioCapability: NSObject {
     /// `execute(_:)` is a pure AVFoundation translation of the command.
     ///
     /// When `commandHandler` is installed (M1 bridge mode), ALL commands
-    /// are forwarded there and this method returns early — the own
-    /// `AVPlayer` is bypassed.
+    /// except `setSleepTimer` are forwarded there and this method returns
+    /// early — the own `AVPlayer` is bypassed. Sleep-timer duration mode is
+    /// still held by the capability's OS timer so expiry reports flow back to
+    /// Rust; Rust remains the policy owner.
     func execute(_ command: AudioCommand) {
+        if case let .setSleepTimer(secs) = command {
+            armSleepTimer(secs: secs)
+            return
+        }
         if let handler = commandHandler {
             handler(command)
             return
@@ -167,8 +173,8 @@ final class AudioCapability: NSObject {
             if player.timeControlStatus == .playing {
                 player.rate = rate
             }
-        case let .setSleepTimer(secs):
-            armSleepTimer(secs: secs)
+        case .setSleepTimer:
+            break
         case .stop:
             playerStop()
         }

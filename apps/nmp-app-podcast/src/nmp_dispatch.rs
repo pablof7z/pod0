@@ -54,6 +54,33 @@ pub(crate) fn register_podcast_signer_in_kernel(app: *mut nmp_ffi::NmpApp, secre
     nmp_ffi::nmp_app_signin_nsec(app, secret_c.as_ptr(), 0);
 }
 
+/// Register the app-owned local identity as NMP's ACTIVE signer.
+///
+/// `IdentityStore` is the podcast app's durable local-key store and feeds the
+/// `active_account` projection. NMP publish commands sign through NMP-core's
+/// active signer roster, so every successful app identity import/generate/load
+/// must also register that same secret here with `make_active=1`.
+pub(crate) fn activate_local_signer_in_kernel(app: *mut nmp_ffi::NmpApp, secret_hex: &str) {
+    if app.is_null() {
+        return;
+    }
+    let Ok(secret_c) = CString::new(secret_hex) else {
+        return;
+    };
+    nmp_ffi::nmp_app_signin_nsec(app, secret_c.as_ptr(), 1);
+}
+
+/// Remove an app-owned local account from NMP-core's signer roster.
+pub(crate) fn remove_account_from_kernel(app: *mut nmp_ffi::NmpApp, pubkey_hex: &str) {
+    if app.is_null() {
+        return;
+    }
+    let Ok(pubkey_c) = CString::new(pubkey_hex) else {
+        return;
+    };
+    nmp_ffi::nmp_app_remove_account(app, pubkey_c.as_ptr());
+}
+
 /// Dispatch unsigned event parameters to `nmp.publish { PublishRaw }` with an
 /// explicit `signer_pubkey`. The kernel's `sign_with_account_nonblocking` looks
 /// up the named pubkey hex across the local-key + remote (NIP-46) roster —

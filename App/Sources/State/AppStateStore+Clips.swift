@@ -1,45 +1,11 @@
 import Foundation
-import os.log
 
 // MARK: - Clips
 
-/// CRUD surface for user-authored transcript excerpts. Mirrors the pattern
-/// used by `+Notes` and `+Memories` so all clip mutations route through one
-/// place and the `state.didSet` observer in `AppStateStore` picks them up
-/// for persistence + Spotlight + widget refresh.
-///
-/// Auto-snip and the in-app composer both land here so a clip captured from
-/// the lock-screen and a clip composed from a transcript share the same
-/// storage and the same observer chain.
+/// Read/delete surface for Rust-owned transcript excerpts. Creation routes
+/// through `podcast.clip` actions; this file only maps the kernel projection
+/// into the Swift `Clip` DTO used by rendering and share/export UI.
 extension AppStateStore {
-
-    nonisolated private static let clipsLogger = Logger.app("AppStateStore+Clips")
-
-    func addClip(_ clip: Clip) {
-        state.clips.append(clip)
-        // Every clip funnels through here (composer + auto-snip), so it's the
-        // single seam to record clip creation in the episode's Diagnostics log
-        // — what was clipped, from where, and how.
-        kernelRecordEpisodeEvent(
-            episodeID: clip.episodeID,
-            kind: "clip.created",
-            severity: "info",
-            summary: "Clip created · \(Self.clipSpanLabel(clip))",
-            details: [
-                ("Span", Self.clipSpanLabel(clip)),
-                ("Source", clip.source.rawValue),
-            ]
-        )
-        // Wiring contract per `identity-05-synthesis.md` §5.3: every clip
-        // source signs and publishes (kind 9802 / NIP-84) except `.agent`,
-        // which stays local. Fire-and-forget so a relay outage never blocks
-        // the user's local capture.
-        if clip.source != .agent {
-            let ep  = episode(id: clip.episodeID)
-            let pod = ep.flatMap { podcast(id: $0.podcastID) }
-            Task { try? await identity.publishUserClip(clip, episode: ep, podcast: pod) }
-        }
-    }
 
     /// `M:SS–M:SS` label for a clip's span, used in Diagnostics event summaries.
     nonisolated static func clipSpanLabel(_ clip: Clip) -> String {
@@ -50,78 +16,47 @@ extension AppStateStore {
         return "\(fmt(clip.startMs))–\(fmt(clip.endMs))"
     }
 
-    /// Convenience: build + persist in one call. Used by `AutoSnipController`
-    /// (auto / headphone / lock-screen pathways). The transcript window may be
-    /// `nil` when the episode hasn't been ingested yet — we collapse to an
-    /// empty string so the rest of the share stack stays string-typed.
-    @discardableResult
-    func addClip(
-        episodeID: UUID,
-        subscriptionID: UUID,
-        startMs: Int,
-        endMs: Int,
-        transcriptText: String? = nil,
-        speakerID: UUID? = nil,
-        source: Clip.Source = .auto,
-        caption: String? = nil
-    ) -> Clip {
-        let clip = Clip(
-            episodeID: episodeID,
-            subscriptionID: subscriptionID,
-            startMs: startMs,
-            endMs: endMs,
-            caption: caption,
-            speakerID: speakerID?.uuidString,
-            transcriptText: transcriptText ?? "",
-            source: source
-        )
-        // Route through the primary `addClip(_:)` so the publish wiring
-        // fires uniformly for every entry-point (composer + auto-snip).
-        addClip(clip)
-        return clip
-    }
-
-    /// In-place rewrite for the optimistic-then-refine flow used by
-    /// `AutoSnipController`: the mechanical clip lands first (instant haptic +
-    /// toast), then a background LLM call refines the boundaries and calls
-    /// this to overwrite the span and frozen transcript. We deliberately do
-    /// NOT re-publish NIP-84 here — the initial publish in `addClip(_:)` is
-    /// the user-visible event; refinement is local polish.
-    func updateClipBoundaries(
-        id: UUID,
-        startMs: Int,
-        endMs: Int,
-        transcriptText: String,
-        speakerID: UUID?
-    ) {
-        guard let idx = state.clips.firstIndex(where: { $0.id == id }) else { return }
-        var clip = state.clips[idx]
-        clip.startMs = startMs
-        clip.endMs = endMs
-        clip.transcriptText = transcriptText
-        clip.speakerID = speakerID?.uuidString
-        state.clips[idx] = clip
-    }
-
     func deleteClip(id: UUID) {
-        guard let idx = state.clips.firstIndex(where: { $0.id == id }) else { return }
-        state.clips.remove(at: idx)
+        kernelDeleteClip(id: id)
     }
 
     func clip(id: UUID) -> Clip? {
-        state.clips.first(where: { $0.id == id })
+        allClips().first(where: { $0.id == id })
     }
 
     /// All clips, newest first. Used by the Clippings tab.
     func allClips() -> [Clip] {
-        state.clips.sorted { $0.createdAt > $1.createdAt }
+        kernelProjectedClips()
     }
 
     /// Clips for a single episode, newest first. Used by the episode detail
     /// surface and the global clips list.
     func clips(forEpisode id: UUID) -> [Clip] {
-        state.clips
-            .filter { $0.episodeID == id }
-            .sorted { $0.createdAt > $1.createdAt }
+        kernelProjectedClips().filter { $0.episodeID == id }
+    }
+
+    private func kernelProjectedClips() -> [Clip] {
+        guard let summaries = kernel?.podcastSnapshot?.clips, !summaries.isEmpty else {
+            return []
+        }
+        return summaries.compactMap { summary in
+            guard let clipID = UUID(uuidString: summary.id),
+                  let episodeID = UUID(uuidString: summary.episodeId) else { return nil }
+            let episode = episode(id: episodeID)
+            let podcastID = episode?.podcastID
+                ?? UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+            return Clip(
+                id: clipID,
+                episodeID: episodeID,
+                subscriptionID: podcastID,
+                startMs: Int((summary.startSecs * 1000).rounded()),
+                endMs: Int((summary.endSecs * 1000).rounded()),
+                createdAt: Date(timeIntervalSince1970: TimeInterval(summary.createdAt)),
+                caption: summary.title,
+                speakerID: summary.speaker,
+                transcriptText: summary.transcriptText,
+                source: Clip.Source(rawValue: summary.source) ?? .auto
+            )
+        }
     }
 }

@@ -138,6 +138,10 @@ fn snapshot_with_clips_round_trips() {
         start_secs: 10.0,
         end_secs: 70.0,
         title: Some("Marcus on retrieval".into()),
+        transcript_text: "A useful quote.".into(),
+        speaker: Some("spk_0".into()),
+        source: "auto".into(),
+        refinement_status: "transcript_refined".into(),
         created_at: 1_700_000_000,
     };
     let snap = PodcastUpdate {

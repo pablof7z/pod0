@@ -12,6 +12,29 @@ import Foundation
 // by the unified `play_episode` tool.
 
 extension AgentTools {
+    private struct DirectorySearchPlan: Decodable {
+        let error: String?
+        let query: String?
+        let searchType: String?
+        let limit: Int?
+
+        enum CodingKeys: String, CodingKey {
+            case error, query, limit
+            case searchType = "search_type"
+        }
+    }
+
+    private struct ExternalPodcastActionPlan: Decodable {
+        let error: String?
+        let feedURL: String?
+        let podcastID: String?
+
+        enum CodingKeys: String, CodingKey {
+            case error
+            case feedURL = "feed_url"
+            case podcastID = "podcast_id"
+        }
+    }
 
     // MARK: - Limits
 
@@ -21,21 +44,20 @@ extension AgentTools {
     // MARK: - search_podcast_directory
 
     static func searchPodcastDirectoryTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        guard let query = (args["query"] as? String)?.trimmed, !query.isEmpty else {
-            return toolError("Missing or empty 'query'")
+        let planEnvelope = await directorySearchPlanEnvelope(args: args)
+        guard let planEnvelope,
+              let planData = planEnvelope.data(using: .utf8),
+              let plan = try? JSONDecoder().decode(DirectorySearchPlan.self, from: planData)
+        else { return toolError("Podcast directory search planning is unavailable") }
+        if let error = plan.error { return toolError(error) }
+        guard let query = plan.query, let searchType = plan.searchType, let limit = plan.limit else {
+            return toolError("Podcast directory search plan was incomplete")
         }
-        let typeRaw = (args["type"] as? String)?.trimmed.lowercased() ?? "episode"
-        let type: PodcastDirectorySearchType = typeRaw == "podcast" ? .podcast : .episode
-        let limit = clampedDirectoryLimit(args["limit"])
+        let type: PodcastDirectorySearchType = searchType == "podcast" ? .podcast : .episode
         do {
             let hits = try await deps.directory.searchDirectory(query: query, type: type, limit: limit)
-            let rows = hits.map(serializeDirectoryHit)
-            return toolSuccess([
-                "query": query,
-                "type": typeRaw,
-                "total_found": rows.count,
-                "results": rows,
-            ])
+            return await directorySearchResultsEnvelope(query: query, searchType: searchType, hits: hits)
+                ?? toolError("Podcast directory search result shaping is unavailable")
         } catch {
             return toolError("search_podcast_directory failed: \(error.localizedDescription)")
         }
@@ -44,9 +66,11 @@ extension AgentTools {
     // MARK: - delete_podcast
 
     static func deletePodcastTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        guard let podcastID = (args["podcast_id"] as? String)?.trimmed, !podcastID.isEmpty else {
-            return toolError("Missing or empty 'podcast_id'")
+        guard let plan = await externalPodcastActionPlan(op: "delete_podcast_plan", args: args) else {
+            return toolError("delete_podcast planning is unavailable")
         }
+        if let error = plan.error { return toolError(error) }
+        guard let podcastID = plan.podcastID else { return toolError("delete_podcast plan was incomplete") }
         do {
             let result = try await deps.subscribe.deletePodcast(podcastID: podcastID)
             var payload: [String: Any] = [
@@ -55,10 +79,8 @@ extension AgentTools {
                 "episodes_deleted": result.episodesDeleted,
             ]
             if let title = result.title { payload["title"] = title }
-            payload["message"] = result.wasSubscribed
-                ? "Unsubscribed and deleted \(result.episodesDeleted) episode\(result.episodesDeleted == 1 ? "" : "s")."
-                : "Deleted \(result.episodesDeleted) episode\(result.episodesDeleted == 1 ? "" : "s") from a non-subscribed podcast."
-            return toolSuccess(payload)
+            return await actionTool(op: "delete_podcast_result", payload: payload)
+                ?? toolError("delete_podcast result shaping is unavailable")
         } catch {
             return toolError("delete_podcast failed: \(error.localizedDescription)")
         }
@@ -67,9 +89,11 @@ extension AgentTools {
     // MARK: - subscribe_podcast
 
     static func subscribePodcastTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        guard let feedURL = (args["feed_url"] as? String)?.trimmed, !feedURL.isEmpty else {
-            return toolError("Missing or empty 'feed_url'")
+        guard let plan = await externalPodcastActionPlan(op: "subscribe_plan", args: args) else {
+            return toolError("subscribe_podcast planning is unavailable")
         }
+        if let error = plan.error { return toolError(error) }
+        guard let feedURL = plan.feedURL else { return toolError("subscribe_podcast plan was incomplete") }
         do {
             let result = try await deps.subscribe.subscribe(feedURLString: feedURL)
             var payload: [String: Any] = [
@@ -80,7 +104,8 @@ extension AgentTools {
                 "already_subscribed": result.alreadySubscribed,
             ]
             if let author = result.author { payload["author"] = author }
-            return toolSuccess(payload)
+            return await actionTool(op: "subscribe_result", payload: payload)
+                ?? toolError("subscribe_podcast result shaping is unavailable")
         } catch {
             return toolError("subscribe_podcast failed: \(error.localizedDescription)")
         }
@@ -128,37 +153,89 @@ extension AgentTools {
             ]
             if let source = result.source { payload["source"] = source }
             if let message = result.message { payload["message"] = message }
-            return toolSuccess(payload)
+            return await actionTool(op: "transcript_result", payload: payload)
+                ?? toolError("download_and_transcribe result shaping is unavailable")
         } catch {
             return toolError("download_and_transcribe failed: \(error.localizedDescription)")
         }
     }
 
-    // MARK: - Serialization helpers
+    // MARK: - Directory search FFI helpers
 
-    private static func serializeDirectoryHit(_ hit: PodcastDirectoryHit) -> [String: Any] {
-        var row: [String: Any] = ["podcast_title": hit.podcastTitle]
+    private static func directorySearchPlanEnvelope(args: [String: Any]) async -> String? {
+        await directorySearchFFI(payload: ["args": args], op: "plan")
+    }
+
+    private static func directorySearchResultsEnvelope(
+        query: String,
+        searchType: String,
+        hits: [PodcastDirectoryHit]
+    ) async -> String? {
+        await directorySearchFFI(
+            payload: [
+                "query": query,
+                "search_type": searchType,
+                "results": hits.map(rawDirectoryHit),
+            ],
+            op: "results"
+        )
+    }
+
+    private static func rawDirectoryHit(_ hit: PodcastDirectoryHit) -> [String: Any] {
+        var row: [String: Any] = [
+            "podcast_title": hit.podcastTitle,
+        ]
         if let id = hit.collectionID { row["collection_id"] = id }
         if let author = hit.author { row["author"] = author }
         if let feedURL = hit.feedURL { row["feed_url"] = feedURL }
-        if let art = hit.artworkURL { row["artwork_url"] = art }
-        if let title = hit.episodeTitle { row["episode_title"] = title }
+        if let artworkURL = hit.artworkURL { row["artwork_url"] = artworkURL }
+        if let episodeTitle = hit.episodeTitle { row["episode_title"] = episodeTitle }
         if let audioURL = hit.episodeAudioURL { row["audio_url"] = audioURL }
         if let guid = hit.episodeGUID { row["episode_guid"] = guid }
         if let publishedAt = hit.episodePublishedAt {
-            row["published_at"] = iso8601Basic.string(from: publishedAt)
+            row["published_at"] = Int(publishedAt.timeIntervalSince1970)
         }
-        if let dur = hit.episodeDurationSeconds { row["duration_seconds"] = dur }
-        if let desc = hit.episodeDescription { row["description"] = desc }
+        if let duration = hit.episodeDurationSeconds { row["duration_seconds"] = duration }
+        if let description = hit.episodeDescription { row["description"] = description }
         return row
     }
 
-    private static func clampedDirectoryLimit(_ raw: Any?) -> Int {
-        let asInt: Int
-        if let i = raw as? Int { asInt = i }
-        else if let d = raw as? Double { asInt = Int(d) }
-        else if let n = raw as? NSNumber { asInt = n.intValue }
-        else { return directorySearchDefaultLimit }
-        return Swift.max(1, Swift.min(directorySearchMaxLimit, asInt))
+    private static func directorySearchFFI(payload: [String: Any], op: String) async -> String? {
+        let handleBits = await MainActor.run {
+            KernelModel.shared?.podcastHandlePointer.map { Int(bitPattern: $0) }
+        }
+        guard let handleBits,
+              let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        return await Task.detached(priority: .userInitiated) {
+            guard let handle = UnsafeMutableRawPointer(bitPattern: handleBits) else {
+                return nil
+            }
+            return json.withCString { ptr in
+                let result: UnsafeMutablePointer<CChar>?
+                switch op {
+                case "plan":
+                    result = nmp_app_podcast_agent_directory_search_plan(handle, ptr)
+                case "results":
+                    result = nmp_app_podcast_agent_directory_search_results(handle, ptr)
+                default:
+                    result = nil
+                }
+                guard let result else { return nil }
+                defer { nmp_free_string(result) }
+                return String(cString: result)
+            }
+        }.value
+    }
+
+    private static func externalPodcastActionPlan(
+        op: String,
+        args: [String: Any]
+    ) async -> ExternalPodcastActionPlan? {
+        guard let envelope = await actionTool(op: op, payload: args),
+              let data = envelope.data(using: .utf8)
+        else { return nil }
+        return try? JSONDecoder().decode(ExternalPodcastActionPlan.self, from: data)
     }
 }

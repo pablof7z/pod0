@@ -20,10 +20,14 @@ enum CarPlayShows {
         store: AppStateStore,
         onSelectShow: @escaping (Podcast) -> Void
     ) -> CPListTemplate {
-        let podcasts = Array(store.sortedFollowedPodcasts.prefix(itemCap))
+        let projection = ShowsProjection.load(limit: itemCap, store: store)
+        let podcasts = projection.rows.compactMap { row -> (Podcast, ShowRow)? in
+            guard let podcast = store.podcast(id: row.podcastId) else { return nil }
+            return (podcast, row)
+        }
 
-        let items = podcasts.map { podcast -> CPListItem in
-            let detail = makeShowDetail(podcast: podcast, store: store)
+        let items = podcasts.map { podcast, row -> CPListItem in
+            let detail = makeShowDetail(podcast: podcast, unplayed: row.unplayedCount)
             let item = CPListItem(
                 text: podcast.title,
                 detailText: detail,
@@ -59,7 +63,9 @@ enum CarPlayShows {
         store: AppStateStore,
         onSelect: @escaping (Episode) -> Void
     ) -> CPListTemplate {
-        let episodes = Array(store.episodes(forPodcast: podcast.id).prefix(itemCap))
+        let episodes = ShowEpisodesProjection
+            .load(podcastID: podcast.id, limit: itemCap, store: store)
+            .episodes(in: store)
         let items = episodes.map { episode -> CPListItem in
             let item = CPListItem(
                 text: episode.title,
@@ -84,8 +90,7 @@ enum CarPlayShows {
 
     // MARK: - Formatting
 
-    private static func makeShowDetail(podcast: Podcast, store: AppStateStore) -> String {
-        let unplayed = store.unplayedCountByShow[podcast.id] ?? 0
+    private static func makeShowDetail(podcast: Podcast, unplayed: Int) -> String {
         if unplayed > 0 {
             return "\(unplayed) unplayed"
         }
@@ -123,4 +128,53 @@ enum CarPlayShows {
         if h > 0 { return "\(h)h \(m)m" }
         return "\(max(1, m)) min"
     }
+
+    private struct ShowsProjection: Decodable {
+        let shows: [ShowRow]
+
+        static func load(limit: Int, store: AppStateStore) -> ShowsProjection {
+            guard let envelope = store.kernel?.carplayShowsEnvelope(limit: limit),
+                  let data = envelope.data(using: .utf8),
+                  let decoded = try? JSONDecoder.carplayShows.decode(ShowsProjection.self, from: data)
+            else { return ShowsProjection(shows: []) }
+            return decoded
+        }
+
+        var rows: [ShowRow] { shows }
+    }
+
+    private struct ShowRow: Decodable {
+        let podcastId: UUID
+        let unplayedCount: Int
+    }
+
+    private struct ShowEpisodesProjection: Decodable {
+        let episodeIds: [UUID]
+
+        static func load(podcastID: UUID, limit: Int, store: AppStateStore) -> ShowEpisodesProjection {
+            guard let envelope = store.kernel?.carplayShowEpisodesEnvelope(
+                podcastID: podcastID,
+                limit: limit
+            ),
+                  let data = envelope.data(using: .utf8),
+                  let decoded = try? JSONDecoder.carplayShows.decode(
+                    ShowEpisodesProjection.self,
+                    from: data
+                  )
+            else { return ShowEpisodesProjection(episodeIds: []) }
+            return decoded
+        }
+
+        func episodes(in store: AppStateStore) -> [Episode] {
+            episodeIds.compactMap { store.episode(id: $0) }
+        }
+    }
+}
+
+private extension JSONDecoder {
+    static let carplayShows: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
+    }()
 }

@@ -21,13 +21,9 @@ enum CarPlayDownloads {
         store: AppStateStore,
         onSelect: @escaping (Episode) -> Void
     ) -> CPListTemplate {
-        let downloaded = store.episodes
-            .filter {
-                if case .downloaded = $0.downloadState { return true }
-                return false
-            }
-            .sorted { $0.pubDate > $1.pubDate }
-            .prefix(itemCap)
+        let downloaded = DownloadsProjection
+            .load(limit: itemCap, store: store)
+            .episodes(in: store)
 
         let items = downloaded.map { episode -> CPListItem in
             let item = CPListItem(
@@ -83,4 +79,31 @@ enum CarPlayDownloads {
         if h > 0 { return "\(h)h \(m)m" }
         return "\(max(1, m)) min"
     }
+
+    private struct DownloadsProjection: Decodable {
+        let episodeIds: [UUID]
+
+        static func load(limit: Int, store: AppStateStore) -> DownloadsProjection {
+            guard let envelope = store.kernel?.carplayDownloadsEnvelope(limit: limit),
+                  let data = envelope.data(using: .utf8),
+                  let decoded = try? JSONDecoder.carplayDownloads.decode(
+                    DownloadsProjection.self,
+                    from: data
+                  )
+            else { return DownloadsProjection(episodeIds: []) }
+            return decoded
+        }
+
+        func episodes(in store: AppStateStore) -> [Episode] {
+            episodeIds.compactMap { store.episode(id: $0) }
+        }
+    }
+}
+
+private extension JSONDecoder {
+    static let carplayDownloads: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
+    }()
 }

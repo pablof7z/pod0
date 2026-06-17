@@ -305,6 +305,14 @@ impl PodcastStore {
 
     /// Set the YouTube extractor URL and persist. Idempotent.
     pub fn set_youtube_extractor_url(&mut self, value: Option<String>) {
+        let value = value.and_then(|raw| {
+            let trimmed = raw.trim().to_owned();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed)
+            }
+        });
         if self.youtube_extractor_url == value {
             return;
         }
@@ -381,6 +389,21 @@ impl PodcastStore {
         }
         self.notify_on_new_episodes = value;
         self.persist();
+    }
+
+    pub fn notifications_enabled_for(&self, podcast_id: PodcastId) -> bool {
+        self.notify_on_new_episodes && !self.notifications_disabled.contains(&podcast_id)
+    }
+
+    pub fn set_podcast_notifications_enabled(&mut self, podcast_id: PodcastId, enabled: bool) {
+        let changed = if enabled {
+            self.notifications_disabled.remove(&podcast_id)
+        } else {
+            self.notifications_disabled.insert(podcast_id)
+        };
+        if changed {
+            self.persist();
+        }
     }
 
     /// Whether Nostr publishing and identity features are enabled. Default `false`.

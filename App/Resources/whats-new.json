@@ -2,6 +2,78 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-17T00:12:00Z",
+      "lines": [
+        "Agent-owned podcast visibility changes now go through the kernel, so private and public states stay consistent after refresh."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:11:00Z",
+      "lines": [
+        "Category settings now only show controls backed by the kernel, so toggles reflect behavior the app can actually apply."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:10:00Z",
+      "lines": [
+        "Related episode sheets now use the kernel's matching policy, so topic and source suggestions stay consistent across platforms."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:09:00Z",
+      "lines": [
+        "Threads now come from the kernel's library analysis instead of a local preview seed, so cross-episode topic surfaces stay consistent across platforms."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:08:00Z",
+      "lines": [
+        "Add Show search and Popular Now now use the kernel-backed Apple Podcasts directory, keeping discovery behavior consistent across platforms."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:07:00Z",
+      "lines": [
+        "Assistant podcast-directory searches now run through the kernel, so show and episode lookups use the same discovery rules across platforms."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:06:00Z",
+      "lines": [
+        "Spotlight podcast and episode results now open from the kernel-backed library index, keeping search in sync with your current library."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:05:00Z",
+      "lines": [
+        "Siri playback shortcuts now route through the kernel, so pause, resume, and skip follow the same playback rules as the app."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:04:00Z",
+      "lines": [
+        "Sleep timer decisions now run through the kernel, so end-of-episode stops follow the same playback policy as every other platform."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:03:00Z",
+      "lines": [
+        "Sharing a new clip now opens the real image, audio, and link share sheet instead of a placeholder."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:02:00Z",
+      "lines": [
+        "Clips are now saved by the kernel, so your clipped moments survive app restarts."
+      ]
+    },
+    {
+      "shipped_at": "2026-06-17T00:01:00Z",
+      "lines": [
+        "Quote sharing now uses kernel-aligned transcript boundaries for cleaner excerpts."
+      ]
+    },
+    {
       "shipped_at": "2026-06-16T07:00:00Z",
       "lines": [
         "Now Playing controls respond more cleanly, and the playback scrubber is easier to adjust with accessibility tools."

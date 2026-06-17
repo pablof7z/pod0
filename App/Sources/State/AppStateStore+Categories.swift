@@ -4,6 +4,31 @@ import Foundation
 
 extension AppStateStore {
 
+    private struct CategoryAssignmentPlan: Decodable {
+        let assignments: [CategoryAssignment]
+        let error: String?
+    }
+
+    private struct CategoryAssignment: Decodable {
+        let podcastID: String
+        let categories: [String]
+
+        enum CodingKeys: String, CodingKey {
+            case podcastID = "podcast_id"
+            case categories
+        }
+    }
+
+    private struct CategoryTranscriptionPlan: Decodable {
+        let podcastIDs: [String]
+        let error: String?
+
+        enum CodingKeys: String, CodingKey {
+            case podcastIDs = "podcast_ids"
+            case error
+        }
+    }
+
     /// Replaces the current set of LLM-derived categories.
     ///
     /// Single-write entry-point so the `state.didSet` save fires once per
@@ -12,39 +37,9 @@ extension AppStateStore {
         state.categories = categories
     }
 
-    /// Moves a podcast into one category and removes it from every other
-    /// category. Returns false when either ID is no longer valid.
-    ///
-    /// `PodcastCategory.subscriptionIDs` is a legacy field name that
-    /// semantically holds **podcast** IDs in the new model — the field
-    /// rename is deferred to avoid Codable churn for downstream callers.
-    @discardableResult
-    func moveSubscription(_ podcastID: UUID, toCategory categoryID: UUID) -> Bool {
-        guard state.podcasts.contains(where: { $0.id == podcastID }),
-              state.categories.contains(where: { $0.id == categoryID })
-        else { return false }
-
-        var categories = state.categories
-        for index in categories.indices {
-            categories[index].subscriptionIDs.removeAll { $0 == podcastID }
-            if categories[index].id == categoryID {
-                categories[index].subscriptionIDs.append(podcastID)
-            }
-        }
-        if categories != state.categories {
-            state.categories = categories
-        }
-        return true
-    }
-
     /// Returns the category with the given ID, if any.
     func category(id: UUID) -> PodcastCategory? {
         state.categories.first(where: { $0.id == id })
-    }
-
-    /// Returns the (first) category that contains the given podcast.
-    func category(forPodcast podcastID: UUID) -> PodcastCategory? {
-        state.categories.first(where: { $0.subscriptionIDs.contains(podcastID) })
     }
 
     // MARK: - Kernel migration (D0/D4)
@@ -53,11 +48,10 @@ extension AppStateStore {
     private static let migrationFlagKey = "userCategoriesMigratedToKernel"
 
     /// One-shot migration: seed the kernel-owned `podcast_user_categories`
-    /// substate from the legacy Swift `state.categories` model. Each podcast
-    /// inherits the names of every legacy category it belonged to (a podcast can
-    /// live in more than one), dispatched as a single
-    /// `set_podcast_user_categories` op per podcast. Idempotent across launches
-    /// via the `UserDefaults` flag — runs exactly once even if the legacy data
+    /// substate from the legacy Swift `state.categories` model. Swift passes the
+    /// raw legacy category rows to Rust; Rust owns label expansion, de-duping,
+    /// reconcile-clears, and assignment shape. Idempotent across launches via
+    /// the `UserDefaults` flag — runs exactly once even if the legacy data
     /// persists. A no-op on fresh installs (no legacy categories).
     func migrateUserCategoriesToKernel() {
         guard !UserDefaults.standard.bool(forKey: Self.migrationFlagKey) else { return }
@@ -75,14 +69,10 @@ extension AppStateStore {
         UserDefaults.standard.set(true, forKey: Self.migrationFlagKey)
     }
 
-    /// Mirror the user-curated category assignments held in the legacy Swift
-    /// `state.categories` model into the kernel-owned `podcast_user_categories`
-    /// substate (one idempotent `set_podcast_user_categories` op per podcast).
-    /// This is the single bridge that keeps the kernel — which the UI now reads
-    /// from (`PodcastSummary.userCategories`) — in sync with every writer of the
-    /// legacy model: the one-shot launch migration AND the AI recompute path.
-    /// Without it an AI re-categorization would update only the Swift copy and
-    /// silently never surface in the kernel-backed UI.
+    /// Mirror user-curated category assignments from the legacy Swift
+    /// `state.categories` DTOs into the kernel-owned
+    /// `podcast_user_categories` substate. Swift only serializes raw rows and
+    /// dispatches the Rust-planned per-podcast mutations.
     ///
     /// - Parameter reconcilingFollowed: when non-nil, every podcast in this set
     ///   that ends up with NO labels is dispatched with an empty list so the
@@ -90,37 +80,13 @@ extension AppStateStore {
     ///   set after a recompute (which can drop a podcast from all categories).
     ///   When nil (the migration seed) only non-empty assignments are dispatched.
     func syncUserCategoriesToKernel(reconcilingFollowed followed: Set<UUID>? = nil) {
-        // Accumulate every category name per podcast (preserving order,
-        // de-duplicated) so a podcast in multiple categories carries all labels
-        // in one dispatch rather than clobbering with the last one.
-        var labelsByPodcast: [UUID: [String]] = [:]
-        for category in state.categories {
-            let label = category.name
-            guard !label.isEmpty else { continue }
-            for podcastUUID in category.subscriptionIDs {
-                var labels = labelsByPodcast[podcastUUID] ?? []
-                if !labels.contains(label) {
-                    labels.append(label)
-                }
-                labelsByPodcast[podcastUUID] = labels
-            }
-        }
-
-        // Reconcile: clear kernel labels for followed podcasts that no longer
-        // belong to any category (empty list = clear), only when an
-        // authoritative set is supplied.
-        if let followed {
-            for podcastUUID in followed where labelsByPodcast[podcastUUID] == nil {
-                labelsByPodcast[podcastUUID] = []
-            }
-        }
-
-        for (podcastUUID, labels) in labelsByPodcast {
+        guard let plan = categoryAssignmentsPlan(reconcilingFollowed: followed) else { return }
+        for assignment in plan.assignments {
             kernel?.dispatch(namespace: "podcast",
                              body: [
                                  "op": "set_podcast_user_categories",
-                                 "podcast_id": podcastUUID.uuidString.lowercased(),
-                                 "categories": labels,
+                                 "podcast_id": assignment.podcastID,
+                                 "categories": assignment.categories,
                              ])
         }
     }
@@ -145,22 +111,78 @@ extension AppStateStore {
         UserDefaults.standard.set(true, forKey: Self.transcriptionMigrationFlagKey)
     }
 
-    /// Mirror per-category `transcriptionEnabled = false` into the kernel as
-    /// per-podcast `set_podcast_transcription_enabled enabled:false` ops. Only
-    /// dispatches for podcasts whose effective transcription is `false` (the
-    /// non-default case), to keep the wire quiet for the typical all-enabled state.
+    /// Mirror legacy per-category `transcriptionEnabled = false` facts into the
+    /// kernel. Rust owns expansion from raw category/settings rows to per-podcast
+    /// disabled mutations; Swift only dispatches the returned ids.
     func syncTranscriptionSettingsToKernel() {
-        for category in state.categories {
-            let settings = state.categorySettings[category.id] ?? .default(for: category.id)
-            guard !settings.transcriptionEnabled else { continue }
-            for podcastUUID in category.subscriptionIDs {
-                kernel?.dispatch(namespace: "podcast",
-                                 body: [
-                                     "op": "set_podcast_transcription_enabled",
-                                     "podcast_id": podcastUUID.uuidString.lowercased(),
-                                     "enabled": false,
-                                 ])
-            }
+        guard let plan = categoryTranscriptionDisabledPlan() else { return }
+        for podcastID in plan.podcastIDs {
+            kernel?.dispatch(namespace: "podcast",
+                             body: [
+                                 "op": "set_podcast_transcription_enabled",
+                                 "podcast_id": podcastID,
+                                 "enabled": false,
+                             ])
         }
+    }
+
+    private func categoryAssignmentsPlan(reconcilingFollowed followed: Set<UUID>?) -> CategoryAssignmentPlan? {
+        var payload: [String: Any] = [
+            "categories": categoryObjects(),
+        ]
+        if let followed {
+            payload["followed_podcast_ids"] = followed.map { $0.uuidString.lowercased() }
+        }
+        return categoryTool(CategoryAssignmentPlan.self, op: "category_assignments_plan", payload: payload)
+    }
+
+    private func categoryTranscriptionDisabledPlan() -> CategoryTranscriptionPlan? {
+        categoryTool(
+            CategoryTranscriptionPlan.self,
+            op: "category_transcription_disabled_plan",
+            payload: [
+                "categories": categoryObjects(),
+                "settings": state.categorySettings.map { id, settings in
+                    [
+                        "category_id": id.uuidString.lowercased(),
+                        "transcription_enabled": settings.transcriptionEnabled,
+                    ]
+                },
+            ]
+        )
+    }
+
+    private func categoryObjects() -> [[String: Any]] {
+        state.categories.map { category in
+            [
+                "id": category.id.uuidString.lowercased(),
+                "name": category.name,
+                "podcast_ids": category.subscriptionIDs.map { $0.uuidString.lowercased() },
+            ]
+        }
+    }
+
+    private func categoryTool<T: Decodable>(
+        _ type: T.Type,
+        op: String,
+        payload: [String: Any]
+    ) -> T? {
+        guard let handle = kernel?.podcastHandlePointer else { return nil }
+        var request = payload
+        request["op"] = op
+        guard let data = try? JSONSerialization.data(withJSONObject: request),
+              let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        let envelope = json.withCString { ptr -> String? in
+            guard let result = nmp_app_podcast_agent_action_tool(handle, ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            return String(cString: result)
+        }
+        guard let envelope,
+              let responseData = envelope.data(using: .utf8)
+        else { return nil }
+        return try? JSONDecoder().decode(T.self, from: responseData)
     }
 }

@@ -29,123 +29,52 @@ struct PodcastEpisodeSearchHit: Identifiable, Hashable, Sendable {
 enum PodcastSearchEngine {
     static func localResults(
         query: String,
-        state: AppState,
+        store: AppStateStore,
         limit: Int = 8
     ) -> PodcastLocalSearchResults {
         let trimmed = query.trimmed
         guard !trimmed.isEmpty else { return PodcastLocalSearchResults() }
-        let tokens = tokenize(trimmed)
-        // Local search covers only the user's followed feed-backed podcasts —
-        // feed-less shows (Agent Generated, Unknown) don't surface here.
-        let followedPodcastIDs = Set(state.subscriptions.map(\.podcastID))
-        let followedPodcasts = state.podcasts.filter {
-            followedPodcastIDs.contains($0.id) && $0.feedURL != nil
-        }
-        let podcastsByID = Dictionary(
-            uniqueKeysWithValues: followedPodcasts.map { ($0.id, $0) }
-        )
-
-        let shows = followedPodcasts.compactMap { podcast -> PodcastShowSearchHit? in
-            let score = score(
-                fields: [
-                    (podcast.title, 8),
-                    (podcast.author, 4),
-                    (podcast.description, 2),
-                    (podcast.categories.joined(separator: " "), 2)
-                ],
-                query: trimmed,
-                tokens: tokens
-            )
-            guard score > 0 else { return nil }
-            return PodcastShowSearchHit(podcast: podcast, score: score)
-        }
-        .sorted(by: ranked)
-        .prefix(limit)
-
-        // AI Inbox: archived episodes are silently soft-hidden from in-app search.
-        // The show page remains the recovery surface for archived content.
-        let episodes = state.episodes.compactMap { episode -> PodcastEpisodeSearchHit? in
-            guard let podcast = podcastsByID[episode.podcastID],
-                  !episode.isTriageArchived else { return nil }
-            let people = (episode.persons ?? []).map(\.name).joined(separator: " ")
-            let soundBites = (episode.soundBites ?? []).compactMap(\.title).joined(separator: " ")
-            let fields = [
-                (episode.title, 8),
-                (podcast.title, 4),
-                (people, 3),
-                (soundBites, 3),
-                (episode.plainTextSummary, 2)
-            ]
-            let score = score(fields: fields, query: trimmed, tokens: tokens)
-            guard score > 0 else { return nil }
-            return PodcastEpisodeSearchHit(
-                episode: episode,
-                podcast: podcast,
-                snippet: bestSnippet(fields.map(\.0), query: trimmed, tokens: tokens),
-                score: score
-            )
-        }
-        .sorted {
-            if $0.score != $1.score { return $0.score > $1.score }
-            return $0.episode.pubDate > $1.episode.pubDate
-        }
-        .prefix(limit)
-
-        return PodcastLocalSearchResults(shows: Array(shows), episodes: Array(episodes))
-    }
-
-    private static func ranked(_ lhs: PodcastShowSearchHit, _ rhs: PodcastShowSearchHit) -> Bool {
-        if lhs.score != rhs.score { return lhs.score > rhs.score }
-        return lhs.podcast.title.localizedCaseInsensitiveCompare(rhs.podcast.title) == .orderedAscending
-    }
-
-    private static func tokenize(_ query: String) -> [String] {
-        query
-            .lowercased()
-            .split { !$0.isLetter && !$0.isNumber }
-            .map(String.init)
-            .filter { $0.count >= 2 }
-    }
-
-    private static func score(
-        fields: [(String, Int)],
-        query: String,
-        tokens: [String]
-    ) -> Int {
-        let needle = query.lowercased()
-        return fields.reduce(into: 0) { total, field in
-            let haystack = field.0.lowercased()
-            guard !haystack.isBlank else { return }
-            if haystack == needle { total += field.1 * 8 }
-            if haystack.contains(needle) { total += field.1 * 4 }
-            for token in tokens where haystack.contains(token) {
-                total += field.1
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        guard let envelope = store.kernel?.localSearchEnvelope(query: trimmed, limit: limit),
+              let data = envelope.data(using: .utf8),
+              let decoded = try? decoder.decode(KernelLocalSearchEnvelope.self, from: data)
+        else { return PodcastLocalSearchResults() }
+        return PodcastLocalSearchResults(
+            shows: decoded.shows.compactMap { row in
+                guard let id = UUID(uuidString: row.podcastId),
+                      let podcast = store.podcast(id: id) else { return nil }
+                return PodcastShowSearchHit(podcast: podcast, score: row.score)
+            },
+            episodes: decoded.episodes.compactMap { row in
+                guard let episodeID = UUID(uuidString: row.episodeId),
+                      let podcastID = UUID(uuidString: row.podcastId),
+                      let episode = store.episode(id: episodeID),
+                      let podcast = store.podcast(id: podcastID) else { return nil }
+                return PodcastEpisodeSearchHit(
+                    episode: episode,
+                    podcast: podcast,
+                    snippet: row.snippet,
+                    score: row.score
+                )
             }
-        }
+        )
     }
+}
 
-    private static func bestSnippet(_ fields: [String], query: String, tokens: [String]) -> String {
-        let cleaned = fields.map(cleanSnippet).filter { !$0.isEmpty }
-        let needle = query.lowercased()
-        if let exact = cleaned.first(where: { $0.lowercased().contains(needle) }) {
-            return exact
-        }
-        return cleaned.max { lhs, rhs in
-            tokenHits(lhs, tokens: tokens) < tokenHits(rhs, tokens: tokens)
-        } ?? ""
-    }
+private struct KernelLocalSearchEnvelope: Decodable {
+    var shows: [KernelShowHit] = []
+    var episodes: [KernelEpisodeHit] = []
+}
 
-    private static func tokenHits(_ text: String, tokens: [String]) -> Int {
-        let lower = text.lowercased()
-        return tokens.filter { lower.contains($0) }.count
-    }
+private struct KernelShowHit: Decodable {
+    var podcastId: String
+    var score: Int
+}
 
-    private static func cleanSnippet(_ text: String) -> String {
-        // Pure UTF-16 scanning via `CharacterSet` — the prior shape
-        // compiled `\\s+` via `.regularExpression` on every call, and
-        // this runs N times per search result while the user types.
-        text.components(separatedBy: .whitespacesAndNewlines)
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
-    }
+private struct KernelEpisodeHit: Decodable {
+    var episodeId: String
+    var podcastId: String
+    var snippet: String
+    var score: Int
 }

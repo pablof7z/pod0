@@ -13,13 +13,6 @@ extension AgentTools {
     static let listAvailableVoicesMaxLimit = 50
 
     static func listAvailableVoicesTool(args: [String: Any]) async -> String {
-        let query = (args["query"] as? String)?.trimmed.nilIfEmpty?.lowercased()
-        let limit = clampedLimit(
-            args["limit"],
-            default: listAvailableVoicesDefaultLimit,
-            max: listAvailableVoicesMaxLimit
-        )
-
         let voices: [ElevenLabsVoice]
         do {
             voices = try await ElevenLabsVoicesService().fetchVoices()
@@ -29,33 +22,49 @@ extension AgentTools {
             return toolError("Could not fetch voices from ElevenLabs: \(error.localizedDescription)")
         }
 
-        let filtered: [ElevenLabsVoice]
-        if let q = query {
-            filtered = voices.filter { $0.searchText.contains(q) }
-        } else {
-            filtered = voices
-        }
+        return await voiceListEnvelope(args: args, voices: voices)
+            ?? toolError("Voice list shaping is unavailable")
+    }
 
-        let trimmed = Array(filtered.prefix(limit))
-        let rows: [[String: Any]] = trimmed.map { v in
-            var row: [String: Any] = [
-                "voice_id": v.voiceID,
-                "name": v.name,
-                "category": v.category,
-            ]
-            if let g = v.gender, !g.isEmpty { row["gender"] = g }
-            if let a = v.accent, !a.isEmpty { row["accent"] = a }
-            if let age = v.age, !age.isEmpty { row["age"] = age }
-            if let u = v.useCase, !u.isEmpty { row["use_case"] = u }
-            if let d = v.descriptionLabel, !d.isEmpty { row["description"] = d }
-            if let preview = v.previewURL { row["preview_url"] = preview.absoluteString }
-            return row
+    private static func voiceListEnvelope(args: [String: Any], voices: [ElevenLabsVoice]) async -> String? {
+        let handleBits = await MainActor.run {
+            KernelModel.shared?.podcastHandlePointer.map { Int(bitPattern: $0) }
         }
+        guard let handleBits else { return nil }
+        let request: [String: Any] = [
+            "args": args,
+            "voices": voices.map(rawVoiceRow),
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: request),
+              let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        return await Task.detached(priority: .userInitiated) {
+            guard let handle = UnsafeMutableRawPointer(bitPattern: handleBits) else {
+                return nil
+            }
+            return json.withCString { ptr in
+                guard let result = nmp_app_podcast_agent_voice_list(handle, ptr) else {
+                    return nil
+                }
+                defer { nmp_free_string(result) }
+                return String(cString: result)
+            }
+        }.value
+    }
 
-        return toolSuccess([
-            "total_available": voices.count,
-            "total_matched": filtered.count,
-            "results": rows,
-        ])
+    private static func rawVoiceRow(_ voice: ElevenLabsVoice) -> [String: Any] {
+        var row: [String: Any] = [
+            "voice_id": voice.voiceID,
+            "name": voice.name,
+            "category": voice.category,
+            "labels": voice.labels,
+        ]
+        if let gender = voice.gender { row["gender"] = gender }
+        if let accent = voice.accent { row["accent"] = accent }
+        if let age = voice.age { row["age"] = age }
+        if let useCase = voice.useCase { row["use_case"] = useCase }
+        if let description = voice.descriptionLabel { row["description"] = description }
+        if let preview = voice.previewURL { row["preview_url"] = preview.absoluteString }
+        return row
     }
 }

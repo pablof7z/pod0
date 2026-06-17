@@ -185,8 +185,8 @@ struct Nip46ConnectCard: View {
 
     private func connectedRow(pubkeyHex: String) -> some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            if let bytes = Data(hexString: pubkeyHex), bytes.count == 32 {
-                let npub = Bech32.encode(hrp: "npub", data: bytes)
+            let npub = NostrNpub.encode(fromHex: pubkeyHex)
+            if npub != pubkeyHex {
                 Text("Signing as")
                     .font(AppTheme.Typography.caption2.weight(.semibold))
                     .foregroundStyle(.tertiary)

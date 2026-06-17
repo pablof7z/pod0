@@ -58,9 +58,9 @@ fn next_pops_front() {
     let mut q = PlaybackQueue::new();
     q.add_to_end("a");
     q.add_to_end("b");
-    assert_eq!(q.next(), Some("a".to_owned()));
+    assert_eq!(q.next().map(|item| item.episode_id), Some("a".to_owned()));
     assert_eq!(q.items(), &["b".to_owned()]);
-    assert_eq!(q.next(), Some("b".to_owned()));
+    assert_eq!(q.next().map(|item| item.episode_id), Some("b".to_owned()));
     assert!(q.items().is_empty());
 }
 #[test]
@@ -91,8 +91,23 @@ fn mixed_ops_preserve_ordering() {
         q.items(),
         &["ep-3".to_owned(), "ep-1".to_owned(), "ep-2".to_owned()]
     );
-    assert_eq!(q.next(), Some("ep-3".to_owned()));
+    assert_eq!(q.next().map(|item| item.episode_id), Some("ep-3".to_owned()));
     assert_eq!(q.items(), &["ep-1".to_owned(), "ep-2".to_owned()]);
+}
+
+#[test]
+fn bounded_segments_preserve_bounds_and_allow_duplicates() {
+    let mut q = PlaybackQueue::new();
+    q.add_segment_to_end("ep-1", Some(10.0), Some(20.0));
+    q.add_segment_to_end("ep-1", Some(30.0), Some(40.0));
+    assert_eq!(q.items(), &["ep-1".to_owned(), "ep-1".to_owned()]);
+    let first = q.next().expect("first segment");
+    assert_eq!(first.episode_id, "ep-1");
+    assert_eq!(first.start_secs, Some(10.0));
+    assert_eq!(first.end_secs, Some(20.0));
+    let second = q.next().expect("second segment");
+    assert_eq!(second.start_secs, Some(30.0));
+    assert_eq!(second.end_secs, Some(40.0));
 }
 #[test]
 fn default_is_empty() {

@@ -71,21 +71,11 @@ final class PodcastCategorizationService {
         // Settings sheet, which gates its own UI on `isRunning`; future
         // callers must check `isRunning` themselves before calling.
         guard !isRunning else { return }
-        // Categorize only podcasts the user actively follows — feed-less
-        // (Agent Generated, Unknown) and orphan single-episode podcasts
-        // should never end up in the user's category taxonomy.
-        let followedPodcastIDs = Set(store.state.subscriptions.map(\.podcastID))
-        let podcasts = store.state.podcasts.filter { followedPodcastIDs.contains($0.id) && $0.feedURL != nil }
-        guard !podcasts.isEmpty else {
-            throw CategorizationError.noSubscriptions
-        }
-        let modelReference = LLMModelReference(storedID: store.state.settings.categorizationModel)
-        guard !modelReference.isEmpty else {
-            throw CategorizationError.noModelSelected
-        }
+        let plan = try Self.categorizationPrompt(store: store)
+        let modelReference = LLMModelReference(storedID: plan.model)
 
         let requestedModel = modelReference.storedID
-        Self.logger.info("recompute starting subs=\(podcasts.count, privacy: .public) model=\(requestedModel, privacy: .public)")
+        Self.logger.info("recompute starting model=\(requestedModel, privacy: .public)")
 
         isRunning = true
         defer { isRunning = false }
@@ -95,18 +85,13 @@ final class PodcastCategorizationService {
             urlSession: urlSession
         )
         let rawContent = try await client.compile(
-            systemPrompt: PodcastCategorizationPrompt.systemPrompt(),
-            userPrompt: PodcastCategorizationPrompt.userPrompt(podcasts: podcasts),
+            systemPrompt: plan.systemPrompt,
+            userPrompt: plan.userPrompt,
             feature: CostFeature.categorizationRecompute
         )
 
-        let generatedAt = Date()
-        let categories = try PodcastCategorizationParser.categories(
-            from: rawContent,
-            podcasts: podcasts,
-            generatedAt: generatedAt,
-            model: requestedModel
-        )
+        let categories = try Self.parseCategorizationResponse(rawContent, store: store)
+        let generatedAt = categories.first?.generatedAt ?? Date()
 
         store.setCategories(categories)
         // Mirror the fresh assignments into the kernel-owned substate the UI
@@ -121,4 +106,83 @@ final class PodcastCategorizationService {
         Self.logger.info("recompute complete categories=\(categories.count, privacy: .public)")
     }
 
+    private static func categorizationPrompt(store: AppStateStore) throws -> CategorizationPromptPlan {
+        guard let envelope = store.kernel?.libraryCategorizationPromptEnvelope(),
+              let data = envelope.data(using: .utf8),
+              let decoded = try? categorizationDecoder.decode(RustCategorizationPrompt.self, from: data)
+        else {
+            throw CategorizationError.invalidResponse
+        }
+        if let error = decoded.error {
+            throw mapRustError(error)
+        }
+        guard let model = decoded.model, !model.isEmpty,
+              let systemPrompt = decoded.systemPrompt, !systemPrompt.isEmpty,
+              let userPrompt = decoded.userPrompt, !userPrompt.isEmpty
+        else {
+            throw CategorizationError.invalidResponse
+        }
+        return CategorizationPromptPlan(
+            model: model,
+            systemPrompt: systemPrompt,
+            userPrompt: userPrompt
+        )
+    }
+
+    private static func parseCategorizationResponse(
+        _ rawContent: String,
+        store: AppStateStore
+    ) throws -> [PodcastCategory] {
+        guard let envelope = store.kernel?.libraryCategorizationParseEnvelope(rawContent: rawContent),
+              let data = envelope.data(using: .utf8),
+              let decoded = try? categorizationDecoder.decode(RustCategorizationParse.self, from: data)
+        else {
+            throw CategorizationError.invalidResponse
+        }
+        if let error = decoded.error {
+            throw mapRustError(error)
+        }
+        let categories = decoded.categories ?? []
+        guard !categories.isEmpty else {
+            throw CategorizationError.invalidResponse
+        }
+        return categories
+    }
+
+    private static func mapRustError(_ error: String) -> CategorizationError {
+        switch error {
+        case "no_subscriptions":
+            return .noSubscriptions
+        case "no_model_selected":
+            return .noModelSelected
+        default:
+            return .invalidResponse
+        }
+    }
+
 }
+
+private struct CategorizationPromptPlan {
+    let model: String
+    let systemPrompt: String
+    let userPrompt: String
+}
+
+private struct RustCategorizationPrompt: Decodable {
+    let error: String?
+    let model: String?
+    let systemPrompt: String?
+    let userPrompt: String?
+}
+
+private struct RustCategorizationParse: Decodable {
+    let error: String?
+    let categories: [PodcastCategory]?
+}
+
+private let categorizationDecoder: JSONDecoder = {
+    let decoder = JSONDecoder()
+    decoder.keyDecodingStrategy = .convertFromSnakeCase
+    decoder.dateDecodingStrategy = .iso8601
+    return decoder
+}()

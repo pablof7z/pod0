@@ -213,7 +213,9 @@ impl PodcastHostOpHandler {
                         let existing: Vec<Episode> = s.episodes_for(podcast_id).to_vec();
                         let existing_guids: HashSet<String> =
                             existing.iter().map(|e| e.guid.clone()).collect();
-                        let new_for_notification: Vec<(String, String)> = if existing.is_empty() {
+                        let new_for_notification: Vec<(String, String)> = if existing.is_empty()
+                            || !s.notifications_enabled_for(podcast_id)
+                        {
                             Vec::new()
                         } else {
                             let existing_ids: HashSet<String> =

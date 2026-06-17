@@ -78,6 +78,9 @@ struct ContactSummary: Codable, Identifiable, Equatable, Hashable {
 struct SocialSnapshot: Equatable, Hashable {
     var following: [ContactSummary] = []
     var followingCount: Int = 0
+    /// Explicit peer decisions projected from Rust's ApprovedPeerStore.
+    var approvedPubkeys: [String] = []
+    var blockedPubkeys: [String] = []
 }
 
 /// One row in `PodcastUpdate.categories`. Backs the "Browse by Topic" grid.
@@ -139,6 +142,8 @@ extension SocialSnapshot: Codable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         following = try c.decodeIfPresent([ContactSummary].self, forKey: .following) ?? []
         followingCount = try c.decodeIfPresent(Int.self, forKey: .followingCount) ?? 0
+        approvedPubkeys = try c.decodeIfPresent([String].self, forKey: .approvedPubkeys) ?? []
+        blockedPubkeys = try c.decodeIfPresent([String].self, forKey: .blockedPubkeys) ?? []
     }
 }
 

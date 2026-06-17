@@ -11,14 +11,16 @@
 //! ## Wire shape
 //!
 //! ```text
-//! podcast.clip.create     { episode_id, start_secs, end_secs, title? }
+//! podcast.clip.create     { episode_id, start_secs, end_secs, title?, source?, transcript_text?, client_clip_id? }
 //! podcast.clip.delete     { clip_id }
-//! podcast.clip.auto_snip  { episode_id, position_secs }
+//! podcast.clip.auto_snip  { episode_id, position_secs, source?, client_clip_id? }
+//! podcast.clip.resolve_quote { episode_id, position_secs }
 //! ```
 //!
 //! `create` and `auto_snip` return `{"ok":true,"clip_id":"<uuid>"}`;
-//! `delete` returns `{"ok":true}` (success even when the id is unknown
-//! — idempotent delete).
+//! `resolve_quote` returns non-persisted transcript-aligned quote bounds;
+//! `delete` returns `{"ok":true}` (success even when the id is unknown —
+//! idempotent delete).
 
 use serde::{Deserialize, Serialize};
 
@@ -29,9 +31,12 @@ use nmp_core::ActorCommand;
 pub const ACTION_CLIP_CREATE: &str = "podcast.clip.create";
 /// `podcast.clip.delete` — remove a previously-created clip by id.
 pub const ACTION_CLIP_DELETE: &str = "podcast.clip.delete";
-/// `podcast.clip.auto_snip` — create a clip from `[position-30, position+30]`,
-/// clamped to `[0, duration]` when the episode duration is known.
+/// `podcast.clip.auto_snip` — create a clip around `position_secs`, refined to
+/// transcript segment boundaries when timed transcript entries are available.
 pub const ACTION_CLIP_AUTO_SNIP: &str = "podcast.clip.auto_snip";
+/// `podcast.clip.resolve_quote` — return non-persistent quote bounds around
+/// `position_secs`, refined to timed transcript segment boundaries.
+pub const ACTION_CLIP_RESOLVE_QUOTE: &str = "podcast.clip.resolve_quote";
 
 /// Wire enum for all `"podcast.clip"` namespace actions.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -43,11 +48,25 @@ pub enum ClipAction {
         end_secs: f64,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         title: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        source: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        transcript_text: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        client_clip_id: Option<String>,
     },
     Delete {
         clip_id: String,
     },
     AutoSnip {
+        episode_id: String,
+        position_secs: f64,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        source: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        client_clip_id: Option<String>,
+    },
+    ResolveQuote {
         episode_id: String,
         position_secs: f64,
     },

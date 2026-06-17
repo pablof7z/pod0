@@ -11,6 +11,13 @@
 use super::PodcastStore;
 
 impl PodcastStore {
+    /// Returns true when any podcast row contains `id_str`.
+    pub fn has_episode(&self, id_str: &str) -> bool {
+        self.episodes
+            .values()
+            .any(|episodes| episodes.iter().any(|e| e.id.0.to_string() == id_str))
+    }
+
     /// Read the persisted playback position for an episode keyed by the string
     /// form of its UUID. Returns `None` when no episode with that id is found
     /// or when its position is at the start (`0.0`).

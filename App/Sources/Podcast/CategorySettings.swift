@@ -1,17 +1,10 @@
 import Foundation
 
-/// Per-category preference bundle.
+/// Legacy per-category preference bundle.
 ///
-/// Categories themselves are produced by `PodcastCategorizationService`;
-/// this struct is the user-facing knob set that decides how each category
-/// behaves across the rest of the app. Keyed by `categoryID` on
-/// `AppState.categorySettings` so a category can be toggled independently
-/// without rewriting its parent record.
-///
-/// Defaults are intentionally permissive (transcription / RAG all on)
-/// so the user never sees silent feature degradation — they explicitly
-/// opt *out* per category for things like Entertainment where they don't
-/// want generated summaries.
+/// Kept to decode older `AppState.categorySettings` snapshots for the
+/// one-shot migration into Rust-owned per-podcast transcription policy. Active
+/// category behavior is no longer stored or interpreted from this Swift DTO.
 struct CategorySettings: Codable, Sendable, Hashable {
     /// FK back to `PodcastCategory.id`.
     var categoryID: UUID

@@ -1,82 +1,94 @@
 import Foundation
 
 /// Generates a short title for a chat conversation via the user-configured
-/// `memoryCompilationModel`. Designed to run as a fire-and-forget background
-/// task after the first assistant text reply lands.
+/// Rust memory-compilation model. Designed to run as a fire-and-forget
+/// background task after the first assistant text reply lands.
 ///
-/// Reuses `ProviderCompletionClient` because it already forces the assistant to
-/// reply in JSON via `response_format: { "type": "json_object" }`, which lets
-/// us parse a `{"title": "..."}` envelope without prompt-jail breaks.
+/// Rust owns message selection, transcript truncation, prompt text, title
+/// constraints, and response parsing. Swift only executes the provider call.
 enum AgentChatTitleGenerator {
 
-    static let maxTranscriptChars = 4_000
-    static let maxTitleChars = 60
+    struct Plan: Sendable {
+        let model: String
+        let systemPrompt: String
+        let userPrompt: String
+    }
 
-    /// Builds the small transcript snippet we feed the model. We keep only
-    /// `.user` and `.assistant` text — tool batches and errors add noise
-    /// without informing the conversation topic.
-    static func buildTranscriptSnippet(from messages: [ChatMessage]) -> String {
-        var lines: [String] = []
-        for msg in messages {
-            switch msg.role {
-            case .user:
-                lines.append("User: \(msg.text)")
-            case .assistant:
-                lines.append("Assistant: \(msg.text)")
-            case .toolBatch, .error, .skillActivated:
-                continue
-            }
+    private struct RustPromptResponse: Decodable {
+        let error: String?
+        let model: String?
+        let systemPrompt: String?
+        let userPrompt: String?
+    }
+
+    private struct RustParseResponse: Decodable {
+        let error: String?
+        let title: String?
+    }
+
+    private static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
+    }()
+
+    static func makePlan(from messages: [ChatMessage], store: AppStateStore) -> Plan? {
+        guard let envelope = store.kernel?.agentChatTitlePromptEnvelope(
+            messages: messages.map { ["role": roleName($0.role), "text": $0.text] }
+        ),
+              let data = envelope.data(using: .utf8),
+              let decoded = try? decoder.decode(RustPromptResponse.self, from: data),
+              decoded.error == nil,
+              let model = decoded.model,
+              let systemPrompt = decoded.systemPrompt,
+              let userPrompt = decoded.userPrompt,
+              !model.isEmpty,
+              !systemPrompt.isEmpty,
+              !userPrompt.isEmpty
+        else {
+            return nil
         }
-        let joined = lines.joined(separator: "\n")
-        if joined.count <= maxTranscriptChars { return joined }
-        return String(joined.prefix(maxTranscriptChars))
+        return Plan(model: model, systemPrompt: systemPrompt, userPrompt: userPrompt)
     }
 
     /// Returns the generated title, or `nil` if generation failed (missing
     /// credential, network error, unparseable response). Callers should treat
     /// a nil return as "leave the conversation untitled and try again later".
-    static func generate(transcript: String, model: String) async -> String? {
-        let trimmed = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        // Credential checking is Rust-owned; proceed and let the client
-        // fail gracefully if no key is configured.
-        let client = ProviderCompletionClient.live(model: model)
+    static func generate(plan: Plan) async -> String? {
+        let client = ProviderCompletionClient.live(model: plan.model)
         do {
             let json = try await client.compile(
-                systemPrompt: systemPrompt,
-                userPrompt: userPrompt(transcript: trimmed),
+                systemPrompt: plan.systemPrompt,
+                userPrompt: plan.userPrompt,
                 feature: CostFeature.agentChatTitle
             )
-            return parseTitle(from: json)
+            return await parseTitle(rawContent: json)
         } catch {
             return nil
         }
     }
 
-    static let systemPrompt: String = """
-    You write very short titles for chat-conversation history lists. Reply
-    strictly with JSON of the form {"title": String}. The title must be 2 to
-    6 words, no punctuation at the end, no quotation marks, no emoji, and must
-    describe the actual subject of the conversation (not "Chat" or "Untitled").
-    """
-
-    static func userPrompt(transcript: String) -> String {
-        """
-        Generate a short title that summarises what this conversation is about.
-
-        Transcript:
-        \(transcript)
-        """
+    @MainActor
+    private static func parseTitle(rawContent: String) -> String? {
+        guard let envelope = KernelModel.shared?.agentChatTitleParseEnvelope(rawContent: rawContent),
+              let data = envelope.data(using: .utf8),
+              let decoded = try? decoder.decode(RustParseResponse.self, from: data),
+              decoded.error == nil,
+              let title = decoded.title,
+              !title.isEmpty
+        else {
+            return nil
+        }
+        return title
     }
 
-    static func parseTitle(from json: String) -> String? {
-        guard let data = json.data(using: .utf8),
-              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let raw = root["title"] as? String else { return nil }
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-            .trimmingCharacters(in: CharacterSet(charactersIn: "\"'.,;:!?"))
-        guard !trimmed.isEmpty else { return nil }
-        if trimmed.count <= maxTitleChars { return trimmed }
-        return String(trimmed.prefix(maxTitleChars))
+    private static func roleName(_ role: ChatMessage.Role) -> String {
+        switch role {
+        case .user: return "user"
+        case .assistant: return "assistant"
+        case .toolBatch: return "tool_batch"
+        case .error: return "error"
+        case .skillActivated: return "skill_activated"
+        }
     }
 }

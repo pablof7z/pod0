@@ -261,6 +261,10 @@ struct PodcastSummary: Identifiable, Equatable, Hashable {
     /// transcription is allowed for this show. The Rust projection omits this
     /// key when `true` (D5 — `skip_serializing_if = "is_true"`).
     @DefaultTrue var transcriptionEnabled: Bool = true
+    /// Per-podcast notification policy. `true` (the default) means new-episode
+    /// notifications are allowed for this show when global notifications are
+    /// also enabled. Rust owns the policy and omits this key when `true`.
+    @DefaultTrue var notificationsEnabled: Bool = true
     @DefaultEmptyArray var episodes: [EpisodeSummary] = []
 }
 
@@ -324,6 +328,12 @@ struct EpisodeSummary: Identifiable, Equatable, Hashable {
     var transcriptStatus: String = ""
     /// User-facing error text for `transcriptStatus == "failed"`; `nil` otherwise.
     var transcriptStatusMessage: String? = nil
+    /// Queue-only start boundary for a bounded playback item.
+    var queueStartSecs: Double? = nil
+    /// Queue-only end boundary for a bounded playback item.
+    var queueEndSecs: Double? = nil
+    /// Queue-only Rust-owned slot id.
+    var queueSlotId: String? = nil
 }
 
 /// One time-stamped transcript row for a single episode.
@@ -415,6 +425,7 @@ extension PodcastSummary: Codable {
         nostrVisibility = try c.decodeIfPresent(String.self, forKey: .nostrVisibility) ?? "public"
         userCategories = try c.decodeIfPresent([String].self, forKey: .userCategories) ?? []
         transcriptionEnabled = try c.decodeIfPresent(Bool.self, forKey: .transcriptionEnabled) ?? true
+        notificationsEnabled = try c.decodeIfPresent(Bool.self, forKey: .notificationsEnabled) ?? true
         episodes = try c.decodeIfPresent([EpisodeSummary].self, forKey: .episodes) ?? []
     }
 }
@@ -449,6 +460,9 @@ extension EpisodeSummary: Codable {
         metadataIndexed = try c.decodeIfPresent(Bool.self, forKey: .metadataIndexed) ?? false
         transcriptStatus = try c.decodeIfPresent(String.self, forKey: .transcriptStatus) ?? ""
         transcriptStatusMessage = try c.decodeIfPresent(String.self, forKey: .transcriptStatusMessage)
+        queueStartSecs = try c.decodeIfPresent(Double.self, forKey: .queueStartSecs)
+        queueEndSecs = try c.decodeIfPresent(Double.self, forKey: .queueEndSecs)
+        queueSlotId = try c.decodeIfPresent(String.self, forKey: .queueSlotId)
     }
 }
 
@@ -710,6 +724,9 @@ struct ContactSummary: Codable, Identifiable, Equatable, Hashable {
 struct SocialSnapshot: Equatable, Hashable {
     var following: [ContactSummary] = []
     var followingCount: Int = 0
+    /// Explicit peer decisions projected from Rust's ApprovedPeerStore.
+    var approvedPubkeys: [String] = []
+    var blockedPubkeys: [String] = []
 }
 
 /// One row in `PodcastUpdate.categories`. Backs the "Browse by Topic" grid.
@@ -771,6 +788,8 @@ extension SocialSnapshot: Codable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         following = try c.decodeIfPresent([ContactSummary].self, forKey: .following) ?? []
         followingCount = try c.decodeIfPresent(Int.self, forKey: .followingCount) ?? 0
+        approvedPubkeys = try c.decodeIfPresent([String].self, forKey: .approvedPubkeys) ?? []
+        blockedPubkeys = try c.decodeIfPresent([String].self, forKey: .blockedPubkeys) ?? []
     }
 }
 
@@ -942,6 +961,7 @@ struct PlayerState {
     var speed: Float = 1
     var volume: Float = 1
     var sleepTimerRemainingSecs: Int? = nil
+    var sleepTimerEndOfEpisode: Bool = false
     var lastError: String? = nil
     /// Set to `true` when AVPlayer fires `AVPlayerItemDidPlayToEndTime`.
     /// Cleared when the next episode loads. Used by the UI to distinguish
@@ -1033,6 +1053,7 @@ extension PlayerState: Codable {
         speed = try c.decodeIfPresent(Float.self, forKey: .speed) ?? 1
         volume = try c.decodeIfPresent(Float.self, forKey: .volume) ?? 1
         sleepTimerRemainingSecs = try c.decodeIfPresent(Int.self, forKey: .sleepTimerRemainingSecs)
+        sleepTimerEndOfEpisode = try c.decodeIfPresent(Bool.self, forKey: .sleepTimerEndOfEpisode) ?? false
         lastError = try c.decodeIfPresent(String.self, forKey: .lastError)
         didReachNaturalEnd = try c.decodeIfPresent(Bool.self, forKey: .didReachNaturalEnd) ?? false
         segmentEndSecs = try c.decodeIfPresent(Double.self, forKey: .segmentEndSecs)

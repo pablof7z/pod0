@@ -27,8 +27,9 @@ enum CarPlayListenNow {
         store: AppStateStore,
         onSelect: @escaping (Episode) -> Void
     ) -> CPListTemplate {
-        let inProgress = Array(store.inProgressEpisodes.prefix(sectionCap))
-        let recent = Array(store.recentEpisodes(limit: sectionCap).prefix(sectionCap))
+        let projection = ListenNowProjection.load(limit: sectionCap, store: store)
+        let inProgress = projection.inProgressEpisodes
+        let recent = projection.latestEpisodes
 
         var sections: [CPListSection] = []
 
@@ -139,4 +140,35 @@ enum CarPlayListenNow {
         if h > 0 { return "\(h)h \(m)m" }
         return "\(max(1, m)) min"
     }
+
+    private struct ListenNowProjection {
+        let inProgressEpisodes: [Episode]
+        let latestEpisodes: [Episode]
+
+        static func load(limit: Int, store: AppStateStore) -> ListenNowProjection {
+            guard let envelope = store.kernel?.carplayListenNowEnvelope(limit: limit),
+                  let data = envelope.data(using: .utf8),
+                  let decoded = try? JSONDecoder.carplayProjection.decode(Response.self, from: data)
+            else {
+                return ListenNowProjection(inProgressEpisodes: [], latestEpisodes: [])
+            }
+            return ListenNowProjection(
+                inProgressEpisodes: decoded.inProgressEpisodeIds.compactMap { store.episode(id: $0) },
+                latestEpisodes: decoded.latestEpisodeIds.compactMap { store.episode(id: $0) }
+            )
+        }
+
+        private struct Response: Decodable {
+            let inProgressEpisodeIds: [UUID]
+            let latestEpisodeIds: [UUID]
+        }
+    }
+}
+
+private extension JSONDecoder {
+    static let carplayProjection: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
+    }()
 }

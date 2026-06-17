@@ -7,15 +7,16 @@ import UniformTypeIdentifiers
 /// surfaced from system search and from Siri. Tapping a result deep-links
 /// back into the app via `NSUserActivity` of type `CSSearchableItemActionType`.
 ///
-/// Strategy: a full idempotent re-index of `activeNotes + activeMemories`
+/// Strategy: a full idempotent re-index of active notes
 /// driven from `AppStateStore.init` and from each mutating store method. The
 /// data set is small (UI-bounded by what fits in a single user's journal),
 /// so the cost of rebuilding the index per mutation is negligible compared to
 /// the complexity of an incremental indexer.
 ///
-/// Index lives in two domains:
-///   - `Domain.notes`    — journal-style notes (only non-deleted)
-///   - `Domain.memories` — agent memories (only non-deleted)
+/// This legacy indexer now owns only Swift-local notes. Podcast and episode
+/// Spotlight rows are indexed from the Rust `PodcastSummary` projection by
+/// `SpotlightCapability`; this indexer only clears the old Swift-owned
+/// subscription/episode domains so those rows cannot diverge from Rust policy.
 ///
 /// Each domain is fully replaced on every reindex, so soft-deleted records
 /// disappear from search automatically.
@@ -34,25 +35,16 @@ enum SpotlightIndexer {
     // MARK: - Identifier scheme
 
     private static let notePrefix         = "note:"
-    private static let memoryPrefix       = "memory:"
     private static let subscriptionPrefix = "subscription:"
     private static let episodePrefix      = "episode:"
 
-    /// Cap on how many episodes go into the Spotlight index. The system
-    /// happily takes thousands of items, but each one is a small disk write
-    /// and a continuation result the user has to scroll past. 200 covers
-    /// the recently-relevant tail across a typical 30-show library.
-    static let maxIndexedEpisodes = 200
-
     static func noteIdentifier(_ id: UUID)         -> String { notePrefix         + id.uuidString }
-    static func memoryIdentifier(_ id: UUID)       -> String { memoryPrefix       + id.uuidString }
     static func subscriptionIdentifier(_ id: UUID) -> String { subscriptionPrefix + id.uuidString }
     static func episodeIdentifier(_ id: UUID)      -> String { episodePrefix      + id.uuidString }
 
     /// Decoded result from a Spotlight continuation activity.
     enum DeepLink: Equatable, Identifiable {
         case note(UUID)
-        case memory(UUID)
         case subscription(UUID)
         case episode(UUID)
 
@@ -60,7 +52,6 @@ enum SpotlightIndexer {
         var id: String {
             switch self {
             case .note(let uuid):         return "note:"         + uuid.uuidString
-            case .memory(let uuid):       return "memory:"       + uuid.uuidString
             case .subscription(let uuid): return "subscription:" + uuid.uuidString
             case .episode(let uuid):      return "episode:"      + uuid.uuidString
             }
@@ -73,10 +64,6 @@ enum SpotlightIndexer {
         if identifier.hasPrefix(notePrefix) {
             let raw = String(identifier.dropFirst(notePrefix.count))
             return UUID(uuidString: raw).map(DeepLink.note)
-        }
-        if identifier.hasPrefix(memoryPrefix) {
-            let raw = String(identifier.dropFirst(memoryPrefix.count))
-            return UUID(uuidString: raw).map(DeepLink.memory)
         }
         if identifier.hasPrefix(subscriptionPrefix) {
             let raw = String(identifier.dropFirst(subscriptionPrefix.count))
@@ -108,35 +95,11 @@ enum SpotlightIndexer {
             .filter { !$0.deleted }
             .map(makeSearchable(from:))
 
-        let memories = state.agentMemories
-            .filter { !$0.deleted }
-            .map(makeSearchable(from:))
-
-        // Spotlight indexes followed podcasts only — feed-less / orphan
-        // podcasts have no user follow row and don't belong in search.
-        let followedPodcastIDs = Set(state.subscriptions.map(\.podcastID))
-        let podcastsForIndex = state.podcasts.filter { followedPodcastIDs.contains($0.id) }
-        let subscriptions = podcastsForIndex.map(makeSearchable(from:))
-
-        // Bound the episode index size: the 200 most-recent unplayed
-        // episodes across all subscriptions. An unplayed cap keeps already-
-        // listened material from cluttering search; the 200 ceiling caps
-        // worst-case index churn for users with very large libraries.
-        let podcastTitles = Dictionary(
-            uniqueKeysWithValues: state.podcasts.map { ($0.id, $0.title) }
-        )
-        // AI Inbox: archived episodes are silently soft-hidden from iOS Spotlight search.
-        let episodes = state.episodes
-            .filter { !$0.played && !$0.isTriageArchived }
-            .sorted { $0.pubDate > $1.pubDate }
-            .prefix(maxIndexedEpisodes)
-            .map { makeSearchable(from: $0, showName: podcastTitles[$0.podcastID] ?? "") }
-
         let index = CSSearchableIndex.default()
         replace(domain: .notes, with: notes, in: index)
-        replace(domain: .memories, with: memories, in: index)
-        replace(domain: .subscriptions, with: subscriptions, in: index)
-        replace(domain: .episodes, with: episodes, in: index)
+        replace(domain: .memories, with: [], in: index)
+        replace(domain: .subscriptions, with: [], in: index)
+        replace(domain: .episodes, with: [], in: index)
     }
 
     /// Idempotent "delete-then-insert" for one domain. Items can be empty —
@@ -199,88 +162,4 @@ enum SpotlightIndexer {
         return keywords
     }
 
-    private static func makeSearchable(from memory: AgentMemory) -> CSSearchableItem {
-        let attrs = CSSearchableItemAttributeSet(contentType: UTType.text)
-        attrs.title = memoryTitle(for: memory)
-        attrs.contentDescription = memory.content
-        attrs.contentCreationDate = memory.createdAt
-        attrs.keywords = ["memory", "agent", "remember"]
-
-        return CSSearchableItem(
-            uniqueIdentifier: memoryIdentifier(memory.id),
-            domainIdentifier: Domain.memories.rawValue,
-            attributeSet: attrs
-        )
-    }
-
-    private static func memoryTitle(for memory: AgentMemory) -> String {
-        let content = memory.content.trimmed
-        let sentenceEnd = content.firstIndex(where: { ".!?".contains($0) })
-        if let end = sentenceEnd {
-            let candidate = String(content[...end])
-            if candidate.count <= 80 { return candidate }
-        }
-        if content.count <= 60 { return content }
-        return String(content.prefix(60)) + "…"
-    }
-
-    private static func makeSearchable(from podcast: Podcast) -> CSSearchableItem {
-        let attrs = CSSearchableItemAttributeSet(contentType: UTType.audio)
-        attrs.title = podcast.title
-        // Show notes commonly arrive as raw HTML (`<p>`, `<a href>`, …) plus
-        // named or numeric entities. Spotlight renders the snippet as literal
-        // text, so without this projection users were seeing
-        // `<p>Hello &amp; world</p>` in search results.
-        attrs.contentDescription = EpisodeShowNotesFormatter.plainText(from: podcast.description)
-        if !podcast.author.isEmpty {
-            attrs.artist = podcast.author
-        }
-        if let imageURL = podcast.imageURL {
-            attrs.thumbnailURL = imageURL
-        }
-        attrs.contentCreationDate = podcast.discoveredAt
-        attrs.keywords = subscriptionKeywords(for: podcast)
-
-        return CSSearchableItem(
-            uniqueIdentifier: subscriptionIdentifier(podcast.id),
-            domainIdentifier: Domain.subscriptions.rawValue,
-            attributeSet: attrs
-        )
-    }
-
-    private static func subscriptionKeywords(for podcast: Podcast) -> [String] {
-        var keywords = ["podcast", "subscription", "show"]
-        if !podcast.author.isEmpty { keywords.append(podcast.author) }
-        keywords.append(contentsOf: podcast.categories)
-        return keywords
-    }
-
-    private static func makeSearchable(from episode: Episode, showName: String) -> CSSearchableItem {
-        let attrs = CSSearchableItemAttributeSet(contentType: UTType.audio)
-        attrs.title = episode.title
-        // Same HTML / entity issue as the subscription description —
-        // Spotlight expects plain text. Route through the formatter
-        // so `<p>` and `&#8217;` don't leak into the search snippet.
-        attrs.contentDescription = EpisodeShowNotesFormatter.plainText(from: episode.description)
-        if !showName.isEmpty {
-            // `album` shows under the title in the Spotlight result row, which
-            // is exactly where the user expects "which podcast is this from".
-            attrs.album = showName
-            attrs.artist = showName
-        }
-        if let imageURL = episode.imageURL {
-            attrs.thumbnailURL = imageURL
-        }
-        attrs.contentCreationDate = episode.pubDate
-        if let duration = episode.duration {
-            attrs.duration = NSNumber(value: duration)
-        }
-        attrs.keywords = ["podcast", "episode", showName].filter { !$0.isEmpty }
-
-        return CSSearchableItem(
-            uniqueIdentifier: episodeIdentifier(episode.id),
-            domainIdentifier: Domain.episodes.rawValue,
-            attributeSet: attrs
-        )
-    }
 }

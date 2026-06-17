@@ -5,7 +5,7 @@ import os.log
 //
 // Production implementation of `AgentOwnedPodcastManagerProtocol`. After the
 // owned-podcast lifecycle moved fully into the Rust kernel, this type is a thin
-// wrapper: it routes create / update / delete through the kernel and lets the
+// wrapper: it routes create / update / delete / publish through the kernel and lets the
 // next kernel snapshot push reconcile the render store. The only real policy
 // that remains Swift-side is the artwork generation pipeline (image-gen →
 // Blossom upload). Per-episode kind:54 backfill on a private→public flip is
@@ -28,6 +28,30 @@ import os.log
 
 final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unchecked Sendable {
 
+    private struct CreateLifecyclePlan: Decodable {
+        let error: String?
+        let ownerPubkeyHex: String?
+        let shouldPublishShow: Bool
+
+        enum CodingKeys: String, CodingKey {
+            case error
+            case ownerPubkeyHex = "owner_pubkey_hex"
+            case shouldPublishShow = "should_publish_show"
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            error = try c.decodeIfPresent(String.self, forKey: .error)
+            ownerPubkeyHex = try c.decodeIfPresent(String.self, forKey: .ownerPubkeyHex)
+            shouldPublishShow = try c.decodeIfPresent(Bool.self, forKey: .shouldPublishShow) ?? false
+        }
+    }
+
+    private struct MutationPreflight: Decodable {
+        let error: String?
+        let ok: Bool?
+    }
+
     private static let logger = Logger.app("AgentOwnedPodcastManager")
 
     weak var store: AppStateStore?
@@ -41,20 +65,6 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
     @MainActor
     private func settings() -> Settings? { store?.state.settings }
 
-    /// The active account's hex pubkey, sourced from the kernel (D13 — never a
-    /// Swift-held private key). This value is only an OPTIMISTIC stamp for the
-    /// new podcast row: the kernel generates a per-podcast keypair on
-    /// `create_owned_podcast` and reconciles `owner_pubkey_hex` on the next
-    /// snapshot tick (see `AppStateStore+KernelActions.kernelCreateOwnedPodcast`),
-    /// so the field the kernel ultimately owns wins regardless.
-    @MainActor
-    private func agentPubkeyHex() throws -> String {
-        guard let pubkey = store?.kernel?.kernelIdentity.activeAccount, !pubkey.isEmpty else {
-            throw AgentOwnedPodcastError.noSigningKey
-        }
-        return pubkey
-    }
-
     // MARK: - createPodcast
 
     func createPodcast(
@@ -66,12 +76,7 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
         categories: [String],
         visibility: Podcast.NostrVisibility
     ) async throws -> AgentOwnedPodcastInfo {
-        let pubkey: String
-        if visibility == .public {
-            pubkey = try await agentPubkeyHex()
-        } else {
-            pubkey = (try? await agentPubkeyHex()) ?? "agent-private"
-        }
+        let plan = try await createLifecyclePlan(visibility: visibility)
         // In-memory value only — the kernel store is the SSOT and projects the
         // row back on the next push. NOT written to `store.podcasts`.
         let stored = Podcast(
@@ -82,7 +87,7 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
             description: description,
             language: language,
             categories: categories,
-            ownerPubkeyHex: pubkey,
+            ownerPubkeyHex: plan.ownerPubkeyHex,
             nostrVisibility: visibility
         )
         await MainActor.run {
@@ -107,7 +112,7 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
         //    publish without rotating the key. Publishing the show event is
         //    gated (public + nostrEnabled) inside the kernel.
         await MainActor.run { store?.kernelCreateOwnedPodcast(podcastId: stored.id.uuidString) }
-        if visibility == .public, let settings = await settings(), settings.nostrEnabled {
+        if plan.shouldPublishShow {
             await MainActor.run { store?.kernelPublishShow(podcastId: stored.id.uuidString) }
         }
         return await MainActor.run { info(for: stored, nostrEventID: nil, nostrAddr: nil) }
@@ -123,14 +128,16 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
         imageURL: URL?,
         visibility: Podcast.NostrVisibility?
     ) async throws -> AgentOwnedPodcastInfo {
-        guard let uuid = UUID(uuidString: podcastID) else {
-            throw AgentOwnedPodcastError.invalidID(podcastID)
+        let uuid = UUID(uuidString: podcastID)
+        let existing: Podcast?
+        if let uuid {
+            existing = await MainActor.run { store?.podcast(id: uuid) }
+        } else {
+            existing = nil
         }
-        guard let existing = await store?.podcast(id: uuid) else {
-            throw AgentOwnedPodcastError.notFound(podcastID)
-        }
-        guard existing.ownerPubkeyHex != nil else {
-            throw AgentOwnedPodcastError.notOwned(podcastID)
+        try await mutationPreflight(podcastID: podcastID, existing: existing)
+        guard let uuid, let existing else {
+            throw AgentOwnedPodcastError.policy("Podcast update preflight failed.")
         }
         var updated = existing
         if let title { updated.title = title }
@@ -156,7 +163,6 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
                 artworkUrl: imageURL?.absoluteString,
                 visibility: visibility?.rawValue
             )
-            store?.updatePodcast(updated) // render mirror; snapshot push reconciles
         }
 
         // Episode backfill on a private→public flip is now owned by the kernel:
@@ -171,14 +177,16 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
     // MARK: - deletePodcast
 
     func deletePodcast(podcastID: PodcastID) async throws {
-        guard let uuid = UUID(uuidString: podcastID) else {
-            throw AgentOwnedPodcastError.invalidID(podcastID)
+        let uuid = UUID(uuidString: podcastID)
+        let existing: Podcast?
+        if let uuid {
+            existing = await MainActor.run { store?.podcast(id: uuid) }
+        } else {
+            existing = nil
         }
-        guard let existing = await store?.podcast(id: uuid) else {
-            throw AgentOwnedPodcastError.notFound(podcastID)
-        }
-        guard existing.ownerPubkeyHex != nil else {
-            throw AgentOwnedPodcastError.notOwned(podcastID)
+        try await mutationPreflight(podcastID: podcastID, existing: existing)
+        guard let uuid else {
+            throw AgentOwnedPodcastError.policy("Podcast delete preflight failed.")
         }
         // Full kernel-owned deletion: publish NIP-09 (kind:5) for the prior
         // show event, drop the per-podcast key, remove the row + episodes from
@@ -188,10 +196,6 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
         await MainActor.run {
             guard let store else { return }
             store.kernelDeleteOwnedPodcast(podcastId: uuid.uuidString)
-            // Render mirror — drop the local row immediately; the next snapshot
-            // push reconciles. `deletePodcast` also cleans subscriptions /
-            // episodes / wiki citations Swift-side.
-            store.deletePodcast(podcastID: uuid)
         }
     }
 
@@ -199,7 +203,7 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
 
     func listOwnedPodcasts() async -> [AgentOwnedPodcastInfo] {
         guard let store else { return [] }
-        let podcasts = await store.allPodcasts.filter { $0.ownerPubkeyHex != nil }
+        let podcasts = await MainActor.run { store.rustOwnedPodcasts() }
         return await MainActor.run { podcasts.map { info(for: $0, nostrEventID: nil, nostrAddr: nil) } }
     }
 
@@ -225,39 +229,82 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
         return url
     }
 
+    private func createLifecyclePlan(visibility: Podcast.NostrVisibility) async throws -> CreateLifecyclePlan {
+        let activePubkey = await MainActor.run {
+            store?.kernel?.kernelIdentity.activeAccount
+        }
+        let nostrEnabled = await MainActor.run { store?.state.settings.nostrEnabled ?? false }
+        var payload: [String: Any] = [
+            "op": "create_lifecycle_plan",
+            "visibility": visibility.rawValue,
+            "nostr_enabled": nostrEnabled,
+        ]
+        if let activePubkey, !activePubkey.isEmpty {
+            payload["active_pubkey"] = activePubkey
+        }
+        let plan = try await ownedPodcastPolicy(CreateLifecyclePlan.self, payload: payload)
+        if let error = plan.error {
+            throw AgentOwnedPodcastError.policy(error)
+        }
+        return plan
+    }
+
+    private func mutationPreflight(podcastID: PodcastID, existing: Podcast?) async throws {
+        let response = try await ownedPodcastPolicy(
+            MutationPreflight.self,
+            payload: [
+                "op": "mutation_preflight",
+                "podcast_id": podcastID,
+                "exists": existing != nil,
+                "is_owned": existing?.ownerPubkeyHex != nil,
+            ]
+        )
+        if let error = response.error {
+            throw AgentOwnedPodcastError.policy(error)
+        }
+        guard response.ok == true else {
+            throw AgentOwnedPodcastError.policy("Owned-podcast mutation was rejected.")
+        }
+    }
+
+    private func ownedPodcastPolicy<T: Decodable>(_ type: T.Type, payload: [String: Any]) async throws -> T {
+        let handleBits = await MainActor.run {
+            store?.kernel?.podcastHandlePointer.map { Int(bitPattern: $0) }
+        }
+        guard let handleBits else { throw AgentOwnedPodcastError.storeUnavailable }
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8)
+        else { throw AgentOwnedPodcastError.storeUnavailable }
+        let envelope = await Task.detached(priority: .userInitiated) {
+            guard let handle = UnsafeMutableRawPointer(bitPattern: handleBits) else {
+                return #"{"error":"App state is unavailable."}"#
+            }
+            return json.withCString { ptr -> String in
+                guard let result = nmp_app_podcast_agent_owned_podcast_tool(handle, ptr) else {
+                    return #"{"error":"App state is unavailable."}"#
+                }
+                defer { nmp_free_string(result) }
+                return String(cString: result)
+            }
+        }.value
+        guard let responseData = envelope.data(using: .utf8),
+              let decoded = try? JSONDecoder().decode(T.self, from: responseData)
+        else { throw AgentOwnedPodcastError.storeUnavailable }
+        return decoded
+    }
+
     // MARK: - publishEpisodeToNostr
 
     func publishEpisodeToNostr(episodeID: EpisodeID) async throws -> String? {
-        guard let uuid = UUID(uuidString: episodeID),
-              let store else { throw AgentOwnedPodcastError.storeUnavailable }
-        guard let episode = await store.episode(id: uuid) else {
-            throw AgentOwnedPodcastError.episodeNotFound(episodeID)
+        guard let store else { throw AgentOwnedPodcastError.storeUnavailable }
+        await MainActor.run {
+            store.kernelPublishEpisode(episodeId: episodeID)
         }
-        guard let podcast = await store.podcast(id: episode.podcastID),
-              podcast.ownerPubkeyHex != nil,
-              podcast.nostrVisibility == .public else { return nil }
-        guard let settings = await settings(), settings.nostrEnabled else { return nil }
-
-        await dispatchPublishEpisode(episodeID: uuid)
-        Self.logger.info("Dispatched NIP-F4 publish for episode '\(episode.title, privacy: .public)'")
+        Self.logger.info("Dispatched NIP-F4 publish for episode id=\(episodeID, privacy: .public)")
         // Dispatch is fire-and-forget; the signed event id / naddr now lives in
         // Rust's snapshot projection. Return a non-nil status marker so callers
         // (publish_episode tool) report success rather than a false "skipped".
         return "nipf4:publish_dispatched"
-    }
-
-    // MARK: - Private NIP-F4 dispatch helpers
-
-    /// Publish the `kind:54` episode event. Rust resolves the parent podcast +
-    /// its per-podcast key and uploads audio to Blossom. Show creation /
-    /// claim / update / delete dispatch their kernel ops inline at their call
-    /// sites (this remains a helper only because `publishEpisodeToNostr` gates
-    /// the dispatch behind owner/visibility/nostrEnabled checks).
-    private func dispatchPublishEpisode(episodeID: UUID) async {
-        let id = episodeID.uuidString
-        await MainActor.run {
-            store?.kernelPublishEpisode(episodeId: id)
-        }
     }
 
     @MainActor
@@ -267,7 +314,7 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
         nostrAddr: String?,
         episodesPublishedToNostr: Int? = nil
     ) -> AgentOwnedPodcastInfo {
-        let episodeCount = (store?.episodes(forPodcast: podcast.id) ?? []).count
+        let episodeCount = store?.rustEpisodeCount(forPodcast: podcast.id) ?? 0
         return AgentOwnedPodcastInfo(
             podcastID: podcast.id.uuidString,
             title: podcast.title,
@@ -290,6 +337,7 @@ enum AgentOwnedPodcastError: LocalizedError {
     case notFound(String)
     case notOwned(String)
     case episodeNotFound(String)
+    case policy(String)
 
     var errorDescription: String? {
         switch self {
@@ -299,6 +347,7 @@ enum AgentOwnedPodcastError: LocalizedError {
         case .notFound(let id): return "Podcast not found: \(id)"
         case .notOwned(let id): return "Podcast \(id) is not agent-owned."
         case .episodeNotFound(let id): return "Episode not found: \(id)"
+        case .policy(let message): return message
         }
     }
 }

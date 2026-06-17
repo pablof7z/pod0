@@ -3,18 +3,17 @@ import os.log
 
 // MARK: - Playback adapter
 
-/// Drives the live `PlaybackState` from agent tool calls. Uses weak refs so
-/// the agent surface never extends the player's lifetime past the SwiftUI
-/// scene that owns it.
+/// Routes agent playback intent through the Rust player actor. Keeps weak refs
+/// so the agent surface never extends the UI lifetime. Native audio execution
+/// remains in the capability bridge; agent-visible playback facts come from
+/// Rust's `PlayerState` projection.
 final class LivePlaybackHostAdapter: PlaybackHostProtocol, @unchecked Sendable {
 
     private let logger = Logger.app("AgentTools")
     weak var store: AppStateStore?
-    weak var playback: PlaybackState?
 
-    init(store: AppStateStore, playback: PlaybackState) {
+    init(store: AppStateStore) {
         self.store = store
-        self.playback = playback
     }
 
     func playEpisode(
@@ -22,68 +21,79 @@ final class LivePlaybackHostAdapter: PlaybackHostProtocol, @unchecked Sendable {
         startSeconds: Double?,
         endSeconds: Double?,
         queuePosition: QueuePosition
-    ) async -> PlayEpisodeResult? {
+    ) async -> PlayEpisodeOutcome {
         await MainActor.run {
-            guard let store, let playback,
-                  let uuid = UUID(uuidString: episodeID),
-                  let episode = store.episode(id: uuid) else {
-                logger.error("playEpisode: unknown episode \(episodeID, privacy: .public)")
-                return nil
+            guard let store else {
+                logger.error("playEpisode: store unavailable")
+                return .unavailable
             }
-            let item = QueueItem(
-                episodeID: uuid,
-                startSeconds: startSeconds,
-                endSeconds: endSeconds,
-                label: nil
-            )
-            let podcastTitle = store.podcast(id: episode.podcastID)?.title
+            let dispatch: DispatchResult?
             switch queuePosition {
             case .now:
-                // Replace current playback with this item; existing queue is
-                // preserved and resumes after this finishes.
-                playback.enqueueSegments([item], playNow: true) { store.episode(id: $0) }
-                logger.info("playEpisode(now): \(episode.title, privacy: .public)")
-                return PlayEpisodeResult(
+                dispatch = store.kernelPlay(
                     episodeID: episodeID,
-                    queuePosition: .now,
-                    startedPlaying: true,
-                    episodeTitle: episode.title,
-                    podcastTitle: podcastTitle,
-                    durationSeconds: episode.duration.map { Int($0) }
+                    startSeconds: startSeconds,
+                    endSeconds: endSeconds
                 )
             case .next:
-                playback.insertNext(item)
-                logger.info("playEpisode(next): \(episode.title, privacy: .public)")
-                return PlayEpisodeResult(
-                    episodeID: episodeID,
-                    queuePosition: .next,
-                    startedPlaying: false,
-                    episodeTitle: episode.title,
-                    podcastTitle: podcastTitle,
-                    durationSeconds: episode.duration.map { Int($0) }
-                )
+                if let endSeconds {
+                    dispatch = store.kernelEnqueueSegmentNext(
+                        episodeID: episodeID,
+                        startSeconds: startSeconds,
+                        endSeconds: endSeconds
+                    )
+                } else {
+                    dispatch = store.kernelEnqueueNext(episodeID: episodeID)
+                }
             case .end:
-                playback.enqueueItem(item)
-                logger.info("playEpisode(end): \(episode.title, privacy: .public)")
-                return PlayEpisodeResult(
-                    episodeID: episodeID,
-                    queuePosition: .end,
-                    startedPlaying: false,
-                    episodeTitle: episode.title,
-                    podcastTitle: podcastTitle,
-                    durationSeconds: episode.duration.map { Int($0) }
-                )
+                if let endSeconds {
+                    dispatch = store.kernelEnqueueSegmentLast(
+                        episodeID: episodeID,
+                        startSeconds: startSeconds,
+                        endSeconds: endSeconds
+                    )
+                } else {
+                    dispatch = store.kernelEnqueueLast(episodeID: episodeID)
+                }
             }
+            guard let dispatch else { return .unavailable }
+            if case let .failure(message) = dispatch {
+                return .rejected(message)
+            }
+            guard let toolResult = store.kernel?.playbackToolResult(
+                episodeID: episodeID,
+                queuePosition: queuePosition,
+                startedPlaying: queuePosition == .now
+            ) else {
+                return .unavailable
+            }
+            guard toolResult.ok else {
+                return .rejected(toolResult.message ?? "Playback result was rejected by the kernel.")
+            }
+            logger.info("playEpisode(\(queuePosition.rawValue, privacy: .public)): \(toolResult.episodeTitle ?? episodeID, privacy: .public)")
+            return .played(
+                PlayEpisodeResult(
+                    episodeID: toolResult.episodeId,
+                    queuePosition: QueuePosition(rawValue: toolResult.queuePosition) ?? queuePosition,
+                    startedPlaying: toolResult.startedPlaying,
+                    episodeTitle: toolResult.episodeTitle,
+                    podcastTitle: toolResult.podcastTitle,
+                    durationSeconds: toolResult.durationSeconds
+                )
+            )
         }
     }
 
     func pausePlayback() async -> Bool {
         await MainActor.run {
-            guard let playback else {
-                logger.error("pausePlayback: playback host missing")
+            guard let store else {
+                logger.error("pausePlayback: store missing")
                 return false
             }
-            playback.pause()
+            guard case .some(.accepted) = store.kernelPause() else {
+                logger.error("pausePlayback: kernel rejected")
+                return false
+            }
             logger.info("pausePlayback: paused")
             return true
         }
@@ -91,21 +101,24 @@ final class LivePlaybackHostAdapter: PlaybackHostProtocol, @unchecked Sendable {
 
     func setPlaybackRate(_ rate: Double) async -> Double? {
         await MainActor.run {
-            guard let playback else {
-                logger.error("setPlaybackRate: playback host missing")
+            guard let store else {
+                logger.error("setPlaybackRate: store missing")
                 return nil
             }
-            let clamped = min(max(rate, 0.5), 3.0)
-            playback.engine.setRate(clamped)
-            logger.info("setPlaybackRate: \(clamped)")
-            return clamped
+            guard case .some(.accepted) = store.kernelSetSpeed(rate) else {
+                logger.error("setPlaybackRate: kernel rejected")
+                return nil
+            }
+            let applied = store.kernel?.nowPlayingToolResult()?.rate ?? rate
+            logger.info("setPlaybackRate: \(applied)")
+            return applied
         }
     }
 
     func setSleepTimer(mode: String, minutes: Int?) async -> String? {
         await MainActor.run {
-            guard let playback else {
-                logger.error("setSleepTimer: playback host missing")
+            guard let store else {
+                logger.error("setSleepTimer: store missing")
                 return nil
             }
             let timer: PlaybackSleepTimer
@@ -119,7 +132,10 @@ final class LivePlaybackHostAdapter: PlaybackHostProtocol, @unchecked Sendable {
             default:
                 timer = .off
             }
-            playback.setSleepTimer(timer)
+            guard case .some(.accepted) = store.kernelSetSleepTimer(timer) else {
+                logger.error("setSleepTimer: kernel rejected")
+                return nil
+            }
             logger.info("setSleepTimer: \(timer.label, privacy: .public)")
             return timer.label
         }
@@ -134,36 +150,38 @@ final class LivePlaybackHostAdapter: PlaybackHostProtocol, @unchecked Sendable {
         endSeconds: Double?,
         queuePosition: QueuePosition
     ) async -> PlayEpisodeResult? {
-        // Resolve which podcast to attach this episode to WITHOUT blocking
-        // playback on a network fetch. Three cases:
-        //   1. We already know about this feed (existing Podcast row) → use it.
-        //   2. We don't know about it yet and a feed_url was supplied → use a
-        //      thin placeholder Podcast(feedURL: …) now, then enrich its
-        //      metadata in the background. The episode lives under that
-        //      placeholder ID across the enrichment hop so its parent is
-        //      stable for the user.
-        //   3. No feed_url at all → parent to Podcast.unknownID.
-        //
-        // We deliberately never call `ensurePodcast` here: that helper fetches
-        // and ingests the feed's back-catalog. External playback should start
-        // immediately with a single kernel-owned episode, then hydrate only
-        // lightweight show metadata in the background.
-        let parentResolution = await resolveExternalParent(feedURLString: feedURLString)
-        guard let parentResolution else {
+        let parentPlan = await MainActor.run {
+            store?.kernel?.externalPlayPlan(feedURLString: feedURLString)
+        }
+        guard let parentPlan, parentPlan.ok else {
             logger.error("playExternalEpisode: store unavailable")
             return nil
         }
         let result: PlayEpisodeResult? = await MainActor.run {
-            guard let store, let playback else {
-                logger.error("playExternalEpisode: playback host missing")
+            guard let store else {
+                logger.error("playExternalEpisode: store missing")
                 return nil
+            }
+            if parentPlan.shouldCreatePlaceholder {
+                store.kernelCreatePodcast(
+                    podcastId: parentPlan.podcastId,
+                    title: parentPlan.placeholderTitle ?? parentPlan.feedUrl ?? "Unknown",
+                    description: "",
+                    author: "",
+                    feedUrl: parentPlan.feedUrl,
+                    artworkUrl: nil,
+                    language: nil,
+                    categories: [],
+                    visibility: parentPlan.visibility ?? Podcast.NostrVisibility.public.rawValue,
+                    titleIsPlaceholder: parentPlan.titleIsPlaceholder
+                )
             }
             // Add the episode to the Rust kernel store (SSOT). The enclosure is
             // an `http(s)://` URL, so the kernel marks it NotDownloaded; it
             // rides the next projection push back into `store.episodes`.
             let episodeID = UUID()
             store.kernelAddEpisode(
-                podcastId: parentResolution.podcastID.uuidString,
+                podcastId: parentPlan.podcastId,
                 episodeId: episodeID.uuidString,
                 title: title,
                 enclosureUrl: audioURL.absoluteString,
@@ -173,71 +191,67 @@ final class LivePlaybackHostAdapter: PlaybackHostProtocol, @unchecked Sendable {
                 chapters: [],
                 transcript: nil
             )
-            // Transient in-memory value: the player needs an `Episode`
-            // synchronously for `enqueueSegments` / queue insertion, and the
-            // projection has not delivered the persisted copy yet. NOT written
-            // to `store.episodes`.
-            let episode = Episode(
-                id: episodeID,
-                podcastID: parentResolution.podcastID,
-                guid: episodeID.uuidString,
-                title: title,
-                pubDate: Date(),
-                duration: durationSeconds,
-                enclosureURL: audioURL
-            )
-            let podcastTitle = store.podcast(id: parentResolution.podcastID)?.title
-            let item = QueueItem(
-                episodeID: episode.id,
-                startSeconds: startSeconds,
-                endSeconds: endSeconds,
-                label: nil
-            )
+            let dispatch: DispatchResult?
             switch queuePosition {
             case .now:
-                playback.enqueueSegments([item], playNow: true, head: episode)
-                logger.info("playExternalEpisode(now): '\(title, privacy: .public)' at \(startSeconds ?? 0)")
-                return PlayEpisodeResult(
-                    episodeID: episode.id.uuidString,
-                    queuePosition: .now,
-                    startedPlaying: true,
-                    episodeTitle: episode.title,
-                    podcastTitle: podcastTitle,
-                    durationSeconds: episode.duration.map { Int($0) }
+                dispatch = store.kernelPlay(
+                    episodeID: episodeID,
+                    startSeconds: startSeconds,
+                    endSeconds: endSeconds
                 )
             case .next:
-                playback.insertNext(item)
-                logger.info("playExternalEpisode(next): '\(title, privacy: .public)'")
-                return PlayEpisodeResult(
-                    episodeID: episode.id.uuidString,
-                    queuePosition: .next,
-                    startedPlaying: false,
-                    episodeTitle: episode.title,
-                    podcastTitle: podcastTitle,
-                    durationSeconds: episode.duration.map { Int($0) }
-                )
+                if let endSeconds {
+                    dispatch = store.kernelEnqueueSegmentNext(
+                        episodeID: episodeID.uuidString,
+                        startSeconds: startSeconds,
+                        endSeconds: endSeconds
+                    )
+                } else {
+                    dispatch = store.kernelEnqueueNext(episodeID: episodeID)
+                }
             case .end:
-                playback.enqueueItem(item)
-                logger.info("playExternalEpisode(end): '\(title, privacy: .public)'")
-                return PlayEpisodeResult(
-                    episodeID: episode.id.uuidString,
-                    queuePosition: .end,
-                    startedPlaying: false,
-                    episodeTitle: episode.title,
-                    podcastTitle: podcastTitle,
-                    durationSeconds: episode.duration.map { Int($0) }
-                )
+                if let endSeconds {
+                    dispatch = store.kernelEnqueueSegmentLast(
+                        episodeID: episodeID.uuidString,
+                        startSeconds: startSeconds,
+                        endSeconds: endSeconds
+                    )
+                } else {
+                    dispatch = store.kernelEnqueueLast(episodeID: episodeID)
+                }
             }
+            guard case .some(.accepted) = dispatch else {
+                logger.error("playExternalEpisode: kernel rejected")
+                return nil
+            }
+            guard let toolResult = store.kernel?.playbackToolResult(
+                episodeID: episodeID.uuidString,
+                queuePosition: queuePosition,
+                startedPlaying: queuePosition == .now
+            ), toolResult.ok else {
+                logger.error("playExternalEpisode: Rust playback result unavailable")
+                return nil
+            }
+            logger.info("playExternalEpisode(\(queuePosition.rawValue, privacy: .public)): '\(toolResult.episodeTitle ?? title, privacy: .public)'")
+            return PlayEpisodeResult(
+                episodeID: toolResult.episodeId,
+                queuePosition: QueuePosition(rawValue: toolResult.queuePosition) ?? queuePosition,
+                startedPlaying: toolResult.startedPlaying,
+                episodeTitle: toolResult.episodeTitle,
+                podcastTitle: toolResult.podcastTitle,
+                durationSeconds: toolResult.durationSeconds
+            )
         }
         // Asynchronously hydrate podcast metadata in the background so the
         // first render shows whatever we have, and later renders pick up
         // real title / artwork once the feed comes back. Fire-and-forget;
         // playback doesn't depend on the result.
-        if let feedURLString,
-           parentResolution.shouldHydrateMetadata,
+        if parentPlan.shouldHydrateMetadata,
+           let feedURLString = parentPlan.feedUrl,
+           let podcastID = UUID(uuidString: parentPlan.podcastId),
            let url = URL(string: feedURLString) {
             Task.detached { [weak self] in
-                await self?.hydratePlaceholderPodcastMetadata(podcastID: parentResolution.podcastID, feedURL: url)
+                await self?.hydratePlaceholderPodcastMetadata(podcastID: podcastID, feedURL: url)
             }
         }
         return result
@@ -245,106 +259,68 @@ final class LivePlaybackHostAdapter: PlaybackHostProtocol, @unchecked Sendable {
 
     func getNowPlaying() async -> NowPlayingState {
         await MainActor.run {
-            guard let playback, let store else {
+            guard let store,
+                  let result = store.kernel?.nowPlayingToolResult(),
+                  result.ok else {
                 return NowPlayingState(positionSeconds: 0, isPlaying: false, rate: 1.0)
             }
-            let episode = playback.episode
-            let podcastTitle = episode.flatMap { store.podcast(id: $0.podcastID)?.title }
-            let duration = playback.duration > 0 ? playback.duration : nil
             return NowPlayingState(
-                episodeID: episode?.id.uuidString,
-                episodeTitle: episode?.title,
-                podcastID: episode?.podcastID.uuidString,
-                podcastTitle: podcastTitle,
-                positionSeconds: playback.currentTime,
-                durationSeconds: duration,
-                isPlaying: playback.isPlaying,
-                rate: playback.engine.rate
+                episodeID: result.episodeId,
+                episodeTitle: result.episodeTitle,
+                podcastID: result.podcastId,
+                podcastTitle: result.podcastTitle,
+                positionSeconds: result.positionSeconds,
+                durationSeconds: result.durationSeconds,
+                isPlaying: result.isPlaying,
+                rate: result.rate
             )
         }
     }
 
     func seekTo(positionSeconds: Double) async -> Double? {
         await MainActor.run {
-            guard let playback, playback.episode != nil else {
-                logger.error("seekTo: no episode loaded")
+            guard let store else {
+                logger.error("seekTo: store missing")
                 return nil
             }
-            let duration = playback.duration > 0 ? playback.duration : Double.infinity
-            let clamped = min(max(0, positionSeconds), duration)
-            playback.seek(to: clamped)
-            logger.info("seekTo: \(clamped)")
-            return clamped
+            guard case .some(.accepted) = store.kernelSeek(positionSecs: positionSeconds) else {
+                logger.error("seekTo: kernel rejected")
+                return nil
+            }
+            let applied = store.kernel?.nowPlayingToolResult()?.positionSeconds ?? positionSeconds
+            logger.info("seekTo: \(applied)")
+            return applied
         }
     }
 
     func skipForward(seconds: Double?) async -> Double? {
         await MainActor.run {
-            guard let playback, playback.episode != nil else {
-                logger.error("skipForward: no episode loaded")
+            guard let store else {
+                logger.error("skipForward: store missing")
                 return nil
             }
-            playback.skipForward(seconds)
+            guard case .some(.accepted) = store.kernelSkipForward(secs: seconds) else {
+                logger.error("skipForward: kernel rejected")
+                return nil
+            }
             logger.info("skipForward: \(seconds?.description ?? "default")")
-            return playback.currentTime
+            return store.kernel?.nowPlaying?.positionSecs ?? 0
         }
     }
 
     func skipBackward(seconds: Double?) async -> Double? {
         await MainActor.run {
-            guard let playback, playback.episode != nil else {
-                logger.error("skipBackward: no episode loaded")
+            guard let store else {
+                logger.error("skipBackward: store missing")
                 return nil
             }
-            playback.skipBackward(seconds)
+            guard case .some(.accepted) = store.kernelSkipBackward(secs: seconds) else {
+                logger.error("skipBackward: kernel rejected")
+                return nil
+            }
             logger.info("skipBackward: \(seconds?.description ?? "default")")
-            return playback.currentTime
+            return store.kernel?.nowPlaying?.positionSecs ?? 0
         }
-    }
-
-    /// Decision wrapper: which podcast ID to parent the episode to RIGHT
-    /// NOW, plus whether the caller should kick off a background metadata
-    /// fetch to enrich a freshly-created placeholder.
-    private struct ExternalParentResolution {
-        let podcastID: UUID
-        let shouldHydrateMetadata: Bool
-    }
-
-    /// Resolves (or creates a placeholder for) the parent podcast without
-    /// hitting the network. The optional feed URL is normalized
-    /// case-insensitively to match `store.podcast(feedURL:)`.
-    @MainActor
-    private func resolveExternalParent(feedURLString: String?) async -> ExternalParentResolution? {
-        guard let store else { return nil }
-        guard let feedURLString,
-              let feedURL = URL(string: feedURLString),
-              let scheme = feedURL.scheme?.lowercased(),
-              scheme == "http" || scheme == "https" else {
-            return ExternalParentResolution(podcastID: Podcast.unknownID, shouldHydrateMetadata: false)
-        }
-        if let existing = store.podcast(feedURL: feedURL) {
-            return ExternalParentResolution(podcastID: existing.id, shouldHydrateMetadata: false)
-        }
-        // Insert a thin placeholder so the episode has a real parent. Title
-        // defaults to the feed host so the UI shows something sensible
-        // immediately; metadata hydration overwrites it on success.
-        // titleIsPlaceholder stays true until hydration succeeds, letting
-        // the UI render it as provisional. The row lives in the Rust kernel
-        // store (SSOT) and projects back on the next push.
-        let podcastID = UUID()
-        store.kernelCreatePodcast(
-            podcastId: podcastID.uuidString,
-            title: feedURL.host ?? feedURLString,
-            description: "",
-            author: "",
-            feedUrl: feedURL.absoluteString,
-            artworkUrl: nil,
-            language: nil,
-            categories: [],
-            visibility: Podcast.NostrVisibility.public.rawValue,
-            titleIsPlaceholder: true
-        )
-        return ExternalParentResolution(podcastID: podcastID, shouldHydrateMetadata: true)
     }
 
     /// Fetches the feed in the background and updates the placeholder

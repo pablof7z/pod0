@@ -11,7 +11,13 @@ fn skips_unknown_ids() {
         }],
         ..PodcastSummary::default()
     }];
-    let rows = resolve_queue_rows(&["ep-1".to_owned(), "ep-missing".to_owned()], &library);
+    let rows = resolve_queue_rows(
+        &[
+            crate::queue::QueuedPlaybackItem::whole_episode("ep-1"),
+            crate::queue::QueuedPlaybackItem::whole_episode("ep-missing"),
+        ],
+        &library,
+    );
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].id, "ep-1");
 }
@@ -34,7 +40,13 @@ fn preserves_order() {
         ],
         ..PodcastSummary::default()
     }];
-    let rows = resolve_queue_rows(&["ep-b".to_owned(), "ep-a".to_owned()], &library);
+    let rows = resolve_queue_rows(
+        &[
+            crate::queue::QueuedPlaybackItem::whole_episode("ep-b"),
+            crate::queue::QueuedPlaybackItem::whole_episode("ep-a"),
+        ],
+        &library,
+    );
     assert_eq!(rows.len(), 2);
     assert_eq!(rows[0].id, "ep-b");
     assert_eq!(rows[1].id, "ep-a");

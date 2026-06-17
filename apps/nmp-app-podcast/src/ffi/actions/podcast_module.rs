@@ -121,6 +121,12 @@ pub enum PodcastAction {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         url: Option<String>,
     },
+    /// Begin downloading every currently eligible episode for one podcast.
+    /// Rust owns the eligibility pass; the download queue keeps repeated
+    /// dispatches idempotent for queued/in-flight episodes.
+    DownloadPodcast {
+        podcast_id: String,
+    },
     /// Remove a previously downloaded episode from disk and clear the
     /// kernel-side `local_path` mapping.
     DeleteDownload {
@@ -260,6 +266,14 @@ pub enum PodcastAction {
         enabled: bool,
         #[serde(default = "default_true")]
         wifi_only: bool,
+    },
+    /// Toggle new-episode notifications for one podcast. Global notification
+    /// permission/setting remains under `podcast.settings`; this per-show
+    /// policy is applied by the Rust refresh handler before scheduling the
+    /// native notification capability.
+    SetPodcastNotificationsEnabled {
+        podcast_id: String,
+        enabled: bool,
     },
     /// Fetch the active account's NIP-02 (kind:3) follow list and surface
     /// the result on `PodcastUpdate.social`.

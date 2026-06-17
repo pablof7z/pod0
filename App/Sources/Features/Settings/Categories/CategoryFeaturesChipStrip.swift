@@ -2,37 +2,21 @@ import SwiftUI
 
 // MARK: - CategoryFeaturesChipStrip
 //
-// Compact icon-only strip that telegraphs which features are enabled for
-// a category. Used inside `CategoriesListView` rows so the user can scan
-// the list and immediately see "this category has transcription off".
+// Compact icon-only strip for the category feature policy that is currently
+// Rust-wired: transcription.
 //
-// Pure presentational — takes a snapshot of `CategorySettings` and renders.
-// No bindings, no store access. The list view rebuilds the strip on every
-// settings mutation through the normal SwiftUI invalidation path.
+// Pure presentational — takes the Rust-projected category transcription state
+// and renders. No bindings, no store access.
 
 struct CategoryFeaturesChipStrip: View {
-    let settings: CategorySettings
+    let transcriptionEnabled: Bool
 
     var body: some View {
         HStack(spacing: 6) {
             chip(systemImage: "captions.bubble.fill",
-                 enabled: settings.transcriptionEnabled,
+                 enabled: transcriptionEnabled,
                  enabledTint: .orange,
                  accessibility: "Transcription")
-            chip(systemImage: "brain",
-                 enabled: settings.ragEnabled,
-                 enabledTint: .purple,
-                 accessibility: "RAG indexing")
-            chip(systemImage: "bell.fill",
-                 enabled: settings.notificationsEnabled,
-                 enabledTint: .red,
-                 accessibility: "Notifications")
-            if settings.autoDownloadOverride != nil {
-                chip(systemImage: "arrow.down.circle.fill",
-                     enabled: true,
-                     enabledTint: .blue,
-                     accessibility: "Auto-download override")
-            }
         }
     }
 

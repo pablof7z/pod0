@@ -29,6 +29,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::ffi::projections::MemoryFact;
 use crate::player::AdSegment;
+use crate::queue::QueuedPlaybackItem;
 use crate::store::AutoDownloadMode;
 
 /// Schema marker for `podcasts.json`. Bump on incompatible format changes.
@@ -82,10 +83,11 @@ pub(super) struct PersistedStore {
     pub file_sizes: Vec<(String, i64)>,
     #[serde(default)]
     pub settings: PersistedSettings,
-    /// "Up Next" queue — episode ids in play order. `#[serde(default)]` keeps
-    /// pre-existing files (before queue persistence shipped) loading as empty.
+    /// "Up Next" queue in play order. `#[serde(default)]` keeps pre-existing
+    /// files (before queue persistence shipped) loading as empty; the untagged
+    /// row enum also accepts older bare-string episode ids.
     #[serde(default)]
-    pub queue: Vec<String>,
+    pub queue: Vec<PersistedQueueItem>,
     /// Episodes deferred because the device was on cellular at refresh time for
     /// a Wi-Fi-only show. Pairs of `(episode_id_str, enclosure_url)`. Persisted
     /// so that an app kill while on cellular doesn't permanently lose the
@@ -102,6 +104,32 @@ pub(super) struct PersistedStore {
     /// transcription is disabled. `#[serde(default)]` for backward compat.
     #[serde(default)]
     pub transcription_disabled: Vec<String>,
+}
+
+/// Backward-compatible persisted queue row.
+///
+/// Old files stored `queue: ["episode-id"]`. New files can store bounded
+/// segment intent as objects while preserving the same top-level `queue` field.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum PersistedQueueItem {
+    EpisodeId(String),
+    PlaybackItem(QueuedPlaybackItem),
+}
+
+impl From<PersistedQueueItem> for QueuedPlaybackItem {
+    fn from(value: PersistedQueueItem) -> Self {
+        match value {
+            PersistedQueueItem::EpisodeId(id) => QueuedPlaybackItem::whole_episode(id),
+            PersistedQueueItem::PlaybackItem(item) => item,
+        }
+    }
+}
+
+impl From<QueuedPlaybackItem> for PersistedQueueItem {
+    fn from(value: QueuedPlaybackItem) -> Self {
+        PersistedQueueItem::PlaybackItem(value)
+    }
 }
 
 /// On-disk settings envelope.
@@ -329,6 +357,10 @@ pub(super) struct PersistedPodcast {
     /// `false` (cellular not allowed — default Wi-Fi-only behaviour).
     #[serde(default)]
     pub cellular_allowed: bool,
+    /// When `true`, suppress new-episode local notifications for this show.
+    /// Absent in older files ⇒ `false` (notifications allowed).
+    #[serde(default)]
+    pub notifications_disabled: bool,
 }
 
 /// Resolve the path of `podcasts.json` inside `data_dir`.

@@ -18,6 +18,20 @@ use crate::ffi::actions::social_module::SocialAction;
 use crate::host_op_handler::PodcastHostOpHandler;
 
 impl PodcastHostOpHandler {
+    pub(crate) fn publish_clip_highlight_if_user_visible(
+        &self,
+        clip: &crate::clip_handler::ClipRecord,
+        correlation_id: &str,
+    ) {
+        crate::social_publish_handler::publish_clip_highlight_if_user_visible(
+            self.app,
+            &self.state.library.identity,
+            &self.state.library.store,
+            clip,
+            correlation_id,
+        );
+    }
+
     pub(crate) fn handle_social_action(
         &self,
         action: SocialAction,

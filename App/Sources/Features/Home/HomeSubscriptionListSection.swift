@@ -48,11 +48,15 @@ struct HomeSubscriptionListSection: View {
     }
 
     private var rowList: some View {
+        let libraryStats = LibraryPodcastStatsProjection.load(
+            podcastIDs: podcasts.map(\.id),
+            store: store
+        )
         LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(podcasts) { sub in
                 HomeSubscriptionRow(
                     podcast: sub,
-                    mostRecentEpisode: store.mostRecentEpisode(forPodcast: sub.id),
+                    mostRecentEpisode: libraryStats.latestEpisode(for: sub.id, store: store),
                     now: now,
                     onRequestUnsubscribe: { onRequestUnsubscribe(sub) }
                 )

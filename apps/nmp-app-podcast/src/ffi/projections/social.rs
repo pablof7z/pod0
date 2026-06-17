@@ -160,4 +160,12 @@ pub struct SocialSnapshot {
     /// `following.len()` for now; surfaced separately so paged variants
     /// of `following` keep working without a second snapshot field.
     pub following_count: usize,
+    /// Explicitly approved peer pubkeys from Rust's `ApprovedPeerStore`.
+    /// Sorted lowercase hex. Native shells render this list but do not own it.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub approved_pubkeys: Vec<String>,
+    /// Explicitly blocked peer pubkeys from Rust's `ApprovedPeerStore`.
+    /// Sorted lowercase hex. Native shells render this list but do not own it.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub blocked_pubkeys: Vec<String>,
 }

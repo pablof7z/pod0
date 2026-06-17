@@ -245,11 +245,18 @@ pub struct SetVolumeAction {
 }
 
 /// Payload for [`ACTION_PLAYER_SET_SLEEP_TIMER`]. `Some(n)` arms a
-/// timer of `n` seconds; `None` cancels any active timer.
+/// timer of `n` seconds; `end_of_episode` arms the next natural end as the
+/// stop point; both unset cancels any active timer.
 #[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct SetSleepTimerAction {
     #[serde(default)]
     pub secs: Option<u64>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub end_of_episode: bool,
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 /// Payload for [`ACTION_PLAYER_STOP`]. Empty — stop always targets

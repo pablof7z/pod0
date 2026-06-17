@@ -99,6 +99,7 @@ impl HostOpHandler for PodcastHostOpHandler {
                     self.state.library.identity.clone(),
                     self.state.infra.rev.clone(),
                 )
+                .with_app(self.app)
                 .with_domain_rev(self.state.infra.domain_revs.identity.clone());
                 if let Some(ref signal) = self.state.infra.signal {
                     handler = handler.with_snapshot_signal(signal.clone());
@@ -152,7 +153,16 @@ impl HostOpHandler for PodcastHostOpHandler {
                     &self.state.infra.rev,
                 )
             }
-            "podcast.clip" => self.state.clips.handle(parse!(ClipAction)),
+            "podcast.clip" => {
+                let action = parse!(ClipAction);
+                let result = self.state.clips.handle(action);
+                if let Some(clip_id) = result.get("clip_id").and_then(|v| v.as_str()) {
+                    if let Some(clip) = self.state.clips.clip(clip_id) {
+                        self.publish_clip_highlight_if_user_visible(&clip, correlation_id);
+                    }
+                }
+                result
+            }
             "podcast.voice" => {
                 voice_handler::handle(self, parse!(VoiceAction), correlation_id)
             }

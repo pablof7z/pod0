@@ -1,19 +1,27 @@
 import Foundation
 
+/// Compatibility facade for existing Swift call sites. Rust owns the actual
+/// feed URL normalization policy through `nmp_app_podcast_normalize_feed_url`.
 enum FeedURLNormalizer {
+    private struct Response: Decodable {
+        let url: String?
+        let error: String?
+    }
+
     static func normalizedFeedURL(from input: String) -> URL? {
-        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        let hasScheme = trimmed.range(
-            of: #"^[A-Za-z][A-Za-z0-9+.-]*:"#,
-            options: .regularExpression
-        ) != nil
-        let candidate = hasScheme ? trimmed : "https://\(trimmed)"
-        guard let url = URL(string: candidate),
-              let scheme = url.scheme?.lowercased(),
-              scheme == "http" || scheme == "https",
-              url.host?.isEmpty == false
+        let envelope = input.withCString { ptr -> String? in
+            guard let result = nmp_app_podcast_normalize_feed_url(ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            return String(cString: result)
+        }
+        guard let envelope,
+              let data = envelope.data(using: .utf8),
+              let response = try? JSONDecoder().decode(Response.self, from: data),
+              response.error == nil,
+              let rawURL = response.url
         else { return nil }
-        return url
+        return URL(string: rawURL)
     }
 }

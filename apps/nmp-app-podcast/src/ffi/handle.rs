@@ -60,6 +60,13 @@ pub struct PodcastHandle {
     /// `state.social` so the trust predicate reads it live. Held here so
     /// `data_dir.rs` can seed it after the data dir is bound.
     pub(crate) approved_peer_store: Arc<Mutex<ApprovedPeerStore>>,
+    /// Rust-owned policy state for the agent `ask` tool. Swift presents the
+    /// current row and executes owner actions; FIFO/current promotion, timeout
+    /// labels, and result envelopes live in `ffi::agent_ask`.
+    pub(crate) ask_state: Arc<Mutex<super::agent_ask::AgentAskState>>,
+    /// Host callback used only to notify Swift when Rust-owned ask lifecycle
+    /// events complete asynchronously, currently timeout expiry.
+    pub(crate) ask_callback: Arc<Mutex<super::agent_ask::AgentAskCallbackState>>,
     /// Rev-keyed snapshot cache. `build_snapshot_payload` writes `(rev, json)`
     /// here after every rebuild; a later same-`rev` request returns the cached
     /// string without re-serializing the entire library.

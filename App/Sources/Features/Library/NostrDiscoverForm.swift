@@ -22,25 +22,14 @@ struct NostrDiscoverForm: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if configuredRelayURL != nil {
-                searchField
-                content
-            } else {
-                nostrNotConfiguredState
-            }
+            searchField
+            content
         }
         .onAppear { store.kernelDiscoverNostrClaim() }
         .onDisappear { store.kernelDiscoverNostrRelease() }
     }
 
     // MARK: - Computed state
-
-    private var configuredRelayURL: URL? {
-        let settings = store.state.settings
-        guard !settings.nostrRelayURL.isEmpty,
-              let url = URL(string: settings.nostrRelayURL) else { return nil }
-        return url
-    }
 
     /// Live results projected from the kernel snapshot. The push seam keeps this
     /// current — reading it directly means the view re-renders as results land.
@@ -126,24 +115,6 @@ struct NostrDiscoverForm: View {
         .padding(.horizontal, AppTheme.Spacing.lg)
     }
 
-    private var nostrNotConfiguredState: some View {
-        VStack(spacing: AppTheme.Spacing.md) {
-            Spacer(minLength: 48)
-            Image(systemName: "person.2.slash")
-                .font(.system(size: 40, weight: .light))
-                .foregroundStyle(.tertiary)
-            Text("Nostr not configured")
-                .font(AppTheme.Typography.headline)
-            Text("Configure a Nostr relay in Settings → Agent to discover podcasts published on Nostr.")
-                .font(AppTheme.Typography.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, AppTheme.Spacing.lg)
-    }
-
     // MARK: - Shows list
 
     private var showsList: some View {
@@ -181,16 +152,10 @@ struct NostrDiscoverForm: View {
     // MARK: - Logic
 
     private func isAlreadySubscribed(_ show: NostrShowSummary) -> Bool {
-        // RSS path: match by feed URL + active subscription.
-        if let feed = show.feedUrl, let url = URL(string: feed),
-           let existing = store.podcast(feedURL: url),
-           store.subscription(podcastID: existing.id) != nil {
-            return true
-        }
-        // Feedless path: match by author pubkey (stable UUIDv5 row key).
-        return store.state.podcasts.contains {
-            $0.ownerPubkeyHex == show.authorPubkey
-        }
+        store.rustIsAlreadySubscribed(
+            feedURL: show.feedUrl,
+            ownerPubkey: show.authorPubkey
+        )
     }
 
     private func subscribe(to show: NostrShowSummary) async {

@@ -280,6 +280,7 @@ impl PodcastStore {
         self.episodes.remove(&id);
         self.auto_download_enabled.remove(&id);
         self.auto_download_cellular_allowed.remove(&id);
+        self.notifications_disabled.remove(&id);
         self.persist();
     }
 

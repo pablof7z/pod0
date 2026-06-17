@@ -102,9 +102,19 @@ fn play_action_serde_roundtrips() {
 
 #[test]
 fn sleep_timer_action_handles_some_and_none() {
-    let arm = SetSleepTimerAction { secs: Some(1800) };
+    let arm = SetSleepTimerAction {
+        secs: Some(1800),
+        end_of_episode: false,
+    };
     let json = serde_json::to_string(&arm).expect("encode");
     assert_eq!(json, r#"{"secs":1800}"#);
+
+    let end = SetSleepTimerAction {
+        secs: None,
+        end_of_episode: true,
+    };
+    let json = serde_json::to_string(&end).expect("encode");
+    assert_eq!(json, r#"{"secs":null,"end_of_episode":true}"#);
 
     let cancel = SetSleepTimerAction::default();
     let json = serde_json::to_string(&cancel).expect("encode");

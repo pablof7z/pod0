@@ -13,6 +13,10 @@ import os.log
 //   5. Optionally enqueue transcription via `TranscriptIngestService`.
 
 final class LiveYouTubeIngestionAdapter: YouTubeIngestionProtocol, @unchecked Sendable {
+    private struct YouTubeIngestMetadataPlan: Decodable {
+        let title: String
+        let description: String
+    }
 
     private static let logger = Logger.app("LiveYouTubeIngestionAdapter")
 
@@ -43,7 +47,14 @@ final class LiveYouTubeIngestionAdapter: YouTubeIngestionProtocol, @unchecked Se
             extractorURLString: extractorURL
         )
 
-        let finalTitle = customTitle.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty } ?? info.title
+        let metadata = await youtubeIngestMetadata(
+            youtubeURL: youtubeURL,
+            customTitle: customTitle,
+            fallbackTitle: info.title
+        )
+        guard let metadata else {
+            throw YouTubeAudioServiceError.requestFailed(0, "YouTube ingest metadata policy is unavailable")
+        }
 
         // Step 2 — download audio to a temp file
         let episodeID = UUID()
@@ -52,16 +63,16 @@ final class LiveYouTubeIngestionAdapter: YouTubeIngestionProtocol, @unchecked Se
         try await downloadAudio(from: info.audioURL, to: destURL)
 
         // Step 3 — publish episode to "Agent Generated" podcast
-        let episode = await MainActor.run {
-            AgentGeneratedPodcastService.publishEpisode(
-                title: finalTitle,
-                description: "From YouTube: \(youtubeURL)",
+        let episode = try await MainActor.run {
+            try AgentGeneratedPodcastService.publishEpisode(
+                title: metadata.title,
+                description: metadata.description,
                 audioURL: destURL,
                 durationSeconds: info.durationSeconds,
                 in: store
             )
         }
-        Self.logger.info("Published YouTube episode \(episode.id, privacy: .public) '\(finalTitle, privacy: .public)'")
+        Self.logger.info("Published YouTube episode \(episode.id, privacy: .public) '\(metadata.title, privacy: .public)'")
 
         // Step 4 — optional transcription
         var transcriptStatus: String?
@@ -69,16 +80,12 @@ final class LiveYouTubeIngestionAdapter: YouTubeIngestionProtocol, @unchecked Se
             Self.logger.info("Enqueuing transcription for \(episode.id, privacy: .public)")
             await TranscriptIngestService.shared.ingest(episodeID: episode.id)
             let refreshed = await store.episode(id: episode.id)
-            transcriptStatus = switch refreshed?.transcriptState {
-            case .ready: "ready"
-            case .failed: "failed"
-            default: "queued"
-            }
+            transcriptStatus = Self.transcriptResultStatus(for: refreshed?.transcriptState)
         }
 
         return YouTubeIngestionResult(
             episodeID: episode.id.uuidString,
-            title: finalTitle,
+            title: metadata.title,
             author: info.author,
             durationSeconds: info.durationSeconds,
             transcriptStatus: transcriptStatus
@@ -103,5 +110,65 @@ final class LiveYouTubeIngestionAdapter: YouTubeIngestionProtocol, @unchecked Se
         }
         try FileManager.default.moveItem(at: tempURL, to: destURL)
     }
-}
 
+    private struct TranscriptResultStatusResponse: Decodable {
+        let status: String?
+        let error: String?
+    }
+
+    private static func transcriptResultStatus(for state: TranscriptState?) -> String? {
+        guard let handle = KernelModel.shared?.podcastHandlePointer else { return nil }
+        var request = state.map(AppStateStore.transcriptStatePayload) ?? ["state": "missing"]
+        request["op"] = "transcript_result_status"
+        guard let data = try? JSONSerialization.data(withJSONObject: request),
+              let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        let envelope = json.withCString { ptr -> String? in
+            guard let result = nmp_app_podcast_agent_action_tool(handle, ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            return String(cString: result)
+        }
+        guard let envelope,
+              let responseData = envelope.data(using: .utf8),
+              let response = try? JSONDecoder().decode(TranscriptResultStatusResponse.self, from: responseData),
+              response.error == nil
+        else { return nil }
+        return response.status
+    }
+
+    private func youtubeIngestMetadata(
+        youtubeURL: String,
+        customTitle: String?,
+        fallbackTitle: String
+    ) async -> YouTubeIngestMetadataPlan? {
+        let handleBits = await MainActor.run {
+            KernelModel.shared?.podcastHandlePointer.map { Int(bitPattern: $0) }
+        }
+        var payload: [String: Any] = [
+            "op": "youtube_ingest_metadata",
+            "url": youtubeURL,
+            "fallback_title": fallbackTitle,
+        ]
+        if let customTitle { payload["custom_title"] = customTitle }
+        guard let handleBits,
+              let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        return await Task.detached(priority: .userInitiated) {
+            guard let handle = UnsafeMutableRawPointer(bitPattern: handleBits) else {
+                return nil
+            }
+            return json.withCString { ptr -> YouTubeIngestMetadataPlan? in
+                guard let result = nmp_app_podcast_agent_action_tool(handle, ptr) else {
+                    return nil
+                }
+                defer { nmp_free_string(result) }
+                let envelope = String(cString: result)
+                guard let data = envelope.data(using: .utf8) else { return nil }
+                return try? JSONDecoder().decode(YouTubeIngestMetadataPlan.self, from: data)
+            }
+        }.value
+    }
+}

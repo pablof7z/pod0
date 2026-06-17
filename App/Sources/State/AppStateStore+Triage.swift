@@ -2,32 +2,16 @@ import Foundation
 
 // MARK: - AppStateStore + Triage
 //
-// Display-side interaction surface for AI Inbox triage. The Rust kernel
-// owns triage (M5): it selects candidates, runs the classifier, and projects
-// per-episode decisions onto `Episode.triageDecision` every snapshot tick.
-// Swift no longer runs triage orchestration — the only local mutation left
-// here is `clearTriageDecision`, used when the user rescues an archived
-// episode by playing it, which optimistically clears the local decision and
-// reports the clear to the kernel so the projection doesn't resurrect it.
+// Display-side interaction surface for AI Inbox triage. The Rust kernel owns
+// triage (M5): it selects candidates, runs the classifier, projects per-episode
+// decisions, and clears a decision when user playback intent rescues an item.
 
 extension AppStateStore {
 
-    /// Clear a single episode's triage state. Used when the user
-    /// manually rescues an archived episode (future surface) or when a
-    /// re-triage pass wants to overwrite a previous run.
+    /// Clear a single episode's triage state through the kernel. Kept as a
+    /// thin action wrapper for explicit future UI affordances; playback rescue
+    /// is handled by Rust `podcast.player` load/play.
     func clearTriageDecision(_ episodeID: UUID) {
-        guard let idx = self.episodes.firstIndex(where: { $0.id == episodeID }) else { return }
-        guard self.episodes[idx].triageDecision != nil else { return }
-        var episodes = self.episodes
-        episodes[idx].triageDecision = nil
-        episodes[idx].triageRationale = nil
-        episodes[idx].triageIsHero = false
-        performMutationBatch {
-            self.episodes = episodes
-            invalidateEpisodeProjections()
-        }
-        // M4 / D7: clear the decision in Rust via the "none" sentinel so the
-        // next projection pass doesn't resurrect the stale decision.
         kernelSetEpisodeTriage([
             KernelTriagePatch(episodeID: episodeID, decision: "none", isHero: false, rationale: nil)
         ])

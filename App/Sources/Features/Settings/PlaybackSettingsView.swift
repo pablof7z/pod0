@@ -94,7 +94,7 @@ struct PlaybackSettingsView: View {
                 Label("Auto-play next from queue", systemImage: "forward.end.fill")
             }
         } footer: {
-            Text("When on, the next episode in your Up Next queue starts automatically when one finishes. The sleep timer's end-of-episode mode still stops playback as configured.")
+            Text("When on, Rust starts the next episode in your Up Next queue after one finishes. End-of-episode sleep timer mode still stops playback first.")
         }
     }
 

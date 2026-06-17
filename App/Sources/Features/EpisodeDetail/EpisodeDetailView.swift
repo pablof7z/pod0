@@ -9,15 +9,14 @@ import SwiftUI
 /// Transcripts are an internal extraction layer — they feed RAG, clip
 /// selection, ad detection, and the agent's tools — but they are never the
 /// primary "what's playing now" reading surface. Background ingest still
-/// kicks off here when a publisher transcript URL is present, so the agent
-/// stack lights up without an explicit user step; the transcript text itself
-/// stays out of sight.
+/// starts here for idle episodes, but Rust decides whether that means
+/// publisher fetch, STT, or skip; the transcript text itself stays out of
+/// sight.
 ///
 /// Driven by the real `Episode` looked up out of `AppStateStore` via the
-/// passed `episodeID`. On first appearance for an episode that has a
-/// `publisherTranscriptURL` and a `.none` state, we kick off a background
-/// `TranscriptIngestService` warm so RAG / agent paths fill in without
-/// blocking the user surface.
+/// passed `episodeID`. On first appearance for an episode with a `.none`
+/// transcript state, we kick off a background `TranscriptIngestService` warm
+/// so RAG / agent paths fill in without blocking the user surface.
 struct EpisodeDetailView: View {
 
     // MARK: Inputs
@@ -107,20 +106,14 @@ struct EpisodeDetailView: View {
         }
     }
 
-    /// Warm the transcript on first appearance. Kicks off ingest when:
-    /// - state is `.none` (not already ingested or in-flight), AND
-    /// - a publisher transcript URL is present, OR the episode belongs to a
-    ///   feed-less external-playback subscription (STT fallback path).
+    /// Warm the transcript on first appearance. Rust owns whether the episode
+    /// should fetch a publisher transcript, run STT, or skip; Swift only avoids
+    /// re-entering when the projected state is already non-idle.
     ///
     /// We deliberately do not retry `.failed` here — failures sit until
     /// the user re-arms ingestion via Settings → Transcripts.
     private func warmTranscriptIfNeeded(episode: Episode) async {
         guard case .none = episode.transcriptState else { return }
-        // Force-ingest transcripts for episodes parented to the Unknown
-        // podcast — those are agent-added externals where the user wants
-        // a transcript even though no publisher transcript URL exists.
-        let isUnknownExternal = episode.podcastID == Podcast.unknownID
-        guard episode.publisherTranscriptURL != nil || isUnknownExternal else { return }
         await TranscriptIngestService.shared.ingest(episodeID: episode.id)
     }
 

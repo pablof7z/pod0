@@ -3,6 +3,94 @@ import Foundation
 // MARK: - Podcast action tools
 
 extension AgentTools {
+    private struct PlaybackRatePlan: Decodable {
+        let error: String?
+        let rate: Double?
+    }
+
+    private struct SleepTimerPlan: Decodable {
+        let error: String?
+        let mode: String?
+        let minutes: Int?
+    }
+
+    private struct SeekPlan: Decodable {
+        let error: String?
+        let positionSeconds: Double?
+
+        enum CodingKeys: String, CodingKey {
+            case error
+            case positionSeconds = "position_seconds"
+        }
+    }
+
+    private struct PlayEpisodePlan: Decodable {
+        let error: String?
+        let source: String?
+        let episodeID: String?
+        let audioURL: String?
+        let title: String?
+        let feedURL: String?
+        let durationSeconds: Double?
+        let startSeconds: Double?
+        let endSeconds: Double?
+        let queuePosition: String?
+
+        enum CodingKeys: String, CodingKey {
+            case error, source, title
+            case episodeID = "episode_id"
+            case audioURL = "audio_url"
+            case feedURL = "feed_url"
+            case durationSeconds = "duration_seconds"
+            case startSeconds = "start_seconds"
+            case endSeconds = "end_seconds"
+            case queuePosition = "queue_position"
+        }
+    }
+
+    private struct ActionIDPlan: Decodable {
+        let error: String?
+        let episodeID: String?
+        let podcastID: String?
+
+        enum CodingKeys: String, CodingKey {
+            case error
+            case episodeID = "episode_id"
+            case podcastID = "podcast_id"
+        }
+    }
+
+    private struct ClipActionPlan: Decodable {
+        let error: String?
+        let episodeID: String?
+        let startSeconds: Double?
+        let endSeconds: Double?
+        let caption: String?
+        let transcriptText: String?
+
+        enum CodingKeys: String, CodingKey {
+            case error, caption
+            case episodeID = "episode_id"
+            case startSeconds = "start_seconds"
+            case endSeconds = "end_seconds"
+            case transcriptText = "transcript_text"
+        }
+    }
+
+    private struct DownloadTranscribePlan: Decodable {
+        let error: String?
+        let source: String?
+        let episodeID: String?
+        let audioURL: String?
+        let feedURL: String?
+
+        enum CodingKeys: String, CodingKey {
+            case error, source
+            case episodeID = "episode_id"
+            case audioURL = "audio_url"
+            case feedURL = "feed_url"
+        }
+    }
 
     // MARK: - Playback controls
 
@@ -10,51 +98,41 @@ extension AgentTools {
         guard await deps.playback.pausePlayback() else {
             return toolError("Playback is unavailable.")
         }
-        return toolSuccess(["state": "paused"])
+        return await actionTool(op: "pause_result", payload: [:])
+            ?? toolError("pause_playback result shaping is unavailable")
     }
 
     static func setPlaybackRateTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        guard let requested = podcastActionNumericArg(args["rate"]) else {
-            return toolError("Missing or invalid 'rate'")
+        guard let plan = await actionPlan(PlaybackRatePlan.self, op: "rate_plan", args: args) else {
+            return toolError("set_playback_rate planning is unavailable")
         }
-        guard requested > 0 else {
-            return toolError("'rate' must be greater than 0")
-        }
+        if let error = plan.error { return toolError(error) }
+        guard let requested = plan.rate else { return toolError("set_playback_rate plan was incomplete") }
         guard let applied = await deps.playback.setPlaybackRate(requested) else {
             return toolError("Playback is unavailable.")
         }
-        return toolSuccess([
+        return await actionTool(op: "rate_result", payload: [
             "requested_rate": requested,
             "rate": applied,
-        ])
+        ]) ?? toolError("set_playback_rate result shaping is unavailable")
     }
 
     static func setSleepTimerTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        guard let mode = (args["mode"] as? String)?.trimmed.nilIfEmpty else {
-            return toolError("Missing or empty 'mode'")
+        guard let plan = await actionPlan(SleepTimerPlan.self, op: "sleep_plan", args: args) else {
+            return toolError("set_sleep_timer planning is unavailable")
         }
-        let normalized = mode.lowercased()
-        guard ["off", "minutes", "end_of_episode"].contains(normalized) else {
-            return toolError("'mode' must be one of: off, minutes, end_of_episode")
-        }
-        let minutes: Int?
-        if normalized == "minutes" {
-            guard let rawMinutes = podcastActionIntArg(args["minutes"]), rawMinutes > 0 else {
-                return toolError("'minutes' is required when mode is 'minutes'")
-            }
-            minutes = min(180, rawMinutes)
-        } else {
-            minutes = nil
-        }
-        guard let label = await deps.playback.setSleepTimer(mode: normalized, minutes: minutes) else {
+        if let error = plan.error { return toolError(error) }
+        guard let mode = plan.mode else { return toolError("set_sleep_timer plan was incomplete") }
+        guard let label = await deps.playback.setSleepTimer(mode: mode, minutes: plan.minutes) else {
             return toolError("Playback is unavailable.")
         }
         var payload: [String: Any] = [
-            "mode": normalized,
+            "mode": mode,
             "label": label,
         ]
-        if let minutes { payload["minutes"] = minutes }
-        return toolSuccess(payload)
+        if let minutes = plan.minutes { payload["minutes"] = minutes }
+        return await actionTool(op: "sleep_result", payload: payload)
+            ?? toolError("set_sleep_timer result shaping is unavailable")
     }
 
     // MARK: - Playback navigation
@@ -71,23 +149,21 @@ extension AgentTools {
         if let pid = state.podcastID { payload["podcast_id"] = pid }
         if let ptitle = state.podcastTitle { payload["podcast_title"] = ptitle }
         if let dur = state.durationSeconds { payload["duration_seconds"] = dur }
-        if state.episodeID == nil {
-            payload["message"] = "Nothing is currently loaded."
-        }
-        return toolSuccess(payload)
+        return await actionTool(op: "now_playing_result", payload: payload)
+            ?? toolError("get_now_playing result shaping is unavailable")
     }
 
     static func seekToTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        guard let position = podcastActionNumericArg(args["position_seconds"]) else {
-            return toolError("Missing or invalid 'position_seconds'")
+        guard let plan = await actionPlan(SeekPlan.self, op: "seek_plan", args: args) else {
+            return toolError("seek_to planning is unavailable")
         }
-        guard position >= 0 else {
-            return toolError("'position_seconds' must be >= 0")
-        }
+        if let error = plan.error { return toolError(error) }
+        guard let position = plan.positionSeconds else { return toolError("seek_to plan was incomplete") }
         guard let applied = await deps.playback.seekTo(positionSeconds: position) else {
             return toolError("seek_to failed: nothing is currently loaded")
         }
-        return toolSuccess(["position_seconds": applied])
+        return await actionTool(op: "seek_result", payload: ["position_seconds": applied])
+            ?? toolError("seek_to result shaping is unavailable")
     }
 
     static func skipForwardTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
@@ -97,7 +173,8 @@ extension AgentTools {
         }
         var payload: [String: Any] = ["new_position_seconds": newPosition]
         if let s = seconds { payload["skipped_seconds"] = s }
-        return toolSuccess(payload)
+        return await actionTool(op: "skip_result", payload: payload)
+            ?? toolError("skip_forward result shaping is unavailable")
     }
 
     static func skipBackwardTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
@@ -107,7 +184,8 @@ extension AgentTools {
         }
         var payload: [String: Any] = ["new_position_seconds": newPosition]
         if let s = seconds { payload["skipped_seconds"] = s }
-        return toolSuccess(payload)
+        return await actionTool(op: "skip_result", payload: payload)
+            ?? toolError("skip_backward result shaping is unavailable")
     }
 
     // MARK: - Episode state
@@ -145,15 +223,16 @@ extension AgentTools {
         action: String,
         mutate: @escaping (EpisodeID) async throws -> EpisodeMutationResult
     ) async -> String {
-        guard let episodeID = (args["episode_id"] as? String)?.trimmed, !episodeID.isEmpty else {
-            return toolError("Missing or empty 'episode_id'")
+        guard let plan = await actionPlan(ActionIDPlan.self, op: "episode_id_plan", args: args) else {
+            return toolError("\(action) planning is unavailable")
         }
-        let exists = await deps.fetcher.episodeExists(episodeID: episodeID)
-        guard exists else {
-            return toolError("Episode not found: \(episodeID)")
-        }
+        if let error = plan.error { return toolError(error) }
+        guard let episodeID = plan.episodeID else { return toolError("\(action) plan was incomplete") }
         do {
-            return toolSuccess(serializeEpisodeMutation(try await mutate(episodeID)))
+            return await actionTool(
+                op: "episode_mutation_result",
+                payload: rawEpisodeMutation(try await mutate(episodeID))
+            ) ?? toolError("\(action) result shaping is unavailable")
         } catch {
             return toolError("\(action) failed: \(error.localizedDescription)")
         }
@@ -162,83 +241,54 @@ extension AgentTools {
     // MARK: - Transcript + feed
 
     static func requestTranscriptionTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        guard let episodeID = (args["episode_id"] as? String)?.trimmed, !episodeID.isEmpty else {
-            return toolError("Missing or empty 'episode_id'")
+        guard let plan = await actionPlan(ActionIDPlan.self, op: "episode_id_plan", args: args) else {
+            return toolError("request_transcription planning is unavailable")
         }
-        let exists = await deps.fetcher.episodeExists(episodeID: episodeID)
-        guard exists else {
-            return toolError("Episode not found: \(episodeID)")
-        }
+        if let error = plan.error { return toolError(error) }
+        guard let episodeID = plan.episodeID else { return toolError("request_transcription plan was incomplete") }
         do {
             let result = try await deps.library.requestTranscription(episodeID: episodeID)
-            var payload: [String: Any] = [
-                "episode_id": result.episodeID,
-                "status": result.status,
-            ]
-            if let source = result.source { payload["source"] = source }
-            if let message = result.message { payload["message"] = message }
-            return toolSuccess(payload)
+            return await actionTool(op: "transcript_result", payload: rawTranscriptResult(result))
+                ?? toolError("request_transcription result shaping is unavailable")
         } catch {
             return toolError("request_transcription failed: \(error.localizedDescription)")
         }
     }
 
     static func downloadAndTranscribeTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        let episodeIDRaw = (args["episode_id"] as? String)?.trimmed.nilIfEmpty
-        let audioURLRaw  = (args["audio_url"] as? String)?.trimmed.nilIfEmpty
-        let feedURLRaw   = (args["feed_url"] as? String)?.trimmed.nilIfEmpty
-
-        // External path: no episode_id — route through auto-subscribe.
-        if episodeIDRaw == nil, let audioURL = audioURLRaw {
-            guard let feedURL = feedURLRaw else {
-                return toolError("'feed_url' is required when 'episode_id' is not provided. " +
-                    "Use subscribe_podcast or search_podcast_directory to get the feed URL first.")
-            }
+        guard let plan = await actionPlan(DownloadTranscribePlan.self, op: "download_transcribe_plan", args: args) else {
+            return toolError("download_and_transcribe planning is unavailable")
+        }
+        if let error = plan.error { return toolError(error) }
+        if plan.source == "external", let audioURL = plan.audioURL, let feedURL = plan.feedURL {
             return await downloadAndTranscribeExternalTool(
                 feedURLString: feedURL,
                 audioURLString: audioURL,
                 deps: deps
             )
         }
-
-        guard let episodeID = episodeIDRaw else {
-            return toolError("Provide 'episode_id' (for subscribed episodes) or " +
-                "'audio_url' + 'feed_url' (for external episodes)")
-        }
-        let exists = await deps.fetcher.episodeExists(episodeID: episodeID)
-        guard exists else {
-            return toolError("Episode not found: \(episodeID)")
+        guard plan.source == "library", let episodeID = plan.episodeID else {
+            return toolError("download_and_transcribe plan was incomplete")
         }
         do {
             let result = try await deps.library.downloadAndTranscribe(episodeID: episodeID)
-            var payload: [String: Any] = [
-                "episode_id": result.episodeID,
-                "status": result.status,
-            ]
-            if let source = result.source { payload["source"] = source }
-            if let message = result.message { payload["message"] = message }
-            return toolSuccess(payload)
+            return await actionTool(op: "transcript_result", payload: rawTranscriptResult(result))
+                ?? toolError("download_and_transcribe result shaping is unavailable")
         } catch {
             return toolError("download_and_transcribe failed: \(error.localizedDescription)")
         }
     }
 
     static func refreshFeedTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        guard let podcastID = (args["podcast_id"] as? String)?.trimmed, !podcastID.isEmpty else {
-            return toolError("Missing or empty 'podcast_id'")
+        guard let plan = await actionPlan(ActionIDPlan.self, op: "podcast_id_plan", args: args) else {
+            return toolError("refresh_feed planning is unavailable")
         }
+        if let error = plan.error { return toolError(error) }
+        guard let podcastID = plan.podcastID else { return toolError("refresh_feed plan was incomplete") }
         do {
             let result = try await deps.library.refreshFeed(podcastID: podcastID)
-            var payload: [String: Any] = [
-                "podcast_id": result.podcastID,
-                "title": result.title,
-                "episode_count": result.episodeCount,
-                "new_episode_count": result.newEpisodeCount,
-            ]
-            if let refreshedAt = result.refreshedAt {
-                payload["refreshed_at"] = iso8601Basic.string(from: refreshedAt)
-            }
-            return toolSuccess(payload)
+            return await actionTool(op: "refresh_result", payload: rawRefreshResult(result))
+                ?? toolError("refresh_feed result shaping is unavailable")
         } catch {
             return toolError("refresh_feed failed: \(error.localizedDescription)")
         }
@@ -247,47 +297,24 @@ extension AgentTools {
     // MARK: - Clipping
 
     static func createClipTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        guard let episodeID = (args["episode_id"] as? String)?.trimmed, !episodeID.isEmpty else {
-            return toolError("Missing or empty 'episode_id'")
+        guard let plan = await actionPlan(ClipActionPlan.self, op: "clip_plan", args: args) else {
+            return toolError("create_clip planning is unavailable")
         }
-        guard let startSeconds = podcastActionNumericArg(args["start_seconds"]) else {
-            return toolError("Missing or invalid 'start_seconds'")
-        }
-        guard let endSeconds = podcastActionNumericArg(args["end_seconds"]) else {
-            return toolError("Missing or invalid 'end_seconds'")
-        }
-        guard startSeconds >= 0 else {
-            return toolError("'start_seconds' must be >= 0")
-        }
-        guard endSeconds > startSeconds else {
-            return toolError("'end_seconds' must be greater than 'start_seconds'")
-        }
-        let exists = await deps.fetcher.episodeExists(episodeID: episodeID)
-        guard exists else {
-            return toolError("Episode not found: \(episodeID)")
-        }
-        let caption = (args["caption"] as? String)?.trimmed.nilIfEmpty
-        let transcriptText = (args["transcript_text"] as? String)?.trimmed.nilIfEmpty
+        if let error = plan.error { return toolError(error) }
+        guard let episodeID = plan.episodeID,
+              let startSeconds = plan.startSeconds,
+              let endSeconds = plan.endSeconds
+        else { return toolError("create_clip plan was incomplete") }
         do {
             let result = try await deps.library.createClip(
                 episodeID: episodeID,
                 startSeconds: startSeconds,
                 endSeconds: endSeconds,
-                caption: caption,
-                transcriptText: transcriptText
+                caption: plan.caption,
+                transcriptText: plan.transcriptText
             )
-            var payload: [String: Any] = [
-                "clip_id": result.clipID,
-                "episode_id": result.episodeID,
-                "episode_title": result.episodeTitle,
-                "start_seconds": result.startSeconds,
-                "end_seconds": result.endSeconds,
-                "duration_seconds": result.endSeconds - result.startSeconds,
-            ]
-            if !result.transcriptText.isEmpty { payload["transcript_text"] = result.transcriptText }
-            if let caption = result.caption { payload["caption"] = caption }
-            if let podcastID = result.podcastID { payload["podcast_id"] = podcastID }
-            return toolSuccess(payload)
+            return await actionTool(op: "clip_result", payload: rawClipResult(result))
+                ?? toolError("create_clip result shaping is unavailable")
         } catch {
             return toolError("create_clip failed: \(error.localizedDescription)")
         }
@@ -300,47 +327,32 @@ extension AgentTools {
     /// subscription required) — at an optional `start_seconds` / `end_seconds`
     /// window, routed by `queue_position` (defaults to `.now`).
     static func playEpisodeTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        let episodeID = (args["episode_id"] as? String)?.trimmed.nilIfEmpty
-        let audioURLString = (args["audio_url"] as? String)?.trimmed.nilIfEmpty
-
-        if episodeID != nil, audioURLString != nil {
-            return toolError("Pass either 'episode_id' OR 'audio_url' — not both.")
+        guard let plan = await actionPlan(PlayEpisodePlan.self, op: "play_plan", args: args) else {
+            return toolError("play_episode planning is unavailable")
         }
-        if episodeID == nil, audioURLString == nil {
-            return toolError("Missing identifier: provide 'episode_id' (library) or 'audio_url' + 'title' (external).")
+        if let error = plan.error { return toolError(error) }
+        guard let position = QueuePosition(rawValue: plan.queuePosition ?? QueuePosition.now.rawValue) else {
+            return toolError("play_episode plan returned an invalid queue position")
         }
-
-        let startSeconds = podcastActionNumericArg(args["start_seconds"])
-        if let s = startSeconds, s < 0 {
-            return toolError("'start_seconds' must be >= 0")
-        }
-        let endSeconds = podcastActionNumericArg(args["end_seconds"])
-        if let e = endSeconds, let s = startSeconds, e <= s {
-            return toolError("'end_seconds' must be greater than 'start_seconds'")
-        }
-        if let e = endSeconds, startSeconds == nil, e <= 0 {
-            return toolError("'end_seconds' must be > 0 when 'start_seconds' is omitted")
-        }
-        let positionRaw = (args["queue_position"] as? String)?.trimmed.lowercased() ?? QueuePosition.now.rawValue
-        guard let position = QueuePosition(rawValue: positionRaw) else {
-            return toolError("'queue_position' must be one of: now, next, end")
-        }
-
-        if let episodeID {
+        if plan.source == "library", let episodeID = plan.episodeID {
             return await playLibraryEpisode(
                 episodeID: episodeID,
-                startSeconds: startSeconds,
-                endSeconds: endSeconds,
+                startSeconds: plan.startSeconds,
+                endSeconds: plan.endSeconds,
                 position: position,
                 deps: deps
             )
         }
-        // audioURLString is non-nil here (validated above).
+        guard plan.source == "external", let audioURLString = plan.audioURL else {
+            return toolError("play_episode plan was incomplete")
+        }
         return await playExternalAudioURL(
-            audioURLString: audioURLString ?? "",
-            args: args,
-            startSeconds: startSeconds,
-            endSeconds: endSeconds,
+            audioURLString: audioURLString,
+            title: plan.title,
+            feedURLString: plan.feedURL,
+            durationSeconds: plan.durationSeconds,
+            startSeconds: plan.startSeconds,
+            endSeconds: plan.endSeconds,
             position: position,
             deps: deps
         )
@@ -353,24 +365,26 @@ extension AgentTools {
         position: QueuePosition,
         deps: PodcastAgentToolDeps
     ) async -> String {
-        let exists = await deps.fetcher.episodeExists(episodeID: episodeID)
-        guard exists else {
-            return toolError("Episode not found: \(episodeID)")
-        }
-        guard let result = await deps.playback.playEpisode(
+        switch await deps.playback.playEpisode(
             episodeID: episodeID,
             startSeconds: startSeconds,
             endSeconds: endSeconds,
             queuePosition: position
-        ) else {
+        ) {
+        case let .played(result):
+            return await playResultEnvelope(result, startSeconds: startSeconds, endSeconds: endSeconds)
+        case let .rejected(message):
+            return toolError("play_episode rejected: \(message)")
+        case .unavailable:
             return toolError("play_episode failed: playback host unavailable")
         }
-        return toolSuccess(serializePlayEpisodeResult(result, startSeconds: startSeconds, endSeconds: endSeconds))
     }
 
     private static func playExternalAudioURL(
         audioURLString: String,
-        args: [String: Any],
+        title: String?,
+        feedURLString: String?,
+        durationSeconds: Double?,
         startSeconds: Double?,
         endSeconds: Double?,
         position: QueuePosition,
@@ -379,11 +393,7 @@ extension AgentTools {
         guard let audioURL = URL(string: audioURLString) else {
             return toolError("Invalid 'audio_url': \(audioURLString)")
         }
-        guard let title = (args["title"] as? String)?.trimmed, !title.isEmpty else {
-            return toolError("Missing or empty 'title' (required with 'audio_url').")
-        }
-        let feedURLString = (args["feed_url"] as? String)?.trimmed.nilIfEmpty
-        let durationSeconds = podcastActionNumericArg(args["duration_seconds"])
+        guard let title else { return toolError("play_episode plan was incomplete") }
         guard let result = await deps.playback.playExternalEpisode(
             audioURL: audioURL,
             title: title,
@@ -395,16 +405,17 @@ extension AgentTools {
         ) else {
             return toolError("play_episode failed: playback host unavailable")
         }
-        var payload = serializePlayEpisodeResult(result, startSeconds: startSeconds, endSeconds: endSeconds)
+        var payload = rawPlayEpisodeResult(result, startSeconds: startSeconds, endSeconds: endSeconds)
         payload["audio_url"] = audioURLString
         payload["title"] = title
         if let feedURLString { payload["feed_url"] = feedURLString }
-        return toolSuccess(payload)
+        return await actionTool(op: "play_result", payload: payload)
+            ?? toolError("play_episode result shaping is unavailable")
     }
 
     /// Shared payload shape for both `play_episode` branches (library and
     /// external) so the LLM sees a consistent success envelope.
-    static func serializePlayEpisodeResult(
+    static func rawPlayEpisodeResult(
         _ result: PlayEpisodeResult,
         startSeconds: Double?,
         endSeconds: Double?
@@ -419,23 +430,23 @@ extension AgentTools {
         if let dur = result.durationSeconds { payload["duration_seconds"] = dur }
         if let s = startSeconds { payload["start_seconds"] = s }
         if let e = endSeconds { payload["end_seconds"] = e }
-        switch result.queuePosition {
-        case .now:
-            payload["status"] = "playing"
-            payload["message"] = "Playing now."
-        case .next:
-            payload["status"] = "queued"
-            payload["message"] = "Added to the front of Up Next."
-        case .end:
-            payload["status"] = "queued"
-            payload["message"] = "Added to the end of Up Next."
-        }
         return payload
+    }
+
+    private static func playResultEnvelope(
+        _ result: PlayEpisodeResult,
+        startSeconds: Double?,
+        endSeconds: Double?
+    ) async -> String {
+        await actionTool(
+            op: "play_result",
+            payload: rawPlayEpisodeResult(result, startSeconds: startSeconds, endSeconds: endSeconds)
+        ) ?? toolError("play_episode result shaping is unavailable")
     }
 
     // MARK: - Helpers
 
-    private static func serializeEpisodeMutation(_ result: EpisodeMutationResult) -> [String: Any] {
+    private static func rawEpisodeMutation(_ result: EpisodeMutationResult) -> [String: Any] {
         var payload: [String: Any] = [
             "episode_id": result.episodeID,
             "episode_title": result.episodeTitle,
@@ -444,6 +455,78 @@ extension AgentTools {
         if let podcastID = result.podcastID { payload["podcast_id"] = podcastID }
         if let podcastTitle = result.podcastTitle { payload["podcast_title"] = podcastTitle }
         return payload
+    }
+
+    static func rawTranscriptResult(_ result: TranscriptRequestResult) -> [String: Any] {
+        var payload: [String: Any] = [
+            "episode_id": result.episodeID,
+            "status": result.status,
+        ]
+        if let source = result.source { payload["source"] = source }
+        if let message = result.message { payload["message"] = message }
+        return payload
+    }
+
+    private static func rawRefreshResult(_ result: FeedRefreshResult) -> [String: Any] {
+        var payload: [String: Any] = [
+            "podcast_id": result.podcastID,
+            "title": result.title,
+            "episode_count": result.episodeCount,
+            "new_episode_count": result.newEpisodeCount,
+        ]
+        if let refreshedAt = result.refreshedAt {
+            payload["refreshed_at"] = Int(refreshedAt.timeIntervalSince1970)
+        }
+        return payload
+    }
+
+    private static func rawClipResult(_ result: ClipResult) -> [String: Any] {
+        var payload: [String: Any] = [
+            "clip_id": result.clipID,
+            "episode_id": result.episodeID,
+            "episode_title": result.episodeTitle,
+            "start_seconds": result.startSeconds,
+            "end_seconds": result.endSeconds,
+        ]
+        if !result.transcriptText.isEmpty { payload["transcript_text"] = result.transcriptText }
+        if let caption = result.caption { payload["caption"] = caption }
+        if let podcastID = result.podcastID { payload["podcast_id"] = podcastID }
+        return payload
+    }
+
+    static func actionTool(op: String, payload: [String: Any]) async -> String? {
+        let handleBits = await MainActor.run {
+            KernelModel.shared?.podcastHandlePointer.map { Int(bitPattern: $0) }
+        }
+        guard let handleBits else { return nil }
+        var request = payload
+        request["op"] = op
+        guard let data = try? JSONSerialization.data(withJSONObject: request),
+              let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        return await Task.detached(priority: .userInitiated) {
+            guard let handle = UnsafeMutableRawPointer(bitPattern: handleBits) else {
+                return nil
+            }
+            return json.withCString { ptr in
+                guard let result = nmp_app_podcast_agent_action_tool(handle, ptr) else {
+                    return nil
+                }
+                defer { nmp_free_string(result) }
+                return String(cString: result)
+            }
+        }.value
+    }
+
+    private static func actionPlan<T: Decodable>(
+        _ type: T.Type,
+        op: String,
+        args: [String: Any]
+    ) async -> T? {
+        guard let envelope = await actionTool(op: op, payload: args),
+              let data = envelope.data(using: .utf8)
+        else { return nil }
+        return try? JSONDecoder().decode(T.self, from: data)
     }
 
     static func podcastActionNumericArg(_ raw: Any?) -> Double? {

@@ -104,6 +104,9 @@ final class KernelModel {
     /// `AppStateStore` can forward 1 Hz position ticks into
     /// `setEpisodePlaybackPosition` without relying on `withObservationTracking`.
     var onPositionTick: ((String, Double) -> Void)?
+    /// Called on the MainActor when Rust completes an agent-ask lifecycle
+    /// event asynchronously, currently timeout expiry.
+    var onAgentAskEvent: ((AgentAskResponse) -> Void)?
     /// Hash of the library fields that matter to list views. Excludes
     /// `playbackPositionSecs` so list views don't re-render at 4 Hz
     /// during playback (the position is only needed by the player row).
@@ -208,6 +211,9 @@ final class KernelModel {
         // teardown; the next instance re-publishes from its own `init`.
         Self.shared = self
         kernel.attachVoiceReportChannel()
+        kernel.onAgentAskEvent = { [weak self] response in
+            self?.onAgentAskEvent?(response)
+        }
     }
 
     private func markKernelDead() {
@@ -545,7 +551,511 @@ final class KernelModel {
         return result
     }
 
+    func itunesDirectorySearchEnvelope(query: String, type: String, limit: Int) -> String? {
+        kernel.itunesDirectorySearchEnvelope(query: query, type: type, limit: limit)
+    }
+
+    func itunesLookupFeedEnvelope(collectionID: String) -> String? {
+        kernel.itunesLookupFeedEnvelope(collectionID: collectionID)
+    }
+
+    func itunesTopPodcastsEnvelope(limit: Int, storefront: String) -> String? {
+        kernel.itunesTopPodcastsEnvelope(limit: limit, storefront: storefront)
+    }
+
+    func threadingProjectionEnvelope() -> String? {
+        kernel.threadingProjectionEnvelope()
+    }
+
+    func threadingActiveTopicsEnvelope(limit: Int, podcastIDs: [UUID]) -> String? {
+        kernel.threadingActiveTopicsEnvelope(limit: limit, podcastIDs: podcastIDs)
+    }
+
+    func agentInventoryEnvelope(request: [String: Any]) -> String? {
+        kernel.agentInventoryEnvelope(request: request)
+    }
+
+    func agentEmptyStateEnvelope() -> String? {
+        kernel.agentEmptyStateEnvelope()
+    }
+
+    func localSearchEnvelope(query: String, limit: Int) -> String? {
+        kernel.localSearchEnvelope(query: query, limit: limit)
+    }
+
+    func homeContinueListeningEnvelope(limit: Int, podcastIDs: [UUID]) -> String? {
+        kernel.homeContinueListeningEnvelope(limit: limit, podcastIDs: podcastIDs)
+    }
+
+    func homeTriageRollupEnvelope(podcastIDs: [UUID]) -> String? {
+        kernel.homeTriageRollupEnvelope(podcastIDs: podcastIDs)
+    }
+
+    func homeSubscriptionListEnvelope(filter: String, podcastIDs: [UUID]) -> String? {
+        kernel.homeSubscriptionListEnvelope(filter: filter, podcastIDs: podcastIDs)
+    }
+
+    func carplayListenNowEnvelope(limit: Int) -> String? {
+        kernel.carplayListenNowEnvelope(limit: limit)
+    }
+
+    func carplayShowsEnvelope(limit: Int) -> String? {
+        kernel.carplayShowsEnvelope(limit: limit)
+    }
+
+    func carplayShowEpisodesEnvelope(podcastID: UUID, limit: Int) -> String? {
+        kernel.carplayShowEpisodesEnvelope(podcastID: podcastID, limit: limit)
+    }
+
+    func carplayDownloadsEnvelope(limit: Int) -> String? {
+        kernel.carplayDownloadsEnvelope(limit: limit)
+    }
+
+    func libraryShowEpisodesEnvelope(podcastID: UUID, limit: Int) -> String? {
+        kernel.libraryShowEpisodesEnvelope(podcastID: podcastID, limit: limit)
+    }
+
+    func libraryPodcastStatsEnvelope(podcastIDs: [UUID]) -> String? {
+        kernel.libraryPodcastStatsEnvelope(podcastIDs: podcastIDs)
+    }
+
+    func libraryEpisodeForAudioURLEnvelope(audioURL: String, podcastID: UUID) -> String? {
+        kernel.libraryEpisodeForAudioURLEnvelope(audioURL: audioURL, podcastID: podcastID)
+    }
+
+    func librarySummaryEnvelope() -> String? {
+        kernel.librarySummaryEnvelope()
+    }
+
+    func libraryAllEpisodesEnvelope(filter: String, query: String, limit: Int) -> String? {
+        kernel.libraryAllEpisodesEnvelope(filter: filter, query: query, limit: limit)
+    }
+
+    func libraryAllPodcastsEnvelope(query: String) -> String? {
+        kernel.libraryAllPodcastsEnvelope(query: query)
+    }
+
+    func libraryFollowedPodcastsEnvelope() -> String? {
+        kernel.libraryFollowedPodcastsEnvelope()
+    }
+
+    func libraryOwnedPodcastsEnvelope() -> String? {
+        kernel.libraryOwnedPodcastsEnvelope()
+    }
+
+    func libraryCategoriesEnvelope(categories: [[String: Any]]) -> String? {
+        kernel.libraryCategoriesEnvelope(categories: categories)
+    }
+
+    func libraryDownloadRowsEnvelope() -> String? {
+        kernel.libraryDownloadRowsEnvelope()
+    }
+
+    func libraryStarredEpisodesEnvelope() -> String? {
+        kernel.libraryStarredEpisodesEnvelope()
+    }
+
+    func libraryEpisodeLookupEnvelope(reference: String) -> String? {
+        kernel.libraryEpisodeLookupEnvelope(reference: reference)
+    }
+
+    func librarySubscriptionStatusEnvelope(feedURL: String?, ownerPubkey: String?, podcastID: String? = nil) -> String? {
+        kernel.librarySubscriptionStatusEnvelope(feedURL: feedURL, ownerPubkey: ownerPubkey, podcastID: podcastID)
+    }
+
+    func libraryPodcastForOwnerPubkeyEnvelope(ownerPubkey: String) -> String? {
+        kernel.libraryPodcastForOwnerPubkeyEnvelope(ownerPubkey: ownerPubkey)
+    }
+
+    func libraryCategorizationPromptEnvelope() -> String? {
+        kernel.libraryCategorizationPromptEnvelope()
+    }
+
+    func libraryCategorizationParseEnvelope(rawContent: String) -> String? {
+        kernel.libraryCategorizationParseEnvelope(rawContent: rawContent)
+    }
+
+    func agentChatTitlePromptEnvelope(messages: [[String: String]]) -> String? {
+        kernel.agentChatTitlePromptEnvelope(messages: messages)
+    }
+
+    func agentChatTitleParseEnvelope(rawContent: String) -> String? {
+        kernel.agentChatTitleParseEnvelope(rawContent: rawContent)
+    }
+
+    func agentNostrPeerPromptEnvelope(
+        peerPubkey: String,
+        peerDisplayName: String?,
+        peerAbout: String?,
+        ownerPubkey: String?
+    ) -> String? {
+        kernel.agentNostrPeerPromptEnvelope(
+            peerPubkey: peerPubkey,
+            peerDisplayName: peerDisplayName,
+            peerAbout: peerAbout,
+            ownerPubkey: ownerPubkey
+        )
+    }
+
+    func agentSystemPromptEnvelope(request: [String: Any]) -> String? {
+        kernel.agentSystemPromptEnvelope(request: request)
+    }
+
+    func agentConversationHistoryEnvelope(request: [String: Any]) -> String? {
+        kernel.agentConversationHistoryEnvelope(request: request)
+    }
+
+    func libraryCategoryChangeEnvelope(request: [String: Any]) -> String? {
+        kernel.libraryCategoryChangeEnvelope(request: request)
+    }
+
+    func homeCategoryCardsEnvelope(categories: [[String: Any]]) -> String? {
+        kernel.homeCategoryCardsEnvelope(categories: categories)
+    }
+
+    func agentTTSEpisodePlanEnvelope(request: [String: Any]) -> String? {
+        kernel.agentTTSEpisodePlanEnvelope(request: request)
+    }
+
+    func agentTTSDefaultVoiceEnvelope() -> String? {
+        kernel.agentTTSDefaultVoiceEnvelope()
+    }
+
+    func agentGeneratedPodcastDescriptorEnvelope() -> String? {
+        kernel.agentGeneratedPodcastDescriptorEnvelope()
+    }
+
     // ── Transcript report ───────────────────────────────────────────────
+
+    struct TranscriptIngestPlan: Decodable {
+        var ok: Bool
+        var status: String
+        var reason: String?
+        var publisherUrl: String?
+        var mimeHint: String?
+        var provider: String?
+        var requiresLocalFile: Bool
+    }
+
+    private struct TranscriptAutoIngestCandidates: Decodable {
+        var ok: Bool
+        var episodeIds: [String]
+    }
+
+    struct TranscriptToolResult: Decodable {
+        var ok: Bool
+        var status: String
+        var source: String?
+        var message: String?
+    }
+
+    struct EpisodeMutationToolResult: Decodable {
+        var ok: Bool
+        var episodeId: String
+        var podcastId: String?
+        var episodeTitle: String
+        var podcastTitle: String?
+        var state: String
+        var message: String?
+    }
+
+    struct PlaybackToolResult: Decodable {
+        var ok: Bool
+        var episodeId: String
+        var queuePosition: String
+        var startedPlaying: Bool
+        var episodeTitle: String?
+        var podcastTitle: String?
+        var durationSeconds: Int?
+        var message: String?
+    }
+
+    struct NowPlayingToolResult: Decodable {
+        var ok: Bool
+        var episodeId: String?
+        var episodeTitle: String?
+        var podcastId: String?
+        var podcastTitle: String?
+        var positionSeconds: Double
+        var durationSeconds: Double?
+        var isPlaying: Bool
+        var rate: Double
+        var message: String?
+    }
+
+    struct ExternalPlayPlan: Decodable {
+        var ok: Bool
+        var podcastId: String
+        var shouldCreatePlaceholder: Bool
+        var shouldHydrateMetadata: Bool
+        var feedUrl: String?
+        var placeholderTitle: String?
+        var visibility: String?
+        var titleIsPlaceholder: Bool
+        var reason: String?
+    }
+
+    struct AgentAskPending: Decodable, Equatable {
+        var id: String
+        var question: String
+        var context: String?
+        var createdAt: Int64
+        var timeoutSeconds: UInt64
+    }
+
+    struct AgentAskResponse: Decodable {
+        var ok: Bool
+        var current: AgentAskPending?
+        var enqueued: AgentAskPending?
+        var settledId: String?
+        var result: String?
+        var message: String?
+    }
+
+    struct RememberTextMemoryResponse: Decodable {
+        var ok: Bool
+        var id: String?
+        var key: String?
+        var value: String?
+        var source: String?
+        var message: String?
+    }
+
+    /// Ask Rust what the transcript-ingest pipeline should do next.
+    ///
+    /// Swift supplies raw host capability facts (`localAudioAvailable`) and then
+    /// executes the returned capability branch. Rust owns the policy decision.
+    func transcriptIngestPlan(
+        episodeID: UUID,
+        forceProvider: STTProvider?,
+        localAudioAvailable: Bool,
+        allowPublisher: Bool,
+        autoIngest: Bool = false
+    ) -> TranscriptIngestPlan? {
+        guard let handle = kernel.podcastHandle else { return nil }
+        var payload: [String: Any] = [
+            "episode_id": episodeID.uuidString,
+            "local_audio_available": localAudioAvailable,
+            "allow_publisher": allowPublisher,
+            "auto_ingest": autoIngest,
+        ]
+        if let forceProvider {
+            payload["force_provider"] = forceProvider.rawValue
+        }
+        guard let json = try? JSONSerialization.data(withJSONObject: payload),
+              let jsonStr = String(data: json, encoding: .utf8)
+        else { return nil }
+        return jsonStr.withCString { ptr -> TranscriptIngestPlan? in
+            guard let result = nmp_app_podcast_transcript_ingest_plan(handle, ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            let response = String(cString: result)
+            guard let data = response.data(using: .utf8) else { return nil }
+            return try? KernelDecoding.makeDecoder().decode(TranscriptIngestPlan.self, from: data)
+        }
+    }
+
+    /// Ask Rust which episodes should be auto-ingested next.
+    ///
+    /// Swift supplies native file-availability facts; Rust owns eligibility,
+    /// newest-first ordering, optional new-episode scoping, and max count.
+    func transcriptAutoIngestCandidates(
+        maxCount: Int,
+        episodeIDs: [UUID]? = nil,
+        localAudioAvailable: [UUID: Bool]
+    ) -> [UUID] {
+        guard let handle = kernel.podcastHandle else { return [] }
+        var payload: [String: Any] = [
+            "max_count": maxCount,
+            "local_audio_available": localAudioAvailable.map { id, available in
+                [
+                    "episode_id": id.uuidString,
+                    "available": available,
+                ] as [String: Any]
+            },
+        ]
+        if let episodeIDs {
+            payload["episode_ids"] = episodeIDs.map(\.uuidString)
+        }
+        guard let json = try? JSONSerialization.data(withJSONObject: payload),
+              let jsonStr = String(data: json, encoding: .utf8)
+        else { return [] }
+        return jsonStr.withCString { ptr -> [UUID] in
+            guard let result = nmp_app_podcast_transcript_auto_ingest_candidates(handle, ptr) else {
+                return []
+            }
+            defer { nmp_free_string(result) }
+            let response = String(cString: result)
+            guard let data = response.data(using: .utf8),
+                  let decoded = try? KernelDecoding.makeDecoder().decode(TranscriptAutoIngestCandidates.self, from: data),
+                  decoded.ok
+            else { return [] }
+            return decoded.episodeIds.compactMap(UUID.init(uuidString:))
+        }
+    }
+
+    /// Ask Rust how an agent-facing transcript tool result should be reported
+    /// for the current episode state.
+    func transcriptToolResult(episodeID: UUID) -> TranscriptToolResult? {
+        guard let handle = kernel.podcastHandle else { return nil }
+        let payload: [String: Any] = ["episode_id": episodeID.uuidString]
+        guard let json = try? JSONSerialization.data(withJSONObject: payload),
+              let jsonStr = String(data: json, encoding: .utf8)
+        else { return nil }
+        return jsonStr.withCString { ptr -> TranscriptToolResult? in
+            guard let result = nmp_app_podcast_transcript_tool_result(handle, ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            let response = String(cString: result)
+            guard let data = response.data(using: .utf8) else { return nil }
+            return try? KernelDecoding.makeDecoder().decode(TranscriptToolResult.self, from: data)
+        }
+    }
+
+    /// Ask Rust to build the agent-facing result envelope for an episode
+    /// mutation tool after the mutation action has been accepted.
+    func episodeMutationToolResult(episodeID: String, state: String) -> EpisodeMutationToolResult? {
+        guard let handle = kernel.podcastHandle else { return nil }
+        let payload: [String: Any] = [
+            "episode_id": episodeID,
+            "state": state
+        ]
+        guard let json = try? JSONSerialization.data(withJSONObject: payload),
+              let jsonStr = String(data: json, encoding: .utf8)
+        else { return nil }
+        return jsonStr.withCString { ptr -> EpisodeMutationToolResult? in
+            guard let result = nmp_app_podcast_episode_mutation_tool_result(handle, ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            let response = String(cString: result)
+            guard let data = response.data(using: .utf8) else { return nil }
+            return try? KernelDecoding.makeDecoder().decode(EpisodeMutationToolResult.self, from: data)
+        }
+    }
+
+    func playbackToolResult(
+        episodeID: String,
+        queuePosition: QueuePosition,
+        startedPlaying: Bool
+    ) -> PlaybackToolResult? {
+        guard let handle = kernel.podcastHandle else { return nil }
+        let payload: [String: Any] = [
+            "episode_id": episodeID,
+            "queue_position": queuePosition.rawValue,
+            "started_playing": startedPlaying
+        ]
+        guard let json = try? JSONSerialization.data(withJSONObject: payload),
+              let jsonStr = String(data: json, encoding: .utf8)
+        else { return nil }
+        return jsonStr.withCString { ptr -> PlaybackToolResult? in
+            guard let result = nmp_app_podcast_playback_tool_result(handle, ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            let response = String(cString: result)
+            guard let data = response.data(using: .utf8) else { return nil }
+            return try? KernelDecoding.makeDecoder().decode(PlaybackToolResult.self, from: data)
+        }
+    }
+
+    func nowPlayingToolResult() -> NowPlayingToolResult? {
+        guard let handle = kernel.podcastHandle else { return nil }
+        guard let result = nmp_app_podcast_now_playing_tool_result(handle) else {
+            return nil
+        }
+        defer { nmp_free_string(result) }
+        let response = String(cString: result)
+        guard let data = response.data(using: .utf8) else { return nil }
+        return try? KernelDecoding.makeDecoder().decode(NowPlayingToolResult.self, from: data)
+    }
+
+    func externalPlayPlan(feedURLString: String?) -> ExternalPlayPlan? {
+        guard let handle = kernel.podcastHandle else { return nil }
+        var payload: [String: Any] = [:]
+        if let feedURLString {
+            payload["feed_url"] = feedURLString
+        }
+        guard let json = try? JSONSerialization.data(withJSONObject: payload),
+              let jsonStr = String(data: json, encoding: .utf8)
+        else { return nil }
+        return jsonStr.withCString { ptr -> ExternalPlayPlan? in
+            guard let result = nmp_app_podcast_external_play_plan(handle, ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            let response = String(cString: result)
+            guard let data = response.data(using: .utf8) else { return nil }
+            return try? KernelDecoding.makeDecoder().decode(ExternalPlayPlan.self, from: data)
+        }
+    }
+
+    func agentAskEnqueue(question: String, context: String?) -> AgentAskResponse? {
+        guard let handle = kernel.podcastHandle else { return nil }
+        var payload: [String: Any] = ["question": question]
+        if let context {
+            payload["context"] = context
+        }
+        guard let json = try? JSONSerialization.data(withJSONObject: payload),
+              let jsonStr = String(data: json, encoding: .utf8)
+        else { return nil }
+        return jsonStr.withCString { ptr -> AgentAskResponse? in
+            guard let result = nmp_app_podcast_agent_ask_enqueue(handle, ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            let response = String(cString: result)
+            guard let data = response.data(using: .utf8) else { return nil }
+            return try? KernelDecoding.makeDecoder().decode(AgentAskResponse.self, from: data)
+        }
+    }
+
+    func agentAskSettle(id: String, outcome: String, answer: String? = nil) -> AgentAskResponse? {
+        guard let handle = kernel.podcastHandle else { return nil }
+        var payload: [String: Any] = [
+            "id": id,
+            "outcome": outcome
+        ]
+        if let answer {
+            payload["answer"] = answer
+        }
+        guard let json = try? JSONSerialization.data(withJSONObject: payload),
+              let jsonStr = String(data: json, encoding: .utf8)
+        else { return nil }
+        return jsonStr.withCString { ptr -> AgentAskResponse? in
+            guard let result = nmp_app_podcast_agent_ask_settle(handle, ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            let response = String(cString: result)
+            guard let data = response.data(using: .utf8) else { return nil }
+            return try? KernelDecoding.makeDecoder().decode(AgentAskResponse.self, from: data)
+        }
+    }
+
+    func rememberTextMemory(content: String, source: String = "agent") -> RememberTextMemoryResponse? {
+        guard let handle = kernel.podcastHandle else { return nil }
+        let payload: [String: Any] = [
+            "content": content,
+            "source": source
+        ]
+        guard let json = try? JSONSerialization.data(withJSONObject: payload),
+              let jsonStr = String(data: json, encoding: .utf8)
+        else { return nil }
+        let response = jsonStr.withCString { ptr -> RememberTextMemoryResponse? in
+            guard let result = nmp_app_podcast_memory_remember_text(handle, ptr) else {
+                return nil
+            }
+            defer { nmp_free_string(result) }
+            let response = String(cString: result)
+            guard let data = response.data(using: .utf8) else { return nil }
+            return try? KernelDecoding.makeDecoder().decode(RememberTextMemoryResponse.self, from: data)
+        }
+        pullPodcastSnapshotIfChanged()
+        return response
+    }
 
     /// Report a completed transcript to the Rust kernel so AI features
     /// can access it without going through Swift's TranscriptStore.

@@ -28,10 +28,28 @@ fn extract_host_op_parts(cmd: &ActorCommand) -> (String, String) {
 fn play_action_round_trips() {
     let action = PlayerAction::Play {
         episode_id: "abc-123".into(),
+        start_secs: None,
+        end_secs: None,
     };
     let json = serde_json::to_string(&action).expect("encode");
     assert!(json.contains(r#""op":"play""#));
     assert!(json.contains(r#""episode_id":"abc-123""#));
+    let decoded: PlayerAction = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, action);
+}
+
+#[test]
+fn bounded_play_action_round_trips() {
+    let action = PlayerAction::Play {
+        episode_id: "abc-123".into(),
+        start_secs: Some(12.5),
+        end_secs: Some(42.0),
+    };
+    let json = serde_json::to_string(&action).expect("encode");
+    assert_eq!(
+        json,
+        r#"{"op":"play","episode_id":"abc-123","start_secs":12.5,"end_secs":42.0}"#
+    );
     let decoded: PlayerAction = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded, action);
 }
@@ -56,15 +74,28 @@ fn seek_encodes_position() {
 }
 #[test]
 fn set_sleep_timer_handles_some_and_none() {
-    let arm = PlayerAction::SetSleepTimer { secs: Some(1800) };
+    let arm = PlayerAction::SetSleepTimer {
+        secs: Some(1800),
+        end_of_episode: false,
+    };
     let json = serde_json::to_string(&arm).expect("encode");
     assert!(json.contains("1800"));
     let decoded: PlayerAction = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded, arm);
-    let cancel = PlayerAction::SetSleepTimer { secs: None };
+    let cancel = PlayerAction::SetSleepTimer {
+        secs: None,
+        end_of_episode: false,
+    };
     let cancel_json = serde_json::to_string(&cancel).expect("encode");
     let decoded_cancel: PlayerAction = serde_json::from_str(&cancel_json).expect("decode");
     assert_eq!(decoded_cancel, cancel);
+    let end = PlayerAction::SetSleepTimer {
+        secs: None,
+        end_of_episode: true,
+    };
+    let end_json = serde_json::to_string(&end).expect("encode");
+    let decoded_end: PlayerAction = serde_json::from_str(&end_json).expect("decode");
+    assert_eq!(decoded_end, end);
 }
 #[test]
 fn enqueue_dequeue_round_trip() {
@@ -118,6 +149,8 @@ fn set_ad_segments_round_trips() {
 fn execute_emits_dispatch_host_op() {
     let action = PlayerAction::Play {
         episode_id: "ep-7".into(),
+        start_secs: None,
+        end_secs: None,
     };
     let commands = std::sync::Mutex::new(Vec::<ActorCommand>::new());
     PlayerActionModule.execute(action, "corr-1", &|cmd| {
@@ -137,7 +170,7 @@ fn execute_emits_dispatch_host_op() {
 }
 #[test]
 fn skip_forward_round_trips() {
-    let action = PlayerAction::SkipForward { secs: 30.0 };
+    let action = PlayerAction::SkipForward { secs: Some(30.0) };
     let json = serde_json::to_string(&action).expect("encode");
     assert_eq!(json, r#"{"op":"skip_forward","secs":30.0}"#);
     let decoded: PlayerAction = serde_json::from_str(&json).expect("decode");
@@ -145,9 +178,18 @@ fn skip_forward_round_trips() {
 }
 #[test]
 fn skip_backward_round_trips() {
-    let action = PlayerAction::SkipBackward { secs: 15.0 };
+    let action = PlayerAction::SkipBackward { secs: Some(15.0) };
     let json = serde_json::to_string(&action).expect("encode");
     assert_eq!(json, r#"{"op":"skip_backward","secs":15.0}"#);
+    let decoded: PlayerAction = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, action);
+}
+
+#[test]
+fn skip_forward_omits_default_secs() {
+    let action = PlayerAction::SkipForward { secs: None };
+    let json = serde_json::to_string(&action).expect("encode");
+    assert_eq!(json, r#"{"op":"skip_forward"}"#);
     let decoded: PlayerAction = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded, action);
 }

@@ -41,7 +41,7 @@ extension AppStateStore {
             }
         }
         guard LocalModelCatalog.isDownloaded(spec.id) else { return .notDownloaded }
-        let inUse = Self.effectiveLocalModelID(state.settings) == spec.id
+        let inUse = effectiveLocalModelID(state.settings) == spec.id
         return inUse ? .active : .downloaded
     }
 }

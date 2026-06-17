@@ -158,8 +158,8 @@ extension AppStateStore {
         if mutated {
             performMutationBatch {
                 self.episodes = working
-                // Newly-non-zero playback positions need to land in
-                // `inProgressEpisodesCached`; count-only fingerprinting misses this.
+                // Historical compatibility hook: in-progress projections are
+                // Rust-owned now, but mutation paths still call the no-op shim.
                 invalidateEpisodeProjections()
             }
         }

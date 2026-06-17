@@ -25,17 +25,15 @@ extension RootView {
             return live.imageURL ?? store.podcast(id: live.podcastID)?.imageURL
         }
 
-        // Seed the Up Next queue from the Rust-persisted snapshot.
-        let seedQueue: ([UUID]) -> Void = { [playbackState] ids in
-            guard playbackState.queue.isEmpty else { return }
-            playbackState.queue = ids.map { QueueItem.episode($0) }
+        // Render the Up Next queue from the Rust-owned projection.
+        let seedQueue: ([QueueItem]) -> Void = { [playbackState] items in
+            playbackState.queue = items
         }
         if !store.pendingKernelQueue.isEmpty {
             seedQueue(store.pendingKernelQueue)
             store.pendingKernelQueue = []
-        } else {
-            store.onQueueFromKernel = seedQueue
         }
+        store.onQueueFromKernel = seedQueue
 
         // Cold-launch quick-action routing.
         if let delegate = UIApplication.shared.delegate as? AppDelegate,
@@ -52,7 +50,7 @@ extension RootView {
         if playbackState.episode == nil,
            let lastID = store.state.lastPlayedEpisodeID,
            let episode = store.episode(id: lastID) {
-            playbackState.setEpisode(episode, enqueueDownloadIfNeeded: false)
+            playbackState.setEpisode(episode)
         }
     }
 
@@ -81,24 +79,5 @@ extension RootView {
         else { return nil }
         let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
         return renderer.image { ctx in window.layer.render(in: ctx.cgContext) }
-    }
-}
-
-// MARK: - PlaybackIntentObserver
-
-struct PlaybackIntentObserver: ViewModifier {
-    let playbackState: PlaybackState
-
-    func body(content: Content) -> some View {
-        content
-            .onReceive(NotificationCenter.default.publisher(for: .pausePlaybackRequested)) { _ in
-                playbackState.pause()
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .resumePlaybackRequested)) { _ in
-                playbackState.play()
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .skipForwardRequested)) { _ in
-                playbackState.skipForward()
-            }
     }
 }

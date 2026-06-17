@@ -14,49 +14,41 @@ extension AppStateStore {
     /// bottom and fall back to alphabetical order so the list never
     /// collapses to a random arrangement.
     ///
-    /// O(N log N) on the followed-podcast count. Per-show recency is read
-    /// from the precomputed `episodeIndexesByShow` projection — `.first` of
-    /// that array is the newest-pubDate episode index, so the recency
-    /// lookup is O(1) per podcast.
+    /// Compatibility wrapper over the Rust-owned Home subscription projection.
     ///
     /// Feed-less podcasts (Agent Generated, Unknown) are excluded by virtue
     /// of having no `PodcastSubscription` row in the new model — they're
     /// `Podcast`-only and never appear in the user's subscription list.
     var sortedFollowedPodcastsByRecency: [Podcast] {
-        let podcastByID = Dictionary(uniqueKeysWithValues: state.podcasts.map { ($0.id, $0) })
-        let followed = state.subscriptions.compactMap { podcastByID[$0.podcastID] }
-            .filter { $0.feedURL != nil }
-        let episodes = self.episodes
-        var lookup: [UUID: Date] = [:]
-        lookup.reserveCapacity(followed.count)
-        for podcast in followed {
-            if let firstIdx = episodeIndexesByShow[podcast.id]?.first,
-               episodes.indices.contains(firstIdx) {
-                lookup[podcast.id] = episodes[firstIdx].pubDate
-            }
-        }
-        return followed.sorted { lhs, rhs in
-            switch (lookup[lhs.id], lookup[rhs.id]) {
-            case let (l?, r?):
-                if l == r {
-                    return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
-                }
-                return l > r
-            case (.some, .none):
-                return true
-            case (.none, .some):
-                return false
-            case (.none, .none):
-                return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
-            }
-        }
+        let followed = rustFollowedPodcasts()
+        guard let envelope = kernel?.homeSubscriptionListEnvelope(
+            filter: "all",
+            podcastIDs: followed.map(\.id)
+        ),
+              let data = envelope.data(using: .utf8),
+              let decoded = try? JSONDecoder.sortedFollowedRecency.decode(
+                SubscriptionListResponse.self,
+                from: data
+              )
+        else { return [] }
+        return decoded.podcastIds.compactMap { podcast(id: $0) }
     }
 
     /// Most-recent episode for the given `podcastID`, or `nil` when the
     /// podcast has no episodes yet.
     func mostRecentEpisode(forPodcast podcastID: UUID) -> Episode? {
-        guard let firstIdx = episodeIndexesByShow[podcastID]?.first,
-              self.episodes.indices.contains(firstIdx) else { return nil }
-        return self.episodes[firstIdx]
+        rustLatestEpisode(forPodcast: podcastID)
     }
+}
+
+private struct SubscriptionListResponse: Decodable {
+    let podcastIds: [UUID]
+}
+
+private extension JSONDecoder {
+    static let sortedFollowedRecency: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
+    }()
 }

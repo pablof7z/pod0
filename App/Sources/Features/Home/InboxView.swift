@@ -47,17 +47,13 @@ struct InboxView: View {
     }
 
     private var inboxEpisodes: [Episode] {
-        store.episodes
-            .filter { ep in
-                guard ep.triageDecision == .inbox, !ep.played else { return false }
+        (store.kernel?.podcastSnapshot?.inbox ?? [])
+            .compactMap { item -> Episode? in
+                guard let podcastID = UUID(uuidString: item.podcastId) else { return nil }
                 if let allowed = allowedSubscriptionIDs,
-                   !allowed.contains(ep.podcastID) { return false }
-                return true
-            }
-            .sorted { lhs, rhs in
-                // Hero-flagged episode first, then newest pubDate
-                if lhs.triageIsHero != rhs.triageIsHero { return lhs.triageIsHero }
-                return lhs.pubDate > rhs.pubDate
+                   !allowed.contains(podcastID) { return nil }
+                guard let episodeID = UUID(uuidString: item.episodeId) else { return nil }
+                return store.episode(id: episodeID)
             }
     }
 

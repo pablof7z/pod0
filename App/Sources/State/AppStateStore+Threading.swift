@@ -1,110 +1,141 @@
 import Foundation
 
-// MARK: - AppStateStore + Threading
+// MARK: - Rust-owned threading projection
 
-/// Threading topic + mention storage. Mutations route through the `state`
-/// setter so the existing `didSet` persistence path picks them up without
-/// extra wiring; bulk recompute paths wrap their writes in
-/// `performMutationBatch` so the projections-rebuild + save side effects
-/// only run once at the end.
+struct ThreadingProjection: Equatable, Sendable {
+    var topics: [ThreadingTopic]
+    var mentions: [ThreadingMention]
+
+    static let empty = ThreadingProjection(topics: [], mentions: [])
+}
+
+struct ActiveThreadingTopic: Equatable, Identifiable, Sendable {
+    let topic: ThreadingTopic
+    let unplayedEpisodeCount: Int
+    let mentionIDs: [UUID]
+    var id: UUID { topic.id }
+}
+
 extension AppStateStore {
 
-    // MARK: - Topics
-
-    /// All known topics ordered by `lastMentionedAt` descending. Topics
-    /// without any recorded mention slip to the end so the list always leads
-    /// with what the user just heard.
     var threadingTopics: [ThreadingTopic] {
-        state.threadingTopics.sorted { lhs, rhs in
-            switch (lhs.lastMentionedAt, rhs.lastMentionedAt) {
-            case let (l?, r?): return l > r
-            case (.some, .none): return true
-            case (.none, .some): return false
-            case (.none, .none): return lhs.displayName < rhs.displayName
-            }
-        }
+        threadingProjection.topics
     }
 
-    /// Looks up a topic by stable id. Returns `nil` if the topic was removed
-    /// since the caller captured the id.
+    func refreshThreadingProjection() {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        guard let envelope = kernel?.threadingProjectionEnvelope(),
+              let data = envelope.data(using: .utf8),
+              let decoded = try? decoder.decode(ThreadingProjectionEnvelope.self, from: data)
+        else { return }
+        threadingProjection = decoded.projection
+    }
+
     func threadingTopic(id: UUID) -> ThreadingTopic? {
-        state.threadingTopics.first { $0.id == id }
+        threadingProjection.topics.first { $0.id == id }
     }
 
-    /// Looks up a topic by slug. Slug match is case-insensitive against the canonicalised key.
-    func threadingTopic(slug: String) -> ThreadingTopic? {
-        let key = slug.lowercased().trimmingCharacters(in: .whitespaces)
-        return state.threadingTopics.first { $0.slug == key }
-    }
-
-    /// Inserts or updates `topic`, keyed on `slug`. Returns the stored
-    /// instance — callers that just constructed a fresh topic should adopt
-    /// the returned id so subsequent mention writes target the canonical row.
-    @discardableResult
-    func upsertThreadingTopic(_ topic: ThreadingTopic) -> ThreadingTopic {
-        var stored = state.threadingTopics
-        if let idx = stored.firstIndex(where: { $0.slug == topic.slug }) {
-            var merged = stored[idx]
-            merged.displayName = topic.displayName
-            merged.definition = topic.definition ?? merged.definition
-            merged.episodeMentionCount = topic.episodeMentionCount
-            merged.contradictionCount = topic.contradictionCount
-            merged.lastMentionedAt = topic.lastMentionedAt ?? merged.lastMentionedAt
-            stored[idx] = merged
-            state.threadingTopics = stored
-            return merged
-        }
-        stored.append(topic)
-        state.threadingTopics = stored
-        return topic
-    }
-
-    /// Removes a topic and every mention pointing at it. Used by the "stop
-    /// surfacing this" action (UX-09 §5). Wrapped in a mutation batch so
-    /// the two state writes only trigger a single persistence pass.
-    func removeThreadingTopic(id: UUID) {
-        performMutationBatch {
-            state.threadingTopics.removeAll { $0.id == id }
-            state.threadingMentions.removeAll { $0.topicID == id }
-        }
-    }
-
-    // MARK: - Mentions
-
-    /// Mentions for `topic`, ordered by episode publish date descending
-    /// (newest first). Episodes the user no longer has in their library are
-    /// silently filtered so the timeline never points at dead ids.
     func threadingMentions(forTopic id: UUID) -> [ThreadingMention] {
-        let knownEpisodeIDs = Set(self.episodes.map(\.id))
-        return state.threadingMentions
-            .filter { $0.topicID == id && knownEpisodeIDs.contains($0.episodeID) }
-            .sorted { lhs, rhs in
-                let lhsDate = episode(id: lhs.episodeID)?.pubDate ?? .distantPast
-                let rhsDate = episode(id: rhs.episodeID)?.pubDate ?? .distantPast
-                if lhsDate == rhsDate { return lhs.startMS < rhs.startMS }
-                return lhsDate > rhsDate
-            }
+        threadingProjection.mentions.filter { $0.topicID == id }
     }
 
-    /// Inserts or replaces a single mention, keyed on `id`. The store's
-    /// `didSet` path persists the change.
-    func upsertThreadingMention(_ mention: ThreadingMention) {
-        var stored = state.threadingMentions
-        if let idx = stored.firstIndex(where: { $0.id == mention.id }) {
-            stored[idx] = mention
-        } else {
-            stored.append(mention)
+    func threadingMentions(containingEpisode episodeID: UUID) -> [ThreadingMention] {
+        threadingProjection.mentions.filter { $0.episodeID == episodeID }
+    }
+
+    func activeThreadingTopics(
+        limit: Int,
+        subscriptionFilter: Set<UUID>? = nil
+    ) -> [ActiveThreadingTopic] {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let podcastIDs = subscriptionFilter.map { Array($0) } ?? []
+        guard let envelope = kernel?.threadingActiveTopicsEnvelope(limit: limit, podcastIDs: podcastIDs),
+              let data = envelope.data(using: .utf8),
+              let decoded = try? decoder.decode(ActiveThreadingTopicsEnvelope.self, from: data)
+        else { return [] }
+        return decoded.activeTopics.compactMap { row in
+            guard let topicID = UUID(uuidString: row.topicId),
+                  let topic = threadingTopic(id: topicID) else { return nil }
+            let mentionIDs = row.mentionIds.compactMap(UUID.init(uuidString:))
+            return ActiveThreadingTopic(
+                topic: topic,
+                unplayedEpisodeCount: row.unplayedEpisodeCount,
+                mentionIDs: mentionIDs
+            )
         }
-        state.threadingMentions = stored
     }
+}
 
-    /// Bulk replace of every mention belonging to `topicID`. Used by the
-    /// inference recompute path so a topic's row history always reflects the
-    /// latest pass without leaving stale rows behind.
-    func replaceThreadingMentions(forTopic topicID: UUID, with mentions: [ThreadingMention]) {
-        var stored = state.threadingMentions
-        stored.removeAll { $0.topicID == topicID }
-        stored.append(contentsOf: mentions)
-        state.threadingMentions = stored
+private struct ThreadingProjectionEnvelope: Decodable {
+    var topics: [ThreadingTopicDTO] = []
+    var mentions: [ThreadingMentionDTO] = []
+
+    var projection: ThreadingProjection {
+        ThreadingProjection(
+            topics: topics.compactMap(\.topic),
+            mentions: mentions.compactMap(\.mention)
+        )
+    }
+}
+
+private struct ActiveThreadingTopicsEnvelope: Decodable {
+    var activeTopics: [ActiveThreadingTopicDTO] = []
+}
+
+private struct ActiveThreadingTopicDTO: Decodable {
+    var topicId: String
+    var unplayedEpisodeCount: Int
+    var mentionIds: [String]
+}
+
+private struct ThreadingTopicDTO: Decodable {
+    var id: String
+    var slug: String
+    var displayName: String
+    var definition: String?
+    var episodeMentionCount: Int
+    var contradictionCount: Int
+    var lastMentionedAt: Int?
+
+    var topic: ThreadingTopic? {
+        guard let uuid = UUID(uuidString: id) else { return nil }
+        return ThreadingTopic(
+            id: uuid,
+            slug: slug,
+            displayName: displayName,
+            definition: definition,
+            episodeMentionCount: episodeMentionCount,
+            contradictionCount: contradictionCount,
+            lastMentionedAt: lastMentionedAt.map { Date(timeIntervalSince1970: TimeInterval($0)) }
+        )
+    }
+}
+
+private struct ThreadingMentionDTO: Decodable {
+    var id: String
+    var topicId: String
+    var episodeId: String
+    var startMs: Int
+    var endMs: Int
+    var snippet: String
+    var confidence: Double
+    var isContradictory: Bool
+
+    var mention: ThreadingMention? {
+        guard let id = UUID(uuidString: id),
+              let topicID = UUID(uuidString: topicId),
+              let episodeID = UUID(uuidString: episodeId) else { return nil }
+        return ThreadingMention(
+            id: id,
+            topicID: topicID,
+            episodeID: episodeID,
+            startMS: startMs,
+            endMS: endMs,
+            snippet: snippet,
+            confidence: confidence,
+            isContradictory: isContradictory
+        )
     }
 }

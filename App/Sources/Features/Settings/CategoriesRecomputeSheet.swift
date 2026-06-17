@@ -64,7 +64,7 @@ struct CategoriesRecomputeSheet: View {
                 } label: {
                     Label("Recompute Categories", systemImage: "wand.and.sparkles")
                 }
-                .disabled(store.state.subscriptions.isEmpty)
+                .disabled(store.rustFollowedPodcastCount() == 0)
             } footer: {
                 Text("Asks the configured AI model to group every podcast you follow into 6-12 categories. Existing categories are replaced.")
             }
@@ -84,13 +84,16 @@ struct CategoriesRecomputeSheet: View {
     }
 
     private var resultsList: some View {
+        let projection = CategoryLibraryProjection
+            .load(categories: store.state.categories, store: store)
+        let categories = projection.sortedCategories(from: store.state.categories)
         List {
             Section {
-                ForEach(store.state.categories) { category in
-                    categoryRow(category)
+                ForEach(categories) { category in
+                    categoryRow(category, projection: projection)
                 }
             } header: {
-                Text("\(store.state.categories.count) categories")
+                Text("\(categories.count) categories")
             } footer: {
                 if let lastRun = service.lastRun {
                     Text("Generated \(lastRun.formatted(.relative(presentation: .named))).")
@@ -136,7 +139,7 @@ struct CategoriesRecomputeSheet: View {
 
     @ViewBuilder
     private var summaryRow: some View {
-        let count = store.state.subscriptions.count
+        let count = store.rustFollowedPodcastCount()
         if count == 0 {
             Text("Add at least one podcast subscription first.")
                 .font(AppTheme.Typography.body)
@@ -151,13 +154,16 @@ struct CategoriesRecomputeSheet: View {
         }
     }
 
-    private func categoryRow(_ category: PodcastCategory) -> some View {
+    private func categoryRow(
+        _ category: PodcastCategory,
+        projection: CategoryLibraryProjection
+    ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(category.name)
                     .font(AppTheme.Typography.body)
                 Spacer()
-                Text("\(category.subscriptionIDs.count)")
+                Text("\(projection.podcastCount(in: category.id))")
                     .font(AppTheme.Typography.caption)
                     .foregroundStyle(.secondary)
             }

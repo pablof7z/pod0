@@ -4,9 +4,9 @@ import XCTest
 // MARK: - UserIdentityWiringTests
 //
 // Table-driven coverage for the "what publishes vs. what stays local" matrix.
-// Every user-authored artefact (kind:0 profile, kind:1 note, kind:9802 clip)
-// must dispatch a `podcast.social.*` op to the kernel; every agent-authored
-// artefact must NOT. The kernel owns ALL signing — there is no Swift signer
+// Every user-authored artefact still owned by this Swift store must dispatch
+// a `podcast.social.*` op to the kernel; every agent-authored artefact must
+// NOT. The kernel owns ALL signing — there is no Swift signer
 // anymore — so these tests assert against a recording KERNEL seam
 // (`_setKernelRecorderForTesting`): the "publishes" rows assert a dispatch
 // reached it, the "does not publish" rows assert none did. The publish/relay
@@ -138,82 +138,6 @@ final class UserIdentityWiringTests: XCTestCase {
         _ = store.addAgentMemory(content: "long-running fact")
         try await Task.sleep(nanoseconds: 200_000_000)
         XCTAssertTrue(kernelDispatches.socialCalls.isEmpty, "Memories must not reach the kernel social path.")
-    }
-
-    // MARK: - Clips, source ≠ .agent — kind 9802 → kernel
-
-    func testAddClipTouchSourceDispatchesKindNineEightZeroTwoToKernel() async throws {
-        let clip = Clip(
-            episodeID: UUID(),
-            subscriptionID: UUID(),
-            startMs: 1_000,
-            endMs: 5_000,
-            caption: "Worth re-listening",
-            transcriptText: "the prose at the heart of the clip",
-            source: .touch
-        )
-        store.addClip(clip)
-        try await waitForKernelDispatch(op: "publish_highlight")
-
-        let call = try XCTUnwrap(kernelDispatches.social(op: "publish_highlight"))
-        // Tag construction (`["context", transcript]` + `["alt", caption]`)
-        // moved into the Rust kernel in #355 — Swift dispatches typed fields,
-        // the kernel's `build_highlight_tags` assembles the NIP-73/84 tag set
-        // (exact tag output is covered by
-        // `apps/nmp-app-podcast/src/social_publish_handler_tests.rs`). The
-        // Swift wiring's contract is therefore: dispatch the transcript as
-        // `content` (which the kernel turns into the `["context", …]` tag) and
-        // the caption as the typed `caption` field (→ `["alt", …]`), and do
-        // NOT pre-build tags.
-        XCTAssertEqual(call["content"] as? String, "the prose at the heart of the clip",
-                       "Clip transcript must be dispatched as `content` (→ kernel `[\"context\", …]` tag).")
-        XCTAssertEqual(call["caption"] as? String, "Worth re-listening",
-                       "Clip caption must be dispatched as the typed `caption` field (→ kernel `[\"alt\", …]` tag).")
-        XCTAssertNil(call["tags"], "Swift must not pre-build tags; the kernel owns NIP tag construction (#355).")
-    }
-
-    func testAddClipAutoSourceDispatchesKindNineEightZeroTwoToKernel() async throws {
-        let clip = Clip(
-            episodeID: UUID(),
-            subscriptionID: UUID(),
-            startMs: 0,
-            endMs: 1_000,
-            transcriptText: "auto-snip text",
-            source: .auto
-        )
-        store.addClip(clip)
-        try await waitForKernelDispatch(op: "publish_highlight")
-        XCTAssertNotNil(kernelDispatches.social(op: "publish_highlight"))
-    }
-
-    func testAddClipConvenienceOverloadDispatchesForNonAgentSource() async throws {
-        _ = store.addClip(
-            episodeID: UUID(),
-            subscriptionID: UUID(),
-            startMs: 0,
-            endMs: 2_000,
-            transcriptText: "auto-snip via convenience",
-            source: .headphone
-        )
-        try await waitForKernelDispatch(op: "publish_highlight")
-        XCTAssertNotNil(kernelDispatches.social(op: "publish_highlight"))
-    }
-
-    // MARK: - Clips, source == .agent — does NOT publish
-
-    func testAddClipAgentSourceDoesNotDispatch() async throws {
-        let clip = Clip(
-            episodeID: UUID(),
-            subscriptionID: UUID(),
-            startMs: 0,
-            endMs: 1_000,
-            transcriptText: "agent-captured snippet",
-            source: .agent
-        )
-        store.addClip(clip)
-        try await Task.sleep(nanoseconds: 200_000_000)
-        XCTAssertNil(kernelDispatches.social(op: "publish_highlight"),
-                     "Agent-sourced clips must not reach the kernel social path.")
     }
 
     // MARK: - Note.author Codable backward-compat

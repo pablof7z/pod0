@@ -259,6 +259,12 @@ fn handle_inbox_action_inner(
         },
         InboxAction::MarkListened { episode_id } => match store.lock() {
             Ok(mut s) => {
+                if !s.has_episode(&episode_id) {
+                    return serde_json::json!({
+                        "ok": false,
+                        "error": format!("episode not found: {episode_id}")
+                    });
+                }
                 let flipped = s.mark_episode_played(&episode_id);
                 // Playback completion is the authoritative "I finished this
                 // episode" signal. Every completion route — manual mark, natural
@@ -288,6 +294,12 @@ fn handle_inbox_action_inner(
         },
         InboxAction::MarkUnlistened { episode_id } => match store.lock() {
             Ok(mut s) => {
+                if !s.has_episode(&episode_id) {
+                    return serde_json::json!({
+                        "ok": false,
+                        "error": format!("episode not found: {episode_id}")
+                    });
+                }
                 let _flipped = s.mark_episode_unplayed(&episode_id);
                 rev.fetch_add(1, Ordering::Relaxed);
                 serde_json::json!({"ok": true})

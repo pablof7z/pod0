@@ -1,4 +1,3 @@
-import AudioToolbox
 import Foundation
 
 // MARK: - Queue (Up Next)
@@ -25,6 +24,15 @@ extension PlaybackState {
     /// the same episode.
     func enqueueItem(_ item: QueueItem) {
         queue.append(item)
+        if let end = item.endSeconds {
+            store?.kernelEnqueueSegmentLast(
+                episodeID: item.episodeID.uuidString,
+                startSeconds: item.startSeconds,
+                endSeconds: end
+            )
+        } else {
+            store?.kernelEnqueueLast(episodeID: item.episodeID)
+        }
     }
 
     /// Insert a `QueueItem` at the head of Up Next so it plays after the
@@ -32,53 +40,15 @@ extension PlaybackState {
     /// the agent's `play_episode` tool with `queue_position: "next"`.
     func insertNext(_ item: QueueItem) {
         queue.insert(item, at: 0)
-        if item.startSeconds == nil {
+        if let end = item.endSeconds {
+            store?.kernelEnqueueSegmentNext(
+                episodeID: item.episodeID.uuidString,
+                startSeconds: item.startSeconds,
+                endSeconds: end
+            )
+        } else {
             store?.kernelEnqueueNext(episodeID: item.episodeID)
         }
-    }
-
-    /// Replace the current queue with an ordered list of `QueueItem`s and,
-    /// if `playNow` is true, immediately dequeue and play the first one.
-    /// The `playNow` path is the engine primitive behind the agent's
-    /// `play_episode` tool with `queue_position: "now"` (single item) and
-    /// behind callers that want to start a chain of segments.
-    func enqueueSegments(_ items: [QueueItem], playNow: Bool, resolve: (UUID) -> Episode?) {
-        guard !items.isEmpty else { return }
-        if playNow {
-            let first = items[0]
-            guard let episode = resolve(first.episodeID) else {
-                queue.append(contentsOf: items)
-                return
-            }
-            enqueueSegments(items, playNow: true, head: episode)
-        } else {
-            queue.append(contentsOf: items)
-        }
-    }
-
-    /// `enqueueSegments` variant that takes an already-resolved head `Episode`
-    /// for the first item, bypassing the `store.episode(id:)` lookup for that
-    /// item only. Used by external-play, where the episode lives in the Rust
-    /// kernel (dispatched via `kernelAddEpisode`) and rides the next projection
-    /// push — so it is not yet readable from `store.episodes` when playback must
-    /// start synchronously. Tail items still resolve from the store as usual.
-    func enqueueSegments(_ items: [QueueItem], playNow: Bool, head: Episode) {
-        guard !items.isEmpty else { return }
-        guard playNow else {
-            queue.append(contentsOf: items)
-            return
-        }
-        let first = items[0]
-        // Set the segment boundary AFTER `setEpisode`: loading a different
-        // episode clears `currentSegmentEndTime`, so setting it first would
-        // be wiped and the clip would play through the whole episode.
-        setEpisode(head)
-        currentSegmentEndTime = first.endSeconds
-        if let start = first.startSeconds {
-            engine.seek(to: start)
-        }
-        play()
-        queue.insert(contentsOf: items.dropFirst(), at: 0)
     }
 
     // MARK: - Removal
@@ -92,22 +62,24 @@ extension PlaybackState {
     /// Remove a single queue item by its stable slot identity.
     func removeFromQueue(itemID: UUID) {
         queue.removeAll { $0.id == itemID }
+        store?.kernelDequeueQueueItem(queueSlotID: itemID)
     }
 
     // MARK: - Reordering / pruning
 
     func moveQueue(from source: IndexSet, to destination: Int) {
         queue.move(fromOffsets: source, toOffset: destination)
+        store?.kernelReorderQueue(queueSlotIDs: queue.map(\.id))
     }
 
     func moveQueue(from source: IndexSet, to destination: Int, resolve: (UUID) -> Episode?) {
         pruneQueue(resolve: resolve)
         queue.move(fromOffsets: source, toOffset: min(destination, queue.count))
+        store?.kernelReorderQueue(queueSlotIDs: queue.map(\.id))
     }
 
     func clearQueue() {
         queue.removeAll()
-        currentSegmentEndTime = nil
         store?.kernelClearQueue()
     }
 
@@ -127,40 +99,4 @@ extension PlaybackState {
         queue.contains { $0.episodeID == episodeID }
     }
 
-    // MARK: - Advance
-
-    /// Pop the head of the queue and start playing it. Plays a subtle audio +
-    /// haptic transition cue so the user knows the queue advanced. Returns
-    /// `true` when an episode was actually started, `false` when the queue is
-    /// empty or every pending episode has been deleted from the store.
-    @discardableResult
-    func playNext(resolve: (UUID) -> Episode?) -> Bool {
-        while !queue.isEmpty {
-            let item = queue.removeFirst()
-            guard let next = resolve(item.episodeID) else { continue }
-            // Boundary set AFTER `setEpisode` (which clears it on episode change),
-            // otherwise the segment end is wiped and the clip plays through.
-            setEpisode(next)
-            currentSegmentEndTime = item.endSeconds
-            if let start = item.startSeconds {
-                engine.seek(to: start)
-            }
-            play()
-            playQueueTransitionCue()
-            return true
-        }
-        return false
-    }
-
-    // MARK: - Transition cue
-
-    /// Brief multi-sensory cue that fires on every queue advance so the user
-    /// knows the player moved to the next item. Uses a system UI sound (Tink,
-    /// id 1007) which plays through the active audio route even while
-    /// `.podcastPlayback` is active, paired with a selection haptic for
-    /// headphone-only listeners who may not hear the sound.
-    private func playQueueTransitionCue() {
-        Haptics.selection()
-        AudioServicesPlaySystemSound(1007)
-    }
 }

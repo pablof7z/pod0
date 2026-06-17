@@ -59,9 +59,14 @@ impl PodcastHostOpHandler {
         };
 
         match episode_id {
-            Some(id) => {
-                self.handle_player_action(PlayerAction::Play { episode_id: id }, correlation_id)
-            }
+            Some(id) => self.handle_player_action(
+                PlayerAction::Play {
+                    episode_id: id,
+                    start_secs: None,
+                    end_secs: None,
+                },
+                correlation_id,
+            ),
             None => serde_json::json!({"ok": false, "error": "no unplayed episodes"}),
         }
     }
@@ -73,8 +78,14 @@ impl PodcastHostOpHandler {
             Err(_) => return serde_json::json!({"ok": false, "error": "player_actor poisoned"}),
         };
         if let Some(id) = active_id {
-            return self
-                .handle_player_action(PlayerAction::Play { episode_id: id }, correlation_id);
+            return self.handle_player_action(
+                PlayerAction::Play {
+                    episode_id: id,
+                    start_secs: None,
+                    end_secs: None,
+                },
+                correlation_id,
+            );
         }
         self.siri_play_latest(None, correlation_id)
     }

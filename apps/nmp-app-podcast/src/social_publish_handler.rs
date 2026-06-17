@@ -32,8 +32,10 @@ use std::sync::{Arc, Mutex};
 
 use serde_json::json;
 
+use crate::clip_handler::ClipRecord;
 use crate::nmp_dispatch::{publish_profile_via_nmp, publish_raw_via_nmp};
 use crate::store::identity::IdentityStore;
+use crate::store::PodcastStore;
 use nmp_ffi::NmpApp;
 
 /// NIP-84 highlight event kind.
@@ -226,6 +228,43 @@ pub fn handle_publish_highlight(
     let tags = build_highlight_tags(content, fields);
     let status = publish_raw_via_nmp(app, KIND_HIGHLIGHT, &tags, content);
     json!({"ok": true, "status": status})
+}
+
+/// Publish a Rust-owned clip as a kind:9802 highlight when it is user-visible
+/// and has transcript text. Agent-created clips stay local; pending clips with
+/// no transcript wait until transcript refinement supplies content.
+pub(crate) fn publish_clip_highlight_if_user_visible(
+    app: *mut NmpApp,
+    identity: &Arc<Mutex<IdentityStore>>,
+    store: &Arc<Mutex<PodcastStore>>,
+    clip: &ClipRecord,
+    correlation_id: &str,
+) {
+    if clip.source == "agent" || clip.transcript_text.trim().is_empty() {
+        return;
+    }
+    let Some((enclosure_url, feed_url, item_guid)) = store
+        .lock()
+        .ok()
+        .and_then(|store| store.episode_highlight_metadata(&clip.episode_id))
+    else {
+        return;
+    };
+    let fields = HighlightFields {
+        enclosure_url: Some(enclosure_url.as_str()),
+        feed_url: feed_url.as_deref(),
+        item_guid: Some(item_guid.as_str()),
+        start_sec: Some(clip.start_secs.round() as i64),
+        end_sec: Some(clip.end_secs.round() as i64),
+        caption: clip.title.as_deref(),
+    };
+    let _ = handle_publish_highlight(
+        app,
+        identity,
+        &clip.transcript_text,
+        &fields,
+        correlation_id,
+    );
 }
 
 #[cfg(test)]

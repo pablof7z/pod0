@@ -9,6 +9,8 @@ use std::sync::{Arc, Mutex};
 
 use crate::snapshot_signal::SnapshotUpdateSignal;
 use crate::store::identity::IdentityStore;
+use crate::nmp_dispatch::{activate_local_signer_in_kernel, remove_account_from_kernel};
+use nmp_ffi::NmpApp;
 
 /// Wire enum for all `podcast.identity` namespace actions.
 ///
@@ -32,6 +34,7 @@ pub enum IdentityAction {
 /// Stateless handler struct that borrows the shared `IdentityStore` and `rev`
 /// from the `PodcastHostOpHandler`.
 pub struct IdentityHandler {
+    pub app: *mut NmpApp,
     pub identity: Arc<Mutex<IdentityStore>>,
     pub rev: Arc<AtomicU64>,
     pub snapshot_signal: Option<SnapshotUpdateSignal>,
@@ -44,11 +47,17 @@ pub struct IdentityHandler {
 impl IdentityHandler {
     pub fn new(identity: Arc<Mutex<IdentityStore>>, rev: Arc<AtomicU64>) -> Self {
         Self {
+            app: std::ptr::null_mut(),
             identity,
             rev,
             snapshot_signal: None,
             identity_domain_rev: None,
         }
+    }
+
+    pub fn with_app(mut self, app: *mut NmpApp) -> Self {
+        self.app = app;
+        self
     }
 
     pub fn with_snapshot_signal(mut self, signal: SnapshotUpdateSignal) -> Self {
@@ -87,6 +96,11 @@ impl IdentityHandler {
             IdentityAction::ImportNsec { nsec } => match self.identity.lock() {
                 Ok(mut id) => match id.import_nsec(&nsec) {
                     Ok(()) => {
+                        let secret_hex = id.secret_hex.clone();
+                        drop(id);
+                        if let Some(secret_hex) = secret_hex.as_deref() {
+                            activate_local_signer_in_kernel(self.app, secret_hex);
+                        }
                         self.bump_rev();
                         serde_json::json!({"ok": true})
                     }
@@ -97,6 +111,11 @@ impl IdentityHandler {
             IdentityAction::Generate => match self.identity.lock() {
                 Ok(mut id) => match id.generate() {
                     Ok(()) => {
+                        let secret_hex = id.secret_hex.clone();
+                        drop(id);
+                        if let Some(secret_hex) = secret_hex.as_deref() {
+                            activate_local_signer_in_kernel(self.app, secret_hex);
+                        }
                         self.bump_rev();
                         serde_json::json!({"ok": true})
                     }
@@ -106,7 +125,12 @@ impl IdentityHandler {
             },
             IdentityAction::Clear => match self.identity.lock() {
                 Ok(mut id) => {
+                    let pubkey_hex = id.pubkey_hex.clone();
                     id.clear();
+                    drop(id);
+                    if let Some(pubkey_hex) = pubkey_hex.as_deref() {
+                        remove_account_from_kernel(self.app, pubkey_hex);
+                    }
                     self.bump_rev();
                     serde_json::json!({"ok": true})
                 }

@@ -129,6 +129,7 @@ pub(super) fn build_library_snapshot(
                 _ => 0, // skip_serializing_if omits 0
             },
             cellular_allowed: !store.wifi_only_for(podcast.id),
+            notifications_enabled: store.notifications_enabled_for(podcast.id),
             user_categories: store
                 .podcast_user_categories_for(&podcast.id.0.to_string())
                 .to_vec(),

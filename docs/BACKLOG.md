@@ -30,7 +30,40 @@ worktrees currently in flight.
   `pablof7z/nostr-multi-platform#1408` and `#1412` remain open cleanup/dependency
   notes, but neither is currently represented as an app-local workaround on `main`.
   Remaining parity debt lives in `App/Sources/` Swift policy/fallback code plus
-  the listed platform/AI gaps.
+  the listed platform/AI gaps. Agent chat title generation now routes prompt
+  construction, message filtering/truncation, selected model, and JSON title
+  parsing through Rust (`nmp_app_podcast_agent_chat_title_*`); Swift only
+  executes the provider call and persists the returned title. Nostr peer-agent
+  reply framing now routes peer-channel prompt construction, npub encoding, and
+  owner-vs-peer fallback wording through Rust (`nmp_app_podcast_agent_nostr_peer_prompt`);
+  Swift passes raw profile/owner facts and executes the agent turn loop. Main
+  in-app agent system prompt construction now routes through Rust
+  (`nmp_app_podcast_agent_system_prompt`): Swift supplies raw agent context,
+  friends, notes, memory facts, and skill catalog rows while Rust owns prompt
+  prose, section ordering, caps, truncation, and fallback wording. Conversation
+  history tools now route list/search policy through Rust
+  (`nmp_app_podcast_agent_conversation_history`): Swift supplies raw in-app and
+  Nostr transcript facts while Rust owns source normalization, caps, ordering,
+  lexical matching, snippet truncation, Nostr display fallbacks, and tool row
+  shape. The agent voice-list tool now routes query matching, caps, row shaping,
+  and result counters through Rust (`nmp_app_podcast_agent_voice_list`) after
+  the existing Rust-backed ElevenLabs catalog fetch; Swift only passes raw voice
+  catalog rows and tool args. The YouTube search tool now routes argument
+  normalization, limit caps, and final result shaping through Rust
+  (`nmp_app_podcast_agent_youtube_search_*`); Swift only executes the extractor
+  search capability with the Rust-planned query/limit. The podcast-directory
+  search tool now routes query/type normalization, limit caps, date formatting,
+  and final result shaping through Rust
+  (`nmp_app_podcast_agent_directory_search_*`); Swift only executes the
+  directory capability and passes raw hit facts back. The agent category-list
+  tool now routes include-podcasts parsing, caps, generated-at formatting, row
+  shaping, and counters through Rust (`nmp_app_podcast_agent_category_list`);
+  Swift only passes raw category summaries from the Rust-owned library category
+  projection. Simple inventory list tools (`list_podcasts`, `list_subscriptions`,
+  `list_in_progress`, `list_recent_unplayed`) now route caps, timestamp
+  formatting, envelopes, and row shaping through Rust
+  (`nmp_app_podcast_agent_inventory_list`); Swift only passes raw rows from the
+  Rust-owned inventory adapter.
 - **p0-validation-gate.** Established for current merge gates: branch protection
   requires deterministic merge contexts for `Git diff hygiene`, `Migration
   lint gates`, `Rust workspace build gate (all members, all targets)`, `Swift
@@ -135,6 +168,21 @@ worktrees currently in flight.
   creates `PodcastSubscription` rows for summaries whose follow flag is true.
   The old Swift-only `FeedClient.fetch` → `store.upsertPodcast` /
   `store.upsertEpisodes` path has no production caller.
+- ~~**threading-projection-kernel-ownership.**~~ Done in this PR:
+  cross-episode threading topics and mentions now come from
+  `nmp_app_podcast_threading_projection`, derived in Rust from kernel library,
+  transcript, and categorization facts. The Swift `ThreadingInferenceService`
+  no longer creates topics, writes mentions, seeds DEBUG mock rows, normalizes
+  slugs, persists threading arrays in `AppState`, or decides the Home
+  "Threaded Today" active-topic gate. `nmp_app_podcast_threading_active_topics`
+  applies the unplayed/archive/category filter and returns the exact mention
+  ids for the playlist; Swift only refreshes and renders the Rust projection.
+- ~~**home-related-kernel-ownership.**~~ Done in this PR:
+  Home's Related sheet now calls `nmp_app_podcast_knowledge_home_related`.
+  Rust owns seed-query construction from title/TOC chapters, topic-vs-sources
+  lens limits, seed filtering, one-row-per-show topic collapse, and the
+  category fallback when the transcript index is empty. Swift only maps
+  returned episode ids to native navigation rows.
 - ~~**owned-podcast-episode-backfill-kernel.**~~ Done: kernel `update_owned`
   now detects a private→public flip and calls `publish_episode` for every
   episode atomically; the Swift loop deleted (PR #396).
@@ -168,6 +216,25 @@ worktrees currently in flight.
   Diagnostics no longer hides the OpenRouter Whisper retry path behind a
   Keychain preflight; forced OpenRouter Whisper retries now call the shared
   Rust STT transport so missing-key/provider errors come from the backend.
+  Swift provider completions no longer reject `.local` before dispatch; the
+  Rust provider transport is the single owner for unsupported-provider and
+  missing-credential semantics.
+  Agent similar-episode search now calls a Rust `knowledge_similar_episode`
+  FFI so the kernel owns seed episode lookup, query derivation, retrieval, and
+  seed filtering instead of Swift building a title/description query locally.
+  Search-tab local show/episode search now calls `nmp_app_podcast_local_search`;
+  Rust owns followed-feed scope, archived-episode visibility, tokenization,
+  scoring weights, snippet selection, ranking, and caps while Swift resolves
+  returned ids for native row rendering.
+  Swift Perplexity search no longer trims/rejects empty queries before
+  dispatch; Rust online-search transport owns query normalization, invalid-query
+  errors, provider fallback, and missing-credential semantics. The agent tool
+  layer also stopped pre-checking `perplexity_search.query` and
+  `find_similar_episodes.seed_episode_id`; those requests now flow to the
+  Rust-backed transport/seed lookup.
+  Swift image generation no longer infers missing-credential errors by scanning
+  backend strings; Rust provider transport is the only source of image
+  generation failure semantics.
   ElevenLabs key validation now also runs through the shared Rust backend
   (`/v1/user`), and ElevenLabs Scribe transcription now uses
   `nmp_app_podcast_elevenlabs_scribe_transcribe` so Rust owns selected Scribe
@@ -246,8 +313,9 @@ worktrees currently in flight.
   and the active Swift scheduled prompt tool/settings surface now creates and
   edits `agent_prompt` tasks through
   `podcast.tasks` typed intents, renders the shared `agentTasks` projection,
-  and dispatches Rust-owned `run_due` on foreground instead of scanning a
-  persisted Swift task array. Agent task rows now persist through the shared
+  lets Rust parse/reject cadence strings and missing task IDs, and dispatches
+  Rust-owned `run_due` on foreground instead of scanning a persisted Swift task
+  array. Agent task rows now persist through the shared
   Rust sidecar so disabled, edited, deleted, and completed tasks survive kernel
   restarts across iOS, Android, and TUI. Keep raw `create` as
   compatibility/internal only; remaining work is a durable background-agent
@@ -260,7 +328,9 @@ worktrees currently in flight.
   Podcasts relay editor have been removed; legacy saved keys are ignored and
   dropped on the next persistence write. Remaining NIP-65 work is the real
   user/agent kind:10002 publish/refresh model, not another app-side relay
-  array.
+  array. Nostr discovery no longer gates rendering on the legacy Swift
+  `settings.nostrRelayURL`; the view claims the Rust discovery interest and
+  Rust/NMP owns relay/indexer routing.
 - ~~**relay-config-c-abi-persistence.**~~ DONE (commit `0dcf9680`, PR #220
   "persist relay configuration across app restarts via C-ABI path"). Relay
   edits now survive restarts via a `.nmp-relay-config.json` sidecar — the same
@@ -406,11 +476,20 @@ worktrees currently in flight.
   one was removed in this PR. Verified against NMP v0.6.2 rev ac7e307e
   `crates/nmp-core/src/actor/commands/publish.rs` + `pending_sign.rs` +
   `nip46_bunker_signing.rs` integration test.
-- ~~**nip73-formatting-kernel.**~~ Done. `publishUserClip` sends typed
-  `enclosure_url`, `feed_url`, `item_guid`, `start_sec`, `end_sec`, and
-  `caption` fields to `podcast.social publish_highlight`; Rust
-  `build_highlight_tags` owns the NIP-73/84 `r`, `i`, `context`, and `alt` tag
-  assembly, with typed action and pure tag-builder tests locking the contract.
+- **local-notes-kernel-store.** Publishing user notes is already Rust-owned via
+  `podcast.social.publish_note`, but local note storage remains Swift-owned:
+  `AppState.notes`, `AppStateStore.addNote/deleteNote/updateNote`,
+  episode/friend/settings note views, Spotlight/DataExport counters, and
+  `AgentActivityKind.noteCreated` all read or mutate Swift `Note` rows. Migrate
+  local note persistence/projection/actions to the kernel before deleting the
+  Swift note array; until then, keep publish routing through `podcast.social`
+  and do not reintroduce Swift signing/tag policy.
+- ~~**nip73-formatting-kernel.**~~ Done. The legacy Swift `publishUserClip`
+  helper has been retired; clip publish/update semantics now remain tracked
+  under `autosnip-real-boundaries` so they can be owned from the Rust clip
+  lifecycle instead of a parallel Swift helper. Rust `build_highlight_tags`
+  owns the NIP-73/84 `r`, `i`, `context`, and `alt` tag assembly, with typed
+  action and pure tag-builder tests locking the contract.
 - ~~**social-publish-relay-target.**~~ Done. User-signed social publishing
   routes through `nmp_dispatch.rs` with `PublishRaw { target: Auto }`, and the
   pinned NMP `Nip65OutboxResolver` resolves `Auto` through cached author write
@@ -440,10 +519,12 @@ worktrees currently in flight.
     `SocialState::trust_predicate` (`(followed || approved) && !blocked`),
     `agent_note_handler` responder gate, `data_dir.rs` cold-load, and
     `social_actions.rs` host-op handler. iOS dispatch shims added
-    (`KernelModel+Social.swift`); `AgentAccessControlView` routes through
-    kernel; dead `NostrPendingApproval` / `NostrApprovalPresenter`
-    scaffolding deleted. Follow-ups: bridge-decode fixture test for
-    `trusted` field; Android access-control UI.
+    (`KernelModel+Social.swift`); `SocialSnapshot` now projects explicit
+    approved/blocked pubkey arrays from Rust so `AgentAccessControlView`
+    renders Rust-owned lists instead of Swift mirror sets. Dead
+    `NostrPendingApproval` / `NostrApprovalPresenter` scaffolding deleted.
+    Follow-ups: bridge-decode fixture test for `trusted`/approved/blocked
+    fields; Android access-control UI.
 - **agent-to-agent-kind1 (feature #44).** Agent-to-agent messaging over
   public kind:1 notes threaded with NIP-10.
   - **DONE — raw transport.** `agent_note_handler.rs` (PR for #44) signs +
@@ -612,6 +693,102 @@ worktrees currently in flight.
   correct behavior. Note: this is separate from the parallel SwiftUI
   `AudioConversationManager` voice path used by `VoiceView`, which has the same
   missing-sink gap.
+- **agent-ask-tool-kernel-ownership.** `AgentAskCoordinator` currently owns the
+  owner-consultation tool contract in Swift: FIFO prompt queueing, the
+  five-minute timeout, and sentinel tool outputs (`"user declined to answer"`,
+  `"user did not respond within 5 minutes"`). Rust now owns ask normalization,
+  FIFO/current promotion, timeout duration, decline/timeout sentinel strings,
+  timeout wakeup, and the final agent tool result envelope through `agent_ask`
+  FFI. Swift renders the current prompt, parks continuations, reports raw
+  answer/decline outcomes, and resumes from the Rust ask callback when timeout
+  expiry settles a pending ask. Remaining: pending asks still use a focused FFI
+  callback rather than a general Rust-pushed pending-ask projection/action
+  lifecycle; migrate to a projection if/when other shells need to render this
+  queue.
+- ~~**apple-directory-search-kernel-ownership.**~~ DONE. The agent
+  `search_podcast_directory`, directory collection-id lookup, and Add Show
+  Apple Podcasts search/trending paths no longer construct Apple URLs, issue
+  `URLSession` requests, parse iTunes JSON, rank top-chart lookup rows, or
+  filter malformed feed URLs in Swift. Swift sends raw user intent to
+  `nmp_app_podcast_itunes_directory_search`,
+  `nmp_app_podcast_itunes_lookup_feed_url`, and
+  `nmp_app_podcast_itunes_top_podcasts`; Rust owns endpoint shape, storefront
+  top-chart lookup, limit clamping, HTTP capability dispatch, podcast-vs-episode
+  row parsing, publish timestamps, duration conversion, feed-backed row
+  filtering, ranking preservation, and error envelopes. Swift only decodes the
+  Rust-authored envelope into existing agent/UI value types.
+- **agent-episode-mutation-kernel-ownership.** Agent tools for
+  `mark_episode_played`, `mark_episode_unplayed`, and `download_episode` now
+  dispatch raw episode ids first and surface Rust rejection for unknown
+  episodes; the general Swift download wrapper also no longer resolves or
+  passes enclosure URLs. Rust now also builds the agent-facing
+  `EpisodeMutationResult` envelope via `episode_mutation_tool_result`, including
+  episode title, podcast id/title, state, and unknown-id rejection; Swift only
+  dispatches the mutation and relays the Rust-authored result for these tools.
+  Agent inventory tools now also call `nmp_app_podcast_agent_inventory`; Rust
+  owns subscribed/all-podcast scope, Unknown-podcast suppression,
+  unplayed/archive counts, in-progress/recent-unplayed filters, ordering, caps,
+  and per-podcast episode listing, while Swift only decodes rows into the
+  existing tool protocol value types.
+- **agent-playback-kernel-ownership.** `play_episode` for library episodes now
+  routes playback intent through Rust `podcast.player` actions, including
+  bounded segments (`start_seconds` / `end_seconds`) and queue placement.
+  Rust owns whole-episode `play`, canonical id lookup, resume position,
+  unknown-id rejection, download-on-play, and validated whole-episode enqueue /
+  enqueue-next. Rust `play` / `load` actions now accept
+  optional `start_secs` / `end_secs`, stage `PlayerState.segment_end_secs`, and
+  stop or Rust-auto-advance when `AudioReport::Playing` reaches the segment end.
+  Rust queue entries can now carry transient bounded-segment starts/ends, and
+  auto-advance / explicit play-next stages those bounds through the Rust player.
+  `LivePlaybackHostAdapter` now dispatches play/enqueue intent to Rust first and
+  reads the kernel `PlayerState` projection for agent-visible now-playing,
+  seek, and skip responses. Agent playback controls for pause, speed, sleep
+  timer, seek, and skip now dispatch through Rust player actions; omitted skip
+  intervals are resolved from Rust-owned settings. External URL `play_episode` and
+  `generate_tts_episode(play_now: true)` also start through
+  `podcast.player.play` instead of constructing local Swift-only episodes.
+  Rust queue entries now persist bounded segment starts/ends, project them on
+  queue rows, and the Swift Up Next shell syncs from that Rust projection
+  instead of stripping queued segments to whole-episode IDs on restart.
+  Rust queue rows now carry stable Rust-owned slot ids and Swift remove/reorder
+  affordances dispatch those slot ids back to `podcast.player` instead of
+  mutating only local state. The old Swift `currentSegmentEndTime` bounded
+  segment auto-advance path has been retired; segment boundaries are decided by
+  Rust audio reports. Library `play_episode` and `get_now_playing` agent result
+  metadata now come from Rust `playback_tool_result` /
+  `now_playing_tool_result` instead of Swift-projected episode/podcast rows.
+  Agent playback-rate requests now pass raw speed to Rust and report the
+  Rust-clamped applied rate. Agent `seek_to` now passes raw target seconds to
+  Rust; the player actor clamps to `[0, duration]` when duration is known,
+  updates `PlayerState.position_secs`, and Swift reports that Rust-applied
+  position. In-app, CarPlay, and lock-screen playback-rate changes now dispatch
+  raw speed to `podcast.player.set_speed`; Rust clamps/stages
+  `PlayerState.speed` and the native shell only executes the returned
+  `AudioCommand::SetSpeed`. External URL `play_episode` now asks Rust for an
+  `external_play_plan` before creating the placeholder podcast/episode and
+  returns Rust `playback_tool_result` metadata instead of deriving the
+  parent/result envelope in Swift. Remaining: Swift still executes the
+  background feed metadata hydration for external-play placeholders as a host
+  capability; keep that host-side unless Rust grows a feed-hydration job
+  lifecycle projection/action.
+- **agent-transcription-kernel-ownership.** `request_transcription` now asks
+  Rust to accept the `queued` transcript status and surfaces Rust rejection for
+  unknown episodes before starting the native ingest service.
+  `download_and_transcribe` now follows the same pattern for queued status and
+  Rust-owned download dispatch. The Swift agent tool layer no longer performs
+  local episode-existence preflights. Transcript ingest now asks Rust for a
+  ready/skipped/publisher/STT plan; Rust owns publisher-first, AI fallback,
+  provider/key gating, per-show opt-out, Apple-native local-file gating, and
+  auto-ingest eligibility while Swift only executes the returned host
+  capability branch and reports results. Episode Diagnostics now renders the
+  Rust ingest plan instead of mirroring the readiness decision tree in Swift.
+  Agent transcript tool result formatting now comes from Rust
+  `transcript_tool_result` instead of Swift switching over `TranscriptState`.
+  The unused Swift `TranscriptionQueue` was deleted because it still encoded a
+  publisher-vs-Scribe fallback policy despite having no live callers.
+  Remaining: `download_and_transcribe` still awaits native ingest execution in
+  Swift. Keep that as host capability execution unless the kernel grows a
+  transcript-job lifecycle projection/action that can own completion waits.
 - **tts-episodes-reconcile-two-mechanisms (feature #43) — RESOLVED.**
   **Option A chosen — kernel stub deleted, Swift `AgentTTSComposer` is
   canonical.** The orphaned kernel `podcast.tts` vertical (`tts.rs`,
@@ -619,7 +796,9 @@ worktrees currently in flight.
   projection + `PodcastUpdate.tts_episodes` snapshot leg, the in-memory
   `tts_episodes` slot, and their tests) was removed in `feat/m9-delete-tts-stub`.
   The Swift agent-tool path (`generate_tts_episode` → `AgentTTSComposer`) is now
-  the single TTS mechanism. Rust-only change: the Swift Bridge mirror
+  the single TTS mechanism. Generated episodes are inserted into the Rust
+  kernel store with `podcast.add_episode`, and play-now dispatches
+  `podcast.player.play` instead of driving `PlaybackState` directly. Rust-only change: the Swift Bridge mirror
   (`ttsEpisodes` / `TtsEpisodeSummary`) decodes the now-always-absent JSON field
   via `decodeIfPresent ?? []`, so the iOS build is unaffected (the leftover
   mirror is harmless dead code, sweepable when the codegen pipeline lands).
@@ -677,16 +856,42 @@ worktrees currently in flight.
     see the M8-Blossom note — so synthesized audio bytes cannot transit
     Rust↔Swift) and duplicates what `AgentTTSComposer` already does natively.
 
-  Remaining follow-ups (now tracked on the surviving Swift path, not this
-  deleted stub): NIP-F4 publishing of agent episodes, deletion cleanup of
-  `agent-episodes/<id>.m4a`, and verifying the published `.synthetic` episode
-  metadata round-trips the store's disk layer across restart.
+  Generated-episode metadata planning is now Rust-owned via
+  `nmp_app_podcast_agent_tts_episode_plan`: Swift supplies raw execution facts
+  (turn text, measured durations, source episode title/artwork) and the kernel
+  derives chapter grouping, fallback labels, timed transcript segments, flat
+  transcript text, and inherited artwork before Swift dispatches the existing
+  `podcast.add_episode` action. Agent default voice fallback is also Rust-owned
+  via `nmp_app_podcast_agent_tts_default_voice`, and `configure_agent_voice`
+  dispatches the existing `set_eleven_labs_voice` settings action through
+  Rust instead of mutating a Swift `Settings` mirror. The per-episode NIP-F4
+  publish gate is Rust-owned too: `publish_episode` now rejects missing,
+  private, disabled, or unowned episodes in the kernel, while Swift only
+  dispatches the intent. The default feed-less generated-show descriptor
+  (stable id, title, description, author, visibility, categories) is also
+  supplied by Rust via `nmp_app_podcast_agent_generated_podcast_descriptor`.
+  Owned-podcast metadata edits and visibility toggles now dispatch
+  `update_owned_podcast` for both public and private transitions and wait for
+  Rust projection instead of mutating a Swift podcast render mirror; owned
+  deletion dispatches only `delete_owned_podcast`, not a second Swift
+  unsubscribe. The dead Swift `upsertPodcast` / `updatePodcast` mutation
+  helpers were removed so durable podcast row writes have no local bypass.
+  Remaining follow-ups (now tracked on the
+  surviving Swift path, not this deleted stub): NIP-F4 publishing of agent
+  episodes, deletion cleanup of `agent-episodes/<id>.m4a`, and verifying the
+  published `.synthetic` episode metadata round-trips the store's disk layer
+  across restart.
 
   Projection gap resolved: generated episodes and unfollowed external RSS
   ensure now ride the Rust projection. Keep this TTS item scoped to surviving
   Swift composer follow-ups
   (NIP-F4 publishing, deletion cleanup, restart verification), not feed-store
-  ownership.
+  ownership. Agent default voice selection now uses the Rust-owned
+  `eleven_labs_voice_id` / `eleven_labs_voice_name` provider settings path
+  instead of a private Swift `UserDefaults` key; `configure_agent_voice`
+  dispatches the existing `set_eleven_labs_voice` settings action through
+  `store.updateSettings`, and generated speech turns read the projected kernel
+  voice when no per-turn `voice_id` override is supplied.
 - ~~**ai-chapters-swift-compiler-delete.**~~ DONE (PR #refactor/kernel-ai-chapters-ad-spans).
   `AIChapterCompiler.swift` deleted; call sites in `PlayerView`, `EpisodeDetailView`,
   and `TranscriptIngestService` converted to `kernelCompileChapters`; FULL + ENRICH-ONLY
@@ -727,10 +932,68 @@ worktrees currently in flight.
   distinct user-curated section model (rename/document accordingly) or migrate
   category generation, corrections, persistence, and localization into the Rust
   categorization projection/actions.
-- **autosnip-real-boundaries.** Add boundary refinement, clip persistence,
-  export/share guarantees, and media-file handling.
-- **agent-memory-integration.** Wire memory CRUD into the real agent prompt/tool
-  loop with source attribution, privacy controls, and migration behavior.
+- **autosnip-real-boundaries.** Rust now owns autosnip capture/refinement for
+  the `podcast.clip.auto_snip` path: shells dispatch the playhead/source, the
+  kernel creates a pending clip, refines from timed transcript entries when
+  present, and re-refines pending clips when `transcript_report` later supplies
+  timing. Manual composer saves and agent-created clips now dispatch
+  `podcast.clip.create` with a caller-provided UUID while Rust snaps manual
+  ranges to timed transcript entries, derives clip text/speaker there, and
+  can fall back to explicitly supplied text only when timed entries are not
+  available. iOS agent/manual callers no longer send tool- or Swift-derived
+  transcript text into creation; they read Rust-projected clip text after the
+  mutation.
+  Quote-share boundary resolution now dispatches `podcast.clip.resolve_quote`
+  and renders only the kernel-returned transcript-aligned segment; Swift no
+  longer computes a local transcript-segment fallback when the kernel cannot
+  resolve quote bounds.
+  The legacy Swift `AppState.clips` mirror, local `addClip` helpers, preview
+  seeding, and clip-specific Swift identity publishing helper/tests have been
+  retired so the kernel projection is the only app clip list source.
+  Rust persists `ClipRecord` rows in `clips.json` and hydrates them during
+  `nmp_app_podcast_set_data_dir`, so clips survive restart without a Swift
+  state mirror. The Rust clip handler now records `clip.created` diagnostics
+  with span/source details, replacing the old Swift `addClip` event side
+  effect. User-visible non-agent clips are published as kind:9802 highlights
+  from the Rust clip lifecycle after create, or after transcript-report
+  refinement when an autosnip was initially pending. The app-local identity
+  import/generate/load path now also registers the same key as NMP's active
+  signer, so Rust-owned clip publishing does not depend on Swift publish
+  helpers to self-heal identity state. The clip composer now opens the real
+  share/export sheet from the Rust-projected clip after dispatching the create
+  action instead of sharing from a local draft placeholder. Clip audio/video
+  export now consumes the Rust-projected downloaded file path on
+  `Episode.downloadState` rather than recomputing download ownership through
+  `EpisodeDownloadStore`. The iOS sleep timer now dispatches Rust-owned
+  playback actions for duration and end-of-episode modes; native Swift only
+  holds the OS countdown timer and reports expiry back to the kernel.
+  The `summarize_episode` agent tool now dispatches the raw episode id through
+  Rust and surfaces the kernel rejection instead of running a separate Swift
+  `episodeExists` preflight.
+  Remaining: real video export generator-track
+  implementation (native AVFoundation capability work, not clip state/policy),
+  and a Rust result/projection contract for agent-created clips so Swift no
+  longer has to read episode metadata only to fill `ClipResult`. Agent clip
+  creation now dispatches raw episode ids/ranges and surfaces Rust rejection
+  for unknown episodes or invalid ranges.
+- **agent-memory-integration.** Finish moving agent memory out of Swift
+  `AgentMemory` state and into Rust `MemoryFact`s. Live split: the Swift
+  `record_memory` tool now writes Rust `MemoryFact`s through
+  `nmp_app_podcast_memory_remember_text`, with Rust minting the canonical fact
+  key and Swift activity undo dispatching `podcast.memory.forget` for that key.
+  `AgentPrompt` now renders the Rust `PodcastUpdate.memoryFacts` projection
+  instead of Swift `compiledMemory` / active memories, and the turn loop no
+  longer runs the Swift `AgentMemoryCompiler`. `AgentMemoriesView` and settings
+  counts now render/edit/delete Rust `MemoryFact`s through `podcast.memory`
+  actions instead of UUID Swift rows. The Swift `AppState.agentMemories`,
+  `compiledMemory`, `AgentMemoryCompiler`, and memory mutator extension have
+  been deleted; data export now carries Rust-projected `MemoryFact`s explicitly,
+  and clear-all dispatches `podcast.memory.forget_all`. Legacy
+  `AgentActivityKind.memoryRecorded` remains only so pre-migration activity
+  entries decode/display, but undo is inert because the old Swift memory store
+  no longer exists. Complete migration still requires source attribution/privacy
+  controls and any desired one-time import of old on-disk Swift memories into
+  Rust facts.
 
 ## Active P1 - Platform And Android
 
@@ -743,12 +1006,20 @@ worktrees currently in flight.
   behavior, cold-connect placeholder, and playback dispatch on CarPlay
   simulator/head unit.
 - **appintents-validation.** Validate Siri/Spotlight phrases, unavailable
-  playback state behavior, localized phrases, background execution, and
-  reconcile the active App target's Notification bridge with Rust-owned
-  playback policy. Reintroduce Play Latest only after the active app can route
-  it through `podcast.siri.play_latest` instead of selecting episodes in Swift.
-- **spotlight-hardening.** Validate indexing throttles, deletion/update,
-  deep links, and no reindex churn from playback-position ticks.
+  playback state behavior, localized phrases, and background execution. The
+  active App target no longer uses the Notification bridge for playback
+  shortcuts: Pause and Skip Forward dispatch `podcast.player` actions directly,
+  and Resume dispatches `podcast.siri.resume` so Rust owns fallback selection.
+  Reintroduce Play Latest only after the active app can route it through
+  `podcast.siri.play_latest` instead of selecting episodes in Swift.
+- **spotlight-hardening.** Validate indexing throttles, deletion/update, and
+  no reindex churn from playback-position ticks. Podcast and episode rows now
+  come only from `SpotlightCapability` over the Rust `PodcastSummary`
+  projection; the legacy Swift `SpotlightIndexer` is note-only and clears its
+  old subscription/episode domains instead of choosing followed shows or a
+  latest-unplayed episode subset in Swift. Spotlight taps first decode the
+  Rust-backed identifiers, with legacy note/subscription/episode identifiers
+  retained only for stale OS rows.
 - **handoff-hardening.** Validate NSUserActivity donation/invalidation,
   continue path, and stale activity behavior across devices.
 - **icloud-settings-hardening.** Confirm Rust owns settings policy, conflicts,
@@ -858,7 +1129,9 @@ worktrees currently in flight.
   The avatar (`ChangePhotoSheet`) and artwork (`LiveAgentOwnedPodcastManager.generateAndUploadArtwork`)
   callers now dispatch `nmp.blossom.upload` through `KernelModel.blossomUpload` and
   await the `BlobDescriptor` from the drain-once `action_results` typed sidecar.
-  `BlossomUploader.swift` is deleted. The `nmp-blossom` action module (v0.6.0) owns
+  `BlossomUploader.swift` is deleted. The Swift bridge no longer races this
+  kernel-settled action against a local timeout; timeout/failure semantics stay
+  with the Rust/NMP action owner. The `nmp-blossom` action module (v0.6.0) owns
   the full Build → Sign → Transport pipeline (D13/D0).
 - **blossom-audio-path-migration.** Migrate the audio upload path
   (`apps/nmp-app-podcast/src/blossom.rs` → `host_op_publish::publish_episode`) to
@@ -916,13 +1189,9 @@ worktrees currently in flight.
   `nowPlaying.positionSecs`. At that point `PlatformCapability.applyNowPlayingSnapshot`
   needs a separate position-write path (not gated by the identity dedup) so the
   widget stays live during playback. Owner: M1.6 agent.
-- **episode-metadata-indexer-ownership.** IN-FLIGHT (PR #511 open, not yet merged
-  as of origin/main HEAD 12874d7e). PR #511 moves the backfill orchestration
-  (batch size, inter-batch pacing, pending-episode scan) from
-  `App/Sources/Services/EpisodeMetadataIndexer.swift` into the Rust kernel (D7).
-  `App/Sources/Services/EpisodeMetadataIndexer.swift` still owns the policy on
-  current `main`. Do not mark done until #511 merges and the Swift file is
-  deleted or reduced to a thin bridge.
+- ~~**episode-metadata-indexer-ownership.**~~ DONE. The Swift
+  `EpisodeMetadataIndexer` file is gone in this worktree, and Rust
+  knowledge indexing owns metadata coverage plus transcript chunking/search.
 - ~~**feed-not-modified-rev-bump.**~~ Done in this PR. The shared feed response
   parser now returns a canonical cache for both `200` and `304` results,
   preferring response validators and falling back to prior validators when
@@ -987,6 +1256,163 @@ _All pending decisions resolved. See Done section for resolutions._
   remains tracked under `p0-nipf4-real-keys`.
 - **home-inbox-status-line.** Done via PR #94; the Home Inbox header reports
   triage freshness and kept/archived counts.
+- ~~**home-inbox-projection-ownership.**~~ Done in this PR: Home's inbox hero
+  cards and the full Inbox screen now consume `PodcastUpdate.inbox` instead of
+  rebuilding inbox rows from Swift `Episode.triageDecision` / `triageIsHero`.
+  Rust owns inbox eligibility, priority ordering, rationale text, and the Home
+  Inbox header roll-up counts via `nmp_app_podcast_home_triage_rollup`; Swift
+  only passes the active category renderer scope and resolves episode ids for
+  native row rendering.
+- ~~**home-continue-listening-kernel-ownership.**~~ Done in this PR:
+  Continue Listening now calls `nmp_app_podcast_home_continue_listening`.
+  Rust owns the unplayed/non-archived/started/two-week/category filter and row
+  ordering; Swift resolves returned episode ids for native rendering. The
+  Home subscription list now calls `nmp_app_podcast_home_subscription_list`;
+  Rust owns followed-feed eligibility, active category scope, All/Unplayed/
+  Downloaded/Transcribed filter semantics, and newest-episode ordering while
+  Swift resolves returned podcast ids for native rendering. The
+  recommended-picks rail also preserves Rust `PodcastUpdate.picks` ordering
+  instead of re-sorting by score in Swift. CarPlay Listen Now now calls
+  `nmp_app_podcast_carplay_listen_now`; Rust owns subscribed-show scope,
+  archive visibility, in-progress/latest membership, ordering, and section
+  caps while Swift only resolves ids and renders `CPListTemplate` rows.
+  Home's category picker now calls `nmp_app_podcast_home_category_cards`;
+  Rust owns valid/subscribed podcast membership and non-archived unplayed
+  totals for category cards while Swift keeps the legacy category display
+  model and native rendering. CarPlay Shows now calls
+  `nmp_app_podcast_carplay_shows` and
+  `nmp_app_podcast_carplay_show_episodes`; Rust owns followed-show ordering,
+  show unplayed counts, per-show episode membership, archive visibility, and
+  row caps while Swift resolves ids and renders native CarPlay rows. Library
+  show detail now calls `nmp_app_podcast_library_show_episodes`; Rust owns
+  show episode membership, archive visibility, newest-first ordering, and caps
+  while Swift keeps only local search filtering and native row rendering. All
+  Podcasts and Settings Subscriptions rows now call
+  `nmp_app_podcast_library_podcast_stats`; Rust owns total episode counts while
+  Swift formats native labels and confirmation copy. Agent empty-state
+  suggestions now call `nmp_app_podcast_agent_empty_state`; Rust owns the
+  resume/subscribed/onboarding context choice while Swift renders the selected
+  copy. Agent subscription/delete/refresh/owned-podcast result counts now use
+  the same Rust-owned podcast stats projection, and audio-URL-to-episode lookup
+  now calls `nmp_app_podcast_library_episode_for_audio_url` instead of scanning
+  Swift episode arrays. Home active-thread invalidation now calls
+  `nmp_app_podcast_library_summary` for total unplayed count instead of
+  reducing Swift `unplayedCountByShow`. The old Swift episode projection
+  cache fields (`unplayedCountByShow`, `episodeIndexesByShow`,
+  `inProgressEpisodesCached`, `recentEpisodesCached`, downloaded/transcribed
+  sets) were removed; legacy helper APIs now resolve through Rust projections
+  or remain as no-op mutation compatibility shims. Library All Episodes now
+  calls `nmp_app_podcast_library_all_episodes`; Rust owns filter/search
+  predicates, archive visibility, newest-first ordering, pagination, and total
+  filtered counts while Swift resolves ids and renders rows. CarPlay Downloads
+  now calls `nmp_app_podcast_carplay_downloads`; Rust owns downloaded
+  membership, archive visibility, newest-first ordering, and caps while Swift
+  formats native row details. `sortedFollowedPodcasts` now calls
+  `nmp_app_podcast_library_followed_podcasts`; Rust owns followed-feed
+  eligibility and alphabetical ordering while Swift resolves ids for Settings
+  and OPML export. The legacy `sortedFollowedPodcastsByRecency` wrapper now
+  composes Rust's followed-podcast and Home subscription-list projections
+  instead of sorting subscriptions by episode dates in Swift. Agent-owned
+  podcast lists and Settings badges now call
+  `nmp_app_podcast_library_owned_podcasts`; Rust owns owner-marker eligibility
+  and ordering while Swift resolves ids and renders settings/tool results.
+  Category lists/details now call `nmp_app_podcast_library_categories`; Rust
+  owns category ordering plus valid subscribed podcast membership/order while
+  Swift keeps the legacy display/settings DTO and native rendering. Category
+  management count labels now use the same Rust-projected valid membership
+  instead of raw legacy `subscriptionIDs`. Downloads Manager now calls
+  `nmp_app_podcast_library_download_rows`; Rust owns
+  active/failed/downloaded membership and section ordering while Swift renders
+  status details and actions. Settings download summary uses the same Rust
+  download-row projection. Bookmarks now calls
+  `nmp_app_podcast_library_starred_episodes` for starred membership/order and
+  unions that with Swift-local clips/notes before rendering. Episode deep links
+  now call `nmp_app_podcast_library_episode_lookup`; Rust owns matching URL
+  episode references against canonical episode ids and publisher GUIDs.
+  Category transcription aggregate state now rides the Rust category projection
+  as `all_transcription_enabled` instead of scanning Swift kernel summaries,
+  and category settings UI no longer writes or renders from the legacy
+  `CategorySettings` DTO; that Swift state remains only as legacy migration
+  input for old disabled transcription settings.
+  Settings/Data Storage record counts and Home active-thread invalidation now
+  use Rust `library_summary` episode/followed-podcast counts instead of
+  `store.episodes.count` / `state.subscriptions.count`; category recompute and
+  Home category-picker labels use the same Rust followed-podcast count.
+  Home first-run and "See all podcasts" affordance logic now uses Rust
+  `library_summary` followed/unfollowed facts instead of Swift subscription and
+  podcast scans.
+  Agent category inventory and category-change label fan-out now reuse the
+  Rust category projection for ordering/membership instead of sorting or
+  filtering Swift `subscriptionIDs`.
+  Nostr discovery rows now call `nmp_app_podcast_library_subscription_status`;
+  Rust owns matching feed URLs and owner pubkeys against existing followed /
+  owned shows for the already-subscribed state.
+  All Podcasts now calls `nmp_app_podcast_library_all_podcasts`; Rust owns
+  Unknown-sentinel exclusion, search matching, and alphabetical ordering while
+  Swift resolves ids and renders rows/delete copy.
+  Podcast deletion now dispatches Rust unsubscribe and relies on the snapshot
+  projection to remove podcast, follow, and episode rows; the dead Swift
+  direct-follow helper and duplicate local unsubscribe deletion were removed.
+  Feed subscribe now lets the Rust subscribe handler own duplicate-follow
+  rejection; Swift only maps the kernel error back to existing UI copy.
+  Per-show auto-download changes now dispatch only the Rust
+  `set_auto_download` action and read the result back from projection instead
+  of mutating Swift subscription policy state first.
+  Mark-played, reset-progress, mark-unplayed, and starred episode actions now
+  dispatch only Rust actions; Swift keeps the native position debounce cache
+  clear but no longer performs duplicate optimistic episode flag writes.
+  Dead Swift mutation helpers for persisted episode chapters and ad segments
+  were removed; chapter fetch and AI chapter/ad compilation persist through
+  Rust actions and project back into Swift.
+  The Storage "Delete after played" toggle now updates via `updateSettings`,
+  ensuring the Rust `set_auto_delete_downloads_after_played` action owns the
+  persisted policy instead of a nested Swift settings binding.
+  Transcript auto-ingest now calls
+  `nmp_app_podcast_transcript_auto_ingest_candidates`; Swift supplies
+  local-audio availability facts while Rust owns candidate eligibility,
+  optional new-episode scoping, newest-first ordering, and max-count limiting
+  using the same planner as single-episode ingest.
+  Episode detail transcript warmup now calls the ingest service for idle
+  episodes and lets the Rust planner decide publisher/STT/skip behavior instead
+  of Swift pre-gating on publisher URL or Unknown-podcast external status.
+  Data export preview counts now inject Rust-owned followed-podcast and episode
+  totals instead of deriving those display facts from Swift subscription and
+  episode DTO counts.
+  Per-show new-episode notification toggles now dispatch
+  `set_podcast_notifications_enabled`; Rust persists the per-podcast disabled
+  set, filters notification capability dispatch during feed refresh, and
+  projects `notifications_enabled` back onto subscription rows.
+  Category-level auto-download/RAG/notification override controls were removed
+  from active UI because they were legacy Swift-only DTO knobs with no
+  Rust-owned runtime policy; only transcription remains visible because it is
+  wired through Rust per-podcast transcription policy. Reintroduce those
+  category controls only after Rust owns durable category policy without lossy
+  fan-out.
+  All Episodes and Downloads Manager row context now reuse the Rust all-podcasts
+  projection instead of raw `state.podcasts` maps when resolving show metadata.
+  Settings Storage now calls `nmp_app_podcast_storage_breakdown`; Swift only
+  enumerates raw local download files as an OS capability while Rust owns the
+  library join, orphan classification, total bytes, per-show grouping, episode
+  dedupe, and row ordering.
+  Agent transcript search now calls `nmp_app_podcast_knowledge_resolve_scope`;
+  Rust owns raw scope UUID disambiguation against canonical episode/podcast
+  state before the knowledge query runs.
+  Nostr feedless subscribe confirmation now calls
+  `nmp_app_podcast_library_podcast_for_owner_pubkey`; Rust owns matching the
+  owner pubkey to the canonical podcast row while Swift waits and returns the
+  rendered `Podcast`.
+  Subscription categorization recompute now calls
+  `nmp_app_podcast_library_categorization_prompt` and
+  `nmp_app_podcast_library_categorization_parse`; Rust owns followed-podcast
+  prompt construction, response schema, UUID validation, last-write-wins
+  dedupe, generated category ids, generated timestamp, and model attribution
+  while Swift only executes the async completion capability and persists the
+  returned category DTOs.
+  Agent category edits now call `nmp_app_podcast_library_category_change`;
+  Rust owns category reference resolution, podcast/category validation,
+  single-category move semantics, previous/target result fields, and the
+  kernel label set while Swift persists the returned category DTOs and
+  dispatches the returned labels.
 - **ollama-local-provider.** Done via PR #95; local/self-hosted Ollama
   endpoints can omit API keys and model discovery uses the configured host.
 - **playback-restore-auto-download.** Done via PR #96; restoring the last

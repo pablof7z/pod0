@@ -1,7 +1,8 @@
-//! `nmp_app_podcast_knowledge_query` / `nmp_app_podcast_knowledge_chunk` —
-//! synchronous kernel RAG query surface (slice 5b).
+//! `nmp_app_podcast_knowledge_query` / `nmp_app_podcast_knowledge_similar_episode`
+//! / `nmp_app_podcast_knowledge_chunk` — synchronous kernel RAG query surface
+//! (slice 5b).
 //!
-//! Two `block_on` FFI functions returning inline JSON. Distinct from the
+//! `block_on` FFI functions returning inline JSON. Distinct from the
 //! reactive `KnowledgeAction::Search` which stages results into the
 //! `PodcastUpdate` projection — these are request/response (synchronous, no
 //! domain bump, no store mutation) intended for agent (5d) and wiki (5e).
@@ -74,6 +75,31 @@ struct KnowledgeChunkRequest {
     chunk_index: u32,
 }
 
+#[derive(Debug, Deserialize)]
+struct SimilarEpisodeRequest {
+    episode_id: String,
+    limit: Option<usize>,
+}
+
+#[derive(Debug, Deserialize)]
+struct HomeRelatedRequest {
+    episode_id: String,
+    #[serde(default)]
+    lens: String,
+    limit: Option<usize>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct HomeRelatedRow {
+    pub id: String,
+    pub episode_id: String,
+    pub podcast_id: String,
+    pub episode_title: String,
+    pub podcast_title: String,
+    pub chunk_index: u32,
+    pub text: String,
+}
+
 // ── FFI entry points ──────────────────────────────────────────────────────────
 
 /// Synchronous hybrid RAG query: BM25 + optional semantic + RRF fusion.
@@ -126,6 +152,87 @@ pub extern "C" fn nmp_app_podcast_knowledge_query(
             let index_arc = h.state.knowledge.index_arc();
             let runtime = Arc::clone(&h.state.infra.runtime);
             let rows = runtime.block_on(run_knowledge_query_inner(req, store_arc, index_arc));
+            ok_json(&serde_json::json!({ "result": rows })).into_raw()
+        },
+    )
+}
+
+/// Synchronous similar-episode lookup.
+///
+/// Rust owns the seed-query policy: resolve the seed episode from the store,
+/// derive search text from title + description excerpt, run the shared hybrid
+/// RAG path, and remove the seed episode from returned rows.
+///
+/// # Request JSON
+///
+/// ```json
+/// {"episode_id":"…","limit":10}
+/// ```
+#[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub extern "C" fn nmp_app_podcast_knowledge_similar_episode(
+    handle: *mut PodcastHandle,
+    request_json: *const c_char,
+) -> *mut c_char {
+    if handle.is_null() || request_json.is_null() {
+        return err_json("null argument").into_raw();
+    }
+    ffi_guard(
+        "nmp_app_podcast_knowledge_similar_episode",
+        || err_json("panic").into_raw(),
+        || {
+            let json_str = match unsafe { CStr::from_ptr(request_json) }.to_str() {
+                Ok(s) => s,
+                Err(_) => return err_json("invalid UTF-8").into_raw(),
+            };
+            let req: SimilarEpisodeRequest = match serde_json::from_str(json_str) {
+                Ok(r) => r,
+                Err(e) => return err_json(&format!("JSON parse: {e}")).into_raw(),
+            };
+            let h = unsafe { &*handle };
+            let store_arc = Arc::clone(&h.state.library.store);
+            let index_arc = h.state.knowledge.index_arc();
+            let runtime = Arc::clone(&h.state.infra.runtime);
+            let rows = runtime.block_on(run_similar_episode_inner(req, store_arc, index_arc));
+            ok_json(&serde_json::json!({ "result": rows })).into_raw()
+        },
+    )
+}
+
+/// Home's "Related" sheet projection.
+///
+/// Rust owns the product policy: seed-query construction, topic-vs-source
+/// lens limits, seed filtering, one-row-per-show collapse for the topic lens,
+/// and the category fallback when the transcript index is empty.
+#[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub extern "C" fn nmp_app_podcast_knowledge_home_related(
+    handle: *mut PodcastHandle,
+    request_json: *const c_char,
+) -> *mut c_char {
+    if handle.is_null() || request_json.is_null() {
+        return err_json("null argument").into_raw();
+    }
+    ffi_guard(
+        "nmp_app_podcast_knowledge_home_related",
+        || err_json("panic").into_raw(),
+        || {
+            let json_str = match unsafe { CStr::from_ptr(request_json) }.to_str() {
+                Ok(s) => s,
+                Err(_) => return err_json("invalid UTF-8").into_raw(),
+            };
+            let req: HomeRelatedRequest = match serde_json::from_str(json_str) {
+                Ok(r) => r,
+                Err(e) => return err_json(&format!("JSON parse: {e}")).into_raw(),
+            };
+            let h = unsafe { &*handle };
+            let store_arc = Arc::clone(&h.state.library.store);
+            let index_arc = h.state.knowledge.index_arc();
+            let runtime = Arc::clone(&h.state.infra.runtime);
+            let categories = h.state.categories.categories_snapshot();
+            let rows = runtime.block_on(run_home_related_inner(
+                req, store_arc, index_arc, categories,
+            ));
             ok_json(&serde_json::json!({ "result": rows })).into_raw()
         },
     )
@@ -365,7 +472,265 @@ async fn run_knowledge_query_inner(
         .collect()
 }
 
+async fn run_similar_episode_inner(
+    req: SimilarEpisodeRequest,
+    store_arc: Arc<Mutex<PodcastStore>>,
+    index_arc: Arc<Mutex<KnowledgeStore>>,
+) -> Vec<KnowledgeQueryRow> {
+    let seed_query = {
+        let Ok(store) = store_arc.lock() else {
+            return Vec::new();
+        };
+        similar_episode_seed_query(&store, &req.episode_id)
+    };
+    if seed_query.is_empty() {
+        return Vec::new();
+    }
+    let limit = req.limit.unwrap_or(crate::knowledge::KNOWLEDGE_SEARCH_TOP_K);
+    let search_req = KnowledgeQueryRequest {
+        query: seed_query,
+        scope: QueryScope::default(),
+        limit: Some(limit.saturating_add(1).saturating_mul(4)),
+    };
+    run_knowledge_query_inner(search_req, store_arc, index_arc)
+        .await
+        .into_iter()
+        .filter(|row| row.episode_id != req.episode_id)
+        .take(limit)
+        .collect()
+}
+
+async fn run_home_related_inner(
+    req: HomeRelatedRequest,
+    store_arc: Arc<Mutex<PodcastStore>>,
+    index_arc: Arc<Mutex<KnowledgeStore>>,
+    categories: HashMap<String, Vec<String>>,
+) -> Vec<HomeRelatedRow> {
+    let lens = match req.lens.as_str() {
+        "sources" => "sources",
+        _ => "topic",
+    };
+    let limit = req.limit.unwrap_or(if lens == "sources" { 24 } else { 8 });
+    let (query, seed_podcast_id) = {
+        let Ok(store) = store_arc.lock() else {
+            return Vec::new();
+        };
+        (
+            home_related_seed_query(&store, &req.episode_id),
+            podcast_id_for_episode(&store, &req.episode_id),
+        )
+    };
+    if query.is_empty() {
+        return Vec::new();
+    }
+
+    let search_limit = if lens == "sources" { limit } else { limit.saturating_mul(6) };
+    let search_req = KnowledgeQueryRequest {
+        query,
+        scope: QueryScope::default(),
+        limit: Some(search_limit),
+    };
+    let rows = run_knowledge_query_inner(search_req, Arc::clone(&store_arc), index_arc).await;
+    let projected = project_home_related_rows(
+        rows,
+        &req.episode_id,
+        seed_podcast_id.as_deref(),
+        lens,
+        limit,
+    );
+    if !projected.is_empty() {
+        return projected;
+    }
+
+    let Ok(store) = store_arc.lock() else {
+        return Vec::new();
+    };
+    category_home_related_fallback(
+        &store,
+        &categories,
+        &req.episode_id,
+        seed_podcast_id.as_deref(),
+        lens,
+        limit,
+    )
+}
+
 // ── Pure helpers ──────────────────────────────────────────────────────────────
+
+fn similar_episode_seed_query(store: &PodcastStore, episode_id: &str) -> String {
+    for (_podcast, episodes) in store.subscribed_podcasts() {
+        for ep in episodes {
+            if ep.id.0.to_string() == episode_id {
+                let description_excerpt: String = ep.description.chars().take(400).collect();
+                return [ep.title.clone(), description_excerpt]
+                    .into_iter()
+                    .filter(|part| !part.trim().is_empty())
+                    .collect::<Vec<_>>()
+                    .join(" ");
+            }
+        }
+    }
+    String::new()
+}
+
+fn home_related_seed_query(store: &PodcastStore, episode_id: &str) -> String {
+    for (_podcast, episodes) in store.subscribed_podcasts() {
+        for ep in episodes {
+            if ep.id.0.to_string() == episode_id {
+                let mut parts = vec![ep.title.clone()];
+                if let Some(chapters) = &ep.chapters {
+                    parts.extend(
+                        chapters
+                            .iter()
+                            .filter(|chapter| chapter.include_in_toc)
+                            .map(|chapter| chapter.title.clone())
+                            .filter(|title| !title.trim().is_empty())
+                            .take(8),
+                    );
+                }
+                if parts.len() == 1 {
+                    let description_excerpt: String = ep.description.chars().take(400).collect();
+                    parts.push(description_excerpt);
+                }
+                return parts
+                    .into_iter()
+                    .filter(|part| !part.trim().is_empty())
+                    .collect::<Vec<_>>()
+                    .join(" ");
+            }
+        }
+    }
+    String::new()
+}
+
+fn project_home_related_rows(
+    rows: Vec<KnowledgeQueryRow>,
+    seed_episode_id: &str,
+    seed_podcast_id: Option<&str>,
+    lens: &str,
+    limit: usize,
+) -> Vec<HomeRelatedRow> {
+    let mut seen_podcasts = std::collections::HashSet::new();
+    if lens == "topic" {
+        if let Some(seed_podcast_id) = seed_podcast_id {
+            seen_podcasts.insert(seed_podcast_id.to_owned());
+        }
+    }
+    let mut out = Vec::new();
+    for row in rows {
+        if row.episode_id == seed_episode_id {
+            continue;
+        }
+        if lens == "topic" && !seen_podcasts.insert(row.podcast_id.clone()) {
+            continue;
+        }
+        out.push(HomeRelatedRow {
+            id: format!("{}:{}:{}", row.episode_id, row.chunk_index, out.len()),
+            episode_id: row.episode_id,
+            podcast_id: row.podcast_id,
+            episode_title: row.episode_title,
+            podcast_title: row.podcast_title,
+            chunk_index: row.chunk_index,
+            text: row.text.chars().take(220).collect(),
+        });
+        if out.len() >= limit {
+            break;
+        }
+    }
+    out
+}
+
+fn category_home_related_fallback(
+    store: &PodcastStore,
+    categories: &HashMap<String, Vec<String>>,
+    seed_episode_id: &str,
+    seed_podcast_id: Option<&str>,
+    lens: &str,
+    limit: usize,
+) -> Vec<HomeRelatedRow> {
+    let Some(seed_labels) = category_labels_for(store, categories, seed_episode_id) else {
+        return Vec::new();
+    };
+    let seed_label_set: std::collections::HashSet<String> = seed_labels.into_iter().collect();
+    let mut seen_podcasts = std::collections::HashSet::new();
+    if lens == "topic" {
+        if let Some(seed_podcast_id) = seed_podcast_id {
+            seen_podcasts.insert(seed_podcast_id.to_owned());
+        }
+    }
+    let mut out = Vec::new();
+
+    for (podcast, episodes) in store.subscribed_podcasts() {
+        let podcast_id = podcast.id.0.to_string();
+        for ep in episodes {
+            let episode_id = ep.id.0.to_string();
+            if episode_id == seed_episode_id {
+                seen_podcasts.insert(podcast_id.clone());
+                continue;
+            }
+            let labels = category_labels_for(store, categories, &episode_id).unwrap_or_default();
+            if !labels.iter().any(|label| seed_label_set.contains(label)) {
+                continue;
+            }
+            if lens == "topic" && !seen_podcasts.insert(podcast_id.clone()) {
+                continue;
+            }
+            out.push(HomeRelatedRow {
+                id: format!("{episode_id}:category:{}", out.len()),
+                episode_id,
+                podcast_id: podcast_id.clone(),
+                episode_title: ep.title.clone(),
+                podcast_title: podcast.title.clone(),
+                chunk_index: 0,
+                text: fallback_snippet(store, &ep.id.0.to_string(), &ep.description),
+            });
+            if out.len() >= limit {
+                return out;
+            }
+        }
+    }
+    out
+}
+
+fn podcast_id_for_episode(store: &PodcastStore, episode_id: &str) -> Option<String> {
+    for (podcast, episodes) in store.subscribed_podcasts() {
+        if episodes.iter().any(|ep| ep.id.0.to_string() == episode_id) {
+            return Some(podcast.id.0.to_string());
+        }
+    }
+    None
+}
+
+fn category_labels_for(
+    store: &PodcastStore,
+    categories: &HashMap<String, Vec<String>>,
+    episode_id: &str,
+) -> Option<Vec<String>> {
+    if let Some(labels) = categories.get(episode_id) {
+        if !labels.is_empty() {
+            return Some(labels.clone());
+        }
+    }
+    for (_podcast, episodes) in store.subscribed_podcasts() {
+        for ep in episodes {
+            if ep.id.0.to_string() == episode_id {
+                let labels = categorize_text(&ep.title, &ep.description);
+                return (!labels.is_empty()).then_some(labels);
+            }
+        }
+    }
+    None
+}
+
+fn fallback_snippet(store: &PodcastStore, episode_id: &str, description: &str) -> String {
+    let text = store.transcript_for(episode_id).unwrap_or(description);
+    text.split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .chars()
+        .take(220)
+        .collect()
+}
 
 /// For a BM25-only result episode, pick the chunk that best matches the query
 /// (highest BM25 score over that episode's transcript chunks) so the enriched

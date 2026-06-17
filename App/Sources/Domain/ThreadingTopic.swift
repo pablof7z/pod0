@@ -16,7 +16,7 @@ struct ThreadingTopic: Codable, Hashable, Identifiable, Sendable {
     var id: UUID
     /// URL-safe canonical key.
     var slug: String
-    /// Human-readable label rendered in editorial serif.
+    /// Human-readable label rendered with the app's system typography.
     var displayName: String
     /// One-paragraph definition the agent compiled. Optional — a freshly
     /// inferred topic may still be awaiting synthesis.

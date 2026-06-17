@@ -4,7 +4,7 @@ import os.log
 // MARK: - DataExportView
 //
 // Settings → Data → Export. Generates a JSON document of the live `AppState`
-// (items, notes, friends, agent memories, agent activity, non-secret settings)
+// (items, notes, friends, Rust memory facts, agent activity, non-secret settings)
 // and surfaces it through a system share sheet so the user can save it to
 // Files, AirDrop it, or send it through any share extension.
 //
@@ -126,7 +126,16 @@ struct DataExportView: View {
     // MARK: - Derived
 
     private var stats: DataExport.Stats {
-        DataExport.stats(for: store.composedState)
+        DataExport.stats(
+            for: store.composedState,
+            subscriptionCount: store.rustFollowedPodcastCount(),
+            episodeCount: store.rustEpisodeCount(),
+            memoryFactsCount: memoryFacts.count
+        )
+    }
+
+    private var memoryFacts: [MemoryFact] {
+        store.kernel?.podcastSnapshot?.memoryFacts ?? []
     }
 
     private var actionFooterText: String {
@@ -135,7 +144,7 @@ struct DataExportView: View {
         if let size = fileSize, let generatedAt {
             return "\(base) · \(formatBytes(size)) · Last exported \(Self.exportTimeFormatter.string(from: generatedAt))"
         }
-        return "\(base) · Bundles subscriptions, episodes, notes, friends, agent memories, and agent activity. API keys and the Nostr private key are never included."
+        return "\(base) · Bundles subscriptions, episodes, notes, friends, memory facts, and agent activity. API keys and the Nostr private key are never included."
     }
 
     // MARK: - Actions
@@ -144,7 +153,11 @@ struct DataExportView: View {
         do {
             let now = Date()
             let exportState = store.composedState
-            let url = try DataExport.writeExport(of: exportState, now: now)
+            let url = try DataExport.writeExport(
+                of: exportState,
+                memoryFacts: memoryFacts,
+                now: now
+            )
             let attrs: [FileAttributeKey: Any]?
             do {
                 attrs = try FileManager.default.attributesOfItem(atPath: url.path)

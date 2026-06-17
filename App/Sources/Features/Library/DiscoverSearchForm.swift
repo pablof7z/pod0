@@ -267,12 +267,10 @@ struct DiscoverSearchForm: View {
     }
 
     private func isAlreadySubscribed(_ result: ITunesSearchClient.Result) -> Bool {
-        guard let url = result.feedURL,
-              let podcast = store.podcast(feedURL: url) else { return false }
-        // Just knowing about the feed (e.g. from a prior external play)
-        // shouldn't disable the subscribe row. The check is whether the
-        // user actually follows it.
-        return store.subscription(podcastID: podcast.id) != nil
+        store.rustIsAlreadySubscribed(
+            feedURL: result.feedURL?.absoluteString,
+            ownerPubkey: nil
+        )
     }
 
     private func requestSearchFocus(deferred: Bool = false) {
@@ -345,7 +343,7 @@ struct DiscoverSearchForm: View {
         searchError = nil
         defer { isSearching = false }
         do {
-            let fetched = try await ITunesSearchClient.search(term)
+            let fetched = try await ITunesSearchClient.search(term, kernel: store.kernel)
             guard !Task.isCancelled else { return }
             results = fetched
             lastCompletedSearchTerm = term
@@ -368,7 +366,7 @@ struct DiscoverSearchForm: View {
     private func loadTrending() async {
         isLoadingTrending = true
         defer { isLoadingTrending = false }
-        let fetched = (try? await ITunesSearchClient.topPodcasts()) ?? []
+        let fetched = (try? await ITunesSearchClient.topPodcasts(kernel: store.kernel)) ?? []
         trending = fetched
     }
 

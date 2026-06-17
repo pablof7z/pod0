@@ -8,6 +8,7 @@ import Foundation
 enum AgentActivityKind: Codable, Hashable, Sendable {
     case noteCreated(noteID: UUID)
     case memoryRecorded(memoryID: UUID)
+    case memoryFactRecorded(key: String)
 }
 
 struct AgentActivityEntry: Codable, Identifiable, Hashable, Sendable {

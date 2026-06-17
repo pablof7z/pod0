@@ -16,104 +16,86 @@ final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendab
     }
 
     func markEpisodePlayed(episodeID: EpisodeID) async throws -> EpisodeMutationResult {
-        try await mutateEpisode(episodeID: episodeID, state: "played") { store, id in
-            store.markEpisodePlayed(id)
+        try await mutateEpisodeViaKernel(episodeID: episodeID, state: "played") { store, id in
+            store.kernelMarkPlayed(episodeID: id)
         }
     }
 
     func markEpisodeUnplayed(episodeID: EpisodeID) async throws -> EpisodeMutationResult {
-        try await mutateEpisode(episodeID: episodeID, state: "unplayed") { store, id in
-            store.markEpisodeUnplayed(id)
+        try await mutateEpisodeViaKernel(episodeID: episodeID, state: "unplayed") { store, id in
+            store.kernelMarkUnplayed(episodeID: id)
         }
     }
 
     func downloadEpisode(episodeID: EpisodeID) async throws -> EpisodeMutationResult {
-        try await mutateEpisode(episodeID: episodeID, state: nil) { store, id in
-            store.kernelDownload(id)
+        try await mutateEpisodeViaKernel(episodeID: episodeID, state: "queued") { store, id in
+            store.kernelDownload(episodeID: id)
         }
     }
 
     func requestTranscription(episodeID: EpisodeID) async throws -> TranscriptRequestResult {
-        guard let uuid = UUID(uuidString: episodeID) else {
-            throw PodcastAgentToolAdapterError.invalidID(episodeID)
-        }
         guard let store else {
             throw PodcastAgentToolAdapterError.unavailable("AppStateStore")
         }
-        guard let episode = await store.episode(id: uuid) else {
-            throw PodcastAgentToolAdapterError.missingEpisode(episodeID)
+        guard let uuid = UUID(uuidString: episodeID) else {
+            throw PodcastAgentToolAdapterError.invalidID(episodeID)
         }
-        if case .ready(let source) = episode.transcriptState {
-            return TranscriptRequestResult(
-                episodeID: episodeID,
-                status: "ready",
-                source: source.rawValue
-            )
+        let existing = try await transcriptToolResult(store: store, episodeID: episodeID, uuid: uuid)
+        if existing.status == "ready" {
+            return existing
+        }
+
+        let result = await MainActor.run {
+            store.kernelReportEpisodeTranscriptState(episodeID: uuid, state: .queued)
+        }
+        guard let result else {
+            throw PodcastAgentToolAdapterError.unavailable("Rust kernel")
+        }
+        if case let .failure(message) = result {
+            throw PodcastAgentToolAdapterError.rejected(message)
         }
         await MainActor.run {
-            store.setEpisodeTranscriptState(uuid, state: .queued)
             Task { @MainActor in
                 await self.transcriptService.ingest(episodeID: uuid)
             }
         }
-        return TranscriptRequestResult(
-            episodeID: episodeID,
-            status: "queued",
-            message: "Transcript ingestion started."
-        )
+        return try await transcriptToolResult(store: store, episodeID: episodeID, uuid: uuid)
     }
 
     func downloadAndTranscribe(episodeID: EpisodeID) async throws -> TranscriptRequestResult {
-        guard let uuid = UUID(uuidString: episodeID) else {
-            throw PodcastAgentToolAdapterError.invalidID(episodeID)
-        }
         guard let store else {
             throw PodcastAgentToolAdapterError.unavailable("AppStateStore")
         }
-        guard let episode = await store.episode(id: uuid) else {
-            throw PodcastAgentToolAdapterError.missingEpisode(episodeID)
+        guard let uuid = UUID(uuidString: episodeID) else {
+            throw PodcastAgentToolAdapterError.invalidID(episodeID)
         }
-        // Already transcribed — skip the pipeline.
-        if case .ready(let source) = episode.transcriptState {
-            return TranscriptRequestResult(
-                episodeID: episodeID,
-                status: "ready",
-                source: source.rawValue,
-                message: "Transcript already available."
-            )
+        let existing = try await transcriptToolResult(store: store, episodeID: episodeID, uuid: uuid)
+        if existing.status == "ready" {
+            return existing
+        }
+        let statusResult = await MainActor.run {
+            store.kernelReportEpisodeTranscriptState(episodeID: uuid, state: .queued)
+        }
+        guard let statusResult else {
+            throw PodcastAgentToolAdapterError.unavailable("Rust kernel")
+        }
+        if case let .failure(message) = statusResult {
+            throw PodcastAgentToolAdapterError.rejected(message)
         }
         // Kick off download for offline playback (fire-and-forget).
         // Transcription below will use the remote enclosure URL while
         // the download proceeds in the background; Apple-native STT
         // will pick up the local file on the post-download ingest trigger.
-        await MainActor.run {
-            store.kernelDownload(uuid)
+        let downloadResult = await MainActor.run {
+            store.kernelDownload(episodeID: episodeID)
         }
-        // Await the full transcription pipeline. This call blocks until the
-        // transcript is persisted (.ready) or the pipeline gives up (.failed).
+        if case let .some(.failure(message)) = downloadResult {
+            throw PodcastAgentToolAdapterError.rejected(message)
+        }
+        // Execute the native capability branch, then ask Rust how to report the
+        // resulting transcript state to the agent.
         await transcriptService.ingest(episodeID: uuid)
-        // Read the final state.
-        let final = await store.episode(id: uuid) ?? episode
-        switch final.transcriptState {
-        case .ready(let src):
-            return TranscriptRequestResult(
-                episodeID: episodeID,
-                status: "ready",
-                source: src.rawValue
-            )
-        case .failed(let msg):
-            return TranscriptRequestResult(
-                episodeID: episodeID,
-                status: "failed",
-                message: msg
-            )
-        default:
-            return TranscriptRequestResult(
-                episodeID: episodeID,
-                status: "unavailable",
-                message: "Transcription could not complete. Check STT provider settings."
-            )
-        }
+        return try await transcriptToolResult(store: store, episodeID: episodeID, uuid: uuid)
     }
 
     func createClip(
@@ -121,62 +103,48 @@ final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendab
         startSeconds: Double,
         endSeconds: Double,
         caption: String?,
-        transcriptText: String?
+        transcriptText _: String?
     ) async throws -> ClipResult {
-        guard let uuid = UUID(uuidString: episodeID) else {
-            throw PodcastAgentToolAdapterError.invalidID(episodeID)
-        }
         guard let store else {
             throw PodcastAgentToolAdapterError.unavailable("AppStateStore")
+        }
+        let clipID = UUID()
+        let result = await MainActor.run {
+            store.kernelCreateClip(
+                id: clipID,
+                episodeID: episodeID,
+                startSecs: startSeconds,
+                endSecs: endSeconds,
+                title: caption,
+                source: .agent
+            )
+        }
+        guard let result else {
+            throw PodcastAgentToolAdapterError.unavailable("Rust kernel")
+        }
+        if case let .failure(message) = result {
+            throw PodcastAgentToolAdapterError.rejected(message)
+        }
+        guard let uuid = UUID(uuidString: episodeID) else {
+            throw PodcastAgentToolAdapterError.invalidID(episodeID)
         }
         guard let episode = await store.episode(id: uuid) else {
             throw PodcastAgentToolAdapterError.missingEpisode(episodeID)
         }
-        let startMs = Int(startSeconds * 1000)
-        let endMs = Int(endSeconds * 1000)
-        let resolvedText: String
-        if let supplied = transcriptText, !supplied.isEmpty {
-            resolvedText = supplied
-        } else {
-            resolvedText = Self.extractTranscriptText(
-                episodeID: uuid,
-                startSeconds: startSeconds,
-                endSeconds: endSeconds
-            )
-        }
-        let clip = await MainActor.run {
-            store.addClip(
-                episodeID: uuid,
-                subscriptionID: episode.podcastID,
-                startMs: startMs,
-                endMs: endMs,
-                transcriptText: resolvedText,
-                source: .agent,
-                caption: caption
-            )
-        }
+        let createdClip = await store.clip(id: clipID)
+        let normalizedStart = createdClip.map { Double($0.startMs) / 1000 } ?? min(startSeconds, endSeconds)
+        let normalizedEnd = createdClip.map { Double($0.endMs) / 1000 } ?? max(startSeconds, endSeconds)
         return ClipResult(
-            clipID: clip.id.uuidString,
+            clipID: clipID.uuidString,
             episodeID: episodeID,
             podcastID: episode.podcastID.uuidString,
             episodeTitle: episode.title,
-            startSeconds: startSeconds,
-            endSeconds: endSeconds,
-            transcriptText: resolvedText,
+            startSeconds: normalizedStart,
+            endSeconds: normalizedEnd,
+            transcriptText: createdClip?.transcriptText ?? "",
             caption: caption
         )
     }
-
-    private static func extractTranscriptText(
-        episodeID: UUID,
-        startSeconds: Double,
-        endSeconds: Double
-    ) -> String {
-        guard let transcript = TranscriptStore.shared.load(episodeID: episodeID) else { return "" }
-        let matching = transcript.segments.filter { $0.end > startSeconds && $0.start < endSeconds }
-        return matching.map(\.text).joined(separator: " ")
-    }
-
     func refreshFeed(podcastID: PodcastID) async throws -> FeedRefreshResult {
         guard let uuid = UUID(uuidString: podcastID) else {
             throw PodcastAgentToolAdapterError.invalidID(podcastID)
@@ -187,10 +155,10 @@ final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendab
         guard let before = await store.podcast(id: uuid) else {
             throw PodcastAgentToolAdapterError.missingPodcast(podcastID)
         }
-        let priorCount = await store.episodes(forPodcast: uuid).count
+        let priorCount = await MainActor.run { store.rustEpisodeCount(forPodcast: uuid) }
         await MainActor.run { store.kernelRefresh(podcastID: uuid) }
         let after = await store.podcast(id: uuid) ?? before
-        let episodeCount = await store.episodes(forPodcast: uuid).count
+        let episodeCount = await MainActor.run { store.rustEpisodeCount(forPodcast: uuid) }
         return FeedRefreshResult(
             podcastID: podcastID,
             title: after.title,
@@ -200,31 +168,64 @@ final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendab
         )
     }
 
-    private func mutateEpisode(
+    private func mutateEpisodeViaKernel(
         episodeID: EpisodeID,
-        state explicitState: String?,
-        _ mutation: @escaping @MainActor (AppStateStore, UUID) -> Void
+        state explicitState: String,
+        _ mutation: @escaping @MainActor (AppStateStore, String) -> DispatchResult?
     ) async throws -> EpisodeMutationResult {
-        guard let uuid = UUID(uuidString: episodeID) else {
-            throw PodcastAgentToolAdapterError.invalidID(episodeID)
-        }
         guard let store else {
             throw PodcastAgentToolAdapterError.unavailable("AppStateStore")
         }
-        guard let before = await store.episode(id: uuid) else {
-            throw PodcastAgentToolAdapterError.missingEpisode(episodeID)
+        let result = await MainActor.run {
+            mutation(store, episodeID)
         }
-        await MainActor.run {
-            mutation(store, uuid)
+        guard let result else {
+            throw PodcastAgentToolAdapterError.unavailable("Rust kernel")
         }
-        let after = await store.episode(id: uuid) ?? before
-        let subscription = await store.podcast(id: after.podcastID)
+        if case let .failure(message) = result {
+            throw PodcastAgentToolAdapterError.rejected(message)
+        }
+        let toolResult = await MainActor.run {
+            store.kernel?.episodeMutationToolResult(episodeID: episodeID, state: explicitState)
+        }
+        guard let toolResult else {
+            throw PodcastAgentToolAdapterError.unavailable("Rust kernel")
+        }
+        guard toolResult.ok else {
+            throw PodcastAgentToolAdapterError.rejected(
+                toolResult.message ?? "Episode mutation result was rejected by the kernel."
+            )
+        }
         return EpisodeMutationResult(
+            episodeID: toolResult.episodeId,
+            podcastID: toolResult.podcastId,
+            episodeTitle: toolResult.episodeTitle,
+            podcastTitle: toolResult.podcastTitle,
+            state: toolResult.state
+        )
+    }
+
+    private func transcriptToolResult(
+        store: AppStateStore,
+        episodeID: EpisodeID,
+        uuid: UUID
+    ) async throws -> TranscriptRequestResult {
+        let result = await MainActor.run {
+            store.kernel?.transcriptToolResult(episodeID: uuid)
+        }
+        guard let result else {
+            throw PodcastAgentToolAdapterError.unavailable("Rust kernel")
+        }
+        guard result.ok else {
+            throw PodcastAgentToolAdapterError.rejected(
+                result.message ?? "Transcript status was rejected by the kernel."
+            )
+        }
+        return TranscriptRequestResult(
             episodeID: episodeID,
-            podcastID: after.podcastID.uuidString,
-            episodeTitle: after.title,
-            podcastTitle: subscription?.title,
-            state: explicitState ?? Self.downloadStateLabel(after.downloadState)
+            status: result.status,
+            source: result.source,
+            message: result.message
         )
     }
 

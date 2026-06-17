@@ -75,6 +75,11 @@ pub struct PodcastSummary {
     /// `AutoDownloadPolicy.wifiOnly` from the projection.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub cellular_allowed: bool,
+    /// Per-podcast notification policy. `true` is the default and is omitted;
+    /// `false` means Rust suppresses new-episode notification capability
+    /// dispatches for this show even when the global notification setting is on.
+    #[serde(default = "default_true", skip_serializing_if = "is_true")]
+    pub notifications_enabled: bool,
     /// Hex public key of the per-podcast NIP-F4 signing key, set once the
     /// podcast has been claimed via `create_owned_podcast`. Drives the
     /// owned-podcast UI surfaces (`listOwnedPodcasts` filters on its
@@ -117,6 +122,7 @@ impl Default for PodcastSummary {
             auto_download_mode: String::new(),
             auto_download_count: 0,
             cellular_allowed: false,
+            notifications_enabled: true,
             owner_pubkey_hex: None,
             nostr_visibility: String::new(),
             user_categories: Vec::new(),
@@ -291,6 +297,19 @@ pub struct EpisodeSummary {
     /// `None` for non-failure statuses. Per D5 omitted when `None`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transcript_status_message: Option<String>,
+    /// Queue-only start boundary for a bounded playback item. Omitted on
+    /// normal library rows and full-episode queue rows.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub queue_start_secs: Option<f64>,
+    /// Queue-only end boundary for a bounded playback item. Omitted on normal
+    /// library rows and full-episode queue rows.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub queue_end_secs: Option<f64>,
+    /// Queue-only Rust-owned slot id. Present on queue projection rows so the
+    /// shell can remove/reorder duplicate bounded segments without inventing
+    /// identity or collapsing by episode id.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub queue_slot_id: Option<String>,
 }
 
 /// One time-stamped transcript row surfaced to the iOS shell.

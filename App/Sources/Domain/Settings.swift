@@ -199,8 +199,9 @@ struct Settings: Codable, Hashable, Sendable {
     var autoDeleteDownloadsAfterPlayed: Bool = Settings.kernelDefaults.autoDeleteDownloadsAfterPlayed
     /// When `true`, the next episode in `PlaybackState.queue` (Up Next)
     /// starts playing automatically when the current episode finishes.
-    /// Defaults on for parity with Apple Podcasts. Suppressed when the
-    /// sleep timer has armed an end-of-episode stop.
+    /// Defaults on for parity with Apple Podcasts. Rust playback policy
+    /// suppresses auto-advance when the sleep timer has armed an
+    /// end-of-episode stop.
     var autoPlayNext: Bool = Settings.kernelDefaults.autoPlayNext
     /// When `true`, the player auto-seeks past detected ad segments
     /// (kernel `podcast.chapters.compile` output, stored on `Episode.adSegments`).

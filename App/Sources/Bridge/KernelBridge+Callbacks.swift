@@ -26,6 +26,19 @@ private let podcastCapabilityCallback: NmpCapabilityCallback = { context, reques
     return strdup(response)
 }
 
+private let podcastAgentAskCallback: NmpPodcastAgentAskCallback = { context, eventJSON in
+    guard let context, let eventJSON else { return }
+    let handle = Unmanaged<PodcastHandle>.fromOpaque(context).takeUnretainedValue()
+    let responseJSON = String(cString: eventJSON)
+    guard let data = responseJSON.data(using: .utf8),
+          let response = try? KernelDecoding.makeDecoder().decode(
+            KernelModel.AgentAskResponse.self, from: data)
+    else { return }
+    Task { @MainActor in
+        handle.onAgentAskEvent?(response)
+    }
+}
+
 // ─── Podcast projection registration ─────────────────────────────────────
 //
 // `nmp_app_podcast_register` wires the podcast-specific projection into the
@@ -48,6 +61,11 @@ extension PodcastHandle {
             kbLog.error("nmp_app_podcast_register returned NULL — projection unwired")
             return
         }
+        nmp_app_podcast_agent_ask_set_callback(
+            podcastHandle,
+            Unmanaged.passUnretained(self).toOpaque(),
+            podcastAgentAskCallback
+        )
 
         // Wire the podcast library persistence directory. Lives under
         // Application Support so it follows the iOS "user data, not synced
@@ -267,6 +285,7 @@ extension PodcastHandle {
 
     func unregisterPodcastProjectionIfNeeded() {
         guard let handle = podcastHandle else { return }
+        nmp_app_podcast_agent_ask_set_callback(handle, nil, nil)
         nmp_app_podcast_unregister(handle)
         podcastHandle = nil
     }

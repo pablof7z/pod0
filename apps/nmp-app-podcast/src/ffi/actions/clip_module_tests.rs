@@ -29,6 +29,7 @@ fn action_ids_match_documented_strings() {
     assert_eq!(ACTION_CLIP_CREATE, "podcast.clip.create");
     assert_eq!(ACTION_CLIP_DELETE, "podcast.clip.delete");
     assert_eq!(ACTION_CLIP_AUTO_SNIP, "podcast.clip.auto_snip");
+    assert_eq!(ACTION_CLIP_RESOLVE_QUOTE, "podcast.clip.resolve_quote");
 }
 #[test]
 fn create_action_round_trips_with_title() {
@@ -37,6 +38,9 @@ fn create_action_round_trips_with_title() {
         start_secs: 10.0,
         end_secs: 70.0,
         title: Some("Marcus on retrieval".into()),
+        source: None,
+        transcript_text: None,
+        client_clip_id: None,
     };
     let json = serde_json::to_string(&action).expect("encode");
     assert!(json.contains(r#""op":"create""#));
@@ -54,9 +58,15 @@ fn create_action_omits_none_title() {
         start_secs: 10.0,
         end_secs: 70.0,
         title: None,
+        source: Some("agent".into()),
+        transcript_text: Some("quoted span".into()),
+        client_clip_id: Some("550e8400-e29b-41d4-a716-446655440000".into()),
     };
     let json = serde_json::to_string(&action).expect("encode");
     assert!(!json.contains("\"title\""));
+    assert!(json.contains(r#""source":"agent""#));
+    assert!(json.contains(r#""transcript_text":"quoted span""#));
+    assert!(json.contains(r#""client_clip_id":"550e8400-e29b-41d4-a716-446655440000""#));
     let decoded: ClipAction = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded, action);
 }
@@ -76,9 +86,24 @@ fn auto_snip_action_round_trips() {
     let action = ClipAction::AutoSnip {
         episode_id: "ep-1".into(),
         position_secs: 100.0,
+        source: None,
+        client_clip_id: None,
     };
     let json = serde_json::to_string(&action).expect("encode");
     assert!(json.contains(r#""op":"auto_snip""#));
+    assert!(json.contains(r#""episode_id":"ep-1""#));
+    assert!(json.contains(r#""position_secs":100.0"#));
+    let decoded: ClipAction = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, action);
+}
+#[test]
+fn resolve_quote_action_round_trips() {
+    let action = ClipAction::ResolveQuote {
+        episode_id: "ep-1".into(),
+        position_secs: 100.0,
+    };
+    let json = serde_json::to_string(&action).expect("encode");
+    assert!(json.contains(r#""op":"resolve_quote""#));
     assert!(json.contains(r#""episode_id":"ep-1""#));
     assert!(json.contains(r#""position_secs":100.0"#));
     let decoded: ClipAction = serde_json::from_str(&json).expect("decode");

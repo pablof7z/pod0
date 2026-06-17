@@ -5,6 +5,7 @@
 use super::*;
 use podcast_core::{Episode, EpisodeId, Podcast};
 use url::Url;
+use uuid::Uuid;
 
 fn fresh_store_with_episode(ep_id: &str, duration: Option<f64>) -> Arc<Mutex<PodcastStore>> {
     let mut podcast = Podcast::new("Some Show");
@@ -33,11 +34,26 @@ fn fresh_handler(
     (h, clips, rev)
 }
 
+fn timed_entry(
+    start_secs: f64,
+    end_secs: f64,
+    text: &str,
+    speaker: &str,
+) -> podcast_transcripts::TranscriptEntry {
+    podcast_transcripts::TranscriptEntry {
+        start_secs,
+        end_secs,
+        text: text.to_owned(),
+        speaker: Some(speaker.to_owned()),
+        words: None,
+    }
+}
+
 #[test]
 fn create_rejects_unknown_episode() {
     let store = Arc::new(Mutex::new(PodcastStore::new()));
     let (h, clips, rev) = fresh_handler(store);
-    let v = h.handle_create("ghost".into(), 1.0, 5.0, None);
+    let v = h.handle_create("ghost".into(), 1.0, 5.0, None, None, None, None);
     assert_eq!(v["ok"], false);
     assert!(clips.lock().unwrap().is_empty());
     assert_eq!(rev.load(Ordering::Relaxed), 0);
@@ -49,7 +65,7 @@ fn create_rejects_inverted_range() {
     let store = fresh_store_with_episode(&ep_id, Some(300.0));
     let (h, clips, _rev) = fresh_handler(store);
     // start == end → 0-length, rejected.
-    let v = h.handle_create(ep_id.clone(), 10.0, 10.0, None);
+    let v = h.handle_create(ep_id.clone(), 10.0, 10.0, None, None, None, None);
     assert_eq!(v["ok"], false);
     assert!(clips.lock().unwrap().is_empty());
 }
@@ -60,7 +76,15 @@ fn create_swaps_inverted_inputs_into_valid_range() {
     let store = fresh_store_with_episode(&ep_id, Some(300.0));
     let (h, clips, rev) = fresh_handler(store);
     // start > end → normalize, then accept.
-    let v = h.handle_create(ep_id.clone(), 70.0, 10.0, Some("flipped".into()));
+    let v = h.handle_create(
+        ep_id.clone(),
+        70.0,
+        10.0,
+        Some("flipped".into()),
+        None,
+        None,
+        None,
+    );
     assert_eq!(v["ok"], true);
     assert!(v["clip_id"].is_string());
     let stored = clips.lock().unwrap();
@@ -75,7 +99,7 @@ fn delete_removes_existing_clip_and_bumps_rev() {
     let ep_id = Uuid::new_v4().to_string();
     let store = fresh_store_with_episode(&ep_id, Some(300.0));
     let (h, clips, rev) = fresh_handler(store);
-    let create = h.handle_create(ep_id, 5.0, 25.0, None);
+    let create = h.handle_create(ep_id, 5.0, 25.0, None, None, None, None);
     let clip_id = create["clip_id"].as_str().unwrap().to_owned();
     rev.store(0, Ordering::Relaxed);
     let v = h.handle_delete(clip_id);
@@ -94,16 +118,17 @@ fn delete_unknown_clip_is_ok_but_does_not_bump_rev() {
 }
 
 #[test]
-fn auto_snip_uses_plus_minus_30_window() {
+fn auto_snip_without_transcript_uses_pending_plus_minus_30_window() {
     let ep_id = Uuid::new_v4().to_string();
     let store = fresh_store_with_episode(&ep_id, Some(300.0));
     let (h, clips, _rev) = fresh_handler(store);
-    let v = h.handle_auto_snip(ep_id, 100.0);
+    let v = h.handle_auto_snip(ep_id, 100.0, None, None);
     assert_eq!(v["ok"], true);
     let stored = clips.lock().unwrap();
     assert_eq!(stored.len(), 1);
     assert!((stored[0].start_secs - 70.0).abs() < 1e-9);
     assert!((stored[0].end_secs - 130.0).abs() < 1e-9);
+    assert_eq!(stored[0].refinement_status, "pending_transcript");
 }
 
 #[test]
@@ -112,10 +137,10 @@ fn auto_snip_clamps_to_episode_bounds() {
     let store = fresh_store_with_episode(&ep_id, Some(40.0));
     let (h, clips, _rev) = fresh_handler(store);
     // Near the start — start should clamp to 0.
-    let v = h.handle_auto_snip(ep_id.clone(), 5.0);
+    let v = h.handle_auto_snip(ep_id.clone(), 5.0, None, None);
     assert_eq!(v["ok"], true);
     // Near the end — end should clamp to duration (40.0).
-    let _ = h.handle_auto_snip(ep_id, 35.0);
+    let _ = h.handle_auto_snip(ep_id, 35.0, None, None);
     let stored = clips.lock().unwrap();
     assert_eq!(stored.len(), 2);
     assert_eq!(stored[0].start_secs, 0.0);
@@ -128,10 +153,62 @@ fn auto_snip_without_known_duration_does_not_clamp_end() {
     let ep_id = Uuid::new_v4().to_string();
     let store = fresh_store_with_episode(&ep_id, None);
     let (h, clips, _rev) = fresh_handler(store);
-    let v = h.handle_auto_snip(ep_id, 100.0);
+    let v = h.handle_auto_snip(ep_id, 100.0, None, None);
     assert_eq!(v["ok"], true);
     let stored = clips.lock().unwrap();
     assert!((stored[0].end_secs - 130.0).abs() < 1e-9);
+}
+
+#[test]
+fn auto_snip_refines_to_transcript_boundaries_when_entries_exist() {
+    let ep_id = Uuid::new_v4().to_string();
+    let store = fresh_store_with_episode(&ep_id, Some(300.0));
+    store.lock().unwrap().set_timed_transcript(
+        ep_id.clone(),
+        vec![
+            timed_entry(20.0, 35.0, "Setup.", "spk_0"),
+            timed_entry(35.0, 50.0, "Important bit.", "spk_0"),
+            timed_entry(50.0, 65.0, "Conclusion.", "spk_0"),
+        ],
+    );
+    let (h, clips, _rev) = fresh_handler(store);
+    let v = h.handle_auto_snip(ep_id, 55.0, Some("headphone".to_owned()), None);
+    assert_eq!(v["ok"], true);
+    let stored = clips.lock().unwrap();
+    assert_eq!(stored[0].start_secs, 20.0);
+    assert_eq!(stored[0].end_secs, 65.0);
+    assert_eq!(
+        stored[0].transcript_text,
+        "Setup. Important bit. Conclusion."
+    );
+    assert_eq!(stored[0].speaker.as_deref(), Some("spk_0"));
+    assert_eq!(stored[0].source, "headphone");
+    assert_eq!(stored[0].refinement_status, "transcript_refined");
+}
+
+#[test]
+fn pending_auto_snip_refines_when_transcript_arrives() {
+    let ep_id = Uuid::new_v4().to_string();
+    let store = fresh_store_with_episode(&ep_id, Some(300.0));
+    let (h, clips, rev) = fresh_handler(store.clone());
+    let v = h.handle_auto_snip(ep_id.clone(), 55.0, None, None);
+    assert_eq!(v["ok"], true);
+    assert_eq!(clips.lock().unwrap()[0].refinement_status, "pending_transcript");
+    rev.store(0, Ordering::Relaxed);
+    store.lock().unwrap().set_timed_transcript(
+        ep_id.clone(),
+        vec![
+            timed_entry(25.0, 40.0, "Before.", "spk_0"),
+            timed_entry(40.0, 60.0, "Anchor.", "spk_0"),
+        ],
+    );
+    h.refine_pending_for_episode(&ep_id);
+    let stored = clips.lock().unwrap();
+    assert_eq!(stored[0].start_secs, 25.0);
+    assert_eq!(stored[0].end_secs, 60.0);
+    assert_eq!(stored[0].transcript_text, "Before. Anchor.");
+    assert_eq!(stored[0].refinement_status, "transcript_refined");
+    assert_eq!(rev.load(Ordering::Relaxed), 1);
 }
 
 fn library_with_show(ep_id: &str, episode_title: &str, show_title: &str) -> Vec<PodcastSummary> {
@@ -154,6 +231,7 @@ fn library_with_show(ep_id: &str, episode_title: &str, show_title: &str) -> Vec<
         auto_download_mode: String::new(),
         auto_download_count: 0,
         cellular_allowed: false,
+        notifications_enabled: true,
         user_categories: Vec::new(),
         transcription_enabled: true,
         episodes: vec![EpisodeSummary {
@@ -180,6 +258,11 @@ fn project_clips_picks_up_renamed_titles_from_live_library() {
         start_secs: 0.0,
         end_secs: 10.0,
         title: None,
+        transcript_text: String::new(),
+        speaker: None,
+        source: "touch".to_owned(),
+        refinement_status: "manual".to_owned(),
+        auto_snip_anchor_secs: None,
         created_at: 1,
     }]));
     let library = library_with_show(&ep_id, "Fresh Episode", "Fresh Show");
@@ -201,6 +284,11 @@ fn project_clips_falls_back_to_frozen_titles_when_episode_missing() {
         start_secs: 0.0,
         end_secs: 10.0,
         title: None,
+        transcript_text: String::new(),
+        speaker: None,
+        source: "touch".to_owned(),
+        refinement_status: "manual".to_owned(),
+        auto_snip_anchor_secs: None,
         created_at: 1,
     }]));
     let projected = project_clips(&clips, &[]);
@@ -220,6 +308,11 @@ fn project_clips_returns_newest_first() {
             start_secs: 0.0,
             end_secs: 10.0,
             title: None,
+            transcript_text: String::new(),
+            speaker: None,
+            source: "touch".to_owned(),
+            refinement_status: "manual".to_owned(),
+            auto_snip_anchor_secs: None,
             created_at: 1,
         },
         ClipRecord {
@@ -230,6 +323,11 @@ fn project_clips_returns_newest_first() {
             start_secs: 0.0,
             end_secs: 10.0,
             title: None,
+            transcript_text: String::new(),
+            speaker: None,
+            source: "touch".to_owned(),
+            refinement_status: "manual".to_owned(),
+            auto_snip_anchor_secs: None,
             created_at: 2,
         },
     ]));

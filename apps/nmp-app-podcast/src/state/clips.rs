@@ -3,8 +3,8 @@
 //! Owns the single slot that was previously mirrored between
 //! `PodcastHandle` and `PodcastHostOpHandler`:
 //!
-//! * `clips` — in-memory list of user-saved audio clips.  **Session**
-//!   durability (clips evaporate on restart; persistence is a follow-up).
+//! * `clips` — user-saved audio clips, persisted to `clips.json` when a data
+//!   directory is bound.
 //!
 //! `ClipHandler` (the existing struct in `crate::clip_handler`) already
 //! encapsulates the action logic.  This substate composes it: the slot and
@@ -23,7 +23,7 @@ use std::sync::{Arc, Mutex};
 use crate::clip_handler::{ClipHandler, ClipRecord};
 use crate::ffi::actions::clip_module::ClipAction;
 use crate::ffi::projections::{ClipSummary, PodcastSummary};
-use crate::state::slot::Session;
+use crate::state::slot::Persisted;
 use crate::state::{Infra, Slot};
 use crate::store::PodcastStore;
 
@@ -32,8 +32,8 @@ use crate::store::PodcastStore;
 /// Constructed once in `PodcastAppState::new` and referenced via
 /// `state.clips` on both seams.  All methods are `&self`.
 pub struct ClipsState {
-    /// In-memory clip list.  Session durability — evaporates on restart.
-    pub clips: Slot<Vec<ClipRecord>, Session>,
+    /// Rust-owned clip list, persisted to `clips.json`.
+    pub clips: Slot<Vec<ClipRecord>, Persisted>,
     /// Rev + signal + runtime (cloned from `PodcastAppState::infra`).
     infra: Infra,
     /// The canonical persisted library — read by `ClipHandler` at create /
@@ -67,6 +67,12 @@ impl ClipsState {
         crate::clip_handler::project_clips(&self.clips.share(), library)
     }
 
+    /// Return the current clip row for `id`, if present.
+    pub fn clip(&self, id: &str) -> Option<ClipRecord> {
+        let clips = self.clips.lock().ok()?;
+        clips.iter().find(|rec| rec.id == id).cloned()
+    }
+
     // ── Action handler ────────────────────────────────────────────────────
 
     /// Route a single `podcast.clip.*` action.
@@ -86,6 +92,31 @@ impl ClipsState {
             self.infra.rev.clone(),
         )
         .handle(action)
+    }
+
+    /// Re-run kernel-owned autosnip refinement for clips that were captured
+    /// before timed transcript entries arrived.
+    pub fn refine_pending_for_episode(&self, episode_id: &str) -> Vec<ClipRecord> {
+        ClipHandler::new(
+            self.clips.share(),
+            self.store.clone(),
+            self.infra.rev.clone(),
+        )
+        .refine_pending_for_episode(episode_id)
+    }
+
+    /// Hydrate persisted clips from `<data_dir>/clips.json`.
+    ///
+    /// Returns true when a valid sidecar existed and was applied.
+    pub fn set_data_dir(&self, dir: &std::path::Path) -> bool {
+        let Some(restored) = crate::store::clip_records::load_clip_records(dir) else {
+            return false;
+        };
+        let Ok(mut clips) = self.clips.lock() else {
+            return false;
+        };
+        *clips = restored;
+        true
     }
 }
 
@@ -140,6 +171,9 @@ mod tests {
             start_secs: 10.0,
             end_secs: 40.0,
             title: Some("test clip".into()),
+            source: None,
+            transcript_text: None,
+            client_clip_id: None,
         });
         assert_eq!(out["ok"], true, "create must succeed");
         assert!(out["clip_id"].is_string(), "must return clip_id");
@@ -159,6 +193,9 @@ mod tests {
             start_secs: 0.0,
             end_secs: 60.0,
             title: None,
+            source: None,
+            transcript_text: None,
+            client_clip_id: None,
         });
         let clip_id = out["clip_id"].as_str().unwrap().to_owned();
         let rev1 = state.infra.rev();
@@ -179,6 +216,9 @@ mod tests {
             start_secs: 0.0,
             end_secs: 10.0,
             title: None,
+            source: None,
+            transcript_text: None,
+            client_clip_id: None,
         });
         assert_eq!(out["ok"], false);
     }

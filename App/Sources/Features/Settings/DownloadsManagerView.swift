@@ -140,10 +140,14 @@ struct DownloadsManagerView: View {
 
     // MARK: - Rows
 
-    private var downloadRows: [DownloadManagerRowData] {
-        let podcasts = Dictionary(uniqueKeysWithValues: store.state.podcasts.map { ($0.id, $0) })
+    private var downloadProjection: DownloadsManagerProjection {
+        DownloadsManagerProjection.load(store: store)
+    }
 
-        return store.episodes.compactMap { episode in
+    private func rows(for episodeIDs: [UUID]) -> [DownloadManagerRowData] {
+        let podcasts = Dictionary(uniqueKeysWithValues: store.rustAllPodcasts().map { ($0.id, $0) })
+        return episodeIDs.compactMap { id in
+            guard let episode = store.episode(id: id) else { return nil }
             guard let status = status(for: episode) else { return nil }
             let podcast = podcasts[episode.podcastID]
             return DownloadManagerRowData(
@@ -156,27 +160,20 @@ struct DownloadsManagerView: View {
         }
     }
 
+    private var downloadRows: [DownloadManagerRowData] {
+        activeRows + failedRows + downloadedRows
+    }
+
     private var activeRows: [DownloadManagerRowData] {
-        downloadRows
-            .filter(\.status.isActive)
-            .sorted { lhs, rhs in
-                if lhs.status.sortRank != rhs.status.sortRank {
-                    return lhs.status.sortRank < rhs.status.sortRank
-                }
-                return lhs.episode.pubDate > rhs.episode.pubDate
-            }
+        rows(for: downloadProjection.activeEpisodeIDs)
     }
 
     private var failedRows: [DownloadManagerRowData] {
-        downloadRows
-            .filter(\.status.isFailed)
-            .sorted { $0.episode.pubDate > $1.episode.pubDate }
+        rows(for: downloadProjection.failedEpisodeIDs)
     }
 
     private var downloadedRows: [DownloadManagerRowData] {
-        downloadRows
-            .filter(\.status.isDownloaded)
-            .sorted { $0.episode.pubDate > $1.episode.pubDate }
+        rows(for: downloadProjection.downloadedEpisodeIDs)
     }
 
     private func status(for episode: Episode) -> DownloadManagerStatus? {

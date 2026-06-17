@@ -21,11 +21,13 @@ use std::path::PathBuf;
 use podcast_core::{Episode, EpisodeId, Podcast, PodcastId};
 
 use crate::llm::provider_config::DEFAULT_OLLAMA_CHAT_URL;
+use crate::queue::QueuedPlaybackItem;
 
 mod ad_segments;
 pub mod agent_tasks;
 pub mod auto_download;
 mod chapters;
+pub mod clip_records;
 mod credential_metadata;
 mod disk;
 mod download_persistence;
@@ -139,6 +141,10 @@ pub struct PodcastStore {
     /// `transcription_disabled`.
     /// Cleared by `unsubscribe` so a re-subscribe starts fresh.
     transcription_disabled: HashSet<PodcastId>,
+    /// Per-podcast notification disabled set. Absence means new-episode
+    /// notifications are allowed when the global notification setting is on.
+    /// Cleared by `unsubscribe` so a re-subscribe starts fresh.
+    notifications_disabled: HashSet<PodcastId>,
     /// Episodes deferred because the device was on cellular when the feed
     /// refreshed and the show is Wi-Fi-only. These are dispatched as a batch
     /// the next time `NetworkReport::ConnectivityChanged { is_wifi: true }`
@@ -296,15 +302,15 @@ pub struct PodcastStore {
     /// Not persisted — hosts re-sync it from secure storage on every app launch.
     pub(super) stt_keys_present: std::collections::BTreeSet<String>,
     data_dir: Option<PathBuf>,
-    /// Episode ids loaded from disk during `set_data_dir`. Drained exactly
+    /// Playback queue items loaded from disk during `set_data_dir`. Drained exactly
     /// once by `take_loaded_queue`; the FFI layer seeds the shared
     /// `PlaybackQueue` from this value after load completes.
-    loaded_queue: Vec<String>,
+    loaded_queue: Vec<QueuedPlaybackItem>,
     /// Current "Up Next" queue, mirrored here so that ordinary `persist()`
     /// calls (triggered by subscription changes, settings tweaks, etc.) write
     /// the real queue rather than an empty slice.  Updated by every
     /// `persist_with_queue` call and seeded from disk on `load_from_disk`.
-    cached_queue: Vec<String>,
+    cached_queue: Vec<QueuedPlaybackItem>,
     /// OpenRouter API key (in-memory only, never persisted to disk).
     /// Set via `set_provider_api_keys`; credential never touches disk.
     open_router_api_key: Option<String>,
@@ -353,6 +359,7 @@ impl PodcastStore {
             auto_download_modes: HashMap::new(),
             auto_download_cellular_allowed: HashSet::new(),
             transcription_disabled: HashSet::new(),
+            notifications_disabled: HashSet::new(),
             pending_wifi_downloads: Vec::new(),
             memory_facts: HashMap::new(),
             ad_segments: HashMap::new(),

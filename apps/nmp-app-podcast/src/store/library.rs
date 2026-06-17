@@ -63,6 +63,7 @@ impl PodcastStore {
         let removed_a = self.auto_download_enabled.remove(&podcast_id);
         self.auto_download_modes.remove(&podcast_id);
         self.auto_download_cellular_allowed.remove(&podcast_id);
+        self.notifications_disabled.remove(&podcast_id);
         if removed_p || removed_e || removed_f || removed_a {
             self.persist();
         }
@@ -246,6 +247,36 @@ impl PodcastStore {
                 .find(|e| e.id.0.to_string().eq_ignore_ascii_case(id_str))
             {
                 return Some((ep.id, ep.enclosure_url.to_string()));
+            }
+        }
+        None
+    }
+
+    /// Resolve metadata needed to publish a NIP-84 highlight for a clip.
+    ///
+    /// Returns `(enclosure_url, feed_url, item_guid)` with the GUID falling
+    /// back to the stable episode UUID when a feedless/local episode has no
+    /// publisher GUID.
+    pub fn episode_highlight_metadata(
+        &self,
+        id_str: &str,
+    ) -> Option<(String, Option<String>, String)> {
+        for (podcast_id, episodes) in &self.episodes {
+            if let Some(ep) = episodes
+                .iter()
+                .find(|e| e.id.0.to_string().eq_ignore_ascii_case(id_str))
+            {
+                let feed_url = self
+                    .podcasts
+                    .get(podcast_id)
+                    .and_then(|pod| pod.feed_url.as_ref())
+                    .map(|url| url.to_string());
+                let item_guid = if ep.guid.is_empty() {
+                    ep.id.0.to_string()
+                } else {
+                    ep.guid.clone()
+                };
+                return Some((ep.enclosure_url.to_string(), feed_url, item_guid));
             }
         }
         None

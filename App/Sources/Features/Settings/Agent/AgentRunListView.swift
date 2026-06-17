@@ -6,9 +6,7 @@ struct AgentRunListView: View {
     @State private var confirmClear = false
 
     private var filteredRuns: [AgentRun] {
-        let f = filterStore.filter
-        if f.isEmpty { return logger.runs }
-        return logger.runs.filter { f.matches($0) }
+        logger.filteredRuns(filter: filterStore.filter)
     }
 
     var body: some View {

@@ -82,6 +82,10 @@ struct ClipSummary: Codable, Identifiable, Equatable, Hashable {
     var startSecs: Double
     var endSecs: Double
     var title: String? = nil
+    var transcriptText: String = ""
+    var speaker: String? = nil
+    var source: String = ""
+    var refinementStatus: String = ""
     var createdAt: Int
 }
 
