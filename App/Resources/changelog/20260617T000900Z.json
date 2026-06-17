@@ -1,0 +1,6 @@
+{
+  "shipped_at": "2026-06-17T00:09:00Z",
+  "lines": [
+    "Threads now come from the kernel's library analysis instead of a local preview seed, so cross-episode topic surfaces stay consistent across platforms."
+  ]
+}

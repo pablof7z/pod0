@@ -1,0 +1,6 @@
+{
+  "shipped_at": "2026-06-17T00:11:00Z",
+  "lines": [
+    "Category settings now only show controls backed by the kernel, so toggles reflect behavior the app can actually apply."
+  ]
+}

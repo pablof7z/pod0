@@ -1,0 +1,6 @@
+{
+  "shipped_at": "2026-06-17T00:05:00Z",
+  "lines": [
+    "Siri playback shortcuts now route through the kernel, so pause, resume, and skip follow the same playback rules as the app."
+  ]
+}

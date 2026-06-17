@@ -1,0 +1,6 @@
+{
+  "shipped_at": "2026-06-17T00:12:00Z",
+  "lines": [
+    "Agent-owned podcast visibility changes now go through the kernel, so private and public states stay consistent after refresh."
+  ]
+}

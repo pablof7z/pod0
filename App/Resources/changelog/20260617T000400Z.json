@@ -1,0 +1,6 @@
+{
+  "shipped_at": "2026-06-17T00:04:00Z",
+  "lines": [
+    "Sleep timer decisions now run through the kernel, so end-of-episode stops follow the same playback policy as every other platform."
+  ]
+}

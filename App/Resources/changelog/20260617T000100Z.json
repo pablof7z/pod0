@@ -1,0 +1,6 @@
+{
+  "shipped_at": "2026-06-17T00:01:00Z",
+  "lines": [
+    "Quote sharing now uses kernel-aligned transcript boundaries for cleaner excerpts."
+  ]
+}
