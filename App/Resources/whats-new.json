@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-17T12:00:00Z",
+      "lines": [
+        "Snip clips now land with smarter boundaries — chapter-aligned or transcript-refined start and end points automatically — and your clips reliably show up in Clippings and survive a restart."
+      ]
+    },
+    {
       "shipped_at": "2026-06-17T00:02:00Z",
       "lines": [
         "Voice mode now actually talks to your podcasts — ask a question out loud and the assistant listens, thinks, and answers in your selected voice."

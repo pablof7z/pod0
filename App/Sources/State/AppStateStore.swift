@@ -279,6 +279,17 @@ final class AppStateStore {
     /// `flushPendingPositions()`.
     var positionCache: [UUID: TimeInterval] = [:]
 
+    /// Clip ids the kernel projection last surfaced into `state.clips`
+    /// (`projectKernelClips`). Lets the projection distinguish kernel-owned
+    /// clips (AutoSnip / restart-persisted — drop them when the kernel stops
+    /// reporting them) from composer-authored local clips (preserve — they
+    /// carry rich transcript/speaker/source data and are persisted Swift-side
+    /// until the create/delete write-path inversion lands). Without this set
+    /// a kernel clip, once projected into `state.clips`, would be
+    /// indistinguishable from a local clip on the next tick and could never be
+    /// removed when deleted in the kernel.
+    var kernelClipIDs: Set<UUID> = []
+
     /// Pending trailing-debounce flush task. Cancelled and re-armed on each
     /// `setEpisodePlaybackPosition` call so the deadline keeps moving while
     /// updates stream in (true trailing debounce).

@@ -100,6 +100,37 @@ struct Clip: Codable, Sendable, Hashable, Identifiable {
 }
 
 extension Clip {
+    /// Map a kernel `ClipSummary` (the reactive projection DTO) into the
+    /// domain `Clip`. The kernel is the single source of truth for clips it
+    /// owns (AutoSnip + persisted-across-restart clips). `subscriptionID` is
+    /// resolved by the caller from the episode→podcast relationship in the
+    /// library (the kernel `ClipSummary` carries only `episodeId`), falling
+    /// back to the Unknown sentinel when the episode is no longer subscribed.
+    ///
+    /// Fields the kernel `ClipSummary` does NOT carry (`transcriptText`,
+    /// `speakerID`, `source`) are defaulted: empty transcript, no speaker, and
+    /// `.auto` source (kernel-owned clips originate from the AutoSnip /
+    /// auto-capture path). The user-given clip `title` maps to `caption`.
+    init(from summary: ClipSummary, subscriptionID: UUID) {
+        self.init(
+            id: UUID(uuidString: summary.id) ?? UUID(),
+            episodeID: UUID(uuidString: summary.episodeId) ?? Self.placeholderEpisodeID,
+            subscriptionID: subscriptionID,
+            startMs: Int((summary.startSecs * 1000).rounded()),
+            endMs: Int((summary.endSecs * 1000).rounded()),
+            createdAt: Date(timeIntervalSince1970: TimeInterval(summary.createdAt)),
+            caption: summary.title,
+            speakerID: nil,
+            transcriptText: "",
+            source: .auto
+        )
+    }
+
+    /// Stable fallback episode id used when a kernel clip's `episodeId` fails
+    /// to parse as a UUID. A nil-safe sentinel keeps the projection total.
+    private static let placeholderEpisodeID = UUID(
+        uuidString: "00000000-0000-0000-0000-0000000000C1")!
+
     /// Start time as seconds, convenient for `AVAsset` / `CMTime` math.
     var startSeconds: TimeInterval { TimeInterval(startMs) / 1000.0 }
     /// End time as seconds.

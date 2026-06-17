@@ -470,9 +470,22 @@ extension AppStateStore {
         // `library`/`snapshot`/`identity`, not the 4 Hz emit rate) and already
         // does the full O(N) episode walk above, so this recompute fires only
         // on a real content change and adds no new cost class.
+        // Build the episode→podcast map for clip subscriptionID resolution.
+        // The kernel `ClipSummary` carries only `episodeId`; the domain `Clip`
+        // needs the owning podcast UUID. Derived from the just-projected
+        // library so it reflects the current subscription graph.
+        var episodeToPodcast: [UUID: UUID] = [:]
+        episodeToPodcast.reserveCapacity(projectedEpisodes.count)
+        for ep in projectedEpisodes { episodeToPodcast[ep.id] = ep.podcastID }
+
         performMutationBatch {
             state = next
             self.episodes = projectedEpisodes
+
+            // Read-side inversion: surface kernel-owned clips (AutoSnip +
+            // restart-persisted) into state.clips. Inside the batch so the
+            // persist/widget side-effects collapse with the other writes.
+            projectKernelClips(snapshot?.clips ?? [], episodeToPodcast: episodeToPodcast)
 
             invalidateEpisodeProjections()
 
@@ -562,9 +575,18 @@ extension AppStateStore {
         // Without this, an in-progress download never shows its progress ring.
         var overlaidEpisodes = self.episodes
         applyDownloadOverlay(to: &overlaidEpisodes, active: kernel?.downloadSnapshot?.active)
+        // Episode→podcast map for clip subscriptionID resolution. The library
+        // is unchanged on this path, but a clip can still arrive (an AutoSnip
+        // dispatch bumps the misc-domain rev, not the library rev), so the
+        // clip projection must run here too. Built from the current episodes.
+        var episodeToPodcast: [UUID: UUID] = [:]
+        episodeToPodcast.reserveCapacity(overlaidEpisodes.count)
+        for ep in overlaidEpisodes { episodeToPodcast[ep.id] = ep.podcastID }
         performMutationBatch {
             state = next
             self.episodes = overlaidEpisodes
+            // Read-side inversion (fast path): surface kernel-owned clips.
+            projectKernelClips(snapshot?.clips ?? [], episodeToPodcast: episodeToPodcast)
             mergeResolvedProfiles(identity.resolvedProfiles)
             self.identity.applyKernelIdentity(
                 handshake: identity.bunkerHandshake,
