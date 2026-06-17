@@ -78,6 +78,7 @@ fun AppNavigation(
     val onOpenClips: () -> Unit = { route = AppRoute.ClipList }
     val onOpenBookmarks: () -> Unit = { route = AppRoute.Bookmarks }
     val onOpenFollowing: () -> Unit = { route = AppRoute.Following }
+    val onOpenScheduledTasks: () -> Unit = { route = AppRoute.ScheduledTasks }
 
     Scaffold(
         bottomBar = {
@@ -106,6 +107,7 @@ fun AppNavigation(
                 onOpenClips = onOpenClips,
                 onOpenBookmarks = onOpenBookmarks,
                 onOpenFollowing = onOpenFollowing,
+                onOpenScheduledTasks = onOpenScheduledTasks,
                 modifier = contentModifier,
             )
             is AppRoute.ShowDetail -> ShowDetailScreen(
@@ -238,6 +240,12 @@ fun AppNavigation(
                 onBack = { route = AppRoute.Following },
                 modifier = contentModifier,
             )
+            AppRoute.ScheduledTasks -> ScheduledTasksScreen(
+                snapshot = snapshot,
+                bridge = bridge,
+                onBack = { route = AppRoute.Tab(selectedTab) },
+                modifier = contentModifier,
+            )
         }
     }
 }
@@ -254,6 +262,7 @@ private fun TabContent(
     onOpenClips: () -> Unit,
     onOpenBookmarks: () -> Unit,
     onOpenFollowing: () -> Unit,
+    onOpenScheduledTasks: () -> Unit,
     modifier: Modifier,
 ) {
     when (tab) {
@@ -287,6 +296,7 @@ private fun TabContent(
             onNavigateToClips = onOpenClips,
             onNavigateToBookmarks = onOpenBookmarks,
             onNavigateToFollowing = onOpenFollowing,
+            onNavigateToScheduledTasks = onOpenScheduledTasks,
             modifier = modifier,
         )
     }
@@ -346,6 +356,8 @@ internal sealed interface AppRoute {
      * short-npub fallback before the kernel resolves the kind:0 profile.
      */
     data class FriendDetail(val pubkeyHex: String, val npub: String) : AppRoute
+    /** Scheduled agent tasks list — reached from Settings > Agent (tasks parity slice 3). */
+    data object ScheduledTasks : AppRoute
 
     companion object {
         val Saver: androidx.compose.runtime.saveable.Saver<AppRoute, Any> =
@@ -381,6 +393,7 @@ internal fun saveAppRoute(value: AppRoute): List<String> = when (value) {
     AppRoute.Bookmarks -> listOf("bookmarks")
     AppRoute.Following -> listOf("following")
     is AppRoute.FriendDetail -> listOf("friend_detail", value.pubkeyHex, value.npub)
+    AppRoute.ScheduledTasks -> listOf("scheduled_tasks")
 }
 
 /**
@@ -412,5 +425,6 @@ internal fun restoreAppRoute(list: List<String>): AppRoute? = when (list.firstOr
         val npub = list.getOrNull(2)
         if (hex != null && npub != null) AppRoute.FriendDetail(hex, npub) else null
     }
+    "scheduled_tasks" -> AppRoute.ScheduledTasks
     else -> null
 }

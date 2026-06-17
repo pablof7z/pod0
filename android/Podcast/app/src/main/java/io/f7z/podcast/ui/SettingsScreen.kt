@@ -50,6 +50,7 @@ fun SettingsScreen(
     onNavigateToClips: () -> Unit = {},
     onNavigateToBookmarks: () -> Unit = {},
     onNavigateToFollowing: () -> Unit = {},
+    onNavigateToScheduledTasks: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val settings = snapshot?.settings ?: SettingsSnapshot()
@@ -84,6 +85,13 @@ fun SettingsScreen(
         item {
             SettingsSection(title = "AI") {
                 SettingsNavRow(label = "Providers & models", onClick = onNavigateToModels)
+            }
+        }
+        item {
+            SettingsSection(title = "Agent") {
+                val taskCount = snapshot?.agentTasks?.size ?: 0
+                val taskLabel = if (taskCount > 0) "Scheduled Tasks ($taskCount)" else "Scheduled Tasks"
+                SettingsNavRow(label = taskLabel, onClick = onNavigateToScheduledTasks)
             }
         }
         item {

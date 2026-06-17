@@ -30,7 +30,7 @@ class AppRouteSaverTest {
     // `restoreAppRoute` is a string-keyed `when` with an `else -> null` tail, so
     // a future edit that drops a restore case ships SILENTLY (route lost on
     // process-death restore, no compile error). This table asserts every one of
-    // the 15 variants survives `restoreAppRoute(saveAppRoute(route)) == route`,
+    // the 16 variants survives `restoreAppRoute(saveAppRoute(route)) == route`,
     // turning any dropped case into a test failure rather than a silent regression.
     //
     // Tab is enumerated across ALL BottomTab entries so a renamed/removed tab
@@ -51,6 +51,7 @@ class AppRouteSaverTest {
         AppRoute.Bookmarks,
         AppRoute.Following,
         AppRoute.FriendDetail("deadbeef00", "npub1abc"),
+        AppRoute.ScheduledTasks,
     )
 
     @Test
@@ -78,8 +79,8 @@ class AppRouteSaverTest {
     }
 
     @Test
-    fun `round-trip coverage spans all 15 AppRoute declared subtypes`() {
-        // 14 non-Tab variants + Tab = 15 declared AppRoute subtypes. This guards
+    fun `round-trip coverage spans all 16 AppRoute declared subtypes`() {
+        // 15 non-Tab variants + Tab = 16 declared AppRoute subtypes. This guards
         // the table above from silently falling behind a newly-added route: bump
         // this count deliberately when a variant is added, after covering it.
         val nonTabSubtypeCount = allRoutesExceptTab
@@ -87,8 +88,8 @@ class AppRouteSaverTest {
             .distinct()
             .size
         assertEquals(
-            "Expected 14 distinct non-Tab AppRoute subtypes in the round-trip table",
-            14,
+            "Expected 15 distinct non-Tab AppRoute subtypes in the round-trip table",
+            15,
             nonTabSubtypeCount,
         )
     }
@@ -160,6 +161,26 @@ class AppRouteSaverTest {
         val original = AppRoute.NostrConversationDetail("root-event-id")
         assertEquals(original, roundTrip(original))
     }
+
+    // ── ScheduledTasks — the new route added in tasks parity slice 3 ─────────
+
+    @Test
+    fun `ScheduledTasks round-trips`() {
+        assertEquals(AppRoute.ScheduledTasks, roundTrip(AppRoute.ScheduledTasks))
+    }
+
+    @Test
+    fun `saveAppRoute ScheduledTasks encodes scheduled_tasks tag at index 0`() {
+        val saved = saveAppRoute(AppRoute.ScheduledTasks)
+        assertEquals("scheduled_tasks", saved[0])
+    }
+
+    @Test
+    fun `restoreAppRoute scheduled_tasks tag produces ScheduledTasks`() {
+        assertEquals(AppRoute.ScheduledTasks, restoreAppRoute(listOf("scheduled_tasks")))
+    }
+
+    // ── Peer-regression guard — ScheduledTasks must not break existing routes ──
 
     @Test
     fun `unknown tag restores to null`() {
