@@ -571,3 +571,8 @@ fn auto_snip_empty_chapters_vec_falls_back_to_30s() {
     assert!((stored[0].start_secs - 70.0).abs() < 1e-9);
     assert!((stored[0].end_secs - 130.0).abs() < 1e-9);
 }
+
+// ── transcript_refine tests (S3a) — split into their own file ─────────────────
+#[cfg(test)]
+#[path = "clip_handler_transcript_tests.rs"]
+mod transcript_tests;

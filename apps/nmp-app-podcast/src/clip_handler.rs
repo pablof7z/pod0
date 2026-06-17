@@ -31,6 +31,7 @@ use chrono::Utc;
 use uuid::Uuid;
 
 use podcast_core::Chapter;
+use podcast_transcripts::TranscriptEntry;
 
 use crate::ffi::actions::clip_module::ClipAction;
 use crate::ffi::projections::{ClipSummary, PodcastSummary};
@@ -163,22 +164,40 @@ impl ClipHandler {
         // Silently degrade on poison — the in-memory slot stays authoritative (D6).
     }
 
-    /// Chapter-snapped AutoSnip: resolve `position_secs` to the chapter that
-    /// contains it, then clip `[chapter.start_secs, next_chapter.start_secs)`.
+    /// Transcript-refined, chapter-snapped AutoSnip.
     ///
-    /// Falls back to the legacy ±30 s window when the episode has no chapters
-    /// (field absent or empty). This preserves existing behaviour for
-    /// chapter-less episodes and does not change any wire shape.
+    /// Pipeline (in priority order):
+    /// 1. **Chapter snap** — resolve `position_secs` to the enclosing chapter's
+    ///    `[start, end)` using `chapter_snap`.
+    /// 2. **Transcript refine** — when a timed transcript exists, pass the
+    ///    chapter-derived range through `transcript_refine` to snap start
+    ///    backward to a segment boundary and end forward to a segment end.
+    ///    When refine returns `None` (degenerate or no entries) keep the chapter
+    ///    range.
+    /// 3. **Fallback** — when no chapter range can be produced, use the legacy
+    ///    ±30 s window (S2 behaviour, unchanged).
+    ///
+    /// No wire shape change — result is forwarded to `handle_create`.
     fn handle_auto_snip(&self, episode_id: String, position_secs: f64) -> serde_json::Value {
-        let Some((_, _, chapters, duration)) = self.episode_snip_context(&episode_id) else {
+        let Some((_, _, chapters, duration, timed_entries)) =
+            self.episode_snip_context(&episode_id)
+        else {
             return serde_json::json!({
                 "ok": false,
                 "error": format!("episode not found: {episode_id}")
             });
         };
 
-        let (start, end, chapter_title) =
+        let (cs_start, cs_end, chapter_title) =
             chapter_snap(position_secs, chapters.as_deref(), duration);
+
+        // Transcript-refine post-pass: snap to nearest utterance boundaries.
+        // Falls back to the chapter/±30 s range when absent or degenerate.
+        let (start, end) =
+            match transcript_refine(cs_start, cs_end, timed_entries.as_deref(), duration) {
+                Some((rs, re)) => (rs, re),
+                None => (cs_start, cs_end),
+            };
 
         self.handle_create(episode_id, start, end, chapter_title)
     }
@@ -191,14 +210,87 @@ impl ClipHandler {
     }
 
     /// Fetch all AutoSnip context in one lock acquisition:
-    /// `(episode_title, podcast_title, chapters, duration_secs)`.
+    /// `(episode_title, podcast_title, chapters, duration_secs, timed_entries)`.
+    ///
+    /// Single store-lock acquisition — handler drops it before clips work.
     fn episode_snip_context(
         &self,
         episode_id: &str,
-    ) -> Option<(String, String, Option<Vec<Chapter>>, Option<f64>)> {
+    ) -> Option<(String, String, Option<Vec<Chapter>>, Option<f64>, Option<Vec<TranscriptEntry>>)>
+    {
         let store = self.store.lock().ok()?;
         store.episode_auto_snip_context(episode_id)
     }
+}
+
+/// Snap `[start, end]` to the nearest transcript-entry boundaries.
+///
+/// - **START (backward bias):** last entry whose `start_secs <= start`; if
+///   before the first entry, snap to `entries[0].start_secs`.
+/// - **END (forward bias):** first entry whose `end_secs >= end`; if past
+///   the last entry, snap to `entries.last().end_secs`.
+/// - Both clamped to `[0, duration]` when duration is known.
+/// - Returns `None` for `None`/empty entries or a degenerate range after
+///   snapping — caller keeps the pre-refine (chapter/±30 s) range.
+pub(crate) fn transcript_refine(
+    start: f64,
+    end: f64,
+    entries: Option<&[TranscriptEntry]>,
+    duration: Option<f64>,
+) -> Option<(f64, f64)> {
+    let entries = entries?;
+    if entries.is_empty() {
+        return None;
+    }
+
+    // Stable sort by start_secs (same pattern as chapter_snap_range).
+    let mut sorted: Vec<&TranscriptEntry> = entries.iter().collect();
+    sorted.sort_by(|a, b| {
+        a.start_secs
+            .partial_cmp(&b.start_secs)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    // START: last entry starting at/before `start` (backward bias).
+    let snapped_start = if start < sorted[0].start_secs {
+        sorted[0].start_secs
+    } else {
+        let mut best = sorted[0];
+        for e in &sorted {
+            if e.start_secs <= start {
+                best = e;
+            } else {
+                break;
+            }
+        }
+        best.start_secs
+    };
+
+    // END: first entry ending at/after `end` (forward bias).
+    let last = sorted[sorted.len() - 1];
+    let snapped_end = if end >= last.end_secs {
+        last.end_secs
+    } else if end < sorted[0].start_secs {
+        sorted[0].end_secs
+    } else {
+        let mut found = last;
+        for e in &sorted {
+            if e.end_secs >= end {
+                found = e;
+                break;
+            }
+        }
+        found.end_secs
+    };
+
+    let snapped_start = clamp_duration(snapped_start.max(0.0), duration);
+    let snapped_end = clamp_duration(snapped_end.max(0.0), duration);
+
+    if snapped_end <= snapped_start {
+        return None;
+    }
+
+    Some((snapped_start, snapped_end))
 }
 
 fn normalize_range(a: f64, b: f64) -> (f64, f64) {
