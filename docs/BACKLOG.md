@@ -612,6 +612,31 @@ worktrees currently in flight.
   correct behavior. Note: this is separate from the parallel SwiftUI
   `AudioConversationManager` voice path used by `VoiceView`, which has the same
   missing-sink gap.
+- **voice-view-kernel-reconcile — DONE (VoiceView repointed).** `VoiceView`
+  (the user-facing voice screen, reachable via `StartVoiceModeIntent`) was driven
+  by `AudioConversationManager`, wired entirely to defaults: a `StubVoiceTurnDelegate`
+  (synthetic word-by-word echo, never the real agent — `setTurnDelegate` was never
+  called and the promised `ChatSessionVoiceAdapter` was never written), a
+  `NoopAudioSessionCoordinator`, and no playback sink. So voice mode opened but
+  echoed fake text with no audio. Meanwhile the *functional* engine — the kernel
+  `VoiceConversationManager` (real LLM loop) + `VoiceCapability` executor (real STT
+  + ElevenLabs/AVSpeech playback) — had no UI. `VoiceView` is now a thin shell over
+  the kernel: it dispatches `podcast.voice` `activate`/`deactivate`/`stop` and
+  renders the `voice` snapshot projection (`isListening`/`isSpeaking`/
+  `partialTranscript`/`lastResponse`), mirroring the Android `VoiceScreen`. One
+  canonical voice path across platforms.
+- **voice-stub-stack-retire — FOLLOW-UP.** After `voice-view-kernel-reconcile`,
+  the `AudioConversationManager` stub stack is dormant (only inbound comment refs
+  + tests/previews). Retire it: `AudioConversationManager`, `SpeechRecognizerService`,
+  `BargeInDetector`, `VoiceTurnDelegate`/`StubVoiceTurnDelegate`/`VoiceTurnEvent`,
+  `VoiceCaption`/`VoiceCaptionLog`, `VoiceTypes` (`AudioConversationState`,
+  `VoiceError`), `VoiceAudioSessionBridge`, and the voice-only
+  `AudioSessionCoordinatorProtocol`/`NoopAudioSessionCoordinator`. NOT clean to
+  delete blindly: `AVSpeechFallback` is used by `RationaleNarrator`, and
+  `ElevenLabsTTSClient.defaultVoiceID` (static const) is referenced by
+  `AgentTTSComposer` — relocate those before deletion. Deletion touches symbols the
+  test target globs, so it needs `xcodebuild build-for-testing` (AppTests/**), not
+  just an app compile, per the Swift-delete rule.
 - **tts-episodes-reconcile-two-mechanisms (feature #43) — RESOLVED.**
   **Option A chosen — kernel stub deleted, Swift `AgentTTSComposer` is
   canonical.** The orphaned kernel `podcast.tts` vertical (`tts.rs`,

@@ -2,28 +2,57 @@ import SwiftUI
 
 // MARK: - VoiceView
 
-/// Full-screen voice conversation experience.
+/// Full-screen voice conversation experience, driven entirely by the kernel
+/// voice engine (`podcast.voice` actions + the `voice` snapshot projection).
 ///
-/// Layout (top → bottom):
-///   • State badge ("Listening", "Thinking", …)
-///   • Animated orb (center, ~60% of screen)
-///   • Caption rail (last 3-4 captions, scrolling)
-///   • Bottom action row: PTT button (large), ambient toggle, "switch to text"
+/// The kernel owns the STT→LLM→TTS loop: `VoiceConversationManager` (Rust)
+/// runs the model on each final transcript and dispatches the spoken reply,
+/// while the iOS `VoiceCapability` executor performs recognition and ElevenLabs/
+/// AVSpeech playback. This view is a *thin shell* over that engine — it
+/// dispatches `activate`/`deactivate`/`stop` and renders the projected state
+/// (`isListening`, `isSpeaking`, `partialTranscript`, `lastResponse`). It owns
+/// no audio, no agent session, and no state machine of its own. This mirrors
+/// the Android `VoiceScreen` design so both platforms share one canonical
+/// voice path.
 ///
-/// The orchestrator (`RootView`) is expected to mount this as the contents
-/// of a Voice tab. We don't add ourselves to `RootTab` here — that's
-/// handled at merge time per the lane spec.
+/// Presented by `RootView` as a `fullScreenCover` on `.voiceModeRequested`.
 struct VoiceView: View {
 
-    @State private var manager = AudioConversationManager()
+    @Environment(AppStateStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
-    /// Caller-supplied closure to pivot back to the Ask (text) chat tab.
+    /// Caller-supplied closure to pivot back to the Ask (text) chat.
     var onSwitchToText: (() -> Void)? = nil
 
-    /// PTT press state — used to drive `start/end PushToTalk` from a
-    /// `LongPressGesture`-style interaction without race conditions.
-    @State private var isPressing = false
+    /// True between the user finishing speaking and the assistant starting to
+    /// speak — the kernel exposes no explicit "thinking" flag, so we infer it
+    /// from the `listening → (silence) → speaking` gap to drive the orb.
+    @State private var awaitingResponse = false
+
+    /// Set when the user is dismissing voice mode so the speaking→idle
+    /// transition does not re-arm listening for another turn.
+    @State private var isClosing = false
+
+    /// True once a non-empty partial transcript has been seen during the
+    /// current listening turn. Gates the inferred "thinking" state so a
+    /// no-speech stop (or a permission/activation failure) does not show
+    /// "Thinking…" with nothing coming.
+    @State private var heardSpeech = false
+
+    /// Set right before a user-initiated `stop` so the resulting
+    /// speaking→idle transition does NOT auto-re-arm the mic — tapping stop
+    /// should end the assistant's turn, not silently reopen listening.
+    @State private var suppressRearm = false
+
+    // MARK: - Kernel state accessors
+
+    private var voice: VoiceSnapshot? { store.kernel?.podcastSnapshot?.voice }
+    private var isListening: Bool { voice?.isListening ?? false }
+    private var isSpeaking: Bool { voice?.isSpeaking ?? false }
+    private var partialTranscript: String? { voice?.partialTranscript }
+    private var lastResponse: String? { voice?.lastResponse }
+
+    // MARK: - Body
 
     var body: some View {
         ZStack {
@@ -31,7 +60,7 @@ struct VoiceView: View {
             VStack(spacing: AppTheme.Spacing.lg) {
                 stateBadge
                 Spacer()
-                orb
+                VoiceOrbView(state: orbState, inputRMS: 0)
                 Spacer()
                 captionRail
                 actionRow
@@ -41,6 +70,39 @@ struct VoiceView: View {
             .padding(.top, AppTheme.Spacing.md)
         }
         .preferredColorScheme(.dark)
+        .onAppear { activate() }
+        .onDisappear {
+            // Always release the mic on teardown. `deactivate` (StopListening)
+            // is idempotent kernel-side, so dispatching it unconditionally is
+            // safe and closes the window where an external dismissal would
+            // otherwise leave recognition running.
+            dispatchVoice("deactivate")
+        }
+        .onChange(of: partialTranscript) { _, partial in
+            if let partial, !partial.isEmpty { heardSpeech = true }
+        }
+        .onChange(of: isListening) { _, listening in
+            if listening {
+                heardSpeech = false
+            } else if heardSpeech && !isSpeaking && !isClosing {
+                // Listening stopped after the user actually spoke → a turn
+                // was submitted; show the thinking orb until speech begins.
+                awaitingResponse = true
+            }
+        }
+        .onChange(of: isSpeaking) { _, speaking in
+            if speaking {
+                awaitingResponse = false
+            } else if isClosing || suppressRearm {
+                // User-initiated stop or dismissal — do not reopen the mic.
+                suppressRearm = false
+            } else {
+                // Assistant finished naturally — re-arm listening so the
+                // conversation continues hands-free (kernel STT is
+                // single-utterance).
+                activate()
+            }
+        }
     }
 
     // MARK: - Background
@@ -48,9 +110,7 @@ struct VoiceView: View {
     private var background: some View {
         AppTheme.Gradients.onboardingNebula
             .ignoresSafeArea()
-            .overlay(
-                Color.black.opacity(0.18).ignoresSafeArea()
-            )
+            .overlay(Color.black.opacity(0.18).ignoresSafeArea())
     }
 
     // MARK: - State badge
@@ -65,8 +125,7 @@ struct VoiceView: View {
                     badgePulses
                         ? .easeInOut(duration: 0.85).repeatForever(autoreverses: true)
                         : .default,
-                    value: badgePulses
-                )
+                    value: badgePulses)
             Text(stateLabel)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.white)
@@ -77,246 +136,179 @@ struct VoiceView: View {
     }
 
     private var stateLabel: String {
-        switch manager.state {
-        case .idle: return manager.isAmbient ? "Ambient · waiting" : "Tap and hold to talk"
+        switch orbState {
         case .listening: return "Listening…"
         case .thinking: return "Thinking…"
         case .speaking: return "Speaking"
-        case .error(let err): return errorLabel(err)
+        default: return "Tap to talk"
         }
     }
 
     private var badgeColor: Color {
-        switch manager.state {
+        switch orbState {
         case .listening: return AppTheme.Tint.voiceListening
         case .thinking: return AppTheme.Tint.voiceThinking
         case .speaking: return AppTheme.Tint.voiceSpeaking
-        case .error: return .red
-        case .idle: return .white.opacity(0.7)
+        default: return .white.opacity(0.7)
         }
     }
 
     private var badgePulses: Bool {
-        switch manager.state {
+        switch orbState {
         case .listening, .thinking, .speaking: return true
         default: return false
         }
     }
 
-    private func errorLabel(_ error: VoiceError) -> String {
-        switch error {
-        case .permissionDenied: return "Microphone or speech access denied"
-        case .recognizerUnavailable: return "Speech recogniser unavailable"
-        case .ttsFailed: return "TTS error — using local voice"
-        case .agentFailed: return "Agent error"
-        case .audioRouteFailed: return "Audio route error"
-        case .unknown: return "Voice error"
-        }
-    }
-
     // MARK: - Orb
 
-    private var orb: some View {
-        VoiceOrbView(state: orbState, inputRMS: orbInputRMS)
-    }
-
-    /// Map the conversation manager's state machine onto the orb's visual
-    /// state. The error state collapses onto `.idle` so the orb stays
-    /// consistent — error chrome lives in the badge.
+    /// Map the projected kernel state onto the orb's visual state.
     private var orbState: VoiceOrbState {
-        switch manager.state {
-        case .idle: return .idle
-        case .listening: return .listening
-        case .thinking: return .thinking(toolName: nil)
-        case .speaking:
-            return manager.isUserBargingIn ? .bargeIn : .speaking
-        case .error: return .idle
-        }
-    }
-
-    /// Hook for the orb's live input pulse. While we're in the barge-in
-    /// preview window the manager surfaces a non-zero level; otherwise the
-    /// orb stays still. Future work pipes the detector's running RMS
-    /// through the manager.
-    private var orbInputRMS: Float {
-        manager.isUserBargingIn ? 0.18 : 0
+        if isSpeaking { return .speaking }
+        if isListening { return .listening }
+        if awaitingResponse { return .thinking() }
+        return .idle
     }
 
     // MARK: - Captions
 
     private var captionRail: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            ForEach(manager.captions.entries.suffix(3)) { caption in
-                VoiceCaptionRow(caption: caption)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+            if isListening, let partial = partialTranscript, !partial.isEmpty {
+                captionRow(speaker: "You", text: partial, dimmed: true)
+            }
+            if let response = lastResponse, !response.isEmpty {
+                captionRow(speaker: isSpeaking ? "Agent" : "•", text: response, dimmed: false)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(minHeight: 120, alignment: .bottom)
         .padding(.horizontal, AppTheme.Spacing.md)
-        .animation(.easeInOut(duration: 0.25), value: manager.captions.entries.count)
+        .animation(.easeInOut(duration: 0.25), value: lastResponse)
+        .animation(.easeInOut(duration: 0.25), value: partialTranscript)
+    }
+
+    private func captionRow(speaker: String, text: String, dimmed: Bool) -> some View {
+        HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
+            Text(speaker)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(dimmed ? AppTheme.Tint.voiceListening : AppTheme.Tint.voiceThinking)
+                .frame(width: 44, alignment: .leading)
+            Text(text)
+                .font(.callout)
+                .foregroundStyle(dimmed ? Color.white.opacity(0.65) : .white)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .multilineTextAlignment(.leading)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(speaker) said \(text)")
     }
 
     // MARK: - Actions
 
     private var actionRow: some View {
         HStack(spacing: AppTheme.Spacing.lg) {
-            ambientToggle
-            pttButton
+            closeButton
+            talkButton
             switchToTextButton
         }
         .padding(.top, AppTheme.Spacing.md)
     }
 
-    private var pttButton: some View {
+    /// Primary affordance. Idle → start listening; speaking → interrupt;
+    /// listening → finish the turn early (flush the transcript).
+    private var talkButton: some View {
         Button {
-            // Tap toggles ambient if already in ambient; otherwise serves
-            // as the Cancel target while in PTT.
-            if manager.isAmbient {
-                manager.exitAmbientMode()
-            } else if case .speaking = manager.state {
-                manager.interruptCurrentSpeech()
+            if isSpeaking {
+                // Interrupt the assistant without reopening the mic.
+                suppressRearm = true
+                dispatchVoice("stop")
+            } else if isListening {
+                dispatchVoice("deactivate")
+            } else {
+                activate()
             }
         } label: {
             ZStack {
-                Circle()
-                    .fill(.white.opacity(0.12))
-                    .frame(width: 96, height: 96)
-                Image(systemName: pttIcon)
+                Circle().fill(.white.opacity(0.12)).frame(width: 96, height: 96)
+                Image(systemName: talkIcon)
                     .font(.system(size: 36, weight: .semibold))
                     .foregroundStyle(.white)
             }
         }
         .buttonStyle(.plain)
         .glassSurface(cornerRadius: 48, interactive: true)
-        .accessibilityLabel(pttAccessibilityLabel)
-        .gesture(pressGesture)
+        .accessibilityLabel(talkAccessibilityLabel)
     }
 
-    private var pttIcon: String {
-        switch manager.state {
+    private var talkIcon: String {
+        switch orbState {
         case .listening: return "waveform"
         case .speaking: return "stop.fill"
         case .thinking: return "ellipsis"
-        default: return manager.isAmbient ? "ear.fill" : "mic.fill"
+        default: return "mic.fill"
         }
     }
 
-    private var pttAccessibilityLabel: String {
-        switch manager.state {
-        case .listening: return "Listening — release to send"
+    private var talkAccessibilityLabel: String {
+        switch orbState {
+        case .listening: return "Listening — tap to send"
         case .speaking: return "Tap to interrupt"
         case .thinking: return "Thinking"
-        default: return manager.isAmbient ? "Ambient mode active — tap to exit" : "Press and hold to talk"
+        default: return "Tap to talk"
         }
     }
 
-    /// `DragGesture` with `minimumDistance: 0` is the most reliable PTT
-    /// pattern in SwiftUI — `LongPressGesture` doesn't expose `onEnded`
-    /// for the release event in the way we want here.
-    private var pressGesture: some Gesture {
-        DragGesture(minimumDistance: 0)
-            .onChanged { _ in
-                if !isPressing && !manager.isAmbient {
-                    isPressing = true
-                    manager.startPushToTalk()
-                }
-            }
-            .onEnded { _ in
-                if isPressing {
-                    isPressing = false
-                    manager.endPushToTalk()
-                }
-            }
-    }
-
-    private var ambientToggle: some View {
+    private var closeButton: some View {
         Button {
-            if manager.isAmbient {
-                manager.exitAmbientMode()
-            } else {
-                manager.enterAmbientMode()
-            }
+            close()
         } label: {
-            VStack(spacing: AppTheme.Spacing.xs) {
-                Image(systemName: manager.isAmbient ? "ear.and.waveform" : "ear")
-                    .font(.title2)
-                Text(manager.isAmbient ? "On" : "Ambient")
-                    .font(.caption2.weight(.medium))
-            }
-            .foregroundStyle(.white)
-            .frame(width: 70, height: 70)
+            actionLabel(icon: "xmark", title: "Close")
         }
         .buttonStyle(.plain)
         .glassSurface(cornerRadius: AppTheme.Corner.lg, interactive: true)
-        .accessibilityLabel(manager.isAmbient ? "Disable ambient mode" : "Enable ambient mode")
+        .accessibilityLabel("Close voice mode")
     }
 
     private var switchToTextButton: some View {
         Button {
-            if let onSwitchToText {
-                onSwitchToText()
-            } else {
-                dismiss()
-            }
+            // `onDisappear` releases the mic; flag close so we don't re-arm
+            // during the transition, and always dismiss so the cover never
+            // lingers if the caller's handler doesn't dismiss synchronously.
+            isClosing = true
+            onSwitchToText?()
+            dismiss()
         } label: {
-            VStack(spacing: AppTheme.Spacing.xs) {
-                Image(systemName: "keyboard")
-                    .font(.title2)
-                Text("Text")
-                    .font(.caption2.weight(.medium))
-            }
-            .foregroundStyle(.white)
-            .frame(width: 70, height: 70)
+            actionLabel(icon: "keyboard", title: "Text")
         }
         .buttonStyle(.plain)
         .glassSurface(cornerRadius: AppTheme.Corner.lg, interactive: true)
         .accessibilityLabel("Switch to text chat")
     }
-}
 
-// MARK: - VoiceCaptionRow
-
-/// Single caption row used inside `VoiceView`'s caption rail.
-private struct VoiceCaptionRow: View {
-
-    let caption: VoiceCaption
-
-    var body: some View {
-        HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
-            Text(speakerLabel)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(speakerColor)
-                .frame(width: 44, alignment: .leading)
-            Text(caption.text)
-                .font(.callout)
-                .foregroundStyle(textColor)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .multilineTextAlignment(.leading)
+    private func actionLabel(icon: String, title: String) -> some View {
+        VStack(spacing: AppTheme.Spacing.xs) {
+            Image(systemName: icon).font(.title2)
+            Text(title).font(.caption2.weight(.medium))
         }
-        .padding(.vertical, AppTheme.Spacing.xs)
-        .accessibilityLabel("\(speakerLabel) said \(caption.text)")
+        .foregroundStyle(.white)
+        .frame(width: 70, height: 70)
     }
 
-    private var speakerLabel: String {
-        caption.speaker == .user ? "You" : "Agent"
+    // MARK: - Dispatch helpers
+
+    private func activate() {
+        awaitingResponse = false
+        dispatchVoice("activate")
     }
 
-    private var speakerColor: Color {
-        caption.speaker == .user
-            ? AppTheme.Tint.voiceListening
-            : AppTheme.Tint.voiceThinking
+    private func close() {
+        isClosing = true
+        dispatchVoice("deactivate")
+        dismiss()
     }
 
-    private var textColor: Color {
-        caption.stability == .partial
-            ? .white.opacity(0.65)
-            : .white
+    private func dispatchVoice(_ op: String) {
+        store.kernel?.dispatch(namespace: "podcast.voice", body: ["op": op])
     }
-}
-
-// MARK: - Preview
-
-#Preview {
-    VoiceView()
 }

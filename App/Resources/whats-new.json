@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-06-17T00:02:00Z",
+      "lines": [
+        "Voice mode now actually talks to your podcasts — ask a question out loud and the assistant listens, thinks, and answers in your selected voice."
+      ]
+    },
+    {
       "shipped_at": "2026-06-16T07:00:00Z",
       "lines": [
         "Now Playing controls respond more cleanly, and the playback scrubber is easier to adjust with accessibility tools."
