@@ -17,21 +17,27 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,9 +48,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.f7z.podcast.AdSegment
+import io.f7z.podcast.ClipActions
 import io.f7z.podcast.KernelBridge
 import io.f7z.podcast.NowPlayingState
 import io.f7z.podcast.PodcastSnapshot
+import kotlinx.coroutines.launch
 
 /**
  * Player tab — the now-playing episode detail.
@@ -70,6 +78,8 @@ fun PlayerScreen(
     modifier: Modifier = Modifier,
 ) {
     val nowPlaying = snapshot?.nowPlaying
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     // Resolve ad segments from the episode currently in the player so the
     // progress bar can paint tinted ad-break regions. D7: the kernel projects
@@ -83,36 +93,49 @@ fun PlayerScreen(
             ?: emptyList()
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = "Now Playing",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        if (nowPlaying == null) {
-            EmptyPlayerState()
-            return@Column
+    Scaffold(
+        modifier = modifier,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "Now Playing",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (nowPlaying == null) {
+                EmptyPlayerState()
+                return@Column
+            }
+            PlayerHero(nowPlaying)
+            SeekBar(nowPlaying = nowPlaying, adSegments = adSegments, bridge = bridge)
+            TransportRow(
+                nowPlaying = nowPlaying,
+                bridge = bridge,
+                onAutoSnipped = {
+                    scope.launch { snackbarHostState.showSnackbar("Clip saved") }
+                },
+            )
+            SpeedSelector(currentSpeed = nowPlaying.speed, bridge = bridge)
+            SleepTimerControl(
+                remainingSecs = nowPlaying.sleepTimerRemainingSecs,
+                bridge = bridge,
+            )
+            QueueSection(
+                queue = snapshot.queue,
+                bridge = bridge,
+                modifier = Modifier.fillMaxWidth().weight(1f),
+            )
         }
-        PlayerHero(nowPlaying)
-        SeekBar(nowPlaying = nowPlaying, adSegments = adSegments, bridge = bridge)
-        TransportRow(nowPlaying = nowPlaying, bridge = bridge)
-        SpeedSelector(currentSpeed = nowPlaying.speed, bridge = bridge)
-        SleepTimerControl(
-            remainingSecs = nowPlaying.sleepTimerRemainingSecs,
-            bridge = bridge,
-        )
-        QueueSection(
-            queue = snapshot.queue,
-            bridge = bridge,
-            modifier = Modifier.fillMaxWidth().weight(1f),
-        )
     }
 }
 
@@ -244,13 +267,39 @@ private fun AdMarkersBar(segments: List<AdSegment>, durationSecs: Float) {
     }
 }
 
+/**
+ * Transport controls row: play/pause (centre) + AutoSnip button (trailing).
+ *
+ * AutoSnip dispatches `podcast.clip.auto_snip` to the kernel, which owns ALL
+ * boundary logic (chapter-snap + transcript-refine, SLICE 2/3a). The button is
+ * enabled only when an episode is loaded and has a non-zero position — the
+ * kernel will still handle edge cases gracefully, but a zero position with no
+ * episode is meaningless. No Kotlin boundary logic here.
+ *
+ * [onAutoSnipped] is called immediately after dispatching (optimistic); the
+ * clip appears reactively in ClipListScreen on the next `podcast.misc` snapshot.
+ */
 @Composable
-private fun TransportRow(nowPlaying: NowPlayingState, bridge: KernelBridge) {
+private fun TransportRow(
+    nowPlaying: NowPlayingState,
+    bridge: KernelBridge,
+    onAutoSnipped: () -> Unit,
+) {
+    val episodeId = nowPlaying.episodeId
+    val positionSecs = nowPlaying.positionSecs
+    // Guard: require a valid episode + non-zero position.
+    val canAutoSnip = episodeId != null && positionSecs > 0.0
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Leading placeholder so play/pause stays visually centred.
+        Spacer(modifier = Modifier.size(48.dp))
+
+        Spacer(modifier = Modifier.width(16.dp))
+
         FilledIconButton(
             onClick = {
                 if (nowPlaying.isPlaying) {
@@ -260,11 +309,11 @@ private fun TransportRow(nowPlaying: NowPlayingState, bridge: KernelBridge) {
                         payload = PausePayload(),
                     )
                 } else {
-                    val episodeId = nowPlaying.episodeId ?: return@FilledIconButton
+                    val id = episodeId ?: return@FilledIconButton
                     PodcastActionDispatcher.dispatch(
                         bridge = bridge,
                         namespace = PodcastNamespace.PLAYER,
-                        payload = PlayPayload(episodeId = episodeId),
+                        payload = PlayPayload(episodeId = id),
                     )
                 }
             },
@@ -275,6 +324,30 @@ private fun TransportRow(nowPlaying: NowPlayingState, bridge: KernelBridge) {
                 imageVector = if (nowPlaying.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                 contentDescription = if (nowPlaying.isPlaying) "Pause" else "Play",
                 modifier = Modifier.size(36.dp),
+            )
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // AutoSnip: dispatches kernel auto_snip; kernel resolves chapter/transcript
+        // boundaries and persists the clip. Clip surfaces reactively via snapshot.
+        IconButton(
+            onClick = {
+                if (canAutoSnip) {
+                    ClipActions.autoSnip(
+                        bridge = bridge,
+                        episodeId = episodeId!!,
+                        positionSecs = positionSecs,
+                    )
+                    onAutoSnipped()
+                }
+            },
+            enabled = canAutoSnip,
+            modifier = Modifier.size(48.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.ContentCut,
+                contentDescription = "Save clip at current position",
             )
         }
     }
