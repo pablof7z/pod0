@@ -345,3 +345,121 @@ fn fresh_data_dir_yields_false_onboarding_flag() {
     store.set_data_dir(dir.path.clone());
     assert!(!store.has_completed_onboarding());
 }
+
+// ── Regression: subscription status UUID case-insensitive lookup ──────────
+//
+// `nmp_app_podcast_library_subscription_status` receives podcast IDs from
+// Swift as uppercase UUID strings (Swift's `UUID.uuidString` is always
+// uppercase, e.g. "A1A1FFFF-0001-0001-0001-000000000001"), but Rust's
+// `Uuid::to_string()` always renders lowercase. A case-sensitive `==`
+// comparison therefore never matches — the podcast shows as "Follow" in the
+// UI even when it is subscribed and correctly persisted.
+//
+// The fix changes the id_match branch to `eq_ignore_ascii_case`, identical
+// to the pattern used by `episode_playback_info` and other store lookups.
+// This test documents both the bug (lower-case-only comparison fails) and
+// the correct behavior (case-insensitive comparison succeeds).
+#[test]
+fn subscription_status_lookup_requires_case_insensitive_uuid() {
+    let mut store = PodcastStore::new();
+    let podcast = make_podcast("This American Life");
+    let podcast_id = podcast.id;
+    store.subscribe(podcast, vec![]);
+
+    assert!(store.is_subscribed(podcast_id), "podcast must be subscribed");
+
+    let lowercase_id = podcast_id.0.to_string();
+    // Swift sends UUID.uuidString which is always uppercase.
+    let uppercase_id = lowercase_id.to_uppercase();
+
+    // Case-sensitive comparison (old, broken code): never matches because
+    // Rust to_string() is lowercase but Swift sends uppercase.
+    let matched_case_sensitive = store
+        .all_podcasts()
+        .into_iter()
+        .find(|(p, _)| p.id.0.to_string() == uppercase_id.as_str() && store.is_subscribed(p.id));
+    assert!(
+        matched_case_sensitive.is_none(),
+        "case-sensitive == must fail for Swift uppercase UUID — confirming the original bug"
+    );
+
+    // Case-insensitive comparison (the fix): matches correctly.
+    let matched_case_insensitive = store
+        .all_podcasts()
+        .into_iter()
+        .find(|(p, _)| {
+            p.id.0
+                .to_string()
+                .eq_ignore_ascii_case(uppercase_id.as_str())
+                && store.is_subscribed(p.id)
+        });
+    assert!(
+        matched_case_insensitive.is_some(),
+        "case-insensitive eq_ignore_ascii_case must match a subscribed podcast by uppercase UUID"
+    );
+}
+
+// ── Regression: UITestSeeder seed JSON populates followed_podcasts ────────
+//
+// The UITestSeeder writes podcasts.json without an `is_subscribed` field.
+// The `PersistedPodcast` struct has `#[serde(default = "default_true")]` on
+// that field, so absent ⇒ true ⇒ podcast lands in `followed_podcasts` after
+// `load_from_disk`. This test confirms that invariant using the same minimal
+// seed shape the seeder produces.
+#[test]
+fn seed_json_without_is_subscribed_field_defaults_to_followed() {
+    let dir = TempDir::new();
+    // Minimal seed matching UITestSeeder output: no `is_subscribed` key.
+    let seed = serde_json::json!({
+        "schema_version": 1,
+        "podcasts": [{
+            "podcast": {
+                "id": "a1a1ffff-0001-0001-0001-000000000001",
+                "feed_url": "https://test.podcast.local/rss.xml",
+                "title": "This American Life",
+                "author": "This American Life",
+                "image_url": "https://thisamericanlife.org/img.png",
+                "description": "Weekly public radio.",
+                "categories": [],
+                "discovered_at": "2026-06-06T13:00:00Z",
+                "nostr_visibility": "private",
+                "title_is_placeholder": false
+            },
+            "episodes": [],
+            "auto_download": false,
+            "cellular_allowed": false
+            // NOTE: no "is_subscribed" key — must default to true
+        }],
+        "has_completed_onboarding": true,
+        "memory_facts": [],
+        "ad_segments": [],
+        "episode_triage": [],
+        "metadata_indexed_episodes": [],
+        "transcript_status_overrides": [],
+        "local_paths": [],
+        "file_sizes": [],
+        "settings": {},
+        "queue": [],
+        "pending_wifi_downloads": []
+    });
+    std::fs::write(
+        dir.path.join("podcasts.json"),
+        serde_json::to_vec(&seed).unwrap(),
+    )
+    .unwrap();
+
+    let mut store = PodcastStore::new();
+    store.set_data_dir(dir.path.clone());
+
+    let podcast_id = PodcastId::new(
+        uuid::Uuid::parse_str("a1a1ffff-0001-0001-0001-000000000001").unwrap(),
+    );
+    assert!(
+        store.podcast(podcast_id).is_some(),
+        "seeded podcast must be loaded into store"
+    );
+    assert!(
+        store.is_subscribed(podcast_id),
+        "seeded podcast without is_subscribed field must be followed (default_true)"
+    );
+}

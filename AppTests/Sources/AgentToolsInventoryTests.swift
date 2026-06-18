@@ -42,10 +42,15 @@ final class AgentToolsInventoryTests: XCTestCase {
         let inventory = MockInventory()
         await inventory.setSubscriptions((0..<10).map { sampleSubscription(id: "p\($0)", title: "Show \($0)") })
 
-        _ = await dispatch(name: "list_subscriptions", args: ["limit": 3], inventory: inventory)
+        let result = await dispatch(name: "list_subscriptions", args: ["limit": 3], inventory: inventory)
 
-        let lastLimit = await inventory.lastListSubscriptionsLimit
-        XCTAssertEqual(lastLimit, 3)
+        // The tool fetches up to inventoryMaxLimit from the capability and the
+        // Rust kernel applies the caller-requested limit to the response envelope.
+        // Assert end-to-end: 3 rows should appear in the returned JSON.
+        let json = try unwrapJSON(result)
+        XCTAssertEqual(json["success"] as? Bool, true)
+        let rows = json["subscriptions"] as? [[String: Any]] ?? []
+        XCTAssertEqual(rows.count, 3)
     }
 
     func testListSubscriptionsClampsLimitToCap() async throws {
@@ -60,11 +65,16 @@ final class AgentToolsInventoryTests: XCTestCase {
 
     func testListSubscriptionsDefaultsLimitWhenAbsent() async throws {
         let inventory = MockInventory()
-
+        // Post-migration: the tool always fetches inventoryMaxLimit (100) from
+        // the capability and delegates limit/default shaping to the Rust kernel
+        // envelope. Assert the capability was called with the max (100) and that
+        // the call succeeds without error.
         _ = await dispatch(name: "list_subscriptions", args: [:], inventory: inventory)
 
         let lastLimit = await inventory.lastListSubscriptionsLimit
-        XCTAssertEqual(lastLimit, 25)
+        XCTAssertEqual(lastLimit, 100,
+            "list_subscriptions must always call the capability with inventoryMaxLimit (100); " +
+            "the Rust envelope applies the user's default limit to the response.")
     }
 
     // MARK: - list_categories
@@ -101,11 +111,20 @@ final class AgentToolsInventoryTests: XCTestCase {
 
         let json = try unwrapJSON(result)
         let rows = json["categories"] as? [[String: Any]] ?? []
-        XCTAssertNil(rows.first?["subscriptions"])
+        // Post-migration: the tool always fetches with includePodcasts:true at the
+        // capability layer (inventoryMaxLimit). The Rust category envelope applies
+        // include_podcasts:false from args to strip subscription rows from the result.
+        // Assert the end-to-end contract: "subscriptions" must be absent from rows.
+        XCTAssertNil(rows.first?["subscriptions"],
+            "categories returned with include_podcasts:false must not include subscription rows")
+        // Capability is always called with inventoryMaxLimit (100) and includePodcasts:true.
         let lastLimit = await inventory.lastListCategoriesLimit
         let include = await inventory.lastListCategoriesIncludePodcasts
-        XCTAssertEqual(lastLimit, 7)
-        XCTAssertEqual(include, false)
+        XCTAssertEqual(lastLimit, 100,
+            "list_categories must call the capability with inventoryMaxLimit (100)")
+        XCTAssertEqual(include, true,
+            "list_categories must call the capability with includePodcasts:true; " +
+            "the Rust envelope applies include_podcasts:false from args to the response")
     }
 
     // MARK: - change_podcast_category
@@ -164,8 +183,12 @@ final class AgentToolsInventoryTests: XCTestCase {
         XCTAssertEqual(json["success"] as? Bool, true)
         let rows = json["episodes"] as? [[String: Any]] ?? []
         XCTAssertEqual(rows.count, 1)
+        // Post-migration: the tool always calls the capability with inventoryMaxLimit (100).
+        // The Rust envelope applies the default limit to the response.
         let lastLimit = await inventory.lastInProgressLimit
-        XCTAssertEqual(lastLimit, 25)
+        XCTAssertEqual(lastLimit, 100,
+            "list_in_progress must call the capability with inventoryMaxLimit (100); " +
+            "the Rust envelope shapes the response using the default limit.")
     }
 
     // MARK: - list_recent_unplayed
@@ -182,9 +205,14 @@ final class AgentToolsInventoryTests: XCTestCase {
         let json = try unwrapJSON(result)
         XCTAssertEqual(json["success"] as? Bool, true)
         let rows = json["episodes"] as? [[String: Any]] ?? []
+        // 2 episodes in mock, limit:5 → all 2 are returned (result ≤ requested limit).
         XCTAssertEqual(rows.count, 2)
+        // Post-migration: capability is always called with inventoryMaxLimit (100);
+        // the Rust envelope applies the caller-requested limit to the response.
         let lastLimit = await inventory.lastRecentUnplayedLimit
-        XCTAssertEqual(lastLimit, 5)
+        XCTAssertEqual(lastLimit, 100,
+            "list_recent_unplayed must call the capability with inventoryMaxLimit (100); " +
+            "the Rust envelope trims the response to the requested limit.")
     }
 
     // MARK: - Schema includes the new tools

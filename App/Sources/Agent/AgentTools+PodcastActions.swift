@@ -270,6 +270,9 @@ extension AgentTools {
         guard plan.source == "library", let episodeID = plan.episodeID else {
             return toolError("download_and_transcribe plan was incomplete")
         }
+        guard await deps.fetcher.episodeMetadata(episodeID: episodeID) != nil else {
+            return toolError("download_and_transcribe: episode '\(episodeID)' not found in library")
+        }
         do {
             let result = try await deps.library.downloadAndTranscribe(episodeID: episodeID)
             return await actionTool(op: "transcript_result", payload: rawTranscriptResult(result))
@@ -305,6 +308,12 @@ extension AgentTools {
               let startSeconds = plan.startSeconds,
               let endSeconds = plan.endSeconds
         else { return toolError("create_clip plan was incomplete") }
+        guard await deps.fetcher.episodeMetadata(episodeID: episodeID) != nil else {
+            return toolError("create_clip: episode '\(episodeID)' not found in library")
+        }
+        guard startSeconds < endSeconds else {
+            return toolError("create_clip: start_seconds (\(startSeconds)) must be less than end_seconds (\(endSeconds))")
+        }
         do {
             let result = try await deps.library.createClip(
                 episodeID: episodeID,
@@ -365,6 +374,9 @@ extension AgentTools {
         position: QueuePosition,
         deps: PodcastAgentToolDeps
     ) async -> String {
+        guard await deps.fetcher.episodeMetadata(episodeID: episodeID) != nil else {
+            return toolError("play_episode: episode '\(episodeID)' not found in library")
+        }
         switch await deps.playback.playEpisode(
             episodeID: episodeID,
             startSeconds: startSeconds,

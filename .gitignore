@@ -15,3 +15,5 @@ DerivedDevice/
 *.ipa
 *.dSYM.zip
 *.dSYM
+DerivedData-QA/
+.ci-disable-litertlm-package

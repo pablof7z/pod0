@@ -77,3 +77,42 @@ enum AppStateTestSupport {
             .appendingPathComponent("\(UUID().uuidString).json", isDirectory: false)
     }
 }
+
+// MARK: - AppStateStore test-only seeding helpers
+//
+// Rust owns all durable library writes (subscribe, upsert podcast, etc.)
+// and the kernel is unavailable in unit tests. These extensions expose
+// direct-mutation helpers that live ONLY in the AppTests target so tests
+// can seed fixtures without a live kernel.
+//
+// Production code MUST NOT call these methods; they exist solely to
+// replace the pre-autosnip `upsertPodcast` / `addSubscription` methods
+// that were removed when library ownership moved to Rust.
+
+extension AppStateStore {
+
+    /// Test-only: insert or replace a podcast row in `state.podcasts`,
+    /// bypassing the Rust kernel. Returns the podcast for chaining.
+    @discardableResult
+    func upsertPodcast(_ podcast: Podcast) -> Podcast {
+        if let idx = state.podcasts.firstIndex(where: { $0.id == podcast.id }) {
+            state.podcasts[idx] = podcast
+        } else {
+            state.podcasts.append(podcast)
+        }
+        return podcast
+    }
+
+    /// Test-only: add a `PodcastSubscription` row for `podcastID` in
+    /// `state.subscriptions`, bypassing the Rust kernel.
+    /// Returns `true` when newly added, `false` when already present
+    /// (mirrors the pre-migration `addSubscription` return value).
+    @discardableResult
+    func addSubscription(podcastID: UUID) -> Bool {
+        guard !state.subscriptions.contains(where: { $0.podcastID == podcastID }) else {
+            return false
+        }
+        state.subscriptions.append(PodcastSubscription(podcastID: podcastID))
+        return true
+    }
+}

@@ -55,6 +55,12 @@ final class PersistenceDurabilityTests: XCTestCase {
         let sharedFileURL = AppStateTestSupport.uniqueTempFileURL()
         defer { AppStateTestSupport.disposeIsolatedStore(at: sharedFileURL) }
 
+        // NOTE: `setEpisodeStarred` now routes through `kernelToggleStar` (Rust
+        // kernel dispatch) and no longer directly mutates `self.episodes` in Swift.
+        // That path has no observable persistence effect in unit tests that run
+        // without a live kernel. This test verifies the delta-write contract using
+        // `setEpisodeDownloadState`, which still mutates `self.episodes` directly
+        // through `performMutationBatch` and is the canonical Swift-side delta path.
         let targetID: UUID
         do {
             let made = AppStateTestSupport.makeIsolatedStore(fileURL: sharedFileURL)
@@ -70,7 +76,7 @@ final class PersistenceDurabilityTests: XCTestCase {
             store.upsertEpisodes(episodes, forPodcast: sub.id)
 
             store.persistence.resetEpisodeWriteSummary()
-            store.setEpisodeStarred(targetID, true)
+            store.setEpisodeDownloadState(targetID, state: .queued)
 
             let summary = store.persistence.lastEpisodeWriteSummary
             XCTAssertEqual(summary.kind, .delta)
@@ -81,7 +87,7 @@ final class PersistenceDurabilityTests: XCTestCase {
 
         let reopened = AppStateTestSupport.makeIsolatedStore(fileURL: sharedFileURL, reset: false)
         let target = try XCTUnwrap(reopened.store.episodes.first { $0.id == targetID })
-        XCTAssertTrue(target.isStarred)
+        XCTAssertEqual(target.downloadState, .queued)
         XCTAssertEqual(reopened.store.episodes.count, 3)
     }
 

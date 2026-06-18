@@ -4,11 +4,10 @@ import XCTest
 /// Exercises the Up Next queue API on `PlaybackState`.
 ///
 /// Scope is intentionally tight: we verify the array operations
-/// (`enqueue`, `removeFromQueue`, `moveQueue`, `clearQueue`) and the
-/// resolver-based head-pop behaviour of `playNext(resolve:)`. We don't
-/// touch `setEpisode`/`play()` semantics — those are covered (or will be)
-/// by audio-engine integration tests; mixing the two would force these
-/// tests to depend on AVFoundation side effects.
+/// (`enqueue`, `removeFromQueue`, `moveQueue`, `clearQueue`, `pruneQueue`).
+/// `playNext(resolve:)` was removed in the autosnip migration — auto-advance
+/// is now Rust-kernel-owned (exercised by `cargo test -p nmp-app-podcast audio`).
+/// Those three test cases are deleted; the rest remain.
 @MainActor
 final class PlaybackQueueTests: XCTestCase {
 
@@ -99,43 +98,7 @@ final class PlaybackQueueTests: XCTestCase {
         XCTAssertTrue(state.queue.isEmpty)
     }
 
-    // MARK: - playNext
-
-    func testPlayNextReturnsFalseWhenQueueIsEmpty() {
-        let state = PlaybackState()
-        let played = state.playNext { _ in nil }
-        XCTAssertFalse(played)
-    }
-
-    func testPlayNextPopsHeadAndCallsResolver() {
-        let state = PlaybackState()
-        let head = makeEpisode(guid: "head")
-        let tail = makeEpisode(guid: "tail")
-        state.enqueue(head.id)
-        state.enqueue(tail.id)
-
-        var resolverCalls: [UUID] = []
-        let played = state.playNext { id in
-            resolverCalls.append(id)
-            return id == head.id ? head : nil
-        }
-
-        XCTAssertTrue(played)
-        XCTAssertEqual(resolverCalls, [head.id])
-        XCTAssertEqual(state.queue.map(\.episodeID), [tail.id])
-        XCTAssertEqual(state.episode?.id, head.id)
-    }
-
-    func testPlayNextReturnsFalseWhenNoQueuedEpisodeResolves() {
-        let state = PlaybackState()
-        let stale = UUID()
-        state.enqueue(stale)
-
-        let played = state.playNext { _ in nil }
-
-        XCTAssertFalse(played)
-        XCTAssertTrue(state.queue.isEmpty)
-    }
+    // MARK: - moveQueue with pruning
 
     func testMoveQueueCanPruneStaleEntriesBeforeReordering() {
         let state = PlaybackState()

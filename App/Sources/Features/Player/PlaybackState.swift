@@ -165,6 +165,13 @@ final class PlaybackState {
     }
 
     func setRate(_ newRate: PlaybackRate) {
+        // Update the engine immediately so the UI reflects the new rate
+        // without waiting for the Rust kernel's async capability round-trip.
+        // kernelSetSpeed dispatches to Rust for persistence and AVPlayer sync;
+        // the resulting AudioCommand::SetSpeed callback calls engine.setRate
+        // again (idempotent). The direct update here ensures PlaybackState.rate
+        // (which reads engine.rate) is current in the same render cycle.
+        engine.setRate(newRate.rawValue)
         store?.kernelSetSpeed(newRate.rawValue)
         Haptics.selection()
     }

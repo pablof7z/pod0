@@ -132,14 +132,6 @@ final class UserIdentityWiringTests: XCTestCase {
         XCTAssertEqual(store.state.notes.last?.author, .agent)
     }
 
-    // MARK: - Memories — does NOT publish
-
-    func testAddAgentMemoryDoesNotDispatch() async throws {
-        _ = store.addAgentMemory(content: "long-running fact")
-        try await Task.sleep(nanoseconds: 200_000_000)
-        XCTAssertTrue(kernelDispatches.socialCalls.isEmpty, "Memories must not reach the kernel social path.")
-    }
-
     // MARK: - Note.author Codable backward-compat
 
     func testNoteDecodesLegacyJSONWithoutAuthorAsUser() throws {

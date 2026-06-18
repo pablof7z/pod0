@@ -390,6 +390,9 @@ extension AgentTools {
         guard let seed = plan.seedEpisodeID, let k = plan.k else {
             return toolError("find_similar_episodes plan was incomplete")
         }
+        guard await deps.fetcher.episodeMetadata(episodeID: seed) != nil else {
+            return toolError("find_similar_episodes: seed episode '\(seed)' not found in library")
+        }
         do {
             let hits = try await deps.rag.findSimilarEpisodes(seedEpisodeID: seed, k: k)
             return await searchTool(

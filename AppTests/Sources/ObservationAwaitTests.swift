@@ -11,6 +11,12 @@ import XCTest
 /// alone — with no timeout racer it hung forever in exactly that case (the
 /// `onChange` never fires when nothing mutates, so the deadline was never
 /// re-evaluated). A compile check cannot catch that; only this test can.
+///
+/// `testResolvesReactivelyWhenObservedPropertyChanges` was deleted: it called
+/// `markEpisodePlayed`, which now dispatches to the Rust kernel (no-op without
+/// kernel) so `episode.played` never becomes `true` and the awaiter times out.
+/// The download-state variants below exercise the same reactive path using
+/// `setEpisodeDownloadState`, which is a pure-Swift `self.episodes` mutation.
 @MainActor
 final class ObservationAwaitTests: XCTestCase {
 
@@ -53,31 +59,6 @@ final class ObservationAwaitTests: XCTestCase {
 
         XCTAssertEqual(result, 42)
         XCTAssertLessThan(elapsed, .milliseconds(100))
-    }
-
-    /// Reactive path: a predicate reading an `@Observable` store property
-    /// resolves the instant that property mutates — well before the (generous)
-    /// timeout — proving the awaiter is driven by observation, not a timer.
-    func testResolvesReactivelyWhenObservedPropertyChanges() async {
-        let target = insertEpisode(guid: "await-ep")
-
-        // Predicate reads `store.episodes`; satisfied once the episode is marked
-        // played. Starts unsatisfied so the awaiter must suspend on observation.
-        let waiter = Task { @MainActor in
-            await store.awaitState(timeout: .seconds(5)) { [weak store] () -> Bool? in
-                guard store?.episode(id: target.id)?.played == true else { return nil }
-                return true
-            }
-        }
-
-        // Yield so the awaiter arms its observation before we mutate, exercising
-        // the suspend-then-onChange path rather than the fast path. `markEpisode
-        // Played` writes the `@Observable` `episodes` property the predicate reads.
-        await Task.yield()
-        store.markEpisodePlayed(target.id)
-
-        let result = await waiter.value
-        XCTAssertEqual(result, true)
     }
 
     // MARK: - Download-resolution predicate (AgentTTSComposer.waitForDownload)
@@ -163,6 +144,10 @@ final class ObservationAwaitTests: XCTestCase {
 
     // MARK: - Fixtures
 
+    /// Inserts a podcast + episode directly into the store's Swift-side
+    /// `episodes` array (via `upsertEpisodes`) so tests can exercise the
+    /// `awaitState` predicate against `setEpisodeDownloadState`, which
+    /// is a pure-Swift `self.episodes` mutation.
     @discardableResult
     private func insertEpisode(guid: String) -> Episode {
         let podcast = Podcast(
@@ -178,6 +163,8 @@ final class ObservationAwaitTests: XCTestCase {
             enclosureURL: URL(string: "https://example.com/\(guid).mp3")!
         )
         store.upsertEpisodes([episode], forPodcast: podcast.id)
-        return store.episodes(forPodcast: podcast.id).first { $0.guid == guid }!
+        // Read from store.episodes (Swift-side array) since episodes(forPodcast:)
+        // routes through the Rust kernel and returns [] without a live kernel.
+        return store.episodes.first { $0.guid == guid }!
     }
 }

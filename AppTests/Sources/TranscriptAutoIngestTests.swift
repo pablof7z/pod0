@@ -2,15 +2,15 @@ import XCTest
 @testable import Podcastr
 
 /// Coverage for `TranscriptIngestService.evaluateAutoIngest(newEpisodeIDs:)`
-/// — the feed-refresh-triggered batch path that finally wires
-/// `Settings.autoIngestPublisherTranscripts` to actual ingestion. Without
-/// this hook, the dormant-toggle bug meant publisher transcripts only
-/// landed for episodes the user manually opened in detail view.
+/// — the feed-refresh-triggered batch path that wires
+/// `Settings.autoIngestPublisherTranscripts` to actual ingestion — and the
+/// load-bearing Settings defaults.
 ///
-/// We can't exercise the real fetch (network + Kingfisher) in a unit test,
-/// so the assertions focus on the gating + filter logic via the empty-input
-/// fast paths the helper uses. The service's `inFlight` set + `attach`
-/// requirement prevent any actual network call from firing here.
+/// The candidate-selection branching (`autoIngestCandidates`) moved to the
+/// Rust kernel as part of the Rust-ownership migration and is covered by
+/// `cargo test -p nmp-app-podcast` (`ffi/transcript_plan.rs`). The Swift side
+/// now only owns the empty-input fast paths and the settings defaults asserted
+/// here.
 @MainActor
 final class TranscriptAutoIngestTests: XCTestCase {
 
@@ -34,153 +34,16 @@ final class TranscriptAutoIngestTests: XCTestCase {
     // MARK: - Settings default
 
     func testAutoIngestDefaultsOn() {
-        // The agent layer (RAG, wiki) only works once
-        // transcripts exist. Defaulting off would leave most users with no
-        // transcripts despite the feeds shipping them — the very bug this
-        // helper exists to fix. Lock the default in.
+        // The agent layer (RAG, wiki) only works once transcripts exist.
+        // Defaulting off would leave most users with no transcripts despite
+        // the feeds shipping them — the very bug this helper exists to fix.
         let s = Settings()
         XCTAssertTrue(s.autoIngestPublisherTranscripts)
         // Scribe-fallback default is also load-bearing for the cross-episode
-        // RAG marquee story — most indie podcasts don't ship publisher
-        // transcripts, so without auto-Scribe the agent's library-wide chat
-        // comes up dark for those subscriptions.
+        // RAG story — most indie podcasts don't ship publisher transcripts.
         XCTAssertTrue(s.autoFallbackToScribe)
         // The STT provider defaults to Apple on-device so keyless installs get
-        // transcription out of the box (cloud providers need an API key the
-        // user may not have configured). Lock it against a silent revert.
+        // transcription out of the box.
         XCTAssertEqual(s.sttProvider, .appleNative)
-    }
-
-    // MARK: - Candidate selection branching
-
-    func testCandidatesIncludesPublisherEpisodesWhenSettingOn() {
-        let pubEp = Self.makeEpisode(hasPublisherURL: true)
-        let bareEp = Self.makeEpisode(hasPublisherURL: false)
-        var settings = Settings()
-        settings.autoIngestPublisherTranscripts = true
-        settings.autoFallbackToScribe = false   // Scribe-disabled; only publisher counts
-
-        let ids = TranscriptIngestService.autoIngestCandidates(
-            among: [pubEp, bareEp],
-            settings: settings,
-            effectiveSttProvider: .appleNative   // ignored when autoFallbackToScribe == false
-        )
-        XCTAssertEqual(ids, [pubEp.id])
-    }
-
-    func testCandidatesIncludesNonPublisherEpisodesWhenElevenLabsEffective() {
-        // The unlock for cross-episode RAG: shows that don't ship a
-        // <podcast:transcript> element (most indie podcasts) used to be
-        // skipped by `evaluateAutoIngest` even with a cloud STT provider.
-        let pubEp = Self.makeEpisode(hasPublisherURL: true)
-        let bareEp = Self.makeEpisode(hasPublisherURL: false)
-        var settings = Settings()
-        settings.sttProvider = .elevenLabsScribe
-        settings.autoIngestPublisherTranscripts = true
-        settings.autoFallbackToScribe = true
-
-        let ids = TranscriptIngestService.autoIngestCandidates(
-            among: [pubEp, bareEp],
-            settings: settings,
-            effectiveSttProvider: .elevenLabsScribe
-        )
-        XCTAssertEqual(Set(ids), Set([pubEp.id, bareEp.id]))
-    }
-
-    func testCandidatesIncludesNonPublisherEpisodesWhenOpenRouterEffective() {
-        let bareEp = Self.makeEpisode(hasPublisherURL: false)
-        var settings = Settings()
-        settings.sttProvider = .openRouterWhisper
-        settings.autoIngestPublisherTranscripts = false
-        settings.autoFallbackToScribe = true
-
-        let ids = TranscriptIngestService.autoIngestCandidates(
-            among: [bareEp],
-            settings: settings,
-            effectiveSttProvider: .openRouterWhisper
-        )
-        XCTAssertEqual(ids, [bareEp.id])
-    }
-
-    func testCandidatesExcludesNonPublisherEpisodesWhenKernelDowngradesToAppleNative() {
-        // `autoFallbackToScribe` on but the kernel resolved `.appleNative`
-        // means no cloud STT key is available. A brand-new feed episode is not
-        // downloaded yet, so don't waste work queueing a bare episode.
-        let pubEp = Self.makeEpisode(hasPublisherURL: true)
-        let bareEp = Self.makeEpisode(hasPublisherURL: false)
-        var settings = Settings()
-        settings.sttProvider = .elevenLabsScribe
-        settings.autoIngestPublisherTranscripts = true
-        settings.autoFallbackToScribe = true
-
-        let ids = TranscriptIngestService.autoIngestCandidates(
-            among: [pubEp, bareEp],
-            settings: settings,
-            effectiveSttProvider: .appleNative
-        )
-        XCTAssertEqual(ids, [pubEp.id])
-    }
-
-    func testCandidatesIncludesNonPublisherEpisodesWhenAssemblyAIConfigured() {
-        let bareEp = Self.makeEpisode(hasPublisherURL: false)
-        var settings = Settings()
-        settings.sttProvider = .assemblyAI
-        settings.autoIngestPublisherTranscripts = false
-        settings.autoFallbackToScribe = true
-
-        let ids = TranscriptIngestService.autoIngestCandidates(
-            among: [bareEp],
-            settings: settings,
-            effectiveSttProvider: .assemblyAI
-        )
-
-        XCTAssertEqual(ids, [bareEp.id])
-    }
-
-    func testCandidatesEmptyWhenBothPathsDisabled() {
-        let pubEp = Self.makeEpisode(hasPublisherURL: true)
-        let bareEp = Self.makeEpisode(hasPublisherURL: false)
-        var settings = Settings()
-        settings.autoIngestPublisherTranscripts = false
-        settings.autoFallbackToScribe = false
-
-        let ids = TranscriptIngestService.autoIngestCandidates(
-            among: [pubEp, bareEp],
-            settings: settings,
-            effectiveSttProvider: .elevenLabsScribe
-        )
-        XCTAssertTrue(ids.isEmpty)
-    }
-
-    func testCandidatesSkipsAlreadyReadyEpisodes() {
-        let readyEp = Self.makeEpisode(hasPublisherURL: true, transcriptState: .ready(source: .publisher))
-        let pendingEp = Self.makeEpisode(hasPublisherURL: true)
-        var settings = Settings()
-        settings.autoIngestPublisherTranscripts = true
-
-        let ids = TranscriptIngestService.autoIngestCandidates(
-            among: [readyEp, pendingEp],
-            settings: settings,
-            effectiveSttProvider: .appleNative
-        )
-        XCTAssertEqual(ids, [pendingEp.id])
-    }
-
-    // MARK: - Helpers
-
-    private static func makeEpisode(
-        hasPublisherURL: Bool,
-        transcriptState: TranscriptState = .none
-    ) -> Episode {
-        Episode(
-            podcastID: UUID(),
-            guid: "guid-\(UUID().uuidString)",
-            title: "Test",
-            pubDate: Date(),
-            enclosureURL: URL(string: "https://example.com/audio.mp3")!,
-            publisherTranscriptURL: hasPublisherURL ? URL(string: "https://example.com/t.json") : nil,
-            publisherTranscriptType: hasPublisherURL ? .json : nil,
-            transcriptState: transcriptState
-        )
     }
 }

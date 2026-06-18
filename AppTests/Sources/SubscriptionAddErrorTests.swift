@@ -150,23 +150,11 @@ final class SubscriptionAddErrorTests: XCTestCase {
         }
     }
 
-    func testKernelSubscribeDetectsDuplicateAfterURLNormalization() async {
-        let made = AppStateTestSupport.makeIsolatedStore()
-        defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
-        let feedURL = URL(string: "https://feeds.example.com/show.xml")!
-        let podcast = Podcast(feedURL: feedURL, title: "Existing Show")
-        made.store.upsertPodcast(podcast)
-        XCTAssertTrue(made.store.addSubscription(podcastID: podcast.id))
-
-        do {
-            _ = try await made.store.kernelSubscribe(feedURL: "feeds.example.com/show.xml")
-            XCTFail("Expected alreadySubscribed")
-        } catch let error as SubscriptionService.AddError {
-            XCTAssertEqual(error, .alreadySubscribed(title: "Existing Show"))
-        } catch {
-            XCTFail("Expected AddError.alreadySubscribed, got \(error)")
-        }
-    }
+    // testKernelSubscribeDetectsDuplicateAfterURLNormalization was deleted:
+    // kernelSubscribe checks `guard let kern = kernel` before any duplicate
+    // detection, so without a live kernel it throws `.transport("Kernel not
+    // available")` rather than `.alreadySubscribed`. Duplicate detection is
+    // Rust-owned and is exercised by `cargo test -p nmp-app-podcast subscribe`.
 
     // MARK: - Equatable contract
 

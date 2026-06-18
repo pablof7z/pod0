@@ -8,7 +8,7 @@ import Foundation
 /// kernel's wire DTO.
 enum ITunesSearchClient {
 
-    struct Result: Sendable, Hashable, Identifiable {
+    struct Result: Decodable, Sendable, Hashable, Identifiable {
         let collectionId: Int
         let collectionName: String
         let artistName: String?

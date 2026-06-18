@@ -724,8 +724,15 @@ pub extern "C" fn nmp_app_podcast_library_subscription_status(
             let response = match handle_ref.state.library.store.lock() {
                 Ok(store) => {
                     let matched = store.all_podcasts().into_iter().find(|(podcast, _)| {
+                        // Case-insensitive: Swift sends UUID.uuidString (uppercase);
+                        // Rust's Uuid::to_string() is always lowercase. A plain `==`
+                        // never matches, making every subscribed podcast appear as
+                        // "Follow" in the UI. Use eq_ignore_ascii_case — same pattern
+                        // as episode_playback_info and other store lookups.
                         let id_match = podcast_id
-                            .map(|expected| podcast.id.0.to_string() == expected)
+                            .map(|expected| {
+                                podcast.id.0.to_string().eq_ignore_ascii_case(expected)
+                            })
                             .unwrap_or(false)
                             && store.is_subscribed(podcast.id);
                         let feed_match = feed_url
