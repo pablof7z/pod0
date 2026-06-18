@@ -12,6 +12,10 @@ import Foundation
 /// the full reply).
 enum AgentLLMClient {
 
+    /// Canned reply returned by the UI-test stub. Deterministic and unique so
+    /// tests can assert on it without relying on network or a real LLM.
+    static let uitestStubReply = "UITestStubReply: agent reply path is working."
+
     /// Run one LLM turn through the Rust provider-blind backend.
     ///
     /// - Parameters:
@@ -37,6 +41,23 @@ enum AgentLLMClient {
         onPartialContent: (String) -> Void
     ) async throws -> AgentResult {
         try Task.checkCancellation()
+
+        // UI-test stub: when the app is launched with --UITestAgentStub the
+        // entire Rust FFI call is bypassed and a deterministic canned reply is
+        // returned instead. The Swift turn-loop in AgentChatSession+Turns still
+        // runs authentically (message appending, phase transitions, transcript
+        // rendering) — only the provider-execution boundary is stubbed. This
+        // lets simulator UI tests prove a reply is produced and rendered without
+        // any network access or real LLM provider. Production builds are
+        // unaffected because the guard fires only on the test-injected arg.
+        if CommandLine.arguments.contains("--UITestAgentStub") {
+            onPartialContent(uitestStubReply)
+            let assistantMessage: [String: Any] = [
+                "role": "assistant",
+                "content": uitestStubReply,
+            ]
+            return AgentResult(assistantMessage: assistantMessage, toolCalls: [], tokensUsed: nil)
+        }
 
         // Capture the opaque handle pointer on @MainActor before leaving.
         // The pointer is stable for the process lifetime (registered once in

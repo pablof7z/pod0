@@ -55,6 +55,11 @@ struct PodcastrApp: App {
                 .task { store.identity.start() }
                 .task { CarPlayController.shared.attach(store: store) }
                 .task {
+                    // Suppress the What's New sheet during UI tests. The sheet
+                    // is presented over the home screen and its dimming overlay
+                    // covers the navigation bar, causing toolbar-button taps to
+                    // dismiss the sheet rather than fire the button action.
+                    guard !CommandLine.arguments.contains("--UITestSeed") else { return }
                     // Seed a fresh install silently so the first launch
                     // doesn't dump the entire changelog as "new."
                     WhatsNewService.seedIfNeeded()
