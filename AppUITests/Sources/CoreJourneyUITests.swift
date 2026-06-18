@@ -63,8 +63,9 @@ final class CoreJourneyUITests: XCTestCase {
             "FAIL P0-03: no time label advanced over 4s (labels1=\(elapsed1) labels2=\(elapsed2)) — audio is not actually progressing")
     }
 
-    /// Play ~35s (crosses the kernel's 30s Playing checkpoint so a disk flush
-    /// happens independent of the pause-flush), then pause. Returns once paused.
+    /// Play ~35s (well past the kernel's ~10s position-flush delta so a disk
+    /// checkpoint happens independent of the pause-flush), then pause. Returns
+    /// once paused.
     private func playPastCheckpointAndPause(_ app: XCUIApplication) {
         // Accept both "Play" and "Resume" — if position was already persisted from
         // a prior test run the button label switches to "Resume".
@@ -85,15 +86,14 @@ final class CoreJourneyUITests: XCTestCase {
                 return
             }
         }
-        // Play for 25s more (total > 30s so the kernel's 30s checkpoint fires
-        // AND the eager-flush gate reopens under --UITestSeed).
+        // Play for 25s more (total > the kernel's ~10s position-flush delta so
+        // at least one mid-playback checkpoint fires).
         sleep(25)
-        // Tap Pause — this triggers a flush via didSet on the store.
+        // Tap Pause — the kernel flushes position to disk immediately on Pause
+        // (audio_report.rs), so the resume point is durable once paused.
         let pause2 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'pause'")).firstMatch
         if pause2.exists { pause2.tap() }
-        // Sleep past the 5s trailing-debounce interval as a belt-and-suspenders
-        // guard; with synchronousPositionFlushForUITests every tick already
-        // flushed synchronously, but the extra margin costs nothing.
+        // Small settle margin after the pause-flush; costs nothing.
         sleep(7)
     }
 

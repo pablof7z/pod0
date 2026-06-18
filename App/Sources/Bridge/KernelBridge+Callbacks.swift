@@ -67,15 +67,19 @@ extension PodcastHandle {
             podcastAgentAskCallback
         )
 
-        // Wire the podcast library persistence directory. Lives under
-        // Application Support so it follows the iOS "user data, not synced
-        // via iTunes file sharing" convention. Distinct from the NMP/
-        // EventStore directory (`configureStoragePath`) so the two stores
-        // can be wiped independently for debugging.
-        Self.configurePodcastDataDir(for: podcastHandle)
+        // NOTE: configurePodcastDataDir is intentionally NOT called here.
+        // `nmp_app_podcast_set_data_dir` reads podcasts.json immediately at
+        // call time (data_dir.rs). Because `PodcastHandle.init()` runs during
+        // `PodcastrApp` struct initialisation — before SwiftUI evaluates body
+        // and before `AppDelegate.didFinishLaunchingWithOptions` fires —
+        // calling it here races with `UITestSeeder.seedIfNeeded()`.  The seeder
+        // must overwrite podcasts.json *before* the kernel reads it, so
+        // `configurePodcastDataDir` is deferred to `start()`, which is called
+        // from `KernelModel.start()` → `.task {}`, well after AppDelegate and
+        // UITestSeeder have completed.
     }
 
-    private static func configurePodcastDataDir(for handle: UnsafeMutableRawPointer?) {
+    static func configurePodcastDataDir(for handle: UnsafeMutableRawPointer?) {
         guard let handle else { return }
         guard let base = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask).first

@@ -228,15 +228,54 @@ final class P0PlaybackUITests: XCTestCase {
         throw XCTSkip("BLOCKED: offline-playback-downloaded requires a completed download and network disable. Run manually on device: download an episode, enable Airplane Mode, play it, confirm audio plays.")
     }
 
-    /// resume-position-across-restart (P0): KNOWN KERNEL BUG, peer-owned.
-    /// ep.position_secs is not written during normal playback — only via
-    /// PersistPosition (seek/skip while paused). Cold relaunch reads stale
-    /// position_secs: 0 → kernel projection overwrites Swift playbackPosition → 0.
-    /// Fix: write ep.position_secs from Playing audio reports or call
-    /// kernelPersistPosition at the 30s max-interval cadence.
-    /// Kernel playback files (audio_report.rs, player_actions.rs) are peer-owned.
-    func testP0_ResumePositionAcrossRestart_BLOCKED() throws {
-        throw XCTSkip("BLOCKED: resume-position-across-restart — kernel bug (peer-owned). ep.position_secs never written during normal playback; cold relaunch loses position. See P0-04b failure in CoreJourneyUITests for full root-cause analysis.")
+    /// resume-position-across-restart (P0): the Rust kernel persists
+    /// ep.position_secs from every Playing audio report (audio_report.rs
+    /// apply_writeback). Cold relaunch reads that value so the episode shows
+    /// "Resume" with the correct saved time.
+    ///
+    /// Protocol: play ≥10 s, force-quit (SIGKILL), cold relaunch with
+    /// --UITestSeedRelaunch so UITestSeeder carries the persisted position
+    /// forward into podcasts.json, then assert the episode detail shows Resume.
+    func testP0_ResumePositionAcrossRestart() throws {
+        // ── First launch: play past the kernel's flush checkpoint ──────────
+        let app = App.make()
+        XCTAssertTrue(launchApp(app), "first launch")
+        sleep(1)
+        guard openFirstPodcastFromHome(app), openFirstEpisodeFromShow(app) else {
+            XCTFail("resume-across-restart: could not open first episode detail"); return
+        }
+        XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 8), "no Play button")
+        app.buttons["Play"].tap()
+        // Play for 12 s — long enough to pass the kernel's initial flush
+        // threshold and accumulate a non-trivial position.
+        sleep(12)
+        snap(app, "resume-restart-01-playing")
+
+        // Force-quit (simulates the real crash / swipe-up dismiss).
+        app.terminate()
+        sleep(2)
+
+        // ── Cold relaunch: resume from the kernel's own persisted position ───
+        // --UITestSeedRelaunch tells UITestSeeder to PRESERVE the kernel's
+        // podcasts.json (which already carries position_secs written by
+        // audio_report.rs::apply_writeback) and wipe only the Swift SQLite
+        // mirror, so the resume point comes solely from the kernel — proving
+        // the single-source-of-truth contract end-to-end.
+        app.launchArguments = ["--UITestSeed", "--UITestSeedRelaunch"]
+        XCTAssertTrue(launchApp(app), "cold relaunch")
+        sleep(2)
+        snap(app, "resume-restart-02-relaunched-home")
+
+        guard openFirstPodcastFromHome(app), openFirstEpisodeFromShow(app) else {
+            XCTFail("resume-across-restart: could not reopen episode detail after relaunch"); return
+        }
+        sleep(2)
+        snap(app, "resume-restart-03-reopened-detail")
+
+        let hasResume = app.buttons["Resume"].waitForExistence(timeout: 5)
+            || app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'resume'")).firstMatch.exists
+        XCTAssertTrue(hasResume,
+            "FAIL resume-position-across-restart: after force-quit+cold-relaunch, episode detail shows no 'Resume' — the kernel did not persist position_secs during playback or UITestSeeder did not carry it forward")
     }
 
     // MARK: - Helpers

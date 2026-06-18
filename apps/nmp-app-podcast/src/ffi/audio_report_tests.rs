@@ -99,13 +99,13 @@ fn playing_ticks_only_flush_after_position_delta() {
     let ep_id = ep.id.0.to_string();
     store.subscribe(podcast, vec![ep]);
 
-    // Two close ticks — neither crosses the delta, so the on-disk file
+    // Two close ticks — neither crosses the 10 s delta, so the on-disk file
     // should still report position 0 after reload.
     apply_writeback(
         &mut store,
         &AudioReport::Playing {
             url: "u".into(),
-            position_secs: 5.0,
+            position_secs: 3.0,
             duration_secs: 600.0,
         },
         &ep_id,
@@ -114,7 +114,7 @@ fn playing_ticks_only_flush_after_position_delta() {
         &mut store,
         &AudioReport::Playing {
             url: "u".into(),
-            position_secs: 10.0,
+            position_secs: 6.0,
             duration_secs: 600.0,
         },
         &ep_id,
@@ -123,19 +123,19 @@ fn playing_ticks_only_flush_after_position_delta() {
     reloaded_before.set_data_dir(dir.path.clone());
     assert_eq!(reloaded_before.position_for(&ep_id), None);
 
-    // A tick that crosses the 30 s delta triggers a flush.
+    // A tick that crosses the 10 s delta triggers a flush.
     apply_writeback(
         &mut store,
         &AudioReport::Playing {
             url: "u".into(),
-            position_secs: 45.0,
+            position_secs: 15.0,
             duration_secs: 600.0,
         },
         &ep_id,
     );
     let mut reloaded_after = PodcastStore::new();
     reloaded_after.set_data_dir(dir.path.clone());
-    assert_eq!(reloaded_after.position_for(&ep_id), Some(45.0));
+    assert_eq!(reloaded_after.position_for(&ep_id), Some(15.0));
 }
 
 #[test]
@@ -197,7 +197,7 @@ fn continuous_playback_checkpoints_periodically() {
     let ep_id = ep.id.0.to_string();
     store.subscribe(podcast, vec![ep]);
 
-    // 200 ticks at 0.25 s each = 50 s of playback. At a 30 s flush
+    // 200 ticks at 0.25 s each = 50 s of playback. At a 10 s flush
     // threshold the stream should checkpoint at least once mid-stream.
     for i in 1..=200 {
         apply_writeback(
@@ -212,14 +212,14 @@ fn continuous_playback_checkpoints_periodically() {
     }
 
     // Reload from disk without flushing — the on-disk position must be
-    // past the first 30 s threshold (so a kill mid-stream loses at most
-    // ~30 s, not the entire 50 s).
+    // past the first 10 s threshold (so a kill mid-stream loses at most
+    // ~10 s, not the entire 50 s).
     let mut reloaded = PodcastStore::new();
     reloaded.set_data_dir(dir.path.clone());
     let on_disk = reloaded.position_for(&ep_id).expect("checkpointed");
     assert!(
-        on_disk >= 30.0,
-        "expected an on-disk checkpoint past 30 s, got {on_disk}"
+        on_disk >= 10.0,
+        "expected an on-disk checkpoint past 10 s, got {on_disk}"
     );
 }
 
@@ -499,4 +499,94 @@ fn auto_advance_no_op_when_auto_play_next_disabled() {
     handle.state.playback.queue.lock().unwrap().add_to_end(&ep2_id);
     maybe_auto_advance(&handle);
     assert_eq!(actor_episode_id(&handle), None);
+}
+
+/// Flush-cadence bound: 40 ≤4 Hz ticks covering 12 s of playback must trigger
+/// at least one disk flush (the 10 s threshold), bounding crash-loss to ≤10 s.
+/// This test is the specification for POSITION_FLUSH_DELTA_SECS = 10.0.
+#[test]
+fn flush_cadence_bounds_crash_loss_to_ten_seconds() {
+    let dir = TempDir::new("cadence");
+    let mut store = PodcastStore::new();
+    store.set_data_dir(dir.path.clone());
+    let podcast = Podcast::new("Cadence Show");
+    let pid = podcast.id;
+    let ep = make_episode(pid, "Ep");
+    let ep_id = ep.id.0.to_string();
+    store.subscribe(podcast, vec![ep]);
+
+    // 48 ticks at 0.25 s each = 12 s of playback. The 10 s flush delta must
+    // trigger exactly once by tick 40 (at position 10.0 s).
+    for i in 1..=48 {
+        apply_writeback(
+            &mut store,
+            &AudioReport::Playing {
+                url: "u".into(),
+                position_secs: (i as f64) * 0.25,
+                duration_secs: 3600.0,
+            },
+            &ep_id,
+        );
+    }
+
+    // An unmodified reload must show a checkpoint ≥ 10 s. If the cadence
+    // reverts to 30 s, this returns None (no checkpoint) and the assertion
+    // fails, proving Swift's old debounce is not the fallback.
+    let mut reloaded = PodcastStore::new();
+    reloaded.set_data_dir(dir.path.clone());
+    let on_disk = reloaded
+        .position_for(&ep_id)
+        .expect("must have flushed at least once within a 10 s window");
+    assert!(
+        on_disk >= 10.0,
+        "flush cadence must checkpoint within 10 s — got {on_disk}"
+    );
+    assert!(
+        on_disk < 12.25, // not beyond 48 ticks
+        "checkpoint must not be past end of stream — got {on_disk}"
+    );
+}
+
+/// Immediate flush on Pause: pausing mid-stream must persist the position
+/// before any subsequent kill, with zero additional ticks required.
+#[test]
+fn pause_flushes_immediately_regardless_of_cadence() {
+    let dir = TempDir::new("pause-immediate");
+    let mut store = PodcastStore::new();
+    store.set_data_dir(dir.path.clone());
+    let podcast = Podcast::new("Pause Immediate");
+    let pid = podcast.id;
+    let ep = make_episode(pid, "Ep");
+    let ep_id = ep.id.0.to_string();
+    store.subscribe(podcast, vec![ep]);
+
+    // Only 3 s of playback — nowhere near the 10 s threshold.
+    for i in 1..=12 {
+        apply_writeback(
+            &mut store,
+            &AudioReport::Playing {
+                url: "u".into(),
+                position_secs: (i as f64) * 0.25,
+                duration_secs: 3600.0,
+            },
+            &ep_id,
+        );
+    }
+    // Pause at 3.5 s — must flush immediately.
+    apply_writeback(
+        &mut store,
+        &AudioReport::Paused {
+            url: "u".into(),
+            position_secs: 3.5,
+        },
+        &ep_id,
+    );
+
+    let mut reloaded = PodcastStore::new();
+    reloaded.set_data_dir(dir.path.clone());
+    assert_eq!(
+        reloaded.position_for(&ep_id),
+        Some(3.5),
+        "pause must flush immediately, independent of the periodic cadence"
+    );
 }

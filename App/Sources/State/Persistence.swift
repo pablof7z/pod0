@@ -74,13 +74,6 @@ final class Persistence: Sendable {
     private let episodeSnapshot = OSAllocatedUnfairLock<EpisodeSQLiteSnapshot?>(initialState: nil)
     private let lastEpisodeWriteSummaryLock = OSAllocatedUnfairLock<EpisodeWriteSummary>(initialState: .none)
 
-    /// Lock-protected count of successful `save(_:)` invocations. Production
-    /// code never reads this; the per-second-write regression tests use it
-    /// to assert the position-debounce coalesces N rapid updates into ≤ 2
-    /// disk writes. Atomic so tests can sample it without coordinating with
-    /// the main actor.
-    private let saveCounter = OSAllocatedUnfairLock<Int>(initialState: 0)
-
     init(
         fileURL: URL,
         writeMode: WriteMode = .immediate,
@@ -93,25 +86,12 @@ final class Persistence: Sendable {
         self.writeMode = writeMode
     }
 
-    /// Returns the number of times `save(_:)` has been called on this instance.
-    /// Test-only — production code has no reason to inspect this.
-    var saveInvocationCount: Int {
-        saveCounter.withLock { $0 }
-    }
-
     /// Test-only diagnostic for the most recent episode-sidecar write plan.
     /// Production writes never branch on this; regression tests use it to prove
     /// small episode mutations go through row-level deltas instead of a full
     /// `DELETE` + reinsert.
     var lastEpisodeWriteSummary: EpisodeWriteSummary {
         lastEpisodeWriteSummaryLock.withLock { $0 }
-    }
-
-    /// Resets the save counter back to 0. Tests call this after the
-    /// `AppStateStore` initialiser has performed its eager save so subsequent
-    /// assertions count only the writes the test itself triggers.
-    func resetSaveInvocationCount() {
-        saveCounter.withLock { $0 = 0 }
     }
 
     func resetEpisodeWriteSummary() {
@@ -136,14 +116,6 @@ final class Persistence: Sendable {
                 await writer.enqueue(state, persistence: self)
             }
         }
-    }
-
-    /// Synchronously flush `state` to disk, bypassing the background writer.
-    /// Only call this from paths that MUST survive an imminent force-quit (e.g.
-    /// `flushPendingPositions` under `--UITestSeed`, where the SIGKILL can arrive
-    /// before a background Task has a chance to run).
-    func flushToDiskNow(_ state: AppState) {
-        write(state)
     }
 
     func write(_ state: AppState) {
@@ -184,7 +156,6 @@ final class Persistence: Sendable {
         do {
             try ensureParentDirectoryExists()
             try data.write(to: fileURL, options: [.atomic])
-            saveCounter.withLock { $0 += 1 }
             Self.logger.info("Persistence.save: bytes=\(data.count, privacy: .public)")
         } catch {
             Self.logger.error("Persistence.save: write failed at \(self.fileURL.path, privacy: .public): \(error, privacy: .public)")
@@ -226,10 +197,12 @@ final class Persistence: Sendable {
             return migrated
         }
         // JSON absent (e.g. SIGKILL interrupted write between SQLite commit and
-        // atomic rename, or first launch before any save). SQLite may still hold
-        // episode positions from a prior session — hydrate them so AppStateStore
-        // can recover playback positions via priorEpisodesByID on the first
-        // kernel projection instead of showing "Play" after a force-quit.
+        // atomic rename, or first launch before any save). Hydrate episode
+        // metadata (titles, download state, etc.) from the SQLite mirror so the
+        // library renders immediately. The authoritative resume position is NOT
+        // recovered here — it comes from the kernel's podcasts.json projection
+        // (audio_report.rs persists position); SQLite only carries a kernel-
+        // sourced display copy and is never used as an independent fallback.
         var fresh = AppState()
         hydrateEpisodesPreservingMetadata(into: &fresh)
         return fresh

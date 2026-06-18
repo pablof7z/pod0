@@ -6,22 +6,21 @@ extension AppStateStore {
 
     // MARK: - Reads
     //
-    // Reads fold the position-debounce cache into the result so a freshly-
-    // updated playhead is visible to UI surfaces (in-progress carousel,
-    // resume-from-position, episode detail) without waiting for the next
-    // disk flush. See `AppStateStore+PositionDebounce.swift` for the
-    // cache's lifecycle.
+    // Reads apply the live kernel playhead (`kernel.nowPlaying.positionSecs`)
+    // as a render-only floor so a freshly-updated position is visible to UI
+    // surfaces (in-progress carousel, resume-from-position, episode detail)
+    // without waiting for the kernel's next disk flush. This is display-only;
+    // the kernel remains the sole writer of `position_secs` (see
+    // `audio_report.rs::apply_writeback`).
 
     /// Returns the live episode record matching `id`, or `nil` when not found.
+    /// Applies the live kernel position as a render-only floor when the episode
+    /// is currently loaded — never written to disk.
     func episode(id: UUID) -> Episode? {
         guard var found = self.episodes.first(where: { $0.id == id }) else { return nil }
-        if let cached = cachedPosition(for: id) {
-            found.playbackPosition = cached
-        }
         // When the kernel has this episode loaded (playing or paused), apply
-        // the live kernel position as a floor. This covers the window between
-        // a pause event and the next debounce flush — e.g. when the user
-        // navigates back to the detail view immediately after pausing.
+        // the live kernel position as a floor so the detail view always shows
+        // the current playhead without waiting for the next kernel snapshot tick.
         if let np = kernel?.nowPlaying,
            let idStr = np.episodeId,
            let npId = UUID(uuidString: idStr),
@@ -96,28 +95,11 @@ extension AppStateStore {
         return newlyInserted
     }
 
-    // `setEpisodePlaybackPosition(_:position:)` is implemented in
-    // `AppStateStore+PositionDebounce.swift`. It writes through an in-memory
-    // cache and only mutates `self.episodes` (firing the expensive save) on
-    // an eager-first / 5-second-trailing / 30-second-cap schedule. This is
-    // the file's single highest-frequency caller; routing it through the
-    // cache is the entire point of that companion file.
-
     /// Marks the episode as fully played (sets `played = true`, zeroes the
-    /// position so a re-play starts from the top).
-    ///
-    /// **Flushes the position cache before mutating.** Without the flush,
-    /// a cached non-zero position for `id` would still be in
-    /// `positionCache`; clearing the cache *after* the played-true write
-    /// is fine, but if the app crashed between the flush and the
-    /// played=true save, the user would lose both the played flag *and*
-    /// the actual end-position. Flushing first means the worst case is
-    /// "played=false but position correct" — recoverable next time the
-    /// user opens the episode.
+    /// position so a re-play starts from the top). The kernel owns position
+    /// persistence; this dispatches the played mutation via `kernelMarkPlayed`.
     func markEpisodePlayed(_ id: UUID) {
         kernelMarkPlayed(id)
-        flushPendingPositions()
-        positionCache.removeValue(forKey: id)
         // Delete-after-played is now kernel-owned policy (D0). `kernelMarkPlayed`
         // dispatches `inbox/mark_listened`, whose Rust handler reads
         // `auto_delete_downloads_after_played` and removes the local download
@@ -130,8 +112,6 @@ extension AppStateStore {
     /// library and can be started fresh from the show detail page.
     func resetEpisodeProgress(_ id: UUID) {
         kernelResetEpisodeProgress(id)
-        flushPendingPositions()
-        positionCache.removeValue(forKey: id)
     }
 
     /// Reverts an accidental "mark played".

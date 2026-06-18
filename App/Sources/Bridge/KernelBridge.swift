@@ -118,6 +118,13 @@ final class PodcastHandle: @unchecked Sendable {
     }
 
     func start(visibleLimit: UInt32 = 80, emitHz: UInt32 = 4) {
+        // Set the podcast library data directory here rather than at
+        // registerPodcastProjection() time. `nmp_app_podcast_set_data_dir`
+        // reads podcasts.json immediately; deferring the call to `start()`
+        // ensures UITestSeeder.seedIfNeeded() (which runs in AppDelegate
+        // didFinishLaunchingWithOptions, after PodcastHandle.init()) has
+        // already written the fresh seed before the kernel opens the store.
+        Self.configurePodcastDataDir(for: podcastHandle)
         nmp_app_start(raw, 0, visibleLimit, emitHz)
     }
 

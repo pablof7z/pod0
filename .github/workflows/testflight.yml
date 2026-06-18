@@ -93,9 +93,10 @@ jobs:
 
       - name: Build and test (unit suite gates the deploy)
         # Deploy gates on the deterministic unit suite. The simulator-flaky
-        # end-to-end PodcastrUITests (audio-start timing, app lifecycle, a known
-        # peer-owned kernel resume-position bug) are run by the separate `Test`
-        # workflow on every PR, not as a release blocker.
+        # end-to-end PodcastrUITests (audio-start timing, app lifecycle) are
+        # run by the separate `Test` workflow on every PR, not as a release
+        # blocker. The resume-across-restart P0 test requires a force-quit
+        # lifecycle that is only reliable in the per-PR simulator lane.
         run: SKIP_UI_TESTS=1 ./ci_scripts/run_tests.sh
 
   deploy:

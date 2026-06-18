@@ -25,14 +25,6 @@ final class AppStateStore {
 
     nonisolated private static let logger = Logger.app("AppStateStore")
 
-    /// Set by UITestSeeder before AppStateStore is initialised so that
-    /// `flushPendingPositions` writes the episode SQLite store synchronously
-    /// (bypassing the background Task). This guarantees positions survive a
-    /// SIGKILL force-quit during automated UI tests without making ALL writes
-    /// synchronous (which would throttle the main thread at the 4 Hz kernel
-    /// tick rate and break other P0-04 tests).
-    nonisolated(unsafe) static var synchronousPositionFlushForUITests = false
-
     // MARK: - User identity
 
     /// The human user's Nostr identity (signer + Keychain key material + NIP-46
@@ -182,12 +174,6 @@ final class AppStateStore {
     @ObservationIgnored
     lazy var localLLMService = LocalLLMService()
 
-    /// Retained observer token for `UIApplication.didEnterBackgroundNotification`.
-    /// On background, the position cache is flushed to disk so the user
-    /// can force-quit + relaunch without losing playback progress.
-    /// See `AppStateStore+PositionDebounce.swift` for the rationale.
-    private var backgroundObserver: NSObjectProtocol?
-
     var mutationBatchDepth = 0
     var deferredStateSideEffects = false
     var deferredEpisodeProjectionRebuild = false
@@ -202,38 +188,6 @@ final class AppStateStore {
     /// while applying a remote change so `updateSettings` does not re-dispatch
     /// the same values back to the kernel (breaking the one-way sync).
     var isApplyingRemoteChange: Bool = false
-
-    // MARK: - Position debounce
-    //
-    // Position updates from `PlaybackState.tickPersistence` arrive at 1 Hz.
-    // Writing the entire ~8 MB JSON blob every second would be 480 MB/min of
-    // disk I/O on the main actor — battery, NAND wear, and main-thread
-    // responsiveness all suffer. We coalesce position updates through these
-    // three fields and only mutate `state.episodes` (which would trigger the
-    // expensive save) on a controlled cadence.
-    //
-    // See `AppStateStore+PositionDebounce.swift` for the full read/write
-    // contract; these properties are declared here because they're stored
-    // properties (extensions can't add stored state) and isolated to the
-    // store's main actor.
-
-    /// Cached playback positions waiting to be folded into `state.episodes`.
-    /// Read-folded into `episode(id:)`/`inProgressEpisodes`/`recentEpisodes`
-    /// so UI surfaces never see a stale position. Drained by
-    /// `flushPendingPositions()`.
-    var positionCache: [UUID: TimeInterval] = [:]
-
-    /// Pending trailing-debounce flush task. Cancelled and re-armed on each
-    /// `setEpisodePlaybackPosition` call so the deadline keeps moving while
-    /// updates stream in (true trailing debounce).
-    var positionFlushTask: Task<Void, Never>?
-
-    /// Wall-clock time of the most recent position flush. Drives the
-    /// max-interval cap: if continuous updates exceed
-    /// `positionMaxInterval` since this timestamp, the next call writes
-    /// eagerly so a crash never loses more than one cap-window of
-    /// position.
-    var lastPositionFlush: Date?
 
     init(
         persistence: Persistence = .shared
@@ -283,14 +237,6 @@ final class AppStateStore {
         // published so the app doesn't continue to litter the system index
         // with stale entries that no longer get refreshed.
         SpotlightIndexer.clearAll()
-        // Feed refresh is driven by the Rust kernel (lifecycle foreground
-        // triggers `refresh_all`). The legacy Swift refresh loop is skipped
-        // when `kernel` is non-nil (set by `attachKernel`). We start it here
-        // Subscribe to app-backgrounding so the position cache is flushed
-        // to disk before iOS can suspend or kill the process. Token is
-        // retained on `self` so the observer outlives the init call but
-        // dies with the store. See `AppStateStore+PositionDebounce.swift`.
-        backgroundObserver = registerBackgroundFlushObserver()
         // Wire the transcript ingest service so it can reach this store.
         // RAGService.shared.attach was the previous host for this wiring;
         // slice 5f retired RAGService, so TranscriptIngestService owns it now.
@@ -299,14 +245,8 @@ final class AppStateStore {
 
     /// Wipes all user data while preserving API credentials and Nostr identity.
     func clearAllData() {
-        // Drop any queued position writes — they would target episode IDs
-        // about to disappear and could resurrect deleted records on the
-        // next flush.
-        positionFlushTask?.cancel()
-        positionFlushTask = nil
         widgetReloadTask?.cancel()
         widgetReloadTask = nil
-        positionCache.removeAll()
 
         let preserved = state.settings
         performMutationBatch {
@@ -326,25 +266,13 @@ final class AppStateStore {
     }
 
     deinit {
-        // NotificationCenter retains observer tokens until they're removed,
-        // even after the registering instance dies. Without this, the
-        // closure would keep firing into a `nil` self (harmless but noisy)
-        // and the test target would leak observers across runs.
-        //
         // Swift 6 deinit is nonisolated; we can't touch the @MainActor
-        // stored properties from here directly. The observer tokens and
-        // Task we need to clean up are conceptually owned by the actor,
-        // but `removeObserver` is thread-safe and `Task.cancel()` is
-        // `Sendable`, so we can safely reach them via `assumeIsolated` —
-        // by the time deinit runs, no other actor work can be racing
-        // against us for `self`.
+        // stored properties from here directly. Task.cancel() is `Sendable`,
+        // so we can safely reach them via `assumeIsolated` — by the time
+        // deinit runs, no other actor work can be racing against us for `self`.
         MainActor.assumeIsolated {
-            if let backgroundObserver {
-                NotificationCenter.default.removeObserver(backgroundObserver)
-            }
             kernelObservationTask?.cancel()
             downloadOverlayTask?.cancel()
-            positionFlushTask?.cancel()
             widgetReloadTask?.cancel()
         }
     }

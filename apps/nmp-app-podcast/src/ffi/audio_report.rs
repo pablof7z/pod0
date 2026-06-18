@@ -19,8 +19,8 @@
 //! so the resume point survives a process restart. `Playing` ticks arrive at
 //! ≤4 Hz (`AudioReport` D8) so the mutation stays in-memory; we only flush to
 //! disk on terminal events (`Paused` / `Stopped` / `SleepTimerFired`) and on
-//! a coarse position-delta threshold so a long unbroken playback session
-//! still checkpoints every ~30 seconds of playhead.
+//! a position-delta threshold (`POSITION_FLUSH_DELTA_SECS`) so a long unbroken
+//! playback session still checkpoints every ~10 seconds of playhead.
 //!
 //! ## D6 — degrade silently
 //!
@@ -69,9 +69,10 @@ struct AudioReportResponse {
 }
 
 /// Minimum position delta (seconds) between disk flushes while a `Playing`
-/// stream is in flight. Keeps the on-disk checkpoint within ~30 s of the live
-/// playhead without burning a write on every `Playing` tick (≤4 Hz).
-const POSITION_FLUSH_DELTA_SECS: f64 = 30.0;
+/// stream is in flight. Keeps the on-disk checkpoint within ~10 s of the live
+/// playhead without burning a write on every `Playing` tick (≤4 Hz). This
+/// bounds the crash-loss window to at most one flush interval.
+const POSITION_FLUSH_DELTA_SECS: f64 = 10.0;
 
 /// Deliver a JSON-encoded `AudioReport` to the Rust `PlayerActor` and return
 /// the JSON-encoded follow-up `AudioCommand`, if any.

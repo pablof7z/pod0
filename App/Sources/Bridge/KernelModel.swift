@@ -101,8 +101,8 @@ final class KernelModel {
     private(set) var nowPlaying: PlayerState?
     /// Called on the MainActor on every `Playing` audio report with the
     /// episode id string and position (seconds). Wired by `attachKernel` so
-    /// `AppStateStore` can forward 1 Hz position ticks into
-    /// `setEpisodePlaybackPosition` without relying on `withObservationTracking`.
+    /// UI consumers (scrubber, Live Activity) receive live position ticks
+    /// without relying on `withObservationTracking`.
     var onPositionTick: ((String, Double) -> Void)?
     /// Called on the MainActor when Rust completes an agent-ask lifecycle
     /// event asynchronously, currently timeout expiry.
@@ -349,7 +349,9 @@ final class KernelModel {
     func applyAudioReport(nowPlaying newNowPlaying: PlayerState?, durableChanged: Bool) {
         let previous = nowPlaying
         nowPlaying = newNowPlaying
-        // Forward position to AppStateStore so the debounce cache stays current.
+        // Forward the live position to AppStateStore for render-only surfaces
+        // (scrubber, in-progress carousel). The kernel persists position itself
+        // (audio_report.rs::apply_writeback); this forward never writes to disk.
         // Covers Playing, BufferingProgress (which advances positionSecs with
         // isPlaying=false), and the final Paused frame (capturing the last
         // playhead before a force-quit). Guard only on positionSecs > 0 and

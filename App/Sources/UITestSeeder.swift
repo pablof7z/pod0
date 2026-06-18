@@ -3,10 +3,16 @@ import Foundation
 /// Writes a minimal This American Life library seed to the kernel's
 /// `podcasts.json` when the app is launched with `--UITestSeed`.
 ///
-/// Call from `AppMain.body` before `kernelModel.start()`. The write is
-/// synchronous and idempotent (skipped if the file already has real content).
-/// The kernel reads `podcasts.json` at `nmp_app_start` time, so the seed
-/// must land before that call.
+/// Called from `AppDelegate.didFinishLaunchingWithOptions` (before the kernel
+/// opens the store in `KernelModel.start()`). The write is synchronous; the
+/// kernel reads `podcasts.json` at `set_data_dir`/`nmp_app_start` time, so the
+/// seed must land before that call. Two modes:
+///   • `--UITestSeed` (fresh): always overwrites `podcasts.json` with a
+///     known-good seed and wipes the Swift SQLite mirror, so every test
+///     starts from a clean, position-0 state.
+///   • `--UITestSeedRelaunch`: preserves the kernel's existing `podcasts.json`
+///     (which already carries the position the kernel persisted last session)
+///     and wipes only the SQLite mirror, proving resume comes from the kernel.
 ///
 /// Never compiled out — the `CommandLine.arguments` guard is the safety valve
 /// so this is a no-op in production. Kept in the main target (not the test
@@ -23,19 +29,29 @@ enum UITestSeeder {
 
     static func seedIfNeeded() {
         guard CommandLine.arguments.contains("--UITestSeed") else { return }
-        // Request synchronous position-flush writes so that the SQLite episode
-        // store is updated before a SIGKILL force-quit can race the background
-        // Task. Only the flushPendingPositions path uses this; all other writes
-        // keep their normal background-Task behavior so the app stays responsive.
-        AppStateStore.synchronousPositionFlushForUITests = true
         guard let base = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask).first
         else { return }
         let dir = base.appendingPathComponent("PodcastLibrary", isDirectory: true)
         let file = dir.appendingPathComponent("podcasts.json")
-        // Always overwrite when running under --UITestSeed: the kernel may have
-        // replaced a prior seed with real RSS data (or a stale seed from the last
-        // test run). Re-seeding gives every test run a known-good starting state.
+
+        // On a relaunch test (--UITestSeedRelaunch), the kernel's podcasts.json
+        // already carries the persisted position_secs written by apply_writeback
+        // during the previous session. Preserving that file is the whole point:
+        // the resume test must pass via the kernel's own persistence, independent
+        // of any Swift SQLite write. We skip overwriting podcasts.json entirely
+        // and let the kernel reload the position it wrote itself.
+        if CommandLine.arguments.contains("--UITestSeedRelaunch") {
+            // Wipe Swift SQLite so the old AppStateStore data doesn't interfere.
+            Persistence.shared.reset()
+            try? Persistence.shared.episodeStore.replaceAll([])
+            NSLog("UITestSeeder: relaunch — preserving kernel podcasts.json, SQLite wiped")
+            return
+        }
+
+        // Non-relaunch: write a fresh known-good seed so every test starts clean.
+        // Always overwrite: the kernel may have replaced a prior seed with real
+        // RSS data or a stale seed from a previous run.
         try? FileManager.default.removeItem(at: file)
         // Also wipe the kernel-owned clips sidecar on EVERY --UITestSeed so a
         // prior run's seeded clip (e.g. the orphan clip below) can't contaminate
@@ -43,22 +59,14 @@ enum UITestSeeder {
         // branch rewrites clips.json afterwards when that flag IS present.
         try? FileManager.default.removeItem(at: dir.appendingPathComponent("clips.json"))
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        // On a fresh seed (NOT relaunch), wipe the Swift persistence store so
-        // stale playback positions from a prior test don't bleed into this run.
-        // The AppStateStore recovery path in applyKernelState reads priorEpisodesByID
-        // which is populated from persistence.load() — if the SQLite still has a
-        // non-zero position from the last test, that position gets recovered and the
-        // episode shows "Resume" instead of "Play", breaking P0-03 / P0-04 clean-state
-        // tests. Wiping here ensures every non-relaunch launch starts at position 0.
-        if !CommandLine.arguments.contains("--UITestSeedRelaunch") {
-            Persistence.shared.reset()
-            // reset() deletes the SQLite file, but file deletion silently fails
-            // when SQLite keeps the file open via its own connection. Use a SQL
-            // DELETE instead — works even on an open file, guaranteed to clear
-            // all rows so hydrateEpisodesPreservingMetadata finds nothing and
-            // returns an empty episode list rather than restoring a stale position.
-            try? Persistence.shared.episodeStore.replaceAll([])
-        }
+        // Wipe the Swift persistence store so stale playback positions from a
+        // prior test don't bleed into this run. The kernel owns position
+        // persistence via podcasts.json (apply_writeback in audio_report.rs);
+        // the App Group SQLite is a mirror that must also be cleared so
+        // Persistence.load()'s "JSON absent → hydrate from SQLite" fallback
+        // doesn't resurrect a stale position from a prior session.
+        Persistence.shared.reset()
+        try? Persistence.shared.episodeStore.replaceAll([])
         // Prefer the locally downloaded MP3 over the network URL so AVPlayer
         // plays from disk (reliable in the simulator) rather than streaming
         // from the NPR CDN (which the simulator's sandboxed network may block).
@@ -84,26 +92,8 @@ enum UITestSeeder {
         let localPathLiteral = jsonStringLiteral(destMP3.path)
         let downloadState = "{\"state\": \"not_downloaded\"}"
 
-        // Read any position the previous session wrote to the App Group SQLite
-        // ONLY when --UITestSeedRelaunch is present — that flag is set by tests
-        // that need position to survive a force-quit + cold relaunch (P0-04b).
-        // Without the flag every test starts at position 0 so that a prior test's
-        // persisted state doesn't bleed into the next one's Play/Resume assertion.
-        //
-        // Read directly from EpisodeSQLiteStore rather than through
-        // Persistence.load() so that the position is found even when the JSON
-        // metadata file doesn't yet exist (e.g. on the very first test run in a
-        // fresh simulator). Persistence.load() requires the JSON to exist before
-        // it tries SQLite; the SQLite is the durable record that survives force-quit.
-        let targetEpisodeID = UUID(uuidString: episodeUUID)!
-        var persistedPosition: Double = 0.0
-        if CommandLine.arguments.contains("--UITestSeedRelaunch") {
-            let sqliteEpisodes = (try? Persistence.shared.episodeStore.loadAll()) ?? []
-            if let ep = sqliteEpisodes.first(where: { $0.id == targetEpisodeID }),
-               ep.playbackPosition > 0 {
-                persistedPosition = ep.playbackPosition
-            }
-        }
+        // Fresh-seed: position starts at 0.
+        let persistedPosition: Double = 0.0
 
         // ep2 UUID — seeded into the kernel library so the Queue action is accepted
         // and the authoritative projection includes it. Without this entry the

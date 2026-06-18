@@ -116,8 +116,8 @@ echo "Using test destination: $TEST_DESTINATION"
 # SKIP_UI_TESTS: when set, run the unit-test target only (skip PodcastrUITests).
 # The TestFlight deploy lane sets this so a SHIP is gated on the deterministic
 # unit suite, not the simulator-flaky end-to-end playback UI tests (audio-start
-# timing, app lifecycle, a known peer-owned kernel resume-position bug). The
-# regular `Test` workflow does NOT set it, so PRs still run the full UI suite.
+# timing, app lifecycle). The regular `Test` workflow does NOT set it, so PRs
+# still run the full UI suite (including the resume-across-restart P0 test).
 SKIP_UI_ARG=""
 if [ -n "${SKIP_UI_TESTS:-}" ]; then
   echo "SKIP_UI_TESTS set — unit tests only (skipping PodcastrUITests)"
