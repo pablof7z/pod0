@@ -4,19 +4,23 @@ import XCTest
 /// episode is no longer in the library instead of showing only the section
 /// header ("Earlier") over blank space.
 ///
-/// Precondition: the simulator's podcastr-state.v1.json has been seeded with
-/// one clip whose episodeID is a random UUID not present in the episodes array.
-/// (Done by the QA agent before this test runs.)
+/// The test is self-seeding: it launches the app with `--UITestSeed
+/// --UITestSeedOrphanClip` so that `UITestSeeder` writes an orphan clip to the
+/// kernel-owned `clips.json` sidecar (the authoritative clip source) whose
+/// `episode_id` is not present in the episode list. No pre-seeding by an
+/// external QA fixture is required.
 final class ClippingsFixUITests: XCTestCase {
     override func setUp() { super.setUp(); continueAfterFailure = true }
 
-    func testOrphanClipRendersCard() throws {
-        // This test requires a pre-seeded orphan clip. Skip if not present.
+    func testOrphanClipRendersCard() {
+        // Launch with both seed flags: --UITestSeed for the standard library
+        // fixture and --UITestSeedOrphanClip for the orphan clip injection.
+        // UITestSeeder writes the orphan clip into the kernel-owned clips.json
+        // sidecar (the authoritative clip source) so the kernel loads it on start.
         let app = XCUIApplication(bundleIdentifier: App.bundleID)
+        app.launchArguments = ["--UITestSeed", "--UITestSeedOrphanClip"]
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 15), "app launched")
-        let orphanExists = app.staticTexts["Orphaned Clip"].waitForExistence(timeout: 2)
-        try XCTSkipUnless(orphanExists, "Orphan clip not seeded — run the QA setup fixture first")
 
         // Dismiss the What's New sheet if present.
         let gotIt = app.buttons["Got it"]
@@ -48,8 +52,14 @@ final class ClippingsFixUITests: XCTestCase {
         let tree = XCTAttachment(string: app.debugDescription)
         tree.name = "clippings-02-tab-tree"; tree.lifetime = .keepAlways; add(tree)
 
-        // The fix ensures we see the clip card, not just a naked section header.
-        // A rendered card has a static text with the caption or transcript text.
+        // The fix (19b46163) ensures we see the clip card, not just a naked
+        // section header. A rendered card exposes the caption and/or transcript
+        // text as static text elements.
+        // Give the kernel time to emit a snapshot that includes the orphan
+        // clip. The clip is seeded to clips.json before kernel start, so it
+        // should be in the FIRST snapshot — but the async hash computation and
+        // podcastSnapshot commit add latency. 12 s covers cold-start kernel
+        // init + first snapshot delivery + SwiftUI re-render.
         let captionText = "Orphan clip"
         let transcriptText = "economy is not going"
 
@@ -58,16 +68,18 @@ final class ClippingsFixUITests: XCTestCase {
         let transcriptEl = app.staticTexts.containing(
             NSPredicate(format: "label CONTAINS[c] %@", transcriptText)).firstMatch
 
-        let cardRendered = captionEl.waitForExistence(timeout: 5) || transcriptEl.waitForExistence(timeout: 3)
+        let cardRendered = captionEl.waitForExistence(timeout: 12) || transcriptEl.waitForExistence(timeout: 5)
         snap(app, "clippings-03-result")
 
+        // Hard fail — no skip. The orphan clip is deterministically seeded by
+        // UITestSeeder, so absence of the card is always a regression.
         XCTAssertTrue(cardRendered,
             "FAIL clippings-fix: orphan clip (episode not in library) rendered no card — " +
             "expected caption '\(captionText)' or transcript '\(transcriptText)' to be visible. " +
             "This is the regression tested by commit 19b46163.")
 
         // Also verify we are NOT showing ONLY a section header with no content.
-        // If the bug regresses, there will be a "Earlier" label but no clip text.
+        // If the bug regresses, there will be an "Earlier" label but no clip text.
         let sectionHeader = app.staticTexts.containing(
             NSPredicate(format: "label CONTAINS[c] 'earlier'")).firstMatch
         let hasHeader = sectionHeader.exists

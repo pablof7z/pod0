@@ -31,3 +31,34 @@ pub fn load_clip_records(dir: &Path) -> Option<Vec<ClipRecord>> {
     let bytes = std::fs::read(&path).ok()?;
     serde_json::from_slice::<Vec<ClipRecord>>(&bytes).ok()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::clip_handler::ClipRecord;
+
+    #[test]
+    fn test_orphan_seed_json_parses() {
+        let json = r#"[{
+            "id": "05480548-0548-0548-0548-054800000001",
+            "episode_id": "deadbeef-dead-dead-dead-000000000001",
+            "episode_title": "Orphaned Episode",
+            "podcast_title": "This American Life",
+            "start_secs": 60.0,
+            "end_secs": 90.0,
+            "title": "Orphan clip",
+            "transcript_text": "economy is not going",
+            "speaker": null,
+            "source": "touch",
+            "refinement_status": "manual",
+            "auto_snip_anchor_secs": null,
+            "created_at": 1779212388
+        }]"#;
+        let clips: Vec<ClipRecord> = serde_json::from_str(json).expect("should parse seed JSON");
+        assert_eq!(clips.len(), 1);
+        assert_eq!(clips[0].title, Some("Orphan clip".to_owned()));
+        assert_eq!(clips[0].transcript_text, "economy is not going");
+        assert_eq!(clips[0].speaker, None);
+        assert_eq!(clips[0].auto_snip_anchor_secs, None);
+    }
+}
