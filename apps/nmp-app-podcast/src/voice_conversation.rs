@@ -46,10 +46,11 @@ use tokio::task::JoinHandle;
 
 use crate::agent_handler::SCAFFOLD_ASSISTANT_REPLY;
 use crate::agent_llm;
-use crate::capability::voice::{VoiceCommand, VOICE_CAPABILITY_NAMESPACE};
+use crate::capability::voice::{TtsProvider, VoiceCommand, VOICE_CAPABILITY_NAMESPACE};
 use crate::ffi::projections::VoiceState;
 use crate::snapshot_signal::SnapshotUpdateSignal;
 use crate::store::PodcastStore;
+use crate::voice_handler;
 
 /// System prompt for voice-mode turns. Kept terse on purpose: TTS replies
 /// that run long are a poor voice UX, so we bias the model toward 1–3
@@ -275,6 +276,10 @@ impl VoiceConversationManager {
         // performs.
         let app_addr = self.app as usize;
 
+        // Extra Arc clone so provider resolution (after spawn_blocking) can
+        // access the store independently of the clone moved into the closure.
+        let store_for_provider = Arc::clone(&self.store);
+
         let handle = self.runtime.spawn(async move {
             // `chat_with_tools` blocks on its own runtime internally, so it
             // must not run inside this async task directly. Offload to the
@@ -292,20 +297,25 @@ impl VoiceConversationManager {
 
             let request_id = format!("voice-{}", rev.load(Ordering::Relaxed));
 
-            // Optimistically flip the orb to "speaking" and surface the
-            // assistant utterance before the TTS `Started` report lands, so
-            // the UI doesn't show an idle gap while audio spins up. The
-            // `Started`/`Finished` reports self-correct this on arrival.
+            // Resolve TTS provider via the canonical helper (deduplicates the
+            // ElevenLabs-vs-AvSpeech selection from voice_handler).
+            let provider =
+                voice_handler::resolve_tts_provider(&store_for_provider, &voice_state, None);
+
+            // Update voice_state with the resolved voice id for UI feedback.
             if let Ok(mut v) = voice_state.lock() {
                 v.is_speaking = true;
                 v.current_request_id = Some(request_id.clone());
                 v.last_response = Some(reply.clone());
+                if let TtsProvider::ElevenLabs { voice_id: ref id, .. } = provider {
+                    v.current_voice_id = Some(id.clone());
+                }
             }
 
             let cmd = VoiceCommand::Speak {
                 text: reply,
-                voice_id: None,
                 request_id,
+                provider,
             };
             if let Ok(payload_json) = serde_json::to_string(&cmd) {
                 let req = CapabilityRequest {

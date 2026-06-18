@@ -10,24 +10,42 @@ fn namespace_matches_documented_string() {
 }
 
 #[test]
-fn voice_command_speak_serde_roundtrips_with_voice_id() {
-    let cmd = VoiceCommand::speak("hello world", Some("rachel".into()), "req-1");
+fn voice_command_speak_serde_roundtrips_with_elevenlabs_provider() {
+    let cmd = VoiceCommand::speak(
+        "hello world",
+        TtsProvider::ElevenLabs { voice_id: "rachel".into(), model: None },
+        "req-1",
+    );
     let json = serde_json::to_string(&cmd).expect("encode");
     assert!(json.contains("\"type\":\"speak\""));
     assert!(json.contains("\"text\":\"hello world\""));
-    assert!(json.contains("\"voice_id\":\"rachel\""));
     assert!(json.contains("\"request_id\":\"req-1\""));
+    assert!(json.contains("\"voice_id\":\"rachel\""));
+    assert!(json.contains("\"type\":\"eleven_labs\""));
     let decoded: VoiceCommand = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded, cmd);
 }
 
 #[test]
-fn voice_command_speak_omits_none_voice_id() {
-    let cmd = VoiceCommand::speak("hi", None, "req-2");
+fn voice_command_speak_avspeech_provider_roundtrips() {
+    let cmd = VoiceCommand::speak("hi", TtsProvider::AvSpeech { voice_id: None }, "req-2");
     let json = serde_json::to_string(&cmd).expect("encode");
-    assert!(!json.contains("voice_id"));
+    assert!(json.contains("\"type\":\"av_speech\""));
     let decoded: VoiceCommand = serde_json::from_str(&json).expect("decode");
     assert_eq!(decoded, cmd);
+}
+
+#[test]
+fn tts_provider_elevenlabs_with_model_roundtrips() {
+    let p = TtsProvider::ElevenLabs {
+        voice_id: "rachel".into(),
+        model: Some("eleven_monolingual_v1".into()),
+    };
+    let json = serde_json::to_string(&p).expect("encode");
+    assert!(json.contains("\"type\":\"eleven_labs\""));
+    assert!(json.contains("\"model\":\"eleven_monolingual_v1\""));
+    let decoded: TtsProvider = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, p);
 }
 
 #[test]

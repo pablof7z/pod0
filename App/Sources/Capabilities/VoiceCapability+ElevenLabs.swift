@@ -19,9 +19,9 @@ import Foundation
 //   • `.stopped`  — emitted by the `Stop` / barge-in canceller, not here
 //                   (`AVAudioPlayer.stop()` does not call the delegate).
 //
-// On any failure (synthesis or playback construction) we fall back to
-// `AVSpeechSynthesizer` so the turn is still spoken — matching the prior
-// always-audible behaviour rather than dropping the utterance.
+// On any failure (synthesis or playback construction) we emit `.failed` so
+// the Rust kernel can decide the fallback policy (D7). The kernel retries
+// the turn with `TtsProvider::AvSpeech` from `ffi/voice_report.rs`.
 //
 // File split out of `VoiceCapability.swift` to respect the 300-LOC soft
 // limit (AGENTS.md).
@@ -54,8 +54,8 @@ extension VoiceCapability {
             } catch {
                 self.elevenLabsSynthTask = nil
                 self.logger.notice(
-                    "ElevenLabs voice-mode TTS synthesis failed; falling back to AVSpeech: \(error.localizedDescription, privacy: .public)")
-                self.speakViaAVSpeech(text: text, voiceID: nil, requestID: requestID)
+                    "ElevenLabs voice-mode TTS synthesis failed: \(error.localizedDescription, privacy: .public)")
+                self.emit(.failed(requestID: requestID, error: "ElevenLabs TTS failed: \(error.localizedDescription)"))
             }
         }
     }
@@ -82,9 +82,9 @@ extension VoiceCapability {
             emit(.started(requestID: requestID))
         } catch {
             logger.notice(
-                "ElevenLabs voice-mode TTS playback failed; falling back to AVSpeech: \(error.localizedDescription, privacy: .public)")
+                "ElevenLabs voice-mode TTS playback failed: \(error.localizedDescription, privacy: .public)")
             teardownElevenLabsPlayer()
-            speakViaAVSpeech(text: fallbackText, voiceID: nil, requestID: requestID)
+            emit(.failed(requestID: requestID, error: "ElevenLabs TTS failed: \(error.localizedDescription)"))
         }
     }
 

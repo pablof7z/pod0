@@ -48,4 +48,13 @@ pub struct VoiceState {
     /// (the assistant said this). `None` between sessions.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_response: Option<String>,
+    /// Internal: text of the in-flight ElevenLabs Speak (for AVSpeech fallback dispatch).
+    /// `#[serde(skip)]` — not part of the snapshot surface.
+    #[serde(skip)]
+    pub(crate) current_speak_text: Option<String>,
+    /// Internal: whether the current in-flight Speak is an ElevenLabs request.
+    /// `false` once the AVSpeech fallback is dispatched, preventing a second retry.
+    /// `#[serde(skip)]` — not part of the snapshot surface.
+    #[serde(skip)]
+    pub(crate) current_is_elevenlabs: bool,
 }

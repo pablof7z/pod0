@@ -24,13 +24,70 @@
 //!   raw event.
 
 use std::sync::atomic::Ordering;
+use std::sync::{Arc, Mutex};
 
 use nmp_core::substrate::CapabilityRequest;
 
-use crate::capability::{VoiceCommand, VoiceReport, VOICE_CAPABILITY_NAMESPACE};
+use crate::capability::{TtsProvider, VoiceCommand, VoiceReport, VOICE_CAPABILITY_NAMESPACE};
 use crate::ffi::actions::voice_module::VoiceAction;
 use crate::ffi::projections::VoiceState;
 use crate::host_op_handler::PodcastHostOpHandler;
+use crate::store::PodcastStore;
+
+/// Resolve the TTS provider from the store's current settings.
+///
+/// If an ElevenLabs voice id is configured, returns `TtsProvider::ElevenLabs`;
+/// otherwise returns `TtsProvider::AvSpeech` with the resolved voice id.
+/// For AvSpeech, `explicit_voice_id` takes priority; if absent or empty,
+/// falls back to the `current_voice_id` stored in `VoiceState` so the
+/// user's last selected on-device voice is preserved across turns.
+pub(crate) fn resolve_tts_provider(
+    store: &Arc<Mutex<PodcastStore>>,
+    voice_state: &Arc<Mutex<VoiceState>>,
+    explicit_voice_id: Option<String>,
+) -> TtsProvider {
+    let (el_voice_id, el_model) = store
+        .lock()
+        .ok()
+        .map(|s| {
+            let vid = s.eleven_labs_voice_id().trim().to_owned();
+            let model = s.eleven_labs_tts_model().trim().to_owned();
+            let model = if model.is_empty() { None } else { Some(model) };
+            (vid, model)
+        })
+        .unwrap_or_default();
+
+    if !el_voice_id.is_empty() {
+        TtsProvider::ElevenLabs {
+            voice_id: el_voice_id,
+            model: el_model,
+        }
+    } else {
+        // If no explicit voice_id, fall back to the stored current_voice_id
+        // from VoiceState so the user's on-device voice preference is
+        // preserved across turns (Swift no longer holds activeVoiceID).
+        let resolved = explicit_voice_id
+            .filter(|v| !v.is_empty())
+            .or_else(|| {
+                voice_state
+                    .lock()
+                    .ok()
+                    .and_then(|v| v.current_voice_id.clone())
+            });
+        TtsProvider::AvSpeech { voice_id: resolved }
+    }
+}
+
+/// Whether a partial transcript report should trigger a barge-in Stop.
+/// Returns the non-empty trimmed text if barge-in should fire, or `None` if not.
+/// Empty or whitespace-only partial transcripts are noise; barge-in must not
+/// cancel an in-flight utterance for those.
+pub(crate) fn barge_in_text(report: &VoiceReport) -> Option<&str> {
+    match report {
+        VoiceReport::TranscriptPartial { text } if !text.trim().is_empty() => Some(text.trim()),
+        _ => None,
+    }
+}
 
 /// Dispatch a typed [`VoiceCommand`] to the iOS voice executor. Returns
 /// `Err(message)` on JSON encode failure; the capability call itself is
@@ -87,22 +144,28 @@ pub(crate) fn handle(
             }
         }
         VoiceAction::Speak { text, voice_id } => {
-            // Mint a kernel-owned request id so the executor's reports
-            // correlate even when the UI didn't supply one.
             let request_id = format!("turn-{}", handler.state.infra.rev.load(Ordering::Relaxed));
+            // Resolve provider from store: if an ElevenLabs voice is configured,
+            // use it; otherwise fall back to on-device AVSpeech.
+            let voice_state_arc = handler.state.voice.voice_state.share();
+            let provider =
+                resolve_tts_provider(&handler.state.library.store, &voice_state_arc, voice_id);
             mutate_voice_state(handler, |v| {
                 v.is_speaking = true;
                 v.current_request_id = Some(request_id.clone());
-                if let Some(id) = voice_id.as_ref() {
+                v.current_speak_text = Some(text.clone());
+                v.current_is_elevenlabs = matches!(provider, TtsProvider::ElevenLabs { .. });
+                if let TtsProvider::ElevenLabs { voice_id: ref id, .. } = provider {
+                    v.current_voice_id = Some(id.clone());
+                } else if let TtsProvider::AvSpeech { voice_id: Some(ref id) } = provider {
                     v.current_voice_id = Some(id.clone());
                 }
-                // Surface the assistant utterance under the orb.
                 v.last_response = Some(text.clone());
             });
             let cmd = VoiceCommand::Speak {
                 text,
-                voice_id,
                 request_id,
+                provider,
             };
             match dispatch_voice(handler, &cmd, correlation_id) {
                 Ok(_) => serde_json::json!({"ok": true}),
@@ -113,6 +176,8 @@ pub(crate) fn handle(
             mutate_voice_state(handler, |v| {
                 v.is_speaking = false;
                 v.current_request_id = None;
+                v.current_speak_text = None;
+                v.current_is_elevenlabs = false;
             });
             match dispatch_voice(handler, &VoiceCommand::Stop, correlation_id) {
                 Ok(_) => serde_json::json!({"ok": true}),
@@ -145,10 +210,16 @@ pub(crate) fn apply_report(state: &mut VoiceState, report: VoiceReport) -> bool 
         VoiceReport::Finished { .. } | VoiceReport::Stopped => {
             state.is_speaking = false;
             state.current_request_id = None;
+            state.current_speak_text = None;
+            state.current_is_elevenlabs = false;
         }
         VoiceReport::Failed { error, .. } => {
             state.is_speaking = false;
             state.current_request_id = None;
+            // Clear tracking fields after capturing them for the fallback
+            // (voice_report.rs reads these before calling apply_report).
+            state.current_speak_text = None;
+            state.current_is_elevenlabs = false;
             state.last_response = Some(format!("Voice error: {error}"));
         }
         VoiceReport::ListeningStarted => {

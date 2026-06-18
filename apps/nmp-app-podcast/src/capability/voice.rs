@@ -56,6 +56,39 @@ use serde::{Deserialize, Serialize};
 pub const VOICE_CAPABILITY_NAMESPACE: &str = "nmp.voice.capability";
 
 // ---------------------------------------------------------------------------
+// TtsProvider
+// ---------------------------------------------------------------------------
+
+/// Selects the TTS backend the iOS executor must use for a `Speak` command.
+///
+/// Rust resolves the active user settings (ElevenLabs voice configured or
+/// not) into a concrete backend + config before dispatching; the iOS side
+/// executes exactly the backend it is told — no routing logic on Swift.
+///
+/// **D7 — capability reports, never decides.** The provider selection lives
+/// here (in the Rust policy layer), not in the Swift executor.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum TtsProvider {
+    /// On-device synthesis via `AVSpeechSynthesizer`.
+    AvSpeech {
+        /// Optional BCP-47 locale / AVSpeech voice identifier
+        /// (e.g. `"en-US"`). `None` uses the device default.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        voice_id: Option<String>,
+    },
+    /// Cloud synthesis via ElevenLabs HTTP API.
+    ElevenLabs {
+        /// ElevenLabs voice UUID (required).
+        voice_id: String,
+        /// ElevenLabs model slug (e.g. `"eleven_monolingual_v1"`).
+        /// `None` defers to the ElevenLabs API default.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        model: Option<String>,
+    },
+}
+
+// ---------------------------------------------------------------------------
 // Rust → iOS: VoiceCommand
 // ---------------------------------------------------------------------------
 
@@ -64,7 +97,7 @@ pub const VOICE_CAPABILITY_NAMESPACE: &str = "nmp.voice.capability";
 /// Wire form is `serde`-tagged on `"type"` (`snake_case`):
 ///
 /// ```text
-/// {"type":"speak","text":"…","voice_id":"…","request_id":"…"}
+/// {"type":"speak","text":"…","request_id":"…","provider":{…}}
 /// {"type":"stop"}
 /// {"type":"set_voice","voice_id":"…"}
 /// ```
@@ -77,13 +110,9 @@ pub const VOICE_CAPABILITY_NAMESPACE: &str = "nmp.voice.capability";
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum VoiceCommand {
-    /// Synthesize and play `text`. The executor reports `Started{request_id}`
-    /// as soon as audio begins playing and `Finished{request_id}` on
-    /// natural completion.
-    ///
-    /// `voice_id` is optional: `None` uses the executor's currently
-    /// configured voice (last `SetVoice` or built-in default). Empty
-    /// strings are treated as `None`.
+    /// Synthesize and play `text` using the commanded `provider`. The
+    /// executor reports `Started{request_id}` as soon as audio begins
+    /// playing and `Finished{request_id}` on natural completion.
     ///
     /// `request_id` is caller-supplied so Rust can correlate the
     /// subsequent `Started` / `Finished` / `Failed` reports against
@@ -91,15 +120,13 @@ pub enum VoiceCommand {
     /// (`Stop` emitted when voiced-segment events fire mid-utterance)
     /// uses the live `request_id` from the most recent `Speak`.
     Speak {
-        /// UTF-8 plain text — no SSML, no markdown. The Rust side normalises
-        /// before sending; the executor speaks exactly what arrives.
+        /// UTF-8 plain text — no SSML, no markdown.
         text: String,
-        /// Optional voice id (provider-specific opaque string). `None`
-        /// or an empty string falls back to the current configured voice.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        voice_id: Option<String>,
         /// Caller-supplied correlation id; echoed back in every report.
         request_id: String,
+        /// TTS backend selection resolved by Rust from user settings.
+        /// Swift executes the commanded provider without additional routing.
+        provider: TtsProvider,
     },
     /// Cancel any in-flight `Speak` immediately. Idempotent: a no-op
     /// when nothing is speaking. The executor emits a single `Stopped`
@@ -138,13 +165,13 @@ impl VoiceCommand {
     #[must_use]
     pub fn speak(
         text: impl Into<String>,
-        voice_id: Option<String>,
+        provider: TtsProvider,
         request_id: impl Into<String>,
     ) -> Self {
         Self::Speak {
             text: text.into(),
-            voice_id,
             request_id: request_id.into(),
+            provider,
         }
     }
 

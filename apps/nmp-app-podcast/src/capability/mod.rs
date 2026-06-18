@@ -45,4 +45,4 @@ pub use nostr_relay::{NostrRelayRequest, NostrRelayResult, NOSTR_RELAY_CAPABILIT
 pub use notification::{
     notification_command_json, NotificationCommand, NOTIFICATION_CAPABILITY_NAMESPACE,
 };
-pub use voice::{VoiceCommand, VoiceReport, VOICE_CAPABILITY_NAMESPACE};
+pub use voice::{TtsProvider, VoiceCommand, VoiceReport, VOICE_CAPABILITY_NAMESPACE};

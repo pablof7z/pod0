@@ -11,20 +11,50 @@ import Foundation
 // Split out of `VoiceCapability.swift` to keep that file under the
 // 300-line soft limit (AGENTS.md).
 
+/// TTS provider commanded by Rust. Mirrors `crate::capability::voice::TtsProvider`.
+/// Rust resolves the user's settings into a concrete backend; Swift executes it.
+enum TtsProvider: Decodable, Equatable {
+    case avSpeech(voiceID: String?)
+    case elevenLabs(voiceID: String, model: String?)
+
+    private enum CodingKeys: String, CodingKey {
+        case type
+        case voiceID = "voice_id"
+        case model
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let type = try c.decode(String.self, forKey: .type)
+        switch type {
+        case "av_speech":
+            self = .avSpeech(voiceID: try c.decodeIfPresent(String.self, forKey: .voiceID))
+        case "eleven_labs":
+            self = .elevenLabs(
+                voiceID: try c.decode(String.self, forKey: .voiceID),
+                model: try c.decodeIfPresent(String.self, forKey: .model))
+        default:
+            // Unknown provider: fall back to AVSpeech (D6 — degrade silently).
+            self = .avSpeech(voiceID: nil)
+        }
+    }
+}
+
 /// Commands Rust dispatches to the iOS voice executor. Mirrors
 /// `crate::capability::VoiceCommand`.
 enum VoiceCommand: Decodable, Equatable {
     case startListening
     case stopListening
-    case speak(text: String, voiceID: String?, requestID: String)
+    case speak(text: String, requestID: String, provider: TtsProvider)
     case stop
     case setVoice(voiceID: String)
 
     private enum CodingKeys: String, CodingKey {
         case type
         case text
-        case voiceID = "voice_id"
         case requestID = "request_id"
+        case provider
+        case voiceID = "voice_id"
     }
 
     init(from decoder: Decoder) throws {
@@ -38,8 +68,8 @@ enum VoiceCommand: Decodable, Equatable {
         case "speak":
             self = .speak(
                 text: try c.decode(String.self, forKey: .text),
-                voiceID: try c.decodeIfPresent(String.self, forKey: .voiceID),
-                requestID: try c.decode(String.self, forKey: .requestID))
+                requestID: try c.decode(String.self, forKey: .requestID),
+                provider: try c.decode(TtsProvider.self, forKey: .provider))
         case "stop":
             self = .stop
         case "set_voice":
