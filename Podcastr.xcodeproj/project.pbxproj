@@ -439,6 +439,7 @@
 		9E98B663C230F4B532F2570A /* DeepLinkHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80A8BE2FDE1705D15D474F97 /* DeepLinkHandler.swift */; };
 		9EA79BD19298C55DB1D106AC /* AgentScheduledTaskFormSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF7B220D6BD5D10F60880042 /* AgentScheduledTaskFormSheet.swift */; };
 		9F172CFCE169173802444369 /* P1SettingsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 116AFE5B9A5E82448086217F /* P1SettingsUITests.swift */; };
+		52994DAACF884FE1B0FB4D61 /* P1QueueUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F516237F93E9480C8E644AA1 /* P1QueueUITests.swift */; };
 		A0BEF34D14F0941027FC58FF /* ElevenLabsKeyInfoCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F4FE358C4B5A0D71E62CD8E /* ElevenLabsKeyInfoCard.swift */; };
 		A10F908B29438687A833C418 /* AppStateStore+Subscriptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31822DD58237A18EDF0122A4 /* AppStateStore+Subscriptions.swift */; };
 		A1D6FA4F4A84E0A57DB21F02 /* AppStateStore+Triage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E9568CA56A44DBF03A5156 /* AppStateStore+Triage.swift */; };
@@ -819,6 +820,7 @@
 		107A4F56C8B628B04E067F78 /* OPMLImportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OPMLImportTests.swift; sourceTree = "<group>"; };
 		1080F0E59AE876398CAAB12F /* AgentActivitySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentActivitySheet.swift; sourceTree = "<group>"; };
 		116AFE5B9A5E82448086217F /* P1SettingsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = P1SettingsUITests.swift; sourceTree = "<group>"; };
+		F516237F93E9480C8E644AA1 /* P1QueueUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = P1QueueUITests.swift; sourceTree = "<group>"; };
 		11B2B5296A170026BE96BCD9 /* AllPodcastsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllPodcastsListView.swift; sourceTree = "<group>"; };
 		11BD2A5BC6FCF16DBF1B7060 /* NowPlayingTimelineProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingTimelineProvider.swift; sourceTree = "<group>"; };
 		12295CE221DC6DF3996808E2 /* PodcastMediaTypes.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PodcastMediaTypes.generated.swift; sourceTree = "<group>"; };
@@ -2140,6 +2142,7 @@
 				73E40182385F6635C6E7E1B3 /* CoreJourneyUITests.swift */,
 				197C67CB36F68CA64C941F35 /* P0PlaybackUITests.swift */,
 				116AFE5B9A5E82448086217F /* P1SettingsUITests.swift */,
+				F516237F93E9480C8E644AA1 /* P1QueueUITests.swift */,
 				2367EECEADB5A6A3DDD55441 /* SetupSubscribeUITests.swift */,
 				C319AA7E37EC938B51799652 /* SmokeUITests.swift */,
 				4D6DCC04DC0CE6E3621F60EE /* SurveyUITests.swift */,
@@ -3522,6 +3525,7 @@
 				28B51B0DF4A6AF8AA8F5CA3E /* CoreJourneyUITests.swift in Sources */,
 				BC650AFFCD24ADA486C9D9F4 /* P0PlaybackUITests.swift in Sources */,
 				9F172CFCE169173802444369 /* P1SettingsUITests.swift in Sources */,
+				52994DAACF884FE1B0FB4D61 /* P1QueueUITests.swift in Sources */,
 				7F761FB09615EF1B59A3D580 /* SetupSubscribeUITests.swift in Sources */,
 				57A4CFA3CE7B216A605A277F /* SmokeUITests.swift in Sources */,
 				D2D54D3179907500C2BFE6A0 /* SurveyUITests.swift in Sources */,

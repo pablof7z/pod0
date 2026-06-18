@@ -164,52 +164,6 @@ final class P1SettingsUITests: XCTestCase {
         }
     }
 
-    // MARK: - P1: queue-remove-item
-
-    /// Add an episode to the queue then remove it; confirm queue is empty or has fewer items.
-    func testP1_QueueRemoveItem() throws {
-        let app = App.make()
-        XCTAssertTrue(launchApp(app)); sleep(1)
-        guard openFirstPodcastFromHome(app), openFirstEpisodeFromShow(app) else {
-            XCTFail("queue-remove: could not open first episode detail"); return
-        }
-        sleep(2)
-        let qBtn = app.buttons.matching(NSPredicate(format: "label == 'Queue' OR label == 'Add to Queue'")).firstMatch
-        guard qBtn.waitForExistence(timeout: 5) else {
-            XCTFail("queue-remove: no Queue button"); return
-        }
-        qBtn.tap(); sleep(1)
-
-        // Open the Up Next / Queue view.
-        let queueAccess = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'up next' OR label CONTAINS[c] 'queue'")).firstMatch
-        if !queueAccess.waitForExistence(timeout: 4) {
-            // Try from full player area.
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.92)).tap()
-            sleep(2)
-        } else {
-            queueAccess.tap(); sleep(2)
-        }
-        snap(app, "q-remove-01-queue-open")
-
-        let countBefore = app.cells.count
-        // Swipe to delete the first queue cell, or look for a Remove button.
-        let firstCell = app.cells.firstMatch
-        if firstCell.waitForExistence(timeout: 4) {
-            firstCell.swipeLeft()
-            sleep(1)
-            let deleteBtn = app.buttons.matching(
-                NSPredicate(format: "label == 'Delete' OR label == 'Remove'")).firstMatch
-            if deleteBtn.waitForExistence(timeout: 3) { deleteBtn.tap(); sleep(1) }
-            snap(app, "q-remove-02-after-delete")
-            let countAfter = app.cells.count
-            XCTAssertLessThan(countAfter, countBefore + 1,
-                "FAIL queue-remove-item: cell count did not decrease (\(countBefore) → \(countAfter))")
-        } else {
-            snap(app, "q-remove-NOQUEUECELL")
-        }
-    }
-
     // MARK: - P1: settings-credentials-save
 
     /// Open Settings → Providers → OpenRouter, enter an API key, save, navigate

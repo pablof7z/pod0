@@ -120,6 +120,20 @@ struct PlayerQueueSheet: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("queue-row-\(pair.item.id)")
+                    .accessibilityAction(named: Text("Remove")) {
+                        state.removeFromQueue(itemID: pair.item.id)
+                        Haptics.light()
+                    }
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            state.removeFromQueue(itemID: pair.item.id)
+                            Haptics.light()
+                        } label: {
+                            Label("Remove from queue", systemImage: "minus.circle")
+                        }
+                        .accessibilityIdentifier("queue-row-ctx-remove-\(pair.item.id)")
+                    }
                     .listRowBackground(
                         RoundedRectangle(cornerRadius: AppTheme.Corner.sm, style: .continuous)
                             .fill(Color.primary.opacity(0.04))
@@ -131,6 +145,7 @@ struct PlayerQueueSheet: View {
                         } label: {
                             Label("Remove", systemImage: "minus.circle")
                         }
+                        .accessibilityIdentifier("queue-row-remove-\(pair.item.id)")
                     }
                 }
                 .onMove { indices, destination in

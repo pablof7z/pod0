@@ -90,6 +90,7 @@ struct PlayerMoreMenu: View {
         optionButton("Up Next", systemImage: "list.number") {
             dismissOptionsThen(onShowQueue)
         }
+        .accessibilityIdentifier("player-queue-chip")
 
         optionButton("Speed: \(state.rate.label)", systemImage: "speedometer") {
             Haptics.selection()
