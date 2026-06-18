@@ -4,6 +4,12 @@ import SwiftUI
 /// Covers model selection, BYOK / manual key management, and connection status.
 struct OpenRouterSettingsView: View {
     @Environment(AppStateStore.self) private var store
+    /// Accessed directly so SwiftUI tracks `kernel.snapshot` and re-renders
+    /// whenever `open_router_key_present` changes (e.g. after a key save or
+    /// delete dispatches `set_provider_api_keys`). Reading through
+    /// `store.kernel` would bypass observation tracking because `kernel` is
+    /// `@ObservationIgnored` on `AppStateStore`.
+    @Environment(KernelModel.self) private var kernelModel
 
     @State private var settings: Settings = Settings()
     @State private var manualAPIKey = ""
@@ -45,6 +51,7 @@ struct OpenRouterSettingsView: View {
             // Status row
             Label(statusTitle, systemImage: statusIcon)
                 .foregroundStyle(statusColor)
+                .accessibilityIdentifier("openrouter-status-label")
 
             // BYOK button
             Button {
@@ -65,8 +72,12 @@ struct OpenRouterSettingsView: View {
             .disabled(isConnectingBYOK)
 
             // Manual key field
-            RevealableAPIKeyField("Paste OpenRouter API key", text: $manualAPIKey)
-                .onSubmit { saveManualKey() }
+            RevealableAPIKeyField(
+                "Paste OpenRouter API key",
+                text: $manualAPIKey,
+                accessibilityIdentifier: "openrouter-api-key-field"
+            )
+            .onSubmit { saveManualKey() }
 
             // Disconnect (only when key stored)
             if hasStoredOpenRouterKey {
@@ -75,6 +86,7 @@ struct OpenRouterSettingsView: View {
                 } label: {
                     Label("Disconnect", systemImage: "trash")
                 }
+                .accessibilityIdentifier("openrouter-disconnect-button")
             }
 
             // Validate stored key
@@ -127,7 +139,7 @@ struct OpenRouterSettingsView: View {
     // MARK: - Status helpers
 
     private var hasStoredOpenRouterKey: Bool {
-        (store.kernel?.settings ?? SettingsSnapshot()).openRouterKeyPresent
+        kernelModel.settings.openRouterKeyPresent
     }
 
     private var statusTitle: String {

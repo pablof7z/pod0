@@ -35,6 +35,7 @@ struct AIProvidersSettingsView: View {
                     value: openRouterStatus
                 )
             }
+            .accessibilityIdentifier("ai-provider-openrouter")
 
             NavigationLink {
                 ElevenLabsSettingsView()

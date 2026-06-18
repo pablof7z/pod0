@@ -36,11 +36,26 @@ extension KernelModel {
         h.combine(update.nowPlaying?.sleepTimerEndOfEpisode)
         h.combine(update.nowPlaying?.currentChapterTitle)
 
-        // Settings
+        // Settings — playback
         h.combine(update.settings.skipForwardSecs)
         h.combine(update.settings.skipBackwardSecs)
         h.combine(update.settings.autoSkipAdsEnabled)
         h.combine(update.settings.hasCompletedOnboarding)
+        // Settings — provider key presence (drives Disconnect/Connect UI in
+        // provider settings screens; must be hashed so a key save/delete
+        // reaches `podcastSnapshot` and the view re-renders reactively).
+        h.combine(update.settings.openRouterKeyPresent)
+        h.combine(update.settings.openRouterCredentialSource)
+        h.combine(update.settings.ollamaKeyPresent)
+        h.combine(update.settings.ollamaCredentialSource)
+        h.combine(update.settings.elevenLabsKeyPresent)
+        h.combine(update.settings.elevenLabsCredentialSource)
+        h.combine(update.settings.assemblyAIKeyPresent)
+        h.combine(update.settings.assemblyAICredentialSource)
+        h.combine(update.settings.perplexityKeyPresent)
+        h.combine(update.settings.perplexityCredentialSource)
+        h.combine(update.settings.effectiveSttProvider)
+        h.combine(update.settings.sttProvider)
 
         // Misc
         h.combine(update.toast)

@@ -212,68 +212,135 @@ final class P1SettingsUITests: XCTestCase {
 
     // MARK: - P1: settings-credentials-save
 
-    /// Open Settings, navigate to an AI credential field, type a value,
-    /// dismiss, and confirm it persisted by reopening.
+    /// Open Settings → Providers → OpenRouter, enter an API key, save, navigate
+    /// away and back, and confirm the key persisted in the Keychain-backed store.
     ///
-    /// NOTE: This test should only run on a dedicated QA test device. It reads
-    /// and restores the credential field to avoid clobbering real API keys.
+    /// Persistence is verified by the presence of the "Disconnect" button, which
+    /// the view only renders when `store.kernel?.settings.openRouterKeyPresent`
+    /// is true — i.e. the Rust kernel has confirmed the key is stored. The field
+    /// itself is intentionally cleared after save (secure-UX best practice), so
+    /// the assertion targets the authoritative kernel projection, not the field value.
+    ///
+    /// The test restores state by tapping Disconnect after asserting, so CI runs
+    /// are idempotent. It will FAIL (not skip) if the credential field or the
+    /// navigation path is missing — a green result proves the full save-persist
+    /// round-trip works.
     func testP1_SettingsCredentialsSave() throws {
         let app = App.make()
         XCTAssertTrue(launchApp(app)); sleep(1)
         let gear = app.buttons["gear"]
         XCTAssertTrue(gear.waitForExistence(timeout: 5), "no settings gear"); gear.tap(); sleep(2)
         snap(app, "creds-01-settings")
-        // Navigate into Models or a credentials section.
-        let modelRow = staticTextContaining(app, "Models")
-        if modelRow.waitForExistence(timeout: 4) {
-            robustTap(modelRow); sleep(2)
-            snap(app, "creds-02-models")
+
+        // --- Step 1: Settings → Providers ---
+        // API key fields live under Settings → Providers → <provider>, not Settings → Models.
+        let providersRow = staticTextContaining(app, "Providers")
+        guard providersRow.waitForExistence(timeout: 5) else {
+            snap(app, "creds-NOPROVIDERS")
+            dumpTree(app, "creds-NOPROVIDERS-tree")
+            XCTFail("FAIL settings-credentials-save: 'Providers' row not found in Settings")
+            return
         }
-        // Look for any text field (API key / URL).
-        let field = app.textFields.firstMatch
-        if field.waitForExistence(timeout: 4) {
-            // Capture the existing value so we can restore it after the assertion.
-            let originalValue = field.value as? String ?? ""
+        robustTap(providersRow); sleep(2)
+        snap(app, "creds-02-providers")
 
-            // Skip if the field already contains real content — avoid clobbering
-            // a real API key on a non-dedicated test device.
-            if !originalValue.isEmpty && originalValue != "test-api-key-qa" {
-                throw XCTSkip("settings-credentials-save: field already has content ('\(originalValue)') — skipping to avoid clobbering a real key. Run only on a dedicated QA test device.")
-            }
+        // --- Step 2: Providers → OpenRouter ---
+        // Target the navigable OpenRouter row (NavigationLink → OpenRouterSettingsView)
+        // by its stable identifier — the plain "OpenRouter" text also appears as a
+        // non-navigating BYOK-vault status row, so firstMatch on the text would tap
+        // the wrong (non-navigating) one and never reach the API-key field.
+        let openRouterRow = app.buttons["ai-provider-openrouter"]
+        guard openRouterRow.waitForExistence(timeout: 5) else {
+            snap(app, "creds-NOOPENROUTER")
+            dumpTree(app, "creds-NOOPENROUTER-tree")
+            XCTFail("FAIL settings-credentials-save: navigable 'OpenRouter' row (ai-provider-openrouter) not found in Providers")
+            return
+        }
+        robustTap(openRouterRow); sleep(2)
+        snap(app, "creds-03-openrouter")
+        dumpTree(app, "creds-03-tree")
 
-            field.tap()
-            field.clearText()
-            field.typeText("test-api-key-qa")
-            app.keyboards.buttons["Return"].tap()
-            sleep(1)
-            snap(app, "creds-03-typed")
-            // Navigate away and back.
-            let back = app.navigationBars.buttons.element(boundBy: 0)
-            if back.exists { back.tap(); sleep(1) }
-            let modelRow2 = staticTextContaining(app, "Models")
-            if modelRow2.waitForExistence(timeout: 3) {
-                robustTap(modelRow2); sleep(2)
-            }
-            let fieldAfter = app.textFields.firstMatch
-            let saved = fieldAfter.waitForExistence(timeout: 4) && fieldAfter.value as? String == "test-api-key-qa"
-            snap(app, "creds-04-after-reopen")
-            XCTAssertTrue(saved, "FAIL settings-credentials-save: text field does not show 'test-api-key-qa' after reopen — value may not persist")
+        // --- Step 3: Reveal the key field and locate it ---
+        // RevealableAPIKeyField starts as a SecureField. Tap the eye button to
+        // reveal it as a TextField so XCTest can type into it reliably.
+        let showKeyBtn = app.buttons["Show API key"]
+        if showKeyBtn.waitForExistence(timeout: 4) {
+            showKeyBtn.tap(); usleep(300_000)
+        }
 
-            // Restore the original field value to avoid leaving test data in the credential store.
-            let fieldRestore = app.textFields.firstMatch
-            if fieldRestore.waitForExistence(timeout: 4) {
-                fieldRestore.tap()
-                fieldRestore.clearText()
-                if !originalValue.isEmpty {
-                    fieldRestore.typeText(originalValue)
-                }
-                app.keyboards.buttons["Return"].tap()
-                sleep(1)
-            }
+        // After reveal the field is a TextField with identifier "openrouter-api-key-field".
+        // Fall back to SecureField if the eye button was already in reveal state.
+        let keyFieldRevealed = app.textFields.matching(
+            NSPredicate(format: "identifier == 'openrouter-api-key-field'")
+        ).firstMatch
+        let keyFieldSecure = app.secureTextFields.matching(
+            NSPredicate(format: "identifier == 'openrouter-api-key-field'")
+        ).firstMatch
+
+        let keyField: XCUIElement
+        if keyFieldRevealed.waitForExistence(timeout: 3) {
+            keyField = keyFieldRevealed
+        } else if keyFieldSecure.waitForExistence(timeout: 2) {
+            keyField = keyFieldSecure
         } else {
             snap(app, "creds-NOFIELD")
-            // Not necessarily a failure — if settings has no text field visible the test is N/A.
-            XCTSkip("settings-credentials-save: no text field visible in Models settings — check manually")
+            dumpTree(app, "creds-NOFIELD-tree")
+            XCTFail("FAIL settings-credentials-save: API key field (identifier 'openrouter-api-key-field') not found in OpenRouter settings — ensure RevealableAPIKeyField has accessibilityIdentifier set")
+            return
+        }
+
+        // --- Step 4: Type the test key ---
+        keyField.tap(); usleep(300_000)
+        keyField.clearText()
+        keyField.typeText("test-api-key-qa")
+        usleep(300_000)
+        snap(app, "creds-04-typed")
+
+        // Tap the "Save" navigation bar button (calls saveManualKey()).
+        // After save, the field is intentionally cleared and the key is stored in Keychain.
+        let saveBtn = app.navigationBars.buttons["Save"]
+        guard saveBtn.waitForExistence(timeout: 4) else {
+            XCTFail("FAIL settings-credentials-save: 'Save' button not found in OpenRouter navigation bar")
+            return
+        }
+        saveBtn.tap(); sleep(2)
+        snap(app, "creds-05-after-save")
+
+        // --- Step 5: Navigate away (back to Providers) and re-enter OpenRouter ---
+        let backBtn = app.navigationBars.buttons.element(boundBy: 0)
+        if backBtn.waitForExistence(timeout: 3) { backBtn.tap(); sleep(1) }
+
+        let openRouterRow2 = app.buttons["ai-provider-openrouter"]
+        guard openRouterRow2.waitForExistence(timeout: 5) else {
+            XCTFail("FAIL settings-credentials-save: could not return to Providers list after save")
+            return
+        }
+        robustTap(openRouterRow2); sleep(2)
+        snap(app, "creds-06-reopen")
+
+        // --- Step 6: Assert persistence ---
+        // The Disconnect button (identifier "openrouter-disconnect-button") is rendered
+        // only when the kernel projection reports openRouterKeyPresent == true.
+        // Allow up to 5 s for the kernel to project the saved Keychain key.
+        let disconnectBtn = app.buttons.matching(
+            NSPredicate(format: "identifier == 'openrouter-disconnect-button'")
+        ).firstMatch
+        let statusLabel = app.staticTexts.matching(
+            NSPredicate(format: "identifier == 'openrouter-status-label'")
+        ).firstMatch
+
+        let keyPersisted = disconnectBtn.waitForExistence(timeout: 5)
+        let statusText = statusLabel.exists ? statusLabel.label : "(no status label)"
+        snap(app, "creds-07-persistence-check")
+        XCTAssertTrue(
+            keyPersisted,
+            "FAIL settings-credentials-save: 'Disconnect' button absent after re-entering OpenRouter — key did not persist in Keychain-backed store. Status label: '\(statusText)'"
+        )
+
+        // --- Step 7: Restore — disconnect the test key so subsequent runs are clean ---
+        if disconnectBtn.waitForExistence(timeout: 3) {
+            disconnectBtn.tap(); sleep(1)
+            snap(app, "creds-08-restored")
         }
     }
 
@@ -386,7 +453,9 @@ extension XCUIElement {
     func clearText() {
         guard let s = value as? String, !s.isEmpty else { return }
         tap()
-        let selectAll = XCUIApplication().menuItems["Select All"]
+        // Detached UI-test runner: a bare XCUIApplication() has no target app path
+        // ("No target application path specified"). Address the app by bundle id.
+        let selectAll = XCUIApplication(bundleIdentifier: "io.f7z.podcast").menuItems["Select All"]
         if selectAll.waitForExistence(timeout: 2) {
             selectAll.tap()
             typeText(XCUIKeyboardKey.delete.rawValue)
