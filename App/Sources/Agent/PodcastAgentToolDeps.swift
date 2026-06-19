@@ -305,6 +305,13 @@ public protocol PodcastSubscribeProtocol: Sendable {
     /// the `delete_podcast` agent tool. Idempotent — succeeds with a zero
     /// episode count when the podcast is already gone.
     func deletePodcast(podcastID: PodcastID) async throws -> PodcastDeleteResult
+
+    /// Remove only the follow membership (`PodcastSubscription`) for the
+    /// podcast identified by `podcastID`, keeping the `Podcast` row, all
+    /// episodes, and the user's listen history. Used by the `unfollow_podcast`
+    /// agent tool. Idempotent — if the podcast is already unfollowed the
+    /// result carries `wasSubscribed: false`.
+    func unfollowPodcast(podcastID: PodcastID) async throws -> PodcastUnfollowResult
 }
 
 // MARK: - Aggregate

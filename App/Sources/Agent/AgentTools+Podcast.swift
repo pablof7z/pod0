@@ -94,6 +94,7 @@ extension AgentTools {
         // External-podcast tools
         static let searchPodcastDirectory = "search_podcast_directory"
         static let subscribePodcast       = "subscribe_podcast"
+        static let unfollowPodcast        = "unfollow_podcast"
         static let deletePodcast          = "delete_podcast"
 
         // Skill-gated: requires the `youtube_ingestion` skill.
@@ -126,7 +127,7 @@ extension AgentTools {
                 listEpisodes, listInProgress, listRecentUnplayed,
                 createClip, downloadAndTranscribe,
                 generateTTSEpisode, configureAgentVoice, listAvailableVoices,
-                searchPodcastDirectory, subscribePodcast, deletePodcast,
+                searchPodcastDirectory, subscribePodcast, unfollowPodcast, deletePodcast,
                 ingestYouTubeVideo, searchYouTube,
                 createPodcast, updatePodcast, deleteMyPodcast, listMyPodcasts, generatePodcastArtwork,
                 publishEpisode,
@@ -253,6 +254,8 @@ extension AgentTools {
             return await searchPodcastDirectoryTool(args: args, deps: deps)
         case PodcastNames.subscribePodcast:
             return await subscribePodcastTool(args: args, deps: deps)
+        case PodcastNames.unfollowPodcast:
+            return await unfollowPodcastTool(args: args, deps: deps)
         case PodcastNames.deletePodcast:
             return await deletePodcastTool(args: args, deps: deps)
         case PodcastNames.ingestYouTubeVideo:

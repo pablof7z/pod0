@@ -67,30 +67,34 @@ enum UITestSeeder {
         // doesn't resurrect a stale position from a prior session.
         Persistence.shared.reset()
         try? Persistence.shared.episodeStore.replaceAll([])
-        // Prefer the locally downloaded MP3 over the network URL so AVPlayer
-        // plays from disk (reliable in the simulator) rather than streaming
-        // from the NPR CDN (which the simulator's sandboxed network may block).
-        // The file lands here when the episode is downloaded during an earlier
-        // test run; its presence is stable across runs within the same container.
         let episodeUUID = "A1A1FFFF-0001-0002-0001-000000000001"
         let enclosureURL = "https://npr.simplecastaudio.com/d3081dd9-fcaf-445a-977c-4f56c28f5a6e/episodes/e55b1946-2658-4592-9afe-1c2a3033a31c/audio/128/default.mp3"
         let sourceURL = URL(string: enclosureURL)
-        // Copy the bundled test MP3 into the same canonical Downloads directory
-        // used by DownloadCapability and EpisodeDownloadStore so playback and
-        // the Rust download projection both see the local file after restart.
         let destMP3 = seededDownloadURL(episodeID: episodeUUID, sourceURL: sourceURL)
+
+        // Copy the bundled test MP3 to the canonical download path so AVPlayer
+        // plays from disk (reliable in the simulator) rather than streaming from
+        // the NPR CDN (which the simulator's sandboxed network may block).
+        // ep1 is always seeded as downloaded so every playback-dependent UI test
+        // (resume-across-restart, queue play, chapter seek, playback speed) has a
+        // working local file. ep2 and ep3 stay not_downloaded so testDownloadEpisode
+        // can target a genuinely not_downloaded episode without depending on ep1.
         try? FileManager.default.createDirectory(
-            at: destMP3.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
+            at: destMP3.deletingLastPathComponent(), withIntermediateDirectories: true)
         if let bundledMP3 = Bundle.main.url(forResource: "test-episode", withExtension: "mp3"),
            !FileManager.default.fileExists(atPath: destMP3.path) {
             try? FileManager.default.copyItem(at: bundledMP3, to: destMP3)
         }
         let attrs = try? FileManager.default.attributesOfItem(atPath: destMP3.path)
         let localBytes = (attrs?[.size] as? NSNumber)?.int64Value ?? 0
-        let localPathLiteral = jsonStringLiteral(destMP3.path)
-        let downloadState = "{\"state\": \"not_downloaded\"}"
+        let localPathsJSON = "[[\"\(episodeUUID.lowercased())\", \(jsonStringLiteral(destMP3.path))]]"
+        let fileSizesJSON = "[[\"\(episodeUUID.lowercased())\", \(localBytes)]]"
+        // Seed ep1 download_state as downloaded so the UI shows the "Downloaded"
+        // pill without requiring a real download. local_file_url + byte_count must
+        // match the actual file so the kernel's projection is self-consistent.
+        let ep1DownloadState = """
+        {"state": "downloaded", "local_file_url": \(jsonStringLiteral(destMP3.absoluteString)), "byte_count": \(localBytes)}
+        """
 
         // Fresh-seed: position starts at 0.
         let persistedPosition: Double = 0.0
@@ -101,6 +105,16 @@ enum UITestSeeder {
         // optimistic local state, and the "Queued" label reverts to "Queue".
         let episode2UUID = "A1A1FFFF-0001-0002-0001-000000000002"
         let enclosure2URL = "https://test.podcast.local/episodes/ep2.mp3"
+
+        // ep3 UUID — third episode used by the queue-reorder test. Always seeded
+        // so the kernel knows the episode. Pub-date earlier than ep2 so the
+        // show-detail list order is ep1 (index 0), ep2 (index 1), ep3 (index 2).
+        let episode3UUID = "A1A1FFFF-0001-0002-0001-000000000003"
+        let enclosure3URL = "https://test.podcast.local/episodes/ep3.mp3"
+
+        // Queue is always empty at seed time; the queue-reorder test builds the
+        // queue through the UI rather than depending on a pre-seeded queue state.
+        let queueJSON = "[]"
 
         // When --UITestSeedOrphanClip is present, write clips.json directly.
         //
@@ -144,6 +158,23 @@ enum UITestSeeder {
             }
         }
 
+        // ep1 chapters — publisher-supplied, always seeded so PlayerChaptersUITests
+        // can run without a network fetch. Three fixed UUIDs for stable references
+        // in tests; the kernel projects them as ChapterSummary → Episode.Chapter
+        // (see snapshot_library.rs). The Swift bridge generates a fresh UUID per
+        // projected chapter, so the a11y id is "chapter-<random-uuid>" — tests
+        // match with BEGINSWITH 'chapter-' rather than a specific UUID.
+        let ep1Chapters = """
+        [
+          {"id":"c0010001-0001-0001-0001-000000000001","start_secs":0.0,"end_secs":60.0,
+           "title":"Introduction","include_in_toc":true,"is_ai_generated":false},
+          {"id":"c0010001-0001-0001-0001-000000000002","start_secs":60.0,"end_secs":180.0,
+           "title":"Main Story","include_in_toc":true,"is_ai_generated":false},
+          {"id":"c0010001-0001-0001-0001-000000000003","start_secs":180.0,
+           "title":"Conclusion","include_in_toc":true,"is_ai_generated":false}
+        ]
+        """
+
         let seed = """
         {
           "schema_version": 1,
@@ -173,10 +204,11 @@ enum UITestSeeder {
               "position_secs": \(persistedPosition),
               "played": false,
               "is_starred": false,
-              "download_state": \(downloadState),
+              "download_state": \(ep1DownloadState),
               "transcript_state": {"state": "none"},
               "triage_is_hero": false,
-              "metadata_indexed": false
+              "metadata_indexed": false,
+              "chapters": \(ep1Chapters)
             },{
               "id": "\(episode2UUID.lowercased())",
               "podcast_id": "a1a1ffff-0001-0001-0001-000000000001",
@@ -186,6 +218,23 @@ enum UITestSeeder {
               "pub_date": "2026-04-01T00:00:00Z",
               "duration_secs": 240.0,
               "enclosure_url": "\(enclosure2URL)",
+              "enclosure_mime_type": "audio/mpeg",
+              "position_secs": 0.0,
+              "played": false,
+              "is_starred": false,
+              "download_state": {"state": "not_downloaded"},
+              "transcript_state": {"state": "none"},
+              "triage_is_hero": false,
+              "metadata_indexed": false
+            },{
+              "id": "\(episode3UUID.lowercased())",
+              "podcast_id": "a1a1ffff-0001-0001-0001-000000000001",
+              "guid": "37538 at https://www.thisamericanlife.org",
+              "title": "135: Deep Space",
+              "description": "Exploring the cosmos.",
+              "pub_date": "2026-03-01T00:00:00Z",
+              "duration_secs": 210.0,
+              "enclosure_url": "\(enclosure3URL)",
               "enclosure_mime_type": "audio/mpeg",
               "position_secs": 0.0,
               "played": false,
@@ -204,10 +253,10 @@ enum UITestSeeder {
           "episode_triage": [],
           "metadata_indexed_episodes": [],
           "transcript_status_overrides": [],
-          "local_paths": [["\(episodeUUID.lowercased())", \(localPathLiteral)]],
-          "file_sizes": [["\(episodeUUID.lowercased())", \(localBytes)]],
+          "local_paths": \(localPathsJSON),
+          "file_sizes": \(fileSizesJSON),
           "settings": {},
-          "queue": [],
+          "queue": \(queueJSON),
           "pending_wifi_downloads": []
         }
         """

@@ -122,6 +122,29 @@ actor MockSubscribe: PodcastSubscribeProtocol {
             episodesDeleted: 0
         )
     }
+
+    private(set) var unfollowCalls: [PodcastID] = []
+    private var unfollowResults: [PodcastID: PodcastUnfollowResult] = [:]
+    private var unfollowError: Error?
+
+    func setUnfollowResult(_ result: PodcastUnfollowResult, forPodcastID podcastID: PodcastID) {
+        unfollowResults[podcastID] = result
+    }
+
+    func setUnfollowError(_ error: Error?) {
+        unfollowError = error
+    }
+
+    func unfollowPodcast(podcastID: PodcastID) async throws -> PodcastUnfollowResult {
+        unfollowCalls.append(podcastID)
+        if let unfollowError { throw unfollowError }
+        if let canned = unfollowResults[podcastID] { return canned }
+        return PodcastUnfollowResult(
+            podcastID: podcastID,
+            title: "Mock Show",
+            wasSubscribed: true
+        )
+    }
 }
 
 // MARK: - MockOwnedPodcasts

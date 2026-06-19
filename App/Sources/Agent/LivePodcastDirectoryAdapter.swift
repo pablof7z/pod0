@@ -374,6 +374,25 @@ final class LivePodcastSubscribeAdapter: PodcastSubscribeProtocol, @unchecked Se
         )
     }
 
+    func unfollowPodcast(podcastID: PodcastID) async throws -> PodcastUnfollowResult {
+        guard let store else {
+            throw DirectoryError.unavailable("AppStateStore")
+        }
+        guard let uuid = UUID(uuidString: podcastID) else {
+            throw DirectoryError.parseError("Invalid podcast_id: \(podcastID)")
+        }
+        let status = await subscriptionStatus(podcastID: uuid, store: store)
+        return await MainActor.run {
+            let title = store.podcast(id: uuid)?.title
+            store.kernelUnfollow(podcastID: uuid)
+            return PodcastUnfollowResult(
+                podcastID: podcastID,
+                title: title,
+                wasSubscribed: status?.isAlreadySubscribed ?? false
+            )
+        }
+    }
+
     func deletePodcast(podcastID: PodcastID) async throws -> PodcastDeleteResult {
         guard let store else {
             throw DirectoryError.unavailable("AppStateStore")

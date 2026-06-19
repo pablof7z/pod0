@@ -208,6 +208,37 @@ impl PodcastHostOpHandler {
         }
     }
 
+    /// Remove only the follow membership, keeping the podcast row and episodes
+    /// as "known but unfollowed". A re-subscribe via `handle_subscribe` with
+    /// the same feed URL then uses `mark_subscribed` (no network fetch). The
+    /// picks slot is refreshed so the "recommended for you" rail excludes the
+    /// now-unfollowed show.
+    pub(super) fn handle_unfollow(&self, podcast_id_str: String) -> serde_json::Value {
+        match podcast_id_str.parse::<Uuid>() {
+            Ok(uuid) => {
+                let id = PodcastId::new(uuid);
+                let ok = match self.state.library.store.lock() {
+                    Ok(mut s) => {
+                        s.mark_unsubscribed(id);
+                        self.bump_domain(crate::state::Domain::Library);
+                        true
+                    }
+                    Err(_) => false,
+                };
+                if !ok {
+                    return serde_json::json!({"ok": false, "error": "store poisoned"});
+                }
+                refresh_picks_into_slot(
+                    &self.state.library.store,
+                    &self.state.picks.picks.share(),
+                    &self.state.infra.rev,
+                );
+                serde_json::json!({"ok": true})
+            }
+            Err(_) => serde_json::json!({"ok": false, "error": "invalid podcast_id"}),
+        }
+    }
+
     pub(super) fn handle_unsubscribe(&self, podcast_id_str: String) -> serde_json::Value {
         match podcast_id_str.parse::<Uuid>() {
             Ok(uuid) => {

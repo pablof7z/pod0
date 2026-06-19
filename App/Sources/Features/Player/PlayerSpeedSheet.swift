@@ -71,5 +71,8 @@ struct PlayerSpeedSheet: View {
         // previously every row sounded identical and the user had no
         // way to know which speed was current.
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+        // Stable identifier used by UI automation (e.g. PlaybackSettingsUITests).
+        // Format: "speed-<rawValue>" — e.g. "speed-1.5" for the 1.5× row.
+        .accessibilityIdentifier("speed-\(rate.rawValue)")
     }
 }

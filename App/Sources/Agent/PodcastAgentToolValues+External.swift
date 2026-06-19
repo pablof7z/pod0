@@ -116,3 +116,21 @@ public struct PodcastEnsureResult: Sendable, Equatable {
         self.episodeCount = episodeCount
     }
 }
+
+// MARK: - Unfollow result
+
+/// Result returned by `unfollow_podcast`. Episodes and listen history are kept;
+/// only the follow membership (`PodcastSubscription`) is removed.
+public struct PodcastUnfollowResult: Sendable, Equatable {
+    public let podcastID: PodcastID
+    /// Title at time of unfollow (best-effort; nil when the row was already gone).
+    public let title: String?
+    /// `true` when there was a `PodcastSubscription` row that was removed.
+    public let wasSubscribed: Bool
+
+    public init(podcastID: PodcastID, title: String?, wasSubscribed: Bool) {
+        self.podcastID = podcastID
+        self.title = title
+        self.wasSubscribed = wasSubscribed
+    }
+}

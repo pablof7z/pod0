@@ -115,3 +115,43 @@ fn default_is_empty() {
     assert_eq!(q, PlaybackQueue::new());
     assert!(q.items().is_empty());
 }
+
+// ── Case-insensitive slot-id tests ──────────────────────────────────────────
+//
+// The kernel generates slot IDs via `uuid::Uuid::new_v4().to_string()` which
+// produces lowercase hex. Swift's `UUID.uuidString` produces UPPERCASE. These
+// tests prove that `remove_slot` and `reorder_by_slot_ids` accept uppercase
+// callers without any normalisation on the Swift side.
+
+#[test]
+fn remove_slot_uppercase_id_matches_lowercase_slot() {
+    let mut q = PlaybackQueue::new();
+    // Add a bounded segment; the kernel assigns a lowercase slot_id.
+    q.add_segment_to_end("ep-1", Some(10.0), Some(20.0));
+    let items = q.playback_items();
+    assert_eq!(items.len(), 1);
+    // Grab the lowercase slot id and uppercase it — simulating Swift's UUID.uuidString.
+    let lowercase_id = items[0].slot_id.clone();
+    let uppercase_id = lowercase_id.to_uppercase();
+    assert_ne!(lowercase_id, uppercase_id, "precondition: UUID must contain hex letters");
+    // Remove via the uppercase id — must succeed (case-insensitive match).
+    q.remove_slot(&uppercase_id);
+    assert!(q.playback_items().is_empty(), "slot must be removed via uppercase id");
+}
+
+#[test]
+fn reorder_by_slot_ids_uppercase_caller_matches_lowercase_slots() {
+    let mut q = PlaybackQueue::new();
+    q.add_segment_to_end("ep-1", Some(0.0), Some(10.0));
+    q.add_segment_to_end("ep-2", Some(0.0), Some(10.0));
+    let items = q.playback_items();
+    let id_a = items[0].slot_id.clone(); // ep-1 slot
+    let id_b = items[1].slot_id.clone(); // ep-2 slot
+    // Request reverse order using UPPERCASE ids — simulating Swift's UUID.uuidString.
+    let reversed = vec![id_b.to_uppercase(), id_a.to_uppercase()];
+    q.reorder_by_slot_ids(&reversed);
+    let reordered = q.playback_items();
+    assert_eq!(reordered.len(), 2);
+    assert_eq!(reordered[0].episode_id, "ep-2", "ep-2 must be first after uppercase reorder");
+    assert_eq!(reordered[1].episode_id, "ep-1", "ep-1 must be second after uppercase reorder");
+}

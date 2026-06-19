@@ -54,7 +54,12 @@ jobs:
   test:
     name: Build and Test
     runs-on: self-hosted
-    timeout-minutes: 30
+    # UI tests run sharded across freshly-erased simulators (run_tests.sh, #17)
+    # so memory can't accumulate across the full suite. The shards add some sim
+    # boot/reinstall overhead but eliminate the SIGKILL-cascade retry-burn that
+    # previously blew the budget; 55 min covers build + all shards with headroom
+    # on the serial self-hosted runner.
+    timeout-minutes: 55
 
     steps:
       - name: Check out repository

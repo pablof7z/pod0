@@ -70,6 +70,30 @@ impl PodcastStore {
         }
     }
 
+    /// Remove only the follow membership for a known podcast, keeping the
+    /// podcast row and episodes as "known but unfollowed".
+    ///
+    /// This is the lightweight counterpart to `unsubscribe`: the user's
+    /// episode cache survives so a re-subscribe via `mark_subscribed` is
+    /// instant (no network fetch needed). Auto-download policy is cleared so
+    /// a later re-subscribe starts from the default "off" state.
+    ///
+    /// Returns `false` when the podcast was not in the store (no-op).
+    pub fn mark_unsubscribed(&mut self, podcast_id: PodcastId) -> bool {
+        if !self.podcasts.contains_key(&podcast_id) {
+            return false;
+        }
+        let removed = self.followed_podcasts.remove(&podcast_id);
+        self.auto_download_enabled.remove(&podcast_id);
+        self.auto_download_modes.remove(&podcast_id);
+        self.auto_download_cellular_allowed.remove(&podcast_id);
+        self.notifications_disabled.remove(&podcast_id);
+        if removed {
+            self.persist();
+        }
+        true
+    }
+
     /// Iterate over all known podcasts and their episode slices.
     pub fn all_podcasts(&self) -> Vec<(&Podcast, &[Episode])> {
         let mut result = Vec::with_capacity(self.podcasts.len());

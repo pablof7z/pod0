@@ -113,26 +113,73 @@ if [ -z "${TEST_DESTINATION:-}" ]; then
 fi
 echo "Using test destination: $TEST_DESTINATION"
 
-# SKIP_UI_TESTS: when set, run the unit-test target only (skip PodcastrUITests).
-# The TestFlight deploy lane sets this so a SHIP is gated on the deterministic
-# unit suite, not the simulator-flaky end-to-end playback UI tests (audio-start
-# timing, app lifecycle). The regular `Test` workflow does NOT set it, so PRs
-# still run the full UI suite (including the resume-across-restart P0 test).
-SKIP_UI_ARG=""
-if [ -n "${SKIP_UI_TESTS:-}" ]; then
-  echo "SKIP_UI_TESTS set — unit tests only (skipping PodcastrUITests)"
-  SKIP_UI_ARG="-skip-testing:${APP_SCHEME}UITests"
-fi
+# Simulator udid for inter-chunk resets (derived from the resolved destination).
+udid="${udid:-$(printf '%s' "$TEST_DESTINATION" | sed -n 's/.*id=\([0-9A-Fa-f-]\{36\}\).*/\1/p')}"
 
-xcodebuild \
-  "${XCODE_CONTAINER_ARGS[@]}" \
-  -scheme "$APP_SCHEME" \
-  -destination "$TEST_DESTINATION" \
-  -skipPackagePluginValidation \
-  -onlyUsePackageVersionsFromResolvedFile \
-  -skipPackageUpdates \
-  -packageCachePath "$XCODE_PACKAGE_CACHE_PATH" \
-  -clonedSourcePackagesDirPath "$XCODE_CLONED_SOURCE_PACKAGES_DIR" \
-  -retry-tests-on-failure \
-  ${SKIP_UI_ARG} \
-  test
+# One xcodebuild test invocation with the shared flags plus per-call test
+# selection (-only-testing / -skip-testing). The first call builds; later calls
+# reuse the build products (test-only) even after a simulator erase.
+run_test_chunk() {
+  echo "--- test chunk: $* ---"
+  xcodebuild \
+    "${XCODE_CONTAINER_ARGS[@]}" \
+    -scheme "$APP_SCHEME" \
+    -destination "$TEST_DESTINATION" \
+    -skipPackagePluginValidation \
+    -onlyUsePackageVersionsFromResolvedFile \
+    -skipPackageUpdates \
+    -packageCachePath "$XCODE_PACKAGE_CACHE_PATH" \
+    -clonedSourcePackagesDirPath "$XCODE_CLONED_SOURCE_PACKAGES_DIR" \
+    -retry-tests-on-failure \
+    "$@" \
+    test
+}
+
+# Erase the simulator between UI chunks so memory cannot accumulate across the
+# full UI suite. Running all UI tests in one simulator session exhausted memory
+# late in the run, SIGKILLing heavy tests and blowing the job timeout (#17).
+# Each chunk re-seeds via --UITestSeed, so a wiped device is expected.
+reset_sim() {
+  if [ -z "$udid" ]; then
+    echo "warn: no simulator udid resolved; skipping inter-chunk reset" >&2
+    return 0
+  fi
+  echo "--- resetting simulator $udid between UI chunks ---"
+  xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
+  xcrun simctl erase "$udid" >/dev/null 2>&1 || true
+  xcrun simctl boot "$udid" >/dev/null 2>&1 || true
+  # Wait for the device to finish booting before the next xcodebuild invocation.
+  xcrun simctl bootstatus "$udid" -b >/dev/null 2>&1 || true
+}
+
+UI="${APP_SCHEME}UITests"
+
+if [ -n "${SKIP_UI_TESTS:-}" ]; then
+  # TestFlight deploy lane: gate the SHIP on the deterministic unit suite only,
+  # not the simulator-flaky end-to-end playback UI tests.
+  echo "SKIP_UI_TESTS set — unit tests only (skipping ${UI})"
+  run_test_chunk -skip-testing:"${UI}"
+else
+  # UI-suite sharding (#17): unit suite + light UI run together; the heavy UI
+  # classes (lifecycle/audio/agent/stress/download) run in their own fresh-sim
+  # chunks. The catch-all chunk uses -skip-testing for every explicitly-sharded
+  # class so any NEW UI class runs there automatically and is never dropped.
+  HEAVY1=( -only-testing:"$UI/CoreJourneyUITests" -only-testing:"$UI/P0PlaybackUITests" )
+  HEAVY2=( -only-testing:"$UI/AgentChatUITest" -only-testing:"$UI/StressUITests" -only-testing:"$UI/ClippingsFixUITests" -only-testing:"$UI/AutoDownloadUITests" )
+  HEAVY3=( -only-testing:"$UI/DownloadUITests" -only-testing:"$UI/PlayerChaptersUITests" -only-testing:"$UI/QueueReorderUITests" -only-testing:"$UI/PlaybackSettingsUITests" -only-testing:"$UI/SubscribeViaRSSUITests" -only-testing:"$UI/NostrPublishUITests" )
+  SKIP_HEAVY=( -skip-testing:"$UI/CoreJourneyUITests" -skip-testing:"$UI/P0PlaybackUITests" -skip-testing:"$UI/AgentChatUITest" -skip-testing:"$UI/StressUITests" -skip-testing:"$UI/ClippingsFixUITests" -skip-testing:"$UI/AutoDownloadUITests" -skip-testing:"$UI/DownloadUITests" -skip-testing:"$UI/PlayerChaptersUITests" -skip-testing:"$UI/QueueReorderUITests" -skip-testing:"$UI/PlaybackSettingsUITests" -skip-testing:"$UI/SubscribeViaRSSUITests" -skip-testing:"$UI/NostrPublishUITests" )
+
+  TEST_STATUS=0
+  # Chunk 0: unit suite + remaining light UI classes (this call builds).
+  run_test_chunk "${SKIP_HEAVY[@]}" || TEST_STATUS=$?
+  # Chunk 1: heaviest lifecycle / audio UI.
+  reset_sim
+  run_test_chunk "${HEAVY1[@]}" || TEST_STATUS=$?
+  # Chunk 2: agent / stress / clippings / auto-download.
+  reset_sim
+  run_test_chunk "${HEAVY2[@]}" || TEST_STATUS=$?
+  # Chunk 3: download / chapters / queue-reorder / settings / subscribe / nostr.
+  reset_sim
+  run_test_chunk "${HEAVY3[@]}" || TEST_STATUS=$?
+  exit "$TEST_STATUS"
+fi

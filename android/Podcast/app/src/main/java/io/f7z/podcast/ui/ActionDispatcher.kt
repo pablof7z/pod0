@@ -63,10 +63,24 @@ data class SubscribePayload(
     val op: String = "subscribe",
 )
 
+/**
+ * Remove only the follow membership, keeping the podcast row + episodes as
+ * "known but unfollowed". Mirrors iOS `kernelUnfollow` / Rust `podcast.unfollow`
+ * (`PodcastAction::Unfollow { podcast_id }`). A subsequent re-subscribe with
+ * the same feed URL is instant — no network fetch needed.
+ *
+ * Wire this to any Android "Unsubscribe" affordance: in this app "Unsubscribe"
+ * keeps history. A permanent hard-delete (the Rust `podcast.unsubscribe` action,
+ * which removes the podcast + episodes) must be a separately-labeled "Delete"
+ * action with its own wire type, added when Android grows library-management UI.
+ *
+ * Backlog: android-unfollow-parity (#547/#573) — no Android unsubscribe/delete
+ * UI exists yet; add the unfollow dispatch (and a delete wire type) when added.
+ */
 @Serializable
-data class UnsubscribePayload(
+data class UnfollowPayload(
     @SerialName("podcast_id") val podcastId: String,
-    val op: String = "unsubscribe",
+    val op: String = "unfollow",
 )
 
 @Serializable

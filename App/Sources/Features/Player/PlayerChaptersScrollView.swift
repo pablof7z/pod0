@@ -102,6 +102,9 @@ struct PlayerChaptersScrollView: View {
         .accessibilityLabel(chapter.title)
         .accessibilityValue(isActive ? "Active chapter, \(formatTimestamp(chapter.startTime))" : formatTimestamp(chapter.startTime))
         .accessibilityHint("Seeks playback to this chapter")
+        // Stable identifier used by UI automation (e.g. PlayerChaptersUITests).
+        // Format: "chapter-<uuid>" — unique per chapter across the episode.
+        .accessibilityIdentifier("chapter-\(chapter.id)")
         .contextMenu {
             Button {
                 askAgent(about: chapter)

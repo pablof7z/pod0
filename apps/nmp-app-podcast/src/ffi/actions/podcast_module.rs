@@ -92,6 +92,14 @@ pub enum PodcastAction {
     Unsubscribe {
         podcast_id: String,
     },
+    /// Remove only the follow membership, keeping the podcast row and episodes
+    /// as "known but unfollowed". A subsequent `Subscribe` with the same
+    /// feed URL will mark_subscribed (no network fetch needed). Used by the
+    /// ShowDetailView "Unsubscribe" button where the user may immediately
+    /// re-follow without navigating away.
+    Unfollow {
+        podcast_id: String,
+    },
     Refresh {
         podcast_id: String,
     },

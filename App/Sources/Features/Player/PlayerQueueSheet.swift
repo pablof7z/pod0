@@ -121,18 +121,41 @@ struct PlayerQueueSheet: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("queue-row-\(pair.item.id)")
+                    .accessibilityAction(named: Text("Move to top")) {
+                        // Primary long-press action (also invoked directly by
+                        // XCTest via press(forDuration:) on iOS 26). Listed
+                        // first so it is the default gesture action.
+                        if let idx = state.queue.firstIndex(where: { $0.id == pair.item.id }),
+                           idx > 0 {
+                            state.moveQueue(from: IndexSet(integer: idx), to: 0)
+                            Haptics.selection()
+                        }
+                    }
                     .accessibilityAction(named: Text("Remove")) {
                         state.removeFromQueue(itemID: pair.item.id)
                         Haptics.light()
                     }
                     .contextMenu {
+                        // "Move to top" appears first so it is prominent in
+                        // the context menu for pointer-device users. No
+                        // .accessibilityIdentifier here — contextMenu buttons
+                        // are UIAction-based and the modifier leaks onto the
+                        // outer List row, confusing XCTest element lookup.
+                        Button {
+                            if let idx = state.queue.firstIndex(where: { $0.id == pair.item.id }),
+                               idx > 0 {
+                                state.moveQueue(from: IndexSet(integer: idx), to: 0)
+                                Haptics.selection()
+                            }
+                        } label: {
+                            Label("Move to top", systemImage: "arrow.up.to.line")
+                        }
                         Button(role: .destructive) {
                             state.removeFromQueue(itemID: pair.item.id)
                             Haptics.light()
                         } label: {
                             Label("Remove from queue", systemImage: "minus.circle")
                         }
-                        .accessibilityIdentifier("queue-row-ctx-remove-\(pair.item.id)")
                     }
                     .listRowBackground(
                         RoundedRectangle(cornerRadius: AppTheme.Corner.sm, style: .continuous)

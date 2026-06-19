@@ -109,10 +109,10 @@ struct HomeView: View {
                 Button("Cancel", role: .cancel) {}
                 Button("Unsubscribe", role: .destructive) {
                     Haptics.warning()
-                    store.deletePodcast(podcastID: sub.id)
+                    store.kernelUnfollow(podcastID: sub.id)
                 }
             } message: { _ in
-                Text("This removes the show and all its episodes from your library.")
+                Text("The show will leave Home but its episodes and history are kept.")
             }
             .task {
                 // Ask the kernel to (re)triage so freshly-arrived episodes

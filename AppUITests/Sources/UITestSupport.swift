@@ -212,6 +212,64 @@ extension XCTestCase {
         return episodeRow.waitForExistence(timeout: 4) || app.cells.element(boundBy: 2).waitForExistence(timeout: 2)
     }
 
+    /// Navigates to a podcast show detail via the home search interface.
+    ///
+    /// Use after unsubscribing when the show has been removed from the library
+    /// and is no longer accessible via `openFirstPodcastFromHome`. Mirrors the
+    /// approach used by `SetupSubscribeUITests` — tap home-search-button, type
+    /// the query, wait for iTunes results, tap the first result, confirm show
+    /// detail is visible.
+    ///
+    /// - Parameters:
+    ///   - app: The running application instance.
+    ///   - query: The podcast title to search for (e.g. "This American Life").
+    /// - Returns: `true` when show detail is visible (Episodes header or episode row).
+    @discardableResult
+    func searchAndOpenShow(_ app: XCUIApplication, query: String) -> Bool {
+        // Ensure we start from Home.
+        let homeTab = app.buttons["tab-home"]
+        if homeTab.waitForExistence(timeout: 2) { homeTab.tap(); sleep(1) }
+
+        // Tap the search button (stable accessibility identifier).
+        let searchBtn = app.buttons["home-search-button"]
+        if searchBtn.waitForExistence(timeout: 5) {
+            searchBtn.tap()
+        } else {
+            // Fallback to any button labelled "search".
+            let fallback = app.buttons.matching(
+                NSPredicate(format: "label CONTAINS[c] 'search'")
+            ).firstMatch
+            guard fallback.waitForExistence(timeout: 3) else { return false }
+            fallback.tap()
+        }
+        sleep(1)
+
+        // Type in the search field.
+        let searchField: XCUIElement = app.searchFields.firstMatch.exists
+            ? app.searchFields.firstMatch
+            : app.textFields.firstMatch
+        guard searchField.waitForExistence(timeout: 5) else { return false }
+        searchField.tap()
+        searchField.typeText(query)
+        sleep(3) // allow iTunes search API to return results
+
+        // Tap the first result (prefer stable identifier, fall back to first cell).
+        let resultRow = app.cells.matching(
+            NSPredicate(format: "identifier == 'search-result-row'")
+        ).firstMatch
+        let anyCell = app.cells.firstMatch
+        if resultRow.waitForExistence(timeout: 8) {
+            robustTap(resultRow)
+        } else if anyCell.waitForExistence(timeout: 5) {
+            robustTap(anyCell)
+        } else {
+            return false
+        }
+        sleep(2)
+
+        return waitForShowDetail(app)
+    }
+
     /// Attach the full accessibility tree as a kept string attachment.
     func dumpTree(_ app: XCUIApplication, _ name: String) {
         guard app.state == .runningForeground else { return }

@@ -137,18 +137,26 @@ impl PlaybackQueue {
 
     /// Remove a single queue slot by Rust-owned slot id. This is the lossless
     /// path for duplicate bounded segments of the same episode.
+    ///
+    /// The comparison is **case-insensitive** (`eq_ignore_ascii_case`) so that
+    /// shells which represent UUIDs in uppercase (e.g. Swift's `UUID.uuidString`)
+    /// still remove the correct slot without any caller-side normalisation.
     pub fn remove_slot(&mut self, slot_id: &str) {
-        self.order.retain(|item| item.slot_id != slot_id);
+        self.order.retain(|item| !item.slot_id.eq_ignore_ascii_case(slot_id));
     }
 
     /// Reorder existing queue slots by their Rust-owned slot ids. Unknown ids
     /// are ignored; existing slots omitted by the caller are appended in their
     /// prior relative order so a partial/stale shell reorder cannot drop data.
+    ///
+    /// The comparison is **case-insensitive** (`eq_ignore_ascii_case`) so that
+    /// shells which represent UUIDs in uppercase (e.g. Swift's `UUID.uuidString`)
+    /// still match the correct slot without any caller-side normalisation.
     pub fn reorder_by_slot_ids(&mut self, slot_ids: &[String]) {
         let mut remaining = std::mem::take(&mut self.order);
         let mut reordered = Vec::with_capacity(remaining.len());
         for slot_id in slot_ids {
-            if let Some(index) = remaining.iter().position(|item| &item.slot_id == slot_id) {
+            if let Some(index) = remaining.iter().position(|item| item.slot_id.eq_ignore_ascii_case(slot_id)) {
                 reordered.push(remaining.remove(index));
             }
         }

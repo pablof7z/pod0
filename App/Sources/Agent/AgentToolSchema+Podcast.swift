@@ -203,12 +203,12 @@ extension AgentTools {
                 description: """
                 List the podcasts the user is currently subscribed to, sorted by title. \
                 Use when the user asks 'what am I subscribed to?' or before suggesting they \
-                unsubscribe from a specific show. Returns each show's id, title, author, \
+                unfollow or delete a specific show. Returns each show's id, title, author, \
                 total + unplayed episode counts, and last-published date. \
                 Distinct from `list_podcasts`, which returns every known podcast — subscribed \
                 AND unsubscribed (one-off external plays, captured-via-browse feeds, the \
                 AI-generated show). Use `list_podcasts` when the user asks 'what shows do I \
-                have in the app?' or before calling `delete_podcast`.
+                have in the app?' or before calling `unfollow_podcast` or `delete_podcast`.
                 """,
                 properties: [
                     "limit": ["type": "integer", "description": "Maximum subscriptions to return. Defaults to 25, capped at 100."],
@@ -223,8 +223,8 @@ extension AgentTools {
                 distinguish followed shows from one-off captures (external-played episodes, \
                 feeds browsed via list_episodes, the AI-generated show). \
                 Use this when the user asks about 'all my podcasts', wants to clean up the \
-                library, or before calling `delete_podcast`. For the subscribed set only, \
-                use `list_subscriptions`.
+                library, or before calling `unfollow_podcast` or `delete_podcast`. For the \
+                subscribed set only, use `list_subscriptions`.
                 """,
                 properties: [
                     "limit": ["type": "integer", "description": "Maximum podcasts to return. Defaults to 25, capped at 100."],
@@ -362,18 +362,34 @@ extension AgentTools {
                 required: ["feed_url"]
             ),
             podcastTool(
-                name: PodcastNames.deletePodcast,
+                name: PodcastNames.unfollowPodcast,
                 description: """
-                Fully remove a podcast from the user's library: deletes the `Podcast` row, any \
-                `PodcastSubscription` for it, and every episode tied to it. This matches the \
-                'Unsubscribe' destructive action in the Subscriptions list AND the swipe-to-delete \
-                on the All Podcasts screen — both of those are the same nuke under the hood. \
-                Use when the user says 'unsubscribe from X', 'remove X from my library', or \
-                'delete X'. The response includes `was_subscribed` so you can tell the user whether \
-                this was a subscribed show or a one-off capture. Cannot delete the Unknown sentinel.
+                Stop following a podcast — removes the follow membership (subscription row) but \
+                keeps the podcast row, all its episodes, and the user's listen history intact. \
+                A re-subscribe with the same feed URL is instant (no network fetch needed). \
+                Use this when the user says 'unsubscribe from X', 'stop following X', or \
+                'unfollow X'. For permanent removal of all data (episodes, history), use \
+                `delete_podcast` instead. The response includes `was_subscribed` and confirms \
+                that episodes are kept.
                 """,
                 properties: [
-                    "podcast_id": ["type": "string", "description": "The podcast UUID to delete. Get it from list_subscriptions, list_podcasts, or list_episodes."],
+                    "podcast_id": ["type": "string", "description": "The podcast UUID to unfollow. Get it from list_subscriptions or list_podcasts."],
+                ],
+                required: ["podcast_id"]
+            ),
+            podcastTool(
+                name: PodcastNames.deletePodcast,
+                description: """
+                Permanently remove a podcast from the user's library: deletes the `Podcast` row, \
+                any `PodcastSubscription` for it, and every episode and history entry tied to it. \
+                This is irreversible — all episode data and listen history is gone. \
+                Use ONLY when the user explicitly asks to permanently delete / remove all data / \
+                'delete everything about X'. For a plain 'unsubscribe from X' or 'stop following X', \
+                use `unfollow_podcast` instead (keeps episodes and history). \
+                Cannot delete the Unknown sentinel.
+                """,
+                properties: [
+                    "podcast_id": ["type": "string", "description": "The podcast UUID to permanently delete. Get it from list_subscriptions, list_podcasts, or list_episodes."],
                 ],
                 required: ["podcast_id"]
             ),

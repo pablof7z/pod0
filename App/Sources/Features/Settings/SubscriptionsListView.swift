@@ -45,13 +45,13 @@ struct SubscriptionsListView: View {
             presenting: pendingDelete
         ) { sub in
             Button("Unsubscribe", role: .destructive) {
-                store.deletePodcast(podcastID: sub.id)
+                store.kernelUnfollow(podcastID: sub.id)
                 Haptics.success()
                 pendingDelete = nil
             }
             Button("Cancel", role: .cancel) { pendingDelete = nil }
         } message: { sub in
-            Text("Remove \(sub.title) and all of its episodes from your library? This cannot be undone.")
+            Text("\(sub.title) will leave your subscriptions but its episodes and history are kept.")
         }
         .alert(
             "Couldn't export OPML",
@@ -195,7 +195,7 @@ struct SubscriptionsListView: View {
             Button(role: .destructive) {
                 pendingDelete = sub
             } label: {
-                Label("Unsubscribe", systemImage: "trash")
+                Label("Unsubscribe", systemImage: "minus.circle")
             }
         }
     }

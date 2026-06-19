@@ -130,6 +130,7 @@ struct AddByURLForm: View {
                         RoundedRectangle(cornerRadius: AppTheme.Corner.md, style: .continuous)
                             .fill(Color(.secondarySystemBackground))
                     )
+                    .accessibilityIdentifier("add-show-url-field")
 
                 Button {
                     paste()

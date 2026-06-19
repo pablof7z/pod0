@@ -63,6 +63,15 @@ extension AppStateStore {
         kernel?.dispatch(PodcastKernelAction.Unsubscribe(podcastId: podcastID.uuidString))
     }
 
+    /// Remove only the follow membership, keeping the podcast row and episodes
+    /// as "known but unfollowed". A subsequent re-subscribe with the same feed
+    /// URL is instant (Rust `mark_subscribed`; no network fetch needed). The
+    /// podcast stays in `store.podcasts` so the ShowDetailView can toggle
+    /// in-place without needing to navigate away and re-find the show.
+    func kernelUnfollow(podcastID: UUID) {
+        kernel?.dispatch(PodcastKernelAction.Unfollow(podcastId: podcastID.uuidString))
+    }
+
     /// Trigger a full feed refresh for every subscription.
     func kernelRefreshAll() {
         kernel?.dispatch(PodcastKernelAction.RefreshAll())
@@ -460,6 +469,9 @@ extension AppStateStore {
     }
 
     /// Remove one Rust-owned queue slot from Up Next.
+    ///
+    /// The kernel's `remove_slot` compares case-insensitively (`eq_ignore_ascii_case`)
+    /// so Swift's uppercase `UUID.uuidString` is accepted without normalisation here.
     func kernelDequeueQueueItem(queueSlotID: UUID) {
         kernel?.dispatch(namespace: "podcast.player",
                          body: [
@@ -469,11 +481,14 @@ extension AppStateStore {
     }
 
     /// Reorder existing Rust-owned queue slots.
+    ///
+    /// The kernel's `reorder_by_slot_ids` compares case-insensitively (`eq_ignore_ascii_case`)
+    /// so Swift's uppercase `UUID.uuidString` values are accepted without normalisation here.
     func kernelReorderQueue(queueSlotIDs: [UUID]) {
         kernel?.dispatch(namespace: "podcast.player",
                          body: [
                             "op": "reorder_queue",
-                            "queue_slot_ids": queueSlotIDs.map(\.uuidString),
+                            "queue_slot_ids": queueSlotIDs.map { $0.uuidString },
                          ])
     }
 

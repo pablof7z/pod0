@@ -100,6 +100,8 @@ fn dispatch(request: &Value) -> Value {
         "delete_podcast_plan" => required_arg_plan(request, "podcast_id", "Missing or empty 'podcast_id'"),
         "delete_podcast_snapshot" => delete_podcast_snapshot(request),
         "delete_podcast_result" => delete_podcast_result(request),
+        "unfollow_podcast_plan" => required_arg_plan(request, "podcast_id", "Missing or empty 'podcast_id'"),
+        "unfollow_podcast_result" => unfollow_podcast_result(request),
         "peer_end_plan" => peer_end_plan(request),
         "peer_end_result" => peer_end_result(request),
         "peer_message_plan" => peer_message_plan(request),
@@ -617,10 +619,28 @@ fn delete_podcast_snapshot(request: &Value) -> Value {
     json!({"result": out})
 }
 
+fn unfollow_podcast_result(request: &Value) -> Value {
+    let was_subscribed = bool_arg(request, "was_subscribed");
+    let message = if was_subscribed {
+        "Unfollowed — your listen history and episodes are kept."
+    } else {
+        "Podcast was not followed; no changes to follow state."
+    };
+    let mut out = json!({
+        "success": true,
+        "podcast_id": string_arg(request, "podcast_id"),
+        "was_subscribed": was_subscribed,
+        "episodes_kept": true,
+        "message": message,
+    });
+    insert_optional(&mut out, "title", optional_string_arg(request, "title"));
+    out
+}
+
 fn delete_message(was_subscribed: bool, episodes_deleted: usize) -> String {
     let plural = if episodes_deleted == 1 { "" } else { "s" };
     if was_subscribed {
-        format!("Unsubscribed and deleted {episodes_deleted} episode{plural}.")
+        format!("Deleted the podcast and {episodes_deleted} episode{plural}.")
     } else {
         format!("Deleted {episodes_deleted} episode{plural} from a non-subscribed podcast.")
     }
@@ -1512,5 +1532,69 @@ fn encode(value: Value) -> *mut c_char {
     match CString::new(value.to_string()) {
         Ok(c) => c.into_raw(),
         Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unfollow_podcast_plan_requires_podcast_id() {
+        let req = serde_json::json!({"op": "unfollow_podcast_plan"});
+        let result = dispatch(&req);
+        assert!(
+            result.get("error").is_some(),
+            "missing podcast_id must return error, got: {result}"
+        );
+    }
+
+    #[test]
+    fn unfollow_podcast_plan_returns_podcast_id() {
+        let req = serde_json::json!({"op": "unfollow_podcast_plan", "podcast_id": "abc-123"});
+        let result = dispatch(&req);
+        assert_eq!(
+            result["podcast_id"], "abc-123",
+            "plan must echo back the podcast_id"
+        );
+    }
+
+    #[test]
+    fn unfollow_podcast_result_was_subscribed() {
+        let req = serde_json::json!({
+            "op": "unfollow_podcast_result",
+            "podcast_id": "abc-123",
+            "title": "Test Show",
+            "was_subscribed": true,
+        });
+        let result = dispatch(&req);
+        assert_eq!(result["success"], true);
+        assert_eq!(result["podcast_id"], "abc-123");
+        assert_eq!(result["title"], "Test Show");
+        assert_eq!(result["episodes_kept"], true);
+        assert_eq!(result["was_subscribed"], true);
+        let msg = result["message"].as_str().unwrap_or_default();
+        assert!(
+            msg.contains("Unfollowed"),
+            "message should confirm unfollow, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn unfollow_podcast_result_not_subscribed() {
+        let req = serde_json::json!({
+            "op": "unfollow_podcast_result",
+            "podcast_id": "abc-123",
+            "was_subscribed": false,
+        });
+        let result = dispatch(&req);
+        assert_eq!(result["success"], true);
+        assert_eq!(result["episodes_kept"], true);
+        assert_eq!(result["was_subscribed"], false);
+        let msg = result["message"].as_str().unwrap_or_default();
+        assert!(
+            msg.contains("not followed"),
+            "message should note not-followed, got: {msg}"
+        );
     }
 }

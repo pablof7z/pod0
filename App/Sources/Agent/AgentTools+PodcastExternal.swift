@@ -63,6 +63,28 @@ extension AgentTools {
         }
     }
 
+    // MARK: - unfollow_podcast
+
+    static func unfollowPodcastTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
+        guard let plan = await externalPodcastActionPlan(op: "unfollow_podcast_plan", args: args) else {
+            return toolError("unfollow_podcast planning is unavailable")
+        }
+        if let error = plan.error { return toolError(error) }
+        guard let podcastID = plan.podcastID else { return toolError("unfollow_podcast plan was incomplete") }
+        do {
+            let result = try await deps.subscribe.unfollowPodcast(podcastID: podcastID)
+            var payload: [String: Any] = [
+                "podcast_id": result.podcastID,
+                "was_subscribed": result.wasSubscribed,
+            ]
+            if let title = result.title { payload["title"] = title }
+            return await actionTool(op: "unfollow_podcast_result", payload: payload)
+                ?? toolError("unfollow_podcast result shaping is unavailable")
+        } catch {
+            return toolError("unfollow_podcast failed: \(error.localizedDescription)")
+        }
+    }
+
     // MARK: - delete_podcast
 
     static func deletePodcastTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {

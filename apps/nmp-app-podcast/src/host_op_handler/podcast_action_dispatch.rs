@@ -65,6 +65,7 @@ impl PodcastHostOpHandler {
                 transcript,
             ),
             PodcastAction::Unsubscribe { podcast_id } => self.handle_unsubscribe(podcast_id),
+            PodcastAction::Unfollow { podcast_id } => self.handle_unfollow(podcast_id),
             PodcastAction::Refresh { podcast_id } => {
                 self.handle_refresh(podcast_id, correlation_id)
             }

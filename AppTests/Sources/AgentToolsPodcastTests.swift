@@ -392,6 +392,62 @@ final class AgentToolsPodcastTests: XCTestCase {
         return obj
     }
 
+    // MARK: - unfollow_podcast
+
+    func testUnfollowPodcastDispatchesToMockSubscribe() async throws {
+        let mockSubscribe = MockSubscribe()
+        let bundle = PodcastAgentToolDeps(
+            rag: MockRAG(), summarizer: MockSummarizer(),
+            fetcher: MockFetcher(), playback: MockPlayback(),
+            library: MockLibrary(), inventory: MockInventory(),
+            categories: MockInventory(), peerPublisher: MockPeerEventPublisher(),
+            friendDirectory: MockFriendDirectory(), perplexity: MockPerplexity(),
+            ttsPublisher: MockTTSPublisher(), directory: MockDirectory(),
+            subscribe: mockSubscribe, youtubeIngestion: MockYouTubeIngestion(),
+            ownedPodcasts: MockOwnedPodcasts()
+        )
+        await AgentTools.dispatchPodcast(
+            name: AgentTools.PodcastNames.unfollowPodcast,
+            args: ["podcast_id": "pod-abc"],
+            deps: bundle
+        )
+        let calls = await mockSubscribe.unfollowCalls
+        XCTAssertEqual(calls, ["pod-abc"], "unfollow_podcast must dispatch to subscribe.unfollowPodcast with the correct id")
+    }
+
+    func testUnfollowPodcastRejectsMissingPodcastID() async throws {
+        let deps = makeDeps()
+        let json = await AgentTools.dispatchPodcast(
+            name: AgentTools.PodcastNames.unfollowPodcast,
+            args: [:],
+            deps: deps.bundle
+        )
+        let decoded = try decode(json)
+        XCTAssertNotNil(decoded["error"], "unfollow_podcast without podcast_id must return an error")
+    }
+
+    func testUnfollowPodcastSchemaIsPresent() {
+        let names = Set(AgentTools.podcastSchema.compactMap { tool -> String? in
+            (tool["function"] as? [String: Any])?["name"] as? String
+        })
+        XCTAssertTrue(
+            names.contains(AgentTools.PodcastNames.unfollowPodcast),
+            "unfollow_podcast must appear in podcastSchema"
+        )
+    }
+
+    func testDeletePodcastSchemaDescriptionDoesNotMentionUnsubscribeAsDelete() {
+        let schema = AgentTools.podcastSchema
+        let deleteEntry = schema.first { tool -> Bool in
+            ((tool["function"] as? [String: Any])?["name"] as? String) == AgentTools.PodcastNames.deletePodcast
+        }
+        let description = ((deleteEntry?["function"] as? [String: Any])?["description"] as? String) ?? ""
+        XCTAssertFalse(
+            description.contains("says 'unsubscribe from X'"),
+            "delete_podcast description must not map 'unsubscribe' intent to full delete"
+        )
+    }
+
     private struct DepsBundle {
         let bundle: PodcastAgentToolDeps
         let playback: MockPlayback

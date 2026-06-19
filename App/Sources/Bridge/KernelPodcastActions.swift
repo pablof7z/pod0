@@ -80,6 +80,22 @@ enum PodcastKernelAction {
         }
     }
 
+    /// Remove only the follow membership, keeping the podcast row and episodes
+    /// as "known but unfollowed". A re-subscribe with the same feed URL is
+    /// instant (Rust uses `mark_subscribed`, no network fetch needed). Use this
+    /// instead of `Unsubscribe` when the caller wants the show detail to stay
+    /// open and the user may immediately re-follow (e.g. ShowDetailView).
+    struct Unfollow: KernelActionPayload {
+        static let namespace: KernelActionNamespace = .podcast
+        let op = "unfollow"
+        let podcastId: String
+
+        enum CodingKeys: String, CodingKey {
+            case op
+            case podcastId = "podcast_id"
+        }
+    }
+
     struct Refresh: KernelActionPayload {
         static let namespace: KernelActionNamespace = .podcast
         let op = "refresh"

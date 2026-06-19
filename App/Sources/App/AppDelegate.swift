@@ -24,8 +24,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        // Must run before KernelModel / PodcastHandle init (which happens when
-        // SwiftUI evaluates the @State var).  AppDelegate fires first.
+        // Must write podcasts.json before the kernel opens the store.
+        // `PodcastHandle.init()` runs during `PodcastrApp` struct
+        // initialisation — before this delegate fires — but `set_data_dir`
+        // (which actually opens the JSON store) is deferred to
+        // `KernelModel.start()`, called later from the SwiftUI scene phase.
+        // seedIfNeeded() here lands before that deferred call, so the seed
+        // is always present when the kernel first reads podcasts.json.
         UITestSeeder.seedIfNeeded()
         UNUserNotificationCenter.current().delegate = self
         // Bound Kingfisher's memory + disk caches so artwork doesn't grow

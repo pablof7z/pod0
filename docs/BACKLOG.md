@@ -6,6 +6,10 @@ worktrees currently in flight.
 
 - **knowledge-ann-index.** `top_k_search` is O(N) linear scan over all embedded chunks (fine for < ~50k chunks). When the corpus exceeds ~50k chunks, replace with an ANN index (e.g. HNSW via `usearch` or `instant-distance`). Slot in `podcast-knowledge::search::top_k_search` call site in `knowledge_search.rs`. <!-- TODO: ANN index when corpus > ~50k chunks -->
 
+- **android-unfollow-parity (#547/#573).** Rust exposes `podcast.unfollow` (`PodcastAction::Unfollow`); iOS routes all "Unsubscribe" UI through `kernelUnfollow` (keeps history). Android has no podcast unsubscribe/remove UI yet. When one is added, wire it to `UnfollowPayload` (defined in `ActionDispatcher.kt`) dispatched on `PodcastNamespace.PODCAST`. A permanent hard-delete affordance ("Delete") needs its own wire type (the Rust `podcast.unsubscribe` action) added at that time — there is intentionally no hard-delete payload in Android until that UI exists.
+
+- **rust-unsubscribe-action-rename (#573, pre-existing).** The Rust `podcast.unsubscribe` action (`PodcastAction::Unsubscribe`) performs a full hard-delete (removes the podcast row + episodes), which is a legacy misnomer now that `podcast.unfollow` is the keep-history path and all user-facing "Unsubscribe" maps to unfollow. Rename `podcast.unsubscribe` → `podcast.delete` across Rust (action enum + dispatch), iOS (`kernelUnsubscribe`/`deletePodcast` wiring), and Android wire types so the action name matches its hard-delete semantics. Pure rename, no behavior change; kept out of #547 to bound that PR's scope.
+
 ## Active P0 - Correctness Before More Features
 
 - ~~**p0-nipf4-wire-contract.**~~ Done in PR #89: aligned kind `10154`/`54`
@@ -1423,3 +1427,42 @@ _All pending decisions resolved. See Done section for resolutions._
 - **wip-reconciliation.** Done for 2026-05-26; `WIP.md` is the live source for
   active worktrees, stale PR-stack entries were removed, and it should return
   to `Active` = `_None._` after each agent-owned PR merges.
+- **kernel-speed-persistence-uitest (#547).** `testPlaybackSpeedPersists`
+  (in `AppUITests/Sources/PlaybackSettingsUITests.swift`) is currently skipped
+  because the kernel resets playback speed to 1× on every cold relaunch even
+  when `--UITestSeedRelaunch` preserves `podcasts.json`. The kernel likely
+  stores speed in a separate settings sidecar that is reset by the app
+  initialization path (not by the seeder). Fix requires either (a) the kernel
+  persisting speed in a file that survives the seeder's `--UITestSeedRelaunch`
+  pass, or (b) an explicit seeder hook to carry the speed through relaunch.
+  Once fixed, remove the `XCTSkip` in `testPlaybackSpeedPersists`.
+- **simulator-download-trigger-coverage (#547).** `testDownloadEpisode`
+  (in `AppUITests/Sources/DownloadUITests.swift`) asserts only the
+  state-transition triggered by tapping Download on ep2, which uses a stub
+  enclosure URL (`test.podcast.local`). The full end-to-end path — trigger →
+  background URLSession → download completes → "Downloaded" label — requires
+  either (a) a real CDN reachable from the simulator, or (b) a local HTTP stub
+  server that serves the bundled test-episode.mp3 at the ep2 enclosure URL so
+  downloads complete without external network. Option (b) is the correct
+  follow-up: add a `WireMock`/`Swifter` in-process stub in UITestSeeder that
+  binds to a loopback port and overrides the ep2 enclosure URL to point to it.
+- **simulator-nostr-publish-coverage (#547).** End-to-end Nostr publish
+  (NIP-F4 kind:10154) cannot be automated in the simulator: the test seeder
+  does not inject a signing keypair (ephemeral identity), public relay access
+  is unreliable in CI, and relay-event verification is asynchronous and
+  environment-dependent. The automated smoke (`testNostrIdentityScreenReachable`
+  in `AppUITests/Sources/NostrPublishUITests.swift`) proves the identity
+  navigation path is reachable. Full publish sign-off follows the manual
+  protocol in that file: create a keypair in Settings → Identity, subscribe a
+  podcast, publish via Show options → "Publish to Nostr", verify the event on a
+  public relay (e.g. nostrudel.ninja). Fake-passing stubs are explicitly
+  excluded by #547.
+- **simulator-auto-download-trigger-coverage (#547).** `testAutoDownloadPolicyUIPath`
+  (in `AppUITests/Sources/AutoDownloadUITests.swift`) verifies the full UI path
+  for setting the auto-download policy. Observing an actual triggered download
+  (enabling a rule and seeing a new episode download) requires a feed-refresh
+  that returns a previously-unseen episode — not feasible deterministically in
+  CI (depends on external network and a live feed returning new content). A
+  follow-up integration test would seed a fake local RSS feed response with a
+  new episode and observe the auto-download trigger; this is out of scope for
+  #547 and requires a local HTTP feed server in the test harness.

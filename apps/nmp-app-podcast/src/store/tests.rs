@@ -156,6 +156,39 @@ fn mark_subscribed_follows_existing_known_podcast() {
 }
 
 #[test]
+fn mark_unsubscribed_keeps_podcast_and_episodes_removes_follow() {
+    // Verifies the lightweight unfollow path: the podcast row and episodes
+    // survive so a re-subscribe can use mark_subscribed without a network fetch.
+    let mut store = PodcastStore::new();
+    let podcast = make_podcast("Keep Me");
+    let id = podcast.id;
+    store.subscribe(
+        podcast,
+        vec![make_episode(id, "Ep 1"), make_episode(id, "Ep 2")],
+    );
+    assert!(store.is_subscribed(id));
+
+    let result = store.mark_unsubscribed(id);
+
+    assert!(result, "mark_unsubscribed should return true for a known podcast");
+    assert_eq!(store.podcast_count(), 1, "podcast row must survive");
+    assert_eq!(store.episodes_for(id).len(), 2, "episodes must survive");
+    assert!(!store.is_subscribed(id), "follow membership must be removed");
+    assert!(store.subscribed_podcasts().is_empty(), "subscribed list must be empty");
+    // Re-subscribe instantly via mark_subscribed — no network needed.
+    assert!(store.mark_subscribed(id), "re-subscribe should succeed on the surviving row");
+    assert!(store.is_subscribed(id), "podcast is followed again");
+    assert_eq!(store.episodes_for(id).len(), 2, "episodes still intact after re-subscribe");
+}
+
+#[test]
+fn mark_unsubscribed_unknown_podcast_returns_false() {
+    let mut store = PodcastStore::new();
+    let result = store.mark_unsubscribed(PodcastId::generate());
+    assert!(!result, "mark_unsubscribed on unknown podcast_id returns false");
+}
+
+#[test]
 fn unsubscribe_unknown_podcast_is_a_noop() {
     // Removing an id that was never subscribed must not disturb existing rows.
     let mut store = PodcastStore::new();
