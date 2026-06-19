@@ -8,11 +8,12 @@ import Foundation
 /// kernel reads `podcasts.json` at `set_data_dir`/`nmp_app_start` time, so the
 /// seed must land before that call. Two modes:
 ///   • `--UITestSeed` (fresh): always overwrites `podcasts.json` with a
-///     known-good seed and wipes the Swift SQLite mirror, so every test
-///     starts from a clean, position-0 state.
+///     known-good seed and wipes the Swift SQLite metadata sidecar, so every
+///     test starts from a clean, position-0 state.
 ///   • `--UITestSeedRelaunch`: preserves the kernel's existing `podcasts.json`
 ///     (which already carries the position the kernel persisted last session)
-///     and wipes only the SQLite mirror, proving resume comes from the kernel.
+///     and wipes only the SQLite sidecar, proving resume comes from the kernel
+///     (position is kernel-owned, never stored in SQLite — #561).
 ///
 /// Never compiled out — the `CommandLine.arguments` guard is the safety valve
 /// so this is a no-op in production. Kept in the main target (not the test
@@ -59,12 +60,11 @@ enum UITestSeeder {
         // branch rewrites clips.json afterwards when that flag IS present.
         try? FileManager.default.removeItem(at: dir.appendingPathComponent("clips.json"))
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        // Wipe the Swift persistence store so stale playback positions from a
-        // prior test don't bleed into this run. The kernel owns position
-        // persistence via podcasts.json (apply_writeback in audio_report.rs);
-        // the App Group SQLite is a mirror that must also be cleared so
-        // Persistence.load()'s "JSON absent → hydrate from SQLite" fallback
-        // doesn't resurrect a stale position from a prior session.
+        // Wipe the Swift persistence store so stale episodes/metadata from a
+        // prior test don't bleed into this run via Persistence.load()'s
+        // "JSON absent → hydrate from SQLite" path. Playback position is NOT in
+        // SQLite (kernel-owned in podcasts.json via apply_writeback, #561), so
+        // this wipe is about a clean episode list, not position.
         Persistence.shared.reset()
         try? Persistence.shared.episodeStore.replaceAll([])
         let episodeUUID = "A1A1FFFF-0001-0002-0001-000000000001"

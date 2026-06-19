@@ -198,11 +198,12 @@ final class Persistence: Sendable {
         }
         // JSON absent (e.g. SIGKILL interrupted write between SQLite commit and
         // atomic rename, or first launch before any save). Hydrate episode
-        // metadata (titles, download state, etc.) from the SQLite mirror so the
-        // library renders immediately. The authoritative resume position is NOT
-        // recovered here — it comes from the kernel's podcasts.json projection
-        // (audio_report.rs persists position); SQLite only carries a kernel-
-        // sourced display copy and is never used as an independent fallback.
+        // metadata (titles, download state, etc.) from the SQLite sidecar so the
+        // library renders immediately. Playback position is NOT stored here —
+        // SQLite episode blobs do not carry position (#561). The kernel's
+        // podcasts.json (written by audio_report.rs::apply_writeback) is the sole
+        // durable position store; it arrives via the first kernel snapshot after
+        // launch.
         var fresh = AppState()
         hydrateEpisodesPreservingMetadata(into: &fresh)
         return fresh

@@ -15,11 +15,8 @@ import Foundation
 //     the episode row, projected from `ep.position_secs`; `episode(id:)`
 //     applies the live kernel value as a display-only floor.
 //
-// The App Group SQLite episode store still persists the kernel-sourced
-// position as a display mirror (so the row renders before the kernel
-// projection arrives). That mirror is a cache, not a second source — its
-// removal is tracked as a follow-up #561 seam, at which point this file
-// (which now holds no code) is deleted.
-//
-// `--UITestSeedRelaunch` preserves the kernel's `podcasts.json` and wipes the
-// SQLite mirror, proving resume survives a cold restart from the kernel alone.
+// The App Group SQLite episode store does NOT persist position (#561). Episode
+// blobs load with playbackPosition=0; the kernel projection (first snapshot
+// after launch) immediately fills in the kernel-authoritative value from
+// podcasts.json. `--UITestSeedRelaunch` preserves podcasts.json and wipes
+// SQLite, proving resume-across-restart is driven solely by the kernel.

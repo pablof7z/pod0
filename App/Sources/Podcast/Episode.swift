@@ -62,7 +62,12 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
 
     // MARK: - User-mutable playback state
 
-    /// Last-known playback position in seconds. Persisted across launches.
+    /// Last-known playback position in seconds.
+    ///
+    /// Sourced exclusively from the kernel projection (`EpisodeSummary.playbackPositionSecs`
+    /// / `audio_report.rs::apply_writeback`). Not persisted by Swift — the SQLite episode
+    /// store no longer writes or reads this field. On cold launch, position is 0 until the
+    /// first kernel snapshot arrives and projects the kernel-persisted value from podcasts.json.
     var playbackPosition: TimeInterval
     /// `true` once the user (or auto-played threshold) marked the episode done.
     var played: Bool
@@ -191,7 +196,7 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         case enclosureURL, enclosureMimeType, imageURL
         case chapters, persons, soundBites
         case publisherTranscriptURL, publisherTranscriptType, chaptersURL
-        case playbackPosition, played, isStarred, downloadState, transcriptState
+        case played, isStarred, downloadState, transcriptState
         case adSegments, generationSource
         case triageDecision, triageRationale, triageIsHero
         case metadataIndexed
@@ -226,7 +231,10 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         publisherTranscriptURL = try c.decodeIfPresent(URL.self, forKey: .publisherTranscriptURL)
         publisherTranscriptType = try c.decodeIfPresent(TranscriptKind.self, forKey: .publisherTranscriptType)
         chaptersURL = try c.decodeIfPresent(URL.self, forKey: .chaptersURL)
-        playbackPosition = try c.decodeIfPresent(TimeInterval.self, forKey: .playbackPosition) ?? 0
+        // Position is sourced solely from the kernel projection; it is no longer
+        // persisted in the SQLite episode store. Always start at 0 on decode —
+        // the kernel snapshot will override with the authoritative value immediately.
+        playbackPosition = 0
         played = try c.decodeIfPresent(Bool.self, forKey: .played) ?? false
         isStarred = try c.decodeIfPresent(Bool.self, forKey: .isStarred) ?? false
         downloadState = try c.decodeIfPresent(DownloadState.self, forKey: .downloadState) ?? .notDownloaded
@@ -259,7 +267,10 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         try c.encodeIfPresent(publisherTranscriptURL, forKey: .publisherTranscriptURL)
         try c.encodeIfPresent(publisherTranscriptType, forKey: .publisherTranscriptType)
         try c.encodeIfPresent(chaptersURL, forKey: .chaptersURL)
-        try c.encode(playbackPosition, forKey: .playbackPosition)
+        // `playbackPosition` is intentionally omitted: position is kernel-owned
+        // and must not be persisted in the Swift SQLite store. The kernel's
+        // podcasts.json (written by audio_report.rs::apply_writeback) is the
+        // sole durable position store.
         try c.encode(played, forKey: .played)
         try c.encode(isStarred, forKey: .isStarred)
         try c.encode(downloadState, forKey: .downloadState)
