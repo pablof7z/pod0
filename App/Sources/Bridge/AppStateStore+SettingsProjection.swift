@@ -94,5 +94,23 @@ extension AppStateStore {
         next.settings.elevenLabsVoiceID = ks.elevenLabsVoiceID
         next.settings.elevenLabsVoiceName = ks.elevenLabsVoiceName
         next.settings.localModelID = ks.localModelID
+
+        // #561 seam: fields that were dispatched Swift→kernel but never projected
+        // back, causing stale values on cold relaunch / cross-update.
+        next.settings.blossomServerURL = ks.blossomServerURL
+        next.settings.youtubeExtractorURL = ks.youtubeExtractorURL
+        next.settings.autoDeleteDownloadsAfterPlayed = ks.autoDeleteDownloadsAfterPlayed
+        next.settings.autoIngestPublisherTranscripts = ks.autoIngestPublisherTranscripts
+        next.settings.autoFallbackToScribe = ks.autoFallbackToScribe
+        next.settings.notifyOnNewEpisodes = ks.notifyOnNewEpisodes
+        next.settings.nostrEnabled = ks.nostrEnabled
+        next.settings.nostrRelayURL = ks.nostrRelayURL
+        next.settings.nostrProfileName = ks.nostrProfileName
+        next.settings.nostrProfileAbout = ks.nostrProfileAbout
+        next.settings.nostrProfilePicture = ks.nostrProfilePicture
+        // nostrPublicKeyHex is kernel-derived (from Keychain via Rust); Swift
+        // never dispatches it — project the kernel's computed value back so
+        // store.state.settings.nostrPublicKeyHex stays current.
+        next.settings.nostrPublicKeyHex = ks.nostrPublicKeyHex
     }
 }

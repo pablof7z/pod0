@@ -62,6 +62,21 @@ extension KernelModel {
         h.combine(update.settings.effectiveSttProvider)
         h.combine(update.settings.sttProvider)
 
+        // #561 seam: newly-projected settings — must be hashed so a change
+        // is never deduped away before reaching the settings projection and UI.
+        h.combine(update.settings.blossomServerURL)
+        h.combine(update.settings.youtubeExtractorURL)
+        h.combine(update.settings.autoDeleteDownloadsAfterPlayed)
+        h.combine(update.settings.autoIngestPublisherTranscripts)
+        h.combine(update.settings.autoFallbackToScribe)
+        h.combine(update.settings.notifyOnNewEpisodes)
+        h.combine(update.settings.nostrEnabled)
+        h.combine(update.settings.nostrRelayURL)
+        h.combine(update.settings.nostrProfileName)
+        h.combine(update.settings.nostrProfileAbout)
+        h.combine(update.settings.nostrProfilePicture)
+        h.combine(update.settings.nostrPublicKeyHex)
+
         // Misc
         h.combine(update.toast)
         h.combine(update.activeAccount?.pubkeyHex)
