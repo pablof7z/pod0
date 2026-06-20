@@ -42,6 +42,11 @@ extension AppStateStore {
 
         next.settings.skipForwardSeconds = Int(ks.skipForwardSecs)
         next.settings.skipBackwardSeconds = Int(ks.skipBackwardSecs)
+        // #561: project kernel-persisted playback rate so `store.state.settings.defaultPlaybackRate`
+        // reflects the value from podcasts.json on cold relaunch. Without this projection,
+        // `onChange(of: store.state.settings)` never fires with a non-zero delta and the
+        // engine rate stays at 1.0× even after the kernel has restored 1.5× from disk.
+        next.settings.defaultPlaybackRate = ks.defaultPlaybackRate
         next.settings.agentInitialModel = ks.agentInitialModel
         next.settings.agentInitialModelName = ks.agentInitialModelName
         next.settings.agentThinkingModel = ks.agentThinkingModel

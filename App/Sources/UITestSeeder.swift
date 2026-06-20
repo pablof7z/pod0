@@ -50,6 +50,18 @@ enum UITestSeeder {
             return
         }
 
+        // Non-relaunch: wipe the iCloud KV store settings so iCloudSyncCapability
+        // does not restore stale values (e.g. default_playback_rate=1.5 from a
+        // prior testPlaybackSpeedPersists run) that would override the fresh seed.
+        // All pcst.* keys are removed so every setting starts from the kernel
+        // default, matching what the fresh podcasts.json seed provides.
+        let kvs = NSUbiquitousKeyValueStore.default
+        let pcstPrefix = "pcst."
+        for key in kvs.dictionaryRepresentation.keys where key.hasPrefix(pcstPrefix) {
+            kvs.removeObject(forKey: key)
+        }
+        NSLog("UITestSeeder: cleared all pcst.* iCloud KV keys")
+
         // Non-relaunch: write a fresh known-good seed so every test starts clean.
         // Always overwrite: the kernel may have replaced a prior seed with real
         // RSS data or a stale seed from a previous run.
@@ -255,7 +267,7 @@ enum UITestSeeder {
           "transcript_status_overrides": [],
           "local_paths": \(localPathsJSON),
           "file_sizes": \(fileSizesJSON),
-          "settings": {},
+          "settings": {"default_playback_rate": 1.0},
           "queue": \(queueJSON),
           "pending_wifi_downloads": []
         }

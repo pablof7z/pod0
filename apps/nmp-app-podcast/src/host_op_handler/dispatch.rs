@@ -126,3 +126,7 @@ impl PodcastHostOpHandler {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "speed_persist_tests.rs"]
+mod speed_persist_tests;

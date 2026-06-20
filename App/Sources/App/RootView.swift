@@ -66,8 +66,18 @@ struct RootView: View {
                     }
                 }
                 .onAppear { setupPlaybackHandlers() }
-                .onChange(of: store.state.settings) { _, new in
+                .onChange(of: store.state.settings) { old, new in
                     playbackState.applyPreferences(from: new)
+                    // When the kernel fires its first snapshot after a cold
+                    // relaunch, `defaultPlaybackRate` arrives from podcasts.json.
+                    // `applyPreferences` guards on `engine.episode == nil`, but
+                    // the mini-player restore in `setupPlaybackHandlers` calls
+                    // `setEpisode` before the kernel snapshot fires, making
+                    // `engine.episode` non-nil at that point. So we apply the
+                    // rate explicitly whenever `defaultPlaybackRate` changes.
+                    if abs(old.defaultPlaybackRate - new.defaultPlaybackRate) > 0.001 {
+                        playbackState.engine.setRate(new.defaultPlaybackRate)
+                    }
                 }
                 .sheet(isPresented: $showFullPlayer) {
                     PlayerView(state: playbackState, glassNamespace: playerNamespace)

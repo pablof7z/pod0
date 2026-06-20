@@ -169,7 +169,18 @@ final class iCloudSyncCapability {
         }
 
         kvs.synchronize()
-        dispatchKeysFromCloud(Array(Key.all))
+        // For --UITestSeed launches (fresh seed and relaunch-persistence tests),
+        // skip the initial KV→kernel dispatch. A stale pcst.speed value (e.g.
+        // 1.5 from a prior testPlaybackSpeedPersists run) persists in the local
+        // NSUbiquitousKeyValueStore SQLite cache between app launches; kvs.synchronize()
+        // reads it back into memory AFTER UITestSeeder's removeObject calls, so the
+        // in-memory deletions are overwritten before dispatchKeysFromCloud fires.
+        // Fresh seeds carry their own default_playback_rate in podcasts.json;
+        // relaunch persistence tests prove the kernel reads from podcasts.json
+        // (not from KV). Skipping for all --UITestSeed variants keeps both paths clean.
+        if !CommandLine.arguments.contains("--UITestSeed") {
+            dispatchKeysFromCloud(Array(Key.all))
+        }
         Self.logger.info("iCloudSyncCapability started")
     }
 

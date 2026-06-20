@@ -94,17 +94,22 @@ pub(crate) fn handle_set_auto_skip_ads(
 /// Helper used by `host_op_handler::handle_play` to push the stored
 /// ad segments + global toggles into a freshly-staged actor before
 /// `AudioCommand::Load` is dispatched. Pure read on the store side.
+///
+/// Also restores the persisted `default_playback_rate` onto the actor so the
+/// kernel's `now_playing.speed` projection is accurate after a cold relaunch
+/// even before the user explicitly changes the speed again.
 pub(crate) fn hydrate_actor_for_play(
     store: &Arc<Mutex<PodcastStore>>,
     player_actor: &Arc<Mutex<PlayerActor>>,
     episode_id: &str,
 ) {
-    let (segments, skip_ads, auto_play_next, auto_mark_played) = match store.lock() {
+    let (segments, skip_ads, auto_play_next, auto_mark_played, speed) = match store.lock() {
         Ok(s) => (
             s.ad_segments_for(episode_id).to_vec(),
             s.auto_skip_ads_enabled(),
             s.auto_play_next(),
             s.auto_mark_played_at_end(),
+            s.default_playback_rate() as f32,
         ),
         Err(_) => return,
     };
@@ -113,6 +118,7 @@ pub(crate) fn hydrate_actor_for_play(
         actor.set_auto_skip_ads(skip_ads);
         actor.set_auto_play_next(auto_play_next);
         actor.set_auto_mark_played_at_end(auto_mark_played);
+        actor.set_speed(speed);
     }
 }
 

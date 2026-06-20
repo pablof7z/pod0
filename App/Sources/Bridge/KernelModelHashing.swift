@@ -40,6 +40,11 @@ extension KernelModel {
         h.combine(update.settings.skipForwardSecs)
         h.combine(update.settings.skipBackwardSecs)
         h.combine(update.settings.autoSkipAdsEnabled)
+        // #561: hash the persisted playback rate so a rate-only change (e.g. the
+        // kernel restoring default_playback_rate from podcasts.json on cold
+        // relaunch) is never deduped away — it must reach the settings projection
+        // and SwiftUI so the engine rate updates.
+        h.combine(update.settings.defaultPlaybackRate)
         h.combine(update.settings.hasCompletedOnboarding)
         // Settings — provider key presence (drives Disconnect/Connect UI in
         // provider settings screens; must be hashed so a key save/delete

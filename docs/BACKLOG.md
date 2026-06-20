@@ -1427,15 +1427,10 @@ _All pending decisions resolved. See Done section for resolutions._
 - **wip-reconciliation.** Done for 2026-05-26; `WIP.md` is the live source for
   active worktrees, stale PR-stack entries were removed, and it should return
   to `Active` = `_None._` after each agent-owned PR merges.
-- **kernel-speed-persistence-uitest (#547).** `testPlaybackSpeedPersists`
-  (in `AppUITests/Sources/PlaybackSettingsUITests.swift`) is currently skipped
-  because the kernel resets playback speed to 1× on every cold relaunch even
-  when `--UITestSeedRelaunch` preserves `podcasts.json`. The kernel likely
-  stores speed in a separate settings sidecar that is reset by the app
-  initialization path (not by the seeder). Fix requires either (a) the kernel
-  persisting speed in a file that survives the seeder's `--UITestSeedRelaunch`
-  pass, or (b) an explicit seeder hook to carry the speed through relaunch.
-  Once fixed, remove the `XCTSkip` in `testPlaybackSpeedPersists`.
+- **kernel-speed-persistence-uitest (#547).** FIXED by #561: `SetSpeed` now
+  calls `set_default_playback_rate` so the rate is written to `podcasts.json`
+  and survives `--UITestSeedRelaunch`. `XCTSkip` removed from
+  `testPlaybackSpeedPersists`.
 - **simulator-download-trigger-coverage (#547).** `testDownloadEpisode`
   (in `AppUITests/Sources/DownloadUITests.swift`) asserts only the
   state-transition triggered by tapping Download on ep2, which uses a stub
