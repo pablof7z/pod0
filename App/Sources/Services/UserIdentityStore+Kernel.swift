@@ -52,14 +52,34 @@ extension UserIdentityStore {
     /// otherwise to the real kernel. The single choke point every social /
     /// identity dispatch uses. `silent` picks `dispatchSilent` (internal
     /// syncs) over `dispatch` (user actions that may toast on rejection).
+    ///
+    /// Returns the synchronous `DispatchResult` so callers that care about
+    /// synchronous rejection (e.g. `publishProfile`) can surface it as an
+    /// error. Mark `@discardableResult` so existing callers that ignore the
+    /// result (sign-out, keygen, importNsec) are unaffected.
+    ///
+    /// - Test-recorder path: returns `.accepted(correlationId: "")` — the
+    ///   recorder captures the dispatch for assertion; there is no kernel to
+    ///   reject, so treating it as accepted keeps tests on the success path.
+    /// - Silent path (internal best-effort syncs): returns whatever the kernel
+    ///   returns, or `.accepted(correlationId: "")` if no kernel is attached.
+    ///   Nil kernel on the silent path is not treated as failure because
+    ///   silent dispatches are best-effort and callers do not check results.
+    /// - Normal path: returns the kernel's result, or
+    ///   `.failure("no active kernel")` when no kernel is attached —
+    ///   which is a genuine synchronous rejection.
     @MainActor
-    func dispatchToKernel(namespace: String, body: [String: Any], silent: Bool = false) {
+    @discardableResult
+    func dispatchToKernel(namespace: String, body: [String: Any], silent: Bool = false) -> DispatchResult {
         if let recorder = _kernelDispatchRecorder {
             recorder(namespace, body)
+            return .accepted(correlationId: "")
         } else if silent {
-            kernel?.dispatchSilent(namespace: namespace, body: body)
+            return kernel?.dispatchSilent(namespace: namespace, body: body)
+                ?? .accepted(correlationId: "")
         } else {
-            kernel?.dispatch(namespace: namespace, body: body)
+            return kernel?.dispatch(namespace: namespace, body: body)
+                ?? .failure("no active kernel")
         }
     }
 

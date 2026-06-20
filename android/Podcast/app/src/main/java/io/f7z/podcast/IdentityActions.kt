@@ -86,6 +86,15 @@ object IdentityActions {
      *
      * Returns the kernel JSON envelope or null on FFI failure.
      */
+    /**
+     * Returns [DispatchResult.Accepted] when the kernel enqueued the action, or
+     * [DispatchResult.Failure] on synchronous rejection or FFI failure.
+     *
+     * The local profile cache is written ONLY on [DispatchResult.Accepted] — a
+     * rejected dispatch must not mutate local state (mirrors Swift:
+     * `UserIdentityStore+Publishing.swift` throws on rejection, leaving cache
+     * untouched).
+     */
     fun publishProfile(
         bridge: KernelBridge,
         context: Context,
@@ -94,11 +103,15 @@ object IdentityActions {
         displayName: String,
         about: String,
         pictureUrl: String,
-    ): String? {
+    ): DispatchResult {
         val payload = buildPublishProfilePayload(name, displayName, about, pictureUrl)
-        val result = bridge.dispatchAction(SOCIAL_NAMESPACE, payload)
-        // Cache non-projected fields locally for next form prefill.
-        cacheProfile(context, pubkeyHex, name, about)
+        val raw = bridge.dispatchAction(SOCIAL_NAMESPACE, payload)
+        val result = DispatchResult.parseEnvelope(raw)
+        // Cache non-projected fields ONLY on accepted dispatch — mirror Swift:
+        // no local-state mutation on rejection.
+        if (result is DispatchResult.Accepted) {
+            cacheProfile(context, pubkeyHex, name, about)
+        }
         return result
     }
 

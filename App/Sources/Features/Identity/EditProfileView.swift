@@ -2,8 +2,8 @@ import SwiftUI
 
 // MARK: - EditProfileView
 //
-// Push from `IdentityRootView`. Per identity-05-synthesis §4.3. Save signs and
-// publishes a kind-0 profile event via `UserIdentityStore.publishProfile`.
+// Push from `IdentityRootView`. Per identity-05-synthesis §4.3. Save dispatches
+// a kind-0 profile update to the Rust kernel via `UserIdentityStore.publishProfile`.
 //
 // In-flight UX: Save flips to a `ProgressView` in the toolbar and Cancel
 // disables so a double-tap can't queue two publishes. On success the dirty
@@ -267,21 +267,23 @@ struct EditProfileView: View {
         }
     }
 
-    /// Sign + publish the kind-0 profile. Two-outcome flow:
-    ///   - **Success**: clear-dirty (so a second tap doesn't republish), show
-    ///     a success banner long enough to read (≈900 ms), then dismiss.
-    ///   - **Failure**: keep the view open, surface a warning banner with the
-    ///     reason so the user can fix and retry. We do NOT move
-    ///     `initialSnapshot` forward on failure — Save stays enabled.
-    /// Haptic fires AFTER the publish attempt so the user's wrist feedback
-    /// matches the actual outcome.
+    /// Dispatch the kind-0 profile update to the Rust kernel. Two-outcome flow:
+    ///   - **Dispatched**: the kernel accepted the op for signing and relay
+    ///     publish (fire-and-forget). Clear dirty, show "Profile update sent."
+    ///     banner for ≈900 ms, then dismiss. Note: "sent" is the honest state —
+    ///     the kernel owns signing and relay confirmation; Swift never receives
+    ///     the signed event id/sig synchronously.
+    ///   - **Failure**: the dispatch itself threw (e.g. identity not ready).
+    ///     Keep the view open, surface a warning banner so the user can retry.
+    ///     `initialSnapshot` is NOT advanced on failure — Save stays enabled.
+    /// Haptic fires AFTER the dispatch attempt so wrist feedback matches outcome.
     private func save() async {
         let snapshot = currentSnapshot
         isPublishing = true
         saveBanner = SaveBanner(message: "Publishing…", isWarning: false)
         defer { isPublishing = false }
         do {
-            _ = try await identity.publishProfile(
+            try await identity.publishProfile(
                 name: snapshot.username,
                 displayName: snapshot.displayName,
                 about: snapshot.about,
@@ -289,7 +291,7 @@ struct EditProfileView: View {
             )
             initialSnapshot = snapshot
             Haptics.success()
-            saveBanner = SaveBanner(message: "Profile published.", isWarning: false)
+            saveBanner = SaveBanner(message: "Profile update sent.", isWarning: false)
             try? await Task.sleep(for: .milliseconds(900))
             dismiss()
         } catch {

@@ -415,6 +415,10 @@ enum RemoteSignerState: Sendable, Equatable {
 enum UserIdentityError: LocalizedError {
     case noIdentity
     case invalidKey
+    /// The Rust kernel synchronously rejected a `podcast.social` dispatch
+    /// (e.g. no active account, kernel not attached). Carries the rejection
+    /// message from `DispatchResult.failure`.
+    case dispatchRejected(_ message: String)
 
     var errorDescription: String? {
         switch self {
@@ -422,6 +426,8 @@ enum UserIdentityError: LocalizedError {
             "No feedback identity is available."
         case .invalidKey:
             "Invalid key — check the value and try again."
+        case let .dispatchRejected(message):
+            "Publish rejected: \(message)"
         }
     }
 }

@@ -159,7 +159,7 @@ pub struct PodcastUpdate {
     /// `podcast.settings.add_relay`. Drives the iOS App Relays editor.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub configured_relays: Vec<AppRelayRow>,
-    /// In-app feedback events (TENEX project notes), as `SignedNostrEvent`-shaped
+    /// In-app feedback events (TENEX project notes), as NIP-01 signed-event-shaped
     /// JSON objects (`{id,pubkey,created_at,kind,tags,content,sig}` — `pubkey` is
     /// the event author, `sig` is `""`). kind:1 messages/replies + kind:513
     /// metadata, all bearing the project `["a"]` coord. Empty until the first

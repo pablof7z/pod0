@@ -82,6 +82,52 @@ final class UserIdentityWiringTests: XCTestCase {
         XCTAssertEqual(call["picture"] as? String, "https://example.test/a.png")
     }
 
+    // MARK: - Synchronous dispatch failure → publishProfile throws
+
+    /// Validates the gap identified in PR #580: a synchronous kernel rejection
+    /// must surface as a thrown error and must NOT advance local state.
+    /// Without a real kernel attached (and the recorder NOT installed), calling
+    /// `publishProfile` reaches the nil-kernel branch of `dispatchToKernel`,
+    /// which returns `.failure("no active kernel")` — the publish must throw.
+    func testPublishProfileThrowsOnDispatchFailure() async throws {
+        // Build a store with no kernel recorder and no live kernel so that
+        // `dispatchToKernel` hits the nil-kernel path and returns `.failure`.
+        let made = await AppStateTestSupport.makeIsolatedStore()
+        defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
+        let isolatedIdentity = made.store.identity
+        isolatedIdentity._setActiveAccountForTesting(String(repeating: "1", count: 64))
+        // Capture initial profile state — it must NOT change on failure.
+        let nameBefore = isolatedIdentity.profileName
+
+        // publishProfile must throw when the kernel synchronously rejects.
+        do {
+            try await isolatedIdentity.publishProfile(
+                name: "should-not-persist",
+                displayName: "Should Not",
+                about: "Fail path",
+                picture: ""
+            )
+            XCTFail("publishProfile must throw on a synchronous dispatch failure; it returned success instead.")
+        } catch let error as UserIdentityError {
+            // Confirm the error is the dispatch-rejected case, not noIdentity / invalidKey.
+            if case .dispatchRejected = error {
+                // Expected — correct path.
+            } else {
+                XCTFail("Expected UserIdentityError.dispatchRejected, got: \(error)")
+            }
+        } catch {
+            // Any other thrown error is still a throw (not a silent success), which is
+            // acceptable for this assertion, but log it.
+            XCTFail("publishProfile threw an unexpected error type: \(error)")
+        }
+
+        // Local profile state must NOT have advanced to the new value.
+        XCTAssertEqual(
+            isolatedIdentity.profileName, nameBefore,
+            "profileName must not be updated when the dispatch is rejected synchronously."
+        )
+    }
+
     // MARK: - Notes (user) — kind 1 → kernel
 
     func testAddNoteUserAuthorDispatchesKindOneToKernel() async throws {

@@ -58,12 +58,12 @@ struct PodcastUpdate {
     @DefaultEmptyArray var configuredRelays: [AppRelayRow] = []
     /// In-app feedback events (TENEX project notes): kind:1 messages/replies +
     /// kind:513 metadata, all bearing the project `["a"]` coord. Each row is a
-    /// `SignedNostrEvent`-shaped object (`pubkey` is the author, `sig` is empty).
+    /// NIP-01 signed-event-shaped object (`pubkey` is the author, `sig` is empty).
     /// Empty until the first `fetch_feedback` dispatch. `FeedbackStore` rebuilds
     /// threads from this flat list (replacing the deleted `FeedbackRelayClient`
-    /// WebSocket fetch). Decoded into `FeedbackEventDTO` — NOT `SignedNostrEvent`
-    /// — because the snapshot decoder runs `.convertFromSnakeCase`, which would
-    /// rename `created_at` and break `SignedNostrEvent`'s explicit coding key.
+    /// WebSocket fetch). Decoded into `FeedbackEventDTO` — not the signed-event
+    /// type — because the snapshot decoder runs `.convertFromSnakeCase`, which
+    /// would rename `created_at` and break the explicit coding key.
     @DefaultEmptyArray var feedbackEvents: [FeedbackEventDTO] = []
     /// Resolved feedback threads (#354): the kernel performs the NIP-10
     /// reduction + newest-wins kind:513 metadata; `FeedbackStore` renders these

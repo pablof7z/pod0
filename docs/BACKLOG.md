@@ -480,6 +480,15 @@ worktrees currently in flight.
   one was removed in this PR. Verified against NMP v0.6.2 rev ac7e307e
   `crates/nmp-core/src/actor/commands/publish.rs` + `pending_sign.rs` +
   `nip46_bunker_signing.rs` integration test.
+- **nostr-publish-confirmation-projection.** `publishProfile` / `publishUserNote`
+  are now honest fire-and-forget (`Void` return, no fabricated signed-event stub).
+  The UI shows "Profile update sent." rather than "Profile published." because relay
+  confirmation never surfaces synchronously. To show a true "published" state, add a
+  snapshot projection in the kernel that emits the signed event `id`/`sig` after NMP
+  confirms relay acceptance, surface it via `AppStateStore` snapshot update, and wire
+  `EditProfileView` to observe the projection field (keyed by pubkey + kind:0) before
+  flipping to a "Published" banner. Deferred because NMP does not currently project
+  post-publish event identity back to the host app.
 - **local-notes-kernel-store.** Publishing user notes is already Rust-owned via
   `podcast.social.publish_note`, but local note storage remains Swift-owned:
   `AppState.notes`, `AppStateStore.addNote/deleteNote/updateNote`,

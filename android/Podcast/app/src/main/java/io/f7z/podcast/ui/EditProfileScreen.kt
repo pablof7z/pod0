@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.f7z.podcast.DispatchResult
 import io.f7z.podcast.IdentityActions
 import io.f7z.podcast.KernelBridge
 import io.f7z.podcast.PodcastSnapshot
@@ -233,7 +234,11 @@ fun EditProfileScreen(
                         isPublishing = true
                         errorMessage = null
                         successMessage = null
-                        val result = withContext(Dispatchers.IO) {
+                        // The kernel returns {"correlation_id":"..."} on accept or
+                        // {"error":"..."} on reject — parsed by DispatchResult.parseEnvelope.
+                        // IdentityActions.publishProfile caches non-projected fields ONLY on
+                        // Accepted, so a rejected dispatch leaves local state untouched.
+                        val dispatchResult = withContext(Dispatchers.IO) {
                             IdentityActions.publishProfile(
                                 bridge = bridge,
                                 context = context,
@@ -245,22 +250,21 @@ fun EditProfileScreen(
                             )
                         }
                         isPublishing = false
-                        // The kernel returns {"ok":true,...} on success; null means FFI
-                        // failure; {"ok":false,"error":"..."} surfaces the kernel's error.
-                        when {
-                            result == null -> {
-                                errorMessage = "Couldn't reach the kernel. Try again."
+                        when (dispatchResult) {
+                            is DispatchResult.Failure -> {
+                                // Surface the kernel's rejection reason or the FFI error.
+                                // Do NOT advance snapshot or dismiss — the edit is not saved.
+                                errorMessage = dispatchResult.message
                             }
-                            result.contains("\"ok\":false") || result.contains("\"ok\": false") -> {
-                                errorMessage = "Profile not published. Tap Save to retry."
-                            }
-                            else -> {
+                            is DispatchResult.Accepted -> {
                                 // Advance initial snapshot so Save button disables again.
                                 initialDisplayName = displayName
                                 initialName = name
                                 initialAbout = about
                                 initialPictureUrl = pictureUrl
-                                successMessage = "Profile published."
+                                // Kernel dispatch is fire-and-forget (enqueue envelope,
+                                // not relay confirmation), so do not claim "published".
+                                successMessage = "Profile update sent."
                                 // Brief success beat then dismiss — matches iOS 900 ms intent.
                                 kotlinx.coroutines.delay(900)
                                 onBack()

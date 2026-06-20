@@ -401,9 +401,10 @@ UX-10 §S3 stands. **Two refinements** (01's calls):
 Slice B adds (mirroring the existing `publishFeedbackNote` shape):
 
 ```swift
-func publishProfile(name: String, displayName: String, about: String, picture: String) async throws -> SignedNostrEvent
-func publishUserNote(_ note: Note, episodeCoord: String?) async throws -> SignedNostrEvent
-func publishUserClip(_ clip: Clip) async throws -> SignedNostrEvent
+// Superseded by #580 — these now return Void (kernel owns signing/id/sig/outcome).
+func publishProfile(name: String, displayName: String, about: String, picture: String) async throws -> Void
+func publishUserNote(_ note: Note, episodeCoord: String?) async throws -> Void
+func publishUserClip(_ clip: Clip) async throws -> Void
 ```
 
 All three reuse the existing `signer` and `FeedbackRelayClient.publish` machinery. None are required to ship before §4.1–§4.9 surfaces ship — Slice A reads only `publicKeyHex`, `npub`, `npubShort`, `mode`, kind-0 profile fields.

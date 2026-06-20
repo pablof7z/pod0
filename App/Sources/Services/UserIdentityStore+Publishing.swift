@@ -27,49 +27,35 @@ import Foundation
 
 extension UserIdentityStore {
 
-    /// Synthesize the `SignedNostrEvent` callers expect when the actual
-    /// sign happens kernel-side. The kernel dispatch is fire-and-forget
-    /// (`DispatchResult`, not an event); every production call-site discards
-    /// the return value, so this stub only satisfies the signature. The
-    /// `pubkey` is the real active pubkey so any caller that does read it
-    /// gets a truthful author.
-    private func kernelDispatchedEventStub(kind: Int, content: String, tags: [[String]]) -> SignedNostrEvent {
-        SignedNostrEvent(
-            id: "",
-            pubkey: publicKeyHex ?? "",
-            created_at: Int(Date().timeIntervalSince1970),
-            kind: kind,
-            tags: tags,
-            content: content,
-            sig: ""
-        )
-    }
-
-    /// Sign + publish a kind:0 metadata event with the supplied profile
-    /// fields. Driven by the EditProfile flow:
-    /// is driven by the EditProfile flow rather than auto-publish on first
-    /// launch. The resulting event is fanned out across every relay in
-    /// `FeedbackRelayClient.profileRelayURLs`; success is "at least one
-    /// relay acked." Returns the signed event so callers can echo it into
-    /// local profile state.
-    func publishProfile(name: String, displayName: String, about: String, picture: String) async throws -> SignedNostrEvent {
+    /// Dispatch a kind:0 metadata event to the Rust kernel for signing and
+    /// relay publish. The kernel signs with the active account (local nsec OR
+    /// NIP-46 bunker) and routes via NIP-65 outbox — Swift never touches
+    /// signing, event id, sig, or created_at.
+    ///
+    /// The dispatch is fire-and-forget: the kernel enqueues the sign op and
+    /// returns "queued"; no signed event id or relay acknowledgement is
+    /// synchronously available. Swift updates local profile state immediately
+    /// so the UI reflects the new fields without a relay round-trip.
+    ///
+    /// NOTE: A future projection could surface the kernel's confirmed event
+    /// id/sig back to Swift (tracked in docs/BACKLOG.md). Until then callers
+    /// must not treat successful dispatch as relay confirmation.
+    func publishProfile(name: String, displayName: String, about: String, picture: String) async throws {
         // Self-heal: a fresh user with no identity gets a kernel-generated
         // account dispatched here (the pubkey lands on the next snapshot tick).
         // The kernel signs with its active account — there is no Swift signer.
         try _ensureGeneratedKey()
-        let payload: [String: String] = [
-            "name": name,
-            "display_name": displayName,
-            "about": about,
-            "picture": picture,
-        ]
-        let data = try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
-        let content = String(data: data, encoding: .utf8) ?? "{}"
 
         // Sign + publish kind:0 through the kernel (`podcast.social`). The
         // kernel signs with the active account — local nsec OR NIP-46 bunker —
         // so there is no Swift signing path here for either identity mode.
-        dispatchToKernel(
+        //
+        // A synchronous `.failure` (e.g. no active account, no kernel) is a
+        // real rejection: throw BEFORE touching local state so the caller's
+        // catch path shows the error and does NOT advance to "update sent."
+        // On `.accepted` the kernel has enqueued the op; local state then
+        // updates optimistically (fire-and-forget for the relay leg).
+        let dispatchResult = dispatchToKernel(
             namespace: "podcast.social",
             body: [
                 "op": "publish_profile",
@@ -79,7 +65,9 @@ extension UserIdentityStore {
                 "picture": picture,
             ]
         )
-        let event = kernelDispatchedEventStub(kind: 0, content: content, tags: [])
+        if case let .failure(message) = dispatchResult {
+            throw UserIdentityError.dispatchRejected(message)
+        }
 
         // Update local state immediately so the UI reflects the new profile
         // without waiting for a relay round-trip on next launch.
@@ -103,18 +91,19 @@ extension UserIdentityStore {
                 UserDefaults.standard.set(cacheData, forKey: Self.kind0CachePrefix + pubkey)
             }
         }
-
-        return event
     }
 
-    /// Sign + publish a user-authored note as a kind:1 text note. Matches
-    /// the row "Notes (user)" in `identity-05-synthesis.md` §5.3.
+    /// Dispatch a user-authored kind:1 text note to the Rust kernel for
+    /// signing and relay publish. Matches the row "Notes (user)" in
+    /// `identity-05-synthesis.md` §5.3. Fire-and-forget — the kernel
+    /// owns signing, event id, sig, created_at, and relay outcome.
+    ///
     /// `episodeCoord` is the `30311:<author>:<id>` reference (or whatever
     /// shape the episode coordinate adopts) — passed through verbatim into
     /// an `["a", episodeCoord]` tag when present. Today no call-site has
     /// an episode coord to pass in, so the tag is omitted; future episode-
     /// anchored notes will populate it.
-    func publishUserNote(_ note: Note, episodeCoord: String?) async throws -> SignedNostrEvent {
+    func publishUserNote(_ note: Note, episodeCoord: String?) async throws {
         // Self-heal: a fresh user with no identity gets a kernel-generated
         // account dispatched here (the pubkey lands on the next snapshot tick).
         // The kernel signs with its active account — there is no Swift signer.
@@ -126,8 +115,12 @@ extension UserIdentityStore {
         if let episodeCoord, !episodeCoord.isEmpty {
             body["episode_coord"] = episodeCoord
         }
-        dispatchToKernel(namespace: "podcast.social", body: body)
-        return kernelDispatchedEventStub(kind: 1, content: note.text, tags: [])
+        // A synchronous `.failure` must surface as a thrown error so callers
+        // do not silently treat a rejected note as a success.
+        let dispatchResult = dispatchToKernel(namespace: "podcast.social", body: body)
+        if case let .failure(message) = dispatchResult {
+            throw UserIdentityError.dispatchRejected(message)
+        }
     }
 
 }
