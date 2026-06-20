@@ -26,10 +26,11 @@ extension RootView {
         }
 
         // Render the Up Next queue from the Rust-owned projection.
-        // Also clears `pendingEnqueue` for any episode the kernel has now
-        // confirmed — the projection becomes the authoritative source of truth.
+        // `applyKernelQueue` replaces the authoritative kernel queue — the sole
+        // source, since `PlaybackState.queue` is a pure read-only projection.
+        // Also clears `pendingEnqueue` for episodes the kernel has now confirmed.
         let seedQueue: ([QueueItem]) -> Void = { [playbackState] items in
-            playbackState.queue = items
+            playbackState.applyKernelQueue(items)
             if !playbackState.pendingEnqueue.isEmpty {
                 let confirmedIDs = Set(items.map(\.episodeID))
                 playbackState.pendingEnqueue.subtract(confirmedIDs)

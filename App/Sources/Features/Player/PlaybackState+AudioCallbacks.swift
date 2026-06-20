@@ -73,12 +73,6 @@ extension PlaybackState {
                        let url = URL(string: urlString) {
                         episode.enclosureURL = url
                     }
-                    // Rust popped this whole-episode item from its queue during
-                    // auto-advance; mirror the removal in the iOS queue so the
-                    // Up Next sheet doesn't show a stale entry.
-                    if self.queue.first.map({ $0.episodeID == id && $0.startSeconds == nil }) == true {
-                        self.queue.removeFirst()
-                    }
                     self.setEpisode(episode, playAfterLoad: false)
                     if positionSecs > 0 { self.engine.seek(to: positionSecs) }
                 }

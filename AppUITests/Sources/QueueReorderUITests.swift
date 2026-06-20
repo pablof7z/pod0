@@ -8,8 +8,8 @@ import XCTest
 /// "Move to top" (listed first) on each queue row and a context menu with the
 /// same action. The test long-presses a row; on iOS 26 this shows the context
 /// menu. The test then taps "Move to top" by label (`CONTAINS[c]`). This
-/// triggers state.moveQueue → kernelReorderQueue (with lowercase slot IDs so
-/// the kernel's exact-string comparison in `reorder_by_slot_ids` succeeds).
+/// triggers state.moveQueue → kernelReorderQueue; the kernel matches slot IDs
+/// case-insensitively in `reorder_by_slot_ids`.
 ///
 /// The test builds the queue via UI (Queue button on ep2 and ep3 detail views)
 /// rather than relying on a pre-seeded queue, because kernel queue projection

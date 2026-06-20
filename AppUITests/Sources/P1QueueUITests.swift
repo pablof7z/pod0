@@ -219,9 +219,10 @@ final class P1QueueUITests: XCTestCase {
         }
 
         // Give the kernel projection time to arrive and update the queue.
-        // `onQueueFromKernel` is the sole writer to `PlaybackState.queue`
-        // after optimistic Swift-side removal; "Nothing queued" appears only
-        // when `resolvedItems.isEmpty` — i.e. the projection has an empty list.
+        // The remove action dispatches to the kernel; `onQueueFromKernel` →
+        // `applyKernelQueue` is the sole writer to `PlaybackState.queue` (a pure
+        // read-only projection). "Nothing queued" appears only when the kernel
+        // projection has an empty list.
         sleep(2)
         snap(app, "q-remove-11-after-delete")
         dumpTree(app, "q-remove-11-tree")

@@ -49,7 +49,16 @@ final class PlaybackState {
             : String(format: "%d:%02d", m, s)
     }
 
-    var queue: [QueueItem] = []
+    /// Kernel-projected authoritative queue. Sole writer: `applyKernelQueue(_:)`,
+    /// called exclusively from `onQueueFromKernel`. User actions (remove, move,
+    /// clear, prune) only dispatch to the kernel; the fast in-process round-trip
+    /// updates this on the next snapshot tick. Read-only outside this class.
+    var kernelQueue: [QueueItem] = []
+
+    /// The rendered queue the UI reads. Pure read-only projection of the kernel
+    /// queue — never locally mutated by Swift user actions.
+    var queue: [QueueItem] { kernelQueue }
+
     /// Transient set of episode ids for which an enqueue was dispatched to the
     /// kernel and returned `.accepted`, but whose authoritative confirmation
     /// (via `onQueueFromKernel`) has not yet arrived. Drives the "Queued"

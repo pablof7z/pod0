@@ -1,0 +1,1 @@
+{ "shipped_at": "2026-06-20T10:00:00Z", "lines": ["Queue reordering and removal are now instant, with the kernel as the single source of truth for queue state."] }
