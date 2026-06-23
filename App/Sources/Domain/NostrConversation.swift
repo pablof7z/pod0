@@ -98,16 +98,26 @@ enum NostrConversationRoot {
 // MARK: - Bech32 npub helpers
 
 enum NostrNpub {
-    /// Quick check if input looks like a Nostr identifier or NIP-05 address
+    /// Returns true if input looks like a Nostr private key (nsec1 prefix).
+    /// Callers must reject these immediately with a user-visible warning —
+    /// private keys must never be routed to any search or discovery handler.
+    static func looksLikeNsecKey(_ input: String) -> Bool {
+        input.trimmingCharacters(in: .whitespacesAndNewlines).starts(with: "nsec1")
+    }
+
+    /// Quick check if input looks like a public Nostr identifier or NIP-05 address
     /// (no FFI, pure prefix detection). Used by AddByURLForm and NostrDiscoverForm
     /// to route inputs to the kernel's open_search handler instead of RSS fallback.
+    ///
+    /// Does NOT match nsec1 (private keys). Call `looksLikeNsecKey` separately
+    /// to guard against accidental private-key submission.
     ///
     /// Issue #605: eliminates ad-hoc string checks scattered across iOS.
     static func looksLikeNostrInput(_ input: String) -> Bool {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Nostr identifiers: npub1, nprofile1, nevent1, nsec1
+        // Public Nostr identifiers: npub1, nprofile1, nevent1
         if trimmed.starts(with: "npub1") || trimmed.starts(with: "nprofile1") ||
-           trimmed.starts(with: "nevent1") || trimmed.starts(with: "nsec1") {
+           trimmed.starts(with: "nevent1") {
             return true
         }
         // NIP-05 address: user@domain.com (but not http:// or https://)

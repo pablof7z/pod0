@@ -4,6 +4,8 @@ This is the tactical queue for active work, follow-ups, and pending decisions.
 Do not duplicate these items in `WIP.md`; `WIP.md` only records branches and
 worktrees currently in flight.
 
+- **open-search-nostr-result-await (#605).** `AddByURLForm` dispatches `podcast.open_search` for Nostr inputs but immediately surfaces an error rather than awaiting the async result. Once NMP #597 lands: observe `nostrResults` snapshot changes with a timeout (≈5 s), then fall through to RSS on `"nostr_not_recognised"`. Extend to `NostrDiscoverForm.swift` and `AddFriendSheet.swift` in the same pass. Also covers Phase 3 (TUI `handle_subscribe_input` and Android text-entry surfaces). Owner: whoever picks up #597 integration.
+
 - **knowledge-ann-index.** `top_k_search` is O(N) linear scan over all embedded chunks (fine for < ~50k chunks). When the corpus exceeds ~50k chunks, replace with an ANN index (e.g. HNSW via `usearch` or `instant-distance`). Slot in `podcast-knowledge::search::top_k_search` call site in `knowledge_search.rs`. <!-- TODO: ANN index when corpus > ~50k chunks -->
 
 - **android-unfollow-parity (#547/#573).** Rust exposes `podcast.unfollow` (`PodcastAction::Unfollow`); iOS routes all "Unsubscribe" UI through `kernelUnfollow` (keeps history). Android has no podcast unsubscribe/remove UI yet. When one is added, wire it to `UnfollowPayload` (defined in `ActionDispatcher.kt`) dispatched on `PodcastNamespace.PODCAST`. A permanent hard-delete affordance ("Delete") needs its own wire type (the Rust `podcast.unsubscribe` action) added at that time — there is intentionally no hard-delete payload in Android until that UI exists.

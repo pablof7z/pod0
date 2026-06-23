@@ -175,14 +175,21 @@ struct AddByURLForm: View {
         isWorking = true
         error = nil
 
-        // Issue #605: Check if input looks like a Nostr identifier or NIP-05 address.
-        // If so, route to the kernel's open_search handler instead of RSS path.
+        // Issue #605: Reject nsec1 (Nostr private key) immediately — never route to search.
+        if NostrNpub.looksLikeNsecKey(trimmed) {
+            isWorking = false
+            error = SubscriptionService.AddError.transport(
+                "This looks like a Nostr private key. Do not paste private keys here.")
+            Haptics.warning()
+            return
+        }
+
+        // Issue #605: Route public Nostr identifiers and NIP-05 addresses to the kernel's
+        // open_search handler instead of the RSS subscribe path. The kernel classifies the
+        // input (npub/nprofile/NIP-05) and dispatches subscribe_nostr; the podcasts snapshot
+        // updates asynchronously once NMP #597 lands with the full open_search APIs.
         if NostrNpub.looksLikeNostrInput(trimmed) {
             _ = store.kernelNostrOpenSearch(input: trimmed)
-            // Await the Nostr result on nostrResults. For now, this is a placeholder;
-            // once NMP #597 lands with full open_search, the kernel will trigger
-            // subscribe_nostr, and the podcasts snapshot will update.
-            // TODO #605: await nostrResults snapshot change or timeout → fallback to RSS
             isWorking = false
             error = SubscriptionService.AddError.transport("Nostr search pending (NMP #597)")
             Haptics.warning()

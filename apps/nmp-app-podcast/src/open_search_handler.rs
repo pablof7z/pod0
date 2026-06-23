@@ -17,12 +17,19 @@
 
 use serde_json::json;
 
-/// Detect if input looks like a Nostr identifier (npub/nprofile/nevent/nsec prefix).
+/// Detect if input looks like a Nostr private key (nsec1 prefix).
+/// These must never be routed to open_search — callers should reject them
+/// immediately with a user-visible warning.
+pub(crate) fn looks_like_nsec_key(input: &str) -> bool {
+    input.starts_with("nsec1")
+}
+
+/// Detect if input looks like a public Nostr identifier (npub/nprofile/nevent prefix).
+/// Does NOT match nsec1 — private keys are handled separately via `looks_like_nsec_key`.
 fn looks_like_nostr_identifier(input: &str) -> bool {
     input.starts_with("npub1")
         || input.starts_with("nprofile1")
         || input.starts_with("nevent1")
-        || input.starts_with("nsec1")
 }
 
 /// Detect if input looks like a NIP-05 address (user@domain.com, not http://).
@@ -68,8 +75,19 @@ mod tests {
     }
 
     #[test]
-    fn test_looks_like_nostr_identifier_nsec() {
-        assert!(looks_like_nostr_identifier("nsec1abc"));
+    fn test_looks_like_nostr_identifier_rejects_nsec() {
+        // nsec1 is a private key — must NOT match as a public identifier
+        assert!(!looks_like_nostr_identifier("nsec1abc"));
+    }
+
+    #[test]
+    fn test_looks_like_nsec_key() {
+        assert!(looks_like_nsec_key("nsec1abc"));
+    }
+
+    #[test]
+    fn test_looks_like_nsec_key_rejects_npub() {
+        assert!(!looks_like_nsec_key("npub1abc"));
     }
 
     #[test]
