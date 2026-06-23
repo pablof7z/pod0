@@ -348,6 +348,7 @@ async fn post_json(
         request = request.bearer_auth(api_key);
     }
     if url.starts_with(OPENROUTER_BASE_URL) {
+        request = request.header("HTTP-Referer", "https://github.com/pablof7z/podcast-player");
         request = request.header("X-Title", "Podcastr");
     }
     let response = request
