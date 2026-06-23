@@ -12,6 +12,8 @@ DerivedDevice/
 .worktrees/
 .claude/worktrees/
 .claude/scheduled_tasks.lock
+.claude/App/
+docs/wiki/
 *.ipa
 *.dSYM.zip
 *.dSYM
