@@ -26,14 +26,14 @@ pub(crate) fn looks_like_nsec_key(input: &str) -> bool {
 
 /// Detect if input looks like a public Nostr identifier (npub/nprofile/nevent prefix).
 /// Does NOT match nsec1 — private keys are handled separately via `looks_like_nsec_key`.
-fn looks_like_nostr_identifier(input: &str) -> bool {
+pub(crate) fn looks_like_nostr_identifier(input: &str) -> bool {
     input.starts_with("npub1")
         || input.starts_with("nprofile1")
         || input.starts_with("nevent1")
 }
 
 /// Detect if input looks like a NIP-05 address (user@domain.com, not http://).
-fn looks_like_nip05_address(input: &str) -> bool {
+pub(crate) fn looks_like_nip05_address(input: &str) -> bool {
     input.contains('@')
         && !input.starts_with("http://")
         && !input.starts_with("https://")

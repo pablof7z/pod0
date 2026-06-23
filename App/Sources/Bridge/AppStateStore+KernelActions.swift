@@ -158,12 +158,12 @@ extension AppStateStore {
     ///
     /// Once NMP #597 lands, the kernel-side handler will fully integrate the
     /// input-intent classifier and NIP-05 resolver.
+    @discardableResult
     func kernelNostrOpenSearch(input: String) -> DispatchResult? {
         guard let kern = kernel else { return nil }
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
-        kern.dispatch(namespace: "podcast", body: ["op": "open_search", "input": trimmed])
-        return DispatchResult(status: "open_search_pending")
+        return kern.dispatch(namespace: "podcast", body: ["op": "open_search", "input": trimmed])
     }
 
     // MARK: - Playback dispatch (M1 Part 3)

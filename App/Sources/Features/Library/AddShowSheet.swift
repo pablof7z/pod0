@@ -184,15 +184,35 @@ struct AddByURLForm: View {
             return
         }
 
-        // Issue #605: Route public Nostr identifiers and NIP-05 addresses to the kernel's
-        // open_search handler instead of the RSS subscribe path. The kernel classifies the
-        // input (npub/nprofile/NIP-05) and dispatches subscribe_nostr; the podcasts snapshot
-        // updates asynchronously once NMP #597 lands with the full open_search APIs.
+        // Issue #605: Route public Nostr identifiers to the kernel's Nostr subscribe path.
+        // For npub/nprofile: extract the hex pubkey and subscribe directly — this already
+        // works end-to-end and surfaces the show in the library once the kernel processes it.
+        // For other Nostr inputs (nevent, NIP-05): inform the user to use the Nostr tab.
         if NostrNpub.looksLikeNostrInput(trimmed) {
-            _ = store.kernelNostrOpenSearch(input: trimmed)
-            isWorking = false
-            error = SubscriptionService.AddError.transport("Nostr search pending (NMP #597)")
-            Haptics.warning()
+            if let pubkeyHex = NostrNpub.pubkeyHex(from: trimmed) {
+                do {
+                    let added = try await store.kernelSubscribeNostr(authorPubkeyHex: pubkeyHex)
+                    isWorking = false
+                    onAdded(added)
+                } catch let addError as SubscriptionService.AddError {
+                    isWorking = false
+                    error = addError
+                    Haptics.warning()
+                } catch {
+                    isWorking = false
+                    self.error = .transport(error.localizedDescription)
+                    Haptics.warning()
+                }
+            } else {
+                // NIP-05 / nevent — pubkey extraction not supported here yet.
+                // Route to kernel so the action is recorded; direct the user to
+                // the Nostr tab which has full discovery support.
+                store.kernelNostrOpenSearch(input: trimmed)
+                isWorking = false
+                error = SubscriptionService.AddError.transport(
+                    "Use the Nostr tab to look up this address.")
+                Haptics.warning()
+            }
             return
         }
 

@@ -333,17 +333,31 @@ impl PodcastHostOpHandler {
         serde_json::json!({"ok": true})
     }
 
-    pub(super) fn handle_open_search(&self, _input: String) -> serde_json::Value {
-        // Issue #605: Route Nostr-facing text input through NMP input-intent classifier.
-        // For now, delegate to the placeholder handler in open_search_handler.rs.
-        // Once NMP #597 lands with open_search APIs, the handler will fully integrate
-        // the input-intent classifier and NIP-05 resolver.
-        let state = self.state.library.store.lock().ok();
-        if state.is_none() {
-            return serde_json::json!({"ok": false, "error": "store poisoned"});
+    pub(super) fn handle_open_search(&self, input: String) -> serde_json::Value {
+        use crate::open_search_handler::{
+            looks_like_nip05_address, looks_like_nostr_identifier, looks_like_nsec_key,
+        };
+        // Guard: nsec1 private keys must never reach the open_search routing path.
+        // iOS shells should reject these before dispatch, but the kernel enforces it too.
+        if looks_like_nsec_key(&input) {
+            return serde_json::json!({
+                "ok": false,
+                "error": "nsec1 private keys must not be routed to open_search"
+            });
         }
-        // Placeholder: await NMP open_search integration
-        serde_json::json!({"ok": true, "status": "open_search_pending"})
+        // npub1/nprofile1/nevent1 — the iOS shell extracts the pubkey hex via
+        // `NostrNpub.pubkeyHex(from:)` and dispatches `subscribe_nostr` directly.
+        // The kernel acknowledges; the actual subscription is handled by that path.
+        if looks_like_nostr_identifier(&input) {
+            return serde_json::json!({"ok": true, "status": "nostr_identifier"});
+        }
+        // NIP-05 (user@domain.com) — NIP-05 resolution is pending NMP #597.
+        // Shell should surface a user-friendly message directing to npub instead.
+        if looks_like_nip05_address(&input) {
+            return serde_json::json!({"ok": true, "status": "nip05_pending"});
+        }
+        // Not a recognised Nostr input — shell may fall back to the RSS path.
+        serde_json::json!({"ok": false, "status": "nostr_not_recognised"})
     }
 
 }
