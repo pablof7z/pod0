@@ -266,4 +266,25 @@ impl PodcastStore {
     pub fn local_paths(&self) -> &HashMap<EpisodeId, String> {
         &self.local_paths
     }
+
+    /// Reverse-lookup: find the episode_id whose NIP-73 anchor matches
+    /// `anchor` (`"podcast:item:guid:<guid>"`). Used by [`CommentsObserver`]
+    /// to route inbound kind:1111 events to the right cache slot.
+    pub fn episode_id_for_anchor(&self, anchor: &str) -> Option<String> {
+        let guid = anchor.strip_prefix("podcast:item:guid:")?;
+        for (_podcast, episodes) in self.all_podcasts() {
+            for ep in episodes {
+                let id_str = ep.id.0.to_string();
+                let ep_guid: &str = if !ep.guid.is_empty() {
+                    &ep.guid
+                } else {
+                    &id_str
+                };
+                if ep_guid == guid {
+                    return Some(id_str);
+                }
+            }
+        }
+        None
+    }
 }
