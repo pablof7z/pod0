@@ -156,7 +156,7 @@ internal class KernelForwardingPlayer(
 
     // MARK: - Dispatch
 
-    private fun dispatchToKernel(bridge: KernelBridge, payload: String) {
+    private fun dispatchToKernel(bridge: KernelDispatcher, payload: String) {
         bridge.dispatchAction(NAMESPACE, payload)
     }
 
