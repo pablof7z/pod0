@@ -117,7 +117,7 @@ extension PlaybackState {
     }
 
     func setRate(_ newRate: Double) {
-        store?.kernelSetSpeed(newRate)
+        transport?.kernelSetSpeed(newRate)
         engine.setRate(newRate)
     }
 

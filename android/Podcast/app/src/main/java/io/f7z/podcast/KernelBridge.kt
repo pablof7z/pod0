@@ -78,7 +78,7 @@ class KernelBridge : KernelDispatcher {
      * envelope (`{"correlation_id":...}` on accept, `{"error":...}` on
      * rejection) or `null` on any FFI failure (D6).
      */
-    fun dispatchAction(namespace: String, payloadJson: String): String? {
+    override fun dispatchAction(namespace: String, payloadJson: String): String? {
         val h = handle.get(); return if (h != 0L) nativeDispatchAction(h, namespace, payloadJson) else null
     }
 

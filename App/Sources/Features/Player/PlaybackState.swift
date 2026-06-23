@@ -24,6 +24,16 @@ final class PlaybackState {
     /// (queue persistence and playback state) without a retained cycle.
     weak var store: AppStateStore?
 
+    /// Kernel playback transport dispatch seam. When non-nil, takes
+    /// precedence over `store` for all transport dispatch calls. Set only
+    /// in unit tests to inject a lightweight stub without subclassing the
+    /// `final` `AppStateStore`. Nil in production.
+    var kernelDispatch: (any KernelPlaybackDispatching)?
+
+    /// Active kernel transport dispatcher: explicit injection or the store.
+    /// Extensions that need to forward transport commands use this.
+    var transport: (any KernelPlaybackDispatching)? { kernelDispatch ?? store }
+
     // MARK: - Observable surface
 
     var episode: Episode?
@@ -139,16 +149,16 @@ final class PlaybackState {
     func play() {
         guard let episode else { return }
         Haptics.medium()
-        store?.kernelResume()
+        transport?.kernelResume()
     }
 
     func pause() {
         Haptics.soft()
-        store?.kernelPause()
+        transport?.kernelPause()
     }
 
     func seek(to time: TimeInterval) {
-        store?.kernelSeek(positionSecs: time)
+        transport?.kernelSeek(positionSecs: time)
         engine.seek(to: time)
         Haptics.selection()
     }
@@ -157,12 +167,12 @@ final class PlaybackState {
 
     func skipBackward(_ seconds: TimeInterval? = nil) {
         let delta = seconds ?? engine.skipBackwardSeconds
-        store?.kernelSkipBackward(secs: delta)
+        transport?.kernelSkipBackward(secs: delta)
     }
 
     func skipForward(_ seconds: TimeInterval? = nil) {
         let delta = seconds ?? engine.skipForwardSeconds
-        store?.kernelSkipForward(secs: delta)
+        transport?.kernelSkipForward(secs: delta)
     }
 
     func setRate(_ newRate: PlaybackRate) {
@@ -170,7 +180,7 @@ final class PlaybackState {
         // AudioCommand::SetSpeed callback calls engine.setRate (idempotent).
         // Direct update immediately after for UI feedback so PlaybackState.rate
         // (which reads engine.rate) is current in the same render cycle.
-        store?.kernelSetSpeed(newRate.rawValue)
+        transport?.kernelSetSpeed(newRate.rawValue)
         engine.setRate(newRate.rawValue)
         Haptics.selection()
     }

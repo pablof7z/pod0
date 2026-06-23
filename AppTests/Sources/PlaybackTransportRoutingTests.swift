@@ -5,17 +5,30 @@ import XCTest
 ///
 /// All transport commands must dispatch to Rust before native engines
 /// execute, ensuring Rust is the authoritative playback policy source.
+///
+/// `AppStateStore` is a `final` class with kernel methods declared in
+/// extensions, so it cannot be subclassed in tests. `PlaybackState` exposes
+/// a `kernelDispatch: (any KernelPlaybackDispatching)?` seam that, when set,
+/// takes precedence over `store`. Tests inject `StubKernelTransport` via
+/// that seam without touching the live store.
 @MainActor
 final class PlaybackTransportRoutingTests: XCTestCase {
 
     private var playbackState: PlaybackState!
-    private var stubStore: StubAppStateStore!
+    private var stub: StubKernelTransport!
 
     override func setUp() {
         super.setUp()
         playbackState = PlaybackState()
-        stubStore = StubAppStateStore()
-        playbackState.store = stubStore
+        stub = StubKernelTransport()
+        playbackState.kernelDispatch = stub
+    }
+
+    override func tearDown() {
+        playbackState.kernelDispatch = nil
+        playbackState = nil
+        stub = nil
+        super.tearDown()
     }
 
     // MARK: - Tests
@@ -34,19 +47,19 @@ final class PlaybackTransportRoutingTests: XCTestCase {
 
         playbackState.play()
 
-        XCTAssertEqual(stubStore.kernelResumeCallCount, 1)
+        XCTAssertEqual(stub.kernelResumeCallCount, 1)
     }
 
     func testPauseDispatchesKernelPause() {
-        stubStore.reset()
+        stub.reset()
 
         playbackState.pause()
 
-        XCTAssertEqual(stubStore.kernelPauseCallCount, 1)
+        XCTAssertEqual(stub.kernelPauseCallCount, 1)
     }
 
     func testSeekDispatchesKernelSeekBeforeEngineSeek() {
-        stubStore.reset()
+        stub.reset()
 
         let episode = Episode(
             id: UUID(),
@@ -60,40 +73,43 @@ final class PlaybackTransportRoutingTests: XCTestCase {
         playbackState.setEpisode(episode, playAfterLoad: false)
         playbackState.seek(to: 100)
 
-        XCTAssertEqual(stubStore.kernelSeekCallCount, 1)
-        XCTAssertEqual(stubStore.lastSeekPosition, 100)
+        XCTAssertEqual(stub.kernelSeekCallCount, 1)
+        XCTAssertEqual(stub.lastSeekPosition, 100)
     }
 
     func testSkipForwardDispatchesKernelSkipForward() {
-        stubStore.reset()
+        stub.reset()
 
         playbackState.skipForward(15)
 
-        XCTAssertEqual(stubStore.kernelSkipForwardCallCount, 1)
+        XCTAssertEqual(stub.kernelSkipForwardCallCount, 1)
     }
 
     func testSkipBackwardDispatchesKernelSkipBackward() {
-        stubStore.reset()
+        stub.reset()
 
         playbackState.skipBackward(15)
 
-        XCTAssertEqual(stubStore.kernelSkipBackwardCallCount, 1)
+        XCTAssertEqual(stub.kernelSkipBackwardCallCount, 1)
     }
 
     func testSetRateDispatchesKernelSetSpeedBeforeEngineSetRate() {
-        stubStore.reset()
+        stub.reset()
 
         playbackState.setRate(.speed1_5x)
 
-        XCTAssertEqual(stubStore.kernelSetSpeedCallCount, 1)
-        XCTAssertEqual(stubStore.lastSetSpeedValue, 1.5)
+        XCTAssertEqual(stub.kernelSetSpeedCallCount, 1)
+        XCTAssertEqual(stub.lastSetSpeedValue, 1.5)
     }
 }
 
 // MARK: - Stub
 
-/// A minimal stub AppStateStore for testing transport dispatch order.
-final class StubAppStateStore: AppStateStore {
+/// Lightweight recording stub conforming to `KernelPlaybackDispatching`.
+/// Does not subclass or instantiate `AppStateStore` — safe to use in JVM
+/// unit tests and in XCTest without a live kernel bridge.
+@MainActor
+final class StubKernelTransport: KernelPlaybackDispatching {
 
     var kernelResumeCallCount = 0
     var kernelPauseCallCount = 0
@@ -116,32 +132,32 @@ final class StubAppStateStore: AppStateStore {
         lastSetSpeedValue = 0
     }
 
-    override func kernelResume() {
+    func kernelResume() {
         kernelResumeCallCount += 1
     }
 
-    override func kernelPause() -> DispatchResult? {
+    func kernelPause() -> DispatchResult? {
         kernelPauseCallCount += 1
         return nil
     }
 
-    override func kernelSeek(positionSecs: Double) -> DispatchResult? {
+    func kernelSeek(positionSecs: Double) -> DispatchResult? {
         kernelSeekCallCount += 1
         lastSeekPosition = positionSecs
         return nil
     }
 
-    override func kernelSkipForward(secs: Double?) -> DispatchResult? {
+    func kernelSkipForward(secs: Double?) -> DispatchResult? {
         kernelSkipForwardCallCount += 1
         return nil
     }
 
-    override func kernelSkipBackward(secs: Double?) -> DispatchResult? {
+    func kernelSkipBackward(secs: Double?) -> DispatchResult? {
         kernelSkipBackwardCallCount += 1
         return nil
     }
 
-    override func kernelSetSpeed(_ speed: Double) -> DispatchResult? {
+    func kernelSetSpeed(_ speed: Double) -> DispatchResult? {
         kernelSetSpeedCallCount += 1
         lastSetSpeedValue = speed
         return nil
