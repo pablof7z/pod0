@@ -20,6 +20,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material3.FilterChip
@@ -268,7 +270,11 @@ private fun AdMarkersBar(segments: List<AdSegment>, durationSecs: Float) {
 }
 
 /**
- * Transport controls row: play/pause (centre) + AutoSnip button (trailing).
+ * Transport controls row: skip-back (leading) + play/pause (centre) + skip-forward + AutoSnip (trailing).
+ *
+ * Skip buttons dispatch `podcast.player.skip_backward` / `podcast.player.skip_forward`;
+ * the kernel owns the skip interval (resolves from SettingsSnapshot, default 15s / 30s).
+ * Both are enabled only when an episode is loaded.
  *
  * AutoSnip dispatches `podcast.clip.auto_snip` to the kernel, which owns ALL
  * boundary logic (chapter-snap + transcript-refine, SLICE 2/3a). The button is
@@ -289,14 +295,32 @@ private fun TransportRow(
     val positionSecs = nowPlaying.positionSecs
     // Guard: require a valid episode + non-zero position.
     val canAutoSnip = episodeId != null && positionSecs > 0.0
+    val canSkip = episodeId != null
 
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Leading placeholder so play/pause stays visually centred.
-        Spacer(modifier = Modifier.size(48.dp))
+        // Skip backward button
+        IconButton(
+            onClick = {
+                if (canSkip) {
+                    PodcastActionDispatcher.dispatch(
+                        bridge = bridge,
+                        namespace = PodcastNamespace.PLAYER,
+                        payload = SkipBackwardPayload(),
+                    )
+                }
+            },
+            enabled = canSkip,
+            modifier = Modifier.size(48.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.SkipPrevious,
+                contentDescription = "Skip backward",
+            )
+        }
 
         Spacer(modifier = Modifier.width(16.dp))
 
@@ -324,6 +348,28 @@ private fun TransportRow(
                 imageVector = if (nowPlaying.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                 contentDescription = if (nowPlaying.isPlaying) "Pause" else "Play",
                 modifier = Modifier.size(36.dp),
+            )
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // Skip forward button
+        IconButton(
+            onClick = {
+                if (canSkip) {
+                    PodcastActionDispatcher.dispatch(
+                        bridge = bridge,
+                        namespace = PodcastNamespace.PLAYER,
+                        payload = SkipForwardPayload(),
+                    )
+                }
+            },
+            enabled = canSkip,
+            modifier = Modifier.size(48.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.SkipNext,
+                contentDescription = "Skip forward",
             )
         }
 
