@@ -1,140 +1,134 @@
 package io.f7z.podcast
 
-import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.test.utils.FakePlayer
 import io.f7z.podcast.capabilities.KernelForwardingPlayer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Test
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 /**
  * Unit tests for [KernelForwardingPlayer] transport routing.
  *
- * Verifies that when a `KernelBridge` is set, media3 transport commands
- * (play/pause/seekTo/seekForward/seekBack) dispatch to the kernel instead
- * of executing directly on the inner player. With bridge = null, commands
- * fall back to the inner player (no crash).
+ * Verifies that when a [KernelDispatcher] is set, media3 transport commands
+ * (play/pause/seekTo/seekForward/seekBack) dispatch to the kernel instead of
+ * executing directly on the inner player. With bridge = null, commands fall
+ * back to the inner player.
+ *
+ * Uses Mockito to stub the media3 [Player] interface (many abstract methods;
+ * a manual full implementation would be brittle). Uses [FakeDispatcher] (not
+ * [KernelBridge]) as the bridge double — [KernelBridge]'s init block loads
+ * the native `.so` via System.loadLibrary, which is unavailable in JVM tests.
  */
 class MediaSessionTransportRoutingTest {
 
     private val json = Json
 
-    // MARK: - Tests
+    // MARK: - Bridge routing tests
 
     @Test
     fun playWithBridgeDispatchesResume() {
-        val fakePlayer = FakePlayer()
-        val forwarder = KernelForwardingPlayer(fakePlayer)
-        val bridge = FakeBridge()
-        forwarder.bridge = bridge
+        val forwarder = KernelForwardingPlayer(mock(Player::class.java))
+        val dispatcher = FakeDispatcher()
+        forwarder.bridge = dispatcher
 
         forwarder.play()
 
-        assertEquals(1, bridge.dispatchedActions.size)
-        val action = bridge.dispatchedActions[0]
-        assertEquals("podcast.player", action.namespace)
-
-        val payload = json.parseToJsonElement(action.payload).jsonObject
+        assertEquals(1, dispatcher.actions.size)
+        val payload = json.parseToJsonElement(dispatcher.actions[0].payload).jsonObject
+        assertEquals("podcast.player", dispatcher.actions[0].namespace)
         assertEquals("resume", payload["op"]?.jsonPrimitive?.content)
     }
 
     @Test
     fun pauseWithBridgeDispatchesPause() {
-        val fakePlayer = FakePlayer()
-        val forwarder = KernelForwardingPlayer(fakePlayer)
-        val bridge = FakeBridge()
-        forwarder.bridge = bridge
+        val forwarder = KernelForwardingPlayer(mock(Player::class.java))
+        val dispatcher = FakeDispatcher()
+        forwarder.bridge = dispatcher
 
         forwarder.pause()
 
-        assertEquals(1, bridge.dispatchedActions.size)
-        val action = bridge.dispatchedActions[0]
-        assertEquals("pause", json.parseToJsonElement(action.payload).jsonObject["op"]?.jsonPrimitive?.content)
+        assertEquals(1, dispatcher.actions.size)
+        val payload = json.parseToJsonElement(dispatcher.actions[0].payload).jsonObject
+        assertEquals("pause", payload["op"]?.jsonPrimitive?.content)
     }
 
     @Test
     fun seekToWithBridgeDispatchesSeek() {
-        val fakePlayer = FakePlayer()
-        val forwarder = KernelForwardingPlayer(fakePlayer)
-        val bridge = FakeBridge()
-        forwarder.bridge = bridge
+        val forwarder = KernelForwardingPlayer(mock(Player::class.java))
+        val dispatcher = FakeDispatcher()
+        forwarder.bridge = dispatcher
 
         forwarder.seekTo(0, 90_000L) // 90 seconds in milliseconds
 
-        assertEquals(1, bridge.dispatchedActions.size)
-        val action = bridge.dispatchedActions[0]
-        val payload = json.parseToJsonElement(action.payload).jsonObject
+        assertEquals(1, dispatcher.actions.size)
+        val payload = json.parseToJsonElement(dispatcher.actions[0].payload).jsonObject
         assertEquals("seek", payload["op"]?.jsonPrimitive?.content)
         assertEquals(90.0, payload["position_secs"]?.jsonPrimitive?.content?.toDouble())
     }
 
     @Test
     fun seekForwardWithBridgeDispatchesSkipForward() {
-        val fakePlayer = FakePlayer()
-        val forwarder = KernelForwardingPlayer(fakePlayer)
-        val bridge = FakeBridge()
-        forwarder.bridge = bridge
+        val forwarder = KernelForwardingPlayer(mock(Player::class.java))
+        val dispatcher = FakeDispatcher()
+        forwarder.bridge = dispatcher
 
         forwarder.seekForward()
 
-        assertEquals(1, bridge.dispatchedActions.size)
-        val action = bridge.dispatchedActions[0]
-        val payload = json.parseToJsonElement(action.payload).jsonObject
+        assertEquals(1, dispatcher.actions.size)
+        val payload = json.parseToJsonElement(dispatcher.actions[0].payload).jsonObject
         assertEquals("skip_forward", payload["op"]?.jsonPrimitive?.content)
     }
 
     @Test
     fun seekBackWithBridgeDispatchesSkipBackward() {
-        val fakePlayer = FakePlayer()
-        val forwarder = KernelForwardingPlayer(fakePlayer)
-        val bridge = FakeBridge()
-        forwarder.bridge = bridge
+        val forwarder = KernelForwardingPlayer(mock(Player::class.java))
+        val dispatcher = FakeDispatcher()
+        forwarder.bridge = dispatcher
 
         forwarder.seekBack()
 
-        assertEquals(1, bridge.dispatchedActions.size)
-        val action = bridge.dispatchedActions[0]
-        val payload = json.parseToJsonElement(action.payload).jsonObject
+        assertEquals(1, dispatcher.actions.size)
+        val payload = json.parseToJsonElement(dispatcher.actions[0].payload).jsonObject
         assertEquals("skip_backward", payload["op"]?.jsonPrimitive?.content)
     }
 
+    // MARK: - Fallback tests (bridge = null)
+
     @Test
     fun playWithoutBridgeFallsBackToInnerPlayer() {
-        val fakePlayer = FakePlayer()
-        val forwarder = KernelForwardingPlayer(fakePlayer)
+        val innerPlayer = mock(Player::class.java)
+        val forwarder = KernelForwardingPlayer(innerPlayer)
         // bridge = null (default)
 
         forwarder.play()
 
-        assertEquals(true, fakePlayer.playWhenReady)
+        verify(innerPlayer).play()
     }
 
     @Test
     fun pauseWithoutBridgeFallsBackToInnerPlayer() {
-        val fakePlayer = FakePlayer()
-        val forwarder = KernelForwardingPlayer(fakePlayer)
-        fakePlayer.playWhenReady = true
+        val innerPlayer = mock(Player::class.java)
+        val forwarder = KernelForwardingPlayer(innerPlayer)
         // bridge = null
 
         forwarder.pause()
 
-        assertEquals(false, fakePlayer.playWhenReady)
+        verify(innerPlayer).pause()
     }
 
     @Test
     fun seekToWithoutBridgeFallsBackToInnerPlayer() {
-        val fakePlayer = FakePlayer()
-        val forwarder = KernelForwardingPlayer(fakePlayer)
-        fakePlayer.setMediaItem(MediaItem.fromUri("https://example.com/audio.mp3"))
+        val innerPlayer = mock(Player::class.java)
+        val forwarder = KernelForwardingPlayer(innerPlayer)
         // bridge = null
 
         forwarder.seekTo(0, 60_000L) // 60 seconds
 
-        assertEquals(60_000L, fakePlayer.currentPosition)
+        verify(innerPlayer).seekTo(0, 60_000L)
     }
 }
 
@@ -146,16 +140,16 @@ private data class DispatchedAction(
 )
 
 /**
- * Fake [KernelBridge] for testing that records dispatch calls.
+ * Fake [KernelDispatcher] for testing that records dispatch calls.
+ *
+ * Implements [KernelDispatcher] (the thin interface extracted for testability),
+ * NOT [KernelBridge] (which loads a native .so in its init block).
  */
-private class FakeBridge : KernelBridge {
-    val dispatchedActions = mutableListOf<DispatchedAction>()
+private class FakeDispatcher : KernelDispatcher {
+    val actions = mutableListOf<DispatchedAction>()
 
-    override fun dispatchAction(namespace: String, payload: String): String? {
-        dispatchedActions.add(DispatchedAction(namespace, payload))
+    override fun dispatchAction(namespace: String, payloadJson: String): String? {
+        actions.add(DispatchedAction(namespace, payloadJson))
         return null
     }
-
-    override fun capabilityReport(namespace: String, payload: String): String? = null
-    override fun authorizationRequest(body: String): String? = null
 }

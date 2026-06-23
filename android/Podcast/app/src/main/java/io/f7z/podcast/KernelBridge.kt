@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicLong
  * (`io.f7z.podcast.KernelBridge`) is hard-coded — is fine for a proof-of-
  * concept and will be factored out by M14 codegen.
  */
-class KernelBridge {
+class KernelBridge : KernelDispatcher {
     /** Opaque pointer to the Rust `Session` struct. 0 means freed/uninitialized. */
     private val handle = AtomicLong(0L)
 

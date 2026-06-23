@@ -2,7 +2,7 @@ package io.f7z.podcast.capabilities
 
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.Player
-import io.f7z.podcast.KernelBridge
+import io.f7z.podcast.KernelDispatcher
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -35,12 +35,15 @@ internal class KernelForwardingPlayer(
 ) : ForwardingPlayer(innerPlayer) {
 
     /**
-     * The kernel bridge for dispatching `podcast.player` actions. Set by
+     * The kernel dispatcher for dispatching `podcast.player` actions. Set by
      * `ExoPlayerCapability.bindListenerIfReady()` when the capability is ready;
      * cleared by `detach()`. Volatile for lock-free reads on the main thread.
+     *
+     * Typed as [KernelDispatcher] (not [io.f7z.podcast.KernelBridge]) so that
+     * tests can inject a double without loading the native JNI library.
      */
     @Volatile
-    var bridge: KernelBridge? = null
+    var bridge: KernelDispatcher? = null
 
     private val json: Json = Json {
         ignoreUnknownKeys = true

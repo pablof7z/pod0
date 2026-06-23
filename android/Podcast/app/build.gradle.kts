@@ -112,6 +112,16 @@ dependencies {
     // `{"t":"snapshot","v":{...}}` frame unwraps to the same `PodcastSnapshot`
     // the bare projection pull yields, with `rev` propagating across frames.
     testImplementation("junit:junit:4.13.2")
+
+    // ─── Mockito — test doubles for JVM unit tests ────────────────────────────
+    //
+    // Used by `MediaSessionTransportRoutingTest` to create a no-op stub for the
+    // media3 `Player` interface (many abstract methods; full manual
+    // implementation would be brittle). The version is pinned to the 5.x line
+    // (compatible with JVM 11 / Android Gradle Plugin baseline) and uses
+    // kotlin-reflection-free byte-buddy mocking so no Robolectric or NDK is
+    // required.
+    testImplementation("org.mockito:mockito-core:5.11.0")
 }
 
 // ── cargo-ndk task ───────────────────────────────────────────────────────────
