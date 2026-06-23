@@ -50,7 +50,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use nostr::nips::nip19::ToBech32;
-use nmp_core::substrate::KernelEvent;
+use nmp_core::substrate::{ContactsLookup, KernelEvent};
 use nmp_core::KernelEventObserver;
 use nmp_nip02::FollowListProjection;
 
@@ -89,17 +89,20 @@ impl FollowListObserver {
     ///
     /// * `active_pubkey` — the kernel's shared active-account slot
     ///   (`NmpApp::active_account_handle()`).
+    /// * `contacts_lookup` — the shared `ContactsLookup` the `Kind3Parser`
+    ///   writes to; `FollowListProjection` is a thin read-model over it.
     /// * `social_slot` — the shared slot written by this observer and read by
     ///   the snapshot projection.
     /// * `rev` — shared rev counter; bumped on every kind:3 event when no
     ///   `snapshot_signal` is present.
     pub fn new(
         active_pubkey: Arc<Mutex<Option<String>>>,
+        contacts_lookup: Arc<dyn ContactsLookup>,
         social_slot: Arc<Mutex<Option<SocialSnapshot>>>,
         rev: Arc<AtomicU64>,
     ) -> Self {
         Self {
-            projection: FollowListProjection::new(active_pubkey),
+            projection: FollowListProjection::new(active_pubkey, contacts_lookup),
             social_slot,
             rev,
             snapshot_signal: None,
@@ -155,11 +158,9 @@ impl KernelEventObserver for FollowListObserver {
             return;
         }
 
-        // Delegate to the upstream FollowListProjection.  It applies the author
-        // gate (only kind:3 from the active account updates its map), so we
-        // ask for the snapshot only after it has had a chance to update.
-        self.projection.on_kernel_event(event);
-
+        // Read the follow list from the shared ContactsLookup (written by
+        // Kind3Parser before this observer fires). FollowListProjection is
+        // now a thin read-model over the ContactsLookup — no secondary map.
         let snap = self.projection.snapshot();
 
         // Materialise ContactSummary rows with bech32 npubs + raw hex.

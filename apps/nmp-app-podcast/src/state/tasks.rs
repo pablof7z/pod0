@@ -31,7 +31,6 @@
 //!
 //! AGENTS.md hard limit is 500 lines.
 
-use std::ffi::CString;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -179,27 +178,10 @@ impl TasksState {
         // future stays `Send`.
         let app_addr = app as usize;
         let dispatch = move |namespace: &str, body: &str| -> bool {
-            let app_ptr = app_addr as *mut NmpApp;
-            if app_ptr.is_null() {
-                return false;
-            }
-            let (Ok(ns_c), Ok(body_c)) = (CString::new(namespace), CString::new(body))
-            else {
-                return false;
-            };
             // app_ptr is fenced by `shutdown` (abort + join before
             // `nmp_app_free`); dispatch only enqueues (D8: non-blocking).
-            let raw =
-                nmp_ffi::nmp_app_dispatch_action(app_ptr, ns_c.as_ptr(), body_c.as_ptr());
-            if raw.is_null() {
-                return false;
-            }
-            // SAFETY: raw is a heap-owned NUL-terminated C string.
-            let envelope = unsafe { std::ffi::CStr::from_ptr(raw) }
-                .to_string_lossy()
-                .into_owned();
-            nmp_ffi::nmp_free_string(raw);
-            envelope.contains("\"correlation_id\"")
+            let app_ptr = app_addr as *mut NmpApp;
+            crate::dispatch_bytes::dispatch_action_bytes_for(app_ptr, namespace, body).is_ok()
         };
 
         self.spawn_ticker_loop(TICK_INTERVAL, dispatch);
@@ -315,23 +297,7 @@ impl TasksState {
         // If `app` is null (tests without a live kernel) dispatch always returns
         // `false` and the task stays in `"running"`.
         let dispatch = move |namespace: &str, body: &str| -> bool {
-            if app.is_null() {
-                return false;
-            }
-            let (Ok(ns_c), Ok(body_c)) = (CString::new(namespace), CString::new(body)) else {
-                return false;
-            };
-            let raw = nmp_ffi::nmp_app_dispatch_action(app, ns_c.as_ptr(), body_c.as_ptr());
-            if raw.is_null() {
-                return false;
-            }
-            // SAFETY: `raw` is a heap-owned NUL-terminated C string minted by
-            // `nmp_app_dispatch_action`; read it, then return ownership.
-            let envelope = unsafe { std::ffi::CStr::from_ptr(raw) }
-                .to_string_lossy()
-                .into_owned();
-            nmp_ffi::nmp_free_string(raw);
-            envelope.contains("\"correlation_id\"")
+            crate::dispatch_bytes::dispatch_action_bytes_for(app, namespace, body).is_ok()
         };
 
         // Persist closure: write-through to the JSON sidecar when the task

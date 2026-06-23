@@ -154,6 +154,7 @@ fn inbound_note(id: &str, author_hex: &str) -> KernelEvent {
         created_at: 1_717_200_000,
         tags: Vec::new(),
         content: "hello from a followed peer".to_string(),
+        relay_provenance: vec![],
     }
 }
 
@@ -888,6 +889,7 @@ fn block_peer_action_reemits_social_with_trusted_false_overriding_follow() {
         created_at: 200,
         tags: vec![vec!["p".to_string(), peer.to_string()]],
         content: String::new(),
+        relay_provenance: vec![],
     });
     state_inner.social = crate::state::social::SocialState::new(state_inner.social.infra.clone())
         .with_follow_set(follow_set)

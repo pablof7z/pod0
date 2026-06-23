@@ -30,3 +30,10 @@ nmp-blossom = { version = "0.8.0", git = "https://github.com/pablof7z/nostr-mult
 nmp-nip02 = { version = "0.8.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "1e1445973" }
 nmp-planner = { version = "0.8.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "1e1445973" }
 nmp-feedback = { git = "https://github.com/pablof7z/nmp-feedback.git", rev = "1e2b0b5e3e023a3d76e2d05db0f91a270811e7d9" }
+
+# Phase 7 compatibility patch: redirect nmp-feedback to a local fork that pins
+# nmp v0.8.0 (1e1445973) and uses nmp_app_dispatch_action_bytes instead of the
+# deleted nmp_app_dispatch_action JSON doorway. Remove once an upstream
+# nmp-feedback commit pins 1e1445973.
+[patch."https://github.com/pablof7z/nmp-feedback.git"]
+nmp-feedback = { path = "third-party/nmp-feedback" }

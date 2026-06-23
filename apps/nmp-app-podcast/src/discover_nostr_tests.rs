@@ -112,6 +112,7 @@ fn kernel_event(id: &str, author: &str, kind: u32, tags: Vec<Vec<String>>) -> Ke
         created_at: 0,
         tags,
         content: String::new(),
+        relay_provenance: vec![],
     }
 }
 

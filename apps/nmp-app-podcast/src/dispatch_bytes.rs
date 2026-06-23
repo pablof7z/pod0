@@ -45,7 +45,7 @@ pub fn mint_correlation_id() -> String {
 fn encode_payload_for_namespace(namespace: &str, json: &str) -> Result<Vec<u8>, String> {
     match namespace {
         "nmp.publish" => encode::<nmp_core::publish::PublishAction>(namespace, json),
-        "nmp.blossom.upload" => encode::<nmp_blossom::UploadAction>(namespace, json),
+        "nmp.blossom.upload" => encode::<nmp_blossom::UploadInput>(namespace, json),
         // Podcast-specific namespaces: wrap raw JSON in the pass-through payload.
         // PodcastJsonPayload is not serde-Deserializable (it wraps opaque JSON),
         // so we construct it directly instead of going through the generic encode<P>.
@@ -105,7 +105,7 @@ pub fn dispatch_action_bytes_for(
 
     // SAFETY: envelope is valid bytes produced by encode_dispatch_envelope,
     // app is non-null, correlation_id is a valid C string.
-    let result_ptr = unsafe { nmp_app_dispatch_action_bytes(app, envelope.as_ptr(), envelope.len() as u32) };
+    let result_ptr = unsafe { nmp_app_dispatch_action_bytes(app, envelope.as_ptr(), envelope.len()) };
 
     if result_ptr.is_null() {
         return Err("kernel rejected the action".to_string());

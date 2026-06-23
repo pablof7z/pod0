@@ -79,7 +79,7 @@ impl AppRuntime {
         let (mut bridge, rx) = bridge::NmpUpdateBridge::channel();
         bridge::NmpUpdateBridge::register(app, &mut bridge);
 
-        nmp_app_start(app, 0, 200, 10);
+        nmp_app_start(app, 0, 200);
 
         Ok((
             Self {
