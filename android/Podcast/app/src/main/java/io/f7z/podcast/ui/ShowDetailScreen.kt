@@ -12,15 +12,24 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -63,6 +72,11 @@ fun ShowDetailScreen(
         ?: snapshot?.searchResults?.firstOrNull { it.id == showId || it.feedUrl == showId }
     val activeById = snapshot?.downloads?.active?.associateBy { it.episodeId } ?: emptyMap()
 
+    // Unsubscribe menu state: only shown for subscribed shows (not search fallback).
+    val isSubscribed = snapshot?.subscriptions?.any { it.id == showId } ?: false
+    var showMoreMenu by remember { mutableStateOf(false) }
+    var showUnsubscribeConfirm by remember { mutableStateOf(false) }
+
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -82,9 +96,62 @@ fun ShowDetailScreen(
                         )
                     }
                 },
+                actions = {
+                    if (isSubscribed && show != null) {
+                        Box {
+                            IconButton(onClick = { showMoreMenu = true }) {
+                                Icon(
+                                    imageVector = Icons.Filled.MoreVert,
+                                    contentDescription = "More options",
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showMoreMenu,
+                                onDismissRequest = { showMoreMenu = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Unsubscribe") },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        showUnsubscribeConfirm = true
+                                    },
+                                )
+                            }
+                        }
+                    }
+                },
             )
         },
     ) { inner ->
+        // Unsubscribe confirmation dialog
+        if (showUnsubscribeConfirm && show != null) {
+            AlertDialog(
+                onDismissRequest = { showUnsubscribeConfirm = false },
+                title = { Text("Unsubscribe?") },
+                text = { Text("Removes this show from your library. Your history and clips are kept.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showUnsubscribeConfirm = false
+                            PodcastActionDispatcher.dispatch(
+                                bridge = bridge,
+                                namespace = PodcastNamespace.PODCAST,
+                                payload = UnfollowPayload(podcastId = show.id),
+                            )
+                            onBack()
+                        },
+                    ) {
+                        Text("Unsubscribe")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showUnsubscribeConfirm = false }) {
+                        Text("Cancel")
+                    }
+                },
+            )
+        }
+
         if (show == null) {
             MissingShowState(modifier = Modifier.padding(inner))
             return@Scaffold
