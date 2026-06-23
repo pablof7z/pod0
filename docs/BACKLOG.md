@@ -31,8 +31,8 @@ worktrees currently in flight.
   ADR-0055 Rung-1 / publish_ver oracle fix), the deleted parked `ios/` shell,
   the resolved local `nmp-blossom` packaging blocker (`pablof7z/podcast-player#479`),
   and PR #498's removal of the local `vendor/nmp-core` fork. Upstream NMP issues
-  `pablof7z/nostr-multi-platform#1408` and `#1412` remain open cleanup/dependency
-  notes, but neither is currently represented as an app-local workaround on `main`.
+  `pablof7z/nostr-multi-platform#1408` and `#1412` are now CLOSED; neither required
+  an app-local workaround on `main`.
   Remaining parity debt lives in `App/Sources/` Swift policy/fallback code plus
   the listed platform/AI gaps. Agent chat title generation now routes prompt
   construction, message filtering/truncation, selected model, and JSON title
@@ -1148,13 +1148,13 @@ worktrees currently in flight.
   the full Build → Sign → Transport pipeline (D13/D0).
 - **blossom-audio-path-migration.** Migrate the audio upload path
   (`apps/nmp-app-podcast/src/blossom.rs` → `host_op_publish::publish_episode`) to
-  `nmp.blossom.upload` via `signer_pubkey` roster selection. **BLOCKED:** the
+  `nmp.blossom.upload` via `signer_pubkey` roster selection. **BLOCKED by #606:** the
   per-podcast NIP-F4 keys live in the Podcast-domain `PodcastKeyStore`, NOT in the
   NMP account roster (`ctx.identity`). `nmp.blossom.upload` with `signer_pubkey`
-  only resolves accounts registered in the NMP kernel's identity roster. This
-  requires registering per-podcast keys as named roster accounts, or an alternate
-  signing seam. Until that capability lands, `blossom.rs` stays (it uses direct
-  `Keys` signing which works without the roster).
+  only resolves accounts registered in the NMP kernel's identity roster. Hardening
+  NIP-F4 publishing (issue #606) will register per-podcast keys as named roster
+  accounts or establish an alternate signing seam. Until then, `blossom.rs` stays
+  (it uses direct `Keys` signing which works without the roster).
 - ~~**kernelsigner-deadcode-removal.**~~ DONE (PR `chore/kernelsigner-deadcode-backlog-truthfulness`).
   Deleted `KernelSigner` struct, `NostrSigner` protocol, and `NostrEventDraft` from
   `App/Sources/Services/Nip46/NostrSigner.swift`; removed the now-dead
