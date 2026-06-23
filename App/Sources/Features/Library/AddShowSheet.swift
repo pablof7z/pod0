@@ -174,6 +174,21 @@ struct AddByURLForm: View {
         guard !trimmed.isEmpty, !isWorking else { return }
         isWorking = true
         error = nil
+
+        // Issue #605: Check if input looks like a Nostr identifier or NIP-05 address.
+        // If so, route to the kernel's open_search handler instead of RSS path.
+        if NostrNpub.looksLikeNostrInput(trimmed) {
+            _ = store.kernelNostrOpenSearch(input: trimmed)
+            // Await the Nostr result on nostrResults. For now, this is a placeholder;
+            // once NMP #597 lands with full open_search, the kernel will trigger
+            // subscribe_nostr, and the podcasts snapshot will update.
+            // TODO #605: await nostrResults snapshot change or timeout → fallback to RSS
+            isWorking = false
+            error = SubscriptionService.AddError.transport("Nostr search pending (NMP #597)")
+            Haptics.warning()
+            return
+        }
+
         let service = SubscriptionService(store: store)
         do {
             let added = try await service.addSubscription(feedURLString: trimmed)

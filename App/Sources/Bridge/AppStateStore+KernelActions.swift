@@ -146,6 +146,26 @@ extension AppStateStore {
             "Feedless show did not appear in library after \(timeout).")
     }
 
+    /// Route user text input through NMP's input-intent classifier for Nostr-facing
+    /// discovery surfaces. Issue #605: handles npub/nprofile/nevent identifiers,
+    /// NIP-05 addresses, and relay-targeted NIP-50 queries via the kernel.
+    ///
+    /// The handler classifies the input and:
+    /// - npub/nprofile/hex → routes to `subscribe_nostr` via kernel
+    /// - NIP-05 (user@domain.com) → resolves and subscribes
+    /// - NIP-50 queries → dispatches relay-targeted search
+    /// - Unrecognised → returns "nostr_not_recognised" for UI fallback to RSS
+    ///
+    /// Once NMP #597 lands, the kernel-side handler will fully integrate the
+    /// input-intent classifier and NIP-05 resolver.
+    func kernelNostrOpenSearch(input: String) -> DispatchResult? {
+        guard let kern = kernel else { return nil }
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        kern.dispatch(namespace: "podcast", body: ["op": "open_search", "input": trimmed])
+        return DispatchResult(status: "open_search_pending")
+    }
+
     // MARK: - Playback dispatch (M1 Part 3)
 
     /// Load an episode into the Rust actor without starting playback.

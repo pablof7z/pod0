@@ -68,6 +68,7 @@ pub mod llm;
 pub mod state;
 pub(crate) mod memory_handler;
 pub(crate) mod nmp_dispatch;
+pub(crate) mod open_search_handler;
 pub(crate) mod nostr_episodes;
 pub(crate) mod picks_handler;
 pub(crate) mod picks_llm;

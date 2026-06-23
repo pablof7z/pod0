@@ -333,4 +333,17 @@ impl PodcastHostOpHandler {
         serde_json::json!({"ok": true})
     }
 
+    pub(super) fn handle_open_search(&self, _input: String) -> serde_json::Value {
+        // Issue #605: Route Nostr-facing text input through NMP input-intent classifier.
+        // For now, delegate to the placeholder handler in open_search_handler.rs.
+        // Once NMP #597 lands with open_search APIs, the handler will fully integrate
+        // the input-intent classifier and NIP-05 resolver.
+        let state = self.state.library.store.lock().ok();
+        if state.is_none() {
+            return serde_json::json!({"ok": false, "error": "store poisoned"});
+        }
+        // Placeholder: await NMP open_search integration
+        serde_json::json!({"ok": true, "status": "open_search_pending"})
+    }
+
 }

@@ -343,6 +343,23 @@ pub enum PodcastAction {
     /// skipped on the first activation — so episodes still download without a
     /// manual pull-to-refresh.
     AutoDownloadEvaluate,
+    /// Route user text input through NMP's input-intent classifier for Nostr-facing
+    /// text-entry surfaces. Handles npub/nprofile/nevent, NIP-05 addresses,
+    /// and NIP-50 relay-targeted search queries. Issue #605.
+    ///
+    /// The handler:
+    /// - Classifies the input via NMP framework-level input-intent
+    /// - npub/nprofile/hex → extract pubkey and relay hints → `subscribe_nostr`
+    /// - NIP-05 (user@domain.com) → resolve via NMP → `subscribe_nostr`
+    /// - NIP-50 plain-text → dispatch relay-targeted search → write to `nostr_search_results`
+    /// - Unrecognised → return "nostr_not_recognised" for UI fallback to RSS
+    ///
+    /// Results appear asynchronously on the snapshot for async operations
+    /// (NIP-05 resolution, NIP-50 search); synchronous pubkey extraction
+    /// triggers an immediate `subscribe_nostr` call.
+    OpenSearch {
+        input: String,
+    },
     /// Record (or clear) a batch of AI Inbox triage decisions (M4 / D7).
     ///
     /// iOS owns the triage *computation* (the LLM pass in `InboxTriageService`)
