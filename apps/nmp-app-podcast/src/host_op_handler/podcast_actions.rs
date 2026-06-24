@@ -333,4 +333,38 @@ impl PodcastHostOpHandler {
         serde_json::json!({"ok": true})
     }
 
+    pub(super) fn handle_open_search(&self, input: String) -> serde_json::Value {
+        use crate::open_search_handler::{
+            looks_like_nip05_address, looks_like_nostr_identifier, looks_like_nsec_key,
+        };
+        // Normalize: trim whitespace and lowercase so NSEC1/NPUB1/etc. and leading spaces
+        // are handled identically to their canonical lowercase forms. (#605)
+        let input = input.trim().to_lowercase();
+        // Guard: nsec1 private keys must never reach the open_search routing path.
+        // iOS shells should reject these before dispatch, but the kernel enforces it too.
+        if looks_like_nsec_key(&input) {
+            return serde_json::json!({
+                "ok": false,
+                "error": "nsec1 private keys must not be routed to open_search"
+            });
+        }
+        // npub1/nprofile1/nevent1 — open_search does not call subscribe_nostr itself;
+        // callers must dispatch subscribe_nostr directly with the extracted pubkey hex.
+        // Return pending so callers know no subscription was initiated here.
+        if looks_like_nostr_identifier(&input) {
+            return serde_json::json!({
+                "ok": false,
+                "status": "pending",
+                "message": "open_search does not subscribe — dispatch subscribe_nostr with the extracted pubkey hex instead"
+            });
+        }
+        // NIP-05 (user@domain.com) — NIP-05 resolution is pending NMP #597.
+        // Shell should surface a user-friendly message directing to npub instead.
+        if looks_like_nip05_address(&input) {
+            return serde_json::json!({"ok": true, "status": "nip05_pending"});
+        }
+        // Not a recognised Nostr input — shell may fall back to the RSS path.
+        serde_json::json!({"ok": false, "status": "nostr_not_recognised"})
+    }
+
 }

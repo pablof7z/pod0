@@ -174,6 +174,51 @@ struct AddByURLForm: View {
         guard !trimmed.isEmpty, !isWorking else { return }
         isWorking = true
         error = nil
+
+        // Issue #605: Reject nsec1 (Nostr private key) immediately — never route to search.
+        if NostrNpub.looksLikeNsecKey(trimmed) {
+            isWorking = false
+            error = SubscriptionService.AddError.transport(
+                "This looks like a Nostr private key. Do not paste private keys here.")
+            Haptics.warning()
+            return
+        }
+
+        // Issue #605: Route public Nostr identifiers to the kernel's Nostr subscribe path.
+        // For npub1: extract the hex pubkey and subscribe directly — this works end-to-end
+        // and surfaces the show in the library once the kernel processes it.
+        // For nevent/NIP-05: show a placeholder until the Nostr tab can handle open_search
+        // (see BACKLOG: "Wire Nostr tab to handle open_search / NIP-05 / nevent inputs").
+        // nprofile1 is not classified as a Nostr input here — TLV parsing not yet supported
+        // (see BACKLOG: "Parse nprofile1 TLVs to extract embedded pubkey for Nostr subscribe (#605)").
+        if NostrNpub.looksLikeNostrInput(trimmed) {
+            if let pubkeyHex = NostrNpub.pubkeyHex(from: trimmed) {
+                do {
+                    let added = try await store.kernelSubscribeNostr(authorPubkeyHex: pubkeyHex)
+                    isWorking = false
+                    onAdded(added)
+                } catch let addError as SubscriptionService.AddError {
+                    isWorking = false
+                    error = addError
+                    Haptics.warning()
+                } catch {
+                    isWorking = false
+                    self.error = .transport(error.localizedDescription)
+                    Haptics.warning()
+                }
+            } else {
+                // NIP-05 / nevent — not yet supported end-to-end.
+                // Do not call kernelNostrOpenSearch here: the Nostr tab does not
+                // dispatch open_search or resolve these inputs, so directing the
+                // user there is a dead end.  Show a neutral placeholder instead.
+                isWorking = false
+                error = SubscriptionService.AddError.transport(
+                    "NIP-05 addresses and Nostr event IDs are not yet supported here. Try an npub1 or RSS feed URL.")
+                Haptics.warning()
+            }
+            return
+        }
+
         let service = SubscriptionService(store: store)
         do {
             let added = try await service.addSubscription(feedURLString: trimmed)

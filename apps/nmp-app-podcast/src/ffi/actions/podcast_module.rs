@@ -13,11 +13,6 @@ fn default_true() -> bool {
     true
 }
 
-use nmp_core::substrate::ActionModule;
-use nmp_core::ActorCommand;
-
-use crate::discover_nostr::{nostr_discovery_identity, nostr_discovery_interest};
-
 /// Wire enum for all `"podcast"` namespace actions.
 ///
 /// `#[serde(tag = "op", rename_all = "snake_case")]` makes the JSON
@@ -343,6 +338,23 @@ pub enum PodcastAction {
     /// skipped on the first activation — so episodes still download without a
     /// manual pull-to-refresh.
     AutoDownloadEvaluate,
+    /// Route user text input through NMP's input-intent classifier for Nostr-facing
+    /// text-entry surfaces. Handles npub/nprofile/nevent, NIP-05 addresses,
+    /// and NIP-50 relay-targeted search queries. Issue #605.
+    ///
+    /// The handler:
+    /// - Classifies the input via NMP framework-level input-intent
+    /// - npub/nprofile/hex → extract pubkey and relay hints → `subscribe_nostr`
+    /// - NIP-05 (user@domain.com) → resolve via NMP → `subscribe_nostr`
+    /// - NIP-50 plain-text → dispatch relay-targeted search → write to `nostr_search_results`
+    /// - Unrecognised → return "nostr_not_recognised" for UI fallback to RSS
+    ///
+    /// Results appear asynchronously on the snapshot for async operations
+    /// (NIP-05 resolution, NIP-50 search); synchronous pubkey extraction
+    /// triggers an immediate `subscribe_nostr` call.
+    OpenSearch {
+        input: String,
+    },
     /// Record (or clear) a batch of AI Inbox triage decisions (M4 / D7).
     ///
     /// iOS owns the triage *computation* (the LLM pass in `InboxTriageService`)
@@ -448,84 +460,9 @@ pub enum PodcastAction {
     },
 }
 
-/// One chapter for an [`PodcastAction::AddEpisode`] op. `image_url` +
-/// `source_episode_id` carry the parity fields the Swift TTS composer built on
-/// `Episode.Chapter` (mid-play artwork swap + source-episode chip). They round
-/// the kernel store, not just the wire, so the projected chapter is identical
-/// to the pre-kernel build.
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-pub struct EpisodeChapterArg {
-    pub start_secs: f64,
-    pub title: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub image_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub source_episode_id: Option<String>,
-}
-
-/// One row in a [`PodcastAction::SetEpisodeTriage`] batch.
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct EpisodeTriagePatch {
-    pub episode_id: String,
-    /// `"inbox"` | `"archived"` | `"none"` (sentinel: clear).
-    pub decision: String,
-    #[serde(default)]
-    pub is_hero: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub rationale: Option<String>,
-}
-
-/// Single action module for the whole `"podcast"` namespace.
-///
-/// `execute` serializes the typed `PodcastAction` back to JSON and hands it
-/// to the actor as `ActorCommand::DispatchHostOp`. The installed
-/// `PodcastHostOpHandler` deserializes it, runs the op (HTTP capability call,
-/// store write), and returns a `{"ok":true}` envelope. All policy lives in
-/// the handler; the action module is pure routing.
-pub struct PodcastActionModule;
-
-impl ActionModule for PodcastActionModule {
-    const NAMESPACE: &'static str = "podcast";
-
-    type Action = PodcastAction;
-
-    fn is_async_completing() -> bool {
-        false
-    }
-
-    fn execute(
-        &self,
-        action: Self::Action,
-        correlation_id: &str,
-        send: &dyn Fn(ActorCommand),
-    ) -> Result<(), String> {
-        // `discover_nostr` is the one `podcast.*` action that drives an
-        // interest subscription rather than a host-op. NMP core owns all relay
-        // connections (D7): the kernel opens the `kind:10154` subscription
-        // through its own relay pool on `EnsureInterest`, and inbound shows
-        // arrive via `NostrDiscoveryObserver`. Emitting an `ActorCommand`
-        // requires the `send` closure, which only `execute` carries — so it
-        // cannot live in the host-op handler.
-        if let PodcastAction::DiscoverNostr {
-            consumer_id,
-            release,
-        } = &action
-        {
-            let identity = nostr_discovery_identity(consumer_id);
-            if *release {
-                send(ActorCommand::DropInterestOwner(identity));
-            } else {
-                send(ActorCommand::EnsureInterest {
-                    identity,
-                    interest: nostr_discovery_interest(),
-                });
-            }
-            return Ok(());
-        }
-
-        crate::ffi::actions::dispatch_host_op(Self::NAMESPACE, &action, correlation_id, send)
-    }
-}
+#[path = "podcast_module_execute.rs"]
+mod execute;
+pub use execute::{EpisodeChapterArg, EpisodeTriagePatch, PodcastActionModule};
 
 #[cfg(test)]
 #[path = "podcast_module_tests.rs"]

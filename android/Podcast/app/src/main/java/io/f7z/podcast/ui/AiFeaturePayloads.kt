@@ -4,9 +4,10 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Action payloads for AI chapter synthesis and ad-skip settings.
+ * Action payloads for AI chapter synthesis, ad-skip settings, and Nostr
+ * open-search routing.
  *
- * Split from `ActionDispatcher.kt` to keep that file under the 500-line hard
+ * Split from `ActionPayloads.kt` to keep that file under the 500-line hard
  * limit (AGENTS.md). All wire contracts verified against the Rust action enums.
  */
 
@@ -55,4 +56,32 @@ data class CompileChaptersPayload(
 data class SetAutoSkipAdsPayload(
     val enabled: Boolean,
     val op: String = "set_auto_skip_ads",
+)
+
+// ── `podcast` open_search payload ─────────────────────────────────────────────
+//
+// Verified against `apps/nmp-app-podcast/src/ffi/actions/podcast_module.rs`:
+//
+//   PodcastAction::OpenSearch { input: String }  →  op = "open_search"
+//
+// The kernel handler classifies `input` as npub/nprofile/nevent, NIP-05
+// address, or relay-targeted NIP-50 query and routes accordingly. An nsec1
+// private key is rejected before dispatch (surfaced as a user-visible error).
+//
+// Android text-entry routing to this payload is Phase 3 / issue-605 BACKLOG
+// (`open-search-nostr-result-await`), pending NMP #597 landing.
+
+/**
+ * Route a free-form text input through the kernel's Nostr open-search
+ * classifier. Verified against `PodcastAction::OpenSearch { input: String }`.
+ *
+ * Do NOT dispatch nsec1 private keys — callers must reject those before
+ * invoking this payload (mirrors iOS `NostrNpub.looksLikeNsecKey` guard).
+ *
+ * Namespace: [PodcastNamespace.PODCAST] ("podcast").
+ */
+@Serializable
+data class OpenSearchPayload(
+    val input: String,
+    val op: String = "open_search",
 )

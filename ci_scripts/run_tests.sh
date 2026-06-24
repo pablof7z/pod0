@@ -139,6 +139,28 @@ run_test_chunk() {
 # full UI suite. Running all UI tests in one simulator session exhausted memory
 # late in the run, SIGKILLing heavy tests and blowing the job timeout (#17).
 # Each chunk re-seeds via --UITestSeed, so a wiped device is expected.
+#
+# run_test_chunk_with_retry wraps run_test_chunk with one full-chunk retry on a
+# fresh simulator. xcodebuild can exit 65 even when -retry-tests-on-failure
+# already re-ran all failing tests successfully — this happens when the test
+# RUNNER itself crashes (e.g. duplicate XCTestSupport.framework entries from a
+# newer simulator runtime cause a spurious crash early in the run). The runner
+# restart re-runs the lost tests and they all pass, but xcodebuild still exits
+# 65 because the initial session crashed. A single full-chunk retry on a wiped
+# sim catches this class of flaky infrastructure failures without masking real
+# test regressions (a genuine failure will fail again on retry).
+run_test_chunk_with_retry() {
+  local chunk_status=0
+  run_test_chunk "$@" || chunk_status=$?
+  if [ "$chunk_status" -ne 0 ]; then
+    echo "--- chunk exited $chunk_status; resetting sim and retrying once ---" >&2
+    reset_sim
+    chunk_status=0
+    run_test_chunk "$@" || chunk_status=$?
+  fi
+  return "$chunk_status"
+}
+
 reset_sim() {
   if [ -z "$udid" ]; then
     echo "warn: no simulator udid resolved; skipping inter-chunk reset" >&2
@@ -171,15 +193,15 @@ else
 
   TEST_STATUS=0
   # Chunk 0: unit suite + remaining light UI classes (this call builds).
-  run_test_chunk "${SKIP_HEAVY[@]}" || TEST_STATUS=$?
+  run_test_chunk_with_retry "${SKIP_HEAVY[@]}" || TEST_STATUS=$?
   # Chunk 1: heaviest lifecycle / audio UI.
   reset_sim
-  run_test_chunk "${HEAVY1[@]}" || TEST_STATUS=$?
+  run_test_chunk_with_retry "${HEAVY1[@]}" || TEST_STATUS=$?
   # Chunk 2: agent / stress / clippings / auto-download.
   reset_sim
-  run_test_chunk "${HEAVY2[@]}" || TEST_STATUS=$?
+  run_test_chunk_with_retry "${HEAVY2[@]}" || TEST_STATUS=$?
   # Chunk 3: download / chapters / queue-reorder / settings / subscribe / nostr.
   reset_sim
-  run_test_chunk "${HEAVY3[@]}" || TEST_STATUS=$?
+  run_test_chunk_with_retry "${HEAVY3[@]}" || TEST_STATUS=$?
   exit "$TEST_STATUS"
 fi

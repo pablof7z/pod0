@@ -26,6 +26,7 @@ Detailed implementation plans live under `docs/plan/` and are linked from this f
 - `docs/plan/tui-parity.md` - Terminal-client parity matrix and staged implementation plan.
 - `docs/plan/tui-agent-live-validation.md` - live tmux scenario inventory and validation log for agentic TUI workflows.
 - `docs/plan/shared-llm-task-architecture.md` - provider transport, model routing, and typed task-intent ownership contract across platforms.
+- `docs/plan/issue-605.md` - Nostr input routing and open_search handler implementation plan.
 
 ## Active State
 

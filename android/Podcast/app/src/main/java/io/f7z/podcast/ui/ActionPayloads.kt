@@ -489,5 +489,6 @@ data class AgentSendPayload(
 @Serializable
 data class AgentClearPayload(val op: String = "clear")
 
-// AI feature payloads (podcast.chapters + podcast.settings ad-skip) live in
-// AiFeaturePayloads.kt to keep this file under the 500-line hard limit.
+// AI feature payloads (podcast.chapters + podcast.settings ad-skip) and the
+// Nostr open_search payload live in AiFeaturePayloads.kt to keep this file
+// under the 500-line hard limit.

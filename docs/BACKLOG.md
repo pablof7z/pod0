@@ -4,6 +4,10 @@ This is the tactical queue for active work, follow-ups, and pending decisions.
 Do not duplicate these items in `WIP.md`; `WIP.md` only records branches and
 worktrees currently in flight.
 
+- **open-search-nostr-result-await (#605).** `AddByURLForm` dispatches `podcast.open_search` for Nostr inputs but immediately surfaces an error rather than awaiting the async result. Once NMP #597 lands: observe `nostrResults` snapshot changes with a timeout (≈5 s), then fall through to RSS on `"nostr_not_recognised"`. Extend to `NostrDiscoverForm.swift` and `AddFriendSheet.swift` in the same pass. Also covers Phase 3 (TUI `handle_subscribe_input` and Android text-entry surfaces). Owner: whoever picks up #597 integration.
+
+- **nostr-tab-open-search-wire (#605).** Wire the Nostr tab (`NostrDiscoverForm.swift`) to dispatch `open_search` and resolve NIP-05 addresses and nevent IDs entered by the user, so that `AddShowSheet` can route those inputs there end-to-end. Currently `NostrDiscoverForm` only filters already-fetched results; the fire-and-forget `kernelNostrOpenSearch` path in `AddShowSheet` was removed (#612) because it directed users to this unwired surface. When this is implemented: re-add the routing branch in `AddShowSheet` (or let `AddShowSheet` drive `open_search` directly and await results), and remove the "not yet supported" placeholder message.
+
 - **knowledge-ann-index.** `top_k_search` is O(N) linear scan over all embedded chunks (fine for < ~50k chunks). When the corpus exceeds ~50k chunks, replace with an ANN index (e.g. HNSW via `usearch` or `instant-distance`). Slot in `podcast-knowledge::search::top_k_search` call site in `knowledge_search.rs`. <!-- TODO: ANN index when corpus > ~50k chunks -->
 
 - **android-delete-wire-type (#573, pending).** Android unsubscribe affordance now routes to `UnfollowPayload` (issue #603, keep-history path). A permanent hard-delete affordance ("Delete") needs its own wire type (`DeletePayload` dispatched on `PodcastNamespace.PODCAST`) once the Rust `podcast.unsubscribe` → `podcast.delete` rename is complete (see `rust-unsubscribe-action-rename`). No hard-delete payload in Android until that rename lands.
