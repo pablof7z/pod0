@@ -29,8 +29,9 @@ import Foundation
 //   podcast.identity  — active_account (may arrive nil = logged out)
 //   podcast.widget    — widget (may arrive nil = nothing to show)
 //   podcast.social    — social, nostr_conversations
+//   podcast.voice     — voice (may arrive nil = idle/default state)
 //   podcast.misc      — picks, agent_tasks, knowledge_search_results, memory_facts,
-//                       clips, comments, voice, agent, agent_context,
+//                       clips, comments, agent, agent_context,
 //                       feedback_events, feedback_threads
 
 // ─── Schema IDs ──────────────────────────────────────────────────────────────
@@ -43,6 +44,7 @@ enum DomainSchema {
     static let identity  = "podcast.identity"
     static let widget    = "podcast.widget"
     static let social    = "podcast.social"
+    static let voice     = "podcast.voice"
     static let misc      = "podcast.misc"
 }
 
@@ -119,6 +121,14 @@ struct SocialDomainFrame: Decodable {
     var nostrConversations: [NostrConversationDTO]?
 }
 
+// ─── podcast.voice ───────────────────────────────────────────────────────────
+
+struct VoiceDomainFrame: Decodable {
+    var rev: UInt64 = 0
+    /// `nil` when the kernel omits the field (voice idle/default state — tombstone).
+    var voice: VoiceSnapshot?
+}
+
 // ─── podcast.misc ─────────────────────────────────────────────────────────────
 
 struct MiscDomainFrame: Decodable {
@@ -129,8 +139,8 @@ struct MiscDomainFrame: Decodable {
     var memoryFacts: [MemoryFact]?
     var clips: [ClipSummary]?
     // social moved to SocialDomainFrame (podcast.social); flat agent_notes retired.
+    // voice moved to VoiceDomainFrame (podcast.voice).
     var comments: [CommentSummary]?
-    var voice: VoiceSnapshot?
     var agent: AgentSnapshot?
     var agentContext: AgentContextSnapshot?
     var feedbackEvents: [FeedbackEventDTO]?
@@ -150,6 +160,7 @@ struct PodcastDomainFrames {
     var identity:  IdentityDomainFrame?
     var widget:    WidgetDomainFrame?
     var social:    SocialDomainFrame?
+    var voice:     VoiceDomainFrame?
     var misc:      MiscDomainFrame?
     /// Top-level `projections["resolved_profiles"]` map — NOT a `podcast.*`
     /// domain sidecar. The kernel emits this whenever a claimed pubkey resolves
@@ -162,7 +173,7 @@ struct PodcastDomainFrames {
     var hasAnyDomain: Bool {
         library != nil || playback != nil || downloads != nil ||
         settings != nil || identity != nil || widget != nil ||
-        social != nil || misc != nil
+        social != nil || voice != nil || misc != nil
     }
 }
 
@@ -179,6 +190,7 @@ extension PodcastDomainFrames {
         if identity  != nil { names.append("identity") }
         if widget    != nil { names.append("widget") }
         if social    != nil { names.append("social") }
+        if voice     != nil { names.append("voice") }
         if misc      != nil { names.append("misc") }
         if !resolvedProfiles.isEmpty { names.append("resolved_profiles(\(resolvedProfiles.count))") }
         return names.isEmpty ? "none" : names.joined(separator: ",")
@@ -225,6 +237,7 @@ extension PodcastDomainFrames {
         frames.identity  = tryDecode(DomainSchema.identity)
         frames.widget    = tryDecode(DomainSchema.widget)
         frames.social    = tryDecode(DomainSchema.social)
+        frames.voice     = tryDecode(DomainSchema.voice)
         frames.misc      = tryDecode(DomainSchema.misc)
 
         // `resolved_profiles` is a TOP-LEVEL projections key (sibling of the

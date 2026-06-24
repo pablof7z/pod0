@@ -214,9 +214,6 @@ class DomainFrameWireTest {
           ],
           "feedback_threads": [],
           "feedback_events": [],
-          "voice": {
-            "is_speaking": false
-          },
           "agent": {
             "messages": [],
             "is_busy": false
@@ -227,6 +224,17 @@ class DomainFrameWireTest {
           "clips": [],
           "comments": [],
           "agent_context": null
+        }
+    """.trimIndent()
+
+    private val voiceFixture = """
+        {
+          "rev": 9,
+          "voice": {
+            "is_speaking": false,
+            "current_request_id": null,
+            "current_voice_id": null
+          }
         }
     """.trimIndent()
 
@@ -420,10 +428,6 @@ class DomainFrameWireTest {
         assertEquals("pending", task.status)
         assertTrue("is_enabled must be true", task.isEnabled)  // is_enabled
 
-        val voice = misc.voice
-        assertNotNull("voice must decode", voice)
-        assertFalse("is_speaking must be false", voice!!.isSpeaking) // is_speaking
-
         val agent = misc.agent
         assertNotNull("agent must decode", agent)
         // AgentSnapshot carries messages + is_busy (Rust AgentSnapshot in agent.rs).
@@ -432,6 +436,22 @@ class DomainFrameWireTest {
         // podcast.misc emits under the "agent" key.
         assertFalse("is_busy must be false", agent!!.isBusy)  // is_busy
         assertTrue("messages must be empty", agent.messages.isEmpty())  // messages
+    }
+
+    @Test
+    fun `voice domain decodes snake_case fields correctly`() {
+        // Voice was moved from podcast.misc to its own podcast.voice sidecar in PR #613.
+        val raw = envelope("podcast.voice" to voiceFixture)
+        val frames = SnapshotCodec.decodeDomainFrames(raw)
+
+        assertNotNull("voice frame must decode", frames)
+        val voiceFrame = frames!!.voice
+        assertNotNull("voice domain must be present", voiceFrame)
+        assertEquals(9L, voiceFrame!!.rev)
+
+        val voice = voiceFrame.voice
+        assertNotNull("voice snapshot must decode", voice)
+        assertFalse("is_speaking must be false", voice!!.isSpeaking) // is_speaking
     }
 
     // ── 2. Playback-only frame does NOT clear the library slice ───────────────

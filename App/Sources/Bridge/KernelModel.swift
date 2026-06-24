@@ -495,6 +495,6 @@ final class KernelModel {
     private func maxRev(_ frames: PodcastDomainFrames) -> UInt64 {
         [frames.library?.rev, frames.playback?.rev, frames.downloads?.rev,
          frames.settings?.rev, frames.identity?.rev, frames.widget?.rev,
-         frames.misc?.rev].compactMap { $0 }.max() ?? 0
+         frames.social?.rev, frames.voice?.rev, frames.misc?.rev].compactMap { $0 }.max() ?? 0
     }
 }

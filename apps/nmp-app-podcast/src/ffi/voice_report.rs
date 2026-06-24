@@ -97,7 +97,7 @@ pub extern "C" fn nmp_app_podcast_voice_report(
                 }
                 Err(_) => (false, false, None),
             };
-        handle_ref.bump_snapshot_rev_if(changed);
+        handle_ref.bump_snapshot_rev_domain_if(crate::state::Domain::Voice, changed);
 
         // ElevenLabs fallback: on a Failed report for the in-flight ElevenLabs
         // Speak, retry with AvSpeech so the turn is still spoken.

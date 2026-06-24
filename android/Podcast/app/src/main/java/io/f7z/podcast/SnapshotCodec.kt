@@ -77,6 +77,7 @@ object SnapshotCodec {
             val identity  = tryDecode(DomainSchema.IDENTITY,  IdentityDomainFrame.serializer())
             val widget    = tryDecode(DomainSchema.WIDGET,     WidgetDomainFrame.serializer())
             val social    = tryDecode(DomainSchema.SOCIAL,     SocialDomainFrame.serializer())
+            val voice     = tryDecode(DomainSchema.VOICE,      VoiceDomainFrame.serializer())
             val misc      = tryDecode(DomainSchema.MISC,       MiscDomainFrame.serializer())
 
             // `resolved_profiles` lives in the NMP-level projections map (not a
@@ -102,6 +103,7 @@ object SnapshotCodec {
                 identity         = identity,
                 widget           = widget,
                 social           = social,
+                voice            = voice,
                 misc             = misc,
                 resolvedProfiles = resolvedProfiles,
             )
@@ -218,8 +220,20 @@ object SnapshotCodec {
             }
         }
 
+        // ── voice ────────────────────────────────────────────────────────────
+        // Voice state moved from podcast.misc to its own podcast.voice sidecar (PR #613).
+        // null = tombstone (voice idle / conversation ended — clear prior state).
+        frames.voice?.let { v ->
+            if (v.rev > tracker.voice) {
+                tracker.voice = v.rev
+                anyAccepted = true
+                snap = snap.copy(voice = v.voice)
+            }
+        }
+
         // ── misc ─────────────────────────────────────────────────────────────
         // NOTE: social moved to podcast.social (above).
+        // NOTE: voice moved to podcast.voice (above).
         frames.misc?.let { m ->
             if (m.rev > tracker.misc) {
                 tracker.misc = m.rev
@@ -228,7 +242,6 @@ object SnapshotCodec {
                     agentTasks      = m.agentTasks ?: snap.agentTasks,
                     feedbackEvents  = m.feedbackEvents ?: snap.feedbackEvents,
                     feedbackThreads = m.feedbackThreads ?: snap.feedbackThreads,
-                    voice           = m.voice ?: snap.voice,
                     agent           = m.agent ?: snap.agent,
                     picks           = m.picks ?: snap.picks,
                     // clips: null = no change (retain prior); non-null = authoritative

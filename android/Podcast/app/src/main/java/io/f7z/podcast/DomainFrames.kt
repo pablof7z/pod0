@@ -48,6 +48,7 @@ object DomainSchema {
     const val IDENTITY  = "podcast.identity"
     const val WIDGET    = "podcast.widget"
     const val SOCIAL    = "podcast.social"
+    const val VOICE     = "podcast.voice"
     const val MISC      = "podcast.misc"
 }
 
@@ -231,6 +232,20 @@ data class NostrConversationTurnDto(
     val content: String = "",
 )
 
+// ── podcast.voice ─────────────────────────────────────────────────────────────
+
+/**
+ * Voice domain sidecar. Moved out of podcast.misc in PR #613.
+ * `voice = null` is a tombstone (voice idle / conversation ended).
+ * Mirror of `VoiceDomainFrame` in `KernelDomainFrames.swift`.
+ */
+@Serializable
+data class VoiceDomainFrame(
+    val rev: Long = 0,
+    /** null = tombstone (voice idle / conversation ended). */
+    val voice: VoiceStateSnapshot? = null,
+)
+
 // ── podcast.misc ──────────────────────────────────────────────────────────────
 
 @Serializable
@@ -239,7 +254,6 @@ data class MiscDomainFrame(
     @SerialName("agent_tasks") val agentTasks: List<AgentTaskSummary>? = null,
     @SerialName("feedback_events") val feedbackEvents: List<JsonElement>? = null,
     @SerialName("feedback_threads") val feedbackThreads: List<FeedbackThreadDto>? = null,
-    val voice: VoiceStateSnapshot? = null,
     val agent: AgentSnapshot? = null,
     /** AI-curated picks rail. Populated by `picks_handler.rs`; null = not yet projected. */
     val picks: List<AgentPickSummary>? = null,
@@ -277,6 +291,7 @@ data class PodcastDomainFrames(
     val identity:  IdentityDomainFrame? = null,
     val widget:    WidgetDomainFrame? = null,
     val social:    SocialDomainFrame? = null,
+    val voice:     VoiceDomainFrame? = null,
     val misc:      MiscDomainFrame? = null,
     /** Additive resolved-profiles map from `projections["resolved_profiles"]`. */
     val resolvedProfiles: Map<String, ResolvedProfile> = emptyMap(),
@@ -284,7 +299,7 @@ data class PodcastDomainFrames(
     val hasAnyDomain: Boolean get() =
         library != null || playback != null || downloads != null ||
         settings != null || identity != null || widget != null ||
-        social != null || misc != null || resolvedProfiles.isNotEmpty()
+        social != null || voice != null || misc != null || resolvedProfiles.isNotEmpty()
 
     fun presentDomainNames(): String {
         val names = mutableListOf<String>()
@@ -295,6 +310,7 @@ data class PodcastDomainFrames(
         if (identity  != null) names.add("identity")
         if (widget    != null) names.add("widget")
         if (social    != null) names.add("social")
+        if (voice     != null) names.add("voice")
         if (misc      != null) names.add("misc")
         if (resolvedProfiles.isNotEmpty()) names.add("resolved_profiles(${resolvedProfiles.size})")
         return if (names.isEmpty()) "none" else names.joinToString(",")
@@ -315,5 +331,6 @@ data class DomainRevTracker(
     var identity:  Long = 0L,
     var widget:    Long = 0L,
     var social:    Long = 0L,
+    var voice:     Long = 0L,
     var misc:      Long = 0L,
 )
