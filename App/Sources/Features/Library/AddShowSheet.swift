@@ -185,10 +185,12 @@ struct AddByURLForm: View {
         }
 
         // Issue #605: Route public Nostr identifiers to the kernel's Nostr subscribe path.
-        // For npub/nprofile: extract the hex pubkey and subscribe directly — this already
-        // works end-to-end and surfaces the show in the library once the kernel processes it.
+        // For npub1: extract the hex pubkey and subscribe directly — this works end-to-end
+        // and surfaces the show in the library once the kernel processes it.
         // For nevent/NIP-05: show a placeholder until the Nostr tab can handle open_search
         // (see BACKLOG: "Wire Nostr tab to handle open_search / NIP-05 / nevent inputs").
+        // nprofile1 is not classified as a Nostr input here — TLV parsing not yet supported
+        // (see BACKLOG: "Parse nprofile1 TLVs to extract embedded pubkey for Nostr subscribe (#605)").
         if NostrNpub.looksLikeNostrInput(trimmed) {
             if let pubkeyHex = NostrNpub.pubkeyHex(from: trimmed) {
                 do {
@@ -211,7 +213,7 @@ struct AddByURLForm: View {
                 // user there is a dead end.  Show a neutral placeholder instead.
                 isWorking = false
                 error = SubscriptionService.AddError.transport(
-                    "NIP-05 addresses and Nostr event IDs are not yet supported here. Try an npub, nprofile, or RSS feed URL.")
+                    "NIP-05 addresses and Nostr event IDs are not yet supported here. Try an npub1 or RSS feed URL.")
                 Haptics.warning()
             }
             return

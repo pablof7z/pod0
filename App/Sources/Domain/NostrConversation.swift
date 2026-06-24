@@ -102,7 +102,7 @@ enum NostrNpub {
     /// Callers must reject these immediately with a user-visible warning —
     /// private keys must never be routed to any search or discovery handler.
     static func looksLikeNsecKey(_ input: String) -> Bool {
-        input.trimmingCharacters(in: .whitespacesAndNewlines).starts(with: "nsec1")
+        input.trimmingCharacters(in: .whitespacesAndNewlines).lowercased().hasPrefix("nsec1")
     }
 
     /// Quick check if input looks like a public Nostr identifier or NIP-05 address
@@ -115,8 +115,11 @@ enum NostrNpub {
     /// Issue #605: eliminates ad-hoc string checks scattered across iOS.
     static func looksLikeNostrInput(_ input: String) -> Bool {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Public Nostr identifiers: npub1, nprofile1, nevent1
-        if trimmed.starts(with: "npub1") || trimmed.starts(with: "nprofile1") ||
+        // Public Nostr identifiers: npub1, nevent1
+        // BACKLOG: Parse nprofile1 TLVs to extract embedded pubkey for Nostr subscribe (#605)
+        // nprofile1 is excluded until TLV parsing is implemented — pubkeyHex(from:) only
+        // handles bare hex and npub1, so nprofile1 inputs silently failed to subscribe.
+        if trimmed.starts(with: "npub1") ||
            trimmed.starts(with: "nevent1") {
             return true
         }
