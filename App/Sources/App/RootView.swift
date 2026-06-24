@@ -349,6 +349,16 @@ struct RootView: View {
         ToolbarItem(placement: .topBarTrailing) {
             Button {
                 Haptics.selection()
+                showVoiceMode = true
+            } label: {
+                Image(systemName: "waveform")
+            }
+            .accessibilityLabel("Start voice conversation")
+            .accessibilityIdentifier("voice.open")
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                Haptics.selection()
                 showSearch = true
             } label: {
                 Image(systemName: "magnifyingglass")
