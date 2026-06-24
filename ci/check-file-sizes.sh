@@ -24,9 +24,15 @@ check_source_files() {
     | grep -v 'NmpCore.*\.h$' \
     | grep -v '_tests\.rs$' \
     | grep -v '_tests_ext\.rs$' \
+    | grep -v '_test\.rs$' \
+    | grep -v '/tests\.rs$' \
     | grep -v '_test\.swift$' \
     | grep -v '_tests\.swift$' \
+    | grep -v 'Tests\.swift$' \
+    | grep -v 'Test\.swift$' \
     | grep -v 'Test\.kt$' \
+    | grep -v '^AppTests/' \
+    | grep -v '^AppUITests/' \
     | while read -r file; do
         line_count=$(wc -l < "$REPO_ROOT/$file")
         if (( line_count > 500 )); then
@@ -40,7 +46,7 @@ check_source_files() {
 check_test_files() {
     git -C "$REPO_ROOT" ls-files \
         -- '*.swift' '*.rs' '*.kt' '*.h' \
-    | grep -E '(_tests\.rs|_tests_ext\.rs|_test\.swift|_tests\.swift|Test\.kt)$' \
+    | grep -E '(_tests\.rs|_tests_ext\.rs|_test\.rs|/tests\.rs|_test\.swift|_tests\.swift|Tests\.swift|Test\.swift|Test\.kt)$|^AppTests/|^AppUITests/' \
     | while read -r file; do
         line_count=$(wc -l < "$REPO_ROOT/$file")
         if (( line_count > 1000 )); then
