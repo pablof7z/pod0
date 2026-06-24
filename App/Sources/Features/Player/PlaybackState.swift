@@ -135,35 +135,30 @@ final class PlaybackState {
     ) {
         let isSameEpisode = (episode?.id == newEpisode.id)
         episode = newEpisode
-        if !isSameEpisode {
-            // Stage the new episode in the Rust kernel first so that the
-            // subsequent kernelResume() (from play()) operates on the correct
-            // episode. Without this, the kernel may still have the previous
-            // episode staged and resume the wrong item.
-            // Skip when called from the AudioCommand::Load handler — Rust
-            // already owns the episode; re-dispatching creates an echo loop.
-            if dispatchKernelLoad {
-                transport?.kernelLoad(episodeID: newEpisode.id)
-                // engine.load and the initial-position seek are deferred:
-                // the AudioCommand::Load callback calls setEpisode(dispatchKernelLoad:false)
-                // which runs the else branch below with the Rust-resolved URL.
-            } else {
-                // Only load and seek when Rust is NOT dispatching the load
-                // (i.e. we ARE the AudioCommand::Load callback path). Calling
-                // engine.load here when dispatchKernelLoad=true would overwrite
-                // the Rust-resolved streaming URL with the store placeholder.
-                engine.load(newEpisode)
-                if newEpisode.playbackPosition > 0 {
-                    // TEMPORARY BYPASS: seeds the AVPlayer's initial position
-                    // before playback starts. The Rust kernel does not yet own a
-                    // "set initial playhead" primitive for this pre-play seam;
-                    // once it does, this direct engine call should be removed and
-                    // the position seeded via a kernel action instead.
-                    // BACKLOG: kernel-owned episode-load initial position (#599).
-                    engine.seek(to: newEpisode.playbackPosition)
-                }
+        if !dispatchKernelLoad {
+            // AudioCommand::Load callback path — Rust has resolved the streaming
+            // URL. Load unconditionally: isSameEpisode is true here because the
+            // user-dispatch path (below) already set episode = newEpisode before
+            // calling kernelLoad, so a same-episode guard would silently skip
+            // engine.load and AVPlayer would never receive the resolved URL.
+            engine.load(newEpisode)
+            if newEpisode.playbackPosition > 0 {
+                // TEMPORARY BYPASS: seeds the AVPlayer's initial position
+                // before playback starts. The Rust kernel does not yet own a
+                // "set initial playhead" primitive for this pre-play seam;
+                // once it does, this direct engine call should be removed and
+                // the position seeded via a kernel action instead.
+                // BACKLOG: kernel-owned episode-load initial position (#599).
+                engine.seek(to: newEpisode.playbackPosition)
             }
+        } else if !isSameEpisode {
+            // User-initiated load of a new episode — dispatch to Rust.
+            // engine.load is deferred to the AudioCommand::Load callback
+            // (the !dispatchKernelLoad branch above) so Rust's resolved
+            // streaming URL reaches AVPlayer, not the store placeholder.
+            transport?.kernelLoad(episodeID: newEpisode.id)
         } else {
+            // Same episode, user-initiated — refresh metadata only.
             engine.refreshMetadata(for: newEpisode)
             if engine.didReachNaturalEnd {
                 let resume = newEpisode.playbackPosition
