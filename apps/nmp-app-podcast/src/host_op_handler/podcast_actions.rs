@@ -337,6 +337,9 @@ impl PodcastHostOpHandler {
         use crate::open_search_handler::{
             looks_like_nip05_address, looks_like_nostr_identifier, looks_like_nsec_key,
         };
+        // Normalize: trim whitespace and lowercase so NSEC1/NPUB1/etc. and leading spaces
+        // are handled identically to their canonical lowercase forms. (#605)
+        let input = input.trim().to_lowercase();
         // Guard: nsec1 private keys must never reach the open_search routing path.
         // iOS shells should reject these before dispatch, but the kernel enforces it too.
         if looks_like_nsec_key(&input) {

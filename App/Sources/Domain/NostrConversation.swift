@@ -115,12 +115,13 @@ enum NostrNpub {
     /// Issue #605: eliminates ad-hoc string checks scattered across iOS.
     static func looksLikeNostrInput(_ input: String) -> Bool {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized = trimmed.lowercased()
         // Public Nostr identifiers: npub1, nevent1
         // BACKLOG: Parse nprofile1 TLVs to extract embedded pubkey for Nostr subscribe (#605)
         // nprofile1 is excluded until TLV parsing is implemented — pubkeyHex(from:) only
         // handles bare hex and npub1, so nprofile1 inputs silently failed to subscribe.
-        if trimmed.starts(with: "npub1") ||
-           trimmed.starts(with: "nevent1") {
+        if normalized.starts(with: "npub1") ||
+           normalized.starts(with: "nevent1") {
             return true
         }
         // Raw 64-character hex pubkey (issue #605)
