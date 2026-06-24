@@ -124,6 +124,8 @@ fn local_key_summary(id: &IdentityStore) -> Option<AccountSummary> {
         mode: MODE_LOCAL_KEY.into(),
         display_name: id.display_name.clone(),
         picture_url: id.picture_url.clone(),
+        name: id.name.clone(),
+        about: id.about.clone(),
     })
 }
 
@@ -142,6 +144,8 @@ fn external_account_summary(active_hex: &str) -> Option<AccountSummary> {
         mode: MODE_NIP55.into(),
         display_name: None,
         picture_url: None,
+        name: None,
+        about: None,
     })
 }
 

@@ -14,11 +14,11 @@
 //! undefined in the cdylib; calling through Rust paths makes rustc pull the
 //! bodies into the codegen unit — same pattern as NMP's `nmp-android-ffi`.
 
+use std::collections::HashMap;
 use std::ffi::{c_void, CStr, CString};
-use std::sync::{
-    mpsc::{Receiver, Sender},
-    Mutex,
-};
+use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::atomic::{AtomicBool, Ordering};
+use crossbeam_channel::{Receiver as CbReceiver, Sender as CbSender};
 
 use jni::objects::{JClass, JString};
 use jni::sys::{jint, jlong};
@@ -54,12 +54,13 @@ mod snapshot;
 
 /// Owns the kernel handle, the projection handle, the snapshot receiver, and
 /// the boxed sender that the kernel holds as an opaque callback context.
+/// Wrapped in an Arc for safe reference counting across JNI threads.
 /// Freed exactly once in `nativeFree` — mirror of iOS `PodcastHandle.deinit`.
 pub(crate) struct Session {
     pub(crate) app: *mut NmpApp,
     podcast: *mut PodcastHandle,
-    rx: Receiver<String>,
-    tx: *mut Sender<String>,
+    pub(crate) rx: CbReceiver<String>,
+    pub(crate) tx: *mut CbSender<String>,
     capability_ctx: Mutex<Option<*mut capability_router::AndroidCapabilityContext>>,
     /// ADR-0048 — outbound NIP-55 `ExternalSignerRequest` JSON queue. The
     /// capability trampoline (`android_capability_callback`, on a Rust thread)
@@ -69,36 +70,101 @@ pub(crate) struct Session {
     /// channel-drain shape mirrors NMP's own `nmp-android-ffi` Chirp bridge: the
     /// capability is interactive/async (an Amber Intent round-trip) and cannot
     /// resolve synchronously inside the capability callback.
-    pub(crate) signer_requests: Sender<String>,
-    signer_rx: Mutex<Receiver<String>>,
+    ///
+    /// Wrapped in `Mutex<Option<...>>` so `nativeFree` can drop the sender
+    /// after `clear_capability_router` has already dropped the capability-ctx
+    /// clone — at that point no other sender exists and `signer_rx` disconnects,
+    /// unblocking any `select!` that consumed the one-shot shutdown token before
+    /// the loop had a chance to exit (shutdown race, #600).
+    pub(crate) signer_requests: Mutex<Option<CbSender<String>>>,
+    pub(crate) signer_rx: CbReceiver<String>,
+    /// Shutdown token for the `nativeNextUpdate` blocking loop.
+    pub(crate) shutdown_tx_update: CbSender<()>,
+    pub(crate) shutdown_rx_update: CbReceiver<()>,
+    /// Shutdown token for the `nativeNextSignerRequest` blocking loop.
+    pub(crate) shutdown_tx_signer: CbSender<()>,
+    pub(crate) shutdown_rx_signer: CbReceiver<()>,
+    /// Set to `true` in `nativeFree` before `clear_capability_router` runs.
+    /// Checked inside the `capability_ctx` lock in `nativeSetCapabilityRouter`
+    /// so that a late install (after clear_capability_router already ran) is
+    /// rejected atomically — no leaked callback on a freed NmpApp.
+    pub(crate) shutting_down: AtomicBool,
 }
 
-// SAFETY: `Session` is sent across threads only inside a `Box` whose ownership
-// is transferred to Kotlin as an opaque `jlong`. Access is serialized by the
-// Kotlin caller (`nativeNew` → `nativeFree` lifecycle; `nativeNextUpdate` on a
-// single reader thread). The raw pointers are never aliased.
+// SAFETY: `Session` is accessed from multiple JNI threads via Arc clones.
+// - `app`: borrowed pointer, safe from any thread (all NMP calls are thread-safe).
+// - `podcast`: borrowed pointer, safe from any thread (all NMP calls are thread-safe).
+// - `rx`, `signer_rx`, `shutdown_rx_update`, `shutdown_rx_signer`: crossbeam channels
+//   are Sync; safe to read from multiple threads. Each JNI caller holds an Arc clone
+//   until the call returns.
+// - `tx`: raw pointer to crossbeam Sender. Dropped only in `Session::drop` after the
+//   callback is cleared (no kernel thread references it at that point).
+// - `signer_requests`: `Mutex<Option<CbSender<String>>>` — interior mutability lets
+//   `nativeFree` drain and drop the sender; `Mutex` is Sync.
+// - `shutdown_tx_update`, `shutdown_tx_signer`: shared safely via Arc.
+// - `capability_ctx`: guarded by Mutex.
 unsafe impl Send for Session {}
+unsafe impl Sync for Session {}
+
+impl Drop for Session {
+    fn drop(&mut self) {
+        // Native teardown deferred to here so that in-flight JNI callers that
+        // hold an Arc<Session> clone (cloned via `session_ref` before
+        // `nativeFree` removed the registry entry) have returned before we
+        // release native handles. `nativeFree` eagerly calls `nmp_app_stop`
+        // (signal only) and signals shutdown channels; this destructor performs
+        // the actual memory release.
+        //
+        // Order matters: clear the update callback first so the kernel thread
+        // cannot call back into `tx` after we drop the Box below.
+        nmp_app_set_update_callback(self.app, std::ptr::null_mut(), None);
+        if !self.podcast.is_null() {
+            nmp_app_podcast_unregister(self.podcast);
+        }
+        nmp_app_free(self.app);
+        // SAFETY: callback has been cleared above; the kernel thread can no
+        // longer reach this Sender. Drop it to disconnect the update channel.
+        unsafe {
+            drop(Box::from_raw(self.tx));
+        }
+    }
+}
+
+// ── Session registry — eliminates raw-Arc UAF race ──────────────────────────
+//
+// Previously `nativeNew` returned `Arc::into_raw` and `session_ref` called
+// `Arc::increment_strong_count` on that raw pointer. That is UB if a
+// concurrent `nativeFree` has already dropped the last strong count: a Kotlin
+// thread can read the non-zero handle, be preempted, `nativeFree` runs to
+// completion (count → 0, memory freed), and the Kotlin thread resumes calling
+// `session_ref` on a dangling pointer.
+//
+// Fix: the canonical Arc lives in a global registry keyed by allocation
+// address. `session_ref` clones from the registry under the mutex (safe — the
+// Arc is alive while the entry exists). `nativeFree` removes the entry under
+// the same mutex, so no further clone is possible after removal. The removed
+// Arc is then used for cleanup and drops when the `nativeFree` closure exits.
+
+static SESSION_REGISTRY: OnceLock<Mutex<HashMap<u64, Arc<Session>>>> = OnceLock::new();
+// Monotonic handle counter. Starting at 1 keeps 0 as the "null" sentinel.
+// Handles are never reused, so an ABA race — where a freed handle coincides
+// with a newly allocated Session at the same heap address — cannot occur.
+static NEXT_SESSION_HANDLE: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(1);
+
+fn session_registry() -> &'static Mutex<HashMap<u64, Arc<Session>>> {
+    SESSION_REGISTRY.get_or_init(|| Mutex::new(HashMap::new()))
+}
 
 #[must_use]
-pub(super) fn session_ref<'a>(handle: jlong) -> Option<&'a Session> {
+pub(super) fn session_ref(handle: jlong) -> Option<Arc<Session>> {
     if handle == 0 {
-        None
-    } else {
-        // SAFETY: non-zero handles are live `Session` pointers produced by
-        // `nativeNew`; Kotlin never calls after `nativeFree`.
-        Some(unsafe { &*(handle as *const Session) })
+        return None;
     }
-}
-
-impl Session {
-    /// Blocking timed drain of the outbound NIP-55 request channel — the
-    /// signer analogue of `nativeNextUpdate`'s snapshot drain. Returns the next
-    /// `ExternalSignerRequest` JSON, or `None` on idle / closed channel (the
-    /// Kotlin reader loops back in either way; D6 — no error crosses FFI).
-    fn recv_next_signer_request(&self, timeout: std::time::Duration) -> Option<String> {
-        let rx = self.signer_rx.lock().ok()?;
-        rx.recv_timeout(timeout).ok()
-    }
+    // Clone from the registry under the mutex. If `nativeFree` has already
+    // removed this entry, `get` returns `None` — silent no-op (D6). No raw
+    // pointer arithmetic; no increment_strong_count on potentially-freed memory.
+    session_registry().lock().ok()?.get(&(handle as u64)).cloned()
 }
 
 // ── Update callback — copies JSON before the kernel reclaims its buffer. ─────
@@ -136,7 +202,7 @@ extern "C" fn on_update(context: *mut c_void, bytes: *const u8, len: usize) {
         // in `nativeNew`; it lives until `nativeFree` clears the callback
         // before reclaiming the box. AssertUnwindSafe is sound: null-checked
         // above; not observed again on panic path.
-        let tx = unsafe { &*(context as *const Sender<String>) };
+        let tx = unsafe { &*(context as *const CbSender<String>) };
         // Dead receiver ⇒ silent no-op (D6).
         let _ = tx.send(owned);
     });
@@ -149,7 +215,7 @@ extern "C" fn on_update(context: *mut c_void, bytes: *const u8, len: usize) {
 /// `nativeNew()` — construct the kernel, wire the update callback, register the
 /// Podcast projection. Mirror of `PodcastHandle.init()` in Swift.
 ///
-/// Returns the boxed `Session` pointer as `jlong` (0 on any failure).
+/// Returns the Arc<Session> pointer as `jlong` (0 on any failure).
 #[no_mangle]
 pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeNew(
     _env: JNIEnv,
@@ -160,7 +226,7 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeNew(
         if app.is_null() {
             return 0;
         }
-        let (tx, rx) = std::sync::mpsc::channel::<String>();
+        let (tx, rx) = crossbeam_channel::unbounded::<String>();
         let tx = Box::into_raw(Box::new(tx));
         // `nmp_app_set_update_callback` is `pub extern "C" fn` (safe Rust at
         // the call site). `app` is valid (just allocated), `tx` is a fresh
@@ -181,17 +247,33 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeNew(
         // MUST be called once after `nmp_app_new()` and before any bunker://
         // or nostrconnect:// sign-in attempt (D6 — no-op if already init'd).
         nmp_signer_broker_init(app);
-        let (signer_tx, signer_rx) = std::sync::mpsc::channel::<String>();
-        let session = Box::new(Session {
+        let (signer_tx, signer_rx) = crossbeam_channel::unbounded::<String>();
+        let (shutdown_tx_update, shutdown_rx_update) = crossbeam_channel::bounded::<()>(1);
+        let (shutdown_tx_signer, shutdown_rx_signer) = crossbeam_channel::bounded::<()>(1);
+        let session = Arc::new(Session {
             app,
             podcast,
             rx,
             tx,
             capability_ctx: Mutex::new(None),
-            signer_requests: signer_tx,
-            signer_rx: Mutex::new(signer_rx),
+            signer_requests: Mutex::new(Some(signer_tx)),
+            signer_rx,
+            shutdown_tx_update,
+            shutdown_rx_update,
+            shutdown_tx_signer,
+            shutdown_rx_signer,
+            shutting_down: AtomicBool::new(false),
         });
-        Box::into_raw(session) as jlong
+        // Assign a monotonic handle so handles are never reused. Using the Arc
+        // allocation address as the key would create an ABA hazard: after free,
+        // a new Session might land at the same address and a stale Kotlin
+        // caller with the old handle would erroneously route to the new session.
+        let handle = NEXT_SESSION_HANDLE.fetch_add(1, Ordering::Relaxed);
+        match session_registry().lock() {
+            Ok(mut guard) => { guard.insert(handle, session); }
+            Err(_) => return 0, // poisoned — fail safe (D6)
+        }
+        handle as jlong
     })
 }
 
@@ -308,8 +390,11 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeLifecycleBackgroun
     });
 }
 
-/// `nativeFree(handle)` — tear down the kernel and the projection handle.
-/// Exactly-once.
+/// `nativeFree(handle)` — initiate kernel shutdown and release the registry
+/// entry. Exactly-once. Native handle teardown (`nmp_app_free`, etc.) is
+/// deferred to `Session::drop` so that any in-flight JNI callers holding an
+/// `Arc<Session>` clone (grabbed before the registry entry was removed) can
+/// return before native memory is released — eliminating the UAF race.
 #[no_mangle]
 pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeFree(
     _env: JNIEnv,
@@ -320,19 +405,35 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeFree(
         return;
     }
     ffi_guard("nativeFree", || (), || {
-        // SAFETY: `handle` was produced by `nativeNew`; freed exactly once.
-        let s = unsafe { Box::from_raw(handle as *mut Session) };
+        // Remove the Arc from the registry under the mutex. After this point
+        // `session_ref` returns None for this handle — no new Arc clones can
+        // be created, closing the UAF window. The Arc we extracted keeps the
+        // Session allocation alive until all existing clones are also released.
+        let s = match session_registry().lock() {
+            Ok(mut guard) => guard.remove(&(handle as u64)),
+            Err(_) => None,
+        };
+        let Some(s) = s else { return; };
+        // Signal the actor to stop (non-destructive — does not free any handle).
         nmp_app_stop(s.app);
+        // Signal shutdown: each blocking loop gets its own dedicated channel so
+        // neither can steal the other's token. Both sends always succeed (D6 —
+        // a full channel means the signal is already pending).
+        let _ = s.shutdown_tx_update.try_send(());
+        let _ = s.shutdown_tx_signer.try_send(());
+        // Mark teardown before clearing the router so that a concurrent
+        // nativeSetCapabilityRouter that already cloned signer_tx will see
+        // this flag inside the capability_ctx lock and bail without installing.
+        s.shutting_down.store(true, Ordering::Release);
         capability_router::clear_capability_router(&s);
-        if !s.podcast.is_null() {
-            nmp_app_podcast_unregister(s.podcast);
-        }
-        nmp_app_set_update_callback(s.app, std::ptr::null_mut(), None);
-        nmp_app_free(s.app);
-        // SAFETY: callback has been cleared; the `Sender` box is no longer
-        // reachable from the kernel thread.
-        unsafe {
-            drop(Box::from_raw(s.tx));
-        }
+        // Drop the signer-request sender now that the capability-ctx clone has
+        // been cleared. This disconnects signer_rx, unblocking the
+        // nativeNextSignerRequest select! if it re-entered after consuming the
+        // one-shot shutdown token (#600).
+        drop(s.signer_requests.lock().ok().and_then(|mut g| g.take()));
+        // Drop our Arc. When all in-flight session_ref Arc clones also drop
+        // (i.e. every concurrent JNI call returns), Session::drop runs and
+        // releases native handles: nmp_app_set_update_callback(null),
+        // nmp_app_podcast_unregister, nmp_app_free, and the Sender Box.
     });
 }

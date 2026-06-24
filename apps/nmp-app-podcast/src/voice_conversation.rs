@@ -162,6 +162,10 @@ pub(crate) struct VoiceConversationManager {
     runtime: Arc<Runtime>,
     rev: Arc<AtomicU64>,
     snapshot_signal: Option<SnapshotUpdateSignal>,
+    /// Voice-domain revision counter (from `DomainRevs::voice`).  Bumped on
+    /// every async reply so the push-projection gate (`current == prev → None`)
+    /// passes and the `podcast.voice` sidecar is actually emitted.
+    domain_rev: Arc<AtomicU64>,
     /// Outer-task join handles for in-flight turns. Drained by
     /// [`Self::shutdown`] (abort + join) so no spawned task can dereference
     /// `app` after the app begins freeing. Pruned opportunistically on each
@@ -198,6 +202,7 @@ impl VoiceConversationManager {
         runtime: Arc<Runtime>,
         rev: Arc<AtomicU64>,
         snapshot_signal: Option<SnapshotUpdateSignal>,
+        domain_rev: Arc<AtomicU64>,
     ) -> Self {
         Self {
             app,
@@ -207,6 +212,7 @@ impl VoiceConversationManager {
             runtime,
             rev,
             snapshot_signal,
+            domain_rev,
             inflight: Arc::new(Mutex::new(Vec::new())),
             shutting_down: Arc::new(AtomicBool::new(false)),
         }
@@ -268,6 +274,7 @@ impl VoiceConversationManager {
         let runtime_for_blocking = Arc::clone(&self.runtime);
         let rev = Arc::clone(&self.rev);
         let snapshot_signal = self.snapshot_signal.clone();
+        let domain_rev = Arc::clone(&self.domain_rev);
         let shutting_down = Arc::clone(&self.shutting_down);
         // `*mut NmpApp` is not `Send`; move it through a `usize` so the
         // spawned future captures a plain integer and re-materializes the
@@ -339,6 +346,10 @@ impl VoiceConversationManager {
                     let _ = unsafe { &*app }.dispatch_capability(&req);
                 }
             }
+            // Always advance the voice domain rev so the push-projection gate
+            // (`current == prev → None`) passes and the `podcast.voice` sidecar
+            // is emitted for this reply.
+            domain_rev.fetch_add(1, Ordering::Relaxed);
             if let Some(signal) = snapshot_signal {
                 signal.bump();
             } else {

@@ -3,7 +3,8 @@
 //! Extracted from `podcast_module.rs` to keep that file under the 500-line hard limit.
 
 use super::*;
-
+use nmp_core::substrate::ActionModule as _;
+use nmp_core::ActorCommand;
 
 /// Test helper: extract `(action_json, correlation_id)` from an
 /// `ActorCommand::Protocol(HostOpCommand { .. })` via its `Debug` output.

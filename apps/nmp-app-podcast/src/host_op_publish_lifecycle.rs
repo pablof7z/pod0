@@ -25,7 +25,8 @@ use crate::ffi::actions::publish_module::PublishAction;
 use crate::host_op_handler::PodcastHostOpHandler;
 use crate::host_op_publish::publish_show;
 use crate::nmp_dispatch::{
-    publish_raw_with_signer_via_nmp, register_podcast_signer_in_kernel, self_dispatch_publish,
+    publish_raw_with_signer_to_relays_via_nmp, register_podcast_signer_in_kernel,
+    self_dispatch_publish, write_relay_urls,
 };
 use crate::store::podcast_keys::secret_to_hex;
 
@@ -294,12 +295,14 @@ pub fn delete_owned(handler: &PodcastHostOpHandler, podcast_id: String) -> serde
             let tags = deletion_tags();
             let secret_hex = secret_to_hex(&sk);
             register_podcast_signer_in_kernel(handler.app, &secret_hex);
-            deletion_status = publish_raw_with_signer_via_nmp(
+            let relays = write_relay_urls(handler.app);
+            deletion_status = publish_raw_with_signer_to_relays_via_nmp(
                 handler.app,
                 KIND_DELETION,
                 &tags,
                 "",
                 &pubkey_hex,
+                &relays,
             );
         }
     }

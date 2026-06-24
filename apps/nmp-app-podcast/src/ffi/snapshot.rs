@@ -239,6 +239,10 @@ impl PodcastHandle {
 
 /// Serialize the current app state into a JSON C string.
 ///
+/// **Cold-start / compat / debug only.** Normal app state updates arrive via
+/// typed domain sidecars in the binary FlatBuffers push frame
+/// (`nmp_app_podcast_decode_update_frame`). Do NOT call this on render ticks.
+///
 /// Returns null on any failure (null handle, `CString` nul-byte conflict).
 /// The returned pointer is owned by the caller; pass it to
 /// [`nmp_app_podcast_snapshot_free`] when done. Payload shape is

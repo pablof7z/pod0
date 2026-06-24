@@ -182,7 +182,7 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     // the live `app` pointer so `VoiceConversationManager` can dispatch
     // `VoiceCommand::Speak` back to the iOS TTS executor.
     app_state_inner.voice = crate::state::voice::VoiceSubstate::new(
-        app_state_infra,
+        app_state_infra.with_domain(crate::state::Domain::Voice),
         store.clone(),
         app,
     );

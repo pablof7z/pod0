@@ -1,4 +1,4 @@
-//! Parse a `kind:10154` Nostr event (NIP-F4) into a [`NIP74Show`] and map it onto
+//! Parse a `kind:10154` Nostr event (NIP-F4) into a [`NipF4DiscoveryShow`] and map it onto
 //! a [`Podcast`].
 //!
 //! Behavior mirrors `App/Sources/Services/NostrPodcastDiscoveryService
@@ -11,9 +11,9 @@ use uuid::Uuid;
 
 use crate::kinds::KIND_SHOW;
 use crate::parse::{all_tag_values, first_tag_value};
-use crate::types::{NIP74Show, ParseError};
+use crate::types::{NipF4DiscoveryShow, ParseError};
 
-/// Parse a Nostr event's header + tags into a raw [`NIP74Show`].
+/// Parse a Nostr event's header + tags into a raw [`NipF4DiscoveryShow`].
 ///
 /// `kind` is checked against [`KIND_SHOW`]. The `pubkey` is the podcast's own
 /// hex pubkey (NIP-F4 per-podcast key). `created_at` is the event header
@@ -27,7 +27,7 @@ pub fn parse_show_event(
     created_at: i64,
     content: &str,
     tags: &[Vec<String>],
-) -> Result<NIP74Show, ParseError> {
+) -> Result<NipF4DiscoveryShow, ParseError> {
     if kind != KIND_SHOW {
         return Err(ParseError::WrongKind {
             expected: KIND_SHOW,
@@ -54,7 +54,7 @@ pub fn parse_show_event(
         .map(str::to_string)
         .unwrap_or_else(|| content.to_string());
 
-    Ok(NIP74Show {
+    Ok(NipF4DiscoveryShow {
         pubkey: pubkey.to_string(),
         title,
         description,
@@ -66,7 +66,7 @@ pub fn parse_show_event(
     })
 }
 
-/// Map a parsed [`NIP74Show`] onto a [`Podcast`] domain row.
+/// Map a parsed [`NipF4DiscoveryShow`] onto a [`Podcast`] domain row.
 ///
 /// The mapping is total: every field that does not parse as a URL is
 /// silently dropped (matches Swift `URL(string:)` semantics, which is the
@@ -75,7 +75,7 @@ pub fn parse_show_event(
 /// `Podcast::id` is a UUIDv5 derived from the NIP-F4 coordinate so the
 /// row is stable across rediscoveries — `subscribe(to:)` in Swift uses
 /// the same scheme via `NostrPodcastDiscoveryService.podcastID(for:)`.
-pub fn show_to_podcast(show: &NIP74Show) -> Podcast {
+pub fn show_to_podcast(show: &NipF4DiscoveryShow) -> Podcast {
     let coordinate = show.coordinate();
     Podcast {
         id: podcast_id_from_coordinate(&coordinate),

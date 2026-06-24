@@ -26,27 +26,14 @@ struct AppState: Codable, Sendable {
     /// Per-category user preferences keyed by `PodcastCategory.id`.
     var categorySettings: [UUID: CategorySettings] = [:]
     var settings: Settings = Settings()
-    /// Optimistic display mirrors for the kernel-owned `ApprovedPeerStore`.
-    /// Updated immediately on user action; the authoritative state arrives
-    /// via `trusted` flags in the next `podcast.social` domain push.
-    var nostrAllowedPubkeys: Set<String> = []
-    var nostrBlockedPubkeys: Set<String> = []
     /// One record per Nostr conversation root (NIP-10) the agent has
     /// participated in. Surfaces in Settings > Agent > Conversations.
+    /// Kept in memory but not persisted; kernel push re-seeds it.
     var nostrConversations: [NostrConversationRecord] = []
     /// Cached kind:0 profile metadata keyed by hex pubkey. Hydrated lazily
     /// when new pubkeys land in pending approvals or conversations.
+    /// Kept in memory but not persisted; kernel push re-seeds it.
     var nostrProfileCache: [String: NostrProfileMetadata] = [:]
-    /// Event ids the agent has already produced a reply for (or has
-    /// deliberately decided to skip). Persisted so a relay re-delivery
-    /// across app restarts can't trigger a duplicate reply.
-    var nostrRespondedEventIDs: Set<String> = []
-    /// Highest `created_at` we've observed on an inbound kind:1 routed to
-    /// the agent. Persisted so a future REQ can carry `since:` and skip
-    /// already-seen events; bumped before the model runs so a crash
-    /// mid-reply still advances the cursor (dedup via
-    /// `nostrRespondedEventIDs` covers the small overlap window).
-    var nostrSinceCursor: Int?
     var agentActivity: [AgentActivityEntry] = []
     /// Outbound `send_friend_message` events awaiting a reply. When the
     /// friend's kind:1 response arrives, `NostrAgentResponder` claims the
@@ -63,9 +50,6 @@ struct AppState: Codable, Sendable {
         case podcasts, subscriptions, episodes
         case notes, friends, settings
         case categories, categorySettings
-        case nostrAllowedPubkeys, nostrBlockedPubkeys
-        case nostrConversations, nostrProfileCache
-        case nostrRespondedEventIDs, nostrSinceCursor
         case agentActivity
         case pendingFriendMessages
         case lastPlayedEpisodeID
@@ -98,12 +82,8 @@ struct AppState: Codable, Sendable {
         categories = try c.decodeIfPresent([PodcastCategory].self, forKey: .categories) ?? []
         categorySettings = try c.decodeIfPresent([UUID: CategorySettings].self, forKey: .categorySettings) ?? [:]
         settings = try c.decodeIfPresent(Settings.self, forKey: .settings) ?? Settings()
-        nostrAllowedPubkeys = try c.decodeIfPresent(Set<String>.self, forKey: .nostrAllowedPubkeys) ?? []
-        nostrBlockedPubkeys = try c.decodeIfPresent(Set<String>.self, forKey: .nostrBlockedPubkeys) ?? []
-        nostrConversations = try c.decodeIfPresent([NostrConversationRecord].self, forKey: .nostrConversations) ?? []
-        nostrProfileCache = try c.decodeIfPresent([String: NostrProfileMetadata].self, forKey: .nostrProfileCache) ?? [:]
-        nostrRespondedEventIDs = try c.decodeIfPresent(Set<String>.self, forKey: .nostrRespondedEventIDs) ?? []
-        nostrSinceCursor = try c.decodeIfPresent(Int.self, forKey: .nostrSinceCursor)
+        nostrConversations = []
+        nostrProfileCache = [:]
         agentActivity = try c.decodeIfPresent([AgentActivityEntry].self, forKey: .agentActivity) ?? []
         pendingFriendMessages = try c.decodeIfPresent([PendingFriendMessage].self, forKey: .pendingFriendMessages) ?? []
         lastPlayedEpisodeID = try c.decodeIfPresent(UUID.self, forKey: .lastPlayedEpisodeID)

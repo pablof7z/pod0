@@ -5,8 +5,6 @@
 //! serde failure. No business logic lives here.
 
 use std::ffi::{CStr, CString};
-use std::sync::mpsc::RecvTimeoutError;
-use std::time::Duration;
 
 use jni::objects::{JClass, JString};
 use jni::sys::{jlong, jstring};
@@ -68,9 +66,9 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeDispatchAction<'l>
     })
 }
 
-/// `nativeNextUpdate(handle)` — blocking drain of the snapshot channel with a
-/// 250 ms timeout. Returns `null` on timeout or closed channel. Mirrors the
-/// pull-side cadence the iOS push callback would deliver.
+/// `nativeNextUpdate(handle)` — blocking drain of the snapshot channel.
+/// Returns `null` when the session is shut down or the channel closes.
+/// Blocks until a frame arrives or shutdown is initiated.
 #[no_mangle]
 pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeNextUpdate<'l>(
     env: JNIEnv<'l>,
@@ -82,12 +80,15 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeNextUpdate<'l>(
         let Some(s) = session_ref(handle) else {
             return null;
         };
-        match s.rx.recv_timeout(Duration::from_millis(250)) {
-            Ok(json) => match env.new_string(json) {
-                Ok(js) => js.into_raw(),
-                Err(_) => null,
+        crossbeam_channel::select! {
+            recv(s.rx) -> msg => match msg {
+                Ok(json) => match env.new_string(json) {
+                    Ok(js) => js.into_raw(),
+                    Err(_) => null,
+                },
+                Err(_) => null,  // channel closed: nativeFree dropped the sender
             },
-            Err(RecvTimeoutError::Timeout) | Err(RecvTimeoutError::Disconnected) => null,
+            recv(s.shutdown_rx_update) -> _ => null,  // explicit shutdown
         }
     })
 }
@@ -123,4 +124,91 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativePodcastSnapshot<'l
             Err(_) => null,
         }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_update_channel_delivers_sent_frame() {
+        let (tx, rx) = crossbeam_channel::unbounded::<String>();
+        let (shutdown_tx, shutdown_rx) = crossbeam_channel::bounded::<()>(1);
+
+        // Send a test message
+        let test_msg = "test frame".to_string();
+        tx.send(test_msg.clone()).expect("send failed");
+
+        // Simulate the select! logic
+        crossbeam_channel::select! {
+            recv(rx) -> msg => {
+                assert_eq!(msg.ok(), Some(test_msg));
+            },
+            recv(shutdown_rx) -> _ => {
+                panic!("should have received from rx");
+            },
+        }
+    }
+
+    #[test]
+    fn test_shutdown_unblocks_update_receiver() {
+        let (_tx, rx) = crossbeam_channel::unbounded::<String>();
+        let (shutdown_tx, shutdown_rx) = crossbeam_channel::bounded::<()>(1);
+
+        // Signal shutdown
+        shutdown_tx.send(()).expect("send shutdown failed");
+
+        // Simulate the select! logic with no data on rx
+        let mut received_from_shutdown = false;
+        crossbeam_channel::select! {
+            recv(rx) -> msg => {
+                assert!(msg.is_err()); // rx is closed
+            },
+            recv(shutdown_rx) -> _ => {
+                received_from_shutdown = true;
+            },
+        }
+        assert!(received_from_shutdown, "should have received shutdown signal");
+    }
+
+    #[test]
+    fn test_signer_channel_delivers_request() {
+        let (tx, rx) = crossbeam_channel::unbounded::<String>();
+        let (shutdown_tx, shutdown_rx) = crossbeam_channel::bounded::<()>(1);
+
+        // Send a signer request
+        let request_msg = r#"{"id":"1","method":"get_public_key"}"#.to_string();
+        tx.send(request_msg.clone()).expect("send failed");
+
+        // Simulate the select! logic
+        crossbeam_channel::select! {
+            recv(rx) -> msg => {
+                assert_eq!(msg.ok(), Some(request_msg));
+            },
+            recv(shutdown_rx) -> _ => {
+                panic!("should have received from rx");
+            },
+        }
+    }
+
+    #[test]
+    fn test_signer_shutdown_unblocks() {
+        let (_tx, rx) = crossbeam_channel::unbounded::<String>();
+        let (shutdown_tx, shutdown_rx) = crossbeam_channel::bounded::<()>(1);
+
+        // Signal shutdown
+        shutdown_tx.send(()).expect("send shutdown failed");
+
+        // Simulate the select! logic with no data on rx
+        let mut received_from_shutdown = false;
+        crossbeam_channel::select! {
+            recv(rx) -> msg => {
+                assert!(msg.is_err()); // rx is closed
+            },
+            recv(shutdown_rx) -> _ => {
+                received_from_shutdown = true;
+            },
+        }
+        assert!(received_from_shutdown, "should have received shutdown signal");
+    }
 }

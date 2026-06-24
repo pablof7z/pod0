@@ -87,18 +87,15 @@ void nmp_app_set_capability_callback(void *app, void *context, NmpCapabilityCall
 // `libnmp_app_podcast.a` is the Podcast Rust aggregate archive (D0: protocol
 // glue outside nmp-core).
 //
-// Flow:
-// 1. Call `nmp_app_podcast_register(app)` once after `nmp_app_new()`. Returns
-//    an opaque handle (or NULL on failure).
-// 2. On each render tick call `nmp_app_podcast_snapshot(handle)` to get a
-//    nul-terminated JSON string. The caller owns the pointer until it calls
-//    `nmp_app_podcast_snapshot_free(ptr)`.
-// 3. On teardown call `nmp_app_podcast_unregister(handle)` BEFORE
-//    `nmp_app_free(app)`.
+// Primary hydration path: typed domain sidecars arrive in the binary FlatBuffers
+// push frame and are decoded via `nmp_app_podcast_decode_update_frame` into
+// `v.projections[schema_id]`. Use `nmp_app_podcast_snapshot` only for cold-start
+// seeding, debug dumps, or headless compatibility — not on render ticks.
 //
 // Fire-and-forget: every entry point degrades silently on null pointers,
 // poisoned mutexes, or serialization failure (D6).
 void *nmp_app_podcast_register(void *app);
+// COMPAT-ONLY: Use typed domain sidecars for steady-state state updates.
 char *nmp_app_podcast_snapshot(void *handle);
 uint64_t nmp_app_podcast_snapshot_rev(void *handle);
 void nmp_app_podcast_snapshot_free(char *ptr);

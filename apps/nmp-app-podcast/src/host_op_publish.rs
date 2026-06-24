@@ -27,8 +27,8 @@ use crate::ffi::actions::publish_module::PublishAction;
 use crate::ffi::handle::OwnedPublishState;
 use crate::host_op_handler::PodcastHostOpHandler;
 use crate::nmp_dispatch::{
-    blossom_upload_via_nmp, publish_raw_via_nmp, publish_raw_with_signer_via_nmp,
-    register_podcast_signer_in_kernel,
+    blossom_upload_via_nmp, publish_raw_via_nmp, publish_raw_with_signer_to_relays_via_nmp,
+    register_podcast_signer_in_kernel, write_relay_urls,
 };
 use crate::store::podcast_keys::secret_to_hex;
 
@@ -161,9 +161,16 @@ pub(crate) fn publish_show(
     }
     handler.state.infra.rev.fetch_add(1, Ordering::Relaxed);
 
-    // Dispatch PublishRaw signed by the per-podcast key (no app-side signing).
-    let status =
-        publish_raw_with_signer_via_nmp(handler.app, KIND_SHOW, &tags, &content, &pubkey_hex);
+    // Dispatch PublishRaw signed by the per-podcast key through write relays.
+    let relays = write_relay_urls(handler.app);
+    let status = publish_raw_with_signer_to_relays_via_nmp(
+        handler.app,
+        KIND_SHOW,
+        &tags,
+        &content,
+        &pubkey_hex,
+        &relays,
+    );
     serde_json::json!({
         "ok": true,
         "status": status,
@@ -269,11 +276,26 @@ fn publish_episode(handler: &PodcastHostOpHandler, episode_id: String) -> serde_
         };
     let content = episode.description.clone();
 
+    // Track Blossom upload correlation ID if present.
+    if let Some(ref corr_id) = blossom_correlation_id {
+        if let Ok(mut state) = handler.state.publish.publish_state.lock() {
+            let entry: &mut OwnedPublishState = state.entry(podcast_id_str.clone()).or_default();
+            entry.blossom_pending.insert(corr_id.clone(), episode_id.clone());
+        }
+    }
+
     handler.state.infra.rev.fetch_add(1, Ordering::Relaxed);
 
-    // Dispatch PublishRaw signed by the per-podcast key (no app-side signing).
-    let status =
-        publish_raw_with_signer_via_nmp(handler.app, KIND_EPISODE, &tags, &content, &pubkey_hex);
+    // Dispatch PublishRaw signed by the per-podcast key through write relays.
+    let relays = write_relay_urls(handler.app);
+    let status = publish_raw_with_signer_to_relays_via_nmp(
+        handler.app,
+        KIND_EPISODE,
+        &tags,
+        &content,
+        &pubkey_hex,
+        &relays,
+    );
     serde_json::json!({
         "ok": true,
         "status": status,

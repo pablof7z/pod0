@@ -16,11 +16,11 @@ import Foundation
 struct Podcast: Codable, Sendable, Identifiable, Hashable {
 
     /// Visibility for agent-owned podcasts. Controls whether the show
-    /// and its episodes are published as NIP-74 Nostr events (kind:30074 / kind:30075).
+    /// and its episodes are published as NIP-F4 Nostr events (kind:10154 / kind:54).
     enum NostrVisibility: String, Codable, Sendable, Hashable {
         /// Library-only — not published to Nostr.
         case `private`
-        /// Published as NIP-74 addressable events signed by the agent's key.
+        /// Published as NIP-F4 events signed by the per-podcast key.
         case `public`
     }
 
@@ -49,12 +49,12 @@ struct Podcast: Codable, Sendable, Identifiable, Hashable {
     /// agent-created feed-less shows; `nil` for feed-backed shows and the
     /// legacy "Agent Generated" singleton podcast.
     var ownerPubkeyHex: String?
-    /// NIP-74 publish visibility. Only relevant when `ownerPubkeyHex` is set.
+    /// NIP-F4 publish visibility. Only relevant when `ownerPubkeyHex` is set.
     /// Defaults to `.public` so new agent-owned podcasts are live on Nostr
     /// whenever `settings.nostrEnabled` is true.
     var nostrVisibility: NostrVisibility
-    /// NIP-74 addressable coordinate for podcasts *discovered* via Nostr
-    /// (i.e. shows published by others). Format: `"30074:<pubkey-hex>:<d-tag>"`.
+    /// NIP-F4 coordinate for podcasts *discovered* via Nostr
+    /// (i.e. shows published by others). Format: `"10154:<pubkey-hex>"`.
     /// Non-nil only for Nostr-native shows; RSS shows always have nil here.
     /// Stored so the app can re-query the relay for new episodes without
     /// needing to re-parse the feedURL (which is nil for these rows).

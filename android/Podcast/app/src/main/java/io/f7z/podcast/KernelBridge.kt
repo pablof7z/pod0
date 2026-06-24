@@ -1,6 +1,7 @@
 package io.f7z.podcast
 
 import io.f7z.podcast.capabilities.AndroidCapabilityRouter
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Thin JNI wrapper around `libnmp_app_podcast.so`, which links the SAME Rust
@@ -27,11 +28,11 @@ import io.f7z.podcast.capabilities.AndroidCapabilityRouter
  */
 class KernelBridge {
     /** Opaque pointer to the Rust `Session` struct. 0 means freed/uninitialized. */
-    private var handle: Long = 0
+    private val handle = AtomicLong(0L)
 
     init {
         System.loadLibrary(LIB_NAME)
-        handle = nativeNew()
+        handle.set(nativeNew())
     }
 
     /**
@@ -46,29 +47,29 @@ class KernelBridge {
      * when to persist; this shell only supplies the OS path.
      */
     fun setDataDir(path: String) {
-        if (handle != 0L) nativeSetDataDir(handle, path)
+        val h = handle.get(); if (h != 0L) nativeSetDataDir(h, path)
     }
 
     /** Start the kernel actor with the given snapshot cadence. */
     fun start(visibleLimit: Int = 80, emitHz: Int = 4) {
-        if (handle != 0L) nativeStart(handle, visibleLimit, emitHz)
+        val h = handle.get(); if (h != 0L) nativeStart(h, visibleLimit, emitHz)
     }
 
     /** Halt the kernel actor (idempotent). */
     fun stop() {
-        if (handle != 0L) nativeStop(handle)
+        val h = handle.get(); if (h != 0L) nativeStop(h)
     }
 
     /** Actor-liveness probe (D7). True while the Rust actor thread is alive. */
-    fun isAlive(): Boolean = if (handle != 0L) nativeIsAlive(handle) == 1 else false
+    fun isAlive(): Boolean { val h = handle.get(); return if (h != 0L) nativeIsAlive(h) == 1 else false }
 
     /** G3 — host lifecycle → kernel lifecycle bridge. */
     fun lifecycleForeground() {
-        if (handle != 0L) nativeLifecycleForeground(handle)
+        val h = handle.get(); if (h != 0L) nativeLifecycleForeground(h)
     }
 
     fun lifecycleBackground() {
-        if (handle != 0L) nativeLifecycleBackground(handle)
+        val h = handle.get(); if (h != 0L) nativeLifecycleBackground(h)
     }
 
     /**
@@ -77,8 +78,9 @@ class KernelBridge {
      * envelope (`{"correlation_id":...}` on accept, `{"error":...}` on
      * rejection) or `null` on any FFI failure (D6).
      */
-    fun dispatchAction(namespace: String, payloadJson: String): String? =
-        if (handle != 0L) nativeDispatchAction(handle, namespace, payloadJson) else null
+    fun dispatchAction(namespace: String, payloadJson: String): String? {
+        val h = handle.get(); return if (h != 0L) nativeDispatchAction(h, namespace, payloadJson) else null
+    }
 
     /**
      * Register the Android capability router. Rust issues
@@ -86,11 +88,11 @@ class KernelBridge {
      * executes OS work (HTTP, ExoPlayer) and returns `CapabilityEnvelope` JSON.
      */
     fun registerCapabilityRouter(router: AndroidCapabilityRouter) {
-        if (handle != 0L) nativeSetCapabilityRouter(handle, router)
+        val h = handle.get(); if (h != 0L) nativeSetCapabilityRouter(h, router)
     }
 
     fun unregisterCapabilityRouter() {
-        if (handle != 0L) nativeSetCapabilityRouter(handle, null)
+        val h = handle.get(); if (h != 0L) nativeSetCapabilityRouter(h, null)
     }
 
     /**
@@ -98,8 +100,9 @@ class KernelBridge {
      * route through `nmp_app_podcast_audio_report`; the returned follow-up
      * command JSON, if any, should be executed by the audio capability.
      */
-    fun capabilityReport(namespace: String, reportJson: String): String? =
-        if (handle != 0L) nativeCapabilityReport(handle, namespace, reportJson) else null
+    fun capabilityReport(namespace: String, reportJson: String): String? {
+        val h = handle.get(); return if (h != 0L) nativeCapabilityReport(h, namespace, reportJson) else null
+    }
 
     /**
      * Host → kernel **download**-report channel. The JSON-encoded `DownloadReport`
@@ -115,8 +118,9 @@ class KernelBridge {
      * projected `downloads.active` rows so there is one starter/canceller and
      * no duplicate path competing with the Rust queue.
      */
-    fun downloadReport(reportJson: String): String? =
-        if (handle != 0L) nativeDownloadReport(handle, reportJson) else null
+    fun downloadReport(reportJson: String): String? {
+        val h = handle.get(); return if (h != 0L) nativeDownloadReport(h, reportJson) else null
+    }
 
     /**
      * Host -> kernel **async HTTP**-report channel for the optimistic-subscribe
@@ -128,7 +132,7 @@ class KernelBridge {
      * `downloadReport`.
      */
     fun httpReport(reportJson: String) {
-        if (handle != 0L) nativeHttpReport(handle, reportJson)
+        val h = handle.get(); if (h != 0L) nativeHttpReport(h, reportJson)
     }
 
     /**
@@ -138,15 +142,16 @@ class KernelBridge {
      * Keychain capability.
      */
     fun signinNsec(nsec: String) {
-        if (handle != 0L) nativeSigninNsec(handle, nsec)
+        val h = handle.get(); if (h != 0L) nativeSigninNsec(h, nsec)
     }
 
     /**
-     * Blocking (≤250 ms) drain of the kernel snapshot channel; `null` on idle.
-     * Mirrors the Swift push callback's cadence via a pull-side model — see
-     * `apps/nmp-app-podcast/src/android.rs` for the rationale.
+     * Blocking drain of the kernel snapshot channel. Blocks until a frame
+     * arrives or the session is shut down. Mirrors the Swift push callback's
+     * cadence via a pull-side model — see `apps/nmp-app-podcast/src/android.rs`
+     * for the rationale. Returns `null` only on session shutdown.
      */
-    fun nextUpdate(): String? = if (handle != 0L) nativeNextUpdate(handle) else null
+    fun nextUpdate(): String? { val h = handle.get(); return if (h != 0L) nativeNextUpdate(h) else null }
 
     // ── NIP-46 remote signer (bunker:// + nostrconnect://) ─────────────────
 
@@ -161,7 +166,7 @@ class KernelBridge {
      * Mirrors iOS `PodcastHandle.signInBunker(uri:)`.
      */
     fun signInBunker(uri: String, makeActive: Boolean = true) {
-        if (handle != 0L) nativeSignInBunker(handle, uri, if (makeActive) 1 else 0)
+        val h = handle.get(); if (h != 0L) nativeSignInBunker(h, uri, if (makeActive) 1 else 0)
     }
 
     /**
@@ -171,7 +176,7 @@ class KernelBridge {
      * Mirrors iOS `PodcastHandle.cancelBunkerHandshake()`.
      */
     fun cancelBunkerHandshake() {
-        if (handle != 0L) nativeCancelBunkerHandshake(handle)
+        val h = handle.get(); if (h != 0L) nativeCancelBunkerHandshake(h)
     }
 
     /**
@@ -187,8 +192,9 @@ class KernelBridge {
      *
      * Mirrors iOS `PodcastHandle.nostrconnectURI(relayURL:callbackScheme:)`.
      */
-    fun nostrconnectUri(relayUrl: String? = null, callbackScheme: String? = null): String? =
-        if (handle != 0L) nativeNostrconnectUri(handle, relayUrl, callbackScheme) else null
+    fun nostrconnectUri(relayUrl: String? = null, callbackScheme: String? = null): String? {
+        val h = handle.get(); return if (h != 0L) nativeNostrconnectUri(h, relayUrl, callbackScheme) else null
+    }
 
     // ── NIP-55 external signer (ADR-0048) ──────────────────────────────────
 
@@ -205,16 +211,17 @@ class KernelBridge {
      *   resolver pick.
      */
     fun signInNip55(signerPackage: String?) {
-        if (handle != 0L) nativeSignInNip55(handle, signerPackage)
+        val h = handle.get(); if (h != 0L) nativeSignInNip55(h, signerPackage)
     }
 
     /**
-     * Blocking (≤250 ms) drain of the outbound NIP-55 request channel; `null`
-     * on idle. The signer analogue of [nextUpdate]: a dedicated reader thread
-     * loops on this and hands each `ExternalSignerRequest` JSON to
-     * `ExternalSignerCapabilityBridge.handleJson`.
+     * Blocking drain of the outbound NIP-55 request channel. Blocks until a
+     * request arrives or the session is shut down. The signer analogue of
+     * [nextUpdate]: a dedicated reader thread loops on this and hands each
+     * `ExternalSignerRequest` JSON to `ExternalSignerCapabilityBridge.handleJson`.
+     * Returns `null` only on session shutdown.
      */
-    fun nextSignerRequest(): String? = if (handle != 0L) nativeNextSignerRequest(handle) else null
+    fun nextSignerRequest(): String? { val h = handle.get(); return if (h != 0L) nativeNextSignerRequest(h) else null }
 
     /**
      * Report a raw `ExternalSignerResponse` JSON (Amber's reply) back to the
@@ -222,7 +229,7 @@ class KernelBridge {
      * verbatim, no interpretation here).
      */
     fun deliverSignerResponse(responseJson: String) {
-        if (handle != 0L) nativeDeliverSignerResponse(handle, responseJson)
+        val h = handle.get(); if (h != 0L) nativeDeliverSignerResponse(h, responseJson)
     }
 
     /**
@@ -238,7 +245,7 @@ class KernelBridge {
      * `nmp_app_claim_profile` C-ABI symbol declared in `NmpCore.h`.
      */
     fun claimProfile(pubkeyHex: String, consumerID: String) {
-        if (handle != 0L) nativeClaimProfile(handle, pubkeyHex, consumerID)
+        val h = handle.get(); if (h != 0L) nativeClaimProfile(h, pubkeyHex, consumerID)
     }
 
     /**
@@ -250,59 +257,66 @@ class KernelBridge {
      * `nmp_app_release_profile` C-ABI symbol declared in `NmpCore.h`.
      */
     fun releaseProfile(pubkeyHex: String, consumerID: String) {
-        if (handle != 0L) nativeReleaseProfile(handle, pubkeyHex, consumerID)
+        val h = handle.get(); if (h != 0L) nativeReleaseProfile(h, pubkeyHex, consumerID)
     }
 
     /** Pull the Podcast projection JSON (one-shot, off the projection cache). */
-    fun podcastSnapshot(): String? = if (handle != 0L) nativePodcastSnapshot(handle) else null
+    fun podcastSnapshot(): String? { val h = handle.get(); return if (h != 0L) nativePodcastSnapshot(h) else null }
 
     /**
      * Shared agent chat completion transport. Android sends the same message
      * array contract as iOS; Rust owns provider/model routing, credentials,
      * tool-loop handling, and error reporting.
      */
-    fun chatComplete(messagesJson: String): String? =
-        if (handle != 0L) nativeChatComplete(handle, messagesJson) else null
+    fun chatComplete(messagesJson: String): String? {
+        val h = handle.get(); return if (h != 0L) nativeChatComplete(h, messagesJson) else null
+    }
 
     /**
      * Shared provider completion transport. The JSON intent and JSON envelope
      * are the same provider-neutral contract iOS passes through
      * `nmp_app_podcast_provider_complete`; Android owns no provider HTTP here.
      */
-    fun providerComplete(intentJson: String): String? =
-        if (handle != 0L) nativeProviderComplete(handle, intentJson) else null
+    fun providerComplete(intentJson: String): String? {
+        val h = handle.get(); return if (h != 0L) nativeProviderComplete(h, intentJson) else null
+    }
 
     /** Shared provider embedding transport; returns Rust's JSON envelope. */
-    fun providerEmbed(intentJson: String): String? =
-        if (handle != 0L) nativeProviderEmbed(handle, intentJson) else null
+    fun providerEmbed(intentJson: String): String? {
+        val h = handle.get(); return if (h != 0L) nativeProviderEmbed(h, intentJson) else null
+    }
 
     /**
      * Shared online-search transport. Rust owns Perplexity/OpenRouter request
      * shaping, credentials, status mapping, and response parsing.
      */
-    fun perplexitySearch(intentJson: String): String? =
-        if (handle != 0L) nativePerplexitySearch(handle, intentJson) else null
+    fun perplexitySearch(intentJson: String): String? {
+        val h = handle.get(); return if (h != 0L) nativePerplexitySearch(h, intentJson) else null
+    }
 
     /**
      * Shared provider model catalog. Rust owns OpenRouter/models.dev/Ollama
      * retrieval and normalization; Android receives the JSON envelope only.
      */
-    fun providerModelCatalog(): String? =
-        if (handle != 0L) nativeProviderModelCatalog(handle) else null
+    fun providerModelCatalog(): String? {
+        val h = handle.get(); return if (h != 0L) nativeProviderModelCatalog(h) else null
+    }
 
     /**
      * Shared speech STT/TTS model catalog. Rust owns the option sets; Android
      * receives the JSON envelope only.
      */
-    fun speechModelCatalog(): String? =
-        if (handle != 0L) nativeSpeechModelCatalog(handle) else null
+    fun speechModelCatalog(): String? {
+        val h = handle.get(); return if (h != 0L) nativeSpeechModelCatalog(h) else null
+    }
 
     /**
      * Shared on-device model catalog. Rust owns model ids, display metadata,
      * download URLs, sizes, and RAM floors; Android receives the JSON envelope.
      */
-    fun localModelCatalog(): String? =
-        if (handle != 0L) nativeLocalModelCatalog(handle) else null
+    fun localModelCatalog(): String? {
+        val h = handle.get(); return if (h != 0L) nativeLocalModelCatalog(h) else null
+    }
 
     /**
      * Shared BYOK authorization helper. Android supplies app/browser facts;
@@ -317,74 +331,84 @@ class KernelBridge {
      * auth and browser callback URL; Rust validates state/callback and owns
      * `/api/token` request/response parsing.
      */
-    fun byokExchange(intentJson: String): String? =
-        if (handle != 0L) nativeByokExchange(handle, intentJson) else null
+    fun byokExchange(intentJson: String): String? {
+        val h = handle.get(); return if (h != 0L) nativeByokExchange(h, intentJson) else null
+    }
 
     /**
      * Shared OpenRouter key validation. Rust owns `/auth/key`, credentials,
      * request shaping, and response parsing; Android receives the JSON envelope.
      */
-    fun validateOpenRouterKey(): String? =
-        if (handle != 0L) nativeValidateOpenRouterKey(handle) else null
+    fun validateOpenRouterKey(): String? {
+        val h = handle.get(); return if (h != 0L) nativeValidateOpenRouterKey(h) else null
+    }
 
     /**
      * Shared ElevenLabs key validation. Rust owns `/v1/user`, credentials,
      * request shaping, and response parsing; Android receives the JSON envelope.
      */
-    fun validateElevenLabsKey(): String? =
-        if (handle != 0L) nativeValidateElevenLabsKey(handle) else null
+    fun validateElevenLabsKey(): String? {
+        val h = handle.get(); return if (h != 0L) nativeValidateElevenLabsKey(h) else null
+    }
 
     /**
      * Shared ElevenLabs voice catalog. Rust owns `/v1/voices`, credentials,
      * request shaping, status mapping, and response parsing.
      */
-    fun elevenLabsVoiceCatalog(): String? =
-        if (handle != 0L) nativeElevenLabsVoiceCatalog(handle) else null
+    fun elevenLabsVoiceCatalog(): String? {
+        val h = handle.get(); return if (h != 0L) nativeElevenLabsVoiceCatalog(h) else null
+    }
 
     /**
      * Shared ElevenLabs one-shot text-to-speech transport. Android supplies
      * text/voice/model intent only; Rust owns credentials, request shaping,
      * provider errors, and audio response normalization.
      */
-    fun elevenLabsTextToSpeech(intentJson: String): String? =
-        if (handle != 0L) nativeElevenLabsTextToSpeech(handle, intentJson) else null
+    fun elevenLabsTextToSpeech(intentJson: String): String? {
+        val h = handle.get(); return if (h != 0L) nativeElevenLabsTextToSpeech(h, intentJson) else null
+    }
 
     /**
      * Shared OpenRouter Whisper transcription transport. Android supplies only
      * the typed audio-source intent; Rust owns OpenRouter HTTP and credentials.
      */
-    fun openRouterWhisperTranscribe(intentJson: String): String? =
-        if (handle != 0L) nativeOpenRouterWhisperTranscribe(handle, intentJson) else null
+    fun openRouterWhisperTranscribe(intentJson: String): String? {
+        val h = handle.get(); return if (h != 0L) nativeOpenRouterWhisperTranscribe(h, intentJson) else null
+    }
 
     /**
      * Shared ElevenLabs Scribe transcription transport. Android supplies only
      * the typed audio-source intent; Rust owns ElevenLabs HTTP and credentials.
      */
-    fun elevenLabsScribeTranscribe(intentJson: String): String? =
-        if (handle != 0L) nativeElevenLabsScribeTranscribe(handle, intentJson) else null
+    fun elevenLabsScribeTranscribe(intentJson: String): String? {
+        val h = handle.get(); return if (h != 0L) nativeElevenLabsScribeTranscribe(h, intentJson) else null
+    }
 
     /**
      * Shared AssemblyAI transcription transport. Android supplies only the
      * typed audio-source intent; Rust owns AssemblyAI submit/poll HTTP and
      * credentials.
      */
-    fun assemblyAITranscribe(intentJson: String): String? =
-        if (handle != 0L) nativeAssemblyAITranscribe(handle, intentJson) else null
+    fun assemblyAITranscribe(intentJson: String): String? {
+        val h = handle.get(); return if (h != 0L) nativeAssemblyAITranscribe(h, intentJson) else null
+    }
 
     /** Shared provider image generation transport; returns Rust's JSON envelope. */
-    fun generateImage(requestJson: String): String? =
-        if (handle != 0L) nativeGenerateImage(handle, requestJson) else null
+    fun generateImage(requestJson: String): String? {
+        val h = handle.get(); return if (h != 0L) nativeGenerateImage(h, requestJson) else null
+    }
 
     /** Shared RAG reranking transport; returns Rust's JSON envelope. */
-    fun rerank(requestJson: String): String? =
-        if (handle != 0L) nativeRerank(handle, requestJson) else null
+    fun rerank(requestJson: String): String? {
+        val h = handle.get(); return if (h != 0L) nativeRerank(h, requestJson) else null
+    }
 
     /** Tear down the kernel and projection handle. Exactly-once. */
     fun free() {
-        if (handle != 0L) {
-            nativeFree(handle)
-            handle = 0
-        }
+        // Zero the handle FIRST so session_ref callers racing with teardown
+        // see 0 and bail out before we drop the Arc in nativeFree (#600).
+        val h = handle.getAndSet(0L)
+        if (h != 0L) nativeFree(h)
     }
 
     // ── External natives — must exactly match the JNI exports in

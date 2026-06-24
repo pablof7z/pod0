@@ -58,7 +58,7 @@ fn parse_rejects_when_no_title_and_no_content() {
 }
 #[test]
 fn show_to_podcast_maps_fields() {
-    let show = NIP74Show {
+    let show = NipF4DiscoveryShow {
         pubkey: "pk".into(),
         title: "T".into(),
         description: "S".into(),
@@ -79,7 +79,7 @@ fn show_to_podcast_maps_fields() {
 }
 #[test]
 fn show_to_podcast_id_is_stable_per_coordinate() {
-    let make = |pubkey: &str| NIP74Show {
+    let make = |pubkey: &str| NipF4DiscoveryShow {
         pubkey: pubkey.into(),
         title: "T".into(),
         description: String::new(),

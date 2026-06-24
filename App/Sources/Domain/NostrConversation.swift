@@ -98,6 +98,47 @@ enum NostrConversationRoot {
 // MARK: - Bech32 npub helpers
 
 enum NostrNpub {
+    /// Returns true if input looks like a Nostr private key (nsec1 prefix).
+    /// Callers must reject these immediately with a user-visible warning —
+    /// private keys must never be routed to any search or discovery handler.
+    static func looksLikeNsecKey(_ input: String) -> Bool {
+        input.trimmingCharacters(in: .whitespacesAndNewlines).lowercased().hasPrefix("nsec1")
+    }
+
+    /// Quick check if input looks like a public Nostr identifier or NIP-05 address
+    /// (no FFI, pure prefix detection). Used by AddByURLForm and NostrDiscoverForm
+    /// to route inputs to the kernel's open_search handler instead of RSS fallback.
+    ///
+    /// Does NOT match nsec1 (private keys). Call `looksLikeNsecKey` separately
+    /// to guard against accidental private-key submission.
+    ///
+    /// Issue #605: eliminates ad-hoc string checks scattered across iOS.
+    static func looksLikeNostrInput(_ input: String) -> Bool {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized = trimmed.lowercased()
+        // Public Nostr identifiers: npub1, nevent1
+        // BACKLOG: Parse nprofile1 TLVs to extract embedded pubkey for Nostr subscribe (#605)
+        // nprofile1 is excluded until TLV parsing is implemented — pubkeyHex(from:) only
+        // handles bare hex and npub1, so nprofile1 inputs silently failed to subscribe.
+        if normalized.starts(with: "npub1") ||
+           normalized.starts(with: "nevent1") {
+            return true
+        }
+        // Raw 64-character hex pubkey (issue #605)
+        let hexRegex = try? NSRegularExpression(pattern: "^[0-9a-fA-F]{64}$")
+        if hexRegex?.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..., in: trimmed)) != nil {
+            return true
+        }
+        // NIP-05 address: must be exactly localpart@domain with no path/query/scheme
+        // characters. A URL containing @ (e.g. feeds.example.com/users/alice@example.com/rss)
+        // must NOT be classified as NIP-05 — it will be handled by SubscriptionService. (issue #605)
+        let nip05Regex = try? NSRegularExpression(pattern: "^[^@/\\?#:]+@[^@/\\?#:]+\\.[^@/\\?#:]+$")
+        if nip05Regex?.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..., in: trimmed)) != nil {
+            return true
+        }
+        return false
+    }
+
     static func pubkeyHex(from input: String) -> String? {
         input.withCString { ptr in
             guard let result = nmp_app_podcast_parse_pubkey(ptr) else { return nil }

@@ -21,7 +21,6 @@
 
 use std::ffi::CString;
 use std::ptr;
-use std::time::Duration;
 
 use jni::objects::{JClass, JObject, JString};
 use jni::sys::{jlong, jstring};
@@ -55,10 +54,10 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeSignInNip55<'l>(
     });
 }
 
-/// `nativeNextSignerRequest(handle)` — blocking (≤250 ms) drain of the outbound
+/// `nativeNextSignerRequest(handle)` — blocking drain of the outbound
 /// NIP-55 request channel. Returns one `ExternalSignerRequest` JSON, or `null`
-/// on idle / closed channel (the Kotlin reader loops back in either way). The
-/// signer analogue of `nativeNextUpdate` (D6 — no error crosses FFI).
+/// when the session is shut down or the channel closes. The signer analogue of
+/// `nativeNextUpdate`. Blocks until a request arrives or shutdown is initiated (D6).
 #[no_mangle]
 pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeNextSignerRequest<'l>(
     env: JNIEnv<'l>,
@@ -70,12 +69,15 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeNextSignerRequest<
         let Some(s) = session_ref(handle) else {
             return null;
         };
-        match s.recv_next_signer_request(Duration::from_millis(250)) {
-            Some(payload) => match env.new_string(payload) {
-                Ok(js) => js.into_raw(),
-                Err(_) => null,
+        crossbeam_channel::select! {
+            recv(s.signer_rx) -> msg => match msg {
+                Ok(payload) => match env.new_string(payload) {
+                    Ok(js) => js.into_raw(),
+                    Err(_) => null,
+                },
+                Err(_) => null,  // channel closed
             },
-            None => null,
+            recv(s.shutdown_rx_signer) -> _ => null,  // explicit shutdown
         }
     })
 }

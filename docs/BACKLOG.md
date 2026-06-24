@@ -4,9 +4,13 @@ This is the tactical queue for active work, follow-ups, and pending decisions.
 Do not duplicate these items in `WIP.md`; `WIP.md` only records branches and
 worktrees currently in flight.
 
+- **open-search-nostr-result-await (#605).** `AddByURLForm` dispatches `podcast.open_search` for Nostr inputs but immediately surfaces an error rather than awaiting the async result. Once NMP #597 lands: observe `nostrResults` snapshot changes with a timeout (≈5 s), then fall through to RSS on `"nostr_not_recognised"`. Extend to `NostrDiscoverForm.swift` and `AddFriendSheet.swift` in the same pass. Also covers Phase 3 (TUI `handle_subscribe_input` and Android text-entry surfaces). Owner: whoever picks up #597 integration.
+
+- **nostr-tab-open-search-wire (#605).** Wire the Nostr tab (`NostrDiscoverForm.swift`) to dispatch `open_search` and resolve NIP-05 addresses and nevent IDs entered by the user, so that `AddShowSheet` can route those inputs there end-to-end. Currently `NostrDiscoverForm` only filters already-fetched results; the fire-and-forget `kernelNostrOpenSearch` path in `AddShowSheet` was removed (#612) because it directed users to this unwired surface. When this is implemented: re-add the routing branch in `AddShowSheet` (or let `AddShowSheet` drive `open_search` directly and await results), and remove the "not yet supported" placeholder message.
+
 - **knowledge-ann-index.** `top_k_search` is O(N) linear scan over all embedded chunks (fine for < ~50k chunks). When the corpus exceeds ~50k chunks, replace with an ANN index (e.g. HNSW via `usearch` or `instant-distance`). Slot in `podcast-knowledge::search::top_k_search` call site in `knowledge_search.rs`. <!-- TODO: ANN index when corpus > ~50k chunks -->
 
-- **android-unfollow-parity (#547/#573).** Rust exposes `podcast.unfollow` (`PodcastAction::Unfollow`); iOS routes all "Unsubscribe" UI through `kernelUnfollow` (keeps history). Android has no podcast unsubscribe/remove UI yet. When one is added, wire it to `UnfollowPayload` (defined in `ActionDispatcher.kt`) dispatched on `PodcastNamespace.PODCAST`. A permanent hard-delete affordance ("Delete") needs its own wire type (the Rust `podcast.unsubscribe` action) added at that time — there is intentionally no hard-delete payload in Android until that UI exists.
+- **android-delete-wire-type (#573, pending).** Android unsubscribe affordance now routes to `UnfollowPayload` (issue #603, keep-history path). A permanent hard-delete affordance ("Delete") needs its own wire type (`DeletePayload` dispatched on `PodcastNamespace.PODCAST`) once the Rust `podcast.unsubscribe` → `podcast.delete` rename is complete (see `rust-unsubscribe-action-rename`). No hard-delete payload in Android until that rename lands.
 
 - **rust-unsubscribe-action-rename (#573, pre-existing).** The Rust `podcast.unsubscribe` action (`PodcastAction::Unsubscribe`) performs a full hard-delete (removes the podcast row + episodes), which is a legacy misnomer now that `podcast.unfollow` is the keep-history path and all user-facing "Unsubscribe" maps to unfollow. Rename `podcast.unsubscribe` → `podcast.delete` across Rust (action enum + dispatch), iOS (`kernelUnsubscribe`/`deletePodcast` wiring), and Android wire types so the action name matches its hard-delete semantics. Pure rename, no behavior change; kept out of #547 to bound that PR's scope.
 
@@ -31,8 +35,8 @@ worktrees currently in flight.
   ADR-0055 Rung-1 / publish_ver oracle fix), the deleted parked `ios/` shell,
   the resolved local `nmp-blossom` packaging blocker (`pablof7z/podcast-player#479`),
   and PR #498's removal of the local `vendor/nmp-core` fork. Upstream NMP issues
-  `pablof7z/nostr-multi-platform#1408` and `#1412` remain open cleanup/dependency
-  notes, but neither is currently represented as an app-local workaround on `main`.
+  `pablof7z/nostr-multi-platform#1408` and `#1412` are now CLOSED; neither required
+  an app-local workaround on `main`.
   Remaining parity debt lives in `App/Sources/` Swift policy/fallback code plus
   the listed platform/AI gaps. Agent chat title generation now routes prompt
   construction, message filtering/truncation, selected model, and JSON title
@@ -489,6 +493,26 @@ worktrees currently in flight.
   `EditProfileView` to observe the projection field (keyed by pubkey + kind:0) before
   flipping to a "Published" banner. Deferred because NMP does not currently project
   post-publish event identity back to the host app.
+- **social-profile-name-about-completion (#601).** Rust `IdentityStore` and
+  `AccountSummary` now carry `name`/`about` fields and `handle_publish_profile`
+  applies them on publish. Remaining cross-platform wiring:
+  - **Swift** — decode `name`/`about` from `AccountSummary` JSON in
+    `AppStateStore+KernelProjection.swift`; surface them in `UserIdentityStore`
+    and `EditProfileView`; remove the `kind0CachePrefix` UserDefaults profile
+    cache from `UserIdentityStore+ProfileFetch.swift` once projection carries
+    the canonical values.
+  - **Android** — decode `name`/`about` from `AccountSummary` in
+    `IdentityActions.kt`; remove the SharedPreferences profile-field mirrors
+    once the kernel projection is the authoritative source.
+- **social-notes-friends-kernel-wiring (#601).** Foundation Rust stores
+  (`store/notes.rs`, `store/friends.rs`) are in place. Remaining:
+  - Add `AddNote/UpdateNote/DeleteNote/AddFriend/RemoveFriend/UpdateFriendName`
+    variants to `SocialAction` FFI enum and implement handlers.
+  - Add notes/friends domain sub-projections so iOS and Android render
+    Rust-owned lists instead of Swift `AppState.notes`/friends arrays.
+  - Write one-time migrations (UserDefaults → Rust for iOS; SharedPreferences
+    → Rust for Android) guarded by a post-work flag (see `oneshot_migration`
+    memory note).
 - **local-notes-kernel-store.** Publishing user notes is already Rust-owned via
   `podcast.social.publish_note`, but local note storage remains Swift-owned:
   `AppState.notes`, `AppStateStore.addNote/deleteNote/updateNote`,
@@ -1148,13 +1172,13 @@ worktrees currently in flight.
   the full Build → Sign → Transport pipeline (D13/D0).
 - **blossom-audio-path-migration.** Migrate the audio upload path
   (`apps/nmp-app-podcast/src/blossom.rs` → `host_op_publish::publish_episode`) to
-  `nmp.blossom.upload` via `signer_pubkey` roster selection. **BLOCKED:** the
+  `nmp.blossom.upload` via `signer_pubkey` roster selection. **BLOCKED by #606:** the
   per-podcast NIP-F4 keys live in the Podcast-domain `PodcastKeyStore`, NOT in the
   NMP account roster (`ctx.identity`). `nmp.blossom.upload` with `signer_pubkey`
-  only resolves accounts registered in the NMP kernel's identity roster. This
-  requires registering per-podcast keys as named roster accounts, or an alternate
-  signing seam. Until that capability lands, `blossom.rs` stays (it uses direct
-  `Keys` signing which works without the roster).
+  only resolves accounts registered in the NMP kernel's identity roster. Hardening
+  NIP-F4 publishing (issue #606) will register per-podcast keys as named roster
+  accounts or establish an alternate signing seam. Until then, `blossom.rs` stays
+  (it uses direct `Keys` signing which works without the roster).
 - ~~**kernelsigner-deadcode-removal.**~~ DONE (PR `chore/kernelsigner-deadcode-backlog-truthfulness`).
   Deleted `KernelSigner` struct, `NostrSigner` protocol, and `NostrEventDraft` from
   `App/Sources/Services/Nip46/NostrSigner.swift`; removed the now-dead

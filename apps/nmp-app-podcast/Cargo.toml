@@ -147,3 +147,4 @@ tempfile = "3"
 # the cross-compile (see `android/Podcast/app/build.gradle.kts`).
 [target.'cfg(target_os = "android")'.dependencies]
 jni = { version = "0.21", default-features = false }
+crossbeam-channel = "0.5"

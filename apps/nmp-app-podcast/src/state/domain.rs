@@ -33,6 +33,7 @@ use std::sync::Arc;
 /// | `identity` | `podcast.identity` | identity store |
 /// | `widget` | `podcast.widget` | player state + library (derived) |
 /// | `social` | `podcast.social` | social graph + agent notes + nostr conversations |
+/// | `voice` | `podcast.voice` | voice mode state; bumped on voice report |
 /// | `misc` | `podcast.misc` | everything else (wiki/picks/clips/transcripts/…) |
 /// | `tasks` | (internal) | agent-task list mutations; used for test assertions |
 #[derive(Clone)]
@@ -44,6 +45,7 @@ pub struct DomainRevs {
     pub identity: Arc<AtomicU64>,
     pub widget: Arc<AtomicU64>,
     pub social: Arc<AtomicU64>,
+    pub voice: Arc<AtomicU64>,
     pub misc: Arc<AtomicU64>,
     /// Tasks domain rev — advanced when the kernel-owned periodic tick fires
     /// due tasks.  There is no `podcast.tasks` push-sidecar yet (tasks ride
@@ -69,6 +71,7 @@ impl DomainRevs {
             identity: Arc::new(AtomicU64::new(1)),
             widget: Arc::new(AtomicU64::new(1)),
             social: Arc::new(AtomicU64::new(1)),
+            voice: Arc::new(AtomicU64::new(1)),
             misc: Arc::new(AtomicU64::new(1)),
             tasks: Arc::new(AtomicU64::new(1)),
         }
@@ -88,6 +91,7 @@ impl DomainRevs {
             Domain::Identity => &self.identity,
             Domain::Widget => &self.widget,
             Domain::Social => &self.social,
+            Domain::Voice => &self.voice,
             Domain::Misc => &self.misc,
             Domain::Tasks => &self.tasks,
         }
@@ -106,8 +110,7 @@ impl DomainRevs {
 /// each `Domain` resolves to).
 ///
 /// `Misc` is the default catch-all for substates not yet split into their own
-/// push domain (wiki/picks/clips/transcripts/agent/discovery/voice/
-/// publish/comments/knowledge).
+/// push domain (wiki/picks/clips/transcripts/agent/discovery/publish/comments/knowledge).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Domain {
     Library,
@@ -120,6 +123,8 @@ pub enum Domain {
     /// Bumped whenever `SocialState` is mutated (inbound note cached,
     /// outbound turn recorded, or follow list updated).
     Social,
+    /// Voice mode state.  Bumped whenever a voice report arrives.
+    Voice,
     Misc,
     /// Agent-task list domain.  The kernel-owned periodic tick fires
     /// `maybe_run_due_tasks` every 60 s and bumps this counter when at least

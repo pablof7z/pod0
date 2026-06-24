@@ -140,6 +140,24 @@ data class SleepTimerPayload(
 @Serializable
 data class PlayNextPayload(val op: String = "play_next")
 
+/**
+ * Skip backward by the configured interval. Verified against
+ * `PlayerAction::SkipBackward { secs: Option<f64> }`. The kernel defaults
+ * `secs` to `None` and resolves the skip interval from
+ * `SettingsSnapshot.skip_backward_secs` (default 15 seconds).
+ */
+@Serializable
+data class SkipBackwardPayload(val op: String = "skip_backward")
+
+/**
+ * Skip forward by the configured interval. Verified against
+ * `PlayerAction::SkipForward { secs: Option<f64> }`. The kernel defaults
+ * `secs` to `None` and resolves the skip interval from
+ * `SettingsSnapshot.skip_forward_secs` (default 30 seconds).
+ */
+@Serializable
+data class SkipForwardPayload(val op: String = "skip_forward")
+
 // ── `podcast.queue` namespace payloads ────────────────────────────────────
 
 @Serializable
@@ -471,5 +489,6 @@ data class AgentSendPayload(
 @Serializable
 data class AgentClearPayload(val op: String = "clear")
 
-// AI feature payloads (podcast.chapters + podcast.settings ad-skip) live in
-// AiFeaturePayloads.kt to keep this file under the 500-line hard limit.
+// AI feature payloads (podcast.chapters + podcast.settings ad-skip) and the
+// Nostr open_search payload live in AiFeaturePayloads.kt to keep this file
+// under the 500-line hard limit.

@@ -114,6 +114,8 @@ pub fn handle_publish_profile(
         id.apply_profile(
             display_name.map(str::to_owned),
             picture.map(str::to_owned),
+            Some(name.to_owned()),
+            about.map(str::to_owned),
         );
     }
 

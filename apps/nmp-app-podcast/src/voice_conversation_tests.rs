@@ -39,6 +39,7 @@ fn manager_with_null_app() -> VoiceConversationManager {
         runtime,
         rev,
         None,
+        Arc::new(AtomicU64::new(0)),
     )
 }
 

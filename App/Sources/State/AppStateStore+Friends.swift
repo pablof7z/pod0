@@ -8,8 +8,7 @@ extension AppStateStore {
     func addFriend(displayName: String, identifier: String) -> Friend {
         let friend = Friend(displayName: displayName, identifier: identifier)
         state.friends.append(friend)
-        // Mirror into optimistic display set + kernel approved-peer store.
-        state.nostrAllowedPubkeys.insert(identifier)
+        // Kernel is authoritative for approved peers.
         kernel?.approvePeer(hex: identifier)
         return friend
     }
@@ -28,7 +27,6 @@ extension AppStateStore {
         guard let idx = state.friends.firstIndex(where: { $0.id == id }) else { return }
         let identifier = state.friends[idx].identifier
         state.friends.remove(at: idx)
-        state.nostrAllowedPubkeys.remove(identifier)
         kernel?.removePeerApproval(hex: identifier)
     }
 

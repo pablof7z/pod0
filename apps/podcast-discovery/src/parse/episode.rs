@@ -1,4 +1,4 @@
-//! Parse a `kind:54` Nostr event (NIP-F4) into a [`NIP74Episode`].
+//! Parse a `kind:54` Nostr event (NIP-F4) into a [`NipF4DiscoveryEpisode`].
 //!
 //! Tag layout is captured in `App/Sources/Services/
 //! NostrPodcastDiscoveryService.parseEpisode(from:podcastID:)` and
@@ -10,9 +10,9 @@
 use crate::kinds::KIND_EPISODE;
 use crate::parse::imeta::parse_imeta_fields;
 use crate::parse::{first_tag, first_tag_value};
-use crate::types::{NIP74Episode, ParseError, ShowReference};
+use crate::types::{NipF4DiscoveryEpisode, ParseError, ShowReference};
 
-/// Parse a Nostr event's header + tags into a raw [`NIP74Episode`].
+/// Parse a Nostr event's header + tags into a raw [`NipF4DiscoveryEpisode`].
 ///
 /// `kind` is checked against [`KIND_EPISODE`]. `created_at` is the event
 /// header timestamp (unix seconds), used as the fallback for
@@ -25,7 +25,7 @@ pub fn parse_episode_event(
     created_at: i64,
     content: &str,
     tags: &[Vec<String>],
-) -> Result<NIP74Episode, ParseError> {
+) -> Result<NipF4DiscoveryEpisode, ParseError> {
     if kind != KIND_EPISODE {
         return Err(ParseError::WrongKind {
             expected: KIND_EPISODE,
@@ -76,7 +76,7 @@ pub fn parse_episode_event(
         .filter(|s| !s.is_empty())
         .cloned();
 
-    Ok(NIP74Episode {
+    Ok(NipF4DiscoveryEpisode {
         d_tag,
         title,
         summary,

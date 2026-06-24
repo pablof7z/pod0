@@ -21,6 +21,7 @@ extension KernelModel {
         var identity:  UInt64 = 0
         var widget:    UInt64 = 0
         var social:    UInt64 = 0
+        var voice:     UInt64 = 0
         var misc:      UInt64 = 0
     }
 }
@@ -173,8 +174,23 @@ extension KernelModel {
             }
         }
 
+        // ── voice ────────────────────────────────────────────────────────────
+        if let v = frames.voice {
+            let lastRev = tracker.voice
+            if v.rev > lastRev {
+                tracker.voice = v.rev
+                anyAccepted = true
+                // voice snapshot: tombstone semantics (nil = idle/default, clear).
+                composite.voice = v.voice
+                dmLog.debug("voice accepted rev=\(v.rev)")
+            } else {
+                dmLog.debug("voice DROPPED stale rev=\(v.rev) last=\(lastRev)")
+            }
+        }
+
         // ── misc ─────────────────────────────────────────────────────────────
         // NOTE: social has moved to podcast.social (above).
+        //       voice has moved to podcast.voice (above).
         //       MiscDomainFrame no longer carries those fields.
         if let m = frames.misc {
             let lastRev = tracker.misc
@@ -190,7 +206,6 @@ extension KernelModel {
                 if let v = m.feedbackEvents         { composite.feedbackEvents = v }
                 if let v = m.feedbackThreads        { composite.feedbackThreads = v }
                 // Tombstone semantics: nil = domain is now empty → clear slice.
-                composite.voice        = m.voice
                 composite.agent        = m.agent
                 composite.agentContext = m.agentContext
                 dmLog.debug("misc accepted rev=\(m.rev)")

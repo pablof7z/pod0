@@ -428,7 +428,7 @@ impl PodcastAppState {
         // production (`register.rs`) the caller replaces this field before
         // wrapping in `Arc` using `with_voice`.
         let voice = voice::VoiceSubstate::new(
-            infra.clone(),
+            infra.with_domain(Domain::Voice),
             store.clone(),
             std::ptr::null_mut(),
         );

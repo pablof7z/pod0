@@ -219,7 +219,7 @@ private fun PodcastRoot(
         // leaving absent-domain slices untouched (no more whole-snapshot clobber).
         while (true) {
             coroutineContext.ensureActive()
-            val raw = withContext(Dispatchers.IO) { bridge.nextUpdate() } ?: continue
+            val raw = withContext(Dispatchers.IO) { bridge.nextUpdate() } ?: break
             val frames = SnapshotCodec.decodeDomainFrames(raw) ?: continue
             val current = snapshot ?: PodcastSnapshot()
             val (merged, anyAccepted) = SnapshotCodec.mergeFrames(frames, current, domainRevTracker)
@@ -250,7 +250,7 @@ private fun PodcastRoot(
     LaunchedEffect(bridge, signerBridge) {
         while (true) {
             coroutineContext.ensureActive()
-            val requestJson = withContext(Dispatchers.IO) { bridge.nextSignerRequest() } ?: continue
+            val requestJson = withContext(Dispatchers.IO) { bridge.nextSignerRequest() } ?: break
             signerBridge.handleJson(requestJson)
         }
     }

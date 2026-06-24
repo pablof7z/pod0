@@ -146,6 +146,26 @@ extension AppStateStore {
             "Feedless show did not appear in library after \(timeout).")
     }
 
+    /// Route user text input through NMP's input-intent classifier for Nostr-facing
+    /// discovery surfaces. Issue #605: handles npub/nprofile/nevent identifiers,
+    /// NIP-05 addresses, and relay-targeted NIP-50 queries via the kernel.
+    ///
+    /// The handler classifies the input and:
+    /// - npub/nprofile/hex → routes to `subscribe_nostr` via kernel
+    /// - NIP-05 (user@domain.com) → resolves and subscribes
+    /// - NIP-50 queries → dispatches relay-targeted search
+    /// - Unrecognised → returns "nostr_not_recognised" for UI fallback to RSS
+    ///
+    /// Once NMP #597 lands, the kernel-side handler will fully integrate the
+    /// input-intent classifier and NIP-05 resolver.
+    @discardableResult
+    func kernelNostrOpenSearch(input: String) -> DispatchResult? {
+        guard let kern = kernel else { return nil }
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return kern.dispatch(namespace: "podcast", body: ["op": "open_search", "input": trimmed])
+    }
+
     // MARK: - Playback dispatch (M1 Part 3)
 
     /// Load an episode into the Rust actor without starting playback.
@@ -878,8 +898,8 @@ extension AppStateStore {
     // publish ops can sign. `publish_show` (kind:10154) and `publish_episode`
     // (kind:54) build + sign + broadcast NIP-F4 events to the relay pool;
     // `publish_author_claim` (kind:10064) lists every owned-podcast pubkey under
-    // the active agent identity. These replace the legacy Swift NIP-74
-    // (kind:30074/30075) builders.
+    // the active agent identity. Routing uses the app's configured write relays
+    // for per-podcast key events.
     //
     // Fire-and-forget: the signed event id / naddr now lives in Rust's
     // `publish_state` and is surfaced via the snapshot projection, not returned

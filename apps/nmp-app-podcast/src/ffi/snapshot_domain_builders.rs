@@ -21,7 +21,8 @@
 //!  |           | (store for unplayed_count + ep title/artwork)          |
 //!  | social    | social.social_slot, social.agent_notes (via convos),   |
 //!  |           | social.outbound_turns                                  |
-//!  | misc      | wiki, picks, tasks, knowledge, clips, comments, voice, |
+//!  | voice     | voice.voice_state                                      |
+//!  | misc      | wiki, picks, tasks, knowledge, clips, comments,        |
 //!  |           | agent_chat, feedback                                   |
 //!
 //! The `rev` field in each payload is the GLOBAL rev (state.infra.rev), matching
@@ -238,9 +239,25 @@ pub(super) fn build_social_payload(handle: &PodcastHandle) -> Option<serde_json:
     }))
 }
 
+/// Build the `podcast.voice` domain payload — slice-local.
+///
+/// Reads: voice.voice_state only.
+///
+/// Returns `None` when voice state is idle/default (D5 — omit rather than
+/// send the default projection).
+pub(super) fn build_voice_payload(handle: &PodcastHandle) -> Option<serde_json::Value> {
+    let rev = handle.state.infra.rev.load(Ordering::Relaxed);
+    let voice = handle.state.voice.voice_snapshot();
+    voice.as_ref()?;
+    Some(serde_json::json!({
+        "rev": rev,
+        "voice": voice,
+    }))
+}
+
 /// Build the `podcast.misc` domain payload — slice-local.
 ///
-/// Reads: picks, tasks, knowledge, clips, comments, voice, agent_chat,
+/// Reads: picks, tasks, knowledge, clips, comments, agent_chat,
 /// feedback, and library.store (for memory_facts, clips resolution, and
 /// agent_context).  Does NOT call `build_podcast_update`.
 ///
@@ -300,7 +317,6 @@ pub(super) fn build_misc_payload(handle: &PodcastHandle) -> serde_json::Value {
             .state.comments
             .project(now_playing_ep_id.as_deref())
     };
-    let voice = handle.state.voice.voice_snapshot();
     let agent = {
         let messages = handle.state.agent_chat.conversation_snapshot();
         let touched = handle.state.agent_chat.is_touched();
@@ -325,7 +341,6 @@ pub(super) fn build_misc_payload(handle: &PodcastHandle) -> serde_json::Value {
         "memory_facts": memory_facts,
         "clips": clips,
         "comments": comments,
-        "voice": voice,
         "agent": agent,
         "agent_context": agent_context,
         "feedback_events": feedback_events,

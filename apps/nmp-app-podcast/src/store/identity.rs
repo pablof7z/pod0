@@ -34,6 +34,8 @@ pub struct IdentityStore {
     pub npub: Option<String>,
     pub display_name: Option<String>,
     pub picture_url: Option<String>,
+    pub name: Option<String>,
+    pub about: Option<String>,
     pub data_dir: Option<PathBuf>,
 }
 
@@ -46,6 +48,10 @@ struct IdentityFile {
     display_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     picture_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    about: Option<String>,
 }
 
 impl IdentityStore {
@@ -56,6 +62,8 @@ impl IdentityStore {
             npub: None,
             display_name: None,
             picture_url: None,
+            name: None,
+            about: None,
             data_dir: None,
         }
     }
@@ -71,6 +79,8 @@ impl IdentityStore {
             self.npub = loaded.npub;
             self.display_name = loaded.display_name;
             self.picture_url = loaded.picture_url;
+            self.name = loaded.name;
+            self.about = loaded.about;
         }
     }
 
@@ -110,12 +120,20 @@ impl IdentityStore {
         &mut self,
         display_name: Option<String>,
         picture_url: Option<String>,
+        name: Option<String>,
+        about: Option<String>,
     ) {
         if let Some(v) = display_name {
             self.display_name = Some(v);
         }
         if let Some(v) = picture_url {
             self.picture_url = Some(v);
+        }
+        if let Some(v) = name {
+            self.name = Some(v);
+        }
+        if let Some(v) = about {
+            self.about = Some(v);
         }
         self.save_to_disk();
     }
@@ -129,6 +147,8 @@ impl IdentityStore {
         self.npub = None;
         self.display_name = None;
         self.picture_url = None;
+        self.name = None;
+        self.about = None;
         if let Some(dir) = &self.data_dir {
             let file = dir.join("identity.json");
             let _ = std::fs::remove_file(file);
@@ -147,6 +167,8 @@ impl IdentityStore {
             secret_hex: secret_hex.clone(),
             display_name: self.display_name.clone(),
             picture_url: self.picture_url.clone(),
+            name: self.name.clone(),
+            about: self.about.clone(),
         };
         let json = match serde_json::to_string(&record) {
             Ok(j) => j,
@@ -171,6 +193,8 @@ impl IdentityStore {
         store.data_dir = Some(data_dir.to_owned());
         store.display_name = record.display_name;
         store.picture_url = record.picture_url;
+        store.name = record.name;
+        store.about = record.about;
         store.populate_from_keys(&keys);
         Some(store)
     }
@@ -273,7 +297,7 @@ mod tests {
     fn apply_profile_sets_display_name_and_picture_url() {
         let mut store = IdentityStore::new();
         store.import_nsec(TEST_NSEC).unwrap();
-        store.apply_profile(Some("Alice".into()), Some("https://example.com/a.png".into()));
+        store.apply_profile(Some("Alice".into()), Some("https://example.com/a.png".into()), None, None);
         assert_eq!(store.display_name.as_deref(), Some("Alice"));
         assert_eq!(store.picture_url.as_deref(), Some("https://example.com/a.png"));
     }
@@ -285,7 +309,7 @@ mod tests {
         store.display_name = Some("Existing".into());
         store.picture_url = Some("https://example.com/old.png".into());
         // Neither field is set — existing values must survive.
-        store.apply_profile(None, None);
+        store.apply_profile(None, None, None, None);
         assert_eq!(store.display_name.as_deref(), Some("Existing"));
         assert_eq!(store.picture_url.as_deref(), Some("https://example.com/old.png"));
     }
@@ -296,11 +320,13 @@ mod tests {
         let mut store = IdentityStore::new();
         store.data_dir = Some(tmp.path().to_owned());
         store.import_nsec(TEST_NSEC).unwrap();
-        store.apply_profile(Some("Persisted Name".into()), Some("https://pic.example.com/p.png".into()));
+        store.apply_profile(Some("Persisted Name".into()), Some("https://pic.example.com/p.png".into()), Some("Full Name".into()), Some("About me".into()));
 
         let reloaded = IdentityStore::load_from_disk(tmp.path()).unwrap();
         assert_eq!(reloaded.display_name.as_deref(), Some("Persisted Name"));
         assert_eq!(reloaded.picture_url.as_deref(), Some("https://pic.example.com/p.png"));
+        assert_eq!(reloaded.name.as_deref(), Some("Full Name"));
+        assert_eq!(reloaded.about.as_deref(), Some("About me"));
     }
 
     #[test]

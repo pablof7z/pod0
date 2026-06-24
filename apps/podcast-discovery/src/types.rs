@@ -15,12 +15,12 @@ use serde::{Deserialize, Serialize};
 /// Parsed `kind:10154` show event (NIP-F4).
 ///
 /// Pubkey and `created_at` come from the wrapping Nostr event header (not
-/// from tags) but are kept here so a parsed `NIP74Show` is self-contained
+/// from tags) but are kept here so a parsed `NipF4DiscoveryShow` is self-contained
 /// and can be re-mapped to a `Podcast` without re-threading the event.
 ///
 /// NIP-F4 shows have no `d` tag; the show is identified by pubkey alone.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct NIP74Show {
+pub struct NipF4DiscoveryShow {
     /// Author pubkey (hex). Identifies the podcast key that signed the event.
     pub pubkey: String,
     /// `["title", ...]`.
@@ -40,7 +40,7 @@ pub struct NIP74Show {
     pub created_at: i64,
 }
 
-impl NIP74Show {
+impl NipF4DiscoveryShow {
     /// NIP-F4 coordinate string `"10154:<pubkey>"`.
     /// Shows are identified by pubkey alone — no d-tag.
     pub fn coordinate(&self) -> String {
@@ -52,10 +52,10 @@ impl NIP74Show {
 ///
 /// `PartialEq` only — `duration_secs` carries an `f64` (matching the
 /// `podcast_core::Episode.duration_secs` shape) which doesn't implement
-/// `Eq`. The few tests that compare `NIP74Episode` values do so on
+/// `Eq`. The few tests that compare `NipF4DiscoveryEpisode` values do so on
 /// equality, not in `Eq`-bound contexts.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct NIP74Episode {
+pub struct NipF4DiscoveryEpisode {
     /// Value of the `["d", ...]` tag — stable per-author identifier.
     pub d_tag: String,
     /// `["title", ...]`.
@@ -114,7 +114,7 @@ impl ShowReference {
 /// back to the iOS layer.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ParseError {
-    /// Event kind didn't match the expected NIP-74 kind.
+    /// Event kind didn't match the expected NIP-F4 kind.
     WrongKind { expected: u32, got: u32 },
     /// Required tag was missing from the event.
     MissingTag(&'static str),
