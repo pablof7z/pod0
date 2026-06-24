@@ -310,6 +310,7 @@
 		7455146502859EE10CC0B956 /* ShowDetailHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 072E60BC227E75BB230859FA /* ShowDetailHeader.swift */; };
 		75872377A2326357DAF77DFC /* SettingsSnapshot+ProviderKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B0B6808F82C02F35824ED53 /* SettingsSnapshot+ProviderKeys.swift */; };
 		75B4DEE06A0E8EE34256C3F6 /* AppRelaysView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4BDAF880238BDFA3FF62FC9 /* AppRelaysView.swift */; };
+		75FDBA104582532CBAFEB2DF /* PlayerTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30585B334EF627A0411D0E6A /* PlayerTab.swift */; };
 		76367FCFB119CC21EA1D06BA /* AgentRunLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F8B56D62776100C8032E4BF /* AgentRunLog.swift */; };
 		7640AF1D5A7783026714F396 /* AudioEngine+Observers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3B81BF533495087061843FA /* AudioEngine+Observers.swift */; };
 		764ADF2C93BFBE93D165BE5E /* AgentPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BE27605784D2C6B087874B4 /* AgentPrompt.swift */; };
@@ -915,6 +916,7 @@
 		2EEE6A9DF1C9108D30A7D128 /* AgentScheduledTasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentScheduledTasksView.swift; sourceTree = "<group>"; };
 		30296920A6965DDE78A42E0E /* UserProfileDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfileDisplay.swift; sourceTree = "<group>"; };
 		30510C6AB280818E2935439F /* AudioCapability+RemoteCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioCapability+RemoteCommands.swift"; sourceTree = "<group>"; };
+		30585B334EF627A0411D0E6A /* PlayerTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTab.swift; sourceTree = "<group>"; };
 		309D206C26BE174476D056B9 /* OllamaModelCatalogService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaModelCatalogService.swift; sourceTree = "<group>"; };
 		31583023ACC25CC57046A208 /* KeychainCapability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainCapability.swift; sourceTree = "<group>"; };
 		31709CD314144D1DDCA75C08 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -1746,6 +1748,7 @@
 				611C694D10D832A53813251E /* PlayerShowNotesView.swift */,
 				551DD3F915631241525911A7 /* PlayerSleepTimerSheet.swift */,
 				6B03EB912BE98A4069F55105 /* PlayerSpeedSheet.swift */,
+				30585B334EF627A0411D0E6A /* PlayerTab.swift */,
 				9680026FBE01F6C15E610D65 /* PlayerTimeFormat.swift */,
 				5378716211A015BB0F29358F /* PlayerTimelineView.swift */,
 				2AB72321EF87500F216E1E78 /* PlayerTopBar.swift */,
@@ -3297,6 +3300,7 @@
 				089B504D009A207A25B67083 /* PlayerShowNotesView.swift in Sources */,
 				EF1B7836DB6593BCA12876AB /* PlayerSleepTimerSheet.swift in Sources */,
 				9267704A5863B2C0A60A1FA0 /* PlayerSpeedSheet.swift in Sources */,
+				75FDBA104582532CBAFEB2DF /* PlayerTab.swift in Sources */,
 				2D717E9E6B036A84F7786C79 /* PlayerTimeFormat.swift in Sources */,
 				DBA51DA25D1EE89ACDF5BC3C /* PlayerTimelineView.swift in Sources */,
 				B7D797936C243F0FA021DAC3 /* PlayerTopBar.swift in Sources */,

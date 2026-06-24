@@ -147,7 +147,10 @@ struct PlayerView: View {
             onDismiss: { dismiss() },
             onShare: { showShareSheet = true },
             onShowSleepTimer: { showSleepSheet = true },
-            onShowQueue: { showQueueSheet = true }
+            onShowQueue: { showQueueSheet = true },
+            onOpenAgent: {
+                NotificationCenter.default.post(name: .askAgentRequested, object: nil)
+            }
         )
     }
 

@@ -21,6 +21,7 @@ struct PlayerTopBar: View {
     let onShare: () -> Void
     let onShowSleepTimer: () -> Void
     let onShowQueue: () -> Void
+    let onOpenAgent: () -> Void
 
     @Environment(AppStateStore.self) private var store
 
@@ -54,6 +55,23 @@ struct PlayerTopBar: View {
             Spacer(minLength: AppTheme.Spacing.sm)
 
             HStack(spacing: AppTheme.Spacing.xs) {
+                if state.episode != nil {
+                    Button {
+                        Haptics.selection()
+                        onOpenAgent()
+                    } label: {
+                        Image(systemName: "sparkles")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Circle())
+                            .glassEffect(.regular.interactive(), in: .circle)
+                    }
+                    .buttonStyle(.pressable)
+                    .accessibilityLabel("Open Agent")
+                    .accessibilityIdentifier("agent.open")
+                }
+
                 if state.episode != nil {
                     Button(action: onShare) {
                         Image(systemName: "square.and.arrow.up")
