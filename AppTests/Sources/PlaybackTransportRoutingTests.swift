@@ -112,7 +112,7 @@ final class PlaybackTransportRoutingTests: XCTestCase {
     func testSetRateDispatchesKernelSetSpeedBeforeEngineSetRate() {
         stub.reset()
 
-        playbackState.setRate(.speed1_5x)
+        playbackState.setRate(.fast)
 
         XCTAssertEqual(stub.kernelSetSpeedCallCount, 1)
         XCTAssertEqual(stub.lastSetSpeedValue, 1.5)

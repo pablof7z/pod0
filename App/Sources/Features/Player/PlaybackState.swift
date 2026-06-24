@@ -144,16 +144,24 @@ final class PlaybackState {
             // already owns the episode; re-dispatching creates an echo loop.
             if dispatchKernelLoad {
                 transport?.kernelLoad(episodeID: newEpisode.id)
-            }
-            engine.load(newEpisode)
-            if newEpisode.playbackPosition > 0 {
-                // TEMPORARY BYPASS: seeds the AVPlayer's initial position
-                // before playback starts. The Rust kernel does not yet own a
-                // "set initial playhead" primitive for this pre-play seam;
-                // once it does, this direct engine call should be removed and
-                // the position seeded via a kernel action instead.
-                // BACKLOG: kernel-owned episode-load initial position (#599).
-                engine.seek(to: newEpisode.playbackPosition)
+                // engine.load and the initial-position seek are deferred:
+                // the AudioCommand::Load callback calls setEpisode(dispatchKernelLoad:false)
+                // which runs the else branch below with the Rust-resolved URL.
+            } else {
+                // Only load and seek when Rust is NOT dispatching the load
+                // (i.e. we ARE the AudioCommand::Load callback path). Calling
+                // engine.load here when dispatchKernelLoad=true would overwrite
+                // the Rust-resolved streaming URL with the store placeholder.
+                engine.load(newEpisode)
+                if newEpisode.playbackPosition > 0 {
+                    // TEMPORARY BYPASS: seeds the AVPlayer's initial position
+                    // before playback starts. The Rust kernel does not yet own a
+                    // "set initial playhead" primitive for this pre-play seam;
+                    // once it does, this direct engine call should be removed and
+                    // the position seeded via a kernel action instead.
+                    // BACKLOG: kernel-owned episode-load initial position (#599).
+                    engine.seek(to: newEpisode.playbackPosition)
+                }
             }
         } else {
             engine.refreshMetadata(for: newEpisode)
