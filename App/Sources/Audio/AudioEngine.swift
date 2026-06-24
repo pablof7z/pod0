@@ -65,6 +65,15 @@ final class AudioEngine {
     /// can flip it from `handleEndOfItem`.
     var didReachNaturalEnd: Bool = false
 
+    // ── Interruption tracking ─────────────────────────────────────────────
+    // Set to `true` when `AudioSessionCoordinator` fires `onInterruptionEnd`
+    // and the engine was playing at the start of the interruption. The
+    // AVPlayer KVO path (`handleTimeControlChange`) sets state to `.paused`
+    // when iOS silences the player at `.began`, so by the time `.ended` fires
+    // `state` is already `.paused`. Tracking the pre-interruption intent lets
+    // `configureSessionCallbacks` correctly decide whether to auto-resume.
+    var wasPlayingBeforeInterruption: Bool = false
+
     // ── Kernel-bridge throttle state (M1 Part 3) ────────────────────────
     // Throttle `onPlayingTick` to ≤1 Hz per D8. Track the last-reported
     // whole second so duplicate ticks within the same second are dropped.
@@ -151,6 +160,7 @@ final class AudioEngine {
     init() {
         configureNowPlayingCallbacks()
         nowPlaying.setSkipIntervals(forward: skipForwardSeconds, backward: skipBackwardSeconds)
+        configureSessionCallbacks()
     }
 
     // Note: no `deinit` cleanup. Under Swift 6 strict concurrency, `deinit` is
@@ -158,6 +168,50 @@ final class AudioEngine {
     // its time observer on deallocation; the `NotificationCenter` token also
     // dies with the engine. Explicit teardown happens in `teardownItemObservers()`
     // when a new episode loads.
+
+    // MARK: - AVAudioSession callback wiring
+
+    /// Wire the coordinator's interruption / route-change callbacks to this
+    /// engine. Called once from `init()`.
+    ///
+    /// Interruption began: record whether the engine was playing so we know
+    /// whether to auto-resume when the interruption ends. By the time `.ended`
+    /// fires, AVPlayer KVO has already pushed state to `.paused`, so we capture
+    /// intent at `.began` time.
+    ///
+    /// Interruption end (`shouldResume`): the OS signals that the audio session
+    /// can be reactivated (e.g. after a phone call ends). Resume playback only
+    /// when the engine was already playing before the interruption — never
+    /// autoplay from an idle or user-paused state.
+    ///
+    /// Route change (output lost): headphones / AirPods were disconnected. iOS
+    /// silences `AVPlayer` automatically, but the engine's `state` stays
+    /// `.playing`. Syncing to `.paused` keeps the Now-Playing controls and the
+    /// in-app UI consistent with the real player state.
+    private func configureSessionCallbacks() {
+        let coordinator = AudioSessionCoordinator.shared
+
+        coordinator.onInterruptionBegan = { [weak self] in
+            guard let self else { return }
+            self.wasPlayingBeforeInterruption =
+                (self.state == .playing || self.state == .buffering)
+        }
+
+        coordinator.onInterruptionEnd = { [weak self] in
+            guard let self else { return }
+            // Only resume if playback was active when the interruption started.
+            // Avoid auto-starting from an idle or user-paused state.
+            guard self.wasPlayingBeforeInterruption else { return }
+            self.wasPlayingBeforeInterruption = false
+            self.play()
+        }
+
+        coordinator.onRouteChangeOutputLost = { [weak self] in
+            guard let self else { return }
+            guard self.state == .playing || self.state == .buffering else { return }
+            self.pause()
+        }
+    }
 
     // MARK: - Public API
 
