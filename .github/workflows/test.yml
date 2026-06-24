@@ -34,17 +34,19 @@ jobs:
       - name: Reject whitespace errors in changed lines
         env:
           EVENT_NAME: ${{ github.event_name }}
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_BASE_REF: ${{ github.base_ref }}
           PUSH_BEFORE_SHA: ${{ github.event.before }}
         run: |
           set -euo pipefail
 
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
-            if [[ -z "$PR_BASE_SHA" ]]; then
-              echo "::error::Missing pull_request base SHA for diff check"
+            if [[ -z "$PR_BASE_REF" ]]; then
+              echo "::error::Missing pull_request base ref for diff check"
               exit 1
             fi
-            git diff --check "$PR_BASE_SHA"...HEAD
+            git fetch --no-tags --depth=1 origin "$PR_BASE_REF"
+            base="$(git merge-base "origin/$PR_BASE_REF" HEAD)"
+            git diff --check "$base"...HEAD
           elif [[ -z "$PUSH_BEFORE_SHA" || "$PUSH_BEFORE_SHA" =~ ^0+$ ]]; then
             git diff-tree --check --no-commit-id --root -r HEAD
           else
