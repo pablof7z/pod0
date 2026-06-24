@@ -123,7 +123,7 @@ internal class KernelForwardingPlayer(
         val b = bridge
         if (b != null) {
             val base = pendingPausedSeekBase ?: currentPosition
-            val target = base + seekForwardIncrementMs
+            val target = base + getSeekForwardIncrementMs()
             pendingPausedSeekBase = target
             dispatchToKernel(b, buildSeekPayload(target / 1000.0))
         } else {
@@ -141,7 +141,7 @@ internal class KernelForwardingPlayer(
         val b = bridge
         if (b != null) {
             val base = pendingPausedSeekBase ?: currentPosition
-            val target = maxOf(0L, base - seekBackIncrementMs)
+            val target = maxOf(0L, base - getSeekBackIncrementMs())
             pendingPausedSeekBase = target
             dispatchToKernel(b, buildSeekPayload(target / 1000.0))
         } else {
