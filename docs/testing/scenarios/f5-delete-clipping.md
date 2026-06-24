@@ -38,14 +38,14 @@ All acceptance criteria met. Both deletion methods (swipe-to-delete and long-pre
   - Initial state: 2 clips in "TODAY" section
   - Clip 1: This American Life - 137: The Book That Changed You... (0:00 → 0:49, 49s, 19m ago)
   - Clip 2: This American Life - 137: The Book That Changed You... (0:30 → 1:30, 1:00, 21m ago)
-  
+
 - Step 2: Swipe-to-delete first clip
   - Swiped the first clip card left
   - Red "Delete" button appeared on the right
   - Tapped the Delete button
   - Clip was immediately removed from the list
   - Count decremented from 2 to 1
-  
+
 - Step 3: Long-press context menu delete
   - Long-pressed the remaining clip (500ms duration)
   - Context menu appeared with options: Play Clip, Share, Open Episode, Delete (red)
@@ -53,13 +53,13 @@ All acceptance criteria met. Both deletion methods (swipe-to-delete and long-pre
   - Clip was immediately removed
   - List now shows "No Clippings Yet" empty state
   - Count decremented from 1 to 0
-  
+
 - Step 4: Relaunch persistence check
   - Stopped and relaunched the app
   - Navigated to Clippings tab
   - App still shows "No Clippings Yet"
   - Deletions persisted to kernel clips.json sidecar
-  
+
 **Acceptance Criteria Met:**
 - ✓ Both swipe-to-delete and context-menu delete remove clips
 - ✓ List updates immediately and count decrements

@@ -67,7 +67,7 @@ Confirmed: No owned-podcast / create-podcast UI surface exists in the app. Kerne
 - Relay connectivity is working; relay discovery framework is implemented
 - No owned podcasts are currently published from this test identity
 
-**Unable to proceed with Steps 2-5** due to missing Swift UI implementation for podcast creation/publishing. 
+**Unable to proceed with Steps 2-5** due to missing Swift UI implementation for podcast creation/publishing.
 
 **Recommendation:**
 The backend is ready. A Swift UI feature ticket is needed to implement:
