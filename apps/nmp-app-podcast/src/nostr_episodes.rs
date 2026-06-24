@@ -230,13 +230,13 @@ impl KernelEventObserver for NostrEpisodesObserver {
             Err(_) => return, // D6 — poisoned store is a silent no-op.
         };
 
-        // Map NipF4Episode → NIP74Episode → podcast_core::Episode.
-        // `parse_episode_event` is the NIP-74 parser (uses imeta/url tags);
+        // Map NipF4Episode → NipF4DiscoveryEpisode → podcast_core::Episode.
+        // `parse_episode_event` is the NIP-F4 parser (uses imeta/url tags);
         // we need the NIP-F4 inverse (audio tag). We already have the parsed
         // NipF4Episode, so map it manually to the domain type using
         // `episode_to_episode` from podcast-discovery's parse layer.
         //
-        // We construct an NIP74Episode-compatible view from our NipF4Episode
+        // We construct an NipF4DiscoveryEpisode-compatible view from our NipF4Episode
         // then call episode_to_episode. Alternatively, since NipF4Episode has
         // all the same fields as the final domain Episode (minus the podcast_id),
         // we build the Episode directly here.
@@ -289,15 +289,15 @@ impl KernelEventObserver for NostrEpisodesObserver {
 /// Build a [`podcast_core::Episode`] from a parsed [`podcast_discovery::NipF4Episode`].
 ///
 /// Uses `podcast_discovery::episode_to_episode` by constructing a bridge
-/// `NIP74Episode`. The `d_tag` is the event id (stable per event, serves as
+/// `NipF4DiscoveryEpisode`. The `d_tag` is the event id (stable per event, serves as
 /// the episode GUID for dedup).
 fn build_episode_from_nip_f4(
     ep: &podcast_discovery::NipF4Episode,
     podcast_id: PodcastId,
 ) -> podcast_core::Episode {
-    use podcast_discovery::NIP74Episode;
+    use podcast_discovery::NipF4DiscoveryEpisode;
 
-    let nip74 = NIP74Episode {
+    let discovery_ep = NipF4DiscoveryEpisode {
         d_tag: ep.event_id.clone(),
         title: ep.title.clone(),
         summary: ep.description.clone().unwrap_or_default(),
@@ -313,7 +313,7 @@ fn build_episode_from_nip_f4(
         transcript_url: ep.transcript_url.clone(),
         transcript_mime_type: ep.transcript_mime_type.clone(),
     };
-    episode_to_episode(&nip74, podcast_id)
+    episode_to_episode(&discovery_ep, podcast_id)
 }
 
 #[cfg(test)]

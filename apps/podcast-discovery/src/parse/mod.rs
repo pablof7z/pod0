@@ -1,5 +1,5 @@
 //! Parse Nostr events (raw `Vec<Vec<String>>` tags + header fields) into
-//! the [`crate::types::NIP74Show`] / [`crate::types::NIP74Episode`] views.
+//! the [`crate::types::NipF4DiscoveryShow`] / [`crate::types::NipF4DiscoveryEpisode`] views.
 //!
 //! Mapping into the `podcast_core` domain types lives next to each parser
 //! so the cross-crate boundary is co-located with the tag layout it

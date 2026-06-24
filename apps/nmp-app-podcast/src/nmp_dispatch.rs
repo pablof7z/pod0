@@ -14,6 +14,11 @@
 //!   (registered via `register_podcast_signer_in_kernel`); `None` falls back
 //!   to the active account. NMP's `sign_with_account_nonblocking` resolves the
 //!   named key across local-key + remote maps, transparent to the caller.
+//! * [`write_relay_urls`] — read the app's configured relays and filter to
+//!   write-capable roles (write, both, both,indexer).
+//! * [`publish_raw_with_signer_to_relays_via_nmp`] — dispatch unsigned
+//!   `{kind, tags, content, signer_pubkey}` to `nmp.publish { PublishRaw }`
+//!   with explicit write-relay routing. Falls back to Auto if no relays given.
 //! * [`publish_raw_via_nmp`] — dispatch unsigned `{kind, tags, content}` to
 //!   `nmp.publish { PublishRaw }`. NMP signs with the active signer (local
 //!   nsec or NIP-46 bunker — both handled transparently by the kernel's
@@ -31,6 +36,7 @@
 use std::ffi::CString;
 
 use nmp_core::planner::LogicalInterest;
+use nmp_ffi::NmpApp;
 
 /// Register a per-podcast secret key in the kernel's identity roster without
 /// activating it. `secret_hex` must be a 64-char lowercase hex string (the
@@ -81,6 +87,28 @@ pub(crate) fn remove_account_from_kernel(app: *mut nmp_ffi::NmpApp, pubkey_hex: 
     nmp_ffi::nmp_app_remove_account(app, pubkey_c.as_ptr());
 }
 
+/// Extract the app's configured relays filtered to write-capable roles.
+/// Returns the set of relay URLs where role is "write", "both", or starts
+/// with "both," (e.g. "both,indexer"). Returns an empty vec on null app,
+/// poisoned lock, or no matching relays (D6: errors as data).
+pub(crate) fn write_relay_urls(app: *mut NmpApp) -> Vec<String> {
+    if app.is_null() {
+        return Vec::new();
+    }
+    let slot = unsafe { &*app }.configured_relays_handle();
+    let Ok(guard) = slot.lock() else {
+        return Vec::new();
+    };
+    guard
+        .as_slice()
+        .iter()
+        .filter(|relay| {
+            relay.role().split(',').any(|r| matches!(r.trim(), "write" | "both"))
+        })
+        .map(|relay| relay.url().to_string())
+        .collect()
+}
+
 /// Dispatch unsigned event parameters to `nmp.publish { PublishRaw }` with an
 /// explicit `signer_pubkey`. The kernel's `sign_with_account_nonblocking` looks
 /// up the named pubkey hex across the local-key + remote (NIP-46) roster —
@@ -110,6 +138,40 @@ pub(crate) fn publish_raw_with_signer_via_nmp(
         }
     });
     dispatch_nmp_publish(app, body)
+}
+
+/// Dispatch unsigned event parameters to `nmp.publish { PublishRaw }` with
+/// explicit write-relay routing via the per-podcast signer. When `relay_urls`
+/// is non-empty, uses `PublishTarget::Explicit { relays }` to bypass the NIP-65
+/// outbox resolver and publish directly to the given relay set. Falls back to
+/// `PublishTarget::Auto` when the relay list is empty so callers that have no
+/// configured write relays still get best-effort delivery.
+///
+/// The named signer MUST be registered before this call; use
+/// [`register_podcast_signer_in_kernel`] immediately before dispatching.
+///
+/// Returns `"queued"` (async) or `"signed"` (null app).
+pub(crate) fn publish_raw_with_signer_to_relays_via_nmp(
+    app: *mut nmp_ffi::NmpApp,
+    kind: u32,
+    tags: &[Vec<String>],
+    content: &str,
+    signer_pubkey_hex: &str,
+    relay_urls: &[String],
+) -> &'static str {
+    if !relay_urls.is_empty() {
+        let body = serde_json::json!({
+            "PublishRaw": {
+                "kind": kind,
+                "tags": tags,
+                "content": content,
+                "target": { "Explicit": { "relays": relay_urls } },
+                "signer_pubkey": signer_pubkey_hex,
+            }
+        });
+        return dispatch_nmp_publish(app, body);
+    }
+    publish_raw_with_signer_via_nmp(app, kind, tags, content, signer_pubkey_hex)
 }
 
 /// Dispatch `nmp.blossom.upload` routing the kind:24242 signature to a named

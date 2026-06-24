@@ -1,7 +1,7 @@
 //! `podcast-discovery` — NIP-F4 podcast discovery layer.
 //!
 //! Parses Nostr `kind:10154` / `kind:54` events into raw NIP-F4 views
-//! ([`NIP74Show`], [`NIP74Episode`]) and the `podcast-core` domain rows
+//! ([`NipF4DiscoveryShow`], [`NipF4DiscoveryEpisode`]) and the `podcast-core` domain rows
 //! they map onto. Also builds the tag sets the kernel-side publisher
 //! consumes when republishing or creating new shows/episodes.
 //!
@@ -61,7 +61,7 @@ pub use nip_f4::{
     NipF4Show, KIND_NIP_F4_AUTHOR_CLAIM, KIND_NIP_F4_EPISODE, KIND_NIP_F4_SHOW,
 };
 pub use parse::{episode_to_episode, parse_episode_event, parse_show_event, show_to_podcast};
-pub use types::{NIP74Episode, NIP74Show, ParseError, ShowReference};
+pub use types::{NipF4DiscoveryEpisode, NipF4DiscoveryShow, ParseError, ShowReference};
 
 #[cfg(test)]
 mod round_trip_tests {

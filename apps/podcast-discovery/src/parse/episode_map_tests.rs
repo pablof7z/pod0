@@ -1,7 +1,7 @@
 use super::*;
 use podcast_core::types::transcript::TranscriptKind;
-fn make_nip74() -> NIP74Episode {
-    NIP74Episode {
+fn make_nip74() -> NipF4DiscoveryEpisode {
+    NipF4DiscoveryEpisode {
         d_tag: "ep-1".into(),
         title: "Pilot".into(),
         summary: "First".into(),

@@ -1,7 +1,7 @@
 use super::*;
 #[test]
 fn show_coordinate_matches_swift_format() {
-    let show = NIP74Show {
+    let show = NipF4DiscoveryShow {
         pubkey: "abc123".into(),
         title: "X".into(),
         description: String::new(),

@@ -1,10 +1,10 @@
-//! Map a parsed [`NIP74Episode`] onto an [`Episode`] domain row.
+//! Map a parsed [`NipF4DiscoveryEpisode`] onto an [`Episode`] domain row.
 //!
 //! Kept in its own file so the wire-shape parser (`parse/episode.rs`)
 //! and the domain-shape mapping live next to each other but stay under
 //! AGENTS.md's 300-LOC soft limit. The mapping is total (no `Result`)
 //! because every parse failure is already surfaced at the
-//! [`parse_episode_event`] boundary — once you have an `NIP74Episode`,
+//! [`parse_episode_event`] boundary — once you have an `NipF4DiscoveryEpisode`,
 //! producing an `Episode` cannot fail.
 //!
 //! [`parse_episode_event`]: super::episode::parse_episode_event
@@ -15,14 +15,14 @@ use podcast_core::types::podcast::PodcastId;
 use url::Url;
 use uuid::Uuid;
 
-use crate::types::NIP74Episode;
+use crate::types::NipF4DiscoveryEpisode;
 
-/// Map a parsed [`NIP74Episode`] onto an [`Episode`] domain row.
+/// Map a parsed [`NipF4DiscoveryEpisode`] onto an [`Episode`] domain row.
 ///
 /// `podcast_id` is supplied by the caller — typically derived from
 /// [`crate::parse::show::show_to_podcast`] on the parent show so the
 /// foreign-key relation survives.
-pub fn episode_to_episode(ep: &NIP74Episode, podcast_id: PodcastId) -> Episode {
+pub fn episode_to_episode(ep: &NipF4DiscoveryEpisode, podcast_id: PodcastId) -> Episode {
     let pub_date = Utc
         .timestamp_opt(ep.published_at, 0)
         .single()
@@ -41,7 +41,7 @@ pub fn episode_to_episode(ep: &NIP74Episode, podcast_id: PodcastId) -> Episode {
     };
 
     // `Episode::new` derives a UUIDv5 from `(feed_url, guid)`; we immediately
-    // override `episode.id` with the NIP-74 d-tag-derived id below, so the
+    // override `episode.id` with the NIP-F4 event id below, so the
     // placeholder `"nip74"` namespace string is a stable but unused input.
     let mut episode = Episode::new(
         podcast_id,
@@ -69,7 +69,7 @@ pub fn episode_to_episode(ep: &NIP74Episode, podcast_id: PodcastId) -> Episode {
 /// Stable UUIDv5 over the episode `d` tag value so the `Episode.id` is
 /// reproducible for the same wire event.
 fn episode_id_from_d_tag(d_tag: &str) -> Uuid {
-    // Namespace UUID scoped to NIP-74 episode d-tags.
+    // Namespace UUID scoped to NIP-F4 episode d-tags.
     const NS: Uuid = Uuid::from_bytes([
         0xc6, 0x10, 0xa0, 0xf9, 0xe4, 0x21, 0x5e, 0xfb, 0x90, 0x6c, 0x5d, 0x88, 0x6a, 0x7e, 0x4b,
         0x10,

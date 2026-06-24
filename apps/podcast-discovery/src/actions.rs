@@ -39,7 +39,7 @@ pub const ACTION_PUBLISH_EPISODE: &str = "podcast.nip74.publish_episode";
 
 /// `podcast.nip74.discover` — request a fresh discovery sweep of the
 /// configured relays. Optional `query` narrows by title/category, and
-/// optional `limit` caps the number of returned `NIP74Show`s.
+/// optional `limit` caps the number of returned `NipF4DiscoveryShow`s.
 pub const ACTION_DISCOVER_PODCASTS: &str = "podcast.nip74.discover";
 
 /// Payload for [`ACTION_PUBLISH_SHOW`].

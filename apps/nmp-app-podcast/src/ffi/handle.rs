@@ -1,7 +1,7 @@
 //! Opaque handle returned by `nmp_app_podcast_register` and consumed by
 //! `nmp_app_podcast_snapshot` / `nmp_app_podcast_unregister`.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
 use crate::state::PodcastAppState;
@@ -18,10 +18,17 @@ use nmp_ffi::NmpApp;
 /// `show_event_json` is the most recently-built unsigned `kind:10154`
 /// event JSON (debug surface — relay publishing is still pending the
 /// broader Nostr infrastructure). `last_published_at` is Unix seconds.
+/// `blossom_pending` maps Blossom correlation IDs to episode IDs for uploads
+/// awaiting resolution. `episode_publish_failed` tracks episodes whose most
+/// recent publish attempt failed (relay rejection or upload error).
 #[derive(Clone, Debug, Default)]
 pub struct OwnedPublishState {
     pub show_event_json: Option<String>,
     pub last_published_at: Option<i64>,
+    /// correlation_id → episode_id for Blossom uploads in progress.
+    pub blossom_pending: HashMap<String, String>,
+    /// episode_ids whose most recent publish attempt failed.
+    pub episode_publish_failed: HashSet<String>,
 }
 
 /// Opaque handle returned by [`super::nmp_app_podcast_register`]. Boxed on the

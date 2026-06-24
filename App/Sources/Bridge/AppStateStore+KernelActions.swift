@@ -878,8 +878,8 @@ extension AppStateStore {
     // publish ops can sign. `publish_show` (kind:10154) and `publish_episode`
     // (kind:54) build + sign + broadcast NIP-F4 events to the relay pool;
     // `publish_author_claim` (kind:10064) lists every owned-podcast pubkey under
-    // the active agent identity. These replace the legacy Swift NIP-74
-    // (kind:30074/30075) builders.
+    // the active agent identity. Routing uses the app's configured write relays
+    // for per-podcast key events.
     //
     // Fire-and-forget: the signed event id / naddr now lives in Rust's
     // `publish_state` and is surfaced via the snapshot projection, not returned
