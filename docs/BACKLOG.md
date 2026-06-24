@@ -489,6 +489,26 @@ worktrees currently in flight.
   `EditProfileView` to observe the projection field (keyed by pubkey + kind:0) before
   flipping to a "Published" banner. Deferred because NMP does not currently project
   post-publish event identity back to the host app.
+- **social-profile-name-about-completion (#601).** Rust `IdentityStore` and
+  `AccountSummary` now carry `name`/`about` fields and `handle_publish_profile`
+  applies them on publish. Remaining cross-platform wiring:
+  - **Swift** — decode `name`/`about` from `AccountSummary` JSON in
+    `AppStateStore+KernelProjection.swift`; surface them in `UserIdentityStore`
+    and `EditProfileView`; remove the `kind0CachePrefix` UserDefaults profile
+    cache from `UserIdentityStore+ProfileFetch.swift` once projection carries
+    the canonical values.
+  - **Android** — decode `name`/`about` from `AccountSummary` in
+    `IdentityActions.kt`; remove the SharedPreferences profile-field mirrors
+    once the kernel projection is the authoritative source.
+- **social-notes-friends-kernel-wiring (#601).** Foundation Rust stores
+  (`store/notes.rs`, `store/friends.rs`) are in place. Remaining:
+  - Add `AddNote/UpdateNote/DeleteNote/AddFriend/RemoveFriend/UpdateFriendName`
+    variants to `SocialAction` FFI enum and implement handlers.
+  - Add notes/friends domain sub-projections so iOS and Android render
+    Rust-owned lists instead of Swift `AppState.notes`/friends arrays.
+  - Write one-time migrations (UserDefaults → Rust for iOS; SharedPreferences
+    → Rust for Android) guarded by a post-work flag (see `oneshot_migration`
+    memory note).
 - **local-notes-kernel-store.** Publishing user notes is already Rust-owned via
   `podcast.social.publish_note`, but local note storage remains Swift-owned:
   `AppState.notes`, `AppStateStore.addNote/deleteNote/updateNote`,

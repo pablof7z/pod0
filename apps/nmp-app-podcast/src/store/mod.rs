@@ -50,6 +50,8 @@ pub mod relay_config;
 mod settings;
 pub mod stt_policy;
 pub(crate) mod summary;
+pub mod notes;
+pub mod friends;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

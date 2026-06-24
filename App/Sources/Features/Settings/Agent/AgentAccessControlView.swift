@@ -72,17 +72,11 @@ struct AgentAccessControlView: View {
     // MARK: - Allowed
 
     private var approvedPubkeys: [String] {
-        if let social = store.kernel?.podcastSnapshot?.social {
-            return social.approvedPubkeys.sorted()
-        }
-        return store.state.nostrAllowedPubkeys.sorted()
+        store.kernel?.podcastSnapshot?.social?.approvedPubkeys.sorted() ?? []
     }
 
     private var blockedPubkeys: [String] {
-        if let social = store.kernel?.podcastSnapshot?.social {
-            return social.blockedPubkeys.sorted()
-        }
-        return store.state.nostrBlockedPubkeys.sorted()
+        store.kernel?.podcastSnapshot?.social?.blockedPubkeys.sorted() ?? []
     }
 
     private var filteredAllowed: [String] {

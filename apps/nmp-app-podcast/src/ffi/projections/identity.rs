@@ -20,6 +20,10 @@ pub struct AccountSummary {
     pub mode: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub picture_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub about: Option<String>,
 }
 
 /// Snapshot row for a podcast the user owns (has generated a NIP-F4
