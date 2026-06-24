@@ -227,7 +227,8 @@ final class PlaybackState {
         // P2a: Persist the new position while paused for the same reason as
         // skipBackward — apply_writeback won't fire until playback resumes.
         if !isPlaying, let ep = episode {
-            store?.kernelPersistPosition(episodeID: ep.id, positionSecs: engine.currentTime + delta)
+            let target = min(engine.currentTime + delta, ep.durationSecs ?? engine.currentTime + delta)
+            store?.kernelPersistPosition(episodeID: ep.id, positionSecs: target)
         }
     }
 

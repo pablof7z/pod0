@@ -78,9 +78,15 @@ class MediaSessionTransportRoutingTest {
 
         forwarder.seekForward()
 
-        assertEquals(1, dispatcher.actions.size)
-        val payload = json.parseToJsonElement(dispatcher.actions[0].payload).jsonObject
-        assertEquals("skip_forward", payload["op"]?.jsonPrimitive?.content)
+        // seekForward dispatches two actions: first a seek (position sync),
+        // then the skip_forward, so consecutive remote skips while paused
+        // accumulate from the correct base in the Rust PlayerActor.
+        assertEquals(2, dispatcher.actions.size)
+        val seekPayload = json.parseToJsonElement(dispatcher.actions[0].payload).jsonObject
+        assertEquals("seek", seekPayload["op"]?.jsonPrimitive?.content)
+        assertEquals(0.0, seekPayload["position_secs"]?.jsonPrimitive?.content?.toDouble())
+        val skipPayload = json.parseToJsonElement(dispatcher.actions[1].payload).jsonObject
+        assertEquals("skip_forward", skipPayload["op"]?.jsonPrimitive?.content)
     }
 
     @Test
@@ -91,9 +97,14 @@ class MediaSessionTransportRoutingTest {
 
         forwarder.seekBack()
 
-        assertEquals(1, dispatcher.actions.size)
-        val payload = json.parseToJsonElement(dispatcher.actions[0].payload).jsonObject
-        assertEquals("skip_backward", payload["op"]?.jsonPrimitive?.content)
+        // seekBack dispatches two actions: first a seek (position sync),
+        // then the skip_backward, matching the same paused-accumulation fix.
+        assertEquals(2, dispatcher.actions.size)
+        val seekPayload = json.parseToJsonElement(dispatcher.actions[0].payload).jsonObject
+        assertEquals("seek", seekPayload["op"]?.jsonPrimitive?.content)
+        assertEquals(0.0, seekPayload["position_secs"]?.jsonPrimitive?.content?.toDouble())
+        val skipPayload = json.parseToJsonElement(dispatcher.actions[1].payload).jsonObject
+        assertEquals("skip_backward", skipPayload["op"]?.jsonPrimitive?.content)
     }
 
     // MARK: - Fallback tests (bridge = null)
