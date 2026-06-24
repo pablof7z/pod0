@@ -208,6 +208,12 @@ final class PlaybackState {
             transport?.kernelSeek(positionSecs: engine.currentTime)
         }
         transport?.kernelSkipBackward(secs: delta)
+        // P2a: No Playing ticks fire while paused, so apply_writeback never
+        // saves the new position. Persist it explicitly so a kill-before-resume
+        // restores the correct position rather than the pre-skip one.
+        if !isPlaying, let ep = episode {
+            store?.kernelPersistPosition(episodeID: ep.id, positionSecs: max(0, engine.currentTime - delta))
+        }
     }
 
     func skipForward(_ seconds: TimeInterval? = nil) {
@@ -218,6 +224,11 @@ final class PlaybackState {
             transport?.kernelSeek(positionSecs: engine.currentTime)
         }
         transport?.kernelSkipForward(secs: delta)
+        // P2a: Persist the new position while paused for the same reason as
+        // skipBackward — apply_writeback won't fire until playback resumes.
+        if !isPlaying, let ep = episode {
+            store?.kernelPersistPosition(episodeID: ep.id, positionSecs: engine.currentTime + delta)
+        }
     }
 
     func setRate(_ newRate: PlaybackRate) {

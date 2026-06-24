@@ -97,10 +97,16 @@ internal class KernelForwardingPlayer(
 
     /**
      * Route `seekForward()` through the kernel as `{"op":"skip_forward"}`.
+     *
+     * P2b fix: Before dispatching the skip, sync Rust's `position_secs` from
+     * ExoPlayer's current position. Without this, consecutive remote skips while
+     * paused all compute from the same stale base in `PlayerActor` (which is
+     * only updated by `Playing` reports, i.e. not while paused).
      */
     override fun seekForward() {
         val b = bridge
         if (b != null) {
+            dispatchToKernel(b, buildSeekPayload(currentPosition / 1000.0))
             dispatchToKernel(b, buildSkipForwardPayload())
         } else {
             super.seekForward()
@@ -109,10 +115,14 @@ internal class KernelForwardingPlayer(
 
     /**
      * Route `seekBack()` through the kernel as `{"op":"skip_backward"}`.
+     *
+     * P2b fix: Same paused-accumulation fix as seekForward — sync Rust's
+     * position from ExoPlayer before each skip dispatch.
      */
     override fun seekBack() {
         val b = bridge
         if (b != null) {
+            dispatchToKernel(b, buildSeekPayload(currentPosition / 1000.0))
             dispatchToKernel(b, buildSkipBackwardPayload())
         } else {
             super.seekBack()
