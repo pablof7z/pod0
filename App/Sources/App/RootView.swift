@@ -243,7 +243,15 @@ struct RootView: View {
             base.tabViewBottomAccessory {
                 MiniPlayerView(
                     state: playbackState,
-                    onTap: { showFullPlayer = true },
+                    onTap: {
+                        // Close the sidebar first so neither the sidebar overlay
+                        // (which covers the entire tab-bar area including this
+                        // accessory) nor the full-player modal blocks the other.
+                        if showSidebar {
+                            withAnimation(AppTheme.Animation.spring) { showSidebar = false }
+                        }
+                        showFullPlayer = true
+                    },
                     glassNamespace: playerNamespace
                 )
             }
@@ -325,6 +333,12 @@ struct RootView: View {
             let profile = UserProfileDisplay.from(identity: userIdentity)
             Button {
                 Haptics.selection()
+                // Dismiss the full-player sheet before sliding the sidebar in.
+                // The sheet is a UIKit modal that sits above the ZStack, so the
+                // sidebar would slide in behind the modal and appear broken
+                // (taps register but nothing seems to happen). Collapsing the
+                // sheet first ensures the sidebar is always the top surface.
+                showFullPlayer = false
                 withAnimation(AppTheme.Animation.spring) { showSidebar = true }
             } label: {
                 IdentityAvatarView(
