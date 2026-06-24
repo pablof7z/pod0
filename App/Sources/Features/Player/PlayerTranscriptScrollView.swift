@@ -48,6 +48,9 @@ struct PlayerTranscriptScrollView: View {
     @State private var transcript: Transcript?
     @State private var activeSegmentID: UUID?
     @State private var isRequestingIngest: Bool = false
+    /// Segment tapped via context-menu "Create Clip" — drives the
+    /// `ClipComposerSheet` presentation from this scroll view's level.
+    @State private var clipComposerSegment: Segment?
 
     /// Hashable identity used to re-key the load task. Collapses
     /// `transcriptState` down to "is the persisted file readable yet" so we
@@ -89,6 +92,11 @@ struct PlayerTranscriptScrollView: View {
         .padding(AppTheme.Spacing.lg)
         .background(transcriptBackground)
         .task(id: loadKey) { reloadTranscript() }
+        .sheet(item: $clipComposerSegment) { seg in
+            if let episode = liveEpisode, let transcript {
+                ClipComposerSheet(episode: episode, transcript: transcript, initialSegment: seg)
+            }
+        }
     }
 
     // MARK: - Synced surface
@@ -104,9 +112,15 @@ struct PlayerTranscriptScrollView: View {
                             speaker: transcript.speaker(for: seg.speakerID),
                             isActive: seg.id == activeSegmentID,
                             onTap: { tapSegment(seg) },
-                            onAskAgent: { askAgent(about: seg) }
+                            onAskAgent: { askAgent(about: seg) },
+                            onHighlight: { clipComposerSegment = seg }
                         )
                         .id(seg.id)
+                        .holdToClipIfAvailable(
+                            episode: liveEpisode,
+                            transcript: transcript,
+                            segment: seg
+                        )
                     }
                 }
                 .padding(.vertical, AppTheme.Spacing.sm)
@@ -331,6 +345,26 @@ struct PlayerTranscriptScrollView: View {
             await TranscriptIngestService.shared.ingest(episodeID: episodeID)
             isRequestingIngest = false
             reloadTranscript()
+        }
+    }
+}
+
+// MARK: - Private View helpers
+
+private extension View {
+    /// Applies `HoldToClipGestureModifier` when an episode is available.
+    /// Falls back to an identity view when episode is nil (edge case: transcript
+    /// loaded but episode not yet live in store).
+    @ViewBuilder
+    func holdToClipIfAvailable(
+        episode: Episode?,
+        transcript: Transcript,
+        segment: Segment
+    ) -> some View {
+        if let episode {
+            self.holdToClip(episode: episode, transcript: transcript, segment: segment)
+        } else {
+            self
         }
     }
 }
