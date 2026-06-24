@@ -34,21 +34,28 @@ current playback moment, and that it surfaces in Clippings.
 ## Notes
 
 **Result: BLOCKED**
-**Tested: 2026-06-24, ~3:44 PM**
+**Tested: 2026-06-24, ~11:29 AM**
 
 Steps executed:
-- Step 1: PASS — Started playback of "R.F.K. Jr.'s Newest Mission..." at position 8:46, let it play to 8:59 (past 30 seconds). Playback working correctly.
-- Step 2: PARTIAL — Tapped AutoSnip button (e219, bookmark.fill icon) successfully, but no visual confirmation banner appeared on screen.
+- Step 1: PASS — Started playback of "137: The Book That Changed Your Life" at position 0:00, played to 0:32 (past 30 seconds). Playback working correctly.
+- Step 2: PARTIAL — Tapped AutoSnip button (e167, bookmark.fill icon) successfully at position 0:32. No visual confirmation banner appeared, but tap registered without errors.
 - Step 3-5: BLOCKED — Unable to navigate to Clippings tab to verify clip creation.
 
 **Blocking Issue:**
-The sidebar navigation (accessed via avatar/profile button at top-left) does not open despite multiple tap attempts. Per RootView.swift code (lines 5-8), "Clippings are reachable from the avatar sidebar" and the TabView tabs are hidden via `.toolbar(.hidden, for: .tabBar)`. Without functional sidebar access, cannot navigate to Clippings to verify:
+The sidebar navigation (accessed via avatar/profile button at top-left, ref e19) does not open despite multiple tap attempts (regular tap, long-press). Per RootView.swift code (lines 326-337), the avatar button should set `showSidebar = true` with animation, opening AppSidebarView which provides access to the Clippings tab.
+
+The full player sheet may be interfering with sidebar state updates. While the dismiss button (e92, xmark) and swipe-down gestures on the sheet did not close it, the underlying issue is that the sidebar button (e19) remains unresponsive.
+
+Without functional sidebar access, cannot navigate to Clippings to verify:
 - Clip appears in the list
 - Clip has ~30-second range ending at snip moment
 - Source badge reflects manual touch (no "Auto" badge expected)
 - NoLLMKeyHintBanner appears (if no LLM key configured)
 
-**Next Steps:**
-- Investigate why sidebar button tap is not triggering state change (showSidebar = true)
-- Consider alternative navigation for testing (direct TabView selection if exposed)
-- Verify app state in simulator is functioning normally for other features
+**Root Cause Analysis:**
+- Sidebar state toggle (showSidebar @State var) is not responding to button tap
+- Full player sheet (showFullPlayer @State var) may be consuming touch events
+- App logs show kernel bridge errors ("snapshot frame missing all podcast.* domain sidecars") which could affect state propagation
+
+**Recommendation:**
+This appears to be a state management issue rather than an AutoSnip feature issue. The feature's tap registration works, but navigation to verify the result is blocked.
