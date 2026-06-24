@@ -49,7 +49,7 @@ pub fn dispatch(
     let payload_str = payload.to_string();
     match dispatch_action_bytes_for(app, namespace, &payload_str) {
         Ok(correlation_id) => serde_json::json!({"correlation_id": correlation_id}),
-        Err(_) => serde_json::Value::Null,
+        Err(err) => serde_json::json!({"error": err}),
     }
 }
 

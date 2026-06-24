@@ -341,25 +341,25 @@ char *nmp_app_nostrconnect_uri(void *app, const char *relay_url, const char *cal
 // any cached keys; the next snapshot tick reflects the change.
 void nmp_app_remove_account(void *app, const char *identity_id);
 
-// ── Profile claim / release (T114 reference-first profile resolution) ─────
+// ── ADR-0063 Lane D — unified reference-resolution (profile + event) ─────
 //
-// `nmp_app_claim_profile` registers a refcounted interest in `pubkey`'s kind:0
-// profile keyed by `consumer_id`. On the cold-claim transition the kernel
-// enqueues a kind:0 REQ against its configured relay pool (or queues it until a
-// relay connects), owning all relay/cache policy. The resolved profile surfaces
-// in `projections.resolved_profiles` (and `claimed_profiles`) on the next
-// snapshot tick — i.e. it rides the same reactive push the shell already folds
-// into `nostrProfileCache` via `mergeResolvedProfiles`. This is the designed
-// replacement for a host opening its own websocket to fetch kind:0.
+// `nmp_app_resolve_ref` registers (or upgrades) a consumer's interest in an
+// entity identified by `(namespace, key)`. The kernel refcounts per
+// `consumer_id`; the first cold-claim fetches the entity from store then relay.
+// The resolved entity surfaces in the matching push-frame projection on the next
+// snapshot tick.
 //
-// `nmp_app_release_profile` decrements the per-consumer refcount; the kernel
-// drops the pending request when the last consumer releases. Both are
-// FFI-clean (D6): a null/invalid pubkey or consumer id is a silent no-op.
-// `pubkey` MUST be lowercase hex; `consumer_id` is a host-chosen stable token
-// (typically the view identity) so claims dedupe and release matches claim.
-// Declared per `crates/nmp-ffi/src/timeline.rs`.
-void nmp_app_claim_profile(void *app, const char *pubkey, const char *consumer_id);
-void nmp_app_release_profile(void *app, const char *pubkey, const char *consumer_id);
+// `namespace`: 0 = profile, 1 = event.
+// `key`: 64-hex lowercase pubkey (profile); event-id hex, "kind:pubkey:d"
+//         coordinate, or "i:<external-id>" NIP-73 ref (event).
+// `consumer_id`: host-chosen stable refcount owner token (e.g. SwiftUI view id).
+// `shape`: 0 = profile.ref, 1 = profile.card, 2 = event.embed, 3 = event.raw.
+// `liveness`: 0 = CacheOk (background), non-zero = Live (open screen).
+//
+// Replaces the deleted `nmp_app_claim_profile` / `nmp_app_release_profile`
+// (ADR-0063 Lane H). D6: null/invalid arguments are silent no-ops.
+void nmp_app_resolve_ref(void *app, int namespace, const char *key, const char *consumer_id, int shape, int liveness);
+void nmp_app_release_ref(void *app, int namespace, const char *key, const char *consumer_id);
 // Deliver a JSON-encoded VoiceReport (STT partial/final, listening
 // started/stopped, speak started/finished, error) to the Rust voice
 // projection. Currently always returns NULL — voice mode has no

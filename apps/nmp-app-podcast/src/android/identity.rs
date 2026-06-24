@@ -11,8 +11,8 @@ use jni::sys::{jint, jlong, jstring};
 use jni::JNIEnv;
 
 use nmp_ffi::{
-    nmp_app_cancel_bunker_handshake, nmp_app_claim_profile,
-    nmp_app_nostrconnect_uri, nmp_app_release_profile,
+    nmp_app_cancel_bunker_handshake, nmp_app_resolve_ref, nmp_app_release_ref,
+    nmp_app_nostrconnect_uri,
     nmp_app_signin_bunker, nmp_app_signin_nsec, nmp_free_string,
 };
 
@@ -51,8 +51,9 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeSigninNsec<'l>(
 /// `projections["resolved_profiles"]` on the next push frame. D6: invalid
 /// pubkey, null/non-UTF-8 arguments, or a null handle are silent no-ops.
 ///
-/// Mirrors iOS `PodcastHandle.claimProfile(pubkeyHex:consumerID:)` and the
-/// `nmp_app_claim_profile` C-ABI symbol in `NmpCore.h`.
+/// Mirrors iOS `PodcastHandle.claimProfile(pubkeyHex:consumerID:)`. Uses the
+/// ADR-0063 Lane D `nmp_app_resolve_ref` entry point (namespace=0/profile,
+/// shape=1/profile.card, liveness=0/CacheOk for background list-row claims).
 #[no_mangle]
 pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeClaimProfile<'l>(
     mut env: JNIEnv<'l>,
@@ -79,10 +80,9 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeClaimProfile<'l>(
         let Ok(c_consumer) = CString::new(consumer) else {
             return;
         };
-        // `force = 0` — background / list-row claims never force a re-fetch.
-        // Matches the iOS convention in `ClaimNostrProfiles.swift` which passes
-        // `force: false` for `.onAppear`-driven claims.
-        nmp_app_claim_profile(s.app, c_pubkey.as_ptr(), c_consumer.as_ptr(), 0);
+        // ADR-0063 Lane D: namespace=0 (profile), shape=1 (profile.card),
+        // liveness=0 (CacheOk — background list-row claims never force a re-fetch).
+        nmp_app_resolve_ref(s.app, 0, c_pubkey.as_ptr(), c_consumer.as_ptr(), 1, 0);
     });
 }
 
@@ -91,8 +91,8 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeClaimProfile<'l>(
 /// consumer releases. Idempotent / safe when nothing is claimed for this pair.
 /// D6: any invalid argument is a silent no-op.
 ///
-/// Mirrors iOS `PodcastHandle.releaseProfile(pubkeyHex:consumerID:)` and the
-/// `nmp_app_release_profile` C-ABI symbol in `NmpCore.h`.
+/// Mirrors iOS `PodcastHandle.releaseProfile(pubkeyHex:consumerID:)`. Uses the
+/// ADR-0063 Lane D `nmp_app_release_ref` entry point (namespace=0/profile).
 #[no_mangle]
 pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeReleaseProfile<'l>(
     mut env: JNIEnv<'l>,
@@ -119,7 +119,8 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeReleaseProfile<'l>
         let Ok(c_consumer) = CString::new(consumer) else {
             return;
         };
-        nmp_app_release_profile(s.app, c_pubkey.as_ptr(), c_consumer.as_ptr());
+        // ADR-0063 Lane D: namespace=0 (profile).
+        nmp_app_release_ref(s.app, 0, c_pubkey.as_ptr(), c_consumer.as_ptr());
     });
 }
 

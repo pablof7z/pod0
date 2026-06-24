@@ -114,7 +114,7 @@ pub fn dispatch_action_bytes_for(
 
     // SAFETY: result_ptr is from the kernel's malloc; we take ownership via CString.
     let result_json = unsafe {
-        let c_str = std::ffi::CStr::from_ptr(result_ptr as *const i8);
+        let c_str = std::ffi::CStr::from_ptr(result_ptr as *const std::os::raw::c_char);
         c_str.to_string_lossy().to_string()
     };
 

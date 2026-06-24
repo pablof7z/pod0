@@ -123,7 +123,7 @@ fn dispatch_nmp_publish(app: *mut NmpApp, body: serde_json::Value) -> FeedbackCo
     // SAFETY: result_ptr is heap-owned from the kernel; read it then free it.
     // Reading BEFORE freeing is required — the string is invalidated by nmp_free_string.
     let result_json = unsafe {
-        let c_str = std::ffi::CStr::from_ptr(result_ptr as *const i8);
+        let c_str = std::ffi::CStr::from_ptr(result_ptr as *const std::os::raw::c_char);
         let s = c_str.to_string_lossy().to_string();
         nmp_free_string(result_ptr);
         s
