@@ -84,6 +84,12 @@ impl ActionModule for VoiceActionModule {
     ) -> Result<(), String> {
         crate::ffi::actions::dispatch_host_op(Self::NAMESPACE, &action, correlation_id, send)
     }
+
+    fn decode_payload(
+        bytes: &[u8],
+    ) -> Option<Result<Self::Action, nmp_core::substrate::ActionPayloadDecodeError>> {
+        crate::action_payload::decode_podcast_payload(bytes)
+    }
 }
 
 #[cfg(test)]

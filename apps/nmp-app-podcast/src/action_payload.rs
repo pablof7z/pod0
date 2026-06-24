@@ -69,6 +69,27 @@ impl ActionPayload for PodcastJsonPayload {
     }
 }
 
+/// Decode a `PodcastJsonPayload` buffer into a concrete action type `A`.
+///
+/// This is the canonical `ActionModule::decode_payload` body for all
+/// podcast-namespace modules: decode the typed buffer as a
+/// [`PodcastJsonPayload`], then JSON-deserialize `body_json` into `A`.
+/// Always returns `Some(_)` — podcast modules are typed-payload-capable
+/// (ADR-0064 / S3 #1751).
+pub fn decode_podcast_payload<A: serde::de::DeserializeOwned>(
+    bytes: &[u8],
+) -> Option<Result<A, ActionPayloadDecodeError>> {
+    Some(
+        <PodcastJsonPayload as ActionPayload>::decode(bytes).and_then(|p| {
+            serde_json::from_str::<A>(&p.body_json).map_err(|e| {
+                ActionPayloadDecodeError::Malformed {
+                    reason: format!("failed to deserialize action: {e}"),
+                }
+            })
+        }),
+    )
+}
+
 /// Macro to implement `ActionPayload` for a podcast action type.
 /// Deserializes `body_json` from `PodcastJsonPayload` into the target type.
 #[macro_export]

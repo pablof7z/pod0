@@ -120,9 +120,22 @@ fn dispatch_nmp_publish(app: *mut NmpApp, body: serde_json::Value) -> FeedbackCo
     if result_ptr.is_null() {
         return FeedbackCommandOutcome::rejected("publish dispatch failed");
     }
-    // SAFETY: result_ptr is heap-owned from the kernel; free it.
-    unsafe {
+    // SAFETY: result_ptr is heap-owned from the kernel; read it then free it.
+    // Reading BEFORE freeing is required — the string is invalidated by nmp_free_string.
+    let result_json = unsafe {
+        let c_str = std::ffi::CStr::from_ptr(result_ptr as *const i8);
+        let s = c_str.to_string_lossy().to_string();
         nmp_free_string(result_ptr);
+        s
+    };
+    // Propagate a kernel rejection; fall through to accepted on any other shape.
+    match serde_json::from_str::<serde_json::Value>(&result_json) {
+        Ok(serde_json::Value::Object(map)) => {
+            if let Some(serde_json::Value::String(err)) = map.get("error") {
+                return FeedbackCommandOutcome::rejected(err.clone());
+            }
+        }
+        _ => {}
     }
     FeedbackCommandOutcome::accepted("queued")
 }
