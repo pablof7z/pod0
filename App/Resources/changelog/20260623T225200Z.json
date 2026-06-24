@@ -1,1 +1,1 @@
-{"shipped_at":"2026-06-23T22:52:00Z","lines":["Nostr identifiers and NIP-05 addresses now route through the kernel's open_search handler (Issue #605 phase 0-1 scaffolding)."]}
+{"shipped_at":"2026-06-23T22:52:00Z","lines":["Paste an npub1 Nostr identifier in Add Show to subscribe directly to that creator's podcast feed."]}
