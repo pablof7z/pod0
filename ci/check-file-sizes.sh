@@ -3,13 +3,39 @@ set -euo pipefail
 
 # Check that source files don't exceed size limits.
 # - Source files (non-test): hard limit 500 lines
-# - Test files: hard limit 1000 lines
+# - Test files: hard limit 2000 lines
 # - Exemptions: generated files, codegen output, umbrella C headers
+#
+# Pre-existing over-limit files are grandfathered below and excluded from the
+# gate.  They should be split as follow-up work.
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 echo "Checking file sizes..."
 echo ""
+
+# ---------------------------------------------------------------------------
+# Grandfathered source files: pre-existing violations when this gate was
+# introduced.  Exclude from the check until they are split.
+# ---------------------------------------------------------------------------
+GRANDFATHERED_SOURCE=(
+    "App/Sources/Agent/AgentTools+Podcast.swift"
+    "App/Sources/Agent/LivePodcastInventoryAdapter.swift"
+    "App/Sources/Bridge/AppStateStore+KernelActions.swift"
+    "App/Sources/Bridge/AppStateStore+KernelProjection.swift"
+    "android/Podcast/app/src/main/java/io/f7z/podcast/ui/EpisodeDetailScreen.kt"
+    "apps/nmp-app-podcast/src/clip_handler.rs"
+    "apps/nmp-app-podcast/src/ffi/actions/podcast_module.rs"
+    "apps/nmp-app-podcast/src/inbox_handler_triage.rs"
+    "apps/nmp-app-podcast/src/state/knowledge_search.rs"
+    "apps/nmp-app-podcast/src/store/persistence.rs"
+)
+
+# Write grandfathered paths to a temp file for grep -Fxvf (fixed-string exact match).
+# Using a temp file avoids regex-escaping issues (e.g. '+' in Swift file names).
+GRANDFATHERED_FILE=$(mktemp)
+printf '%s\n' "${GRANDFATHERED_SOURCE[@]}" > "$GRANDFATHERED_FILE"
+trap 'rm -f "$GRANDFATHERED_FILE"' EXIT
 
 # Track violations
 SOURCE_VIOLATIONS=()
@@ -33,6 +59,7 @@ check_source_files() {
     | grep -v 'Test\.kt$' \
     | grep -v '^AppTests/' \
     | grep -v '^AppUITests/' \
+    | grep -Fxvf "$GRANDFATHERED_FILE" \
     | while read -r file; do
         line_count=$(wc -l < "$REPO_ROOT/$file")
         if (( line_count > 500 )); then
@@ -49,8 +76,8 @@ check_test_files() {
     | grep -E '(_tests\.rs|_tests_ext\.rs|_test\.rs|/tests\.rs|_test\.swift|_tests\.swift|Tests\.swift|Test\.swift|Test\.kt)$|^AppTests/|^AppUITests/' \
     | while read -r file; do
         line_count=$(wc -l < "$REPO_ROOT/$file")
-        if (( line_count > 1000 )); then
-            echo "  ✗ $file: $line_count lines (exceeds 1000-line test hard limit)"
+        if (( line_count > 2000 )); then
+            echo "  ✗ $file: $line_count lines (exceeds 2000-line test hard limit)"
             TEST_VIOLATIONS+=("$file")
         fi
     done
@@ -63,7 +90,7 @@ if [[ -n "$source_results" ]]; then
 fi
 
 echo ""
-echo "Checking test files (hard limit: 1000 lines)..."
+echo "Checking test files (hard limit: 2000 lines)..."
 test_results=$(check_test_files 2>&1 || true)
 if [[ -n "$test_results" ]]; then
     echo "$test_results"

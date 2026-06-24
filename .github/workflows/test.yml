@@ -54,11 +54,27 @@ jobs:
   ffi-header-drift:
     name: FFI header drift check
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and git DB
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-ffi-drift-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-ffi-drift-
+
+      - name: Fetch upstream nmp_ffi source into cargo git DB
+        run: cargo fetch --manifest-path apps/nmp-app-podcast/Cargo.toml
 
       - name: Verify NmpCore.h matches Rust FFI implementations
         run: bash ci/check-ffi-header-drift.sh

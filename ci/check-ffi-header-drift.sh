@@ -152,28 +152,77 @@ echo ""
 
 # ---------------------------------------------------------------------------
 # Find differences
+#
+# NmpCore.h exposes only the podcast-app ABI subset — it intentionally does
+# NOT include every upstream nmp_ffi symbol.  The severity rules are:
+#
+#   ERROR   — local app symbols (src/ffi/) missing from NmpCore.h   [drift risk]
+#   ERROR   — NmpCore.h declares symbols absent from ALL Rust sources [ghost decls]
+#             (demoted to WARNING when upstream check was skipped, because
+#              we cannot distinguish upstream-sourced from truly ghost symbols)
+#   WARNING — upstream symbols not in NmpCore.h                      [intentional]
 # ---------------------------------------------------------------------------
-ONLY_IN_HEADER=$(comm -23 <(echo "$HEADER_FUNCS") <(echo "$RUST_FUNCS"))
-ONLY_IN_RUST=$(comm -13 <(echo "$HEADER_FUNCS") <(echo "$RUST_FUNCS"))
+
+# Local app symbols not declared in the header (real drift — always an error).
+ONLY_IN_LOCAL=$(
+    comm -13 <(echo "$HEADER_FUNCS") <(echo "$LOCAL_FUNCS") \
+    | grep -vE '^[[:space:]]*$' || true
+)
+
+# Symbols declared in the header but absent from ALL Rust sources (ghost declarations).
+# When upstream was skipped, these might be upstream-sourced; demoted to WARNING.
+ONLY_IN_HEADER=$(
+    comm -23 <(echo "$HEADER_FUNCS") <(echo "$RUST_FUNCS") \
+    | grep -vE '^[[:space:]]*$' || true
+)
+
+# Upstream symbols not exposed by NmpCore.h — expected; NmpCore.h is a subset.
+UPSTREAM_NOT_IN_HEADER=""
+if [[ -n "$UPSTREAM_FUNCS" ]]; then
+    UPSTREAM_NOT_IN_HEADER=$(
+        comm -13 <(echo "$HEADER_FUNCS") <(echo "$UPSTREAM_FUNCS") \
+        | grep -vE '^[[:space:]]*$' || true
+    )
+fi
+
+UPSTREAM_SKIPPED=false
+if [[ -z "$UPSTREAM_FUNCS" ]]; then
+    UPSTREAM_SKIPPED=true
+fi
 
 EXIT_CODE=0
 
-if [[ -n "$ONLY_IN_HEADER" ]]; then
-    echo "ERROR: Functions declared in header but NOT found in Rust code:"
-    echo "$ONLY_IN_HEADER" | while read -r func; do
+if [[ -n "$ONLY_IN_LOCAL" ]]; then
+    echo "ERROR: Local app symbols (nmp-app-podcast/src/ffi) NOT declared in NmpCore.h:"
+    echo "$ONLY_IN_LOCAL" | while read -r func; do
         echo "  - $func"
     done
     echo ""
     EXIT_CODE=1
 fi
 
-if [[ -n "$ONLY_IN_RUST" ]]; then
-    echo "ERROR: Functions implemented in Rust but NOT declared in header:"
-    echo "$ONLY_IN_RUST" | while read -r func; do
+if [[ -n "$ONLY_IN_HEADER" ]]; then
+    if [[ "$UPSTREAM_SKIPPED" == "true" ]]; then
+        echo "WARNING: Functions in NmpCore.h not found in local Rust code."
+        echo "         Upstream check was skipped (run 'cargo fetch' to fully validate)."
+        echo "         These may be upstream-sourced declarations."
+    else
+        echo "ERROR: Functions declared in NmpCore.h but NOT found in any Rust source (ghost declarations):"
+        EXIT_CODE=1
+    fi
+    echo "$ONLY_IN_HEADER" | while read -r func; do
         echo "  - $func"
     done
     echo ""
-    EXIT_CODE=1
+fi
+
+if [[ -n "$UPSTREAM_NOT_IN_HEADER" ]]; then
+    UPSTREAM_MISSING_COUNT=$(echo "$UPSTREAM_NOT_IN_HEADER" | grep -cE '^nmp_' || true)
+    echo "WARNING: $UPSTREAM_MISSING_COUNT upstream nmp_ffi symbol(s) not declared in NmpCore.h."
+    echo "         NmpCore.h intentionally exposes only the podcast-app ABI subset;"
+    echo "         these upstream symbols exist in nmp-ffi/nmp-signer-broker but are"
+    echo "         not used by this app and do not need to be declared."
+    echo ""
 fi
 
 if [[ $EXIT_CODE -eq 0 ]]; then
