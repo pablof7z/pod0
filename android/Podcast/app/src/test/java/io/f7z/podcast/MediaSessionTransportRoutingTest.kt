@@ -72,103 +72,69 @@ class MediaSessionTransportRoutingTest {
     }
 
     @Test
-    fun seekForwardWithBridgeDispatchesAbsoluteSeek() {
+    fun seekForwardWithBridgeDispatchesSkipForward() {
         val innerPlayer = mock(Player::class.java)
-        `when`(innerPlayer.currentPosition).thenReturn(60_000L)
-        `when`(innerPlayer.seekForwardIncrement).thenReturn(15_000L)
         val forwarder = KernelForwardingPlayer(innerPlayer)
         val dispatcher = FakeDispatcher()
         forwarder.bridge = dispatcher
 
         forwarder.seekForward()
 
-        // seekForward now dispatches a single absolute seek (base + increment),
-        // not a position-sync + skip pair. This ensures consecutive paused taps
-        // accumulate correctly without re-anchoring to the stale ExoPlayer position.
+        // Rust owns the skip interval and accumulation; the wrapper just
+        // dispatches the relative op and lets the kernel apply its policy.
         assertEquals(1, dispatcher.actions.size)
         val payload = json.parseToJsonElement(dispatcher.actions[0].payload).jsonObject
-        assertEquals("seek", payload["op"]?.jsonPrimitive?.content)
-        assertEquals(75.0, payload["position_secs"]?.jsonPrimitive?.content?.toDouble())
+        assertEquals("skip_forward", payload["op"]?.jsonPrimitive?.content)
     }
 
     @Test
-    fun seekForwardAccumulatesAcrossConsecutivePausedTaps() {
+    fun seekForwardDispatchesOneSkipForwardPerTap() {
         val innerPlayer = mock(Player::class.java)
-        `when`(innerPlayer.currentPosition).thenReturn(60_000L)
-        `when`(innerPlayer.seekForwardIncrement).thenReturn(15_000L)
         val forwarder = KernelForwardingPlayer(innerPlayer)
         val dispatcher = FakeDispatcher()
         forwarder.bridge = dispatcher
 
-        forwarder.seekForward() // base=60s, target=75s
-        forwarder.seekForward() // base=75s (pending), target=90s
+        forwarder.seekForward()
+        forwarder.seekForward()
 
+        // Two taps → two independent skip_forward ops dispatched to Rust.
+        // The kernel accumulates them against its own position state.
         assertEquals(2, dispatcher.actions.size)
-        val p1 = json.parseToJsonElement(dispatcher.actions[0].payload).jsonObject
-        assertEquals(75.0, p1["position_secs"]?.jsonPrimitive?.content?.toDouble())
-        val p2 = json.parseToJsonElement(dispatcher.actions[1].payload).jsonObject
-        assertEquals(90.0, p2["position_secs"]?.jsonPrimitive?.content?.toDouble())
+        dispatcher.actions.forEach { action ->
+            val p = json.parseToJsonElement(action.payload).jsonObject
+            assertEquals("skip_forward", p["op"]?.jsonPrimitive?.content)
+        }
     }
 
     @Test
-    fun seekBackWithBridgeDispatchesAbsoluteSeek() {
+    fun seekBackWithBridgeDispatchesSkipBackward() {
         val innerPlayer = mock(Player::class.java)
-        `when`(innerPlayer.currentPosition).thenReturn(60_000L)
-        `when`(innerPlayer.seekBackIncrement).thenReturn(15_000L)
         val forwarder = KernelForwardingPlayer(innerPlayer)
         val dispatcher = FakeDispatcher()
         forwarder.bridge = dispatcher
 
         forwarder.seekBack()
 
-        // seekBack now dispatches a single absolute seek (base - increment),
-        // matching the accumulation fix applied to seekForward.
         assertEquals(1, dispatcher.actions.size)
         val payload = json.parseToJsonElement(dispatcher.actions[0].payload).jsonObject
-        assertEquals("seek", payload["op"]?.jsonPrimitive?.content)
-        assertEquals(45.0, payload["position_secs"]?.jsonPrimitive?.content?.toDouble())
+        assertEquals("skip_backward", payload["op"]?.jsonPrimitive?.content)
     }
 
     @Test
-    fun seekBackAccumulatesAcrossConsecutivePausedTaps() {
+    fun seekBackDispatchesOneSkipBackwardPerTap() {
         val innerPlayer = mock(Player::class.java)
-        `when`(innerPlayer.currentPosition).thenReturn(60_000L)
-        `when`(innerPlayer.seekBackIncrement).thenReturn(15_000L)
         val forwarder = KernelForwardingPlayer(innerPlayer)
         val dispatcher = FakeDispatcher()
         forwarder.bridge = dispatcher
 
-        forwarder.seekBack() // base=60s, target=45s
-        forwarder.seekBack() // base=45s (pending), target=30s
+        forwarder.seekBack()
+        forwarder.seekBack()
 
         assertEquals(2, dispatcher.actions.size)
-        val p1 = json.parseToJsonElement(dispatcher.actions[0].payload).jsonObject
-        assertEquals(45.0, p1["position_secs"]?.jsonPrimitive?.content?.toDouble())
-        val p2 = json.parseToJsonElement(dispatcher.actions[1].payload).jsonObject
-        assertEquals(30.0, p2["position_secs"]?.jsonPrimitive?.content?.toDouble())
-    }
-
-    @Test
-    fun playWithBridgeClearsPendingPausedSeekBase() {
-        val innerPlayer = mock(Player::class.java)
-        `when`(innerPlayer.currentPosition).thenReturn(60_000L)
-        `when`(innerPlayer.seekForwardIncrement).thenReturn(15_000L)
-        val forwarder = KernelForwardingPlayer(innerPlayer)
-        val dispatcher = FakeDispatcher()
-        forwarder.bridge = dispatcher
-
-        forwarder.seekForward() // pending=75s
-        forwarder.play()        // should clear pending; dispatches resume
-        dispatcher.actions.clear()
-
-        // After play() clears the pending base, the next seekForward should
-        // re-anchor to currentPosition (60s) rather than the stale pending (75s).
-        // With increment=15s: 60+15=75s (same value, but anchored to live pos).
-        forwarder.seekForward()
-        assertEquals(1, dispatcher.actions.size)
-        val payload = json.parseToJsonElement(dispatcher.actions[0].payload).jsonObject
-        assertEquals("seek", payload["op"]?.jsonPrimitive?.content)
-        assertEquals(75.0, payload["position_secs"]?.jsonPrimitive?.content?.toDouble())
+        dispatcher.actions.forEach { action ->
+            val p = json.parseToJsonElement(action.payload).jsonObject
+            assertEquals("skip_backward", p["op"]?.jsonPrimitive?.content)
+        }
     }
 
     // MARK: - Fallback tests (bridge = null)

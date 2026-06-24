@@ -45,18 +45,6 @@ internal class KernelForwardingPlayer(
     @Volatile
     var bridge: KernelDispatcher? = null
 
-    /**
-     * Accumulated absolute seek target for consecutive paused skip taps.
-     *
-     * ExoPlayer's [currentPosition] does not advance while paused, so each
-     * successive tap must build on the *previous tap's target* rather than
-     * re-anchoring to the same stale base. Cleared when [play] is called so
-     * the first skip after resuming starts from the live position again.
-     *
-     * Stored in milliseconds to match [currentPosition].
-     */
-    private var pendingPausedSeekBase: Long? = null
-
     private val json: Json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -74,9 +62,6 @@ internal class KernelForwardingPlayer(
      * If bridge is null, fall back to the parent player.
      */
     override fun play() {
-        // Clear the paused-skip accumulator so the first skip after resuming
-        // anchors to the live ExoPlayer position, not a stale pending target.
-        pendingPausedSeekBase = null
         val b = bridge
         if (b != null) {
             dispatchToKernel(b, buildResumePayload())
@@ -111,39 +96,31 @@ internal class KernelForwardingPlayer(
     }
 
     /**
-     * Route `seekForward()` through the kernel as an absolute `{"op":"seek"}`.
+     * Route `seekForward()` through the kernel as `{"op":"skip_forward"}`.
      *
-     * P2b fix: Rather than syncing ExoPlayer's (stale) position and then
-     * dispatching `skip_forward`, we accumulate an absolute target in
-     * [pendingPausedSeekBase]. Each consecutive paused tap builds on the
-     * *previous tap's target* instead of re-anchoring to the same stale
-     * ExoPlayer position. This matches the iOS `pendingPausedSeekBase` fix.
+     * Delegating to Rust respects user-configured skip intervals and lets the
+     * kernel apply chapter-snap / smart-skip policy. Consecutive taps while
+     * paused accumulate correctly kernel-side (the kernel tracks position
+     * independently of ExoPlayer's stale [currentPosition]).
      */
     override fun seekForward() {
         val b = bridge
         if (b != null) {
-            val base = pendingPausedSeekBase ?: currentPosition
-            val target = base + getSeekForwardIncrement()
-            pendingPausedSeekBase = target
-            dispatchToKernel(b, buildSeekPayload(target / 1000.0))
+            dispatchToKernel(b, buildPayload("skip_forward"))
         } else {
             super.seekForward()
         }
     }
 
     /**
-     * Route `seekBack()` through the kernel as an absolute `{"op":"seek"}`.
+     * Route `seekBack()` through the kernel as `{"op":"skip_backward"}`.
      *
-     * P2b fix: Same absolute-accumulation approach as [seekForward]; clamped
-     * to 0 so we don't seek before the start of the episode.
+     * Same doctrine as [seekForward]: Rust owns the interval and accumulation.
      */
     override fun seekBack() {
         val b = bridge
         if (b != null) {
-            val base = pendingPausedSeekBase ?: currentPosition
-            val target = maxOf(0L, base - getSeekBackIncrement())
-            pendingPausedSeekBase = target
-            dispatchToKernel(b, buildSeekPayload(target / 1000.0))
+            dispatchToKernel(b, buildPayload("skip_backward"))
         } else {
             super.seekBack()
         }
