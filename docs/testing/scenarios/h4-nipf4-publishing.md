@@ -41,28 +41,37 @@ show event and a kind:10064 author claim, signed and accepted by the relay.
 ## Notes
 
 **Result: BLOCKED**
-**Tested: 2026-06-24, 8:40 AM**
+**Tested: 2026-06-24, 12:40 PM (follow-up)**
 
-Unable to locate the owned-podcast / create-podcast surface (publisher flow). Explored the following locations:
+Confirmed: No owned-podcast / create-podcast UI surface exists in the app. Kernel-side NIP-F4 support is complete, but Swift UI has not been implemented.
 
-**Areas Checked:**
-1. **Sidebar Navigation:** Home, Library, Podcasts, Bookmarks, Clippings - no Publisher tab found
-2. **Podcasts Tab (Add Show dialog):**
-   - Search tab: Shows existing podcasts from Apple Podcasts directory with subscribe (+) buttons
-   - Nostr tab: Shows existing NIP-F4 shows already published to relay.primal.net (Mock Podcast entries visible with subscribe buttons), but NO "Create new show" button found
-   - From URL tab: Input field for podcast feed URL with Subscribe button (for adding existing feeds)
-   - OPML tab: Not explored due to time constraints, but likely for importing podcast lists
-3. **Settings:** Checked gear icon - appears to be general settings, no publisher option
-4. **Agent Interface:** Opened Agent chat interface - shows suggested tasks (Summarize episode, What was I listening to?, Where did I leave off?) but no "Create Podcast" option visible
+**Areas Verified:**
+1. **All Podcasts view:** Home → "See all podcasts" → "+" button opens "Add Show" dialog
+2. **Add Show dialog tabs:**
+   - **Search:** Shows Apple Podcasts directory results with subscribe buttons
+   - **Nostr:** Actively searches relay.primal.net for kind:10154 shows; relay is reachable and working
+   - **From URL:** Input field + Subscribe button for external podcast feeds (NOT for creating owned podcasts)
+   - **OPML:** For importing podcast lists
+   - **NO "Create owned podcast" or "Publish new show" option found in any tab**
+3. **Settings:** General app settings; no publisher/creator options
+4. **Agent interface:** Task suggestions only; no podcast creation tools
 
-**Observations:**
-- The Nostr tab does show existing NIP-F4 shows from the relay, confirming relay connectivity and NIP-F4 discovery works
-- No visible UI button or flow to create/publish a new owned podcast
-- The create-podcast surface may be unimplemented in the UI, or behind a debug/owner surface not accessible through normal navigation
+**Key Finding:**
+- Kernel-side: `publish_show`, `publish_author_claim`, `sign_event`, `dispatch_nostr_relay` are all complete per BACKLOG
+- File storage: `podcast-keys.json` ready for owned podcast secrets
+- Swift UI: **Missing entire create/edit owned podcast form**
+- The "From URL" tab is for subscribing to external feeds, NOT for creating/publishing owned podcasts
 
-**Next Steps for Implementation Team:**
-- Check if publisher feature is behind a debug flag or requires special credentials
-- Verify if there's a separate publisher app/view not yet integrated into the main UI
-- Review BACKLOG.md for publisher feature status and whether UI scaffolding is complete
+**Relay Verification:**
+- Nostr tab successfully queries relay.primal.net and displays "Searching..." state
+- Relay connectivity is working; relay discovery framework is implemented
+- No owned podcasts are currently published from this test identity
 
-Unable to proceed with Steps 2-5 (create podcast, publish event, verify relay, check discovery) due to missing UI entry point.
+**Unable to proceed with Steps 2-5** due to missing Swift UI implementation for podcast creation/publishing.
+
+**Recommendation:**
+The backend is ready. A Swift UI feature ticket is needed to implement:
+- Owned podcast creation form (title, description, categories, cover art)
+- UI entry point in the add-show dialog or a separate "My Shows" / "Publisher" section
+- Edit/delete UI for managing owned podcasts
+- Real-time publishing status feedback

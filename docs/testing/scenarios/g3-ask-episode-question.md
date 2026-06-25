@@ -36,3 +36,28 @@ transcript segment.
 - A connection error means Ollama isn't reachable (see G1).
 
 ## Notes
+
+**Result: BLOCKED**
+**Tested: 2026-06-24, ~12:11**
+
+The scenario cannot be executed because the episode details/transcript view is not accessible from the current app navigation paths. Attempted approaches:
+
+1. Navigated to Settings → Library → Subscriptions → "This American Life" (1 subscription with 3 episodes)
+   - Tapped on the podcast title but it did not navigate to the podcast detail view
+   - No "transcript" view visible or accessible from Subscriptions page
+
+2. Navigated to Settings → Library → Downloads → "137: The Book That Changed Your Life" (1 downloaded episode)
+   - This episode is the one currently in the mini-player
+   - Tapped on the episode title and button (e125, e127) but navigation to episode detail view did not occur
+   - No transcript tab/view available from Downloads page
+
+3. Attempted to access episode details via mini-player (e47, e49)
+   - Tapping the mini-player title and bar did not open the full episode detail/player view
+   - Unable to find transcript access point
+
+**Blocking Issue:** Without access to the episode's transcript view and the "Long-press segment → Ask the agent about this" action mentioned in Step 1, cannot proceed with the scenario.
+
+**Next Steps to Unblock:**
+- Verify the app navigation allows access to episode detail views from subscriptions or library
+- Check if transcript functionality is implemented and accessible in the current app build
+- Confirm the "Ask the agent about this" action exists as a long-press context menu on transcript segments

@@ -78,3 +78,35 @@ All scenarios for the Podcastr iOS simulator test suite. See
 - **J4** [`j4-no-transcript-episode.md`](j4-no-transcript-episode.md) — Episode with no transcript: generate affordance / graceful empty state.
 - **J5** [`j5-network-error-search.md`](j5-network-error-search.md) — Network errors during search / subscribe; error surfaces, no crash.
 - **J6** [`j6-resume-after-relaunch.md`](j6-resume-after-relaunch.md) — Resume playback position after killing and relaunching the app.
+
+## K — NIP-84 Highlights, Deep (relay-verified, contextual boundaries)
+> Deeper coverage of the app's headline differentiator: LLM-informed, **contextual**
+> highlights verified as raw kind:9802 events on `relay.primal.net` with `nak`.
+> Note the kernel contract: highlights anchor the source with an **`i`-tag**
+> (`podcast:item:guid:<guid>#t=<start>,<end>`), store the excerpt in a **`context`**
+> tag, and the caption in an **`alt`** tag — there is **no `a`-tag** (corrects F2).
+- **K1** [`k1-pubkey-to-hex-nak-setup.md`](k1-pubkey-to-hex-nak-setup.md) — Resolve hex pubkey via `nak decode` (fixes F2's malformed-pubkey block); prove a `nak req` round-trip.
+- **K2** [`k2-create-clip-and-verify-9802-on-relay.md`](k2-create-clip-and-verify-9802-on-relay.md) — Create a clip; verify the raw kind:9802 event's tag set (`i`/`context`/`alt`, no `a`) on the relay.
+- **K3** [`k3-clip-composer-sentence-snap-boundaries.md`](k3-clip-composer-sentence-snap-boundaries.md) — Clip composer: boundaries snap to transcript utterances, not a fixed N-second window.
+- **K4** [`k4-verify-i-tag-content-vs-transcript.md`](k4-verify-i-tag-content-vs-transcript.md) — Cross-reference the event `content`/`context` against the transcript; verify complete-thought boundaries.
+- **K5** [`k5-openrouter-whisper-transcript-pipeline.md`](k5-openrouter-whisper-transcript-pipeline.md) — Full pipeline: OpenRouter Whisper transcript → clip → relay verification.
+- **K6** [`k6-autosnip-to-9802-publish.md`](k6-autosnip-to-9802-publish.md) — AutoSnip (D9) → NIP-84 publish → relay verification; ~30s refined to utterance edges.
+- **K7** [`k7-9802-tag-negative-checks.md`](k7-9802-tag-negative-checks.md) — Negative/contract checks: no a-tag; agent clips and empty-transcript clips do NOT publish.
+
+## L — AI Agent & Ollama, Deep (live inference, grounded answers)
+> Real `deepseek-v4-flash:cloud` inference via Ollama (no stubs): model selection,
+> transcript-grounded Q&A, agent-created contextual highlights, conversation
+> continuity. Unblocks G1–G4.
+- **L1** [`l1-select-deepseek-model-for-agent-role.md`](l1-select-deepseek-model-for-agent-role.md) — Settings → Intelligence → Models: select `deepseek-v4-flash:cloud` for the Agent role (unblocks G1).
+- **L2** [`l2-ollama-connect-check-models.md`](l2-ollama-connect-check-models.md) — Ollama: connect (BYOK/manual/endpoint) + "Check Available Models" model count.
+- **L3** [`l3-open-agent-chat-and-stub-roundtrip.md`](l3-open-agent-chat-and-stub-roundtrip.md) — Open agent chat from the root toolbar `agent.open` (fixes G2 nav); stub round-trip + history/new.
+- **L4** [`l4-grounded-episode-qa-live-ollama.md`](l4-grounded-episode-qa-live-ollama.md) — Transcript-grounded Q&A with live Ollama; concrete questions + negative control (unblocks G3).
+- **L5** [`l5-agent-creates-contextual-highlight.md`](l5-agent-creates-contextual-highlight.md) — Agent creates a contextual highlight; tool-batch, Agent badge, idea-aligned boundaries (extends G4).
+- **L6** [`l6-agent-conversation-continuity.md`](l6-agent-conversation-continuity.md) — Multi-turn context retention, new-conversation isolation, history resume.
+- **L7** [`l7-transcript-search-vs-agent-crossref.md`](l7-transcript-search-vs-agent-crossref.md) — Cross-reference transcript search (E4) with agent answers to catch hallucination.
+
+## M — Voice & End-to-End Capstone
+> The canonical kernel voice path and a full-loop smoke test.
+- **M1** [`m1-voice-mode-kernel-path.md`](m1-voice-mode-kernel-path.md) — Canonical kernel VoiceView (`podcast.voice`), orb/state machine via the voice projection (fixes G5 surface mix-up).
+- **M2** [`m2-voice-note-vs-voiceview-disambiguation.md`](m2-voice-note-vs-voiceview-disambiguation.md) — Disambiguate the Voice note half-sheet vs the kernel VoiceView (root cause of G5's block).
+- **M3** [`m3-full-pipeline-capstone.md`](m3-full-pipeline-capstone.md) — Full loop: providers → transcript → agent clip → relay-verified NIP-84, with grounding cross-check.

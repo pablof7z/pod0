@@ -38,3 +38,28 @@ switching to text chat.
   validate state transitions/UI and mark audio capture BLOCKED.
 
 ## Notes
+
+**Result: BLOCKED**
+**Tested: 2026-06-24, ~12:19**
+
+The scenario expects a full-screen VoiceView with a VoiceOrbView and an idle state badge "Tap to talk". However, the voice conversation interface is not accessible through the expected entry points:
+
+**Investigation steps:**
+1. Opened the app at home screen with podcast ready to play
+2. Tapped the microphone button (e147) on the player sheet (labeled "Microphone||mic")
+3. Granted microphone permission when prompted
+4. Observed: Voice note interface appeared immediately in "Listening..." state, NOT idle "Tap to talk" state
+
+**Key findings:**
+- The microphone button on the player opens a "Voice note" feature (sheet with title "Voice note", mic orb, "Cancel" and "Send" buttons)
+- This immediately starts recording in "Listening..." state (expected Step 2 result, not Step 1)
+- There is NO idle initial state or "Tap to talk" label on first activation
+- The agent view (e34) has no voice conversation button; only text chat
+- The agent input has no microphone icon or voice activation option
+
+**Status:** The canonical kernel `podcast.voice` conversation path (PR #552 repoint) is either:
+1. Not yet fully integrated into the UI
+2. Not accessible via the expected entry points
+3. Still has the stub stack issue mentioned in known issues
+
+The voice note feature appears to be the episode-scoped voice recording feature, not the kernel voice conversation system required for this scenario.

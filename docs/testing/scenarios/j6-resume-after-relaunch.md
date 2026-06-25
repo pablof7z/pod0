@@ -34,3 +34,27 @@ survive killing and relaunching the app.
   to preserve kernel state across the relaunch.
 
 ## Notes
+
+**Result: FAIL**
+**Tested: 2026-06-24, ~11:14 AM**
+
+Playback position is NOT persisted across app relaunch.
+
+**Step-by-step observations:**
+
+- Step 1: Played episode "137: The Book That Changed Your Life" (5m duration) to position 1:00 and paused. Screenshot taken showing player at 1:00 / -4:00 remaining.
+- Step 2: Terminated app using `xcodebuildmcp simulator stop --bundle-id io.f7z.podcast`.
+- Step 3: Relaunched app using `xcodebuildmcp simulator launch-app --bundle-id io.f7z.podcast`. App reopened to Home view (not onboarding). ✓ PASS
+- Step 4: Checked Home → Continue Listening. The mini-player shows the episode title but position appears reset to 0:08 in mini-player bar.
+- Step 5: Opened full player by tapping mini-player. Player now shows 0:00 / -1:00, indicating the playback position has been completely reset.
+
+**Critical Finding:**
+The playback position of 1:00 set in Step 1 was NOT preserved. After relaunch, the player shows 0:00, contradicting the scenario requirement of resuming at the saved position.
+
+**Acceptance Criteria Status:**
+- ✗ FAIL: After relaunch, episode's saved position is NOT preserved — it reset to 0:00
+- ✓ PASS: Onboarding does NOT reappear on relaunch
+- ✗ FAIL: The mini-player / now-playing state does NOT restore appropriately (shows 0:00 instead of 1:00)
+
+**Known Issue Match:**
+This matches the known issue mentioned in the Watch Points: "Watch for the position resetting to 0" — which is exactly what occurred in this test.

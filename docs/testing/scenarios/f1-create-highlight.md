@@ -37,14 +37,20 @@ range selector and caption, and saving it.
 ## Notes
 
 **Result: BLOCKED**
-**Tested: 2026-06-24, ~4:30 AM**
+**Tested: 2026-06-24, ~8:42 AM (verified)**
 
 **Issue: Prerequisite feature (transcript UI) not yet implemented**
 
 Steps attempted:
-1. ✓ Launched app and navigated to episode player (The Daily: "As Trump Purges Immigration Judges")
+1. ✓ Launched app (io.f7z.podcast) and navigated to episode player (This American Life: "137: The Book That Changed Your Life")
 2. ✗ Could not locate transcript view in player UI
 3. ✗ Transcript segment long-press cannot be executed without accessible transcript view
+
+**Verification:**
+- Player sheet shows only: Chapters (Introduction, Main Story, Conclusion) + player controls + Share/More options
+- Full UI snapshot scanned: 37 targets, 0 transcript-related elements found
+- No tabs, segmented controls, or buttons to switch to transcript view
+- Player sheet scrolling reveals no hidden transcript UI
 
 **Root cause:**
 The transcript UI (PlayerTranscriptScrollView) is defined in the codebase but not yet integrated into the player interface. Code comments explicitly state:
@@ -52,9 +58,7 @@ The transcript UI (PlayerTranscriptScrollView) is defined in the codebase but no
 - "The transcript is never rendered as a primary surface" (PlayerNoChaptersPlaceholder.swift, lines 6-9)
 - The transcript serves only as an internal substrate for chapters, RAG, and agent tools
 
-The current player UI only provides two tabs:
-1. Chapters panel (or "No chapters" placeholder when unavailable)
-2. Show notes
+The current player UI only provides chapters view (or "No chapters" placeholder when unavailable).
 
 **Blockers:**
 - No button, tab, or navigation element to access transcript view in the player

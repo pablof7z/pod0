@@ -91,3 +91,12 @@ not an arbitrary time slice.
 - ❌ Published event metadata (a-tag, alt, context) - **CANNOT VERIFY** (no relay access, not exposed in UI)
 - ❌ Content match to transcript - **CANNOT VERIFY** (no transcript visible)
 - ❓ Contextual boundaries - **PARTIALLY OBSERVED** (1-min duration reasonable, but cannot confirm against transcript)
+
+### Re-Tested: 2026-06-24 @ 11:45 UTC
+- App is running normally
+- Unable to locate Clippings section in UI from home screen
+- Previous test notes indicate clipping exists but cannot be verified due to:
+  - No NIP-84 metadata exposed in clip detail view
+  - Cannot inspect raw relay events (nak command pubkey format issues)
+  - No transcript comparison possible in current UI
+- **Conclusion:** Scenario remains BLOCKED — core feature (NIP-84 metadata visibility) is not implemented or exposed in the UI

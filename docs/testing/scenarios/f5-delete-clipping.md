@@ -28,20 +28,39 @@ is removed from the list.
 
 ## Notes
 
-**Result: BLOCKED**
-**Tested: 2026-06-24 at 05:03 UTC**
+**Result: PASS**
+**Tested: 2026-06-24 at 08:48-08:49 UTC**
 
-Prerequisite not met: The clippings list contains only 1 clip, but the scenario requires ≥2 clips to test deletion without emptying the list.
+All acceptance criteria met. Both deletion methods (swipe-to-delete and long-press context menu) work correctly, the list updates immediately, and deletions persist across app relaunch.
 
 **Observations:**
-- Step 1: Opened Clippings tab successfully. Navigated via sidebar menu.
-- Current state: 1 clip visible in "TODAY" section
-  - Podcast: The Daily
-  - Clip text: "Clip from R.F.K. Jr.'s Newest Mission: Getting Us Off Antidepressants"
-  - Duration: 8:29 → 9:29 (1:00)
-  - Posted: 1h ago
-- Scrolled down to check for additional clips (older dates) - none found.
+- Step 1: Opened Clippings tab successfully via sidebar menu.
+  - Initial state: 2 clips in "TODAY" section
+  - Clip 1: This American Life - 137: The Book That Changed You... (0:00 → 0:49, 49s, 19m ago)
+  - Clip 2: This American Life - 137: The Book That Changed You... (0:30 → 1:30, 1:00, 21m ago)
 
-**Blocker:** Cannot proceed with test because deleting the single clip would result in an empty list, which violates the prerequisite "so the list isn't empty after deletion."
+- Step 2: Swipe-to-delete first clip
+  - Swiped the first clip card left
+  - Red "Delete" button appeared on the right
+  - Tapped the Delete button
+  - Clip was immediately removed from the list
+  - Count decremented from 2 to 1
 
-**Recommendation:** Populate the clippings list with at least 2 clips before retesting this scenario.
+- Step 3: Long-press context menu delete
+  - Long-pressed the remaining clip (500ms duration)
+  - Context menu appeared with options: Play Clip, Share, Open Episode, Delete (red)
+  - Tapped Delete button
+  - Clip was immediately removed
+  - List now shows "No Clippings Yet" empty state
+  - Count decremented from 1 to 0
+
+- Step 4: Relaunch persistence check
+  - Stopped and relaunched the app
+  - Navigated to Clippings tab
+  - App still shows "No Clippings Yet"
+  - Deletions persisted to kernel clips.json sidecar
+
+**Acceptance Criteria Met:**
+- ✓ Both swipe-to-delete and context-menu delete remove clips
+- ✓ List updates immediately and count decrements
+- ✓ Deletion persists across app relaunch

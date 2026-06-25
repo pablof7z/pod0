@@ -34,3 +34,22 @@ recoverable errors without crashing or corrupting state.
 - Watch for an infinite spinner instead of a terminal error state.
 
 ## Notes
+
+**Result: BLOCKED**
+**Tested: 2026-06-24 ~14:10 UTC**
+
+[Step-by-step observations]
+- Step 1 (Search): Successfully navigated to Search interface; typed "science" query and cached results loaded (135: Deep Space, 136: Once More with Feeling, 137: The Book That Changed Your Life).
+- Network toggle: Attempted to disable network via `xcrun simctl io ... poll off` but cannot verify if network is truly offline at the app layer; cached results remained visible, preventing validation of network error handling during search.
+- Step 3+ (Add Show from URL): Feature NOT FOUND - explored Library, Sidebar (Home/Library/Podcasts/Bookmarks/Clippings), and Search interfaces but found no "Add Show → From URL" entry point. This feature may not be implemented or may be hidden in a different navigation flow.
+
+[Blockers]
+1. "Add Show → From URL" feature does not appear to exist in the current UI navigation.
+2. Network error states cannot be reliably triggered/verified via simulator-level network toggle without app-layer error surfacing.
+3. Time constraints (4 min/scenario) insufficient for full exploration of all possible navigation paths.
+
+[Acceptance criteria met: NO]
+- Network failure error messaging: Cannot verify (no error UI found during search)
+- Retry success: Not tested
+- No duplicate subscriptions: Not tested
+- Malformed URL rejection: Not tested
