@@ -71,6 +71,24 @@ Every commit that ships a user-facing change to the iPhone MUST **add a new file
 - **Soft limit: 300 lines** — prefer splitting into smaller files when approaching this threshold.
 - **Hard limit: 500 lines** — files must not exceed 500 lines. Refactor before adding more code.
 
+### Test files
+
+Test files (`*_tests.rs`, `*Tests.swift`, `*Test.kt`, `*_tests_ext.rs`) follow a separate scale:
+
+- **Soft cap: 500 lines** — prefer splitting when approaching this threshold.
+- **Hard cap: 2000 lines** — test files must not exceed 2000 lines.
+- **Splitting pattern:** Files approaching 500 lines must split into scenario-cluster siblings using the existing `_ext` naming convention. For example, `projections_tests.rs` → `projections_tests_ext.rs`; `store/tests.rs` → `store/tests_ext.rs`. Each scenario cluster is reference from the original via a `#[path = "..."]` module stub or inline `mod` block inside `#[cfg(test)]`.
+
+### Umbrella C bridge headers
+
+Umbrella headers that declare all FFI symbols for a kernel module (e.g., `NmpCore.h`)
+are exempt from the 500-line source limit. Every line is a mechanical 1:1 declaration
+of a Rust `#[no_mangle] pub extern "C" fn nmp_app_*` symbol, and enforcing the
+hard limit there would fragment the API surface artificially.
+
+Instead, these headers are validated by the `ci/check-ffi-header-drift.sh` CI gate,
+which detects any mismatch between declared C functions and implemented Rust symbols.
+
 ## Engineering discipline
 
 - No temporary hacks. Staged work is acceptable only when the staging is captured in `docs/BACKLOG.md` with clear follow-up ownership.

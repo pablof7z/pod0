@@ -7,11 +7,9 @@
 //! `PodcastHostOpHandler` (running on the actor thread) can call platform
 //! capabilities without the kernel naming podcast-domain nouns (D0).
 
-use serde::{Deserialize, Serialize};
+use super::podcast_module_types::default_true;
 
-fn default_true() -> bool {
-    true
-}
+use serde::{Deserialize, Serialize};
 
 /// Wire enum for all `"podcast"` namespace actions.
 ///

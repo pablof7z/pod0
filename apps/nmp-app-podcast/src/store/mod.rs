@@ -48,6 +48,7 @@ pub mod podcast_keys;
 mod provider_settings;
 pub mod relay_config;
 mod settings;
+mod settings_provider;
 pub mod stt_policy;
 pub(crate) mod summary;
 pub mod notes;

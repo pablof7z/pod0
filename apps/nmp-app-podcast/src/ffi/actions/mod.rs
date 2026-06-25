@@ -64,6 +64,7 @@ pub mod memory_module;
 pub mod picks_module;
 pub mod player_module;
 pub mod podcast_module;
+mod podcast_module_types;
 pub mod publish_module;
 pub mod queue_module;
 pub mod settings_module;
