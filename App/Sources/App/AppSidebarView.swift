@@ -5,7 +5,7 @@ import SwiftUI
 /// navigation shortcuts. Tap the darkened overlay to dismiss.
 struct AppSidebarView: View {
     @Binding var selectedTab: RootTab
-    @Binding var isPresented: Bool
+    var onSelectTab: (RootTab) -> Void
     var onShowPodcasts: () -> Void
 
     @Environment(AppStateStore.self) private var store
@@ -60,24 +60,19 @@ struct AppSidebarView: View {
                 .padding(.bottom, AppTheme.Spacing.xs)
 
             navRow("Home", icon: "house.fill", isActive: selectedTab == .home) {
-                selectedTab = .home
-                dismiss()
+                onSelectTab(.home)
             }
             navRow("Library", icon: "tray.fill", isActive: selectedTab == .library) {
-                selectedTab = .library
-                dismiss()
+                onSelectTab(.library)
             }
             navRow("Podcasts", icon: "mic.fill", isActive: false) {
-                dismiss()
                 onShowPodcasts()
             }
             navRow("Bookmarks", icon: "bookmark.fill", isActive: selectedTab == .bookmarks) {
-                selectedTab = .bookmarks
-                dismiss()
+                onSelectTab(.bookmarks)
             }
             navRow("Clippings", icon: "scissors", isActive: selectedTab == .clippings) {
-                selectedTab = .clippings
-                dismiss()
+                onSelectTab(.clippings)
             }
         }
     }
@@ -107,6 +102,7 @@ struct AppSidebarView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("sidebar-\(title.lowercased())-button")
         .background {
             if isActive {
                 RoundedRectangle(cornerRadius: AppTheme.Corner.sm)
@@ -116,12 +112,4 @@ struct AppSidebarView: View {
         }
     }
 
-    // MARK: - Dismiss
-
-    private func dismiss() {
-        Haptics.selection()
-        withAnimation(AppTheme.Animation.spring) {
-            isPresented = false
-        }
-    }
 }

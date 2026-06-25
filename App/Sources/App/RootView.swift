@@ -216,14 +216,8 @@ struct RootView: View {
 
             AppSidebarView(
                 selectedTab: $selectedTab,
-                isPresented: $showSidebar,
-                onShowPodcasts: {
-                    selectedTab = .home
-                    // Defer the push so the tab switch renders first
-                    DispatchQueue.main.async {
-                        showAllPodcasts = true
-                    }
-                }
+                onSelectTab: routeFromSidebar(to:),
+                onShowPodcasts: openPodcastsFromSidebar
             )
             .frame(width: sidebarWidth)
             .ignoresSafeArea()
@@ -338,6 +332,29 @@ struct RootView: View {
             return
         }
         showAgentChat = true
+    }
+
+    func routeFromSidebar(to tab: RootTab) {
+        Haptics.selection()
+        showFullPlayer = false
+        showSettings = false
+        showAgentChat = false
+        showSearch = false
+        spotlightSheet = nil
+        playerNavSubscriptionID = nil
+        generationSourceNostrRootID = nil
+        selectedTab = tab
+        withAnimation(AppTheme.Animation.spring) {
+            showSidebar = false
+        }
+    }
+
+    func openPodcastsFromSidebar() {
+        routeFromSidebar(to: .home)
+        // Defer the push so the tab switch renders first.
+        DispatchQueue.main.async {
+            showAllPodcasts = true
+        }
     }
 
     // MARK: - Toolbar
