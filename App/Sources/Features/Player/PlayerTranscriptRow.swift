@@ -30,6 +30,9 @@ struct PlayerTranscriptRow: View {
     /// callers that don't yet wire the agent (previews, fixtures) keep
     /// compiling without a no-op stub.
     var onAskAgent: (() -> Void)? = nil
+    /// Long-press → "Create Clip" — opens `ClipComposerSheet` pre-populated
+    /// with this segment's time boundaries. Optional; defaults to nil.
+    var onHighlight: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -70,12 +73,23 @@ struct PlayerTranscriptRow: View {
                     Label("Ask the agent about this", systemImage: "sparkles")
                 }
             }
+            if let onHighlight {
+                Button {
+                    Haptics.selection()
+                    onHighlight()
+                } label: {
+                    Label("Create Clip", systemImage: "film.stack")
+                }
+            }
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityText)
         .accessibilityAddTraits(.isButton)
         .accessibilityAction(named: Text("Ask the agent")) {
             onAskAgent?()
+        }
+        .accessibilityAction(named: Text("Create Clip")) {
+            onHighlight?()
         }
     }
 
