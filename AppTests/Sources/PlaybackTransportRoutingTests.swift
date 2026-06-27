@@ -107,13 +107,33 @@ final class PlaybackTransportRoutingTests: XCTestCase {
         XCTAssertEqual(stub.kernelSkipBackwardCallCount, 1)
     }
 
-    func testSetRateDispatchesKernelSetSpeedBeforeEngineSetRate() {
+    func testSetRateDispatchesKernelSetSpeed() {
         stub.reset()
 
         playbackState.setRate(.fast)
 
         XCTAssertEqual(stub.kernelSetSpeedCallCount, 1)
         XCTAssertEqual(stub.lastSetSpeedValue, 1.5)
+    }
+
+    func testSetRateAppliesAcceptedKernelSetSpeed() {
+        stub.reset()
+        stub.setSpeedResult = .accepted(correlationId: "speed-accepted")
+        playbackState.engine.setRate(1.0)
+
+        playbackState.setRate(.fast)
+
+        XCTAssertEqual(playbackState.engine.rate, 1.5)
+    }
+
+    func testSetRateDoesNotApplyFailedKernelSetSpeed() {
+        stub.reset()
+        stub.setSpeedResult = .failure("rejected")
+        playbackState.engine.setRate(1.0)
+
+        playbackState.setRate(.fast)
+
+        XCTAssertEqual(playbackState.engine.rate, 1.0)
     }
 }
 
@@ -135,6 +155,7 @@ final class StubKernelTransport: KernelPlaybackDispatching {
     var kernelSkipForwardCallCount = 0
     var kernelSkipBackwardCallCount = 0
     var kernelSetSpeedCallCount = 0
+    var setSpeedResult: DispatchResult? = .accepted(correlationId: "stub-set-speed")
 
     var lastSeekPosition: Double = 0
     var lastSetSpeedValue: Double = 0
@@ -150,6 +171,7 @@ final class StubKernelTransport: KernelPlaybackDispatching {
         kernelSkipForwardCallCount = 0
         kernelSkipBackwardCallCount = 0
         kernelSetSpeedCallCount = 0
+        setSpeedResult = .accepted(correlationId: "stub-set-speed")
         lastSeekPosition = 0
         lastSetSpeedValue = 0
     }
@@ -193,6 +215,6 @@ final class StubKernelTransport: KernelPlaybackDispatching {
     func kernelSetSpeed(_ speed: Double) -> DispatchResult? {
         kernelSetSpeedCallCount += 1
         lastSetSpeedValue = speed
-        return nil
+        return setSpeedResult
     }
 }

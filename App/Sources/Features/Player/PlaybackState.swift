@@ -278,11 +278,8 @@ final class PlaybackState {
     }
 
     func setRate(_ newRate: PlaybackRate) {
-        // Dispatch to Rust. Rust emits AudioCommand::SetSpeed, which the
-        // commandHandler in PlaybackState+AudioCallbacks.swift routes to
-        // engine.setRate — AudioEngine is the executor, not a secondary
-        // writer here (#599).
-        transport?.kernelSetSpeed(newRate.rawValue)
+        let result = transport?.kernelSetSpeed(newRate.rawValue)
+        applyAcceptedKernelSpeed(newRate.rawValue, result: result)
         Haptics.selection()
     }
 
