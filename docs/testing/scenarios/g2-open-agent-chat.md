@@ -36,3 +36,30 @@ new conversation.
   disconnected empty state — note which one appears.
 
 ## Notes
+**Result: BLOCKED**
+**Tested: 2026-06-24 12:04 UTC**
+
+The test scenario was blocked at Step 1 due to UI navigation and feature implementation issues:
+
+**Observations:**
+- App is past onboarding and shows the Settings page with the Agent button visible
+- The agent.open button (identifier "agent.open", label "Open Agent") is accessible in the UI snapshot but appears blocked or non-functional
+- When the agent.open button is tapped while the Settings modal is open, the tap registers as successful but no navigation to the agent chat occurs
+- The Settings modal does not close via the Dismiss button (xmark/e56), preventing clear access to other UI areas
+- The agent chat interface did not open on any tap attempt of the agent.open affordance
+
+**Blocking Issues:**
+1. **Settings Modal Persistence**: The Settings modal appears to be a persistent overlay that doesn't dismiss properly, obscuring navigation
+2. **Agent Feature Not Functional**: The agent.open button is non-responsive despite being detected in the accessibility tree
+3. **Missing Build Configuration**: The scenario mentions requiring `--UITestAgentStub` flag for testing, but the current app build does not appear to have this flag enabled
+
+**Acceptance Criteria Met: NONE (0/4)**
+- Agent chat opens: NO — feature blocked
+- Composer working with Send gate: NO — feature not reached
+- Message reply functioning: NO — feature not reached
+- History and export: NO — feature not reached
+
+**Next Steps:**
+- Rebuild app with `--UITestAgentStub` flag as mentioned in scenario prerequisites
+- Verify Settings modal is properly dismissible or redesign navigation flow
+- Check agent feature implementation status in codebase

@@ -32,3 +32,39 @@ including the generate affordance and the absence of transcript-dependent featur
 - AutoSnip may still work without a transcript but the clip lacks contextual naming.
 
 ## Notes
+
+**Result: BLOCKED**
+**Tested: 2026-06-24, ~1:40 AM**
+
+The episode "137: The Book That Changed Your Life" from "This American Life" was opened and examined. The episode view displays:
+- Summary section with episode description
+- Chapters section (Introduction, Main Story, Conclusion)
+- Show notes
+- Comments section
+
+**Key Findings:**
+- No explicit "Transcript" section is visible in the episode detail view
+- No "Generate Transcript" affordance or placeholder is displayed anywhere
+- No transcript-dependent action buttons (Share quote, Ask agent) are visible
+- The UI snapshot shows 39 targets but none related to transcript functionality
+
+**Unexpected Behavior:**
+The scenario expects to see either:
+1. A clear placeholder state for "no transcript" with a "Generate Transcript" button, OR
+2. At least a hint about configuring a provider
+
+Instead, the transcript feature appears to be completely absent from the UI - not shown as unavailable or with a placeholder, but simply not present in the episode view.
+
+**Status:**
+- Acceptance criterion #1 (clear placeholder) — NOT MET (no placeholder visible)
+- Acceptance criterion #2 (Generate affordance) — NOT MET (no button visible)
+- Acceptance criterion #3 (transcript features hidden) — PARTIALLY MET (they're hidden because transcript section doesn't exist)
+
+**Blocker Reason:**
+Cannot fully test the scenario because the expected transcript UI section/affordance does not exist in the current build. The feature may be:
+1. Not yet implemented for no-transcript state
+2. Conditionally hidden based on feature flags
+3. Only visible after a specific action or state change not yet performed
+
+**Recommendation:**
+Verify that transcript UI is expected to be visible in this episode view, or clarify the conditions under which the "Transcript" section should appear.

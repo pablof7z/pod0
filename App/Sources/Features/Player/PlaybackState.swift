@@ -146,6 +146,11 @@ final class PlaybackState {
     func pause() {
         Haptics.soft()
         engine.pause()
+        // Flush the position to Rust's durable store so a force-quit
+        // after pause doesn't lose the last-played position.
+        if let episodeID = episode?.id {
+            store?.kernelPersistPosition(episodeID: episodeID, positionSecs: engine.currentTime)
+        }
     }
 
     func seek(to time: TimeInterval) {

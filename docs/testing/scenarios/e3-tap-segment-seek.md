@@ -27,16 +27,29 @@ Validate that tapping a transcript segment seeks playback to that segment's star
 
 ## Notes
 
-**Result: BLOCKED**
-**Tested: 2026-06-24 01:12 UTC**
+**Result: FAIL**
+**Tested: 2026-06-24 11:40 UTC**
 
-Technical blocker encountered:
-- UI automation `snapshot_ui` command consistently times out (30s daemon timeout) after 4+ attempts
-- Daemon is running and responsive (status check confirms PID 73818)
-- Other commands work (screenshots, daemon status, launch-app)
-- Restarted daemon with no improvement
-- Root cause: XcodeBuildMCP runtime UI semantic snapshot generation fails to complete
-- Impact: Cannot obtain elementRef values needed to tap UI elements (tap command requires elementRef from snapshot_ui)
-- Workaround attempted: None available without snapshot_ui or manual coordinates (which are not supported by xcodebuildmcp UI automation)
+Initial blocker (snapshot_ui timeout) resolved by restarting daemon. Testing proceeded with episode 137 (This American Life: "The Book That Changed Your Life").
 
-Unable to proceed with scenario execution. Scenario cannot be tested until snapshot_ui is functional.
+Step-by-step observations:
+1. Episode player opened showing chapter segments under "Chapters" section: 00:00 Introduction, 01:00 Main Story, 03:00 Conclusion
+2. Current position: "Introduction" (00:00) highlighted in blue, indicating active chapter
+3. Tapped "Main Story" (01:00) chapter button — UI accepted tap, but active highlight remained on "Introduction"
+4. Tapped "Conclusion" (03:00) chapter button — UI accepted tap, no change in active chapter highlight
+5. Attempted playback by tapping "Play again" button
+6. Confirmed playback started (mini-player showed "Now playing" on Introduction)
+7. While playback active, tapped "Main Story" chapter button — UI accepted tap, but active highlight did not move to "Main Story"
+8. Active chapter continued showing as "Introduction" throughout all tap attempts
+
+Screenshots captured at each checkpoint showing the persistent active-highlight on Introduction despite multiple forward-seeking taps.
+
+Acceptance criteria evaluation:
+- Tapping a segment seeks the playhead: FAIL (no visible seek or highlight change observed after 4 tap attempts)
+- Forward and backward seeks work: FAIL (forward taps had no effect)
+- Active-segment highlight follows new position: FAIL (highlight remained on Introduction)
+
+Root cause: Chapter tap functionality appears non-functional or has a display/binding issue. The UI accepts taps but does not update the active chapter highlight or seek position. This could be:
+- Missing event handler binding in the chapter button UI component
+- Seek functionality not implemented for chapter taps
+- Display binding issue where highlight doesn't update even if seek occurred internally

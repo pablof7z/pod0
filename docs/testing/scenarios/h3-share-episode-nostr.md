@@ -32,3 +32,18 @@ and quote share.
   but separate entry point.
 
 ## Notes
+
+**Result: BLOCKED**
+**Tested: 2026-06-24, ~12:37 PM**
+
+Unable to access the player view to test share functionality. Navigation attempts:
+- Started on Friends view, navigated back through various settings screens
+- Mini-player was visible throughout (This American Life, 137: The Book That Changed Your Life)
+- Attempted to open player by: tapping mini-player bar, tapping episode title, tapping Inbox button
+- Each navigation attempt kept returning to or staying in Settings view
+- Mini-player remained visible but was not actionable (swipe/drag gestures not supported on e67 element ref)
+- Tap on mini-player-bar (e67) did not expand the player view
+
+**Blocking Issue:** Cannot access the expanded player view where the Share button (top bar) is located. The mini-player exists and shows the episode, but the full player view needed to test all 5 steps is not reachable from the current app state.
+
+**Next Steps:** Requires investigation of player navigation flow - may need to restart the app, check if there's a specific navigation path to the full player, or verify if the Share button exists in a different UI location (e.g., episode row context menu).

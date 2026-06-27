@@ -33,31 +33,39 @@ Validate viewing a transcript that the podcast RSS provides (Podcasting 2.0
 ## Notes
 
 **Result: BLOCKED**
-**Tested: 2026-06-24, ~4:00 AM**
+**Tested: 2026-06-24, ~8:33 AM**
 
-**Issue: Transcript view UI not accessible; tooling instability prevented full exploration**
+**Issue: PlayerTranscriptScrollView is not integrated into PlayerView UI**
 
 Steps attempted:
-1. ✓ Step 1 (partial): Opened episode "R.F.K. Jr.'s Newest Mission: Getting Us Off Antidepressants" from The Daily podcast, which was already playing (playhead 7:25)
-2. ✗ Step 2 (failed): Could not locate or access PlayerTranscriptScrollView despite multiple attempts to:
-   - Scroll episode description view up/down
-   - Tap episode title
-   - Tap mini-player bar
-   - Search UI snapshot for "transcript" keyword (no results found)
-3. ✗ Step 3-4: Not reached due to transcript view not being accessible
+1. ✓ Step 1: Opened episode "137: The Book That Changed Your Life" from This American Life (already playing, playhead 0:00)
+2. ✗ Step 2 (failed): Could not find transcript view despite:
+   - Opening full player view
+   - Searching UI snapshot for "transcript" keyword (no results found)
+   - Scrolling within the player sheet content
+   - Checking all available tabs/sections
 
-**Root causes:**
-- **No transcript UI visible**: The player UI snapshot showed player controls (play/pause, skip buttons) but no transcript button or tab in accessible locations
-- **Possible episode limitation**: The Daily episode being played may not have a publisher-supplied transcript despite description mentioning "Transcripts of each episode will be made available by the next workday"
-- **Tooling issue**: xcodebuildmcp daemon experienced timeouts (30s) when tapping certain UI elements (e.g., after opening episode options menu), preventing full exploration of player interface
-- **Feature may be unimplemented**: The transcript view may not yet be integrated into the player UI, or it may be hidden behind an undiscovered gesture/button
+**Root cause analysis:**
+- **Feature not integrated into main player**: Code review of PlayerView.swift (lines 1-100) shows a TabView with only two tabs: chapters (tag: false) and show notes (tag: true). No transcript tab exists.
+- **PlayerTranscriptScrollView is orphaned**: The source code at App/Sources/Features/Player/PlayerTranscriptScrollView.swift contains a comment stating:
+  ```
+  // USAGE:
+  // Internal-only renderer. No longer referenced from `PlayerView` — the player
+  // always shows chapters now. Kept for the clip composer / quote share /
+  // ask-agent surfaces that still operate on transcript segments inside their
+  // own sheets. Transcripts are an extraction substrate, not user-visible
+  // content; do not re-add this as a primary player surface.
+  ```
+- **This confirms**: Transcript view was deprioritized from the main player UI. The component still exists but is only used internally for clip composition and ask-agent workflows.
 
 **Screenshots captured:**
-- Initial episode description: /var/folders/bl/w2vvyf7n0sq2vrh10pg8bd4h0000gn/T/screenshot_optimized_2992ebf3-ff9b-4ddc-a90b-a53a8bdc817a.jpg
-- After reopening app from home: /var/folders/bl/w2vvyf7n0sq2vrh10pg8bd4h0000gn/T/screenshot_optimized_f0aab397-54ad-4829-90a3-b98bf90a255c.jpg
+- Player showing chapters (introduction/main story/conclusion): /var/folders/bl/w2vvyf7n0sq2vrh10pg8bd4h0000gn/T/screenshot_optimized_05c562d6-55e4-4fef-9d65-ba2f6adcb1f6.jpg
+- After scroll attempt: /var/folders/bl/w2vvyf7n0sq2vrh10pg8bd4h0000gn/T/screenshot_optimized_c5653405-6ef7-443e-a5c4-ff5d5db0307a.jpg
+- After scrolling down: /var/folders/bl/w2vvyf7n0sq2vrh10pg8bd4h0000gn/T/screenshot_optimized_885b5223-5797-4161-a7b2-96dc9bea4f51.jpg
 
-**Recommendation:**
-- Verify that a known podcast with transcripts (This American Life, Lex Fridman Podcast) is subscribed and an episode is available
-- Check if transcript functionality is fully implemented in the player interface
-- Investigate if transcript view requires a specific gesture (swipe, long-press) or button that isn't currently visible
-- Retry after fixing xcodebuildmcp daemon stability issues
+**Acceptance criteria assessment:**
+- ✗ The transcript does NOT render from the feed (not visible in UI)
+- ✗ The active line does NOT track playback (no transcript view shown)
+- ✗ Speaker labels NOT testable (feature not exposed)
+
+**Conclusion:** This scenario cannot pass until PlayerTranscriptScrollView is re-integrated into PlayerView as a visible tab/section. The infrastructure is in place, but it must be added to the player's TabView layout.

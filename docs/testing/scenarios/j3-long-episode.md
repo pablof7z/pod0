@@ -31,3 +31,15 @@ precision, chapter/transcript scale.
   the 4pt min-distance still gives usable precision.
 
 ## Notes
+
+**Result: BLOCKED**
+**Tested: 2026-06-24 13:40**
+
+The scenario requires "a subscribed show with an episode longer than 3 hours" as a prerequisite, but the current test data in the simulator only contains:
+- This American Life podcast with episode "137: The Book That Changed Your Life" - 5 minutes duration
+
+The simulator data does not have any episodes >3 hours available. The test cannot proceed without:
+1. Adding a >3h episode to the test fixture data, OR
+2. Subscribing to a podcast with long episodes (e.g., Lex Fridman, Acquired, etc.) within the app UI
+
+To complete this scenario, the test environment needs to be set up with appropriate test data containing at least one episode with duration exceeding 3 hours.

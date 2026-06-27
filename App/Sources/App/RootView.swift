@@ -39,6 +39,7 @@ struct RootView: View {
     @State var agentSession: AgentChatSession?
     @State var agentUnseenMessageCount: Int = 0
     @State var showVoiceMode = false
+    @State var pendingAgentOpen = false
     @State var lastShakeTime: Date = .distantPast
     @State var spotlightSheet: SpotlightIndexer.DeepLink?
     @State var playbackState = PlaybackState()
@@ -111,6 +112,12 @@ struct RootView: View {
                 }
                 .onChange(of: showAgentChat) { _, _ in
                     agentUnseenMessageCount = agentSession?.messages.count ?? 0
+                }
+                .onChange(of: showSettings) { _, newValue in
+                    if !newValue, pendingAgentOpen {
+                        pendingAgentOpen = false
+                        showAgentChat = true
+                    }
                 }
                 .sheet(item: Binding(
                     get: { spotlightSheet.map(IdentifiedSpotlightLink.init) },
@@ -209,14 +216,8 @@ struct RootView: View {
 
             AppSidebarView(
                 selectedTab: $selectedTab,
-                isPresented: $showSidebar,
-                onShowPodcasts: {
-                    selectedTab = .home
-                    // Defer the push so the tab switch renders first
-                    DispatchQueue.main.async {
-                        showAllPodcasts = true
-                    }
-                }
+                onSelectTab: routeFromSidebar(to:),
+                onShowPodcasts: openPodcastsFromSidebar
             )
             .frame(width: sidebarWidth)
             .ignoresSafeArea()
@@ -243,7 +244,15 @@ struct RootView: View {
             base.tabViewBottomAccessory {
                 MiniPlayerView(
                     state: playbackState,
-                    onTap: { showFullPlayer = true },
+                    onTap: {
+                        // Close the sidebar first so neither the sidebar overlay
+                        // (which covers the entire tab-bar area including this
+                        // accessory) nor the full-player modal blocks the other.
+                        if showSidebar {
+                            withAnimation(AppTheme.Animation.spring) { showSidebar = false }
+                        }
+                        showFullPlayer = true
+                    },
                     glassNamespace: playerNamespace
                 )
             }
@@ -314,7 +323,38 @@ struct RootView: View {
                 askCoordinator: askCoordinator
             )
         }
+        // SwiftUI can only present one sheet at a time from the same host view.
+        // If Settings is open we must dismiss it first; `onChange(of: showSettings)`
+        // picks up pendingAgentOpen once the sheet is gone.
+        if showSettings {
+            pendingAgentOpen = true
+            showSettings = false
+            return
+        }
         showAgentChat = true
+    }
+
+    func routeFromSidebar(to tab: RootTab) {
+        Haptics.selection()
+        showFullPlayer = false
+        showSettings = false
+        showAgentChat = false
+        showSearch = false
+        spotlightSheet = nil
+        playerNavSubscriptionID = nil
+        generationSourceNostrRootID = nil
+        selectedTab = tab
+        withAnimation(AppTheme.Animation.spring) {
+            showSidebar = false
+        }
+    }
+
+    func openPodcastsFromSidebar() {
+        routeFromSidebar(to: .home)
+        // Defer the push so the tab switch renders first.
+        DispatchQueue.main.async {
+            showAllPodcasts = true
+        }
     }
 
     // MARK: - Toolbar
@@ -325,6 +365,12 @@ struct RootView: View {
             let profile = UserProfileDisplay.from(identity: userIdentity)
             Button {
                 Haptics.selection()
+                // Dismiss the full-player sheet before sliding the sidebar in.
+                // The sheet is a UIKit modal that sits above the ZStack, so the
+                // sidebar would slide in behind the modal and appear broken
+                // (taps register but nothing seems to happen). Collapsing the
+                // sheet first ensures the sidebar is always the top surface.
+                showFullPlayer = false
                 withAnimation(AppTheme.Animation.spring) { showSidebar = true }
             } label: {
                 IdentityAvatarView(
@@ -346,6 +392,16 @@ struct RootView: View {
             .accessibilityLabel("Settings")
         }
         NostrConversationsToolbarItem()
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                Haptics.selection()
+                showVoiceMode = true
+            } label: {
+                Image(systemName: "waveform")
+            }
+            .accessibilityLabel("Start voice conversation")
+            .accessibilityIdentifier("voice.open")
+        }
         ToolbarItem(placement: .topBarTrailing) {
             Button {
                 Haptics.selection()

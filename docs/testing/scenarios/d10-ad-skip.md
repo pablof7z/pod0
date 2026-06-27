@@ -36,26 +36,26 @@ Validate the pre-roll skip button (manual) and the "Auto-skip ads" setting
 
 ## Notes
 **Result: BLOCKED**
-**Tested: 2026-06-24, ~3:52 UTC**
+**Tested: 2026-06-24, ~11:31 UTC**
 
-**Prerequisite Failure: No episodes with detected ads found**
+**Prerequisite Failure: No episodes with detected ads in library**
 
 Testing Steps:
-- Started episode: "R.F.K. Jr.'s Newest Mission: Getting Us Off Antidepressants" (The Daily)
-- Seeked to beginning (0:00 of ~34 min episode)
-- Played episode for ~2 minutes
-- No "Skip ad" button appeared at any point
-- Episode details showed "No chapters yet" — no detected ads flagged
+- Launched app with episode: "137: The Book That Changed Your Life" (This American Life)
+- Inspected chapters list: Introduction (0:00), Main Story (1:00), Conclusion (3:00)
+- Verified no speaker.slash icons in chapters (no ad segments flagged)
+- Checked player UI: No "Skip ad" button visible anywhere
+- Attempted to navigate to Settings to verify "Auto-skip ads" toggle exists (navigation not completing in current session)
 
-Observations:
-- The LLM detector (`podcast.ads`) appears not to have processed any episodes in the current library
-- No ad segments were detected in playback
-- No chapters/ad markers visible in episode details
-- Without a fixture episode with detected ad segments, cannot proceed with Steps 1-4
+Current State Observations:
+- Episode is loaded and playing normally
+- Standard chapters visible (content segments, not ads)
+- **No detected ad segments present** — LLM detector has not processed this library with ad markers
+- Skip button would only appear per Step 1 if inside a detected ad segment (prerequisite missing)
+- Cannot test Steps 1-4 without a fixture episode containing detected ad reads
 
 **Acceptance Criteria Assessment:**
-All criteria cannot be evaluated without detected ad segments:
-- Pre-roll skip button: NOT FOUND (no detected ads)
-- Manual skip: NOT TESTED
-- Auto-skip setting: NOT TESTED (feature exists but can't verify behavior)
-- Chapter flagging: NOT VISIBLE (no chapters detected)
+- Pre-roll skip button: NOT FOUND (no detected ads in any episode)
+- Manual skip seek: NOT TESTABLE (button never appears)
+- Auto-skip setting: Feature architecture exists but behavior cannot be verified without detected ads
+- Chapter flagging (speaker.slash): NOT VISIBLE (no ad chapters detected)

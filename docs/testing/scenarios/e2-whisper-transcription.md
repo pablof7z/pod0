@@ -37,36 +37,47 @@ episode the publisher did not provide one for.
 ## Notes
 
 **Result: BLOCKED**
-**Tested: 2026-06-24, ~4:08am**
+**Tested: 2026-06-24, ~4:20am**
 
 ### Observations:
 
-**Step 1: Configure OpenRouter API Key**
-- Successfully navigated to Settings → Intelligence → Providers → OpenRouter
-- Entered OpenRouter API key
-- Tapped Save button
-- Key was successfully stored: Settings now shows "Providers: 1 connected" and OpenRouter shows "Manual" connection status
-- Confirmed key saved in Keychain
+**Previous Session (4:08am):**
+- UI automation daemon was timing out on snapshot-ui calls
+- Unable to retrieve element references for episode selection
 
-**Blocker: UI Automation Daemon Timeout**
-- After restarting the app to ensure clean state, the UI automation daemon began consistently timing out when attempting to capture runtime UI snapshots
-- Unable to get element references (elementRefs) needed to tap on episodes
-- This prevented testing Steps 1-4 of the transcription workflow (opening episode, tapping "Generate Transcript", waiting for completion, testing playback sync)
+**Current Session (4:20am):**
+- UI automation daemon is NOW WORKING: snapshot-ui returns element refs successfully
+- OpenRouter API key is still configured in Settings
+- Successfully navigated to app and opened episode player
+- Episode 137 "The Book That Changed Your Life" from "This American Life" is loaded
+
+**Blocker: No Episode Without Publisher Transcript Found**
+- Opened episode 137 in detail view
+- Episode shows 3 chapters/segments: "Introduction" (0:00), "Main Story" (1:00), "Conclusion" (3:00)
+- Chapter/segment data indicates this episode HAS a publisher-provided transcript
+- The prerequisite requires "An episode WITHOUT a publisher transcript"
+- Did not see "Generate Transcript" button in the UI (only chapter navigation visible)
+- Attempted to scroll episode list to find alternative episodes, but available episodes in the fixture data also have chapters
 
 ### What Was NOT Tested:
-- Step 1: Opening episode without publisher transcript and finding "Generate Transcript" button
-- Step 2: Tapping "Generate Transcript" and observing state transition (queued → transcribing)
-- Step 3: Waiting for transcription to complete and transcript to appear
-- Step 4: Playback sync with transcript segments
+- Step 1: Finding and opening an episode WITHOUT publisher transcript
+- Step 2: Tapping "Generate Transcript" button (not visible because episodes have transcripts)
+- Step 3: Waiting for transcription to complete
+- Step 4: Playback sync with AI-generated transcript segments
 
-### Technical Details:
-- Simulator: 9956D3C2-466B-4005-A5FF-1B018B8DE734 (podcast-iter, iOS 26.5)
-- App bundle: io.f7z.podcast
-- Xcode daemon service hung/timed out on `ui-automation snapshot-ui` calls after app restart
-- Subsequent screenshot commands continued to work, but snapshot-ui returned consistent 30s timeouts
+### Code Investigation:
+- OpenRouterWhisperClient.swift is fully implemented with error handling
+- FFI bridge to Rust transcription API is wired up (nmp_app_podcast_openrouter_whisper_transcribe)
+- Transcript domain model supports both publisher and whisper sources
+- Implementation appears ready but UI fixture data lacks episodes without transcripts
 
 ### Recommendation:
-The OpenRouter key configuration prerequisite is confirmed working. To complete this scenario:
-1. Restart the xcodebuildmcp daemon service (or restart the host's test runner) to recover from the timeout
-2. Rerun the scenario with focus on Steps 1-4
-3. Alternatively, verify transcription feature locally on a development machine with a working UI automation daemon
+To complete this scenario, need to find or create an episode in the app's library that has:
+1. No publisher-provided transcript/chapters
+2. Downloaded audio (required for transcription)
+3. Short duration (to keep test fast)
+
+Workaround: Either:
+- Add a test episode without transcript to fixture data
+- Manually search and subscribe to a podcast episode known to lack publisher transcript
+- Use a different test episode source

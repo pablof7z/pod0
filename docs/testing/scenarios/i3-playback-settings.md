@@ -32,3 +32,40 @@ auto-mark-played, auto-play-next, auto-skip-ads.
 - Settings are kernel-owned — a setting that resets on relaunch is a persistence bug.
 
 ## Notes
+
+**Result: PARTIAL**
+**Tested: 2026-06-24 1:11 AM**
+
+Step-by-step observations:
+- Step 1: Successfully navigated to Settings → Listening → Player. View displays "Playback" title with all controls visible (Default Speed, Skip Back, Skip Forward, Double-Tap, Triple-Tap, and toggle switches).
+- Step 2: Default Speed button (1x) visible and tappable, but tapping does not open a picker menu. The UI shows the value "1×" with chevron buttons (< >) but interaction was unclear in the snapshot. Footer text correctly states "Applied to new episodes. Use the player's speed control to override per session."
+- Step 3: Skip Back (15 sec) and Skip Forward (30 sec) buttons are visible and tappable. Tapping does not immediately open a menu. Both controls display expected values and include chevron buttons for adjustment.
+- Step 4: Double-Tap set to "Skip Forward (30s)" and Triple-Tap set to "Clip Current Position". Both buttons are present and appear interactive with chevron buttons visible.
+- Step 5: Tested Auto-mark played at end toggle:
+  - Initial state: ON (green)
+  - Toggled to OFF (gray) - toggle responded immediately
+  - Toggled back to ON (green) - toggle responded immediately
+  - Persisted correctly across navigation (back to Settings list and re-entered Playback settings)
+  - All three toggles visible when scrolled down:
+    - Auto-mark played at end: ON
+    - Auto-play next from queue: ON
+    - Auto-skip ads: ON
+
+**Key Findings:**
+- Toggle functionality: PASS - Toggles are interactive and persist across navigation
+- Picker controls: UNCLEAR - Default Speed, Skip Back, Skip Forward, Double-Tap, and Triple-Tap buttons are present but interaction mechanism is not obvious from UI automation (may require gesture recognizer or different interaction pattern)
+- Persistence across navigation: PASS - Settings persisted when navigating back to parent screen and re-entering
+- All expected footers present: YES - Each setting has documented footer text explaining behavior
+
+**Screenshots taken:**
+1. Initial Playback settings screen
+2. Settings list (verification of navigation)
+3. Playback settings after toggle test
+4. Full scroll of auto-settings section
+
+**Acceptance Criteria Status:**
+- Toggle persistence across navigation: YES
+- Default speed footer text present: YES
+- Skip intervals UI visible: YES (interaction mechanism unclear)
+- Auto-mark/auto-play-next/auto-skip-ads footers present: YES
+- Behavior matching (requires interaction): PARTIAL (toggles work, pickers not tested)

@@ -3,7 +3,6 @@ import SwiftUI
 struct SpeechModelsSettingsView: View {
     @Environment(AppStateStore.self) private var store
 
-    @State private var settings = Settings()
     @State private var ttsPreview = ElevenLabsTTSPreviewService()
     @State private var isTestingVoice = false
     @State private var testVoiceError: String?
@@ -18,12 +17,6 @@ struct SpeechModelsSettingsView: View {
         }
         .navigationTitle("Speech")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            settings = store.state.settings
-        }
-        .onChange(of: settings) { _, new in
-            store.updateSettings(new)
-        }
         .task {
             await loadSpeechCatalog()
         }
@@ -35,7 +28,7 @@ struct SpeechModelsSettingsView: View {
 
     private var speechToTextSection: some View {
         Section {
-            Picker(selection: $settings.sttProvider) {
+            Picker(selection: sttProviderBinding) {
                 ForEach(STTProvider.allCases, id: \.self) { provider in
                     Text(provider.displayName).tag(provider)
                 }
@@ -44,13 +37,13 @@ struct SpeechModelsSettingsView: View {
             }
             .pickerStyle(.menu)
 
-            if settings.sttProvider == .elevenLabsScribe {
-                Picker(selection: $settings.elevenLabsSTTModel) {
+            if currentSettings.sttProvider == .elevenLabsScribe {
+                Picker(selection: elevenLabsSTTModelBinding) {
                     ForEach(speechCatalog.elevenLabsSTT, id: \.id) { entry in
                         Text(entry.label).tag(entry.id)
                     }
                     customModelEntry(
-                        currentID: settings.elevenLabsSTTModel,
+                        currentID: currentSettings.elevenLabsSTTModel,
                         knownIDs: speechCatalog.elevenLabsSTT.map(\.id)
                     )
                 } label: {
@@ -59,13 +52,13 @@ struct SpeechModelsSettingsView: View {
                 .pickerStyle(.menu)
             }
 
-            if settings.sttProvider == .openRouterWhisper {
-                Picker(selection: $settings.openRouterWhisperModel) {
+            if currentSettings.sttProvider == .openRouterWhisper {
+                Picker(selection: openRouterWhisperModelBinding) {
                     ForEach(speechCatalog.openRouterWhisper, id: \.id) { entry in
                         Text(entry.label).tag(entry.id)
                     }
                     customModelEntry(
-                        currentID: settings.openRouterWhisperModel,
+                        currentID: currentSettings.openRouterWhisperModel,
                         knownIDs: speechCatalog.openRouterWhisper.map(\.id)
                     )
                 } label: {
@@ -74,13 +67,13 @@ struct SpeechModelsSettingsView: View {
                 .pickerStyle(.menu)
             }
 
-            if settings.sttProvider == .assemblyAI {
-                Picker(selection: $settings.assemblyAISTTModel) {
+            if currentSettings.sttProvider == .assemblyAI {
+                Picker(selection: assemblyAISTTModelBinding) {
                     ForEach(speechCatalog.assemblyAISTT, id: \.id) { entry in
                         Text(entry.label).tag(entry.id)
                     }
                     customModelEntry(
-                        currentID: settings.assemblyAISTTModel,
+                        currentID: currentSettings.assemblyAISTTModel,
                         knownIDs: speechCatalog.assemblyAISTT.map(\.id)
                     )
                 } label: {
@@ -101,7 +94,7 @@ struct SpeechModelsSettingsView: View {
     }
 
     private var transcriptionFooter: Text {
-        switch settings.sttProvider {
+        switch currentSettings.sttProvider {
         case .elevenLabsScribe:
             return Text("ElevenLabs Scribe — diarization and word-level timestamps. Requires an ElevenLabs key.")
         case .assemblyAI:
@@ -115,12 +108,12 @@ struct SpeechModelsSettingsView: View {
 
     private var textToSpeechSection: some View {
         Section {
-            Picker(selection: $settings.elevenLabsTTSModel) {
+            Picker(selection: elevenLabsTTSModelBinding) {
                 ForEach(speechCatalog.elevenLabsTTS, id: \.id) { entry in
                     Text(entry.label).tag(entry.id)
                 }
                 customModelEntry(
-                    currentID: settings.elevenLabsTTSModel,
+                    currentID: currentSettings.elevenLabsTTSModel,
                     knownIDs: speechCatalog.elevenLabsTTS.map(\.id)
                 )
             } label: {
@@ -176,6 +169,51 @@ struct SpeechModelsSettingsView: View {
     }
 
     // MARK: - Helpers
+
+    private var currentSettings: Settings {
+        store.state.settings
+    }
+
+    private var sttProviderBinding: Binding<STTProvider> {
+        Binding(
+            get: { currentSettings.sttProvider },
+            set: { updateSettings(\.sttProvider, to: $0) }
+        )
+    }
+
+    private var elevenLabsSTTModelBinding: Binding<String> {
+        Binding(
+            get: { currentSettings.elevenLabsSTTModel },
+            set: { updateSettings(\.elevenLabsSTTModel, to: $0) }
+        )
+    }
+
+    private var openRouterWhisperModelBinding: Binding<String> {
+        Binding(
+            get: { currentSettings.openRouterWhisperModel },
+            set: { updateSettings(\.openRouterWhisperModel, to: $0) }
+        )
+    }
+
+    private var assemblyAISTTModelBinding: Binding<String> {
+        Binding(
+            get: { currentSettings.assemblyAISTTModel },
+            set: { updateSettings(\.assemblyAISTTModel, to: $0) }
+        )
+    }
+
+    private var elevenLabsTTSModelBinding: Binding<String> {
+        Binding(
+            get: { currentSettings.elevenLabsTTSModel },
+            set: { updateSettings(\.elevenLabsTTSModel, to: $0) }
+        )
+    }
+
+    private func updateSettings<Value>(_ keyPath: WritableKeyPath<Settings, Value>, to value: Value) {
+        var next = currentSettings
+        next[keyPath: keyPath] = value
+        store.updateSettings(next)
+    }
 
     @ViewBuilder
     private func customModelEntry(currentID: String, knownIDs: [String]) -> some View {
