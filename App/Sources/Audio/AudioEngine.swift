@@ -65,6 +65,15 @@ final class AudioEngine {
     /// can flip it from `handleEndOfItem`.
     var didReachNaturalEnd: Bool = false
 
+    // ── Interruption tracking ─────────────────────────────────────────────
+    // Set to `true` when `AudioSessionCoordinator` fires `onInterruptionEnd`
+    // and the engine was playing at the start of the interruption. The
+    // AVPlayer KVO path (`handleTimeControlChange`) sets state to `.paused`
+    // when iOS silences the player at `.began`, so by the time `.ended` fires
+    // `state` is already `.paused`. Tracking the pre-interruption intent lets
+    // `configureSessionCallbacks` correctly decide whether to auto-resume.
+    var wasPlayingBeforeInterruption: Bool = false
+
     // ── Kernel-bridge throttle state (M1 Part 3) ────────────────────────
     // Throttle `onPlayingTick` to ≤1 Hz per D8. Track the last-reported
     // whole second so duplicate ticks within the same second are dropped.
@@ -170,6 +179,7 @@ final class AudioEngine {
     init() {
         configureNowPlayingCallbacks()
         nowPlaying.setSkipIntervals(forward: skipForwardSeconds, backward: skipBackwardSeconds)
+        configureSessionCallbacks()
     }
 
     // Note: no `deinit` cleanup. Under Swift 6 strict concurrency, `deinit` is

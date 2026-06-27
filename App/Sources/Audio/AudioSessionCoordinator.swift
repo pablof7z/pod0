@@ -28,6 +28,20 @@ protocol VoiceSessionClient: AnyObject, Sendable {
 /// The recommendations here track `docs/spec/research/voice-stt-tts-stack.md`:
 /// `.playback` + `.spokenAudio` for podcast-only, `.playAndRecord` + `.voiceChat`
 /// + `setPrefersEchoCancelledInput(true)` (iOS 18+) for full-duplex voice.
+///
+/// Interruption & route-change handling:
+/// iOS can deactivate the audio session externally (phone call, Siri, media from
+/// another app). When that happens the OS posts
+/// `AVAudioSession.interruptionNotification`. The coordinator:
+///   1. On `.began` — resets `mode` to `.idle` so the next `activate()` call
+///      actually runs `setActive(true)` instead of no-opping on the stale mode.
+///   2. On `.ended` with `.shouldResume` — fires `onInterruptionEnd` so the
+///      engine can call `play()` and restore audio without user interaction.
+///
+/// When headphones are unplugged iOS pauses AVPlayer automatically, but the
+/// engine's state stays `.playing`, so the Now-Playing controls show a stale
+/// play-button. The coordinator fires `onRouteChangeOutputLost` so the engine
+/// can sync its state to `.paused`.
 @MainActor
 final class AudioSessionCoordinator {
 
@@ -61,21 +75,52 @@ final class AudioSessionCoordinator {
     /// voice mode isn't compiled in.
     weak var voiceClient: (any VoiceSessionClient)?
 
+    // MARK: - Interruption / route-change callbacks
+
+    /// Called on the `MainActor` when an audio-session interruption begins.
+    /// The engine uses this to record whether it was playing so it can decide
+    /// whether to auto-resume when the interruption ends.
+    var onInterruptionBegan: (() -> Void)?
+
+    /// Called on the `MainActor` when an audio-session interruption ends and
+    /// `AVAudioSession.InterruptionOptions.shouldResume` is set. The engine
+    /// should call `play()` from this closure to restore background audio
+    /// without requiring a user tap.
+    var onInterruptionEnd: (() -> Void)?
+
+    /// Called on the `MainActor` when the output route changes in a way that
+    /// indicates the previous output (e.g. headphones) was disconnected. The
+    /// engine should pause playback so the Now-Playing controls reflect the
+    /// real player state — iOS already silences AVPlayer, but the in-process
+    /// `AudioEngine.state` stays `.playing` until told otherwise.
+    var onRouteChangeOutputLost: (() -> Void)?
+
     // MARK: - Private
 
     private let logger = Logger.app("AudioSessionCoordinator")
     private let session = AVAudioSession.sharedInstance()
 
+    // Retained notification token. Stored as `Any?` so `NotificationCenter`
+    // keeps a strong reference; nil means the observer was not yet installed.
+    private var interruptionObserver: NSObjectProtocol?
+    private var routeChangeObserver: NSObjectProtocol?
+
     // MARK: - Init
 
-    private init() {}
+    private init() {
+        installNotificationObservers()
+    }
 
     // MARK: - Public API
 
     /// Reconfigure `AVAudioSession` for the requested mode.
     ///
-    /// Idempotent: calling `activate(.podcastPlayback)` while already in that
-    /// mode is a no-op. Throws if `AVAudioSession` rejects the configuration.
+    /// Idempotent for the same mode UNLESS `self.mode` was externally reset to
+    /// `.idle` by the interruption handler, which forces a real `setActive(true)`
+    /// call on the next `activate(.podcastPlayback)` invocation — required to
+    /// restore background audio after a phone call or Siri interruption.
+    ///
+    /// Throws if `AVAudioSession` rejects the configuration.
     func activate(_ mode: Mode) throws {
         guard mode != self.mode else { return }
         logger.info("AudioSession transition: \(String(describing: self.mode)) → \(String(describing: mode))")
@@ -158,6 +203,88 @@ final class AudioSessionCoordinator {
             try session.setPrefersEchoCancelledInput(true)
         }
         try session.setActive(true, options: .notifyOthersOnDeactivation)
+    }
+
+    // MARK: - Notification observers
+
+    private func installNotificationObservers() {
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: session,
+            queue: .main
+        ) { [weak self] note in
+            // Extract Sendable primitives before crossing the @MainActor boundary.
+            let typeRaw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+            let optRaw = note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt
+            MainActor.assumeIsolated { self?.handleInterruption(typeRaw: typeRaw, optRaw: optRaw) }
+        }
+        routeChangeObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: session,
+            queue: .main
+        ) { [weak self] note in
+            let reasonRaw = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
+            MainActor.assumeIsolated { self?.handleRouteChange(reasonRaw: reasonRaw) }
+        }
+    }
+
+    // MARK: - Interruption handling
+
+    private func handleInterruption(typeRaw: UInt?, optRaw: UInt?) {
+        guard
+            let typeRaw,
+            let type = AVAudioSession.InterruptionType(rawValue: typeRaw)
+        else { return }
+
+        switch type {
+        case .began:
+            // Notify the engine BEFORE resetting mode so it can capture
+            // whether it was playing at this moment (state will transition
+            // to `.paused` via AVPlayer KVO shortly after, so we record
+            // intent here while it's still accurate).
+            onInterruptionBegan?()
+            // iOS has deactivated the session. Reset our mode tracking so the
+            // next `activate(_:)` call skips the idempotency guard and actually
+            // calls `setActive(true)`. Without this reset the guard
+            // `guard mode != self.mode` no-ops and the session is never reactivated.
+            logger.info("AudioSession interruption began — mode reset to .idle")
+            mode = .idle
+
+        case .ended:
+            guard let optRaw else { return }
+            let options = AVAudioSession.InterruptionOptions(rawValue: optRaw)
+            if options.contains(.shouldResume) {
+                logger.info("AudioSession interruption ended with shouldResume — firing callback")
+                onInterruptionEnd?()
+            } else {
+                logger.info("AudioSession interruption ended without shouldResume")
+            }
+
+        @unknown default:
+            break
+        }
+    }
+
+    // MARK: - Route change handling
+
+    private func handleRouteChange(reasonRaw: UInt?) {
+        guard
+            let reasonRaw,
+            let reason = AVAudioSession.RouteChangeReason(rawValue: reasonRaw)
+        else { return }
+
+        switch reason {
+        case .oldDeviceUnavailable:
+            // Headphones / AirPods disconnected. iOS silences AVPlayer
+            // automatically, but the engine's state stays `.playing` until
+            // we tell it otherwise — so the lock-screen controls show a
+            // stale "playing" state. Notify the engine to sync to `.paused`.
+            logger.info("AudioSession route change: output lost — firing pause callback")
+            onRouteChangeOutputLost?()
+
+        default:
+            break
+        }
     }
 }
 
