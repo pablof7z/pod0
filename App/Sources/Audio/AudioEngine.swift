@@ -146,6 +146,25 @@ final class AudioEngine {
     var endObserver: NSObjectProtocol?
     var fadeBaseVolume: Float = 1.0
 
+    /// Pending seek target — set in `seek(to:)` before the async AVPlayer seek
+    /// is dispatched, cleared once the seek completes or the time observer
+    /// receives a position within 1 s of the target.
+    ///
+    /// The time observer fires every 0.5 s; without this guard it delivers the
+    /// pre-seek AVPlayer position between the synchronous `currentTime = target`
+    /// write and the async seek completion, silently resetting the display back
+    /// to the old chapter. That made every chapter-tap appear to do nothing even
+    /// though the seek *was* dispatched — the optimistic UI update was
+    /// immediately overwritten before the next render frame.
+    var pendingSeekTarget: TimeInterval? = nil
+
+    /// Monotonically-increasing counter incremented on every `seek(to:)` call.
+    /// The completion callback captures the version at dispatch time and only
+    /// clears `pendingSeekTarget` when the version still matches — guarding
+    /// against a stale completion from an earlier seek clearing the target set
+    /// by a more recent overlapping seek.
+    var seekVersion: Int = 0
+
     // MARK: - Init / deinit
 
     init() {
@@ -270,10 +289,17 @@ final class AudioEngine {
             didReachNaturalEnd = false
         }
         currentTime = target
+        // Guard the time observer against overriding the optimistic position
+        // update before the async AVPlayer seek completes (see `pendingSeekTarget`).
+        pendingSeekTarget = target
+        seekVersion &+= 1
+        let myVersion = seekVersion
         let time = CMTime(seconds: target, preferredTimescale: 600)
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
             Task { @MainActor in
-                self?.publishNowPlayingElapsed()
+                guard let self, self.seekVersion == myVersion else { return }
+                self.pendingSeekTarget = nil
+                self.publishNowPlayingElapsed()
             }
         }
     }
