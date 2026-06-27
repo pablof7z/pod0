@@ -24,6 +24,16 @@ final class PlaybackState {
     /// (queue persistence and playback state) without a retained cycle.
     weak var store: AppStateStore?
 
+    /// Kernel playback transport dispatch seam. When non-nil, takes
+    /// precedence over `store` for all transport dispatch calls. Set only
+    /// in unit tests to inject a lightweight stub without subclassing the
+    /// `final` `AppStateStore`. Nil in production.
+    var kernelDispatch: (any KernelPlaybackDispatching)?
+
+    /// Active kernel transport dispatcher: explicit injection or the store.
+    /// Extensions that need to forward transport commands use this.
+    var transport: (any KernelPlaybackDispatching)? { kernelDispatch ?? store }
+
     // MARK: - Observable surface
 
     var episode: Episode?
@@ -66,6 +76,15 @@ final class PlaybackState {
     /// instant feedback without making Swift a second writer to `queue`.
     /// Items are removed as each id appears in the kernel's queue projection.
     var pendingEnqueue: Set<UUID> = []
+    /// Tracks the accumulated seek target across rapid paused skip-forward taps.
+    /// Reset on resume or when a position echoes back from Rust, so each tap
+    /// builds on the previous rather than re-anchoring to a stale AVPlayer time.
+    var pendingPausedSeekBase: Double?
+    /// Episode whose Rust `AudioCommand::Load` callback has reached AudioEngine.
+    /// Kernel snapshots are pulled asynchronously after dispatch, so the command
+    /// handler uses this immediate local marker to avoid restaging an episode
+    /// that Rust already loaded but has not yet projected.
+    var rustLoadedEpisodeID: UUID?
     var seekHistory: [SeekHistoryEntry] = []
     var canJumpBack: Bool { !seekHistory.isEmpty }
 
@@ -105,25 +124,65 @@ final class PlaybackState {
     /// Load `newEpisode` into the engine. When `playAfterLoad` is true
     /// (the default for user-initiated play), also calls `play()`.
     ///
+    /// `dispatchKernelLoad` controls whether a `kernelLoad` is forwarded to
+    /// Rust. Pass `false` when called from the `AudioCommand::Load` handler —
+    /// Rust already staged the episode; re-dispatching would echo a second
+    /// Load+Play sequence (regression: playback resets to loading/paused).
+    /// All user-initiated paths leave this at the default `true`.
+    ///
     /// Idempotent: when `newEpisode.id` matches the current episode, skips
     /// the reload but still refreshes metadata and seeks to a saved resume
     /// point if the engine reached its natural end.
     func setEpisode(
         _ newEpisode: Episode,
-        playAfterLoad: Bool = false
+        playAfterLoad: Bool = false,
+        dispatchKernelLoad: Bool = true
     ) {
         let isSameEpisode = (episode?.id == newEpisode.id)
         episode = newEpisode
-        if !isSameEpisode {
+        if !dispatchKernelLoad {
+            // AudioCommand::Load callback path — Rust has resolved the streaming
+            // URL. Load unconditionally: isSameEpisode is true here because the
+            // user-dispatch path (below) already set episode = newEpisode before
+            // calling kernelLoad, so a same-episode guard would silently skip
+            // engine.load and AVPlayer would never receive the resolved URL.
+            rustLoadedEpisodeID = newEpisode.id
+            if isSameEpisode, engine.episode?.id == newEpisode.id {
+                engine.refreshMetadata(for: newEpisode)
+            } else {
+                engine.load(newEpisode)
+            }
+            if newEpisode.playbackPosition > 0 {
+                // TEMPORARY BYPASS: seeds the AVPlayer's initial position
+                // before playback starts. The Rust kernel does not yet own a
+                // "set initial playhead" primitive for this pre-play seam;
+                // once it does, this direct engine call should be removed and
+                // the position seeded via a kernel action instead.
+                // BACKLOG: kernel-owned episode-load initial position (#599).
+                engine.seek(to: newEpisode.playbackPosition)
+            }
+        } else if !isSameEpisode {
+            // User-initiated load of a new episode — dispatch to Rust first so
+            // policy and persistence stage in the kernel, then prime the iOS
+            // executor locally. The Rust Load echo may still arrive later; the
+            // callback path above refreshes same-episode metadata without
+            // replacing the active AVPlayer item.
+            rustLoadedEpisodeID = nil
+            transport?.kernelLoad(episodeID: newEpisode.id)
             engine.load(newEpisode)
             if newEpisode.playbackPosition > 0 {
                 engine.seek(to: newEpisode.playbackPosition)
             }
         } else {
+            // Same episode, user-initiated — refresh metadata only.
             engine.refreshMetadata(for: newEpisode)
             if engine.didReachNaturalEnd {
                 let resume = newEpisode.playbackPosition
                 let target = resume > 0 && resume < max(0, duration - 5) ? resume : 0
+                // TEMPORARY BYPASS: resets AVPlayer to the saved resume point
+                // after a natural end-of-episode. Same limitation as above —
+                // replace with a kernel action when the Rust player supports it.
+                // BACKLOG: kernel-owned episode-load initial position (#599).
                 engine.seek(to: target)
             }
         }
@@ -138,58 +197,99 @@ final class PlaybackState {
 
     func play() {
         guard let episode else { return }
+        pendingPausedSeekBase = nil
         Haptics.medium()
+        if shouldStartEpisodeThroughKernelPlay(episodeID: episode.id) {
+            transport?.kernelPlay(episodeID: episode.id, startSeconds: nil, endSeconds: nil)
+        } else {
+            transport?.kernelResume()
+        }
+        if engine.episode?.id != episode.id {
+            engine.load(episode)
+            if episode.playbackPosition > 0 {
+                engine.seek(to: episode.playbackPosition)
+            }
+        }
         engine.play()
-        store?.kernelLoad(episodeID: episode.id)
     }
 
     func pause() {
         Haptics.soft()
-        engine.pause()
+        let pausedPosition = engine.currentTime
+        transport?.kernelPause()
+        // Flush the position to Rust's durable store so a force-quit
+        // after pause doesn't lose the last-played position.
+        if let episodeID = episode?.id {
+            store?.kernelPersistPosition(episodeID: episodeID, positionSecs: pausedPosition)
+        }
     }
 
     func seek(to time: TimeInterval) {
-        engine.seek(to: time)
-        Haptics.selection()
-        // When paused, Playing reports aren't flowing so Rust's saved position
-        // would be stale. PersistPosition writes directly to the store (no
-        // audio command returned) so the next play() → kernelLoad returns the
-        // correct resume point and doesn't snap the engine back.
-        if !isPlaying, let episodeID = episode?.id {
-            store?.kernelPersistPosition(episodeID: episodeID, positionSecs: time)
+        transport?.kernelSeek(positionSecs: time)
+        // Write the seeked position durably so that if the app is killed while
+        // paused after a scrub the next resume starts at the correct position
+        // rather than snapping back to the last persisted value. When playing,
+        // onPlayingTick / apply_writeback will overwrite this momentarily, so
+        // the call is a benign no-op in that path.
+        if let ep = episode {
+            store?.kernelPersistPosition(episodeID: ep.id, positionSecs: time)
         }
+        Haptics.selection()
     }
 
     func seekSnapping(to time: TimeInterval) { seek(to: time) }
 
     func skipBackward(_ seconds: TimeInterval? = nil) {
         let delta = seconds ?? engine.skipBackwardSeconds
-        let target = max(engine.currentTime - delta, 0)
-        engine.skip(back: seconds)
-        if !isPlaying, let episodeID = episode?.id {
-            store?.kernelPersistPosition(episodeID: episodeID, positionSecs: target)
+        if !isPlaying, let ep = episode {
+            // Mirror of skipForward: use pendingPausedSeekBase so consecutive
+            // back-taps while paused accumulate from the previous tap's target
+            // rather than all anchoring to the same stale AVPlayer time.
+            let base = pendingPausedSeekBase ?? engine.currentTime
+            let target = max(0, base - delta)
+            pendingPausedSeekBase = target
+            transport?.kernelSeek(positionSecs: target)
+            // apply_writeback won't run while paused — persist explicitly so a
+            // kill-before-resume restores the correct position.
+            store?.kernelPersistPosition(episodeID: ep.id, positionSecs: target)
+            return
         }
+        transport?.kernelSkipBackward(secs: delta)
     }
 
     func skipForward(_ seconds: TimeInterval? = nil) {
         let delta = seconds ?? engine.skipForwardSeconds
-        let target = min(engine.currentTime + delta, duration)
-        engine.skip(forward: seconds)
-        if !isPlaying, let episodeID = episode?.id {
-            store?.kernelPersistPosition(episodeID: episodeID, positionSecs: target)
+        if !isPlaying, let ep = episode {
+            // When paused, Playing ticks don't fire so Rust's position_secs
+            // stales out. Each rapid tap must accumulate from the *previous
+            // tap's target*, not from AVPlayer's position (which only updates
+            // when playing). pendingPausedSeekBase carries that running target
+            // across taps; it is cleared on resume or when Rust echoes a seek.
+            let base = pendingPausedSeekBase ?? engine.currentTime
+            let target = min(base + delta, ep.duration ?? base + delta)
+            pendingPausedSeekBase = target
+            transport?.kernelSeek(positionSecs: target)
+            // P2a: apply_writeback won't run while paused — persist explicitly
+            // so a kill-before-resume restores the correct position.
+            store?.kernelPersistPosition(episodeID: ep.id, positionSecs: target)
+            return
         }
+        transport?.kernelSkipForward(secs: delta)
     }
 
     func setRate(_ newRate: PlaybackRate) {
-        // Update the engine immediately so the UI reflects the new rate
-        // without waiting for the Rust kernel's async capability round-trip.
-        // kernelSetSpeed dispatches to Rust for persistence and AVPlayer sync;
-        // the resulting AudioCommand::SetSpeed callback calls engine.setRate
-        // again (idempotent). The direct update here ensures PlaybackState.rate
-        // (which reads engine.rate) is current in the same render cycle.
-        engine.setRate(newRate.rawValue)
-        store?.kernelSetSpeed(newRate.rawValue)
+        let result = transport?.kernelSetSpeed(newRate.rawValue)
+        applyAcceptedKernelSpeed(newRate.rawValue, result: result)
         Haptics.selection()
+    }
+
+    private func shouldStartEpisodeThroughKernelPlay(episodeID: UUID) -> Bool {
+        guard store != nil else { return false }
+        guard rustLoadedEpisodeID == episodeID else { return true }
+        let staged = store?.kernel?.podcastSnapshot?.nowPlaying?.episodeId?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let staged, !staged.isEmpty else { return true }
+        return UUID(uuidString: staged) != episodeID
     }
 
     var skipForwardSeconds: Int { Int(engine.skipForwardSeconds) }

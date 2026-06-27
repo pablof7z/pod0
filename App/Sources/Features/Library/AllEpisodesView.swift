@@ -1,5 +1,21 @@
 import SwiftUI
 
+// MARK: - LibrarySegment
+
+private enum LibrarySegment: String, CaseIterable, Identifiable {
+    case shows
+    case episodes
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .shows:    return "Shows"
+        case .episodes: return "Episodes"
+        }
+    }
+}
+
 // MARK: - AllEpisodesFilter
 
 enum AllEpisodesFilter: String, CaseIterable, Identifiable {
@@ -30,27 +46,60 @@ enum AllEpisodesFilter: String, CaseIterable, Identifiable {
         case .starred:    return "star.fill"
         }
     }
-
 }
 
 // MARK: - AllEpisodesView
 
-/// Library screen showing every episode across all subscriptions, newest
-/// first, with filter chips and scroll-triggered pagination so large libraries
-/// never render more rows than are needed.
+/// Library screen. Hosts a segmented Shows / Episodes picker.
+///
+/// - **Shows** — podcast artwork grid with unplayed-count badges, a filter
+///   rail (All / Unplayed / Downloaded / Transcribed) and a sort menu
+///   (Name / Recent / Unplayed count).
+/// - **Episodes** — newest-first episode list across all subscriptions with
+///   filter chips and scroll-triggered pagination.
 struct AllEpisodesView: View {
     @Environment(AppStateStore.self) private var store
 
-    @State private var filter: AllEpisodesFilter = .all
+    @AppStorage("library.segment") private var segment: LibrarySegment = .shows
+
+    // Episodes-segment state
+    @State private var episodeFilter: AllEpisodesFilter = .all
     @State private var searchText: String = ""
     @State private var isSearchActive: Bool = false
     @State private var visibleCount: Int = 50
     @State private var voiceOverDetailRoute: LibraryEpisodeRoute?
 
     var body: some View {
+        Group {
+            switch segment {
+            case .shows:
+                LibraryShowsView()
+                    .background(Color(.systemGroupedBackground).ignoresSafeArea())
+            case .episodes:
+                episodesContent
+            }
+        }
+        .navigationTitle("Library")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar { allToolbarItems }
+        .navigationDestination(for: Podcast.self) { podcast in
+            ShowDetailView(podcast: podcast)
+        }
+        .navigationDestination(for: LibraryEpisodeRoute.self) { route in
+            LibraryEpisodePlaceholder(route: route)
+        }
+        .navigationDestination(item: $voiceOverDetailRoute) { route in
+            LibraryEpisodePlaceholder(route: route)
+        }
+    }
+
+    // MARK: - Episodes segment
+
+    @ViewBuilder
+    private var episodesContent: some View {
         let podcasts = podcastsByID
         let projection = AllEpisodesProjection.load(
-            filter: filter,
+            filter: episodeFilter,
             query: searchText,
             limit: visibleCount,
             store: store
@@ -68,22 +117,34 @@ struct AllEpisodesView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
-        .navigationTitle("Library")
-        .navigationBarTitleDisplayMode(.large)
         .searchable(
             text: $searchText,
             isPresented: $isSearchActive,
             placement: .navigationBarDrawer(displayMode: .always),
             prompt: "Search episodes"
         )
-        .navigationDestination(for: LibraryEpisodeRoute.self) { route in
-            LibraryEpisodePlaceholder(route: route)
-        }
-        .navigationDestination(item: $voiceOverDetailRoute) { route in
-            LibraryEpisodePlaceholder(route: route)
-        }
-        .onChange(of: filter) { _, _ in visibleCount = 50 }
+        .onChange(of: episodeFilter) { _, _ in visibleCount = 50 }
         .onChange(of: searchText) { _, _ in visibleCount = 50 }
+    }
+
+    // MARK: - Toolbar
+
+    @ToolbarContentBuilder
+    private var allToolbarItems: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            Picker("", selection: $segment) {
+                ForEach(LibrarySegment.allCases) { s in
+                    Text(s.label).tag(s)
+                }
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 160)
+        }
+        if segment == .shows {
+            ToolbarItem(placement: .topBarTrailing) {
+                LibraryShowsSortMenu()
+            }
+        }
     }
 
     // MARK: - Computed data
@@ -92,7 +153,7 @@ struct AllEpisodesView: View {
         Dictionary(uniqueKeysWithValues: store.rustAllPodcasts().map { ($0.id, $0) })
     }
 
-    // MARK: - Sections
+    // MARK: - Episodes filter rail
 
     private var filterRailSection: some View {
         Section {
@@ -114,7 +175,7 @@ struct AllEpisodesView: View {
     private func filterChip(_ f: AllEpisodesFilter) -> some View {
         Button {
             Haptics.selection()
-            withAnimation(AppTheme.Animation.springFast) { filter = f }
+            withAnimation(AppTheme.Animation.springFast) { episodeFilter = f }
         } label: {
             HStack(spacing: AppTheme.Spacing.xs) {
                 if let symbol = f.systemImage {
@@ -126,10 +187,10 @@ struct AllEpisodesView: View {
             }
             .padding(.horizontal, AppTheme.Spacing.md)
             .padding(.vertical, AppTheme.Spacing.sm)
-            .foregroundStyle(filter == f ? Color.white : Color.primary)
+            .foregroundStyle(episodeFilter == f ? Color.white : Color.primary)
             .background(
                 Capsule(style: .continuous)
-                    .fill(filter == f
+                    .fill(episodeFilter == f
                           ? AnyShapeStyle(Color.accentColor)
                           : AnyShapeStyle(Color(.tertiarySystemFill)))
             )
@@ -137,7 +198,7 @@ struct AllEpisodesView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(f.label)
-        .accessibilityAddTraits(filter == f ? .isSelected : [])
+        .accessibilityAddTraits(episodeFilter == f ? .isSelected : [])
     }
 
     @ViewBuilder
@@ -148,7 +209,7 @@ struct AllEpisodesView: View {
     ) -> some View {
         if visible.isEmpty {
             Section {
-                emptyState
+                episodesEmptyState
             }
         } else {
             Section {
@@ -170,7 +231,7 @@ struct AllEpisodesView: View {
     }
 
     @ViewBuilder
-    private var emptyState: some View {
+    private var episodesEmptyState: some View {
         if !searchText.isEmpty {
             ContentUnavailableView.search(text: searchText)
                 .listRowSeparator(.hidden)
@@ -178,9 +239,9 @@ struct AllEpisodesView: View {
                 .padding(.top, AppTheme.Spacing.xl)
         } else {
             ContentUnavailableView(
-                emptyStateTitle,
-                systemImage: emptyStateIcon,
-                description: Text(emptyStateSubtitle)
+                episodesEmptyTitle,
+                systemImage: episodesEmptyIcon,
+                description: Text(episodesEmptySubtitle)
             )
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
@@ -188,8 +249,8 @@ struct AllEpisodesView: View {
         }
     }
 
-    private var emptyStateTitle: String {
-        switch filter {
+    private var episodesEmptyTitle: String {
+        switch episodeFilter {
         case .all:        return "No episodes yet."
         case .unplayed:   return "Nothing unplayed."
         case .inProgress: return "Nothing in progress."
@@ -198,8 +259,8 @@ struct AllEpisodesView: View {
         }
     }
 
-    private var emptyStateIcon: String {
-        switch filter {
+    private var episodesEmptyIcon: String {
+        switch episodeFilter {
         case .all:        return "tray"
         case .unplayed:   return "circle.dashed"
         case .inProgress: return "circle.lefthalf.filled"
@@ -208,8 +269,8 @@ struct AllEpisodesView: View {
         }
     }
 
-    private var emptyStateSubtitle: String {
-        switch filter {
+    private var episodesEmptySubtitle: String {
+        switch episodeFilter {
         case .all:
             return "Subscribe to podcasts from the Home tab to see episodes here."
         case .unplayed:
@@ -221,5 +282,34 @@ struct AllEpisodesView: View {
         case .starred:
             return "Star episodes from the episode detail view."
         }
+    }
+}
+
+// MARK: - LibraryShowsSortMenu
+
+/// Standalone sort-menu button for embedding in the Library Shows toolbar.
+/// Kept in this file so it stays within the 500-line hard limit for either
+/// file; it is tightly scoped to the Library feature.
+private struct LibraryShowsSortMenu: View {
+    @AppStorage("library.shows.sort") private var sort: LibraryShowsSort = .recentEpisode
+
+    var body: some View {
+        Menu {
+            ForEach(LibraryShowsSort.allCases) { s in
+                Button {
+                    Haptics.selection()
+                    withAnimation(AppTheme.Animation.springFast) { sort = s }
+                } label: {
+                    Label(s.label, systemImage: s.systemImage)
+                }
+            }
+        } label: {
+            Label("Sort", systemImage: sortSystemImage)
+        }
+        .accessibilityLabel("Sort shows")
+    }
+
+    private var sortSystemImage: String {
+        "arrow.up.arrow.down"
     }
 }

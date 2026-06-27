@@ -71,9 +71,8 @@ completion, not absence of all infrastructure.
 - **NIP-F4 is canonical:** PR #89 corrected the active NIP-F4 builders/parsers to
   the canonical wire shape, and the active Rust path now signs/publishes shows,
   episodes, and author claims while relay-backed discovery covers both kind:10154
-  shows and feedless kind:54 episodes. Remaining NIP-F4 work is relay routing
-  policy (`dispatch_nostr_relay` still hardcodes primal.net), durable retry, and
-  stale NIP74 naming cleanup.
+  shows and feedless kind:54 episodes. Remaining NIP-F4 work is durable retry,
+  relay/upload failure-state validation, and stale NIP74 naming cleanup.
 
 ## Core PR Sequence Status
 
@@ -124,9 +123,9 @@ completion, not absence of all infrastructure.
 | 24 | Profile editing + kind:0 publish | Partial | Current local `@AppStorage` fallback must become Rust/Nostr-owned profile publish plus relay confirmation/profile cache hydration. |
 | 25 | NIP-65 relay list | Partial | App relay editing now persists and reads through the NMP `configured_relays` store, and the obsolete `nostrPublicRelays` Swift/Rust settings mirror is gone. Remaining: real user/agent kind:10002 publish/refresh and routing integration; do not recreate an app-side relay array. |
 | 26 | NIP-F4 discovery | Done | kind:10154 show discovery is relay-backed via `NostrDiscoveryObserver` + `EnsureInterest`, and feedless Nostr-only subscription opens a kind:54 author-filtered relay interest through `SubscribeNostr`/`NostrEpisodesObserver`. RSS-backed NIP-F4 shows still use the existing feed subscribe path. |
-| 27 | NIP-F4 publish owned shows | Partial | Signing (real secp256k1), file-backed key persistence, relay dispatch, author claims, and key cleanup on delete are all implemented. Remaining: relay URL is hardcoded to primal.net; no durable retry queue on relay rejection. |
-| 28 | NIP-F4 publish episodes | Partial | Signing, Blossom upload (with enclosure fallback), and relay dispatch are implemented. Same relay-URL hardcode caveat as #27. |
-| 29 | Nostr episode comments | Scaffold | Replace `nostr_relay_pending` stubs with kind-1111 relay subscribe/publish and map local `EpisodeId` to NIP-73 podcast item anchors. |
+| 27 | NIP-F4 publish owned shows | Partial | Signing (real secp256k1), file-backed key persistence, configured write-relay dispatch, author claims, and key cleanup on delete are all implemented. Remaining: no durable retry queue on relay rejection. |
+| 28 | NIP-F4 publish episodes | Partial | Signing, Blossom upload (with enclosure fallback), and configured write-relay dispatch are implemented. Remaining: durable retry and validation around relay/upload failure states. |
+| 29 | Nostr episode comments | Partial | Kind-1111 relay subscribe/publish wiring exists through `comments_handler.rs`; validate end-to-end relay behavior, NIP-73 podcast item anchors, and platform UI states before marking done. |
 | 30 | Friends/social graph | Scaffold | Replace `nostr_pending` stub with kind:3 contact-list store, metadata hydration, subscription refresh, and snapshot projection. |
 
 ### Tier 3 - AI Features
@@ -138,7 +137,7 @@ completion, not absence of all infrastructure.
 | 33 | Agent memory | Partial | Memory CRUD exists; integrate with agent prompt/tool loop, source attribution, persistence migration, and privacy controls. |
 | 34 | Agent scheduled tasks | Scaffold | Replace run-now completion stamp with actual scheduler, task execution, notifications, persistence, and failure/retry policy. |
 | 35 | Transcripts | Partial | Viewer and cache exist; wire multi-source transcript discovery/fetch/STT providers, persistence, search indexing, and failure states. |
-| 36 | AI chapter compilation | Partial | Rust has `podcast.chapters.compile`, LLM-grounded synthesis, stub fallback with provenance, store persistence, and chapter projection. `AIChapterCompiler.swift` has been deleted; Player, Episode Detail, and transcript ingest now all call `store.kernelCompileChapters(episodeID:)` which dispatches the Rust action. Remaining: remove the preserved-state fallback in `AppStateStore+KernelProjection.swift`. |
+| 36 | AI chapter compilation | Partial | Rust has `podcast.chapters.compile`, LLM-grounded synthesis, stub fallback with provenance, store persistence, and chapter projection. `AIChapterCompiler.swift` has been deleted; Player, Episode Detail, and transcript ingest now all call `store.kernelCompileChapters(episodeID:)` which dispatches the Rust action. Remaining: validate generated chapter behavior and remove any stale comments that imply Swift still owns the fallback. |
 | 37 | Auto ad skip | Partial | Segment model/player hook exists; add detector/source of ad segments, user controls, false-positive safeguards, and validation. |
 | 38 | RAG/vector search | Scaffold | Replace substring ranker with `podcast-knowledge` embeddings/BM25, indexing jobs, scoped search, and result provenance. |
 | 39 | AI wiki | Scaffold | Replace placeholder articles with RAG-backed synthesis, citations, refresh/invalidation, and per-podcast storage. |
@@ -168,7 +167,8 @@ completion, not absence of all infrastructure.
 - Every scaffold must have one backlog item with: owner surface, current fake behavior, required real behavior, tests, and deletion criteria for temporary code.
 - Do not add new feature surfaces until the P0 protocol/compat/validation debt is actively shrinking.
 - When converting a scaffold, remove user-visible copy that implies the feature is complete unless the real backend works.
-- Every user-facing iPhone behavior change needs a `whats-new.json` entry.
+- Every user-facing iPhone behavior change needs a one-entry JSON file under
+  `App/Resources/changelog/`.
 
 ## Immediate Priority Order
 

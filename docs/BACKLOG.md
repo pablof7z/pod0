@@ -4,7 +4,16 @@ This is the tactical queue for active work, follow-ups, and pending decisions.
 Do not duplicate these items in `WIP.md`; `WIP.md` only records branches and
 worktrees currently in flight.
 
-- **open-search-nostr-result-await (#605).** `AddByURLForm` dispatches `podcast.open_search` for Nostr inputs but immediately surfaces an error rather than awaiting the async result. Once NMP #597 lands: observe `nostrResults` snapshot changes with a timeout (≈5 s), then fall through to RSS on `"nostr_not_recognised"`. Extend to `NostrDiscoverForm.swift` and `AddFriendSheet.swift` in the same pass. Also covers Phase 3 (TUI `handle_subscribe_input` and Android text-entry surfaces). Owner: whoever picks up #597 integration.
+- **open-search-nostr-result-await (#605).** The `podcast.open_search`
+  action scaffold exists, but current `main` is not wired end-to-end:
+  `AddByURLForm` subscribes `npub`/hex directly via `kernelSubscribeNostr`,
+  rejects NIP-05/nevent with a placeholder error, and `NostrDiscoverForm`
+  only filters already-fetched results. Once NMP #597 lands: route Nostr-facing
+  text input through `open_search`, observe `nostrResults` snapshot changes
+  with a timeout (≈5 s), then fall through to RSS only on
+  `"nostr_not_recognised"`. Extend to `NostrDiscoverForm.swift`,
+  `AddFriendSheet.swift`, TUI `handle_subscribe_input`, and Android
+  text-entry surfaces in the same pass. Owner: whoever picks up #597 integration.
 
 - **nostr-tab-open-search-wire (#605).** Wire the Nostr tab (`NostrDiscoverForm.swift`) to dispatch `open_search` and resolve NIP-05 addresses and nevent IDs entered by the user, so that `AddShowSheet` can route those inputs there end-to-end. Currently `NostrDiscoverForm` only filters already-fetched results; the fire-and-forget `kernelNostrOpenSearch` path in `AddShowSheet` was removed (#612) because it directed users to this unwired surface. When this is implemented: re-add the routing branch in `AddShowSheet` (or let `AddShowSheet` drive `open_search` directly and await results), and remove the "not yet supported" placeholder message.
 
@@ -20,7 +29,7 @@ worktrees currently in flight.
   builders and parsers with the NIP-F4 wire contract; removed non-NIP-F4
   `d`/`a`/`published_at`/`imeta` tags; round-trip tests verify absence.
 - ~~**p0-nipf4-real-keys.**~~ Done: file-backed persistence to `podcast-keys.json` (atomic write/rename), reload on restart, key cleanup on `remove_owned_podcast`. Keychain migration deferred indefinitely — file storage is the canonical path.
-- ~~**p0-nipf4-sign-and-publish.**~~ Done: `sign_event` produces real secp256k1-signed events with valid `id`/`pubkey`/`sig`; `dispatch_nostr_relay` publishes to `relay.primal.net` and returns `"published"` on relay acceptance. Relay URL is hardcoded but matches the only configured write relay. `relay_pending` status removed.
+- ~~**p0-nipf4-sign-and-publish.**~~ Done: `sign_event` produces real secp256k1-signed events with valid `id`/`pubkey`/`sig`; publish paths use the configured write-relay list and return `"published"` on relay acceptance. `relay_pending` status removed.
 - ~~**p0-nipf4-relay-discovery.**~~ Done: kind:10154 show discovery
   uses `NostrDiscoveryObserver` + `EnsureInterest` through the NMP relay pool,
   and feedless NIP-F4 subscription dispatches `SubscribeNostr`, opens a kind:54
@@ -1201,13 +1210,19 @@ worktrees currently in flight.
   feature in `docs/plan/nmp-feature-parity.md` is `Done` and the NMP app is
   the sole implementation for user flows.
 - **whats-new-audit.** Every user-facing iPhone change must add a unique
-  `shipped_at` entry in `App/Resources/whats-new.json` and the mirrored iOS
-  resource if still required by project shape.
+  one-entry JSON file under `App/Resources/changelog/` with a unique
+  `shipped_at` timestamp. Do not edit a shared `whats-new.json`; that file is
+  no longer the app's changelog storage shape.
 - **docs-status-audit.** Every PR that changes a listed item must edit the
   existing backlog item instead of adding parallel state or leaving stale
   status behind.
 - **line-limit-audit.** Continue enforcing the 300-line soft and 500-line hard
   limits. Split files before adding logic to near-limit modules.
+  Current `ci/check-file-sizes.sh` passes on `main`, but raw line-count audits
+  still surface large implementation files that should be split before they
+  grow further, especially `AppStateStore+KernelActions.swift`,
+  `AppStateStore+KernelProjection.swift`, `LivePodcastInventoryAdapter.swift`,
+  `AgentTools+Podcast.swift`, and near-limit Rust/Kotlin modules.
   - ~~**appstatestore-split.**~~ RESOLVED. `App/Sources/State/AppStateStore.swift`
     is now 417 lines on origin/main HEAD 12874d7e — under the 500-line hard limit.
     The blocking in-flight branches have landed and the file is within policy.

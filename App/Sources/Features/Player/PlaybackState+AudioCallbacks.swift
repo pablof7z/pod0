@@ -73,7 +73,7 @@ extension PlaybackState {
                        let url = URL(string: urlString) {
                         episode.enclosureURL = url
                     }
-                    self.setEpisode(episode, playAfterLoad: false)
+                    self.setEpisode(episode, playAfterLoad: false, dispatchKernelLoad: false)
                     if positionSecs > 0 { self.engine.seek(to: positionSecs) }
                 }
             case .play:
@@ -95,7 +95,8 @@ extension PlaybackState {
                 let stagedEpisodeID = self.store?.kernel?.podcastSnapshot?.nowPlaying?.episodeId
                 if let episodeID = Self.restoredEpisodeIDToStageBeforeRemotePlay(
                     kernelNowPlayingEpisodeID: stagedEpisodeID,
-                    restoredEpisodeID: self.episode?.id
+                    restoredEpisodeID: self.episode?.id,
+                    locallyLoadedEpisodeID: self.rustLoadedEpisodeID
                 ) {
                     self.store?.kernelLoad(episodeID: episodeID)
                 }
@@ -103,6 +104,10 @@ extension PlaybackState {
             case .pause:
                 self.engine.pause()
             case let .seek(positionSecs):
+                // Rust has sent an authoritative position — the pending paused
+                // skip accumulator is now stale; reset it so the next tap
+                // anchors from the echoed position.
+                self.pendingPausedSeekBase = nil
                 self.engine.seek(to: positionSecs)
             case .stop:
                 self.engine.pause()
@@ -117,16 +122,23 @@ extension PlaybackState {
     }
 
     func setRate(_ newRate: Double) {
-        engine.setRate(newRate)
-        store?.kernelSetSpeed(newRate)
+        let result = transport?.kernelSetSpeed(newRate)
+        applyAcceptedKernelSpeed(newRate, result: result)
+    }
+
+    func applyAcceptedKernelSpeed(_ speed: Double, result: DispatchResult?) {
+        guard case .some(.accepted) = result else { return }
+        engine.setRate(speed)
     }
 
     static func restoredEpisodeIDToStageBeforeRemotePlay(
         kernelNowPlayingEpisodeID: String?,
-        restoredEpisodeID: UUID?
+        restoredEpisodeID: UUID?,
+        locallyLoadedEpisodeID: UUID? = nil
     ) -> UUID? {
         let stagedEpisodeID = kernelNowPlayingEpisodeID?.trimmingCharacters(in: .whitespacesAndNewlines)
         guard stagedEpisodeID?.isEmpty ?? true else { return nil }
+        guard restoredEpisodeID != locallyLoadedEpisodeID else { return nil }
         return restoredEpisodeID
     }
 }

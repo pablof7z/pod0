@@ -57,4 +57,16 @@ final class PlaybackRemoteCommandRoutingTests: XCTestCase {
             )
         )
     }
+
+    func testRemotePlayDoesNotRestageWhenLocalLoadAlreadyArrived() {
+        let episodeID = UUID()
+
+        XCTAssertNil(
+            PlaybackState.restoredEpisodeIDToStageBeforeRemotePlay(
+                kernelNowPlayingEpisodeID: nil,
+                restoredEpisodeID: episodeID,
+                locallyLoadedEpisodeID: episodeID
+            )
+        )
+    }
 }

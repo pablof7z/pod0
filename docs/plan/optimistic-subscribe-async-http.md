@@ -1,6 +1,11 @@
 # Optimistic subscribe + async HTTP capability
 
-**Status:** in progress (branch `fix/optimistic-subscribe-async-http`)
+**Status:** landed on `main`; keep this file as the design record.
+
+Current code has the async HTTP capability namespace/report channel, pending
+feed-fetch registry, optimistic subscribe insert, and iOS/Android/TUI/headless
+executors wired. Follow-up work belongs in `docs/BACKLOG.md`, not in this plan
+as active implementation state.
 
 ## Problem
 

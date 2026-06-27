@@ -12,6 +12,26 @@ import XCTest
 final class ClippingsFixUITests: XCTestCase {
     override func setUp() { super.setUp(); continueAfterFailure = true }
 
+    func testSidebarClippingsRowOpensClippingsTab() {
+        let app = App.make()
+        XCTAssertTrue(launchApp(app), "app launched")
+
+        let sidebarButton = app.buttons["Open sidebar"]
+        XCTAssertTrue(sidebarButton.waitForExistence(timeout: 8), "sidebar button exists")
+        robustTap(sidebarButton)
+
+        let clippingsRow = app.buttons["sidebar-clippings-button"]
+        XCTAssertTrue(clippingsRow.waitForExistence(timeout: 5), "Clippings row exists")
+        robustTap(clippingsRow)
+
+        let clippingsTitle = app.navigationBars["Clippings"]
+        let emptyState = app.staticTexts["No Clippings Yet"]
+        XCTAssertTrue(
+            clippingsTitle.waitForExistence(timeout: 5) || emptyState.waitForExistence(timeout: 3),
+            "Clippings tab is visible after sidebar navigation"
+        )
+    }
+
     func testOrphanClipRendersCard() {
         // Launch with both seed flags: --UITestSeed for the standard library
         // fixture and --UITestSeedOrphanClip for the orphan clip injection.

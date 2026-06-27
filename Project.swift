@@ -7,7 +7,7 @@ let appName = "Podcastr"
 let appDisplayName = "Pod0"
 let appleTeamID = "456SHKPP26"
 let deploymentTarget: DeploymentTargets = .iOS("26.0")
-let manifestDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+let manifestDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 let disableLiteRTLMFlag = manifestDirectory.appendingPathComponent(".ci-disable-litertlm-package")
 let enableLiteRTLMPackage = !FileManager.default.fileExists(atPath: disableLiteRTLMFlag.path)
 

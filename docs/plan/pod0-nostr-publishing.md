@@ -7,7 +7,8 @@ Canonical status: tracked from `docs/plan.md` and `docs/BACKLOG.md`.
 NIP-F4 publishing is **substantially complete**. The following are done:
 - Per-podcast secp256k1 key generation + file-backed persistence (`podcast-keys.json`, atomic write, reload on restart, cleanup on delete)
 - Real event signing for kind:10154, kind:54, and kind:10064 (valid `id`/`pubkey`/`sig`)
-- Relay publish via `dispatch_nostr_relay` → `wss://relay.primal.net` (returns `"published"` on relay acceptance)
+- Relay publish via configured write relays (seeded defaults may include
+  `wss://relay.primal.net`) and returns `"published"` on relay acceptance
 - Blossom audio upload for episode events (with RSS enclosure fallback)
 - Author claims (kind:10064) signed with agent key and published to relay
 - kind:10154 show discovery via NMP relay pool (`NostrDiscoveryObserver` + `EnsureInterest`)
@@ -56,9 +57,6 @@ or explicitly quarantined as a read-only compatibility path.
 
 ## Remaining Work
 
-- **Hardcoded relay URL.** `dispatch_nostr_relay` publishes to
-  `wss://relay.primal.net` only. Should read the app's configured write relays.
-  Currently a no-op because primal.net is the only configured write relay.
 - **Stale type/parser names.** `NIP74Show`/`NIP74Episode` naming in
   `apps/podcast-discovery/` should be cleaned up or explicitly quarantined.
 - **No durable retry queue.** If relay rejects an event, publish fails silently
@@ -66,9 +64,9 @@ or explicitly quarantined as a read-only compatibility path.
 
 ## Next Steps
 
-1. Fix `dispatch_nostr_relay` to read configured write relays instead of hardcoding primal.net.
-2. Validate end-to-end on device: publish a show, confirm relay returns `"published"`, fetch it back.
-3. Clean up `NIP74Show`/`NIP74Episode` naming in `podcast-discovery`.
+1. Validate end-to-end on device: publish a show, confirm relay returns `"published"`, fetch it back.
+2. Clean up `NIP74Show`/`NIP74Episode` naming in `podcast-discovery`.
+3. Add durable retry/error-state handling for relay rejection and upload failures.
 
 ## Done Criteria
 
@@ -80,5 +78,5 @@ or explicitly quarantined as a read-only compatibility path.
 - `publish_show`, `publish_episode`, and `publish_author_claim` produce signed
   events and publish them to relays.
 - Discovery can subscribe to a Nostr-only podcast without relying on RSS.
-- Docs, tests, UI copy, and `whats-new.json` describe NIP-F4 as the
+- Docs, tests, UI copy, and `App/Resources/changelog/` entries describe NIP-F4 as the
   canonical publish/discovery protocol.

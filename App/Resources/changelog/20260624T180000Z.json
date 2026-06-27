@@ -1,0 +1,1 @@
+{ "shipped_at": "2026-06-24T18:00:00Z", "lines": ["Fixed playback glitches: auto-advance no longer resets to loading after advancing, scrubbing while paused now saves your position correctly, and repeated skip taps while paused now accumulate as expected."] }

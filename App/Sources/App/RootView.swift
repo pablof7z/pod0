@@ -74,10 +74,10 @@ struct RootView: View {
                     // `applyPreferences` guards on `engine.episode == nil`, but
                     // the mini-player restore in `setupPlaybackHandlers` calls
                     // `setEpisode` before the kernel snapshot fires, making
-                    // `engine.episode` non-nil at that point. So we apply the
-                    // rate explicitly whenever `defaultPlaybackRate` changes.
+                    // `engine.episode` non-nil at that point. Route through Rust
+                    // so the executor-only contract is upheld (#599).
                     if abs(old.defaultPlaybackRate - new.defaultPlaybackRate) > 0.001 {
-                        playbackState.engine.setRate(new.defaultPlaybackRate)
+                        playbackState.transport?.kernelSetSpeed(new.defaultPlaybackRate)
                     }
                 }
                 .sheet(isPresented: $showFullPlayer) {
@@ -216,14 +216,8 @@ struct RootView: View {
 
             AppSidebarView(
                 selectedTab: $selectedTab,
-                isPresented: $showSidebar,
-                onShowPodcasts: {
-                    selectedTab = .home
-                    // Defer the push so the tab switch renders first
-                    DispatchQueue.main.async {
-                        showAllPodcasts = true
-                    }
-                }
+                onSelectTab: routeFromSidebar(to:),
+                onShowPodcasts: openPodcastsFromSidebar
             )
             .frame(width: sidebarWidth)
             .ignoresSafeArea()
@@ -340,6 +334,29 @@ struct RootView: View {
         showAgentChat = true
     }
 
+    func routeFromSidebar(to tab: RootTab) {
+        Haptics.selection()
+        showFullPlayer = false
+        showSettings = false
+        showAgentChat = false
+        showSearch = false
+        spotlightSheet = nil
+        playerNavSubscriptionID = nil
+        generationSourceNostrRootID = nil
+        selectedTab = tab
+        withAnimation(AppTheme.Animation.spring) {
+            showSidebar = false
+        }
+    }
+
+    func openPodcastsFromSidebar() {
+        routeFromSidebar(to: .home)
+        // Defer the push so the tab switch renders first.
+        DispatchQueue.main.async {
+            showAllPodcasts = true
+        }
+    }
+
     // MARK: - Toolbar
 
     @ToolbarContentBuilder
@@ -375,6 +392,16 @@ struct RootView: View {
             .accessibilityLabel("Settings")
         }
         NostrConversationsToolbarItem()
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                Haptics.selection()
+                showVoiceMode = true
+            } label: {
+                Image(systemName: "waveform")
+            }
+            .accessibilityLabel("Start voice conversation")
+            .accessibilityIdentifier("voice.open")
+        }
         ToolbarItem(placement: .topBarTrailing) {
             Button {
                 Haptics.selection()

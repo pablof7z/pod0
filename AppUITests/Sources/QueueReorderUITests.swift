@@ -185,64 +185,17 @@ final class QueueReorderUITests: XCTestCase {
         let row1IdBefore = beforeAllRows.element(boundBy: 1).identifier
         snap(app, "qreorder-07-before-reorder")
 
-        // Step 7: Long-press the second row.
-        // On iOS 26, press(forDuration: 1.5) shows the SwiftUI contextMenu for
-        // a List row Button. The test then taps "Move to top" by label.
-        // As a fallback, if the a11y action already fired (direct invocation on
-        // some simulator configurations), moveToTopAlreadyFired short-circuits.
-        let secondRowForPress = app.buttons.matching(
-            NSPredicate(
-                format: "identifier BEGINSWITH 'queue-row-' " +
-                        "AND NOT identifier BEGINSWITH 'queue-row-remove-' " +
-                        "AND NOT identifier BEGINSWITH 'queue-row-ctx-'"
-            )).element(boundBy: 1)
-        secondRowForPress.press(forDuration: 1.5)
-        sleep(1)
-        snap(app, "qreorder-08-after-press")
-        dumpTree(app, "qreorder-08-tree")
-
-        // Check whether the a11y action already reordered the queue WITHOUT
-        // showing a context menu. We need ≥ 2 accessible rows (so we know the
-        // context menu is NOT overlaying and hiding one row behind the blur)
-        // AND the first row must now be the former second row.
-        let afterPressQuery = app.buttons.matching(
-            NSPredicate(
-                format: "identifier BEGINSWITH 'queue-row-' " +
-                        "AND NOT identifier BEGINSWITH 'queue-row-remove-' " +
-                        "AND NOT identifier BEGINSWITH 'queue-row-ctx-'"
-            ))
-        let afterPressCount = afterPressQuery.count
-        let afterPressFirstId = afterPressCount > 0
-            ? afterPressQuery.element(boundBy: 0).identifier : ""
-        // True only when BOTH rows are accessible (context menu dismissed) AND
-        // the order flipped. A context menu preview of the pressed row may match
-        // row1IdBefore coincidentally even if the context menu is still open
-        // (count == 1) — require count ≥ 2 to avoid false positives.
-        var moveToTopAlreadyFired = (afterPressCount >= 2 && afterPressFirstId == row1IdBefore)
-
-        if !moveToTopAlreadyFired {
-            // Context menu appeared — tap "Move to top" by label.
-            // Use CONTAINS[c] as a case-insensitive substring match because
-            // SwiftUI's Label(text, systemImage:) in a context menu may render
-            // the accessibility label as the text only OR as "text, image-name".
-            // NSPredicate not Sendable — fresh at each call site.
-            let ctxMoveBtn = app.buttons.matching(
-                NSPredicate(format: "label CONTAINS[c] 'Move to top'")).firstMatch
-            if ctxMoveBtn.waitForExistence(timeout: 4) {
-                ctxMoveBtn.tap()
-            } else {
-                // Dismiss any stale context menu and report failure.
-                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.05)).tap()
-                sleep(1)
-                snap(app, "qreorder-NOMOVEBTN")
-                dumpTree(app, "qreorder-NOMOVEBTN-tree")
-                XCTFail("queue-reorder: 'Move to top' was not invoked via a11y action " +
-                        "and 'Move to top' button not found in context menu after long-press. " +
-                        "Check PlayerQueueSheet has .accessibilityAction(named: Text(\"Move to top\")) " +
-                        "listed FIRST and a context-menu Button labeled 'Move to top'.")
-                return
-            }
+        // Step 7: Tap the row's explicit Move to top control. This avoids the
+        // brittle XCTest long-press/context-menu path and keeps the row tap
+        // action from accidentally playing/removing an item.
+        let moveTopButton = app.buttons["queue-move-top-\(row1IdBefore.replacingOccurrences(of: "queue-row-", with: ""))"]
+        guard moveTopButton.waitForExistence(timeout: 5) else {
+            snap(app, "qreorder-NOMOVEBTN")
+            dumpTree(app, "qreorder-NOMOVEBTN-tree")
+            XCTFail("queue-reorder: Move to top button not found for second row \(row1IdBefore)")
+            return
         }
+        moveTopButton.tap()
 
         // Wait for the kernel round-trip: state.moveQueue → kernelReorderQueue
         // → snapshot → onQueueFromKernel → state.queue update → view re-render.
@@ -282,7 +235,6 @@ final class QueueReorderUITests: XCTestCase {
                 NSPredicate(format: "label CONTAINS[c] 'move to top' OR label CONTAINS[c] 'remove from'")).count
             XCTFail("queue-reorder: only \(afterRowCount) row(s) after reorder. " +
                     "row0Before=\(row0IdBefore) row1Before=\(row1IdBefore) remaining=\(remainingId). " +
-                    "moveToTopFired=\(moveToTopAlreadyFired). " +
                     "allQRowBtns=\(allQRowBtns) ctxBtns=\(ctxBtns) rmBtns=\(rmBtns) " +
                     "ctxMenuVisible=\(ctxMenuBtns)"); return
         }

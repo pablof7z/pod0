@@ -24,6 +24,20 @@ extension AudioEngine {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 let seconds = time.seconds.isFinite ? time.seconds : 0
+                // If a seek is in flight, AVPlayer still reports the pre-seek
+                // position until the async seek completes. Suppress those stale
+                // ticks so they don't override the optimistic `currentTime`
+                // written synchronously in `seek(to:)`. Once the reported
+                // position lands within 1 s of the target the seek is considered
+                // complete and normal tracking resumes.
+                if let target = self.pendingSeekTarget {
+                    if abs(seconds - target) > 1.0 {
+                        // Seek still in flight — keep the optimistic display value.
+                        return
+                    }
+                    // AVPlayer has caught up to the seeked position; clear the flag.
+                    self.pendingSeekTarget = nil
+                }
                 self.setCurrentTime(seconds)
                 self.publishNowPlayingElapsed()
                 self.republishIfChapterChanged()
