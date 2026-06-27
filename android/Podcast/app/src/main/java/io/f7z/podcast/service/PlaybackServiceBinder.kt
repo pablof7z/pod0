@@ -3,6 +3,7 @@ package io.f7z.podcast.service
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
+import io.f7z.podcast.capabilities.KernelForwardingPlayer
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -37,23 +38,39 @@ import java.util.concurrent.atomic.AtomicReference
 internal object PlaybackServiceBinder {
 
     /**
-     * Snapshot of what `PodcastPlaybackService.onCreate` published. Both
-     * fields go from `null` → set → `null` exactly once per service
-     * lifetime.
+     * Snapshot of what `PodcastPlaybackService.onCreate` published.
+     * - `innerPlayer`: the raw ExoPlayer, used by executors and listeners.
+     * - `outerPlayer`: the KernelForwardingPlayer wrapping innerPlayer,
+     *   given to MediaSession so lock-screen/Bluetooth commands route
+     *   through the kernel.
+     * - `session`: the MediaSession for system integration.
      */
-    data class Handle(val player: Player, val session: MediaSession)
+    data class Handle(
+        val innerPlayer: ExoPlayer,
+        val outerPlayer: KernelForwardingPlayer,
+        val session: MediaSession,
+    ) {
+        /**
+         * Convenience accessor for backward compatibility with code that
+         * only needs the executor player.
+         */
+        val player: ExoPlayer get() = innerPlayer
+    }
 
     private val ref: AtomicReference<Handle?> = AtomicReference(null)
 
     /**
      * Called by `PodcastPlaybackService.onCreate` once the player and
-     * session are ready for foreign attachment. The `MediaSession` is
-     * unused today (its system surface comes for free); kept on the
-     * handle so a future `PlayerNotificationManager` wire-up can pick it
-     * up without re-plumbing.
+     * session are ready for foreign attachment.
      */
-    fun publish(player: ExoPlayer, session: MediaSession?) {
-        ref.set(if (session != null) Handle(player, session) else null)
+    fun publish(
+        innerPlayer: ExoPlayer,
+        outerPlayer: KernelForwardingPlayer,
+        session: MediaSession?,
+    ) {
+        ref.set(
+            if (session != null) Handle(innerPlayer, outerPlayer, session) else null
+        )
     }
 
     /**

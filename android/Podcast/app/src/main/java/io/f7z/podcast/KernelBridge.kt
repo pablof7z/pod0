@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicLong
  * (`io.f7z.podcast.KernelBridge`) is hard-coded — is fine for a proof-of-
  * concept and will be factored out by M14 codegen.
  */
-class KernelBridge {
+class KernelBridge : KernelDispatcher {
     /** Opaque pointer to the Rust `Session` struct. 0 means freed/uninitialized. */
     private val handle = AtomicLong(0L)
 
@@ -78,7 +78,7 @@ class KernelBridge {
      * envelope (`{"correlation_id":...}` on accept, `{"error":...}` on
      * rejection) or `null` on any FFI failure (D6).
      */
-    fun dispatchAction(namespace: String, payloadJson: String): String? {
+    override fun dispatchAction(namespace: String, payloadJson: String): String? {
         val h = handle.get(); return if (h != 0L) nativeDispatchAction(h, namespace, payloadJson) else null
     }
 

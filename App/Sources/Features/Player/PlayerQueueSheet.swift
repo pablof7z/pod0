@@ -103,37 +103,47 @@ struct PlayerQueueSheet: View {
         List {
             Section {
                 ForEach(resolvedItems, id: \.item.id) { pair in
-                    // Wrapped in a `Button` (not `.onTapGesture`) because
-                    // SwiftUI's always-active edit mode can swallow tap
-                    // gestures on the trailing edge where the move handle
-                    // sits. `Button` reliably hits the whole row.
-                    Button {
-                        play(item: pair.item, episode: pair.episode)
-                    } label: {
-                        PlayerQueueRow(
-                            episode: pair.episode,
-                            showName: store.podcast(id: pair.episode.podcastID)?.title ?? "",
-                            showImageURL: store.podcast(id: pair.episode.podcastID)?.imageURL,
-                            segmentLabel: pair.item.label,
-                            segmentRange: segmentRange(for: pair.item)
-                        )
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("queue-row-\(pair.item.id)")
-                    .accessibilityAction(named: Text("Move to top")) {
-                        // Primary long-press action (also invoked directly by
-                        // XCTest via press(forDuration:) on iOS 26). Listed
-                        // first so it is the default gesture action.
-                        if let idx = state.queue.firstIndex(where: { $0.id == pair.item.id }),
-                           idx > 0 {
-                            state.moveQueue(from: IndexSet(integer: idx), to: 0)
-                            Haptics.selection()
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        // Wrapped in a `Button` (not `.onTapGesture`) because
+                        // SwiftUI's always-active edit mode can swallow tap
+                        // gestures on the trailing edge where the move handle
+                        // sits. `Button` reliably hits the whole row.
+                        Button {
+                            play(item: pair.item, episode: pair.episode)
+                        } label: {
+                            PlayerQueueRow(
+                                episode: pair.episode,
+                                showName: store.podcast(id: pair.episode.podcastID)?.title ?? "",
+                                showImageURL: store.podcast(id: pair.episode.podcastID)?.imageURL,
+                                segmentLabel: pair.item.label,
+                                segmentRange: segmentRange(for: pair.item)
+                            )
+                            .contentShape(Rectangle())
                         }
-                    }
-                    .accessibilityAction(named: Text("Remove")) {
-                        state.removeFromQueue(itemID: pair.item.id)
-                        Haptics.light()
+                        .buttonStyle(.plain)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("queue-row-\(pair.item.id)")
+                        .accessibilityAction(named: Text("Move to top")) {
+                            moveToTop(pair.item)
+                        }
+                        .accessibilityAction(named: Text("Remove")) {
+                            state.removeFromQueue(itemID: pair.item.id)
+                            Haptics.light()
+                        }
+
+                        if canMoveToTop(pair.item) {
+                            Button {
+                                moveToTop(pair.item)
+                            } label: {
+                                Image(systemName: "arrow.up.to.line")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .frame(width: 34, height: 34)
+                            }
+                            .buttonStyle(.borderless)
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel("Move to top")
+                            .accessibilityIdentifier("queue-move-top-\(pair.item.id)")
+                        }
                     }
                     .contextMenu {
                         // "Move to top" appears first so it is prominent in
@@ -142,11 +152,7 @@ struct PlayerQueueSheet: View {
                         // are UIAction-based and the modifier leaks onto the
                         // outer List row, confusing XCTest element lookup.
                         Button {
-                            if let idx = state.queue.firstIndex(where: { $0.id == pair.item.id }),
-                               idx > 0 {
-                                state.moveQueue(from: IndexSet(integer: idx), to: 0)
-                                Haptics.selection()
-                            }
+                            moveToTop(pair.item)
                         } label: {
                             Label("Move to top", systemImage: "arrow.up.to.line")
                         }
@@ -186,6 +192,22 @@ struct PlayerQueueSheet: View {
     private func segmentRange(for item: QueueItem) -> String? {
         guard let start = item.startSeconds, let end = item.endSeconds else { return nil }
         return "\(PlayerTimeFormat.clock(start)) – \(PlayerTimeFormat.clock(end))"
+    }
+
+    private func canMoveToTop(_ item: QueueItem) -> Bool {
+        guard let idx = state.queue.firstIndex(where: { $0.id == item.id }) else {
+            return false
+        }
+        return idx > 0
+    }
+
+    private func moveToTop(_ item: QueueItem) {
+        guard let idx = state.queue.firstIndex(where: { $0.id == item.id }),
+              idx > 0 else {
+            return
+        }
+        state.moveQueue(from: IndexSet(integer: idx), to: 0)
+        Haptics.selection()
     }
 
     // MARK: - Footer

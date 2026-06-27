@@ -102,7 +102,6 @@ final class AudioCapability: NSObject {
     func start() {
         guard !started else { return }
         started = true
-        installRemoteCommands()
     }
 
     /// Idempotent. Marks the executor inactive. Does NOT release
@@ -111,7 +110,6 @@ final class AudioCapability: NSObject {
     func stop() {
         started = false
         cancelSleepTimer()
-        removeRemoteCommands()
     }
 
     var isStarted: Bool { started }

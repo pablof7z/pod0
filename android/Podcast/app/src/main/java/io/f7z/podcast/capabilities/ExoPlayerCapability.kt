@@ -134,7 +134,8 @@ class ExoPlayerCapability(
     fun detach() {
         cancelSleepTimer()
         val handle = PlaybackServiceBinder.current() ?: return
-        listener?.let { handle.player.removeListener(it) }
+        handle.outerPlayer.bridge = null
+        listener?.let { handle.innerPlayer.removeListener(it) }
         listener = null
     }
 
@@ -158,7 +159,7 @@ class ExoPlayerCapability(
         // a cold start finds the player.
         bindListenerIfReady()
         val handle = PlaybackServiceBinder.current() ?: return
-        val player = handle.player
+        val player = handle.innerPlayer
 
         when (type) {
             "load" -> {
@@ -248,9 +249,10 @@ class ExoPlayerCapability(
         val newListener = ExoPlayerReportListener(
             emit = ::emit,
             currentUrl = { lastReportedUrl },
-            playerProvider = { PlaybackServiceBinder.current()?.player },
+            playerProvider = { PlaybackServiceBinder.current()?.innerPlayer },
         )
-        handle.player.addListener(newListener)
+        handle.innerPlayer.addListener(newListener)
+        handle.outerPlayer.bridge = this.bridge
         listener = newListener
     }
 

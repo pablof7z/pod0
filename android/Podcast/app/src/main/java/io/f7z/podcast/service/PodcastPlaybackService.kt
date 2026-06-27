@@ -6,6 +6,7 @@ import androidx.media3.common.C
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import io.f7z.podcast.capabilities.KernelForwardingPlayer
 
 /**
  * Foreground media-session host for the Android audio capability.
@@ -48,6 +49,7 @@ class PodcastPlaybackService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
     private var exoPlayer: ExoPlayer? = null
+    private var forwardingPlayer: KernelForwardingPlayer? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -74,17 +76,20 @@ class PodcastPlaybackService : MediaSessionService() {
 
         exoPlayer = player
 
-        // `MediaSession` is the glue that exposes `player` to the platform's
-        // media controls (lock screen, Bluetooth, Auto). The default callback
-        // forwards `setMediaItems` + transport commands directly to the
-        // player — exactly the no-policy executor behaviour the kernel needs.
-        mediaSession = MediaSession.Builder(this, player).build()
+        // Wrap the raw ExoPlayer with KernelForwardingPlayer so lock-screen,
+        // Bluetooth, and Android Auto transport commands route through the
+        // Rust kernel before executing.
+        val outerPlayer = KernelForwardingPlayer(player)
+        forwardingPlayer = outerPlayer
+
+        // `MediaSession` is the glue that exposes the forwarding player to
+        // the platform's media controls (lock screen, Bluetooth, Auto).
+        // Transport commands now route through the kernel-forwarding wrapper.
+        mediaSession = MediaSession.Builder(this, outerPlayer).build()
 
         // Publish the binder to the in-process holder so the capability and
-        // the activity can attach the `Player.Listener` and dispatch
-        // commands. The service is otherwise opaque — the binder is the
-        // single seam.
-        PlaybackServiceBinder.publish(player, mediaSession)
+        // the activity can attach the `Player.Listener` and dispatch commands.
+        PlaybackServiceBinder.publish(player, outerPlayer, mediaSession)
     }
 
     /**
@@ -110,12 +115,14 @@ class PodcastPlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         PlaybackServiceBinder.clear()
+        forwardingPlayer?.bridge = null
         mediaSession?.run {
             player.release()
             release()
         }
         mediaSession = null
         exoPlayer = null
+        forwardingPlayer = null
         super.onDestroy()
     }
 }

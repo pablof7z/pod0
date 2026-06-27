@@ -74,10 +74,10 @@ struct RootView: View {
                     // `applyPreferences` guards on `engine.episode == nil`, but
                     // the mini-player restore in `setupPlaybackHandlers` calls
                     // `setEpisode` before the kernel snapshot fires, making
-                    // `engine.episode` non-nil at that point. So we apply the
-                    // rate explicitly whenever `defaultPlaybackRate` changes.
+                    // `engine.episode` non-nil at that point. Route through Rust
+                    // so the executor-only contract is upheld (#599).
                     if abs(old.defaultPlaybackRate - new.defaultPlaybackRate) > 0.001 {
-                        playbackState.engine.setRate(new.defaultPlaybackRate)
+                        playbackState.transport?.kernelSetSpeed(new.defaultPlaybackRate)
                     }
                 }
                 .sheet(isPresented: $showFullPlayer) {
