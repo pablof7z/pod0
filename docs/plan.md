@@ -13,7 +13,7 @@ Detailed implementation plans live under `docs/plan/` and are linked from this f
 | TUI feature parity foundation and terminal surface expansion. | Active | `docs/plan/tui-parity.md` |
 | TUI live agent validation with Ollama Cloud. | Active | `docs/plan/tui-agent-live-validation.md` |
 | Shared LLM provider transport and typed task intents. | Active | `docs/plan/shared-llm-task-architecture.md` |
-| Optimistic subscribe + async HTTP capability (instant subscribe, off-thread feed hydration). | Active | `docs/plan/optimistic-subscribe-async-http.md` |
+| Optimistic subscribe + async HTTP capability (instant subscribe, off-thread feed hydration). | Landed | `docs/plan/optimistic-subscribe-async-http.md` |
 
 ## Planning Files
 

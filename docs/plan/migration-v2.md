@@ -217,8 +217,8 @@ Status: **todo**.
   `actions_tests.rs`, `player_module_tests.rs`,
   `host_op_handler_tests.rs`).
 - Focused `xcodebuild test` on the player test bundle passes.
-- Add `whats-new.json` entries only for user-visible deltas (most of M1
-  is internal and needs none).
+- Add `App/Resources/changelog/<UTC>.json` entries only for user-visible
+  deltas (most of M1 is internal and needs none).
 
 ---
 
@@ -427,10 +427,10 @@ Status: **todo**.
 
 ## Cross-cutting reminders
 
-- **No `whats-new.json` entry** for internal-only refactors. Add an entry
-  whenever a user-visible behaviour changes (e.g. "Sleep timer label now
-  updates from Rust" produces no entry; "Auto-skip-ads now works on
-  CarPlay" does).
+- **No changelog entry** for internal-only refactors. Add a one-entry JSON file
+  under `App/Resources/changelog/` whenever a user-visible behaviour changes
+  (e.g. "Sleep timer label now updates from Rust" produces no entry;
+  "Auto-skip-ads now works on CarPlay" does).
 - **Files > 300 lines** during any of these milestones need to be split
   before adding code, per `AGENTS.md`.
 - **Every PR** runs `git diff --check` and the focused tests touched by

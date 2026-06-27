@@ -70,6 +70,7 @@ struct VoiceView: View {
             .padding(.top, AppTheme.Spacing.md)
         }
         .preferredColorScheme(.dark)
+        .accessibilityIdentifier("voice.view")
         .onAppear { activate() }
         .onDisappear {
             // Always release the mic on teardown. `deactivate` (StopListening)

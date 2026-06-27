@@ -47,10 +47,12 @@ Route every Nostr-facing text-entry/discovery surface through NMP's framework-le
 - Check android/Podcast/app/src/main/java/io/f7z/podcast/ui/ for any Subscribe/Add-Friend/search screens
 - Record scope for Phase 3
 
-### Phase 1 — Rust kernel: podcast.open_search handler (blocked on #597)
+### Phase 1 — Rust kernel: podcast.open_search handler (partially scaffolded; blocked on #597 for real classifier/result behavior)
 
-**Step 3:** Create apps/nmp-app-podcast/src/open_search_handler.rs (new, < 300 lines)
-- Function: handle_open_search(state, nmp, input: String)
+**Step 3:** Finish apps/nmp-app-podcast/src/open_search_handler.rs
+- Current `main` has a structural handler/action scaffold and nsec rejection.
+- Replace placeholder `pending`/`nip05_pending` responses with real NMP
+  classifier/resolver/search behavior once #597's typed NMP baseline lands.
 - Calls NMP input-intent classifier
 - Routes by intent:
   - npub / nprofile / hex pubkey → subscribe_nostr with extracted author_pubkey_hex and relay hints from nprofile TLV
@@ -58,14 +60,15 @@ Route every Nostr-facing text-entry/discovery surface through NMP's framework-le
   - NIP-50 plain-text query → dispatch relay-targeted search through NMP NIP-50; write results to nostr_search_results slot
   - Unrecognised input → return "nostr_not_recognised" error for UI fallback to RSS
 
-**Step 4:** Add PodcastAction::OpenSearch variant
-- File: apps/nmp-app-podcast/src/ffi/actions/podcast_module.rs
-- Variant: OpenSearch { input: String }
-- Wire decode_payload() for typed bytes doorway (post-#597)
+**Step 4:** Keep `PodcastAction::OpenSearch` authoritative
+- The variant and dispatch arm already exist on `main`.
+- Refresh decode/typed-byte details after #597 lands so shells do not grow
+  duplicate Nostr parsing.
 
-**Step 5:** Wire OpenSearch dispatch
-- File: apps/nmp-app-podcast/src/host_op_handler/podcast_action_dispatch.rs
-- Add PodcastAction::OpenSearch arm calling open_search_handler::handle_open_search
+**Step 5:** Complete OpenSearch dispatch semantics
+- The action arm currently calls the placeholder handler.
+- Replace placeholder returns with terminal results/projection updates that
+  native shells can await.
 
 **Step 6:** Optional: Add nostr_search_results projection
 - If NIP-50 results need separate slot from nostr_results:

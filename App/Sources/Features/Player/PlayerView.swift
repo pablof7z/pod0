@@ -24,7 +24,7 @@ struct PlayerView: View {
     @State private var showQueueSheet: Bool = false
     @State private var showShareSheet: Bool = false
     @State private var showVoiceNoteSheet: Bool = false
-    @State private var showingShowNotes: Bool = false
+    @State private var selectedContentTab: PlayerContentTab = .chapters
     @State private var episodeDetailTarget: UUID? = nil
     /// Tracks the playhead position captured at the moment the "Add Note"
     /// button was tapped — used as the anchor position for the new note.
@@ -46,9 +46,9 @@ struct PlayerView: View {
                 .padding(.horizontal, AppTheme.Spacing.md)
                 .padding(.top, AppTheme.Spacing.sm)
                 .padding(.bottom, AppTheme.Spacing.sm)
-            carouselPageIndicator
+            contentTabBar
                 .padding(.horizontal, AppTheme.Spacing.md)
-            TabView(selection: $showingShowNotes) {
+            TabView(selection: $selectedContentTab) {
                 ScrollViewReader { proxy in
                     ScrollView(.vertical, showsIndicators: false) {
                         chaptersPanel
@@ -60,13 +60,17 @@ struct PlayerView: View {
                         proxy.scrollTo(activeID, anchor: .center)
                     }
                 }
-                .tag(false)
+                .tag(PlayerContentTab.chapters)
+                PlayerTranscriptScrollView(state: state, useGlassCard: true)
+                    .padding(.horizontal, AppTheme.Spacing.md)
+                    .padding(.bottom, AppTheme.Spacing.lg)
+                    .tag(PlayerContentTab.transcript)
                 ScrollView(.vertical, showsIndicators: false) {
                     PlayerShowNotesView(episode: liveEpisode)
                         .padding(.horizontal, AppTheme.Spacing.md)
                         .padding(.bottom, AppTheme.Spacing.lg)
                 }
-                .tag(true)
+                .tag(PlayerContentTab.showNotes)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
         }
@@ -147,7 +151,10 @@ struct PlayerView: View {
             onDismiss: { dismiss() },
             onShare: { showShareSheet = true },
             onShowSleepTimer: { showSleepSheet = true },
-            onShowQueue: { showQueueSheet = true }
+            onShowQueue: { showQueueSheet = true },
+            onOpenAgent: {
+                NotificationCenter.default.post(name: .askAgentRequested, object: nil)
+            }
         )
     }
 
@@ -257,20 +264,16 @@ struct PlayerView: View {
 
     // MARK: - Carousel page indicator
 
-    private var carouselPageIndicator: some View {
-        HStack(spacing: 0) {
-            Spacer()
-            HStack(spacing: 5) {
-                Capsule()
-                    .fill(!showingShowNotes ? Color.primary.opacity(0.7) : Color.secondary.opacity(0.25))
-                    .frame(width: !showingShowNotes ? 16 : 6, height: 5)
-                Capsule()
-                    .fill(showingShowNotes ? Color.primary.opacity(0.7) : Color.secondary.opacity(0.25))
-                    .frame(width: showingShowNotes ? 16 : 6, height: 5)
-            }
-            .animation(AppTheme.Animation.spring, value: showingShowNotes)
-            Spacer()
-            if !showingShowNotes, state.episode != nil {
+    private var contentTabBar: some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            LiquidGlassSegmentedPicker(
+                "Player content",
+                selection: $selectedContentTab,
+                segments: PlayerContentTab.allCases.map { ($0, $0.label) }
+            )
+            .accessibilityIdentifier("player.content.tabs")
+
+            if selectedContentTab == .chapters, state.episode != nil {
                 Button {
                     noteAnchorTime = state.currentTime
                     showAddNoteSheet = true
@@ -424,5 +427,19 @@ struct PlayerView: View {
 
     private struct EpisodeDetailTarget: Identifiable {
         let id: UUID
+    }
+
+    private enum PlayerContentTab: String, CaseIterable, Hashable {
+        case chapters
+        case transcript
+        case showNotes
+
+        var label: String {
+            switch self {
+            case .chapters: return "Chapters"
+            case .transcript: return "Transcript"
+            case .showNotes: return "Notes"
+            }
+        }
     }
 }

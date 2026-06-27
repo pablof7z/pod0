@@ -1,0 +1,1 @@
+{ "shipped_at": "2026-06-24T20:01:00Z", "lines": ["Fixed: tapping a chapter in the player now reliably seeks to that chapter's start position."] }

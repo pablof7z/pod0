@@ -1,11 +1,8 @@
 import SwiftUI
 
 // USAGE:
-// Internal-only renderer. No longer referenced from `PlayerView` — the player
-// always shows chapters now. Kept for the clip composer / quote share /
-// ask-agent surfaces that still operate on transcript segments inside their
-// own sheets. Transcripts are an extraction substrate, not user-visible
-// content; do not re-add this as a primary player surface.
+// Synced transcript renderer used by the full player and the clip/ask-agent
+// surfaces that operate on transcript segments.
 
 // MARK: - PlayerTranscriptScrollView
 

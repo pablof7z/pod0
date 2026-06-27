@@ -71,8 +71,24 @@ struct LibraryGridCell: View {
             )
             .aspectRatio(1, contentMode: .fit)
             .overlay(artworkOverlay)
+            .overlay(alignment: .topTrailing) {
+                if unplayedCount > 0 {
+                    unplayedBadge
+                }
+            }
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.Corner.lg, style: .continuous))
             .appShadow(AppTheme.Shadow.subtle)
+    }
+
+    private var unplayedBadge: some View {
+        Text(unplayedCount > 99 ? "99+" : "\(unplayedCount)")
+            .font(.caption2.weight(.bold))
+            .monospacedDigit()
+            .foregroundStyle(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(Color.accentColor, in: Capsule(style: .continuous))
+            .padding(6)
     }
 
     @ViewBuilder
