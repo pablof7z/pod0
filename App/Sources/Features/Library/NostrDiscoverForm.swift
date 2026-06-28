@@ -19,6 +19,8 @@ struct NostrDiscoverForm: View {
     @State private var query: String = ""
     @State private var subscribingID: String?
     @State private var rowErrors: [String: String] = [:]
+    @State private var activeSearchSessionID: String?
+    @State private var searchError: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -47,6 +49,15 @@ struct NostrDiscoverForm: View {
         }
     }
 
+    private var searchHits: [NostrSearchHit] {
+        guard let activeSearchSessionID else { return [] }
+        return store.kernel?.nostrSearchSessions[activeSearchSessionID]?.hits ?? []
+    }
+
+    private var hasSearchSession: Bool {
+        activeSearchSessionID != nil
+    }
+
     // MARK: - Search field
 
     private var searchField: some View {
@@ -56,14 +67,23 @@ struct NostrDiscoverForm: View {
             TextField("Filter shows", text: $query)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+                .submitLabel(.search)
+                .onSubmit(submitSearch)
                 .frame(maxWidth: .infinity)
             if !query.isEmpty {
-                Button { query = "" } label: {
+                Button { clearSearch() } label: {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Clear")
             }
+            Button { submitSearch() } label: {
+                Image(systemName: "arrow.right.circle.fill")
+                    .foregroundStyle(query.trimmed.isEmpty ? Color.secondary : Color.accentColor)
+            }
+            .buttonStyle(.plain)
+            .disabled(query.trimmed.isEmpty)
+            .accessibilityLabel("Search Nostr")
         }
         .padding(AppTheme.Spacing.md)
         .background(
@@ -78,10 +98,10 @@ struct NostrDiscoverForm: View {
 
     @ViewBuilder
     private var content: some View {
-        if filteredShows.isEmpty {
+        if searchHits.isEmpty && filteredShows.isEmpty {
             emptyState
         } else {
-            showsList
+            resultList
         }
     }
 
@@ -95,7 +115,21 @@ struct NostrDiscoverForm: View {
             Image(systemName: "antenna.radiowaves.left.and.right")
                 .font(.system(size: 40, weight: .light))
                 .foregroundStyle(.tertiary)
-            if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if let searchError {
+                Text("Search unavailable")
+                    .font(AppTheme.Typography.headline)
+                Text(searchError)
+                    .font(AppTheme.Typography.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            } else if hasSearchSession {
+                Text("Searching relays…")
+                    .font(AppTheme.Typography.headline)
+                Text("Relay results appear as NIP-50 search responses arrive.")
+                    .font(AppTheme.Typography.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            } else if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text("Searching…")
                     .font(AppTheme.Typography.headline)
                 Text("Looking for NIP-F4 shows on this relay. Results appear as the relay responds.")
@@ -117,31 +151,14 @@ struct NostrDiscoverForm: View {
 
     // MARK: - Shows list
 
-    private var showsList: some View {
+    private var resultList: some View {
         ScrollView {
             LazyVStack(spacing: 0) {
-                HStack {
-                    Text("Nostr Shows")
-                        .font(AppTheme.Typography.headline)
-                    Spacer()
-                    Text("\(filteredShows.count)")
-                        .font(AppTheme.Typography.caption)
-                        .foregroundStyle(.secondary)
+                if hasSearchSession {
+                    searchSection
                 }
-                .padding(.horizontal, AppTheme.Spacing.lg)
-                .padding(.bottom, AppTheme.Spacing.xs)
-
-                ForEach(filteredShows) { show in
-                    NostrShowRow(
-                        show: show,
-                        isSubscribing: subscribingID == show.id,
-                        isAlreadySubscribed: isAlreadySubscribed(show),
-                        rowError: rowErrors[show.id],
-                        onSubscribe: { Task { await subscribe(to: show) } }
-                    )
-                    .padding(.horizontal, AppTheme.Spacing.lg)
-                    Divider()
-                        .padding(.leading, AppTheme.Spacing.lg + 64 + AppTheme.Spacing.md)
+                if !filteredShows.isEmpty {
+                    showsSection
                 }
             }
             .padding(.bottom, AppTheme.Spacing.xl)
@@ -149,7 +166,105 @@ struct NostrDiscoverForm: View {
         .scrollDismissesKeyboard(.interactively)
     }
 
+    private var searchSection: some View {
+        VStack(spacing: 0) {
+            sectionHeader(title: "Relay Search", count: searchHits.count)
+            if searchHits.isEmpty {
+                Text("No relay results yet.")
+                    .font(AppTheme.Typography.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, AppTheme.Spacing.lg)
+                    .padding(.vertical, AppTheme.Spacing.md)
+            } else {
+                ForEach(searchHits) { hit in
+                    NostrSearchHitRow(
+                        hit: hit,
+                        isSubscribing: subscribingID == hit.id,
+                        isAlreadySubscribed: store.rustIsAlreadySubscribed(
+                            feedURL: nil,
+                            ownerPubkey: hit.author
+                        ),
+                        rowError: rowErrors[hit.id],
+                        onSubscribe: { Task { await subscribe(to: hit) } }
+                    )
+                    .padding(.horizontal, AppTheme.Spacing.lg)
+                    Divider()
+                        .padding(.leading, AppTheme.Spacing.lg + 48 + AppTheme.Spacing.md)
+                }
+            }
+        }
+    }
+
+    private var showsSection: some View {
+        VStack(spacing: 0) {
+            sectionHeader(title: "Nostr Shows", count: filteredShows.count)
+            ForEach(filteredShows) { show in
+                NostrShowRow(
+                    show: show,
+                    isSubscribing: subscribingID == show.id,
+                    isAlreadySubscribed: isAlreadySubscribed(show),
+                    rowError: rowErrors[show.id],
+                    onSubscribe: { Task { await subscribe(to: show) } }
+                )
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                Divider()
+                    .padding(.leading, AppTheme.Spacing.lg + 64 + AppTheme.Spacing.md)
+            }
+        }
+        .padding(.top, hasSearchSession ? AppTheme.Spacing.lg : 0)
+    }
+
+    private func sectionHeader(title: String, count: Int) -> some View {
+        HStack {
+            Text(title)
+                .font(AppTheme.Typography.headline)
+            Spacer()
+            Text("\(count)")
+                .font(AppTheme.Typography.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, AppTheme.Spacing.lg)
+        .padding(.bottom, AppTheme.Spacing.xs)
+    }
+
     // MARK: - Logic
+
+    private func clearSearch() {
+        query = ""
+        activeSearchSessionID = nil
+        searchError = nil
+    }
+
+    private func submitSearch() {
+        let trimmed = query.trimmed
+        guard !trimmed.isEmpty else {
+            clearSearch()
+            return
+        }
+        let sessionID = "ios-nostr-discover-\(UUID().uuidString)"
+        searchError = nil
+        let outcome = store.dispatchNostrDiscoveryIntent(
+            input: trimmed,
+            sessionID: sessionID
+        )
+        switch outcome {
+        case .dispatched(.textQuery):
+            activeSearchSessionID = sessionID
+        case .dispatched:
+            activeSearchSessionID = nil
+            searchError = "That input was handled as a direct Nostr reference."
+        case .rejection(.secretLike):
+            activeSearchSessionID = nil
+            searchError = "Private-key-like input was rejected."
+        case .rejection:
+            activeSearchSessionID = nil
+            searchError = "Nostr search could not classify that input."
+        case nil:
+            activeSearchSessionID = nil
+            searchError = "Nostr search is unavailable."
+        }
+    }
 
     private func isAlreadySubscribed(_ show: NostrShowSummary) -> Bool {
         store.rustIsAlreadySubscribed(
@@ -182,6 +297,24 @@ struct NostrDiscoverForm: View {
             onAdded(podcast)
         } catch {
             rowErrors[show.id] = error.localizedDescription
+        }
+    }
+
+    private func subscribe(to hit: NostrSearchHit) async {
+        guard subscribingID == nil else { return }
+        subscribingID = hit.id
+        rowErrors.removeValue(forKey: hit.id)
+        defer { subscribingID = nil }
+
+        do {
+            let podcast = try await store.kernelSubscribeNostr(
+                authorPubkeyHex: hit.author,
+                showTitle: hit.displayName
+            )
+            Haptics.success()
+            onAdded(podcast)
+        } catch {
+            rowErrors[hit.id] = error.localizedDescription
         }
     }
 }

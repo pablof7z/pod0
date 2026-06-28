@@ -8,18 +8,15 @@ worktrees currently in flight.
   `AddByURLForm` now uses the framework `nmp_app_intent_classify` /
   `nmp_nip21_decode_uri` path for Nostr profile/address inputs, with
   `nmp_app_intent_dispatch` used to start NIP-05 resolution. Remaining work:
-  observe the async NIP-05/search result projection with a timeout (≈5 s), wire
+  observe the async NIP-05 result projection with a timeout (≈5 s), wire
   any future Android text-entry subscribe surface through the same NMP intent
   ABI, and either retire or fully reimplement the legacy `podcast.open_search`
   compatibility scaffold. `AddFriendSheet.swift` and TUI
   `handle_subscribe_input` now use the NMP intent ABI for Nostr refs while
-  preserving their existing fallback paths. Owner: whoever continues #605.
-
-- **nostr-tab-open-search-wire (#605).** Wire the Nostr tab
-  (`NostrDiscoverForm.swift`) to dispatch NMP intent/open_search for query
-  submissions and render relay-targeted NIP-50 results. Today the tab still
-  only filters already-fetched NIP-F4 discovery results; Add Show handles
-  direct profile/address refs itself and shows a pending notice for NIP-05.
+  preserving their existing fallback paths. `NostrDiscoverForm.swift` now
+  dispatches query searches through the NMP open-search path and renders
+  relay-targeted NIP-50 results separately from already-fetched NIP-F4
+  discovery rows. Owner: whoever continues #605.
 
 - **knowledge-ann-index.** `top_k_search` is O(N) linear scan over all embedded chunks (fine for < ~50k chunks). When the corpus exceeds ~50k chunks, replace with an ANN index (e.g. HNSW via `usearch` or `instant-distance`). Slot in `podcast-knowledge::search::top_k_search` call site in `knowledge_search.rs`. <!-- TODO: ANN index when corpus > ~50k chunks -->
 

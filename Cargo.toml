@@ -28,6 +28,7 @@ nmp-ffi = { version = "0.8.0", git = "https://github.com/pablof7z/nostr-multi-pl
 nmp-signer-broker = { version = "0.8.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "1e1445973" }
 nmp-blossom = { version = "0.8.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "1e1445973" }
 nmp-nip02 = { version = "0.8.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "1e1445973" }
+nmp-nip50 = { version = "0.8.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "1e1445973" }
 nmp-planner = { version = "0.8.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "1e1445973" }
 nmp-feedback = { git = "https://github.com/pablof7z/nmp-feedback.git", rev = "1e2b0b5e3e023a3d76e2d05db0f91a270811e7d9" }
 

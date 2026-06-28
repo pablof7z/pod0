@@ -47,7 +47,19 @@ final class NostrIntentWireTests: XCTestCase {
         let text = try XCTUnwrap(NostrIntentDispatchOutcome.decode(json: """
         {"ok":true,"dispatched":{"scope":{"namespace":"nip50","name":"profiles"},"target":{"TextQuery":{"request_json":"{}"}}}}
         """))
-        XCTAssertEqual(text, .dispatched(.textQuery))
+        XCTAssertEqual(text, .dispatched(.textQuery(requestJSON: "{}")))
+    }
+
+    func testNostrSearchProjectionDecodesSessionHits() throws {
+        let data = Data("""
+        {"t":"snapshot","v":{"projections":{"nmp.nip50.search.ios-1":{"hits":[{"id":"e1","author":"a1","kind":0,"created_at":1700000001,"content":"{\\"display_name\\":\\"Alice\\",\\"about\\":\\"Builder\\"}","tags":[],"relay_provenance":["wss://relay.example/"],"source":{"Relay":"wss://relay.example/"}}]}}}}
+        """.utf8)
+
+        let sessions = NostrSearchProjection.decodeSessions(from: data)
+        let hit = try XCTUnwrap(sessions["ios-1"]?.hits.first)
+        XCTAssertEqual(hit.displayName, "Alice")
+        XCTAssertEqual(hit.detail, "Builder")
+        XCTAssertEqual(hit.source, .relay("wss://relay.example/"))
     }
 
     func testDecodedNostrRefTargetDecodesProfilesEventsAndAddresses() throws {

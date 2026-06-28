@@ -4,7 +4,7 @@
 
 **Priority:** High
 
-**Status:** Partially implemented after #597. The NMP intent ABI is available and iOS Add Show now uses it for Nostr profile/address input. Relay-targeted NIP-50 UI and remaining platform surfaces are still pending.
+**Status:** Partially implemented after #597. The NMP intent ABI is available, iOS Add Show uses it for Nostr profile/address input, and the Nostr discovery tab now renders relay-targeted NIP-50 search results. Async NIP-05 completion and remaining platform surfaces are still pending.
 
 ## Goal
 
@@ -33,16 +33,18 @@ Route Nostr-facing text-entry/discovery surfaces through NMP's framework-level i
   profile/address refs dispatch `subscribe_nostr`, NIP-05 starts the NMP
   dispatch path and reports pending lookup, and ordinary feed URLs still use
   the RSS subscribe fallback.
+- Updated the iOS Nostr discovery tab to dispatch query searches through
+  `nmp_app_intent_dispatch`, decode NMP NIP-50 search-session projections, and
+  render relay search hits separately from NIP-F4 discovery rows.
 
 ## Remaining Work
 
 1. **Async NIP-05 completion.** Add a projected result/await path so Add Show can turn NIP-05 resolution into a completed Nostr subscription instead of a pending notice.
-2. **NostrDiscoverForm NIP-50 search.** Submit query text through `nmp_app_intent_dispatch`, observe the NMP search session projection, and render relay-targeted NIP-50 results separately from NIP-F4 discovery rows.
-3. **NIP-05 friend add.** Add Friend currently rejects NIP-05 with guidance to
+2. **NIP-05 friend add.** Add Friend currently rejects NIP-05 with guidance to
    paste an npub/nprofile. Once the shared async result projection exists,
    decide whether friend add waits for the same resolved pubkey path.
-4. **Android.** No Nostr subscribe text-entry surface exists today. When one is added, use the NMP intent ABI instead of local prefix checks.
-5. **Legacy Rust action.** Either remove the `podcast.open_search` compatibility action or rebuild it around NMP's public Rust-side APIs if those are exported for app crates.
+3. **Android.** No Nostr subscribe text-entry surface exists today. When one is added, use the NMP intent ABI instead of local prefix checks.
+4. **Legacy Rust action.** Either remove the `podcast.open_search` compatibility action or rebuild it around NMP's public Rust-side APIs if those are exported for app crates.
 
 ## Validation Targets
 

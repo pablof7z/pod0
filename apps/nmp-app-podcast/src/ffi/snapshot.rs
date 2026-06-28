@@ -411,8 +411,10 @@ pub unsafe extern "C" fn nmp_app_podcast_decode_update_frame(
             let signed_events_json = decode_signed_events_sidecar(slice);
             let action_results_json = decode_action_results_sidecar(slice);
             let domain_sidecars = super::snapshot_domain_projections::decode_podcast_domain_sidecars(slice);
+            let nostr_search_sidecars = decode_nostr_search_sidecars(slice);
 
-            if signed_events_json.is_some() || action_results_json.is_some() || domain_sidecars.is_some() {
+            if signed_events_json.is_some() || action_results_json.is_some()
+                || domain_sidecars.is_some() || nostr_search_sidecars.is_some() {
                 let mut projections = serde_json::Map::new();
                 if let Some(se) = signed_events_json {
                     projections.insert("signed_events".to_string(), se);
@@ -422,6 +424,11 @@ pub unsafe extern "C" fn nmp_app_podcast_decode_update_frame(
                 }
                 if let Some(domains) = domain_sidecars {
                     for (key, val) in domains {
+                        projections.insert(key, val);
+                    }
+                }
+                if let Some(searches) = nostr_search_sidecars {
+                    for (key, val) in searches {
                         projections.insert(key, val);
                     }
                 }
@@ -476,6 +483,9 @@ fn decode_signed_events_sidecar(slice: &[u8]) -> Option<serde_json::Value> {
 #[path = "snapshot_action_results.rs"]
 mod snapshot_action_results;
 use snapshot_action_results::decode_action_results_sidecar;
+#[path = "snapshot_nostr_search.rs"]
+mod snapshot_nostr_search;
+use snapshot_nostr_search::decode_nostr_search_sidecars;
 
 // Tests split into snapshot_tests.rs + snapshot_tests_ext.rs + snapshot_decode_tests.rs;
 // #[path] keeps private items in scope.

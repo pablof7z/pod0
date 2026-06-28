@@ -116,7 +116,7 @@ enum NostrIntentTarget: Decodable, Equatable {
     case directRef(uri: String)
     case nip05(identifier: String)
     case relayURL(url: String)
-    case textQuery
+    case textQuery(requestJSON: String)
     case registered
 
     private enum CodingKeys: String, CodingKey {
@@ -130,6 +130,13 @@ enum NostrIntentTarget: Decodable, Equatable {
     private struct DirectRefBody: Decodable { let uri: String }
     private struct Nip05Body: Decodable { let identifier: String }
     private struct RelayURLBody: Decodable { let url: String }
+    private struct TextQueryBody: Decodable {
+        let requestJSON: String
+
+        private enum CodingKeys: String, CodingKey {
+            case requestJSON = "request_json"
+        }
+    }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -139,8 +146,8 @@ enum NostrIntentTarget: Decodable, Equatable {
             self = .nip05(identifier: body.identifier)
         } else if let body = try container.decodeIfPresent(RelayURLBody.self, forKey: .RelayUrl) {
             self = .relayURL(url: body.url)
-        } else if container.contains(.TextQuery) {
-            self = .textQuery
+        } else if let body = try container.decodeIfPresent(TextQueryBody.self, forKey: .TextQuery) {
+            self = .textQuery(requestJSON: body.requestJSON)
         } else if container.contains(.Registered) {
             self = .registered
         } else {
@@ -148,6 +155,119 @@ enum NostrIntentTarget: Decodable, Equatable {
                 .init(codingPath: decoder.codingPath, debugDescription: "unknown intent target")
             )
         }
+    }
+}
+
+struct NostrSearchResultsSnapshot: Codable, Equatable {
+    var hits: [NostrSearchHit] = []
+}
+
+struct NostrSearchHit: Codable, Equatable, Identifiable {
+    var id: String = ""
+    var author: String = ""
+    var kind: UInt32 = 0
+    var createdAt: UInt64 = 0
+    var content: String = ""
+    var tags: [[String]] = []
+    var relayProvenance: [String] = []
+    var source: NostrSearchHitSource = .cache
+
+    var profileMetadata: NostrProfileSearchMetadata? {
+        guard kind == 0, let data = content.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(NostrProfileSearchMetadata.self, from: data)
+    }
+
+    var displayName: String {
+        let metadata = profileMetadata
+        if let display = metadata?.displayName?.trimmed, !display.isEmpty { return display }
+        if let name = metadata?.name?.trimmed, !name.isEmpty { return name }
+        return NostrNpub.shortNpub(fromHex: author)
+    }
+
+    var detail: String {
+        if let about = profileMetadata?.about?.trimmed, !about.isEmpty { return about }
+        return source.label
+    }
+}
+
+struct NostrProfileSearchMetadata: Codable, Equatable {
+    var name: String?
+    var displayName: String?
+    var about: String?
+    var picture: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case name
+        case displayName = "display_name"
+        case about
+        case picture
+    }
+}
+
+enum NostrSearchHitSource: Codable, Equatable {
+    case cache
+    case relay(String)
+
+    var label: String {
+        switch self {
+        case .cache:
+            return "Local cache"
+        case .relay(let relay):
+            return relay.isEmpty ? "Relay" : relay
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        if let value = try? decoder.singleValueContainer().decode(String.self),
+           value == "Cache" {
+            self = .cache
+            return
+        }
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let relay = try container.decodeIfPresent(String.self, forKey: .Relay) {
+            self = .relay(relay)
+        } else if container.contains(.Cache) {
+            self = .cache
+        } else {
+            self = .cache
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .cache:
+            try container.encode("Cache")
+        case .relay(let relay):
+            try container.encode(["Relay": relay])
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case Cache
+        case Relay
+    }
+}
+
+enum NostrSearchProjection {
+    static let keyPrefix = "nmp.nip50.search."
+
+    static func decodeSessions(from data: Data) -> [String: NostrSearchResultsSnapshot] {
+        guard let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let value = raw["v"] as? [String: Any],
+              let projections = value["projections"] as? [String: Any]
+        else { return [:] }
+
+        let decoder = KernelDecoding.makeDecoder()
+        var sessions: [String: NostrSearchResultsSnapshot] = [:]
+        for (key, object) in projections where key.hasPrefix(keyPrefix) {
+            guard let bytes = try? JSONSerialization.data(withJSONObject: object),
+                  let decoded = try? decoder.decode(NostrSearchResultsSnapshot.self, from: bytes)
+            else { continue }
+            let sessionID = String(key.dropFirst(keyPrefix.count))
+            sessions[sessionID] = decoded
+        }
+        return sessions
     }
 }
 

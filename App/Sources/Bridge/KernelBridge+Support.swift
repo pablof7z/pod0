@@ -16,6 +16,8 @@ struct KernelUpdateResult {
     /// LMDB store and fell back to in-memory (this session's data will not
     /// persist). The host MUST surface this to the user.
     let storeOpenFailure: String?
+    /// Generic NMP NIP-50 search sidecars keyed by host session id.
+    let nostrSearchSessions: [String: NostrSearchResultsSnapshot]
     let payloadBytes: Int
     let callbackReceivedAt: ContinuousClock.Instant
     let decodeMicros: Int

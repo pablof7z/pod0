@@ -356,6 +356,7 @@
 		7F965ED580EB659C13A85FA9 /* OPMLImportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB7D5AE106B58BCB1FB3DA05 /* OPMLImportSheet.swift */; };
 		7FAB41F66F4FD5DB355EBF52 /* HomeThreadedTodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F54AEAE57DE483D9B02ADB1 /* HomeThreadedTodayView.swift */; };
 		800755532E6607EE10DFCE57 /* AppStateStore+SettingsProjection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5140E4B2650D8246F6201DBC /* AppStateStore+SettingsProjection.swift */; };
+		8028B3B96C895C8C3C05BDE6 /* NostrSearchHitRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A6F195DCB08CBEA40658825 /* NostrSearchHitRow.swift */; };
 		8030172D16AC36C093699CC0 /* YouTubeIngestionSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF0C0CA5743224DC83726D7C /* YouTubeIngestionSkill.swift */; };
 		8048B21CC05A608D3CDA34E0 /* OPMLImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46B27A87480BC1C87A3D325C /* OPMLImport.swift */; };
 		818AAF7B081C1A06B024628D /* InboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA50A573EAFE47198834A081 /* InboxView.swift */; };
@@ -1112,6 +1113,7 @@
 		69E4104A5505FFCE8930AC80 /* ChatHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatHistoryStore.swift; sourceTree = "<group>"; };
 		69E9568CA56A44DBF03A5156 /* AppStateStore+Triage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+Triage.swift"; sourceTree = "<group>"; };
 		6A01C16C79E811CC962011F0 /* MarkdownCodeBlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownCodeBlockView.swift; sourceTree = "<group>"; };
+		6A6F195DCB08CBEA40658825 /* NostrSearchHitRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NostrSearchHitRow.swift; sourceTree = "<group>"; };
 		6A973CC1C68553201DCE3289 /* TuistBundle+Podcastr.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TuistBundle+Podcastr.swift"; sourceTree = "<group>"; };
 		6AB219EBFA15DD2DA85EFE49 /* KernelModel+SnapshotPull.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KernelModel+SnapshotPull.swift"; sourceTree = "<group>"; };
 		6B03EB912BE98A4069F55105 /* PlayerSpeedSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSpeedSheet.swift; sourceTree = "<group>"; };
@@ -2043,6 +2045,7 @@
 				1301FFEA45881880E2A5545C /* LibraryPodcastStatsProjection.swift */,
 				EA056456984E73C477297AFB /* LibraryShowsView.swift */,
 				E49DF698FE6620753CE0570B /* NostrDiscoverForm.swift */,
+				6A6F195DCB08CBEA40658825 /* NostrSearchHitRow.swift */,
 				BB7D5AE106B58BCB1FB3DA05 /* OPMLImportSheet.swift */,
 				5B0FB570E3107D830CDA0354 /* ShowDetailEpisodeList.swift */,
 				072E60BC227E75BB230859FA /* ShowDetailHeader.swift */,
@@ -3340,6 +3343,7 @@
 				B5E8CED7A8DB570D9051E6C5 /* LibraryPodcastStatsProjection.swift in Sources */,
 				0F1255623345390F99B1CCB8 /* LibraryShowsView.swift in Sources */,
 				28AD653AC4E35663DF0848AB /* NostrDiscoverForm.swift in Sources */,
+				8028B3B96C895C8C3C05BDE6 /* NostrSearchHitRow.swift in Sources */,
 				7F965ED580EB659C13A85FA9 /* OPMLImportSheet.swift in Sources */,
 				C4E5EBA5D87B8BA78EFD2882 /* ShowDetailEpisodeList.swift in Sources */,
 				7455146502859EE10CC0B956 /* ShowDetailHeader.swift in Sources */,

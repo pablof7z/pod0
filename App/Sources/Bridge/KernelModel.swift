@@ -68,11 +68,8 @@ final class KernelModel {
     /// user-facing alert; the kernel actor is the sole writer.
     private(set) var storeOpenFailure: String?
 
-    /// Identity projection slice (`active_account` / `accounts` /
-    /// `bunker_handshake`) pulled out of the NMP-core kernel snapshot on
-    /// every tick. Read-only — the kernel actor is the sole writer.
-    /// `UserIdentityStore` mirrors its observable state from this field.
     private(set) var kernelIdentity: KernelIdentityProjection = .empty
+    private(set) var nostrSearchSessions: [String: NostrSearchResultsSnapshot] = [:]
 
     /// D7 actor-death surface — flips to `true` exactly once when the Rust
     /// supervisor emits a panic frame or the foreground-resume probe detects
@@ -266,6 +263,7 @@ final class KernelModel {
         kernel.reregisterPodcastProjection()
         lastErrorToast = nil
         storeOpenFailure = nil
+        nostrSearchSessions = [:]
         kernel.start(visibleLimit: visibleLimit, emitHz: emitHz)
         startedKernel = true
         // One-shot post-reset pull — surface the re-registered projection. Decode
@@ -419,11 +417,7 @@ final class KernelModel {
 
     // ── scenePhase pass-through ────────────────────────────────────────────
 
-    /// True until the first `.active` scenePhase has been observed. Cold
-    /// start already drives a fresh snapshot through `start()`, so the
-    /// initial activation must NOT pile a `refresh_all` on top of it —
-    /// only subsequent foreground returns trigger a feed sync.
-    // widened to internal so KernelModel+Dispatch can write it in lifecycleForeground
+    // widened so KernelModel+Dispatch can write it in lifecycleForeground
     var hasObservedForeground = false
 
     // ── Snapshot apply ─────────────────────────────────────────────────────
@@ -440,6 +434,11 @@ final class KernelModel {
         // Store-open-failure fires on every frame (before rev-gating) so the
         // mandatory store alert fires on the first frame (V-67).
         storeOpenFailure = result.storeOpenFailure
+        if !result.nostrSearchSessions.isEmpty {
+            for (session, snapshot) in result.nostrSearchSessions {
+                nostrSearchSessions[session] = snapshot
+            }
+        }
         // Identity: only replace when the identity domain sidecar was present in
         // this frame (result.identity != .empty). Absent = identity unchanged;
         // preserve the current kernelIdentity rather than clobbering with .empty.

@@ -212,7 +212,9 @@ final class PodcastHandle: @unchecked Sendable {
             // `nmp_app_podcast_decode_update_frame` injects typed sidecars
             // under `v.projections[schema_id]`; absent domains carry no sidecar
             // (delta suppression) and MUST NOT overwrite prior state.
-            guard let domainFrames = PodcastDomainFrames.decode(from: data) else {
+            let domainFrames = PodcastDomainFrames.decode(from: data) ?? PodcastDomainFrames()
+            let nostrSearchSessions = NostrSearchProjection.decodeSessions(from: data)
+            guard domainFrames.hasAnyDomain || !nostrSearchSessions.isEmpty else {
                 kbLog.error(
                     "snapshot frame missing all podcast.* domain sidecars bytes=\(data.count)")
                 return nil
@@ -232,6 +234,7 @@ final class PodcastHandle: @unchecked Sendable {
                 domainFrames: domainFrames,
                 identity: identity,
                 storeOpenFailure: storeOpenFailure,
+                nostrSearchSessions: nostrSearchSessions,
                 payloadBytes: data.count,
                 callbackReceivedAt: start,
                 decodeMicros: duration.microseconds)
