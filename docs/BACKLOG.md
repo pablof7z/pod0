@@ -9,10 +9,11 @@ worktrees currently in flight.
   `nmp_nip21_decode_uri` path for Nostr profile/address inputs, with
   `nmp_app_intent_dispatch` used to start NIP-05 resolution. Remaining work:
   observe the async NIP-05/search result projection with a timeout (≈5 s), wire
-  `AddFriendSheet.swift`, TUI `handle_subscribe_input`, and any future Android
-  text-entry subscribe surface through the same NMP intent ABI, and either
-  retire or fully reimplement the legacy `podcast.open_search` compatibility
-  scaffold. Owner: whoever continues #605.
+  any future Android text-entry subscribe surface through the same NMP intent
+  ABI, and either retire or fully reimplement the legacy `podcast.open_search`
+  compatibility scaffold. `AddFriendSheet.swift` and TUI
+  `handle_subscribe_input` now use the NMP intent ABI for Nostr refs while
+  preserving their existing fallback paths. Owner: whoever continues #605.
 
 - **nostr-tab-open-search-wire (#605).** Wire the Nostr tab
   (`NostrDiscoverForm.swift`) to dispatch NMP intent/open_search for query

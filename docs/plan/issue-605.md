@@ -26,15 +26,23 @@ Route Nostr-facing text-entry/discovery surfaces through NMP's framework-level i
   - event refs remain recognized but not subscribable from Add Show.
 - Removed the Swift prefix detectors `looksLikeNsecKey` and `looksLikeNostrInput`.
 - Updated the legacy `podcast.open_search` comments to make clear it is compatibility-only unless reworked around the NMP ABI.
+- Updated Add Friend to classify/decode npub, nprofile, and nostr profile links
+  through the NMP intent ABI before approving a peer; raw 64-hex pubkeys remain
+  a compatibility fallback.
+- Updated the TUI subscribe prompt to classify Nostr identifiers through NMP:
+  profile/address refs dispatch `subscribe_nostr`, NIP-05 starts the NMP
+  dispatch path and reports pending lookup, and ordinary feed URLs still use
+  the RSS subscribe fallback.
 
 ## Remaining Work
 
 1. **Async NIP-05 completion.** Add a projected result/await path so Add Show can turn NIP-05 resolution into a completed Nostr subscription instead of a pending notice.
 2. **NostrDiscoverForm NIP-50 search.** Submit query text through `nmp_app_intent_dispatch`, observe the NMP search session projection, and render relay-targeted NIP-50 results separately from NIP-F4 discovery rows.
-3. **AddFriendSheet.** Replace its remaining npub/hex-only helper flow with NMP direct-ref classification/decode, then decide whether NIP-05 friend add waits for async resolution or remains a follow-up.
-4. **TUI.** Route `handle_subscribe_input` Nostr identifiers through NMP intent APIs while keeping RSS subscribe as the fallback.
-5. **Android.** No Nostr subscribe text-entry surface exists today. When one is added, use the NMP intent ABI instead of local prefix checks.
-6. **Legacy Rust action.** Either remove the `podcast.open_search` compatibility action or rebuild it around NMP's public Rust-side APIs if those are exported for app crates.
+3. **NIP-05 friend add.** Add Friend currently rejects NIP-05 with guidance to
+   paste an npub/nprofile. Once the shared async result projection exists,
+   decide whether friend add waits for the same resolved pubkey path.
+4. **Android.** No Nostr subscribe text-entry surface exists today. When one is added, use the NMP intent ABI instead of local prefix checks.
+5. **Legacy Rust action.** Either remove the `podcast.open_search` compatibility action or rebuild it around NMP's public Rust-side APIs if those are exported for app crates.
 
 ## Validation Targets
 

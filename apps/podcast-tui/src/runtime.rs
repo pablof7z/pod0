@@ -6,14 +6,13 @@ use nmp_app_podcast::ffi::PodcastUpdate;
 use nmp_app_podcast::{
     nmp_app_podcast_audio_report, nmp_app_podcast_elevenlabs_voice_catalog,
     nmp_app_podcast_http_report, nmp_app_podcast_local_model_catalog,
-    nmp_app_podcast_provider_model_catalog, nmp_app_podcast_register,
-    nmp_app_podcast_set_data_dir, nmp_app_podcast_speech_model_catalog,
-    nmp_app_podcast_unregister, nmp_signer_broker_init, PodcastHandle, AUDIO_CAPABILITY_NAMESPACE,
+    nmp_app_podcast_provider_model_catalog, nmp_app_podcast_register, nmp_app_podcast_set_data_dir,
+    nmp_app_podcast_speech_model_catalog, nmp_app_podcast_unregister, nmp_signer_broker_init,
+    PodcastHandle, AUDIO_CAPABILITY_NAMESPACE,
 };
 use nmp_ffi::{
     nmp_app_consume_all_builtin_projections, nmp_app_free, nmp_app_new,
-    nmp_app_set_capability_callback,
-    nmp_app_start, nmp_free_string, NmpApp,
+    nmp_app_set_capability_callback, nmp_app_start, nmp_free_string, NmpApp,
 };
 use podcast_feeds::http::{
     HttpCommand, HttpMethod, HttpReport, HttpRequest, HttpResult, HTTP_ASYNC_CAPABILITY_NAMESPACE,
@@ -48,6 +47,10 @@ pub struct AppRuntime {
 pub type Result<T> = std::result::Result<T, String>;
 
 impl AppRuntime {
+    pub(crate) fn app_ptr(&self) -> *mut NmpApp {
+        self.app
+    }
+
     #[must_use]
     pub fn new(data_dir: &Option<String>) -> Result<(Self, Receiver<NmpEvent>)> {
         let app = nmp_app_new();

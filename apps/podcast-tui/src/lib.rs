@@ -21,6 +21,7 @@ mod provider_voice_catalog;
 pub mod rows;
 pub mod runtime;
 mod runtime_actions;
+mod runtime_actions_nostr;
 mod runtime_settings_actions;
 pub mod settings_catalog;
 mod settings_state;

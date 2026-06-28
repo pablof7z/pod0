@@ -122,11 +122,14 @@ fn handle_subscribe_input(state: &mut AppState, runtime: &AppRuntime, key: KeyEv
     match key.code {
         KeyCode::Esc => state.mode = Mode::Normal,
         KeyCode::Enter => {
-            let url = state.subscribe_input.trim().to_string();
+            let input = state.subscribe_input.trim().to_string();
             state.mode = Mode::Normal;
-            if !url.is_empty() {
-                match runtime.subscribe(&url) {
-                    Ok(_) => state.status = format!("subscribing to: {url}"),
+            if !input.is_empty() {
+                match runtime.subscribe_input(&input) {
+                    Ok(message) if message.starts_with("looking up NIP-05:") => {
+                        state.status = message;
+                    }
+                    Ok(_) => state.status = format!("subscribing to: {input}"),
                     Err(e) => state.status = format!("subscribe error: {e}"),
                 }
             }

@@ -19,6 +19,7 @@ struct AddFriendSheet: View {
     @State private var displayName = ""
     @State private var identifier = ""
     @State private var scanned = false
+    @State private var validationMessage: String?
     @FocusState private var nameFocused: Bool
 
     private enum Mode: CaseIterable, Hashable {
@@ -42,13 +43,13 @@ struct AddFriendSheet: View {
         static let pillBottomPadding: CGFloat = 32
     }
 
-    private var cleanedIdentifier: String {
-        NostrNpub.pubkeyHex(from: identifier.trimmed) ?? identifier.trimmed
+    private enum FriendInputResolution {
+        case success(String)
+        case failure(String)
     }
 
-    private var isValid: Bool {
-        !displayName.isBlank &&
-        NostrNpub.pubkeyHex(from: identifier.trimmed) != nil
+    private var canAttemptAdd: Bool {
+        !displayName.isBlank && !identifier.trimmed.isEmpty
     }
 
     var body: some View {
@@ -71,7 +72,7 @@ struct AddFriendSheet: View {
                     if mode == .paste {
                         Button("Add") { add() }
                             .fontWeight(.semibold)
-                            .disabled(!isValid)
+                            .disabled(!canAttemptAdd)
                     }
                 }
             }
@@ -119,6 +120,7 @@ struct AddFriendSheet: View {
         QRCodeScannerView { value in
             guard !scanned else { return }
             scanned = true
+            validationMessage = nil
             Haptics.success()
             identifier = value
             mode = .paste
@@ -163,8 +165,17 @@ struct AddFriendSheet: View {
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
                     .font(AppTheme.Typography.monoCallout)
+                    .onChange(of: identifier) { _, _ in validationMessage = nil }
             } footer: {
-                Text("Both npub1… and raw hex pubkeys are accepted.")
+                Text("npub, nprofile, nostr profile links, and raw hex pubkeys are accepted.")
+            }
+
+            if let validationMessage {
+                Section {
+                    Label(validationMessage, systemImage: "exclamationmark.triangle.fill")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(AppTheme.Tint.error)
+                }
             }
         }
         .onAppear { if !scanned { nameFocused = true } }
@@ -174,11 +185,66 @@ struct AddFriendSheet: View {
 
     private func add() {
         let name = displayName.trimmed
-        guard isValid,
-              let pubkeyHex = NostrNpub.pubkeyHex(from: identifier.trimmed)
-        else { return }
-        _ = store.addFriend(displayName: name, identifier: pubkeyHex)
-        Haptics.success()
-        dismiss()
+        guard canAttemptAdd else { return }
+        switch resolveFriendPubkey(from: identifier.trimmed) {
+        case .success(let pubkeyHex):
+            _ = store.addFriend(displayName: name, identifier: pubkeyHex)
+            Haptics.success()
+            dismiss()
+        case .failure(let message):
+            validationMessage = message
+            Haptics.warning()
+        }
+    }
+
+    private func resolveFriendPubkey(from input: String) -> FriendInputResolution {
+        if let envelope = store.classifyNostrDiscoveryIntent(input: input),
+           envelope.ok,
+           let classification = envelope.classification {
+            switch classification {
+            case .rejection(.secretLike):
+                return .failure("This looks like a Nostr private key. Do not paste private keys here.")
+            case .rejection(.unparseable):
+                break
+            case .rejection:
+                return .failure("That Nostr input is not available from Add Friend yet.")
+            case .candidates(let candidates):
+                guard let target = candidates.first?.target else { break }
+                return resolveFriendPubkey(from: target)
+            }
+        }
+
+        if Self.isRawHexPubkey(input) {
+            return .success(input.lowercased())
+        }
+        return .failure("Paste an npub, nprofile, nostr profile link, or raw hex pubkey.")
+    }
+
+    private func resolveFriendPubkey(from target: NostrIntentTarget) -> FriendInputResolution {
+        switch target {
+        case .directRef(let uri):
+            guard let decoded = store.decodeNostrRef(uri: uri) else {
+                return .failure("That Nostr reference could not be decoded.")
+            }
+            switch decoded {
+            case .profile(let pubkey), .address(let pubkey):
+                return .success(pubkey)
+            case .event:
+                return .failure("Nostr event links cannot be added as friends. Paste an npub or nprofile.")
+            }
+        case .nip05:
+            return .failure("NIP-05 friend lookup is not available here yet. Paste an npub or nprofile.")
+        case .relayURL, .textQuery:
+            return .failure("Paste a Nostr public-key reference, not a search query or relay URL.")
+        case .registered:
+            return .failure("That Nostr input is not supported here yet.")
+        }
+    }
+
+    private static func isRawHexPubkey(_ value: String) -> Bool {
+        let lower = value.lowercased()
+        guard lower.count == 64 else { return false }
+        let hex = CharacterSet(charactersIn: "0123456789abcdef")
+        return lower.unicodeScalars.allSatisfy { hex.contains($0) }
     }
 }
