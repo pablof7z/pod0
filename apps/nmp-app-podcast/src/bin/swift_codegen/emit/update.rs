@@ -39,6 +39,7 @@ struct PodcastUpdate {
     @DefaultEmptyArray var nostrResults: [NostrShowSummary] = []
     @DefaultSettings var settings: SettingsSnapshot = SettingsSnapshot()
     @DefaultEmptyArray var comments: [CommentSummary] = []
+    @DefaultEmptyArray var notes: [NoteSummary] = []
     @DefaultEmptyArray var queue: [EpisodeSummary] = []
     @DefaultEmptyArray var picks: [AgentPickSummary] = []
     @DefaultEmptyArray var agentTasks: [AgentTaskSummary] = []
@@ -125,6 +126,25 @@ struct AppRelayRow: Codable, Equatable, Identifiable {
     var id: String { url }
 }
 
+/// Local note row projected from Rust-owned NotesState.
+struct NoteSummary: Codable, Equatable, Identifiable {
+    var id: String = ""
+    var text: String = ""
+    var kind: String = ""
+    var target: NoteTargetSummary? = nil
+    var createdAt: Int = 0
+    var deleted: Bool = false
+    var author: String = ""
+}
+
+/// Local note target. `type` is `"episode"` or `"podcast"`.
+struct NoteTargetSummary: Codable, Equatable {
+    var type: String = ""
+    var episodeId: String? = nil
+    var positionSecs: Double? = nil
+    var podcastId: String? = nil
+}
+
 // AgentContextSnapshot / AgentContextEpisode live in
 // `PodcastAgentContextTypes.generated.swift` to keep this file under the
 // 500-line hard limit.
@@ -203,6 +223,7 @@ extension PodcastUpdate: Codable {
         nostrResults = try c.decodeIfPresent([NostrShowSummary].self, forKey: .nostrResults) ?? []
         settings = try c.decodeIfPresent(SettingsSnapshot.self, forKey: .settings) ?? SettingsSnapshot()
         comments = try c.decodeIfPresent([CommentSummary].self, forKey: .comments) ?? []
+        notes = try c.decodeIfPresent([NoteSummary].self, forKey: .notes) ?? []
         queue = try c.decodeIfPresent([EpisodeSummary].self, forKey: .queue) ?? []
         picks = try c.decodeIfPresent([AgentPickSummary].self, forKey: .picks) ?? []
         agentTasks = try c.decodeIfPresent([AgentTaskSummary].self, forKey: .agentTasks) ?? []

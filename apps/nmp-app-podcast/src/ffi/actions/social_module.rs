@@ -28,6 +28,8 @@ use serde::{Deserialize, Serialize};
 use nmp_core::substrate::ActionModule;
 use nmp_core::actor::ActorCommand;
 
+use crate::store::notes::NoteTarget;
+
 /// `podcast.social.publish_profile` — sign + publish a kind:0 profile.
 pub const ACTION_SOCIAL_PUBLISH_PROFILE: &str = "podcast.social.publish_profile";
 /// `podcast.social.publish_note` — sign + publish a kind:1 text note.
@@ -42,9 +44,19 @@ pub const ACTION_SOCIAL_BLOCK_PEER: &str = "podcast.social.block_peer";
 pub const ACTION_SOCIAL_REMOVE_APPROVAL: &str = "podcast.social.remove_approval";
 /// `podcast.social.remove_block` — remove an explicit block.
 pub const ACTION_SOCIAL_REMOVE_BLOCK: &str = "podcast.social.remove_block";
+/// `podcast.social.add_note` — add a Rust-owned local note.
+pub const ACTION_SOCIAL_ADD_NOTE: &str = "podcast.social.add_note";
+/// `podcast.social.update_note` — update a Rust-owned local note.
+pub const ACTION_SOCIAL_UPDATE_NOTE: &str = "podcast.social.update_note";
+/// `podcast.social.delete_note` — mark a Rust-owned local note deleted.
+pub const ACTION_SOCIAL_DELETE_NOTE: &str = "podcast.social.delete_note";
+/// `podcast.social.restore_note` — restore a soft-deleted local note.
+pub const ACTION_SOCIAL_RESTORE_NOTE: &str = "podcast.social.restore_note";
+/// `podcast.social.clear_notes` — mark all Rust-owned local notes deleted.
+pub const ACTION_SOCIAL_CLEAR_NOTES: &str = "podcast.social.clear_notes";
 
 /// Wire enum for all `"podcast.social"` namespace actions.
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum SocialAction {
     /// Sign + publish a kind:0 metadata event. `name` is required; the
@@ -107,6 +119,36 @@ pub enum SocialAction {
     RemoveBlock {
         pubkey_hex: String,
     },
+    /// Add a local note to the Rust-owned notes store.
+    AddNote {
+        id: String,
+        text: String,
+        kind: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        target: Option<NoteTarget>,
+        created_at: i64,
+        author: String,
+    },
+    /// Update local note fields. Omitted fields are left unchanged.
+    UpdateNote {
+        id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        text: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        kind: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        target: Option<NoteTarget>,
+    },
+    /// Soft-delete a local note.
+    DeleteNote {
+        id: String,
+    },
+    /// Restore a soft-deleted local note.
+    RestoreNote {
+        id: String,
+    },
+    /// Soft-delete every local note.
+    ClearNotes,
 }
 
 /// `ActionModule` for the `"podcast.social"` namespace.

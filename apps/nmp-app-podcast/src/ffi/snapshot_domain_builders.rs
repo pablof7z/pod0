@@ -23,7 +23,7 @@
 //!  |           | social.outbound_turns                                  |
 //!  | voice     | voice.voice_state                                      |
 //!  | misc      | wiki, picks, tasks, knowledge, clips, comments,        |
-//!  |           | agent_chat, feedback                                   |
+//!  |           | notes, agent_chat, feedback                            |
 //!
 //! The `rev` field in each payload is the GLOBAL rev (state.infra.rev), matching
 //! the pull-path `build_podcast_update` behaviour so byte identity is preserved.
@@ -317,6 +317,13 @@ pub(super) fn build_misc_payload(handle: &PodcastHandle) -> serde_json::Value {
             .state.comments
             .project(now_playing_ep_id.as_deref())
     };
+    let notes: Vec<super::projections::NoteSummary> = handle
+        .state
+        .notes
+        .notes_snapshot()
+        .into_iter()
+        .map(Into::into)
+        .collect();
     let agent = {
         let messages = handle.state.agent_chat.conversation_snapshot();
         let touched = handle.state.agent_chat.is_touched();
@@ -341,6 +348,7 @@ pub(super) fn build_misc_payload(handle: &PodcastHandle) -> serde_json::Value {
         "memory_facts": memory_facts,
         "clips": clips,
         "comments": comments,
+        "notes": notes,
         "agent": agent,
         "agent_context": agent_context,
         "feedback_events": feedback_events,

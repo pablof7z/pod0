@@ -107,6 +107,36 @@ fn bad_action_for_known_ns_returns_ok_false() {
     );
 }
 
+#[test]
+fn social_add_note_routes_to_notes_state() {
+    let handler = empty_handler();
+    let envelope = serde_json::json!({
+        "ns": "podcast.social",
+        "action": {
+            "op": "add_note",
+            "id": "note-1",
+            "text": "Remember this",
+            "kind": "free",
+            "target": {
+                "type": "episode",
+                "episode_id": "ep-1",
+                "position_secs": 12.5
+            },
+            "created_at": 123,
+            "author": "user"
+        }
+    });
+
+    let result = handler.handle(&envelope.to_string(), "corr-note");
+
+    assert_eq!(result["ok"], serde_json::json!(true));
+    assert_eq!(result["changed"], serde_json::json!(true));
+    let notes = handler.state.notes.notes_snapshot();
+    assert_eq!(notes.len(), 1);
+    assert_eq!(notes[0].id, "note-1");
+    assert_eq!(notes[0].text, "Remember this");
+}
+
 // ---------------------------------------------------------------------------
 // Collision fix: podcast.agent.clear must NOT empty the playback queue
 // ---------------------------------------------------------------------------

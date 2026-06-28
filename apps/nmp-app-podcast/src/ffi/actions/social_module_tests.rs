@@ -97,6 +97,26 @@ fn publish_note_decodes_without_episode_coord() {
 }
 
 #[test]
+fn local_add_note_round_trips_with_episode_target() {
+    let action = SocialAction::AddNote {
+        id: "note-1".into(),
+        text: "Remember this".into(),
+        kind: "free".into(),
+        target: Some(crate::store::notes::NoteTarget::Episode {
+            episode_id: "ep-1".into(),
+            position_secs: 12.5,
+        }),
+        created_at: 123,
+        author: "user".into(),
+    };
+    let json = serde_json::to_string(&action).expect("encode");
+    assert!(json.contains(r#""op":"add_note""#));
+    assert!(json.contains(r#""type":"episode""#));
+    let decoded: SocialAction = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, action);
+}
+
+#[test]
 fn publish_highlight_round_trips_with_typed_fields() {
     let action = SocialAction::PublishHighlight {
         content: "quote".into(),

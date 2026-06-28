@@ -20,6 +20,27 @@ data class AccountSummary(
     val about: String? = null,
 )
 
+/** Local note row projected from Rust-owned NotesState. */
+@Serializable
+data class NoteSummary(
+    val id: String,
+    val text: String,
+    val kind: String = "free",
+    val target: NoteTargetSummary? = null,
+    @SerialName("created_at") val createdAt: Long = 0,
+    val deleted: Boolean = false,
+    val author: String = "user",
+)
+
+/** Local note target. `type` is `"episode"` or `"podcast"`. */
+@Serializable
+data class NoteTargetSummary(
+    val type: String,
+    @SerialName("episode_id") val episodeId: String? = null,
+    @SerialName("position_secs") val positionSecs: Double? = null,
+    @SerialName("podcast_id") val podcastId: String? = null,
+)
+
 /**
  * One row of the library projection. Kept as the stable contract the
  * Compose UI compiles against even though the Rust serializer is still

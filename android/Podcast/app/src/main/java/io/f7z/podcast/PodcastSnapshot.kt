@@ -77,6 +77,8 @@ data class PodcastSnapshot(
      * default — hence nullable here. Read with a `?: default` fallback.
      */
     val settings: SettingsSnapshot? = null,
+    /** Rust-owned local notes projection. */
+    val notes: List<NoteSummary> = emptyList(),
     /** Playback "Up Next" queue, front-first. Mirror of `PodcastUpdate.queue`. */
     val queue: List<EpisodeSummary> = emptyList(),
     /** AI-triaged inbox, highest-priority first. Mirror of `PodcastUpdate.inbox`. */

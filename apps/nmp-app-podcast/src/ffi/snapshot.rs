@@ -119,12 +119,9 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         .and_then(|q| build_downloads_snapshot(&q));
 
     // Step 8: comments now read from CommentsState.
-    // Project comments for the episode the user is currently viewing
-    // (set by `handle_fetch_comments`), falling back to the now-playing
-    // episode when the comments section hasn't been opened this session.
-    let comments = handle.state.comments.project(
-        now_playing.as_ref().and_then(|np| np.episode_id.as_deref()),
-    );
+    // Project viewed-episode comments, falling back to now-playing.
+    let comments = handle.state.comments.project(now_playing.as_ref().and_then(|np| np.episode_id.as_deref()));
+    let notes = handle.state.notes.notes_snapshot().into_iter().map(Into::into).collect();
 
     let active_account = super::snapshot_identity::build_active_account(handle);
 
@@ -180,6 +177,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         nostr_results,
         settings,
         comments,
+        notes,
         queue,
         picks,
         agent_tasks,

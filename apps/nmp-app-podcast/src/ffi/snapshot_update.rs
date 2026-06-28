@@ -11,8 +11,8 @@ use super::projections::{
     AccountSummary, AgentContextSnapshot, AgentPickSummary, AgentSnapshot,
     AgentTaskSummary, CategoryBrowseItem, ClipSummary, CommentSummary, DownloadQueueSnapshot,
     EpisodeSummary, InboxItem, KnowledgeSearchResult, MemoryFact, NostrConversationDTO,
-    NostrShowSummary, OwnedPodcastInfo, PodcastSummary, SettingsSnapshot, SocialSnapshot,
-    VoiceState, WidgetSnapshot,
+    NostrShowSummary, NoteSummary, OwnedPodcastInfo, PodcastSummary, SettingsSnapshot,
+    SocialSnapshot, VoiceState, WidgetSnapshot,
 };
 use crate::player::PlayerState;
 
@@ -105,6 +105,9 @@ pub struct PodcastUpdate {
     /// NIP-22 (kind 1111) comments for the currently-playing episode.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub comments: Vec<CommentSummary>,
+    /// Local user/agent notes, projected from Rust-owned `NotesState`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub notes: Vec<NoteSummary>,
     /// Playback "Up Next" queue, front-first.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub queue: Vec<EpisodeSummary>,
@@ -208,6 +211,7 @@ impl Default for PodcastUpdate {
             nostr_results: Vec::new(),
             settings: SettingsSnapshot::default(),
             comments: Vec::new(),
+            notes: Vec::new(),
             queue: Vec::new(),
             picks: Vec::new(),
             agent_tasks: Vec::new(),

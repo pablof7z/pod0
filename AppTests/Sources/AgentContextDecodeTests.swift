@@ -90,4 +90,33 @@ final class AgentContextDecodeTests: XCTestCase {
         XCTAssertEqual(task.intentType, "inbox_triage")
         XCTAssertEqual(task.intentLabel, "Triage inbox")
     }
+
+    func testLocalNotesDecodeFromSnakeCaseKeys() throws {
+        let json = """
+        {
+          "rev": 4,
+          "notes": [
+            {
+              "id": "note-1",
+              "text": "Remember this",
+              "kind": "free",
+              "target": {
+                "type": "episode",
+                "episode_id": "ep-1",
+                "position_secs": 12.5
+              },
+              "created_at": 123,
+              "deleted": false,
+              "author": "user"
+            }
+          ]
+        }
+        """
+        let note = try XCTUnwrap(try decode(json).notes.first)
+        XCTAssertEqual(note.id, "note-1")
+        XCTAssertEqual(note.text, "Remember this")
+        XCTAssertEqual(note.target?.type, "episode")
+        XCTAssertEqual(note.target?.episodeId, "ep-1")
+        XCTAssertEqual(note.target?.positionSecs, 12.5)
+    }
 }

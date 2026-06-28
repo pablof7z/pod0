@@ -86,6 +86,43 @@ class SnapshotCodecTest {
     }
 
     @Test
+    fun `local notes decode from snapshot projection`() {
+        val snapshot = SnapshotCodec.decode(
+            """
+            {
+              "running": true,
+              "rev": 5,
+              "schema_version": 1,
+              "notes": [
+                {
+                  "id": "note-1",
+                  "text": "Remember this",
+                  "kind": "free",
+                  "target": {
+                    "type": "episode",
+                    "episode_id": "ep-1",
+                    "position_secs": 12.5
+                  },
+                  "created_at": 123,
+                  "deleted": false,
+                  "author": "user"
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        assertNotNull(snapshot)
+        val note = snapshot!!.notes.single()
+        assertEquals("note-1", note.id)
+        assertEquals("Remember this", note.text)
+        val target = note.target!!
+        assertEquals("episode", target.type)
+        assertEquals("ep-1", target.episodeId)
+        assertEquals(12.5, target.positionSecs!!, 0.0)
+    }
+
+    @Test
     fun `feedback threads decode from snapshot projection`() {
         val raw = """
             {

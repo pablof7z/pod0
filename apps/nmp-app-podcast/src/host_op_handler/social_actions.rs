@@ -16,6 +16,7 @@
 
 use crate::ffi::actions::social_module::SocialAction;
 use crate::host_op_handler::PodcastHostOpHandler;
+use crate::store::notes::UserNote;
 
 impl PodcastHostOpHandler {
     pub(crate) fn publish_clip_highlight_if_user_visible(
@@ -120,6 +121,49 @@ impl PodcastHostOpHandler {
                 self.persist_approved_peer_store();
                 self.state.social.infra.bump();
                 serde_json::json!({"ok": true})
+            }
+            SocialAction::AddNote {
+                id,
+                text,
+                kind,
+                target,
+                created_at,
+                author,
+            } => {
+                let changed = self.state.notes.add_note(UserNote {
+                    id,
+                    text,
+                    kind,
+                    target,
+                    created_at,
+                    deleted: false,
+                    author,
+                });
+                serde_json::json!({"ok": true, "changed": changed})
+            }
+            SocialAction::UpdateNote {
+                id,
+                text,
+                kind,
+                target,
+            } => {
+                let changed = self
+                    .state
+                    .notes
+                    .update_note(&id, text, kind, target.map(Some));
+                serde_json::json!({"ok": true, "changed": changed})
+            }
+            SocialAction::DeleteNote { id } => {
+                let changed = self.state.notes.set_deleted(&id, true);
+                serde_json::json!({"ok": true, "changed": changed})
+            }
+            SocialAction::RestoreNote { id } => {
+                let changed = self.state.notes.set_deleted(&id, false);
+                serde_json::json!({"ok": true, "changed": changed})
+            }
+            SocialAction::ClearNotes => {
+                let changed = self.state.notes.clear_all();
+                serde_json::json!({"ok": true, "changed": changed})
             }
         }
     }

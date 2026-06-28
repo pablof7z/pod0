@@ -42,6 +42,7 @@ mod identity;
 mod inbox;
 mod knowledge;
 mod library;
+mod notes;
 mod platform;
 mod settings;
 mod social;
@@ -61,6 +62,7 @@ pub use library::{
     CategoryBrowseItem, ChapterSummary, EpisodeSummary, NostrShowSummary, PodcastSummary,
     TranscriptEntry,
 };
+pub use notes::NoteSummary;
 pub use platform::WidgetSnapshot;
 pub use settings::SettingsSnapshot;
 pub use social::{
