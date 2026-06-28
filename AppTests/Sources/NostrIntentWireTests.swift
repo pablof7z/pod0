@@ -44,6 +44,11 @@ final class NostrIntentWireTests: XCTestCase {
         """))
         XCTAssertEqual(direct, .dispatched(.directRef(uri: "nostr:npub1abc")))
 
+        let nip05 = try XCTUnwrap(NostrIntentDispatchOutcome.decode(json: """
+        {"ok":true,"dispatched":{"scope":{"namespace":"nip50","name":"profiles"},"target":{"Nip05":{"identifier":"alice@example.com"}}}}
+        """))
+        XCTAssertEqual(nip05, .dispatched(.nip05(identifier: "alice@example.com")))
+
         let text = try XCTUnwrap(NostrIntentDispatchOutcome.decode(json: """
         {"ok":true,"dispatched":{"scope":{"namespace":"nip50","name":"profiles"},"target":{"TextQuery":{"request_json":"{}"}}}}
         """))

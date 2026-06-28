@@ -20,6 +20,7 @@ struct AddFriendSheet: View {
     @State private var identifier = ""
     @State private var scanned = false
     @State private var validationMessage: String?
+    @State private var isAdding = false
     @FocusState private var nameFocused: Bool
 
     private enum Mode: CaseIterable, Hashable {
@@ -70,9 +71,9 @@ struct AddFriendSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if mode == .paste {
-                        Button("Add") { add() }
+                        Button(isAdding ? "Adding..." : "Add") { Task { await add() } }
                             .fontWeight(.semibold)
-                            .disabled(!canAttemptAdd)
+                            .disabled(!canAttemptAdd || isAdding)
                     }
                 }
             }
@@ -161,13 +162,13 @@ struct AddFriendSheet: View {
                     .focused($nameFocused)
                     .submitLabel(.next)
 
-                TextField("npub or hex pubkey", text: $identifier)
+                TextField("npub, NIP-05, or hex pubkey", text: $identifier)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
                     .font(AppTheme.Typography.monoCallout)
                     .onChange(of: identifier) { _, _ in validationMessage = nil }
             } footer: {
-                Text("npub, nprofile, nostr profile links, and raw hex pubkeys are accepted.")
+                Text("npub, nprofile, NIP-05 addresses, nostr profile links, and raw hex pubkeys are accepted.")
             }
 
             if let validationMessage {
@@ -183,10 +184,15 @@ struct AddFriendSheet: View {
 
     // MARK: - Actions
 
-    private func add() {
+    @MainActor
+    private func add() async {
         let name = displayName.trimmed
-        guard canAttemptAdd else { return }
-        switch resolveFriendPubkey(from: identifier.trimmed) {
+        guard canAttemptAdd, !isAdding else { return }
+        isAdding = true
+        validationMessage = nil
+        defer { isAdding = false }
+
+        switch await resolveFriendPubkey(from: identifier.trimmed) {
         case .success(let pubkeyHex):
             _ = store.addFriend(displayName: name, identifier: pubkeyHex)
             Haptics.success()
@@ -197,7 +203,7 @@ struct AddFriendSheet: View {
         }
     }
 
-    private func resolveFriendPubkey(from input: String) -> FriendInputResolution {
+    private func resolveFriendPubkey(from input: String) async -> FriendInputResolution {
         if let envelope = store.classifyNostrDiscoveryIntent(input: input),
            envelope.ok,
            let classification = envelope.classification {
@@ -210,17 +216,20 @@ struct AddFriendSheet: View {
                 return .failure("That Nostr input is not available from Add Friend yet.")
             case .candidates(let candidates):
                 guard let target = candidates.first?.target else { break }
-                return resolveFriendPubkey(from: target)
+                return await resolveFriendPubkey(from: target, originalInput: input)
             }
         }
 
         if Self.isRawHexPubkey(input) {
             return .success(input.lowercased())
         }
-        return .failure("Paste an npub, nprofile, nostr profile link, or raw hex pubkey.")
+        return .failure("Paste an npub, nprofile, NIP-05 address, nostr profile link, or raw hex pubkey.")
     }
 
-    private func resolveFriendPubkey(from target: NostrIntentTarget) -> FriendInputResolution {
+    private func resolveFriendPubkey(
+        from target: NostrIntentTarget,
+        originalInput: String
+    ) async -> FriendInputResolution {
         switch target {
         case .directRef(let uri):
             guard let decoded = store.decodeNostrRef(uri: uri) else {
@@ -232,13 +241,34 @@ struct AddFriendSheet: View {
             case .event:
                 return .failure("Nostr event links cannot be added as friends. Paste an npub or nprofile.")
             }
-        case .nip05:
-            return .failure("NIP-05 friend lookup is not available here yet. Paste an npub or nprofile.")
+        case .nip05(let identifier):
+            return await resolveNip05FriendPubkey(identifier, originalInput: originalInput)
         case .relayURL, .textQuery:
             return .failure("Paste a Nostr public-key reference, not a search query or relay URL.")
         case .registered:
             return .failure("That Nostr input is not supported here yet.")
         }
+    }
+
+    private func resolveNip05FriendPubkey(
+        _ identifier: String,
+        originalInput: String
+    ) async -> FriendInputResolution {
+        let existingProfiles = store.resolvedNostrProfilePubkeys()
+        let outcome = store.dispatchNostrDiscoveryIntent(
+            input: originalInput,
+            sessionID: "add-friend-\(UUID().uuidString)"
+        )
+        guard case .dispatched(.nip05(identifier: _)) = outcome else {
+            return .failure("That NIP-05 address could not be resolved from Add Friend.")
+        }
+        guard let pubkey = await store.awaitResolvedNostrProfilePubkey(
+            excluding: existingProfiles,
+            timeout: .seconds(5)
+        ) else {
+            return .failure("Could not resolve \(identifier). Try an npub or nprofile.")
+        }
+        return .success(pubkey)
     }
 
     private static func isRawHexPubkey(_ value: String) -> Bool {

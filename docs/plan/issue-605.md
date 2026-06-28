@@ -4,7 +4,7 @@
 
 **Priority:** High
 
-**Status:** Partially implemented after #597. The NMP intent ABI is available, iOS Add Show uses it for Nostr profile/address and NIP-05 inputs, and the Nostr discovery tab now renders relay-targeted NIP-50 search results. Remaining work is limited to future platform surfaces and the legacy `podcast.open_search` compatibility path.
+**Status:** Partially implemented after #597. The NMP intent ABI is available, iOS Add Show and Add Friend use it for Nostr profile/address and NIP-05 inputs, and the Nostr discovery tab now renders relay-targeted NIP-50 search results. Remaining work is limited to future platform surfaces and the legacy `podcast.open_search` compatibility path.
 
 ## Goal
 
@@ -39,14 +39,13 @@ Route Nostr-facing text-entry/discovery surfaces through NMP's framework-level i
   render relay search hits separately from NIP-F4 discovery rows.
 - Updated Add Show > From URL so NIP-05 addresses complete the subscribe flow
   after the NMP async profile projection lands, with a bounded 5-second timeout.
+- Updated Add Friend so NIP-05 addresses dispatch through NMP and complete
+  the friend-add flow after the async profile projection lands.
 
 ## Remaining Work
 
-1. **NIP-05 friend add.** Add Friend currently rejects NIP-05 with guidance to
-   paste an npub/nprofile. Once the shared async result projection exists,
-   decide whether friend add waits for the same resolved pubkey path.
-2. **Android.** No Nostr subscribe text-entry surface exists today. When one is added, use the NMP intent ABI instead of local prefix checks.
-3. **Legacy Rust action.** Either remove the `podcast.open_search` compatibility action or rebuild it around NMP's public Rust-side APIs if those are exported for app crates.
+1. **Android.** No Nostr subscribe text-entry surface exists today. When one is added, use the NMP intent ABI instead of local prefix checks.
+2. **Legacy Rust action.** Either remove the `podcast.open_search` compatibility action or rebuild it around NMP's public Rust-side APIs if those are exported for app crates.
 
 ## Validation Targets
 
