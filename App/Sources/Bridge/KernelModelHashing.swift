@@ -164,6 +164,14 @@ extension KernelModel {
         h.combine(update.social?.followingCount)
         update.social?.approvedPubkeys.forEach { h.combine($0) }
         update.social?.blockedPubkeys.forEach { h.combine($0) }
+        update.friends.forEach {
+            h.combine($0.id)
+            h.combine($0.displayName)
+            h.combine($0.pubkeyHex)
+            h.combine($0.addedAt)
+            h.combine($0.avatarUrl)
+            h.combine($0.about)
+        }
 
         // Widget (positionFraction excluded — too volatile)
         h.combine(update.widget?.nowPlayingEpisodeTitle)

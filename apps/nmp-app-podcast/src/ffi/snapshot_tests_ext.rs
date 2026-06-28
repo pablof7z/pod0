@@ -5,7 +5,7 @@
 
 use super::PodcastUpdate;
 use crate::ffi::projections::{
-    AgentPickSummary, ClipSummary, CommentSummary, InboxItem, MemoryFact,
+    AgentPickSummary, ClipSummary, CommentSummary, FriendSummary, InboxItem, MemoryFact,
 };
 
 #[test]
@@ -158,6 +158,30 @@ fn snapshot_with_clips_round_trips() {
 fn default_snapshot_omits_empty_clips() {
     let json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
     assert!(!json.contains("clips"));
+}
+
+#[test]
+fn snapshot_with_friends_round_trips_and_empty_is_omitted() {
+    let empty_json = serde_json::to_string(&PodcastUpdate::default()).expect("encode");
+    assert!(!empty_json.contains("friends"));
+
+    let friend = FriendSummary {
+        id: "friend-1".into(),
+        display_name: "Alice".into(),
+        pubkey_hex: "aabbcc".into(),
+        added_at: 123,
+        avatar_url: Some("https://example.com/alice.png".into()),
+        about: Some("Builds shows".into()),
+    };
+    let snap = PodcastUpdate {
+        friends: vec![friend.clone()],
+        ..PodcastUpdate::default()
+    };
+    let json = serde_json::to_string(&snap).expect("encode");
+    assert!(json.contains(r#""friends":["#));
+    assert!(json.contains(r#""pubkey_hex":"aabbcc""#));
+    let decoded: PodcastUpdate = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded.friends, vec![friend]);
 }
 
 #[test]

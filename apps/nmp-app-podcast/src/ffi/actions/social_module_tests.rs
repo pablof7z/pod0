@@ -1,6 +1,5 @@
 use super::*;
 
-
 /// Test helper: extract `(action_json, correlation_id)` from an
 /// `ActorCommand::Protocol(HostOpCommand { .. })` via its `Debug` output.
 /// HostOpCommand fields are private in nmp-core; this avoids direct access.
@@ -13,7 +12,9 @@ fn extract_host_op_parts(cmd: &ActorCommand) -> (String, String) {
     let jm = concat!("action_json: ", r#"""#);
     let js = dbg.find(jm).expect("action_json") + jm.len();
     let after = &dbg[js..];
-    let je = after.find(concat!(r#"""#, ", correlation_id:")).expect("json end");
+    let je = after
+        .find(concat!(r#"""#, ", correlation_id:"))
+        .expect("json end");
     let raw = &after[..je];
     // Unescape \" → " and \\\\ → \\
     let tmp = raw.replace(r#"\\"#, "\x01BSLASH\x01");
@@ -117,6 +118,46 @@ fn local_add_note_round_trips_with_episode_target() {
 }
 
 #[test]
+fn local_add_friend_round_trips_with_optional_metadata() {
+    let action = SocialAction::AddFriend {
+        id: "friend-1".into(),
+        display_name: "Alice".into(),
+        pubkey_hex: "aabbcc".into(),
+        added_at: 123,
+        avatar_url: Some("https://example.com/alice.png".into()),
+        about: Some("Builds shows".into()),
+    };
+    let json = serde_json::to_string(&action).expect("encode");
+    assert!(json.contains(r#""op":"add_friend""#));
+    assert!(json.contains(r#""pubkey_hex":"aabbcc""#));
+    let decoded: SocialAction = serde_json::from_str(&json).expect("decode");
+    assert_eq!(decoded, action);
+}
+
+#[test]
+fn local_friend_mutations_decode_minimal_payloads() {
+    let rename: SocialAction =
+        serde_json::from_str(r#"{"op":"update_friend_name","id":"friend-1","display_name":"A"}"#)
+            .expect("decode rename");
+    assert_eq!(
+        rename,
+        SocialAction::UpdateFriendName {
+            id: "friend-1".into(),
+            display_name: "A".into(),
+        }
+    );
+
+    let remove: SocialAction =
+        serde_json::from_str(r#"{"op":"remove_friend","id":"friend-1"}"#).expect("decode remove");
+    assert_eq!(
+        remove,
+        SocialAction::RemoveFriend {
+            id: "friend-1".into(),
+        }
+    );
+}
+
+#[test]
 fn publish_highlight_round_trips_with_typed_fields() {
     let action = SocialAction::PublishHighlight {
         content: "quote".into(),
@@ -159,14 +200,16 @@ fn execute_emits_dispatch_host_op() {
         episode_coord: None,
     };
     let commands = std::sync::Mutex::new(Vec::<ActorCommand>::new());
-    SocialActionModule.execute(action, "corr-1", &|cmd| {
-        commands.lock().unwrap().push(cmd);
-    })
-    .expect("execute ok");
+    SocialActionModule
+        .execute(action, "corr-1", &|cmd| {
+            commands.lock().unwrap().push(cmd);
+        })
+        .expect("execute ok");
     let commands = commands.into_inner().unwrap();
     assert_eq!(commands.len(), 1);
-    let ActorCommand::Protocol(_) = &commands[0]
-    else { panic!("expected Protocol command"); };
+    let ActorCommand::Protocol(_) = &commands[0] else {
+        panic!("expected Protocol command");
+    };
     let (action_json, correlation_id) = extract_host_op_parts(&commands[0]);
     assert_eq!(correlation_id.as_str(), "corr-1");
     let v: serde_json::Value = serde_json::from_str(&action_json).expect("json");

@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::store::friends::FriendRecord;
+
 /// One NIP-22 (kind 1111) comment surfaced via
 /// [`super::snapshot::PodcastUpdate::comments`] for the
 /// currently-playing episode.
@@ -168,4 +170,30 @@ pub struct SocialSnapshot {
     /// Sorted lowercase hex. Native shells render this list but do not own it.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub blocked_pubkeys: Vec<String>,
+}
+
+/// One user-curated friend row projected from Rust-owned `FriendsState`.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
+pub struct FriendSummary {
+    pub id: String,
+    pub display_name: String,
+    pub pubkey_hex: String,
+    pub added_at: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub avatar_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub about: Option<String>,
+}
+
+impl From<FriendRecord> for FriendSummary {
+    fn from(friend: FriendRecord) -> Self {
+        Self {
+            id: friend.id,
+            display_name: friend.display_name,
+            pubkey_hex: friend.pubkey_hex,
+            added_at: friend.added_at,
+            avatar_url: friend.avatar_url,
+            about: friend.about,
+        }
+    }
 }

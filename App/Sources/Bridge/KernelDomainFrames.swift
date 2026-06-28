@@ -119,6 +119,10 @@ struct SocialDomainFrame: Decodable {
     /// NIP-10-threaded conversations, newest-first by lastActivity.
     /// Authoritative source for the `NostrConversationsView`.
     var nostrConversations: [NostrConversationDTO]?
+    /// User-curated friends projected by Rust-owned FriendsState.
+    /// `nil` means the key was absent from an older/test fixture payload; an
+    /// emitted empty array is authoritative and clears the Swift friend slice.
+    var friends: [FriendSummary]?
 }
 
 // ─── podcast.voice ───────────────────────────────────────────────────────────

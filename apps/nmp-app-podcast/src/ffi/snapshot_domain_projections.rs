@@ -123,7 +123,7 @@ fn widget_tombstone(rev: u64) -> serde_json::Value {
 /// (e.g. account switch). `social` field is `null` — the unambiguous "empty"
 /// signal for the iOS/Android social domain frame consumer.
 fn social_tombstone(rev: u64) -> serde_json::Value {
-    serde_json::json!({ "rev": rev, "social": null })
+    serde_json::json!({ "rev": rev, "social": null, "friends": [] })
 }
 
 /// Tombstone for `podcast.voice`: signals that voice state is now idle.

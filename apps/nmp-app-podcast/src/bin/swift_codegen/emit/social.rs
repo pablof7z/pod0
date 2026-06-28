@@ -89,6 +89,16 @@ struct SocialSnapshot: Equatable, Hashable {
     var blockedPubkeys: [String] = []
 }
 
+/// One user-curated friend row projected from Rust-owned FriendsState.
+struct FriendSummary: Codable, Identifiable, Equatable, Hashable {
+    var id: String
+    var displayName: String
+    var pubkeyHex: String
+    var addedAt: Int
+    var avatarUrl: String? = nil
+    var about: String? = nil
+}
+
 /// One row in `PodcastUpdate.categories`. Backs the "Browse by Topic" grid.
 struct CategoryBrowseItem: Identifiable, Equatable, Hashable {
     var category: String
@@ -175,5 +185,6 @@ extension KnowledgeSearchResult: Codable {
         relevanceScore = try c.decodeIfPresent(Double.self, forKey: .relevanceScore) ?? 0
     }
 }
-"#.to_string()
+"#
+    .to_string()
 }

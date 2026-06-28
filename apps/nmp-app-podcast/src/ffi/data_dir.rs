@@ -158,6 +158,10 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(handle: *mut PodcastHandle, path:
         // the only durable clip list.
         let clips_loaded = handle.state.clips.set_data_dir(&path_buf);
 
+        // Restore Rust-owned friends from `friends.json`, if present. The
+        // projection is the canonical friend list; native shells render it.
+        let friends_loaded = handle.state.friends.set_data_dir(&path_buf);
+
         // Restore the auto-responder dedup + turn-count cache from
         // `agent-note-responder-cache.json`, if present. A missing file is a
         // fresh start (cold install / process restart), not an error (D6). The
@@ -234,6 +238,7 @@ pub extern "C" fn nmp_app_podcast_set_data_dir(handle: *mut PodcastHandle, path:
             || triage_loaded
             || tasks_loaded
             || clips_loaded
+            || friends_loaded
             || responder_loaded
             || outbound_loaded
             || knowledge_loaded > 0

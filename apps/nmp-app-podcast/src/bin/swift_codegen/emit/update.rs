@@ -40,6 +40,7 @@ struct PodcastUpdate {
     @DefaultSettings var settings: SettingsSnapshot = SettingsSnapshot()
     @DefaultEmptyArray var comments: [CommentSummary] = []
     @DefaultEmptyArray var notes: [NoteSummary] = []
+    @DefaultEmptyArray var friends: [FriendSummary] = []
     @DefaultEmptyArray var queue: [EpisodeSummary] = []
     @DefaultEmptyArray var picks: [AgentPickSummary] = []
     @DefaultEmptyArray var agentTasks: [AgentTaskSummary] = []
@@ -226,6 +227,7 @@ extension PodcastUpdate: Codable {
         settings = try c.decodeIfPresent(SettingsSnapshot.self, forKey: .settings) ?? SettingsSnapshot()
         comments = try c.decodeIfPresent([CommentSummary].self, forKey: .comments) ?? []
         notes = try c.decodeIfPresent([NoteSummary].self, forKey: .notes) ?? []
+        friends = try c.decodeIfPresent([FriendSummary].self, forKey: .friends) ?? []
         queue = try c.decodeIfPresent([EpisodeSummary].self, forKey: .queue) ?? []
         picks = try c.decodeIfPresent([AgentPickSummary].self, forKey: .picks) ?? []
         agentTasks = try c.decodeIfPresent([AgentTaskSummary].self, forKey: .agentTasks) ?? []

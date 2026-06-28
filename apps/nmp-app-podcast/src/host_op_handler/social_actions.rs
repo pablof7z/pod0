@@ -16,6 +16,7 @@
 
 use crate::ffi::actions::social_module::SocialAction;
 use crate::host_op_handler::PodcastHostOpHandler;
+use crate::store::friends::FriendRecord;
 use crate::store::notes::UserNote;
 
 impl PodcastHostOpHandler {
@@ -164,6 +165,40 @@ impl PodcastHostOpHandler {
             SocialAction::ClearNotes => {
                 let changed = self.state.notes.clear_all();
                 serde_json::json!({"ok": true, "changed": changed})
+            }
+            SocialAction::AddFriend {
+                id,
+                display_name,
+                pubkey_hex,
+                added_at,
+                avatar_url,
+                about,
+            } => {
+                let changed = self.state.friends.add_friend(FriendRecord {
+                    id,
+                    display_name,
+                    pubkey_hex: pubkey_hex.clone(),
+                    added_at,
+                    avatar_url,
+                    about,
+                });
+                self.state.social.approve_peer(&pubkey_hex);
+                self.persist_approved_peer_store();
+                self.state.social.infra.bump();
+                serde_json::json!({"ok": true, "changed": changed})
+            }
+            SocialAction::UpdateFriendName { id, display_name } => {
+                let (changed, _) = self.state.friends.update_friend_name(&id, display_name);
+                serde_json::json!({"ok": true, "changed": changed})
+            }
+            SocialAction::RemoveFriend { id } => {
+                let removed_pubkey = self.state.friends.remove_friend(&id);
+                if let Some(pubkey_hex) = removed_pubkey.as_deref() {
+                    self.state.social.remove_peer_approval(pubkey_hex);
+                    self.persist_approved_peer_store();
+                    self.state.social.infra.bump();
+                }
+                serde_json::json!({"ok": true, "changed": removed_pubkey.is_some()})
             }
         }
     }

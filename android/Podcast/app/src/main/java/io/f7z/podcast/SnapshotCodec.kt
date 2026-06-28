@@ -216,6 +216,7 @@ object SnapshotCodec {
                 snap = snap.copy(
                     nostrConversations = soc.nostrConversations ?: emptyList(),
                     following = soc.social?.following ?: emptyList(),
+                    friends = soc.friends,
                 )
             }
         }

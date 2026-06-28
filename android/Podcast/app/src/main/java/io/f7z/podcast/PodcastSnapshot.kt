@@ -79,6 +79,8 @@ data class PodcastSnapshot(
     val settings: SettingsSnapshot? = null,
     /** Rust-owned local notes projection. */
     val notes: List<NoteSummary> = emptyList(),
+    /** Rust-owned user-curated friends projection. */
+    val friends: List<FriendSummary> = emptyList(),
     /** Playback "Up Next" queue, front-first. Mirror of `PodcastUpdate.queue`. */
     val queue: List<EpisodeSummary> = emptyList(),
     /** AI-triaged inbox, highest-priority first. Mirror of `PodcastUpdate.inbox`. */

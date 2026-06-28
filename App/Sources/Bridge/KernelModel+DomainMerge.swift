@@ -168,6 +168,9 @@ extension KernelModel {
                 if let dtos = soc.nostrConversations {
                     composite.nostrConversations = dtos
                 }
+                if let friends = soc.friends {
+                    composite.friends = friends
+                }
                 dmLog.debug("social accepted rev=\(soc.rev)")
             } else {
                 dmLog.debug("social DROPPED stale rev=\(soc.rev) last=\(lastRev)")

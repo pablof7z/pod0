@@ -54,6 +54,12 @@ pub const ACTION_SOCIAL_DELETE_NOTE: &str = "podcast.social.delete_note";
 pub const ACTION_SOCIAL_RESTORE_NOTE: &str = "podcast.social.restore_note";
 /// `podcast.social.clear_notes` — mark all Rust-owned local notes deleted.
 pub const ACTION_SOCIAL_CLEAR_NOTES: &str = "podcast.social.clear_notes";
+/// `podcast.social.add_friend` — add or replace a Rust-owned friend row.
+pub const ACTION_SOCIAL_ADD_FRIEND: &str = "podcast.social.add_friend";
+/// `podcast.social.update_friend_name` — rename a Rust-owned friend row.
+pub const ACTION_SOCIAL_UPDATE_FRIEND_NAME: &str = "podcast.social.update_friend_name";
+/// `podcast.social.remove_friend` — remove a Rust-owned friend row.
+pub const ACTION_SOCIAL_REMOVE_FRIEND: &str = "podcast.social.remove_friend";
 
 /// Wire enum for all `"podcast.social"` namespace actions.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -149,6 +155,26 @@ pub enum SocialAction {
     },
     /// Soft-delete every local note.
     ClearNotes,
+    /// Add or replace a friend. Also approves `pubkey_hex` for the trust gate.
+    AddFriend {
+        id: String,
+        display_name: String,
+        pubkey_hex: String,
+        added_at: i64,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        avatar_url: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        about: Option<String>,
+    },
+    /// Rename a friend by id.
+    UpdateFriendName {
+        id: String,
+        display_name: String,
+    },
+    /// Remove a friend by id. Also removes the explicit trust approval.
+    RemoveFriend {
+        id: String,
+    },
 }
 
 /// `ActionModule` for the `"podcast.social"` namespace.

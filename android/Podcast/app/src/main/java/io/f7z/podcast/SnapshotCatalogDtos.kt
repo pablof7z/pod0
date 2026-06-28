@@ -43,6 +43,17 @@ data class NoteTargetSummary(
     @SerialName("note_id") val noteId: String? = null,
 )
 
+/** User-curated friend row projected from Rust-owned FriendsState. */
+@Serializable
+data class FriendSummary(
+    val id: String,
+    @SerialName("display_name") val displayName: String,
+    @SerialName("pubkey_hex") val pubkeyHex: String,
+    @SerialName("added_at") val addedAt: Long = 0,
+    @SerialName("avatar_url") val avatarUrl: String? = null,
+    val about: String? = null,
+)
+
 /**
  * One row of the library projection. Kept as the stable contract the
  * Compose UI compiles against even though the Rust serializer is still

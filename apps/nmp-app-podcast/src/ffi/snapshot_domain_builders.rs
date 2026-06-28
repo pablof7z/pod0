@@ -228,7 +228,14 @@ pub(super) fn build_social_payload(handle: &PodcastHandle) -> Option<serde_json:
     let rev = handle.state.infra.rev.load(Ordering::Relaxed);
     let social = handle.state.social.social_snapshot();
     let nostr_conversations = handle.state.social.nostr_conversations_snapshot();
-    let empty = social.is_none() && nostr_conversations.is_empty();
+    let friends: Vec<super::projections::FriendSummary> = handle
+        .state
+        .friends
+        .friends_snapshot()
+        .into_iter()
+        .map(Into::into)
+        .collect();
+    let empty = social.is_none() && nostr_conversations.is_empty() && friends.is_empty();
     if empty {
         return None;
     }
@@ -236,6 +243,7 @@ pub(super) fn build_social_payload(handle: &PodcastHandle) -> Option<serde_json:
         "rev": rev,
         "social": social,
         "nostr_conversations": nostr_conversations,
+        "friends": friends,
     }))
 }
 

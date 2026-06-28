@@ -200,4 +200,42 @@ final class SettingsProjectionParityTests: XCTestCase {
 
         XCTAssertTrue(appState.notes.isEmpty)
     }
+
+    func testFriendsProjectFromKernelSnapshot() {
+        let friendID = UUID()
+        var update = PodcastUpdate()
+        update.friends = [
+            FriendSummary(
+                id: friendID.uuidString,
+                displayName: "Alice",
+                pubkeyHex: "aabbcc",
+                addedAt: 123,
+                avatarUrl: "https://example.com/alice.png",
+                about: "Builds shows"
+            )
+        ]
+
+        var appState = AppState()
+        appState.friends = [Friend(displayName: "Stale", identifier: "old")]
+        store.projectSnapshotDerivedState(into: &appState, snapshot: update)
+
+        XCTAssertEqual(appState.friends.count, 1)
+        XCTAssertEqual(appState.friends[0].id, friendID)
+        XCTAssertEqual(appState.friends[0].displayName, "Alice")
+        XCTAssertEqual(appState.friends[0].identifier, "aabbcc")
+        XCTAssertEqual(appState.friends[0].addedAt, Date(timeIntervalSince1970: 123))
+        XCTAssertEqual(appState.friends[0].avatarURL, "https://example.com/alice.png")
+        XCTAssertEqual(appState.friends[0].about, "Builds shows")
+    }
+
+    func testEmptyKernelFriendsProjectionClearsSwiftFriends() {
+        var update = PodcastUpdate()
+        update.friends = []
+
+        var appState = AppState()
+        appState.friends = [Friend(displayName: "Stale", identifier: "old")]
+        store.projectSnapshotDerivedState(into: &appState, snapshot: update)
+
+        XCTAssertTrue(appState.friends.isEmpty)
+    }
 }

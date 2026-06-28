@@ -42,6 +42,7 @@ pub mod clips;
 pub mod comments;
 pub mod discovery;
 pub mod domain;
+pub mod friends;
 pub mod inbox;
 pub mod knowledge;
 pub mod library;
@@ -288,6 +289,9 @@ pub struct PodcastAppState {
     /// Local notes substate. Owns user/agent notes and write-through persistence.
     pub notes: notes::NotesState,
 
+    /// Local friends substate. Owns user-curated friends.
+    pub friends: friends::FriendsState,
+
     /// Inbox substate (Step 7).  Owns `dismissed` + `triage_cache` slots +
     /// `triage_in_progress` atomic.  Tokio tasks write back scores via
     /// `triage_cache.share()`.
@@ -423,6 +427,7 @@ impl PodcastAppState {
         let transcripts = transcripts::TranscriptsState::new(infra.clone(), store.clone());
         let tasks = tasks::TasksState::new(infra.with_domain(Domain::Tasks), store.clone());
         let notes = notes::NotesState::new(infra.clone(), store.clone());
+        let friends = friends::FriendsState::new(infra.with_domain(Domain::Social), store.clone());
         let inbox = Arc::new(inbox::InboxState::new(infra.clone(), store.clone()));
         let comments =
             comments::CommentsState::new(infra.clone(), store.clone(), identity.clone());
@@ -464,6 +469,7 @@ impl PodcastAppState {
             transcripts,
             tasks,
             notes,
+            friends,
             inbox,
             comments,
             discovery,

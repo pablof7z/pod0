@@ -122,6 +122,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     // Project viewed-episode comments, falling back to now-playing.
     let comments = handle.state.comments.project(now_playing.as_ref().and_then(|np| np.episode_id.as_deref()));
     let notes = handle.state.notes.notes_snapshot().into_iter().map(Into::into).collect();
+    let friends = handle.state.friends.friends_snapshot().into_iter().map(Into::into).collect();
 
     let active_account = super::snapshot_identity::build_active_account(handle);
 
@@ -178,6 +179,7 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
         settings,
         comments,
         notes,
+        friends,
         queue,
         picks,
         agent_tasks,

@@ -190,6 +190,8 @@ data class SocialDomainFrame(
     val rev: Long = 0,
     /** NIP-02 follow-list snapshot. `null` = tombstone (account switch). */
     val social: SocialSnapshotDto? = null,
+    /** User-curated friends. Empty list is authoritative and clears prior rows. */
+    val friends: List<FriendSummary> = emptyList(),
     /** NIP-10-threaded conversations, newest-first by last_activity. */
     @SerialName("nostr_conversations") val nostrConversations: List<NostrConversationDto>? = null,
 )

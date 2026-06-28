@@ -155,6 +155,38 @@ class SnapshotCodecTest {
     }
 
     @Test
+    fun `friends decode from snapshot projection`() {
+        val snapshot = SnapshotCodec.decode(
+            """
+            {
+              "running": true,
+              "rev": 7,
+              "schema_version": 1,
+              "friends": [
+                {
+                  "id": "friend-1",
+                  "display_name": "Alice",
+                  "pubkey_hex": "aabbcc",
+                  "added_at": 123,
+                  "avatar_url": "https://example.com/alice.png",
+                  "about": "Builds shows"
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        assertNotNull(snapshot)
+        val friend = snapshot!!.friends.single()
+        assertEquals("friend-1", friend.id)
+        assertEquals("Alice", friend.displayName)
+        assertEquals("aabbcc", friend.pubkeyHex)
+        assertEquals(123L, friend.addedAt)
+        assertEquals("https://example.com/alice.png", friend.avatarUrl)
+        assertEquals("Builds shows", friend.about)
+    }
+
+    @Test
     fun `nested local notes decode from snapshot projection`() {
         val snapshot = SnapshotCodec.decode(
             """
@@ -242,5 +274,45 @@ class SnapshotCodecTest {
         // Each emit produces a distinct PodcastDomainFrames with monotonically
         // increasing playback.rev — proves the push loop reacts per-emit.
         assertEquals(listOf(1L, 2L), revs)
+    }
+
+    @Test
+    fun `social domain friends merge into snapshot`() {
+        val raw = """
+            {
+              "t": "snapshot",
+              "v": {
+                "running": true,
+                "rev": 8,
+                "projections": {
+                  "podcast.social": {
+                    "rev": 8,
+                    "social": null,
+                    "nostr_conversations": [],
+                    "friends": [
+                      {
+                        "id": "friend-1",
+                        "display_name": "Alice",
+                        "pubkey_hex": "aabbcc",
+                        "added_at": 123
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+        """.trimIndent()
+
+        val frames = SnapshotCodec.decodeDomainFrames(raw)
+        assertNotNull(frames)
+        val tracker = DomainRevTracker()
+        val (snapshot, accepted) = SnapshotCodec.mergeFrames(frames!!, PodcastSnapshot(), tracker)
+
+        assertTrue(accepted)
+        val friend = snapshot.friends.single()
+        assertEquals("friend-1", friend.id)
+        assertEquals("Alice", friend.displayName)
+        assertEquals("aabbcc", friend.pubkeyHex)
+        assertEquals(8L, tracker.social)
     }
 }

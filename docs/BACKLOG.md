@@ -518,11 +518,12 @@ worktrees currently in flight.
   Rust projections decoded by iOS and Android. iOS local note add/update/delete/
   restore/clear call sites now dispatch Rust note actions and reconcile
   `AppState.notes` from `PodcastUpdate.notes`, including episode/friend/note
-  anchors. Remaining:
-  - Add `AddFriend/RemoveFriend/UpdateFriendName` variants to `SocialAction`
-    FFI enum and implement handlers.
-  - Move Android note/friend rendering and iOS/Android friend rendering to
-    Rust-owned lists instead of platform-local mirrors.
+  anchors. Rust-owned friends now have `AddFriend`/`UpdateFriendName`/
+  `RemoveFriend` actions, `PodcastUpdate.friends` plus `podcast.social.friends`
+  projections, Android DTO/domain-frame decode, and iOS friend mutations plus
+  rendering state reconcile through `AppState.friends`. Remaining:
+  - Move any remaining Android note/friend UI rendering seams to Rust-owned
+    lists instead of platform-local mirrors.
   - Write one-time migrations (UserDefaults → Rust for iOS; SharedPreferences
     → Rust for Android) guarded by a post-work flag (see `oneshot_migration`
     memory note).

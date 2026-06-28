@@ -66,8 +66,8 @@ pub use notes::NoteSummary;
 pub use platform::WidgetSnapshot;
 pub use settings::SettingsSnapshot;
 pub use social::{
-    CommentSummary, ContactSummary, NostrConversationDTO,
-    NostrConversationTurnDTO, SocialSnapshot,
+    CommentSummary, ContactSummary, FriendSummary, NostrConversationDTO, NostrConversationTurnDTO,
+    SocialSnapshot,
 };
 pub use voice::VoiceState;
 

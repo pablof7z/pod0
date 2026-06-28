@@ -40,14 +40,33 @@ fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
         feedback_runtime(rev.clone()),
     ));
     // Steps 8-N+1: all substates in PodcastAppState; new takes only (app, state).
-    PodcastHostOpHandler::new(
-        std::ptr::null_mut(),
-        state,
-    )
+    PodcastHostOpHandler::new(std::ptr::null_mut(), state)
 }
 
 fn empty_handler() -> PodcastHostOpHandler {
     handler_with_store(Arc::new(Mutex::new(PodcastStore::new())))
+}
+
+fn handler_with_approved_store() -> (
+    PodcastHostOpHandler,
+    Arc<Mutex<crate::store::approved_peer_store::ApprovedPeerStore>>,
+) {
+    let rev = Arc::new(AtomicU64::new(1));
+    let store = Arc::new(Mutex::new(PodcastStore::new()));
+    let identity = Arc::new(Mutex::new(IdentityStore::new()));
+    let mut state = crate::state::PodcastAppState::new_with_identity(
+        crate::state::Infra::for_test(),
+        store,
+        identity,
+        feedback_runtime(rev),
+    );
+    let approved = Arc::new(Mutex::new(
+        crate::store::approved_peer_store::ApprovedPeerStore::new(),
+    ));
+    state.social = crate::state::social::SocialState::new(state.social.infra.clone())
+        .with_approved_peers(Arc::clone(&approved));
+    let handler = PodcastHostOpHandler::new(std::ptr::null_mut(), Arc::new(state));
+    (handler, approved)
 }
 
 fn make_episode(podcast_id: podcast_core::PodcastId) -> Episode {
@@ -87,7 +106,10 @@ fn unknown_namespace_returns_ok_false() {
     let result = handler.handle(&envelope.to_string(), "corr-1");
     assert_eq!(result["ok"], serde_json::json!(false));
     assert!(
-        result["error"].as_str().unwrap().contains("unknown namespace"),
+        result["error"]
+            .as_str()
+            .unwrap()
+            .contains("unknown namespace"),
         "error should mention 'unknown namespace', got: {}",
         result["error"]
     );
@@ -137,6 +159,69 @@ fn social_add_note_routes_to_notes_state() {
     assert_eq!(notes[0].text, "Remember this");
 }
 
+#[test]
+fn social_friend_actions_route_to_friends_state_and_trust_store() {
+    let (handler, approved) = handler_with_approved_store();
+    let pubkey = "aabbccddeeff";
+    let add = serde_json::json!({
+        "ns": "podcast.social",
+        "action": {
+            "op": "add_friend",
+            "id": "friend-1",
+            "display_name": "Alice",
+            "pubkey_hex": pubkey,
+            "added_at": 123,
+            "avatar_url": "https://example.com/alice.png",
+            "about": "Builds shows"
+        }
+    });
+
+    let result = handler.handle(&add.to_string(), "corr-add-friend");
+
+    assert_eq!(result["ok"], serde_json::json!(true));
+    assert_eq!(result["changed"], serde_json::json!(true));
+    let friends = handler.state.friends.friends_snapshot();
+    assert_eq!(friends.len(), 1);
+    assert_eq!(friends[0].display_name, "Alice");
+    assert_eq!(friends[0].pubkey_hex, pubkey);
+    assert!(
+        approved.lock().unwrap().is_approved(pubkey),
+        "add_friend must approve the peer for the social trust gate"
+    );
+
+    let rename = serde_json::json!({
+        "ns": "podcast.social",
+        "action": {
+            "op": "update_friend_name",
+            "id": "friend-1",
+            "display_name": "Alice Renamed"
+        }
+    });
+    let result = handler.handle(&rename.to_string(), "corr-rename-friend");
+    assert_eq!(result["ok"], serde_json::json!(true));
+    assert_eq!(result["changed"], serde_json::json!(true));
+    assert_eq!(
+        handler.state.friends.friends_snapshot()[0].display_name,
+        "Alice Renamed"
+    );
+
+    let remove = serde_json::json!({
+        "ns": "podcast.social",
+        "action": {
+            "op": "remove_friend",
+            "id": "friend-1"
+        }
+    });
+    let result = handler.handle(&remove.to_string(), "corr-remove-friend");
+    assert_eq!(result["ok"], serde_json::json!(true));
+    assert_eq!(result["changed"], serde_json::json!(true));
+    assert!(handler.state.friends.friends_snapshot().is_empty());
+    assert!(
+        !approved.lock().unwrap().is_approved(pubkey),
+        "remove_friend must remove the explicit trust approval"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Collision fix: podcast.agent.clear must NOT empty the playback queue
 // ---------------------------------------------------------------------------
@@ -147,18 +232,26 @@ fn agent_clear_routes_to_agent_not_queue() {
 
     // Seed the playback queue with one item (Step 14: via state.playback.queue).
     handler
-        .state.playback.queue
+        .state
+        .playback
+        .queue
         .lock()
         .unwrap()
         .add_to_end("ep-sentinel");
 
-    assert_eq!(handler.state.playback.queue.lock().unwrap().items().len(), 1);
+    assert_eq!(
+        handler.state.playback.queue.lock().unwrap().items().len(),
+        1
+    );
 
-    let envelope =
-        serde_json::json!({"ns": "podcast.agent", "action": {"op": "clear"}});
+    let envelope = serde_json::json!({"ns": "podcast.agent", "action": {"op": "clear"}});
     let result = handler.handle(&envelope.to_string(), "corr-ac");
 
-    assert_eq!(result["ok"], serde_json::json!(true), "agent.clear should succeed: {result}");
+    assert_eq!(
+        result["ok"],
+        serde_json::json!(true),
+        "agent.clear should succeed: {result}"
+    );
     // Queue must NOT have been cleared — the action went to agent chat, not queue.
     assert_eq!(
         handler.state.playback.queue.lock().unwrap().items().len(),
@@ -186,8 +279,7 @@ fn voice_activate_rejected_by_player_namespace() {
     // If the router mistakenly sends a voice-namespace envelope to the player
     // handler, the parse would fail with a "parse error" response.
     // (We test the player namespace explicitly to prove the router rejects it.)
-    let envelope =
-        serde_json::json!({"ns": "podcast.player", "action": {"op": "activate"}});
+    let envelope = serde_json::json!({"ns": "podcast.player", "action": {"op": "activate"}});
     let result = handler.handle(&envelope.to_string(), "corr-va");
     assert_eq!(
         result["ok"],
@@ -218,8 +310,7 @@ fn player_set_speed_rejected_by_voice_namespace() {
 fn siri_resume_routes_to_siri_not_player() {
     let handler = empty_handler();
 
-    let envelope =
-        serde_json::json!({"ns": "podcast.siri", "action": {"op": "resume"}});
+    let envelope = serde_json::json!({"ns": "podcast.siri", "action": {"op": "resume"}});
     let result = handler.handle(&envelope.to_string(), "corr-sr");
 
     // With an empty library, siri_resume returns ok:false with a domain error
@@ -254,7 +345,14 @@ fn player_download_routes_to_player_not_podcast() {
     let handler = handler_with_store(store);
 
     // Step 14: download_queue now at state.playback.downloads.
-    assert!(handler.state.playback.downloads.lock().unwrap().get(&ep_id).is_none());
+    assert!(handler
+        .state
+        .playback
+        .downloads
+        .lock()
+        .unwrap()
+        .get(&ep_id)
+        .is_none());
 
     let envelope = serde_json::json!({
         "ns": "podcast.player",
@@ -274,7 +372,14 @@ fn player_download_routes_to_player_not_podcast() {
     // PlayerAction::Download enqueues the episode in DownloadQueue.
     // PodcastAction::Download (the old hijacker) would have different semantics.
     assert!(
-        handler.state.playback.downloads.lock().unwrap().get(&ep_id).is_some(),
+        handler
+            .state
+            .playback
+            .downloads
+            .lock()
+            .unwrap()
+            .get(&ep_id)
+            .is_some(),
         "podcast.player.download must enqueue in DownloadQueue"
     );
 }

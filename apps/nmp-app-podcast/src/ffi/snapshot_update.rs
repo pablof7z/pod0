@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 use nmp_feedback::FeedbackThreadDto;
 
 use super::projections::{
-    AccountSummary, AgentContextSnapshot, AgentPickSummary, AgentSnapshot,
-    AgentTaskSummary, CategoryBrowseItem, ClipSummary, CommentSummary, DownloadQueueSnapshot,
-    EpisodeSummary, InboxItem, KnowledgeSearchResult, MemoryFact, NostrConversationDTO,
+    AccountSummary, AgentContextSnapshot, AgentPickSummary, AgentSnapshot, AgentTaskSummary,
+    CategoryBrowseItem, ClipSummary, CommentSummary, DownloadQueueSnapshot, EpisodeSummary,
+    FriendSummary, InboxItem, KnowledgeSearchResult, MemoryFact, NostrConversationDTO,
     NostrShowSummary, NoteSummary, OwnedPodcastInfo, PodcastSummary, SettingsSnapshot,
     SocialSnapshot, VoiceState, WidgetSnapshot,
 };
@@ -108,6 +108,9 @@ pub struct PodcastUpdate {
     /// Local user/agent notes, projected from Rust-owned `NotesState`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub notes: Vec<NoteSummary>,
+    /// User-curated friends, projected from Rust-owned `FriendsState`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub friends: Vec<FriendSummary>,
     /// Playback "Up Next" queue, front-first.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub queue: Vec<EpisodeSummary>,
@@ -212,6 +215,7 @@ impl Default for PodcastUpdate {
             settings: SettingsSnapshot::default(),
             comments: Vec::new(),
             notes: Vec::new(),
+            friends: Vec::new(),
             queue: Vec::new(),
             picks: Vec::new(),
             agent_tasks: Vec::new(),
