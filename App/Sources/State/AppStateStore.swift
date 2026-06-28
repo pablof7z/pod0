@@ -113,6 +113,12 @@ final class AppStateStore {
     /// renders native rows only.
     var threadingProjection: ThreadingProjection = .empty
 
+    /// Legacy Swift notes/friends loaded from disk before the first kernel
+    /// projection can replace `state.notes` / `state.friends`. Drained once
+    /// from `attachKernel` into Rust's durable social stores.
+    @ObservationIgnored
+    var pendingSocialNativeStoreMigration: SocialNativeStoreMigration.Payload?
+
     /// Storage backing this store. Production code uses `Persistence.shared`
     /// (the App Group suite); tests inject an instance over a unique
     /// in-memory suite so fixtures never leak into the real app.
@@ -214,6 +220,7 @@ final class AppStateStore {
             loadedState.podcasts.removeAll { legacyExternalPodcastIDs.contains($0.id) }
             loadedState.subscriptions.removeAll { legacyExternalPodcastIDs.contains($0.podcastID) }
         }
+        self.pendingSocialNativeStoreMigration = SocialNativeStoreMigration.pendingPayload(from: loadedState)
         // Split the freshly-loaded episodes out of the DTO into the dedicated
         // `episodes` stored property — the runtime source of truth. We blank
         // `state.episodes` so there is exactly one live copy in memory; the

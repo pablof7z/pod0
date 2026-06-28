@@ -521,22 +521,25 @@ worktrees currently in flight.
   anchors. Rust-owned friends now have `AddFriend`/`UpdateFriendName`/
   `RemoveFriend` actions, `PodcastUpdate.friends` plus `podcast.social.friends`
   projections, Android DTO/domain-frame decode, and iOS friend mutations plus
-  rendering state reconcile through `AppState.friends`. Remaining:
+  rendering state reconcile through `AppState.friends`. iOS now captures the
+  legacy Swift `AppState.notes` / `AppState.friends` payload at launch and seeds
+  Rust `notes.json` / `friends.json` once after the kernel data dir is bound,
+  with the `socialNativeStoreMigrationV1` flag set only after all dispatches are
+  accepted. Android was audited for the same migration seam and keeps no
+  SharedPreferences-backed notes/friends mirror, so there is no Android data to
+  backfill. Remaining:
   - Move any remaining Android note/friend UI rendering seams to Rust-owned
     lists instead of platform-local mirrors.
-  - Write one-time migrations (UserDefaults → Rust for iOS; SharedPreferences
-    → Rust for Android) guarded by a post-work flag (see `oneshot_migration`
-    memory note).
 - **local-notes-kernel-store.** Publishing user notes is already Rust-owned via
   `podcast.social.publish_note`, and local note persistence/projection/actions
   now exist in the kernel. The native shells still render and mutate Swift
   `Note` rows through `AppState.notes`, but iOS note mutations now dispatch the
-  Rust local-note actions and every kernel snapshot replaces `AppState.notes`
-  from `PodcastUpdate.notes`. Remaining: one-time migration of already persisted
-  Swift notes into `notes.json`, Android note UI adoption if/when it grows local
-  note surfaces, and eventual deletion of the Swift note persistence field once
-  migration is complete. Keep publish routing through `podcast.social` and do
-  not reintroduce Swift signing/tag policy.
+  Rust local-note actions, every kernel snapshot replaces `AppState.notes`
+  from `PodcastUpdate.notes`, and the one-time iOS native-store migration seeds
+  already persisted Swift notes into `notes.json`. Remaining: Android note UI
+  adoption if/when it grows local note surfaces, and eventual deletion of the
+  Swift note persistence field once migration is complete. Keep publish routing
+  through `podcast.social` and do not reintroduce Swift signing/tag policy.
 - ~~**nip73-formatting-kernel.**~~ Done. The legacy Swift `publishUserClip`
   helper has been retired; clip publish/update semantics now remain tracked
   under `autosnip-real-boundaries` so they can be owned from the Rust clip

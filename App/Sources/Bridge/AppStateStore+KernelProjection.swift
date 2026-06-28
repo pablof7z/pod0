@@ -52,6 +52,7 @@ extension AppStateStore {
         // One-shot migration of legacy per-category transcription settings into
         // the kernel-owned per-podcast transcription disabled set (D4/D7).
         migrateTranscriptionSettingsToKernel()
+        migrateSocialNativeStoresToKernel()
         // One-shot re-backfill: dispatch `index_episode` for every episode
         // whose transcript the kernel already holds, populating the kernel
         // KnowledgeStore for the Search tab (Slice 4). Guarded by a

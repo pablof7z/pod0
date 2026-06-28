@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		007B42293532E1D27CC83EC0 /* SocialNativeStoreMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD0A015F0E44987B02A2A98 /* SocialNativeStoreMigration.swift */; };
 		00A1EEE68C8AD61AFC553D33 /* PerfSignposter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A67DAB8DE371B15ECD8C111 /* PerfSignposter.swift */; };
 		00D0604F92F2793F9CA70A84 /* HighlightedTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E39D85E4B13CD42BCEDDFE48 /* HighlightedTextTests.swift */; };
 		02E8BC01AB1737A2495F0578 /* PlaybackState+Queue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 641B7B6727D57CA53D90E43D /* PlaybackState+Queue.swift */; };
@@ -376,6 +377,7 @@
 		84DD823D72F4E5C852881AEA /* PlayerQueueSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02AA954731D0DD21C365DB3D /* PlayerQueueSheet.swift */; };
 		84E9DB905BEA2F956935D173 /* KernelBridgeWireTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2BFCB338FF13BAE20FA63D7 /* KernelBridgeWireTests.swift */; };
 		8515BFB3381577D5D436B2F2 /* ScribeBackendAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A36C26B39CDE8EF305D3EA8 /* ScribeBackendAdapterTests.swift */; };
+		85C1B337010D0ECAFCEF9E4B /* AppStateStore+SocialNativeMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 645C7339F695F75B9BA65098 /* AppStateStore+SocialNativeMigration.swift */; };
 		85E5AC52B9E887337CDD4244 /* NostrIntentWire.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0EF419AE4ED35DF7141238 /* NostrIntentWire.swift */; };
 		86566F20C645792F76A672CB /* QRCodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AD631AA7BD5660AE2BA6946 /* QRCodeScannerView.swift */; };
 		86D4F2F0B6A5F7414102AB1B /* ChaptersHydrationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86B285F652D6AA574D54A0C8 /* ChaptersHydrationService.swift */; };
@@ -505,6 +507,7 @@
 		AC582ACB194B69A4D7FBE9B9 /* AudioCapability+Wire.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0A68B971C8B62C972814482 /* AudioCapability+Wire.swift */; };
 		ACB3BFFA7CAB0C4D9B69DB5B /* CategoryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DACB30A67A1166D856B816C /* CategoryDetailView.swift */; };
 		ACF0971E2A14036E46837F60 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16A6C0676822D8B8507BB45A /* NotificationService.swift */; };
+		ADA9F4D825AE78DD70CBA870 /* SocialNativeStoreMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2719215B225718E1E936D201 /* SocialNativeStoreMigrationTests.swift */; };
 		ADD1DBE40FBB87B32EF0754B /* AppStateStore+STTKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FFD4A10896F06EBDE8D4102 /* AppStateStore+STTKeys.swift */; };
 		AE0140E353BF764E222E2F7D /* NarrationTrack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D8B6EAFFF39F41EE92F964D /* NarrationTrack.swift */; };
 		AE4B338CCD0457357051BB98 /* ChatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F998CA032CA284708B3D4F43 /* ChatMessage.swift */; };
@@ -914,6 +917,7 @@
 		2662C0BFD81474F425CD3EC8 /* ShowDetailSettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowDetailSettingsSheet.swift; sourceTree = "<group>"; };
 		269104D37F8A8A8A2D5F6A1C /* KernelModelHashing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KernelModelHashing.swift; sourceTree = "<group>"; };
 		26A735604F439E2BB4A10A52 /* LivePodcastRAGAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivePodcastRAGAdapter.swift; sourceTree = "<group>"; };
+		2719215B225718E1E936D201 /* SocialNativeStoreMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialNativeStoreMigrationTests.swift; sourceTree = "<group>"; };
 		2763688843F3F2578F4B5DA8 /* ElevenLabsScribeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevenLabsScribeClient.swift; sourceTree = "<group>"; };
 		278CA9637B1B804C8D5D4509 /* PlayerShareSheetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerShareSheetTests.swift; sourceTree = "<group>"; };
 		27D96D869DCB5D4F1FB36CA0 /* AgentToolSchema+OwnedPodcasts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AgentToolSchema+OwnedPodcasts.swift"; sourceTree = "<group>"; };
@@ -1098,6 +1102,7 @@
 		641B7B6727D57CA53D90E43D /* PlaybackState+Queue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlaybackState+Queue.swift"; sourceTree = "<group>"; };
 		64334EEB9F70E379F701528A /* AppSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSidebarView.swift; sourceTree = "<group>"; };
 		64423DF6A4BB13725F785B08 /* AppTheme+ViewExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppTheme+ViewExtensions.swift"; sourceTree = "<group>"; };
+		645C7339F695F75B9BA65098 /* AppStateStore+SocialNativeMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+SocialNativeMigration.swift"; sourceTree = "<group>"; };
 		64C3D3C27ED0AD9791FEB59D /* AppStateStore+Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+Settings.swift"; sourceTree = "<group>"; };
 		64CCEB4A7701F0ACD3FEA63D /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		64DB68ECE06F82597B5DCE9E /* HomeActiveFilterChipsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeActiveFilterChipsTests.swift; sourceTree = "<group>"; };
@@ -1304,6 +1309,7 @@
 		AC5BE0AF7EA8969A1FF45D3C /* PlatformCapability+WireTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlatformCapability+WireTypes.swift"; sourceTree = "<group>"; };
 		AC6096A58B352EDB87FC9029 /* AgentFriendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentFriendsView.swift; sourceTree = "<group>"; };
 		AC6770EAF655E366C197ED1F /* iCloudSyncCapability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iCloudSyncCapability.swift; sourceTree = "<group>"; };
+		ACD0A015F0E44987B02A2A98 /* SocialNativeStoreMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialNativeStoreMigration.swift; sourceTree = "<group>"; };
 		AD0325FAADAE49328D4B2F90 /* Anchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Anchor.swift; sourceTree = "<group>"; };
 		AD20B1C5E1259A614A1C4949 /* AppStateStore+EpisodeProjections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+EpisodeProjections.swift"; sourceTree = "<group>"; };
 		AD5183645DBEDD1F73FC5F85 /* UserIdentityStore+NIP46.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserIdentityStore+NIP46.swift"; sourceTree = "<group>"; };
@@ -2106,6 +2112,7 @@
 				D825A2B41DE928886F85B751 /* AppStateStore+RustLibraryProjection.swift */,
 				0E1E1A08FB171B82AEA9ECE5 /* AppStateStore+ScheduledTasks.swift */,
 				64C3D3C27ED0AD9791FEB59D /* AppStateStore+Settings.swift */,
+				645C7339F695F75B9BA65098 /* AppStateStore+SocialNativeMigration.swift */,
 				E8350DA2ECAB3BD4233213FF /* AppStateStore+Sorting.swift */,
 				5FFD4A10896F06EBDE8D4102 /* AppStateStore+STTKeys.swift */,
 				31822DD58237A18EDF0122A4 /* AppStateStore+Subscriptions.swift */,
@@ -2310,6 +2317,7 @@
 				074964F91397B153446194C5 /* SettingsSnapshotParityTests.swift */,
 				0AE9FEFC9F32ECFA708F90DE /* SignedEventsRegistryTests.swift */,
 				8217E95BF99C433F02C9538A /* SnapshotDecodeTransportPerfTests.swift */,
+				2719215B225718E1E936D201 /* SocialNativeStoreMigrationTests.swift */,
 				D7E11F16DE4127AD138AB04C /* SRTParserTests.swift */,
 				16725EF61C3DDF6A052B3A5F /* StoreOpenFailureDecodeTests.swift */,
 				96F833AA22A592FCA0B58604 /* SubscriptionAddErrorTests.swift */,
@@ -2477,6 +2485,7 @@
 				0EE45375F2D1241E58F85BF5 /* PerplexityCredentialStore.swift */,
 				035011F30678A13D2CED2BF2 /* RationaleNarrator.swift */,
 				26240CE1A3EE88C1667C4FAF /* ReviewPrompt.swift */,
+				ACD0A015F0E44987B02A2A98 /* SocialNativeStoreMigration.swift */,
 				BDDA4454D167DCD6DA6BD3B7 /* SpotlightIndexer.swift */,
 				B9956D4F7923BC6BC474B0A7 /* SubscriptionService.swift */,
 				5055D0C65F5DD2D436B0E527 /* ThreadingInferenceService.swift */,
@@ -3557,6 +3566,7 @@
 				4286256082FAB77ED13E857B /* PodcastCategorizationService.swift in Sources */,
 				42E6FDCB2EE92AE0325C9ECF /* RationaleNarrator.swift in Sources */,
 				260D141C939EFC11CD133E3C /* ReviewPrompt.swift in Sources */,
+				007B42293532E1D27CC83EC0 /* SocialNativeStoreMigration.swift in Sources */,
 				0F91251AC3037E2B83EE1E5A /* SpotlightIndexer.swift in Sources */,
 				A9C785A5E7C3D80EC64D9361 /* SubscriptionService.swift in Sources */,
 				AFF999135E50083FF00EEEEC /* ThreadingInferenceService.swift in Sources */,
@@ -3590,6 +3600,7 @@
 				ADD1DBE40FBB87B32EF0754B /* AppStateStore+STTKeys.swift in Sources */,
 				8F22C51EE96910944EACB918 /* AppStateStore+ScheduledTasks.swift in Sources */,
 				E3C3DF0FB0D71A7CB30C6D4C /* AppStateStore+Settings.swift in Sources */,
+				85C1B337010D0ECAFCEF9E4B /* AppStateStore+SocialNativeMigration.swift in Sources */,
 				A227B537B4465D6B2E5D50A4 /* AppStateStore+Sorting.swift in Sources */,
 				A10F908B29438687A833C418 /* AppStateStore+Subscriptions.swift in Sources */,
 				C77DBC83450A4C649F71B3A8 /* AppStateStore+Threading.swift in Sources */,
@@ -3726,6 +3737,7 @@
 				9E38E8795B662258BA6D9086 /* SettingsSnapshotParityTests.swift in Sources */,
 				A1DFD5EF7FB3D83B7C4C6515 /* SignedEventsRegistryTests.swift in Sources */,
 				9A83DE34C434C21228A289F8 /* SnapshotDecodeTransportPerfTests.swift in Sources */,
+				ADA9F4D825AE78DD70CBA870 /* SocialNativeStoreMigrationTests.swift in Sources */,
 				ECD00C2651AF43E8009602E6 /* StoreOpenFailureDecodeTests.swift in Sources */,
 				9C25BA5ABC331979999B9C44 /* SubscriptionAddErrorTests.swift in Sources */,
 				870ED647A0053502A61EEE3B /* TranscriptAskAgentDispatchTests.swift in Sources */,
