@@ -1,6 +1,6 @@
 //! User notes store — holds local notes created by the user.
 //!
-//! Notes can be attached to episodes or podcasts. Each note carries
+//! Notes can be attached to episodes, podcasts, friends, or other notes. Each note carries
 //! metadata for display and synchronization.
 
 use serde::{Deserialize, Serialize};
@@ -19,7 +19,7 @@ pub struct UserNote {
     pub author: String,
 }
 
-/// The target of a note — either an episode or a podcast.
+/// The target of a note — either an episode, podcast, friend, or note.
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum NoteTarget {
@@ -30,6 +30,10 @@ pub enum NoteTarget {
     },
     #[serde(rename = "podcast")]
     Podcast { podcast_id: String },
+    #[serde(rename = "friend")]
+    Friend { friend_id: String },
+    #[serde(rename = "note")]
+    Note { note_id: String },
 }
 
 /// Load notes from disk at the designated data directory.
@@ -114,6 +118,52 @@ mod tests {
 
         assert_eq!(loaded.len(), 1);
         assert_eq!(loaded[0].id, "note-2");
+    }
+
+    #[test]
+    fn save_and_load_notes_with_friend_target() {
+        let tmp = TempDir::new().unwrap();
+        let notes = vec![UserNote {
+            id: "note-3".to_string(),
+            text: "Follow up".to_string(),
+            kind: "free".to_string(),
+            target: Some(NoteTarget::Friend {
+                friend_id: "friend-789".to_string(),
+            }),
+            created_at: 3000,
+            deleted: false,
+            author: "user".to_string(),
+        }];
+
+        save_notes(tmp.path(), &notes);
+        let loaded = load_notes(tmp.path());
+
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].id, "note-3");
+        assert_eq!(loaded[0].target, notes[0].target);
+    }
+
+    #[test]
+    fn save_and_load_notes_with_note_target() {
+        let tmp = TempDir::new().unwrap();
+        let notes = vec![UserNote {
+            id: "note-4".to_string(),
+            text: "Related thought".to_string(),
+            kind: "reflection".to_string(),
+            target: Some(NoteTarget::Note {
+                note_id: "parent-note".to_string(),
+            }),
+            created_at: 4000,
+            deleted: false,
+            author: "agent".to_string(),
+        }];
+
+        save_notes(tmp.path(), &notes);
+        let loaded = load_notes(tmp.path());
+
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].id, "note-4");
+        assert_eq!(loaded[0].target, notes[0].target);
     }
 
     #[test]

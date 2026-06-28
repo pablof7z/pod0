@@ -14,6 +14,10 @@ extension AppStateStore {
             next.lastPlayedEpisodeID = uuid
         }
 
+        if let summaries = snapshot?.notes {
+            next.notes = summaries.compactMap(Self.note(from:))
+        }
+
         // ── nostrConversations: wire DTO → domain record ──────────────────────
         // The kernel is AUTHORITATIVE for the conversation projection — when the
         // social domain delivers a non-empty slice, it REPLACES the local slice.

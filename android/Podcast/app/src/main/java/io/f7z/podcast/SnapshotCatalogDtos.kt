@@ -32,13 +32,15 @@ data class NoteSummary(
     val author: String = "user",
 )
 
-/** Local note target. `type` is `"episode"` or `"podcast"`. */
+/** Local note target. `type` is `"episode"`, `"podcast"`, `"friend"`, or `"note"`. */
 @Serializable
 data class NoteTargetSummary(
     val type: String,
     @SerialName("episode_id") val episodeId: String? = null,
     @SerialName("position_secs") val positionSecs: Double? = null,
     @SerialName("podcast_id") val podcastId: String? = null,
+    @SerialName("friend_id") val friendId: String? = null,
+    @SerialName("note_id") val noteId: String? = null,
 )
 
 /**

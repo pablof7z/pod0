@@ -123,6 +123,70 @@ class SnapshotCodecTest {
     }
 
     @Test
+    fun `friend local notes decode from snapshot projection`() {
+        val snapshot = SnapshotCodec.decode(
+            """
+            {
+              "running": true,
+              "rev": 6,
+              "schema_version": 1,
+              "notes": [
+                {
+                  "id": "note-friend",
+                  "text": "Ask Alice",
+                  "kind": "free",
+                  "target": {
+                    "type": "friend",
+                    "friend_id": "friend-1"
+                  },
+                  "created_at": 456,
+                  "deleted": false,
+                  "author": "user"
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        assertNotNull(snapshot)
+        val target = snapshot!!.notes.single().target!!
+        assertEquals("friend", target.type)
+        assertEquals("friend-1", target.friendId)
+    }
+
+    @Test
+    fun `nested local notes decode from snapshot projection`() {
+        val snapshot = SnapshotCodec.decode(
+            """
+            {
+              "running": true,
+              "rev": 7,
+              "schema_version": 1,
+              "notes": [
+                {
+                  "id": "note-child",
+                  "text": "Related",
+                  "kind": "reflection",
+                  "target": {
+                    "type": "note",
+                    "note_id": "note-parent"
+                  },
+                  "created_at": 789,
+                  "deleted": false,
+                  "author": "agent"
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        assertNotNull(snapshot)
+        val target = snapshot!!.notes.single().target!!
+        assertEquals("note", target.type)
+        assertEquals("note-parent", target.noteId)
+    }
+
+    @Test
     fun `feedback threads decode from snapshot projection`() {
         val raw = """
             {

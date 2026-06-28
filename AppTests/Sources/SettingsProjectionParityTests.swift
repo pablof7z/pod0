@@ -122,4 +122,82 @@ final class SettingsProjectionParityTests: XCTestCase {
         XCTAssertNil(appState.settings.nostrPublicKeyHex,
                      "nil kernel nostrPublicKeyHex must clear a pre-existing Swift value")
     }
+
+    func testLocalNotesProjectFromKernelSnapshot() {
+        let episodeID = UUID()
+        let friendID = UUID()
+        let parentNoteID = UUID()
+
+        var update = PodcastUpdate()
+        update.notes = [
+            NoteSummary(
+                id: UUID().uuidString,
+                text: "Episode note",
+                kind: "reflection",
+                target: NoteTargetSummary(
+                    type: "episode",
+                    episodeId: episodeID.uuidString,
+                    positionSecs: 42.5
+                ),
+                createdAt: 123,
+                deleted: false,
+                author: "user"
+            ),
+            NoteSummary(
+                id: UUID().uuidString,
+                text: "Friend note",
+                kind: "free",
+                target: NoteTargetSummary(type: "friend", friendId: friendID.uuidString),
+                createdAt: 456,
+                deleted: true,
+                author: "agent"
+            ),
+            NoteSummary(
+                id: UUID().uuidString,
+                text: "Nested note",
+                kind: "systemEvent",
+                target: NoteTargetSummary(type: "note", noteId: parentNoteID.uuidString),
+                createdAt: 789,
+                deleted: false,
+                author: "agent"
+            )
+        ]
+
+        var appState = AppState()
+        appState.notes = [Note(text: "stale")]
+        store.projectSnapshotDerivedState(into: &appState, snapshot: update)
+
+        XCTAssertEqual(appState.notes.map(\.text), ["Episode note", "Friend note", "Nested note"])
+        XCTAssertEqual(appState.notes[0].kind, .reflection)
+        XCTAssertEqual(appState.notes[0].createdAt, Date(timeIntervalSince1970: 123))
+        if case .episode(let id, let positionSeconds) = appState.notes[0].target {
+            XCTAssertEqual(id, episodeID)
+            XCTAssertEqual(positionSeconds, 42.5)
+        } else {
+            XCTFail("Episode note target must project as Anchor.episode")
+        }
+        XCTAssertTrue(appState.notes[1].deleted)
+        XCTAssertEqual(appState.notes[1].author, .agent)
+        if case .friend(let id) = appState.notes[1].target {
+            XCTAssertEqual(id, friendID)
+        } else {
+            XCTFail("Friend note target must project as Anchor.friend")
+        }
+        if case .note(let id) = appState.notes[2].target {
+            XCTAssertEqual(id, parentNoteID)
+        } else {
+            XCTFail("Nested note target must project as Anchor.note")
+        }
+    }
+
+    func testEmptyKernelNotesProjectionClearsSwiftNotes() {
+        var update = PodcastUpdate()
+        update.notes = []
+
+        var appState = AppState()
+        appState.notes = [Note(text: "stale")]
+        store.projectSnapshotDerivedState(into: &appState, snapshot: update)
+
+        XCTAssertTrue(appState.notes.isEmpty)
+    }
 }

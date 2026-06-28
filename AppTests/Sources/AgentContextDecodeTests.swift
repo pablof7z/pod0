@@ -93,30 +93,59 @@ final class AgentContextDecodeTests: XCTestCase {
 
     func testLocalNotesDecodeFromSnakeCaseKeys() throws {
         let json = """
-        {
-          "rev": 4,
-          "notes": [
             {
-              "id": "note-1",
-              "text": "Remember this",
-              "kind": "free",
-              "target": {
-                "type": "episode",
-                "episode_id": "ep-1",
-                "position_secs": 12.5
-              },
-              "created_at": 123,
-              "deleted": false,
-              "author": "user"
+              "rev": 4,
+              "notes": [
+                {
+                  "id": "note-1",
+                  "text": "Remember this",
+                  "kind": "free",
+                  "target": {
+                    "type": "episode",
+                    "episode_id": "ep-1",
+                    "position_secs": 12.5
+                  },
+                  "created_at": 123,
+                  "deleted": false,
+                  "author": "user"
+                },
+                {
+                  "id": "note-2",
+                  "text": "Ask Alice",
+                  "kind": "free",
+                  "target": {
+                    "type": "friend",
+                    "friend_id": "friend-1"
+                  },
+                  "created_at": 124,
+                  "deleted": false,
+                  "author": "agent"
+                },
+                {
+                  "id": "note-3",
+                  "text": "Related",
+                  "kind": "reflection",
+                  "target": {
+                    "type": "note",
+                    "note_id": "note-1"
+                  },
+                  "created_at": 125,
+                  "deleted": false,
+                  "author": "agent"
+                }
+              ]
             }
-          ]
-        }
-        """
-        let note = try XCTUnwrap(try decode(json).notes.first)
+            """
+        let notes = try decode(json).notes
+        let note = try XCTUnwrap(notes.first)
         XCTAssertEqual(note.id, "note-1")
         XCTAssertEqual(note.text, "Remember this")
         XCTAssertEqual(note.target?.type, "episode")
         XCTAssertEqual(note.target?.episodeId, "ep-1")
         XCTAssertEqual(note.target?.positionSecs, 12.5)
+        XCTAssertEqual(notes[1].target?.type, "friend")
+        XCTAssertEqual(notes[1].target?.friendId, "friend-1")
+        XCTAssertEqual(notes[2].target?.type, "note")
+        XCTAssertEqual(notes[2].target?.noteId, "note-1")
     }
 }

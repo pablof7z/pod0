@@ -137,12 +137,14 @@ struct NoteSummary: Codable, Equatable, Identifiable {
     var author: String = ""
 }
 
-/// Local note target. `type` is `"episode"` or `"podcast"`.
+/// Local note target. `type` is `"episode"`, `"podcast"`, `"friend"`, or `"note"`.
 struct NoteTargetSummary: Codable, Equatable {
     var type: String = ""
     var episodeId: String? = nil
     var positionSecs: Double? = nil
     var podcastId: String? = nil
+    var friendId: String? = nil
+    var noteId: String? = nil
 }
 
 // AgentContextSnapshot / AgentContextEpisode live in
