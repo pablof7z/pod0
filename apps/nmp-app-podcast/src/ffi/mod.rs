@@ -30,6 +30,7 @@
 
 pub mod actions;
 mod agent_action_tool;
+pub mod dispatch_action;
 mod agent_ask;
 mod agent_category_list;
 mod agent_chat_title;
@@ -153,6 +154,7 @@ pub use actions::{
     ACTION_SIRI_RESUME, ACTION_VOICE_ACTIVATE, ACTION_VOICE_DEACTIVATE, ACTION_VOICE_SET_VOICE,
     ACTION_VOICE_SPEAK, ACTION_VOICE_STOP, PICKS_LIMIT, PICKS_PER_SHOW_CAP,
 };
+pub use dispatch_action::nmp_app_podcast_dispatch_action;
 pub use agent_action_tool::{nmp_app_podcast_agent_action_policy, nmp_app_podcast_agent_action_tool};
 pub use agent_ask::{
     nmp_app_podcast_agent_ask_enqueue, nmp_app_podcast_agent_ask_set_callback,

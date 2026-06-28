@@ -390,6 +390,7 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     let _follow_list_observer_id = app_ref.register_event_observer(std::sync::Arc::new(
         crate::social_handler::FollowListObserver::new(
             app_ref.active_account_handle(),
+            app_ref.contacts_lookup(),
             app_state.social.social_slot.share(),
             app_state.infra.rev.clone(),
         )

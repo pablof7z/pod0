@@ -14,8 +14,9 @@ import Foundation
 extension UserIdentityStore {
 
     /// Begin nostrconnect:// pairing via the kernel's NIP-46 broker.
-    /// The kernel generates the URI and immediately starts listening for the
-    /// signer app's response on its embedded relay — no Swift WebSocket.
+    /// The kernel selects a configured write relay, generates the URI, and
+    /// immediately starts listening for the signer app's response — no Swift
+    /// WebSocket.
     /// State changes arrive via `applyKernelIdentity` on the next snapshot tick.
     func connectViaNostrConnect(
         relay: URL? = nil,
@@ -23,7 +24,7 @@ extension UserIdentityStore {
     ) async {
         _beginNostrConnect()
         guard let uri = kernel?.nostrconnectURI(
-            relayURL: relay?.absoluteString,
+            relayURL: nil,
             callbackScheme: "podcastr"
         ) else {
             _failNostrConnect("Kernel unavailable")

@@ -78,6 +78,10 @@ nmp-nip02 = { workspace = true }
 # controllers. Podcast's `nmp_app_podcast_register` calls `register_defaults`
 # once at app init instead of duplicating the boilerplate.
 nmp-defaults = { workspace = true }
+# Subscription planner (direct dep for InterestId/LogicalInterest/etc.).
+# nmp-core no longer re-exports the planner facade (#1608); external callers
+# depend on nmp-planner directly.
+nmp-planner = { workspace = true }
 # BUD-02 blob upload action (`nmp.blossom.upload`). D13/D0 — Rust owns the
 # full Build → Sign → Transport pipeline; Swift dispatches + reads the
 # projected result. Same git rev as the other nmp-* deps (workspace pin).

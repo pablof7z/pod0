@@ -35,8 +35,8 @@
 
 use std::ffi::CString;
 
-use nmp_core::planner::LogicalInterest;
 use nmp_ffi::NmpApp;
+use nmp_planner::interest::LogicalInterest;
 
 /// Register a per-podcast secret key in the kernel's identity roster without
 /// activating it. `secret_hex` must be a 64-char lowercase hex string (the
@@ -202,28 +202,8 @@ pub(crate) fn blossom_upload_via_nmp(
         "servers": servers,
         "signer_pubkey": signer_pubkey_hex,
     });
-    let Ok(ns_c) = CString::new("nmp.blossom.upload") else {
-        return None;
-    };
-    let Ok(body_c) = CString::new(body.to_string()) else {
-        return None;
-    };
-    let raw = nmp_ffi::nmp_app_dispatch_action(app, ns_c.as_ptr(), body_c.as_ptr());
-    if raw.is_null() {
-        return None;
-    }
-    // SAFETY: raw is a heap-owned NUL-terminated C string from nmp_app_dispatch_action.
-    let response = unsafe { std::ffi::CStr::from_ptr(raw) }
-        .to_string_lossy()
-        .into_owned();
-    nmp_ffi::nmp_free_string(raw);
-
-    // Parse the correlation_id from the accept envelope.
-    let parsed: serde_json::Value = serde_json::from_str(&response).ok()?;
-    parsed
-        .get("correlation_id")
-        .and_then(|v| v.as_str())
-        .map(str::to_owned)
+    crate::dispatch_bytes::dispatch_action_bytes_for(app, "nmp.blossom.upload", &body.to_string())
+        .ok()
 }
 
 /// Dispatch unsigned event parameters to `nmp.publish { PublishRaw }` using
@@ -293,21 +273,8 @@ pub(crate) fn self_dispatch_publish(app: *mut nmp_ffi::NmpApp, body: serde_json:
     if app.is_null() {
         return false;
     }
-    let (Ok(ns_c), Ok(body_c)) = (CString::new("podcast.publish"), CString::new(body.to_string()))
-    else {
-        return false;
-    };
-    let raw = nmp_ffi::nmp_app_dispatch_action(app, ns_c.as_ptr(), body_c.as_ptr());
-    if raw.is_null() {
-        return false;
-    }
-    // SAFETY: `raw` is a heap-owned NUL-terminated C string minted by
-    // `nmp_app_dispatch_action`; read the accept marker, then free it.
-    let accepted = unsafe { std::ffi::CStr::from_ptr(raw) }
-        .to_string_lossy()
-        .contains("\"correlation_id\"");
-    nmp_ffi::nmp_free_string(raw);
-    accepted
+    crate::dispatch_bytes::dispatch_action_bytes_for(app, "podcast.publish", &body.to_string())
+        .is_ok()
 }
 
 /// Push a [`LogicalInterest`] into NMP's relay pool. The kernel opens the
@@ -321,15 +288,6 @@ pub(crate) fn push_interest_via_nmp(app: *mut nmp_ffi::NmpApp, interest: Logical
 }
 
 fn dispatch_nmp_publish(app: *mut nmp_ffi::NmpApp, body: serde_json::Value) -> &'static str {
-    let Ok(ns_c) = CString::new("nmp.publish") else {
-        return "signed";
-    };
-    let Ok(body_c) = CString::new(body.to_string()) else {
-        return "signed";
-    };
-    let raw = nmp_ffi::nmp_app_dispatch_action(app, ns_c.as_ptr(), body_c.as_ptr());
-    if !raw.is_null() {
-        nmp_ffi::nmp_free_string(raw);
-    }
+    let _ = crate::dispatch_bytes::dispatch_action_bytes_for(app, "nmp.publish", &body.to_string());
     "queued"
 }

@@ -4,14 +4,13 @@
 //! Doctrine: D6 — every entry point degrades silently on null / poison /
 //! serde failure. No business logic lives here.
 
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 
 use jni::objects::{JClass, JString};
 use jni::sys::{jlong, jstring};
 use jni::JNIEnv;
 
-use nmp_ffi::{nmp_app_dispatch_action, nmp_free_string};
-
+use crate::dispatch_bytes::dispatch_action_bytes_for;
 use crate::ffi::{nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free};
 use crate::ffi::guard::ffi_guard;
 use super::session_ref;
@@ -40,28 +39,26 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeDispatchAction<'l>
             Ok(s) => s.to_string_lossy().into_owned(),
             Err(_) => return null,
         };
-        let Ok(c_ns) = CString::new(ns) else {
-            return null;
-        };
-        let Ok(c_body) = CString::new(body) else {
-            return null;
-        };
-        let envelope_ptr = nmp_app_dispatch_action(s.app, c_ns.as_ptr(), c_body.as_ptr());
-        if envelope_ptr.is_null() {
-            return null;
-        }
-        // SAFETY: `envelope_ptr` is heap-owned by the kernel. Copy out before
-        // returning, then release through the documented `nmp_free_string`
-        // path — same convention `KernelBridge.swift` follows. Using
-        // `CString::from_raw` would bypass any future bookkeeping the kernel
-        // adds to that free.
-        let owned = unsafe { CStr::from_ptr(envelope_ptr) }
-            .to_string_lossy()
-            .into_owned();
-        nmp_free_string(envelope_ptr);
-        match env.new_string(owned) {
-            Ok(js) => js.into_raw(),
-            Err(_) => null,
+        // ADR-0064: route through the typed byte doorway instead of the
+        // deleted nmp_app_dispatch_action JSON doorway.
+        match dispatch_action_bytes_for(s.app, &ns, &body) {
+            Ok(correlation_id) => {
+                let envelope = format!(r#"{{"correlation_id":"{correlation_id}"}}"#);
+                match env.new_string(envelope) {
+                    Ok(js) => js.into_raw(),
+                    Err(_) => null,
+                }
+            }
+            Err(e) => {
+                let json = format!(
+                    r#"{{"error":"{}"}}"#,
+                    e.to_string().replace('"', "\\\"")
+                );
+                match env.new_string(json) {
+                    Ok(js) => js.into_raw(),
+                    Err(_) => null,
+                }
+            }
         }
     })
 }

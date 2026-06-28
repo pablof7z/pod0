@@ -9,7 +9,8 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use nmp_core::{ActorCommand, CommandSender};
+use nmp_core::actor::ActorCommand;
+use nmp_core::CommandSender;
 
 #[derive(Clone)]
 pub(crate) struct SnapshotUpdateSignal {

@@ -73,19 +73,16 @@ extension PodcastHandle {
     /// Allocate a freshly generated `nostrconnect://` URI from the broker,
     /// copy it to a Swift `String`, and free the C buffer. Returns `nil`
     /// when the broker is not initialised or Rust returned a null pointer.
-    /// `relayURL` / `callbackScheme` are passed through verbatim — `nil`
-    /// for either means "use the Rust-side default" (kernel-selected relay
-    /// or no callback respectively).
+    /// The relay is kernel-selected from the configured write relays. The
+    /// optional callback scheme is passed through so signer apps can deep-link
+    /// back after approval.
     func nostrconnectURI(relayURL: String?, callbackScheme: String?) -> String? {
-        let relayCStr = relayURL?.withCString(strdup)
         let callbackCStr = callbackScheme?.withCString(strdup)
         defer {
-            if let relayCStr { free(relayCStr) }
             if let callbackCStr { free(callbackCStr) }
         }
         guard let ptr = nmp_app_nostrconnect_uri(
             raw,
-            relayCStr.map { UnsafePointer($0) },
             callbackCStr.map { UnsafePointer($0) })
         else { return nil }
         defer { nmp_free_string(ptr) }
@@ -103,20 +100,25 @@ extension PodcastHandle {
     /// (cold claim) and surfaces it in `projections.resolved_profiles` on the
     /// next snapshot tick — the same push `mergeResolvedProfiles` folds into
     /// `nostrProfileCache`. Fire-and-forget (D6): an invalid pubkey is a no-op.
+    ///
+    /// Uses ADR-0063 Lane D `nmp_app_resolve_ref` (namespace=0/profile,
+    /// shape=1/profile.card, liveness=1/Live for open-screen claims).
     func claimProfile(pubkeyHex: String, consumerID: String) {
         pubkeyHex.withCString { pk in
             consumerID.withCString { cid in
-                nmp_app_claim_profile(raw, pk, cid)
+                nmp_app_resolve_ref(raw, 0, pk, cid, 1, 1)
             }
         }
     }
 
     /// Release a previously-claimed profile interest. The kernel drops the
     /// pending request when the last consumer releases. Mirrors `claimProfile`.
+    ///
+    /// Uses ADR-0063 Lane D `nmp_app_release_ref` (namespace=0/profile).
     func releaseProfile(pubkeyHex: String, consumerID: String) {
         pubkeyHex.withCString { pk in
             consumerID.withCString { cid in
-                nmp_app_release_profile(raw, pk, cid)
+                nmp_app_release_ref(raw, 0, pk, cid)
             }
         }
     }

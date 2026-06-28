@@ -256,6 +256,7 @@ fn existing_note_becomes_trusted_after_following_author() {
         created_at: 100,
         tags: vec![vec!["p".to_string(), AUTHOR_X_HEX.to_string()]],
         content: String::new(),
+        relay_provenance: vec![],
     };
     follow_set.on_kernel_event(&kind3);
 

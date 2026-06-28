@@ -26,6 +26,7 @@ fn episode_event(
         created_at: 1_700_000_000,
         tags,
         content: String::new(),
+        relay_provenance: vec![],
     }
 }
 

@@ -38,6 +38,7 @@ fn make_follow_set_with_member(me: &str, member_hex: &str) -> Arc<ActiveFollowSe
         created_at: 200,
         tags: vec![vec!["p".to_string(), member_hex.to_string()]],
         content: String::new(),
+        relay_provenance: vec![],
     };
     follow_set.on_kernel_event(&kind3);
     follow_set

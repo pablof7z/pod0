@@ -27,8 +27,8 @@ use std::sync::{Arc, Mutex};
 
 use nostr::nips::nip19::ToBech32;
 
-use nmp_core::planner::{InterestId, InterestLifecycle, InterestScope, LogicalInterest};
-use nmp_core::stable_hash::stable_hash64;
+use nmp_planner::interest::{InterestId, InterestLifecycle, InterestScope, LogicalInterest};
+use nmp_planner::stable_hash::stable_hash64;
 use nmp_core::substrate::{KernelEvent, ViewDependencies};
 use nmp_core::KernelEventObserver;
 

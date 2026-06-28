@@ -10,7 +10,6 @@
 use super::podcast_module_types::default_true;
 
 use serde::{Deserialize, Serialize};
-
 /// Wire enum for all `"podcast"` namespace actions.
 ///
 /// `#[serde(tag = "op", rename_all = "snake_case")]` makes the JSON

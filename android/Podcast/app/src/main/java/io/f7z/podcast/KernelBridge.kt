@@ -184,8 +184,8 @@ class KernelBridge : KernelDispatcher {
      * URI string, or `null` when the broker is not initialised or Rust returns
      * a null pointer (D6).
      *
-     * `relayUrl` — pass `null` to let the kernel pick the first write-capable
-     * relay from its relay-edit projection.
+     * `relayUrl` is retained for API compatibility; NMP v0.8 always chooses
+     * the relay from the kernel relay config.
      * `callbackScheme` — pass `null` unless the host's URL scheme is registered
      * with the OS (Android deep link); when non-null Rust appends a
      * percent-encoded `&callback=<scheme>` query parameter.

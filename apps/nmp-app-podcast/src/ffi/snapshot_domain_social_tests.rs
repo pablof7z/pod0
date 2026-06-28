@@ -20,7 +20,6 @@ use super::tests::{
     inbound_note, make_handle_and_state_with_approved, make_social_observer,
     make_test_handle_with_app, run_domain_projections_only,
 };
-
 // ── Tombstone contract (identity, widget) ─────────────────────────────────────
 
 /// `podcast.identity` changed→empty (no active account) emits tombstone, then idles.
@@ -436,6 +435,7 @@ fn block_peer_action_reemits_social_with_trusted_false_overriding_follow() {
         created_at: 200,
         tags: vec![vec!["p".to_string(), peer.to_string()]],
         content: String::new(),
+        relay_provenance: vec![],
     });
     state_inner.social = crate::state::social::SocialState::new(state_inner.social.infra.clone())
         .with_follow_set(follow_set)

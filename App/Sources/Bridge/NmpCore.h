@@ -30,8 +30,12 @@ char *nmp_app_podcast_decode_update_frame(const uint8_t *bytes, size_t len);
 // called before `nmp_app_start`; a NULL or empty `path` clears it.
 void nmp_app_set_storage_path(void *app, const char *path);
 
-void nmp_app_start(void *app, unsigned int events_per_second, unsigned int visible_limit, unsigned int emit_hz);
-void nmp_app_configure(void *app, unsigned int events_per_second, unsigned int visible_limit, unsigned int emit_hz);
+// ADR-0053 / NMP v0.8: declare that this host intentionally consumes every
+// built-in projection before `nmp_app_start`. Podcast sidecars remain app-local.
+void nmp_app_consume_all_builtin_projections(void *app);
+
+void nmp_app_start(void *app, unsigned int visible_limit, unsigned int emit_hz);
+void nmp_app_configure(void *app, unsigned int visible_limit, unsigned int emit_hz);
 void nmp_app_stop(void *app);
 void nmp_app_reset(void *app);
 
@@ -60,14 +64,16 @@ char *nmp_app_podcast_npub_from_hex(const char *pubkey_hex);
 // plus its npub representation. Caller frees with `nmp_free_string`.
 char *nmp_app_podcast_parse_pubkey(const char *input);
 
-// ── T151 — generic dispatch ───────────────────────────────────────────────
+// ── ADR-0064 — typed dispatch ─────────────────────────────────────────────
 //
-// `nmp_app_dispatch_action` is the single namespace-keyed entry point for the
-// ActionModule family. Returns a heap-allocated JSON string
-// `{"correlation_id":"<hex>"}` on accept or `{"error":"..."}` on rejection;
-// the caller MUST release via `nmp_free_string`. D6: never NULL for a
-// non-NULL app.
-char *nmp_app_dispatch_action(void *app, const char *namespace, const char *action_json);
+// `nmp_app_podcast_dispatch_action` is the namespace-keyed entry point for the
+// Podcast ActionModule family. Replaces the nmp-ffi ≤ v0.7.2
+// `nmp_app_dispatch_action` JSON doorway (deleted in v0.8.0). Takes the
+// `PodcastHandle` (from `nmp_app_podcast_register`) rather than the raw NmpApp.
+// Returns a heap-allocated JSON string `{"correlation_id":"podcast-N"}` on
+// accept or `{"error":"..."}` on rejection; the caller MUST release via
+// `nmp_free_string`. Returns NULL only for a NULL handle (D6).
+char *nmp_app_podcast_dispatch_action(void *handle, const char *namespace, const char *action_json);
 
 // ── Capability callback ───────────────────────────────────────────────────
 //
@@ -294,8 +300,8 @@ char *nmp_app_podcast_agent_generated_podcast_descriptor(void *handle);
 //
 // `nmp_app_nostrconnect_uri` returns a freshly minted client-initiated
 // `nostrconnect://` URI string. The caller MUST free the returned pointer via
-// `nmp_free_string`. `relay_url` may be NULL — Rust selects the first
-// write-capable relay from the kernel relay-edit projection in that case.
+// `nmp_free_string`. Rust selects the first write-capable relay from the
+// kernel relay-edit projection.
 // `callback_scheme` may be NULL — when non-null Rust appends a percent-encoded
 // `&callback=<scheme>` query parameter so the signer app can deep-link back.
 // Pass NULL when the host scheme is not registered with the OS.
@@ -329,32 +335,32 @@ char *nmp_app_sign_event_for_return(void *app,
                                     const char *unsigned_json);
 void nmp_signer_broker_init(void *app);
 void nmp_app_cancel_bunker_handshake(void *app);
-char *nmp_app_nostrconnect_uri(void *app, const char *relay_url, const char *callback_scheme);
+char *nmp_app_nostrconnect_uri(void *app, const char *callback_scheme);
 
 // `nmp_app_remove_account` enqueues `ActorCommand::RemoveAccount` for the
 // supplied identity id (hex pubkey). The actor drops the row + invalidates
 // any cached keys; the next snapshot tick reflects the change.
 void nmp_app_remove_account(void *app, const char *identity_id);
 
-// ── Profile claim / release (T114 reference-first profile resolution) ─────
+// ── ADR-0063 Lane D — unified reference-resolution (profile + event) ─────
 //
-// `nmp_app_claim_profile` registers a refcounted interest in `pubkey`'s kind:0
-// profile keyed by `consumer_id`. On the cold-claim transition the kernel
-// enqueues a kind:0 REQ against its configured relay pool (or queues it until a
-// relay connects), owning all relay/cache policy. The resolved profile surfaces
-// in `projections.resolved_profiles` (and `claimed_profiles`) on the next
-// snapshot tick — i.e. it rides the same reactive push the shell already folds
-// into `nostrProfileCache` via `mergeResolvedProfiles`. This is the designed
-// replacement for a host opening its own websocket to fetch kind:0.
+// `nmp_app_resolve_ref` registers (or upgrades) a consumer's interest in an
+// entity identified by `(namespace, key)`. The kernel refcounts per
+// `consumer_id`; the first cold-claim fetches the entity from store then relay.
+// The resolved entity surfaces in the matching push-frame projection on the next
+// snapshot tick.
 //
-// `nmp_app_release_profile` decrements the per-consumer refcount; the kernel
-// drops the pending request when the last consumer releases. Both are
-// FFI-clean (D6): a null/invalid pubkey or consumer id is a silent no-op.
-// `pubkey` MUST be lowercase hex; `consumer_id` is a host-chosen stable token
-// (typically the view identity) so claims dedupe and release matches claim.
-// Declared per `crates/nmp-ffi/src/timeline.rs`.
-void nmp_app_claim_profile(void *app, const char *pubkey, const char *consumer_id);
-void nmp_app_release_profile(void *app, const char *pubkey, const char *consumer_id);
+// `namespace`: 0 = profile, 1 = event.
+// `key`: 64-hex lowercase pubkey (profile); event-id hex, "kind:pubkey:d"
+//         coordinate, or "i:<external-id>" NIP-73 ref (event).
+// `consumer_id`: host-chosen stable refcount owner token (e.g. SwiftUI view id).
+// `shape`: 0 = profile.ref, 1 = profile.card, 2 = event.embed, 3 = event.raw.
+// `liveness`: 0 = CacheOk (background), non-zero = Live (open screen).
+//
+// Replaces the deleted `nmp_app_claim_profile` / `nmp_app_release_profile`
+// (ADR-0063 Lane H). D6: null/invalid arguments are silent no-ops.
+void nmp_app_resolve_ref(void *app, int namespace, const char *key, const char *consumer_id, int shape, int liveness);
+void nmp_app_release_ref(void *app, int namespace, const char *key, const char *consumer_id);
 // Deliver a JSON-encoded VoiceReport (STT partial/final, listening
 // started/stopped, speak started/finished, error) to the Rust voice
 // projection. Currently always returns NULL — voice mode has no

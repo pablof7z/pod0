@@ -3,7 +3,7 @@
 //! Raw pointer operations are isolated here. All unsafe blocks are explicit
 //! and justified by caller contract comments.
 
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 use std::time::{Duration, Instant};
 
 use nmp_app_podcast::ffi::PodcastUpdate;
@@ -11,8 +11,8 @@ use nmp_app_podcast::{
     nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free, nmp_app_podcast_snapshot_rev,
     PodcastHandle,
 };
-use nmp_ffi::NmpApp;
-use nmp_ffi::{nmp_app_dispatch_action, nmp_free_string, nmp_app_new};
+use nmp_app_podcast::dispatch_bytes::dispatch_action_bytes_for;
+use nmp_ffi::{nmp_app_new, NmpApp};
 
 /// Allocate a new `NmpApp` instance. Panics if the kernel returns null
 /// (should never happen in practice — null only comes from OOM).
@@ -39,33 +39,18 @@ pub unsafe fn app_free(app: *mut NmpApp) {
 /// Dispatch a JSON action to the kernel and return the decoded result value.
 ///
 /// The `namespace` / `payload` shape must match the registered `ActionModule`
-/// for that namespace. Returns `serde_json::Value::Null` if the returned C
-/// string is empty or not valid UTF-8.
+/// for that namespace. Returns `serde_json::Value::Null` on any failure.
 pub fn dispatch(
     app: *mut NmpApp,
     namespace: &str,
     payload: serde_json::Value,
 ) -> serde_json::Value {
-    let ns_c = CString::new(namespace).expect("namespace NUL-free");
+    // ADR-0064: route through the typed byte doorway.
     let payload_str = payload.to_string();
-    let payload_c = CString::new(payload_str).expect("payload NUL-free");
-
-    let result_ptr = nmp_app_dispatch_action(app, ns_c.as_ptr(), payload_c.as_ptr());
-
-    if result_ptr.is_null() {
-        return serde_json::Value::Null;
+    match dispatch_action_bytes_for(app, namespace, &payload_str) {
+        Ok(correlation_id) => serde_json::json!({"correlation_id": correlation_id}),
+        Err(err) => serde_json::json!({"error": err}),
     }
-
-    // SAFETY: `result_ptr` is a valid nul-terminated C string returned by
-    // `nmp_app_dispatch_action`. We read it, copy the bytes, then free.
-    let result_str = unsafe { CStr::from_ptr(result_ptr) }
-        .to_str()
-        .unwrap_or("{}")
-        .to_owned();
-
-    nmp_free_string(result_ptr);
-
-    serde_json::from_str(&result_str).unwrap_or(serde_json::Value::Null)
 }
 
 /// Read the current podcast snapshot from the handle.

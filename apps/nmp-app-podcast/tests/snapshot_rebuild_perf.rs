@@ -16,10 +16,11 @@ use std::ffi::{c_char, CStr, CString};
 use std::time::Instant;
 
 use nmp_app_podcast::{
+    dispatch_bytes::dispatch_action_bytes_for,
     nmp_app_podcast_audio_report, nmp_app_podcast_register, nmp_app_podcast_snapshot,
     nmp_app_podcast_snapshot_free, nmp_app_podcast_snapshot_rev,
 };
-use nmp_ffi::{nmp_app_dispatch_action, nmp_free_string, nmp_app_new};
+use nmp_ffi::{nmp_free_string, nmp_app_new};
 
 const DESCRIPTION: &str = "In this episode we sit down with our guest to unpack the \
 week's biggest stories, dig into the research behind the headlines, and answer \
@@ -28,15 +29,12 @@ you, and where the experts disagree. Plus: a lightning round, a few tangents, an
 our picks of the week. Full show notes and transcript on our website.";
 
 fn dispatch(app: *mut nmp_ffi::NmpApp, payload: serde_json::Value) -> serde_json::Value {
-    let ns = CString::new("podcast").unwrap();
-    let body = CString::new(payload.to_string()).unwrap();
-    let ptr = nmp_app_dispatch_action(app, ns.as_ptr(), body.as_ptr());
-    if ptr.is_null() {
-        return serde_json::Value::Null;
+    // ADR-0064: route through the typed byte doorway.
+    let body = payload.to_string();
+    match dispatch_action_bytes_for(app, "podcast", &body) {
+        Ok(correlation_id) => serde_json::json!({"correlation_id": correlation_id}),
+        Err(_) => serde_json::Value::Null,
     }
-    let s = unsafe { CStr::from_ptr(ptr) }.to_str().unwrap_or("{}").to_owned();
-    nmp_free_string(ptr);
-    serde_json::from_str(&s).unwrap_or(serde_json::Value::Null)
 }
 
 /// Count episodes in the current snapshot by decoding the projected payload.

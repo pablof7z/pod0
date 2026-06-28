@@ -157,6 +157,7 @@ pub(super) fn inbound_note(id: &str, author_hex: &str) -> KernelEvent {
         created_at: 1_717_200_000,
         tags: Vec::new(),
         content: "hello from a followed peer".to_string(),
+        relay_provenance: vec![],
     }
 }
 

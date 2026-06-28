@@ -110,6 +110,8 @@ pub use voice_module::{VoiceAction, VoiceActionModule};
 
 use serde::{Deserialize, Serialize};
 
+use nmp_core::actor::ActorCommand;
+
 /// Wrap `action` in a namespaced envelope and forward it as a
 /// `DispatchHostOp`. The host-op handler peels `ns` to route to the
 /// correct handler arm, eliminating the try-parse cascade.
@@ -119,10 +121,10 @@ pub(crate) fn dispatch_host_op(
     ns: &str,
     action: &impl Serialize,
     correlation_id: &str,
-    send: &dyn Fn(nmp_core::ActorCommand),
+    send: &dyn Fn(ActorCommand),
 ) -> Result<(), String> {
     let envelope = serde_json::json!({ "ns": ns, "action": action });
-    send(nmp_core::ActorCommand::Protocol(Box::new(
+    send(ActorCommand::Protocol(Box::new(
         nmp_core::substrate::host_op_command(
             envelope.to_string(),
             correlation_id.to_owned(),

@@ -1,0 +1,24 @@
+[package]
+name = "nmp-feedback"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Reusable NMP feedback module for project-scoped Nostr feedback threads (nmp v0.8.0 compat patch)."
+repository = "https://github.com/pablof7z/nmp-feedback"
+
+# Local fork of nmp-feedback pinned to nmp v0.8.0 (rev 1e1445973).
+# Replaces the upstream git dependency until a compatible upstream commit is published.
+# Source: upstream 0b2045bf70274825df4875841b4b251b46f86f75 with:
+#  - Cargo.toml: nmp pinned to 1e1445973, nmp-planner added
+#  - config.rs:  nmp_core::planner / stable_hash → nmp_planner direct imports
+#  - command.rs: nmp_app_dispatch_action → nmp_app_dispatch_action_bytes path
+[features]
+default = ["nmp"]
+nmp = ["dep:nmp-core", "dep:nmp-ffi", "dep:nmp-planner"]
+
+[dependencies]
+nmp-core = { version = "0.8.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "1e1445973", optional = true }
+nmp-ffi = { version = "0.8.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "1e1445973", features = ["signer-broker"], optional = true }
+nmp-planner = { version = "0.8.0", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "1e1445973", optional = true }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

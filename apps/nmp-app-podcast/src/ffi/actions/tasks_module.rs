@@ -15,7 +15,7 @@
 use serde::{Deserialize, Serialize};
 
 use nmp_core::substrate::ActionModule;
-use nmp_core::ActorCommand;
+use nmp_core::actor::ActorCommand;
 
 /// Wire enum for all `"podcast.tasks"` namespace actions.
 ///
@@ -118,6 +118,12 @@ impl ActionModule for AgentTasksModule {
         send: &dyn Fn(ActorCommand),
     ) -> Result<(), String> {
         crate::ffi::actions::dispatch_host_op(Self::NAMESPACE, &action, correlation_id, send)
+    }
+
+    fn decode_payload(
+        bytes: &[u8],
+    ) -> Option<Result<Self::Action, nmp_core::substrate::ActionPayloadDecodeError>> {
+        crate::action_payload::decode_podcast_payload(bytes)
     }
 }
 

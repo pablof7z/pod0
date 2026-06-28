@@ -25,8 +25,9 @@ use jni::sys::{jint, jlong};
 use jni::JNIEnv;
 
 use nmp_ffi::{
-    nmp_app_free, nmp_free_string, nmp_app_is_alive, nmp_app_lifecycle_background,
-    nmp_app_lifecycle_foreground, nmp_app_new, nmp_app_set_update_callback,
+    nmp_app_consume_all_builtin_projections, nmp_app_free, nmp_free_string,
+    nmp_app_is_alive, nmp_app_lifecycle_background, nmp_app_lifecycle_foreground,
+    nmp_app_new, nmp_app_set_update_callback,
     nmp_app_start, nmp_app_stop, nmp_external_signer_init,
     nmp_signer_broker_init, NmpApp,
 };
@@ -328,7 +329,12 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeStart(
 ) {
     ffi_guard("nativeStart", || (), || {
         if let Some(s) = session_ref(handle) {
-            nmp_app_start(s.app, 0, visible_limit as u32, emit_hz as u32);
+            // ADR-0053 / NMP v0.8: Android is a full Podcast client, so
+            // declare the explicit all-builtins projection intent before
+            // actor start. App-local podcast sidecars are registered via
+            // `nmp_app_podcast_register`.
+            nmp_app_consume_all_builtin_projections(s.app);
+            nmp_app_start(s.app, visible_limit as u32, emit_hz as u32);
         }
     });
 }

@@ -11,7 +11,8 @@ use nmp_app_podcast::{
     nmp_app_podcast_unregister, nmp_signer_broker_init, PodcastHandle, AUDIO_CAPABILITY_NAMESPACE,
 };
 use nmp_ffi::{
-    nmp_app_dispatch_action, nmp_app_free, nmp_app_new, nmp_app_set_capability_callback,
+    nmp_app_consume_all_builtin_projections, nmp_app_free, nmp_app_new,
+    nmp_app_set_capability_callback,
     nmp_app_start, nmp_free_string, NmpApp,
 };
 use podcast_feeds::http::{
@@ -79,7 +80,10 @@ impl AppRuntime {
         let (mut bridge, rx) = bridge::NmpUpdateBridge::channel();
         bridge::NmpUpdateBridge::register(app, &mut bridge);
 
-        nmp_app_start(app, 0, 200, 10);
+        // ADR-0053 / NMP v0.8: TUI currently consumes the full built-in
+        // projection set, with podcast sidecars registered app-locally.
+        nmp_app_consume_all_builtin_projections(app);
+        nmp_app_start(app, 200, 10);
 
         Ok((
             Self {
@@ -92,21 +96,8 @@ impl AppRuntime {
     }
 
     pub fn dispatch_action(&self, namespace: &str, action_json: &str) -> Result<String> {
-        let namespace = CString::new(namespace)
-            .map_err(|_| "action namespace contains NUL byte".to_string())?;
-        let action =
-            CString::new(action_json).map_err(|_| "action JSON contains NUL byte".to_string())?;
-        let ptr = nmp_app_dispatch_action(self.app, namespace.as_ptr(), action.as_ptr());
-        if ptr.is_null() {
-            return Err("action dispatch returned null".to_string());
-        }
-        let text = unsafe { CStr::from_ptr(ptr) }
-            .to_string_lossy()
-            .into_owned();
-        nmp_free_string(ptr);
-        let value: Value = serde_json::from_str(&text)
-            .map_err(|e| format!("action dispatch returned invalid JSON: {e}"))?;
-        parse_dispatch_envelope(&value)
+        // ADR-0064: route through the typed byte doorway.
+        nmp_app_podcast::dispatch_bytes::dispatch_action_bytes_for(self.app, namespace, action_json)
     }
 
     pub fn dispatch_action_value(&self, namespace: &str, action: &Value) -> Result<String> {
@@ -405,6 +396,7 @@ fn error_envelope(namespace: &str, correlation_id: &str, msg: &str) -> String {
     serde_json::to_string(&envelope).unwrap_or_else(|_| "{}".to_string())
 }
 
+#[cfg(test)]
 fn parse_dispatch_envelope(value: &Value) -> Result<String> {
     if let Some(error) = value.get("error").and_then(Value::as_str) {
         return Err(error.to_string());
@@ -423,6 +415,7 @@ fn parse_dispatch_envelope(value: &Value) -> Result<String> {
         .ok_or_else(|| "action dispatch envelope missing correlation_id".to_string())
 }
 
+#[cfg(test)]
 fn parse_result_json(result_json: &str) -> Result<()> {
     let trimmed = result_json.trim();
     if trimmed.is_empty() {
@@ -433,6 +426,7 @@ fn parse_result_json(result_json: &str) -> Result<()> {
     parse_action_result(&value)
 }
 
+#[cfg(test)]
 fn parse_action_result(value: &Value) -> Result<()> {
     if value.get("ok").and_then(Value::as_bool) == Some(false) {
         return Err(action_error_message(value));
@@ -443,6 +437,7 @@ fn parse_action_result(value: &Value) -> Result<()> {
     Ok(())
 }
 
+#[cfg(test)]
 fn action_error_message(value: &Value) -> String {
     value
         .get("error")
