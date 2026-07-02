@@ -13,7 +13,7 @@ use std::net::{TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
 use nmp_app_podcast::PodcastHandle;
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 
 use crate::fixtures::{HEADLESS_TEST_PUBKEY_HEX, HEADLESS_TEST_SECRET_HEX};
 use crate::scenarios::ScenarioResult;

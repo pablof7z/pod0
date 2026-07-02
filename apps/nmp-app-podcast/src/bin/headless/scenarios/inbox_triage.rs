@@ -6,7 +6,7 @@
 //! missing infrastructure.
 
 use nmp_app_podcast::PodcastHandle;
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 
 use crate::harness::{dispatch, probe_tcp, wait_for};
 use crate::mock_feed;

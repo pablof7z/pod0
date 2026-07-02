@@ -5,8 +5,6 @@
 
 use serde::{Deserialize, Serialize};
 
-use nmp_feedback::FeedbackThreadDto;
-
 use super::projections::{
     AccountSummary, AgentContextSnapshot, AgentPickSummary, AgentSnapshot, AgentTaskSummary,
     CategoryBrowseItem, ClipSummary, CommentSummary, DownloadQueueSnapshot, EpisodeSummary,
@@ -179,8 +177,14 @@ pub struct PodcastUpdate {
     /// their replies (oldest-first) and the newest-wins kind:513 metadata,
     /// reduced kernel-side from `feedback_events`. The shell renders this
     /// directly instead of re-running the Nostr reduction.
+    ///
+    /// TODO(follow-up, pablof7z/nmp-feedback#3): this was
+    /// `Vec<nmp_feedback::FeedbackThreadDto>`; `nmp-feedback` is dropped
+    /// pending its own re-architecture (see the workspace Cargo.toml
+    /// pin-discipline comment), so the field keeps its wire shape as raw
+    /// JSON rows (always empty for now) rather than losing the key entirely.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub feedback_threads: Vec<FeedbackThreadDto>,
+    pub feedback_threads: Vec<serde_json::Value>,
 }
 
 /// One row of the `configured_relays` projection: a relay URL plus its

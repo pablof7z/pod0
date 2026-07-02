@@ -48,7 +48,8 @@ pub enum QueueAction {
 pub struct QueueActionModule;
 
 impl ActionModule for QueueActionModule {
-    const NAMESPACE: &'static str = "podcast.queue";
+    const NAMESPACE: nmp_core::substrate::DeclaredActionNamespace =
+        nmp_core::substrate::DeclaredActionNamespace::app_owned("podcast.queue");
 
     type Action = QueueAction;
 
@@ -58,11 +59,12 @@ impl ActionModule for QueueActionModule {
 
     fn execute(
         &self,
+        _ctx: &nmp_core::substrate::ActionContext,
         action: Self::Action,
         correlation_id: &str,
         send: &dyn Fn(ActorCommand),
     ) -> Result<(), String> {
-        crate::ffi::actions::dispatch_host_op(Self::NAMESPACE, &action, correlation_id, send)
+        crate::ffi::actions::dispatch_host_op(Self::NAMESPACE.as_str(), &action, correlation_id, send)
     }
 
     fn decode_payload(

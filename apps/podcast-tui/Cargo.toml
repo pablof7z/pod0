@@ -20,8 +20,7 @@ path = "src/bin/integration_test.rs"
 [dependencies]
 nmp-app-podcast = { path = "../nmp-app-podcast", default-features = false }
 nmp-core = { workspace = true, features = ["test-support"] }
-# TODO(A1, pablof7z/podcast-player#681): restore an `nmp-native-runtime`
-# test-support dep here once that surface exists (was `nmp-ffi`).
+nmp-native-runtime = { workspace = true, features = ["test-support"] }
 podcast-core = { path = "../podcast-core" }
 podcast-feeds = { path = "../podcast-feeds" }
 clap = { version = "4", features = ["derive"] }

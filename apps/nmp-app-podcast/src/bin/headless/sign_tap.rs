@@ -54,7 +54,7 @@ use std::ffi::{c_char, c_void, CStr, CString};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 
 // ── Externally-linked C-ABI symbols not re-exported from the crate roots ──────
 //

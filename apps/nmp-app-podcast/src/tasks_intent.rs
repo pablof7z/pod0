@@ -55,15 +55,15 @@ pub(super) fn task_intent_metadata(intent: Option<&AgentTaskIntent>) -> TaskInte
 pub(super) fn task_payload_from_intent(intent: &AgentTaskIntent) -> Result<TaskPayload, String> {
     match intent {
         AgentTaskIntent::InboxTriage => task_payload(
-            <InboxActionModule as ActionModule>::NAMESPACE,
+            <InboxActionModule as ActionModule>::NAMESPACE.as_str(),
             &InboxAction::Triage,
         ),
         AgentTaskIntent::ClearAgent => task_payload(
-            <AgentActionModule as ActionModule>::NAMESPACE,
+            <AgentActionModule as ActionModule>::NAMESPACE.as_str(),
             &AgentChatAction::Clear,
         ),
         AgentTaskIntent::RememberMemory { key, value } => task_payload(
-            <MemoryActionModule as ActionModule>::NAMESPACE,
+            <MemoryActionModule as ActionModule>::NAMESPACE.as_str(),
             &MemoryAction::Remember {
                 key: key.clone(),
                 value: value.clone(),
@@ -71,7 +71,7 @@ pub(super) fn task_payload_from_intent(intent: &AgentTaskIntent) -> Result<TaskP
             },
         ),
         AgentTaskIntent::AgentPrompt { prompt } => task_payload(
-            <AgentActionModule as ActionModule>::NAMESPACE,
+            <AgentActionModule as ActionModule>::NAMESPACE.as_str(),
             &AgentChatAction::Send {
                 message: prompt.clone(),
             },

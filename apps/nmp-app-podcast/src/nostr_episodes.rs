@@ -34,7 +34,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use nmp_planner::interest::{InterestId, InterestLifecycle, InterestScope, LogicalInterest};
 use nmp_planner::stable_hash::stable_hash64;
 use nmp_core::substrate::{KernelEvent, ViewDependencies};
-use nmp_core::KernelEventObserver;
+use nmp_core::ObservedProjectionSink;
 
 use podcast_discovery::{episode_to_episode, parse_kind_54, KIND_NIP_F4_EPISODE};
 use podcast_core::types::podcast::PodcastId;
@@ -42,7 +42,7 @@ use podcast_core::types::podcast::PodcastId;
 use crate::nmp_dispatch::push_interest_via_nmp;
 use crate::snapshot_signal::SnapshotUpdateSignal;
 use crate::store::PodcastStore;
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 
 /// Guards one-time lazy registration of the [`NostrEpisodesObserver`].
 ///
@@ -89,7 +89,7 @@ fn episode_interest(author_pubkey: &str) -> LogicalInterest {
 /// Idempotent: the kernel deduplicates interests by `InterestId`, so
 /// re-subscribing the same pubkey is a no-op.
 pub fn subscribe_nostr_episodes(app: *mut NmpApp, author_pubkey: &str) {
-    push_interest_via_nmp(app, episode_interest(author_pubkey));
+    push_interest_via_nmp(app, &format!("{NOSTR_EPISODES_NAMESPACE}:{author_pubkey}"), episode_interest(author_pubkey));
 }
 
 /// `podcast.subscribe_nostr` handler.
@@ -115,25 +115,15 @@ pub fn handle_subscribe_nostr(
         return serde_json::json!({"ok": false, "error": "author_pubkey_hex is empty"});
     }
 
-    // Register the observer on the first call (lazily, to avoid touching
-    // `ffi/register.rs`). `OnceLock::get_or_init` is atomic: concurrent
-    // first calls are safe; only one executes the init closure.
-    OBSERVER_REGISTERED.get_or_init(|| {
-        if !app.is_null() {
-            // SAFETY: `app` is valid for the lifetime of the process —
-            // `nmp_app_podcast_register` holds it alive. `register_event_observer`
-            // takes `&self`; no exclusive alias exists at this call site.
-            let app_ref = unsafe { &*app };
-            let observer = Arc::new(
-                NostrEpisodesObserver::new(store.clone(), rev.clone())
-                    .with_snapshot_signal_opt(snapshot_signal.cloned()),
-            );
-            let _id = app_ref.register_event_observer(observer);
-            // The returned id is intentionally dropped: the observer is
-            // permanent (alive for the app's lifetime). `nmp_app_free` joins
-            // the actor before dropping the observer slot.
-        }
-    });
+    // TODO(A1 STUB, pablof7z/podcast-player#690): this used to lazily
+    // register `NostrEpisodesObserver` on first call via
+    // `NmpApp::register_event_observer` (blanket, filterless) — deleted
+    // upstream. The replacement is a declarative `ObservedProjection`
+    // opened through `NmpApp::observed_projection_handle()`; tracked in
+    // #690 alongside the other reactive observers. The `kind:54` interest
+    // below still opens (so the kernel can cache-serve it), but nothing
+    // currently pushes the resulting episodes into the store — a real,
+    // tracked functional gap, not a silent no-op.
 
     // Open the kind:54 relay interest (idempotent).
     subscribe_nostr_episodes(app, author_pubkey_hex);
@@ -203,7 +193,7 @@ impl NostrEpisodesObserver {
     }
 }
 
-impl KernelEventObserver for NostrEpisodesObserver {
+impl ObservedProjectionSink for NostrEpisodesObserver {
     fn on_kernel_event(&self, event: &KernelEvent) {
         if event.kind != KIND_NIP_F4_EPISODE {
             return;

@@ -62,7 +62,7 @@ fn feedback_runtime(rev: Arc<AtomicU64>) -> nmp_feedback::FeedbackRuntime {
 ///
 /// Step 14: `player_actor`, `queue`, and `download_queue` are no longer
 /// separate constructor args — they live inside `state.playback`.
-fn handler_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> PodcastHostOpHandler {
+fn handler_sharing(shared: &SharedKernel, app: *mut nmp_native_runtime::NmpApp) -> PodcastHostOpHandler {
     // Steps 15-N+1: store, identity, feed_fetch, feedback, rev, runtime all in state.
     PodcastHostOpHandler::new(
         app,
@@ -73,7 +73,7 @@ fn handler_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> PodcastH
 /// Build a `PodcastHandle` sharing the SAME `Arc<PodcastAppState>` as the
 /// handler so the snapshot reader sees the writer's mutations without any
 /// separate Arc wiring.
-fn handle_sharing(shared: &SharedKernel, app: *mut nmp_ffi::NmpApp) -> Box<PodcastHandle> {
+fn handle_sharing(shared: &SharedKernel, app: *mut nmp_native_runtime::NmpApp) -> Box<PodcastHandle> {
     // Step 15: store + identity removed from PodcastHandle.
     // Step 16: feedback + feed_fetch removed from PodcastHandle — now in state.
     Box::new(PodcastHandle {

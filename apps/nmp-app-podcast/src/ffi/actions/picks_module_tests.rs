@@ -45,7 +45,7 @@ fn refresh_action_round_trips() {
 }
 #[test]
 fn namespace_is_podcast_picks() {
-    assert_eq!(AgentPicksModule::NAMESPACE, "podcast.picks");
+    assert_eq!(AgentPicksModule::NAMESPACE.as_str(), "podcast.picks");
 }
 #[test]
 fn execute_emits_dispatch_host_op() {

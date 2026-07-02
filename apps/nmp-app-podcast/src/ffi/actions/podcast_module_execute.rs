@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use nmp_core::actor::ActorCommand;
+use nmp_core::actor::{ActorCommand, InterestsCommand};
 use nmp_core::substrate::ActionModule;
 
 use crate::discover_nostr::{nostr_discovery_identity, nostr_discovery_interest};
@@ -50,7 +50,8 @@ pub struct EpisodeTriagePatch {
 pub struct PodcastActionModule;
 
 impl ActionModule for PodcastActionModule {
-    const NAMESPACE: &'static str = "podcast";
+    const NAMESPACE: nmp_core::substrate::DeclaredActionNamespace =
+        nmp_core::substrate::DeclaredActionNamespace::app_owned("podcast");
 
     type Action = PodcastAction;
 
@@ -60,6 +61,7 @@ impl ActionModule for PodcastActionModule {
 
     fn execute(
         &self,
+        _ctx: &nmp_core::substrate::ActionContext,
         action: Self::Action,
         correlation_id: &str,
         send: &dyn Fn(ActorCommand),
@@ -78,17 +80,19 @@ impl ActionModule for PodcastActionModule {
         {
             let identity = nostr_discovery_identity(consumer_id);
             if *release {
-                send(ActorCommand::DropInterestOwner(identity));
+                send(ActorCommand::Interests(InterestsCommand::DropInterestOwner(
+                    identity,
+                )));
             } else {
-                send(ActorCommand::EnsureInterest {
+                send(ActorCommand::Interests(InterestsCommand::EnsureInterest {
                     identity,
                     interest: nostr_discovery_interest(),
-                });
+                }));
             }
             return Ok(());
         }
 
-        crate::ffi::actions::dispatch_host_op(Self::NAMESPACE, &action, correlation_id, send)
+        crate::ffi::actions::dispatch_host_op(Self::NAMESPACE.as_str(), &action, correlation_id, send)
     }
 
     fn decode_payload(

@@ -103,7 +103,8 @@ pub enum AgentTaskIntent {
 pub struct AgentTasksModule;
 
 impl ActionModule for AgentTasksModule {
-    const NAMESPACE: &'static str = "podcast.tasks";
+    const NAMESPACE: nmp_core::substrate::DeclaredActionNamespace =
+        nmp_core::substrate::DeclaredActionNamespace::app_owned("podcast.tasks");
 
     type Action = AgentTasksAction;
 
@@ -113,11 +114,12 @@ impl ActionModule for AgentTasksModule {
 
     fn execute(
         &self,
+        _ctx: &nmp_core::substrate::ActionContext,
         action: Self::Action,
         correlation_id: &str,
         send: &dyn Fn(ActorCommand),
     ) -> Result<(), String> {
-        crate::ffi::actions::dispatch_host_op(Self::NAMESPACE, &action, correlation_id, send)
+        crate::ffi::actions::dispatch_host_op(Self::NAMESPACE.as_str(), &action, correlation_id, send)
     }
 
     fn decode_payload(

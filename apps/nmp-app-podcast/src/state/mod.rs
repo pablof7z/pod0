@@ -343,16 +343,6 @@ pub struct PodcastAppState {
     /// write here from the platform audio/download threads via `.share()`.
     pub playback: playback::PlaybackState,
 
-    /// In-app feedback runtime (Step 16).  Moved from the god-struct mirrors
-    /// (`PodcastHandle.feedback` / `PodcastHostOpHandler.feedback`) into the
-    /// shared state tree so both seams read the same event cache without a
-    /// separate Arc wire.
-    ///
-    /// `nmp-feedback` owns the relay-pinned subscription, publish tags, event
-    /// cache, and thread projection.  Empty until the first `FetchFeedback`
-    /// dispatch.
-    pub feedback: nmp_feedback::FeedbackRuntime,
-
     /// Optimistic-subscribe async feed-fetch coordinator (Step 16).  Moved
     /// from both god-structs into the shared tree.  The handler registers a
     /// pending fetch + dispatches the async HTTP command; the handle's
@@ -369,40 +359,35 @@ impl PodcastAppState {
     /// `register.rs` will be replaced by this single call once all steps
     /// are complete.
     ///
-    /// Uses a stub `FeedbackRuntime` with the podcast project coordinate.
     pub fn new(
         infra: Infra,
         store: Arc<std::sync::Mutex<crate::store::PodcastStore>>,
     ) -> Self {
-        let feedback = nmp_feedback::FeedbackRuntime::new(
-            nmp_feedback::FeedbackConfig::new(crate::PODCAST_FEEDBACK_PROJECT_COORDINATE)
-                .with_interest_namespace(crate::PODCAST_FEEDBACK_INTEREST_NAMESPACE),
-            std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
-            infra.rev.clone(),
-        );
         Self::new_with_identity(
             infra,
             store,
             Arc::new(std::sync::Mutex::new(
                 crate::store::identity::IdentityStore::new(),
             )),
-            feedback,
         )
     }
 
     /// Full constructor accepting an externally-created identity store so
     /// `register.rs` can pass the shared Arc rather than creating a new one.
     ///
-    /// Step 16: `feedback` is also injected — `FeedbackRuntime` needs a
-    /// project coordinate + relay seed from the app layer and a
-    /// `with_snapshot_bump` hook that references the live signal.
     /// `FeedFetchCoordinator` is constructed internally since it only needs
     /// `picks` + `categories` + `infra` which are all available here.
+    ///
+    /// TODO(follow-up, pablof7z/nmp-feedback#3): this constructor used to
+    /// also take a `feedback: nmp_feedback::FeedbackRuntime` and seed
+    /// `PodcastAppState.feedback`. Dropped in A0/A1 (pablof7z/podcast-player
+    /// #680/#681) — `nmp-feedback` depends on the deleted `nmp-ffi` JSON
+    /// publish doorway with no direct replacement. Restore once that issue
+    /// resolves.
     pub fn new_with_identity(
         infra: Infra,
         store: Arc<std::sync::Mutex<crate::store::PodcastStore>>,
         identity: Arc<std::sync::Mutex<crate::store::identity::IdentityStore>>,
-        feedback: nmp_feedback::FeedbackRuntime,
     ) -> Self {
         // Step 15: LibraryState owns the store + identity Arcs.  All other
         // substates receive clones of these same Arcs (lock topology unchanged).
@@ -478,7 +463,6 @@ impl PodcastAppState {
             voice,
             publish,
             playback,
-            feedback,
             feed_fetch,
         }
     }

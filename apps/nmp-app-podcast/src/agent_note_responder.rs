@@ -49,7 +49,7 @@ use std::sync::{Arc, Mutex};
 
 use tokio::runtime::Runtime;
 
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 
 use crate::agent_llm::FAST_MODEL;
 use crate::agent_note_handler::{handle_publish_agent_note, CachedAgentNote};

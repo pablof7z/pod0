@@ -6,12 +6,27 @@
 //! a JSON response back.
 
 use async_trait::async_trait;
-use std::ffi::{c_void, CStr, CString};
+use std::ffi::{c_char, c_void, CStr, CString};
 use std::sync::{Mutex, OnceLock};
 
-use nmp_ffi;
-
 use super::backend::{LlmBackend, LlmError, LlmRequest};
+
+/// Release a heap-allocated C string returned by `reg.callback`.
+///
+/// The callback trampoline allocates its response via `CString::into_raw`
+/// (matching the C-ABI convention this module documents at the type alias
+/// above), so the memory belongs to the Rust allocator and must come back
+/// through it — not the host's `free(3)`. This used to be the shared
+/// `nmp_ffi::nmp_free_string` symbol; that crate is deleted, and this
+/// callback is podcast's own local bridging concern (not an NMP FFI
+/// surface), so the free path is inlined here rather than reaching for a
+/// framework helper. Passing `NULL` is a no-op.
+unsafe fn free_local_llm_response(ptr: *mut c_char) {
+    if ptr.is_null() {
+        return;
+    }
+    drop(CString::from_raw(ptr));
+}
 
 /// FFI callback function type: takes context pointer and JSON prompt (C string),
 /// returns JSON response (malloc-compatible C string that Rust must free).
@@ -103,7 +118,7 @@ impl LlmBackend for LocalModelBackend {
             Ok(s) => s.to_owned(),
             Err(_) => {
                 // Free the pointer before returning error.
-                unsafe { nmp_ffi::nmp_free_string(response_ptr) };
+                unsafe { free_local_llm_response(response_ptr) };
                 return Err(LlmError::Unavailable(
                     "Local model response not valid UTF-8".into(),
                 ));
@@ -111,7 +126,7 @@ impl LlmBackend for LocalModelBackend {
         };
 
         // Free the returned C string via the Rust helper.
-        unsafe { nmp_ffi::nmp_free_string(response_ptr) };
+        unsafe { free_local_llm_response(response_ptr) };
 
         // Parse the response JSON: {"text":..} or {"error":..}
         match serde_json::from_str::<serde_json::Value>(&response_cstr) {

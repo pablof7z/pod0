@@ -12,7 +12,7 @@
 use serde::{Deserialize, Serialize};
 
 use nmp_core::substrate::ActionModule;
-use nmp_core::actor::ActorCommand;
+use nmp_core::actor::{ActorCommand, RelayCommand};
 
 /// Wire enum for all `"podcast.settings"` namespace actions.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -187,7 +187,8 @@ pub enum SettingsAction {
 pub struct SettingsActionModule;
 
 impl ActionModule for SettingsActionModule {
-    const NAMESPACE: &'static str = "podcast.settings";
+    const NAMESPACE: nmp_core::substrate::DeclaredActionNamespace =
+        nmp_core::substrate::DeclaredActionNamespace::app_owned("podcast.settings");
 
     type Action = SettingsAction;
 
@@ -197,6 +198,7 @@ impl ActionModule for SettingsActionModule {
 
     fn execute(
         &self,
+        _ctx: &nmp_core::substrate::ActionContext,
         action: Self::Action,
         correlation_id: &str,
         send: &dyn Fn(ActorCommand),
@@ -222,18 +224,18 @@ impl ActionModule for SettingsActionModule {
         match action {
             SettingsAction::AddRelay { ref url, ref role }
             | SettingsAction::SetRelayRole { ref url, ref role } => {
-                send(ActorCommand::AddRelay {
+                send(ActorCommand::Relay(RelayCommand::AddRelay {
                     url: url.clone(),
                     role: role.clone(),
-                });
+                }));
             }
             SettingsAction::RemoveRelay { ref url } => {
-                send(ActorCommand::RemoveRelay { url: url.clone() });
+                send(ActorCommand::Relay(RelayCommand::RemoveRelay { url: url.clone() }));
             }
             _ => {}
         }
 
-        crate::ffi::actions::dispatch_host_op(Self::NAMESPACE, &action, correlation_id, send)
+        crate::ffi::actions::dispatch_host_op(Self::NAMESPACE.as_str(), &action, correlation_id, send)
     }
 
     fn decode_payload(

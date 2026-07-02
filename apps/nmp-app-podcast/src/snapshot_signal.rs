@@ -9,7 +9,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use nmp_core::actor::ActorCommand;
+use nmp_core::actor::{ActorCommand, LifecycleCommand};
 use nmp_core::CommandSender;
 
 #[derive(Clone)]
@@ -25,6 +25,8 @@ impl SnapshotUpdateSignal {
 
     pub(crate) fn bump(&self) {
         self.rev.fetch_add(1, Ordering::Relaxed);
-        let _ = self.actor_tx.send(ActorCommand::MarkChangedSinceEmit);
+        let _ = self
+            .actor_tx
+            .send(ActorCommand::Lifecycle(LifecycleCommand::MarkChangedSinceEmit));
     }
 }

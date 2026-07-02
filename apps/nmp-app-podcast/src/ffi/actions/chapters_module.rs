@@ -37,7 +37,8 @@ pub enum ChaptersAction {
 pub struct ChaptersActionModule;
 
 impl ActionModule for ChaptersActionModule {
-    const NAMESPACE: &'static str = "podcast.chapters";
+    const NAMESPACE: nmp_core::substrate::DeclaredActionNamespace =
+        nmp_core::substrate::DeclaredActionNamespace::app_owned("podcast.chapters");
 
     type Action = ChaptersAction;
 
@@ -47,11 +48,12 @@ impl ActionModule for ChaptersActionModule {
 
     fn execute(
         &self,
+        _ctx: &nmp_core::substrate::ActionContext,
         action: Self::Action,
         correlation_id: &str,
         send: &dyn Fn(ActorCommand),
     ) -> Result<(), String> {
-        crate::ffi::actions::dispatch_host_op(Self::NAMESPACE, &action, correlation_id, send)
+        crate::ffi::actions::dispatch_host_op(Self::NAMESPACE.as_str(), &action, correlation_id, send)
     }
 
     fn decode_payload(

@@ -2,7 +2,7 @@
 //! snapshot within 5 seconds.
 
 use nmp_app_podcast::PodcastHandle;
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 use serde_json::json;
 
 use super::ScenarioResult::{self, Fail, Pass};

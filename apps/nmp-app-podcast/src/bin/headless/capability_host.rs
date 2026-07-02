@@ -30,7 +30,7 @@ use nmp_app_podcast::capability::{
 use nmp_app_podcast::ffi::PodcastHandle;
 use nmp_app_podcast::nmp_app_podcast_http_report;
 use nmp_core::substrate::{CapabilityEnvelope, CapabilityRequest};
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 use podcast_feeds::http::{
     HttpCommand, HttpMethod, HttpReport, HttpRequest, HttpResult, HTTP_ASYNC_CAPABILITY_NAMESPACE,
     HTTP_CAPABILITY_NAMESPACE,

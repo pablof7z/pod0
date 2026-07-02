@@ -21,7 +21,7 @@ use std::sync::Arc;
 
 use crate::state::PodcastAppState;
 
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 // AtomicU64, Mutex, Runtime, SnapshotUpdateSignal removed in Step N+1 —
 // rev + signal + runtime are now accessed via state.infra.
 

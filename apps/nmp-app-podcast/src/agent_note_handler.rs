@@ -46,7 +46,7 @@ use nostr::nips::nip19::ToBech32;
 use nmp_planner::interest::{InterestId, InterestLifecycle, InterestScope, LogicalInterest};
 use nmp_planner::stable_hash::stable_hash64;
 use nmp_core::substrate::{KernelEvent, ViewDependencies};
-use nmp_core::KernelEventObserver;
+use nmp_core::ObservedProjectionSink;
 
 use crate::nmp_dispatch::{publish_raw_via_nmp, push_interest_via_nmp};
 use crate::snapshot_signal::SnapshotUpdateSignal;
@@ -56,7 +56,7 @@ use crate::store::approved_peer_store::ApprovedPeerStore;
 use crate::store::identity::IdentityStore;
 use crate::store::outbound_turn_cache::OutboundTurnCache;
 use crate::store::PodcastStore;
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 use nmp_nip02::ActiveFollowSet;
 use tokio::runtime::Runtime;
 
@@ -120,7 +120,7 @@ pub fn handle_fetch_agent_notes(
         },
         Err(_) => return serde_json::json!({"ok": false, "error": "identity poisoned"}),
     };
-    push_interest_via_nmp(app, agent_notes_interest(&my_pubkey_hex));
+    push_interest_via_nmp(app, &format!("podcast.agent_notes.{my_pubkey_hex}"), agent_notes_interest(&my_pubkey_hex));
     serde_json::json!({"ok": true, "status": "subscribed"})
 }
 
@@ -352,7 +352,7 @@ impl AgentNotesObserver {
     }
 }
 
-impl KernelEventObserver for AgentNotesObserver {
+impl ObservedProjectionSink for AgentNotesObserver {
     fn on_kernel_event(&self, event: &KernelEvent) {
         if event.kind != 1 {
             return;

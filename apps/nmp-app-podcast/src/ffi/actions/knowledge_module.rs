@@ -69,7 +69,8 @@ pub enum KnowledgeAction {
 pub struct KnowledgeActionModule;
 
 impl ActionModule for KnowledgeActionModule {
-    const NAMESPACE: &'static str = "podcast.knowledge";
+    const NAMESPACE: nmp_core::substrate::DeclaredActionNamespace =
+        nmp_core::substrate::DeclaredActionNamespace::app_owned("podcast.knowledge");
 
     type Action = KnowledgeAction;
 
@@ -79,11 +80,12 @@ impl ActionModule for KnowledgeActionModule {
 
     fn execute(
         &self,
+        _ctx: &nmp_core::substrate::ActionContext,
         action: Self::Action,
         correlation_id: &str,
         send: &dyn Fn(ActorCommand),
     ) -> Result<(), String> {
-        crate::ffi::actions::dispatch_host_op(Self::NAMESPACE, &action, correlation_id, send)
+        crate::ffi::actions::dispatch_host_op(Self::NAMESPACE.as_str(), &action, correlation_id, send)
     }
 
     fn decode_payload(

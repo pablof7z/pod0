@@ -223,23 +223,19 @@ impl PodcastHostOpHandler {
                     )
                 }
             }
-            // Step 16: feedback is now in state.feedback.
-            PodcastAction::FetchFeedback => self.state.feedback.fetch(self.app).as_json(),
-            PodcastAction::PublishFeedback {
-                category,
-                content,
-                parent_event_id,
-                reply_to_pubkey,
-            } => self
-                .state.feedback
-                .publish(
-                    self.app,
-                    &category,
-                    &content,
-                    parent_event_id.as_deref(),
-                    reply_to_pubkey.as_deref(),
-                )
-                .as_json(),
+            // TODO(follow-up, pablof7z/nmp-feedback#3): `state.feedback`
+            // (nmp-feedback's `FeedbackRuntime`) is dropped in A0/A1 — see
+            // the workspace Cargo.toml pin-discipline comment. Both actions
+            // fail closed with a stable error shape (matching
+            // `FeedbackCommandOutcome::rejected`) instead of silently
+            // no-opping until the runtime is restored.
+            PodcastAction::FetchFeedback | PodcastAction::PublishFeedback { .. } => {
+                serde_json::json!({
+                    "ok": false,
+                    "status": "rejected",
+                    "error": "feedback runtime unavailable (pablof7z/nmp-feedback#3)",
+                })
+            }
             PodcastAction::SubscribeNostr {
                 author_pubkey_hex,
                 show_title,

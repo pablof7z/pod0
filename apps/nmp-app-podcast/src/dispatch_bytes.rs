@@ -1,10 +1,14 @@
 //! ADR-0064 typed dispatch seam — the podcast-app bytes doorway.
 //!
 //! The JSON doorway `nmp_app_dispatch_action(app, namespace, json)` was deleted.
-//! Every write now travels the typed [`nmp_ffi::nmp_app_dispatch_action_bytes`]
-//! doorway: a host-minted `correlation_id` + the module's NAMESPACE + a typed
-//! [`ActionPayload`](nmp_core::substrate::ActionPayload) payload, wrapped in a
-//! [`DispatchEnvelope`](nmp_core::dispatch_envelope).
+//! Every write now travels the typed
+//! [`nmp_native_runtime::dispatch_action_bytes_typed`] doorway (the
+//! `nmp-ffi` C-ABI wrapper that used to own this call, including the
+//! malloc'd-C-string round trip, is deleted — the runtime function returns a
+//! typed [`DispatchOutcome`](nmp_native_runtime::action_dispatch::DispatchOutcome)
+//! directly): a host-minted `correlation_id` + the module's NAMESPACE + a
+//! typed [`ActionPayload`](nmp_core::substrate::ActionPayload) payload,
+//! wrapped in a [`DispatchEnvelope`](nmp_core::dispatch_envelope).
 //!
 //! This module encodes both NMP-owned namespaces (`nmp.publish`, `nmp.blossom.upload`)
 //! and podcast-specific namespaces via `PodcastJsonPayload` pass-through.
@@ -12,11 +16,10 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::de::DeserializeOwned;
-use serde_json::Value;
 
 use nmp_core::dispatch_envelope::{encode_dispatch_envelope, DISPATCH_ENVELOPE_SCHEMA_VERSION};
 use nmp_core::substrate::ActionPayload;
-use nmp_ffi::{nmp_app_dispatch_action_bytes, nmp_free_string, NmpApp};
+use nmp_native_runtime::{dispatch_action_bytes_typed, NmpApp};
 
 /// Process-local correlation-id source.
 ///
@@ -78,9 +81,11 @@ where
 ///
 /// Builds the typed payload for `namespace` from `json`, mints a host
 /// correlation id, wraps payload + namespace + id in an open [`DispatchEnvelope`],
-/// and hands the finished bytes to [`nmp_app_dispatch_action_bytes`]. Returns
-/// the echoed correlation id on accept, or a fail-closed error string on a
-/// null app, an unknown / mis-shaped namespace, or a kernel rejection.
+/// and hands the finished bytes to
+/// [`dispatch_action_bytes_typed`](nmp_native_runtime::dispatch_action_bytes_typed).
+/// Returns the echoed correlation id on accept, or a fail-closed error
+/// string on a null app, an unknown / mis-shaped namespace, or a kernel
+/// rejection.
 ///
 /// # Safety
 /// `app` must be a valid non-null `*mut NmpApp` from `nmp_app_new` (a null `app`
@@ -104,36 +109,13 @@ pub fn dispatch_action_bytes_for(
         &payload,
     );
 
-    // SAFETY: envelope is valid bytes produced by encode_dispatch_envelope,
-    // app is non-null, correlation_id is a valid C string.
-    let result_ptr = unsafe { nmp_app_dispatch_action_bytes(app, envelope.as_ptr(), envelope.len()) };
+    // SAFETY: app is non-null (checked above) and owned by the host NMP
+    // runtime for the duration of this call.
+    let app_ref = unsafe { &*app };
+    let outcome = dispatch_action_bytes_typed(app_ref, &envelope);
 
-    if result_ptr.is_null() {
-        return Err("kernel rejected the action".to_string());
+    if let Some(err) = outcome.error {
+        return Err(err);
     }
-
-    // SAFETY: result_ptr is from the kernel's malloc; we take ownership via CString.
-    let result_json = unsafe {
-        let c_str = std::ffi::CStr::from_ptr(result_ptr as *const std::os::raw::c_char);
-        c_str.to_string_lossy().to_string()
-    };
-
-    // SAFETY: result_ptr is heap-owned from the kernel; free it.
-    unsafe {
-        nmp_free_string(result_ptr);
-    }
-
-    // Parse the returned JSON to extract correlation_id or error
-    match serde_json::from_str::<Value>(&result_json) {
-        Ok(Value::Object(map)) => {
-            if let Some(Value::String(err)) = map.get("error") {
-                Err(err.clone())
-            } else if let Some(Value::String(id)) = map.get("correlation_id") {
-                Ok(id.clone())
-            } else {
-                Ok(correlation_id)
-            }
-        }
-        _ => Ok(correlation_id),
-    }
+    Ok(outcome.correlation_id.unwrap_or(correlation_id))
 }

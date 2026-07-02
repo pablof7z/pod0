@@ -133,11 +133,13 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     // The flat `agent_notes` list was retired — conversations subsume it.
     let nostr_conversations = handle.state.social.nostr_conversations_snapshot();
 
-    // In-app feedback events (kind:1 + kind:513 for this app's project coord),
-    // cached and reduced by `nmp-feedback`.
-    // Step 16: feedback is now in state.feedback.
-    let feedback_events = handle.state.feedback.snapshot_events();
-    let feedback_threads = handle.state.feedback.snapshot_threads();
+    // TODO(follow-up, pablof7z/nmp-feedback#3): in-app feedback events
+    // (kind:1 + kind:513 for this app's project coord) used to be cached and
+    // reduced by `nmp-feedback` (`state.feedback.snapshot_events()` /
+    // `.snapshot_threads()`). Dropped with the feedback runtime in A0/A1 —
+    // both wire fields stay present but always empty until that lands.
+    let feedback_events: Vec<serde_json::Value> = Vec::new();
+    let feedback_threads: Vec<serde_json::Value> = Vec::new();
 
     // Configured app relays (NMP v0.2.1). Kernel-owned slot, projected by the
     // sibling helper. SAFETY: `handle.app` is the live `*mut NmpApp` the

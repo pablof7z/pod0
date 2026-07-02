@@ -15,7 +15,7 @@
 //! not support.
 
 use nmp_app_podcast::PodcastHandle;
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 
 use crate::harness::{dispatch, wait_for};
 use crate::mock_feed;

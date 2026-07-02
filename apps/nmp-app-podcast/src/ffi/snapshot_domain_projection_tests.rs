@@ -35,7 +35,7 @@ use crate::store::PodcastStore;
 /// Make a handle with a real (unstarted) `NmpApp` so `build_configured_relays`
 /// does not deref a null pointer. The caller is responsible for freeing `app`
 /// after dropping the handle.
-pub(super) fn make_test_handle_with_app(app: *mut nmp_ffi::NmpApp) -> Box<PodcastHandle> {
+pub(super) fn make_test_handle_with_app(app: *mut nmp_native_runtime::NmpApp) -> Box<PodcastHandle> {
     let store = Arc::new(Mutex::new(PodcastStore::new()));
     let state = Arc::new(PodcastAppState::new(
         Infra::for_test(),
@@ -68,7 +68,7 @@ pub(super) fn make_test_handle_with_app(app: *mut nmp_ffi::NmpApp) -> Box<Podcas
 /// the same way `register.rs` does — before the `Arc` wrap — so the action
 /// handler, the trust predicate, and the projection all read one store.
 pub(super) fn make_handle_and_state_with_approved(
-    app: *mut nmp_ffi::NmpApp,
+    app: *mut nmp_native_runtime::NmpApp,
 ) -> (
     Arc<PodcastHandle>,
     Arc<PodcastAppState>,
@@ -120,7 +120,7 @@ pub(super) fn make_frame_with_sidecars(sidecars: &[TypedProjectionData]) -> Vec<
 /// (ac7e307e: `install_embed_sidecar_projection` always returns `Some`).
 /// Domain-projection tests assert silence between domain-rev bumps; the
 /// embed sidecar's unconditional emit would cause false failures.
-pub(super) fn run_domain_projections_only(app_ref: &nmp_ffi::NmpApp) -> Vec<TypedProjectionData> {
+pub(super) fn run_domain_projections_only(app_ref: &nmp_native_runtime::NmpApp) -> Vec<TypedProjectionData> {
     app_ref
         .run_typed_snapshot_projections()
         .into_iter()

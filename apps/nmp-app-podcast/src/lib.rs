@@ -153,10 +153,13 @@ pub use ffi::{
     nmp_app_podcast_validate_elevenlabs_key, nmp_app_podcast_validate_openrouter_key,
     nmp_app_podcast_voice_report, PodcastHandle,
 };
-pub use nmp_ffi::{
-    nmp_app_cancel_bunker_handshake, nmp_app_nostrconnect_uri, nmp_free_string,
-    nmp_signer_broker_init,
-};
+// TODO(A5, pablof7z/podcast-player#681 epic #597): `nmp-signer-broker` is
+// deleted upstream — NIP-46 bunker/nostrconnect now rides the shared relay
+// lane in `nmp-core` / `nmp_uniffi` identity::broker. This re-export of the
+// old bare C-ABI symbols (`nmp_app_cancel_bunker_handshake`,
+// `nmp_app_nostrconnect_uri`, `nmp_free_string`, `nmp_signer_broker_init`)
+// is dropped rather than pointed at a nonexistent shim; A5 rewires NIP-46
+// callers onto the new identity::broker surface.
 pub use player::{PlayerActor, PlayerState};
 pub use queue::PlaybackQueue;
 
@@ -167,6 +170,12 @@ pub use queue::PlaybackQueue;
 #[cfg(feature = "headless")]
 pub use agent_note_handler::CachedAgentNote;
 
+// TODO(follow-up, pablof7z/nmp-feedback#3): these fed `nmp_feedback::FeedbackConfig`
+// in `ffi/register.rs` / `state/mod.rs`. Dropped with the feedback runtime in
+// A0/A1; restore once nmp-feedback ships a rewrite past the deleted nmp-ffi
+// JSON publish doorway.
+#[allow(dead_code)]
 pub(crate) const PODCAST_FEEDBACK_PROJECT_COORDINATE: &str =
     "31933:09d48a1a5dbe13404a729634f1d6ba722d40513468dd713c8ea38ca9b7b6f2c7:podcast";
+#[allow(dead_code)]
 pub(crate) const PODCAST_FEEDBACK_INTEREST_NAMESPACE: &str = "podcast.feedback";

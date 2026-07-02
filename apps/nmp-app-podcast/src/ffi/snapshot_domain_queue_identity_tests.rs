@@ -21,7 +21,7 @@ use crate::store::PodcastStore;
 /// Minimal handle with a real (unstarted) `NmpApp` so `build_configured_relays`
 /// does not deref a null pointer. The caller frees `app` after dropping the
 /// handle.
-fn make_test_handle_with_app(app: *mut nmp_ffi::NmpApp) -> Box<PodcastHandle> {
+fn make_test_handle_with_app(app: *mut nmp_native_runtime::NmpApp) -> Box<PodcastHandle> {
     let store = Arc::new(Mutex::new(PodcastStore::new()));
     let state = Arc::new(PodcastAppState::new(Infra::for_test(), store.clone()));
     state.tasks.tasks.lock().unwrap().clear();

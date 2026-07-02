@@ -8,7 +8,7 @@
 //! [`AppRelayRow`] the Swift App Relays editor reads. It never touches
 //! `PodcastStore` — there is no relay state there.
 
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 
 use super::snapshot_update::AppRelayRow;
 

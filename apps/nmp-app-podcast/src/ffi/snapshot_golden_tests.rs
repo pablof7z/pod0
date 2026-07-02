@@ -58,7 +58,7 @@ fn fixture_path() -> PathBuf {
 
 // ── Handle construction ───────────────────────────────────────────────────────
 
-fn make_golden_handle(app: *mut nmp_ffi::NmpApp) -> Box<PodcastHandle> {
+fn make_golden_handle(app: *mut nmp_native_runtime::NmpApp) -> Box<PodcastHandle> {
     let store = {
         let mut s = PodcastStore::new();
 

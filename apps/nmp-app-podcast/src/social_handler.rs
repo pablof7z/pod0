@@ -50,9 +50,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use nostr::nips::nip19::ToBech32;
-use nmp_core::substrate::{ContactsLookup, KernelEvent};
-use nmp_core::KernelEventObserver;
-use nmp_nip02::FollowListProjection;
+use nmp_core::substrate::KernelEvent;
+use nmp_core::ObservedProjectionSink;
+use nmp_nip02::{FollowListProjection, LatestKind3FollowSet};
 
 use crate::ffi::projections::{ContactSummary, SocialSnapshot};
 use crate::snapshot_signal::SnapshotUpdateSignal;
@@ -89,20 +89,23 @@ impl FollowListObserver {
     ///
     /// * `active_pubkey` — the kernel's shared active-account slot
     ///   (`NmpApp::active_account_handle()`).
-    /// * `contacts_lookup` — the shared `ContactsLookup` the `Kind3Parser`
-    ///   writes to; `FollowListProjection` is a thin read-model over it.
+    /// * `latest_kind3` — reads the active account's latest kind:3 directly
+    ///   from the kernel event store (`LatestKind3FollowSet::new(NmpApp::event_store_handle())`);
+    ///   `FollowListProjection` is a thin read-model over it (the earlier
+    ///   `ContactsLookup` sink-cache design was replaced upstream — see
+    ///   `nmp_nip02::projection` module docs).
     /// * `social_slot` — the shared slot written by this observer and read by
     ///   the snapshot projection.
     /// * `rev` — shared rev counter; bumped on every kind:3 event when no
     ///   `snapshot_signal` is present.
     pub fn new(
         active_pubkey: Arc<Mutex<Option<String>>>,
-        contacts_lookup: Arc<dyn ContactsLookup>,
+        latest_kind3: LatestKind3FollowSet,
         social_slot: Arc<Mutex<Option<SocialSnapshot>>>,
         rev: Arc<AtomicU64>,
     ) -> Self {
         Self {
-            projection: FollowListProjection::new(active_pubkey, contacts_lookup),
+            projection: FollowListProjection::new(active_pubkey, latest_kind3),
             social_slot,
             rev,
             snapshot_signal: None,
@@ -146,7 +149,7 @@ impl FollowListObserver {
     }
 }
 
-impl KernelEventObserver for FollowListObserver {
+impl ObservedProjectionSink for FollowListObserver {
     /// Forward the event to the inner [`FollowListProjection`], then — if the
     /// event was accepted (kind:3 for the active account) — materialise and
     /// store a fresh [`SocialSnapshot`] and signal the shell.
@@ -158,9 +161,9 @@ impl KernelEventObserver for FollowListObserver {
             return;
         }
 
-        // Read the follow list from the shared ContactsLookup (written by
-        // Kind3Parser before this observer fires). FollowListProjection is
-        // now a thin read-model over the ContactsLookup — no secondary map.
+        // Read the follow list directly from the kernel event store via
+        // LatestKind3FollowSet. FollowListProjection is a thin read-model —
+        // no secondary map.
         let snap = self.projection.snapshot();
 
         // Materialise ContactSummary rows with bech32 npubs + raw hex.

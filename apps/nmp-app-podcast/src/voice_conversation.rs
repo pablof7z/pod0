@@ -40,7 +40,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use nmp_core::substrate::CapabilityRequest;
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 use tokio::runtime::Runtime;
 use tokio::task::JoinHandle;
 

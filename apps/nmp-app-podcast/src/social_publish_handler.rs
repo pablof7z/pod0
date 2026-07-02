@@ -36,7 +36,7 @@ use crate::clip_handler::ClipRecord;
 use crate::nmp_dispatch::{publish_profile_via_nmp, publish_raw_via_nmp};
 use crate::store::identity::IdentityStore;
 use crate::store::PodcastStore;
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 
 /// NIP-84 highlight event kind.
 const KIND_HIGHLIGHT: u32 = 9802;

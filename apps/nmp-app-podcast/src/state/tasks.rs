@@ -36,7 +36,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 use tokio::task::JoinHandle;
 
 use crate::ffi::actions::tasks_module::AgentTasksAction;

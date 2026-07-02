@@ -1,6 +1,6 @@
 use std::sync::mpsc::{self, Receiver, Sender};
 
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 
 /// Lightweight signal that the kernel has emitted a new snapshot.
 /// The actual payload is read on the main thread via
@@ -20,20 +20,31 @@ impl NmpUpdateBridge {
         (Box::new(Self { tx }), rx)
     }
 
+    /// Register `bridge` as `app`'s update listener.
+    ///
+    /// `nmp_native_runtime::NmpApp::set_update_listener` takes a plain Rust
+    /// closure (`Arc<dyn Fn(&[u8]) + Send + Sync>`) instead of the deleted
+    /// `nmp-ffi` C-ABI context-pointer + callback-fn pair — no `unsafe`
+    /// context juggling needed.
     pub fn register(app: *mut NmpApp, bridge: &mut Box<Self>) {
-        let context = bridge.as_mut() as *mut Self as *mut std::ffi::c_void;
-        nmp_ffi::nmp_app_set_update_callback(app, context, Some(on_update));
+        if app.is_null() {
+            return;
+        }
+        let tx = bridge.tx.clone();
+        // SAFETY: app is non-null (checked above) and owned by the host for
+        // the lifetime of this call.
+        let app_ref = unsafe { &*app };
+        app_ref.set_update_listener(Some(std::sync::Arc::new(move |_bytes: &[u8]| {
+            let _ = tx.send(NmpEvent);
+        })));
     }
 }
 
 pub fn unregister(app: *mut NmpApp) {
-    nmp_ffi::nmp_app_set_update_callback(app, std::ptr::null_mut(), None);
-}
-
-extern "C" fn on_update(context: *mut std::ffi::c_void, _payload: *const u8, _len: usize) {
-    if context.is_null() {
+    if app.is_null() {
         return;
     }
-    let bridge = unsafe { &*(context as *const NmpUpdateBridge) };
-    let _ = bridge.tx.send(NmpEvent);
+    // SAFETY: app is non-null (checked above).
+    let app_ref = unsafe { &*app };
+    app_ref.set_update_listener(None);
 }

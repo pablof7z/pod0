@@ -26,7 +26,7 @@ fn default_seed_has_inbox_triage_task() {
     // dispatches. Bind to the real consts so future drift fails loudly.
     assert_eq!(
         seed[0].action_namespace,
-        crate::ffi::actions::InboxActionModule::NAMESPACE
+        crate::ffi::actions::InboxActionModule::NAMESPACE.as_str()
     );
     assert_eq!(seed[0].action_body, r#"{"op":"triage"}"#);
     assert!(seed.iter().all(|t| t.is_enabled));

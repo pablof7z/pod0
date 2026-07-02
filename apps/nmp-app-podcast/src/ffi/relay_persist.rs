@@ -9,7 +9,7 @@
 
 use std::sync::Mutex;
 
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 
 use crate::store::relay_config::save_relay_config;
 use crate::store::PodcastStore;

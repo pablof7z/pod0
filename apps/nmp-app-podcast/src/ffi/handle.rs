@@ -9,7 +9,7 @@ use crate::store::agent_note_responder_cache::ResponderCache;
 use crate::store::approved_peer_store::ApprovedPeerStore;
 use crate::store::outbound_turn_cache::OutboundTurnCache;
 
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 // AtomicU64, Ordering, Runtime, SnapshotUpdateSignal removed in Step N+1 —
 // these lived in the mirror fields now deleted.
 

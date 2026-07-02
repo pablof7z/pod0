@@ -28,9 +28,7 @@ lmdb-backend = ["nmp-core/lmdb-backend"]
 # tokio-tungstenite and futures-util are now non-optional (production social
 # graph relay subscriptions use them). Gated deps here are only the test-only
 # build utilities; the relay client is a production dependency.
-# TODO(A1, pablof7z/podcast-player#681): restore the nmp-native-runtime
-# test-support equivalent of "nmp-ffi/test-support" once that surface exists.
-headless = ["dep:tempfile", "nmp-core/test-support"]
+headless = ["dep:tempfile", "nmp-core/test-support", "nmp-native-runtime/test-support"]
 
 [[bin]]
 name = "headless"
@@ -58,11 +56,21 @@ tokio-tungstenite = { version = "0.26", features = ["rustls-tls-native-roots"] }
 futures-util = { version = "0.3" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 nmp-core = { workspace = true }
-# TODO(A1, pablof7z/podcast-player#681): `nmp-ffi` (the `NmpApp` C-ABI
-# handle), `nmp-signer-broker` (NIP-46 relay-broker), and `nmp-defaults`
-# (composition root) are deleted on the pinned NMP rev. A1 adds
-# `nmp-native-runtime` / `nmp-uniffi` / `nmp-substrate` and rewires this
-# crate's composition + dispatch onto them.
+# A1 (#681): `nmp-native-runtime` owns the `NmpApp` handle + lifecycle
+# (successor to the deleted `nmp-ffi`). This crate builds its OWN UniFFI
+# facade object directly on top (mirrors apps/nmp-gallery/crates/nmp-app-gallery
+# and 29er's crates/nmp-app-29er in the NMP repo) rather than depending on the
+# generic `nmp-uniffi` base-object crate.
+nmp-native-runtime = { workspace = true, features = ["external-signer"] }
+nmp-uniffi-support = { workspace = true }
+uniffi = { workspace = true }
+# ADR-0069 composition root: reusable substrate floor (routing, mailbox/
+# profile/contact caches, parsers, publish resolver, coverage gate, NIP-77
+# sync). Replaces the deleted `nmp-defaults::register_defaults` preset —
+# apps now install `nmp_substrate::install(...)` plus explicit per-crate
+# `register_*` calls (see ffi/register.rs).
+nmp-substrate = { workspace = true }
+nmp-ownership = { workspace = true }
 # TODO(follow-up, pablof7z/nmp-feedback#3): feedback-thread integration
 # (`nmp-feedback`) is dropped here pending its own re-architecture upstream
 # — see the workspace Cargo.toml pin-discipline comment.
@@ -71,6 +79,16 @@ nmp-core = { workspace = true }
 # ActiveFollowSet (D11 — single door).
 nmp-nip02 = { workspace = true }
 nmp-nip50 = { workspace = true }
+# Explicit protocol installers formerly bundled by the deleted
+# `nmp-defaults::register_defaults` preset (repost/quote-repost, react/
+# unreact, DM send + relay-list publish, outbox relay-list publish routing,
+# bookmarks). See ffi/register.rs for the explicit call sites.
+nmp-nip18 = { workspace = true }
+nmp-nip25 = { workspace = true }
+nmp-nip17 = { workspace = true }
+nmp-nip51 = { workspace = true }
+nmp-router = { workspace = true }
+nmp-wot = { workspace = true }
 # Subscription planner (direct dep for InterestId/LogicalInterest/etc.).
 # nmp-core no longer re-exports the planner facade (#1608); external callers
 # depend on nmp-planner directly.
@@ -133,8 +151,7 @@ base64 = "0.22"
 # Test-support gates expose `nmp_app_new` / `nmp_app_free` so FFI smoke tests
 # can spin up a real `NmpApp` rather than mocking the slot.
 nmp-core = { workspace = true, features = ["test-support"] }
-# TODO(A1, pablof7z/podcast-player#681): restore an `nmp-native-runtime`
-# test-support dep here once that surface exists (was `nmp-ffi`).
+nmp-native-runtime = { workspace = true, features = ["test-support"] }
 # Temporary directory support for PodcastKeyStore and identity store round-trip tests.
 tempfile = "3"
 

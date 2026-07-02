@@ -45,7 +45,7 @@ use nmp_planner::interest::{InterestId, InterestLifecycle, InterestScope, Logica
 use nmp_planner::stable_hash::stable_hash64;
 use nmp_core::subs::{SubIdentity, SubKey, SubOwnerKey, SubScope};
 use nmp_core::substrate::{KernelEvent, ViewDependencies};
-use nmp_core::KernelEventObserver;
+use nmp_core::ObservedProjectionSink;
 
 use podcast_discovery::{parse_kind_10154, NipF4Show};
 
@@ -199,7 +199,7 @@ impl NostrDiscoveryObserver {
     }
 }
 
-impl KernelEventObserver for NostrDiscoveryObserver {
+impl ObservedProjectionSink for NostrDiscoveryObserver {
     fn on_kernel_event(&self, event: &KernelEvent) {
         if event.kind != KIND_NIP_F4_SHOW {
             return;

@@ -11,7 +11,7 @@ use crate::ffi::handle::PodcastHandle;
 use crate::state::{Infra, PodcastAppState};
 use crate::store::PodcastStore;
 
-fn make_test_handle_with_app(app: *mut nmp_ffi::NmpApp) -> Box<PodcastHandle> {
+fn make_test_handle_with_app(app: *mut nmp_native_runtime::NmpApp) -> Box<PodcastHandle> {
     let store = Arc::new(Mutex::new(PodcastStore::new()));
     let state = Arc::new(PodcastAppState::new(Infra::for_test(), store));
     state.tasks.tasks.lock().unwrap().clear();

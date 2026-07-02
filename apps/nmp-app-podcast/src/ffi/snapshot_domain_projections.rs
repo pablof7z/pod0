@@ -161,7 +161,7 @@ fn make_typed(schema_id: &str, payload: serde_json::Value) -> TypedProjectionDat
 ///  3. If changed AND payload non-empty → emit full payload, advance last_emitted.
 ///  4. If changed AND payload empty/None → emit tombstone, advance last_emitted.
 pub fn register_domain_projections(
-    app_ref: &nmp_ffi::NmpApp,
+    app_ref: &nmp_native_runtime::NmpApp,
     handle: &Arc<PodcastHandle>,
 ) {
     let domain_revs = Arc::clone(&handle.state.infra.domain_revs);
@@ -171,7 +171,10 @@ pub fn register_domain_projections(
         let h = Arc::clone(handle);
         let domain_rev = Arc::clone(&domain_revs.library);
         let last_emitted = Arc::new(AtomicU64::new(0));
-        app_ref.register_typed_snapshot_projection(SCHEMA_LIBRARY, move || {
+        app_ref.register_typed_snapshot_projection(
+            nmp_ownership::DynamicProjectionKey::app_owned(SCHEMA_LIBRARY)
+                .expect("valid app-owned projection key"),
+            move || {
             let current = domain_rev.load(Ordering::Relaxed);
             let prev = last_emitted.load(Ordering::Relaxed);
             if current == prev {
@@ -189,7 +192,10 @@ pub fn register_domain_projections(
         let h = Arc::clone(handle);
         let domain_rev = Arc::clone(&domain_revs.playback);
         let last_emitted = Arc::new(AtomicU64::new(0));
-        app_ref.register_typed_snapshot_projection(SCHEMA_PLAYBACK, move || {
+        app_ref.register_typed_snapshot_projection(
+            nmp_ownership::DynamicProjectionKey::app_owned(SCHEMA_PLAYBACK)
+                .expect("valid app-owned projection key"),
+            move || {
             let current = domain_rev.load(Ordering::Relaxed);
             let prev = last_emitted.load(Ordering::Relaxed);
             if current == prev {
@@ -206,7 +212,10 @@ pub fn register_domain_projections(
         let h = Arc::clone(handle);
         let domain_rev = Arc::clone(&domain_revs.downloads);
         let last_emitted = Arc::new(AtomicU64::new(0));
-        app_ref.register_typed_snapshot_projection(SCHEMA_DOWNLOADS, move || {
+        app_ref.register_typed_snapshot_projection(
+            nmp_ownership::DynamicProjectionKey::app_owned(SCHEMA_DOWNLOADS)
+                .expect("valid app-owned projection key"),
+            move || {
             let current = domain_rev.load(Ordering::Relaxed);
             let prev = last_emitted.load(Ordering::Relaxed);
             if current == prev {
@@ -224,7 +233,10 @@ pub fn register_domain_projections(
         let h = Arc::clone(handle);
         let domain_rev = Arc::clone(&domain_revs.settings);
         let last_emitted = Arc::new(AtomicU64::new(0));
-        app_ref.register_typed_snapshot_projection(SCHEMA_SETTINGS, move || {
+        app_ref.register_typed_snapshot_projection(
+            nmp_ownership::DynamicProjectionKey::app_owned(SCHEMA_SETTINGS)
+                .expect("valid app-owned projection key"),
+            move || {
             let current = domain_rev.load(Ordering::Relaxed);
             let prev = last_emitted.load(Ordering::Relaxed);
             if current == prev {
@@ -257,7 +269,10 @@ pub fn register_domain_projections(
         let domain_rev = Arc::clone(&domain_revs.identity);
         let last_emitted = Arc::new(AtomicU64::new(0));
         let last_active_hex: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
-        app_ref.register_typed_snapshot_projection(SCHEMA_IDENTITY, move || {
+        app_ref.register_typed_snapshot_projection(
+            nmp_ownership::DynamicProjectionKey::app_owned(SCHEMA_IDENTITY)
+                .expect("valid app-owned projection key"),
+            move || {
             let current = domain_rev.load(Ordering::Relaxed);
             let prev = last_emitted.load(Ordering::Relaxed);
             let kernel_hex = super::snapshot_identity::kernel_active_account_hex(&h);
@@ -291,7 +306,10 @@ pub fn register_domain_projections(
         let h = Arc::clone(handle);
         let domain_rev = Arc::clone(&domain_revs.widget);
         let last_emitted = Arc::new(AtomicU64::new(0));
-        app_ref.register_typed_snapshot_projection(SCHEMA_WIDGET, move || {
+        app_ref.register_typed_snapshot_projection(
+            nmp_ownership::DynamicProjectionKey::app_owned(SCHEMA_WIDGET)
+                .expect("valid app-owned projection key"),
+            move || {
             let current = domain_rev.load(Ordering::Relaxed);
             let prev = last_emitted.load(Ordering::Relaxed);
             if current == prev {
@@ -309,7 +327,10 @@ pub fn register_domain_projections(
         let h = Arc::clone(handle);
         let domain_rev = Arc::clone(&domain_revs.social);
         let last_emitted = Arc::new(AtomicU64::new(0));
-        app_ref.register_typed_snapshot_projection(SCHEMA_SOCIAL, move || {
+        app_ref.register_typed_snapshot_projection(
+            nmp_ownership::DynamicProjectionKey::app_owned(SCHEMA_SOCIAL)
+                .expect("valid app-owned projection key"),
+            move || {
             let current = domain_rev.load(Ordering::Relaxed);
             let prev = last_emitted.load(Ordering::Relaxed);
             if current == prev {
@@ -327,7 +348,10 @@ pub fn register_domain_projections(
         let h = Arc::clone(handle);
         let domain_rev = Arc::clone(&domain_revs.voice);
         let last_emitted = Arc::new(AtomicU64::new(0));
-        app_ref.register_typed_snapshot_projection(SCHEMA_VOICE, move || {
+        app_ref.register_typed_snapshot_projection(
+            nmp_ownership::DynamicProjectionKey::app_owned(SCHEMA_VOICE)
+                .expect("valid app-owned projection key"),
+            move || {
             let current = domain_rev.load(Ordering::Relaxed);
             let prev = last_emitted.load(Ordering::Relaxed);
             if current == prev {
@@ -346,7 +370,10 @@ pub fn register_domain_projections(
         let h = Arc::clone(handle);
         let domain_rev = Arc::clone(&domain_revs.misc);
         let last_emitted = Arc::new(AtomicU64::new(0));
-        app_ref.register_typed_snapshot_projection(SCHEMA_MISC, move || {
+        app_ref.register_typed_snapshot_projection(
+            nmp_ownership::DynamicProjectionKey::app_owned(SCHEMA_MISC)
+                .expect("valid app-owned projection key"),
+            move || {
             let current = domain_rev.load(Ordering::Relaxed);
             let prev = last_emitted.load(Ordering::Relaxed);
             if current == prev {

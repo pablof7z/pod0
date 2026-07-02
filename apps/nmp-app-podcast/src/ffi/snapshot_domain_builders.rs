@@ -345,8 +345,10 @@ pub(super) fn build_misc_payload(handle: &PodcastHandle) -> serde_json::Value {
             })
         }
     };
-    let feedback_events = handle.state.feedback.snapshot_events();
-    let feedback_threads = handle.state.feedback.snapshot_threads();
+    // TODO(follow-up, pablof7z/nmp-feedback#3): dropped with the feedback
+    // runtime in A0/A1 — see `ffi/snapshot.rs`'s matching TODO.
+    let feedback_events: Vec<serde_json::Value> = Vec::new();
+    let feedback_threads: Vec<serde_json::Value> = Vec::new();
 
     serde_json::json!({
         "rev": rev,

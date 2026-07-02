@@ -46,3 +46,24 @@ nmp-blossom = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-mult
 nmp-nip02 = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
 nmp-nip50 = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
 nmp-planner = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
+# A1 (#681): UniFFI-facade replacements for the deleted nmp-ffi/nmp-signer-broker/nmp-defaults.
+# Follows the validated apps/nmp-app-29er precedent (not just #681's issue-text crate list —
+# nmp-app-gallery and nmp-app-29er both build their OWN facade object directly on
+# nmp-native-runtime + nmp-uniffi-support + nmp-substrate + the third-party `uniffi` crate;
+# neither depends on the generic `nmp-uniffi` base-object crate).
+nmp-native-runtime = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
+nmp-uniffi-support = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
+nmp-substrate = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
+nmp-nip17 = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
+nmp-nip18 = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
+nmp-nip25 = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
+nmp-nip51 = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
+nmp-nip22 = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
+nmp-router = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
+nmp-wot = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
+nmp-signer-iface = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
+# Surface tokens (DeclaredActionNamespace, ProjectionRegistrationKey /
+# DynamicProjectionKey) that ActionModule/typed-snapshot-projection
+# registration now require in place of bare `&str` keys.
+nmp-ownership = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
+uniffi = "0.29"

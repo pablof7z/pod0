@@ -72,7 +72,7 @@ impl VoiceSubstate {
     pub fn new(
         infra: Infra,
         store: Arc<Mutex<PodcastStore>>,
-        app: *mut nmp_ffi::NmpApp,
+        app: *mut nmp_native_runtime::NmpApp,
     ) -> Self {
         let voice_state_arc: Arc<Mutex<VoiceProjection>> =
             Arc::new(Mutex::new(VoiceProjection::default()));

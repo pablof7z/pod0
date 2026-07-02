@@ -45,7 +45,7 @@ fn clear_action_round_trips() {
 }
 #[test]
 fn namespace_is_podcast_agent() {
-    assert_eq!(AgentActionModule::NAMESPACE, "podcast.agent");
+    assert_eq!(AgentActionModule::NAMESPACE.as_str(), "podcast.agent");
 }
 #[test]
 fn execute_emits_dispatch_host_op() {

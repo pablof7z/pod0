@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use crate::snapshot_signal::SnapshotUpdateSignal;
 use crate::store::identity::IdentityStore;
 use crate::nmp_dispatch::{activate_local_signer_in_kernel, remove_account_from_kernel};
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 
 /// Wire enum for all `podcast.identity` namespace actions.
 ///

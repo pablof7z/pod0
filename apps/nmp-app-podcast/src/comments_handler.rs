@@ -30,14 +30,14 @@ use nostr::nips::nip19::ToBech32;
 use nmp_planner::interest::{InterestId, InterestLifecycle, InterestScope, LogicalInterest};
 use nmp_planner::stable_hash::stable_hash64;
 use nmp_core::substrate::{KernelEvent, ViewDependencies};
-use nmp_core::KernelEventObserver;
+use nmp_core::ObservedProjectionSink;
 
 use crate::comments_anchor::episode_nip73_anchor;
 use crate::ffi::projections::CommentSummary;
 use crate::nmp_dispatch::{publish_raw_via_nmp, push_interest_via_nmp};
 use crate::snapshot_signal::SnapshotUpdateSignal;
 use crate::store::{identity::IdentityStore, PodcastStore};
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 
 // ── subscribe helpers ────────────────────────────────────────────────────────
 
@@ -86,7 +86,7 @@ pub fn handle_fetch_comments(
             changed
         })
         .unwrap_or(false);
-    push_interest_via_nmp(app, comments_interest(&anchor));
+    push_interest_via_nmp(app, &format!("podcast.comments.{anchor}"), comments_interest(&anchor));
     if viewed_changed {
         if let Some(signal) = snapshot_signal {
             signal.bump();
@@ -188,7 +188,7 @@ impl CommentsObserver {
     }
 }
 
-impl KernelEventObserver for CommentsObserver {
+impl ObservedProjectionSink for CommentsObserver {
     fn on_kernel_event(&self, event: &KernelEvent) {
         if event.kind != 1111 {
             return;

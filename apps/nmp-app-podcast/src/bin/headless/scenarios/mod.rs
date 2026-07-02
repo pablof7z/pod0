@@ -1,7 +1,7 @@
 //! Scenario runner types and top-level `run_all`.
 
 use nmp_app_podcast::PodcastHandle;
-use nmp_ffi::NmpApp;
+use nmp_native_runtime::NmpApp;
 
 mod account_switch;
 mod agent_chat;

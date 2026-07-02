@@ -66,7 +66,8 @@ pub const ACTION_CATEGORIZE_EPISODE: &str = "podcast.categorize.categorize_episo
 pub struct CategorizationModule;
 
 impl ActionModule for CategorizationModule {
-    const NAMESPACE: &'static str = "podcast.categorize";
+    const NAMESPACE: nmp_core::substrate::DeclaredActionNamespace =
+        nmp_core::substrate::DeclaredActionNamespace::app_owned("podcast.categorize");
 
     type Action = CategorizationAction;
 
@@ -76,11 +77,12 @@ impl ActionModule for CategorizationModule {
 
     fn execute(
         &self,
+        _ctx: &nmp_core::substrate::ActionContext,
         action: Self::Action,
         correlation_id: &str,
         send: &dyn Fn(ActorCommand),
     ) -> Result<(), String> {
-        crate::ffi::actions::dispatch_host_op(Self::NAMESPACE, &action, correlation_id, send)
+        crate::ffi::actions::dispatch_host_op(Self::NAMESPACE.as_str(), &action, correlation_id, send)
     }
 
     fn decode_payload(

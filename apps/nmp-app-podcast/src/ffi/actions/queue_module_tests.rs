@@ -88,5 +88,5 @@ fn execute_emits_dispatch_host_op() {
 }
 #[test]
 fn namespace_is_podcast_queue() {
-    assert_eq!(QueueActionModule::NAMESPACE, "podcast.queue");
+    assert_eq!(QueueActionModule::NAMESPACE.as_str(), "podcast.queue");
 }

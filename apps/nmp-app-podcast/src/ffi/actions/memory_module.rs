@@ -61,7 +61,8 @@ pub enum MemoryAction {
 pub struct MemoryActionModule;
 
 impl ActionModule for MemoryActionModule {
-    const NAMESPACE: &'static str = "podcast.memory";
+    const NAMESPACE: nmp_core::substrate::DeclaredActionNamespace =
+        nmp_core::substrate::DeclaredActionNamespace::app_owned("podcast.memory");
 
     type Action = MemoryAction;
 
@@ -71,11 +72,12 @@ impl ActionModule for MemoryActionModule {
 
     fn execute(
         &self,
+        _ctx: &nmp_core::substrate::ActionContext,
         action: Self::Action,
         correlation_id: &str,
         send: &dyn Fn(ActorCommand),
     ) -> Result<(), String> {
-        crate::ffi::actions::dispatch_host_op(Self::NAMESPACE, &action, correlation_id, send)
+        crate::ffi::actions::dispatch_host_op(Self::NAMESPACE.as_str(), &action, correlation_id, send)
     }
 
     fn decode_payload(
