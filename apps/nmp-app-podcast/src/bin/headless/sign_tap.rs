@@ -45,51 +45,24 @@
 //! `nmp_app_podcast_decode_update_frame`, and read
 //! `v.projections.signed_events[correlation_id]`.
 //!
-//! All FFI here is `#[no_mangle]` symbols declared in an `extern "C"` block:
-//! `nmp_app_sign_event_for_return` is not re-exported from `nmp_ffi`'s crate
-//! root, and `nmp_app_podcast_decode_update_frame` is not re-exported from the
-//! podcast crate root, but both are linkable C-ABI symbols.
+//! The headless harness uses the native-runtime typed update listener and
+//! typed sign-and-return method. The only explicit FFI call left here is the
+//! podcast-owned update-frame decoder.
 
-use std::ffi::{c_char, c_void, CStr, CString};
+use std::ffi::{c_char, CStr};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
+use nmp_app_podcast::dispatch_bytes::mint_correlation_id;
 use nmp_native_runtime::NmpApp;
 
 // ── Externally-linked C-ABI symbols not re-exported from the crate roots ──────
-//
-// `NmpApp` is an opaque kernel handle (`*mut NmpApp`); `nmp_ffi` itself declares
-// these symbols with the identical opaque-pointer signature, so the
-// `improper_ctypes` lint (which only flags that `NmpApp` has no `#[repr(C)]`) is
-// a false positive here — the pointer is never dereferenced across the boundary.
 #[allow(improper_ctypes)]
 extern "C" {
-    /// Sign an unsigned draft with the named (or active) account and park the
-    /// signed JSON in the `signed_events` push-frame projection. Returns a
-    /// heap-owned correlation-id C string (free with `nmp_free_string`).
-    /// Defined in `nmp-ffi/src/identity.rs` (`#[no_mangle]`); not re-exported.
-    fn nmp_app_sign_event_for_return(
-        app: *mut NmpApp,
-        account_pubkey_hex: *const c_char,
-        unsigned_json: *const c_char,
-    ) -> *mut c_char;
-
-    /// Install the update-frame callback. Defined in `nmp-ffi/src/lib.rs`.
-    /// (Re-exported as `nmp_ffi::nmp_app_set_update_callback`, but declared
-    /// here so the whole tap lives in one module.)
-    fn nmp_app_set_update_callback(
-        app: *mut NmpApp,
-        context: *mut c_void,
-        callback: Option<extern "C" fn(*mut c_void, *const u8, usize)>,
-    );
-
     /// Decode a raw update-frame byte slice into the
     /// `{"t":"snapshot","v":{…,"projections":{"signed_events":…}}}` JSON shape.
     /// Defined in the podcast crate's `ffi/snapshot.rs` (`#[no_mangle]`).
     fn nmp_app_podcast_decode_update_frame(bytes: *const u8, len: usize) -> *mut c_char;
-
-    /// Free a heap C string returned by the NMP / podcast FFI.
-    fn nmp_free_string(ptr: *mut c_char);
 }
 
 /// Captured `signed_events` rows, merged across every frame the callback has
@@ -103,16 +76,14 @@ fn captured() -> &'static Mutex<Vec<(String, Result<String, String>)>> {
     CAPTURED.get_or_init(|| Mutex::new(Vec::new()))
 }
 
-/// Update-frame callback. Decodes the frame and merges any `signed_events`
+/// Decodes an update frame and merges any `signed_events`
 /// rows into `CAPTURED`. Best-effort: any decode/parse failure is a silent
 /// no-op (the poller times out, never panics — matches the kernel's D6 stance).
-extern "C" fn capture_callback(_ctx: *mut c_void, ptr: *const u8, len: usize) {
-    if ptr.is_null() || len == 0 {
+fn capture_frame(frame: &[u8]) {
+    if frame.is_empty() {
         return;
     }
-    // SAFETY: the kernel guarantees `ptr` is valid for `len` bytes for the
-    // duration of this synchronous callback.
-    let decoded = unsafe { nmp_app_podcast_decode_update_frame(ptr, len) };
+    let decoded = unsafe { nmp_app_podcast_decode_update_frame(frame.as_ptr(), frame.len()) };
     if decoded.is_null() {
         return;
     }
@@ -120,7 +91,10 @@ extern "C" fn capture_callback(_ctx: *mut c_void, ptr: *const u8, len: usize) {
     let json = unsafe { CStr::from_ptr(decoded) }
         .to_str()
         .map(str::to_owned);
-    unsafe { nmp_free_string(decoded) };
+    // SAFETY: the decoder allocates with `CString::into_raw`.
+    unsafe {
+        let _ = std::ffi::CString::from_raw(decoded);
+    }
     let Ok(json) = json else { return };
     let Ok(value) = serde_json::from_str::<serde_json::Value>(&json) else {
         return;
@@ -157,7 +131,14 @@ extern "C" fn capture_callback(_ctx: *mut c_void, ptr: *const u8, len: usize) {
 pub fn install(app: *mut NmpApp) {
     // Eagerly initialise the buffer so the callback never races the OnceLock.
     let _ = captured();
-    unsafe { nmp_app_set_update_callback(app, std::ptr::null_mut(), Some(capture_callback)) };
+    if app.is_null() {
+        return;
+    }
+    // SAFETY: the headless harness owns `app` for the binary lifetime.
+    let app_ref = unsafe { &*app };
+    nmp_uniffi_support::set_update_sink(app_ref, Some(Box::new(())), |_, frame| {
+        capture_frame(&frame);
+    });
 }
 
 /// Drive a sign-and-return for `unsigned_json` signed by `signer_pubkey_hex`,
@@ -173,24 +154,21 @@ pub fn sign_for_return_blocking(
     unsigned_json: &serde_json::Value,
     timeout: Duration,
 ) -> Result<serde_json::Value, String> {
-    let pk_c = CString::new(signer_pubkey_hex).map_err(|_| "signer pubkey has NUL".to_string())?;
-    let body_c =
-        CString::new(unsigned_json.to_string()).map_err(|_| "unsigned_json has NUL".to_string())?;
-
-    // SAFETY: `app` is a live kernel pointer; the two C strings outlive the call.
-    let cid_ptr = unsafe { nmp_app_sign_event_for_return(app, pk_c.as_ptr(), body_c.as_ptr()) };
-    if cid_ptr.is_null() {
-        return Err("nmp_app_sign_event_for_return returned null".into());
+    if app.is_null() {
+        return Err("sign_for_return received null app".into());
     }
-    // SAFETY: heap-owned NUL-terminated C string; copy then free.
-    let correlation_id = unsafe { CStr::from_ptr(cid_ptr) }
-        .to_str()
-        .unwrap_or("")
-        .to_owned();
-    unsafe { nmp_free_string(cid_ptr) };
+    let correlation_id = mint_correlation_id();
     if correlation_id.is_empty() {
         return Err("sign_for_return minted an empty correlation id".into());
     }
+    // SAFETY: app is allocated by harness::app_new and remains live for the
+    // scenario run.
+    let app_ref = unsafe { &*app };
+    app_ref.sign_event_for_return(
+        signer_pubkey_hex.to_owned(),
+        unsigned_json.to_string(),
+        correlation_id.clone(),
+    );
 
     let deadline = Instant::now() + timeout;
     loop {

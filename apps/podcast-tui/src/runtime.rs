@@ -1,4 +1,4 @@
-use std::ffi::{c_char, c_void, CStr, CString};
+use std::ffi::{c_char, CStr, CString};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -7,13 +7,10 @@ use nmp_app_podcast::{
     nmp_app_podcast_audio_report, nmp_app_podcast_elevenlabs_voice_catalog,
     nmp_app_podcast_http_report, nmp_app_podcast_local_model_catalog,
     nmp_app_podcast_provider_model_catalog, nmp_app_podcast_register, nmp_app_podcast_set_data_dir,
-    nmp_app_podcast_speech_model_catalog, nmp_app_podcast_unregister, nmp_signer_broker_init,
-    PodcastHandle, AUDIO_CAPABILITY_NAMESPACE,
+    nmp_app_podcast_speech_model_catalog, nmp_app_podcast_unregister, PodcastHandle,
+    AUDIO_CAPABILITY_NAMESPACE,
 };
-use nmp_ffi::{
-    nmp_app_consume_all_builtin_projections, nmp_app_free, nmp_app_new,
-    nmp_app_set_capability_callback, nmp_app_start, nmp_free_string, NmpApp,
-};
+use nmp_native_runtime::NmpApp;
 use podcast_feeds::http::{
     HttpCommand, HttpMethod, HttpReport, HttpRequest, HttpResult, HTTP_ASYNC_CAPABILITY_NAMESPACE,
     HTTP_CAPABILITY_NAMESPACE,
@@ -39,7 +36,7 @@ static AUDIO_HOST: OnceLock<Arc<Mutex<AudioHost>>> = OnceLock::new();
 static PODCAST_HANDLE: OnceLock<usize> = OnceLock::new();
 
 pub struct AppRuntime {
-    app: *mut NmpApp,
+    app: Box<NmpApp>,
     podcast: *mut PodcastHandle,
     update_bridge: Option<Box<bridge::NmpUpdateBridge>>,
 }
@@ -48,25 +45,23 @@ pub type Result<T> = std::result::Result<T, String>;
 
 impl AppRuntime {
     pub(crate) fn app_ptr(&self) -> *mut NmpApp {
-        self.app
+        (&*self.app as *const NmpApp).cast_mut()
     }
 
     #[must_use]
     pub fn new(data_dir: &Option<String>) -> Result<(Self, Receiver<NmpEvent>)> {
-        let app = nmp_app_new();
-        if app.is_null() {
-            return Err("nmp_app_new returned null".to_string());
-        }
-        nmp_signer_broker_init(app);
+        let mut app = Box::new(nmp_native_runtime::new_app());
+        let app_ptr: *mut NmpApp = app.as_mut();
 
         let audio_host = Arc::new(Mutex::new(AudioHost::new()));
         let _ = AUDIO_HOST.set(audio_host);
 
-        nmp_app_set_capability_callback(app, std::ptr::null_mut(), Some(capability_handler));
+        nmp_uniffi_support::set_capability_callback(&app, Some(Box::new(())), |_, request| {
+            dispatch_capability_request(&request)
+        });
 
-        let podcast = nmp_app_podcast_register(app);
+        let podcast = nmp_app_podcast_register(app_ptr);
         if podcast.is_null() {
-            nmp_app_free(app);
             return Err("nmp_app_podcast_register returned null".to_string());
         }
         // Publish the handle for the async HTTP capability executor. Set before
@@ -81,12 +76,12 @@ impl AppRuntime {
         }
 
         let (mut bridge, rx) = bridge::NmpUpdateBridge::channel();
-        bridge::NmpUpdateBridge::register(app, &mut bridge);
+        bridge::NmpUpdateBridge::register(app_ptr, &mut bridge);
 
         // ADR-0053 / NMP v0.8: TUI currently consumes the full built-in
         // projection set, with podcast sidecars registered app-locally.
-        nmp_app_consume_all_builtin_projections(app);
-        nmp_app_start(app, 200, 10);
+        app.consume_all_builtin_projections();
+        app.start_runtime(200, 10);
 
         Ok((
             Self {
@@ -100,7 +95,11 @@ impl AppRuntime {
 
     pub fn dispatch_action(&self, namespace: &str, action_json: &str) -> Result<String> {
         // ADR-0064: route through the typed byte doorway.
-        nmp_app_podcast::dispatch_bytes::dispatch_action_bytes_for(self.app, namespace, action_json)
+        nmp_app_podcast::dispatch_bytes::dispatch_action_bytes_for(
+            self.app_ptr(),
+            namespace,
+            action_json,
+        )
     }
 
     pub fn dispatch_action_value(&self, namespace: &str, action: &Value) -> Result<String> {
@@ -144,7 +143,7 @@ impl AppRuntime {
             // nmp_app_podcast_audio_report degrades silently on any error (D6).
             let ret = nmp_app_podcast_audio_report(handle, c_json.as_ptr());
             if !ret.is_null() {
-                nmp_free_string(ret);
+                free_owned_c_string(ret);
             }
         }
     }
@@ -157,10 +156,7 @@ impl AppRuntime {
         if ptr.is_null() {
             return Err("provider catalog returned null".to_owned());
         }
-        let text = unsafe { CStr::from_ptr(ptr) }
-            .to_string_lossy()
-            .into_owned();
-        nmp_free_string(ptr);
+        let text = take_owned_c_string(ptr, "provider catalog")?;
         decode_provider_catalog(&text)
     }
 
@@ -172,10 +168,7 @@ impl AppRuntime {
         if ptr.is_null() {
             return Err("voice catalog returned null".to_owned());
         }
-        let text = unsafe { CStr::from_ptr(ptr) }
-            .to_string_lossy()
-            .into_owned();
-        nmp_free_string(ptr);
+        let text = take_owned_c_string(ptr, "voice catalog")?;
         decode_elevenlabs_voice_catalog(&text)
     }
 
@@ -187,10 +180,7 @@ impl AppRuntime {
         if ptr.is_null() {
             return Err("speech catalog returned null".to_owned());
         }
-        let text = unsafe { CStr::from_ptr(ptr) }
-            .to_string_lossy()
-            .into_owned();
-        nmp_free_string(ptr);
+        let text = take_owned_c_string(ptr, "speech catalog")?;
         decode_speech_model_catalog(&text)
     }
 
@@ -202,10 +192,7 @@ impl AppRuntime {
         if ptr.is_null() {
             return Err("local model catalog returned null".to_owned());
         }
-        let text = unsafe { CStr::from_ptr(ptr) }
-            .to_string_lossy()
-            .into_owned();
-        nmp_free_string(ptr);
+        let text = take_owned_c_string(ptr, "local model catalog")?;
         decode_local_model_catalog(&text)
     }
 
@@ -219,23 +206,6 @@ impl AppRuntime {
         }
         Some(unsafe { (*self.podcast).update() })
     }
-}
-
-extern "C" fn capability_handler(_ctx: *mut c_void, request_json: *const c_char) -> *mut c_char {
-    let request_str = if request_json.is_null() {
-        ""
-    } else {
-        match unsafe { CStr::from_ptr(request_json) }.to_str() {
-            Ok(s) => s,
-            Err(_) => "",
-        }
-    };
-
-    let result_json = dispatch_capability_request(request_str);
-
-    CString::new(result_json)
-        .unwrap_or_else(|_| CString::new("{}").unwrap())
-        .into_raw()
 }
 
 fn dispatch_capability_request(request_str: &str) -> String {
@@ -327,7 +297,7 @@ fn handle_http_async(payload_json: &str) -> String {
         let ret = nmp_app_podcast_http_report(handle, report_cstr.as_ptr());
         // The report FFI always returns NULL (no follow-up), but free defensively.
         if !ret.is_null() {
-            nmp_free_string(ret);
+            free_owned_c_string(ret);
         }
     });
 
@@ -399,6 +369,23 @@ fn error_envelope(namespace: &str, correlation_id: &str, msg: &str) -> String {
     serde_json::to_string(&envelope).unwrap_or_else(|_| "{}".to_string())
 }
 
+fn take_owned_c_string(ptr: *mut c_char, function_name: &str) -> Result<String> {
+    if ptr.is_null() {
+        return Err(format!("{function_name} returned null"));
+    }
+    let text = unsafe { CStr::from_ptr(ptr) }
+        .to_string_lossy()
+        .into_owned();
+    free_owned_c_string(ptr);
+    Ok(text)
+}
+
+fn free_owned_c_string(ptr: *mut c_char) {
+    if !ptr.is_null() {
+        let _ = unsafe { CString::from_raw(ptr) };
+    }
+}
+
 #[cfg(test)]
 fn parse_dispatch_envelope(value: &Value) -> Result<String> {
     if let Some(error) = value.get("error").and_then(Value::as_str) {
@@ -463,17 +450,11 @@ fn action_error_message(value: &Value) -> String {
 
 impl Drop for AppRuntime {
     fn drop(&mut self) {
-        if !self.app.is_null() {
-            bridge::unregister(self.app);
-        }
+        bridge::unregister(self.app_ptr());
         self.update_bridge.take();
         if !self.podcast.is_null() {
             nmp_app_podcast_unregister(self.podcast);
             self.podcast = std::ptr::null_mut();
-        }
-        if !self.app.is_null() {
-            nmp_app_free(self.app);
-            self.app = std::ptr::null_mut();
         }
     }
 }

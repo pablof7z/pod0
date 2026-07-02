@@ -13,29 +13,30 @@ fn make_handle(store: Arc<Mutex<PodcastStore>>, rev: Arc<AtomicU64>) -> Box<Podc
     let identity = Arc::new(Mutex::new(IdentityStore::new()));
     // Step N+1: rev is now owned by Infra; use for_test_with_rev so test
     // assertions on `rev.load(...)` observe bumps routed through state.infra.
-    let feedback = nmp_feedback::FeedbackRuntime::new(
-        nmp_feedback::FeedbackConfig::new(crate::PODCAST_FEEDBACK_PROJECT_COORDINATE)
-            .with_interest_namespace(crate::PODCAST_FEEDBACK_INTEREST_NAMESPACE),
-        Arc::new(Mutex::new(Vec::new())),
-        rev.clone(),
-    );
     let state = Arc::new(crate::state::PodcastAppState::new_with_identity(
         crate::state::Infra::for_test_with_rev(rev.clone()),
         store.clone(),
         identity.clone(),
-        feedback,
     ));
     // Steps 15-N+1: all fields in state (library, infra, feedback, feed_fetch).
     Box::new(PodcastHandle {
         app: std::ptr::null_mut(),
         state,
-        responder_cache: Arc::new(Mutex::new(crate::store::agent_note_responder_cache::ResponderCache::default())),
-        outbound_turn_cache: Arc::new(Mutex::new(crate::store::outbound_turn_cache::OutboundTurnCache::new())),
-        approved_peer_store: Arc::new(Mutex::new(crate::store::approved_peer_store::ApprovedPeerStore::new())),
+        responder_cache: Arc::new(Mutex::new(
+            crate::store::agent_note_responder_cache::ResponderCache::default(),
+        )),
+        outbound_turn_cache: Arc::new(Mutex::new(
+            crate::store::outbound_turn_cache::OutboundTurnCache::new(),
+        )),
+        approved_peer_store: Arc::new(Mutex::new(
+            crate::store::approved_peer_store::ApprovedPeerStore::new(),
+        )),
         snapshot_cache: Arc::new(Mutex::new(None)),
         clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
         ask_state: Arc::new(Mutex::new(crate::ffi::agent_ask::AgentAskState::default())),
-        ask_callback: Arc::new(Mutex::new(crate::ffi::agent_ask::AgentAskCallbackState::default())),
+        ask_callback: Arc::new(Mutex::new(
+            crate::ffi::agent_ask::AgentAskCallbackState::default(),
+        )),
     })
 }
 struct TempDir {

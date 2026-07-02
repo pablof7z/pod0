@@ -19,7 +19,6 @@
 
 use std::collections::HashMap;
 use std::ffi::CString;
-use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
 use podcast_core::{Episode, Podcast};
@@ -44,16 +43,6 @@ use nmp_core::substrate::HostOpHandler;
 struct SharedKernel {
     store: Arc<Mutex<PodcastStore>>,
     state: Arc<crate::state::PodcastAppState>,
-    rev: Arc<AtomicU64>,
-}
-
-fn feedback_runtime(rev: Arc<AtomicU64>) -> nmp_feedback::FeedbackRuntime {
-    nmp_feedback::FeedbackRuntime::new(
-        nmp_feedback::FeedbackConfig::new(crate::PODCAST_FEEDBACK_PROJECT_COORDINATE)
-            .with_interest_namespace(crate::PODCAST_FEEDBACK_INTEREST_NAMESPACE),
-        Arc::new(Mutex::new(Vec::new())),
-        rev,
-    )
 }
 
 /// Build a `PodcastHostOpHandler` that shares the caller's `state` (which
@@ -62,30 +51,41 @@ fn feedback_runtime(rev: Arc<AtomicU64>) -> nmp_feedback::FeedbackRuntime {
 ///
 /// Step 14: `player_actor`, `queue`, and `download_queue` are no longer
 /// separate constructor args — they live inside `state.playback`.
-fn handler_sharing(shared: &SharedKernel, app: *mut nmp_native_runtime::NmpApp) -> PodcastHostOpHandler {
+fn handler_sharing(
+    shared: &SharedKernel,
+    app: *mut nmp_native_runtime::NmpApp,
+) -> PodcastHostOpHandler {
     // Steps 15-N+1: store, identity, feed_fetch, feedback, rev, runtime all in state.
-    PodcastHostOpHandler::new(
-        app,
-        shared.state.clone(),
-    )
+    PodcastHostOpHandler::new(app, shared.state.clone())
 }
 
 /// Build a `PodcastHandle` sharing the SAME `Arc<PodcastAppState>` as the
 /// handler so the snapshot reader sees the writer's mutations without any
 /// separate Arc wiring.
-fn handle_sharing(shared: &SharedKernel, app: *mut nmp_native_runtime::NmpApp) -> Box<PodcastHandle> {
+fn handle_sharing(
+    shared: &SharedKernel,
+    app: *mut nmp_native_runtime::NmpApp,
+) -> Box<PodcastHandle> {
     // Step 15: store + identity removed from PodcastHandle.
     // Step 16: feedback + feed_fetch removed from PodcastHandle — now in state.
     Box::new(PodcastHandle {
         app,
         state: shared.state.clone(),
-        responder_cache: Arc::new(Mutex::new(crate::store::agent_note_responder_cache::ResponderCache::default())),
-        outbound_turn_cache: Arc::new(Mutex::new(crate::store::outbound_turn_cache::OutboundTurnCache::new())),
-        approved_peer_store: Arc::new(Mutex::new(crate::store::approved_peer_store::ApprovedPeerStore::new())),
+        responder_cache: Arc::new(Mutex::new(
+            crate::store::agent_note_responder_cache::ResponderCache::default(),
+        )),
+        outbound_turn_cache: Arc::new(Mutex::new(
+            crate::store::outbound_turn_cache::OutboundTurnCache::new(),
+        )),
+        approved_peer_store: Arc::new(Mutex::new(
+            crate::store::approved_peer_store::ApprovedPeerStore::new(),
+        )),
         snapshot_cache: Arc::new(Mutex::new(None)),
         clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
         ask_state: Arc::new(Mutex::new(crate::ffi::agent_ask::AgentAskState::default())),
-        ask_callback: Arc::new(Mutex::new(crate::ffi::agent_ask::AgentAskCallbackState::default())),
+        ask_callback: Arc::new(Mutex::new(
+            crate::ffi::agent_ask::AgentAskCallbackState::default(),
+        )),
     })
 }
 
@@ -119,29 +119,25 @@ fn seed_one_episode(store: &Arc<Mutex<PodcastStore>>, show: &str, ep_title: &str
 #[test]
 fn play_then_playing_report_populates_now_playing_and_widget() {
     let store = Arc::new(Mutex::new(PodcastStore::new()));
-    let rev = Arc::new(AtomicU64::new(1));
     let identity = Arc::new(Mutex::new(IdentityStore::new()));
     // Step 14: both seams share ONE Arc<PodcastAppState> so handler writes
     // to state.playback.player are visible to the handle's snapshot reader.
     // Step 16: feedback injected into PodcastAppState.
-    let feedback = feedback_runtime(rev.clone());
     let state = Arc::new(crate::state::PodcastAppState::new_with_identity(
         crate::state::Infra::for_test(),
         store.clone(),
         identity,
-        feedback,
     ));
     let shared = SharedKernel {
         store: store.clone(),
         state,
-        rev: rev.clone(),
     };
     let ep_id = seed_one_episode(&shared.store, "The Daily", "Friday, June 6");
 
     // A real (unstarted) NmpApp so the snapshot's configured-relays projection
     // has a live pointer to read; we never start the actor thread — the play
     // host-op and the audio report are driven synchronously below.
-    let app = nmp_ffi::nmp_app_new();
+    let app = Box::into_raw(Box::new(nmp_native_runtime::new_app()));
     assert!(!app.is_null(), "nmp_app_new returned null");
 
     let handler = handler_sharing(&shared, app);
@@ -173,10 +169,9 @@ fn play_then_playing_report_populates_now_playing_and_widget() {
     // After `play` the actor is staged: episode_id set, is_playing still false
     // (the engine hasn't reported a Playing tick yet).
     let after_play = build_podcast_update(&handle);
-    let np = after_play
-        .now_playing
-        .as_ref()
-        .expect("now_playing must be populated immediately after the play host-op stages the actor");
+    let np = after_play.now_playing.as_ref().expect(
+        "now_playing must be populated immediately after the play host-op stages the actor",
+    );
     assert_eq!(np.episode_id.as_deref(), Some(ep_id.as_str()));
     let widget = after_play
         .widget
@@ -196,8 +191,7 @@ fn play_then_playing_report_populates_now_playing_and_widget() {
     let handle_ptr = Box::into_raw(handle);
     let ret = nmp_app_podcast_audio_report(handle_ptr, report_json.as_ptr());
     // The Playing response is a `CString::into_raw` pointer; reclaim it the
-    // same way (not via `nmp_free_string`, which is for nmp_ffi malloc
-    // strings).
+    // same way.
     if !ret.is_null() {
         let _ = unsafe { CString::from_raw(ret) };
     }

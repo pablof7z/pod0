@@ -7,7 +7,7 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
 use nmp_core::substrate::KernelEvent;
-use nmp_core::KernelEventObserver;
+use nmp_core::ObservedProjectionSink;
 
 use crate::ffi::handle::PodcastHandle;
 use crate::ffi::snapshot_domain_projections::{
@@ -25,7 +25,7 @@ use super::tests::{
 /// `podcast.identity` changed→empty (no active account) emits tombstone, then idles.
 #[test]
 fn identity_empty_emits_tombstone_then_idles() {
-    let app = nmp_ffi::nmp_app_new();
+    let app = Box::into_raw(Box::new(nmp_native_runtime::new_app()));
     assert!(!app.is_null());
     let app_ref = unsafe { &*app };
     let handle = Arc::new(*make_test_handle_with_app(app));
@@ -37,13 +37,22 @@ fn identity_empty_emits_tombstone_then_idles() {
 
     domain_revs.identity.fetch_add(1, Ordering::Relaxed);
     let after = app_ref.run_typed_snapshot_projections();
-    let ident = after.iter().find(|p| p.schema_id == SCHEMA_IDENTITY)
+    let ident = after
+        .iter()
+        .find(|p| p.schema_id == SCHEMA_IDENTITY)
         .expect("identity tombstone must be emitted when no account is active");
     let val: serde_json::Value = serde_json::from_slice(&ident.payload).unwrap();
-    assert_eq!(val["active_account"], serde_json::Value::Null, "tombstone must carry active_account: null");
+    assert_eq!(
+        val["active_account"],
+        serde_json::Value::Null,
+        "tombstone must carry active_account: null"
+    );
 
     let idle = app_ref.run_typed_snapshot_projections();
-    assert!(idle.iter().all(|p| p.schema_id != SCHEMA_IDENTITY), "second empty tick must be silent");
+    assert!(
+        idle.iter().all(|p| p.schema_id != SCHEMA_IDENTITY),
+        "second empty tick must be silent"
+    );
 
     drop(handle);
     unsafe { drop(Box::from_raw(app)) };
@@ -52,7 +61,7 @@ fn identity_empty_emits_tombstone_then_idles() {
 /// `podcast.widget` changed→empty (no playback, no episodes) emits tombstone, then idles.
 #[test]
 fn widget_empty_emits_tombstone_then_idles() {
-    let app = nmp_ffi::nmp_app_new();
+    let app = Box::into_raw(Box::new(nmp_native_runtime::new_app()));
     assert!(!app.is_null());
     let app_ref = unsafe { &*app };
     let handle = Arc::new(*make_test_handle_with_app(app));
@@ -64,13 +73,22 @@ fn widget_empty_emits_tombstone_then_idles() {
 
     domain_revs.widget.fetch_add(1, Ordering::Relaxed);
     let after = app_ref.run_typed_snapshot_projections();
-    let wgt = after.iter().find(|p| p.schema_id == SCHEMA_WIDGET)
+    let wgt = after
+        .iter()
+        .find(|p| p.schema_id == SCHEMA_WIDGET)
         .expect("widget tombstone must be emitted when widget is None");
     let val: serde_json::Value = serde_json::from_slice(&wgt.payload).unwrap();
-    assert_eq!(val["widget"], serde_json::Value::Null, "tombstone must carry widget: null");
+    assert_eq!(
+        val["widget"],
+        serde_json::Value::Null,
+        "tombstone must carry widget: null"
+    );
 
     let idle = app_ref.run_typed_snapshot_projections();
-    assert!(idle.iter().all(|p| p.schema_id != SCHEMA_WIDGET), "second empty tick must be silent");
+    assert!(
+        idle.iter().all(|p| p.schema_id != SCHEMA_WIDGET),
+        "second empty tick must be silent"
+    );
 
     drop(handle);
     unsafe { drop(Box::from_raw(app)) };
@@ -94,7 +112,7 @@ fn identity_surfaces_kernel_active_account_without_rev_bump() {
         "d6070609432b666c51677f606a0961e5f40730fe44b1c3bbd7ce29d5fa25b0a6";
     const AMBER_NPUB: &str = "npub16crsvz2r9dnxc5t80asx5ztpuh6qwv87gjcu8w7hec5at739kznqzxadlu";
 
-    let app = nmp_ffi::nmp_app_new();
+    let app = Box::into_raw(Box::new(nmp_native_runtime::new_app()));
     assert!(!app.is_null());
     let app_ref = unsafe { &*app };
     let handle = Arc::new(*make_test_handle_with_app(app));
@@ -118,7 +136,9 @@ fn identity_surfaces_kernel_active_account_without_rev_bump() {
     // The identity sidecar MUST now be emitted, carrying the Amber account —
     // driven purely by the kernel slot transition, with the rev unchanged.
     let after = app_ref.run_typed_snapshot_projections();
-    let ident = after.iter().find(|p| p.schema_id == SCHEMA_IDENTITY)
+    let ident = after
+        .iter()
+        .find(|p| p.schema_id == SCHEMA_IDENTITY)
         .expect("identity sidecar must surface the kernel active account without a rev bump");
     let val: serde_json::Value = serde_json::from_slice(&ident.payload).unwrap();
     assert_eq!(
@@ -141,7 +161,10 @@ fn identity_surfaces_kernel_active_account_without_rev_bump() {
 
     // Idempotence: a steady kernel slot must not re-emit every tick.
     let idle = app_ref.run_typed_snapshot_projections();
-    assert!(idle.iter().all(|p| p.schema_id != SCHEMA_IDENTITY), "a steady kernel slot must not re-emit the identity sidecar");
+    assert!(
+        idle.iter().all(|p| p.schema_id != SCHEMA_IDENTITY),
+        "a steady kernel slot must not re-emit the identity sidecar"
+    );
     drop(handle);
     unsafe { drop(Box::from_raw(app)) };
 }
@@ -157,7 +180,7 @@ fn identity_surfaces_kernel_active_account_without_rev_bump() {
 /// (no perpetual rebuild).
 #[test]
 fn social_empty_emits_tombstone_then_idles() {
-    let app = nmp_ffi::nmp_app_new();
+    let app = Box::into_raw(Box::new(nmp_native_runtime::new_app()));
     assert!(!app.is_null());
     let app_ref = unsafe { &*app };
     let handle = Arc::new(*make_test_handle_with_app(app));
@@ -165,11 +188,14 @@ fn social_empty_emits_tombstone_then_idles() {
 
     // First run: rev 1 > last_emitted 0; no account → tombstone.
     let first = app_ref.run_typed_snapshot_projections();
-    let soc = first.iter().find(|p| p.schema_id == SCHEMA_SOCIAL)
+    let soc = first
+        .iter()
+        .find(|p| p.schema_id == SCHEMA_SOCIAL)
         .expect("social tombstone must be emitted when state is empty");
     let val: serde_json::Value = serde_json::from_slice(&soc.payload).unwrap();
     assert_eq!(
-        val["social"], serde_json::Value::Null,
+        val["social"],
+        serde_json::Value::Null,
         "tombstone must carry social: null; got: {val}"
     );
     assert!(val["rev"].is_number(), "tombstone must carry a rev field");
@@ -198,7 +224,10 @@ fn social_empty_emits_tombstone_then_idles() {
     let val2: serde_json::Value = serde_json::from_slice(&soc2.payload).unwrap();
     // No longer a tombstone — the note populated nostr_conversations.
     assert!(
-        val2["nostr_conversations"].as_array().map(|a| !a.is_empty()).unwrap_or(false),
+        val2["nostr_conversations"]
+            .as_array()
+            .map(|a| !a.is_empty())
+            .unwrap_or(false),
         "re-emitted social payload must carry the inbound conversation; got: {val2}"
     );
 
@@ -215,7 +244,7 @@ fn social_empty_emits_tombstone_then_idles() {
 /// the social domain rev and nothing else.
 #[test]
 fn social_inbound_note_excludes_library_and_playback_sidecars() {
-    let app = nmp_ffi::nmp_app_new();
+    let app = Box::into_raw(Box::new(nmp_native_runtime::new_app()));
     assert!(!app.is_null());
     let app_ref = unsafe { &*app };
 
@@ -230,7 +259,10 @@ fn social_inbound_note_excludes_library_and_playback_sidecars() {
     assert!(
         no_change.is_empty(),
         "second run with no bump must emit nothing; got {:?}",
-        no_change.iter().map(|p| p.schema_id.as_str()).collect::<Vec<_>>()
+        no_change
+            .iter()
+            .map(|p| p.schema_id.as_str())
+            .collect::<Vec<_>>()
     );
 
     // Drive a REAL inbound note — production code bumps ONLY domain_revs.social.
@@ -276,7 +308,7 @@ fn social_inbound_note_excludes_library_and_playback_sidecars() {
 /// the social domain rev on every mutation, not just the first).
 #[test]
 fn social_inbound_note_reemits_on_each_new_note_real_path() {
-    let app = nmp_ffi::nmp_app_new();
+    let app = Box::into_raw(Box::new(nmp_native_runtime::new_app()));
     assert!(!app.is_null());
     let app_ref = unsafe { &*app };
 
@@ -318,9 +350,14 @@ fn social_inbound_note_reemits_on_each_new_note_real_path() {
     let soc = after_second
         .iter()
         .find(|p| p.schema_id == SCHEMA_SOCIAL)
-        .expect("SECOND inbound note must ALSO re-emit podcast.social (the BLOCKER regression guard)");
+        .expect(
+            "SECOND inbound note must ALSO re-emit podcast.social (the BLOCKER regression guard)",
+        );
     let val: serde_json::Value = serde_json::from_slice(&soc.payload).unwrap();
-    let convo_count = val["nostr_conversations"].as_array().map(|a| a.len()).unwrap_or(0);
+    let convo_count = val["nostr_conversations"]
+        .as_array()
+        .map(|a| a.len())
+        .unwrap_or(0);
     assert_eq!(
         convo_count, 2,
         "both inbound notes (distinct roots) must appear in the re-emitted payload; got: {val}"
@@ -345,7 +382,7 @@ fn approve_peer_action_reemits_social_with_trusted_flipped_real_path() {
 
     let peer = "5555555555555555555555555555555555555555555555555555555555555555";
 
-    let app = nmp_ffi::nmp_app_new();
+    let app = Box::into_raw(Box::new(nmp_native_runtime::new_app()));
     assert!(!app.is_null());
     let app_ref = unsafe { &*app };
 
@@ -364,10 +401,18 @@ fn approve_peer_action_reemits_social_with_trusted_flipped_real_path() {
         .find(|p| p.schema_id == SCHEMA_SOCIAL)
         .expect("inbound note must emit podcast.social");
     let val_before: serde_json::Value = serde_json::from_slice(&soc_before.payload).unwrap();
-    let convos_before = val_before["nostr_conversations"].as_array().cloned().unwrap_or_default();
-    assert_eq!(convos_before.len(), 1, "one conversation expected; got: {val_before}");
+    let convos_before = val_before["nostr_conversations"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
     assert_eq!(
-        convos_before[0]["trusted"], serde_json::Value::Bool(false),
+        convos_before.len(),
+        1,
+        "one conversation expected; got: {val_before}"
+    );
+    assert_eq!(
+        convos_before[0]["trusted"],
+        serde_json::Value::Bool(false),
         "untrusted peer's conversation must project trusted:false before approval"
     );
     // Drain so last_emitted catches up → next emit proves a real re-emit.
@@ -379,10 +424,16 @@ fn approve_peer_action_reemits_social_with_trusted_flipped_real_path() {
     // Dispatch ApprovePeer through the REAL handler (same state Arc).
     let handler = PodcastHostOpHandler::new(app, Arc::clone(&state));
     let resp = handler.handle_social_action(
-        SocialAction::ApprovePeer { pubkey_hex: peer.to_string() },
+        SocialAction::ApprovePeer {
+            pubkey_hex: peer.to_string(),
+        },
         "corr-approve-action",
     );
-    assert_eq!(resp, serde_json::json!({"ok": true}), "approve action must ack ok");
+    assert_eq!(
+        resp,
+        serde_json::json!({"ok": true}),
+        "approve action must ack ok"
+    );
 
     // The action's infra.bump() must drive a social re-emit carrying trusted:true.
     let after = app_ref.run_typed_snapshot_projections();
@@ -391,8 +442,15 @@ fn approve_peer_action_reemits_social_with_trusted_flipped_real_path() {
         .find(|p| p.schema_id == SCHEMA_SOCIAL)
         .expect("ApprovePeer action MUST re-emit podcast.social (proves the action arm bumps domain_revs.social)");
     let val_after: serde_json::Value = serde_json::from_slice(&soc_after.payload).unwrap();
-    let convos_after = val_after["nostr_conversations"].as_array().cloned().unwrap_or_default();
-    assert_eq!(convos_after.len(), 1, "still one conversation after approve; got: {val_after}");
+    let convos_after = val_after["nostr_conversations"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    assert_eq!(
+        convos_after.len(),
+        1,
+        "still one conversation after approve; got: {val_after}"
+    );
     assert_eq!(
         convos_after[0]["trusted"], serde_json::Value::Bool(true),
         "approve action must flip the conversation's trusted flag to true in the re-emitted payload"
@@ -414,7 +472,7 @@ fn block_peer_action_reemits_social_with_trusted_false_overriding_follow() {
     let me = "ee11223344556677889900aabbccddeeff00112233445566778899aabbccddee";
     let peer = "6666666666666666666666666666666666666666666666666666666666666666";
 
-    let app = nmp_ffi::nmp_app_new();
+    let app = Box::into_raw(Box::new(nmp_native_runtime::new_app()));
     assert!(!app.is_null());
     let app_ref = unsafe { &*app };
 
@@ -427,7 +485,10 @@ fn block_peer_action_reemits_social_with_trusted_false_overriding_follow() {
         crate::store::approved_peer_store::ApprovedPeerStore::new(),
     ));
     let active_slot = Arc::new(Mutex::new(Some(me.to_string())));
-    let follow_set = nmp_nip02::ActiveFollowSet::new(Arc::clone(&active_slot));
+    let follow_set = nmp_nip02::ActiveFollowSet::new(
+        Arc::clone(&active_slot),
+        nmp_nip02::LatestKind3FollowSet::new(app_ref.event_store_handle()),
+    );
     follow_set.on_kernel_event(&KernelEvent {
         id: "0000000000000000000000000000000000000000000000000000000000000003".to_string(),
         author: me.to_string(),
@@ -454,7 +515,9 @@ fn block_peer_action_reemits_social_with_trusted_false_overriding_follow() {
         snapshot_cache: Arc::new(Mutex::new(None)),
         clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
         ask_state: Arc::new(Mutex::new(crate::ffi::agent_ask::AgentAskState::default())),
-        ask_callback: Arc::new(Mutex::new(crate::ffi::agent_ask::AgentAskCallbackState::default())),
+        ask_callback: Arc::new(Mutex::new(
+            crate::ffi::agent_ask::AgentAskCallbackState::default(),
+        )),
     });
     register_domain_projections(app_ref, &handle);
 
@@ -469,7 +532,8 @@ fn block_peer_action_reemits_social_with_trusted_false_overriding_follow() {
         .expect("inbound note must emit podcast.social");
     let val_before: serde_json::Value = serde_json::from_slice(&soc_before.payload).unwrap();
     assert_eq!(
-        val_before["nostr_conversations"][0]["trusted"], serde_json::Value::Bool(true),
+        val_before["nostr_conversations"][0]["trusted"],
+        serde_json::Value::Bool(true),
         "followed peer's conversation must project trusted:true before block; got: {val_before}"
     );
     assert!(
@@ -479,10 +543,16 @@ fn block_peer_action_reemits_social_with_trusted_false_overriding_follow() {
 
     let handler = PodcastHostOpHandler::new(app, Arc::clone(&state));
     let resp = handler.handle_social_action(
-        SocialAction::BlockPeer { pubkey_hex: peer.to_string() },
+        SocialAction::BlockPeer {
+            pubkey_hex: peer.to_string(),
+        },
         "corr-block-action",
     );
-    assert_eq!(resp, serde_json::json!({"ok": true}), "block action must ack ok");
+    assert_eq!(
+        resp,
+        serde_json::json!({"ok": true}),
+        "block action must ack ok"
+    );
 
     let after = app_ref.run_typed_snapshot_projections();
     let soc_after = after

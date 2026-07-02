@@ -19,14 +19,11 @@
 //! Doctrine: D5/D8 — pure transport, no business logic or cached state;
 //! D6 — every entry point degrades silently on null / poison / serde failure.
 
-use std::ffi::CString;
 use std::ptr;
 
 use jni::objects::{JClass, JObject, JString};
 use jni::sys::{jlong, jstring};
 use jni::JNIEnv;
-
-use nmp_ffi::{nmp_app_deliver_external_signer_response, nmp_app_signin_nip55};
 
 use super::session_ref;
 use crate::ffi::guard::ffi_guard;
@@ -42,16 +39,19 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeSignInNip55<'l>(
     handle: jlong,
     signer_package: JString<'l>,
 ) {
-    ffi_guard("nativeSignInNip55", || (), || {
-        let Some(s) = session_ref(handle) else {
-            return;
-        };
-        let package = optional_jstring_to_cstring(&mut env, &signer_package);
-        nmp_app_signin_nip55(
-            s.app,
-            package.as_ref().map_or(ptr::null(), |value| value.as_ptr()),
-        );
-    });
+    ffi_guard(
+        "nativeSignInNip55",
+        || (),
+        || {
+            let Some(s) = session_ref(handle) else {
+                return;
+            };
+            let package = optional_jstring_to_string(&mut env, &signer_package);
+            if !s.app.is_null() {
+                unsafe { &*s.app }.signin_nip55(package);
+            }
+        },
+    );
 }
 
 /// `nativeNextSignerRequest(handle)` — blocking drain of the outbound
@@ -65,21 +65,25 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeNextSignerRequest<
     handle: jlong,
 ) -> jstring {
     let null: jstring = ptr::null_mut();
-    ffi_guard("nativeNextSignerRequest", || null, || {
-        let Some(s) = session_ref(handle) else {
-            return null;
-        };
-        crossbeam_channel::select! {
-            recv(s.signer_rx) -> msg => match msg {
-                Ok(payload) => match env.new_string(payload) {
-                    Ok(js) => js.into_raw(),
-                    Err(_) => null,
+    ffi_guard(
+        "nativeNextSignerRequest",
+        || null,
+        || {
+            let Some(s) = session_ref(handle) else {
+                return null;
+            };
+            crossbeam_channel::select! {
+                recv(s.signer_rx) -> msg => match msg {
+                    Ok(payload) => match env.new_string(payload) {
+                        Ok(js) => js.into_raw(),
+                        Err(_) => null,
+                    },
+                    Err(_) => null,  // channel closed
                 },
-                Err(_) => null,  // channel closed
-            },
-            recv(s.shutdown_rx_signer) -> _ => null,  // explicit shutdown
-        }
-    })
+                recv(s.shutdown_rx_signer) -> _ => null,  // explicit shutdown
+            }
+        },
+    )
 }
 
 /// `nativeDeliverSignerResponse(handle, responseJson)` — report a raw
@@ -92,29 +96,31 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeDeliverSignerRespo
     handle: jlong,
     response_json: JString<'l>,
 ) {
-    ffi_guard("nativeDeliverSignerResponse", || (), || {
-        let Some(s) = session_ref(handle) else {
-            return;
-        };
-        let response = match env.get_string(&response_json) {
-            Ok(value) => value.to_string_lossy().into_owned(),
-            Err(_) => return,
-        };
-        let Ok(c_response) = CString::new(response) else {
-            return;
-        };
-        nmp_app_deliver_external_signer_response(s.app, c_response.as_ptr());
-    });
+    ffi_guard(
+        "nativeDeliverSignerResponse",
+        || (),
+        || {
+            let Some(s) = session_ref(handle) else {
+                return;
+            };
+            let response = match env.get_string(&response_json) {
+                Ok(value) => value.to_string_lossy().into_owned(),
+                Err(_) => return,
+            };
+            if !s.app.is_null() {
+                unsafe { &*s.app }.deliver_external_signer_response(&response);
+            }
+        },
+    );
 }
 
-/// Convert a (possibly null) Java string to an owned `CString`, or `None` when
+/// Convert a (possibly null) Java string to an owned string, or `None` when
 /// the Java reference is null. Mirrors NMP's `nmp-android-ffi` helper so a
 /// `null` `signer_package` means "let the OS resolver pick the signer app".
-fn optional_jstring_to_cstring(env: &mut JNIEnv, value: &JString) -> Option<CString> {
+fn optional_jstring_to_string(env: &mut JNIEnv, value: &JString) -> Option<String> {
     let obj: &JObject = AsRef::<JObject>::as_ref(value);
     if obj.as_raw().is_null() {
         return None;
     }
-    let owned = env.get_string(value).ok()?.to_string_lossy().into_owned();
-    CString::new(owned).ok()
+    Some(env.get_string(value).ok()?.to_string_lossy().into_owned())
 }

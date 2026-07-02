@@ -21,7 +21,6 @@ use std::process::ExitCode;
 use nmp_app_podcast::{
     nmp_app_podcast_register, nmp_app_podcast_set_data_dir, nmp_app_podcast_unregister,
 };
-use nmp_ffi::{nmp_app_consume_all_builtin_projections, nmp_app_start};
 
 fn main() -> ExitCode {
     // 1. Boot NmpApp.
@@ -51,15 +50,19 @@ fn main() -> ExitCode {
 
     // 4. Set a temp data dir so store serialisation has somewhere to write.
     let temp_dir = tempfile::tempdir().expect("tempdir");
-    let path_cstr = CString::new(
-        temp_dir.path().to_str().expect("temp dir is UTF-8")
-    ).expect("path NUL-free");
+    let path_cstr =
+        CString::new(temp_dir.path().to_str().expect("temp dir is UTF-8")).expect("path NUL-free");
     nmp_app_podcast_set_data_dir(handle, path_cstr.as_ptr());
 
     // 5. Declare the explicit all-builtins projection intent, then start the
     //    kernel actor. Visible-limit and emit-hz are test defaults.
-    nmp_app_consume_all_builtin_projections(app);
-    nmp_app_start(app, 500, 10);
+    if !app.is_null() {
+        // SAFETY: app is allocated by harness::app_new and remains live until
+        // harness::app_free at teardown.
+        let app_ref = unsafe { &*app };
+        app_ref.consume_all_builtin_projections();
+        app_ref.start_runtime(500, 10);
+    }
 
     // 6. Run all scenarios.
     let results = scenarios::run_all(app, handle);

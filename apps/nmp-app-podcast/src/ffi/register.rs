@@ -152,12 +152,9 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     let rev = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(1));
     let snapshot_signal = SnapshotUpdateSignal::new(rev.clone(), app_ref.actor_sender());
 
-    // TODO(follow-up, pablof7z/nmp-feedback#3): the feedback runtime used to
-    // be constructed here (needs the snapshot-bump hook that captures the
-    // live signal) and injected into PodcastAppState. Dropped in A0/A1
-    // (pablof7z/podcast-player#680/#681) — see the workspace Cargo.toml
-    // pin-discipline comment. Restore once nmp-feedback ships a rewrite past
-    // the deleted nmp-ffi JSON publish doorway.
+    // Feedback runtime is tracked by pablof7z/nmp-feedback#3. It used to be
+    // constructed here with the live snapshot-bump hook and injected into
+    // PodcastAppState; A0/A1 removed it until the replacement runtime exists.
 
     // Steps 0-N+1 — composed state root.
     // `Infra` bundles rev + signal + runtime.  `PodcastAppState::new`
@@ -317,11 +314,9 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
             "both,indexer".to_string(),
         ),
         ("wss://purplepag.es".to_string(), "indexer".to_string()),
-        // TODO(follow-up, pablof7z/nmp-feedback#3): this list used to also
-        // seed the in-app feedback source relay read-only
-        // (`app_state.feedback.config().relay_seed()`) so NMP opened the
-        // connection used by the relay-pinned feedback subscription.
-        // Dropped with the feedback runtime in A0/A1.
+        // pablof7z/nmp-feedback#3 owns the future feedback relay seed. This
+        // list no longer opens the relay-pinned feedback subscription because
+        // the feedback runtime was removed in A0/A1.
     ]);
 
     // Steps 8-10: comments_cache, viewed_comments_episode_id, nostr_results,
@@ -336,21 +331,11 @@ pub extern "C" fn nmp_app_podcast_register(app: *mut NmpApp) -> *mut PodcastHand
     // Step N+1: handler now takes only (app, state) — all infra is in state.infra.
     app_ref.set_host_op_handler(Arc::new(PodcastHostOpHandler::new(app, app_state.clone())));
 
-    // TODO(A1 STUB, pablof7z/podcast-player#690): the reactive observer
-    // registrations below (NIP-F4 discovery, kind:1111 comments,
-    // ActiveFollowSet kind:3 reactivity, FollowListObserver, kind:1
-    // agent-notes, and the dropped feedback observer) are disabled here.
-    // `NmpApp::register_event_observer` (blanket, filterless) is deleted
-    // upstream — the replacement is a DECLARATIVE `ObservedProjection`
-    // (filter shape + consumer_id + scope) opened through
-    // `NmpApp::observed_projection_handle()`. Re-expressing each observer
-    // this way (plus, for discovery specifically, redesigning the
-    // release/resubscribe id-tracking around `ObservedProjectionId`) is
-    // tracked in #690, not mechanical enough for A1's compile-only scope.
-    // Until that lands: discovery/comments/social/agent-notes subscriptions
-    // can still be OPENED (see `push_interest_via_nmp` call sites), but nothing
-    // pushes the resulting events into the corresponding snapshot slots —
-    // this is a real, tracked functional gap, not a silent no-op.
+    // pablof7z/podcast-player#690 owns the reactive observer redesign.
+    // The deleted blanket `NmpApp::register_event_observer` must become
+    // declarative `ObservedProjection` registrations; until then
+    // discovery/comments/social/agent-notes subscriptions can still open, but
+    // nothing pushes resulting events into their snapshot slots.
     //
     // Identity-change handling (clearing per-account social state on
     // sign-in/switch/logout) is independent of the observer registration

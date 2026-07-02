@@ -11,16 +11,11 @@
 //! ## Run-now dispatch
 //!
 //! `run_now` re-dispatches the task's stored `(action_namespace, action_body)`
-//! payload through the kernel action registry via the `dispatch`
-//! callback the call site injects (production wraps
-//! `nmp_ffi::nmp_app_dispatch_action`). The callback runs *synchronously*
-//! on the actor thread — `nmp_app_dispatch_action` only validates the
-//! action and enqueues an `ActorCommand::DispatchHostOp` (D8: no actor
-//! round-trip on the FFI thread), so re-entry from inside a host-op
-//! handler appends to the actor's own queue and returns immediately —
-//! there is no deadlock and nothing crosses a thread boundary. This
-//! mirrors the existing synchronous `dispatch_capability` precedent in
-//! `host_op_handler.rs`.
+//! payload through the typed byte doorway via the `dispatch` callback the call
+//! site injects. The callback runs synchronously and only validates/enqueues
+//! work, so re-entry from inside a host-op handler appends to the actor's own
+//! queue and returns immediately. This mirrors the existing synchronous
+//! `dispatch_capability` precedent in `host_op_handler.rs`.
 //!
 //! Status mapping (synchronous accept/reject is all `run_now` can
 //! observe — the dispatched action's *downstream* completion arrives
@@ -95,9 +90,8 @@ pub fn default_seed(now: i64) -> Vec<AgentTaskSummary> {
 /// Called as `dispatch(action_namespace, action_body)` and returns `true`
 /// when the dispatch was *accepted* by the kernel action registry (a
 /// `correlation_id` was minted) or `false` when it was *rejected*
-/// (unknown namespace / malformed body). Production wraps
-/// `nmp_ffi::nmp_app_dispatch_action` (and frees the returned C string);
-/// tests inject a deterministic closure.
+/// (unknown namespace / malformed body). Production wraps the app-owned
+/// typed dispatch doorway; tests inject a deterministic closure.
 ///
 /// Kept as a borrowed trait object so the raw `*mut NmpApp` never leaves
 /// `host_op_handler.rs` — `handle_tasks_action` stays `app`-free and

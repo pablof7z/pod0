@@ -6,30 +6,28 @@
 use std::ffi::CStr;
 use std::time::{Duration, Instant};
 
+use nmp_app_podcast::dispatch_bytes::dispatch_action_bytes_for;
 use nmp_app_podcast::ffi::PodcastUpdate;
 use nmp_app_podcast::{
     nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free, nmp_app_podcast_snapshot_rev,
     PodcastHandle,
 };
-use nmp_app_podcast::dispatch_bytes::dispatch_action_bytes_for;
-use nmp_ffi::{nmp_app_new, NmpApp};
+use nmp_native_runtime::NmpApp;
 
 /// Allocate a new `NmpApp` instance. Panics if the kernel returns null
 /// (should never happen in practice — null only comes from OOM).
 pub fn app_new() -> *mut NmpApp {
-    let app = nmp_app_new();
-    assert!(!app.is_null(), "nmp_app_new returned null");
-    app
+    Box::into_raw(Box::new(nmp_native_runtime::new_app()))
 }
 
-/// Free a previously-allocated `NmpApp`. The actor thread is joined first
-/// (that happens inside `NmpApp::drop`).
+/// Free a previously-allocated `NmpApp`. `NmpApp::drop` joins the actor thread
+/// before releasing the runtime.
 ///
 /// # Safety
-/// `app` must be a valid pointer returned by `nmp_app_new` and not yet freed.
+/// `app` must be a valid pointer returned by `app_new` and not yet freed.
 pub unsafe fn app_free(app: *mut NmpApp) {
     if !app.is_null() {
-        // SAFETY: caller guarantees this pointer came from `nmp_app_new` and
+        // SAFETY: caller guarantees this pointer came from `app_new` and
         // is freed exactly once. `Box::from_raw` reclaims the heap allocation;
         // `Drop` joins the actor thread before releasing the memory.
         drop(unsafe { Box::from_raw(app) });

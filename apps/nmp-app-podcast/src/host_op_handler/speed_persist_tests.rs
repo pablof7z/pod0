@@ -26,8 +26,11 @@ impl TempDir {
         use std::sync::atomic::Ordering;
         static SEQ: AtomicU64 = AtomicU64::new(0);
         let n = SEQ.fetch_add(1, Ordering::Relaxed);
-        let path = std::env::temp_dir()
-            .join(format!("nmp-speed-persist-test-{}-{}", std::process::id(), n));
+        let path = std::env::temp_dir().join(format!(
+            "nmp-speed-persist-test-{}-{}",
+            std::process::id(),
+            n
+        ));
         std::fs::create_dir_all(&path).expect("create temp dir");
         Self { path }
     }
@@ -40,23 +43,12 @@ impl Drop for TempDir {
 
 // ── Constructor helpers ───────────────────────────────────────────────────────
 
-fn feedback_runtime(rev: Arc<AtomicU64>) -> nmp_feedback::FeedbackRuntime {
-    nmp_feedback::FeedbackRuntime::new(
-        nmp_feedback::FeedbackConfig::new(crate::PODCAST_FEEDBACK_PROJECT_COORDINATE)
-            .with_interest_namespace(crate::PODCAST_FEEDBACK_INTEREST_NAMESPACE),
-        Arc::new(Mutex::new(Vec::new())),
-        rev,
-    )
-}
-
 fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
-    let rev = Arc::new(AtomicU64::new(1));
     let identity = Arc::new(Mutex::new(IdentityStore::new()));
     let state = Arc::new(crate::state::PodcastAppState::new_with_identity(
         crate::state::Infra::for_test(),
         store.clone(),
         identity.clone(),
-        feedback_runtime(rev.clone()),
     ));
     PodcastHostOpHandler::new(std::ptr::null_mut(), state)
 }

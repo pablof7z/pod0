@@ -11,7 +11,6 @@ use crate::ffi::actions::settings_module::SettingsAction;
 use crate::store::identity::IdentityStore;
 use crate::store::PodcastStore;
 use podcast_core::{Episode, Podcast, PodcastId};
-use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 use url::Url;
 use uuid::Uuid;
@@ -22,29 +21,15 @@ use uuid::Uuid;
 /// `download_queue` and never reads `app`. Mirrors the constructor defaults in
 /// `ffi::register::nmp_app_podcast_register`.
 fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
-    let rev = Arc::new(AtomicU64::new(1));
     let identity = Arc::new(Mutex::new(IdentityStore::new()));
     // Step 16: feedback injected; feed_fetch + feedback removed from handler::new.
     let state = Arc::new(crate::state::PodcastAppState::new_with_identity(
         crate::state::Infra::for_test(),
         store.clone(),
         identity.clone(),
-        feedback_runtime(rev.clone()),
     ));
     // Steps 8-N+1: all substates in PodcastAppState; new takes only (app, state).
-    PodcastHostOpHandler::new(
-        std::ptr::null_mut(),
-        state,
-    )
-}
-
-fn feedback_runtime(rev: Arc<AtomicU64>) -> nmp_feedback::FeedbackRuntime {
-    nmp_feedback::FeedbackRuntime::new(
-        nmp_feedback::FeedbackConfig::new(crate::PODCAST_FEEDBACK_PROJECT_COORDINATE)
-            .with_interest_namespace(crate::PODCAST_FEEDBACK_INTEREST_NAMESPACE),
-        Arc::new(Mutex::new(Vec::new())),
-        rev,
-    )
+    PodcastHostOpHandler::new(std::ptr::null_mut(), state)
 }
 
 fn make_episode(podcast_id: PodcastId, title: &str) -> Episode {
@@ -232,7 +217,14 @@ fn enqueue_op_rejects_unknown_episode() {
         "corr-enq-x",
     );
     assert_eq!(r["ok"], serde_json::json!(false));
-    assert!(handler.state.playback.queue.lock().unwrap().items().is_empty());
+    assert!(handler
+        .state
+        .playback
+        .queue
+        .lock()
+        .unwrap()
+        .items()
+        .is_empty());
 }
 
 #[test]
@@ -253,7 +245,10 @@ fn dequeue_op_removes_from_canonical_queue() {
         "corr-deq-1",
     );
     assert_eq!(r["ok"], serde_json::json!(true));
-    assert_eq!(handler.state.playback.queue.lock().unwrap().items(), &[ids[1].clone()]);
+    assert_eq!(
+        handler.state.playback.queue.lock().unwrap().items(),
+        &[ids[1].clone()]
+    );
 }
 
 #[test]
@@ -269,7 +264,14 @@ fn clear_queue_op_empties_canonical_queue() {
     }
     let r = handler.handle_player_action(PlayerAction::ClearQueue, "corr-clear");
     assert_eq!(r["ok"], serde_json::json!(true));
-    assert!(handler.state.playback.queue.lock().unwrap().items().is_empty());
+    assert!(handler
+        .state
+        .playback
+        .queue
+        .lock()
+        .unwrap()
+        .items()
+        .is_empty());
 }
 
 #[test]
@@ -290,7 +292,10 @@ fn play_next_op_pops_canonical_queue_front() {
         "play_next plays the front id"
     );
     // Front popped; the remaining entry stays queued.
-    assert_eq!(handler.state.playback.queue.lock().unwrap().items(), &[ids[1].clone()]);
+    assert_eq!(
+        handler.state.playback.queue.lock().unwrap().items(),
+        &[ids[1].clone()]
+    );
 }
 
 #[test]
@@ -313,7 +318,10 @@ fn advance_op_is_play_next_alias() {
     }
     let r = handler.handle_player_action(PlayerAction::Advance, "corr-adv");
     assert_eq!(r["ok"], serde_json::json!(true));
-    assert_eq!(handler.state.playback.queue.lock().unwrap().items(), &[ids[1].clone()]);
+    assert_eq!(
+        handler.state.playback.queue.lock().unwrap().items(),
+        &[ids[1].clone()]
+    );
 }
 
 #[test]
@@ -333,7 +341,14 @@ fn play_next_op_skips_stale_head() {
         "play_next must skip the unresolvable head and play the next valid entry"
     );
     assert!(
-        handler.state.playback.queue.lock().unwrap().items().is_empty(),
+        handler
+            .state
+            .playback
+            .queue
+            .lock()
+            .unwrap()
+            .items()
+            .is_empty(),
         "both the stale head and the played id are popped"
     );
     let _ = &ids[0];

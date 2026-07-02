@@ -62,6 +62,7 @@ nmp-nip22 = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-
 nmp-router = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
 nmp-wot = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
 nmp-signer-iface = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
+nmp-nostr-id = { version = "0.8.4", git = "https://github.com/pablof7z/nostr-multi-platform.git", rev = "ae650cf0864f6e335ad02286919e17b1ca62f3e2" }
 # Surface tokens (DeclaredActionNamespace, ProjectionRegistrationKey /
 # DynamicProjectionKey) that ActionModule/typed-snapshot-projection
 # registration now require in place of bare `&str` keys.

@@ -25,12 +25,11 @@
 use super::*;
 use crate::store::identity::IdentityStore;
 use crate::store::PodcastStore;
+use chrono::Utc;
 use podcast_core::types::episode::Episode;
 use podcast_core::Podcast;
-use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 use url::Url;
-use chrono::Utc;
 
 /// Construct a `PodcastHostOpHandler` with a NULL `app` pointer
 /// — the publish handlers never dispatch capabilities, so the
@@ -39,29 +38,15 @@ use chrono::Utc;
 /// the handler is fully wired even though only the publish path is
 /// exercised here.
 fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
-    let rev = Arc::new(AtomicU64::new(1));
     let identity = Arc::new(Mutex::new(IdentityStore::new()));
     // Step 16: feedback injected; feed_fetch + feedback removed from handler::new.
     let state = Arc::new(crate::state::PodcastAppState::new_with_identity(
         crate::state::Infra::for_test(),
         store.clone(),
         identity.clone(),
-        feedback_runtime(rev.clone()),
     ));
     // Steps 8-N+1: all substates in PodcastAppState; new takes only (app, state).
-    PodcastHostOpHandler::new(
-        std::ptr::null_mut(),
-        state,
-    )
-}
-
-fn feedback_runtime(rev: Arc<AtomicU64>) -> nmp_feedback::FeedbackRuntime {
-    nmp_feedback::FeedbackRuntime::new(
-        nmp_feedback::FeedbackConfig::new(crate::PODCAST_FEEDBACK_PROJECT_COORDINATE)
-            .with_interest_namespace(crate::PODCAST_FEEDBACK_INTEREST_NAMESPACE),
-        Arc::new(Mutex::new(Vec::new())),
-        rev,
-    )
+    PodcastHostOpHandler::new(std::ptr::null_mut(), state)
 }
 
 // ---------------------------------------------------------------------------
@@ -193,13 +178,12 @@ fn publish_episode_dispatches_via_kernel() {
 
     let out = handle_publish_action(
         &handler,
-        PublishAction::PublishEpisode { episode_id: episode_id.clone() },
+        PublishAction::PublishEpisode {
+            episode_id: episode_id.clone(),
+        },
     );
     assert_eq!(out["ok"], true, "publish_episode failed: {out}");
-    assert_eq!(
-        out["status"], "signed",
-        "null-app must yield status=signed"
-    );
+    assert_eq!(out["status"], "signed", "null-app must yield status=signed");
 
     // Response carries the per-podcast pubkey_hex (the signer the kernel will use).
     assert_eq!(
@@ -215,7 +199,11 @@ fn publish_episode_dispatches_via_kernel() {
         .find(|t| t.get(0).and_then(|v| v.as_str()) == Some("audio"))
         .expect("audio tag present in episode tags");
     assert!(
-        !audio_tag.get(1).and_then(|v| v.as_str()).unwrap_or("").is_empty(),
+        !audio_tag
+            .get(1)
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .is_empty(),
         "audio tag must have a URL"
     );
 
@@ -251,10 +239,7 @@ fn publish_episode_rejects_unowned_podcast() {
 
     let handler = handler_with_store(store);
     // No create_owned → no key → error.
-    let out = handle_publish_action(
-        &handler,
-        PublishAction::PublishEpisode { episode_id },
-    );
+    let out = handle_publish_action(&handler, PublishAction::PublishEpisode { episode_id });
     assert_eq!(out["ok"], false);
     assert!(out["error"].as_str().unwrap().contains("podcast not owned"));
 }
@@ -317,7 +302,14 @@ fn remove_owned_clears_key_and_pubkey_field() {
     let out = remove_owned(&handler, id.clone());
     assert_eq!(out["ok"], true);
     // Step 13: podcast_keys now in state.publish (PublishState).
-    assert!(handler.state.publish.podcast_keys.lock().unwrap().get_key(&id).is_none());
+    assert!(handler
+        .state
+        .publish
+        .podcast_keys
+        .lock()
+        .unwrap()
+        .get_key(&id)
+        .is_none());
     assert!(store
         .lock()
         .unwrap()

@@ -3,8 +3,8 @@
 //! Extracted from `podcast_module.rs` to keep that file under the 500-line hard limit.
 
 use super::*;
-use nmp_core::substrate::ActionModule as _;
 use nmp_core::actor::ActorCommand;
+use nmp_core::substrate::ActionModule as _;
 
 /// Test helper: extract `(action_json, correlation_id)` from an
 /// `ActorCommand::Protocol(HostOpCommand { .. })` via its `Debug` output.
@@ -18,7 +18,9 @@ fn extract_host_op_parts(cmd: &ActorCommand) -> (String, String) {
     let jm = concat!("action_json: ", r#"""#);
     let js = dbg.find(jm).expect("action_json") + jm.len();
     let after = &dbg[js..];
-    let je = after.find(concat!(r#"""#, ", correlation_id:")).expect("json end");
+    let je = after
+        .find(concat!(r#"""#, ", correlation_id:"))
+        .expect("json end");
     let raw = &after[..je];
     // Unescape \" → " and \\\\ → \\
     let tmp = raw.replace(r#"\\"#, "\x01BSLASH\x01");
@@ -250,9 +252,16 @@ fn set_auto_download_action_round_trips_latest_n() {
 /// The decoder must still parse it without error.
 #[test]
 fn set_auto_download_legacy_bool_payload_decodes() {
-    let json = r#"{"op":"set_auto_download","podcast_id":"abc-123","enabled":true,"wifi_only":true}"#;
+    let json =
+        r#"{"op":"set_auto_download","podcast_id":"abc-123","enabled":true,"wifi_only":true}"#;
     let action: PodcastAction = serde_json::from_str(json).expect("decode legacy payload");
-    if let PodcastAction::SetAutoDownload { podcast_id, mode, enabled, .. } = action {
+    if let PodcastAction::SetAutoDownload {
+        podcast_id,
+        mode,
+        enabled,
+        ..
+    } = action
+    {
         assert_eq!(podcast_id, "abc-123");
         assert!(mode.is_none(), "legacy payload has no mode field");
         assert!(enabled, "legacy enabled=true preserved");
@@ -356,14 +365,21 @@ fn execute_emits_dispatch_host_op() {
         feed_url: "https://feeds.example.com/podcast.rss".into(),
     };
     let commands = std::sync::Mutex::new(Vec::<ActorCommand>::new());
-    PodcastActionModule.execute(action, "corr-1", &|cmd| {
-        commands.lock().unwrap().push(cmd);
-    })
-    .expect("execute ok");
+    PodcastActionModule
+        .execute(
+            &nmp_core::substrate::ActionContext::default(),
+            action,
+            "corr-1",
+            &|cmd| {
+                commands.lock().unwrap().push(cmd);
+            },
+        )
+        .expect("execute ok");
     let commands = commands.into_inner().unwrap();
     assert_eq!(commands.len(), 1);
-    let ActorCommand::Protocol(_) = &commands[0]
-    else { panic!("expected Protocol command"); };
+    let ActorCommand::Protocol(_) = &commands[0] else {
+        panic!("expected Protocol command");
+    };
     let (action_json, correlation_id) = extract_host_op_parts(&commands[0]);
     assert_eq!(correlation_id.as_str(), "corr-1");
     let v: serde_json::Value = serde_json::from_str(&action_json).expect("json");

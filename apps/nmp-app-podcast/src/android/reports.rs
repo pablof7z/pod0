@@ -3,12 +3,11 @@ use std::ffi::{CStr, CString};
 use jni::objects::{JClass, JString};
 use jni::sys::{jlong, jstring};
 use jni::JNIEnv;
-use nmp_ffi::nmp_free_string;
 
+use crate::ffi::guard::ffi_guard;
 use crate::ffi::{
     nmp_app_podcast_audio_report, nmp_app_podcast_download_report, nmp_app_podcast_http_report,
 };
-use crate::ffi::guard::ffi_guard;
 
 /// `nativeCapabilityReport(handle, namespace, reportJson)` — handle-aware
 /// host → kernel report channel. Audio reports project into the Rust
@@ -22,30 +21,34 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeCapabilityReport<'
     report_json: JString<'l>,
 ) -> jstring {
     let null: jstring = std::ptr::null_mut();
-    ffi_guard("nativeCapabilityReport", || null, || {
-        let Some(s) = super::session_ref(handle) else {
-            return null;
-        };
-        if s.podcast.is_null() {
-            return null;
-        }
-        let ns = match env.get_string(&namespace) {
-            Ok(s) => s.to_string_lossy().into_owned(),
-            Err(_) => return null,
-        };
-        let body = match env.get_string(&report_json) {
-            Ok(s) => s.to_string_lossy().into_owned(),
-            Err(_) => return null,
-        };
-        if ns != crate::capability::AUDIO_CAPABILITY_NAMESPACE {
-            return null;
-        }
-        let Ok(c_body) = CString::new(body) else {
-            return null;
-        };
-        let follow_up_ptr = nmp_app_podcast_audio_report(s.podcast, c_body.as_ptr());
-        response_string(&mut env, follow_up_ptr)
-    })
+    ffi_guard(
+        "nativeCapabilityReport",
+        || null,
+        || {
+            let Some(s) = super::session_ref(handle) else {
+                return null;
+            };
+            if s.podcast.is_null() {
+                return null;
+            }
+            let ns = match env.get_string(&namespace) {
+                Ok(s) => s.to_string_lossy().into_owned(),
+                Err(_) => return null,
+            };
+            let body = match env.get_string(&report_json) {
+                Ok(s) => s.to_string_lossy().into_owned(),
+                Err(_) => return null,
+            };
+            if ns != crate::capability::AUDIO_CAPABILITY_NAMESPACE {
+                return null;
+            }
+            let Ok(c_body) = CString::new(body) else {
+                return null;
+            };
+            let follow_up_ptr = nmp_app_podcast_audio_report(s.podcast, c_body.as_ptr());
+            response_string(&mut env, follow_up_ptr)
+        },
+    )
 }
 
 /// `nativeDownloadReport(handle, reportJson)` — handle-aware download report
@@ -60,23 +63,27 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeDownloadReport<'l>
     report_json: JString<'l>,
 ) -> jstring {
     let null: jstring = std::ptr::null_mut();
-    ffi_guard("nativeDownloadReport", || null, || {
-        let Some(s) = super::session_ref(handle) else {
-            return null;
-        };
-        if s.podcast.is_null() {
-            return null;
-        }
-        let body = match env.get_string(&report_json) {
-            Ok(s) => s.to_string_lossy().into_owned(),
-            Err(_) => return null,
-        };
-        let Ok(c_body) = CString::new(body) else {
-            return null;
-        };
-        let follow_up_ptr = nmp_app_podcast_download_report(s.podcast, c_body.as_ptr());
-        response_string(&mut env, follow_up_ptr)
-    })
+    ffi_guard(
+        "nativeDownloadReport",
+        || null,
+        || {
+            let Some(s) = super::session_ref(handle) else {
+                return null;
+            };
+            if s.podcast.is_null() {
+                return null;
+            }
+            let body = match env.get_string(&report_json) {
+                Ok(s) => s.to_string_lossy().into_owned(),
+                Err(_) => return null,
+            };
+            let Ok(c_body) = CString::new(body) else {
+                return null;
+            };
+            let follow_up_ptr = nmp_app_podcast_download_report(s.podcast, c_body.as_ptr());
+            response_string(&mut env, follow_up_ptr)
+        },
+    )
 }
 
 /// `nativeHttpReport(handle, reportJson)` — handle-aware async HTTP report
@@ -96,25 +103,29 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeHttpReport<'l>(
     handle: jlong,
     report_json: JString<'l>,
 ) {
-    ffi_guard("nativeHttpReport", || (), || {
-        let Some(s) = super::session_ref(handle) else {
-            return;
-        };
-        if s.podcast.is_null() {
-            return;
-        }
-        let body = match env.get_string(&report_json) {
-            Ok(s) => s.to_string_lossy().into_owned(),
-            Err(_) => return,
-        };
-        let Ok(c_body) = CString::new(body) else {
-            return;
-        };
-        let ret = nmp_app_podcast_http_report(s.podcast, c_body.as_ptr());
-        if !ret.is_null() {
-            nmp_free_string(ret);
-        }
-    });
+    ffi_guard(
+        "nativeHttpReport",
+        || (),
+        || {
+            let Some(s) = super::session_ref(handle) else {
+                return;
+            };
+            if s.podcast.is_null() {
+                return;
+            }
+            let body = match env.get_string(&report_json) {
+                Ok(s) => s.to_string_lossy().into_owned(),
+                Err(_) => return,
+            };
+            let Ok(c_body) = CString::new(body) else {
+                return;
+            };
+            let ret = nmp_app_podcast_http_report(s.podcast, c_body.as_ptr());
+            if !ret.is_null() {
+                free_owned_c_string(ret);
+            }
+        },
+    );
 }
 
 fn response_string(env: &mut JNIEnv<'_>, ptr: *mut std::ffi::c_char) -> jstring {
@@ -124,9 +135,20 @@ fn response_string(env: &mut JNIEnv<'_>, ptr: *mut std::ffi::c_char) -> jstring 
     let owned = unsafe { CStr::from_ptr(ptr) }
         .to_string_lossy()
         .into_owned();
-    nmp_free_string(ptr);
+    free_owned_c_string(ptr);
     match env.new_string(owned) {
         Ok(js) => js.into_raw(),
         Err(_) => std::ptr::null_mut(),
+    }
+}
+
+fn free_owned_c_string(ptr: *mut std::ffi::c_char) {
+    if ptr.is_null() {
+        return;
+    }
+    // SAFETY: app-owned FFI functions in this crate allocate with
+    // `CString::into_raw`.
+    unsafe {
+        let _ = CString::from_raw(ptr);
     }
 }

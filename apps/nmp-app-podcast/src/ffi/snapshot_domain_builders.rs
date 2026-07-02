@@ -345,8 +345,8 @@ pub(super) fn build_misc_payload(handle: &PodcastHandle) -> serde_json::Value {
             })
         }
     };
-    // TODO(follow-up, pablof7z/nmp-feedback#3): dropped with the feedback
-    // runtime in A0/A1 — see `ffi/snapshot.rs`'s matching TODO.
+    // pablof7z/nmp-feedback#3 owns the replacement feedback runtime; A0/A1
+    // keeps the wire keys present but empty.
     let feedback_events: Vec<serde_json::Value> = Vec::new();
     let feedback_threads: Vec<serde_json::Value> = Vec::new();
 

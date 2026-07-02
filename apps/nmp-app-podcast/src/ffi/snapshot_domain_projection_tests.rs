@@ -24,8 +24,8 @@ use nmp_core::{encode_snapshot_frame, SnapshotEnvelope, TypedProjectionData};
 use crate::agent_note_handler::AgentNotesObserver;
 use crate::ffi::handle::PodcastHandle;
 use crate::ffi::snapshot_domain_projections::{
-    decode_podcast_domain_sidecars, register_domain_projections, SCHEMA_DOWNLOADS,
-    SCHEMA_LIBRARY, SCHEMA_MISC, SCHEMA_PLAYBACK, SCHEMA_SETTINGS,
+    decode_podcast_domain_sidecars, register_domain_projections, SCHEMA_DOWNLOADS, SCHEMA_LIBRARY,
+    SCHEMA_MISC, SCHEMA_PLAYBACK, SCHEMA_SETTINGS,
 };
 use crate::state::{Domain, DomainRevs, Infra, PodcastAppState};
 use crate::store::PodcastStore;
@@ -35,25 +35,32 @@ use crate::store::PodcastStore;
 /// Make a handle with a real (unstarted) `NmpApp` so `build_configured_relays`
 /// does not deref a null pointer. The caller is responsible for freeing `app`
 /// after dropping the handle.
-pub(super) fn make_test_handle_with_app(app: *mut nmp_native_runtime::NmpApp) -> Box<PodcastHandle> {
+pub(super) fn make_test_handle_with_app(
+    app: *mut nmp_native_runtime::NmpApp,
+) -> Box<PodcastHandle> {
     let store = Arc::new(Mutex::new(PodcastStore::new()));
-    let state = Arc::new(PodcastAppState::new(
-        Infra::for_test(),
-        store.clone(),
-    ));
+    let state = Arc::new(PodcastAppState::new(Infra::for_test(), store.clone()));
     // Clear agent_tasks (default seed uses Uuid::new_v4 — non-deterministic).
     state.tasks.tasks.lock().unwrap().clear();
 
     Box::new(PodcastHandle {
         app,
         state,
-        responder_cache: Arc::new(Mutex::new(crate::store::agent_note_responder_cache::ResponderCache::default())),
-        outbound_turn_cache: Arc::new(Mutex::new(crate::store::outbound_turn_cache::OutboundTurnCache::new())),
-        approved_peer_store: Arc::new(Mutex::new(crate::store::approved_peer_store::ApprovedPeerStore::new())),
+        responder_cache: Arc::new(Mutex::new(
+            crate::store::agent_note_responder_cache::ResponderCache::default(),
+        )),
+        outbound_turn_cache: Arc::new(Mutex::new(
+            crate::store::outbound_turn_cache::OutboundTurnCache::new(),
+        )),
+        approved_peer_store: Arc::new(Mutex::new(
+            crate::store::approved_peer_store::ApprovedPeerStore::new(),
+        )),
         snapshot_cache: Arc::new(Mutex::new(None)),
         clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
         ask_state: Arc::new(Mutex::new(crate::ffi::agent_ask::AgentAskState::default())),
-        ask_callback: Arc::new(Mutex::new(crate::ffi::agent_ask::AgentAskCallbackState::default())),
+        ask_callback: Arc::new(Mutex::new(
+            crate::ffi::agent_ask::AgentAskCallbackState::default(),
+        )),
     })
 }
 
@@ -100,7 +107,9 @@ pub(super) fn make_handle_and_state_with_approved(
         snapshot_cache: Arc::new(Mutex::new(None)),
         clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
         ask_state: Arc::new(Mutex::new(crate::ffi::agent_ask::AgentAskState::default())),
-        ask_callback: Arc::new(Mutex::new(crate::ffi::agent_ask::AgentAskCallbackState::default())),
+        ask_callback: Arc::new(Mutex::new(
+            crate::ffi::agent_ask::AgentAskCallbackState::default(),
+        )),
     });
 
     (handle, state, approved)
@@ -115,16 +124,16 @@ pub(super) fn make_frame_with_sidecars(sidecars: &[TypedProjectionData]) -> Vec<
     encode_snapshot_frame(&env, sidecars)
 }
 
-/// Run typed snapshot projections and filter out the always-emitting
-/// `claimed_event_embeds` sidecar registered by nmp-ffi's embed sidecar
-/// (ac7e307e: `install_embed_sidecar_projection` always returns `Some`).
-/// Domain-projection tests assert silence between domain-rev bumps; the
-/// embed sidecar's unconditional emit would cause false failures.
-pub(super) fn run_domain_projections_only(app_ref: &nmp_native_runtime::NmpApp) -> Vec<TypedProjectionData> {
+/// Run typed snapshot projections and retain only podcast-owned domain
+/// sidecars. The native runtime also emits reusable NMP built-ins (for example
+/// refs read-model sidecars); these tests assert app-domain delta behavior.
+pub(super) fn run_domain_projections_only(
+    app_ref: &nmp_native_runtime::NmpApp,
+) -> Vec<TypedProjectionData> {
     app_ref
         .run_typed_snapshot_projections()
         .into_iter()
-        .filter(|p| p.schema_id != "claimed_event_embeds")
+        .filter(|p| p.schema_id.starts_with("podcast."))
         .collect()
 }
 
@@ -308,7 +317,7 @@ fn decode_malformed_sidecar_payload_is_silently_skipped() {
 /// the library sidecar is absent from the frame.
 #[test]
 fn playback_tick_excludes_library_sidecar() {
-    let app = nmp_ffi::nmp_app_new();
+    let app = Box::into_raw(Box::new(nmp_native_runtime::new_app()));
     assert!(!app.is_null(), "nmp_app_new must succeed");
     let app_ref = unsafe { &*app };
 
@@ -326,7 +335,10 @@ fn playback_tick_excludes_library_sidecar() {
     assert!(
         no_change.is_empty(),
         "second run with no domain rev bump must emit nothing (all closures return None); got {:?}",
-        no_change.iter().map(|p| p.schema_id.as_str()).collect::<Vec<_>>()
+        no_change
+            .iter()
+            .map(|p| p.schema_id.as_str())
+            .collect::<Vec<_>>()
     );
 
     // Bump only the playback domain rev.
@@ -362,7 +374,7 @@ fn playback_tick_excludes_library_sidecar() {
 /// a `rev` field and the domain-specific data keys.
 #[test]
 fn domain_projections_emit_valid_json_with_rev_field() {
-    let app = nmp_ffi::nmp_app_new();
+    let app = Box::into_raw(Box::new(nmp_native_runtime::new_app()));
     assert!(!app.is_null(), "nmp_app_new must succeed");
     let app_ref = unsafe { &*app };
 
@@ -375,12 +387,12 @@ fn domain_projections_emit_valid_json_with_rev_field() {
     // With the tombstone contract, downloads/identity/widget always emit on first
     // run (tombstone if empty, full payload if populated). settings, playback,
     // library, and misc must also be present.
-    // Filter claimed_event_embeds: it's an nmp-ffi sidecar (ac7e307e) that emits
-    // FlatBuffer bytes (not JSON), so including it in the JSON-validity loop below
-    // would fail. Domain-projection tests only care about podcast.* sidecars.
+    // Filter NMP-owned built-ins: domain-projection tests only care about
+    // podcast.* sidecars, while native runtime built-ins may use typed binary
+    // payloads rather than JSON.
     let by_key: std::collections::HashMap<String, &TypedProjectionData> = projections
         .iter()
-        .filter(|p| p.schema_id != "claimed_event_embeds")
+        .filter(|p| p.schema_id.starts_with("podcast."))
         .map(|p| (p.schema_id.clone(), p))
         .collect();
 
@@ -426,7 +438,7 @@ fn domain_projections_emit_valid_json_with_rev_field() {
 /// in `make_test_handle_with_app`), then idles on a second tick.
 #[test]
 fn library_empty_emits_tombstone_then_idles() {
-    let app = nmp_ffi::nmp_app_new();
+    let app = Box::into_raw(Box::new(nmp_native_runtime::new_app()));
     assert!(!app.is_null());
     let app_ref = unsafe { &*app };
     let handle = Arc::new(*make_test_handle_with_app(app));
@@ -434,10 +446,16 @@ fn library_empty_emits_tombstone_then_idles() {
 
     // First run: rev 1 > last_emitted 0; library is empty → tombstone.
     let first = app_ref.run_typed_snapshot_projections();
-    let lib = first.iter().find(|p| p.schema_id == SCHEMA_LIBRARY)
+    let lib = first
+        .iter()
+        .find(|p| p.schema_id == SCHEMA_LIBRARY)
         .expect("library tombstone must be emitted when store is empty");
     let val: serde_json::Value = serde_json::from_slice(&lib.payload).unwrap();
-    assert_eq!(val["library"], serde_json::Value::Null, "tombstone must carry library: null");
+    assert_eq!(
+        val["library"],
+        serde_json::Value::Null,
+        "tombstone must carry library: null"
+    );
     assert!(val["rev"].is_number(), "tombstone must carry a rev number");
 
     // Second tick — last_emitted caught up → no library sidecar (no perpetual rebuild).
@@ -454,7 +472,7 @@ fn library_empty_emits_tombstone_then_idles() {
 /// `podcast.downloads` changed→empty emits tombstone, second empty tick is silent.
 #[test]
 fn downloads_empty_emits_tombstone_then_idles() {
-    let app = nmp_ffi::nmp_app_new();
+    let app = Box::into_raw(Box::new(nmp_native_runtime::new_app()));
     assert!(!app.is_null());
     let app_ref = unsafe { &*app };
     let handle = Arc::new(*make_test_handle_with_app(app));
@@ -468,14 +486,23 @@ fn downloads_empty_emits_tombstone_then_idles() {
     // Bump downloads rev; no active downloads in test store.
     domain_revs.downloads.fetch_add(1, Ordering::Relaxed);
     let after = app_ref.run_typed_snapshot_projections();
-    let dl = after.iter().find(|p| p.schema_id == SCHEMA_DOWNLOADS)
+    let dl = after
+        .iter()
+        .find(|p| p.schema_id == SCHEMA_DOWNLOADS)
         .expect("downloads tombstone must be emitted");
     let val: serde_json::Value = serde_json::from_slice(&dl.payload).unwrap();
-    assert_eq!(val["downloads"], serde_json::Value::Null, "tombstone must carry downloads: null");
+    assert_eq!(
+        val["downloads"],
+        serde_json::Value::Null,
+        "tombstone must carry downloads: null"
+    );
 
     // Next tick must be silent.
     let idle = app_ref.run_typed_snapshot_projections();
-    assert!(idle.iter().all(|p| p.schema_id != SCHEMA_DOWNLOADS), "second empty tick must be silent");
+    assert!(
+        idle.iter().all(|p| p.schema_id != SCHEMA_DOWNLOADS),
+        "second empty tick must be silent"
+    );
 
     drop(handle);
     unsafe { drop(Box::from_raw(app)) };

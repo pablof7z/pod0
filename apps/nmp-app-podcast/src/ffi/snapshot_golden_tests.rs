@@ -51,8 +51,8 @@ const FIXED_EPOCH: i64 = 1_704_067_200;
 
 fn fixture_path() -> PathBuf {
     // CARGO_MANIFEST_DIR is set by `cargo test` to the package root.
-    let manifest = std::env::var("CARGO_MANIFEST_DIR")
-        .expect("CARGO_MANIFEST_DIR set by cargo test");
+    let manifest =
+        std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR set by cargo test");
     PathBuf::from(manifest).join("src/ffi/snapshot_golden_fixture.json")
 }
 
@@ -99,17 +99,10 @@ fn make_golden_handle(app: *mut nmp_native_runtime::NmpApp) -> Box<PodcastHandle
     let rev = Arc::new(AtomicU64::new(1));
     let identity = Arc::new(Mutex::new(IdentityStore::new()));
     // Step 16: feedback injected into PodcastAppState; feed_fetch constructed inside.
-    let feedback = nmp_feedback::FeedbackRuntime::new(
-        nmp_feedback::FeedbackConfig::new(crate::PODCAST_FEEDBACK_PROJECT_COORDINATE)
-            .with_interest_namespace(crate::PODCAST_FEEDBACK_INTEREST_NAMESPACE),
-        Arc::new(Mutex::new(Vec::new())),
-        rev.clone(),
-    );
     let state = Arc::new(crate::state::PodcastAppState::new_with_identity(
         crate::state::Infra::for_test(),
         store.clone(),
         identity.clone(),
-        feedback,
     ));
     // Clear agent_tasks: default_seed() uses Uuid::new_v4() + Utc::now(), making
     // the fixture non-deterministic.  The golden test exercises the projection
@@ -123,13 +116,21 @@ fn make_golden_handle(app: *mut nmp_native_runtime::NmpApp) -> Box<PodcastHandle
     Box::new(PodcastHandle {
         app,
         state,
-        responder_cache: Arc::new(Mutex::new(crate::store::agent_note_responder_cache::ResponderCache::default())),
-        outbound_turn_cache: Arc::new(Mutex::new(crate::store::outbound_turn_cache::OutboundTurnCache::new())),
-        approved_peer_store: Arc::new(Mutex::new(crate::store::approved_peer_store::ApprovedPeerStore::new())),
+        responder_cache: Arc::new(Mutex::new(
+            crate::store::agent_note_responder_cache::ResponderCache::default(),
+        )),
+        outbound_turn_cache: Arc::new(Mutex::new(
+            crate::store::outbound_turn_cache::OutboundTurnCache::new(),
+        )),
+        approved_peer_store: Arc::new(Mutex::new(
+            crate::store::approved_peer_store::ApprovedPeerStore::new(),
+        )),
         snapshot_cache: Arc::new(Mutex::new(None)),
         clean_html_cache: Arc::new(Mutex::new(HashMap::new())),
         ask_state: Arc::new(Mutex::new(crate::ffi::agent_ask::AgentAskState::default())),
-        ask_callback: Arc::new(Mutex::new(crate::ffi::agent_ask::AgentAskCallbackState::default())),
+        ask_callback: Arc::new(Mutex::new(
+            crate::ffi::agent_ask::AgentAskCallbackState::default(),
+        )),
     })
 }
 
@@ -139,7 +140,7 @@ fn make_golden_handle(app: *mut nmp_native_runtime::NmpApp) -> Box<PodcastHandle
 fn snapshot_bytes_match_golden_fixture() {
     // A real (unstarted) NmpApp so the configured-relays projection doesn't
     // deref a null pointer.  Never started — no background thread touches it.
-    let app = nmp_ffi::nmp_app_new();
+    let app = Box::into_raw(Box::new(nmp_native_runtime::new_app()));
     assert!(!app.is_null(), "nmp_app_new returned null");
 
     let handle = make_golden_handle(app);
@@ -171,7 +172,8 @@ fn snapshot_bytes_match_golden_fixture() {
     let expected = std::fs::read_to_string(&path).expect("read golden fixture");
 
     assert_eq!(
-        actual_json, expected,
+        actual_json,
+        expected,
         "Snapshot wire format changed — golden test FAILED.\n\
          This means the refactor altered the projection output. Either:\n\
          1. Intentional format change → delete the fixture and re-run to recapture.\n\

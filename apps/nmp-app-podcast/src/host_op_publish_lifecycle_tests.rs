@@ -8,33 +8,18 @@ use super::*;
 use crate::host_op_publish::{create_owned, publish_show};
 use crate::store::identity::IdentityStore;
 use crate::store::PodcastStore;
-use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
 fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
-    let rev = Arc::new(AtomicU64::new(1));
     let identity = Arc::new(Mutex::new(IdentityStore::new()));
     // Step 16: feedback injected into PodcastAppState.
     let state = Arc::new(crate::state::PodcastAppState::new_with_identity(
         crate::state::Infra::for_test(),
         store.clone(),
         identity.clone(),
-        feedback_runtime(rev.clone()),
     ));
     // Steps 8-N+1: all substates in PodcastAppState; new takes only (app, state).
-    PodcastHostOpHandler::new(
-        std::ptr::null_mut(),
-        state,
-    )
-}
-
-fn feedback_runtime(rev: Arc<AtomicU64>) -> nmp_feedback::FeedbackRuntime {
-    nmp_feedback::FeedbackRuntime::new(
-        nmp_feedback::FeedbackConfig::new(crate::PODCAST_FEEDBACK_PROJECT_COORDINATE)
-            .with_interest_namespace(crate::PODCAST_FEEDBACK_INTEREST_NAMESPACE),
-        Arc::new(Mutex::new(Vec::new())),
-        rev,
-    )
+    PodcastHostOpHandler::new(std::ptr::null_mut(), state)
 }
 
 /// Seed a feed-less podcast row directly via the store (the `create_podcast`
@@ -251,17 +236,38 @@ fn delete_owned_removes_row_key_and_state() {
     create_owned(&handler, id.clone());
     // Publish a show so there is a stamped event id to NIP-09-delete.
     publish_show(&handler, id.clone());
-    assert!(handler.state.publish.podcast_keys.lock().unwrap().get_key(&id).is_some());
+    assert!(handler
+        .state
+        .publish
+        .podcast_keys
+        .lock()
+        .unwrap()
+        .get_key(&id)
+        .is_some());
 
     let out = delete_owned(&handler, id.clone());
     assert_eq!(out["ok"], true);
     // Row gone.
     assert!(store.lock().unwrap().podcast_by_id_str(&id).is_none());
     // Key dropped.
-    assert!(handler.state.publish.podcast_keys.lock().unwrap().get_key(&id).is_none());
+    assert!(handler
+        .state
+        .publish
+        .podcast_keys
+        .lock()
+        .unwrap()
+        .get_key(&id)
+        .is_none());
     // Publish state discarded.
     // Step 13: publish_state now in state.publish (PublishState).
-    assert!(handler.state.publish.publish_state.lock().unwrap().get(&id).is_none());
+    assert!(handler
+        .state
+        .publish
+        .publish_state
+        .lock()
+        .unwrap()
+        .get(&id)
+        .is_none());
     // A NIP-09 deletion was dispatched via the kernel (null app → "signed").
     // The new architecture does NOT return deletion_event_id (the kernel signs
     // the event, not the app — so no event id is available at dispatch time).
@@ -299,7 +305,14 @@ fn delete_owned_with_no_published_show_skips_nip09_but_tears_down() {
     assert_eq!(out["ok"], true);
     assert_eq!(out["deletion_status"], "skipped");
     assert!(store.lock().unwrap().podcast_by_id_str(&id).is_none());
-    assert!(handler.state.publish.podcast_keys.lock().unwrap().get_key(&id).is_none());
+    assert!(handler
+        .state
+        .publish
+        .podcast_keys
+        .lock()
+        .unwrap()
+        .get_key(&id)
+        .is_none());
 }
 
 /// Private→public flip publishes the show event AND identifies all N episodes
@@ -363,9 +376,15 @@ fn private_to_public_flip_backfills_all_episodes_as_kind54() {
     );
 
     assert_eq!(out["ok"], true, "update_owned must succeed");
-    assert_eq!(out["status"], "republished", "visibility flip must trigger republish");
+    assert_eq!(
+        out["status"], "republished",
+        "visibility flip must trigger republish"
+    );
     // Show event published.
-    assert_eq!(out["publish"]["ok"], true, "show event republish must succeed");
+    assert_eq!(
+        out["publish"]["ok"], true,
+        "show event republish must succeed"
+    );
     // All episodes identified for backfill (one self-dispatched publish_episode
     // action each — the actor yields between them).
     assert_eq!(
@@ -465,7 +484,8 @@ fn delete_owned_nip09_covers_show_and_episodes() {
     let tags = super::deletion_tags();
     assert_eq!(tags.len(), 2, "deletion must carry exactly two k-tags");
 
-    let kind_values: Vec<&str> = tags.iter()
+    let kind_values: Vec<&str> = tags
+        .iter()
         .map(|t| {
             assert_eq!(t.len(), 2, "each tag must be [\"k\", \"<kind>\"]");
             assert_eq!(t[0], "k", "tag identifier must be \"k\"");

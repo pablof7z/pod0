@@ -1,9 +1,10 @@
 //! Decode bridge for NMP NIP-50 search-result typed sidecars.
 //!
-//! `nmp_app_intent_dispatch` opens NIP-50 searches in nmp-ffi and registers one
-//! typed sidecar per session under `nmp.nip50.search.<session_id>`. This bridge
-//! decodes those generic NMP sidecars into JSON so the Swift shell can observe
-//! search sessions from the normal push-frame path without knowing FlatBuffers.
+//! `nmp_app_intent_dispatch` opens NIP-50 searches through the app-owned facade
+//! and registers one typed sidecar per session under `nmp.nip50.search.<session_id>`.
+//! This bridge decodes those generic NMP sidecars into JSON so the Swift shell
+//! can observe search sessions from the normal push-frame path without knowing
+//! FlatBuffers.
 
 const SEARCH_KEY_PREFIX: &str = "nmp.nip50.search.";
 

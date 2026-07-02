@@ -160,23 +160,20 @@ fn parse_intent_target(target: &Value) -> Option<NostrSubscribeIntent> {
 }
 
 fn decode_nostr_ref(uri: &str) -> Result<DecodedNostrRef> {
-    let uri = CString::new(uri).map_err(|_| "Nostr reference contains NUL".to_owned())?;
-    let ptr = nmp_ffi::nmp_nip21_decode_uri(uri.as_ptr());
-    let raw = take_ffi_string(ptr, "nmp_nip21_decode_uri")?;
-    let value: Value = serde_json::from_str(&raw)
-        .map_err(|e| format!("Nostr reference decode returned invalid JSON: {e}"))?;
-    if value.get("ok").and_then(Value::as_bool) != Some(true) {
-        return Err("that Nostr reference could not be decoded".to_owned());
-    }
-    match value.get("target").and_then(Value::as_str) {
-        Some("profile") | Some("address") => value
-            .get("pubkey")
-            .and_then(Value::as_str)
-            .filter(|pubkey| !pubkey.is_empty())
-            .map(|pubkey| DecodedNostrRef::AuthorPubkey(pubkey.to_owned()))
-            .ok_or_else(|| "decoded Nostr reference did not include a pubkey".to_owned()),
-        Some("event") => Ok(DecodedNostrRef::Event),
-        _ => Err("that Nostr reference is not subscribable".to_owned()),
+    let uri = if uri.starts_with("nostr:") {
+        uri.to_owned()
+    } else {
+        format!("nostr:{uri}")
+    };
+    match nmp_nostr_id::parse_nostr_uri(&uri) {
+        Ok(nmp_nostr_id::NostrUri::Profile { pubkey, .. }) => {
+            Ok(DecodedNostrRef::AuthorPubkey(pubkey))
+        }
+        Ok(nmp_nostr_id::NostrUri::Address { pubkey, .. }) => {
+            Ok(DecodedNostrRef::AuthorPubkey(pubkey))
+        }
+        Ok(nmp_nostr_id::NostrUri::Event { .. }) => Ok(DecodedNostrRef::Event),
+        Err(_) => Err("that Nostr reference could not be decoded".to_owned()),
     }
 }
 
@@ -188,7 +185,7 @@ fn take_ffi_string(ptr: *mut std::ffi::c_char, function_name: &str) -> Result<St
         .to_str()
         .map_err(|e| format!("{function_name} returned non-UTF8 text: {e}"))?
         .to_owned();
-    nmp_ffi::nmp_free_string(ptr);
+    let _ = unsafe { CString::from_raw(ptr) };
     Ok(text)
 }
 

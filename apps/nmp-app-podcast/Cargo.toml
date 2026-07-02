@@ -61,8 +61,9 @@ nmp-core = { workspace = true }
 # facade object directly on top (mirrors apps/nmp-gallery/crates/nmp-app-gallery
 # and 29er's crates/nmp-app-29er in the NMP repo) rather than depending on the
 # generic `nmp-uniffi` base-object crate.
-nmp-native-runtime = { workspace = true, features = ["external-signer"] }
+nmp-native-runtime = { workspace = true, features = ["external-signer", "signer-broker"] }
 nmp-uniffi-support = { workspace = true }
+nmp-nostr-id = { workspace = true }
 uniffi = { workspace = true }
 # ADR-0069 composition root: reusable substrate floor (routing, mailbox/
 # profile/contact caches, parsers, publish resolver, coverage gate, NIP-77
@@ -71,8 +72,8 @@ uniffi = { workspace = true }
 # `register_*` calls (see ffi/register.rs).
 nmp-substrate = { workspace = true }
 nmp-ownership = { workspace = true }
-# TODO(follow-up, pablof7z/nmp-feedback#3): feedback-thread integration
-# (`nmp-feedback`) is dropped here pending its own re-architecture upstream
+# pablof7z/nmp-feedback#3 tracks restoring feedback-thread integration
+# after `nmp-feedback` is rebuilt on the current NMP facade shape.
 # — see the workspace Cargo.toml pin-discipline comment.
 # NIP-02 reactive follow-list projection + ActiveFollowSet trust-gate predicate.
 # Listed explicitly so social_handler.rs can import FollowListProjection and

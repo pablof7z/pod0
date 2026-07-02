@@ -4,20 +4,14 @@
 //! Doctrine: D6 — every entry point degrades silently on null / poison /
 //! conversion failure. No business logic lives here.
 
-use std::ffi::{CStr, CString};
-
 use jni::objects::{JClass, JString};
 use jni::sys::{jint, jlong, jstring};
 use jni::JNIEnv;
+use nmp_core::{ProfileShape, RefLiveness, RefNamespace, RefShape, SignerSource};
+use zeroize::Zeroizing;
 
-use nmp_ffi::{
-    nmp_app_cancel_bunker_handshake, nmp_app_resolve_ref, nmp_app_release_ref,
-    nmp_app_nostrconnect_uri,
-    nmp_app_signin_bunker, nmp_app_signin_nsec, nmp_free_string,
-};
-
-use crate::ffi::guard::ffi_guard;
 use super::session_ref;
+use crate::ffi::guard::ffi_guard;
 
 /// `nativeSigninNsec(handle, nsec)` — one-shot sign-in via local nsec.
 /// Demonstrates the single capability + dispatch the milestone calls for.
@@ -28,21 +22,25 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeSigninNsec<'l>(
     handle: jlong,
     nsec: JString<'l>,
 ) {
-    ffi_guard("nativeSigninNsec", || (), || {
-        let Some(s) = session_ref(handle) else {
-            return;
-        };
-        let secret = match env.get_string(&nsec) {
-            Ok(s) => s.to_string_lossy().into_owned(),
-            Err(_) => return,
-        };
-        let Ok(c_secret) = CString::new(secret) else {
-            return;
-        };
-        // v0.2.4: make_active = 1 — Android sign-in activates the imported
-        // account.
-        nmp_app_signin_nsec(s.app, c_secret.as_ptr(), 1);
-    });
+    ffi_guard(
+        "nativeSigninNsec",
+        || (),
+        || {
+            let Some(s) = session_ref(handle) else {
+                return;
+            };
+            let secret = match env.get_string(&nsec) {
+                Ok(s) => s.to_string_lossy().into_owned(),
+                Err(_) => return,
+            };
+            // v0.2.4: make_active = 1 — Android sign-in activates the imported
+            // account.
+            if !s.app.is_null() {
+                unsafe { &*s.app }
+                    .add_signer(SignerSource::LocalNsec(Zeroizing::new(secret)), true);
+            }
+        },
+    );
 }
 
 /// `nativeClaimProfile(handle, pubkeyHex, consumerID)` — register a refcounted
@@ -62,28 +60,34 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeClaimProfile<'l>(
     pubkey_hex: JString<'l>,
     consumer_id: JString<'l>,
 ) {
-    ffi_guard("nativeClaimProfile", || (), || {
-        let Some(s) = session_ref(handle) else {
-            return;
-        };
-        let pubkey = match env.get_string(&pubkey_hex) {
-            Ok(s) => s.to_string_lossy().into_owned(),
-            Err(_) => return,
-        };
-        let consumer = match env.get_string(&consumer_id) {
-            Ok(s) => s.to_string_lossy().into_owned(),
-            Err(_) => return,
-        };
-        let Ok(c_pubkey) = CString::new(pubkey) else {
-            return;
-        };
-        let Ok(c_consumer) = CString::new(consumer) else {
-            return;
-        };
-        // ADR-0063 Lane D: namespace=0 (profile), shape=1 (profile.card),
-        // liveness=0 (CacheOk — background list-row claims never force a re-fetch).
-        nmp_app_resolve_ref(s.app, 0, c_pubkey.as_ptr(), c_consumer.as_ptr(), 1, 0);
-    });
+    ffi_guard(
+        "nativeClaimProfile",
+        || (),
+        || {
+            let Some(s) = session_ref(handle) else {
+                return;
+            };
+            let pubkey = match env.get_string(&pubkey_hex) {
+                Ok(s) => s.to_string_lossy().into_owned(),
+                Err(_) => return,
+            };
+            let consumer = match env.get_string(&consumer_id) {
+                Ok(s) => s.to_string_lossy().into_owned(),
+                Err(_) => return,
+            };
+            // ADR-0063 Lane D: namespace=0 (profile), shape=1 (profile.card),
+            // liveness=0 (CacheOk — background list-row claims never force a re-fetch).
+            if !s.app.is_null() {
+                unsafe { &*s.app }.resolve_ref(
+                    RefNamespace::Profile,
+                    pubkey,
+                    consumer,
+                    RefShape::Profile(ProfileShape::Card),
+                    RefLiveness::CacheOk,
+                );
+            }
+        },
+    );
 }
 
 /// `nativeReleaseProfile(handle, pubkeyHex, consumerID)` — release a previously
@@ -101,27 +105,27 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeReleaseProfile<'l>
     pubkey_hex: JString<'l>,
     consumer_id: JString<'l>,
 ) {
-    ffi_guard("nativeReleaseProfile", || (), || {
-        let Some(s) = session_ref(handle) else {
-            return;
-        };
-        let pubkey = match env.get_string(&pubkey_hex) {
-            Ok(s) => s.to_string_lossy().into_owned(),
-            Err(_) => return,
-        };
-        let consumer = match env.get_string(&consumer_id) {
-            Ok(s) => s.to_string_lossy().into_owned(),
-            Err(_) => return,
-        };
-        let Ok(c_pubkey) = CString::new(pubkey) else {
-            return;
-        };
-        let Ok(c_consumer) = CString::new(consumer) else {
-            return;
-        };
-        // ADR-0063 Lane D: namespace=0 (profile).
-        nmp_app_release_ref(s.app, 0, c_pubkey.as_ptr(), c_consumer.as_ptr());
-    });
+    ffi_guard(
+        "nativeReleaseProfile",
+        || (),
+        || {
+            let Some(s) = session_ref(handle) else {
+                return;
+            };
+            let pubkey = match env.get_string(&pubkey_hex) {
+                Ok(s) => s.to_string_lossy().into_owned(),
+                Err(_) => return,
+            };
+            let consumer = match env.get_string(&consumer_id) {
+                Ok(s) => s.to_string_lossy().into_owned(),
+                Err(_) => return,
+            };
+            // ADR-0063 Lane D: namespace=0 (profile).
+            if !s.app.is_null() {
+                unsafe { &*s.app }.release_ref(RefNamespace::Profile, pubkey, consumer);
+            }
+        },
+    );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -131,7 +135,7 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeReleaseProfile<'l>
 /// `nativeSignInBunker(handle, uri, makeActive)` — enqueue
 /// `ActorCommand::SignInBunker` with the supplied `bunker://` URI.
 /// Silent no-op (D6) if the broker has not been initialised — which it always
-/// is because `nativeNew` calls `nmp_signer_broker_init`.
+/// is because `nativeNew` calls `NmpApp::init_signer_broker`.
 ///
 /// `makeActive = true` is the only meaningful value for the UX (the user chose
 /// this signer to be their active account); pass `true` from Kotlin.
@@ -146,19 +150,22 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeSignInBunker<'l>(
     uri: JString<'l>,
     make_active: jint,
 ) {
-    ffi_guard("nativeSignInBunker", || (), || {
-        let Some(s) = session_ref(handle) else {
-            return;
-        };
-        let uri_str = match env.get_string(&uri) {
-            Ok(s) => s.to_string_lossy().into_owned(),
-            Err(_) => return,
-        };
-        let Ok(c_uri) = CString::new(uri_str) else {
-            return;
-        };
-        nmp_app_signin_bunker(s.app, c_uri.as_ptr(), if make_active != 0 { 1 } else { 0 });
-    });
+    ffi_guard(
+        "nativeSignInBunker",
+        || (),
+        || {
+            let Some(s) = session_ref(handle) else {
+                return;
+            };
+            let uri_str = match env.get_string(&uri) {
+                Ok(s) => s.to_string_lossy().into_owned(),
+                Err(_) => return,
+            };
+            if !s.app.is_null() {
+                unsafe { &*s.app }.add_signer(SignerSource::BunkerUri(uri_str), make_active != 0);
+            }
+        },
+    );
 }
 
 /// `nativeCancelBunkerHandshake(handle)` — abort the in-flight NIP-46
@@ -172,11 +179,17 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeCancelBunkerHandsh
     _class: JClass,
     handle: jlong,
 ) {
-    ffi_guard("nativeCancelBunkerHandshake", || (), || {
-        if let Some(s) = session_ref(handle) {
-            nmp_app_cancel_bunker_handshake(s.app);
-        }
-    });
+    ffi_guard(
+        "nativeCancelBunkerHandshake",
+        || (),
+        || {
+            if let Some(s) = session_ref(handle) {
+                if !s.app.is_null() {
+                    unsafe { &*s.app }.cancel_bunker_handshake();
+                }
+            }
+        },
+    );
 }
 
 /// `nativeNostrconnectUri(handle, relayUrl, callbackScheme)` — allocate a
@@ -198,32 +211,27 @@ pub extern "system" fn Java_io_f7z_podcast_KernelBridge_nativeNostrconnectUri<'l
     callback_scheme: JString<'l>,
 ) -> jstring {
     let null: jstring = std::ptr::null_mut();
-    ffi_guard("nativeNostrconnectUri", || null, || {
-        let Some(s) = session_ref(handle) else {
-            return null;
-        };
-        // Convert optional JString arg — null JString (from Kotlin `null`)
-        // becomes a Rust null pointer that the FFI accepts per its contract.
-        let callback_cstring: Option<CString> = env
-            .get_string(&callback_scheme)
-            .ok()
-            .and_then(|js| CString::new(js.to_string_lossy().into_owned()).ok());
-
-        let callback_ptr = callback_cstring.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null());
-
-        let uri_ptr = nmp_app_nostrconnect_uri(s.app, callback_ptr);
-        if uri_ptr.is_null() {
-            return null;
-        }
-        // SAFETY: `uri_ptr` is a heap-owned C string from `nmp_app_nostrconnect_uri`;
-        // the caller (us) MUST free via `nmp_free_string`. Copy to Java String first.
-        let owned = unsafe { CStr::from_ptr(uri_ptr) }
-            .to_string_lossy()
-            .into_owned();
-        nmp_free_string(uri_ptr);
-        match env.new_string(owned) {
-            Ok(js) => js.into_raw(),
-            Err(_) => null,
-        }
-    })
+    ffi_guard(
+        "nativeNostrconnectUri",
+        || null,
+        || {
+            let Some(s) = session_ref(handle) else {
+                return null;
+            };
+            let callback: Option<String> = env
+                .get_string(&callback_scheme)
+                .ok()
+                .map(|js| js.to_string_lossy().into_owned());
+            if s.app.is_null() {
+                return null;
+            }
+            let Some(owned) = (unsafe { &*s.app }).nostrconnect_uri(callback.as_deref()) else {
+                return null;
+            };
+            match env.new_string(owned) {
+                Ok(js) => js.into_raw(),
+                Err(_) => null,
+            }
+        },
+    )
 }

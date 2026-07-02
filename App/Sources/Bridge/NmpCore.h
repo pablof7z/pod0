@@ -5,11 +5,11 @@
 #include <stdint.h>
 #include <stddef.h>
 
-// Podcast uses the raw C bridge over the NMP kernel actor. This header MUST
-// stay in sync with the non-test-gated `#[no_mangle] extern "C" fn nmp_app_*`
-// symbols exported from `crates/nmp-ffi/src/`. The M14 UniFFI codegen path
-// will supersede this; until then it is hand-maintained and verified by the CI
-// gate `ci/check-ffi-header-drift.sh`.
+// Podcast uses an app-owned raw C bridge over the NMP kernel actor. This
+// header MUST stay in sync with the non-test-gated `#[no_mangle] extern "C"`
+// symbols exported from `apps/nmp-app-podcast/src/ffi/`. The future UniFFI
+// facade path will supersede this; until then it is hand-maintained and
+// verified by the CI gate `ci/check-ffi-header-drift.sh`.
 
 void *nmp_app_new(void);
 void nmp_app_free(void *app);
@@ -289,8 +289,8 @@ char *nmp_app_podcast_agent_generated_podcast_descriptor(void *handle);
 // ── Identity / NIP-46 remote-signer FFI ───────────────────────────────────
 //
 // `nmp_app_signin_nsec` / `nmp_app_signin_bunker` enqueue the matching
-// `ActorCommand` on the NMP-core actor (declared in
-// `crates/nmp-ffi/src/identity.rs`). `secret` for `nmp_app_signin_nsec` is the
+// `ActorCommand` on the NMP-core actor through the app-owned facade. `secret`
+// for `nmp_app_signin_nsec` is the
 // user's bech32 `nsec1…` (or hex) string; the actor wraps it in `Zeroizing`
 // immediately. Hosts MUST NOT log the secret value at any point.
 //

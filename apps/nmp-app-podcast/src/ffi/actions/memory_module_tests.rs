@@ -12,7 +12,9 @@ fn extract_host_op_parts(cmd: &ActorCommand) -> (String, String) {
     let jm = concat!("action_json: ", r#"""#);
     let js = dbg.find(jm).expect("action_json") + jm.len();
     let after = &dbg[js..];
-    let je = after.find(concat!(r#"""#, ", correlation_id:")).expect("json end");
+    let je = after
+        .find(concat!(r#"""#, ", correlation_id:"))
+        .expect("json end");
     let raw = &after[..je];
     // Unescape \" → " and \\\\ → \\
     let tmp = raw.replace(r#"\\"#, "\x01BSLASH\x01");
@@ -92,14 +94,21 @@ fn execute_emits_dispatch_host_op() {
         source: None,
     };
     let commands = std::sync::Mutex::new(Vec::<ActorCommand>::new());
-    MemoryActionModule.execute(action, "corr-7", &|cmd| {
-        commands.lock().unwrap().push(cmd);
-    })
-    .expect("execute ok");
+    MemoryActionModule
+        .execute(
+            &nmp_core::substrate::ActionContext::default(),
+            action,
+            "corr-7",
+            &|cmd| {
+                commands.lock().unwrap().push(cmd);
+            },
+        )
+        .expect("execute ok");
     let commands = commands.into_inner().unwrap();
     assert_eq!(commands.len(), 1);
-    let ActorCommand::Protocol(_) = &commands[0]
-    else { panic!("expected Protocol command"); };
+    let ActorCommand::Protocol(_) = &commands[0] else {
+        panic!("expected Protocol command");
+    };
     let (action_json, correlation_id) = extract_host_op_parts(&commands[0]);
     assert_eq!(correlation_id.as_str(), "corr-7");
     let v: serde_json::Value = serde_json::from_str(&action_json).expect("json");

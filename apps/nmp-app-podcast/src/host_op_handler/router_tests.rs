@@ -11,7 +11,6 @@ use super::*;
 use crate::store::identity::IdentityStore;
 use crate::store::PodcastStore;
 use podcast_core::{Episode, Podcast};
-use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 use url::Url;
 use uuid::Uuid;
@@ -20,24 +19,13 @@ use uuid::Uuid;
 // Builder helpers
 // ---------------------------------------------------------------------------
 
-fn feedback_runtime(rev: Arc<AtomicU64>) -> nmp_feedback::FeedbackRuntime {
-    nmp_feedback::FeedbackRuntime::new(
-        nmp_feedback::FeedbackConfig::new(crate::PODCAST_FEEDBACK_PROJECT_COORDINATE)
-            .with_interest_namespace(crate::PODCAST_FEEDBACK_INTEREST_NAMESPACE),
-        Arc::new(Mutex::new(Vec::new())),
-        rev,
-    )
-}
-
 fn handler_with_store(store: Arc<Mutex<PodcastStore>>) -> PodcastHostOpHandler {
-    let rev = Arc::new(AtomicU64::new(1));
     let identity = Arc::new(Mutex::new(IdentityStore::new()));
     // Step 16: feedback injected; feed_fetch constructed inside new_with_identity.
     let state = Arc::new(crate::state::PodcastAppState::new_with_identity(
         crate::state::Infra::for_test(),
         store.clone(),
         identity.clone(),
-        feedback_runtime(rev.clone()),
     ));
     // Steps 8-N+1: all substates in PodcastAppState; new takes only (app, state).
     PodcastHostOpHandler::new(std::ptr::null_mut(), state)
@@ -51,14 +39,12 @@ fn handler_with_approved_store() -> (
     PodcastHostOpHandler,
     Arc<Mutex<crate::store::approved_peer_store::ApprovedPeerStore>>,
 ) {
-    let rev = Arc::new(AtomicU64::new(1));
     let store = Arc::new(Mutex::new(PodcastStore::new()));
     let identity = Arc::new(Mutex::new(IdentityStore::new()));
     let mut state = crate::state::PodcastAppState::new_with_identity(
         crate::state::Infra::for_test(),
         store,
         identity,
-        feedback_runtime(rev),
     );
     let approved = Arc::new(Mutex::new(
         crate::store::approved_peer_store::ApprovedPeerStore::new(),

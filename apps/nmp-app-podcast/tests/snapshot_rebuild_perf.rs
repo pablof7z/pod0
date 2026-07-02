@@ -16,11 +16,10 @@ use std::ffi::{c_char, CStr, CString};
 use std::time::Instant;
 
 use nmp_app_podcast::{
-    dispatch_bytes::dispatch_action_bytes_for,
-    nmp_app_podcast_audio_report, nmp_app_podcast_register, nmp_app_podcast_snapshot,
-    nmp_app_podcast_snapshot_free, nmp_app_podcast_snapshot_rev,
+    dispatch_bytes::dispatch_action_bytes_for, nmp_app_podcast_audio_report,
+    nmp_app_podcast_register, nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free,
+    nmp_app_podcast_snapshot_rev,
 };
-use nmp_ffi::{nmp_free_string, nmp_app_new};
 
 const DESCRIPTION: &str = "In this episode we sit down with our guest to unpack the \
 week's biggest stories, dig into the research behind the headlines, and answer \
@@ -28,7 +27,7 @@ listener questions from the mailbag. We cover the new findings, what they mean f
 you, and where the experts disagree. Plus: a lightning round, a few tangents, and \
 our picks of the week. Full show notes and transcript on our website.";
 
-fn dispatch(app: *mut nmp_ffi::NmpApp, payload: serde_json::Value) -> serde_json::Value {
+fn dispatch(app: *mut nmp_native_runtime::NmpApp, payload: serde_json::Value) -> serde_json::Value {
     // ADR-0064: route through the typed byte doorway.
     let body = payload.to_string();
     match dispatch_action_bytes_for(app, "podcast", &body) {
@@ -43,7 +42,10 @@ fn episode_count(handle: *mut nmp_app_podcast::PodcastHandle) -> usize {
     if ptr.is_null() {
         return 0;
     }
-    let json = unsafe { CStr::from_ptr(ptr) }.to_str().unwrap_or("{}").to_owned();
+    let json = unsafe { CStr::from_ptr(ptr) }
+        .to_str()
+        .unwrap_or("{}")
+        .to_owned();
     nmp_app_podcast_snapshot_free(ptr);
     serde_json::from_str::<nmp_app_podcast::ffi::PodcastUpdate>(&json)
         .map(|u| u.library.iter().map(|p| p.episodes.len()).sum())
@@ -53,7 +55,11 @@ fn episode_count(handle: *mut nmp_app_podcast::PodcastHandle) -> usize {
 /// `create_podcast`/`add_episode` are processed asynchronously on the kernel
 /// actor thread, so a dispatch returns before the store write lands. Poll until
 /// the library reaches `expected` episodes (or `timeout_ms` elapses).
-fn wait_for_seed(handle: *mut nmp_app_podcast::PodcastHandle, expected: usize, timeout_ms: u128) -> usize {
+fn wait_for_seed(
+    handle: *mut nmp_app_podcast::PodcastHandle,
+    expected: usize,
+    timeout_ms: u128,
+) -> usize {
     let t = Instant::now();
     loop {
         let c = episode_count(handle);
@@ -79,31 +85,44 @@ fn timed_snapshot(handle: *mut nmp_app_podcast::PodcastHandle) -> (usize, u128) 
 }
 
 fn uuid(n: usize, salt: u8) -> String {
-    format!("{:08x}-{:04x}-4{:03x}-8{:03x}-{:012x}", n, salt as u32, n & 0xfff, n & 0xfff, n)
+    format!(
+        "{:08x}-{:04x}-4{:03x}-8{:03x}-{:012x}",
+        n,
+        salt as u32,
+        n & 0xfff,
+        n & 0xfff,
+        n
+    )
 }
 
-fn seed(app: *mut nmp_ffi::NmpApp, shows: usize, eps_per_show: usize) {
+fn seed(app: *mut nmp_native_runtime::NmpApp, shows: usize, eps_per_show: usize) {
     for s in 0..shows {
         let pid = uuid(s, 0xAA);
-        dispatch(app, serde_json::json!({
-            "op": "create_podcast",
-            "podcast_id": pid,
-            "title": format!("The Reasonably Named Podcast Number {s}"),
-            "description": DESCRIPTION,
-            "author": "A Reasonably Named Production Company, LLC",
-            "feed_url": format!("https://feeds.example.com/show-{s}/rss.xml"),
-        }));
+        dispatch(
+            app,
+            serde_json::json!({
+                "op": "create_podcast",
+                "podcast_id": pid,
+                "title": format!("The Reasonably Named Podcast Number {s}"),
+                "description": DESCRIPTION,
+                "author": "A Reasonably Named Production Company, LLC",
+                "feed_url": format!("https://feeds.example.com/show-{s}/rss.xml"),
+            }),
+        );
         for i in 0..eps_per_show {
             let n = s * eps_per_show + i;
-            dispatch(app, serde_json::json!({
-                "op": "add_episode",
-                "podcast_id": pid,
-                "episode_id": uuid(n, 0xBB),
-                "title": format!("Episode {n}: A Reasonably Long Episode Title"),
-                "enclosure_url": format!("https://traffic.example.com/{pid}/ep-{n}.mp3"),
-                "description": DESCRIPTION,
-                "duration_secs": 3600.0 + n as f64,
-            }));
+            dispatch(
+                app,
+                serde_json::json!({
+                    "op": "add_episode",
+                    "podcast_id": pid,
+                    "episode_id": uuid(n, 0xBB),
+                    "title": format!("Episode {n}: A Reasonably Long Episode Title"),
+                    "enclosure_url": format!("https://traffic.example.com/{pid}/ep-{n}.mp3"),
+                    "description": DESCRIPTION,
+                    "duration_secs": 3600.0 + n as f64,
+                }),
+            );
         }
     }
 }
@@ -111,7 +130,7 @@ fn seed(app: *mut nmp_ffi::NmpApp, shows: usize, eps_per_show: usize) {
 #[test]
 #[ignore = "heavy populated-library measurement; run with --ignored --nocapture"]
 fn measure_populated_library_rebuild_and_rev_discipline() {
-    let app = nmp_app_new();
+    let app = Box::into_raw(Box::new(nmp_native_runtime::new_app()));
     assert!(!app.is_null());
     let handle = nmp_app_podcast_register(app);
     assert!(!handle.is_null());
@@ -119,7 +138,7 @@ fn measure_populated_library_rebuild_and_rev_discipline() {
     let shows = 20usize;
     for &per in &[50usize, 180] {
         // Fresh app per scale so payloads don't accumulate across iterations.
-        let app = nmp_app_new();
+        let app = Box::into_raw(Box::new(nmp_native_runtime::new_app()));
         let handle = nmp_app_podcast_register(app);
         let total = shows * per;
         let t0 = Instant::now();
@@ -128,7 +147,10 @@ fn measure_populated_library_rebuild_and_rev_discipline() {
         // populated before measuring, else we time a half-built library.
         let seeded = wait_for_seed(handle, total, 120_000);
         let seed_s = t0.elapsed().as_secs_f64();
-        assert_eq!(seeded, total, "library did not fully seed ({seeded}/{total})");
+        assert_eq!(
+            seeded, total,
+            "library did not fully seed ({seeded}/{total})"
+        );
 
         // Warm the snapshot cache at the fully-seeded rev.
         let (payload_bytes, _) = timed_snapshot(handle);
@@ -144,7 +166,10 @@ fn measure_populated_library_rebuild_and_rev_discipline() {
         let mut warm: Vec<u128> = Vec::new();
         for _ in 0..7 {
             let r = nmp_app_podcast_snapshot_rev(handle);
-            dispatch(app, serde_json::json!({"op": "star_episode", "episode_id": first_ep}));
+            dispatch(
+                app,
+                serde_json::json!({"op": "star_episode", "episode_id": first_ep}),
+            );
             let t = Instant::now();
             while nmp_app_podcast_snapshot_rev(handle) == r && t.elapsed().as_millis() < 5000 {
                 std::thread::sleep(std::time::Duration::from_millis(1));
@@ -162,34 +187,60 @@ fn measure_populated_library_rebuild_and_rev_discipline() {
 
         println!(
             "\n[{} shows x {} eps = {} episodes]  seed={:.1}s  payload={:.1} KB",
-            shows, per, total, seed_s, payload_bytes as f64 / 1024.0
+            shows,
+            per,
+            total,
+            seed_s,
+            payload_bytes as f64 / 1024.0
         );
-        println!("  full snapshot build+serialize (cold rebuild, median): {} µs", cold[cold.len()/2]);
-        println!("  snapshot (warm, rev-unchanged cache hit, median):     {} µs", warm[warm.len()/2]);
+        println!(
+            "  full snapshot build+serialize (cold rebuild, median): {} µs",
+            cold[cold.len() / 2]
+        );
+        println!(
+            "  snapshot (warm, rev-unchanged cache hit, median):     {} µs",
+            warm[warm.len() / 2]
+        );
 
         // ── #265 rev-discipline: a Playing tick must NOT bump rev ───────────
         let rev_before = nmp_app_podcast_snapshot_rev(handle);
         let play = CString::new(
             serde_json::json!({"type":"playing","url":"https://traffic.example.com/x.mp3",
-                "position_secs": 12.0, "duration_secs": 3600.0}).to_string()).unwrap();
+                "position_secs": 12.0, "duration_secs": 3600.0})
+            .to_string(),
+        )
+        .unwrap();
         let r = nmp_app_podcast_audio_report(handle, play.as_ptr());
-        if !r.is_null() { nmp_free_string(r); }
+        if !r.is_null() {
+            let _ = unsafe { CString::from_raw(r) };
+        }
         let rev_after_play = nmp_app_podcast_snapshot_rev(handle);
 
         // A durable report (Paused) MUST bump rev.
         let pause = CString::new(
             serde_json::json!({"type":"paused","url":"https://traffic.example.com/x.mp3",
-                "position_secs": 12.0}).to_string()).unwrap();
+                "position_secs": 12.0})
+            .to_string(),
+        )
+        .unwrap();
         let r = nmp_app_podcast_audio_report(handle, pause.as_ptr());
-        if !r.is_null() { nmp_free_string(r); }
+        if !r.is_null() {
+            let _ = unsafe { CString::from_raw(r) };
+        }
         let rev_after_pause = nmp_app_podcast_snapshot_rev(handle);
 
-        println!("  rev before={} after_Playing={} after_Paused={}",
-            rev_before, rev_after_play, rev_after_pause);
-        assert_eq!(rev_before, rev_after_play,
-            "#265 REGRESSION: a Playing position tick bumped rev (forces a full rebuild)");
-        assert!(rev_after_pause > rev_after_play,
-            "a durable Paused report must bump rev so the library reprojects");
+        println!(
+            "  rev before={} after_Playing={} after_Paused={}",
+            rev_before, rev_after_play, rev_after_pause
+        );
+        assert_eq!(
+            rev_before, rev_after_play,
+            "#265 REGRESSION: a Playing position tick bumped rev (forces a full rebuild)"
+        );
+        assert!(
+            rev_after_pause > rev_after_play,
+            "a durable Paused report must bump rev so the library reprojects"
+        );
         println!("  ✓ Playing tick did NOT bump rev (no rebuild); Paused did.");
     }
     let _ = (app, handle);

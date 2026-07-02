@@ -11,13 +11,12 @@ use crate::agent_note_handler::CachedAgentNote;
 use crate::ffi::projections::SocialSnapshot;
 use crate::store::outbound_turn_cache::OutboundTurn;
 use nmp_core::substrate::KernelEvent;
-use nmp_core::KernelEventObserver;
-use nmp_nip02::ActiveFollowSet;
+use nmp_core::ObservedProjectionSink;
+use nmp_nip02::{ActiveFollowSet, LatestKind3FollowSet};
 use std::sync::{Arc, Mutex};
 
 /// A valid-looking 64-hex pubkey for `author_hex` fields.
-const AUTHOR_X_HEX: &str =
-    "aa11223344556677889900aabbccddeeff00112233445566778899aabbccddee";
+const AUTHOR_X_HEX: &str = "aa11223344556677889900aabbccddeeff00112233445566778899aabbccddee";
 
 fn cached_note(id: &str, author_hex: &str) -> CachedAgentNote {
     CachedAgentNote {
@@ -75,7 +74,11 @@ fn agent_notes_share_is_same_arc() {
     // The note must surface via the conversations projection (the flat
     // agent_notes_snapshot was retired; conversations are the canonical read).
     let convs = state.nostr_conversations_snapshot();
-    assert_eq!(convs.len(), 1, "shared arc push must be visible to conversations");
+    assert_eq!(
+        convs.len(),
+        1,
+        "shared arc push must be visible to conversations"
+    );
 }
 
 #[test]
@@ -90,7 +93,10 @@ fn inbound_note_default_untrusted_without_follow_set() {
         .push(cached_note("note1", AUTHOR_X_HEX));
     let convs = state.nostr_conversations_snapshot();
     assert_eq!(convs.len(), 1);
-    assert!(!convs[0].trusted, "without a follow set conversations must be untrusted");
+    assert!(
+        !convs[0].trusted,
+        "without a follow set conversations must be untrusted"
+    );
 }
 
 #[test]
@@ -227,7 +233,10 @@ fn existing_note_becomes_trusted_after_following_author() {
     // Active account.
     let me = "bb11223344556677889900aabbccddeeff00112233445566778899aabbccddee";
     let active_slot = Arc::new(Mutex::new(Some(me.to_string())));
-    let follow_set = ActiveFollowSet::new(Arc::clone(&active_slot));
+    let follow_set = ActiveFollowSet::new(
+        Arc::clone(&active_slot),
+        LatestKind3FollowSet::new(nmp_core::slots::new_event_store_slot()),
+    );
 
     let state = SocialState::for_test().with_follow_set(Arc::clone(&follow_set));
 

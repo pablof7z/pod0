@@ -7,8 +7,8 @@
 //! `snapshot.rs` stays under the 500-line AGENTS.md hard limit.
 
 use nmp_core::{
-    encode_snapshot_frame, SnapshotEnvelope, TypedProjectionData,
-    typed_projections::SIGNED_EVENTS_SCHEMA_ID,
+    encode_snapshot_frame, typed_projections::SIGNED_EVENTS_SCHEMA_ID, SnapshotEnvelope,
+    TypedProjectionData,
 };
 
 use super::decode_signed_events_sidecar;
@@ -43,17 +43,18 @@ fn frame_with_typed(typed: &[TypedProjectionData]) -> Vec<u8> {
 ///
 /// Returns the raw wire frame bytes.
 fn frame_with_live_signed_events() -> Vec<u8> {
-    use nmp_core::testing::{spawn_actor, wait_barrier, ActorCommand};
+    use nmp_core::actor::{LifecycleCommand, SignCommand};
     use nmp_core::decode_snapshot_typed_projections;
+    use nmp_core::testing::{spawn_actor, wait_barrier, ActorCommand};
 
     let (tx, rx) = spawn_actor();
 
     // Start the actor (sets running=true so periodic frames emit).
-    tx.send(ActorCommand::Start {
+    tx.send(ActorCommand::Lifecycle(LifecycleCommand::Start {
         visible_limit: 80,
         emit_hz: 4,
         initial_relays: vec![],
-    })
+    }))
     .expect("actor reachable");
 
     // Issue a SignEventForReturn with an empty pubkey (active account
@@ -66,11 +67,11 @@ fn frame_with_live_signed_events() -> Vec<u8> {
         "created_at": 1_700_000_000u64,
     })
     .to_string();
-    tx.send(ActorCommand::SignEventForReturn {
+    tx.send(ActorCommand::Sign(SignCommand::EventForReturn {
         account_pubkey: String::new(), // empty → active account
         unsigned_json: unsigned,
         correlation_id: "test-corr-id".to_string(),
-    })
+    }))
     .expect("actor reachable");
 
     // Barrier: ensure the SignEventForReturn command is processed before we
@@ -155,7 +156,10 @@ fn signed_events_sidecar_is_injected_with_expected_json_shape() {
 
     // The "ok" bool must be present (true or false depending on the kernel result).
     assert!(
-        entry.get("ok").and_then(serde_json::Value::as_bool).is_some(),
+        entry
+            .get("ok")
+            .and_then(serde_json::Value::as_bool)
+            .is_some(),
         "entry must carry an \"ok\" bool"
     );
 
@@ -164,12 +168,18 @@ fn signed_events_sidecar_is_injected_with_expected_json_shape() {
     let ok = entry["ok"].as_bool().unwrap();
     if ok {
         assert!(
-            entry.get("signed_json").and_then(serde_json::Value::as_str).is_some(),
+            entry
+                .get("signed_json")
+                .and_then(serde_json::Value::as_str)
+                .is_some(),
             "ok=true entry must carry a signed_json string"
         );
     } else {
         assert!(
-            entry.get("error").and_then(serde_json::Value::as_str).is_some(),
+            entry
+                .get("error")
+                .and_then(serde_json::Value::as_str)
+                .is_some(),
             "ok=false entry must carry an error string"
         );
     }
@@ -184,9 +194,7 @@ fn frame_without_signed_events_has_no_projections_key_in_output() {
     let json = unsafe {
         let ptr = super::nmp_app_podcast_decode_update_frame(frame.as_ptr(), frame.len());
         assert!(!ptr.is_null(), "frame must decode successfully");
-        let s = std::ffi::CStr::from_ptr(ptr)
-            .to_string_lossy()
-            .into_owned();
+        let s = std::ffi::CStr::from_ptr(ptr).to_string_lossy().into_owned();
         let _ = std::ffi::CString::from_raw(ptr);
         s
     };
@@ -210,7 +218,11 @@ fn convert_from_snake_case(key: &str) -> String {
     let components: Vec<&str> = key.split('_').collect();
     // Leading/trailing empty components (from leading/trailing underscores) are
     // preserved by the stdlib; our keys have none, so a simple filter is safe.
-    let non_empty: Vec<&str> = components.iter().copied().filter(|c| !c.is_empty()).collect();
+    let non_empty: Vec<&str> = components
+        .iter()
+        .copied()
+        .filter(|c| !c.is_empty())
+        .collect();
     if non_empty.is_empty() {
         return key.to_string();
     }
@@ -229,7 +241,10 @@ fn convert_from_snake_case(key: &str) -> String {
 /// Sanity: the convertFromSnakeCase port matches a few known Swift conversions.
 #[test]
 fn convert_from_snake_case_matches_swift_reference_cases() {
-    assert_eq!(convert_from_snake_case("auto_download_mode"), "autoDownloadMode");
+    assert_eq!(
+        convert_from_snake_case("auto_download_mode"),
+        "autoDownloadMode"
+    );
     assert_eq!(convert_from_snake_case("is_subscribed"), "isSubscribed");
     assert_eq!(convert_from_snake_case("rev"), "rev");
     assert_eq!(convert_from_snake_case("schema_version"), "schemaVersion");
@@ -245,9 +260,7 @@ fn frame_with_signed_events_populates_projections_in_output() {
     let json = unsafe {
         let ptr = super::nmp_app_podcast_decode_update_frame(frame.as_ptr(), frame.len());
         assert!(!ptr.is_null(), "frame must decode successfully");
-        let s = std::ffi::CStr::from_ptr(ptr)
-            .to_string_lossy()
-            .into_owned();
+        let s = std::ffi::CStr::from_ptr(ptr).to_string_lossy().into_owned();
         let _ = std::ffi::CString::from_raw(ptr);
         s
     };

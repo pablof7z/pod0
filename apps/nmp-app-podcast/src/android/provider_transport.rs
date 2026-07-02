@@ -6,8 +6,6 @@ use jni::objects::{JClass, JString};
 use jni::sys::{jlong, jstring};
 use jni::JNIEnv;
 
-use nmp_ffi::nmp_free_string;
-
 use super::session_ref;
 use crate::ffi::guard::ffi_guard;
 use crate::ffi::{
@@ -40,30 +38,34 @@ fn call_podcast_json_ffi<'l>(
     call: PodcastJsonFn,
 ) -> jstring {
     let null: jstring = std::ptr::null_mut();
-    ffi_guard("call_podcast_json_ffi", || null, || {
-        let Some(s) = session_ref(handle) else {
-            return null;
-        };
-        if s.podcast.is_null() {
-            return null;
-        }
-        let request = match env.get_string(&request_json) {
-            Ok(s) => s.to_string_lossy().into_owned(),
-            Err(_) => return null,
-        };
-        let Ok(c_request) = CString::new(request) else {
-            return null;
-        };
-        let result_ptr = call(s.podcast, c_request.as_ptr());
-        if result_ptr.is_null() {
-            return null;
-        }
-        let owned = unsafe { CStr::from_ptr(result_ptr) }
-            .to_string_lossy()
-            .into_owned();
-        nmp_free_string(result_ptr);
-        java_string(env, owned)
-    })
+    ffi_guard(
+        "call_podcast_json_ffi",
+        || null,
+        || {
+            let Some(s) = session_ref(handle) else {
+                return null;
+            };
+            if s.podcast.is_null() {
+                return null;
+            }
+            let request = match env.get_string(&request_json) {
+                Ok(s) => s.to_string_lossy().into_owned(),
+                Err(_) => return null,
+            };
+            let Ok(c_request) = CString::new(request) else {
+                return null;
+            };
+            let result_ptr = call(s.podcast, c_request.as_ptr());
+            if result_ptr.is_null() {
+                return null;
+            }
+            let owned = unsafe { CStr::from_ptr(result_ptr) }
+                .to_string_lossy()
+                .into_owned();
+            free_owned_c_string(result_ptr);
+            java_string(env, owned)
+        },
+    )
 }
 
 fn call_podcast_global_json_ffi<'l>(
@@ -72,24 +74,28 @@ fn call_podcast_global_json_ffi<'l>(
     call: PodcastGlobalJsonFn,
 ) -> jstring {
     let null: jstring = std::ptr::null_mut();
-    ffi_guard("call_podcast_global_json_ffi", || null, || {
-        let request = match env.get_string(&request_json) {
-            Ok(s) => s.to_string_lossy().into_owned(),
-            Err(_) => return null,
-        };
-        let Ok(c_request) = CString::new(request) else {
-            return null;
-        };
-        let result_ptr = call(c_request.as_ptr());
-        if result_ptr.is_null() {
-            return null;
-        }
-        let owned = unsafe { CStr::from_ptr(result_ptr) }
-            .to_string_lossy()
-            .into_owned();
-        nmp_free_string(result_ptr);
-        java_string(env, owned)
-    })
+    ffi_guard(
+        "call_podcast_global_json_ffi",
+        || null,
+        || {
+            let request = match env.get_string(&request_json) {
+                Ok(s) => s.to_string_lossy().into_owned(),
+                Err(_) => return null,
+            };
+            let Ok(c_request) = CString::new(request) else {
+                return null;
+            };
+            let result_ptr = call(c_request.as_ptr());
+            if result_ptr.is_null() {
+                return null;
+            }
+            let owned = unsafe { CStr::from_ptr(result_ptr) }
+                .to_string_lossy()
+                .into_owned();
+            free_owned_c_string(result_ptr);
+            java_string(env, owned)
+        },
+    )
 }
 
 fn call_podcast_catalog_ffi<'l>(
@@ -98,23 +104,38 @@ fn call_podcast_catalog_ffi<'l>(
     call: PodcastCatalogFn,
 ) -> jstring {
     let null: jstring = std::ptr::null_mut();
-    ffi_guard("call_podcast_catalog_ffi", || null, || {
-        let Some(s) = session_ref(handle) else {
-            return null;
-        };
-        if s.podcast.is_null() {
-            return null;
-        }
-        let result_ptr = call(s.podcast);
-        if result_ptr.is_null() {
-            return null;
-        }
-        let owned = unsafe { CStr::from_ptr(result_ptr) }
-            .to_string_lossy()
-            .into_owned();
-        nmp_free_string(result_ptr);
-        java_string(env, owned)
-    })
+    ffi_guard(
+        "call_podcast_catalog_ffi",
+        || null,
+        || {
+            let Some(s) = session_ref(handle) else {
+                return null;
+            };
+            if s.podcast.is_null() {
+                return null;
+            }
+            let result_ptr = call(s.podcast);
+            if result_ptr.is_null() {
+                return null;
+            }
+            let owned = unsafe { CStr::from_ptr(result_ptr) }
+                .to_string_lossy()
+                .into_owned();
+            free_owned_c_string(result_ptr);
+            java_string(env, owned)
+        },
+    )
+}
+
+fn free_owned_c_string(ptr: *mut c_char) {
+    if ptr.is_null() {
+        return;
+    }
+    // SAFETY: app-owned FFI functions in this crate allocate with
+    // `CString::into_raw`.
+    unsafe {
+        let _ = CString::from_raw(ptr);
+    }
 }
 
 /// `nativeByokAuthorization(intentJson)` - shared BYOK authorization URL.

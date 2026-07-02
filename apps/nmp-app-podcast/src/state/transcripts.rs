@@ -90,8 +90,8 @@ impl TranscriptsState {
     /// arm calls `self.state.transcripts.handle_fetch(episode_id, fetch)`
     /// instead of constructing the Arcs inline.
     ///
-    /// The `fetch` closure is injected by the call site (production wraps
-    /// `nmp_ffi::nmp_app_http_request`; tests inject a deterministic stub).
+    /// The `fetch` closure is injected by the call site; tests inject a
+    /// deterministic stub.
     pub fn handle_fetch(
         &self,
         episode_id: String,

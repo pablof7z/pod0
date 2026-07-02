@@ -17,7 +17,7 @@ use super::backend::{LlmBackend, LlmError, LlmRequest};
 /// (matching the C-ABI convention this module documents at the type alias
 /// above), so the memory belongs to the Rust allocator and must come back
 /// through it — not the host's `free(3)`. This used to be the shared
-/// `nmp_ffi::nmp_free_string` symbol; that crate is deleted, and this
+/// shared FFI free symbol; that crate is deleted, and this
 /// callback is podcast's own local bridging concern (not an NMP FFI
 /// surface), so the free path is inlined here rather than reaching for a
 /// framework helper. Passing `NULL` is a no-op.

@@ -133,11 +133,8 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
     // The flat `agent_notes` list was retired — conversations subsume it.
     let nostr_conversations = handle.state.social.nostr_conversations_snapshot();
 
-    // TODO(follow-up, pablof7z/nmp-feedback#3): in-app feedback events
-    // (kind:1 + kind:513 for this app's project coord) used to be cached and
-    // reduced by `nmp-feedback` (`state.feedback.snapshot_events()` /
-    // `.snapshot_threads()`). Dropped with the feedback runtime in A0/A1 —
-    // both wire fields stay present but always empty until that lands.
+    // Feedback waits on pablof7z/nmp-feedback#3; keep the wire fields present
+    // but empty until the app can consume the replacement feedback runtime.
     let feedback_events: Vec<serde_json::Value> = Vec::new();
     let feedback_threads: Vec<serde_json::Value> = Vec::new();
 
@@ -369,83 +366,62 @@ pub unsafe extern "C" fn nmp_app_podcast_decode_update_frame(
         return std::ptr::null_mut();
     }
     ffi_guard("nmp_app_podcast_decode_update_frame", std::ptr::null_mut, || {
-    // SAFETY: caller guarantees `bytes` is valid for `len` bytes.
-    let slice = unsafe { std::slice::from_raw_parts(bytes, len) };
-    let envelope = match nmp_core::decode_update_frame(slice) {
-        Ok(env) => env,
-        Err(_) => return std::ptr::null_mut(),
-    };
-    let json = match envelope {
-        // PR-B (nmp-v0.3.0): `Snapshot` now carries a typed `SnapshotEnvelope`
-        // (Tier-3 fields) instead of the deleted generic `payload:Value`. Build
-        // the `v` object from the available typed fields. The `projections` map
-        // carries only the signed_events sidecar — `podcast.snapshot` must be
-        // obtained via the pull path (`nmp_app_podcast_snapshot`), driven by
-        // the shell's `pullPodcastSnapshotIfChanged` on every push frame.
-        nmp_core::UpdateEnvelope::Snapshot(env) => {
-            let mut v = serde_json::json!({
-                "rev": env.rev,
-                "running": env.running,
-                "schema_version": 1u32,
-            });
-            // Forward the liveness / error fields the shell reads on every frame.
-            if let Some(toast) = env.last_error_toast {
-                v["last_error_toast"] = serde_json::Value::String(toast);
-            }
-            if let Some(cat) = env.last_error_category {
-                v["last_error_category"] = serde_json::Value::String(cat);
-            }
-            // Bridge the signed_events Tier-2 typed sidecar into
-            // v.projections["signed_events"] so SignedEventsRegistry.ingest
-            // keeps working after the v0.3.0 typed-first migration. Decode
-            // failure degrades silently (D6 — key absent, not a crash).
-            //
-            // Bridge the action_results Tier-2 typed sidecar into
-            // v.projections["action_results"] so Swift can read the drained
-            // BlobDescriptor (or any other async-completing action result)
-            // keyed by correlation_id. Wire shape per action_results_fb.rs:
-            //   [ { "correlation_id": "…", "status": "…", "result": "…" }, … ]
-            // Decode failure degrades silently (D6).
-            //
-            // Also inject all podcast.* domain sidecars under
-            // v.projections[key] so Swift/Android shells can consume per-domain
-            // delta updates without waiting for the pull path.
-            let signed_events_json = decode_signed_events_sidecar(slice);
-            let action_results_json = decode_action_results_sidecar(slice);
-            let domain_sidecars = super::snapshot_domain_projections::decode_podcast_domain_sidecars(slice);
-            let nostr_search_sidecars = decode_nostr_search_sidecars(slice);
+        // SAFETY: caller guarantees `bytes` is valid for `len` bytes.
+        let slice = unsafe { std::slice::from_raw_parts(bytes, len) };
+        let envelope = match nmp_core::decode_update_frame(slice) {
+            Ok(env) => env,
+            Err(_) => return std::ptr::null_mut(),
+        };
+        let json = match envelope {
+            nmp_core::UpdateEnvelope::Snapshot(env) => {
+                let mut v = serde_json::json!({
+                    "rev": env.rev,
+                    "running": env.running,
+                    "schema_version": 1u32,
+                });
+                if let Some(toast) = env.last_error_toast {
+                    v["last_error_toast"] = serde_json::Value::String(toast);
+                }
+                if let Some(cat) = env.last_error_category {
+                    v["last_error_category"] = serde_json::Value::String(cat);
+                }
 
-            if signed_events_json.is_some() || action_results_json.is_some()
-                || domain_sidecars.is_some() || nostr_search_sidecars.is_some() {
-                let mut projections = serde_json::Map::new();
-                if let Some(se) = signed_events_json {
-                    projections.insert("signed_events".to_string(), se);
-                }
-                if let Some(ar) = action_results_json {
-                    projections.insert("action_results".to_string(), ar);
-                }
-                if let Some(domains) = domain_sidecars {
-                    for (key, val) in domains {
-                        projections.insert(key, val);
+                let signed_events_json = decode_signed_events_sidecar(slice);
+                let action_results_json = decode_action_results_sidecar(slice);
+                let domain_sidecars = super::snapshot_domain_projections::decode_podcast_domain_sidecars(slice);
+                let nostr_search_sidecars = decode_nostr_search_sidecars(slice);
+
+                if signed_events_json.is_some() || action_results_json.is_some()
+                    || domain_sidecars.is_some() || nostr_search_sidecars.is_some() {
+                    let mut projections = serde_json::Map::new();
+                    if let Some(se) = signed_events_json {
+                        projections.insert("signed_events".to_string(), se);
                     }
-                }
-                if let Some(searches) = nostr_search_sidecars {
-                    for (key, val) in searches {
-                        projections.insert(key, val);
+                    if let Some(ar) = action_results_json {
+                        projections.insert("action_results".to_string(), ar);
                     }
+                    if let Some(domains) = domain_sidecars {
+                        for (key, val) in domains {
+                            projections.insert(key, val);
+                        }
+                    }
+                    if let Some(searches) = nostr_search_sidecars {
+                        for (key, val) in searches {
+                            projections.insert(key, val);
+                        }
+                    }
+                    v["projections"] = serde_json::Value::Object(projections);
                 }
-                v["projections"] = serde_json::Value::Object(projections);
+                serde_json::json!({ "t": "snapshot", "v": v })
             }
-            serde_json::json!({ "t": "snapshot", "v": v })
+            nmp_core::UpdateEnvelope::Panic(panic) => {
+                serde_json::json!({ "t": "panic", "message": panic.msg })
+            }
+        };
+        match CString::new(json.to_string()) {
+            Ok(c) => c.into_raw(),
+            Err(_) => std::ptr::null_mut(),
         }
-        nmp_core::UpdateEnvelope::Panic(panic) => {
-            serde_json::json!({ "t": "panic", "message": panic.msg })
-        }
-    };
-    match CString::new(json.to_string()) {
-        Ok(c) => c.into_raw(),
-        Err(_) => std::ptr::null_mut(),
-    }
     }) // ffi_guard
 }
 

@@ -10,8 +10,8 @@ use super::*;
 use crate::agent_note_handler::CachedAgentNote;
 use crate::store::approved_peer_store::ApprovedPeerStore;
 use nmp_core::substrate::KernelEvent;
-use nmp_core::KernelEventObserver;
-use nmp_nip02::ActiveFollowSet;
+use nmp_core::ObservedProjectionSink;
+use nmp_nip02::{ActiveFollowSet, LatestKind3FollowSet};
 use std::sync::{Arc, Mutex};
 
 fn cached_note(id: &str, author_hex: &str) -> CachedAgentNote {
@@ -28,7 +28,10 @@ fn cached_note(id: &str, author_hex: &str) -> CachedAgentNote {
 fn make_follow_set_with_member(me: &str, member_hex: &str) -> Arc<ActiveFollowSet> {
     // ActiveFollowSet::new already returns Arc<ActiveFollowSet>.
     let active_slot = Arc::new(Mutex::new(Some(me.to_string())));
-    let follow_set = ActiveFollowSet::new(Arc::clone(&active_slot));
+    let follow_set = ActiveFollowSet::new(
+        Arc::clone(&active_slot),
+        LatestKind3FollowSet::new(nmp_core::slots::new_event_store_slot()),
+    );
     let kind3 = KernelEvent {
         id: nmp_core::substrate::EventId::from(
             "0000000000000000000000000000000000000000000000000000000000000002".to_string(),
@@ -72,7 +75,10 @@ fn trust_predicate_approved_only_is_trusted() {
 fn trust_predicate_neither_is_untrusted() {
     let state = SocialState::for_test();
     let pred = state.trust_predicate();
-    assert!(!pred(PEER), "neither followed nor approved must be untrusted");
+    assert!(
+        !pred(PEER),
+        "neither followed nor approved must be untrusted"
+    );
 }
 
 /// blocked overrides follow → untrusted
@@ -165,7 +171,10 @@ fn block_peer_overrides_follow_in_projection() {
 
     // After block: untrusted despite follow.
     let after = state.nostr_conversations_snapshot();
-    assert!(!after[0].trusted, "must be untrusted after block despite follow");
+    assert!(
+        !after[0].trusted,
+        "must be untrusted after block despite follow"
+    );
 }
 
 /// A poisoned `approved` mutex must fail CLOSED: even a FOLLOWED peer must
@@ -204,10 +213,7 @@ fn trust_predicate_fails_closed_on_poisoned_approved_lock() {
         !pred(PEER),
         "poisoned approved lock must fail closed — followed peer becomes untrusted"
     );
-    assert!(
-        !pred(OTHER),
-        "poisoned approved lock must deny everyone"
-    );
+    assert!(!pred(OTHER), "poisoned approved lock must deny everyone");
 }
 
 // ── Explicit per-peer conversation flags (peer_blocked / peer_approved) ────
@@ -229,7 +235,10 @@ fn conversation_blocked_peer_sets_peer_blocked_and_untrusted() {
         .push(cached_note("noteBlk", PEER));
 
     let conv = &state.nostr_conversations_snapshot()[0];
-    assert!(conv.peer_blocked, "explicitly blocked peer must set peer_blocked");
+    assert!(
+        conv.peer_blocked,
+        "explicitly blocked peer must set peer_blocked"
+    );
     assert!(!conv.peer_approved, "blocked peer is not approved");
     assert!(!conv.trusted, "blocked peer must be untrusted");
 }
@@ -248,7 +257,10 @@ fn conversation_approved_peer_sets_peer_approved_and_trusted() {
         .push(cached_note("noteApp", PEER));
 
     let conv = &state.nostr_conversations_snapshot()[0];
-    assert!(conv.peer_approved, "explicitly approved peer must set peer_approved");
+    assert!(
+        conv.peer_approved,
+        "explicitly approved peer must set peer_approved"
+    );
     assert!(!conv.peer_blocked, "approved peer is not blocked");
     assert!(conv.trusted, "approved peer must be trusted");
 }

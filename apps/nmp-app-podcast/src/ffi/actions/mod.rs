@@ -1,12 +1,10 @@
 //! Podcast-specific action-registration helpers invoked from
 //! [`super::register::nmp_app_podcast_register`].
 //!
-//! `nmp_app_podcast_register` calls `nmp_defaults::register_defaults` for
-//! the canonical NMP action modules (NIP-02 / NIP-17 / NIP-57 / NIP-65) and
-//! the production routing substrate. This file is the hook point for
-//! **Podcast-specific** registrations that the template intentionally does not
-//! ship — NIP-74 podcast feed actions, episode playback intents, chapter
-//! navigation, etc.
+//! `nmp_app_podcast_register` installs the reusable NMP substrate and explicit
+//! protocol modules. This file is the hook point for **Podcast-specific**
+//! registrations that the template intentionally does not ship — NIP-74 podcast
+//! feed actions, episode playback intents, chapter navigation, etc.
 //!
 //! For M3.A the action *types* are defined here so the iOS shell has a
 //! stable contract to encode. The kernel-side `ActionModule` registration
@@ -125,10 +123,7 @@ pub(crate) fn dispatch_host_op(
 ) -> Result<(), String> {
     let envelope = serde_json::json!({ "ns": ns, "action": action });
     send(ActorCommand::Protocol(Box::new(
-        nmp_core::substrate::host_op_command(
-            envelope.to_string(),
-            correlation_id.to_owned(),
-        ),
+        nmp_core::substrate::host_op_command(envelope.to_string(), correlation_id.to_owned()),
     )));
     Ok(())
 }
