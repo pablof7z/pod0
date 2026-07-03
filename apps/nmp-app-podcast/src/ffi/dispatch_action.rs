@@ -15,6 +15,20 @@ use std::ffi::{c_char, CStr, CString};
 use super::guard::ffi_guard;
 use super::handle::PodcastHandle;
 
+pub(crate) fn dispatch_action_json(
+    handle: &PodcastHandle,
+    namespace: &str,
+    action_json: &str,
+) -> String {
+    match crate::dispatch_bytes::dispatch_action_bytes_for(handle.app, namespace, action_json) {
+        Ok(correlation_id) => format!(r#"{{"correlation_id":"{correlation_id}"}}"#),
+        Err(e) => {
+            let escaped = e.replace('\\', r"\\").replace('"', r#"\""#);
+            format!(r#"{{"error":"{escaped}"}}"#)
+        }
+    }
+}
+
 /// Dispatch a namespace-keyed action through the typed byte doorway.
 ///
 /// Replaces the deleted `nmp_app_dispatch_action` JSON doorway from nmp-ffi
@@ -41,28 +55,26 @@ pub extern "C" fn nmp_app_podcast_dispatch_action(
     if handle.is_null() || namespace.is_null() || action_json.is_null() {
         return std::ptr::null_mut();
     }
-    ffi_guard("nmp_app_podcast_dispatch_action", std::ptr::null_mut, || {
-        let ns = match unsafe { CStr::from_ptr(namespace) }.to_str() {
-            Ok(s) => s,
-            Err(_) => return std::ptr::null_mut(),
-        };
-        let json = match unsafe { CStr::from_ptr(action_json) }.to_str() {
-            Ok(s) => s,
-            Err(_) => return std::ptr::null_mut(),
-        };
-        // SAFETY: handle is non-null (checked above); the caller contract
-        // guarantees it came from `nmp_app_podcast_register` and has not yet
-        // been freed.
-        let app = unsafe { (*handle).app };
-        let envelope = match crate::dispatch_bytes::dispatch_action_bytes_for(app, ns, json) {
-            Ok(correlation_id) => format!(r#"{{"correlation_id":"{correlation_id}"}}"#),
-            Err(e) => {
-                let escaped = e.replace('\\', r"\\").replace('"', r#"\""#);
-                format!(r#"{{"error":"{escaped}"}}"#)
-            }
-        };
-        CString::new(envelope)
-            .map(CString::into_raw)
-            .unwrap_or(std::ptr::null_mut())
-    })
+    ffi_guard(
+        "nmp_app_podcast_dispatch_action",
+        std::ptr::null_mut,
+        || {
+            let ns = match unsafe { CStr::from_ptr(namespace) }.to_str() {
+                Ok(s) => s,
+                Err(_) => return std::ptr::null_mut(),
+            };
+            let json = match unsafe { CStr::from_ptr(action_json) }.to_str() {
+                Ok(s) => s,
+                Err(_) => return std::ptr::null_mut(),
+            };
+            // SAFETY: handle is non-null (checked above); the caller contract
+            // guarantees it came from `nmp_app_podcast_register` and has not yet
+            // been freed.
+            let handle_ref = unsafe { &*handle };
+            let envelope = dispatch_action_json(handle_ref, ns, json);
+            CString::new(envelope)
+                .map(CString::into_raw)
+                .unwrap_or(std::ptr::null_mut())
+        },
+    )
 }

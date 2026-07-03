@@ -522,12 +522,14 @@ fileprivate struct FfiConverterData: FfiConverterRustBuffer {
 
 
 /**
- * The app-owned UniFFI object. Owns the single `NmpApp` instance by value —
- * see the module doc for the `native_handle` transitional escape hatch.
+ * The app-owned UniFFI object. Owns the single `NmpApp` instance and the
+ * app-domain `PodcastHandle`.
  */
 public protocol PodcastAppProtocol: AnyObject, Sendable {
 
     func cancelBunkerHandshake()
+
+    func classifyInputIntent(requestJson: String)  -> String
 
     func configure(visibleLimit: UInt32, emitHz: UInt32)
 
@@ -542,9 +544,19 @@ public protocol PodcastAppProtocol: AnyObject, Sendable {
      */
     func createNewAccount(profileJson: String, relaysJson: String, mls: Bool, makeActive: Bool)
 
+    func decodeNip21Uri(input: String)  -> String
+
+    func decodeUpdateFrame(frame: Data)  -> String?
+
+    func deliverExternalSignerResponse(responseJson: String)
+
     func dispatchAction(envelope: Data)  -> PodcastDispatchOutcome
 
     func dispatchCapabilityJson(requestJson: String)  -> String
+
+    func dispatchInputIntent(requestJson: String, sessionId: String?)  -> String
+
+    func dispatchPodcastAction(namespace: String, actionJson: String)  -> String?
 
     func isAlive()  -> Bool
 
@@ -552,15 +564,20 @@ public protocol PodcastAppProtocol: AnyObject, Sendable {
 
     func lifecycleForeground()
 
-    /**
-     * Transitional escape hatch (wave 1 only): the raw `*mut NmpApp` address
-     * this facade owns, for the still-C-ABI `nmp_app_podcast_*` surface.
-     * Valid only while this `PodcastApp` (and thus its Swift/Kotlin
-     * reference) is alive. Deleted once every C-ABI symbol has migrated.
-     */
-    func nativeHandle()  -> UInt64
-
     func nostrconnectUri(callbackScheme: String?)  -> String?
+
+    func podcastBridgeCall(endpoint: String, requestJson: String?)  -> String?
+
+    /**
+     * Transitional escape hatch for the still-C-ABI app-domain tail.
+     * This returns the `PodcastHandle` pointer owned by this `PodcastApp`;
+     * Swift must not free it.
+     */
+    func podcastHandle()  -> UInt64
+
+    func podcastSnapshot()  -> String?
+
+    func podcastSnapshotRev()  -> UInt64
 
     func releaseRef(namespace: PodcastRefNamespace, key: String, consumerId: String)
 
@@ -570,7 +587,11 @@ public protocol PodcastAppProtocol: AnyObject, Sendable {
 
     func resolveRef(namespace: PodcastRefNamespace, key: String, consumerId: String, shape: PodcastRefShape, liveness: PodcastRefLiveness)
 
+    func setAgentAskSink(sink: PodcastAgentAskSink?)
+
     func setCapabilityCallback(sink: PodcastCapabilitySink?)
+
+    func setPodcastDataDir(path: String)
 
     func setStoragePath(path: String?)
 
@@ -584,6 +605,8 @@ public protocol PodcastAppProtocol: AnyObject, Sendable {
 
     func signinBunker(uri: String, makeActive: Bool)
 
+    func signinNip55(signerPackage: String?)
+
     func signinNsec(secret: String, makeActive: Bool)
 
     func start(visibleLimit: UInt32, emitHz: UInt32)
@@ -592,8 +615,8 @@ public protocol PodcastAppProtocol: AnyObject, Sendable {
 
 }
 /**
- * The app-owned UniFFI object. Owns the single `NmpApp` instance by value —
- * see the module doc for the `native_handle` transitional escape hatch.
+ * The app-owned UniFFI object. Owns the single `NmpApp` instance and the
+ * app-domain `PodcastHandle`.
  */
 open class PodcastApp: PodcastAppProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
@@ -660,6 +683,14 @@ open func cancelBunkerHandshake()  {try! rustCall() {
 }
 }
 
+open func classifyInputIntent(requestJson: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_nmp_app_podcast_fn_method_podcastapp_classify_input_intent(self.uniffiClonePointer(),
+        FfiConverterString.lower(requestJson),$0
+    )
+})
+}
+
 open func configure(visibleLimit: UInt32, emitHz: UInt32)  {try! rustCall() {
     uniffi_nmp_app_podcast_fn_method_podcastapp_configure(self.uniffiClonePointer(),
         FfiConverterUInt32.lower(visibleLimit),
@@ -691,6 +722,29 @@ open func createNewAccount(profileJson: String, relaysJson: String, mls: Bool, m
 }
 }
 
+open func decodeNip21Uri(input: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_nmp_app_podcast_fn_method_podcastapp_decode_nip21_uri(self.uniffiClonePointer(),
+        FfiConverterString.lower(input),$0
+    )
+})
+}
+
+open func decodeUpdateFrame(frame: Data) -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
+    uniffi_nmp_app_podcast_fn_method_podcastapp_decode_update_frame(self.uniffiClonePointer(),
+        FfiConverterData.lower(frame),$0
+    )
+})
+}
+
+open func deliverExternalSignerResponse(responseJson: String)  {try! rustCall() {
+    uniffi_nmp_app_podcast_fn_method_podcastapp_deliver_external_signer_response(self.uniffiClonePointer(),
+        FfiConverterString.lower(responseJson),$0
+    )
+}
+}
+
 open func dispatchAction(envelope: Data) -> PodcastDispatchOutcome  {
     return try!  FfiConverterTypePodcastDispatchOutcome_lift(try! rustCall() {
     uniffi_nmp_app_podcast_fn_method_podcastapp_dispatch_action(self.uniffiClonePointer(),
@@ -703,6 +757,24 @@ open func dispatchCapabilityJson(requestJson: String) -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
     uniffi_nmp_app_podcast_fn_method_podcastapp_dispatch_capability_json(self.uniffiClonePointer(),
         FfiConverterString.lower(requestJson),$0
+    )
+})
+}
+
+open func dispatchInputIntent(requestJson: String, sessionId: String?) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_nmp_app_podcast_fn_method_podcastapp_dispatch_input_intent(self.uniffiClonePointer(),
+        FfiConverterString.lower(requestJson),
+        FfiConverterOptionString.lower(sessionId),$0
+    )
+})
+}
+
+open func dispatchPodcastAction(namespace: String, actionJson: String) -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
+    uniffi_nmp_app_podcast_fn_method_podcastapp_dispatch_podcast_action(self.uniffiClonePointer(),
+        FfiConverterString.lower(namespace),
+        FfiConverterString.lower(actionJson),$0
     )
 })
 }
@@ -726,23 +798,45 @@ open func lifecycleForeground()  {try! rustCall() {
 }
 }
 
-    /**
-     * Transitional escape hatch (wave 1 only): the raw `*mut NmpApp` address
-     * this facade owns, for the still-C-ABI `nmp_app_podcast_*` surface.
-     * Valid only while this `PodcastApp` (and thus its Swift/Kotlin
-     * reference) is alive. Deleted once every C-ABI symbol has migrated.
-     */
-open func nativeHandle() -> UInt64  {
-    return try!  FfiConverterUInt64.lift(try! rustCall() {
-    uniffi_nmp_app_podcast_fn_method_podcastapp_native_handle(self.uniffiClonePointer(),$0
-    )
-})
-}
-
 open func nostrconnectUri(callbackScheme: String?) -> String?  {
     return try!  FfiConverterOptionString.lift(try! rustCall() {
     uniffi_nmp_app_podcast_fn_method_podcastapp_nostrconnect_uri(self.uniffiClonePointer(),
         FfiConverterOptionString.lower(callbackScheme),$0
+    )
+})
+}
+
+open func podcastBridgeCall(endpoint: String, requestJson: String?) -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
+    uniffi_nmp_app_podcast_fn_method_podcastapp_podcast_bridge_call(self.uniffiClonePointer(),
+        FfiConverterString.lower(endpoint),
+        FfiConverterOptionString.lower(requestJson),$0
+    )
+})
+}
+
+    /**
+     * Transitional escape hatch for the still-C-ABI app-domain tail.
+     * This returns the `PodcastHandle` pointer owned by this `PodcastApp`;
+     * Swift must not free it.
+     */
+open func podcastHandle() -> UInt64  {
+    return try!  FfiConverterUInt64.lift(try! rustCall() {
+    uniffi_nmp_app_podcast_fn_method_podcastapp_podcast_handle(self.uniffiClonePointer(),$0
+    )
+})
+}
+
+open func podcastSnapshot() -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
+    uniffi_nmp_app_podcast_fn_method_podcastapp_podcast_snapshot(self.uniffiClonePointer(),$0
+    )
+})
+}
+
+open func podcastSnapshotRev() -> UInt64  {
+    return try!  FfiConverterUInt64.lift(try! rustCall() {
+    uniffi_nmp_app_podcast_fn_method_podcastapp_podcast_snapshot_rev(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -780,9 +874,23 @@ open func resolveRef(namespace: PodcastRefNamespace, key: String, consumerId: St
 }
 }
 
+open func setAgentAskSink(sink: PodcastAgentAskSink?)  {try! rustCall() {
+    uniffi_nmp_app_podcast_fn_method_podcastapp_set_agent_ask_sink(self.uniffiClonePointer(),
+        FfiConverterOptionCallbackInterfacePodcastAgentAskSink.lower(sink),$0
+    )
+}
+}
+
 open func setCapabilityCallback(sink: PodcastCapabilitySink?)  {try! rustCall() {
     uniffi_nmp_app_podcast_fn_method_podcastapp_set_capability_callback(self.uniffiClonePointer(),
         FfiConverterOptionCallbackInterfacePodcastCapabilitySink.lower(sink),$0
+    )
+}
+}
+
+open func setPodcastDataDir(path: String)  {try! rustCall() {
+    uniffi_nmp_app_podcast_fn_method_podcastapp_set_podcast_data_dir(self.uniffiClonePointer(),
+        FfiConverterString.lower(path),$0
     )
 }
 }
@@ -826,6 +934,13 @@ open func signinBunker(uri: String, makeActive: Bool)  {try! rustCall() {
     uniffi_nmp_app_podcast_fn_method_podcastapp_signin_bunker(self.uniffiClonePointer(),
         FfiConverterString.lower(uri),
         FfiConverterBool.lower(makeActive),$0
+    )
+}
+}
+
+open func signinNip55(signerPackage: String?)  {try! rustCall() {
+    uniffi_nmp_app_podcast_fn_method_podcastapp_signin_nip55(self.uniffiClonePointer(),
+        FfiConverterOptionString.lower(signerPackage),$0
     )
 }
 }
@@ -1344,6 +1459,122 @@ extension PodcastRefShape: Equatable, Hashable {}
 
 
 
+public protocol PodcastAgentAskSink: AnyObject, Sendable {
+
+    func onAgentAskEvent(eventJson: String)
+
+}
+
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfacePodcastAgentAskSink {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    //
+    // This creates 1-element array, since this seems to be the only way to construct a const
+    // pointer that we can pass to the Rust code.
+    static let vtable: [UniffiVTableCallbackInterfacePodcastAgentAskSink] = [UniffiVTableCallbackInterfacePodcastAgentAskSink(
+        onAgentAskEvent: { (
+            uniffiHandle: UInt64,
+            eventJson: RustBuffer,
+            uniffiOutReturn: UnsafeMutableRawPointer,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> () in
+                guard let uniffiObj = try? FfiConverterCallbackInterfacePodcastAgentAskSink.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.onAgentAskEvent(
+                     eventJson: try FfiConverterString.lift(eventJson)
+                )
+            }
+
+
+            let writeReturn = { () }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            let result = try? FfiConverterCallbackInterfacePodcastAgentAskSink.handleMap.remove(handle: uniffiHandle)
+            if result == nil {
+                print("Uniffi callback interface PodcastAgentAskSink: handle missing in uniffiFree")
+            }
+        }
+    )]
+}
+
+private func uniffiCallbackInitPodcastAgentAskSink() {
+    uniffi_nmp_app_podcast_fn_init_callback_vtable_podcastagentasksink(UniffiCallbackInterfacePodcastAgentAskSink.vtable)
+}
+
+// FfiConverter protocol for callback interfaces
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterCallbackInterfacePodcastAgentAskSink {
+    fileprivate static let handleMap = UniffiHandleMap<PodcastAgentAskSink>()
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+extension FfiConverterCallbackInterfacePodcastAgentAskSink : FfiConverter {
+    typealias SwiftType = PodcastAgentAskSink
+    typealias FfiType = UInt64
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func lift(_ handle: UInt64) throws -> SwiftType {
+        try handleMap.get(handle: handle)
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func lower(_ v: SwiftType) -> UInt64 {
+        return handleMap.insert(obj: v)
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func write(_ v: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(v))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterCallbackInterfacePodcastAgentAskSink_lift(_ handle: UInt64) throws -> PodcastAgentAskSink {
+    return try FfiConverterCallbackInterfacePodcastAgentAskSink.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterCallbackInterfacePodcastAgentAskSink_lower(_ v: PodcastAgentAskSink) -> UInt64 {
+    return FfiConverterCallbackInterfacePodcastAgentAskSink.lower(v)
+}
+
+
+
+
 public protocol PodcastCapabilitySink: AnyObject, Sendable {
 
     func onCapabilityRequest(requestJson: String)  -> String
@@ -1600,6 +1831,30 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionCallbackInterfacePodcastAgentAskSink: FfiConverterRustBuffer {
+    typealias SwiftType = PodcastAgentAskSink?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterCallbackInterfacePodcastAgentAskSink.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterCallbackInterfacePodcastAgentAskSink.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionCallbackInterfacePodcastCapabilitySink: FfiConverterRustBuffer {
     typealias SwiftType = PodcastCapabilitySink?
 
@@ -1644,6 +1899,14 @@ fileprivate struct FfiConverterOptionCallbackInterfacePodcastUpdateSink: FfiConv
         }
     }
 }
+public func podcastBridgeGlobalCall(endpoint: String, requestJson: String) -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
+    uniffi_nmp_app_podcast_fn_func_podcast_bridge_global_call(
+        FfiConverterString.lower(endpoint),
+        FfiConverterString.lower(requestJson),$0
+    )
+})
+}
 
 private enum InitializationResult {
     case ok
@@ -1660,7 +1923,13 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if (uniffi_nmp_app_podcast_checksum_func_podcast_bridge_global_call() != 52926) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nmp_app_podcast_checksum_method_podcastapp_cancel_bunker_handshake() != 641) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nmp_app_podcast_checksum_method_podcastapp_classify_input_intent() != 22761) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nmp_app_podcast_checksum_method_podcastapp_configure() != 15231) {
@@ -1672,10 +1941,25 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nmp_app_podcast_checksum_method_podcastapp_create_new_account() != 5059) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nmp_app_podcast_checksum_method_podcastapp_decode_nip21_uri() != 30743) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nmp_app_podcast_checksum_method_podcastapp_decode_update_frame() != 33239) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nmp_app_podcast_checksum_method_podcastapp_deliver_external_signer_response() != 56059) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nmp_app_podcast_checksum_method_podcastapp_dispatch_action() != 26141) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nmp_app_podcast_checksum_method_podcastapp_dispatch_capability_json() != 21258) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nmp_app_podcast_checksum_method_podcastapp_dispatch_input_intent() != 24629) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nmp_app_podcast_checksum_method_podcastapp_dispatch_podcast_action() != 5545) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nmp_app_podcast_checksum_method_podcastapp_is_alive() != 46134) {
@@ -1687,10 +1971,19 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nmp_app_podcast_checksum_method_podcastapp_lifecycle_foreground() != 44456) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nmp_app_podcast_checksum_method_podcastapp_native_handle() != 27651) {
+    if (uniffi_nmp_app_podcast_checksum_method_podcastapp_nostrconnect_uri() != 64833) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nmp_app_podcast_checksum_method_podcastapp_nostrconnect_uri() != 64833) {
+    if (uniffi_nmp_app_podcast_checksum_method_podcastapp_podcast_bridge_call() != 54916) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nmp_app_podcast_checksum_method_podcastapp_podcast_handle() != 9309) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nmp_app_podcast_checksum_method_podcastapp_podcast_snapshot() != 121) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nmp_app_podcast_checksum_method_podcastapp_podcast_snapshot_rev() != 37686) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nmp_app_podcast_checksum_method_podcastapp_release_ref() != 65391) {
@@ -1705,7 +1998,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nmp_app_podcast_checksum_method_podcastapp_resolve_ref() != 38717) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nmp_app_podcast_checksum_method_podcastapp_set_agent_ask_sink() != 1815) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nmp_app_podcast_checksum_method_podcastapp_set_capability_callback() != 42066) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nmp_app_podcast_checksum_method_podcastapp_set_podcast_data_dir() != 50106) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nmp_app_podcast_checksum_method_podcastapp_set_storage_path() != 54228) {
@@ -1726,6 +2025,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nmp_app_podcast_checksum_method_podcastapp_signin_bunker() != 16445) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nmp_app_podcast_checksum_method_podcastapp_signin_nip55() != 17171) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nmp_app_podcast_checksum_method_podcastapp_signin_nsec() != 29789) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1738,6 +2040,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nmp_app_podcast_checksum_constructor_podcastapp_new() != 33241) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nmp_app_podcast_checksum_method_podcastagentasksink_on_agent_ask_event() != 32244) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nmp_app_podcast_checksum_method_podcastcapabilitysink_on_capability_request() != 55021) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1745,6 +2050,7 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
 
+    uniffiCallbackInitPodcastAgentAskSink()
     uniffiCallbackInitPodcastCapabilitySink()
     uniffiCallbackInitPodcastUpdateSink()
     return InitializationResult.ok

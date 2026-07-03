@@ -7,7 +7,7 @@ import Foundation
 /// `ingest`ed here under a lock; `awaitResult(correlationID:)` either consumes
 /// an already-buffered result or installs a continuation the next `ingest`
 /// resolves. This is the structural guarantee that the drain-once frame is
-/// never missed between the synchronous `nmp_app_sign_event_for_return` return
+/// never missed between the synchronous `PodcastApp.signEventForReturn` return
 /// and the caller's `await`.
 final class SignedEventsRegistry: @unchecked Sendable {
     private let lock = NSLock()

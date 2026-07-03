@@ -44,10 +44,10 @@ enum PodcastCapabilityInstances {
 /// Rust decides when and what to call; Swift only executes the request and
 /// reports the raw result (D7).
 ///
-/// There is a single C capability callback (`nmp_app_set_capability_callback`);
-/// `SyncCapabilityBridge` adapts that actor-thread callback into the routing
-/// contract here. See `handleCapabilityCallbackJSON(_:http:)` for the
-/// thread-aware entry point and `handleJSON(_:)` for the namespace table.
+/// `SyncCapabilityBridge` adapts the generated UniFFI actor-thread callback
+/// into the routing contract here. See
+/// `handleCapabilityCallbackJSON(_:http:)` for the thread-aware entry point
+/// and `handleJSON(_:)` for the namespace table.
 @MainActor
 final class PodcastCapabilities {
     /// Process-wide instance.

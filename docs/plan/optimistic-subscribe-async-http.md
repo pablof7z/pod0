@@ -109,8 +109,8 @@ itunes/transcript/chapters still use it):
 
 ### 6. Android + TUI executors
 
-- Android (`apps/nmp-app-podcast/src/android/…` + Kotlin): JNI `nativeHttpReport` +
-  Kotlin async HTTP executor that posts the report.
+- Android (generated UniFFI + Kotlin): async HTTP executor that posts the
+  report through the shared bridge.
 - TUI (`apps/podcast-tui/src/runtime.rs::dispatch_capability_request`): handle the async
   namespace by spawning the HTTP off the actor thread and calling the report path.
 

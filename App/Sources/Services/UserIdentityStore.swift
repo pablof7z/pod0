@@ -164,8 +164,8 @@ final class UserIdentityStore {
     /// same key as NMP's active signer, and bumps the snapshot rev — so the next
     /// push frame carries `active_account` and Rust-owned publish paths can sign.
     ///
-    /// Note: `nmp_app_create_new_account` is the NMP-core multi-account FFI
-    /// (Nostr relay publishing). It does NOT update the app-local `IdentityStore`
+    /// Note: `PodcastApp.createNewAccount` is the NMP multi-account path for
+    /// Nostr relay publishing. It does NOT update the app-local `IdentityStore`
     /// that `PodcastUpdate.active_account` reads from and therefore would never
     /// surface the identity in the UI.
     private func dispatchKernelKeygen() {

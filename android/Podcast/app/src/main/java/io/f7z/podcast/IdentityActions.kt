@@ -8,8 +8,8 @@ import kotlinx.serialization.json.Json
 /**
  * Canonical wire contract for the `podcast.identity` kernel action namespace.
  *
- * **Why not `bridge.signinNsec`?** The `nativeSigninNsec` / `bridge.signinNsec`
- * path calls the kernel's `nmp_app_signin_nsec`, which feeds the *nmp-core*
+ * **Why not `bridge.signinNsec`?** The generated `bridge.signinNsec`
+ * path calls the kernel's generic local-signer API, which feeds the *nmp-core*
  * multi-account store. The Android snapshot's `activeAccount` is built
  * elsewhere — from the podcast-app `IdentityStore` (`ffi/snapshot.rs`),
  * populated ONLY by the `podcast.identity` actions below. So sign-in/out that

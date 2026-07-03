@@ -120,7 +120,9 @@ pub fn build_podcast_update(handle: &PodcastHandle) -> PodcastUpdate {
 
     // Step 8: comments now read from CommentsState.
     // Project viewed-episode comments, falling back to now-playing.
-    let comments = handle.state.comments.project(now_playing.as_ref().and_then(|np| np.episode_id.as_deref()));
+    let comments = handle.state.comments.project(
+        now_playing.as_ref().and_then(|np| np.episode_id.as_deref()),
+    );
     let notes = handle.state.notes.notes_snapshot().into_iter().map(Into::into).collect();
     let friends = handle.state.friends.friends_snapshot().into_iter().map(Into::into).collect();
 
@@ -288,13 +290,17 @@ pub extern "C" fn nmp_app_podcast_snapshot_free(ptr: *mut c_char) {
     if ptr.is_null() {
         return;
     }
-    ffi_guard("nmp_app_podcast_snapshot_free", || (), || {
-        // SAFETY: caller guarantees `ptr` came from `CString::into_raw` in
-        // `nmp_app_podcast_snapshot` and has not been freed.
-        unsafe {
-            let _ = CString::from_raw(ptr);
-        }
-    });
+    ffi_guard(
+        "nmp_app_podcast_snapshot_free",
+        || (),
+        || {
+            // SAFETY: caller guarantees `ptr` came from `CString::into_raw` in
+            // `nmp_app_podcast_snapshot` and has not been freed.
+            unsafe {
+                let _ = CString::from_raw(ptr);
+            }
+        },
+    );
 }
 
 /// Drop the handle and free associated resources.
@@ -306,30 +312,19 @@ pub extern "C" fn nmp_app_podcast_unregister(handle: *mut PodcastHandle) {
     if handle.is_null() {
         return;
     }
-    ffi_guard("nmp_app_podcast_unregister", || (), || {
-        // SAFETY: caller guarantees `handle` came from `nmp_app_podcast_register`
-        // (which now returns `Arc::into_raw`) and has not already been freed. This
-        // reclaims the shell's strong ref; the snapshot-projection closure holds a
-        // second ref that is released when the app's projection registry is dropped.
-        let reclaimed = unsafe { Arc::from_raw(handle as *const PodcastHandle) };
-        // Step 12: Fence the voice-conversation off-thread dispatch UAF: abort +
-        // join any in-flight LLM turn so no spawned Tokio task can dereference
-        // `app` after `nmp_app_free`. The caller contract guarantees `unregister`
-        // runs before `nmp_app_free`, and (because the snapshot-projection closure
-        // holds a second strong `Arc<PodcastHandle>`) the manager itself does not
-        // drop here — so this explicit drain, not a `Drop` impl, is the fence.
-        //
-        // Teardown ordering: shutdown BEFORE drop (i.e. before the `reclaimed`
-        // Arc falls out of scope) — unchanged from the pre-migration fence.
-        reclaimed.state.voice.shutdown();
-        // Same fence for the kernel-owned task scheduler tick: abort + join the
-        // periodic ticker so no spawned Tokio task can dereference `app`
-        // (`nmp_app_dispatch_action`) after `nmp_app_free`.  MUST run before the
-        // `reclaimed` Arc drops (i.e. before `nmp_app_free`), beside the voice
-        // fence above.
-        reclaimed.state.tasks.shutdown();
-        let _ = reclaimed.app;
-    });
+    ffi_guard(
+        "nmp_app_podcast_unregister",
+        || (),
+        || {
+            // SAFETY: caller guarantees `handle` came from `nmp_app_podcast_register`
+            // (which now returns `Arc::into_raw`) and has not already been freed. This
+            // reclaims the shell's strong ref; the snapshot-projection closure holds a
+            // second ref that is released when the app's projection registry is dropped.
+            let reclaimed = unsafe { Arc::from_raw(handle as *const PodcastHandle) };
+            reclaimed.shutdown_sidecars();
+            let _ = reclaimed.app;
+        },
+    );
 }
 
 /// Decode a binary FlatBuffers update frame into the JSON envelope consumed by
@@ -365,64 +360,76 @@ pub unsafe extern "C" fn nmp_app_podcast_decode_update_frame(
     if bytes.is_null() || len == 0 {
         return std::ptr::null_mut();
     }
-    ffi_guard("nmp_app_podcast_decode_update_frame", std::ptr::null_mut, || {
-        // SAFETY: caller guarantees `bytes` is valid for `len` bytes.
-        let slice = unsafe { std::slice::from_raw_parts(bytes, len) };
-        let envelope = match nmp_core::decode_update_frame(slice) {
-            Ok(env) => env,
-            Err(_) => return std::ptr::null_mut(),
-        };
-        let json = match envelope {
-            nmp_core::UpdateEnvelope::Snapshot(env) => {
-                let mut v = serde_json::json!({
-                    "rev": env.rev,
-                    "running": env.running,
-                    "schema_version": 1u32,
-                });
-                if let Some(toast) = env.last_error_toast {
-                    v["last_error_toast"] = serde_json::Value::String(toast);
-                }
-                if let Some(cat) = env.last_error_category {
-                    v["last_error_category"] = serde_json::Value::String(cat);
-                }
-
-                let signed_events_json = decode_signed_events_sidecar(slice);
-                let action_results_json = decode_action_results_sidecar(slice);
-                let domain_sidecars = super::snapshot_domain_projections::decode_podcast_domain_sidecars(slice);
-                let nostr_search_sidecars = decode_nostr_search_sidecars(slice);
-
-                if signed_events_json.is_some() || action_results_json.is_some()
-                    || domain_sidecars.is_some() || nostr_search_sidecars.is_some() {
-                    let mut projections = serde_json::Map::new();
-                    if let Some(se) = signed_events_json {
-                        projections.insert("signed_events".to_string(), se);
-                    }
-                    if let Some(ar) = action_results_json {
-                        projections.insert("action_results".to_string(), ar);
-                    }
-                    if let Some(domains) = domain_sidecars {
-                        for (key, val) in domains {
-                            projections.insert(key, val);
-                        }
-                    }
-                    if let Some(searches) = nostr_search_sidecars {
-                        for (key, val) in searches {
-                            projections.insert(key, val);
-                        }
-                    }
-                    v["projections"] = serde_json::Value::Object(projections);
-                }
-                serde_json::json!({ "t": "snapshot", "v": v })
+    ffi_guard(
+        "nmp_app_podcast_decode_update_frame",
+        std::ptr::null_mut,
+        || {
+            // SAFETY: caller guarantees `bytes` is valid for `len` bytes.
+            let slice = unsafe { std::slice::from_raw_parts(bytes, len) };
+            let Some(json) = decode_update_frame_json(slice) else {
+                return std::ptr::null_mut();
+            };
+            match CString::new(json) {
+                Ok(c) => c.into_raw(),
+                Err(_) => std::ptr::null_mut(),
             }
-            nmp_core::UpdateEnvelope::Panic(panic) => {
-                serde_json::json!({ "t": "panic", "message": panic.msg })
+        },
+    ) // ffi_guard
+}
+
+pub(crate) fn decode_update_frame_json(slice: &[u8]) -> Option<String> {
+    let envelope = nmp_core::decode_update_frame(slice).ok()?;
+    let json = match envelope {
+        nmp_core::UpdateEnvelope::Snapshot(env) => {
+            let mut v = serde_json::json!({
+                "rev": env.rev,
+                "running": env.running,
+                "schema_version": 1u32,
+            });
+            if let Some(toast) = env.last_error_toast {
+                v["last_error_toast"] = serde_json::Value::String(toast);
             }
-        };
-        match CString::new(json.to_string()) {
-            Ok(c) => c.into_raw(),
-            Err(_) => std::ptr::null_mut(),
+            if let Some(cat) = env.last_error_category {
+                v["last_error_category"] = serde_json::Value::String(cat);
+            }
+
+            let signed_events_json = decode_signed_events_sidecar(slice);
+            let action_results_json = decode_action_results_sidecar(slice);
+            let domain_sidecars =
+                super::snapshot_domain_projections::decode_podcast_domain_sidecars(slice);
+            let nostr_search_sidecars = decode_nostr_search_sidecars(slice);
+
+            if signed_events_json.is_some()
+                || action_results_json.is_some()
+                || domain_sidecars.is_some()
+                || nostr_search_sidecars.is_some()
+            {
+                let mut projections = serde_json::Map::new();
+                if let Some(se) = signed_events_json {
+                    projections.insert("signed_events".to_string(), se);
+                }
+                if let Some(ar) = action_results_json {
+                    projections.insert("action_results".to_string(), ar);
+                }
+                if let Some(domains) = domain_sidecars {
+                    for (key, val) in domains {
+                        projections.insert(key, val);
+                    }
+                }
+                if let Some(searches) = nostr_search_sidecars {
+                    for (key, val) in searches {
+                        projections.insert(key, val);
+                    }
+                }
+                v["projections"] = serde_json::Value::Object(projections);
+            }
+            serde_json::json!({ "t": "snapshot", "v": v })
         }
-    }) // ffi_guard
+        nmp_core::UpdateEnvelope::Panic(panic) => {
+            serde_json::json!({ "t": "panic", "message": panic.msg })
+        }
+    };
+    Some(json.to_string())
 }
 
 /// Decode the `signed_events` typed FlatBuffer sidecar from a raw update-frame
@@ -468,11 +475,11 @@ use snapshot_nostr_search::decode_nostr_search_sidecars;
 // Tests split into snapshot_tests.rs + snapshot_tests_ext.rs + snapshot_decode_tests.rs;
 // #[path] keeps private items in scope.
 #[cfg(test)]
+#[path = "snapshot_decode_tests.rs"]
+mod decode_tests;
+#[cfg(test)]
 #[path = "snapshot_tests.rs"]
 mod tests;
 #[cfg(test)]
 #[path = "snapshot_tests_ext.rs"]
 mod tests_ext;
-#[cfg(test)]
-#[path = "snapshot_decode_tests.rs"]
-mod decode_tests;

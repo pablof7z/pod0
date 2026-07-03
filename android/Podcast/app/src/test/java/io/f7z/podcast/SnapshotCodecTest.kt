@@ -10,13 +10,12 @@ import org.junit.Test
  * Coverage for issue #320 — Android snapshot delivery is push-driven, not timed.
  *
  * `MainActivity` no longer runs a `while(true)/delay(500ms)` pull loop. It blocks
- * on `KernelBridge.nextUpdate()`, which returns the kernel's push frame as the
- * enveloped JSON `{"t":"snapshot","v":{...}}` (see
- * `apps/nmp-app-podcast/src/android.rs::on_update` +
- * `nmp_app_podcast_decode_update_frame`). These tests pin the decode contract
- * that makes that loop correct: non-snapshot / malformed frames are dropped so
- * a bad frame can never blank or crash the surface, and the bare pull path for
- * the first-paint snapshot continues to work.
+ * on `KernelBridge.nextUpdate()`, which returns the kernel's push frame after
+ * generated UniFFI forwards it through `PodcastApp.decodeUpdateFrame`. These
+ * tests pin the decode contract that makes that loop correct: non-snapshot /
+ * malformed frames are dropped so a bad frame can never blank or crash the
+ * surface, and the bare pull path for the first-paint snapshot continues to
+ * work.
  *
  * NOTE: As of NMP v0.5.0 (PR #404) the push-frame path uses per-domain typed
  * sidecars decoded via [SnapshotCodec.decodeDomainFrames] + [SnapshotCodec.mergeFrames].

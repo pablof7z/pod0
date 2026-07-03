@@ -1,12 +1,6 @@
-use std::ffi::c_char;
-
-use nmp_core::substrate::{
-    InputIntentClassification, InputIntentRejection, InputIntentRequest,
-};
+use nmp_core::substrate::{InputIntentClassification, InputIntentRejection, InputIntentRequest};
 use nmp_native_runtime::NmpApp;
 use serde::Serialize;
-
-use super::{app_ref, c_string, into_c_string, optional_c_string};
 
 #[derive(Serialize)]
 struct FfiError {
@@ -26,21 +20,15 @@ fn error_json(error: &'static str) -> String {
 }
 
 fn classify_request(
-    app: *mut NmpApp,
-    request_json: *const c_char,
+    app: &NmpApp,
+    request_json: &str,
 ) -> Result<InputIntentClassification, &'static str> {
-    let app = app_ref(app).ok_or("invalid-app")?;
-    let request_json = c_string(request_json).ok_or("invalid-input")?;
     let request: InputIntentRequest =
-        serde_json::from_str(&request_json).map_err(|_| "unparseable-request")?;
+        serde_json::from_str(request_json).map_err(|_| "unparseable-request")?;
     Ok(app.classify_input_intent(&request))
 }
 
-#[no_mangle]
-pub extern "C" fn nmp_app_intent_classify(
-    app: *mut NmpApp,
-    request_json: *const c_char,
-) -> *mut c_char {
+pub fn classify_input_intent_json(app: &NmpApp, request_json: &str) -> String {
     let output = match classify_request(app, request_json) {
         Ok(classification) => serde_json::to_string(&ClassifyOk {
             ok: true,
@@ -49,7 +37,7 @@ pub extern "C" fn nmp_app_intent_classify(
         .unwrap_or_else(|_| error_json("serialization-failed")),
         Err(error) => error_json(error),
     };
-    into_c_string(output)
+    output
 }
 
 #[derive(Serialize)]
@@ -64,29 +52,29 @@ struct Rejected<'a> {
     rejection: &'a InputIntentRejection,
 }
 
-#[no_mangle]
-pub extern "C" fn nmp_app_intent_dispatch(
-    app: *mut NmpApp,
-    request_json: *const c_char,
-    session_id: *const c_char,
-) -> *mut c_char {
+pub fn dispatch_input_intent_json(
+    app: &NmpApp,
+    request_json: &str,
+    session_id: Option<&str>,
+) -> String {
     let output = match dispatch_intent(app, request_json, session_id) {
         Ok(output) => output,
         Err(error) => error_json(error),
     };
-    into_c_string(output)
+    output
 }
 
 fn dispatch_intent(
-    app: *mut NmpApp,
-    request_json: *const c_char,
-    session_id: *const c_char,
+    app: &NmpApp,
+    request_json: &str,
+    session_id: Option<&str>,
 ) -> Result<String, &'static str> {
-    let app_ref = app_ref(app).ok_or("invalid-app")?;
-    let request_json = c_string(request_json).ok_or("invalid-input")?;
     let request: InputIntentRequest =
-        serde_json::from_str(&request_json).map_err(|_| "unparseable-request")?;
-    match app_ref.dispatch_input_intent(&request, optional_c_string(session_id).as_deref()) {
+        serde_json::from_str(request_json).map_err(|_| "unparseable-request")?;
+    match app.dispatch_input_intent(
+        &request,
+        session_id.filter(|value| !value.trim().is_empty()),
+    ) {
         nmp_native_runtime::InputIntentDispatch::Dispatched(candidate) => {
             serde_json::to_string(&Dispatched {
                 ok: true,
@@ -134,15 +122,7 @@ struct DecodeSuccess {
     target: DecodeTarget,
 }
 
-#[no_mangle]
-pub extern "C" fn nmp_nip21_decode_uri(input: *const c_char) -> *mut c_char {
-    let output = c_string(input)
-        .map(|input| decode_uri_json(&input))
-        .unwrap_or_else(|| error_json("invalid-input"));
-    into_c_string(output)
-}
-
-fn decode_uri_json(input: &str) -> String {
+pub fn decode_nip21_uri_json(input: &str) -> String {
     match decode_uri(input) {
         Ok(target) => serde_json::to_string(&DecodeSuccess { ok: true, target })
             .unwrap_or_else(|_| error_json("serialization-failed")),

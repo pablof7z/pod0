@@ -6,7 +6,7 @@ package io.f7z.podcast
  *
  * Extracted from [KernelBridge] so that [io.f7z.podcast.capabilities.KernelForwardingPlayer]
  * can accept a test double without instantiating the native [KernelBridge]
- * (whose `init` block loads the JNI `.so` via `System.loadLibrary`).
+ * (whose `init` block loads the Rust `.so` via `System.loadLibrary`).
  *
  * Production code: [KernelBridge] implements this interface. The existing
  * `ExoPlayerCapability.bridge: KernelBridge` assignment to

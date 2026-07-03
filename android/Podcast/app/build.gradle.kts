@@ -55,6 +55,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.2")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    implementation("net.java.dev.jna:jna:5.14.0@aar")
 
     // ─── Jetpack Security — EncryptedSharedPreferences for the Nostr nsec ──
     //
@@ -130,9 +131,10 @@ dependencies {
 // `libnmp_app_podcast.so` for the two shipped Android ABIs. Output lands
 // directly in `jniLibs/<abi>/` for both targets.
 //
-// The crate's `cdylib` target embeds the JNI shim from
-// `apps/nmp-app-podcast/src/android.rs` (gated `#[cfg(target_os = "android")]`)
-// — the `Java_io_f7z_podcast_KernelBridge_*` symbols `KernelBridge.kt` binds.
+// Kotlin talks to the generated UniFFI binding under
+// `app/src/main/java/uniffi/nmp_app_podcast/`. The shared library still ships
+// the same Rust app kernel; handwritten Android JNI entry points are not part
+// of the app boundary.
 //
 // Manual invocation (matches what `preBuild` runs):
 //

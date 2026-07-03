@@ -21,15 +21,15 @@ import kotlinx.serialization.json.Json
  *
  * Each action is encoded as `{"op":"<variant>", …fields}` and the Rust
  * `#[serde(tag = "op", rename_all = "snake_case")]` discriminator routes it.
- * `KernelBridge.dispatchAction(namespace, body)` → `nmp_app_dispatch_action`
- * forwards `(namespace, body)` straight into that registry, exactly like the
+ * `KernelBridge.dispatchAction(namespace, body)` forwards through generated
+ * `PodcastApp.dispatchPodcastAction(namespace, actionJson)`, exactly like the
  * iOS `kernel.dispatch(namespace:body:)` reference in
  * `App/Sources/Bridge/AppStateStore+KernelActions.swift`.
  *
  * Source of truth verified against:
  *  * `apps/nmp-app-podcast/src/ffi/actions/podcast_module.rs` (PodcastAction)
  *  * `apps/nmp-app-podcast/src/ffi/actions/player_module.rs`  (PlayerAction)
- *  * `apps/nmp-app-podcast/src/android.rs` (nativeDispatchAction)
+ *  * `apps/nmp-app-podcast/src/ffi/uniffi_facade.rs` (dispatch_podcast_action)
  *
  * NOTE: an earlier demo passed the *dotted op path* (e.g. `"podcast.player.play"`)
  * as the namespace argument. That string is not a registered namespace, so

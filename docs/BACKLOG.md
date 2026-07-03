@@ -229,7 +229,7 @@ worktrees currently in flight.
   only supplying credentials, selected models, typed audio source intent, and
   UI. Android now reloads encrypted OpenRouter/Ollama keys into Rust, exposes
   typed credential settings for those providers, and calls shared Rust
-  OpenRouter key validation through JNI. Swift live
+  OpenRouter key validation through generated UniFFI. Swift live
   wiki/title/categorization/chapter/clip completion callers no longer
   preflight OpenRouter/Ollama Keychain keys before invoking the shared Rust
   provider transport, and Swift OpenRouter settings validation no longer
@@ -272,7 +272,7 @@ worktrees currently in flight.
   settings, stores OpenRouter/Ollama/ElevenLabs/AssemblyAI/Perplexity keys in
   its encrypted host store, reloads them into Rust on app start, reports STT
   key presence to Rust, exposes shared agent chat, ElevenLabs validation,
-  Scribe/AssemblyAI/online-search JNI calls, and exposes STT/TTS model
+  Scribe/AssemblyAI/online-search UniFFI calls, and exposes STT/TTS model
   settings plus an ElevenLabs voice browser through typed settings actions
   backed by the shared Rust voice catalog. Shared provider
   catalog rows now expose a routed `selection_model_id`, and iOS/Android/TUI
@@ -1088,7 +1088,7 @@ worktrees currently in flight.
   HTTP capability execution, and audio report round-trips now use the NMP
   kernel/capability path. Android can call the shared Rust provider
   complete/embed/catalog/image/rerank, online search, and cloud-STT transports
-  through JNI, and model-role settings now load the shared Rust catalog for
+  through generated UniFFI, and model-role settings now load the shared Rust catalog for
   selection. Android also has encrypted OpenRouter/Ollama/ElevenLabs/
   AssemblyAI/Perplexity credential settings and reloads those keys into the
   Rust in-memory provider cache, including shared OpenRouter/ElevenLabs

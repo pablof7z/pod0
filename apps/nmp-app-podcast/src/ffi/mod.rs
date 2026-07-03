@@ -1,6 +1,6 @@
 //! Podcast per-app FFI surface.
 //!
-//! `extern "C"` symbols Swift links against:
+//! App-domain `extern "C"` symbols still linked by native shells:
 //!
 //! - [`nmp_app_podcast_register`] — install the explicit NMP substrate and
 //!   protocol modules into the supplied `NmpApp`, then return an opaque handle
@@ -20,41 +20,41 @@
 //! * **D6** — every entry point is fire-and-forget. Null pointers, missing
 //!   strings, serialization failures, and poisoned mutexes all degrade
 //!   silently rather than raising across the FFI.
-//! * **No business logic in Swift** — Swift takes the JSON string, decodes
-//!   to the appropriate types, and renders. All logic happens in Rust.
+//! * **No business logic in native shells** — shells take the JSON string,
+//!   decode to the appropriate types, and render. All logic happens in Rust.
 //!
 //! ## Module layout
 //!
 //! Split across sub-modules to keep each file under the 500-LOC hard ceiling.
-//! Every `pub extern "C"` symbol Swift links against is re-exported below.
+//! Every remaining app-domain `pub extern "C"` symbol is re-exported below.
 
 pub mod actions;
 mod agent_action_tool;
-pub mod dispatch_action;
 mod agent_ask;
 mod agent_category_list;
 mod agent_chat_title;
+pub(crate) mod agent_context;
 mod agent_conversation_history;
 mod agent_directory_search;
+mod agent_empty_state;
 mod agent_episode_list;
+mod agent_inventory;
+mod agent_inventory_list;
 mod agent_nostr_peer_prompt;
 mod agent_owned_podcast_tool;
 mod agent_search_tool;
 mod agent_system_prompt;
-mod agent_tts_tool;
 mod agent_tts_plan;
+mod agent_tts_tool;
 mod agent_voice_list;
 mod agent_youtube_search;
-pub(crate) mod agent_context;
-mod agent_empty_state;
-mod agent_inventory;
-mod agent_inventory_list;
 mod assemblyai_transcript;
 mod audio_report;
 mod byok_auth;
 mod carplay_projection;
 mod chat_complete;
 mod data_dir;
+pub mod dispatch_action;
 mod download_report;
 mod elevenlabs_scribe;
 mod elevenlabs_tts;
@@ -77,18 +77,18 @@ mod knowledge_scope;
 mod library_categorization;
 mod library_category_change;
 mod library_projection;
+mod local_llm;
 mod local_model_catalog;
 mod local_search;
-mod local_llm;
 mod memory_remember_text;
 mod network_report;
 mod openrouter_whisper;
 mod owned_podcast_lookup;
 mod perplexity_search;
-mod playback_tool_result;
-pub mod projections;
 #[cfg(test)]
 mod platform_bridge_tests;
+mod playback_tool_result;
+pub mod projections;
 #[cfg(test)]
 mod projections_tests;
 #[cfg(test)]
@@ -108,26 +108,27 @@ mod snapshot_domain_builders;
 pub(crate) mod snapshot_domain_projections;
 mod snapshot_domain_store_helpers;
 mod snapshot_downloads;
+#[cfg(test)]
+mod snapshot_golden_tests;
 mod snapshot_identity;
 mod snapshot_library;
 mod snapshot_owned;
 mod snapshot_queue;
 mod snapshot_relays;
 mod snapshot_settings;
-mod snapshot_widget;
-#[cfg(test)]
-mod snapshot_golden_tests;
 #[cfg(test)]
 mod snapshot_tests;
 #[cfg(test)]
 mod snapshot_tests_ext;
 mod snapshot_update;
+mod snapshot_widget;
 mod speech_model_catalog;
 mod storage_projection;
+mod threading_projection;
 mod transcript_plan;
 mod transcript_report;
 mod transcript_tool_result;
-mod threading_projection;
+mod uniffi_bridge_calls;
 pub mod uniffi_facade;
 mod voice_report;
 
@@ -143,25 +144,24 @@ pub use actions::{
     SendAgentMessageAction, SetSleepTimerAction, SetSpeedAction, SetVoiceAction, SetVolumeAction,
     SettingsAction, SettingsActionModule, SiriAction, SiriActionModule, SiriPlayLatestAction,
     SiriResumeAction, SpeakAction, StopAction, StopVoiceAction, VoiceAction, VoiceActionModule,
-    ACTION_AGENT_APPROVE, ACTION_AGENT_CLEAR, ACTION_AGENT_DENY,
-    ACTION_AGENT_SEND, ACTION_CLIP_AUTO_SNIP, ACTION_CLIP_CREATE, ACTION_CLIP_DELETE,
-    ACTION_INBOX_DISMISS, ACTION_INBOX_MARK_LISTENED, ACTION_INBOX_TRIAGE,
-    ACTION_KNOWLEDGE_CLEAR_RESULTS, ACTION_KNOWLEDGE_INDEX_EPISODE, ACTION_KNOWLEDGE_SEARCH,
-    ACTION_PLAYER_CANCEL_ALL_DOWNLOADS, ACTION_PLAYER_CANCEL_DOWNLOAD, ACTION_PLAYER_DOWNLOAD,
-    ACTION_PLAYER_PAUSE, ACTION_PLAYER_PAUSE_DOWNLOAD, ACTION_PLAYER_PLAY,
-    ACTION_PLAYER_RESUME_DOWNLOAD, ACTION_PLAYER_SEEK, ACTION_PLAYER_SET_SLEEP_TIMER,
-    ACTION_PLAYER_SET_SPEED, ACTION_PLAYER_SET_VOLUME, ACTION_PLAYER_SKIP_BACKWARD,
-    ACTION_PLAYER_SKIP_FORWARD, ACTION_PLAYER_STOP, ACTION_PUBLISH_CREATE_OWNED,
-    ACTION_PUBLISH_PUBLISH_AUTHOR_CLAIM, ACTION_PUBLISH_PUBLISH_EPISODE,
-    ACTION_PUBLISH_PUBLISH_SHOW, ACTION_PUBLISH_REMOVE_OWNED, ACTION_SIRI_PLAY_LATEST,
-    ACTION_SIRI_RESUME, ACTION_VOICE_ACTIVATE, ACTION_VOICE_DEACTIVATE, ACTION_VOICE_SET_VOICE,
-    ACTION_VOICE_SPEAK, ACTION_VOICE_STOP, PICKS_LIMIT, PICKS_PER_SHOW_CAP,
+    ACTION_AGENT_APPROVE, ACTION_AGENT_CLEAR, ACTION_AGENT_DENY, ACTION_AGENT_SEND,
+    ACTION_CLIP_AUTO_SNIP, ACTION_CLIP_CREATE, ACTION_CLIP_DELETE, ACTION_INBOX_DISMISS,
+    ACTION_INBOX_MARK_LISTENED, ACTION_INBOX_TRIAGE, ACTION_KNOWLEDGE_CLEAR_RESULTS,
+    ACTION_KNOWLEDGE_INDEX_EPISODE, ACTION_KNOWLEDGE_SEARCH, ACTION_PLAYER_CANCEL_ALL_DOWNLOADS,
+    ACTION_PLAYER_CANCEL_DOWNLOAD, ACTION_PLAYER_DOWNLOAD, ACTION_PLAYER_PAUSE,
+    ACTION_PLAYER_PAUSE_DOWNLOAD, ACTION_PLAYER_PLAY, ACTION_PLAYER_RESUME_DOWNLOAD,
+    ACTION_PLAYER_SEEK, ACTION_PLAYER_SET_SLEEP_TIMER, ACTION_PLAYER_SET_SPEED,
+    ACTION_PLAYER_SET_VOLUME, ACTION_PLAYER_SKIP_BACKWARD, ACTION_PLAYER_SKIP_FORWARD,
+    ACTION_PLAYER_STOP, ACTION_PUBLISH_CREATE_OWNED, ACTION_PUBLISH_PUBLISH_AUTHOR_CLAIM,
+    ACTION_PUBLISH_PUBLISH_EPISODE, ACTION_PUBLISH_PUBLISH_SHOW, ACTION_PUBLISH_REMOVE_OWNED,
+    ACTION_SIRI_PLAY_LATEST, ACTION_SIRI_RESUME, ACTION_VOICE_ACTIVATE, ACTION_VOICE_DEACTIVATE,
+    ACTION_VOICE_SET_VOICE, ACTION_VOICE_SPEAK, ACTION_VOICE_STOP, PICKS_LIMIT, PICKS_PER_SHOW_CAP,
 };
-pub use dispatch_action::nmp_app_podcast_dispatch_action;
-pub use agent_action_tool::{nmp_app_podcast_agent_action_policy, nmp_app_podcast_agent_action_tool};
+pub use agent_action_tool::{
+    nmp_app_podcast_agent_action_policy, nmp_app_podcast_agent_action_tool,
+};
 pub use agent_ask::{
-    nmp_app_podcast_agent_ask_enqueue, nmp_app_podcast_agent_ask_set_callback,
-    nmp_app_podcast_agent_ask_settle,
+    nmp_app_podcast_agent_ask_enqueue, nmp_app_podcast_agent_ask_settle,
 };
 pub use agent_category_list::nmp_app_podcast_agent_category_list;
 pub use agent_chat_title::{
@@ -169,20 +169,22 @@ pub use agent_chat_title::{
 };
 pub use agent_conversation_history::nmp_app_podcast_agent_conversation_history;
 pub use agent_directory_search::{
-    nmp_app_podcast_agent_directory_search_plan,
-    nmp_app_podcast_agent_directory_search_results,
+    nmp_app_podcast_agent_directory_search_plan, nmp_app_podcast_agent_directory_search_results,
 };
+pub use agent_empty_state::nmp_app_podcast_agent_empty_state;
 pub use agent_episode_list::{
     nmp_app_podcast_agent_episode_list_error, nmp_app_podcast_agent_episode_list_plan,
     nmp_app_podcast_agent_episode_list_results,
 };
+pub use agent_inventory::nmp_app_podcast_agent_inventory;
+pub use agent_inventory_list::nmp_app_podcast_agent_inventory_list;
 pub use agent_nostr_peer_prompt::nmp_app_podcast_agent_nostr_peer_prompt;
 pub use agent_owned_podcast_tool::nmp_app_podcast_agent_owned_podcast_tool;
 pub use agent_search_tool::nmp_app_podcast_agent_search_tool;
 pub use agent_system_prompt::nmp_app_podcast_agent_system_prompt;
 pub use agent_tts_plan::{
-    nmp_app_podcast_agent_generated_podcast_descriptor,
-    nmp_app_podcast_agent_tts_default_voice, nmp_app_podcast_agent_tts_episode_plan,
+    nmp_app_podcast_agent_generated_podcast_descriptor, nmp_app_podcast_agent_tts_default_voice,
+    nmp_app_podcast_agent_tts_episode_plan,
 };
 pub use agent_tts_tool::{
     nmp_app_podcast_agent_tts_tool_plan, nmp_app_podcast_agent_tts_tool_result,
@@ -192,9 +194,6 @@ pub use agent_voice_list::nmp_app_podcast_agent_voice_list;
 pub use agent_youtube_search::{
     nmp_app_podcast_agent_youtube_search_plan, nmp_app_podcast_agent_youtube_search_results,
 };
-pub use agent_empty_state::nmp_app_podcast_agent_empty_state;
-pub use agent_inventory::nmp_app_podcast_agent_inventory;
-pub use agent_inventory_list::nmp_app_podcast_agent_inventory_list;
 pub use assemblyai_transcript::nmp_app_podcast_assemblyai_transcribe;
 pub use audio_report::nmp_app_podcast_audio_report;
 pub use byok_auth::{nmp_app_podcast_byok_authorization, nmp_app_podcast_byok_exchange};
@@ -204,11 +203,12 @@ pub use carplay_projection::{
 };
 pub use chat_complete::nmp_app_podcast_chat_complete;
 pub use data_dir::nmp_app_podcast_set_data_dir;
+pub use dispatch_action::nmp_app_podcast_dispatch_action;
 pub use download_report::nmp_app_podcast_download_report;
 pub use elevenlabs_scribe::nmp_app_podcast_elevenlabs_scribe_transcribe;
 pub use elevenlabs_tts::nmp_app_podcast_elevenlabs_tts_synthesize;
 pub use elevenlabs_voice_catalog::nmp_app_podcast_elevenlabs_voice_catalog;
-pub use episode_events::nmp_app_podcast_episode_events;
+pub use episode_events::{nmp_app_podcast_episode_events, nmp_app_podcast_record_episode_event};
 pub use episode_mutation_tool_result::nmp_app_podcast_episode_mutation_tool_result;
 pub use external_play_plan::nmp_app_podcast_external_play_plan;
 pub use feed_url_normalizer::nmp_app_podcast_normalize_feed_url;
@@ -225,23 +225,27 @@ pub use itunes_directory::{
     nmp_app_podcast_itunes_directory_search, nmp_app_podcast_itunes_lookup_feed_url,
     nmp_app_podcast_itunes_top_podcasts,
 };
+pub use knowledge_query::{
+    nmp_app_podcast_knowledge_chunk, nmp_app_podcast_knowledge_home_related,
+    nmp_app_podcast_knowledge_query, nmp_app_podcast_knowledge_similar_episode,
+};
+pub use knowledge_scope::nmp_app_podcast_knowledge_resolve_scope;
 pub use library_categorization::{
-    nmp_app_podcast_library_categorization_parse,
-    nmp_app_podcast_library_categorization_prompt,
+    nmp_app_podcast_library_categorization_parse, nmp_app_podcast_library_categorization_prompt,
 };
 pub use library_category_change::nmp_app_podcast_library_category_change;
 pub use library_projection::{
     nmp_app_podcast_library_all_episodes, nmp_app_podcast_library_all_podcasts,
     nmp_app_podcast_library_categories, nmp_app_podcast_library_download_rows,
     nmp_app_podcast_library_episode_for_audio_url, nmp_app_podcast_library_episode_lookup,
-    nmp_app_podcast_library_followed_podcasts, nmp_app_podcast_library_podcast_stats,
-    nmp_app_podcast_library_owned_podcasts, nmp_app_podcast_library_show_episodes,
+    nmp_app_podcast_library_followed_podcasts, nmp_app_podcast_library_owned_podcasts,
+    nmp_app_podcast_library_podcast_stats, nmp_app_podcast_library_show_episodes,
     nmp_app_podcast_library_starred_episodes, nmp_app_podcast_library_subscription_status,
     nmp_app_podcast_library_summary,
 };
+pub use local_llm::{nmp_app_clear_local_llm, nmp_app_register_local_llm};
 pub use local_model_catalog::nmp_app_podcast_local_model_catalog;
 pub use local_search::nmp_app_podcast_local_search;
-pub use local_llm::{nmp_app_clear_local_llm, nmp_app_register_local_llm};
 pub use memory_remember_text::nmp_app_podcast_memory_remember_text;
 pub use network_report::nmp_app_podcast_network_report;
 pub use openrouter_whisper::nmp_app_podcast_openrouter_whisper_transcribe;
@@ -258,11 +262,6 @@ pub use projections::{
     PodcastSummary, SettingsSnapshot, SocialSnapshot, TranscriptEntry, VoiceState, WidgetSnapshot,
 };
 pub use provider_complete::nmp_app_podcast_provider_complete;
-pub use knowledge_query::{
-    nmp_app_podcast_knowledge_chunk, nmp_app_podcast_knowledge_home_related,
-    nmp_app_podcast_knowledge_query, nmp_app_podcast_knowledge_similar_episode,
-};
-pub use knowledge_scope::nmp_app_podcast_knowledge_resolve_scope;
 pub use provider_embeddings::nmp_app_podcast_provider_embed;
 pub use provider_key_validation::{
     nmp_app_podcast_validate_elevenlabs_key, nmp_app_podcast_validate_openrouter_key,
@@ -271,14 +270,7 @@ pub use provider_model_catalog::nmp_app_podcast_provider_model_catalog;
 pub use register::nmp_app_podcast_register;
 pub use rerank::nmp_app_podcast_rerank;
 pub use runtime_facade::{
-    nmp_app_cancel_bunker_handshake, nmp_app_configure, nmp_app_consume_all_builtin_projections,
-    nmp_app_create_new_account, nmp_app_free, nmp_app_intent_classify, nmp_app_intent_dispatch,
-    nmp_app_is_alive, nmp_app_lifecycle_background, nmp_app_lifecycle_foreground, nmp_app_new,
-    nmp_app_nostrconnect_uri, nmp_app_release_ref, nmp_app_remove_account, nmp_app_reset,
-    nmp_app_resolve_ref, nmp_app_set_capability_callback, nmp_app_set_storage_path,
-    nmp_app_set_update_callback, nmp_app_sign_event_for_return, nmp_app_signin_bunker,
-    nmp_app_signin_nsec, nmp_app_start, nmp_app_stop, nmp_free_string, nmp_nip21_decode_uri,
-    nmp_signer_broker_init,
+    classify_input_intent_json, decode_nip21_uri_json, dispatch_input_intent_json, nmp_free_string,
 };
 pub use snapshot::{
     nmp_app_podcast_snapshot, nmp_app_podcast_snapshot_free, nmp_app_podcast_snapshot_rev,
@@ -286,17 +278,17 @@ pub use snapshot::{
 };
 pub use speech_model_catalog::nmp_app_podcast_speech_model_catalog;
 pub use storage_projection::nmp_app_podcast_storage_breakdown;
+pub use threading_projection::{
+    nmp_app_podcast_threading_active_topics, nmp_app_podcast_threading_projection,
+};
 pub use transcript_plan::{
     nmp_app_podcast_transcript_auto_ingest_candidates, nmp_app_podcast_transcript_ingest_plan,
 };
 pub use transcript_report::nmp_app_podcast_transcript_report;
 pub use transcript_tool_result::nmp_app_podcast_transcript_tool_result;
-pub use threading_projection::{
-    nmp_app_podcast_threading_active_topics, nmp_app_podcast_threading_projection,
-};
 pub use uniffi_facade::{
-    PodcastApp, PodcastCapabilitySink, PodcastDispatchOutcome, PodcastEventShape,
-    PodcastProfileShape, PodcastRefLiveness, PodcastRefNamespace, PodcastRefShape,
-    PodcastUpdateSink,
+    PodcastAgentAskSink, PodcastApp, PodcastCapabilitySink, PodcastDispatchOutcome,
+    PodcastEventShape, PodcastProfileShape, PodcastRefLiveness, PodcastRefNamespace,
+    PodcastRefShape, PodcastUpdateSink,
 };
 pub use voice_report::nmp_app_podcast_voice_report;

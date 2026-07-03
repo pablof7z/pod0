@@ -2,10 +2,10 @@ import Foundation
 
 // MARK: - KernelModel identity, account, and profile accessors
 //
-// Typed wrappers around the NMP-core identity FFI, the opaque podcast-handle
-// pointer, the action-results registry, and the reference-first profile
-// resolution seam. Extracted from KernelModel.swift to keep that file under
-// the AGENTS.md 500-line hard limit.
+// Typed wrappers around the NMP-core identity UniFFI facade, the opaque
+// podcast-handle pointer for still-app-domain FFI calls, the action-results
+// registry, and the reference-first profile resolution seam. Extracted from
+// KernelModel.swift to keep that file under the AGENTS.md 500-line hard limit.
 //
 // `UserIdentityStore` calls these instead of touching the raw `PodcastHandle`.
 // The actor confirms the resulting state on the next snapshot tick via
@@ -26,18 +26,17 @@ extension KernelModel {
 
     /// Begin a `bunker://` sign-in. Fire-and-forget — observe
     /// `identity.bunkerHandshake` / `identity.activeAccount` for outcome.
-    /// Silent no-op (D6) if `nmp_signer_broker_init` was never called.
+    /// Silent no-op (D6) if the signer broker was not initialised.
     func signInBunker(uri: String) {
         kernel.signInBunker(uri: uri)
     }
 
     /// Begin an nsec sign-in. The secret crosses the FFI boundary as raw
     /// bytes (it has to be imported somehow) and is wrapped in `Zeroizing`
-    /// the instant the actor receives it (see
-    /// `crates/nmp-ffi/src/identity.rs::nmp_app_signin_nsec`). The Rust
-    /// `ActorCommand::SignInNsec` handler validates and persists the key
-    /// via the kernel keyring path — DO NOT also write to
-    /// `PcstIdentityCapability` here. Single source of truth.
+    /// by the generated `PodcastApp` facade before dispatch. The Rust
+    /// sign-in handler validates and persists the key via the kernel keyring
+    /// path — DO NOT also write to `PcstIdentityCapability` here. Single
+    /// source of truth.
     func signInNsec(_ nsec: String) {
         kernel.signInNsec(nsec)
     }

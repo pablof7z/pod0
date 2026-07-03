@@ -1,8 +1,8 @@
 use serde_json::{json, Value};
-use std::ffi::{c_void, CStr, CString};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::runtime::{AppRuntime, Result};
+use nmp_app_podcast::ffi::{classify_input_intent_json, dispatch_input_intent_json};
 
 static SESSION_COUNTER: AtomicU64 = AtomicU64::new(1);
 
@@ -18,18 +18,6 @@ enum NostrSubscribeIntent {
 enum DecodedNostrRef {
     AuthorPubkey(String),
     Event,
-}
-
-extern "C" {
-    fn nmp_app_intent_classify(
-        app: *mut c_void,
-        request_json: *const std::ffi::c_char,
-    ) -> *mut std::ffi::c_char;
-    fn nmp_app_intent_dispatch(
-        app: *mut c_void,
-        request_json: *const std::ffi::c_char,
-        session_id: *const std::ffi::c_char,
-    ) -> *mut std::ffi::c_char;
 }
 
 impl AppRuntime {
@@ -68,10 +56,8 @@ impl AppRuntime {
 
     fn classify_nostr_subscribe_intent(&self, input: &str) -> Result<Option<NostrSubscribeIntent>> {
         let request = intent_request_json(input);
-        let request = CString::new(request)
-            .map_err(|_| "subscribe input contains an unsupported NUL byte".to_owned())?;
-        let ptr = unsafe { nmp_app_intent_classify(self.app_ptr().cast(), request.as_ptr()) };
-        let raw = take_ffi_string(ptr, "nmp_app_intent_classify")?;
+        let app = unsafe { &*self.app_ptr() };
+        let raw = classify_input_intent_json(app, &request);
         let value: Value = serde_json::from_str(&raw)
             .map_err(|e| format!("intent classification returned invalid JSON: {e}"))?;
         parse_nostr_subscribe_intent(&value)
@@ -79,14 +65,9 @@ impl AppRuntime {
 
     fn dispatch_nostr_intent(&self, input: &str) -> Result<String> {
         let request = intent_request_json(input);
-        let request = CString::new(request)
-            .map_err(|_| "subscribe input contains an unsupported NUL byte".to_owned())?;
-        let session_id = CString::new(format!("tui-subscribe-{}", session_suffix()))
-            .map_err(|_| "generated session id contains NUL".to_owned())?;
-        let ptr = unsafe {
-            nmp_app_intent_dispatch(self.app_ptr().cast(), request.as_ptr(), session_id.as_ptr())
-        };
-        take_ffi_string(ptr, "nmp_app_intent_dispatch")
+        let session_id = format!("tui-subscribe-{}", session_suffix());
+        let app = unsafe { &*self.app_ptr() };
+        Ok(dispatch_input_intent_json(app, &request, Some(&session_id)))
     }
 }
 
@@ -175,18 +156,6 @@ fn decode_nostr_ref(uri: &str) -> Result<DecodedNostrRef> {
         Ok(nmp_nostr_id::NostrUri::Event { .. }) => Ok(DecodedNostrRef::Event),
         Err(_) => Err("that Nostr reference could not be decoded".to_owned()),
     }
-}
-
-fn take_ffi_string(ptr: *mut std::ffi::c_char, function_name: &str) -> Result<String> {
-    if ptr.is_null() {
-        return Err(format!("{function_name} returned null"));
-    }
-    let text = unsafe { CStr::from_ptr(ptr) }
-        .to_str()
-        .map_err(|e| format!("{function_name} returned non-UTF8 text: {e}"))?
-        .to_owned();
-    let _ = unsafe { CString::from_raw(ptr) };
-    Ok(text)
 }
 
 fn session_suffix() -> u64 {

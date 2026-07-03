@@ -2,11 +2,9 @@ import Foundation
 
 // MARK: - SyncCapabilityBridge
 //
-// Thread-safe adapter for the C capability callback registered via
-// `nmp_app_set_capability_callback`. Runs on the Rust actor thread (a plain
-// background thread), so it MUST NOT be @MainActor. Namespace ownership and
-// capability dispatch live in `PodcastCapabilities`; this type only preserves
-// the C callback lifetime and actor-thread constraints.
+// Thread-safe adapter for the generated UniFFI capability callback. Runs on the
+// Rust actor thread (a plain background thread), so it MUST NOT be @MainActor.
+// Namespace ownership and capability dispatch live in `PodcastCapabilities`.
 
 /// Synchronous capability adapter registered as the C capability callback.
 ///
@@ -14,7 +12,7 @@ import Foundation
 /// directly here because `HttpCapability` is thread-safe; main-actor
 /// capabilities are routed through `PodcastCapabilities` with an explicit main
 /// hop inside that routing contract.
-final class SyncCapabilityBridge: @unchecked Sendable {
+final class SyncCapabilityBridge: PodcastCapabilitySink, @unchecked Sendable {
 
     private let http: HttpCapability
 
@@ -39,5 +37,9 @@ final class SyncCapabilityBridge: @unchecked Sendable {
     /// `CapabilityEnvelope` JSON. Never throws, never returns nil (D6).
     func handle(requestJSON: String) -> String {
         PodcastCapabilities.handleCapabilityCallbackJSON(requestJSON, http: http)
+    }
+
+    func onCapabilityRequest(requestJson: String) -> String {
+        handle(requestJSON: requestJson)
     }
 }

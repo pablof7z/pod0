@@ -10,24 +10,19 @@ let kbLog = Logger(subsystem: "io.f7z.podcast", category: "KernelBridge")
 /// than silently misparsing a newer/older schema.
 let KERNEL_SCHEMA_VERSION = 1
 
-/// Thin C-FFI wrapper around the `nmp_app_podcast` static library.
+/// Thin bridge around the generated `PodcastApp` UniFFI object.
 final class PodcastHandle: @unchecked Sendable {
-    /// Wave 1 of the UniFFI-facade migration (podcast-player#681 follow-on):
-    /// `podcastApp` is now the sole owner of the single `NmpApp` instance —
-    /// `raw` is derived from `podcastApp.nativeHandle()` rather than
-    /// `nmp_app_new()`. `podcastApp` MUST outlive every use of `raw`, which is
-    /// why it is a stored property here rather than a local in `init`. Only
-    /// construction/teardown route through `podcastApp` in this wave; every
-    /// other still-C-ABI call in this file keeps operating on `raw` exactly as
-    /// before — each is migrated to a `podcastApp.*` call individually in a
-    /// later, separately-verified wave.
+    /// `PodcastApp` owns the single `NmpApp` and the app-domain
+    /// `PodcastHandle`. `podcastHandle` below is a temporary borrowed pointer
+    /// for app-domain C ABI calls that have not moved onto generated UniFFI yet.
     let podcastApp: PodcastApp
-    let raw: UnsafeMutableRawPointer
     private var updateSink: KernelUpdateSink?
-    /// Opaque handle returned by `nmp_app_podcast_register`.
+    /// Borrowed opaque handle owned by `PodcastApp`.
     var podcastHandle: UnsafeMutableRawPointer?
-    /// Retained bridge passed as `context` to `nmp_app_set_capability_callback`.
+    /// Retained generated UniFFI capability sink.
     var syncBridge: SyncCapabilityBridge?
+    /// Retained generated UniFFI agent-ask timeout sink.
+    var agentAskSink: KernelAgentAskSink?
     /// Fired (on the main actor) immediately after a shell-initiated FFI report
     /// (`nmp_app_podcast_audio_report` / `_download_report`) bumps the podcast
     /// `rev`. `KernelModel` wires this to a one-shot rev-gated pull so those
@@ -57,7 +52,7 @@ final class PodcastHandle: @unchecked Sendable {
     /// asynchronously. Today that is the Rust-owned timeout expiry path.
     var onAgentAskEvent: ((KernelModel.AgentAskResponse) -> Void)?
 
-    /// Buffered resolver for `nmp_app_sign_event_for_return` round-trips. The
+    /// Buffered resolver for `PodcastApp.signEventForReturn` round-trips. The
     /// `signed_events` projection that carries each result is drain-once: the
     /// kernel clears it on the first emit tick that carries it. Because the
     /// correlation id is only known AFTER the synchronous FFI return, a slow
@@ -76,24 +71,17 @@ final class PodcastHandle: @unchecked Sendable {
     init() {
         let podcastApp = PodcastApp()
         self.podcastApp = podcastApp
-        guard let handle = UnsafeMutableRawPointer(bitPattern: UInt(podcastApp.nativeHandle())) else {
-            fatalError("PodcastApp.nativeHandle() returned a null pointer")
-        }
-        raw = handle
-        // Register the NIP-46 bunker hook BEFORE any sign-in attempt routes
-        // through `nmp_app_signin_bunker`. The broker captures the actor
-        // sender immediately; subsequent `bunker://` URIs are silently
-        // dropped without this call (D6).
-        nmp_signer_broker_init(raw)
-        Self.configureStoragePath(for: raw)
+        PodcastBridgeCompat.install(self)
+        podcastApp.signerBrokerInit()
+        Self.configureStoragePath(for: podcastApp)
         // ADR-0053 / NMP v0.8: make the full built-in projection consumption
-        // intent explicit before `nmp_app_start`; podcast domain sidecars are
-        // registered separately through `nmp_app_podcast_register`.
-        nmp_app_consume_all_builtin_projections(raw)
+        // intent explicit before `start`; podcast domain sidecars are
+        // registered inside `PodcastApp`.
+        podcastApp.consumeAllBuiltinProjections()
         registerPodcastProjection()
     }
 
-    private static func configureStoragePath(for raw: UnsafeMutableRawPointer) {
+    private static func configureStoragePath(for app: PodcastApp) {
         guard let base = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask).first
         else { return }
@@ -101,7 +89,7 @@ final class PodcastHandle: @unchecked Sendable {
         do {
             try FileManager.default.createDirectory(
                 at: directory, withIntermediateDirectories: true)
-            directory.path.withCString { nmp_app_set_storage_path(raw, $0) }
+            app.setStoragePath(path: directory.path)
         } catch {
             kbLog.error(
                 "failed to create NMP storage directory: \(error.localizedDescription, privacy: .public)")
@@ -110,13 +98,11 @@ final class PodcastHandle: @unchecked Sendable {
 
     deinit {
         unregisterPodcastProjectionIfNeeded()
-        nmp_app_set_update_callback(raw, nil, nil)
-        // Explicit, deterministic teardown (mirrors the old `nmp_app_free(raw)`
-        // ordering: stop callbacks, then tear down). `NmpApp::shutdown` sends
-        // `Shutdown` and joins the actor thread before returning; `podcastApp`
-        // itself is released by ARC immediately after, dropping the `NmpApp`
-        // value `raw` pointed into.
+        podcastApp.setUpdateSink(sink: nil)
+        podcastApp.setCapabilityCallback(sink: nil)
+        podcastApp.setAgentAskSink(sink: nil)
         podcastApp.shutdown()
+        PodcastBridgeCompat.uninstall(self)
     }
 
     /// Wire the Rust update callback. `handler` runs on every snapshot frame;
@@ -129,49 +115,51 @@ final class PodcastHandle: @unchecked Sendable {
         let sink = KernelUpdateSink(
             handler: handler, onPanic: onPanic,
             signedEvents: signedEventsRegistry,
-            actionResults: actionResultsRegistry)
+            actionResults: actionResultsRegistry,
+            decodeFrame: { [weak self] frame in
+                self?.podcastApp.decodeUpdateFrame(frame: frame)
+            })
         updateSink = sink
-        nmp_app_set_update_callback(
-            raw, Unmanaged.passUnretained(sink).toOpaque(), nmpUpdateCallback)
+        podcastApp.setUpdateSink(sink: sink)
     }
 
     /// Actor-liveness probe (D7 pull-side, ADR-0028). Returns `true` when the
     /// Rust actor thread is still running, `false` when terminated.
     func isAlive() -> Bool {
-        nmp_app_is_alive(raw) == 1
+        podcastApp.isAlive()
     }
 
     func start(visibleLimit: UInt32 = 80, emitHz: UInt32 = 4) {
         // Set the podcast library data directory here rather than at
-        // registerPodcastProjection() time. `nmp_app_podcast_set_data_dir`
+        // registerPodcastProjection() time. `PodcastApp.setPodcastDataDir`
         // reads podcasts.json immediately; deferring the call to `start()`
         // ensures UITestSeeder.seedIfNeeded() (which runs in AppDelegate
         // didFinishLaunchingWithOptions, after PodcastHandle.init()) has
         // already written the fresh seed before the kernel opens the store.
-        Self.configurePodcastDataDir(for: podcastHandle)
-        nmp_app_start(raw, visibleLimit, emitHz)
+        Self.configurePodcastDataDir(for: podcastApp)
+        podcastApp.start(visibleLimit: visibleLimit, emitHz: emitHz)
     }
 
     func configure(visibleLimit: UInt32, emitHz: UInt32) {
-        nmp_app_configure(raw, visibleLimit, emitHz)
+        podcastApp.configure(visibleLimit: visibleLimit, emitHz: emitHz)
     }
 
     func stop() {
-        nmp_app_stop(raw)
+        podcastApp.stop()
     }
 
     func reset() {
-        nmp_app_reset(raw)
+        podcastApp.reset()
     }
 
     // ── T118 / G3 — iOS scenePhase → kernel lifecycle bridge ──────────────
 
     func lifecycleForeground() {
-        nmp_app_lifecycle_foreground(raw)
+        podcastApp.lifecycleForeground()
     }
 
     func lifecycleBackground() {
-        nmp_app_lifecycle_background(raw)
+        podcastApp.lifecycleBackground()
     }
 
     // ── Generic dispatch ──────────────────────────────────────────────────
@@ -179,7 +167,7 @@ final class PodcastHandle: @unchecked Sendable {
     /// Dispatch a namespace-keyed action. Returns the synchronous dispatch
     /// result. D6: returns .failure for a null podcast handle.
     ///
-    /// ADR-0064: calls `nmp_app_podcast_dispatch_action` (typed byte doorway)
+    /// ADR-0064: calls `PodcastApp.dispatchPodcastAction` (typed byte doorway)
     /// instead of the nmp-ffi ≤ v0.7.2 `nmp_app_dispatch_action` JSON doorway
     /// which was deleted in NMP v0.8.0.
     @discardableResult
@@ -193,32 +181,20 @@ final class PodcastHandle: @unchecked Sendable {
                 .dispatchAction,
                 micros: Int((DispatchTime.now().uptimeNanoseconds &- dispatchStart) / 1_000))
         }
-        guard let handle = podcastHandle else {
-            return .failure("podcast handle not initialized")
-        }
         guard let data = try? JSONSerialization.data(withJSONObject: body),
               let jsonStr = String(data: data, encoding: .utf8)
         else {
             return .failure("failed to serialize action body")
         }
-        let envelope: String? = jsonStr.withCString { jsonPtr in
-            namespace.withCString { nsPtr in
-                guard let ptr = nmp_app_podcast_dispatch_action(handle, nsPtr, jsonPtr) else {
-                    return nil
-                }
-                defer { nmp_free_string(ptr) }
-                return String(cString: ptr)
-            }
-        }
+        let envelope = podcastApp.dispatchPodcastAction(namespace: namespace, actionJson: jsonStr)
         guard let envelope else {
             return .failure("dispatch returned a null envelope")
         }
         return DispatchResult.parse(envelope: envelope)
     }
 
-    fileprivate static func decode(pointer: UnsafePointer<CChar>) -> KernelUpdateResult? {
+    fileprivate static func decode(payload: String) -> KernelUpdateResult? {
         let start = ContinuousClock.now
-        let payload = String(cString: pointer)
         let data = Data(payload.utf8)
         let decoder = KernelDecoding.makeDecoder()
         do {
@@ -229,7 +205,7 @@ final class PodcastHandle: @unchecked Sendable {
             }
             // NMP v0.5.0 per-domain push path: extract whichever
             // `podcast.*` domain sidecars are present in this frame.
-            // `nmp_app_podcast_decode_update_frame` injects typed sidecars
+            // `PodcastApp.decodeUpdateFrame` injects typed sidecars
             // under `v.projections[schema_id]`; absent domains carry no sidecar
             // (delta suppression) and MUST NOT overwrite prior state.
             let domainFrames = PodcastDomainFrames.decode(from: data) ?? PodcastDomainFrames()
@@ -272,60 +248,46 @@ private struct SnapshotEnvelope: Decodable {
     let t: String
 }
 
-// ─── C callback objects ───────────────────────────────────────────────────
+// ─── UniFFI callback objects ──────────────────────────────────────────────
 
-private final class KernelUpdateSink {
+private final class KernelUpdateSink: PodcastUpdateSink, @unchecked Sendable {
     let handler: (KernelUpdateResult) -> Void
     let onPanic: () -> Void
     let signedEvents: SignedEventsRegistry
     let actionResults: ActionResultsRegistry
+    let decodeFrame: (Data) -> String?
 
     init(
         handler: @escaping (KernelUpdateResult) -> Void,
         onPanic: @escaping () -> Void,
         signedEvents: SignedEventsRegistry,
-        actionResults: ActionResultsRegistry
+        actionResults: ActionResultsRegistry,
+        decodeFrame: @escaping (Data) -> String?
     ) {
         self.handler = handler
         self.onPanic = onPanic
         self.signedEvents = signedEvents
         self.actionResults = actionResults
+        self.decodeFrame = decodeFrame
     }
-}
 
-private let nmpUpdateCallback: NmpUpdateCallback = { context, bytes, len in
-    guard let context, let bytes, len > 0 else { return }
-    // Perf: time the whole background frame-processing cost (FlatBuffer→JSON +
-    // envelope parse) and record the frame size. This runs on the Rust actor
-    // thread, NOT main — background FFI cost, distinct from the main-thread
-    // `apply`/`projection` segments. One monotonic clock read is cheap even when
-    // metrics are off; the matching `record` is a no-op when disabled.
-    let frameStart = DispatchTime.now().uptimeNanoseconds
-    // The kernel's update transport is binary FlatBuffers (NMP commit "Replace
-    // update transport with FlatBuffers"). Decode the `(bytes, len)` frame to the
-    // JSON envelope the shell consumes; `nmp_free_string` reclaims it.
-    guard let jsonPtr = nmp_app_podcast_decode_update_frame(bytes, len) else { return }
-    defer { nmp_free_string(jsonPtr) }
-    let payload = String(cString: jsonPtr)
-    let sink = Unmanaged<KernelUpdateSink>.fromOpaque(context).takeUnretainedValue()
-    // Drain the `signed_events` and `action_results` projections FIRST — before
-    // the panic short-circuit and before the podcast-decode guard below — so a
-    // frame that carries a result but no `podcast.snapshot` (or even a panic
-    // frame that still flushed a pending sign) never silently drops the result.
-    // Both are drain-once frames the kernel clears on emit; the registries
-    // retain results so a not-yet-registered continuation still resolves.
-    let payloadData = Data(payload.utf8)
-    sink.signedEvents.ingest(envelopePayload: payloadData)
-    sink.actionResults.ingest(envelopePayload: payloadData)
-    if payload.contains("\"t\":\"panic\"") {
-        kbLog.fault("NMP_ACTOR_PANIC detected bytes=\(len)")
-        sink.onPanic()
-        return
+    func onUpdate(frame: Data) {
+        guard !frame.isEmpty else { return }
+        let frameStart = DispatchTime.now().uptimeNanoseconds
+        guard let payload = decodeFrame(frame) else { return }
+        let payloadData = Data(payload.utf8)
+        signedEvents.ingest(envelopePayload: payloadData)
+        actionResults.ingest(envelopePayload: payloadData)
+        if payload.contains("\"t\":\"panic\"") {
+            kbLog.fault("NMP_ACTOR_PANIC detected bytes=\(frame.count)")
+            onPanic()
+            return
+        }
+        guard let result = PodcastHandle.decode(payload: payload) else { return }
+        PerfMetrics.shared.record(
+            .pushFrameDecode,
+            micros: Int((DispatchTime.now().uptimeNanoseconds &- frameStart) / 1_000),
+            bytes: frame.count)
+        handler(result)
     }
-    guard let result = PodcastHandle.decode(pointer: jsonPtr) else { return }
-    PerfMetrics.shared.record(
-        .pushFrameDecode,
-        micros: Int((DispatchTime.now().uptimeNanoseconds &- frameStart) / 1_000),
-        bytes: Int(len))
-    sink.handler(result)
 }

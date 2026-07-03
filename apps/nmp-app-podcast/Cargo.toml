@@ -3,22 +3,17 @@ name = "nmp-app-podcast"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "Per-app Podcast glue. Owns the kernel composition root and surfaces the projected state over a static-lib FFI for the iOS shell."
+description = "Per-app Podcast glue. Owns the kernel composition root and surfaces projected state to native shells."
 
 [lib]
 name = "nmp_app_podcast"
-# Static lib so the iOS shell can link `-lnmp_app_podcast` alongside
-# `-lnmp_core`. The crate's `#[no_mangle] extern "C"` symbols
-# (`nmp_app_podcast_register`, `nmp_app_podcast_snapshot`,
-# `nmp_app_podcast_snapshot_free`, `nmp_app_podcast_unregister`) land in
-# their own archive (doctrine D0 forbids `nmp-core` from carrying
-# podcast-domain nouns, so they cannot be re-exported through
-# `libnmp_core.a`).
+# Static lib so the iOS shell can link the app-owned UniFFI facade and the
+# remaining `nmp_app_podcast_*` C ABI in one archive. Doctrine D0 forbids
+# `nmp-core` from carrying podcast-domain nouns, so this crate remains the
+# composition root for podcast-domain bridge symbols.
 #
 # `cdylib` is added for M2.F: cargo-ndk packs the same crate as a
-# `libnmp_app_podcast.so` for Android, exposing the JNI shim in
-# `src/android.rs` (gated `#[cfg(target_os = "android")]`). Same cargo
-# binary, second platform.
+# `libnmp_app_podcast.so` for Android. Same cargo binary, second platform.
 crate-type = ["staticlib", "rlib", "cdylib"]
 
 [features]
@@ -161,18 +156,9 @@ sha2 = "0.10"
 base64 = "0.22"
 
 [dev-dependencies]
-# Test-support gates expose `nmp_app_new` / `nmp_app_free` so FFI smoke tests
-# can spin up a real `NmpApp` rather than mocking the slot.
+# Test-support gates let FFI smoke tests spin up a real `NmpApp` rather than
+# mocking the slot.
 nmp-core = { workspace = true, features = ["test-support"] }
 nmp-native-runtime = { workspace = true, features = ["test-support"] }
 # Temporary directory support for PodcastKeyStore and identity store round-trip tests.
 tempfile = "3"
-
-# ── Android JNI shim ──────────────────────────────────────────────────────
-#
-# M2.F second-platform proof. `jni` is only linked when cargo targets
-# `*-linux-android`, so iOS/macOS builds remain unaffected. cargo-ndk drives
-# the cross-compile (see `android/Podcast/app/build.gradle.kts`).
-[target.'cfg(target_os = "android")'.dependencies]
-jni = { version = "0.21", default-features = false }
-crossbeam-channel = "0.5"

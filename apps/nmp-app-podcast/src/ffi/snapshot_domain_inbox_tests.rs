@@ -40,7 +40,7 @@ fn make_test_handle_with_app(app: *mut nmp_native_runtime::NmpApp) -> Box<Podcas
 #[test]
 fn library_domain_projects_inbox_last_triaged_at() {
     let app = Box::into_raw(Box::new(nmp_native_runtime::new_app()));
-    assert!(!app.is_null(), "nmp_app_new must succeed");
+    assert!(!app.is_null(), "NmpApp allocation must succeed");
     let app_ref = unsafe { &*app };
 
     let handle = Arc::new(*make_test_handle_with_app(app));

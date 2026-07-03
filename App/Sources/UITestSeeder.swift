@@ -5,7 +5,7 @@ import Foundation
 ///
 /// Called from `AppDelegate.didFinishLaunchingWithOptions` (before the kernel
 /// opens the store in `KernelModel.start()`). The write is synchronous; the
-/// kernel reads `podcasts.json` at `set_data_dir`/`nmp_app_start` time, so the
+/// kernel reads `podcasts.json` at data-dir binding / `PodcastApp.start` time, so the
 /// seed must land before that call. Two modes:
 ///   • `--UITestSeed` (fresh): always overwrites `podcasts.json` with a
 ///     known-good seed and wipes the Swift SQLite metadata sidecar, so every

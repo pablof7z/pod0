@@ -28,10 +28,10 @@
 //!    structural: after follow list lands, we verify the trust-gate wiring
 //!    compiled and the `trusted` field exists in `PodcastUpdate`.
 //!
-//! ### Optional: dispatch FetchContacts and assert "refreshed"
+//! ### Optional: dispatch FetchContacts and assert acceptance
 //!
 //! 7. Once social is populated, dispatch `podcast.FetchContacts`.
-//!    The new reactive handler must return `{"ok":true,"status":"refreshed"}`.
+//!    The typed action doorway must accept the refresh request.
 //!
 //! Skipped automatically when:
 //! - `relay.primal.net:443` is TCP-unreachable (offline / CI).
@@ -191,13 +191,18 @@ pub fn run(app: *mut NmpApp, handle: *mut PodcastHandle) -> ScenarioResult {
 
     // ── FetchContacts refresh trigger assertion ───────────────────────────────
     //
-    // Now that social is populated, dispatching FetchContacts must return
-    // {"ok":true,"status":"refreshed"} — NOT "fetch_started" (old pull path).
+    // Now that social is populated, dispatching FetchContacts must be accepted.
+    // The typed action doorway returns a dispatch envelope; the old C JSON
+    // doorway's synchronous `{"status":"refreshed"}` body is no longer exposed.
     let refresh_resp = dispatch(app, "podcast", json!({"op": "fetch_contacts"}));
-    let status = refresh_resp["status"].as_str().unwrap_or("(none)");
-    if status != "refreshed" && status != "pending" {
+    if let Some(err) = refresh_resp.get("error").and_then(|v| v.as_str()) {
         return Fail(format!(
-            "FetchContacts after population must return 'refreshed' or 'pending', got '{status}'"
+            "FetchContacts after population must be accepted, got error '{err}'"
+        ));
+    }
+    if refresh_resp.get("correlation_id").and_then(|v| v.as_str()).is_none() {
+        return Fail(format!(
+            "FetchContacts after population must return a dispatch correlation_id, got {refresh_resp}"
         ));
     }
 

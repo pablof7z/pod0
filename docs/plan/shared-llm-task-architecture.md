@@ -76,8 +76,8 @@ Android mirrors the shared STT/ElevenLabs settings projection, stores
 ElevenLabs/AssemblyAI/Perplexity keys in encrypted host storage, reports STT
 key presence to Rust, reloads ElevenLabs, AssemblyAI, and Perplexity into the
 shared provider-key cache, calls shared Rust ElevenLabs validation plus
-Scribe/AssemblyAI transcription and online search through JNI, exposes the
-shared agent chat completion path through JNI, and updates STT/TTS/voice
+Scribe/AssemblyAI transcription and online search through generated UniFFI,
+exposes the shared agent chat completion path through generated UniFFI, and updates STT/TTS/voice
 selections through typed settings actions. The provider catalog now exposes
 both provider-native IDs and `selection_model_id`; iOS, Android, and TUI model
 selectors store the selection ID so OpenRouter/Ollama routing survives the
@@ -90,9 +90,10 @@ Immediate targets:
 
 - Swift clients should keep stubbed test modes, but every live provider
   inference call should route through Rust.
-- Android should expose every shared Rust provider function through JNI when a
-  user-facing Android feature needs it, and keep provider/model settings as
-  typed `podcast.settings` actions instead of platform-local state.
+- Android should expose every shared Rust provider function through generated
+  UniFFI bridge calls when a user-facing Android feature needs it, and keep
+  provider/model settings as typed `podcast.settings` actions instead of
+  platform-local state.
 - OpenRouter Whisper/STT uses `nmp_app_podcast_openrouter_whisper_transcribe`;
   platform callers submit a typed audio-source intent and Rust owns the
   selected model lookup, OpenRouter auth, remote-source staging, multipart
@@ -161,8 +162,8 @@ Immediate targets:
    paths to shared Rust APIs and delete platform-side credential preflights.
 2. Typed task intent follow-up: migrate any remaining Swift/Android task
    creation surfaces to the shared `AgentTaskIntent` contract.
-3. Android/JNI parity PR: expose any new shared provider/task APIs through the
-   Android bridge if they are not already reachable.
+3. Android bridge parity PR: expose any new shared provider/task APIs through
+   generated UniFFI bridge calls if they are not already reachable.
 4. Push-update PR: replace TUI-specific revision polling with shared backend
    update delivery for autonomous state changes.
 5. Validation PR: run real TUI/tmux scenarios with `glm-5.1:cloud`, plus focused

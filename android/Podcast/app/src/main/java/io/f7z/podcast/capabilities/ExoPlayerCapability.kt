@@ -296,9 +296,9 @@ class ExoPlayerCapability(
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Emit an `AudioReport` envelope to the kernel via the JNI report
-     * channel. Visibility is package-private so the listener file can
-     * call it without going through reflection.
+     * Emit an `AudioReport` envelope to the kernel via the generated UniFFI
+     * bridge. Visibility is package-private so the listener file can call it
+     * without going through reflection.
      */
     internal fun emit(report: JsonObject) {
         val payload = json.encodeToString(JsonObject.serializer(), report)

@@ -40,7 +40,7 @@ internal class KernelForwardingPlayer(
      * cleared by `detach()`. Volatile for lock-free reads on the main thread.
      *
      * Typed as [KernelDispatcher] (not [io.f7z.podcast.KernelBridge]) so that
-     * tests can inject a double without loading the native JNI library.
+     * tests can inject a double without loading the native Rust library.
      */
     @Volatile
     var bridge: KernelDispatcher? = null

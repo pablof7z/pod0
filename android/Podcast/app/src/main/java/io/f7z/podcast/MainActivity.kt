@@ -113,12 +113,10 @@ class MainActivity : ComponentActivity() {
  * snapshot loop, then delegates rendering to [`AppNavigation`].
  *
  * Snapshot delivery is push-driven (issue #320): the loop blocks on
- * `bridge.nextUpdate()`, which drains the kernel's update channel
- * (`apps/nmp-app-podcast/src/android.rs::on_update` → `nativeNextUpdate`'s
- * blocking `recv`). It wakes the moment Rust emits a new frame and otherwise
- * costs nothing — no fixed timer, no repeated `podcastSnapshot()` pulls. This
- * matches the iOS push path and the NMP rule that there is no polling at any
- * layer. A single initial `podcastSnapshot()` pull paints the first frame so
+ * `bridge.nextUpdate()`, which drains frames delivered through the generated
+ * UniFFI `PodcastUpdateSink`. It wakes the moment Rust emits a new frame and
+ * otherwise costs nothing — no fixed timer, no repeated `podcastSnapshot()`
+ * pulls. A single initial `podcastSnapshot()` pull paints the first frame so
  * the UI isn't blank until the kernel's first emit.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -162,9 +160,9 @@ private fun PodcastRoot(
         // Restore a previously-imported identity before the actor starts so the
         // first snapshot already reflects the signed-in state. Dispatches the
         // canonical `podcast.identity` ImportNsec (the bridge constructor's
-        // `nativeNew` has already run via `remember { KernelBridge() }`); the
-        // legacy `signinNsec` stub is intentionally NOT used — it feeds a store
-        // the Identity screen never reads.
+        // `KernelBridge` has already attached the app-domain Podcast handle);
+        // the legacy `signinNsec` stub is intentionally NOT used — it feeds a
+        // store the Identity screen never reads.
         KeystoreManager.loadNsec(context)?.let { stored ->
             IdentityActions.importNsec(bridge, stored)
         }
@@ -207,10 +205,9 @@ private fun PodcastRoot(
             }
         }
 
-        // Steady state: block on the kernel's push channel. `nextUpdate()` parks
-        // on the Rust-side `recv` (≤250 ms bounded so cancellation is prompt) and
+        // Steady state: block on the generated UniFFI update queue. `nextUpdate()`
         // returns the moment a new frame arrives — reactive, not timed. A `null`
-        // return means "no new frame yet"; we re-park without touching state.
+        // return means the bridge is shutting down.
         //
         // NMP v0.5.0 per-domain push path: the slim `v` envelope carries only
         // `rev`/`running`/`schema_version`. The real domain payloads arrive as
@@ -243,10 +240,9 @@ private fun PodcastRoot(
     }
 
     // ADR-0048 — signer-request reader loop. Mirrors the snapshot loop above:
-    // block on `nextSignerRequest()` (Rust-side `recv` bounded at ≤250 ms so
-    // cancellation is prompt) and hand each `ExternalSignerRequest` JSON to the
-    // Activity-owned bridge, which fires the Amber Intent. Reactive, not timed:
-    // the channel is empty until a sign-in/sign op builds a request in Rust.
+    // block on `nextSignerRequest()` and hand each `ExternalSignerRequest` JSON
+    // to the Activity-owned bridge, which fires the Amber Intent. Reactive, not
+    // timed: the channel is empty until a sign-in/sign op builds a request in Rust.
     LaunchedEffect(bridge, signerBridge) {
         while (true) {
             coroutineContext.ensureActive()

@@ -109,12 +109,11 @@ settings and task-intent APIs:
   `podcast.settings` namespace. API-key values use
   `set_provider_api_keys` as in-memory-only input; Android remains responsible
   for secure storage and reloading those values on app start.
-- No provider-specific JNI wrapper is needed for these action/snapshot flows.
-  `KernelBridge.dispatchAction(namespace, payloadJson)` already routes through
-  the same Rust `ActionModule` registry that iOS uses.
+- No provider-specific platform wrapper is needed for these action/snapshot
+  flows. `KernelBridge.dispatchAction(namespace, payloadJson)` already routes
+  through the same Rust `ActionModule` registry that iOS uses.
 
-Direct shared-provider transport now has Android JNI parity for the C ABI
-symbols already on `main`:
+Direct shared-provider transport now uses generated UniFFI bridge calls:
 
 - `nmp_app_podcast_chat_complete(handle, messages_json) -> char*`
 - `nmp_app_podcast_provider_complete(handle, intent_json) -> char*`
@@ -125,10 +124,10 @@ symbols already on `main`:
 
 `KernelBridge` exposes handle-scoped `chatComplete`, `providerComplete`,
 `providerEmbed`, `providerModelCatalog`, `generateImage`, and `rerank` methods
-that return Rust's JSON envelope after the JNI shim frees the Rust string with
-`nmp_app_free_string`. Android model-role settings now load the shared Rust
-catalog, filter rows by role output modality, and dispatch the catalog's
-`selection_model_id` through `podcast.settings` so OpenRouter/Ollama routing is
-preserved. Android also reloads encrypted OpenRouter/Ollama/ElevenLabs/
-AssemblyAI/Perplexity provider keys into Rust on app start and has provider
-credential settings screens for those providers.
+that return Rust's JSON envelope through `PodcastApp.podcastBridgeCall`.
+Android model-role settings now load the shared Rust catalog, filter rows by
+role output modality, and dispatch the catalog's `selection_model_id` through
+`podcast.settings` so OpenRouter/Ollama routing is preserved. Android also
+reloads encrypted OpenRouter/Ollama/ElevenLabs/AssemblyAI/Perplexity provider
+keys into Rust on app start and has provider credential settings screens for
+those providers.

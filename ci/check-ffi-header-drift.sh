@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Check that NmpCore.h declarations match Rust FFI implementations.
-# This script detects drift between the C header and the Rust extern "C" symbols.
+# Check that the remaining NmpCore.h C imports exist in Rust.
 #
-# Scope: NmpCore.h is app-owned. All declared `nmp_*` symbols must be exported
-# by apps/nmp-app-podcast/src; no upstream `nmp-ffi` crate is linked.
+# Scope: NmpCore.h is app-owned and intentionally narrow. App-domain
+# `nmp_app_podcast_*` calls should route through generated UniFFI (`PodcastApp`)
+# instead of being declared here.
 #
 # NOTE: Uses only POSIX-compatible tools (grep -E, sed, awk) to support
 #       BSD grep on macOS as well as GNU grep on Linux.
@@ -87,15 +87,10 @@ echo "  Combined Rust total:  $RUST_COUNT functions"
 echo ""
 
 # ---------------------------------------------------------------------------
-# Find differences
-#
-# NmpCore.h must exactly match the app-owned exported symbol set.
+# Find declarations that do not exist in local Rust. Local Rust may export
+# additional C symbols for non-iOS compatibility while iOS migrates through
+# UniFFI.
 # ---------------------------------------------------------------------------
-
-ONLY_IN_LOCAL=$(
-    comm -13 <(echo "$HEADER_FUNCS") <(echo "$LOCAL_FUNCS") \
-    | grep -vE '^[[:space:]]*$' || true
-)
 
 ONLY_IN_HEADER=$(
     comm -23 <(echo "$HEADER_FUNCS") <(echo "$RUST_FUNCS") \
@@ -103,15 +98,6 @@ ONLY_IN_HEADER=$(
 )
 
 EXIT_CODE=0
-
-if [[ -n "$ONLY_IN_LOCAL" ]]; then
-    echo "ERROR: Local app symbols (nmp-app-podcast/src/ffi) NOT declared in NmpCore.h:"
-    echo "$ONLY_IN_LOCAL" | while read -r func; do
-        echo "  - $func"
-    done
-    echo ""
-    EXIT_CODE=1
-fi
 
 if [[ -n "$ONLY_IN_HEADER" ]]; then
     echo "ERROR: Functions declared in NmpCore.h but NOT found in local Rust source:"
@@ -123,7 +109,7 @@ if [[ -n "$ONLY_IN_HEADER" ]]; then
 fi
 
 if [[ $EXIT_CODE -eq 0 ]]; then
-    echo "✓ FFI header is in sync with Rust FFI implementations."
+    echo "✓ FFI header declarations exist in Rust."
 fi
 
 exit $EXIT_CODE

@@ -129,13 +129,13 @@ pub struct PodcastHandle {
 //      convention, not a type-system guarantee — documented, not enforced here.)
 //   2. The `app` raw pointer is only ever *read* — never mutated from this
 //      struct after construction.
-//   3. `nmp_app_free` drops `NmpApp`, whose `Drop` sends `Shutdown` and then
+//   3. `PodcastApp.shutdown()` / `NmpApp` drop sends `Shutdown` and then
 //      `join()`s the actor thread before the allocation is freed, fencing any
 //      in-flight callbacks.
 //
-// CALLER CONTRACT: `nmp_app_free` must not be invoked while any kernel
-// callback that reaches this handle is still in flight. The in-process
-// Rust-trait registration path gets that fence for free (the actor join).
+// CALLER CONTRACT: native shells must unregister this handle before dropping
+// the owning `PodcastApp`. The in-process Rust-trait registration path gets
+// the callback fence from the actor join.
 unsafe impl Send for PodcastHandle {}
 unsafe impl Sync for PodcastHandle {}
 
@@ -147,6 +147,13 @@ unsafe impl Sync for PodcastHandle {}
 const CLEAN_HTML_CACHE_CAP: usize = 16_384;
 
 impl PodcastHandle {
+    /// Fence async sidecars that may still dereference the underlying `NmpApp`.
+    /// Safe to call more than once; each substate shutdown path is idempotent.
+    pub(crate) fn shutdown_sidecars(&self) {
+        self.state.voice.shutdown();
+        self.state.tasks.shutdown();
+    }
+
     /// Bump the snapshot rev. Step N+1: delegates to `state.infra.bump()`
     /// which owns the canonical signal + rev fallback logic.
     ///
@@ -226,10 +233,7 @@ impl PodcastHandle {
     /// Used by the `account_switch` headless scenario to pre-populate social
     /// state for account A before triggering the identity-change hook.
     #[cfg(feature = "headless")]
-    pub fn headless_inject_social_snapshot(
-        &self,
-        snap: crate::ffi::projections::SocialSnapshot,
-    ) {
+    pub fn headless_inject_social_snapshot(&self, snap: crate::ffi::projections::SocialSnapshot) {
         if let Ok(mut slot) = self.state.social.social_slot.lock() {
             *slot = Some(snap);
         }
@@ -241,10 +245,7 @@ impl PodcastHandle {
     /// Used by the `account_switch` headless scenario to pre-populate agent
     /// notes for account A before triggering the identity-change hook.
     #[cfg(feature = "headless")]
-    pub fn headless_inject_agent_note(
-        &self,
-        note: crate::agent_note_handler::CachedAgentNote,
-    ) {
+    pub fn headless_inject_agent_note(&self, note: crate::agent_note_handler::CachedAgentNote) {
         if let Ok(mut notes) = self.state.social.agent_notes.lock() {
             notes.push(note);
         }
@@ -255,10 +256,13 @@ impl PodcastHandle {
     /// Returns `None` if the slot is empty (cleared by `clear_for_account_switch`)
     /// or if the mutex is poisoned.
     #[cfg(feature = "headless")]
-    pub fn headless_social_snapshot(
-        &self,
-    ) -> Option<crate::ffi::projections::SocialSnapshot> {
-        self.state.social.social_slot.lock().ok().and_then(|s| s.clone())
+    pub fn headless_social_snapshot(&self) -> Option<crate::ffi::projections::SocialSnapshot> {
+        self.state
+            .social
+            .social_slot
+            .lock()
+            .ok()
+            .and_then(|s| s.clone())
     }
 
     /// Read the current agent-notes cache length (for post-switch leak assertions).

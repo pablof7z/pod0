@@ -1,7 +1,8 @@
 //! `nmp-app-podcast` — Podcast per-app glue.
 //!
 //! Composes the NMP native runtime with Podcast-owned projection and action
-//! modules, then surfaces podcast state over app-owned FFI for native shells.
+//! modules, then surfaces podcast state over app-owned UniFFI plus the
+//! remaining app-domain C ABI for native shells.
 //!
 //! ## Wiring
 //!
@@ -9,14 +10,15 @@
 //! `nmp-core`, the NIP-46 signer broker, and the Podcast projection in one
 //! Rust archive gives the process exactly one copy of `nmp-core` static state.
 //!
-//! The shell creates an `nmp_native_runtime::NmpApp`, then calls
-//! [`ffi::nmp_app_podcast_register`]. The registration:
+//! Native shells create [`ffi::uniffi_facade::PodcastApp`], then call the
+//! app-domain registration path while the remaining C ABI exists. The
+//! registration:
 //!
 //! 1. Installs the reusable NMP substrate and explicit protocol modules.
 //! 2. Returns an opaque handle for later snapshots / unregister.
 //!
-//! On each render tick the shell calls [`ffi::nmp_app_podcast_snapshot`],
-//! decodes the JSON, and renders the current podcast state.
+//! On each render tick the shell consumes the pushed snapshot frame, decodes
+//! the JSON, and renders the current podcast state.
 //!
 //! ## Doctrine
 //!
@@ -30,7 +32,7 @@
 //!   (sleep-timer expiry, end-of-episode policy, retry behaviour) lives in
 //!   per-projection actors under [`player`] et al.
 
-// Wave 1 of the UniFFI-facade migration (podcast-player#681 follow-on):
+// UniFFI facade migration (podcast-player#681 follow-on):
 // `ffi::uniffi_facade::PodcastApp` is this crate's one UniFFI object. A
 // native app links exactly one UniFFI cdylib, so this is the crate's single
 // `setup_scaffolding!()` call site (nmp-uniffi-support's own doc comment).
@@ -89,12 +91,6 @@ pub(crate) mod tasks_schedule;
 pub(crate) mod transcript;
 pub(crate) mod voice_conversation;
 pub(crate) mod voice_handler;
-
-// M2.F — Android JNI shim. Gated `target_os = "android"` so iOS/macOS builds
-// remain unaffected. The shim exports `Java_io_f7z_podcast_KernelBridge_*`
-// symbols cargo-ndk packs into `libnmp_app_podcast.so`. Same crate, same logic.
-#[cfg(target_os = "android")]
-pub mod android;
 
 pub use capability::{
     AudioCommand, AudioReport, DownloadCommand, DownloadReport, AUDIO_CAPABILITY_NAMESPACE,

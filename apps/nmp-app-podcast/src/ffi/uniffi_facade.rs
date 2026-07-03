@@ -1,33 +1,25 @@
-//! App-owned UniFFI facade over `nmp-native-runtime` (wave 1: generic runtime
-//! lifecycle/session verbs only — mirrors `apps/nmp-gallery`'s validated
-//! `nmp-app-gallery::facade` shape).
+//! App-owned UniFFI facade over `nmp-native-runtime`.
 //!
-//! This module coexists with the legacy `runtime_facade` C-ABI module during
-//! the incremental migration (podcast-player#681 follow-on). [`PodcastApp`]
-//! owns the single `NmpApp` instance by value; [`PodcastApp::native_handle`]
-//! is a transitional escape hatch exposing the same pointer the C-ABI
-//! `ffi::actions`/`ffi::snapshot`/... surface still expects, so those ~140
-//! not-yet-migrated symbols keep working unmodified against the one runtime
-//! instance. Each later wave shrinks what needs the escape hatch until it is
-//! deleted.
-//!
-//! Swift call-site adoption is itself staged narrower than this module's
-//! surface: wave 1 only switches `KernelBridge`'s construction/teardown
-//! (`PodcastApp::new`/`native_handle`/`shutdown`) — the smallest change that
-//! proves the whole chain (this facade, bindgen, the Xcode/Tuist module
-//! wiring, and runtime behavior) end-to-end. The rest of this object's
-//! methods (`start`, `stop`, `dispatch_action`, `resolve_ref`, ...) are
-//! implemented, unit-tested, and bindgen-exported here, but their legacy
-//! `nmp_app_*` C-ABI call sites in Swift are switched over individually in
-//! later waves, each verified by its own build rather than swapped in bulk
-//! without local build feedback.
+//! [`PodcastApp`] owns the single `NmpApp` instance by value and the
+//! app-domain [`PodcastHandle`]. Generic NMP runtime lifecycle, identity,
+//! callback, intent, and ref APIs are consumed through this object; app-domain
+//! C ABI calls are being folded into it from the lifetime spine outward.
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::ffi::CString;
+use std::sync::{Arc, OnceLock};
 
 use nmp_core::{EventShape, ProfileShape, RefLiveness, RefNamespace, RefShape, SignerSource};
 use nmp_native_runtime::NmpApp;
 use zeroize::Zeroizing;
+
+use super::dispatch_action::dispatch_action_json;
+use super::handle::PodcastHandle;
+use super::runtime_facade::{
+    classify_input_intent_json, decode_nip21_uri_json, dispatch_input_intent_json,
+};
+use super::snapshot::{build_snapshot_payload, decode_update_frame_json};
+use super::uniffi_bridge_calls::{call_podcast_bridge_endpoint, call_podcast_global_endpoint};
 
 #[uniffi::export(callback_interface)]
 pub trait PodcastUpdateSink: Send + Sync {
@@ -37,6 +29,11 @@ pub trait PodcastUpdateSink: Send + Sync {
 #[uniffi::export(callback_interface)]
 pub trait PodcastCapabilitySink: Send + Sync {
     fn on_capability_request(&self, request_json: String) -> String;
+}
+
+#[uniffi::export(callback_interface)]
+pub trait PodcastAgentAskSink: Send + Sync {
+    fn on_agent_ask_event(&self, event_json: String);
 }
 
 #[derive(uniffi::Record, Debug, Clone)]
@@ -92,18 +89,18 @@ pub enum PodcastRefShape {
 impl From<PodcastRefShape> for RefShape {
     fn from(value: PodcastRefShape) -> Self {
         match value {
-            PodcastRefShape::Profile { shape: PodcastProfileShape::Ref } => {
-                RefShape::Profile(ProfileShape::Ref)
-            }
-            PodcastRefShape::Profile { shape: PodcastProfileShape::Card } => {
-                RefShape::Profile(ProfileShape::Card)
-            }
-            PodcastRefShape::Event { shape: PodcastEventShape::Embed } => {
-                RefShape::Event(EventShape::Embed)
-            }
-            PodcastRefShape::Event { shape: PodcastEventShape::Raw } => {
-                RefShape::Event(EventShape::Raw)
-            }
+            PodcastRefShape::Profile {
+                shape: PodcastProfileShape::Ref,
+            } => RefShape::Profile(ProfileShape::Ref),
+            PodcastRefShape::Profile {
+                shape: PodcastProfileShape::Card,
+            } => RefShape::Profile(ProfileShape::Card),
+            PodcastRefShape::Event {
+                shape: PodcastEventShape::Embed,
+            } => RefShape::Event(EventShape::Embed),
+            PodcastRefShape::Event {
+                shape: PodcastEventShape::Raw,
+            } => RefShape::Event(EventShape::Raw),
         }
     }
 }
@@ -123,28 +120,40 @@ impl From<PodcastRefLiveness> for RefLiveness {
     }
 }
 
-/// The app-owned UniFFI object. Owns the single `NmpApp` instance by value —
-/// see the module doc for the `native_handle` transitional escape hatch.
+/// The app-owned UniFFI object. Owns the single `NmpApp` instance and the
+/// app-domain `PodcastHandle`.
 #[derive(uniffi::Object)]
 pub struct PodcastApp {
     inner: NmpApp,
+    podcast: OnceLock<Arc<PodcastHandle>>,
 }
 
 #[uniffi::export]
 impl PodcastApp {
     #[uniffi::constructor]
     pub fn new() -> Arc<Self> {
-        Arc::new(Self {
+        let mut app = Arc::new(Self {
             inner: nmp_native_runtime::new_app(),
-        })
+            podcast: OnceLock::new(),
+        });
+        let app_mut = Arc::get_mut(&mut app).expect("PodcastApp has no shared refs during init");
+        let raw = std::ptr::addr_of_mut!(app_mut.inner);
+        let handle = super::register::nmp_app_podcast_register(raw);
+        if !handle.is_null() {
+            // SAFETY: `nmp_app_podcast_register` returns `Arc::into_raw`.
+            // Reclaim that strong ref into the owning UniFFI object; projection
+            // closures hold their own Arc clones.
+            let podcast = unsafe { Arc::from_raw(handle as *const PodcastHandle) };
+            let _ = app_mut.podcast.set(podcast);
+        }
+        app
     }
 
-    /// Transitional escape hatch (wave 1 only): the raw `*mut NmpApp` address
-    /// this facade owns, for the still-C-ABI `nmp_app_podcast_*` surface.
-    /// Valid only while this `PodcastApp` (and thus its Swift/Kotlin
-    /// reference) is alive. Deleted once every C-ABI symbol has migrated.
-    pub fn native_handle(&self) -> u64 {
-        std::ptr::addr_of!(self.inner) as u64
+    /// Transitional escape hatch for the still-C-ABI app-domain tail.
+    /// This returns the `PodcastHandle` pointer owned by this `PodcastApp`;
+    /// Swift must not free it.
+    pub fn podcast_handle(&self) -> u64 {
+        self.podcast_handle_ptr().map_or(0, |ptr| ptr as u64)
     }
 
     pub fn start(&self, visible_limit: u32, emit_hz: u32) {
@@ -164,6 +173,9 @@ impl PodcastApp {
     }
 
     pub fn shutdown(&self) {
+        if let Some(handle) = self.podcast.get() {
+            handle.shutdown_sidecars();
+        }
         self.inner.shutdown();
     }
 
@@ -207,6 +219,87 @@ impl PodcastApp {
         nmp_uniffi_support::dispatch_action_vec(&self.inner, envelope).into()
     }
 
+    pub fn set_podcast_data_dir(&self, path: String) {
+        let Some(handle) = self.podcast_handle_ptr() else {
+            return;
+        };
+        let Ok(path) = CString::new(path) else {
+            return;
+        };
+        super::data_dir::nmp_app_podcast_set_data_dir(handle, path.as_ptr());
+    }
+
+    pub fn podcast_snapshot_rev(&self) -> u64 {
+        self.podcast
+            .get()
+            .map(|handle| {
+                handle
+                    .state
+                    .infra
+                    .rev
+                    .load(std::sync::atomic::Ordering::Relaxed)
+            })
+            .unwrap_or(0)
+    }
+
+    pub fn podcast_snapshot(&self) -> Option<String> {
+        self.podcast
+            .get()
+            .map(|handle| build_snapshot_payload(handle))
+    }
+
+    pub fn decode_update_frame(&self, frame: Vec<u8>) -> Option<String> {
+        decode_update_frame_json(&frame)
+    }
+
+    pub fn dispatch_podcast_action(
+        &self,
+        namespace: String,
+        action_json: String,
+    ) -> Option<String> {
+        self.podcast
+            .get()
+            .map(|handle| dispatch_action_json(handle, &namespace, &action_json))
+    }
+
+    pub fn podcast_bridge_call(
+        &self,
+        endpoint: String,
+        request_json: Option<String>,
+    ) -> Option<String> {
+        self.podcast.get().and_then(|handle| {
+            call_podcast_bridge_endpoint(handle, &endpoint, request_json.as_deref())
+        })
+    }
+
+    pub fn set_agent_ask_sink(&self, sink: Option<Box<dyn PodcastAgentAskSink>>) {
+        let Some(handle) = self.podcast.get() else {
+            return;
+        };
+        let callback = sink.map(|sink| {
+            Arc::new(move |event_json: String| {
+                sink.on_agent_ask_event(event_json);
+            }) as super::agent_ask::AgentAskCallback
+        });
+        super::agent_ask::set_agent_ask_callback(handle, callback);
+    }
+
+    pub fn classify_input_intent(&self, request_json: String) -> String {
+        classify_input_intent_json(&self.inner, &request_json)
+    }
+
+    pub fn dispatch_input_intent(
+        &self,
+        request_json: String,
+        session_id: Option<String>,
+    ) -> String {
+        dispatch_input_intent_json(&self.inner, &request_json, session_id.as_deref())
+    }
+
+    pub fn decode_nip21_uri(&self, input: String) -> String {
+        decode_nip21_uri_json(&input)
+    }
+
     pub fn signin_nsec(&self, secret: String, make_active: bool) {
         let secret = Zeroizing::new(secret);
         self.inner
@@ -214,7 +307,8 @@ impl PodcastApp {
     }
 
     pub fn signin_bunker(&self, uri: String, make_active: bool) {
-        self.inner.add_signer(SignerSource::BunkerUri(uri), make_active);
+        self.inner
+            .add_signer(SignerSource::BunkerUri(uri), make_active);
     }
 
     pub fn signer_broker_init(&self) {
@@ -223,6 +317,14 @@ impl PodcastApp {
 
     pub fn cancel_bunker_handshake(&self) {
         self.inner.cancel_bunker_handshake();
+    }
+
+    pub fn signin_nip55(&self, signer_package: Option<String>) {
+        self.inner.signin_nip55(signer_package);
+    }
+
+    pub fn deliver_external_signer_response(&self, response_json: String) {
+        self.inner.deliver_external_signer_response(&response_json);
     }
 
     pub fn nostrconnect_uri(&self, callback_scheme: Option<String>) -> Option<String> {
@@ -250,11 +352,13 @@ impl PodcastApp {
         make_active: bool,
     ) {
         let Ok(profile) = serde_json::from_str::<HashMap<String, String>>(&profile_json) else {
-            self.inner.show_toast("Failed to decode profile JSON".to_string());
+            self.inner
+                .show_toast("Failed to decode profile JSON".to_string());
             return;
         };
         let Ok(relays) = serde_json::from_str::<Vec<(String, String)>>(&relays_json) else {
-            self.inner.show_toast("Failed to decode relays JSON".to_string());
+            self.inner
+                .show_toast("Failed to decode relays JSON".to_string());
             return;
         };
         self.inner
@@ -267,11 +371,8 @@ impl PodcastApp {
         unsigned_json: String,
     ) -> String {
         let correlation_id = mint_correlation_id();
-        self.inner.sign_event_for_return(
-            account_pubkey_hex,
-            unsigned_json,
-            correlation_id.clone(),
-        );
+        self.inner
+            .sign_event_for_return(account_pubkey_hex, unsigned_json, correlation_id.clone());
         correlation_id
     }
 
@@ -297,6 +398,27 @@ impl PodcastApp {
     }
 }
 
+impl PodcastApp {
+    fn podcast_handle_ptr(&self) -> Option<*mut PodcastHandle> {
+        self.podcast
+            .get()
+            .map(|handle| Arc::as_ptr(handle) as *mut PodcastHandle)
+    }
+}
+
+impl Drop for PodcastApp {
+    fn drop(&mut self) {
+        if let Some(handle) = self.podcast.get() {
+            handle.shutdown_sidecars();
+        }
+    }
+}
+
+#[uniffi::export]
+pub fn podcast_bridge_global_call(endpoint: String, request_json: String) -> Option<String> {
+    call_podcast_global_endpoint(&endpoint, &request_json)
+}
+
 fn mint_correlation_id() -> String {
     use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -315,17 +437,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn constructor_and_native_handle_round_trip_to_legacy_c_abi() {
+    fn constructor_owns_podcast_handle() {
         let app = PodcastApp::new();
-        let handle = app.native_handle();
-        assert_ne!(handle, 0);
-
-        // The escape hatch must produce a pointer the legacy `*mut NmpApp`
-        // C-ABI surface can dereference identically to `nmp_app_new()`'s
-        // return value.
-        let raw = handle as *mut NmpApp;
-        let via_escape_hatch = unsafe { &*raw };
-        assert!(!via_escape_hatch.is_alive());
+        assert_ne!(app.podcast_handle(), 0);
+        assert_eq!(app.podcast_snapshot_rev(), 1);
+        assert!(app.podcast_snapshot().is_some());
     }
 
     #[test]

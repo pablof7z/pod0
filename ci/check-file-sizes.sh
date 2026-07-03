@@ -46,6 +46,7 @@ check_source_files() {
     git -C "$REPO_ROOT" ls-files \
         -- '*.swift' '*.rs' '*.kt' '*.h' \
     | grep -v 'App/Sources/Bridge/Generated/' \
+    | grep -v 'android/Podcast/app/src/main/java/uniffi/' \
     | grep -v '\.generated\.swift$' \
     | grep -v 'NmpCore.*\.h$' \
     | grep -v '_tests\.rs$' \

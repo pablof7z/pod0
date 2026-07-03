@@ -2,71 +2,47 @@ import Darwin
 import Foundation
 import os.log
 
-// ─── Capability callback ──────────────────────────────────────────────────
-//
-// One C callback handles all kernel-issued capability requests. Runs on the
-// Rust actor thread (a background thread), so the bridge it calls MUST be
-// thread-safe and synchronous.
-//
-// `SyncCapabilityBridge` is retained via `bridgeBox` on `PodcastHandle` so the
-// registered `context` pointer stays valid until `nmp_app_set_capability_callback`
-// is called with `nil` or the handle is deallocated.
+final class KernelAgentAskSink: PodcastAgentAskSink, @unchecked Sendable {
+    weak var handle: PodcastHandle?
 
-private let podcastCapabilityCallback: NmpCapabilityCallback = { context, requestJSON in
-    guard let context, let requestJSON else {
-        // D6 — null args: return a malloc-allocated error envelope.
-        let err = strdup("{\"namespace\":\"\",\"correlation_id\":\"\",\"result_json\":\"{\\\"status\\\":\\\"error\\\",\\\"message\\\":\\\"null-args\\\"}\"}")
-        return err
+    init(handle: PodcastHandle) {
+        self.handle = handle
     }
-    let bridge = Unmanaged<SyncCapabilityBridge>.fromOpaque(context).takeUnretainedValue()
-    let requestStr = String(cString: requestJSON)
-    let response = bridge.handle(requestJSON: requestStr)
-    // MUST use strdup: Rust takes ownership via CString::from_raw, which
-    // requires a malloc-compatible allocation.
-    return strdup(response)
-}
 
-private let podcastAgentAskCallback: NmpPodcastAgentAskCallback = { context, eventJSON in
-    guard let context, let eventJSON else { return }
-    let handle = Unmanaged<PodcastHandle>.fromOpaque(context).takeUnretainedValue()
-    let responseJSON = String(cString: eventJSON)
-    guard let data = responseJSON.data(using: .utf8),
-          let response = try? KernelDecoding.makeDecoder().decode(
-            KernelModel.AgentAskResponse.self, from: data)
-    else { return }
-    Task { @MainActor in
-        handle.onAgentAskEvent?(response)
+    func onAgentAskEvent(eventJson: String) {
+        guard let handle,
+              let data = eventJson.data(using: .utf8),
+              let response = try? KernelDecoding.makeDecoder().decode(
+                KernelModel.AgentAskResponse.self, from: data)
+        else { return }
+        Task { @MainActor in
+            handle.onAgentAskEvent?(response)
+        }
     }
 }
 
 // ─── Podcast projection registration ─────────────────────────────────────
 //
-// `nmp_app_podcast_register` wires the podcast-specific projection into the
-// kernel. Called once from `PodcastHandle.init()` before `start()`. The handle
-// is dropped in `deinit` via `unregisterPodcastProjectionIfNeeded()`.
+// `PodcastApp` wires the podcast-specific projection into the kernel. Called
+// once from `PodcastHandle.init()` before `start()`.
 
 extension PodcastHandle {
     /// Register the capability callback then the podcast snapshot projection.
-    /// Must be called once after `nmp_app_new()` and before `start()`.
+    /// Must be called once after `PodcastApp` construction and before `start()`.
     func registerPodcastProjection() {
         let bridge = SyncCapabilityBridge()
-        // Keep a strong reference on self so the context pointer remains valid
-        // for the lifetime of the registered callback.
         syncBridge = bridge
-        let ctx = Unmanaged.passUnretained(bridge).toOpaque()
-        nmp_app_set_capability_callback(raw, ctx, podcastCapabilityCallback)
+        podcastApp.setCapabilityCallback(sink: bridge)
+        let askSink = KernelAgentAskSink(handle: self)
+        agentAskSink = askSink
+        podcastApp.setAgentAskSink(sink: askSink)
 
-        podcastHandle = nmp_app_podcast_register(raw)
+        let handleBits = podcastApp.podcastHandle()
+        podcastHandle = UnsafeMutableRawPointer(bitPattern: UInt(handleBits))
         if podcastHandle == nil {
-            kbLog.error("nmp_app_podcast_register returned NULL — projection unwired")
+            kbLog.error("PodcastApp.podcastHandle returned 0 — projection unwired")
             return
         }
-        nmp_app_podcast_agent_ask_set_callback(
-            podcastHandle,
-            Unmanaged.passUnretained(self).toOpaque(),
-            podcastAgentAskCallback
-        )
-
         // NOTE: configurePodcastDataDir is intentionally NOT called here.
         // `nmp_app_podcast_set_data_dir` reads podcasts.json immediately at
         // call time (data_dir.rs). Because `PodcastHandle.init()` runs during
@@ -79,8 +55,7 @@ extension PodcastHandle {
         // UITestSeeder have completed.
     }
 
-    static func configurePodcastDataDir(for handle: UnsafeMutableRawPointer?) {
-        guard let handle else { return }
+    static func configurePodcastDataDir(for app: PodcastApp) {
         guard let base = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask).first
         else {
@@ -91,7 +66,7 @@ extension PodcastHandle {
         do {
             try FileManager.default.createDirectory(
                 at: directory, withIntermediateDirectories: true)
-            directory.path.withCString { nmp_app_podcast_set_data_dir(handle, $0) }
+            app.setPodcastDataDir(path: directory.path)
         } catch {
             kbLog.error(
                 "failed to create PodcastLibrary directory: \(error.localizedDescription, privacy: .public)")
@@ -287,9 +262,8 @@ extension PodcastHandle {
     }
 
     func unregisterPodcastProjectionIfNeeded() {
-        guard let handle = podcastHandle else { return }
-        nmp_app_podcast_agent_ask_set_callback(handle, nil, nil)
-        nmp_app_podcast_unregister(handle)
+        podcastApp.setAgentAskSink(sink: nil)
+        agentAskSink = nil
         podcastHandle = nil
     }
 
@@ -302,8 +276,7 @@ extension PodcastHandle {
     /// the full snapshot. Use this to skip `podcastSnapshot()` when the
     /// rev hasn't advanced since the last decoded snapshot.
     func podcastSnapshotRev() -> UInt64 {
-        guard let handle = podcastHandle else { return 0 }
-        return nmp_app_podcast_snapshot_rev(handle)
+        podcastApp.podcastSnapshotRev()
     }
 
     /// Pull the latest snapshot from the podcast projection. Returns `.empty`
@@ -322,13 +295,9 @@ extension PodcastHandle {
                 micros: Int((DispatchTime.now().uptimeNanoseconds &- pullStart) / 1_000),
                 bytes: pullBytes)
         }
-        guard let handle = podcastHandle,
-              let ptr = nmp_app_podcast_snapshot(handle)
-        else {
+        guard let json = podcastApp.podcastSnapshot() else {
             return PodcastUpdate()
         }
-        defer { nmp_app_podcast_snapshot_free(ptr) }
-        let json = String(cString: ptr)
         guard let data = json.data(using: .utf8) else { return PodcastUpdate() }
         pullBytes = data.count
         do {

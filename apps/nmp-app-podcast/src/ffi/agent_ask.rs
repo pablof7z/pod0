@@ -5,7 +5,7 @@
 //! promotion, timeout duration, and the final tool-result envelope.
 
 use std::collections::VecDeque;
-use std::ffi::{c_char, c_void, CStr, CString};
+use std::ffi::{c_char, CStr, CString};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -21,22 +21,22 @@ const TIMEOUT_SECONDS: u64 = 5 * 60;
 const DECLINED_ANSWER: &str = "user declined to answer";
 const TIMED_OUT_ANSWER: &str = "user did not respond within 5 minutes";
 
-pub(crate) type AgentAskCallback = extern "C" fn(*mut c_void, *const c_char);
+pub(crate) type AgentAskCallback = Arc<dyn Fn(String) + Send + Sync + 'static>;
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Default)]
 pub(crate) struct AgentAskCallbackState {
-    context: usize,
     callback: Option<AgentAskCallback>,
 }
 
 impl AgentAskCallbackState {
-    fn emit(self, response: &AgentAskResponse) {
-        let Some(callback) = self.callback else { return };
+    fn emit(&self, response: &AgentAskResponse) {
+        let Some(callback) = self.callback.as_ref().cloned() else {
+            return;
+        };
         let Ok(json) = serde_json::to_string(response) else {
             return;
         };
-        let Ok(c_json) = CString::new(json) else { return };
-        callback(self.context as *mut c_void, c_json.as_ptr());
+        callback(json);
     }
 }
 
@@ -300,23 +300,8 @@ pub extern "C" fn nmp_app_podcast_agent_ask_settle(
     )
 }
 
-#[no_mangle]
-#[allow(clippy::not_unsafe_ptr_arg_deref)]
-pub extern "C" fn nmp_app_podcast_agent_ask_set_callback(
-    handle: *mut PodcastHandle,
-    context: *mut c_void,
-    callback: Option<AgentAskCallback>,
-) {
-    if handle.is_null() {
-        return;
+pub(crate) fn set_agent_ask_callback(handle: &PodcastHandle, callback: Option<AgentAskCallback>) {
+    if let Ok(mut slot) = handle.ask_callback.lock() {
+        *slot = AgentAskCallbackState { callback };
     }
-    ffi_guard("nmp_app_podcast_agent_ask_set_callback", || {}, || {
-        let handle_ref = unsafe { &*handle };
-        if let Ok(mut slot) = handle_ref.ask_callback.lock() {
-            *slot = AgentAskCallbackState {
-                context: context as usize,
-                callback,
-            };
-        }
-    })
 }
