@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "id": "perplexity-search-success",
+  "title": "Perplexity web search answer with sources",
+  "provider": "perplexity",
+  "operation": "web_search",
+  "scenario_refs": ["G2", "L7"],
+  "nmp_rules": ["D6", "D7", "D8"],
+  "request": {
+    "method": "POST",
+    "url": "https://api.perplexity.ai/v1/sonar",
+    "headers": {
+      "Authorization": "<redacted:bearer>",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "model": "sonar",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Find current sources about podcast chapter UX patterns."
+        }
+      ]
+    },
+    "body_sha256": "c257a8f44d8696f2e7117fbcadd07b9f59a654245ab388e98be4f2fc1e2078f8",
+    "fingerprint": "34e7a006e9e9abda9f8fd9d3c173d1fd82ea87773554ee1b04a4d6663a1c4b11"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "model": "sonar",
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "Modern podcast chapter UX should keep chapter titles visible, make seek targets large, and preserve playback context during navigation."
+          }
+        }
+      ],
+      "search_results": [
+        {
+          "title": "Podcast chapters UX reference",
+          "url": "https://example.com/podcast-chapters"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 11,
+        "completion_tokens": 28,
+        "total_tokens": 39
+      }
+    }
+  },
+  "metrics": {
+    "recorded_latency_ms": 1460,
+    "replay_latency_ms": 4,
+    "budget_ms": 3000,
+    "acceptable_for_2026_premium": true
+  },
+  "replay": {
+    "match_fields": ["provider", "operation", "method", "url", "body_sha256"],
+    "redactions": ["Authorization"],
+    "notes": "Validates online-search answer and source parsing without a Perplexity key."
+  }
+}

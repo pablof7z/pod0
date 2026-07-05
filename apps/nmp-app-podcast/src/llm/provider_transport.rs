@@ -13,6 +13,7 @@ use super::provider_config::{
     is_ollama_cloud_base_url, ollama_chat_url, ollama_embed_url, strip_provider_prefix,
     ProviderConfigError, ProviderSettings, OPENROUTER_BASE_URL, REQUEST_TIMEOUT,
 };
+use super::provider_replay::{self, ProviderReplayError};
 use crate::store::PodcastStore;
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
@@ -149,10 +150,6 @@ async fn complete_openrouter(
     intent: CompletionIntent,
     settings: ProviderSettings,
 ) -> Result<CompletionResult, ProviderTransportError> {
-    let api_key = settings
-        .openrouter_key
-        .filter(|key| !key.trim().is_empty())
-        .ok_or(ProviderTransportError::MissingCredential("OpenRouter"))?;
     let mut body = json!({
         "model": strip_provider_prefix(&intent.model, "openrouter"),
         "messages": [
@@ -164,13 +161,29 @@ async fn complete_openrouter(
     if intent.response_format == ResponseFormat::JsonObject {
         body["response_format"] = json!({"type": "json_object"});
     }
+    let url = format!("{OPENROUTER_BASE_URL}/chat/completions");
+    if let Some(response) =
+        provider_replay::lookup_json("openrouter", "chat_completion", "POST", &url, &body)
+            .map_err(replay_transport_error)?
+    {
+        let (response, latency_ms) =
+            provider_replay::success_body(response).map_err(replay_transport_error)?;
+        return decode_openrouter_completion(intent.model, response, latency_ms);
+    }
+    let api_key = settings
+        .openrouter_key
+        .filter(|key| !key.trim().is_empty())
+        .ok_or(ProviderTransportError::MissingCredential("OpenRouter"))?;
     let started = Instant::now();
-    let response = post_json(
-        &format!("{OPENROUTER_BASE_URL}/chat/completions"),
-        Some(api_key),
-        body,
-    )
-    .await?;
+    let response = post_json(&url, Some(api_key), body).await?;
+    decode_openrouter_completion(intent.model, response, started.elapsed().as_millis())
+}
+
+fn decode_openrouter_completion(
+    requested_model: String,
+    response: Value,
+    latency_ms: u128,
+) -> Result<CompletionResult, ProviderTransportError> {
     let text = response
         .get("choices")
         .and_then(Value::as_array)
@@ -183,13 +196,13 @@ async fn complete_openrouter(
     let model = response
         .get("model")
         .and_then(Value::as_str)
-        .unwrap_or_else(|| strip_provider_prefix(&intent.model, "openrouter"))
+        .unwrap_or_else(|| strip_provider_prefix(&requested_model, "openrouter"))
         .to_owned();
     Ok(CompletionResult {
         text: text.to_owned(),
         provider: ProviderKind::OpenRouter.label(),
         model,
-        latency_ms: started.elapsed().as_millis(),
+        latency_ms,
         prompt_tokens: usage_token(&usage, "prompt_tokens"),
         completion_tokens: usage_token(&usage, "completion_tokens"),
         usage,
@@ -213,12 +226,29 @@ async fn complete_ollama(
     if intent.response_format == ResponseFormat::JsonObject {
         body["format"] = json!("json");
     }
+    let url = ollama_chat_url(&settings.ollama_base_url);
+    if let Some(response) =
+        provider_replay::lookup_json("ollama", "chat_completion", "POST", &url, &body)
+            .map_err(replay_transport_error)?
+    {
+        let (response, latency_ms) =
+            provider_replay::success_body(response).map_err(replay_transport_error)?;
+        return decode_ollama_completion(intent.model, response, latency_ms);
+    }
     let api_key = settings.ollama_key.filter(|key| !key.trim().is_empty());
     if is_ollama_cloud_base_url(&settings.ollama_base_url) && api_key.is_none() {
         return Err(ProviderTransportError::MissingCredential("Ollama"));
     }
     let started = Instant::now();
-    let response = post_json(&ollama_chat_url(&settings.ollama_base_url), api_key, body).await?;
+    let response = post_json(&url, api_key, body).await?;
+    decode_ollama_completion(intent.model, response, started.elapsed().as_millis())
+}
+
+fn decode_ollama_completion(
+    requested_model: String,
+    response: Value,
+    latency_ms: u128,
+) -> Result<CompletionResult, ProviderTransportError> {
     if let Some(error) = response.get("error").and_then(Value::as_str) {
         return Err(ProviderTransportError::Malformed(error.to_owned()));
     }
@@ -235,9 +265,9 @@ async fn complete_ollama(
         model: response
             .get("model")
             .and_then(Value::as_str)
-            .unwrap_or_else(|| strip_provider_prefix(&intent.model, "ollama"))
+            .unwrap_or_else(|| strip_provider_prefix(&requested_model, "ollama"))
             .to_owned(),
-        latency_ms: started.elapsed().as_millis(),
+        latency_ms,
         usage: None,
         prompt_tokens: response
             .get("prompt_eval_count")
@@ -254,22 +284,34 @@ async fn embed_openrouter(
     intent: EmbeddingIntent,
     settings: ProviderSettings,
 ) -> Result<EmbeddingResult, ProviderTransportError> {
-    let api_key = settings
-        .openrouter_key
-        .filter(|key| !key.trim().is_empty())
-        .ok_or(ProviderTransportError::MissingCredential("OpenRouter"))?;
     let body = json!({
         "model": strip_provider_prefix(&intent.model, "openrouter"),
         "input": intent.input,
         "dimensions": intent.dimensions
     });
+    let url = format!("{OPENROUTER_BASE_URL}/embeddings");
+    if let Some(response) =
+        provider_replay::lookup_json("openrouter", "embedding", "POST", &url, &body)
+            .map_err(replay_transport_error)?
+    {
+        let (response, latency_ms) =
+            provider_replay::success_body(response).map_err(replay_transport_error)?;
+        return decode_openrouter_embedding(intent.model, response, latency_ms);
+    }
+    let api_key = settings
+        .openrouter_key
+        .filter(|key| !key.trim().is_empty())
+        .ok_or(ProviderTransportError::MissingCredential("OpenRouter"))?;
     let started = Instant::now();
-    let response = post_json(
-        &format!("{OPENROUTER_BASE_URL}/embeddings"),
-        Some(api_key),
-        body,
-    )
-    .await?;
+    let response = post_json(&url, Some(api_key), body).await?;
+    decode_openrouter_embedding(intent.model, response, started.elapsed().as_millis())
+}
+
+fn decode_openrouter_embedding(
+    requested_model: String,
+    response: Value,
+    latency_ms: u128,
+) -> Result<EmbeddingResult, ProviderTransportError> {
     let mut items = response
         .get("data")
         .and_then(Value::as_array)
@@ -288,13 +330,13 @@ async fn embed_openrouter(
     let model = response
         .get("model")
         .and_then(Value::as_str)
-        .unwrap_or_else(|| strip_provider_prefix(&intent.model, "openrouter"))
+        .unwrap_or_else(|| strip_provider_prefix(&requested_model, "openrouter"))
         .to_owned();
     Ok(EmbeddingResult {
         embeddings,
         provider: ProviderKind::OpenRouter.label(),
         model,
-        latency_ms: started.elapsed().as_millis(),
+        latency_ms,
         prompt_tokens: usage_token(&usage, "prompt_tokens"),
         usage,
     })
@@ -312,8 +354,24 @@ async fn embed_ollama(
         "model": strip_provider_prefix(&intent.model, "ollama"),
         "input": intent.input
     });
+    let url = ollama_embed_url(&settings.ollama_base_url);
+    if let Some(response) = provider_replay::lookup_json("ollama", "embedding", "POST", &url, &body)
+        .map_err(replay_transport_error)?
+    {
+        let (response, latency_ms) =
+            provider_replay::success_body(response).map_err(replay_transport_error)?;
+        return decode_ollama_embedding(intent.model, response, latency_ms);
+    }
     let started = Instant::now();
-    let response = post_json(&ollama_embed_url(&settings.ollama_base_url), api_key, body).await?;
+    let response = post_json(&url, api_key, body).await?;
+    decode_ollama_embedding(intent.model, response, started.elapsed().as_millis())
+}
+
+fn decode_ollama_embedding(
+    requested_model: String,
+    response: Value,
+    latency_ms: u128,
+) -> Result<EmbeddingResult, ProviderTransportError> {
     let embeddings = response
         .get("embeddings")
         .and_then(Value::as_array)
@@ -324,8 +382,8 @@ async fn embed_ollama(
     Ok(EmbeddingResult {
         embeddings,
         provider: ProviderKind::Ollama.label(),
-        model: strip_provider_prefix(&intent.model, "ollama").to_owned(),
-        latency_ms: started.elapsed().as_millis(),
+        model: strip_provider_prefix(&requested_model, "ollama").to_owned(),
+        latency_ms,
         usage: None,
         prompt_tokens: response
             .get("prompt_eval_count")
@@ -388,6 +446,18 @@ fn usage_token(usage: &Option<Value>, key: &str) -> u64 {
         .and_then(|usage| usage.get(key))
         .and_then(Value::as_u64)
         .unwrap_or(0)
+}
+
+fn replay_transport_error(error: ProviderReplayError) -> ProviderTransportError {
+    match error {
+        ProviderReplayError::ProviderStatus { status, body } => {
+            ProviderTransportError::ProviderStatus(status, body)
+        }
+        ProviderReplayError::InvalidCassetteAudioSource(message) => {
+            ProviderTransportError::Malformed(message)
+        }
+        error => ProviderTransportError::Transport(error.to_string()),
+    }
 }
 
 #[cfg(test)]

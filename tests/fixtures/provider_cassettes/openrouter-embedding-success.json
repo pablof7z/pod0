@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "id": "openrouter-embedding-success",
+  "title": "OpenRouter embedding for knowledge search chunk",
+  "provider": "openrouter",
+  "operation": "embedding",
+  "scenario_refs": ["E4", "L7"],
+  "nmp_rules": ["D4", "D5", "D7", "D8"],
+  "request": {
+    "method": "POST",
+    "url": "https://openrouter.ai/api/v1/embeddings",
+    "headers": {
+      "Authorization": "<redacted:bearer>",
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://github.com/pablof7z/podcast-player",
+      "X-Title": "Podcastr"
+    },
+    "body": {
+      "model": "text-embedding-3-small",
+      "input": ["podcast transcript chunk about better listening queues"],
+      "dimensions": 384
+    },
+    "body_sha256": "f7564ed7b412ed4b0c4ca316320ac04e1c731fe4cb07c396e9c85c80846d3eed",
+    "fingerprint": "d2f1e6c5dc50c326c6b41ff00054d148a68ace59a0a806a1aa637972e8550f8f"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "model": "text-embedding-3-small",
+      "data": [
+        {
+          "index": 0,
+          "embedding": [0.0125, -0.03125, 0.044, 0.008, -0.016]
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 8,
+        "total_tokens": 8
+      }
+    }
+  },
+  "metrics": {
+    "recorded_latency_ms": 430,
+    "replay_latency_ms": 3,
+    "budget_ms": 900,
+    "acceptable_for_2026_premium": true
+  },
+  "replay": {
+    "match_fields": ["provider", "operation", "method", "url", "body_sha256"],
+    "redactions": ["Authorization"],
+    "notes": "Small fixture vector is enough to exercise decoding and replay contracts; model-quality evaluation belongs to live runs."
+  }
+}

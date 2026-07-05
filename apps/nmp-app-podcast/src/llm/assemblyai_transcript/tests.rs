@@ -1,5 +1,5 @@
-use super::*;
 use super::types::AssemblyAIResponse;
+use super::*;
 
 #[test]
 fn parses_comma_separated_model_fallbacks() {
@@ -14,6 +14,25 @@ fn parses_comma_separated_model_fallbacks() {
 fn rejects_non_remote_audio_sources() {
     let error = remote_audio_url("file:///tmp/show.mp3").unwrap_err();
     assert_eq!(error.kind(), "invalid_audio_url");
+}
+
+#[test]
+fn replay_submit_body_matches_fixture() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/provider_cassettes");
+    let models = speech_models(" ");
+    let body =
+        replay_submit_body("cassette://audio/pod0-validation-short.wav", &models, None).unwrap();
+    let response = provider_replay::lookup_json_in_dir(
+        dir,
+        "assemblyai",
+        "stt_transcription",
+        "POST",
+        "https://api.assemblyai.com/v2/transcript",
+        &body,
+    )
+    .unwrap();
+    assert_eq!(response.cassette_id, "assemblyai-transcript-success");
 }
 
 #[test]

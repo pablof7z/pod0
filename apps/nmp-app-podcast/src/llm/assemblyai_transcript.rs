@@ -6,14 +6,15 @@ use std::time::{Duration, Instant};
 use super::provider_config::{
     strip_provider_prefix, ProviderConfigError, ProviderSettings, ASSEMBLYAI_BASE_URL,
 };
+use super::provider_replay::{self, ProviderReplayError};
 use crate::store::PodcastStore;
 
 mod types;
+use types::{AssemblyAIResponse, SubmitRequest};
 pub use types::{
     AssemblyAITranscriptIntent, AssemblyAITranscriptResult, AssemblyAIUsage, AssemblyAIUtterance,
     AssemblyAIWord,
 };
-use types::{AssemblyAIResponse, SubmitRequest};
 
 const SUBMIT_TIMEOUT: Duration = Duration::from_secs(30);
 const POLL_INTERVAL: Duration = Duration::from_secs(3);
@@ -88,11 +89,30 @@ pub async fn transcribe_assemblyai(
     intent: AssemblyAITranscriptIntent,
 ) -> Result<AssemblyAITranscriptResult, AssemblyAITranscriptError> {
     let settings = ProviderSettings::from_store(&store)?;
+    let models = speech_models(&settings.assembly_ai_stt_model);
+    let submit_url = format!("{ASSEMBLYAI_BASE_URL}/v2/transcript");
+    if provider_replay::is_enabled() {
+        let body = replay_submit_body(&intent.audio_url, &models, intent.language_hint.as_deref())?;
+        if let Some(response) = provider_replay::lookup_json(
+            "assemblyai",
+            "stt_transcription",
+            "POST",
+            &submit_url,
+            &body,
+        )
+        .map_err(replay_assemblyai_error)?
+        {
+            let (body, latency_ms) =
+                provider_replay::success_body(response).map_err(replay_assemblyai_error)?;
+            let raw: AssemblyAIResponse = serde_json::from_value(body)
+                .map_err(|e| AssemblyAITranscriptError::Decode(e.to_string()))?;
+            return Ok(raw.into_result(models.join(","), latency_ms));
+        }
+    }
     let api_key = settings
         .assembly_ai_key
         .filter(|key| !key.trim().is_empty())
         .ok_or(AssemblyAITranscriptError::MissingCredential)?;
-    let models = speech_models(&settings.assembly_ai_stt_model);
     let audio_url = remote_audio_url(&intent.audio_url)?;
     let client = reqwest::Client::builder()
         .timeout(SUBMIT_TIMEOUT)
@@ -101,6 +121,24 @@ pub async fn transcribe_assemblyai(
     let started = Instant::now();
     let transcript_id = submit_transcript(&client, &api_key, audio_url, &models, intent).await?;
     poll_transcript(&client, &api_key, &transcript_id, &models, started).await
+}
+
+fn replay_submit_body(
+    audio_url: &str,
+    models: &[String],
+    language_hint: Option<&str>,
+) -> Result<serde_json::Value, AssemblyAITranscriptError> {
+    let language_code = language_hint
+        .filter(|hint| !hint.trim().is_empty())
+        .map(str::to_owned);
+    serde_json::to_value(SubmitRequest {
+        audio_url: audio_url.to_owned(),
+        speech_models: models.to_vec(),
+        speaker_labels: true,
+        language_detection: language_code.is_none().then_some(true),
+        language_code,
+    })
+    .map_err(|e| AssemblyAITranscriptError::Decode(e.to_string()))
 }
 
 fn speech_models(raw: &str) -> Vec<String> {
@@ -231,6 +269,18 @@ fn map_reqwest_error(error: reqwest::Error) -> AssemblyAITranscriptError {
         AssemblyAITranscriptError::Timeout
     } else {
         AssemblyAITranscriptError::Transport(error.to_string())
+    }
+}
+
+fn replay_assemblyai_error(error: ProviderReplayError) -> AssemblyAITranscriptError {
+    match error {
+        ProviderReplayError::ProviderStatus { status, body } => {
+            AssemblyAITranscriptError::ProviderStatus(status, body)
+        }
+        ProviderReplayError::InvalidCassetteAudioSource(message) => {
+            AssemblyAITranscriptError::InvalidAudioSource(message)
+        }
+        error => AssemblyAITranscriptError::Transport(error.to_string()),
     }
 }
 

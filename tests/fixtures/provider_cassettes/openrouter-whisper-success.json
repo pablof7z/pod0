@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "id": "openrouter-whisper-success",
+  "title": "OpenRouter Whisper verbose transcript",
+  "provider": "openrouter",
+  "operation": "stt_transcription",
+  "scenario_refs": ["E2", "K5", "M3"],
+  "nmp_rules": ["D6", "D7", "D8"],
+  "request": {
+    "method": "POST",
+    "url": "https://openrouter.ai/api/v1/audio/transcriptions",
+    "headers": {
+      "Authorization": "<redacted:bearer>",
+      "Content-Type": "multipart/form-data",
+      "X-Title": "Podcastr"
+    },
+    "body": {
+      "model": "openai/whisper-1",
+      "response_format": "verbose_json",
+      "timestamp_granularities": ["segment"],
+      "language": "en",
+      "audio_sha256": "5b4f0f8fb8d78f4fffb4f06f4ed0a9b41476c5d550da625a5a2db7c2d6a17f0f"
+    },
+    "body_sha256": "706b67f31043779753657e898233bf2fe0f55411a436542095e6c7ae3e6e9c96",
+    "fingerprint": "d5e82637a4d0bbbfa64adce00ba6012d53b6c3c85e3b7142061598a021cc3706"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "task": "transcribe",
+      "language": "en",
+      "duration": 4.2,
+      "text": "Context makes a clip useful.",
+      "segments": [
+        {
+          "id": 0,
+          "start": 0.0,
+          "end": 4.2,
+          "text": "Context makes a clip useful."
+        }
+      ]
+    }
+  },
+  "metrics": {
+    "recorded_latency_ms": 3120,
+    "replay_latency_ms": 5,
+    "budget_ms": 6000,
+    "acceptable_for_2026_premium": true
+  },
+  "replay": {
+    "match_fields": ["provider", "operation", "method", "url", "body_sha256"],
+    "redactions": ["Authorization", "multipart file bytes"],
+    "notes": "Audio bytes are represented by audio_sha256 so replay never needs the original private media file."
+  }
+}

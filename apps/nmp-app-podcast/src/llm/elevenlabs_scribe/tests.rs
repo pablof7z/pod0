@@ -34,6 +34,27 @@ fn decodes_scribe_response_and_duration() {
 }
 
 #[test]
+fn replay_body_matches_fixture() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/provider_cassettes");
+    let body = replay_body(
+        "scribe_v1",
+        Some("en"),
+        "5b4f0f8fb8d78f4fffb4f06f4ed0a9b41476c5d550da625a5a2db7c2d6a17f0f",
+    );
+    let response = provider_replay::lookup_json_in_dir(
+        dir,
+        "elevenlabs",
+        "stt_transcription",
+        "POST",
+        "https://api.elevenlabs.io/v1/speech-to-text",
+        &body,
+    )
+    .unwrap();
+    assert_eq!(response.cassette_id, "elevenlabs-scribe-success");
+}
+
+#[test]
 fn provider_status_maps_to_stable_kinds() {
     assert_eq!(
         ElevenLabsScribeError::ProviderStatus(401, String::new()).kind(),

@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use super::provider_config::{ProviderConfigError, ProviderSettings, OPENROUTER_BASE_URL};
+use super::provider_replay::{self, ProviderReplayError};
 use crate::store::PodcastStore;
 
 const PERPLEXITY_SONAR_URL: &str = "https://api.perplexity.ai/v1/sonar";
@@ -113,6 +114,27 @@ pub async fn search_perplexity(
         return Err(PerplexitySearchError::InvalidQuery);
     }
     let settings = ProviderSettings::from_store(&store)?;
+    if provider_replay::is_enabled() {
+        let body = direct_perplexity_body(query);
+        if let Some(response) = provider_replay::lookup_json(
+            "perplexity",
+            "web_search",
+            "POST",
+            PERPLEXITY_SONAR_URL,
+            &body,
+        )
+        .map_err(replay_search_error)?
+        {
+            let (response, latency_ms) =
+                provider_replay::success_body(response).map_err(replay_search_error)?;
+            return decode_search_response(
+                response,
+                "perplexity",
+                DEFAULT_PERPLEXITY_MODEL,
+                latency_ms,
+            );
+        }
+    }
     if let Some(key) = settings.perplexity_key.filter(|key| !key.trim().is_empty()) {
         return search_direct_perplexity(query, key).await;
     }
@@ -126,10 +148,7 @@ async fn search_direct_perplexity(
     query: &str,
     api_key: String,
 ) -> Result<PerplexitySearchResult, PerplexitySearchError> {
-    let body = json!({
-        "model": DEFAULT_PERPLEXITY_MODEL,
-        "messages": [{"role": "user", "content": query}],
-    });
+    let body = direct_perplexity_body(query);
     let started = Instant::now();
     let response = post_json(PERPLEXITY_SONAR_URL, api_key, body).await?;
     decode_search_response(
@@ -138,6 +157,13 @@ async fn search_direct_perplexity(
         DEFAULT_PERPLEXITY_MODEL,
         started.elapsed().as_millis(),
     )
+}
+
+fn direct_perplexity_body(query: &str) -> Value {
+    json!({
+        "model": DEFAULT_PERPLEXITY_MODEL,
+        "messages": [{"role": "user", "content": query}],
+    })
 }
 
 async fn search_openrouter_perplexity(
@@ -257,6 +283,18 @@ fn decode_sources(value: &Value) -> Vec<PerplexitySource> {
             url: url.to_owned(),
         })
         .collect()
+}
+
+fn replay_search_error(error: ProviderReplayError) -> PerplexitySearchError {
+    match error {
+        ProviderReplayError::ProviderStatus { status, body } => {
+            PerplexitySearchError::ProviderStatus(status, body)
+        }
+        ProviderReplayError::InvalidCassetteAudioSource(message) => {
+            PerplexitySearchError::Malformed(message)
+        }
+        error => PerplexitySearchError::Transport(error.to_string()),
+    }
 }
 
 #[cfg(test)]

@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "id": "elevenlabs-scribe-success",
+  "title": "ElevenLabs Scribe transcript",
+  "provider": "elevenlabs",
+  "operation": "stt_transcription",
+  "scenario_refs": ["E2", "M3"],
+  "nmp_rules": ["D6", "D7", "D8"],
+  "request": {
+    "method": "POST",
+    "url": "https://api.elevenlabs.io/v1/speech-to-text",
+    "headers": {
+      "Content-Type": "multipart/form-data",
+      "xi-api-key": "<redacted:key>"
+    },
+    "body": {
+      "model_id": "scribe_v1",
+      "language_code": "en",
+      "diarize": true,
+      "timestamps_granularity": "word",
+      "tag_audio_events": true,
+      "audio_sha256": "5b4f0f8fb8d78f4fffb4f06f4ed0a9b41476c5d550da625a5a2db7c2d6a17f0f"
+    },
+    "body_sha256": "758b8ad10c4d11ee5841687b46b9e5f7dbdc3cc66472e9650d66728e5a74fcf6",
+    "fingerprint": "8ddb1e41d37f9c516d927cc9b65382a591d04f06f714e370881d31d89bb02684"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "language_code": "en",
+      "language_probability": 0.98,
+      "text": "Save the moment with its source.",
+      "words": [
+        {
+          "text": "Save",
+          "start": 0.0,
+          "end": 0.3,
+          "type": "word"
+        }
+      ]
+    }
+  },
+  "metrics": {
+    "recorded_latency_ms": 2840,
+    "replay_latency_ms": 5,
+    "budget_ms": 6000,
+    "acceptable_for_2026_premium": true
+  },
+  "replay": {
+    "match_fields": ["provider", "operation", "method", "url", "body_sha256"],
+    "redactions": ["xi-api-key", "multipart file bytes"],
+    "notes": "Scribe replay covers cloud STT success without requiring an ElevenLabs credential."
+  }
+}

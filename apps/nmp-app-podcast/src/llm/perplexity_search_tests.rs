@@ -43,3 +43,20 @@ fn falls_back_to_citations_for_sources() {
 
     assert_eq!(result.sources[0].url, "https://example.com/a");
 }
+
+#[test]
+fn direct_replay_body_matches_fixture() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/provider_cassettes");
+    let body = direct_perplexity_body("Find current sources about podcast chapter UX patterns.");
+    let response = provider_replay::lookup_json_in_dir(
+        dir,
+        "perplexity",
+        "web_search",
+        "POST",
+        "https://api.perplexity.ai/v1/sonar",
+        &body,
+    )
+    .unwrap();
+    assert_eq!(response.cassette_id, "perplexity-search-success");
+}

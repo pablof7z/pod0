@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "id": "assemblyai-transcript-success",
+  "title": "AssemblyAI transcript submission",
+  "provider": "assemblyai",
+  "operation": "stt_transcription",
+  "scenario_refs": ["E2", "J5"],
+  "nmp_rules": ["D6", "D7", "D8"],
+  "request": {
+    "method": "POST",
+    "url": "https://api.assemblyai.com/v2/transcript",
+    "headers": {
+      "Authorization": "<redacted:key>",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "audio_url": "cassette://audio/pod0-validation-short.wav",
+      "speech_models": [
+        "universal-3-pro",
+        "universal-2"
+      ],
+      "speaker_labels": true,
+      "language_detection": true
+    },
+    "body_sha256": "aed7eff41a2b2b39223005a298f470d3e7d1064c0134cf8fceb41223093b7fde",
+    "fingerprint": "9137bd8a261067eb093a2b9969ba2c771740c46db859e5a80b51397271aa8e9d"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "id": "cassette-transcript-assemblyai",
+      "status": "completed",
+      "text": "The queue should make the next episode obvious.",
+      "utterances": [
+        {
+          "start": 0,
+          "end": 3600,
+          "text": "The queue should make the next episode obvious."
+        }
+      ]
+    }
+  },
+  "metrics": {
+    "recorded_latency_ms": 4100,
+    "replay_latency_ms": 5,
+    "budget_ms": 7000,
+    "acceptable_for_2026_premium": true
+  },
+  "replay": {
+    "match_fields": ["provider", "operation", "method", "url", "body_sha256"],
+    "redactions": ["Authorization"],
+    "notes": "Represents the completed polling result as a single replay envelope for deterministic validation."
+  }
+}

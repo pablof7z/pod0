@@ -6,10 +6,12 @@ use std::time::{Duration, Instant};
 
 use reqwest::multipart::{Form, Part};
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 
 use super::provider_config::{
     strip_provider_prefix, ProviderConfigError, ProviderSettings, ELEVENLABS_BASE_URL,
 };
+use super::provider_replay::{self, ProviderReplayError};
 use crate::store::PodcastStore;
 
 const TRANSCRIPTION_TIMEOUT: Duration = Duration::from_secs(600);
@@ -111,11 +113,25 @@ pub async fn transcribe_elevenlabs_scribe(
     intent: ElevenLabsScribeIntent,
 ) -> Result<ElevenLabsScribeResult, ElevenLabsScribeError> {
     let settings = ProviderSettings::from_store(&store)?;
+    let model = normalize_model(&settings.eleven_labs_stt_model);
+    let url = format!("{ELEVENLABS_BASE_URL}/v1/speech-to-text");
+    if provider_replay::is_enabled() {
+        let audio_sha256 = provider_replay::require_cassette_audio_sha256(&intent.audio_url)
+            .map_err(replay_scribe_error)?;
+        let body = replay_body(&model, intent.language_hint.as_deref(), &audio_sha256);
+        if let Some(response) =
+            provider_replay::lookup_json("elevenlabs", "stt_transcription", "POST", &url, &body)
+                .map_err(replay_scribe_error)?
+        {
+            let (body, latency_ms) =
+                provider_replay::success_body(response).map_err(replay_scribe_error)?;
+            return decode_scribe_response(&body.to_string(), model, latency_ms);
+        }
+    }
     let api_key = settings
         .eleven_labs_key
         .filter(|key| !key.trim().is_empty())
         .ok_or(ElevenLabsScribeError::MissingCredential)?;
-    let model = normalize_model(&settings.eleven_labs_stt_model);
     let client = reqwest::Client::builder()
         .timeout(TRANSCRIPTION_TIMEOUT)
         .build()
@@ -124,7 +140,7 @@ pub async fn transcribe_elevenlabs_scribe(
     let form = build_scribe_form(model.clone(), intent.language_hint, audio)?;
     let started = Instant::now();
     let response = client
-        .post(format!("{ELEVENLABS_BASE_URL}/v1/speech-to-text"))
+        .post(url)
         .header("xi-api-key", api_key)
         .header("Accept", "application/json")
         .multipart(form)
@@ -138,6 +154,20 @@ pub async fn transcribe_elevenlabs_scribe(
         return Err(ElevenLabsScribeError::ProviderStatus(status.as_u16(), text));
     }
     decode_scribe_response(&text, model, started.elapsed().as_millis())
+}
+
+fn replay_body(model: &str, language_hint: Option<&str>, audio_sha256: &str) -> Value {
+    let mut body = json!({
+        "model_id": model,
+        "diarize": true,
+        "timestamps_granularity": "word",
+        "tag_audio_events": true,
+        "audio_sha256": audio_sha256
+    });
+    if let Some(language) = language_hint.filter(|hint| !hint.trim().is_empty()) {
+        body["language_code"] = json!(language);
+    }
+    body
 }
 
 fn normalize_model(raw: &str) -> String {
@@ -286,6 +316,18 @@ fn map_reqwest_error(error: reqwest::Error) -> ElevenLabsScribeError {
         ElevenLabsScribeError::Timeout
     } else {
         ElevenLabsScribeError::Transport(error.to_string())
+    }
+}
+
+fn replay_scribe_error(error: ProviderReplayError) -> ElevenLabsScribeError {
+    match error {
+        ProviderReplayError::ProviderStatus { status, body } => {
+            ElevenLabsScribeError::ProviderStatus(status, body)
+        }
+        ProviderReplayError::InvalidCassetteAudioSource(message) => {
+            ElevenLabsScribeError::InvalidAudioSource(message)
+        }
+        error => ElevenLabsScribeError::Transport(error.to_string()),
     }
 }
 

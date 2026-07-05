@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "id": "openrouter-agent-answer-success",
+  "title": "OpenRouter transcript-grounded agent answer",
+  "provider": "openrouter",
+  "operation": "chat_completion",
+  "scenario_refs": ["G3", "L4", "M3"],
+  "nmp_rules": ["D1", "D6", "D7", "D8"],
+  "request": {
+    "method": "POST",
+    "url": "https://openrouter.ai/api/v1/chat/completions",
+    "headers": {
+      "Authorization": "<redacted:bearer>",
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://github.com/pablof7z/podcast-player",
+      "X-Title": "Podcastr"
+    },
+    "body": {
+      "model": "deepseek/deepseek-chat",
+      "messages": [
+        {
+          "role": "system",
+          "content": "You answer from the episode transcript only."
+        },
+        {
+          "role": "user",
+          "content": "What is the host's main takeaway?"
+        }
+      ],
+      "stream": false
+    },
+    "body_sha256": "becda1fc7a157639f91b7803f477bec9d57ad9edcd4004c7b983cab50f6e2823",
+    "fingerprint": "2b44df25a365146932f9677ffb29c9da0b5a426711b1977f7eb9affd933f6373"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "id": "chatcmpl-cassette-openrouter-agent-answer",
+      "model": "deepseek/deepseek-chat",
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "The host's main takeaway is that better listening starts with preserving context: save the useful moment, keep the source attached, and make the next action obvious."
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 42,
+        "completion_tokens": 31,
+        "total_tokens": 73
+      }
+    }
+  },
+  "metrics": {
+    "recorded_latency_ms": 1240,
+    "replay_latency_ms": 4,
+    "budget_ms": 2500,
+    "acceptable_for_2026_premium": true
+  },
+  "replay": {
+    "match_fields": ["provider", "operation", "method", "url", "body_sha256"],
+    "redactions": ["Authorization"],
+    "notes": "Used for grounded agent answer flows where the UI must remain responsive while the provider reply is replayed."
+  }
+}

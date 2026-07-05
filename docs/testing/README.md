@@ -91,6 +91,21 @@ app data is wiped).
 > If agent calls fail with connection errors, confirm `ollama serve` is up and
 > the model is pulled.
 
+### Provider cassette replay
+
+Provider-backed scenarios must not be blocked on live credentials. Redacted
+provider cassettes live under `tests/fixtures/provider_cassettes/` and are
+verified by:
+
+```
+cargo run -p nmp-app-podcast --bin provider-cassettes -- verify tests/fixtures/provider_cassettes
+```
+
+Set `POD0_PROVIDER_CASSETTE_DIR=tests/fixtures/provider_cassettes` to run the
+Rust provider transports in replay mode. See
+[`provider-cassettes.md`](provider-cassettes.md) for the cassette contract,
+current coverage, and redacted audio URL convention.
+
 ## How to run a scenario
 
 1. Boot the simulator and install/launch the build (with any launch args the

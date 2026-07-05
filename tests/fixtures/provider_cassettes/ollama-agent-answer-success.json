@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "id": "ollama-agent-answer-success",
+  "title": "Ollama transcript-grounded local/cloud answer",
+  "provider": "ollama",
+  "operation": "chat_completion",
+  "scenario_refs": ["G1", "L2", "L4"],
+  "nmp_rules": ["D1", "D6", "D7", "D8"],
+    "request": {
+      "method": "POST",
+      "url": "http://127.0.0.1:11434/api/chat",
+    "headers": {
+      "Authorization": "<redacted:optional-bearer>",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "model": "deepseek-v4-flash:cloud",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use only the provided transcript excerpt."
+        },
+        {
+          "role": "user",
+          "content": "Summarize why the guest changed their mind."
+        }
+      ],
+      "stream": false,
+      "think": false
+    },
+    "body_sha256": "147c6032be5db4bd5e7636a71bd3067f3c7b7082800d39c4a2ca4febda3ae3bb",
+    "fingerprint": "2b752e9d7ee04efdab1a7cf5666405c37eafb6f3322ed4172aaf1fb1dccc2458"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "model": "deepseek-v4-flash:cloud",
+      "message": {
+        "role": "assistant",
+        "content": "The guest changed their mind after seeing that a small, repeatable habit beat a dramatic one-time reset."
+      },
+      "prompt_eval_count": 39,
+      "eval_count": 24,
+      "done": true
+    }
+  },
+  "metrics": {
+    "recorded_latency_ms": 980,
+    "replay_latency_ms": 4,
+    "budget_ms": 2200,
+    "acceptable_for_2026_premium": true
+  },
+  "replay": {
+    "match_fields": ["provider", "operation", "method", "url", "body_sha256"],
+    "redactions": ["Authorization"],
+    "notes": "Covers local/self-hosted or Ollama Cloud chat replay without requiring a running Ollama service."
+  }
+}

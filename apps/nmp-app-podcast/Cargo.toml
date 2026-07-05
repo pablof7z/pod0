@@ -42,6 +42,10 @@ path = "src/bin/swift_codegen/main.rs"
 # No required-features: the codegen binary uses only std, no crate deps.
 
 [[bin]]
+name = "provider-cassettes"
+path = "src/bin/provider_cassettes.rs"
+
+[[bin]]
 name = "uniffi-bindgen"
 path = "src/bin/uniffi_bindgen.rs"
 required-features = ["bindgen"]
