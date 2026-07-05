@@ -20,6 +20,8 @@ import Foundation
 /// target) because it must run inside the app process where it has access to
 /// `applicationSupportDirectory`.
 enum UITestSeeder {
+    static let primaryEpisodeDurationSecs: Double = 300.0
+
     static func seededDownloadURL(episodeID: String, sourceURL: URL?) -> URL {
         DownloadCapability.destinationURL(
             for: episodeID,
@@ -91,14 +93,7 @@ enum UITestSeeder {
         // (resume-across-restart, queue play, chapter seek, playback speed) has a
         // working local file. ep2 and ep3 stay not_downloaded so testDownloadEpisode
         // can target a genuinely not_downloaded episode without depending on ep1.
-        try? FileManager.default.createDirectory(
-            at: destMP3.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if let bundledMP3 = Bundle.main.url(forResource: "test-episode", withExtension: "mp3"),
-           !FileManager.default.fileExists(atPath: destMP3.path) {
-            try? FileManager.default.copyItem(at: bundledMP3, to: destMP3)
-        }
-        let attrs = try? FileManager.default.attributesOfItem(atPath: destMP3.path)
-        let localBytes = (attrs?[.size] as? NSNumber)?.int64Value ?? 0
+        let localBytes = installSeededEpisodeAudio(to: destMP3)
         let localPathsJSON = "[[\"\(episodeUUID.lowercased())\", \(jsonStringLiteral(destMP3.path))]]"
         let fileSizesJSON = "[[\"\(episodeUUID.lowercased())\", \(localBytes)]]"
         // Seed ep1 download_state as downloaded so the UI shows the "Downloaded"
@@ -210,7 +205,7 @@ enum UITestSeeder {
               "title": "137: The Book That Changed Your Life",
               "description": "Books that shaped peoples lives.",
               "pub_date": "2026-05-01T00:00:00Z",
-              "duration_secs": 300.0,
+              "duration_secs": \(Self.primaryEpisodeDurationSecs),
               "enclosure_url": "\(enclosureURL)",
               "enclosure_mime_type": "audio/mpeg",
               "position_secs": \(persistedPosition),
@@ -280,5 +275,22 @@ enum UITestSeeder {
               let encoded = String(data: data, encoding: .utf8)
         else { return "\"\"" }
         return encoded
+    }
+
+    static func installSeededEpisodeAudio(
+        from bundledMP3: URL? = Bundle.main.url(forResource: "test-episode", withExtension: "mp3"),
+        to destMP3: URL
+    ) -> Int64 {
+        try? FileManager.default.createDirectory(
+            at: destMP3.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? FileManager.default.removeItem(at: destMP3)
+        if let bundledMP3 {
+            do { try FileManager.default.copyItem(at: bundledMP3, to: destMP3) }
+            catch { NSLog("UITestSeeder: FAILED to install test episode audio: \(error)") }
+        } else {
+            NSLog("UITestSeeder: missing bundled test-episode.mp3")
+        }
+        let attrs = try? FileManager.default.attributesOfItem(atPath: destMP3.path)
+        return (attrs?[.size] as? NSNumber)?.int64Value ?? 0
     }
 }
