@@ -12,7 +12,7 @@ import SwiftUI
 ///     `LibraryEpisodeRoute` onto the enclosing `NavigationStack`.
 ///
 /// **Glass usage:** none on the body. The "Settings for this show" sheet
-/// (presented from the toolbar `…` menu) is structurally glass.
+/// is structurally glass.
 struct ShowDetailView: View {
 
     @Environment(AppStateStore.self) private var store
@@ -20,13 +20,24 @@ struct ShowDetailView: View {
 
     let podcast: Podcast
 
+    private enum ShowOptionAction {
+        case settings
+        case downloadAll
+        case follow
+        case unsubscribe
+        case delete
+    }
+
     @State private var showSettings: Bool = false
+    @State private var showOptionsSheet: Bool = false
+    @State private var pendingShowOptionAction: ShowOptionAction?
     @State private var showUnsubscribeConfirm: Bool = false
     @State private var showDeleteConfirm: Bool = false
     @State private var showDownloadAllConfirm: Bool = false
     @State private var searchText: String = ""
     @State private var isSearchActive: Bool = false
     @State private var isFetchingEpisodes: Bool = false
+    @State private var isApplyingFollowChange: Bool = false
     @State private var followError: String?
     /// Drives the VoiceOver "Open episode details" custom action — bound into
     /// `ShowDetailEpisodeList` and consumed via `.navigationDestination(item:)`
@@ -100,16 +111,27 @@ struct ShowDetailView: View {
                 onUnsubscribe: { confirmUnsubscribe() }
             )
         }
-        // `.alert` rather than `.confirmationDialog` because the dialog is
-        // anchored to the toolbar's `Menu`. iOS 26 renders confirmationDialog
-        // anchored to a menu as a popover and elides any `role: .cancel`
-        // button (the popover's tap-outside-to-dismiss is treated as the
-        // implicit cancel). That leaves the user staring at a single red
-        // "Unsubscribe" button with no visible escape — a real UX trap for any
-        // confirmation. (Unsubscribe here unfollows and keeps listen history;
-        // the separate "Delete" alert below is the data-wiping action.) `.alert`
-        // is a centred modal and reliably renders both buttons regardless of
-        // anchor context.
+        .sheet(isPresented: $showOptionsSheet, onDismiss: performPendingShowOptionAction) {
+            ShowDetailActionsSheet(
+                podcast: liveSubscription,
+                hasEpisodes: !episodes.isEmpty,
+                isFollowed: isFollowed,
+                isApplyingFollowChange: isApplyingFollowChange,
+                sharePreviewTitle: sharePreviewTitle,
+                onSettings: { queueShowOptionAction(.settings) },
+                onDownloadAll: { queueShowOptionAction(.downloadAll) },
+                onFollow: { queueShowOptionAction(.follow) },
+                onUnsubscribe: { queueShowOptionAction(.unsubscribe) },
+                onDelete: { queueShowOptionAction(.delete) }
+            )
+        }
+        // `.alert` rather than `.confirmationDialog` because iOS 26 popovers
+        // can elide any `role: .cancel` button. That leaves the user staring
+        // at a single red destructive action with no visible escape — a real
+        // UX trap for any confirmation. (Unsubscribe here unfollows and keeps
+        // listen history; the separate "Delete" alert below is the data-wiping
+        // action.) `.alert` is a centred modal and reliably renders both
+        // buttons regardless of presentation context.
         .alert(
             "Unsubscribe from \(liveSubscription.title)?",
             isPresented: $showUnsubscribeConfirm
@@ -249,72 +271,43 @@ struct ShowDetailView: View {
             .accessibilityLabel("Search episodes")
         }
         ToolbarItem(placement: .topBarTrailing) {
-            Menu {
-                if isFollowed {
-                    Button {
-                        Haptics.light()
-                        showSettings = true
-                    } label: {
-                        Label("Settings for this show", systemImage: "slider.horizontal.3")
-                    }
-                }
-                if !episodes.isEmpty {
-                    Button {
-                        Haptics.light()
-                        showDownloadAllConfirm = true
-                    } label: {
-                        Label("Download all episodes", systemImage: "arrow.down.circle")
-                    }
-                }
-                if !isFollowed, liveSubscription.feedURL != nil {
-                    // Unfollowed but has a real RSS feed — offer to follow.
-                    // The "settings" surface is hidden until the user
-                    // actually follows; toggles like notifications and
-                    // auto-download have no subscription row to mutate yet.
-                    Button {
-                        Haptics.light()
-                        Task { await follow() }
-                    } label: {
-                        Label("Follow", systemImage: "plus.circle")
-                    }
-                }
-                // Share-show — recipients with podcast apps will recognize
-                // the RSS URL and subscribe; everyone else gets a clickable
-                // link with the show name above it via SharePreview.
-                if let feedURL = liveSubscription.feedURL {
-                    ShareLink(
-                        item: feedURL,
-                        preview: SharePreview(
-                            sharePreviewTitle,
-                            image: Image(systemName: "antenna.radiowaves.left.and.right")
-                        )
-                    ) {
-                        Label("Share show", systemImage: "square.and.arrow.up")
-                    }
-                }
-                if isFollowed {
-                    Button(role: .destructive) {
-                        Haptics.warning()
-                        showUnsubscribeConfirm = true
-                    } label: {
-                        Label("Unsubscribe", systemImage: "minus.circle")
-                    }
-                } else {
-                    // Unfollowed podcast — no "Unsubscribe" verb makes sense.
-                    // The destructive option deletes the podcast row and all
-                    // of its episodes (the All Podcasts swipe behaviour).
-                    Button(role: .destructive) {
-                        Haptics.warning()
-                        showDeleteConfirm = true
-                    } label: {
-                        Label("Delete podcast", systemImage: "trash")
-                    }
-                }
+            Button {
+                Haptics.selection()
+                showOptionsSheet = true
             } label: {
                 Image(systemName: "ellipsis.circle")
                     .font(.title3)
             }
             .accessibilityLabel("Show options")
+            .disabled(isApplyingFollowChange)
+        }
+    }
+
+    private func queueShowOptionAction(_ action: ShowOptionAction) {
+        pendingShowOptionAction = action
+        showOptionsSheet = false
+    }
+
+    private func performPendingShowOptionAction() {
+        guard let action = pendingShowOptionAction else { return }
+        pendingShowOptionAction = nil
+
+        switch action {
+        case .settings:
+            Haptics.light()
+            showSettings = true
+        case .downloadAll:
+            Haptics.light()
+            showDownloadAllConfirm = true
+        case .follow:
+            Haptics.light()
+            Task { await follow() }
+        case .unsubscribe:
+            Haptics.warning()
+            showUnsubscribeConfirm = true
+        case .delete:
+            Haptics.warning()
+            showDeleteConfirm = true
         }
     }
 
@@ -323,7 +316,10 @@ struct ShowDetailView: View {
     }
 
     private func follow() async {
+        guard !isApplyingFollowChange else { return }
         guard let feedURL = liveSubscription.feedURL else { return }
+        isApplyingFollowChange = true
+        defer { isApplyingFollowChange = false }
         followError = nil
         do {
             try await SubscriptionService(store: store).addSubscription(feedURLString: feedURL.absoluteString)
@@ -356,7 +352,18 @@ struct ShowDetailView: View {
     /// as "known but unfollowed". The view stays open so the user can re-Follow
     /// instantly via Show options → Follow (no navigation needed).
     private func performUnfollow() {
-        store.kernelUnfollow(podcastID: podcast.id)
+        guard !isApplyingFollowChange else { return }
+        isApplyingFollowChange = true
+        Task {
+            let updated = await store.kernelUnfollowAndAwait(podcastID: podcast.id)
+            isApplyingFollowChange = false
+            if updated {
+                Haptics.success()
+            } else {
+                followError = "Follow state did not update. Try again."
+                Haptics.warning()
+            }
+        }
     }
 
     /// Fully remove the podcast, its follow row, and all episodes from the

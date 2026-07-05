@@ -3,12 +3,12 @@ import XCTest
 /// Simulator stress coverage for the `ffi-rapid-subscribe-unsubscribe` scenario (#547).
 ///
 /// Drives the subscribe/unsubscribe cycle through the real app UI against the
-/// seeded "This American Life" podcast: open Show options → Unsubscribe → confirm
-/// → reopen Show options → Follow (re-subscribe) → repeat.
+/// seeded "This American Life" podcast: open Show options → Unsubscribe →
+/// confirm → reopen Show options → Follow (re-subscribe) → repeat.
 ///
 /// Asserts after each cycle:
 ///   - The app is still running (no crash).
-///   - The Show options menu shows the expected action (Follow ↔ Unsubscribe).
+///   - The Show options sheet shows the expected action (Follow ↔ Unsubscribe).
 ///   - No duplicate podcast rows appear on Home (kernel-side idempotency).
 ///
 /// CYCLE COUNT: 3 (conservative for a CI runner). Increase to 10+ for a
@@ -33,50 +33,32 @@ final class StressUITests: XCTestCase {
 
     func testFFIRapidSubscribeUnsubscribe() throws {
         let app = App.make()
-        XCTAssertTrue(launchApp(app)); sleep(2)
+        XCTAssertTrue(launchApp(app))
 
         guard openFirstPodcastFromHome(app) else {
             XCTFail("stress: no podcast row on Home — seeded library not loaded"); return
         }
-        sleep(1)
         snap(app, "stress-00-show-detail")
 
         let cycleCount = 3
 
         for cycle in 1...cycleCount {
             // --- Unsubscribe ---
-            let showOptions = app.buttons["Show options"]
-            guard showOptions.waitForExistence(timeout: 8) else {
-                snap(app, "stress-\(cycle)-NOOPTIONS")
-                XCTFail("stress cycle \(cycle): 'Show options' not found — app may have crashed or navigated away")
+            guard let unsubBtn = openShowOptions(app, expecting: .unsubscribe, cycle: cycle, phase: "unsubscribe") else {
                 return
             }
-            showOptions.tap(); sleep(1)
             snap(app, "stress-\(cycle)-a-options-open")
-
-            let unsubBtn = app.buttons["Unsubscribe"]
-            guard unsubBtn.waitForExistence(timeout: 4) else {
-                // If "Follow" is showing, the app already unsubscribed —
-                // treat this cycle as already in the right state.
-                let followBtn = app.buttons.matching(
-                    NSPredicate(format: "label == 'Follow'")).firstMatch
-                if followBtn.waitForExistence(timeout: 2) {
-                    app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
-                    sleep(1)
-                } else {
-                    snap(app, "stress-\(cycle)-NOUNSUB")
-                    dumpTree(app, "stress-\(cycle)-NOUNSUB-tree")
-                    XCTFail("stress cycle \(cycle): neither Unsubscribe nor Follow found in Show options")
-                    return
-                }
-                // Skip the unsubscribe step for this cycle.
-                continue
-            }
-            unsubBtn.tap(); sleep(1)
+            unsubBtn.tap()
 
             // Confirm the unsubscribe alert (unfollow — keeps history).
-            let confirmUnsub = app.buttons["Unsubscribe"].firstMatch
-            if confirmUnsub.waitForExistence(timeout: 3) { confirmUnsub.tap(); sleep(1) }
+            let confirmUnsub = app.alerts.buttons["Unsubscribe"].firstMatch
+            guard confirmUnsub.waitForExistence(timeout: 5) else {
+                snap(app, "stress-\(cycle)-NO-UNSUB-ALERT")
+                dumpTree(app, "stress-\(cycle)-NO-UNSUB-ALERT-tree")
+                XCTFail("stress cycle \(cycle): unsubscribe confirmation alert did not appear")
+                return
+            }
+            confirmUnsub.tap()
             snap(app, "stress-\(cycle)-b-after-unsub")
 
             // Assert: app still running.
@@ -91,7 +73,7 @@ final class StressUITests: XCTestCase {
             // defensive fallback for unexpected navigation; under the current
             // product implementation it should never fire.
             let showOptionsAgain = app.buttons["Show options"]
-            if !showOptionsAgain.waitForExistence(timeout: 5) {
+            if !waitForEnabled(showOptionsAgain, timeout: 8) {
                 // Unexpected: view was dismissed. Attempt to re-navigate.
                 snap(app, "stress-\(cycle)-b2-unexpected-dismiss")
                 dumpTree(app, "stress-\(cycle)-b2-tree")
@@ -101,22 +83,17 @@ final class StressUITests: XCTestCase {
             }
 
             // Open Show options to find "Follow".
-            let showOptionsForFollow = app.buttons["Show options"]
-            guard showOptionsForFollow.waitForExistence(timeout: 5) else {
-                XCTFail("stress cycle \(cycle): Show options not found before re-subscribe"); return
-            }
-            showOptionsForFollow.tap(); sleep(1)
-            snap(app, "stress-\(cycle)-c-options-for-follow")
-
-            let followBtn = app.buttons.matching(
-                NSPredicate(format: "label == 'Follow'")).firstMatch
-            guard followBtn.waitForExistence(timeout: 4) else {
-                snap(app, "stress-\(cycle)-NOFOLLOW")
-                dumpTree(app, "stress-\(cycle)-NOFOLLOW-tree")
-                XCTFail("stress cycle \(cycle): 'Follow' button not found in Show options after unsubscribe")
+            guard let followBtn = openShowOptions(app, expecting: .follow, cycle: cycle, phase: "follow") else {
                 return
             }
-            followBtn.tap(); sleep(2)
+            snap(app, "stress-\(cycle)-c-options-for-follow")
+            followBtn.tap()
+            guard waitForEnabled(app.buttons["Show options"], timeout: 8) else {
+                snap(app, "stress-\(cycle)-FOLLOW-DID-NOT-SETTLE")
+                dumpTree(app, "stress-\(cycle)-FOLLOW-DID-NOT-SETTLE-tree")
+                XCTFail("stress cycle \(cycle): Follow did not settle back to enabled Show options")
+                return
+            }
             snap(app, "stress-\(cycle)-d-after-follow")
 
             // Assert: app still running.
@@ -128,7 +105,7 @@ final class StressUITests: XCTestCase {
             // Assert: no duplicate podcast rows on Home (kernel idempotency check).
             // Navigate to Home and count rows matching "This American Life".
             let homeTab = app.buttons["tab-home"]
-            if homeTab.waitForExistence(timeout: 2) { homeTab.tap(); sleep(2) }
+            if homeTab.waitForExistence(timeout: 2) { homeTab.tap() }
             let podRowPred = NSPredicate(
                 format: "identifier == 'library-podcast-row' OR label CONTAINS[c] 'This American Life'")
             let podRows = app.buttons.matching(podRowPred)
@@ -148,7 +125,6 @@ final class StressUITests: XCTestCase {
                 guard openFirstPodcastFromHome(app) else {
                     XCTFail("stress: cannot re-open show for cycle \(cycle + 1)"); return
                 }
-                sleep(1)
             }
         }
 
@@ -158,5 +134,88 @@ final class StressUITests: XCTestCase {
             app.state, .runningForeground,
             "FAIL ffi-rapid-subscribe-unsubscribe: app not in foreground after \(cycleCount) cycles"
         )
+    }
+
+    private enum ExpectedShowAction {
+        case follow
+        case unsubscribe
+
+        var label: String {
+            switch self {
+            case .follow:
+                return "Follow"
+            case .unsubscribe:
+                return "Unsubscribe"
+            }
+        }
+
+        var oppositeLabel: String {
+            switch self {
+            case .follow:
+                return "Unsubscribe"
+            case .unsubscribe:
+                return "Follow"
+            }
+        }
+    }
+
+    private func openShowOptions(
+        _ app: XCUIApplication,
+        expecting expected: ExpectedShowAction,
+        cycle: Int,
+        phase: String
+    ) -> XCUIElement? {
+        let showOptions = app.buttons["Show options"]
+        guard waitForEnabled(showOptions, timeout: 8) else {
+            snap(app, "stress-\(cycle)-\(phase)-NOOPTIONS")
+            XCTFail("stress cycle \(cycle): enabled 'Show options' not found before \(phase)")
+            return nil
+        }
+
+        for attempt in 1...3 {
+            showOptions.tap()
+            let expectedButton = app.buttons.matching(
+                NSPredicate(format: "label == %@", expected.label)
+            ).firstMatch
+            if expectedButton.waitForExistence(timeout: 4) {
+                return expectedButton
+            }
+
+            let oppositeButton = app.buttons.matching(
+                NSPredicate(format: "label == %@", expected.oppositeLabel)
+            ).firstMatch
+            if oppositeButton.exists {
+                snap(app, "stress-\(cycle)-\(phase)-STALE-\(expected.oppositeLabel.uppercased())")
+                dumpTree(app, "stress-\(cycle)-\(phase)-STALE-\(expected.oppositeLabel.uppercased())-tree")
+                XCTFail(
+                    "stress cycle \(cycle): Show options still shows " +
+                    "'\(expected.oppositeLabel)' when '\(expected.label)' is expected"
+                )
+                return nil
+            }
+
+            if attempt < 3 {
+                dismissShowOptions(app)
+                _ = waitForEnabled(showOptions, timeout: 2)
+            }
+        }
+
+        snap(app, "stress-\(cycle)-\(phase)-NO-\(expected.label.uppercased())")
+        dumpTree(app, "stress-\(cycle)-\(phase)-NO-\(expected.label.uppercased())-tree")
+        XCTFail("stress cycle \(cycle): '\(expected.label)' not found in Show options for \(phase)")
+        return nil
+    }
+
+    private func dismissShowOptions(_ app: XCUIApplication) {
+        let done = app.buttons["Done"]
+        if done.waitForExistence(timeout: 1) {
+            done.tap()
+        }
+    }
+
+    private func waitForEnabled(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
+        let predicate = NSPredicate(format: "exists == true AND enabled == true")
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
     }
 }

@@ -150,6 +150,7 @@
 		2A485631BEA6A53677E9CCCB /* AgentRunFormatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BABF75DD82031E22B307B85D /* AgentRunFormatTests.swift */; };
 		2A81F8A09E32280B94BD6D76 /* ThreadingMentionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ADE545E12BB6C345DB81594 /* ThreadingMentionRow.swift */; };
 		2AD35FC413408C174A141525 /* AutoSnipButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5AAF68D8DF54A1E812AF400 /* AutoSnipButton.swift */; };
+		2B37DC277EBA3CBC6808819C /* AppStateStore+FollowStateAwait.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71306B0859B9C470F4F497EC /* AppStateStore+FollowStateAwait.swift */; };
 		2B3F25B5606252CA4F05ADE3 /* DownloadCapability+Wire.swift in Sources */ = {isa = PBXBuildFile; fileRef = E464145A17D2304EA0DABCD2 /* DownloadCapability+Wire.swift */; };
 		2B4CA2B86901F9597FA6828A /* SRTParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE94D97C7CBAFF7A0974685 /* SRTParser.swift */; };
 		2B5DDA70540B8A2F48A59467 /* AgentAskCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C75924E1E615D0E7CBC2E78 /* AgentAskCoordinator.swift */; };
@@ -400,6 +401,7 @@
 		8ABA44D1BCB99A01F80F1D83 /* EpisodeComment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F0B0E6093E19B5F0A004807 /* EpisodeComment.swift */; };
 		8ADE7DDE6DADB962BB887648 /* Episode+Triage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0767C0EFD3EE8CA914E16094 /* Episode+Triage.swift */; };
 		8B2598EDDD99EB99139D69B1 /* CategorySettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 511731D80490220B47A3B4E1 /* CategorySettings.swift */; };
+		8BA497623F27A213416C90D9 /* ShowDetailActionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E25FFD9E8B114A539BE3CE4B /* ShowDetailActionsSheet.swift */; };
 		8BCF0DE12BBD965147F6F078 /* settings_fresh_install.json in Resources */ = {isa = PBXBuildFile; fileRef = 047EA8049BF7F62ED9BB62C3 /* settings_fresh_install.json */; };
 		8C26B89829AB07D1D486EDF0 /* EpisodeCommentTargetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C9CC1B41FACF1B40906060A /* EpisodeCommentTargetTests.swift */; };
 		8C5DF6E9201F2714D3911120 /* BookmarksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE7BDCC365707B4BBFF66912 /* BookmarksView.swift */; };
@@ -1155,6 +1157,7 @@
 		6FECDE50A87C470829EE01E0 /* DownloadsManagerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsManagerModels.swift; sourceTree = "<group>"; };
 		70F290F8881329E5171D2E7F /* UserIdentityStore+Publishing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserIdentityStore+Publishing.swift"; sourceTree = "<group>"; };
 		70FBF6733DF99C6972EAF9E0 /* PodcastrTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "PodcastrTests-Info.plist"; sourceTree = "<group>"; };
+		71306B0859B9C470F4F497EC /* AppStateStore+FollowStateAwait.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+FollowStateAwait.swift"; sourceTree = "<group>"; };
 		716427A88DC40761944F1873 /* FeedbackStatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackStatusBadge.swift; sourceTree = "<group>"; };
 		72540683D53BC31AC125B8CD /* SettingsCodableRoundTripTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsCodableRoundTripTests.swift; sourceTree = "<group>"; };
 		7304D6B61EDDFDC0BE016C7A /* PerplexityClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerplexityClient.swift; sourceTree = "<group>"; };
@@ -1464,6 +1467,7 @@
 		DFE755C3E8809FFB00361253 /* PlayerTranscriptScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTranscriptScrollView.swift; sourceTree = "<group>"; };
 		E016B4C52C8A12F041BD90AA /* KernelBridge+Support.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KernelBridge+Support.swift"; sourceTree = "<group>"; };
 		E0F3023D7B668F4BB59A1A4E /* KernelBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KernelBridge.swift; sourceTree = "<group>"; };
+		E25FFD9E8B114A539BE3CE4B /* ShowDetailActionsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowDetailActionsSheet.swift; sourceTree = "<group>"; };
 		E30B0ADA63732E117A3CDA25 /* OllamaSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaSettingsView.swift; sourceTree = "<group>"; };
 		E39D85E4B13CD42BCEDDFE48 /* HighlightedTextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighlightedTextTests.swift; sourceTree = "<group>"; };
 		E41F78E78D2864D74B499ADB /* LivePodcastInventoryAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivePodcastInventoryAdapter.swift; sourceTree = "<group>"; };
@@ -2083,6 +2087,7 @@
 				E49DF698FE6620753CE0570B /* NostrDiscoverForm.swift */,
 				6A6F195DCB08CBEA40658825 /* NostrSearchHitRow.swift */,
 				BB7D5AE106B58BCB1FB3DA05 /* OPMLImportSheet.swift */,
+				E25FFD9E8B114A539BE3CE4B /* ShowDetailActionsSheet.swift */,
 				5B0FB570E3107D830CDA0354 /* ShowDetailEpisodeList.swift */,
 				072E60BC227E75BB230859FA /* ShowDetailHeader.swift */,
 				2662C0BFD81474F425CD3EC8 /* ShowDetailSettingsSheet.swift */,
@@ -2408,6 +2413,7 @@
 				1809013E5A3119C004D4C71B /* Generated */,
 				1028ACA3482929855159816E /* ActionResultsRegistry.swift */,
 				3DAAFBE86D940C75745FF79A /* AppStateStore+ClipActions.swift */,
+				71306B0859B9C470F4F497EC /* AppStateStore+FollowStateAwait.swift */,
 				33F4F753BEAB5732648F6274 /* AppStateStore+KernelActions.swift */,
 				0FA253372DE422E81327969D /* AppStateStore+KernelFeedActions.swift */,
 				F8CD0F08A118D7907848CC33 /* AppStateStore+KernelProjection.swift */,
@@ -3131,6 +3137,7 @@
 				421651B3FFE1F19DBD78AD4C /* NowPlayingCenter.swift in Sources */,
 				FB7B9327FA98FAC90A0C6746 /* ActionResultsRegistry.swift in Sources */,
 				79F29C22A84846ABCB37DF24 /* AppStateStore+ClipActions.swift in Sources */,
+				2B37DC277EBA3CBC6808819C /* AppStateStore+FollowStateAwait.swift in Sources */,
 				7C36F67FEE0ECEE7743F903C /* AppStateStore+KernelActions.swift in Sources */,
 				CE77679F6DB0E03EB37F8F54 /* AppStateStore+KernelFeedActions.swift in Sources */,
 				3A4B60482E8F118986753228 /* AppStateStore+KernelProjection.swift in Sources */,
@@ -3401,6 +3408,7 @@
 				28AD653AC4E35663DF0848AB /* NostrDiscoverForm.swift in Sources */,
 				8028B3B96C895C8C3C05BDE6 /* NostrSearchHitRow.swift in Sources */,
 				7F965ED580EB659C13A85FA9 /* OPMLImportSheet.swift in Sources */,
+				8BA497623F27A213416C90D9 /* ShowDetailActionsSheet.swift in Sources */,
 				C4E5EBA5D87B8BA78EFD2882 /* ShowDetailEpisodeList.swift in Sources */,
 				7455146502859EE10CC0B956 /* ShowDetailHeader.swift in Sources */,
 				A45587E9FE289482A16BD89F /* ShowDetailSettingsSheet.swift in Sources */,
@@ -3839,7 +3847,10 @@
 				);
 				"LIBRARY_SEARCH_PATHS[sdk=iphoneos*]" = "$(inherited) $(SRCROOT)/target/aarch64-apple-ios/debug $(SRCROOT)/target/aarch64-apple-ios/release $(HOME)/.cargo/target-shared/aarch64-apple-ios/debug $(HOME)/.cargo/target-shared/aarch64-apple-ios/release";
 				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]" = "$(inherited) $(SRCROOT)/target/aarch64-apple-ios-sim/debug $(SRCROOT)/target/aarch64-apple-ios-sim/release $(HOME)/.cargo/target-shared/aarch64-apple-ios-sim/debug $(HOME)/.cargo/target-shared/aarch64-apple-ios-sim/release";
-				OTHER_LDFLAGS = "$(inherited) -lnmp_app_podcast";
+				OTHER_LDFLAGS = (
+					"$(inherited) -lnmp_app_podcast",
+					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = Podcastr;
 				PROVISIONING_PROFILE_SPECIFIER = "$(CI_APP_PROFILE_SPECIFIER)";
@@ -3868,6 +3879,10 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = PodcastrWidget;
@@ -3910,7 +3925,10 @@
 				);
 				"LIBRARY_SEARCH_PATHS[sdk=iphoneos*]" = "$(inherited) $(SRCROOT)/target/aarch64-apple-ios/debug $(SRCROOT)/target/aarch64-apple-ios/release $(HOME)/.cargo/target-shared/aarch64-apple-ios/debug $(HOME)/.cargo/target-shared/aarch64-apple-ios/release";
 				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]" = "$(inherited) $(SRCROOT)/target/aarch64-apple-ios-sim/debug $(SRCROOT)/target/aarch64-apple-ios-sim/release $(HOME)/.cargo/target-shared/aarch64-apple-ios-sim/debug $(HOME)/.cargo/target-shared/aarch64-apple-ios-sim/release";
-				OTHER_LDFLAGS = "$(inherited) -lnmp_app_podcast";
+				OTHER_LDFLAGS = (
+					"$(inherited) -lnmp_app_podcast",
+					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = Podcastr;
 				PROVISIONING_PROFILE_SPECIFIER = "$(CI_APP_PROFILE_SPECIFIER)";
@@ -3941,6 +3959,10 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = io.f7z.podcast.uitests;
 				PRODUCT_NAME = PodcastrUITests;
@@ -3975,6 +3997,10 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = io.f7z.podcast.tests;
 				PRODUCT_NAME = PodcastrTests;
@@ -4064,6 +4090,10 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = io.f7z.podcast.tests;
 				PRODUCT_NAME = PodcastrTests;
@@ -4161,6 +4191,10 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = io.f7z.podcast.uitests;
 				PRODUCT_NAME = PodcastrUITests;
 				SDKROOT = iphoneos;
@@ -4189,6 +4223,10 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = PodcastrWidget;
