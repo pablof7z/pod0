@@ -323,6 +323,7 @@ def page(title: str, depth: int, body: str) -> str:
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
   <title>{e(title)}</title>
   <link rel=\"stylesheet\" href=\"{rel('styles.css', depth)}\">
+  <link rel=\"icon\" href=\"{rel('assets/favicon.svg', depth)}\" type=\"image/svg+xml\">
 </head>
 <body>
   <a class=\"skip-link\" href=\"#content\">Skip to content</a>

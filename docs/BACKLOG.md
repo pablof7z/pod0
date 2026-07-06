@@ -43,13 +43,16 @@ worktrees currently in flight.
 - ~~**p0-nipf4-author-claim.**~~ Done: `publish_author_claim` signs with active agent key and publishes kind:10064. Called after create/update/delete of owned podcasts.
 - **p0-plan-truthfulness.** Keep `docs/plan.md`,
   `docs/plan/nmp-feature-parity.md`, and this backlog synchronized with code.
-  Do not mark scaffolded behavior done. Current audit: docs reflect the
-  `0.7.2` NMP pin at rev `9df43816da11b19b73ad98d9ff53bbaeff3b700d` (PR #510,
-  ADR-0055 Rung-1 / publish_ver oracle fix), the deleted parked `ios/` shell,
-  the resolved local `nmp-blossom` packaging blocker (`pablof7z/podcast-player#479`),
-  and PR #498's removal of the local `vendor/nmp-core` fork. Upstream NMP issues
-  `pablof7z/nostr-multi-platform#1408` and `#1412` are now CLOSED; neither required
-  an app-local workaround on `main`.
+  Do not mark scaffolded behavior done. Current audit: `docs/plan.md` now
+  reflects the `Cargo.toml` NMP v1.0.0-rc.1 pin at rev
+  `1fc3e6bea390224cef30e37d2ccaa90615197521`, plus known drift against the
+  Chirp-shipped NMP pin `bc6b42592d7fd61bc6767cac246a24a6b23bf8e3`. Open
+  tracking remains #707 for re-pin/publish lifecycle/relay-config persistence,
+  #708 for pollable NIP-05 lookup state, #709 for action/projection codegen
+  drift checks, and #734 for D8 sleep/polling paths found by the NMP scanner.
+  `docs/testing/chirp-nmp-validation-pack-2026-07-06.md` and the
+  `05-chirp-nmp-regression-parity.md` catalog file map those gaps into 56
+  scenario pages.
   Remaining parity debt lives in `App/Sources/` Swift policy/fallback code plus
   the listed platform/AI gaps. Agent chat title generation now routes prompt
   construction, message filtering/truncation, selected model, and JSON title

@@ -71,6 +71,8 @@ class ScenarioReportGeneratorTests(unittest.TestCase):
             scenario_page = (out / "scenarios" / "smoke-001" / "index.html").read_text()
             self.assertNotIn("Required Detailed Sections", home)
             self.assertIn("Provider cassette replay", home)
+            self.assertIn('rel="icon" href="assets/favicon.svg"', home)
+            self.assertIn('rel="icon" href="../../assets/favicon.svg"', scenario_page)
             self.assertIn("Provider Cassette Replay Coverage", (out / "provider-cassettes" / "index.html").read_text())
             for section in REQUIRED_SCENARIO_SECTIONS:
                 self.assertIn(section, scenario_page)

@@ -24,7 +24,8 @@ Do not store provider API keys, private keys, or raw user secrets.
 | [02 - Playback, Downloads, Transcripts, Clips](02-playback-downloads-transcripts-clips.md) | 64 | Audio, queue, downloads, transcript ingest, transcript UI, highlights, sharing. |
 | [03 - Agent, LLM, Knowledge, Voice](03-agent-llm-knowledge-voice.md) | 72 | Agent chat, provider transport, cassettes, wiki/RAG, voice, generated media. |
 | [04 - Nostr, Settings, Platform, Regression](04-nostr-settings-platform-regression.md) | 64 | NIP-F4/NIP-84/social, settings, Android/TUI parity, performance and doctrine. |
-| **Total** | **264** | Comprehensive scenario-only catalog for Pod0. |
+| [05 - Chirp And NMP Regression Parity](05-chirp-nmp-regression-parity.md) | 56 | Sister-repo fix parity, NMP master drift, projection stale-state, offline honesty, visual parity, and D8 gates. |
+| **Total** | **320** | Comprehensive scenario-only catalog for Pod0. |
 
 ## Source Notes
 
@@ -38,4 +39,6 @@ Do not store provider API keys, private keys, or raw user secrets.
   `apps/nmp-app-podcast`, `apps/podcast-*`, `android/Podcast`, and
   `apps/podcast-tui`.
 - Sister repo patterns from `../chirp`: fixture relay, signed-event validation,
-  projection cache replay, and typed projection parity patterns.
+  projection cache replay, typed projection parity patterns, dead-button
+  prevention, stale async state fixes, dark/light and Dynamic Type validation,
+  offline/reconnect honesty, and NIP-05 lookup-state regression evidence.
