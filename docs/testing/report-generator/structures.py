@@ -77,8 +77,22 @@ def evidence_inventory_for(scenario: Scenario) -> dict[str, Any]:
     return {
         "required_kinds": required,
         "missing": missing,
+        "placeholders": evidence_placeholders_for(missing),
         "redaction_summary": "Only source catalog and rubric metadata are published. Secret-bearing logs, provider payloads, private keys, audio, transcripts, and relay payloads remain forbidden until redacted.",
     }
+
+
+def evidence_placeholders_for(missing: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": f"placeholder:{item['kind']}",
+            "kind": item["kind"],
+            "message": f"Missing required {item['kind'].replace('_', ' ')} evidence is blocking this report area.",
+            "required": item["required"],
+            "blocks_dimensions": item["blocks_dimensions"],
+        }
+        for item in missing
+    ]
 
 
 def review_grounding_for() -> dict[str, Any]:
@@ -88,11 +102,11 @@ def review_grounding_for() -> dict[str, Any]:
         "selected_skills": selected,
         "all_considered": SKILL_GROUNDING,
         "template_impact": [
-            "Mobile App UI/UX Design drives user-goal framing, thumb-zone/reachability checks, visual hierarchy, 8-point spacing, empty/loading/error/success state coverage, and peak-end flow judgment.",
-            "iOS Liquid Glass drives hierarchy/harmony/consistency checks, control-layer restraint, GlassEffect composition, semantic foreground styles, and Reduce Motion/Transparency requirements.",
-            "Web Interface Guidelines drive generated-site accessibility, semantic HTML, focus, image metadata, safe-area, touch, reduced-motion, content-overflow, localization, and frontend performance checks.",
-            "Playwright CLI is the expected local verification path for generated GitHub Pages screenshots, snapshots, responsive viewports, and interaction smoke tests.",
-            "The generated page separates scenario facts, evidence, individual dimensions, grouped product judgment, risk, and confidence so isolated passes cannot hide a weak product flow.",
+            "iOS Glass UI Designer drives restrained material judgment: native chrome first, glass only for hierarchy/context, semantic foreground styles, safe areas, and accessibility fallbacks.",
+            "Mobile UX Design drives user-goal framing, thumb-zone reachability, touch-target sizing, interruption/resume checks, navigation convention review, and performance-as-UX budgets.",
+            "The Liquid Glass reference from Mobile UX Design adds explicit contrast, Reduce Transparency, Increase Contrast, Dynamic Type, and oldest-device performance checks.",
+            "The generated page front-loads launch readiness, risk class, evidence quality, accessibility status, regression coverage, and dependency posture before detailed scores.",
+            "The report separates individual dimensions from whole-product cluster judgment so an isolated pass cannot hide a weak or inconsistent product flow.",
         ],
     }
 
@@ -156,6 +170,34 @@ def readiness_for(scenario: Scenario) -> dict[str, Any]:
     }
 
 
+def launch_assessment_for(
+    scenario: Scenario,
+    evidence_inventory: dict[str, Any],
+    coherence: dict[str, Any],
+    readiness: dict[str, Any],
+    risks: list[dict[str, Any]],
+) -> dict[str, Any]:
+    missing = [item["kind"] for item in evidence_inventory["missing"]]
+    blocked_gates = [gate["id"] for gate in readiness["gates"] if gate["status"] in {"blocked", "incomplete"}]
+    dependency_posture = "blocked" if scenario.provider_mode == "blocked" or scenario.cassettes else "not_run"
+    return {
+        "launch_readiness": readiness["ship_gate"],
+        "risk_classification": highest_risk(risks),
+        "evidence_quality": "incomplete" if missing else "pass",
+        "accessibility_status": "incomplete",
+        "regression_coverage": "incomplete",
+        "dependency_posture": dependency_posture,
+        "scenario_owner": "validation-agent",
+        "scenario_status": "not_run",
+        "product_judgment": "Not launch-ready. The page has a complete review structure, but product judgment remains blocked until current evidence supports individual and whole-product coherence.",
+        "individual_judgment": coherence["individual_judgment"]["summary"],
+        "whole_product_judgment": coherence["group_judgment"]["summary"],
+        "blocking_gates": blocked_gates,
+        "issue_refs": [],
+        "missing_evidence": missing,
+    }
+
+
 def instrumentation_gaps_for(scenario: Scenario) -> list[dict[str, Any]]:
     gaps = [
         gap("screenshots", "major", "No step-by-step screenshots are attached.", ["artifacts", "ui_polish", "actual_result"]),
@@ -197,6 +239,11 @@ def risks_for(scenario: Scenario, scenarios: list[Scenario]) -> list[dict[str, A
     if scenario.performance_required:
         risks.append({"id": "risk-performance-budget", "severity": "major", "priority": "p1", "status": "open", "title": "Performance budget is declared but unmeasured.", "affected_dimensions": ["performance"], "mitigation": "Attach metric trace with budget, value, unit, method, and status."})
     return risks
+
+
+def highest_risk(risks: list[dict[str, Any]]) -> str:
+    order = {"blocker": 4, "major": 3, "minor": 2, "polish": 1}
+    return max((risk["severity"] for risk in risks), key=lambda value: order.get(value, 0), default="none")
 
 
 def required_evidence_kinds(scenario: Scenario) -> list[str]:

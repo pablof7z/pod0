@@ -45,8 +45,9 @@ The generated site includes:
   the existing Pages asset path conventions
 
 Each scenario record also includes structured `product_context`, `flow_steps`,
-`execution`, `review_grounding`, `quality_review`, `coherence`, `readiness`,
-`evidence.missing`, `evidence_provenance`, `before_after_deltas`,
+`execution`, `review_grounding`, `launch_assessment`, `quality_review`,
+`coherence`, `readiness`, `evidence.missing`, `evidence.placeholders`,
+`evidence_provenance`, `before_after_deltas`,
 `revalidation_status`, `owner_status`, `instrumentation_gaps`, and `risks`
 fields. These are intentionally first-class JSON fields so future importers can
 populate observed runs without scraping prose.
@@ -59,27 +60,22 @@ continuity dimensions.
 This pass used:
 
 ```sh
-npx skills search "liquid glass iOS mobile frontend design UI polish"
-npx skills search "mobile ux design"
-npx skills use ceorkm/mobile-app-ui-design@mobile-app-ui-design
-npx skills use vabole/apple-skills@ios-liquid-glass
-# plus local skills: web-design-guidelines and playwright-cli
+npx skills search "Liquid Glass iOS mobile UI UX polish accessibility frontend design"
+npx skills use heyman333/atelier-ui@ios-glass-ui-designer --dangerously-accept-openclaw-risks
+npx skills use phazurlabs/ux-ui-mastery --skill "Mobile UX Design" --dangerously-accept-openclaw-risks
 ```
 
 `data/skill-grounding.json` records these selected skills and the template
 impact:
 
-- Mobile App UI/UX Design: user-goal framing, thumb-zone controls, 44 pt
-  targets, visual hierarchy, 8-point spacing, empty/loading/error/success
-  states, and peak-end product moments.
-- iOS Liquid Glass: hierarchy, harmony, consistency, control-layer glass use,
-  GlassEffect composition, semantic foreground styles, and Reduce
-  Motion/Transparency behavior.
-- Web Interface Guidelines: semantic HTML, focus, accessibility labels, image
-  metadata, reduced motion, touch behavior, safe areas, locale-safe formatting,
-  content overflow, and frontend performance review gates.
-- Playwright CLI: generated-site screenshots, snapshots, responsive viewport
-  checks, interaction verification, and local Pages smoke testing.
+- iOS Glass UI Designer: iOS-native hierarchy, restrained glass/material use,
+  system typography, semantic foreground styles, safe areas, native sheets and
+  navigation, and Reduce Transparency/Motion expectations.
+- Mobile UX Design: user-goal framing, thumb-zone reachability, 44 pt/48 dp
+  touch targets, interruption/resume behavior, platform navigation conventions,
+  and performance-as-UX budgets.
+- The Mobile UX Liquid Glass reference: contrast, Increase Contrast, Reduce
+  Transparency, Dynamic Type, and oldest-device performance checks.
 
 UI, UX, accessibility, performance, and product-coherence scores must stay at
 `2` or below until the relevant evidence and grounded critique are attached.

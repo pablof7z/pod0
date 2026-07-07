@@ -17,11 +17,13 @@ from contract import GENERATOR_VERSION, SCHEMA_VERSION, SITE_BASE, SKILL_GROUNDI
 from evidence import apply_evidence_overlays, copy_evidence_assets, load_evidence_overlays  # noqa: E402
 from provider_cassettes_report import provider_cassette_data, render_provider_cassette_page  # noqa: E402
 from records import build_report, has_observed_data, rollups_for, summary_for, tags_for_records, validate_output, validate_schema_contract  # noqa: E402
-from render import render_home, render_scenario_index, render_scenario_page, stylesheet, write_rollup_pages, write_tag_pages  # noqa: E402
+from render import render_home, render_scenario_index, render_scenario_page, write_rollup_pages, write_tag_pages  # noqa: E402
+from styles import stylesheet  # noqa: E402
 
 PRESERVED_RECORD_FIELDS = [
     "run",
     "execution",
+    "launch_assessment",
     "verdict",
     "sections",
     "dimension_scores",

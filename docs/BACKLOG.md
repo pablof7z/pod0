@@ -53,6 +53,9 @@ worktrees currently in flight.
   `docs/testing/chirp-nmp-validation-pack-2026-07-06.md` and the
   `05-chirp-nmp-regression-parity.md` catalog file map those gaps into 56
   scenario pages.
+  Current report-generator follow-up: the per-scenario Pages contract now
+  front-loads launch readiness, risk class, evidence quality, evidence
+  placeholders, and whole-product coherence before any page can appear launch-ready.
   Remaining parity debt lives in `App/Sources/` Swift policy/fallback code plus
   the listed platform/AI gaps. Agent chat title generation now routes prompt
   construction, message filtering/truncation, selected model, and JSON title

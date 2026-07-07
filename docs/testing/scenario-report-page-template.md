@@ -78,6 +78,9 @@ hundreds of pages without prose scraping:
 - `execution`: every attempt, retry, command, tool, branch, and rerun note.
 - `review_grounding`: exact `npx skills search` command, loaded skill names,
   considered skills, and how the skills shaped the template.
+- `launch_assessment`: launch readiness, risk class, evidence quality,
+  accessibility status, regression coverage, dependency posture, owner/status,
+  blocking gates, issue refs, and whole-product judgment.
 - `quality_review`: UI, UX, performance, accessibility, reliability,
   privacy/security, content/localization, controls/gestures, offline/resume,
   and observability review areas.
@@ -85,31 +88,24 @@ hundreds of pages without prose scraping:
   group-level product coherence judgment.
 - `readiness`: release gates and blockers.
 - `evidence.missing`, `evidence_provenance`, `before_after_deltas`,
-  `revalidation_status`, `owner_status`, `instrumentation_gaps`, and `risks`:
-  explicit blockers, affected dimensions, owners, mitigations, freshness, and
-  follow-through.
+  `evidence.placeholders`, `revalidation_status`, `owner_status`,
+  `instrumentation_gaps`, and `risks`: explicit blockers, affected dimensions,
+  owners, mitigations, freshness, and follow-through. Missing screenshots,
+  metrics, UI trees, cassettes, logs, command output, and accessibility audits
+  must render as visible placeholders.
 
 The required search command for this template is
-`npx skills search "liquid glass iOS mobile frontend design UI polish"`. The
+`npx skills search "Liquid Glass iOS mobile UI UX polish accessibility frontend design"`. The
 selected grounding is:
 
-- `alirezarezvani/claude-skills@apple-hig-expert`, loaded after
-  `npx skills search`, for Apple HIG accessibility, Dynamic Type, 44 pt targets,
-  semantic color, safe areas, and iPhone-native primitives.
-- `vabole/apple-skills@ios-liquid-glass`, loaded after `npx skills search`, for
-  Liquid Glass hierarchy/harmony/consistency, control-layer restraint,
-  GlassEffect composition, semantic foreground styles, and Reduce
-  Motion/Transparency behavior.
-- `local web-design-guidelines`, loaded with the latest Vercel Web Interface
-  Guidelines, for semantic HTML, focus, image metadata, safe-area, touch,
-  reduced-motion, content-overflow, localization, accessibility, and frontend
-  performance gates.
-- `ceorkm/mobile-app-ui-design@mobile-app-ui-design`, loaded after
-  `npx skills search "mobile ux design"`, for mobile-first user goals,
-  thumb-zone reachability, 44 pt targets, 8-point spacing, visual hierarchy,
-  empty/loading/error/success states, and peak-end product moments.
-- `local playwright-cli`, loaded for generated-site screenshots, snapshots,
-  responsive viewport checks, and interaction smoke validation.
+- `heyman333/atelier-ui@ios-glass-ui-designer`, loaded after `npx skills
+  search`, for iOS-native hierarchy, restrained glass/material use, system
+  typography, semantic foreground styles, safe areas, and native sheets,
+  navigation, and accessibility fallbacks.
+- `phazurlabs/ux-ui-mastery@Mobile UX Design`, loaded after `npx skills search`,
+  for mobile-first user goals, thumb-zone reachability, 44 pt/48 dp touch
+  targets, interruption/resume behavior, platform navigation conventions, and
+  performance-as-UX budgets.
 
 The generated HTML must front-load the deep-review areas a reviewer expects:
 what was attempted/test intent, flow, data/control-plane setup, result, evidence,
@@ -121,6 +117,7 @@ severity, and validation confidence.
 
 | Section | Must Answer | Required Evidence | Score Gate |
 | --- | --- | --- | --- |
+| Launch readiness summary | Is this scenario launch-ready as an individual flow and as part of the whole product? | Readiness gates, risk class, evidence quality, accessibility/regression status, dependency posture, issue refs, owner/status. | Missing evidence or incomplete cluster judgment keeps launch readiness below pass. |
 | Persona/job/acceptance | Who is this flow for, what job must it complete, and what acceptance criteria define success? | Scenario BDD, cluster link, platform expectations. | `3+` requires user value and acceptance criteria tied to evidence. |
 | Flow | What user journey did this scenario validate, and where does it sit in the app? | Step list, source scenario link, navigation breadcrumbs. | `3+` requires a complete path from launch state to exit state. |
 | Attempted test | What exactly was executed, by whom/what, and with which tools? | Commands, simulator/tool session IDs, automation/manual notes. | Missing commands or tool notes force `incomplete`. |

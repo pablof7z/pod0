@@ -5,6 +5,8 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from structures import evidence_placeholders_for
+
 
 def load_evidence_overlays(evidence_root: Path) -> dict[str, dict[str, Any]]:
     records_dir = evidence_root / "scenario-records"
@@ -34,6 +36,7 @@ def apply_evidence_overlays(records: list[dict[str, Any]], overlays: dict[str, d
         for artifact in overlay.get("artifacts", []):
             record["evidence"]["artifacts"].append(artifact)
         deep_merge(record, overlay.get("merge", {}))
+        record["evidence"]["placeholders"] = evidence_placeholders_for(record["evidence"].get("missing", []))
         normalize_observed_record(record)
 
 
@@ -42,6 +45,7 @@ def normalize_observed_record(record: dict[str, Any]) -> None:
         return
     normalize_coherence(record)
     normalize_readiness(record)
+    normalize_launch_assessment(record)
     normalize_observed_sections(record)
 
 
@@ -134,6 +138,38 @@ def normalize_readiness(record: dict[str, Any]) -> None:
         elif gate_id == "release_readiness":
             gate["status"] = "blocked" if status == "fail" or issue_ids else "incomplete"
             gate["evidence_refs"] = evidence_refs
+
+
+def normalize_launch_assessment(record: dict[str, Any]) -> None:
+    missing = missing_evidence_labels(record)
+    open_issues = [issue for issue in record["issues"] if issue["status"] == "open"]
+    risk_source = open_issues or record["risks"]
+    blocked_gates = [
+        gate["id"]
+        for gate in record["readiness"]["gates"]
+        if gate["status"] in {"blocked", "incomplete"}
+    ]
+    record["launch_assessment"] = {
+        "launch_readiness": record["readiness"]["ship_gate"],
+        "risk_classification": highest_severity(risk_source),
+        "evidence_quality": "pass_with_issues" if missing else "pass",
+        "accessibility_status": record["dimension_scores"]["accessibility_dynamic_type"]["status"],
+        "regression_coverage": record["dimension_scores"]["regression_risk"]["status"],
+        "dependency_posture": record["run"]["provider_mode"],
+        "scenario_owner": "validation-agent",
+        "scenario_status": record["execution"]["status"],
+        "product_judgment": record["verdict"]["summary"],
+        "individual_judgment": record["coherence"]["individual_judgment"]["summary"],
+        "whole_product_judgment": record["coherence"]["group_judgment"]["summary"],
+        "blocking_gates": blocked_gates,
+        "issue_refs": [issue["id"] for issue in record["issues"]],
+        "missing_evidence": missing,
+    }
+
+
+def highest_severity(items: list[dict[str, Any]]) -> str:
+    order = {"blocker": 4, "major": 3, "minor": 2, "polish": 1}
+    return max((item.get("severity", "none") for item in items), key=lambda value: order.get(value, 0), default="none")
 
 
 def normalize_observed_sections(record: dict[str, Any]) -> None:

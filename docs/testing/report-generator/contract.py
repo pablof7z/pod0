@@ -1,7 +1,7 @@
-SCHEMA_VERSION = "1.0.0"
-GENERATOR_VERSION = "scenario-report-generator/0.3.3"
+SCHEMA_VERSION = "1.1.0"
+GENERATOR_VERSION = "scenario-report-generator/0.4.0"
 SITE_BASE = "https://pablof7z.github.io/podcast-player/"
-SKILL_SEARCH_QUERY = "liquid glass iOS mobile frontend design UI polish"
+SKILL_SEARCH_QUERY = "Liquid Glass iOS mobile UI UX polish accessibility frontend design"
 
 SECTION_TO_DIMENSION = {
     "persona_job_acceptance": "persona_acceptance",
@@ -175,63 +175,45 @@ GROUPS = {
 SKILL_GROUNDING = [
     {
         "selected": True,
-        "name": "ceorkm/mobile-app-ui-design@mobile-app-ui-design",
-        "search_terms": "mobile ux design",
-        "coverage": "Mobile-first user goals, thumb-zone controls, 44 pt targets, visual hierarchy, 8-point spacing, empty/loading/error/success states, and peak-end product moments.",
-    },
-    {
-        "selected": True,
-        "name": "vabole/apple-skills@ios-liquid-glass",
+        "name": "heyman333/atelier-ui@ios-glass-ui-designer",
         "search_terms": SKILL_SEARCH_QUERY,
-        "coverage": "Liquid Glass hierarchy, harmony, consistency, control-layer restraint, GlassEffect container behavior, semantic foreground styles, and Reduce Motion/Transparency fallbacks.",
+        "coverage": "iOS-native hierarchy, restrained glass/material use, system typography, semantic foreground styles, safe areas, sheet/navigation conventions, and Reduce Transparency/Motion expectations.",
     },
     {
         "selected": True,
-        "name": "local web-design-guidelines",
-        "search_terms": "local skill plus fetched Vercel Web Interface Guidelines",
-        "coverage": "Semantic HTML, focus, accessibility labels, image metadata, reduced motion, touch behavior, safe areas, locale-safe formatting, content overflow, and frontend performance review gates.",
-    },
-    {
-        "selected": True,
-        "name": "local playwright-cli",
-        "search_terms": "local browser validation skill",
-        "coverage": "Local GitHub Pages validation, screenshots, snapshots, responsive viewport checks, interaction verification, and generated-site smoke testing.",
+        "name": "phazurlabs/ux-ui-mastery@Mobile UX Design",
+        "search_terms": "mobile ux design",
+        "coverage": "Mobile-first user goals, thumb-zone reachability, 44 pt/48 dp target checks, interruption/resume behavior, platform navigation conventions, and performance-as-UX budgets.",
     },
     {
         "selected": False,
         "name": "charleswiltgen/axiom@axiom-ios-ui",
         "search_terms": SKILL_SEARCH_QUERY,
-        "coverage": "Search result considered for additional iOS UI review; selected mobile and Liquid Glass skills cover the needed app-screen and iOS-material gates.",
+        "coverage": "Search result considered for additional iOS UI review; loaded iOS glass and mobile UX skills cover the required page-template rubric.",
     },
     {
         "selected": False,
-        "name": "phazurlabs/ux-ui-mastery@mobile ux design",
+        "name": "vabole/apple-skills@ios-design-consultant",
         "search_terms": SKILL_SEARCH_QUERY,
-        "coverage": "Search result considered for mobile UX critique; ceorkm/mobile-app-ui-design was loaded for the primary mobile UI/UX rubric.",
-    },
-    {
-        "selected": False,
-        "name": "heyman333/atelier-ui@ios-glass-ui-designer",
-        "search_terms": SKILL_SEARCH_QUERY,
-        "coverage": "Search result considered as an alternate glass-design critic; vabole/apple-skills@ios-liquid-glass was loaded as the primary Liquid Glass reference.",
+        "coverage": "Search result considered for Apple platform critique; ios-glass-ui-designer was closer to the requested Liquid Glass report focus.",
     },
     {
         "selected": False,
         "name": "xu-xiang/everything-claude-code-zh@liquid-glass-design",
-        "search_terms": "liquid glass design",
-        "coverage": "Search result considered for alternate Liquid Glass critique; current selected Liquid Glass skill is the primary material source.",
+        "search_terms": SKILL_SEARCH_QUERY,
+        "coverage": "Search result considered for alternate Liquid Glass critique; not loaded because the selected iOS glass skill was more directly iOS-native.",
     },
     {
         "selected": False,
         "name": "ravnhq/ai-toolkit@liquid-glass-ios",
-        "search_terms": "liquid glass iOS",
+        "search_terms": SKILL_SEARCH_QUERY,
         "coverage": "Search result considered for additional glass-specific implementation review; selected skills already cover iOS material restraint and mobile interface gates.",
     },
     {
         "selected": False,
-        "name": "simota/agent-skills@native",
-        "search_terms": "native mobile interface",
-        "coverage": "Search result considered for future native implementation review; selected skills already cover the iOS interface and Liquid Glass dimensions for this template.",
+        "name": "local web-design-guidelines",
+        "search_terms": "local generated-page accessibility/design guidance",
+        "coverage": "Useful follow-up for generated-site review, but this pass grounds the report rubric in skills discovered and loaded through npx skills search/use.",
     },
     {
         "selected": False,

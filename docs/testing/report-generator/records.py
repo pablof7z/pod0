@@ -21,6 +21,7 @@ from structures import (
     execution_for,
     flow_steps_for,
     instrumentation_gaps_for,
+    launch_assessment_for,
     product_context_for,
     quality_review_for,
     readiness_for,
@@ -45,6 +46,9 @@ def build_report(scenario: Scenario, scenarios: list[Scenario], repo: Path, gene
     next_scenario = scenarios[scenario.order] if scenario.order < len(scenarios) else None
     sections = section_text(scenario)
     evidence_inventory = evidence_inventory_for(scenario)
+    coherence = coherence_for(scenario, scenarios)
+    readiness = readiness_for(scenario)
+    risks = risks_for(scenario, scenarios)
     dimensions = {
         dimension: {
             "score": 0,
@@ -63,6 +67,7 @@ def build_report(scenario: Scenario, scenarios: list[Scenario], repo: Path, gene
         "flow_steps": flow_steps_for(scenario),
         "execution": execution_for(scenario, generated_at),
         "review_grounding": review_grounding_for(),
+        "launch_assessment": launch_assessment_for(scenario, evidence_inventory, coherence, readiness, risks),
         "verdict": {
             "overall": "incomplete",
             "summary": "Generated catalog scaffold only. Required execution evidence and critique are missing.",
@@ -72,12 +77,12 @@ def build_report(scenario: Scenario, scenarios: list[Scenario], repo: Path, gene
         "dimension_scores": dimensions,
         "group_scores": group_scores(),
         "quality_review": quality_review_for(scenario),
-        "coherence": coherence_for(scenario, scenarios),
-        "readiness": readiness_for(scenario),
+        "coherence": coherence,
+        "readiness": readiness,
         "evidence": {"artifacts": artifacts_for(scenario, source_ref, skill_ref), **evidence_inventory},
         "metrics": [],
         "instrumentation_gaps": instrumentation_gaps_for(scenario),
-        "risks": risks_for(scenario, scenarios),
+        "risks": risks,
         "issues": [],
         "next_actions": next_actions_for(scenario),
     }
@@ -149,7 +154,7 @@ def section_text(scenario: Scenario) -> dict[str, dict[str, Any]]:
         "actual_result": s(missing, [source_ref], ["Attach step-by-step observed behavior before changing this verdict."]),
         "artifacts": s(f"Required visual/raw evidence from the catalog: {screenshots}. Only the source catalog and rubric metadata exist right now.", [source_ref, skill_ref]),
         "evidence_provenance": s("Not assessed. Every artifact must identify its source command/tool, capture context, source commit, branch, device/OS, SHA/path, redaction state, freshness, and whether it is live, replayed, generated, or copied from prior evidence.", [source_ref, skill_ref]),
-        "review_skill_grounding": s("Review must be grounded in loaded skills, not generic taste. Selected grounding covers Liquid Glass/iOS primitives, generated-site accessibility and interaction guidelines, and Playwright-based page verification.", [skill_ref], [f"Selected skills: {', '.join(item['name'] for item in SKILL_GROUNDING if item.get('selected'))}."]),
+        "review_skill_grounding": s("Review must be grounded in loaded skills, not generic taste. Selected grounding covers iOS-native glass/material restraint, mobile task flow, touch ergonomics, accessibility settings, and performance-as-UX review.", [skill_ref], [f"Selected skills: {', '.join(item['name'] for item in SKILL_GROUNDING if item.get('selected'))}."]),
         "ui_polish_report": s("Not assessed. Requires annotated screenshots for layout, spacing, typography, color, symbols, component state, and platform-native finish.", [skill_ref]),
         "ux_polish_report": s("Not assessed. Requires notes on task clarity, user effort, feedback, interruption/resume, recovery, and cognitive load.", [skill_ref]),
         "performance_metrics": s(f"Not measured. Required performance evidence: {perf}.", [source_ref]),
@@ -251,6 +256,9 @@ def summary_for(record: dict[str, Any]) -> dict[str, Any]:
         "verdict": record["verdict"]["overall"],
         "provider_mode": record["run"]["provider_mode"],
         "readiness": record["readiness"]["ship_gate"],
+        "launch_readiness": record["launch_assessment"]["launch_readiness"],
+        "risk_classification": record["launch_assessment"]["risk_classification"],
+        "evidence_quality": record["launch_assessment"]["evidence_quality"],
         "product_cluster": record["coherence"]["cluster"]["id"],
         "group_coherence": record["coherence"]["group_judgment"]["status"],
         "tags": record["scenario"]["tags"],
@@ -267,6 +275,9 @@ def rollups_for(records: list[dict[str, Any]]) -> dict[str, Any]:
         "by_category": count_by(records, lambda r: r["scenario"]["category"]),
         "by_provider_mode": count_by(records, lambda r: r["run"]["provider_mode"]),
         "by_readiness": count_by(records, lambda r: r["readiness"]["ship_gate"]),
+        "by_launch_readiness": count_by(records, lambda r: r["launch_assessment"]["launch_readiness"]),
+        "by_risk_classification": count_by(records, lambda r: r["launch_assessment"]["risk_classification"]),
+        "by_evidence_quality": count_by(records, lambda r: r["launch_assessment"]["evidence_quality"]),
         "by_product_cluster": count_by(records, lambda r: r["coherence"]["cluster"]["id"]),
         "by_group_coherence": count_by(records, lambda r: r["coherence"]["group_judgment"]["status"]),
         "by_tag": count_tags(records),
@@ -395,6 +406,10 @@ def validate_output(records: list[dict[str, Any]], out: Path) -> None:
             raise ValueError(f"{record['scenario']['id']} scaffold group coherence must be incomplete")
         if set(record["coherence"]["cluster"]) != {"id", "title", "scenario_ids"}:
             raise ValueError(f"{record['scenario']['id']} coherence cluster key mismatch")
+        missing_kinds = {item["kind"] for item in record["evidence"]["missing"]}
+        placeholder_kinds = {item["kind"] for item in record["evidence"].get("placeholders", [])}
+        if missing_kinds != placeholder_kinds:
+            raise ValueError(f"{record['scenario']['id']} evidence placeholders do not match missing evidence")
         if set(record["quality_review"]) != {"ui", "ux", "performance", "accessibility", "reliability", "privacy_security", "content_localization", "controls_gestures", "offline_resume", "observability"}:
             raise ValueError(f"{record['scenario']['id']} quality review key mismatch")
         if not observed and not record["instrumentation_gaps"]:

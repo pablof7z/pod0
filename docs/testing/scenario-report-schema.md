@@ -112,7 +112,7 @@ Each scenario page is generated from one `ScenarioReport` JSON object:
 
 | Field | Purpose |
 | --- | --- |
-| `schema_version` | Version of this contract. Start at `1.0.0`. |
+| `schema_version` | Version of this contract. Current value: `1.1.0`. |
 | `scenario` | Stable scenario identity, source paths, BDD text, category, tags, dependencies. |
 | `run` | Build, executor, device/OS matrix, environment, fixtures, provider/cassette mode. |
 | `page` | Canonical URLs, generated timestamps, nav links, asset base. |
@@ -120,13 +120,14 @@ Each scenario page is generated from one `ScenarioReport` JSON object:
 | `flow_steps` | Ordered step-by-step flow with expected state and required evidence per step. |
 | `execution` | Attempts, retries, branches, commands, tools, rerun notes, and branch coverage. |
 | `review_grounding` | Exact skill-search command, selected/considered skills, and how those skills shape the template. |
+| `launch_assessment` | Launch readiness, risk class, evidence quality, accessibility status, regression coverage, dependency posture, owner/status, blocking gates, issue refs, and whole-product judgment. |
 | `sections` | Required narrative sections from the page template, including provenance, before/after deltas, revalidation status, and owner/status. |
 | `dimension_scores` | Per-dimension scores and evidence references. |
 | `group_scores` | Functional/product/engineering/follow-through grouped scores. |
 | `quality_review` | Structured UI, UX, performance, accessibility, reliability, privacy/security, content, controls, offline/resume, and observability checks. |
 | `coherence` | Individual scenario judgment plus related-scenario group-level product coherence judgment. |
 | `readiness` | Release gates, blockers, owners, and ship-gate status. |
-| `evidence` | Artifact registry for screenshots, videos, logs, UI trees, metrics, cassettes, relay JSON, source docs. |
+| `evidence` | Artifact registry for screenshots, videos, logs, UI trees, metrics, cassettes, relay JSON, source docs, plus visible placeholders for missing required evidence. |
 | `metrics` | Measured values, budgets, units, collection methods, and status. |
 | `instrumentation_gaps` | Missing instrumentation/evidence with severity, owner, and affected dimensions. |
 | `risks` | Risk register with severity, priority, status, affected dimensions, and mitigation. |

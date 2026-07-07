@@ -13,6 +13,7 @@
     "flow_steps",
     "execution",
     "review_grounding",
+    "launch_assessment",
     "verdict",
     "sections",
     "dimension_scores",
@@ -28,7 +29,7 @@
     "next_actions"
   ],
   "properties": {
-    "schema_version": { "type": "string", "pattern": "^1\\.0\\.0$" },
+    "schema_version": { "type": "string", "pattern": "^1\\.1\\.0$" },
     "scenario": {
       "type": "object",
       "additionalProperties": false,
@@ -114,6 +115,7 @@
     "flow_steps": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/flow_step" } },
     "execution": { "$ref": "#/$defs/execution" },
     "review_grounding": { "$ref": "#/$defs/review_grounding" },
+    "launch_assessment": { "$ref": "#/$defs/launch_assessment" },
     "verdict": {
       "type": "object",
       "additionalProperties": false,
@@ -185,11 +187,12 @@
     "evidence": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["artifacts", "required_kinds", "missing", "redaction_summary"],
+      "required": ["artifacts", "required_kinds", "missing", "placeholders", "redaction_summary"],
       "properties": {
         "artifacts": { "type": "array", "items": { "$ref": "#/$defs/artifact" } },
         "required_kinds": { "type": "array", "items": { "$ref": "#/$defs/non_empty_string" }, "uniqueItems": true },
         "missing": { "type": "array", "items": { "$ref": "#/$defs/missing_evidence" } },
+        "placeholders": { "type": "array", "items": { "$ref": "#/$defs/evidence_placeholder" } },
         "redaction_summary": { "$ref": "#/$defs/non_empty_string" }
       }
     },
@@ -211,11 +214,13 @@
     "branch": { "type": "object", "additionalProperties": false, "required": ["id", "status", "trigger", "expected"], "properties": { "id": { "$ref": "#/$defs/non_empty_string" }, "status": { "$ref": "#/$defs/status" }, "trigger": { "$ref": "#/$defs/non_empty_string" }, "expected": { "$ref": "#/$defs/non_empty_string" } } },
     "review_grounding": { "type": "object", "additionalProperties": false, "required": ["search_command", "selected_skills", "all_considered", "template_impact"], "properties": { "search_command": { "$ref": "#/$defs/non_empty_string" }, "selected_skills": { "type": "array", "items": { "$ref": "#/$defs/review_skill" } }, "all_considered": { "type": "array", "items": { "$ref": "#/$defs/review_skill" } }, "template_impact": { "type": "array", "items": { "$ref": "#/$defs/non_empty_string" } } } },
     "review_skill": { "type": "object", "additionalProperties": false, "required": ["selected", "name", "search_terms", "coverage"], "properties": { "selected": { "type": "boolean" }, "name": { "$ref": "#/$defs/non_empty_string" }, "search_terms": { "$ref": "#/$defs/non_empty_string" }, "coverage": { "$ref": "#/$defs/non_empty_string" } } },
+    "launch_assessment": { "type": "object", "additionalProperties": false, "required": ["launch_readiness", "risk_classification", "evidence_quality", "accessibility_status", "regression_coverage", "dependency_posture", "scenario_owner", "scenario_status", "product_judgment", "individual_judgment", "whole_product_judgment", "blocking_gates", "issue_refs", "missing_evidence"], "properties": { "launch_readiness": { "$ref": "#/$defs/status" }, "risk_classification": { "enum": ["blocker", "major", "minor", "polish", "none"] }, "evidence_quality": { "$ref": "#/$defs/status" }, "accessibility_status": { "$ref": "#/$defs/status" }, "regression_coverage": { "$ref": "#/$defs/status" }, "dependency_posture": { "$ref": "#/$defs/non_empty_string" }, "scenario_owner": { "$ref": "#/$defs/non_empty_string" }, "scenario_status": { "$ref": "#/$defs/status" }, "product_judgment": { "$ref": "#/$defs/non_empty_string" }, "individual_judgment": { "$ref": "#/$defs/non_empty_string" }, "whole_product_judgment": { "$ref": "#/$defs/non_empty_string" }, "blocking_gates": { "type": "array", "items": { "$ref": "#/$defs/non_empty_string" } }, "issue_refs": { "type": "array", "items": { "$ref": "#/$defs/non_empty_string" } }, "missing_evidence": { "type": "array", "items": { "$ref": "#/$defs/non_empty_string" } } } },
     "review_area": { "type": "object", "additionalProperties": false, "required": ["status", "summary", "checks", "evidence_refs", "gaps"], "properties": { "status": { "$ref": "#/$defs/status" }, "summary": { "$ref": "#/$defs/non_empty_string" }, "checks": { "type": "array", "items": { "$ref": "#/$defs/non_empty_string" } }, "evidence_refs": { "type": "array", "items": { "$ref": "#/$defs/non_empty_string" } }, "gaps": { "type": "array", "items": { "$ref": "#/$defs/non_empty_string" } } } },
     "coherence": { "type": "object", "additionalProperties": false, "required": ["cluster", "individual_judgment", "group_judgment", "themes", "cross_scenario_risks"], "properties": { "cluster": { "$ref": "#/$defs/coherence_cluster" }, "individual_judgment": { "$ref": "#/$defs/review_area" }, "group_judgment": { "$ref": "#/$defs/review_area" }, "themes": { "type": "array", "items": { "$ref": "#/$defs/non_empty_string" } }, "cross_scenario_risks": { "type": "array", "items": { "$ref": "#/$defs/non_empty_string" } } } },
     "readiness": { "type": "object", "additionalProperties": false, "required": ["ship_gate", "blocking_reasons", "gates"], "properties": { "ship_gate": { "$ref": "#/$defs/status" }, "blocking_reasons": { "type": "array", "items": { "$ref": "#/$defs/non_empty_string" } }, "gates": { "type": "array", "items": { "$ref": "#/$defs/readiness_gate" } } } },
     "readiness_gate": { "type": "object", "additionalProperties": false, "required": ["id", "status", "requirement", "owner", "evidence_refs"], "properties": { "id": { "$ref": "#/$defs/non_empty_string" }, "status": { "$ref": "#/$defs/status" }, "requirement": { "$ref": "#/$defs/non_empty_string" }, "owner": { "$ref": "#/$defs/non_empty_string" }, "evidence_refs": { "type": "array", "items": { "$ref": "#/$defs/non_empty_string" } } } },
     "missing_evidence": { "type": "object", "additionalProperties": false, "required": ["kind", "reason", "blocks_dimensions", "required"], "properties": { "kind": { "$ref": "#/$defs/non_empty_string" }, "reason": { "$ref": "#/$defs/non_empty_string" }, "blocks_dimensions": { "type": "array", "items": { "$ref": "#/$defs/non_empty_string" } }, "required": { "type": "boolean" } } },
+    "evidence_placeholder": { "type": "object", "additionalProperties": false, "required": ["id", "kind", "message", "required", "blocks_dimensions"], "properties": { "id": { "$ref": "#/$defs/non_empty_string" }, "kind": { "$ref": "#/$defs/non_empty_string" }, "message": { "$ref": "#/$defs/non_empty_string" }, "required": { "type": "boolean" }, "blocks_dimensions": { "type": "array", "items": { "$ref": "#/$defs/non_empty_string" } } } },
     "gap": { "type": "object", "additionalProperties": false, "required": ["id", "severity", "summary", "affected_dimensions", "owner", "status"], "properties": { "id": { "$ref": "#/$defs/non_empty_string" }, "severity": { "enum": ["blocker", "major", "minor", "polish"] }, "summary": { "$ref": "#/$defs/non_empty_string" }, "affected_dimensions": { "type": "array", "items": { "$ref": "#/$defs/non_empty_string" } }, "owner": { "type": "string" }, "status": { "$ref": "#/$defs/status" } } },
     "risk": { "type": "object", "additionalProperties": false, "required": ["id", "severity", "priority", "status", "title", "affected_dimensions", "mitigation"], "properties": { "id": { "$ref": "#/$defs/non_empty_string" }, "severity": { "enum": ["blocker", "major", "minor", "polish"] }, "priority": { "$ref": "#/$defs/non_empty_string" }, "status": { "$ref": "#/$defs/status" }, "title": { "$ref": "#/$defs/non_empty_string" }, "affected_dimensions": { "type": "array", "items": { "$ref": "#/$defs/non_empty_string" } }, "mitigation": { "$ref": "#/$defs/non_empty_string" } } },
     "section": {

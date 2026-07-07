@@ -23,6 +23,7 @@ SITE_BASE = "https://example.test/podcast-player/"
 
 REQUIRED_SCENARIO_SECTIONS = [
     "What Was Attempted And Test Intent",
+    "Launch Readiness Summary",
     "Flow Overview And Steps",
     "Results And Verdict",
     "UI Polish Report",
@@ -80,16 +81,16 @@ class ScenarioReportGeneratorTests(unittest.TestCase):
 
             data = json.loads((out / "scenarios" / "smoke-001" / "data.json").read_text())
             self.assertEqual(data["page"]["canonical_url"], "https://example.test/podcast-player/scenarios/smoke-001/")
-            self.assertEqual(data["review_grounding"]["search_command"], 'npx skills search "liquid glass iOS mobile frontend design UI polish"')
+            self.assertEqual(data["review_grounding"]["search_command"], 'npx skills search "Liquid Glass iOS mobile UI UX polish accessibility frontend design"')
             self.assertEqual(
                 [skill["name"] for skill in SKILL_GROUNDING if skill["selected"]],
                 [
-                    "ceorkm/mobile-app-ui-design@mobile-app-ui-design",
-                    "vabole/apple-skills@ios-liquid-glass",
-                    "local web-design-guidelines",
-                    "local playwright-cli",
+                    "heyman333/atelier-ui@ios-glass-ui-designer",
+                    "phazurlabs/ux-ui-mastery@Mobile UX Design",
                 ],
             )
+            self.assertEqual(data["launch_assessment"]["launch_readiness"], "incomplete")
+            self.assertIn("placeholder:screenshot", {item["id"] for item in data["evidence"]["placeholders"]})
 
     def test_preserves_existing_pages_assets_and_issue_index(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -265,15 +266,13 @@ class ScenarioReportGeneratorTests(unittest.TestCase):
             self.assertEqual(
                 [skill["name"] for skill in merged["review_grounding"]["selected_skills"]],
                 [
-                    "ceorkm/mobile-app-ui-design@mobile-app-ui-design",
-                    "vabole/apple-skills@ios-liquid-glass",
-                    "local web-design-guidelines",
-                    "local playwright-cli",
+                    "heyman333/atelier-ui@ios-glass-ui-designer",
+                    "phazurlabs/ux-ui-mastery@Mobile UX Design",
                 ],
             )
             self.assertNotIn("obsolete/old-skill", json.dumps(merged["sections"]["review_skill_grounding"]))
-            self.assertIn("local web-design-guidelines", merged["sections"]["review_skill_grounding"]["notes"][0])
-            self.assertNotIn("phazurlabs", merged["sections"]["review_skill_grounding"]["summary"])
+            self.assertIn("heyman333/atelier-ui@ios-glass-ui-designer", merged["sections"]["review_skill_grounding"]["notes"][0])
+            self.assertNotIn("obsolete", merged["sections"]["review_skill_grounding"]["summary"])
             for section_key, dimension_key in stale_contract_keys.items():
                 self.assertIn(section_key, merged["sections"])
                 self.assertIn(dimension_key, merged["dimension_scores"])
@@ -356,6 +355,8 @@ class ScenarioReportGeneratorTests(unittest.TestCase):
             },
         )
         self.assertEqual(schema["$defs"]["coherence"]["properties"]["cluster"]["$ref"], "#/$defs/coherence_cluster")
+        self.assertIn("launch_assessment", schema["required"])
+        self.assertIn("placeholders", schema["properties"]["evidence"]["required"])
         self.assertTrue(
             {
                 "data_integrity_state_sync",
