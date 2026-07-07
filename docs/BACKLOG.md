@@ -55,7 +55,11 @@ worktrees currently in flight.
   scenario pages.
   Current report-generator follow-up: the per-scenario Pages contract now
   front-loads launch readiness, risk class, evidence quality, evidence
-  placeholders, and whole-product coherence before any page can appear launch-ready.
+  placeholders, whole-product coherence, and generated GitHub issue-backed
+  validation blockers before any page can appear launch-ready. Scaffolded
+  blocker links do not count as observed run evidence; real scenario evidence
+  still has to attach screenshots, UI trees, metrics, accessibility audits,
+  logs, cassettes, and revalidation IDs.
   Remaining parity debt lives in `App/Sources/` Swift policy/fallback code plus
   the listed platform/AI gaps. Agent chat title generation now routes prompt
   construction, message filtering/truncation, selected model, and JSON title

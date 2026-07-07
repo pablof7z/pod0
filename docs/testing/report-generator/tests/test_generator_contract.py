@@ -90,7 +90,9 @@ class ScenarioReportGeneratorTests(unittest.TestCase):
                 ],
             )
             self.assertEqual(data["launch_assessment"]["launch_readiness"], "incomplete")
+            self.assertEqual(data["launch_assessment"]["issue_refs"], ["GH-702", "GH-730", "GH-733", "GH-700"])
             self.assertIn("placeholder:screenshot", {item["id"] for item in data["evidence"]["placeholders"]})
+            self.assertIn("GH-702", {issue["id"] for issue in data["issues"]})
 
     def test_preserves_existing_pages_assets_and_issue_index(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -253,10 +255,12 @@ class ScenarioReportGeneratorTests(unittest.TestCase):
             self.assertTrue((out / ".nojekyll").exists())
             self.assertFalse((out / "stale.html").exists())
             issue_index = json.loads((out / "data" / "issues.json").read_text())
-            self.assertEqual(issue_index["counts"], {"open": 1})
-            self.assertEqual(issue_index["issues"][0]["id"], "ISSUE-1")
-            self.assertEqual(issue_index["issues"][0]["scenario_id"], "SMOKE-001")
-            self.assertEqual(issue_index["issues"][0]["scenario_slug"], "smoke-001")
+            self.assertEqual(issue_index["counts"], {"open": 8})
+            indexed_issues = {(item["scenario_id"], item["id"]): item for item in issue_index["issues"]}
+            self.assertIn(("SMOKE-001", "ISSUE-1"), indexed_issues)
+            self.assertIn(("SMOKE-001", "GH-700"), indexed_issues)
+            self.assertIn(("SMOKE-002", "GH-702"), indexed_issues)
+            self.assertEqual(indexed_issues[("SMOKE-001", "ISSUE-1")]["scenario_slug"], "smoke-001")
             merged = json.loads(previous_record_path.read_text())
             self.assertEqual(merged["execution"]["status"], "pass")
             self.assertEqual(merged["verdict"]["overall"], "pass_with_issues")
@@ -285,8 +289,8 @@ class ScenarioReportGeneratorTests(unittest.TestCase):
             self.assertEqual(rollups["average_dimension_scores"]["actual_result"], 1.5)
             self.assertEqual(rollups["average_dimension_scores"]["ui_polish"], 1)
             self.assertEqual(rollups["average_group_scores"]["functional_correctness"], 1.5)
-            self.assertEqual(rollups["issues_by_severity"], {"major": 1})
-            self.assertEqual(rollups["open_issues_by_severity"], {"major": 1})
+            self.assertEqual(rollups["issues_by_severity"], {"major": 8})
+            self.assertEqual(rollups["open_issues_by_severity"], {"major": 8})
             scenario_page = previous_record_path.with_name("index.html").read_text()
             home = (out / "index.html").read_text()
             self.assertIn("Screenshot Evidence", scenario_page)

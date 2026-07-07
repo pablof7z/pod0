@@ -4,6 +4,7 @@ from typing import Any
 
 from catalog import Scenario
 from contract import QUALITY_AREAS, READINESS_GATES, SKILL_GROUNDING, SKILL_SEARCH_QUERY
+from issue_ledger import issue_refs_for
 
 
 def product_context_for(scenario: Scenario, scenarios: list[Scenario]) -> dict[str, Any]:
@@ -153,17 +154,22 @@ def coherence_for(scenario: Scenario, scenarios: list[Scenario]) -> dict[str, An
     }
 
 
-def readiness_for(scenario: Scenario) -> dict[str, Any]:
+def readiness_for(scenario: Scenario, issues: list[dict[str, Any]]) -> dict[str, Any]:
+    issue_refs = issue_refs_for(issues)
     return {
         "ship_gate": "incomplete",
-        "blocking_reasons": ["No current execution evidence is attached.", "Product-quality judgments are scaffolded, not observed."],
+        "blocking_reasons": [
+            "No current execution evidence is attached.",
+            "Product-quality judgments are scaffolded, not observed.",
+            f"Linked validation blocker(s): {', '.join(issue_refs)}.",
+        ],
         "gates": [
             {
                 "id": gate_id,
                 "status": "blocked",
                 "requirement": requirement,
                 "owner": "validation-agent",
-                "evidence_refs": [source_ref(scenario)] if gate_id == "required_evidence" else ["rubric:review-skill-grounding"],
+                "evidence_refs": evidence_refs_for_gate(gate_id, scenario, issue_refs),
             }
             for gate_id, requirement in READINESS_GATES.items()
         ],
@@ -176,13 +182,15 @@ def launch_assessment_for(
     coherence: dict[str, Any],
     readiness: dict[str, Any],
     risks: list[dict[str, Any]],
+    issues: list[dict[str, Any]],
 ) -> dict[str, Any]:
     missing = [item["kind"] for item in evidence_inventory["missing"]]
     blocked_gates = [gate["id"] for gate in readiness["gates"] if gate["status"] in {"blocked", "incomplete"}]
     dependency_posture = "blocked" if scenario.provider_mode == "blocked" or scenario.cassettes else "not_run"
+    risk_source = issues or risks
     return {
         "launch_readiness": readiness["ship_gate"],
-        "risk_classification": highest_risk(risks),
+        "risk_classification": highest_risk(risk_source),
         "evidence_quality": "incomplete" if missing else "pass",
         "accessibility_status": "incomplete",
         "regression_coverage": "incomplete",
@@ -193,9 +201,17 @@ def launch_assessment_for(
         "individual_judgment": coherence["individual_judgment"]["summary"],
         "whole_product_judgment": coherence["group_judgment"]["summary"],
         "blocking_gates": blocked_gates,
-        "issue_refs": [],
+        "issue_refs": issue_refs_for(issues),
         "missing_evidence": missing,
     }
+
+
+def evidence_refs_for_gate(gate_id: str, scenario: Scenario, issue_refs: list[str]) -> list[str]:
+    if gate_id == "required_evidence":
+        return [source_ref(scenario), *issue_refs]
+    if gate_id in {"defect_tracking", "release_readiness"}:
+        return issue_refs or ["rubric:review-skill-grounding"]
+    return ["rubric:review-skill-grounding"]
 
 
 def instrumentation_gaps_for(scenario: Scenario) -> list[dict[str, Any]]:

@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from catalog import parse_catalog, slugify  # noqa: E402
 from contract import GENERATOR_VERSION, SCHEMA_VERSION, SITE_BASE, SKILL_GROUNDING  # noqa: E402
 from evidence import apply_evidence_overlays, copy_evidence_assets, load_evidence_overlays  # noqa: E402
+from issue_ledger import merge_issue_lists  # noqa: E402
 from provider_cassettes_report import provider_cassette_data, render_provider_cassette_page  # noqa: E402
 from records import build_report, has_observed_data, rollups_for, summary_for, tags_for_records, validate_output, validate_schema_contract  # noqa: E402
 from render import render_home, render_scenario_index, render_scenario_page, write_rollup_pages, write_tag_pages  # noqa: E402
@@ -160,6 +161,7 @@ def merge_previous_record(current: dict[str, Any], previous: dict[str, Any] | No
     merged["dimension_scores"] = merge_keyed_dict(current["dimension_scores"], previous["dimension_scores"])
     merged["group_scores"] = merge_group_scores(current["group_scores"], previous["group_scores"])
     merged["evidence"] = merge_evidence(current["evidence"], previous["evidence"])
+    merged["issues"] = merge_issue_lists(current["issues"], previous["issues"])
     merged["review_grounding"] = current["review_grounding"]
     merged["next_actions"] = merge_actions(current["next_actions"], previous["next_actions"])
     return merged

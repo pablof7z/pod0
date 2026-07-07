@@ -15,6 +15,7 @@ from contract import (
     SECTION_TO_DIMENSION,
     SKILL_GROUNDING,
 )
+from issue_ledger import generated_validation_issue, issues_for_scenario
 from structures import (
     coherence_for,
     evidence_inventory_for,
@@ -47,7 +48,8 @@ def build_report(scenario: Scenario, scenarios: list[Scenario], repo: Path, gene
     sections = section_text(scenario)
     evidence_inventory = evidence_inventory_for(scenario)
     coherence = coherence_for(scenario, scenarios)
-    readiness = readiness_for(scenario)
+    issues = issues_for_scenario(scenario)
+    readiness = readiness_for(scenario, issues)
     risks = risks_for(scenario, scenarios)
     dimensions = {
         dimension: {
@@ -67,7 +69,7 @@ def build_report(scenario: Scenario, scenarios: list[Scenario], repo: Path, gene
         "flow_steps": flow_steps_for(scenario),
         "execution": execution_for(scenario, generated_at),
         "review_grounding": review_grounding_for(),
-        "launch_assessment": launch_assessment_for(scenario, evidence_inventory, coherence, readiness, risks),
+        "launch_assessment": launch_assessment_for(scenario, evidence_inventory, coherence, readiness, risks, issues),
         "verdict": {
             "overall": "incomplete",
             "summary": "Generated catalog scaffold only. Required execution evidence and critique are missing.",
@@ -83,7 +85,7 @@ def build_report(scenario: Scenario, scenarios: list[Scenario], repo: Path, gene
         "metrics": [],
         "instrumentation_gaps": instrumentation_gaps_for(scenario),
         "risks": risks,
-        "issues": [],
+        "issues": issues,
         "next_actions": next_actions_for(scenario),
     }
 
@@ -431,7 +433,7 @@ def has_observed_data(record: dict[str, Any]) -> bool:
     verdict = record.get("verdict", {})
     return bool(
         record.get("metrics")
-        or record.get("issues")
+        or any(not generated_validation_issue(issue) for issue in record.get("issues", []))
         or len(evidence.get("artifacts", [])) > 2
         or execution.get("status") not in {None, "not_run"}
         or verdict.get("overall") not in {None, "incomplete"}

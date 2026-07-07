@@ -25,6 +25,10 @@ The generator is intentionally strict:
 - Every generated scenario page is `incomplete` until real screenshots, UI
   trees, metrics, cassettes, accessibility evidence, UI/UX critique, and issue
   links are attached.
+- Generated scaffold pages carry GitHub issue-backed validation blockers for
+  the known missing evidence, accessibility, performance, cassette, NMP/chirp,
+  and D8 work. These blockers do not count as observed run evidence by
+  themselves.
 - Artifact paths in generated JSON must exist in the generated site.
 - Rollup counts must agree with per-scenario records.
 

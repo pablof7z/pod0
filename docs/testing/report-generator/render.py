@@ -344,7 +344,7 @@ def issue_rollup_page(records: list[dict[str, Any]]) -> str:
         for scenario_id, slug, issue in issues
     )
     table = f"<table><caption>Linked scenario defects</caption><thead><tr><th>Scenario</th><th>Issue</th><th>Severity</th><th>Title</th><th>Status</th></tr></thead><tbody>{rows}</tbody></table>"
-    return hero("Issues", f"{len(issues)} observed defect links from evidence-backed runs.") + section("Linked Defects", table)
+    return hero("Issues", f"{len(issues)} issue links from scenario records.") + section("Linked Defects And Validation Blockers", table)
 
 
 def page(title: str, depth: int, body: str) -> str:
