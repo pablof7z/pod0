@@ -1,7 +1,7 @@
 SCHEMA_VERSION = "1.1.0"
-GENERATOR_VERSION = "scenario-report-generator/0.4.0"
+GENERATOR_VERSION = "scenario-report-generator/0.5.0"
 SITE_BASE = "https://pablof7z.github.io/podcast-player/"
-SKILL_SEARCH_QUERY = "iOS mobile UI UX liquid glass native polish validation"
+SKILL_SEARCH_QUERY = "UI UX mobile Liquid Glass design review accessibility"
 
 SECTION_TO_DIMENSION = {
     "persona_job_acceptance": "persona_acceptance",
@@ -175,45 +175,51 @@ GROUPS = {
 SKILL_GROUNDING = [
     {
         "selected": True,
-        "name": "vabole/apple-skills@ios-liquid-glass",
+        "name": "casper-studios/casper-marketplace@liquid-glass",
         "search_terms": SKILL_SEARCH_QUERY,
-        "coverage": "Liquid Glass hierarchy, harmony, consistency, native chrome usage, interactive glass restraint, safe-area-sensitive controls, and Reduce Motion/Transparency expectations.",
+        "coverage": "Search result with 283 installs. Loaded with npx skills use; grounds content-first Liquid Glass, glass-only navigation/control chrome, adaptive tinting, 8 pt spacing, 44 pt hit targets, SF Symbols, and Reduce Motion/Transparency expectations.",
     },
     {
         "selected": True,
-        "name": "vabole/apple-skills@hig",
+        "name": "charleswiltgen/axiom@axiom-design",
         "search_terms": SKILL_SEARCH_QUERY,
-        "coverage": "Apple HIG factual checks for safe areas, system typography, Dynamic Type, accessibility, color/contrast, materials, navigation, controls, and 44 pt touch targets.",
+        "coverage": "Loaded from the charleswiltgen/axiom search result (221 installs). Grounds HIG, semantic colors, SF typography, Liquid Glass variant discipline, SF Symbols, platform navigation, and app composition checks.",
     },
     {
         "selected": True,
-        "name": "qodex-ai/ai-agent-skills@mobile-app-interface",
+        "name": "charleswiltgen/axiom@axiom-accessibility",
         "search_terms": SKILL_SEARCH_QUERY,
-        "coverage": "Mobile app interface rules for safe areas, Dynamic Type, semantic colors, native navigation, haptics, accessibility labels, list performance, Liquid Glass overlays, and material fallbacks.",
+        "coverage": "Loaded from the charleswiltgen/axiom search result (221 installs). Grounds VoiceOver labels, Dynamic Type, contrast, touch targets, Reduce Motion, Reduce Transparency, dismiss traps, dead ends, missing states, and gesture alternatives.",
     },
     {
-        "selected": False,
-        "name": "vabole/apple-skills@ios-design-consultant",
+        "selected": True,
+        "name": "charleswiltgen/axiom@axiom-performance",
         "search_terms": SKILL_SEARCH_QUERY,
-        "coverage": "Search result considered; the exact skill was not loadable from the package, so the package HIG skill was loaded instead for factual native iOS checks.",
+        "coverage": "Loaded from the charleswiltgen/axiom search result (221 installs). Grounds measured performance review, launch/tap/screen-settle latency, scroll hitches, memory, CPU, energy, and measurement-before-optimization discipline.",
     },
     {
-        "selected": False,
+        "selected": True,
         "name": "phazurlabs/ux-ui-mastery@mobile ux design",
         "search_terms": SKILL_SEARCH_QUERY,
-        "coverage": "Search result considered for mobile UX critique; qodex mobile-app-interface and Apple HIG coverage were enough for this focused manifest.",
+        "coverage": "Search result with 96 installs. Loaded with npx skills use; grounds mobile-first UX, one primary action per screen, thumb-zone reachability, interruption/resume behavior, visible gesture alternatives, 44 pt targets, 8 pt spacing, and latency-as-UX budgets.",
     },
     {
         "selected": False,
         "name": "openai/plugins@swiftui-liquid-glass",
         "search_terms": SKILL_SEARCH_QUERY,
-        "coverage": "Search result considered for SwiftUI Liquid Glass implementation detail; this pass plans evidence requirements rather than changing SwiftUI runtime code.",
+        "coverage": "Search result with 59 installs. npx skills use could not resolve swiftui-liquid-glass from this package in this environment; exact hit was cited but not used as loaded grounding.",
     },
     {
         "selected": False,
-        "name": "petekp/claude-code-setup@swift-apps",
+        "name": "ravnhq/ai-toolkit@liquid-glass-ios",
         "search_terms": SKILL_SEARCH_QUERY,
-        "coverage": "Search result considered for Swift app implementation workflow; not needed because this change is report-generator planning data and rendering only.",
+        "coverage": "Search result with 29 installs. Considered but not loaded because higher-install Liquid Glass and Axiom/HIG skills covered the template needs.",
+    },
+    {
+        "selected": False,
+        "name": "simota/agent-skills@native",
+        "search_terms": SKILL_SEARCH_QUERY,
+        "coverage": "Search result with 21 installs. Considered but not loaded because it was less directly tied to iOS UI/UX evidence gates than the selected skills.",
     },
     {
         "selected": False,

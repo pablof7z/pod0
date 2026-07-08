@@ -175,12 +175,12 @@ def section_text(scenario: Scenario, scenario_cassettes: list[dict[str, Any]]) -
         "actual_result": s(missing, [source_ref], ["Attach step-by-step observed behavior before changing this verdict."]),
         "artifacts": s(f"Required visual/raw evidence from the catalog: {screenshots}. Only the source catalog and rubric metadata exist right now.", [source_ref, skill_ref]),
         "evidence_provenance": s("Not assessed. Every artifact must identify its source command/tool, capture context, source commit, branch, device/OS, SHA/path, redaction state, freshness, and whether it is live, replayed, generated, or copied from prior evidence.", [source_ref, skill_ref]),
-        "review_skill_grounding": s("Review must be grounded in loaded skills, not generic taste. Selected grounding covers Liquid Glass restraint, HIG factual checks, safe areas, Dynamic Type, touch targets, accessibility settings, native navigation, material fallbacks, and performance-as-UX review.", [skill_ref], [f"Selected skills: {', '.join(item['name'] for item in SKILL_GROUNDING if item.get('selected'))}."]),
+        "review_skill_grounding": s("Review must be grounded in loaded skills, not generic taste. Selected grounding covers Liquid Glass restraint, HIG factual checks, safe areas, SF typography, Dynamic Type, touch targets, accessibility settings, native navigation, mobile thumb-zone UX, material fallbacks, and measured performance-as-UX review.", [skill_ref], [f"Selected skills: {', '.join(item['name'] for item in SKILL_GROUNDING if item.get('selected'))}."]),
         "ui_polish_report": s("Not assessed. Requires annotated screenshots for layout, spacing, typography, color, symbols, component state, and platform-native finish.", [skill_ref]),
         "ux_polish_report": s("Not assessed. Requires notes on task clarity, user effort, feedback, interruption/resume, recovery, and cognitive load.", [skill_ref]),
         "performance_metrics": s(f"Not measured. Required performance evidence: {perf}.", [source_ref]),
         "accessibility_dynamic_type": s("Not assessed. Requires VoiceOver/UI tree labels, Dynamic Type, contrast, Reduce Motion/Transparency, and touch target evidence.", [skill_ref]),
-        "liquid_glass_ios_primitives": s("Not assessed. Requires evidence that iOS primitives and glass-like materials are used as functional chrome, with accessibility fallbacks.", [skill_ref]),
+        "liquid_glass_ios_primitives": s("Not assessed. Requires evidence that iOS primitives and glass-like materials are used as functional navigation/control chrome, not decorative content material, with semantic colors and accessibility fallbacks.", [skill_ref]),
         "error_recovery_behavior": s("Not assessed. Error, offline, retry, cancellation, and recovery paths must be captured where the scenario can fail.", [source_ref]),
         "privacy_security": s("Not assessed. Validation must scan screenshots, logs, cassettes, relays, and exports for leaked keys, tokens, private audio, or private Nostr material.", [source_ref]),
         "nmp_architecture_cohesiveness": s(f"Not assessed. Declared NMP/RMP boundary: {boundary}. Review must check Rust-owned state/policy, thin native renderers, bounded FFI, replay clocks, and privacy fail-closed behavior.", [source_ref, skill_ref]),
@@ -258,7 +258,7 @@ def group_scores() -> dict[str, dict[str, Any]]:
 def next_actions_for(scenario: Scenario, cassette_available: bool = False) -> list[dict[str, str]]:
     actions = [
         {"id": "run-scenario", "title": f"Execute {scenario.scenario_id} on the target simulator/device.", "status": "open", "owner": "validation-agent"},
-        {"id": "attach-evidence", "title": "Attach screenshots, UI trees, logs, metrics, accessibility evidence, and redaction metadata.", "status": "open", "owner": "validation-agent"},
+        {"id": "attach-evidence", "title": "Attach screenshots, UI trees, logs, metrics, accessibility evidence, generated-page viewport checks, and redaction metadata.", "status": "open", "owner": "validation-agent"},
         {"id": "score-dimensions", "title": "Score every individual and grouped dimension from evidence.", "status": "open", "owner": "review-agent"},
         {"id": "file-defects", "title": "File GitHub issues for every actionable defect before leaving incomplete.", "status": "open", "owner": "review-agent"},
         {"id": "revalidate-defects", "title": "Re-run this scenario after each fix PR and attach revalidation run IDs.", "status": "open", "owner": "validation-agent"},

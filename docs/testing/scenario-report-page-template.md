@@ -91,20 +91,27 @@ hundreds of pages without prose scraping:
   `evidence.placeholders`, `revalidation_status`, `owner_status`,
   `instrumentation_gaps`, and `risks`: explicit blockers, affected dimensions,
   owners, mitigations, freshness, and follow-through. Missing screenshots,
-  metrics, UI trees, cassettes, logs, command output, and accessibility audits
-  must render as visible placeholders.
+  metrics, UI trees, cassettes, logs, command output, generated-page viewport
+  checks, and accessibility audits must render as visible placeholders.
 
 The required search command for this template is
-`npx skills search "Liquid Glass iOS mobile UI UX polish accessibility frontend design"`. The
+`npx skills search "UI UX mobile Liquid Glass design review accessibility"`. The
 selected grounding is:
 
-- `heyman333/atelier-ui@ios-glass-ui-designer`, loaded after `npx skills
-  search`, for iOS-native hierarchy, restrained glass/material use, system
-  typography, semantic foreground styles, safe areas, and native sheets,
-  navigation, and accessibility fallbacks.
-- `phazurlabs/ux-ui-mastery@Mobile UX Design`, loaded after `npx skills search`,
-  for mobile-first user goals, thumb-zone reachability, 44 pt/48 dp touch
-  targets, interruption/resume behavior, platform navigation conventions, and
+- `casper-studios/casper-marketplace@liquid-glass`, loaded with `npx skills
+  use`, for content-first Liquid Glass, glass limited to navigation/control
+  chrome, adaptive tinting, semantic emphasis, 8 pt spacing, 44 pt hit targets,
+  SF Symbols, and Reduce Motion/Transparency expectations.
+- `charleswiltgen/axiom@axiom-design`, `charleswiltgen/axiom@axiom-accessibility`,
+  and `charleswiltgen/axiom@axiom-performance`, loaded from the Axiom search
+  result, for HIG, SF typography, semantic colors, VoiceOver, Dynamic Type,
+  contrast, touch targets, gesture alternatives, launch/tap/screen-settle
+  latency, scroll hitches, memory, CPU, energy, and measured-performance
+  discipline.
+- `phazurlabs/ux-ui-mastery@mobile ux design`, loaded with `npx skills use`,
+  for mobile-first user goals, one primary action per screen, thumb-zone
+  reachability, 44 pt/48 dp touch targets, interruption/resume behavior,
+  visible gesture alternatives, platform navigation conventions, and
   performance-as-UX budgets.
 
 The generated HTML must front-load the deep-review areas a reviewer expects:

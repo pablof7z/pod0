@@ -103,9 +103,11 @@ def review_grounding_for() -> dict[str, Any]:
         "selected_skills": selected,
         "all_considered": SKILL_GROUNDING,
         "template_impact": [
-            "iOS Liquid Glass grounding drives restrained material judgment: glass belongs on navigation/control chrome, not dense content, with accessibility fallbacks.",
-            "Apple HIG grounding drives factual checks for safe areas, system typography, Dynamic Type, semantic color, 44 pt touch targets, navigation conventions, and accessibility.",
-            "Mobile app interface grounding drives user-goal framing, thumb reach, native navigation, purposeful haptics, list performance, material fallback checks, and performance-as-UX budgets.",
+            "Liquid Glass grounding drives restrained material judgment: glass belongs on navigation/control chrome, not dense content, with adaptive tinting and Reduce Motion/Transparency fallbacks.",
+            "Axiom design grounding drives factual HIG checks for safe areas, SF typography, semantic color, Dynamic Type, SF Symbols, navigation conventions, controls, and 44 pt touch targets.",
+            "Axiom accessibility grounding drives VoiceOver, contrast, Dynamic Type, touch-target, gesture-alternative, missing-state, dismiss-trap, and UX dead-end checks.",
+            "Axiom performance grounding drives measured launch, tap, screen-settle, scroll, memory, CPU, energy, provider, and audio latency evidence before any performance score can pass.",
+            "Mobile UX grounding drives one-primary-action review, thumb-zone reachability, interruption/resume behavior, platform navigation conventions, and latency-as-UX budgets.",
             "The generated page front-loads launch readiness, risk class, evidence quality, accessibility status, regression coverage, and dependency posture before detailed scores.",
             "The report separates individual dimensions from whole-product cluster judgment so an isolated pass cannot hide a weak or inconsistent product flow.",
         ],
@@ -266,7 +268,7 @@ def highest_risk(risks: list[dict[str, Any]]) -> str:
 
 
 def required_evidence_kinds(scenario: Scenario, cassette_available: bool = False) -> list[str]:
-    kinds = {"source_doc", "screenshot", "ui_tree", "log", "accessibility_audit", "command_output"}
+    kinds = {"source_doc", "screenshot", "ui_tree", "log", "accessibility_audit", "command_output", "report_viewport"}
     if scenario.performance_required:
         kinds.add("metric_trace")
     if (scenario.cassettes or scenario.provider_mode == "blocked") and not cassette_available:
@@ -298,10 +300,10 @@ def branch_records_for(scenario: Scenario) -> list[dict[str, Any]]:
 
 def checks_for_quality_area(key: str) -> list[str]:
     checks = {
-        "ui": ["SF/system typography", "semantic color", "visual hierarchy", "no overlapping text", "platform-native controls"],
-        "ux": ["clear user goal", "low cognitive load", "visible feedback", "recoverable errors", "predictable navigation"],
-        "performance": ["launch latency", "tap latency", "screen settle", "scroll hitches", "provider/audio/network latency"],
-        "accessibility": ["VoiceOver labels", "Dynamic Type", "4.5:1 contrast", "44 pt targets", "Reduce Motion/Transparency"],
+        "ui": ["SF/system typography", "semantic color", "visual hierarchy", "glass only on chrome", "platform-native controls"],
+        "ux": ["one primary action", "thumb-zone reach", "visible feedback", "recoverable errors", "predictable navigation"],
+        "performance": ["launch latency", "tap latency", "screen settle", "scroll hitches", "memory/CPU/energy", "provider/audio/network latency"],
+        "accessibility": ["VoiceOver labels", "Dynamic Type", "4.5:1 contrast", "44 pt targets", "Reduce Motion/Transparency", "gesture alternatives"],
         "reliability": ["rerun count", "retry cause", "flake history", "fresh build", "deterministic replay"],
         "privacy_security": ["no secrets in screenshots/logs", "permission clarity", "redaction hashes", "private Nostr material safe"],
         "content_localization": ["copy clarity", "long text", "dates/numbers/locale", "empty/error copy", "transcript readability"],
@@ -338,6 +340,7 @@ def missing_reason_for(kind: str, scenario: Scenario) -> str:
         "log": "Failures and state transitions need diagnostic context.",
         "accessibility_audit": "Apple HIG evidence is required before accessibility can pass.",
         "command_output": "Attempt commands or manual/tool notes are required for reproducibility.",
+        "report_viewport": "Generated scenario pages need desktop/mobile viewport smoke evidence so report-page layout is reviewable.",
         "metric_trace": f"Catalog performance requirement is unmeasured: {scenario.evidence.get('perf', 'metric required')}.",
         "cassette": "Provider, relay, network, STT, TTS, or LLM behavior needs replay provenance or live-only rationale.",
     }
@@ -351,6 +354,7 @@ def blocked_dimensions_for(kind: str) -> list[str]:
         "log": ["observability", "reliability_flakiness"],
         "accessibility_audit": ["accessibility_dynamic_type", "touch_ergonomics"],
         "command_output": ["attempted_test", "execution_attempts"],
+        "report_viewport": ["device_viewport_coverage", "evidence_confidence"],
         "metric_trace": ["performance"],
         "cassette": ["replayability_cassette_provenance", "privacy_security"],
     }.get(kind, ["evidence_confidence"])

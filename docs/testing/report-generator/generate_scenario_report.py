@@ -24,6 +24,7 @@ from provider_cassettes_report import provider_cassette_data, render_provider_ca
 from records import build_report, has_observed_data, rollups_for, summary_for, tags_for_records, validate_output, validate_schema_contract  # noqa: E402
 from render import render_home, render_scenario_index, render_scenario_page, write_rollup_pages, write_tag_pages  # noqa: E402
 from styles import stylesheet  # noqa: E402
+from structures import evidence_placeholders_for  # noqa: E402
 
 PRESERVED_RECORD_FIELDS = [
     "run",
@@ -205,6 +206,14 @@ def merge_evidence(current: dict[str, Any], previous: dict[str, Any]) -> dict[st
     for artifact in previous.get("artifacts", []):
         artifacts.setdefault(artifact["id"], artifact)
     merged["artifacts"] = list(artifacts.values())
+    merged["required_kinds"] = sorted(set(current.get("required_kinds", [])) | set(previous.get("required_kinds", [])))
+    missing_by_kind = {item["kind"]: item for item in previous.get("missing", [])}
+    present_kinds = {artifact.get("type") for artifact in merged["artifacts"]}
+    for item in current.get("missing", []):
+        if item["kind"] not in present_kinds:
+            missing_by_kind.setdefault(item["kind"], item)
+    merged["missing"] = list(missing_by_kind.values())
+    merged["placeholders"] = evidence_placeholders_for(merged["missing"])
     return merged
 
 

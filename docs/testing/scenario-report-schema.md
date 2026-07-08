@@ -130,7 +130,7 @@ Each scenario page is generated from one `ScenarioReport` JSON object:
 | `quality_review` | Structured UI, UX, performance, accessibility, reliability, privacy/security, content, controls, offline/resume, and observability checks. |
 | `coherence` | Individual scenario judgment plus related-scenario group-level product coherence judgment. |
 | `readiness` | Release gates, blockers, owners, and ship-gate status. |
-| `evidence` | Artifact registry for screenshots, videos, logs, UI trees, metrics, cassettes, relay JSON, source docs, plus visible placeholders for missing required evidence. |
+| `evidence` | Artifact registry for screenshots, videos, logs, UI trees, metrics, cassettes, relay JSON, generated-page viewport checks, source docs, plus visible placeholders for missing required evidence. |
 | `metrics` | Measured values, budgets, units, collection methods, and status. |
 | `instrumentation_gaps` | Missing instrumentation/evidence with severity, owner, and affected dimensions. |
 | `risks` | Risk register with severity, priority, status, affected dimensions, and mitigation. |
@@ -252,6 +252,9 @@ Missing evidence:
   dimensions it blocks.
 - `instrumentation_gaps` repeats missing evidence as an owner/severity queue so
   rollups can find gaps without parsing section prose.
+- `report_viewport` evidence records desktop/mobile smoke checks for the
+  generated scenario page itself so the public validation page is also
+  reviewable.
 - `evidence_provenance` records capture origin, source commit, branch, device/OS,
   redaction, freshness, and live/replay/generated/copied status.
 - `before_after_deltas` records the state before an action, the action itself,

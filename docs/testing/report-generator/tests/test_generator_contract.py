@@ -14,31 +14,41 @@ sys.path.insert(0, str(GENERATOR_DIR))
 from catalog import parse_catalog  # noqa: E402
 from contract import SKILL_GROUNDING  # noqa: E402
 from generate_scenario_report import write_site  # noqa: E402
+from generator_contract_fixtures import GENERATED_AT, SITE_BASE, build_records, write_catalog, write_provider_cassette  # noqa: E402
 from next_wave import load_next_wave, next_wave_export  # noqa: E402
 from provider_cassettes_report import provider_cassette_data, render_provider_cassette_page  # noqa: E402
-from records import build_report, validate_schema_contract  # noqa: E402
-
-
-GENERATED_AT = "2026-07-05T00:00:00Z"
-SITE_BASE = "https://example.test/podcast-player/"
+from records import validate_schema_contract  # noqa: E402
 
 REQUIRED_SCENARIO_SECTIONS = [
     "What Was Attempted And Test Intent",
     "Launch Readiness Summary",
     "Flow Overview And Steps",
+    "Evidence Readiness Matrix",
     "Provider Replay Coverage",
     "Results And Verdict",
+    "Replay, Cassettes, And Provenance Detail",
+    "Skill-Grounded Mobile Design Rubric",
     "UI Polish Report",
     "UX Polish Report",
+    "Accessibility, Dynamic Type, And Touch Ergonomics Detail",
     "Performance Metrics And Interaction Latency",
+    "Liquid Glass And iOS Primitive Detail",
     "Product Flow Cohesiveness And Group Coherent-Product Judgment",
+    "NMP/RMP Boundary And Data Integrity",
     "Screenshot Evidence",
     "Product-Level Assessment",
+    "Issue Filing And Revalidation Ledger",
     "Grouped Scores And Coherent Product Judgment",
     "Individual Dimension Judgments",
+    "Functional Validation Detail",
+    "Evidence And Replay Detail",
+    "Product Experience Detail",
+    "Engineering Boundary Detail",
+    "Follow-Through Detail",
     "Data And Control-Plane Setup",
     "Navigation, Orientation, And Information Architecture",
     "Animation, Transition, And Haptics Quality",
+    "State, Recovery, And Continuity Coverage",
     "Risk Severity And Validation Confidence",
     "Evidence Provenance",
     "Before/After Deltas",
@@ -98,13 +108,15 @@ class ScenarioReportGeneratorTests(unittest.TestCase):
             self.assertEqual(next_wave["wave_id"], "foundation-onboarding-wave-001")
             self.assertEqual(next_wave["target_count"], 8)
             self.assertEqual(next_wave["mapped_count"], 0)
-            self.assertEqual(data["review_grounding"]["search_command"], 'npx skills search "iOS mobile UI UX liquid glass native polish validation"')
+            self.assertEqual(data["review_grounding"]["search_command"], 'npx skills search "UI UX mobile Liquid Glass design review accessibility"')
             self.assertEqual(
                 [skill["name"] for skill in SKILL_GROUNDING if skill["selected"]],
                 [
-                    "vabole/apple-skills@ios-liquid-glass",
-                    "vabole/apple-skills@hig",
-                    "qodex-ai/ai-agent-skills@mobile-app-interface",
+                    "casper-studios/casper-marketplace@liquid-glass",
+                    "charleswiltgen/axiom@axiom-design",
+                    "charleswiltgen/axiom@axiom-accessibility",
+                    "charleswiltgen/axiom@axiom-performance",
+                    "phazurlabs/ux-ui-mastery@mobile ux design",
                 ],
             )
             self.assertEqual(data["launch_assessment"]["launch_readiness"], "incomplete")
@@ -114,6 +126,8 @@ class ScenarioReportGeneratorTests(unittest.TestCase):
             self.assertIn("cassette:smoke-provider", {item["id"] for item in data["evidence"]["artifacts"]})
             self.assertNotIn("cassette", {item["kind"] for item in data["evidence"]["missing"]})
             self.assertIn("placeholder:screenshot", {item["id"] for item in data["evidence"]["placeholders"]})
+            self.assertIn("report_viewport", data["evidence"]["required_kinds"])
+            self.assertIn("placeholder:report_viewport", {item["id"] for item in data["evidence"]["placeholders"]})
             self.assertIn("GH-702", {issue["id"] for issue in data["issues"]})
             self.assertIn("Replay fixtures mapped to this scenario", scenario_page)
             self.assertIn("smoke-provider", scenario_page)
@@ -316,16 +330,20 @@ class ScenarioReportGeneratorTests(unittest.TestCase):
             self.assertEqual(merged["metrics"][0]["id"], "metric-screen-settle")
             self.assertNotIn("revalidation_update", merged)
             self.assertIn("artifact:old-shot", {artifact["id"] for artifact in merged["evidence"]["artifacts"]})
+            self.assertIn("report_viewport", merged["evidence"]["required_kinds"])
+            self.assertIn("placeholder:report_viewport", {item["id"] for item in merged["evidence"]["placeholders"]})
             self.assertEqual(
                 [skill["name"] for skill in merged["review_grounding"]["selected_skills"]],
                 [
-                    "vabole/apple-skills@ios-liquid-glass",
-                    "vabole/apple-skills@hig",
-                    "qodex-ai/ai-agent-skills@mobile-app-interface",
+                    "casper-studios/casper-marketplace@liquid-glass",
+                    "charleswiltgen/axiom@axiom-design",
+                    "charleswiltgen/axiom@axiom-accessibility",
+                    "charleswiltgen/axiom@axiom-performance",
+                    "phazurlabs/ux-ui-mastery@mobile ux design",
                 ],
             )
             self.assertNotIn("obsolete/old-skill", json.dumps(merged["sections"]["review_skill_grounding"]))
-            self.assertIn("vabole/apple-skills@ios-liquid-glass", merged["sections"]["review_skill_grounding"]["notes"][0])
+            self.assertIn("casper-studios/casper-marketplace@liquid-glass", merged["sections"]["review_skill_grounding"]["notes"][0])
             self.assertNotIn("obsolete", merged["sections"]["review_skill_grounding"]["summary"])
             for section_key, dimension_key in stale_contract_keys.items():
                 self.assertIn(section_key, merged["sections"])
@@ -449,54 +467,6 @@ class ScenarioReportGeneratorTests(unittest.TestCase):
         )
         screenshot_rule = schema["$defs"]["artifact"]["allOf"][0]["then"]["required"]
         self.assertTrue({"alt", "caption", "step_id", "captured_at", "device", "os_version", "sha256", "width", "height"}.issubset(screenshot_rule))
-
-
-def write_catalog(catalog: Path) -> Path:
-    catalog.mkdir(parents=True)
-    (catalog / "INDEX.md").write_text("| Group | Count |\n|---|---:|\n| **Total** | **2** |\n")
-    (catalog / "01-smoke.md").write_text(
-        "\n".join(
-            [
-                "# Smoke Catalog",
-                "",
-                "## Smoke And Report Shape",
-                "",
-                "| ID | Scenario | Evidence |",
-                "|---|---|---|",
-                "| SMOKE-001 | Given a seeded library, when the listener opens Library, then subscribed shows render with stable navigation. | ss: library screenshot; perf: screen settle metric; deps: seeded library plus OpenRouter provider cassette; boundary: D1,D5. |",
-                "| SMOKE-002 | Given offline mode, when the listener opens a cached show, then cached episodes remain available. | ss: offline screenshot; perf: none; deps: offline fixture; boundary: D5. |",
-            ]
-        )
-        + "\n"
-    )
-    return catalog
-
-
-def build_records(catalog: Path, repo: Path) -> list[dict[str, object]]:
-    scenarios = parse_catalog(catalog)
-    return [build_report(scenario, scenarios, repo, GENERATED_AT, SITE_BASE) for scenario in scenarios]
-
-
-def write_provider_cassette(root: Path, refs: list[str]) -> None:
-    cassette_dir = root / "tests" / "fixtures" / "provider_cassettes"
-    cassette_dir.mkdir(parents=True, exist_ok=True)
-    (cassette_dir / "smoke-provider.json").write_text(
-        json.dumps(
-            {
-                "id": "smoke-provider",
-                "provider": "openrouter",
-                "operation": "chat_completion",
-                "scenario_refs": refs,
-                "nmp_rules": ["D7"],
-                "metrics": {
-                    "recorded_latency_ms": 100,
-                    "replay_latency_ms": 2,
-                    "budget_ms": 500,
-                    "acceptable_for_2026_premium": True,
-                },
-            }
-        )
-    )
 
 
 if __name__ == "__main__":

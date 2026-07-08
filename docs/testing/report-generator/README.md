@@ -72,23 +72,27 @@ onboarding evidence wave, but it does not change execution status or verdicts.
 This pass used:
 
 ```sh
-npx skills search "iOS mobile UI UX liquid glass native polish validation"
-npx skills use vabole/apple-skills@ios-liquid-glass
-npx skills use vabole/apple-skills@hig
-npx skills use qodex-ai/ai-agent-skills@mobile-app-interface
+npx skills search "UI UX mobile Liquid Glass design review accessibility"
+npx skills use casper-studios/casper-marketplace@liquid-glass
+npx skills use charleswiltgen/axiom --skill axiom-design
+npx skills use charleswiltgen/axiom --skill axiom-accessibility
+npx skills use charleswiltgen/axiom --skill axiom-performance
+npx skills use phazurlabs/ux-ui-mastery --skill "mobile ux design"
 ```
 
 `data/skill-grounding.json` records these selected skills and the template
 impact:
 
-- iOS Liquid Glass: hierarchy, harmony, consistency, native chrome usage,
-  interactive material restraint, and Reduce Motion/Transparency expectations.
-- Apple HIG: factual safe-area, system typography, Dynamic Type, semantic
-  color, accessibility, navigation, control, material, and 44 pt touch-target
-  checks.
-- Mobile app interface: native navigation, safe areas, semantic colors,
-  haptics, list performance, Liquid Glass overlay fallbacks, and
-  performance-as-UX budgets.
+- Liquid Glass: content-first hierarchy, glass limited to navigation/control
+  chrome, adaptive tinting, semantic emphasis, and Reduce
+  Motion/Transparency expectations.
+- Axiom design/accessibility/performance: HIG, semantic colors, SF typography,
+  VoiceOver, Dynamic Type, contrast, touch targets, gesture alternatives,
+  launch/tap/screen-settle latency, scroll hitches, memory, CPU, and measured
+  performance discipline.
+- Mobile UX design: one primary action, thumb-zone reachability,
+  interruption/resume behavior, visible gesture alternatives, platform
+  navigation conventions, and latency-as-UX budgets.
 
 UI, UX, accessibility, performance, and product-coherence scores must stay at
 `2` or below until the relevant evidence and grounded critique are attached.

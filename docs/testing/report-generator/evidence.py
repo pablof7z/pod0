@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from evidence_contract import ensure_report_viewport_requirement
 from structures import evidence_placeholders_for
 
 
@@ -36,6 +37,7 @@ def apply_evidence_overlays(records: list[dict[str, Any]], overlays: dict[str, d
         for artifact in overlay.get("artifacts", []):
             record["evidence"]["artifacts"].append(artifact)
         deep_merge(record, overlay.get("merge", {}))
+        ensure_report_viewport_requirement(record)
         record["evidence"]["placeholders"] = evidence_placeholders_for(record["evidence"].get("missing", []))
         normalize_observed_record(record)
 
