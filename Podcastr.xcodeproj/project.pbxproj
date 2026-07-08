@@ -524,6 +524,7 @@
 		B09D1205689D1BA4D82DD147 /* OpenRouterKeyInfoCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F09BBB04F0D2606495E0126 /* OpenRouterKeyInfoCard.swift */; };
 		B103CCA9DF81CB612F1E6F1D /* LocalModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75F2620C3F28C00F3554CE80 /* LocalModelCatalog.swift */; };
 		B12E11C0ECAD751DB3DAF1AA /* LocalLLMInferenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EA05DFB9A3B8F9FD49828B1 /* LocalLLMInferenceTests.swift */; };
+		B16CE0C775D53D07CD6A0A95 /* OnboardingIsolationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D9560DC9E53C1773DD2450 /* OnboardingIsolationUITests.swift */; };
 		B17FECF8487236979BDBE5C9 /* VoiceCapability.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9679D72BAC3D3E389E1162F /* VoiceCapability.swift */; };
 		B20EF8077EA7EFC6D5457A95 /* PlatformWidgetSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F8BEE7A163D2A6E707BCC75 /* PlatformWidgetSnapshotTests.swift */; };
 		B3726564C7DA6AEDAE081EDB /* ClipExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A742DCE89B39F3ED96D3330 /* ClipExporter.swift */; };
@@ -1160,6 +1161,7 @@
 		71306B0859B9C470F4F497EC /* AppStateStore+FollowStateAwait.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+FollowStateAwait.swift"; sourceTree = "<group>"; };
 		716427A88DC40761944F1873 /* FeedbackStatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackStatusBadge.swift; sourceTree = "<group>"; };
 		72540683D53BC31AC125B8CD /* SettingsCodableRoundTripTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsCodableRoundTripTests.swift; sourceTree = "<group>"; };
+		72D9560DC9E53C1773DD2450 /* OnboardingIsolationUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingIsolationUITests.swift; sourceTree = "<group>"; };
 		7304D6B61EDDFDC0BE016C7A /* PerplexityClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerplexityClient.swift; sourceTree = "<group>"; };
 		73C6EBE9282DA4DB22B909C6 /* AddShowSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddShowSheet.swift; sourceTree = "<group>"; };
 		73E40182385F6635C6E7E1B3 /* CoreJourneyUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreJourneyUITests.swift; sourceTree = "<group>"; };
@@ -2252,6 +2254,7 @@
 				73E40182385F6635C6E7E1B3 /* CoreJourneyUITests.swift */,
 				A928D95C72F4270833BD87DB /* DownloadUITests.swift */,
 				07480B584308F54E8326709E /* NostrPublishUITests.swift */,
+				72D9560DC9E53C1773DD2450 /* OnboardingIsolationUITests.swift */,
 				197C67CB36F68CA64C941F35 /* P0PlaybackUITests.swift */,
 				7F02A4EC3A01156770226FE0 /* P1QueueUITests.swift */,
 				116AFE5B9A5E82448086217F /* P1SettingsUITests.swift */,
@@ -3708,6 +3711,7 @@
 				28B51B0DF4A6AF8AA8F5CA3E /* CoreJourneyUITests.swift in Sources */,
 				70F68C977F6A753B8851C40F /* DownloadUITests.swift in Sources */,
 				8D4EEC71CE94521DAFF5C037 /* NostrPublishUITests.swift in Sources */,
+				B16CE0C775D53D07CD6A0A95 /* OnboardingIsolationUITests.swift in Sources */,
 				BC650AFFCD24ADA486C9D9F4 /* P0PlaybackUITests.swift in Sources */,
 				89A5D0FD3FEA9017902D8ADF /* P1QueueUITests.swift in Sources */,
 				9F172CFCE169173802444369 /* P1SettingsUITests.swift in Sources */,

@@ -105,6 +105,7 @@ enum UITestSeeder {
 
         // Fresh-seed: position starts at 0.
         let persistedPosition: Double = 0.0
+        let hasCompletedOnboarding = !CommandLine.arguments.contains("--UITestSeedOnboardingRequired")
 
         // ep2 UUID — seeded into the kernel library so the Queue action is accepted
         // and the authoritative projection includes it. Without this entry the
@@ -254,7 +255,7 @@ enum UITestSeeder {
             "auto_download": false,
             "cellular_allowed": false
           }],
-          "has_completed_onboarding": true,
+          "has_completed_onboarding": \(hasCompletedOnboarding ? "true" : "false"),
           "memory_facts": [],
           "ad_segments": [],
           "episode_triage": [],

@@ -49,8 +49,17 @@ struct RootView: View {
     @Namespace var playerNamespace
 
     private let sidebarWidth: CGFloat = 300
+    private var isOnboardingPresented: Bool { !store.state.settings.hasCompletedOnboarding }
 
     var body: some View {
+        if isOnboardingPresented {
+            OnboardingView()
+        } else {
+            mainShell
+        }
+    }
+
+    private var mainShell: some View {
         ZStack(alignment: .leading) {
             tabBar
                 .environment(playbackState)
@@ -132,14 +141,6 @@ struct RootView: View {
                     )
                 ) {
                     ScreenshotAnnotationView(workflow: feedbackWorkflow)
-                }
-                .fullScreenCover(
-                    isPresented: Binding(
-                        get: { !store.state.settings.hasCompletedOnboarding },
-                        set: { _ in }
-                    )
-                ) {
-                    OnboardingView()
                 }
                 .fullScreenCover(isPresented: $showVoiceMode) {
                     VoiceView(onSwitchToText: {
