@@ -1,7 +1,7 @@
 # Pod0 BDD Scenario Expansion And Replay Plan
 
-Status: proposed validation architecture, docs-only.
-Current catalog baseline: 320 generated planning scenarios in `docs/testing/scenarios/catalog/`.
+Status: catalog v2 landed; scenario evidence execution remains active.
+Current catalog baseline: 422 generated planning scenarios in `docs/testing/scenarios/catalog/`.
 Target catalog v2: 422 scenario rows, with provider replay gates for every LLM/STT/TTS/search/agent-tool path.
 
 ## Grounding

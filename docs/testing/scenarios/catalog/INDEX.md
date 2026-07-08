@@ -25,7 +25,8 @@ Do not store provider API keys, private keys, or raw user secrets.
 | [03 - Agent, LLM, Knowledge, Voice](03-agent-llm-knowledge-voice.md) | 72 | Agent chat, provider transport, cassettes, wiki/RAG, voice, generated media. |
 | [04 - Nostr, Settings, Platform, Regression](04-nostr-settings-platform-regression.md) | 64 | NIP-F4/NIP-84/social, settings, Android/TUI parity, performance and doctrine. |
 | [05 - Chirp And NMP Regression Parity](05-chirp-nmp-regression-parity.md) | 56 | Sister-repo fix parity, NMP master drift, projection stale-state, offline honesty, visual parity, and D8 gates. |
-| **Total** | **320** | Comprehensive scenario-only catalog for Pod0. |
+| [06 - Expanded Product Validation](06-expanded-product-validation.md) | 102 | First-run edge cases, discovery recovery, library persistence, playback routes, downloads, transcripts, clips, voice, offline replay honesty, settings, and social trust expansion. |
+| **Total** | **422** | Comprehensive scenario-only catalog for Pod0. |
 
 ## Source Notes
 

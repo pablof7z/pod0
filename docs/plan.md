@@ -13,7 +13,7 @@ Detailed implementation plans live under `docs/plan/` and are linked from this f
 | TUI feature parity foundation and terminal surface expansion. | Active | `docs/plan/tui-parity.md` |
 | TUI live agent validation with Ollama Cloud. | Active | `docs/plan/tui-agent-live-validation.md` |
 | Shared LLM provider transport and typed task intents. | Active | `docs/plan/shared-llm-task-architecture.md` |
-| Pod0 BDD scenario expansion and provider replay coverage. | Proposed | `docs/plan/pod0-bdd-scenario-expansion.md` |
+| Pod0 BDD scenario expansion and provider replay coverage. | Catalog v2 landed; evidence execution active | `docs/plan/pod0-bdd-scenario-expansion.md` |
 | Optimistic subscribe + async HTTP capability (instant subscribe, off-thread feed hydration). | Landed | `docs/plan/optimistic-subscribe-async-http.md` |
 | Epic A — migrate onto NMP master (UniFFI facade + ADR-0069). | P0 | `docs/plan/issue-597.md` |
 

@@ -53,7 +53,8 @@ worktrees currently in flight.
   for the expanded D8 hard-error burn-down, and #741 for D3 hardcoded relay
   scanner hard errors.
   `docs/testing/chirp-nmp-validation-pack-2026-07-06.md` and the
-  `05-chirp-nmp-regression-parity.md` catalog file map those gaps into 56
+  `05-chirp-nmp-regression-parity.md` and
+  `06-expanded-product-validation.md` catalog files map those gaps into 158
   scenario pages.
   Current report-generator follow-up: the per-scenario Pages contract now
   front-loads launch readiness, risk class, evidence quality, evidence
@@ -62,11 +63,12 @@ worktrees currently in flight.
   blocker links do not count as observed run evidence; real scenario evidence
   still has to attach screenshots, UI trees, metrics, accessibility audits,
   logs, cassettes, and revalidation IDs.
-  The report generator now indexes redacted provider cassette fixtures into
-  each mapped scenario page: 7 verified cassettes currently make 11 scenarios
-  `replay`-ready at the fixture layer, while 67 provider-backed scenarios still
-  expose missing cassette coverage until replay fixtures or approved live-only
-  rationales are attached.
+  The catalog now contains 422 generated planning scenarios. The report
+  generator indexes redacted provider cassette fixtures into each mapped
+  scenario page: 7 verified cassettes currently make 11 scenarios `replay`-ready
+  at the fixture layer, while 94 provider-backed scenarios still expose missing
+  cassette coverage until replay fixtures or approved live-only rationales are
+  attached.
   The current report also publishes the NMP architecture scanner artifact from
   `docs/testing/evidence/nmp-architecture-scan-20260707T230200Z.json`: 735
   findings, including 46 hard errors (39 D8/no-polling and 7 D3 hardcoded
