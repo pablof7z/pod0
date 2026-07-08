@@ -1,0 +1,179 @@
+    export SUPPORTED_PLATFORMS\=iphoneos\ iphonesimulator
+    export SUPPORTS_MACCATALYST\=NO
+    export SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD\=NO
+    export SUPPORTS_ON_DEMAND_RESOURCES\=YES
+    export SUPPORTS_TEXT_BASED_API\=NO
+    export SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD\=NO
+    export SUPPRESS_WARNINGS\=NO
+    export SWIFT_ACTIVE_COMPILATION_CONDITIONS\=\ DEBUG
+    export SWIFT_COMPILATION_MODE\=singlefile
+    export SWIFT_EMIT_CONST_VALUE_PROTOCOLS\=AppIntent\ EntityQuery\ AppEntity\ TransientEntity\ AppEnum\ AppShortcutProviding\ AppShortcutsProvider\ AnyResolverProviding\ AppIntentsPackage\ DynamicOptionsProvider\ _IntentValueRepresentable\ _AssistantIntentsProvider\ _GenerativeFunctionExtractable\ IntentValueQuery\ Resolver\ AppExtension\ ExtensionPointDefining
+    export SWIFT_EMIT_LOC_STRINGS\=NO
+    export SWIFT_ENABLE_EXPLICIT_MODULES\=YES
+    export SWIFT_OPTIMIZATION_LEVEL\=-Onone
+    export SWIFT_PLATFORM_TARGET_PREFIX\=ios
+    export SWIFT_RESPONSE_FILE_PATH_normal_arm64\=/Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/Podcastr.build/Debug-iphonesimulator/Podcastr.build/Objects-normal/arm64/Podcastr.SwiftFileList
+    export SWIFT_STRICT_CONCURRENCY\=complete
+    export SWIFT_VERSION\=6.0
+    export SYMROOT\=/Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products
+    export SYSTEM_ADMIN_APPS_DIR\=/Applications/Utilities
+    export SYSTEM_APPS_DIR\=/Applications
+    export SYSTEM_CORE_SERVICES_DIR\=/System/Library/CoreServices
+    export SYSTEM_DEMOS_DIR\=/Applications/Extras
+    export SYSTEM_DEVELOPER_APPS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications
+    export SYSTEM_DEVELOPER_BIN_DIR\=/Applications/Xcode.app/Contents/Developer/usr/bin
+    export SYSTEM_DEVELOPER_DEMOS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Utilities/Built\ Examples
+    export SYSTEM_DEVELOPER_DIR\=/Applications/Xcode.app/Contents/Developer
+    export SYSTEM_DEVELOPER_DOC_DIR\=/Applications/Xcode.app/Contents/Developer/ADC\ Reference\ Library
+    export SYSTEM_DEVELOPER_GRAPHICS_TOOLS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Graphics\ Tools
+    export SYSTEM_DEVELOPER_JAVA_TOOLS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Java\ Tools
+    export SYSTEM_DEVELOPER_PERFORMANCE_TOOLS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Performance\ Tools
+    export SYSTEM_DEVELOPER_RELEASENOTES_DIR\=/Applications/Xcode.app/Contents/Developer/ADC\ Reference\ Library/releasenotes
+    export SYSTEM_DEVELOPER_TOOLS\=/Applications/Xcode.app/Contents/Developer/Tools
+    export SYSTEM_DEVELOPER_TOOLS_DOC_DIR\=/Applications/Xcode.app/Contents/Developer/ADC\ Reference\ Library/documentation/DeveloperTools
+    export SYSTEM_DEVELOPER_TOOLS_RELEASENOTES_DIR\=/Applications/Xcode.app/Contents/Developer/ADC\ Reference\ Library/releasenotes/DeveloperTools
+    export SYSTEM_DEVELOPER_USR_DIR\=/Applications/Xcode.app/Contents/Developer/usr
+    export SYSTEM_DEVELOPER_UTILITIES_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Utilities
+    export SYSTEM_DEXT_INSTALL_PATH\=/System/Library/DriverExtensions
+    export SYSTEM_DOCUMENTATION_DIR\=/Library/Documentation
+    export SYSTEM_EXTENSIONS_FOLDER_PATH\=Podcastr.app/SystemExtensions
+    export SYSTEM_EXTENSIONS_FOLDER_PATH_SHALLOW_BUNDLE_NO\=Podcastr.app/Library/SystemExtensions
+    export SYSTEM_EXTENSIONS_FOLDER_PATH_SHALLOW_BUNDLE_YES\=Podcastr.app/SystemExtensions
+    export SYSTEM_KEXT_INSTALL_PATH\=/System/Library/Extensions
+    export SYSTEM_LIBRARY_DIR\=/System/Library
+    export TAPI_DEMANGLE\=YES
+    export TAPI_ENABLE_PROJECT_HEADERS\=NO
+    export TAPI_LANGUAGE\=objective-c
+    export TAPI_LANGUAGE_STANDARD\=compiler-default
+    export TAPI_USE_SRCROOT\=YES
+    export TAPI_VERIFY_MODE\=Pedantic
+    export TARGETED_DEVICE_FAMILY\=1,2
+    export TARGETNAME\=Podcastr
+    export TARGET_BUILD_DIR\=/Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator
+    export TARGET_DEVICE_IDENTIFIER\=4C35CC31-67B0-411F-B4DA-A571CF307DFE
+    export TARGET_DEVICE_MODEL\=iPhone18,3
+    export TARGET_DEVICE_OS_VERSION\=26.2
+    export TARGET_DEVICE_PLATFORM_NAME\=iphonesimulator
+    export TARGET_NAME\=Podcastr
+    export TARGET_TEMP_DIR\=/Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/Podcastr.build/Debug-iphonesimulator/Podcastr.build
+    export TEMP_DIR\=/Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/Podcastr.build/Debug-iphonesimulator/Podcastr.build
+    export TEMP_FILES_DIR\=/Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/Podcastr.build/Debug-iphonesimulator/Podcastr.build
+    export TEMP_FILE_DIR\=/Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/Podcastr.build/Debug-iphonesimulator/Podcastr.build
+    export TEMP_ROOT\=/Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex
+    export TEMP_SANDBOX_DIR\=/Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/TemporaryTaskSandboxes
+    export TEST_FRAMEWORK_SEARCH_PATHS\=\ /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks\ /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/Developer/Library/Frameworks
+    export TEST_LIBRARY_SEARCH_PATHS\=\ /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib
+    export TOOLCHAINS\=com.apple.dt.toolchain.XcodeDefault
+    export TOOLCHAIN_DIR\=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain
+    export TREAT_MISSING_BASELINES_AS_TEST_FAILURES\=NO
+    export TREAT_MISSING_SCRIPT_PHASE_OUTPUTS_AS_ERRORS\=NO
+    export TeamIdentifierPrefix\=456SHKPP26.
+    export UID\=501
+    export UNINSTALLED_PRODUCTS_DIR\=/Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/UninstalledProducts
+    export UNLOCALIZED_RESOURCES_FOLDER_PATH\=Podcastr.app
+    export UNLOCALIZED_RESOURCES_FOLDER_PATH_SHALLOW_BUNDLE_NO\=Podcastr.app/Resources
+    export UNLOCALIZED_RESOURCES_FOLDER_PATH_SHALLOW_BUNDLE_YES\=Podcastr.app
+    export UNSTRIPPED_PRODUCT\=NO
+    export USER\=customer
+    export USER_APPS_DIR\=/Users/customer/Applications
+    export USER_LIBRARY_DIR\=/Users/customer/Library
+    export USE_DYNAMIC_NO_PIC\=YES
+    export USE_HEADERMAP\=YES
+    export USE_HEADER_SYMLINKS\=NO
+    export VALIDATE_DEVELOPMENT_ASSET_PATHS\=YES_ERROR
+    export VALIDATE_PRODUCT\=NO
+    export VALID_ARCHS\=arm64\ x86_64
+    export VERBOSE_PBXCP\=NO
+    export VERSIONPLIST_PATH\=Podcastr.app/version.plist
+    export VERSION_INFO_BUILDER\=customer
+    export VERSION_INFO_FILE\=Podcastr_vers.c
+    export VERSION_INFO_STRING\=\"@\(\#\)PROGRAM:Podcastr\ \ PROJECT:Podcastr-\"
+    export WORKSPACE_DIR\=/Users/customer/Work/podcast-player-fnd-wave001-evidence/Podcastr.xcodeproj
+    export WRAPPER_EXTENSION\=app
+    export WRAPPER_NAME\=Podcastr.app
+    export WRAPPER_SUFFIX\=.app
+    export WRAP_ASSET_PACKS_IN_SEPARATE_DIRECTORIES\=NO
+    export XCODE_APP_SUPPORT_DIR\=/Applications/Xcode.app/Contents/Developer/Library/Xcode
+    export XCODE_PRODUCT_BUILD_VERSION\=17C52
+    export XCODE_VERSION_ACTUAL\=2620
+    export XCODE_VERSION_MAJOR\=2600
+    export XCODE_VERSION_MINOR\=2620
+    export XPCSERVICES_FOLDER_PATH\=Podcastr.app/XPCServices
+    export YACC\=yacc
+    export _DISCOVER_COMMAND_LINE_LINKER_INPUTS\=YES
+    export _DISCOVER_COMMAND_LINE_LINKER_INPUTS_INCLUDE_WL\=YES
+    export _LD_MULTIARCH\=YES
+    export _WRAPPER_CONTENTS_DIR_SHALLOW_BUNDLE_NO\=/Contents
+    export _WRAPPER_PARENT_PATH_SHALLOW_BUNDLE_NO\=/..
+    export _WRAPPER_RESOURCES_DIR_SHALLOW_BUNDLE_NO\=/Resources
+    export __DIAGNOSE_DEPRECATED_ARCHS\=YES
+    export __IS_NOT_MACOS\=YES
+    export __IS_NOT_MACOS_macosx\=NO
+    export __IS_NOT_SIMULATOR\=NO
+    export __IS_NOT_SIMULATOR_simulator\=NO
+    export arch\=undefined_arch
+    export variant\=normal
+    /bin/sh -c /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/Podcastr.build/Debug-iphonesimulator/Podcastr.build/Script-141CA5BB32033C1B3EA931B9.sh
+/Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/Frameworks/libnmp_app_podcast.dylib: replacing existing signature
+
+ExtractAppIntentsMetadata (in target 'Podcastr' from project 'Podcastr')
+    cd /Users/customer/Work/podcast-player-fnd-wave001-evidence
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name Podcastr --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk --xcode-version 17C52 --platform-family iOS --deployment-target 26.0 --bundle-identifier io.f7z.podcast --output /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app --target-triple arm64-apple-ios26.0-simulator --binary-file /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/Podcastr --dependency-file /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/Podcastr.build/Debug-iphonesimulator/Podcastr.build/Objects-normal/arm64/Podcastr_dependency_info.dat --stringsdata-file /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/Podcastr.build/Debug-iphonesimulator/Podcastr.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/Podcastr.build/Debug-iphonesimulator/Podcastr.build/Objects-normal/arm64/Podcastr.SwiftFileList --metadata-file-list /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/Podcastr.build/Debug-iphonesimulator/Podcastr.build/Podcastr.DependencyMetadataFileList --static-metadata-file-list /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/Podcastr.build/Debug-iphonesimulator/Podcastr.build/Podcastr.DependencyStaticMetadataFileList --swift-const-vals-list /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/Podcastr.build/Debug-iphonesimulator/Podcastr.build/Objects-normal/arm64/Podcastr.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-07-07 23:08:41.229 appintentsmetadataprocessor[80459:369711373] Starting appintentsmetadataprocessor export
+2026-07-07 23:08:41.395 appintentsmetadataprocessor[80459:369711373] Writing Metadata.appintents
+2026-07-07 23:08:41.395 appintentsmetadataprocessor[80459:369711373] Metadata root: /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/Metadata.appintents
+
+CopySwiftLibs /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app (in target 'Podcastr' from project 'Podcastr')
+    cd /Users/customer/Work/podcast-player-fnd-wave001-evidence
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/Podcastr.debug.dylib --scan-folder /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/Frameworks --scan-folder /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/PlugIns --scan-folder /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/SystemExtensions --scan-folder /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/Podcastr.build/Debug-iphonesimulator/Podcastr.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+AppIntentsSSUTraining (in target 'Podcastr' from project 'Podcastr')
+    cd /Users/customer/Work/podcast-player-fnd-wave001-evidence
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsnltrainingprocessor --infoplist-path /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/Info.plist --temp-dir-path /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/Podcastr.build/Debug-iphonesimulator/Podcastr.build/ssu --bundle-id io.f7z.podcast --product-path /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app --extracted-metadata-path /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/Metadata.appintents --metadata-file-list /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/Podcastr.build/Debug-iphonesimulator/Podcastr.build/Podcastr.DependencyMetadataFileList --archive-ssu-assets
+2026-07-07 23:08:41.423 appintentsnltrainingprocessor[80709:369711641] Parsing options for appintentsnltrainingprocessor
+2026-07-07 23:08:41.424 appintentsnltrainingprocessor[80709:369711641] Starting AppIntents SSU YAML Generation
+2026-07-07 23:08:41.435 appintentsnltrainingprocessor[80709:369711641] Generated AppIntents SSU YAML files in file:///Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/Podcastr.build/Debug-iphonesimulator/Podcastr.build/ssu/
+2026-07-07 23:08:41.435 appintentsnltrainingprocessor[80709:369711641] Copied AppIntents SSU YAML files to file:///Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/Metadata.appintents/
+Archiving all locales.
+2026-07-07 23:08:41.577 appintentsnltrainingprocessor[80709:369711641] error: Could not archive SSU artifacts. Check build log.
+
+CodeSign /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/Podcastr.debug.dylib (in target 'Podcastr' from project 'Podcastr')
+    cd /Users/customer/Work/podcast-player-fnd-wave001-evidence
+
+    Signing Identity:     "Sign to Run Locally"
+
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/Podcastr.debug.dylib
+
+CodeSign /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/__preview.dylib (in target 'Podcastr' from project 'Podcastr')
+    cd /Users/customer/Work/podcast-player-fnd-wave001-evidence
+
+    Signing Identity:     "Sign to Run Locally"
+
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/__preview.dylib
+
+CodeSign /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app (in target 'Podcastr' from project 'Podcastr')
+    cd /Users/customer/Work/podcast-player-fnd-wave001-evidence
+
+    Signing Identity:     "Sign to Run Locally"
+
+    /usr/bin/codesign --force --sign - --entitlements /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Intermediates.noindex/Podcastr.build/Debug-iphonesimulator/Podcastr.build/Podcastr.app.xcent --timestamp\=none --generate-entitlement-der /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app
+
+ValidateEmbeddedBinary /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/PlugIns/PodcastrWidget.appex (in target 'Podcastr' from project 'Podcastr')
+    cd /Users/customer/Work/podcast-player-fnd-wave001-evidence
+    /Applications/Xcode.app/Contents/Developer/usr/bin/embeddedBinaryValidationUtility /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/PlugIns/PodcastrWidget.appex -signing-cert - -info-plist-path /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app/Info.plist
+
+RegisterExecutionPolicyException /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app (in target 'Podcastr' from project 'Podcastr')
+    cd /Users/customer/Work/podcast-player-fnd-wave001-evidence
+    builtin-RegisterExecutionPolicyException /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app
+
+Validate /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app (in target 'Podcastr' from project 'Podcastr')
+    cd /Users/customer/Work/podcast-player-fnd-wave001-evidence
+    builtin-validationUtility /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app -shallow-bundle -infoplist-subpath Info.plist
+
+Touch /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app (in target 'Podcastr' from project 'Podcastr')
+    cd /Users/customer/Work/podcast-player-fnd-wave001-evidence
+    /usr/bin/touch -c /Users/customer/Work/podcast-player-fnd-wave001-evidence/DerivedData-FNDWave001/Build/Products/Debug-iphonesimulator/Podcastr.app
+
+note: Run script build phase 'Fix Rust Dylib Install Name' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'Podcastr' from project 'Podcastr')
+note: Run script build phase 'Embed Rust Dylib' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'Podcastr' from project 'Podcastr')
+** BUILD SUCCEEDED **

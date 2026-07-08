@@ -1,0 +1,80 @@
+getpwuid_r did not find a match for uid 501
+Filtering the log data using "subsystem == "io.f7z.podcast""
+Timestamp                       Thread     Type        Activity             PID    TTL
+2026-07-07 23:11:58.112971+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:11:58.113039+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:11:58.113049+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social accepted rev=118
+2026-07-07 23:11:58.113142+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelModel] podcast update rev=118 library=0
+2026-07-07 23:11:58.469973+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:11:58.470045+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:11:58.470058+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social accepted rev=214
+2026-07-07 23:11:58.470341+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelModel] podcast update rev=214 library=0
+2026-07-07 23:11:59.104995+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:11:59.105171+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:11:59.105194+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social accepted rev=294
+2026-07-07 23:11:59.105505+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelModel] podcast update rev=294 library=0
+2026-07-07 23:11:59.137533+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:11:59.137714+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:11:59.137727+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social DROPPED stale rev=294 last=294
+2026-07-07 23:11:59.435909+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:11:59.436335+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:11:59.436371+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social accepted rev=358
+2026-07-07 23:11:59.436610+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelModel] podcast update rev=358 library=0
+2026-07-07 23:11:59.930101+0000 0x160a0488 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:Persistence] Persistence.save: bytes=2047
+2026-07-07 23:11:59.953694+0000 0x160a0488 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:Persistence] Persistence.save: bytes=2047
+2026-07-07 23:12:00.374682+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:12:00.374862+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:12:00.374886+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social accepted rev=487
+2026-07-07 23:12:00.375140+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelModel] podcast update rev=487 library=0
+2026-07-07 23:12:00.393544+0000 0x160a0488 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:Persistence] Persistence.save: bytes=2047
+2026-07-07 23:12:00.777247+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:12:00.777340+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:12:00.777355+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social accepted rev=504
+2026-07-07 23:12:00.777435+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelModel] podcast update rev=504 library=0
+2026-07-07 23:12:01.012923+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:12:01.013057+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:12:01.013072+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social accepted rev=509
+2026-07-07 23:12:01.013239+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelModel] podcast update rev=509 library=0
+2026-07-07 23:12:01.991380+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:12:01.991471+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:12:01.991491+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social accepted rev=512
+2026-07-07 23:12:01.991648+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelModel] podcast update rev=512 library=0
+2026-07-07 23:12:02.126700+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:12:02.126791+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:12:02.126810+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social accepted rev=513
+2026-07-07 23:12:02.126969+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelModel] podcast update rev=513 library=0
+2026-07-07 23:12:02.140295+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:12:02.140646+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:12:02.140666+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social DROPPED stale rev=513 last=513
+2026-07-07 23:12:02.305654+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:12:02.305748+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:12:02.305768+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social accepted rev=514
+2026-07-07 23:12:02.305920+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelModel] podcast update rev=514 library=0
+2026-07-07 23:12:02.313025+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:12:02.313096+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:12:02.313112+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social DROPPED stale rev=514 last=514
+2026-07-07 23:12:02.428002+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:12:02.428074+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:12:02.428088+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social accepted rev=515
+2026-07-07 23:12:02.428232+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelModel] podcast update rev=515 library=0
+2026-07-07 23:12:02.514303+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:12:02.514461+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:12:02.514488+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social accepted rev=516
+2026-07-07 23:12:02.514644+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelModel] podcast update rev=516 library=0
+2026-07-07 23:12:02.526850+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:12:02.526921+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:12:02.526932+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social DROPPED stale rev=516 last=516
+2026-07-07 23:12:02.552171+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:12:02.552278+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:12:02.552298+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social DROPPED stale rev=516 last=516
+2026-07-07 23:12:02.738790+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:12:02.738938+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:12:02.738958+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social accepted rev=517
+2026-07-07 23:12:02.739141+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelModel] podcast update rev=517 library=0
+2026-07-07 23:12:02.857882+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:12:02.858005+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:12:02.858024+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social accepted rev=518
+2026-07-07 23:12:02.858191+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelModel] podcast update rev=518 library=0
+2026-07-07 23:12:02.869489+0000 0x160a01b7 Info        0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:KernelBridge] decoded ok domains=identity,social
+2026-07-07 23:12:02.869545+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] identity DROPPED stale rev=5 last=5
+2026-07-07 23:12:02.869558+0000 0x160a0159 Debug       0x0                  6677   0    Podcastr: (Podcastr.debug.dylib) [io.f7z.podcast:DomainMerge] social DROPPED stale rev=518 last=518

@@ -1,0 +1,2 @@
+IOSurfaceClientSetSurfaceNotify failed e00002c7
+2026-07-07 23:12:18.702 Podcastr[6677:369754457] void * _Nullable NSMapGet(NSMapTable * _Nonnull, const void * _Nullable): map table argument is NULL

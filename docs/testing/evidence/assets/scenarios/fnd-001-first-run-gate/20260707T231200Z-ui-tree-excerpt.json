@@ -1,0 +1,53 @@
+{
+  "captured_at": "2026-07-07T23:12:00Z",
+  "tool": "XcodeBuildMCP snapshot_ui",
+  "simulator": {
+    "name": "Pod0 FND Wave001 Codex",
+    "udid": "4C35CC31-67B0-411F-B4DA-A571CF307DFE",
+    "device": "iPhone 17",
+    "runtime": "iOS 26.2"
+  },
+  "snapshot": {
+    "type": "runtime-snapshot",
+    "rs": "1",
+    "screen_hash": "14nhlu9",
+    "sequence": 4,
+    "node_count": 112
+  },
+  "visible_onboarding_text": [
+    "Pod0",
+    "A podcast player with a memory",
+    "Subscribe to your shows; let an AI agent remember, summarize, and connect everything you listen to.",
+    "Subscribe",
+    "Listen",
+    "Remember",
+    "Get Started"
+  ],
+  "targets": [
+    "e35|tap|button|Start voice conversation||voice.open",
+    "e18|tap|button|Open sidebar||",
+    "e22|tap|button|Settings||gear",
+    "e25|tap|button|Browse categories||",
+    "e30|tap|button|Conversations - 182 new||",
+    "e38|tap|button|Search||home-search-button",
+    "e41|tap|button|Open Agent||agent.open",
+    "e54|tap|button|Add Show||",
+    "e107|tap|button|Get Started||"
+  ],
+  "underlying_main_shell_text": [
+    "Home",
+    "Your shows live here.",
+    "Search Apple Podcasts, paste a feed URL, or import an OPML file to begin.",
+    "Add Show",
+    "182"
+  ],
+  "tap_probe": {
+    "action": "tap hidden Settings target e22 after initial evidence capture",
+    "result": "XcodeBuildMCP returned SUCCEEDED at x=93 y=84; screen hash stayed 14nhlu9 and no Settings navigation occurred.",
+    "interpretation": "The main shell was not visually navigable in this probe, but hidden main-shell controls remained exposed as semantic tap targets behind onboarding."
+  },
+  "redaction": {
+    "status": "not_needed",
+    "notes": "Fresh install contained no private account, feed, transcript, token, or key material."
+  }
+}

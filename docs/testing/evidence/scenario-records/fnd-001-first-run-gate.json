@@ -1,0 +1,358 @@
+{
+  "scenario_id": "FND-001",
+  "artifacts": [
+    {
+      "id": "fnd001-first-onboarding-screenshot",
+      "type": "screenshot",
+      "path": "assets/scenarios/fnd-001-first-run-gate/20260707T231200Z-first-onboarding.jpg",
+      "description": "Fresh-install first onboarding page before tapping any visible primary action.",
+      "step_id": "step-02-action",
+      "captured_at": "2026-07-07T23:12:00Z",
+      "device": "iPhone 17",
+      "os_version": "iOS 26.2",
+      "sha256": "9ba4d800332f382cfa9f08de96f2905c2859228090792cb2c0dc3e3eefc4ecd0",
+      "alt": "Pod0 first onboarding screen with headline, subtitle, three feature chips, page dots, and Get Started button.",
+      "caption": "Visible first-run onboarding page is present and visually clean.",
+      "required": true,
+      "redaction": { "status": "not_needed" }
+    },
+    {
+      "id": "fnd001-ui-tree",
+      "type": "ui_tree",
+      "path": "assets/scenarios/fnd-001-first-run-gate/20260707T231200Z-ui-tree-excerpt.json",
+      "description": "XcodeBuildMCP semantic UI-tree excerpt showing onboarding controls plus hidden main-shell targets.",
+      "step_id": "step-03-result",
+      "captured_at": "2026-07-07T23:12:00Z",
+      "device": "iPhone 17",
+      "os_version": "iOS 26.2",
+      "sha256": "45194e24b3427fadca41ca6f4bb5b92778f97d7cb11bf24a748ded0ec3fdf83d",
+      "required": true,
+      "redaction": { "status": "not_needed" }
+    },
+    {
+      "id": "fnd001-build-run-tail",
+      "type": "log",
+      "path": "assets/scenarios/fnd-001-first-run-gate/20260707T230655Z-build-run-tail.log",
+      "description": "Tail of the XcodeBuildMCP build/run log proving the retry build succeeded after Tuist and Rust prerequisites.",
+      "captured_at": "2026-07-07T23:11:56Z",
+      "device": "iPhone 17",
+      "os_version": "iOS 26.2",
+      "sha256": "a184a0afcf211e7c9be623f1d0ba3fe868327738a39830543bf750c016301f2b",
+      "required": true,
+      "redaction": { "status": "not_needed" }
+    },
+    {
+      "id": "fnd001-launch-console-log",
+      "type": "log",
+      "path": "assets/scenarios/fnd-001-first-run-gate/20260707T230958Z-launch-console.log",
+      "description": "XcodeBuildMCP launch console log for io.f7z.podcast on the dedicated simulator.",
+      "captured_at": "2026-07-07T23:09:58Z",
+      "device": "iPhone 17",
+      "os_version": "iOS 26.2",
+      "sha256": "2e1ee26d5f214fe33c14ae6b30e931fe5a6c4e3262aef1bacd32925ce4b31248",
+      "required": true,
+      "redaction": { "status": "not_needed" }
+    },
+    {
+      "id": "fnd001-runtime-oslog",
+      "type": "log",
+      "path": "assets/scenarios/fnd-001-first-run-gate/20260707T231156Z-runtime-oslog.log",
+      "description": "Runtime OSLog stream captured by XcodeBuildMCP for the fresh-install run.",
+      "captured_at": "2026-07-07T23:11:56Z",
+      "device": "iPhone 17",
+      "os_version": "iOS 26.2",
+      "sha256": "23f652fe03dcbdfea96fdc2bbb9da66f25b21876b1bded3c16d423c3e52d6c3d",
+      "required": false,
+      "redaction": { "status": "not_needed" }
+    }
+  ],
+  "merge": {
+    "run": {
+      "run_id": "pod0-local-20260707T230221Z-fnd-001",
+      "source_commit": "7098b7d9ec69",
+      "branch": "codex/fnd-wave001-evidence",
+      "app_build": "Pod0 1.0.0 build 202606011109",
+      "started_at": "2026-07-07T23:02:21Z",
+      "completed_at": "2026-07-07T23:12:00Z",
+      "executor": "Codex via XcodeBuildMCP",
+      "provider_mode": "none",
+      "device_matrix": [
+        {
+          "name": "Pod0 FND Wave001 Codex",
+          "os_version": "iOS 26.2",
+          "form_factor": "iphone",
+          "udid": "4C35CC31-67B0-411F-B4DA-A571CF307DFE"
+        }
+      ],
+      "environment": {
+        "locale": "simulator default",
+        "appearance": "light",
+        "dynamic_type": "unspecified",
+        "reduce_motion": false,
+        "reduce_transparency": false,
+        "network_condition": "local simulator default",
+        "launch_arguments": []
+      },
+      "fixtures": ["fresh erased simulator", "no --UITestSeed launch argument"],
+      "cassettes": [],
+      "live_dependency_rationale": "FND-001 used no provider, relay, STT, TTS, or LLM dependency."
+    },
+    "execution": {
+      "status": "fail",
+      "attempts": [
+        {
+          "id": "attempt-001",
+          "status": "blocked",
+          "started_at": "2026-07-07T23:04:03Z",
+          "completed_at": "2026-07-07T23:04:27Z",
+          "executor": "Codex via XcodeBuildMCP",
+          "tools": ["mcp__xcode.build_run_sim"],
+          "commands": ["build_run_sim extraArgs=-skipPackagePluginValidation launchArgs=[]"],
+          "notes": "Initial build failed because Derived/Sources/TuistAssets+Podcastr.swift and TuistBundle+Podcastr.swift were missing in the fresh worktree."
+        },
+        {
+          "id": "attempt-002",
+          "status": "fail",
+          "started_at": "2026-07-07T23:06:55Z",
+          "completed_at": "2026-07-07T23:12:00Z",
+          "executor": "Codex via XcodeBuildMCP",
+          "tools": ["mcp__xcode.build_run_sim", "mcp__xcode.wait_for_ui", "mcp__xcode.snapshot_ui", "mcp__xcode.screenshot", "mcp__xcode.tap"],
+          "commands": [
+            "tuist generate --no-open",
+            "cargo build --target aarch64-apple-ios-sim -p nmp-app-podcast",
+            "build_run_sim extraArgs=-skipPackagePluginValidation launchArgs=[]"
+          ],
+          "notes": "The second build/run hit the MCP 300s timeout, but the app installed and launched. Screenshot showed onboarding; UI tree exposed hidden main-shell controls behind onboarding. Hidden Settings tap probe returned SUCCEEDED but did not navigate."
+        }
+      ],
+      "branch_coverage": [
+        {
+          "id": "fresh-install-first-page",
+          "status": "pass",
+          "trigger": "Erase dedicated simulator and launch without --UITestSeed.",
+          "expected": "First onboarding page appears before primary action."
+        },
+        {
+          "id": "main-shell-hidden-from-ui-tree",
+          "status": "fail",
+          "trigger": "Capture semantic UI tree on first onboarding page.",
+          "expected": "No main-shell controls are exposed behind onboarding."
+        }
+      ],
+      "retry_policy": "Fix #743, then re-run FND-001 from an erased simulator and capture launch metric, screenshot, UI tree, and logs."
+    },
+    "verdict": {
+      "overall": "fail",
+      "summary": "FND-001 fails the semantic first-run gate: the visible onboarding page appears, but the UI tree exposes hidden main-shell controls behind it.",
+      "score_gate_explanation": "The screenshot satisfies the first-page visual requirement, but the required UI-tree gate is contradicted by hidden Home/Add Show/Search/Settings/Agent targets.",
+      "reviewer": "Codex",
+      "reviewed_at": "2026-07-07T23:12:00Z"
+    },
+    "sections": {
+      "attempted_test": {
+        "summary": "Executed FND-001 on an erased dedicated iPhone 17 simulator with no --UITestSeed argument. Captured first page screenshot, UI tree, build log, launch log, and OSLog.",
+        "evidence_refs": ["fnd001-first-onboarding-screenshot", "fnd001-ui-tree", "fnd001-build-run-tail", "fnd001-launch-console-log"]
+      },
+      "actual_result": {
+        "summary": "The visible first onboarding page appears. The UI tree also exposes hidden main-shell text and targets including Home, Add Show, Search, Open Agent, Settings, and Start voice conversation.",
+        "evidence_refs": ["fnd001-first-onboarding-screenshot", "fnd001-ui-tree"],
+        "notes": ["Filed https://github.com/pablof7z/podcast-player/issues/743."]
+      },
+      "artifacts": {
+        "summary": "Attached a current screenshot, semantic UI-tree excerpt, build/run log tail, launch console log, and runtime OSLog.",
+        "evidence_refs": ["fnd001-first-onboarding-screenshot", "fnd001-ui-tree", "fnd001-build-run-tail", "fnd001-launch-console-log", "fnd001-runtime-oslog"]
+      },
+      "review_skill_grounding": {
+        "summary": "This review used the requested skills search and grounded critique in vabole/apple-skills@ios-liquid-glass, vabole/apple-skills@hig, and qodex-ai/ai-agent-skills@mobile-app-interface.",
+        "evidence_refs": ["fnd001-ui-tree"],
+        "notes": [
+          "npx skills search \"iOS mobile UI UX liquid glass native polish validation\" returned ios-liquid-glass and mobile-app-interface among the selected results.",
+          "Applied Liquid Glass guidance: glass belongs on controls/chrome, not dense hidden content; accessibility settings must remain legible.",
+          "Applied HIG/mobile guidance: safe areas, Dynamic Type, 44x44 pt controls, semantic labels, and onboarding should be brief and not expose contradictory app state."
+        ]
+      },
+      "ui_polish_report": {
+        "summary": "The visible first page is well composed in light mode: centered icon, clear headline, readable copy, restrained feature chips, progress dots, and a bottom Get Started control above the home indicator.",
+        "evidence_refs": ["fnd001-first-onboarding-screenshot"]
+      },
+      "ux_polish_report": {
+        "summary": "The visible UX gives a clear first action, but the semantic tree contradicts the first-run gate by leaking main-shell actions behind onboarding.",
+        "evidence_refs": ["fnd001-ui-tree"]
+      },
+      "performance_metrics": {
+        "summary": "Cold launch to first onboarding frame was not measured. The MCP build/run retry timed out at 300s even though the app later launched, so no defensible launch-to-first-frame metric is attached.",
+        "evidence_refs": ["fnd001-build-run-tail", "fnd001-launch-console-log"]
+      },
+      "accessibility_dynamic_type": {
+        "summary": "The captured accessibility tree exposes the visible Get Started button and onboarding text, but also exposes hidden main-shell controls. Dynamic Type, VoiceOver traversal, contrast, Reduce Motion, and Reduce Transparency were not fully audited.",
+        "evidence_refs": ["fnd001-ui-tree"]
+      },
+      "liquid_glass_ios_primitives": {
+        "summary": "Visible glass-like treatment is restrained to the app icon/feature chips/CTA chrome and preserves contrast in light mode. Hidden shell exposure prevents a clean pass.",
+        "evidence_refs": ["fnd001-first-onboarding-screenshot", "fnd001-ui-tree"]
+      },
+      "defects_issues_filed": {
+        "summary": "Filed #743 for the hidden main-shell semantic exposure behind onboarding.",
+        "evidence_refs": ["fnd001-ui-tree"],
+        "notes": ["https://github.com/pablof7z/podcast-player/issues/743"]
+      },
+      "verdict": {
+        "summary": "Fail for FND-001 until #743 is fixed and the semantic UI tree proves no main-shell controls are exposed behind first-run onboarding.",
+        "evidence_refs": ["fnd001-first-onboarding-screenshot", "fnd001-ui-tree"]
+      }
+    },
+    "dimension_scores": {
+      "actual_result": {
+        "score": 1,
+        "status": "fail",
+        "rationale": "The first page appears visually, but the semantic gate fails because hidden main-shell controls are present in the UI tree.",
+        "evidence_refs": ["fnd001-ui-tree"],
+        "issue_refs": ["#743"]
+      },
+      "artifacts": {
+        "score": 3,
+        "status": "pass_with_issues",
+        "rationale": "Screenshot, UI tree, build/log references are attached; launch metric and full accessibility audit are missing.",
+        "evidence_refs": ["fnd001-first-onboarding-screenshot", "fnd001-ui-tree", "fnd001-build-run-tail"]
+      },
+      "ui_polish": {
+        "score": 3,
+        "status": "pass_with_issues",
+        "rationale": "Visible first page is visually coherent in light mode, but hidden shell semantics block a clean UI pass.",
+        "evidence_refs": ["fnd001-first-onboarding-screenshot", "fnd001-ui-tree"],
+        "issue_refs": ["#743"]
+      },
+      "ux_polish": {
+        "score": 1,
+        "status": "fail",
+        "rationale": "A first-run gate cannot expose underlying app actions to automation/accessibility before onboarding completion.",
+        "evidence_refs": ["fnd001-ui-tree"],
+        "issue_refs": ["#743"]
+      },
+      "performance": {
+        "score": 0,
+        "status": "blocked",
+        "rationale": "The required cold-launch metric was not captured because the MCP build/run call timed out at 300s.",
+        "evidence_refs": ["fnd001-build-run-tail", "fnd001-launch-console-log"]
+      },
+      "accessibility_dynamic_type": {
+        "score": 1,
+        "status": "fail",
+        "rationale": "Hidden main-shell controls remain in the accessibility/automation tree behind onboarding.",
+        "evidence_refs": ["fnd001-ui-tree"],
+        "issue_refs": ["#743"]
+      },
+      "liquid_glass_ios_primitives": {
+        "score": 2,
+        "status": "pass_with_issues",
+        "rationale": "Visible glass-like chrome is restrained and readable in light mode; Reduce Transparency and dark mode were not audited.",
+        "evidence_refs": ["fnd001-first-onboarding-screenshot"]
+      },
+      "defects_issues_filed": {
+        "score": 4,
+        "status": "pass",
+        "rationale": "The actionable FND-001 defect is filed as #743 with evidence paths.",
+        "evidence_refs": ["fnd001-ui-tree"],
+        "issue_refs": ["#743"]
+      },
+      "evidence_confidence": {
+        "score": 3,
+        "status": "pass_with_issues",
+        "rationale": "Artifacts are current and tied to source commit/device/tooling; timing evidence remains blocked.",
+        "evidence_refs": ["fnd001-first-onboarding-screenshot", "fnd001-ui-tree", "fnd001-build-run-tail"]
+      },
+      "verdict": {
+        "score": 1,
+        "status": "fail",
+        "rationale": "FND-001 cannot pass while the semantic UI tree exposes hidden main-shell controls.",
+        "evidence_refs": ["fnd001-ui-tree"],
+        "issue_refs": ["#743"]
+      }
+    },
+    "metrics": [
+      {
+        "id": "fnd001-ui-tree-node-count",
+        "name": "First onboarding UI-tree node count",
+        "value": 112,
+        "unit": "nodes",
+        "budget": "Informational",
+        "status": "pass",
+        "method": "XcodeBuildMCP snapshot_ui",
+        "evidence_refs": ["fnd001-ui-tree"]
+      },
+      {
+        "id": "fnd001-cold-launch-first-onboarding-frame-ms",
+        "name": "Cold launch to first onboarding frame",
+        "value": "not captured",
+        "unit": "",
+        "budget": "<= 1500 ms",
+        "status": "blocked",
+        "method": "Required launch timestamp was unavailable because build_run_sim timed out at 300s after the app had built/launched.",
+        "evidence_refs": ["fnd001-build-run-tail", "fnd001-launch-console-log"]
+      }
+    ],
+    "instrumentation_gaps": [
+      {
+        "id": "fnd001-cold-launch-metric-missing",
+        "severity": "major",
+        "summary": "No defensible launch-to-first-frame metric was captured due to MCP build_run_sim timeout.",
+        "affected_dimensions": ["performance", "observability"],
+        "owner": "validation-agent",
+        "status": "open"
+      },
+      {
+        "id": "fnd001-accessibility-settings-audit-missing",
+        "severity": "major",
+        "summary": "VoiceOver traversal, Dynamic Type, dark mode, Reduce Motion, and Reduce Transparency were not fully audited.",
+        "affected_dimensions": ["accessibility_dynamic_type", "liquid_glass_ios_primitives", "touch_ergonomics"],
+        "owner": "validation-agent",
+        "status": "open"
+      }
+    ],
+    "evidence": {
+      "required_kinds": ["source_doc", "screenshot", "ui_tree", "log", "metric_trace", "accessibility_audit"],
+      "missing": [
+        {
+          "kind": "metric_trace",
+          "reason": "Cold launch to first onboarding frame is not measured.",
+          "blocks_dimensions": ["performance"],
+          "required": true
+        },
+        {
+          "kind": "accessibility_audit",
+          "reason": "VoiceOver, Dynamic Type, contrast, Reduce Motion, and Reduce Transparency were not audited.",
+          "blocks_dimensions": ["accessibility_dynamic_type", "touch_ergonomics", "liquid_glass_ios_primitives"],
+          "required": true
+        }
+      ],
+      "redaction_summary": "Fresh-install screenshots, UI tree, and logs contain no private account, key, provider token, feed, transcript, or audio material."
+    },
+    "issues": [
+      {
+        "id": "#743",
+        "url": "https://github.com/pablof7z/podcast-player/issues/743",
+        "severity": "major",
+        "title": "FND-001: first onboarding page exposes hidden main-shell controls in UI tree",
+        "affected_dimensions": ["ux_polish", "accessibility_dynamic_type", "navigation_state_restoration"],
+        "status": "open",
+        "owner": "app-team"
+      }
+    ],
+    "next_actions": [
+      {
+        "id": "fix-fnd001-hidden-main-shell-semantics",
+        "title": "Hide or unmount main-shell accessibility/hit-test targets while onboarding is presented.",
+        "status": "open",
+        "owner": "app-team",
+        "url": "https://github.com/pablof7z/podcast-player/issues/743"
+      },
+      {
+        "id": "rerun-fnd001-after-743",
+        "title": "Re-run FND-001 from erased simulator and capture screenshot, UI tree, logs, and cold-launch metric.",
+        "status": "blocked",
+        "owner": "validation-agent",
+        "url": "https://github.com/pablof7z/podcast-player/issues/743"
+      }
+    ]
+  }
+}
