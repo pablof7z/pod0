@@ -1,0 +1,39 @@
+{
+  "default": "/Users/pablofernandez/Work/podcast-player/docs/wiki",
+  "wikis": {
+    "hub": {
+      "path": "/Users/pablofernandez/Work/podcast-player/docs/wiki",
+      "description": "Local wiki hub for the Podcastr product."
+    },
+    "product": {
+      "path": "/Users/pablofernandez/Work/podcast-player/docs/wiki/topics/product",
+      "description": "Product promise, launch floor, and capability map."
+    },
+    "app": {
+      "path": "/Users/pablofernandez/Work/podcast-player/docs/wiki/topics/app",
+      "description": "End-to-end operating guide for the current Podcastr app, codebase, runtime flows, integrations, and development rules."
+    },
+    "knowledge": {
+      "path": "/Users/pablofernandez/Work/podcast-player/docs/wiki/topics/knowledge",
+      "description": "Transcript, wiki compilation, embeddings, RAG, and citation architecture."
+    },
+    "agent": {
+      "path": "/Users/pablofernandez/Work/podcast-player/docs/wiki/topics/agent",
+      "description": "Embedded agent runtime, tools, voice loop, and Nostr command safety."
+    },
+    "experience": {
+      "path": "/Users/pablofernandez/Work/podcast-player/docs/wiki/topics/experience",
+      "description": "UX north star, core surfaces, ambient modes, and accessibility."
+    },
+    "adjacent": {
+      "path": "/Users/pablofernandez/Work/podcast-player/docs/wiki/topics/adjacent",
+      "description": "Online research on adjacent ideas that could enrich Podcastr beyond the core spec."
+    }
+  },
+  "local_wikis": [
+    {
+      "path": "/Users/pablofernandez/Work/podcast-player/docs/wiki",
+      "description": "Repo-local docs wiki for Podcastr."
+    }
+  ]
+}

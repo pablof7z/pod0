@@ -1,0 +1,97 @@
+name: TestFlight
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      marketing_version:
+        description: Optional version override, for example 1.2.0
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testflight-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  APP_SCHEME: Podcastr
+  PROJECT_PATH: Podcastr.xcodeproj
+  APP_INFO_PLIST: App/Resources/Info.plist
+  WIDGET_INFO_PLIST: App/Widget/Resources/Info.plist
+  APPLE_TEAM_ID: 456SHKPP26
+  APP_BUNDLE_ID: io.f7z.podcast
+  WIDGET_BUNDLE_ID: io.f7z.podcast.widget
+
+jobs:
+  test:
+    name: Build and Test
+    runs-on: self-hosted
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Bootstrap project
+        run: ./ci_scripts/bootstrap_project.sh
+
+      - name: Build and test
+        run: ./ci_scripts/run_tests.sh
+
+  deploy:
+    name: Archive And Upload
+    runs-on: self-hosted
+    needs: test
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Show toolchain versions
+        run: |
+          sw_vers
+          xcodebuild -version
+
+      - name: Bootstrap project
+        run: ./ci_scripts/bootstrap_project.sh
+
+      - name: Install signing assets
+        env:
+          APPLE_DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_BASE64 }}
+          APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          APP_PROVISION_PROFILE_BASE64: ${{ secrets.APP_PROVISION_PROFILE_BASE64 }}
+          WIDGET_PROVISION_PROFILE_BASE64: ${{ secrets.WIDGET_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: ./ci_scripts/install_signing_assets.sh
+
+      - name: Archive, export, and upload
+        id: deploy
+        env:
+          MARKETING_VERSION: ${{ inputs.marketing_version || '' }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+          APP_STORE_CONNECT_PROVIDER: ${{ secrets.APP_STORE_CONNECT_PROVIDER }}
+        run: ./ci_scripts/archive_and_upload.sh
+
+      - name: Upload exported IPA artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testflight-export
+          path: |
+            build/ExportOptions.plist
+            build/testflight-export
+          if-no-files-found: ignore
+
+      - name: Cleanup signing assets
+        if: always()
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+        run: ./ci_scripts/cleanup_signing_assets.sh

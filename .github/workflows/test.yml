@@ -1,0 +1,26 @@
+name: Test
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Build and Test
+    runs-on: self-hosted
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Bootstrap project
+        run: ./ci_scripts/bootstrap_project.sh
+
+      - name: Build and test
+        run: ./ci_scripts/run_tests.sh

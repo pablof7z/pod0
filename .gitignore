@@ -1,0 +1,13 @@
+.DS_Store
+build/
+DerivedData/
+Derived/
+DerivedDevice/
+*.xcodeproj/
+*.xcworkspace/
+.worktrees/
+.claude/worktrees/
+.claude/scheduled_tasks.lock
+*.ipa
+*.dSYM.zip
+*.dSYM
