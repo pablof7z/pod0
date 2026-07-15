@@ -44,14 +44,13 @@ worktrees currently in flight.
 - **p0-plan-truthfulness.** Keep `docs/plan.md`,
   `docs/plan/nmp-feature-parity.md`, and this backlog synchronized with code.
   Do not mark scaffolded behavior done. Current audit: `docs/plan.md` now
-  reflects the `Cargo.toml` NMP v1.0.0-rc.1 pin at rev
-  `1fc3e6bea390224cef30e37d2ccaa90615197521`, plus known drift against the
-  Chirp-shipped NMP pin `bc6b42592d7fd61bc6767cac246a24a6b23bf8e3`. Open
-  tracking remains #707 for re-pin/publish lifecycle/relay-config persistence,
-  #708 for pollable NIP-05 lookup state, #709 for action/projection codegen
-  drift checks, #734 for the original D8 sleep/polling scanner subset, #740
-  for the expanded D8 hard-error burn-down, and #741 for D3 hardcoded relay
-  scanner hard errors.
+  reflects the `Cargo.toml` `branch = "master"` tracking for every `nmp-*`
+  dependency (no rev pin, no drift against upstream — `cargo build/test
+  --workspace` are green against the resolved tip). Open tracking remains
+  #707 for publish lifecycle/relay-config persistence, #708 for pollable
+  NIP-05 lookup state, #709 for action/projection codegen drift checks, #734
+  for the original D8 sleep/polling scanner subset, #740 for the expanded D8
+  hard-error burn-down, and #741 for D3 hardcoded relay scanner hard errors.
   `docs/testing/chirp-nmp-validation-pack-2026-07-06.md` and the
   `05-chirp-nmp-regression-parity.md` and
   `06-expanded-product-validation.md` catalog files map those gaps into 158
