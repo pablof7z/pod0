@@ -15,12 +15,12 @@ final class EpisodeCommentReceiptStoreTests: XCTestCase {
             submittedAt: Date(timeIntervalSince1970: 123)
         )
 
-        UserDefaultsEpisodeCommentReceiptStore(defaults: defaults).save(record)
+        try UserDefaultsEpisodeCommentReceiptStore(defaults: defaults).save(record)
         let reopened = UserDefaultsEpisodeCommentReceiptStore(defaults: defaults)
 
-        XCTAssertEqual(reopened.records(for: target), [record])
-        reopened.remove(receiptID: 77)
-        XCTAssertTrue(reopened.records(for: target).isEmpty)
+        XCTAssertEqual(try reopened.records(for: target), [record])
+        try reopened.remove(receiptID: 77)
+        XCTAssertTrue(try reopened.records(for: target).isEmpty)
     }
 
     func testCorruptIndexFailsClosed() throws {
@@ -34,7 +34,10 @@ final class EpisodeCommentReceiptStoreTests: XCTestCase {
             key: "test-receipts"
         )
 
-        XCTAssertTrue(store.records(for: .episode(guid: "episode")).isEmpty)
+        XCTAssertThrowsError(try store.records(for: .episode(guid: "episode"))) { error in
+            XCTAssertEqual(error.localizedDescription, EpisodeCommentReceiptStoreError.unreadable.localizedDescription)
+        }
+        XCTAssertEqual(defaults.data(forKey: "test-receipts"), Data("not-json".utf8))
     }
 
     func testRemoveAllClearsEveryTargetAndPersistsTheReset() throws {
@@ -42,13 +45,13 @@ final class EpisodeCommentReceiptStoreTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let store = UserDefaultsEpisodeCommentReceiptStore(defaults: defaults)
-        store.save(PendingEpisodeCommentReceipt(
+        try store.save(PendingEpisodeCommentReceipt(
             receiptID: 1,
             target: .episode(guid: "one"),
             eventID: nil,
             submittedAt: Date()
         ))
-        store.save(PendingEpisodeCommentReceipt(
+        try store.save(PendingEpisodeCommentReceipt(
             receiptID: 2,
             target: .episode(guid: "two"),
             eventID: "event-two",
@@ -58,7 +61,7 @@ final class EpisodeCommentReceiptStoreTests: XCTestCase {
         store.removeAll()
         let reopened = UserDefaultsEpisodeCommentReceiptStore(defaults: defaults)
 
-        XCTAssertTrue(reopened.records(for: .episode(guid: "one")).isEmpty)
-        XCTAssertTrue(reopened.records(for: .episode(guid: "two")).isEmpty)
+        XCTAssertTrue(try reopened.records(for: .episode(guid: "one")).isEmpty)
+        XCTAssertTrue(try reopened.records(for: .episode(guid: "two")).isEmpty)
     }
 }

@@ -70,6 +70,7 @@ enum EpisodeCommentWriteStatus: Equatable, Sendable {
     case rejected(relay: String, reason: String)
     case gaveUp(relay: String)
     case persistenceBlocked(relay: String)
+    case routePersistenceBlocked(relay: String)
     case outcomeUnknown(relay: String)
     case failed(reason: String)
 }

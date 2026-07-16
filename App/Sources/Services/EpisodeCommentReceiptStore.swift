@@ -13,10 +13,18 @@ struct PendingEpisodeCommentReceipt: Codable, Equatable, Identifiable, Sendable 
 }
 
 protocol EpisodeCommentReceiptStore: Sendable {
-    func records(for target: CommentTarget) -> [PendingEpisodeCommentReceipt]
-    func save(_ record: PendingEpisodeCommentReceipt)
-    func remove(receiptID: UInt64)
+    func records(for target: CommentTarget) throws -> [PendingEpisodeCommentReceipt]
+    func save(_ record: PendingEpisodeCommentReceipt) throws
+    func remove(receiptID: UInt64) throws
     func removeAll()
+}
+
+enum EpisodeCommentReceiptStoreError: LocalizedError {
+    case unreadable
+
+    var errorDescription: String? {
+        "Pending comment delivery receipts could not be read. They were left untouched."
+    }
 }
 
 /// App-owned durable index of NMP receipt ids. NMP owns the durable outbox;
@@ -31,24 +39,24 @@ final class UserDefaultsEpisodeCommentReceiptStore: EpisodeCommentReceiptStore, 
         self.key = key
     }
 
-    func records(for target: CommentTarget) -> [PendingEpisodeCommentReceipt] {
-        lock.withLock { load().filter { $0.target == target } }
+    func records(for target: CommentTarget) throws -> [PendingEpisodeCommentReceipt] {
+        try lock.withLock { try load().filter { $0.target == target } }
     }
 
-    func save(_ record: PendingEpisodeCommentReceipt) {
-        lock.withLock {
-            var records = load()
+    func save(_ record: PendingEpisodeCommentReceipt) throws {
+        try lock.withLock {
+            var records = try load()
             records.removeAll { $0.receiptID == record.receiptID }
             records.append(record)
-            persist(records)
+            try persist(records)
         }
     }
 
-    func remove(receiptID: UInt64) {
-        lock.withLock {
-            var records = load()
+    func remove(receiptID: UInt64) throws {
+        try lock.withLock {
+            var records = try load()
             records.removeAll { $0.receiptID == receiptID }
-            persist(records)
+            try persist(records)
         }
     }
 
@@ -56,18 +64,20 @@ final class UserDefaultsEpisodeCommentReceiptStore: EpisodeCommentReceiptStore, 
         lock.withLock { defaults.removeObject(forKey: key) }
     }
 
-    private func load() -> [PendingEpisodeCommentReceipt] {
+    private func load() throws -> [PendingEpisodeCommentReceipt] {
         guard let data = defaults.data(forKey: key) else { return [] }
-        return (try? JSONDecoder().decode([PendingEpisodeCommentReceipt].self, from: data)) ?? []
+        do {
+            return try JSONDecoder().decode([PendingEpisodeCommentReceipt].self, from: data)
+        } catch {
+            throw EpisodeCommentReceiptStoreError.unreadable
+        }
     }
 
-    private func persist(_ records: [PendingEpisodeCommentReceipt]) {
+    private func persist(_ records: [PendingEpisodeCommentReceipt]) throws {
         guard !records.isEmpty else {
             defaults.removeObject(forKey: key)
             return
         }
-        if let data = try? JSONEncoder().encode(records) {
-            defaults.set(data, forKey: key)
-        }
+        defaults.set(try JSONEncoder().encode(records), forKey: key)
     }
 }
