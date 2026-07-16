@@ -600,7 +600,6 @@
 		DB0AD05493472369070D66D5 /* DiscoverResultRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A4AC7F407D64C7EECAC6FB /* DiscoverResultRow.swift */; };
 		DBA312581B01A490BC812FC3 /* EpisodeMetadataIndexerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D03BA94540C205987D9B6D /* EpisodeMetadataIndexerTests.swift */; };
 		DBA51DA25D1EE89ACDF5BC3C /* PlayerTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5378716211A015BB0F29358F /* PlayerTimelineView.swift */; };
-		DBDA72ED388609411EB1C89E /* NMPEpisodeCommentsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF42EE27069148EF8864D1BF /* NMPEpisodeCommentsRepository.swift */; };
 		DC37CFE5B9AE8DB680B9D227 /* DataExportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E478AF212E493CE0A19B6C9 /* DataExportTests.swift */; };
 		DC382283D2C97D163FF73659 /* BriefingPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B231BFEBC8F703FE3205801A /* BriefingPlayerView.swift */; };
 		DC46894EDCFEA4D5A3601BBA /* FriendAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D29A45741CE65088F225079 /* FriendAvatar.swift */; };
@@ -1398,7 +1397,6 @@
 		EE3AF89262E3F0896AF17033 /* BYOKUnifiedProviderSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BYOKUnifiedProviderSection.swift; sourceTree = "<group>"; };
 		EE927EE66952A4FA10A9B05F /* UserIdentityWiringTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserIdentityWiringTests.swift; sourceTree = "<group>"; };
 		EF06678F44AC017C12161669 /* OpenRouterModelFilters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenRouterModelFilters.swift; sourceTree = "<group>"; };
-		EF42EE27069148EF8864D1BF /* NMPEpisodeCommentsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NMPEpisodeCommentsRepository.swift; sourceTree = "<group>"; };
 		EFB99FB10F034DAAA87AA203 /* MiniPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniPlayerView.swift; sourceTree = "<group>"; };
 		EFC9C30A6DEBF6B139B6F833 /* LLMPayloadDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMPayloadDetailView.swift; sourceTree = "<group>"; };
 		F01C4CDCD1CB068B9037440C /* AppStateStore+PeerConversations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+PeerConversations.swift"; sourceTree = "<group>"; };
@@ -2349,7 +2347,6 @@
 				64CCEB4A7701F0ACD3FEA63D /* KeychainStore.swift */,
 				4CC38B37A2041B6D35C1D4D1 /* NIP19.swift */,
 				8B49CAB078C520B5EB1B2C9E /* NIP65RelayFetcher.swift */,
-				EF42EE27069148EF8864D1BF /* NMPEpisodeCommentsRepository.swift */,
 				38405D306A1A8C0F22AD44E7 /* NostrAgentResponder.swift */,
 				3FDA9595412FD6F4FF4F30C8 /* NostrAgentResponder+Delegation.swift */,
 				66E46F2084285735758A2747 /* NostrCredentialStore.swift */,
@@ -3304,7 +3301,6 @@
 				F5CD6E8D0E84E9CBC1B04141 /* KeychainStore.swift in Sources */,
 				853AA3D8AA7F6722529B5054 /* NIP19.swift in Sources */,
 				23857ADA016740B488EDF894 /* NIP65RelayFetcher.swift in Sources */,
-				DBDA72ED388609411EB1C89E /* NMPEpisodeCommentsRepository.swift in Sources */,
 				196722F9F733FFF02BF7B3B8 /* BunkerURI.swift in Sources */,
 				97893F7DF27A336B90AB6DD8 /* ChaCha20.swift in Sources */,
 				32821150E2F677A13A2D0D90 /* Nip44.swift in Sources */,

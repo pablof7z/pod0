@@ -21,8 +21,14 @@ struct EpisodeCommentSnapshot: Equatable, Sendable {
     var acquisition: EpisodeCommentAcquisition
 }
 
-/// A live NMP observation. Cancellation withdraws read demand only; it never
-/// cancels or retries a write obligation.
+enum EpisodeCommentsAvailability: Equatable, Sendable {
+    case available
+    case blocked(message: String)
+}
+
+/// A semantic comment observation supplied by the eventual typed provider.
+/// Cancellation withdraws read demand only; it never cancels or retries a
+/// write obligation.
 final class EpisodeCommentObservation: @unchecked Sendable {
     let updates: AsyncThrowingStream<EpisodeCommentSnapshot, any Error>
 
@@ -79,10 +85,11 @@ enum EpisodeCommentReceiptReattachment: Sendable {
     case retainedButUnreadable
 }
 
-/// Pod0 consumes semantic comments and receipt facts only. The live adapter
-/// delegates event composition, verification, routing, signing, persistence,
-/// and relay ownership to NMP.
+/// Pod0 consumes semantic comments and receipt facts only. A production
+/// provider may report available only when NMP supplies the typed
+/// NIP-22/NIP-73 boundary tracked by pablof7z/nmp#572.
 protocol EpisodeCommentsRepository: Sendable {
+    var availability: EpisodeCommentsAvailability { get }
     func activeAuthorPubkey() async throws -> String?
     func observe(target: CommentTarget) async throws -> EpisodeCommentObservation
     func publish(content: String, target: CommentTarget) async throws -> EpisodeCommentReceipt
@@ -90,6 +97,10 @@ protocol EpisodeCommentsRepository: Sendable {
 }
 
 struct UnavailableEpisodeCommentsRepository: EpisodeCommentsRepository {
+    static let blockedMessage = "Comments are paused until the shared Nostr engine can verify and publish episode comments safely. Pod0 won't use the old unverified relay path."
+
+    let availability = EpisodeCommentsAvailability.blocked(message: blockedMessage)
+
     func activeAuthorPubkey() async throws -> String? { nil }
 
     func observe(target: CommentTarget) async throws -> EpisodeCommentObservation {
@@ -109,6 +120,6 @@ enum EpisodeCommentsRepositoryError: LocalizedError {
     case unavailable
 
     var errorDescription: String? {
-        "Comments are temporarily unavailable."
+        UnavailableEpisodeCommentsRepository.blockedMessage
     }
 }

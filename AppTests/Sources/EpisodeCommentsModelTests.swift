@@ -6,6 +6,16 @@ import XCTest
 final class EpisodeCommentsModelTests: XCTestCase {
     private let target = CommentTarget.episode(guid: "episode-guid")
 
+    func testUnavailableProviderExplainsFailClosedState() {
+        let repository = UnavailableEpisodeCommentsRepository()
+
+        guard case .blocked(let message) = repository.availability else {
+            return XCTFail("Expected comments to remain blocked")
+        }
+        XCTAssertTrue(message.contains("paused"))
+        XCTAssertTrue(message.contains("won't use the old unverified relay path"))
+    }
+
     func testObservationUsesAuthoritativeSnapshotsAndCancelsDemand() async throws {
         let harness = RepositoryHarness()
         let model = EpisodeCommentsModel(repository: harness.repository, receiptStore: MemoryReceiptStore())
@@ -196,6 +206,8 @@ private struct HarnessRepository: EpisodeCommentsRepository {
     let state: HarnessState
     let observation: EpisodeCommentObservation
     let receipt: EpisodeCommentReceipt
+
+    let availability = EpisodeCommentsAvailability.available
 
     func activeAuthorPubkey() async throws -> String? { String(repeating: "b", count: 64) }
 

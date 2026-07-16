@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// Episode discussion backed by NMP's typed NIP-22/NIP-73 module. Pod0 owns
-/// presentation and durable receipt-id reattachment, while NMP owns protocol
-/// composition, verification, routing, signing, relay sessions, and retries.
+/// Episode discussion stays visibly fail-closed until NMP exposes the typed
+/// NIP-22/NIP-73 boundary tracked by pablof7z/nmp#572.
 struct EpisodeCommentsSection: View {
     let episode: Episode
 
@@ -13,19 +12,45 @@ struct EpisodeCommentsSection: View {
         return guid.isEmpty ? nil : .episode(guid: guid)
     }
 
+    @ViewBuilder
     var body: some View {
-        if let target {
-            EpisodeCommentsLoadedSection(target: target, repository: repository)
-        } else {
-            HStack(spacing: AppTheme.Spacing.sm) {
-                Image(systemName: "info.circle")
-                    .foregroundStyle(.secondary)
-                Text("This episode has no Podcasting 2.0 GUID, so comments can't be anchored.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        switch repository.availability {
+        case .blocked(let message):
+            blockedComments(message)
+        case .available:
+            if let target {
+                EpisodeCommentsLoadedSection(target: target, repository: repository)
+            } else {
+                missingGUID
             }
-            .padding(AppTheme.Spacing.sm)
         }
+    }
+
+    private var missingGUID: some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            Image(systemName: "info.circle")
+                .foregroundStyle(.secondary)
+            Text("This episode has no Podcasting 2.0 GUID, so comments can't be anchored.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(AppTheme.Spacing.sm)
+    }
+
+    private func blockedComments(_ message: String) -> some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                Image(systemName: "exclamationmark.bubble")
+                    .foregroundStyle(.secondary)
+                Text("Comments")
+                    .font(.headline)
+            }
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .padding(AppTheme.Spacing.sm)
+        .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: AppTheme.Corner.md))
     }
 }
 

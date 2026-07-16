@@ -46,6 +46,23 @@ final class RepositoryArchitectureTests: XCTestCase {
         XCTAssertFalse(testFlight.contains("      - main"))
     }
 
+    func testCommentsDoNotClaimUnavailableTypedNMPAPI() throws {
+        let adapter = repositoryRoot
+            .appendingPathComponent("App/Sources/Services/NMPEpisodeCommentsRepository.swift")
+        let commentsRepository = try source("App/Sources/Services/EpisodeCommentsRepository.swift")
+        let commentsSection = try source(
+            "App/Sources/Features/EpisodeDetail/EpisodeCommentsSection.swift"
+        )
+        let appMain = try source("App/Sources/AppMain.swift")
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: adapter.path))
+        XCTAssertFalse(commentsRepository.contains("POD0_NMP_TYPED_NIP22"))
+        XCTAssertFalse(commentsRepository.contains("kind: 1111"))
+        XCTAssertTrue(commentsRepository.contains("pablof7z/nmp#572"))
+        XCTAssertTrue(commentsSection.contains("switch repository.availability"))
+        XCTAssertFalse(appMain.contains(".episodeCommentsRepository"))
+    }
+
     private func source(_ path: String) throws -> String {
         try String(contentsOf: repositoryRoot.appendingPathComponent(path), encoding: .utf8)
     }

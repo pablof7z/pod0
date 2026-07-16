@@ -1,7 +1,7 @@
 import Foundation
 
-/// A semantic comment anchor. Protocol-specific identifiers and tags are
-/// composed by NMP's typed NIP-22/NIP-73 module, never by Pod0.
+/// A product-level comment anchor. It deliberately cannot express protocol
+/// tags; the typed NMP boundary tracked by pablof7z/nmp#572 must own those.
 enum CommentTarget: Codable, Hashable, Sendable {
     case episode(guid: String)
 
@@ -32,7 +32,7 @@ enum CommentTarget: Codable, Hashable, Sendable {
     }
 }
 
-/// A verified, canonical NIP-22 comment decoded by NMP's typed module.
+/// A presentation value accepted only from a future verified typed provider.
 struct EpisodeComment: Identifiable, Hashable, Sendable {
     let id: String
     let target: CommentTarget
