@@ -14,6 +14,7 @@ final class RepositoryArchitectureTests: XCTestCase {
 
         XCTAssertFalse(appMain.contains("NostrRelayService"))
         XCTAssertFalse(rootView.contains("NostrRelayService"))
+        XCTAssertEqual(appMain.components(separatedBy: "Pod0NMPComposition(").count - 1, 1)
     }
 
     func testRepositoryDependenciesAreSelfContainedAndPinned() throws {
