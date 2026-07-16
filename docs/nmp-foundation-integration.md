@@ -56,10 +56,10 @@ As of the selected revision, Swift `NMPNip46Connection` supports a live
 nor cold-start restoration of a newly created client-initiated invitation
 session. Pod0 does not add a private checkpoint or transport alongside NMP.
 
-`Pod0HumanIdentityLifecycle` therefore reports
-`clientInitiatedNip46CheckpointUnsupported(issue: 571)`. M1 cannot close until
-`pablof7z/nmp#571` provides and proves secure checkpoint and cold-start restore
-for new client-initiated sessions.
+The identity UI therefore offers only pasted bunker links; it does not expose
+or persist a speculative client-initiated state. Scan-to-connect remains
+tracked by `pablof7z/nmp#571` until secure checkpoint and cold-start restore are
+available.
 
 The selected revision also does not expose the exact registration handle for a
 local account restored during engine initialization. Pod0 therefore blocks

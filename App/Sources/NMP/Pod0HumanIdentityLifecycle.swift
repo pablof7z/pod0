@@ -5,7 +5,6 @@ import NMP
 #endif
 
 enum Pod0IdentityBlocker: Sendable, Codable, Equatable {
-    case clientInitiatedNip46CheckpointUnsupported(issue: Int)
     case restoredLocalDetachUnsupported(issue: Int)
     case orphanedRestoredLocal(issue: Int)
     case identitySwitchUnsupported
@@ -23,7 +22,6 @@ enum Pod0HumanIdentityState: Sendable, Equatable {
 }
 
 enum Pod0HumanIdentityError: LocalizedError, Equatable {
-    case missingCatalogForRestoredAccount
     case missingRestoredLocalAccount
     case wrongRole
     case expectedPublicKeyMismatch(expected: String, actual: String)
@@ -36,8 +34,6 @@ enum Pod0HumanIdentityError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .missingCatalogForRestoredAccount:
-            "A securely restored NMP account has no matching Pod0 identity record. No account state was changed."
         case .missingRestoredLocalAccount:
             "The saved Pod0 identity was not restored by NMP. No account state was changed."
         case .wrongRole:
@@ -69,6 +65,7 @@ final class Pod0HumanIdentityLifecycle {
     let catalogStorage: any Pod0IdentityCatalogStorage
     var localRegistration: NMPAccountRegistration?
     var remoteConnection: NMPNip46Connection?
+    var restoredLocalPublicKey: String?
 
     var state: Pod0HumanIdentityState = .signedOut
     var blocker: Pod0IdentityBlocker?
@@ -84,14 +81,24 @@ final class Pod0HumanIdentityLifecycle {
     /// NMP restores its own checkpoint during engine construction. Pod0 only
     /// verifies that public capability against its non-secret catalog.
     func restoreHuman() async throws -> Pod0IdentityCatalogEntry? {
+        if let blocker {
+            switch blocker {
+            case .orphanedRestoredLocal, .restoredLocalDetachUnsupported:
+                try block(blocker)
+            case .identitySwitchUnsupported, .expectedPublicKeyMismatch:
+                break
+            }
+        }
         let active = try engineAccess.engine.activeAccount()
         guard let catalog = try catalogStorage.load(),
               catalog.selectedRole == .human,
               let entry = catalog.entry(for: .human) else {
             guard active == nil else {
                 try engineAccess.engine.setActiveAccount(nil)
+                restoredLocalPublicKey = active
                 try block(.orphanedRestoredLocal(issue: 589))
             }
+            restoredLocalPublicKey = nil
             state = .signedOut
             return nil
         }
@@ -133,6 +140,7 @@ final class Pod0HumanIdentityLifecycle {
             throw surfaced
         }
         localRegistration = registration
+        restoredLocalPublicKey = nil
         state = .ready(publicKey: registration.publicKey)
         return entry
     }
@@ -159,6 +167,7 @@ final class Pod0HumanIdentityLifecycle {
             catalogWriteAttempted = true
             try saveSelected(entry)
             remoteConnection = connection
+            restoredLocalPublicKey = nil
             state = .ready(publicKey: publicKey)
             return entry
         } catch {
@@ -172,10 +181,6 @@ final class Pod0HumanIdentityLifecycle {
             state = .failed(surfaced.localizedDescription)
             throw surfaced
         }
-    }
-
-    func connectClientInitiated(relays _: [String]) throws -> Never {
-        try block(.clientInitiatedNip46CheckpointUnsupported(issue: 571))
     }
 
     private func activateHuman(
@@ -193,8 +198,14 @@ final class Pod0HumanIdentityLifecycle {
                 try mismatch(expected: entry.expectedPublicKey, actual: engineActiveAccount)
             }
             localRegistration = nil
+            restoredLocalPublicKey = engineActiveAccount
             state = .ready(publicKey: engineActiveAccount)
         case .nip46Bunker(let uri):
+            guard engineActiveAccount == nil else {
+                try engineAccess.engine.setActiveAccount(nil)
+                restoredLocalPublicKey = engineActiveAccount
+                try block(.orphanedRestoredLocal(issue: 589))
+            }
             let connection = try engineAccess.engine.connectNip46(bunkerURI: uri)
             do {
                 let publicKey = try await awaitReady(
@@ -203,16 +214,13 @@ final class Pod0HumanIdentityLifecycle {
                 )
                 try engineAccess.engine.setActiveAccount(publicKey)
                 remoteConnection = connection
+                restoredLocalPublicKey = nil
                 state = .ready(publicKey: publicKey)
             } catch {
                 connection.close()
                 remoteConnection = nil
                 throw error
             }
-        case .nip46ClientInitiated:
-            try block(.clientInitiatedNip46CheckpointUnsupported(issue: 571))
-        case .reservedForLaterMilestone:
-            throw Pod0HumanIdentityError.wrongRole
         }
     }
 

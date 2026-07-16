@@ -29,23 +29,6 @@ extension UserIdentityStore {
         }
     }
 
-    /// Restarts identity selection inside the already-retained composition.
-    func start() async {
-        guard nmpLifecycle != nil else {
-            failIdentity(UserIdentityError.nmpUnavailable)
-            return
-        }
-        do {
-            if let entry = try await nmpLifecycle?.restoreHuman() {
-                adoptNMPIdentity(entry: entry)
-            } else {
-                failIdentity(UserIdentityError.nmpKeyGenerationUnavailable)
-            }
-        } catch {
-            failIdentity(error)
-        }
-    }
-
     func importNsec(_ nsec: String) async throws {
         loginError = nil
         guard let lifecycle = nmpLifecycle else { throw UserIdentityError.nmpUnavailable }
@@ -95,21 +78,14 @@ extension UserIdentityStore {
     func failIdentity(_ error: Error) {
         let message = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
         loginError = message
-        if case .some(.clientInitiatedNip46CheckpointUnsupported(issue: _)) = nmpLifecycle?.blocker {
-            remoteSignerState = .failed(
-                "Scan-to-connect is unavailable until NMP issue #571 can securely restore the session."
-            )
-        } else {
-            remoteSignerState = .failed(message)
-        }
+        remoteSignerState = .failed(message)
     }
 
     private func adoptNMPIdentity(entry: Pod0IdentityCatalogEntry) {
         publicKeyHex = entry.expectedPublicKey
         mode = switch entry.capability {
         case .localKey: .localKey
-        case .nip46Bunker, .nip46ClientInitiated: .remoteSigner
-        case .reservedForLaterMilestone: .none
+        case .nip46Bunker: .remoteSigner
         }
         remoteSignerState = mode == .remoteSigner
             ? .connected(entry.expectedPublicKey)

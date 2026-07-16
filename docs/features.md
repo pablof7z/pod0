@@ -1,49 +1,5 @@
 # Feature Reference
 
-## Shake-to-Feedback
-
-**Source:** win-the-day-app `RockingLife/Design/ShakeDetector.swift`, `RockingLife/Features/Feedback/`
-
-### How it works
-
-1. `ShakeDetector.swift` uses `UIViewControllerRepresentable` to wrap a `UIViewController` subclass. The view controller overrides `motionEnded(_:with:)` — SwiftUI has no native shake modifier, so UIKit intercept is necessary.
-
-2. `FeedbackWorkflow` (an `@Observable` class) is the state machine:
-   - `idle` → `composing` (shake triggers this)
-   - `composing` → `awaitingScreenshot` (user taps camera icon and dismisses)
-   - `awaitingScreenshot` → `annotating` (second shake captures screen)
-   - `annotating` → `composing` (after annotation saved)
-   - any → `idle` (cancel/send)
-
-3. Screenshot capture uses `UIGraphicsImageRenderer` to render the window layer directly — no system screenshot APIs needed.
-
-4. Annotation is a SwiftUI `Canvas` with `DragGesture`. Strokes are stored as `[[CGPoint]]` and replayed into `CGContext` when saving the final annotated `UIImage`.
-
-### Submission options
-
-The template ships with a placeholder. Replace `FeedbackView.performSubmission()` with:
-
-**Nostr kind:1** (used in win-the-day, highlighter):
-```swift
-let event = try await nostrRelay.publish(kind: 1, content: workflow.draft, tags: [["a", feedbackProjectCoordinate]])
-```
-
-**GitHub issue**:
-```swift
-var req = URLRequest(url: URL(string: "https://api.github.com/repos/owner/repo/issues")!)
-req.httpMethod = "POST"
-req.setValue("token \(githubToken)", forHTTPHeaderField: "Authorization")
-req.httpBody = try JSONEncoder().encode(["title": "Feedback", "body": workflow.draft])
-```
-
-**Email**:
-```swift
-// Present MFMailComposeViewController with workflow.draft as body
-// and workflow.annotatedImage?.pngData() as attachment
-```
-
----
-
 ## Agent System
 
 **Source:** win-the-day-app `RockingLife/Agent/AgentSession.swift`, `AgentPrompt.swift`, `Agent/Tools.swift`
@@ -183,36 +139,6 @@ NotificationCenter.default.addObserver(forName: NSUbiquitousKeyValueStore.didCha
 ```
 
 For SwiftData (used in cut-tracker), replace the JSON blob with a `ModelContainer` and SwiftData `@Model` classes.
-
----
-
-## NIP-46 — nostrconnect:// QR Pairing
-
-**Source:** `App/Sources/Services/Nip46/RemoteSigner+NostrConnect.swift`, `App/Sources/Features/Identity/NostrConnectView.swift`, `App/Sources/Services/UserIdentityStore+NIP46.swift`
-
-### How it works
-
-Client-initiated NIP-46 pairing: the app generates the `nostrconnect://` URI (instead of receiving a `bunker://` URI from the signer).
-
-1. `RemoteSigner.nostrConnect(...)` generates an ephemeral session keypair and a random 16-byte hex secret.
-2. Builds a `nostrconnect://<sessionPubkey>?relay=…&secret=…&name=Podcastr&perms=…` URI and immediately surfaces it via `onURI` callback so the UI can render the QR code.
-3. Subscribes on the relay with **no `authors` filter** — the signer's pubkey is unknown at this point.
-4. For each inbound `kind:24133` event, attempts NIP-44 decryption with `(sessionPrivKey, senderPubkey)`. Parses the JSON response; if `result == secret`, that sender is the signer.
-5. Builds a `RemoteSigner` with the discovered bunker pubkey; calls `finishNostrConnect` (only `get_public_key` — skips a redundant `connect` RPC to avoid duplicate `auth_url` challenges).
-
-Default relay: `wss://relay.primal.net` (same as Olas, highlighter). Default permissions: `sign_event:1,sign_event:6,sign_event:7,nip44_encrypt,nip44_decrypt`.
-
-### UI (`NostrConnectView`)
-
-- Displays the QR code immediately on appear; starts the pairing task in parallel.
-- Detects installed signer apps (Amber, Primal) and shows one-tap deep-link buttons for each.
-- States: setup → waiting (spinner + "Waiting for signer…") → connected → error.
-- Cancel only disconnects if the session is not yet paired (prevents accidental disconnect post-link).
-- `podcastr://nip46` registered as a URL scheme for signer app callbacks.
-
-### Adding a new known signer
-
-Add an entry to the `KnownSigner` enum in `NostrConnectView.swift` with its URL scheme and deep-link format.
 
 ---
 

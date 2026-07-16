@@ -2,21 +2,16 @@ import Foundation
 
 enum Pod0IdentityRole: String, Sendable, Codable, CaseIterable {
     case human
-    case agentPodcast
 }
 
 enum Pod0IdentityOrigin: String, Sendable, Codable {
-    case generatedLocally
     case importedNsec
     case bunker
-    case clientInitiatedNostrConnect
 }
 
 enum Pod0IdentityCapability: Sendable, Codable, Equatable {
     case localKey(secretReference: String)
     case nip46Bunker(uri: String)
-    case nip46ClientInitiated(relays: [String])
-    case reservedForLaterMilestone
 }
 
 struct Pod0IdentityCatalogEntry: Sendable, Codable, Equatable, Identifiable {
@@ -71,9 +66,8 @@ protocol Pod0IdentityCatalogStorage: Sendable {
     func clear() throws
 }
 
-/// Pod0 owns multi-role inventory and consent. This Keychain value stores
-/// labels, origins, expected pubkeys, and encrypted reconnect metadata; NMP's
-/// one-account checkpoint is intentionally not used as a multi-account vault.
+/// Pod0 stores the selected human label, origin, expected pubkey, and bunker
+/// reconnect metadata in Keychain. Secret local-key checkpointing stays in NMP.
 struct KeychainPod0IdentityCatalogStorage: Pod0IdentityCatalogStorage {
     private let service: String
     private let account = "catalog-v1"

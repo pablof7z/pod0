@@ -52,13 +52,12 @@ Use this map before editing. Podcastr has many connected surfaces, and the faste
 - `App/Sources/Voice/` and `App/Sources/Features/Voice/`: voice conversation, STT, TTS, barge-in, captions, orb surface.
 - `App/Sources/Briefing/` and `App/Sources/Features/Briefings/`: generated briefing scripts, storage, audio stitching, player, composer UI.
 
-## Settings, Providers, Identity, Feedback
+## Settings, Providers, Identity
 
 - `App/Sources/Features/Settings/`: settings shell, downloads/storage/playback/transcripts/wiki/notification/category screens.
 - `App/Sources/Features/Settings/AI/`: provider connection, model selection, catalog services, voice browser, usage cost screens.
 - `App/Sources/Services/BYOK*` and provider credential stores: BYOK auth, token import, Keychain storage.
-- `App/Sources/Features/Settings/Agent/`, `App/Sources/Features/Identity/`, `App/Sources/Services/Nip46/`, `App/Sources/Services/Nostr*`: identity, friends, approvals, relay, remote signing.
-- `App/Sources/Features/Feedback/` and `App/Sources/Design/ShakeDetector.swift`: shake feedback, annotation, thread detail.
+- `App/Sources/Features/Settings/Agent/`, `App/Sources/Features/Identity/`, `App/Sources/Services/Nostr*`: identity, friends, approvals, and relay-backed agent features.
 
 ## Tests And Docs
 

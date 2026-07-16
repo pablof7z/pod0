@@ -32,10 +32,6 @@ extension Pod0HumanIdentityLifecycle {
         blocker = reason
         state = .blocked(reason)
         switch reason {
-        case .clientInitiatedNip46CheckpointUnsupported(let issue):
-            throw Pod0HumanIdentityError.remoteFailure(
-                "Scan-to-connect is unavailable until NMP issue #\(issue) supports secure restoration."
-            )
         case .restoredLocalDetachUnsupported(let issue):
             throw Pod0HumanIdentityError.restoredLocalDetachUnsupported(issue: issue)
         case .orphanedRestoredLocal(let issue):

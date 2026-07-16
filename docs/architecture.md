@@ -40,12 +40,6 @@ AgentSession (@Observable, @MainActor)
   AppStateStore.state (for system prompt)
   ↓ writes via
   AgentTools.dispatch() → AppStateStore methods
-
-FeedbackWorkflow (@Observable, @MainActor)
-  ↓ owned by
-  RootView (top-level @State)
-  ↓ drives
-  FeedbackView, ScreenshotAnnotationView sheets
 ```
 
 ## Key decisions
@@ -80,7 +74,6 @@ The template targets iOS 26 and uses Apple's native Liquid Glass material throug
 
 - **`GlassSurface.swift`** — `.glassSurface(cornerRadius:)` modifier backed by `.glassEffect()`. Tinted variant for status banners.
 - **`HomeView`** — Glass FAB row (Add + Ask Agent) at the bottom, glass agent-status banner with tint keyed to session state.
-- **`FeedbackView`** — TextEditor rendered on a glass surface; screenshot action buttons use `.buttonStyle(.glass)`.
 - **`FriendDetailView`** — Profile header card uses `.glassSurface()` pinned above the List.
 - Toolbar and tab bar glass are handled automatically by iOS 26; no additional code required.
 

@@ -28,6 +28,7 @@ final class RepositoryArchitectureTests: XCTestCase {
         XCTAssertFalse(identityCore.contains("user-private-key-hex"))
         XCTAssertFalse(identityCore.contains("nip46-session"))
         XCTAssertFalse(identityNMP.contains("NostrKeyPair.generate"))
+        XCTAssertFalse(identityNMP.contains("func start() async"))
         XCTAssertTrue(identityNMP.contains("nmpKeyGenerationUnavailable"))
         XCTAssertTrue(identityCore.contains("#588"))
         XCTAssertTrue(appMain.contains("NMPKeychainAccountStore("))

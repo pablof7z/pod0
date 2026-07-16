@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-16T13:49:03Z",
+      "lines": [
+        "Signing out now distinguishes restored accounts from empty or stale identity setup."
+      ]
+    },
+    {
       "shipped_at": "2026-07-16T12:57:38Z",
       "lines": [
         "Profile publishing now stops safely when durable delivery cannot be proven."

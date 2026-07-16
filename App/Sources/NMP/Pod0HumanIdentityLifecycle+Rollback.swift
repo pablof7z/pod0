@@ -12,10 +12,17 @@ extension Pod0HumanIdentityLifecycle {
             try signOutLocal(registration: localRegistration)
             return
         }
-        guard remoteConnection != nil else {
+        if remoteConnection != nil {
+            try signOutRemote()
+            return
+        }
+        if let blocker {
+            try block(blocker)
+        }
+        if try isVerifiedRestoredLocal() {
             try block(.restoredLocalDetachUnsupported(issue: 589))
         }
-        try signOutRemote()
+        try cleanStaleSelectionOrRemainSignedOut()
     }
 
     func rollbackFailedRegistration(
@@ -84,6 +91,7 @@ extension Pod0HumanIdentityLifecycle {
             throw surfaced
         }
         localRegistration = nil
+        restoredLocalPublicKey = nil
         blocker = nil
         state = .signedOut
     }
@@ -105,6 +113,35 @@ extension Pod0HumanIdentityLifecycle {
         }
         remoteConnection?.close()
         remoteConnection = nil
+        restoredLocalPublicKey = nil
+        blocker = nil
+        state = .signedOut
+    }
+
+    private func isVerifiedRestoredLocal() throws -> Bool {
+        guard let restoredLocalPublicKey,
+              case .ready(let statePublicKey) = state,
+              statePublicKey == restoredLocalPublicKey,
+              let catalog = try catalogStorage.load(),
+              catalog.selectedRole == .human,
+              let entry = catalog.entry(for: .human),
+              case .localKey = entry.capability,
+              entry.expectedPublicKey == restoredLocalPublicKey,
+              try engineAccess.engine.activeAccount() == restoredLocalPublicKey else {
+            return false
+        }
+        return true
+    }
+
+    private func cleanStaleSelectionOrRemainSignedOut() throws {
+        if try engineAccess.engine.activeAccount() != nil {
+            try engineAccess.engine.setActiveAccount(nil)
+            try block(.orphanedRestoredLocal(issue: 589))
+        }
+        if try catalogStorage.load() != nil {
+            try catalogStorage.clear()
+        }
+        restoredLocalPublicKey = nil
         blocker = nil
         state = .signedOut
     }
