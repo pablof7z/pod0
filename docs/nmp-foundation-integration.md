@@ -3,8 +3,9 @@
 Pod0's app-owned boundary is `Pod0NMPEngineAccess`. The sole production owner
 is `Pod0NMPComposition`; product slices receive that dependency and must not
 construct another `NMPEngine`. `Pod0NMPConfiguration` is immutable for an
-engine lifetime. A relay edit calls `stageOperatorRelay` and becomes effective
-only at the next controlled construction.
+engine lifetime. A relay edit persists the next-construction operator policy;
+it neither mutates nor overlaps the current engine. The settings UI states that
+the changed value becomes effective after Podcastr fully closes and relaunches.
 
 The selected source baseline is
 `317b7caaf5a83da1e6899efcc5aeb90a85b808c3`. It must match the

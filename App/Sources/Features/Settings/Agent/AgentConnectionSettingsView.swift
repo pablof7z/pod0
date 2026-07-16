@@ -40,7 +40,7 @@ struct AgentConnectionSettingsView: View {
         } header: {
             Label("Relay", systemImage: "antenna.radiowaves.left.and.right")
         } footer: {
-            Text("Your agent connects here to send and receive Nostr messages.")
+            Text("Your agent uses this relay. Human-account Nostr data uses a changed relay after you fully close and reopen Podcastr; the current session stays unchanged.")
         }
     }
 

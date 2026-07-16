@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-16T14:22:11Z",
+      "lines": [
+        "Relay settings now explain when a changed Nostr relay takes effect."
+      ]
+    },
+    {
       "shipped_at": "2026-07-16T14:05:45Z",
       "lines": [
         "Clear All Data now states exactly what is deleted while keeping your identities and pending Nostr deliveries safe."
