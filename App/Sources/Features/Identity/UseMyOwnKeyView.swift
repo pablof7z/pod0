@@ -201,7 +201,7 @@ struct UseMyOwnKeyView: View {
         defer { importing = false }
         inlineError = nil
         do {
-            try identity.importNsec(nsec.trimmed)
+            try await identity.importNsec(nsec.trimmed)
             Haptics.success()
             onImportComplete()
         } catch {

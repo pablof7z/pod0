@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A33333333333333333333333 /* UserIdentityStore+NMP.swift in Sources */ = {isa = PBXBuildFile; fileRef = B33333333333333333333333 /* UserIdentityStore+NMP.swift */; };
 		00398F2D3677B88258458499 /* AIChapterCompiler.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9B23681B1B9A54B3F9C90E /* AIChapterCompiler.swift */; };
 		00D0604F92F2793F9CA70A84 /* HighlightedTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E39D85E4B13CD42BCEDDFE48 /* HighlightedTextTests.swift */; };
 		02E8BC01AB1737A2495F0578 /* PlaybackState+Queue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 641B7B6727D57CA53D90E43D /* PlaybackState+Queue.swift */; };
@@ -753,6 +754,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		B33333333333333333333333 /* UserIdentityStore+NMP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserIdentityStore+NMP.swift"; sourceTree = "<group>"; };
 		0066858CC2F8B6E6B570CD47 /* Settings+Embeddings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Settings+Embeddings.swift"; sourceTree = "<group>"; };
 		00B04A75C4999049C420ABF6 /* SortedSubscriptionsByRecencyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SortedSubscriptionsByRecencyTests.swift; sourceTree = "<group>"; };
 		00CCF5D6D1819CA4405F0B7A /* AudioSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionCoordinator.swift; sourceTree = "<group>"; };
@@ -2377,6 +2379,7 @@
 				2299771095C075BD82AF670E /* TranscriptStore.swift */,
 				0E4E8F90C5ECE5E06F40C338 /* UserIdentityStore.swift */,
 				AD5183645DBEDD1F73FC5F85 /* UserIdentityStore+NIP46.swift */,
+				B33333333333333333333333 /* UserIdentityStore+NMP.swift */,
 				39D57FAE40C99A4DB66FEF1D /* UserIdentityStore+ProfileFetch.swift */,
 				70F290F8881329E5171D2E7F /* UserIdentityStore+Publishing.swift */,
 				4EC9A01379FA98400B6083FB /* VoiceItemService.swift */,
@@ -3342,6 +3345,7 @@
 				7B38745DD2DF0D924C751D64 /* TranscriptIngestService.swift in Sources */,
 				1A2FCFE5ADE3267030656C9B /* TranscriptStore.swift in Sources */,
 				48D3774FEED606C4CB30FB6E /* UserIdentityStore+NIP46.swift in Sources */,
+				A33333333333333333333333 /* UserIdentityStore+NMP.swift in Sources */,
 				65AEB511A71F7EE749883F1C /* UserIdentityStore+ProfileFetch.swift in Sources */,
 				A9BBB154AB602CDBD91B29E4 /* UserIdentityStore+Publishing.swift in Sources */,
 				DF02B6BAFEC8BCDC11649076 /* UserIdentityStore.swift in Sources */,

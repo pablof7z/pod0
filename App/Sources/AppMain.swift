@@ -44,10 +44,9 @@ struct PodcastrApp: App {
                 .environment(store)
                 .environment(userIdentity)
                 .environment(askCoordinator)
-                .task { userIdentity.start() }
                 .task { CarPlayController.shared.attach(store: store) }
                 #if canImport(NMP)
-                .task { startNMPIfNeeded() }
+                .task { await startNMPIfNeeded() }
                 #endif
                 .task {
                     scheduledTaskRunner = AgentScheduledTaskRunner(store: store)
@@ -81,7 +80,7 @@ struct PodcastrApp: App {
     #if canImport(NMP)
     /// Starts exactly one clean NMP store owner for this process. Product
     /// slices receive this retained composition; no legacy state is imported.
-    private func startNMPIfNeeded() {
+    private func startNMPIfNeeded() async {
         guard nmpComposition == nil else { return }
         do {
             let layout = try Pod0NMPStoreLayout.applicationSupport()
@@ -92,10 +91,12 @@ struct PodcastrApp: App {
                 operatorRelay: settings.nostrEnabled ? settings.nostrRelayURL : nil,
                 fallbackRelays: []
             )
-            nmpComposition = try Pod0NMPComposition(
+            let composition = try Pod0NMPComposition(
                 configuration: configuration,
                 layout: layout
             )
+            nmpComposition = composition
+            await userIdentity.start(composition: composition)
         } catch {
             Self.nmpLogger.error("NMP startup failed closed: \(String(describing: error), privacy: .public)")
         }

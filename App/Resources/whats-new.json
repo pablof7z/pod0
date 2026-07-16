@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-16T12:30:10Z",
+      "lines": [
+        "Your Nostr identity now signs, publishes, and uploads profile photos through Pod0's single secure identity engine."
+      ]
+    },
+    {
       "shipped_at": "2026-07-16T12:10:35Z",
       "lines": [
         "Episode pages now clearly explain why comments remain paused instead of showing a disabled composer or a retry that cannot succeed."

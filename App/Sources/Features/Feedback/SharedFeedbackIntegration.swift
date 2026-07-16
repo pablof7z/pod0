@@ -19,10 +19,10 @@ struct PodcastShakeFeedbackSigner: ShakeFeedbackSigner, @unchecked Sendable {
     }
 
     func signFeedbackEvent(_ draft: ShakeFeedbackEventDraft) async throws -> ShakeFeedbackEvent {
-        guard let signer = await MainActor.run(body: { identity?.signer }) else {
+        guard let identity else {
             throw ShakeFeedbackError.missingIdentity
         }
-        let event = try await signer.sign(NostrEventDraft(
+        let event = try await identity.signThroughNMP(NostrEventDraft(
             kind: draft.kind,
             content: draft.content,
             tags: draft.tags,

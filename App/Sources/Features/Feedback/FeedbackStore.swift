@@ -19,7 +19,7 @@ final class FeedbackStore {
         isLoading = true
         loadError = nil
         do {
-            let events = try await client.fetchProjectEvents(signer: identity.signer)
+            let events = try await client.fetchProjectEvents(signer: nil)
             threads = buildThreads(from: events, localPubkey: identity.publicKeyHex)
         } catch {
             logger.error("Failed to load feedback threads: \(error, privacy: .public)")
@@ -66,7 +66,7 @@ final class FeedbackStore {
 
     func loadReplies(for thread: FeedbackThread, identity: UserIdentityStore) async {
         do {
-            let events = try await client.fetchReplies(rootEventID: thread.eventID, signer: identity.signer)
+            let events = try await client.fetchReplies(rootEventID: thread.eventID, signer: nil)
             guard let idx = threads.firstIndex(where: { $0.id == thread.id }) else { return }
             let existing = Set(threads[idx].replies.map(\.eventID))
             let replies = events

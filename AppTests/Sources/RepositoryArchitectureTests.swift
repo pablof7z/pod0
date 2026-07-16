@@ -17,6 +17,39 @@ final class RepositoryArchitectureTests: XCTestCase {
         XCTAssertEqual(appMain.components(separatedBy: "Pod0NMPComposition(").count - 1, 1)
     }
 
+    func testHumanIdentityStartsFromTheSingleNMPComposition() throws {
+        let appMain = try source("App/Sources/AppMain.swift")
+        let identityCore = try source("App/Sources/Services/UserIdentityStore.swift")
+        let identityNMP = try source("App/Sources/Services/UserIdentityStore+NMP.swift")
+        let nip46 = try source("App/Sources/Services/UserIdentityStore+NIP46.swift")
+
+        XCTAssertFalse(appMain.contains(".task { userIdentity.start() }"))
+        XCTAssertTrue(appMain.contains("await userIdentity.start(composition: composition)"))
+        XCTAssertFalse(identityCore.contains("user-private-key-hex"))
+        XCTAssertFalse(identityCore.contains("nip46-session"))
+        XCTAssertFalse(identityNMP.contains("RemoteSigner(relays:"))
+        XCTAssertFalse(identityNMP.contains("NostrKeyPair.generate"))
+        XCTAssertTrue(identityNMP.contains("nmpKeyGenerationUnavailable"))
+        XCTAssertTrue(identityCore.contains("#588"))
+        XCTAssertFalse(nip46.contains("RemoteSigner(relays:"))
+        XCTAssertTrue(nip46.contains("#571"))
+        XCTAssertTrue(identityNMP.contains("NMPKeychainAccountStore("))
+        XCTAssertTrue(identityNMP.contains(".nmp-human-identity"))
+    }
+
+    func testCleanCommentsBoundaryNeverUsesCustomSigners() throws {
+        let repository = try source("App/Sources/Services/EpisodeCommentsRepository.swift")
+        let model = try source("App/Sources/Features/EpisodeDetail/EpisodeCommentsModel.swift")
+        let section = try source("App/Sources/Features/EpisodeDetail/EpisodeCommentsSection.swift")
+        let combined = repository + model + section
+
+        XCTAssertFalse(combined.contains("UserIdentityStore"))
+        XCTAssertFalse(combined.contains("NostrSigner"))
+        XCTAssertFalse(combined.contains("LocalKeySigner"))
+        XCTAssertFalse(combined.contains("RemoteSigner"))
+        XCTAssertTrue(repository.contains("pablof7z/nmp#572"))
+    }
+
     func testRepositoryDependenciesAreSelfContainedAndPinned() throws {
         let project = try source("Project.swift")
         let revision = try source("Vendor/nmp-revision.txt")

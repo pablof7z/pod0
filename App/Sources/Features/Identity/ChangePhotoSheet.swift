@@ -19,11 +19,8 @@ struct ChangePhotoSheet: View {
     @State private var photoItem: PhotosPickerItem?
     @State private var uploadState: UploadState = .idle
 
-    private let uploader: any BlossomUploading
-
-    init(pictureURL: Binding<String>, uploader: any BlossomUploading = BlossomUploader()) {
+    init(pictureURL: Binding<String>) {
         self._pictureURL = pictureURL
-        self.uploader = uploader
     }
 
     private enum UploadState: Equatable {
@@ -108,16 +105,8 @@ struct ChangePhotoSheet: View {
                 uploadState = .failed("Could not read the selected photo.")
                 return
             }
-            guard let signer = identity.signer else {
-                uploadState = .failed("Sign in to upload a photo.")
-                return
-            }
             let prepared = try Self.resizeJPEG(raw, maxEdge: 800, quality: 0.85)
-            let url = try await uploader.upload(
-                data: prepared,
-                contentType: "image/jpeg",
-                signer: signer
-            )
+            let url = try await identity.uploadProfilePhoto(prepared, contentType: "image/jpeg")
             pictureURL = url.absoluteString
             Haptics.success()
             dismiss()

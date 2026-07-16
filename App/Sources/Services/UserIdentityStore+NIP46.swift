@@ -1,41 +1,23 @@
 import Foundation
 
-// MARK: - UserIdentityStore nostrconnect flow
-//
-// Keeps nostrconnect pairing logic out of the 500-line-capped core file.
-// Uses the internal seams added to the main file.
-
+#if canImport(NMP)
 extension UserIdentityStore {
-
-    /// Begin nostrconnect:// pairing. Generates the nostrconnect URI and calls
-    /// `onURI` synchronously so the UI can display the QR code or open a signer
-    /// app immediately. Blocks until pairing completes or the 5-minute timeout
-    /// expires. On success the identity switches to `.remoteSigner` and the
-    /// connection is persisted for automatic reconnect on next launch.
+    /// Client-initiated NIP-46 remains fail-closed until upstream NMP #571
+    /// exposes a secure checkpoint and cold-start restore surface. This path
+    /// never falls back to Pod0's retired RemoteSigner transport.
     func connectViaNostrConnect(
-        relay: URL = RemoteSigner.nostrConnectDefaultRelay,
-        onURI: @escaping @Sendable (String) -> Void
+        relay _: URL = URL(string: "wss://relay.nsec.app")!,
+        onURI _: @escaping @Sendable (String) -> Void
     ) async {
-        _beginNostrConnect()
+        remoteSignerState = .connecting
         do {
-            let sessionPair = try NostrKeyPair.generate()
-            let (signer, userPub) = try await RemoteSigner.nostrConnect(
-                relayURL: relay,
-                sessionKeyPair: sessionPair,
-                onURI: onURI
-            )
-            try _adoptNostrConnectSigner(
-                signer: signer,
-                userPubkeyHex: userPub,
-                sessionPrivKeyHex: sessionPair.privateKeyHex,
-                relayAbsoluteString: relay.absoluteString
-            )
-            loadCachedProfile(for: userPub)
-            let pub = userPub
-            Task { await self.fetchAndCacheProfile(pubkeyHex: pub) }
+            guard let lifecycle = nmpLifecycle else {
+                throw UserIdentityError.nmpUnavailable
+            }
+            try lifecycle.connectClientInitiated(relays: [])
         } catch {
-            let msg = (error as? LocalizedError)?.errorDescription ?? "\(error)"
-            _failNostrConnect(msg)
+            failIdentity(error)
         }
     }
 }
+#endif

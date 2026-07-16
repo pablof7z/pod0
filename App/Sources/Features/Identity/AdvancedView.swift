@@ -126,7 +126,7 @@ struct AdvancedView: View {
     private func startNewAccount() async {
         // Per §4.9: clear → start (silently regenerates a new local key).
         identity.clearIdentity()
-        identity.start()
+        await identity.start()
         Haptics.medium()
     }
 }
