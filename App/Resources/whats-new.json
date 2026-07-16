@@ -356,7 +356,7 @@
       ]
     },
     {
-      "shipped_at": "2026-05-13T12:00:00Z",
+      "shipped_at": "2026-05-13T12:00:01Z",
       "lines": [
         "Feedback grew up: tap the new mic button to dictate a feedback thread, switch the Mine/Everyone segment and other people's threads now show their display name, and inside a thread you'll see avatars, name headers, and properly rendered markdown — with image URLs in replies showing inline instead of as raw text."
       ]
@@ -483,7 +483,7 @@
       ]
     },
     {
-      "shipped_at": "2026-05-12T18:00:00Z",
+      "shipped_at": "2026-05-12T18:00:01Z",
       "lines": [
         "The Wiki tab now uses the same background and visual style as the rest of the app."
       ]
@@ -513,7 +513,7 @@
       ]
     },
     {
-      "shipped_at": "2026-05-12T12:00:00Z",
+      "shipped_at": "2026-05-12T12:00:01Z",
       "lines": [
         "Your profile now shows your real Nostr display name and picture after signing in with your nsec — no more auto-generated placeholders."
       ]
@@ -633,7 +633,7 @@
       ]
     },
     {
-      "shipped_at": "2026-05-12T00:00:00Z",
+      "shipped_at": "2026-05-12T00:00:01Z",
       "lines": [
         "New: Diagnostics sheet on every episode (••• → Diagnostics) shows the full audit log — what was downloaded, when, whether transcription was attempted, which provider, why it was skipped, and the exact error if it failed. Retry buttons let you re-run the pipeline and watch fresh events stream in."
       ]
@@ -645,25 +645,25 @@
       ]
     },
     {
-      "shipped_at": "2026-05-11T23:30:00Z",
+      "shipped_at": "2026-05-11T23:30:01Z",
       "lines": [
         "Player redesigned — compact artwork and episode info at the top, AirPlay and share in the toolbar, sleep timer in the ••• menu."
       ]
     },
     {
-      "shipped_at": "2026-05-11T23:00:00Z",
+      "shipped_at": "2026-05-11T23:00:01Z",
       "lines": [
         "Search is now snappier — results only update after you pause typing, so fast keystrokes no longer cause lag."
       ]
     },
     {
-      "shipped_at": "2026-05-11T22:30:00Z",
+      "shipped_at": "2026-05-11T22:30:01Z",
       "lines": [
         "What's New now stays out of the way — once you've seen an entry, you won't see it again, even after reinstalling. Fresh installs start silent; only entries shipped from now on will pop the sheet."
       ]
     },
     {
-      "shipped_at": "2026-05-11T22:00:00Z",
+      "shipped_at": "2026-05-11T22:00:01Z",
       "lines": [
         "Fixed a bug where tapping any text field would immediately dismiss the keyboard — nothing was typeable."
       ]
@@ -675,7 +675,7 @@
       ]
     },
     {
-      "shipped_at": "2026-05-11T21:00:00Z",
+      "shipped_at": "2026-05-11T21:00:01Z",
       "lines": [
         "Fixed a hard crash when Apple's on-device transcription kicked off — the analyzer was being driven twice through different init paths."
       ]
@@ -687,13 +687,13 @@
       ]
     },
     {
-      "shipped_at": "2026-05-11T20:00:00Z",
+      "shipped_at": "2026-05-11T20:00:01Z",
       "lines": [
         "Apple on-device transcription is now available — uses iOS 26 SpeechTranscriber on Apple Silicon with no API key required. Switch to it under Settings → Intelligence → Models → Speech."
       ]
     },
     {
-      "shipped_at": "2026-05-11T19:00:00Z",
+      "shipped_at": "2026-05-11T19:00:01Z",
       "lines": [
         "Transcription now supports OpenRouter Whisper in addition to ElevenLabs Scribe — switch providers under Settings → Intelligence → Models → Speech."
       ]
@@ -723,31 +723,31 @@
       ]
     },
     {
-      "shipped_at": "2026-05-11T15:00:00Z",
+      "shipped_at": "2026-05-11T15:00:01Z",
       "lines": [
         "Home screen is cleaner — removed unplayed count badges on artwork, the date header, and filter chips."
       ]
     },
     {
-      "shipped_at": "2026-05-11T15:00:00Z",
+      "shipped_at": "2026-05-11T15:00:02Z",
       "lines": [
         "Perplexity online search now works with just your OpenRouter key — no separate Perplexity account required."
       ]
     },
     {
-      "shipped_at": "2026-05-11T15:00:00Z",
+      "shipped_at": "2026-05-11T15:00:03Z",
       "lines": [
         "What's New now actually shows you what's new — the modal was always marking everything as seen before you could read it."
       ]
     },
     {
-      "shipped_at": "2026-05-11T14:00:00Z",
+      "shipped_at": "2026-05-11T14:00:01Z",
       "lines": [
         "Removed the filter and layout menu from the home toolbar for a cleaner look."
       ]
     },
     {
-      "shipped_at": "2026-05-11T14:00:00Z",
+      "shipped_at": "2026-05-11T14:00:02Z",
       "lines": [
         "The full-screen player now shows clearly readable elapsed and remaining times (e.g. 12:34 / -47:26) under the waveform scrubber."
       ]
@@ -759,13 +759,13 @@
       ]
     },
     {
-      "shipped_at": "2026-05-11T13:00:00Z",
+      "shipped_at": "2026-05-11T13:00:01Z",
       "lines": [
         "Episode rows now use a slim 2 px progress bar instead of text pills: primary-colored while downloading, accent-colored while transcribing. Not-yet-downloaded episodes are subtly dimmed so you can tell at a glance which ones are ready offline."
       ]
     },
     {
-      "shipped_at": "2026-05-11T12:00:00Z",
+      "shipped_at": "2026-05-11T12:00:01Z",
       "lines": [
         "Tap the Home title to browse categories — each category shows podcast artwork, a description, and your unplayed count. Tap the gear on any category to set its transcription, wiki, and briefings preferences independently. Selecting a category scopes the whole feed to that section."
       ]
