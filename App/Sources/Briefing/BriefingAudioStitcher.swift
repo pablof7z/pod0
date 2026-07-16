@@ -75,7 +75,7 @@ struct BriefingAudioStitcher: Sendable {
             // Source had no audio — stitch a silence pad of the requested
             // duration so the timeline keeps lining up. A dropped track
             // would silently shift every later cue.
-            try insertSilence(
+            try await insertSilence(
                 into: audioTrack,
                 at: &cursor,
                 durationSeconds: track.durationSeconds
@@ -116,7 +116,7 @@ struct BriefingAudioStitcher: Sendable {
         into audioTrack: AVMutableCompositionTrack,
         at cursor: inout CMTime,
         durationSeconds: TimeInterval
-    ) throws {
+    ) async throws {
         guard durationSeconds > 0 else { return }
         let tmp = FileManager.default.temporaryDirectory
             .appendingPathComponent("briefing-silence-\(UUID().uuidString).m4a")
@@ -124,17 +124,7 @@ struct BriefingAudioStitcher: Sendable {
         defer { try? FileManager.default.removeItem(at: tmp) }
 
         let asset = AVURLAsset(url: tmp)
-        // We just wrote this file synchronously; loadTracks(withMediaType:)
-        // is required on iOS 16+ and works fine even on freshly-written
-        // assets. Bridge the async API into our throwing-sync context via a
-        // semaphore.
-        let semaphore = DispatchSemaphore(value: 0)
-        nonisolated(unsafe) var loaded: [AVAssetTrack] = []
-        Task.detached {
-            loaded = (try? await asset.loadTracks(withMediaType: .audio)) ?? []
-            semaphore.signal()
-        }
-        semaphore.wait()
+        let loaded = (try? await asset.loadTracks(withMediaType: .audio)) ?? []
         guard let source = loaded.first else { return }
 
         let timescale: CMTimeScale = 600
