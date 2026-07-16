@@ -36,4 +36,29 @@ final class EpisodeCommentReceiptStoreTests: XCTestCase {
 
         XCTAssertTrue(store.records(for: .episode(guid: "episode")).isEmpty)
     }
+
+    func testRemoveAllClearsEveryTargetAndPersistsTheReset() throws {
+        let suite = "EpisodeCommentReceiptStoreTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = UserDefaultsEpisodeCommentReceiptStore(defaults: defaults)
+        store.save(PendingEpisodeCommentReceipt(
+            receiptID: 1,
+            target: .episode(guid: "one"),
+            eventID: nil,
+            submittedAt: Date()
+        ))
+        store.save(PendingEpisodeCommentReceipt(
+            receiptID: 2,
+            target: .episode(guid: "two"),
+            eventID: "event-two",
+            submittedAt: Date()
+        ))
+
+        store.removeAll()
+        let reopened = UserDefaultsEpisodeCommentReceiptStore(defaults: defaults)
+
+        XCTAssertTrue(reopened.records(for: .episode(guid: "one")).isEmpty)
+        XCTAssertTrue(reopened.records(for: .episode(guid: "two")).isEmpty)
+    }
 }

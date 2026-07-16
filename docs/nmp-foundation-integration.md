@@ -43,6 +43,33 @@ feedback feature and its package dependency are removed.
 No scene-phase callback, reconnect timer, subscription replay, polling loop,
 or settings observer constructs or repairs NMP.
 
+## Backup and reset decision record
+
+The canonical store is exactly
+`Application Support/podcastr/nmp/canonical.redb`. Its root directory uses
+`NSFileProtectionCompleteUntilFirstUserAuthentication`: it is unavailable until
+the first device unlock after boot, then remains usable for background work.
+The root is excluded from device and cloud backup because canonical events and
+source evidence are reacquired by NMP, while identity secrets remain in
+Keychain.
+
+Pod0 owns four separate policies:
+
+| Operation | AppState | NMP store and durable writes | Receipt annotations | Keychain |
+| --- | --- | --- | --- | --- |
+| Cache-preserving sign-out | Preserve | Preserve, including pending writes | Preserve | Detach only the exact active human identity |
+| Clear app data, preserve identities | Clear product data; preserve settings | Preserve | Clear | Preserve all current identities and credentials |
+| Reset Nostr data | Preserve | Reset only after engine shutdown | Clear | Preserve all current identities and credentials |
+| Mutually-untrusted-user handoff | Clear all | Reset only after engine shutdown | Clear | Clear all current Pod0 identities and credentials |
+
+Ordinary sign-out never cancels or retargets an accepted durable write. Nostr
+store reset and untrusted-user handoff require distinct explicit confirmation
+values; they are not aliases for the existing Clear All Data alert. Reset first
+shuts down the composition. If deletion fails, the composition stays shut down
+and the same idempotent reset can be retried before dependent Pod0 data is
+cleared. A successful reset requires a fresh app composition before Nostr or
+identity features resume.
+
 ## Exact upstream blocker
 
 The selected revision accepts caller-supplied secret material through

@@ -65,6 +65,10 @@ final class Pod0NMPFoundationTests: XCTestCase {
         XCTAssertEqual(layout.storeURL.lastPathComponent, "canonical.redb")
         XCTAssertEqual(layout.backupPolicy, .excludedFromDeviceBackup)
         XCTAssertEqual(
+            layout.fileProtectionPolicy,
+            .completeUntilFirstUserAuthentication
+        )
+        XCTAssertEqual(
             try root.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup,
             true
         )

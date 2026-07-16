@@ -47,13 +47,35 @@ extension UserIdentityStore {
 
     func clearIdentity() {
         do {
-            try nmpLifecycle?.cachePreservingSignOut()
-            loginError = nil
-            clearPublishedState()
+            try cachePreservingSignOut()
         } catch {
             loginError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             logger.error("NMP identity sign-out failed: \(String(describing: error), privacy: .public)")
         }
+    }
+
+    /// Ordinary sign-out detaches only the active human signing capability.
+    /// Canonical NMP rows, durable obligations, receipts, product data, and
+    /// unrelated Keychain credentials remain untouched.
+    func cachePreservingSignOut() throws {
+        guard let nmpLifecycle else { throw UserIdentityError.nmpUnavailable }
+        try nmpLifecycle.cachePreservingSignOut()
+        loginError = nil
+        clearPublishedState()
+    }
+
+    func markNMPCompositionStoppedForReset() {
+        nmpLifecycle = nil
+        nmpComposition = nil
+        clearPublishedState()
+        loginError = "Nostr data reset requires an app restart before identity features resume."
+    }
+
+    func finishMutuallyUntrustedUserReset() {
+        nmpLifecycle = nil
+        nmpComposition = nil
+        loginError = nil
+        clearPublishedState()
     }
 
     func connectRemoteSigner(uri: String) async {

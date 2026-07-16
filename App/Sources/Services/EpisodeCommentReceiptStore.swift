@@ -16,6 +16,7 @@ protocol EpisodeCommentReceiptStore: Sendable {
     func records(for target: CommentTarget) -> [PendingEpisodeCommentReceipt]
     func save(_ record: PendingEpisodeCommentReceipt)
     func remove(receiptID: UInt64)
+    func removeAll()
 }
 
 /// App-owned durable index of NMP receipt ids. NMP owns the durable outbox;
@@ -49,6 +50,10 @@ final class UserDefaultsEpisodeCommentReceiptStore: EpisodeCommentReceiptStore, 
             records.removeAll { $0.receiptID == receiptID }
             persist(records)
         }
+    }
+
+    func removeAll() {
+        lock.withLock { defaults.removeObject(forKey: key) }
     }
 
     private func load() -> [PendingEpisodeCommentReceipt] {

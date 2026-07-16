@@ -248,4 +248,8 @@ private final class MemoryReceiptStore: EpisodeCommentReceiptStore, @unchecked S
     func remove(receiptID: UInt64) {
         lock.withLock { values.removeAll { $0.receiptID == receiptID } }
     }
+
+    func removeAll() {
+        lock.withLock { values.removeAll() }
+    }
 }

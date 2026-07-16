@@ -18,6 +18,9 @@ enum Pod0NMPLifecycleOperation: Sendable, Equatable {
     /// Detaches live signing capability while retaining public cache and
     /// parked durable obligations.
     case cachePreservingSignOut
+    /// Deletes Pod0 product state and receipt annotations while preserving the
+    /// NMP store and every identity or credential in Keychain.
+    case clearAppDataPreservingIdentities
     /// Stops the engine and deletes only its canonical store. Keychain and
     /// product state are deliberately outside this operation.
     case resetNostrData

@@ -61,6 +61,10 @@ enum Pod0HumanIdentityError: LocalizedError, Equatable {
 final class Pod0HumanIdentityLifecycle {
     nonisolated static let localSecretReference = "human-local-v1"
 
+    nonisolated static func localKeychainService(bundleIdentifier: String) -> String {
+        "\(bundleIdentifier).nmp-human-identity"
+    }
+
     let engineAccess: any Pod0NMPEngineAccess
     let catalogStorage: any Pod0IdentityCatalogStorage
     var localRegistration: NMPAccountRegistration?

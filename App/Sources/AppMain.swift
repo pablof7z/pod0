@@ -99,7 +99,9 @@ struct PodcastrApp: App {
                 configuration: configuration,
                 layout: layout,
                 localAccountStore: NMPKeychainAccountStore(
-                    service: "\(Bundle.main.bundleIdentifier ?? "Podcastr").nmp-human-identity",
+                    service: Pod0HumanIdentityLifecycle.localKeychainService(
+                        bundleIdentifier: Bundle.main.bundleIdentifier ?? "Podcastr"
+                    ),
                     account: Pod0HumanIdentityLifecycle.localSecretReference
                 )
             )

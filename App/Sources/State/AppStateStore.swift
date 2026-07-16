@@ -287,30 +287,6 @@ final class AppStateStore {
         state.settings = settings
     }
 
-    /// Wipes all user data while preserving API credentials and Nostr identity.
-    func clearAllData() {
-        // Drop any queued position writes — they would target episode IDs
-        // about to disappear and could resurrect deleted records on the
-        // next flush.
-        positionFlushTask?.cancel()
-        positionFlushTask = nil
-        widgetReloadTask?.cancel()
-        widgetReloadTask = nil
-        positionCache.removeAll()
-
-        let preserved = state.settings
-        performMutationBatch {
-            state = AppState()
-            state.settings = preserved
-            // `state = AppState()` above changes the episode array's count from
-            // N to 0, so the `state.didSet` fingerprint catches it and rebuilds
-            // the projections to empty. Explicit call here is belt-and-
-            // suspenders against future refactors that might bypass didSet.
-            invalidateEpisodeProjections()
-        }
-        SpotlightIndexer.clearAll()
-    }
-
     deinit {
         // NotificationCenter retains observer tokens until they're removed,
         // even after the registering instance dies. Without this, the

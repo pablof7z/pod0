@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-16T14:05:45Z",
+      "lines": [
+        "Clear All Data now states exactly what is deleted while keeping your identities and pending Nostr deliveries safe."
+      ]
+    },
+    {
       "shipped_at": "2026-07-16T13:49:03Z",
       "lines": [
         "Signing out now distinguishes restored accounts from empty or stale identity setup."

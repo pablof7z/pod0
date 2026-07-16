@@ -27,6 +27,10 @@
 		075002722523E70A6139A6C9 /* AppStateStore+Categories.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCF0BA28F287A96332AE5434 /* AppStateStore+Categories.swift */; };
 		075F7D797596F09D81BFC8A6 /* HomeCategoryScopeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12B4461A663682009D2F3354 /* HomeCategoryScopeTests.swift */; };
 		07D4A3491AF987C907FAC8A5 /* Pod0NMPComposition.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79A74C0DF57086A21F62D77 /* Pod0NMPComposition.swift */; };
+		A6F000000000000000000011 /* Pod0ResetPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6F000000000000000000001 /* Pod0ResetPolicy.swift */; };
+		A6F000000000000000000012 /* Pod0CurrentKeychainResetter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6F000000000000000000002 /* Pod0CurrentKeychainResetter.swift */; };
+		A6F000000000000000000013 /* AppStateStore+Reset.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6F000000000000000000003 /* AppStateStore+Reset.swift */; };
+		A6F000000000000000000014 /* Pod0ResetPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6F000000000000000000004 /* Pod0ResetPolicyTests.swift */; };
 		07DAAB648D29941A9F845B29 /* VTTParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F18BBA6536A206E89AD9A0D1 /* VTTParser.swift */; };
 		0852567ED64BCB566AD30A4F /* AgentChatSession+Turns.swift in Sources */ = {isa = PBXBuildFile; fileRef = B744C4F8C6DF1A5CC0F5A5F4 /* AgentChatSession+Turns.swift */; };
 		0855C2D41FA34E78E493294B /* PlaybackTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 880E1535B17BB172E39E05CB /* PlaybackTypes.swift */; };
@@ -781,6 +785,10 @@
 		0EE45375F2D1241E58F85BF5 /* PerplexityCredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerplexityCredentialStore.swift; sourceTree = "<group>"; };
 		0EFDF992EC3145B6110E93A2 /* InMemoryVectorStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InMemoryVectorStore.swift; sourceTree = "<group>"; };
 		0F28C02741F033CD893622CF /* AppStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateStore.swift; sourceTree = "<group>"; };
+		A6F000000000000000000001 /* Pod0ResetPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pod0ResetPolicy.swift; sourceTree = "<group>"; };
+		A6F000000000000000000002 /* Pod0CurrentKeychainResetter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pod0CurrentKeychainResetter.swift; sourceTree = "<group>"; };
+		A6F000000000000000000003 /* AppStateStore+Reset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+Reset.swift"; sourceTree = "<group>"; };
+		A6F000000000000000000004 /* Pod0ResetPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pod0ResetPolicyTests.swift; sourceTree = "<group>"; };
 		0F5F672D83C222568CEAC19A /* AgentActivityLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentActivityLogView.swift; sourceTree = "<group>"; };
 		0F8B56D62776100C8032E4BF /* AgentRunLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentRunLog.swift; sourceTree = "<group>"; };
 		104B912814FDDF7162C58B54 /* PlaybackState+AdSkip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlaybackState+AdSkip.swift"; sourceTree = "<group>"; };
@@ -1794,6 +1802,8 @@
 				DB61EFEBED3AF44C3EAC31A1 /* Pod0HumanIdentityLifecycle+Rollback.swift */,
 				8045240522E8A2AD95B21ED7 /* Pod0IdentityCatalog.swift */,
 				E79A74C0DF57086A21F62D77 /* Pod0NMPComposition.swift */,
+				A6F000000000000000000002 /* Pod0CurrentKeychainResetter.swift */,
+				A6F000000000000000000001 /* Pod0ResetPolicy.swift */,
 				033CF6668836579C00F7E887 /* Pod0NMPComposition+Diagnostics.swift */,
 				6132F3AD38B527A9099D0BBF /* Pod0NMPConfiguration.swift */,
 				2A943FDB86BFC74DB01894A8 /* Pod0NMPDiagnostics.swift */,
@@ -1989,6 +1999,7 @@
 			isa = PBXGroup;
 			children = (
 				0F28C02741F033CD893622CF /* AppStateStore.swift */,
+				A6F000000000000000000003 /* AppStateStore+Reset.swift */,
 				48E26BD2B10A058464483380 /* AppStateStore+AdSegments.swift */,
 				CA0FE5F340F1575C19BFB4F5 /* AppStateStore+AgentActivity.swift */,
 				BCF0BA28F287A96332AE5434 /* AppStateStore+Categories.swift */,
@@ -2158,6 +2169,7 @@
 				99D27979D4F089772D012ED5 /* Pod0HumanIdentityLifecycleTestSupport.swift */,
 				7BF68E6B700DE99BD1A95000 /* Pod0IdentityCatalogTests.swift */,
 				7FC6F9697FB7667691B485C4 /* Pod0NMPFoundationTests.swift */,
+				A6F000000000000000000004 /* Pod0ResetPolicyTests.swift */,
 				6C26132310DE731CD5831919 /* PodcastSearchTests.swift */,
 				41B4E77282BCB4669C4790B6 /* RAGSearchTests.swift */,
 				F31EDC6E65D81980B51C014E /* RelativeTimestampTests.swift */,
@@ -3145,6 +3157,8 @@
 				D4539881773315EED0345DC8 /* Pod0IdentityCatalog.swift in Sources */,
 				BA0963B48EEE1D0F92529DCD /* Pod0NMPComposition+Diagnostics.swift in Sources */,
 				07D4A3491AF987C907FAC8A5 /* Pod0NMPComposition.swift in Sources */,
+				A6F000000000000000000012 /* Pod0CurrentKeychainResetter.swift in Sources */,
+				A6F000000000000000000011 /* Pod0ResetPolicy.swift in Sources */,
 				E1D2F4B919A7EDA102D51785 /* Pod0NMPConfiguration.swift in Sources */,
 				878402E3A6FD09289F4709EB /* Pod0NMPDiagnostics.swift in Sources */,
 				1CA5712A982531818D2BE440 /* Pod0NMPStoreLayout.swift in Sources */,
@@ -3266,6 +3280,7 @@
 				C77DBC83450A4C649F71B3A8 /* AppStateStore+Threading.swift in Sources */,
 				A1D6FA4F4A84E0A57DB21F02 /* AppStateStore+Triage.swift in Sources */,
 				EDBA6A2CCE8CD4F86DB9023F /* AppStateStore.swift in Sources */,
+				A6F000000000000000000013 /* AppStateStore+Reset.swift in Sources */,
 				957745942FC5E37DE36EA2CD /* CostLedger.swift in Sources */,
 				9C79FFEF401FD320193872B7 /* EpisodeSQLiteStore.swift in Sources */,
 				898C82BA93DFAACF920E86F4 /* Persistence.swift in Sources */,
@@ -3367,6 +3382,7 @@
 				E0E1C68319100E5EF7A48C9F /* Pod0HumanIdentityLifecycleTests.swift in Sources */,
 				C068953878F239D4739C410B /* Pod0IdentityCatalogTests.swift in Sources */,
 				40808BF34CEE552E626FD940 /* Pod0NMPFoundationTests.swift in Sources */,
+				A6F000000000000000000014 /* Pod0ResetPolicyTests.swift in Sources */,
 				0D4407FCB8AB360349AD7EA7 /* PodcastSearchTests.swift in Sources */,
 				3A303C43DE097E16F50F0407 /* RAGSearchTests.swift in Sources */,
 				89D7C214BCD15840294A8650 /* RSSDateParsingTests.swift in Sources */,

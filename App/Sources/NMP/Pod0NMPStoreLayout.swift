@@ -8,14 +8,26 @@ struct Pod0NMPStoreLayout: Sendable, Hashable {
         case excludedFromDeviceBackup
     }
 
+    enum FileProtectionPolicy: String, Sendable, Codable {
+        /// The store is unavailable until the first device unlock after boot,
+        /// then remains available for background NMP work while the device locks.
+        case completeUntilFirstUserAuthentication
+    }
+
     let rootDirectory: URL
     let storeURL: URL
     let backupPolicy: BackupPolicy
+    let fileProtectionPolicy: FileProtectionPolicy
 
-    init(rootDirectory: URL, backupPolicy: BackupPolicy = .excludedFromDeviceBackup) {
+    init(
+        rootDirectory: URL,
+        backupPolicy: BackupPolicy = .excludedFromDeviceBackup,
+        fileProtectionPolicy: FileProtectionPolicy = .completeUntilFirstUserAuthentication
+    ) {
         self.rootDirectory = rootDirectory.standardizedFileURL
         storeURL = self.rootDirectory.appendingPathComponent("canonical.redb", isDirectory: false)
         self.backupPolicy = backupPolicy
+        self.fileProtectionPolicy = fileProtectionPolicy
     }
 
     static func applicationSupport(fileManager: FileManager = .default) throws -> Pod0NMPStoreLayout {
@@ -34,10 +46,17 @@ struct Pod0NMPStoreLayout: Sendable, Hashable {
 
     func prepare(fileManager: FileManager = .default) throws {
         try fileManager.createDirectory(at: rootDirectory, withIntermediateDirectories: true)
-        guard backupPolicy == .excludedFromDeviceBackup else { return }
-        var values = URLResourceValues()
-        values.isExcludedFromBackup = true
-        var mutableRoot = rootDirectory
-        try mutableRoot.setResourceValues(values)
+        if backupPolicy == .excludedFromDeviceBackup {
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            var mutableRoot = rootDirectory
+            try mutableRoot.setResourceValues(values)
+        }
+        if fileProtectionPolicy == .completeUntilFirstUserAuthentication {
+            try fileManager.setAttributes(
+                [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+                ofItemAtPath: rootDirectory.path
+            )
+        }
     }
 }
