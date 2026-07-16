@@ -62,7 +62,8 @@ final class EpisodeCommentsModelTests: XCTestCase {
 
     func testSignedReceiptDisappearsOnlyAfterCanonicalObservation() async throws {
         let harness = RepositoryHarness()
-        let model = EpisodeCommentsModel(repository: harness.repository, receiptStore: MemoryReceiptStore())
+        let store = MemoryReceiptStore()
+        let model = EpisodeCommentsModel(repository: harness.repository, receiptStore: store)
         let task = Task { await model.observe(target: target) }
         await eventually { harness.observeCount == 1 }
         model.draft = "Canonical me"
