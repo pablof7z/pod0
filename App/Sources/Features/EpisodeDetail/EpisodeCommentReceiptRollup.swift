@@ -37,6 +37,8 @@ struct EpisodeCommentReceiptRollup {
         self.eventID = eventID
     }
 
+    var isDurablyAccepted: Bool { accepted }
+
     mutating func apply(_ status: EpisodeCommentWriteStatus) {
         latest = status
         switch status {
@@ -75,6 +77,9 @@ struct EpisodeCommentReceiptRollup {
         }
         if !relays.isEmpty, pending == 0, let terminal = terminalFailure() {
             return terminal
+        }
+        if case .failed(let reason) = latest {
+            return .failed(reason)
         }
         if streamEnded {
             return .deliveryUnknown(

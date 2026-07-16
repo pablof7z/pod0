@@ -56,6 +56,24 @@ final class EpisodeCommentsModelTests: XCTestCase {
         XCTAssertTrue(harness.observationCancelled)
     }
 
+    func testObservationUsesEventIDAsStableTieBreaker() async {
+        let harness = RepositoryHarness()
+        let model = EpisodeCommentsModel(repository: harness.repository, receiptStore: MemoryReceiptStore())
+        let task = Task { await model.observe(target: target) }
+        await eventually { harness.observeCount == 1 }
+        let timestamp = Date(timeIntervalSince1970: 1)
+
+        harness.observationContinuation.yield(EpisodeCommentSnapshot(
+            comments: [comment(id: "z", createdAt: timestamp), comment(id: "a", createdAt: timestamp)],
+            acquisition: .starting
+        ))
+
+        await eventually { model.comments.count == 2 }
+        XCTAssertEqual(model.comments.map(\.id), ["a", "z"])
+        task.cancel()
+        await task.value
+    }
+
     func testSubmitShowsReceiptFactsAndNeverOptimisticallyAddsCanonicalComment() async throws {
         let harness = RepositoryHarness()
         let store = MemoryReceiptStore()
@@ -134,13 +152,62 @@ final class EpisodeCommentsModelTests: XCTestCase {
         await task.value
     }
 
+    func testOverlappingObservationsReattachEachReceiptOnlyOnce() async {
+        let harness = RepositoryHarness(blockReattach: true)
+        let store = MemoryReceiptStore(records: [pendingReceipt()])
+        let model = EpisodeCommentsModel(repository: harness.repository, receiptStore: store)
+        let first = Task { await model.observe(target: target) }
+        await eventually { harness.reattachedIDs == [42] }
+
+        let second = Task { await model.observe(target: target) }
+        await eventually { harness.observeCount == 1 }
+        XCTAssertEqual(harness.reattachedIDs, [42])
+
+        harness.releaseReattach()
+        await eventually { harness.observeCount == 2 }
+        harness.receiptContinuation.finish()
+        first.cancel()
+        second.cancel()
+        await first.value
+        await second.value
+    }
+
+    func testCancellationDuringReattachmentDoesNotOpenReadObservation() async {
+        let harness = RepositoryHarness(blockReattach: true)
+        let store = MemoryReceiptStore(records: [pendingReceipt()])
+        let model = EpisodeCommentsModel(repository: harness.repository, receiptStore: store)
+        let task = Task { await model.observe(target: target) }
+        await eventually { harness.reattachedIDs == [42] }
+
+        task.cancel()
+        harness.releaseReattach()
+        await task.value
+
+        XCTAssertEqual(harness.observeCount, 0)
+        XCTAssertFalse(model.isLoading)
+        harness.receiptContinuation.finish()
+    }
+
+    private func pendingReceipt() -> PendingEpisodeCommentReceipt {
+        PendingEpisodeCommentReceipt(
+            receiptID: 42,
+            target: target,
+            eventID: nil,
+            submittedAt: Date(timeIntervalSince1970: 5)
+        )
+    }
+
     private func comment(id: String, createdAt: TimeInterval) -> EpisodeComment {
+        comment(id: id, createdAt: Date(timeIntervalSince1970: createdAt))
+    }
+
+    private func comment(id: String, createdAt: Date) -> EpisodeComment {
         EpisodeComment(
             id: id,
             target: target,
             authorPubkeyHex: String(repeating: "a", count: 64),
             content: id,
-            createdAt: Date(timeIntervalSince1970: createdAt)
+            createdAt: createdAt
         )
     }
 

@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-16T14:47:44Z",
+      "lines": [
+        "Comment drafts now stay safe through slow posting, restart recovery, and definitive delivery failures."
+      ]
+    },
+    {
       "shipped_at": "2026-07-16T14:22:11Z",
       "lines": [
         "Relay settings now explain when a changed Nostr relay takes effect."

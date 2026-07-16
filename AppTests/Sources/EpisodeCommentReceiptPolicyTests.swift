@@ -25,6 +25,27 @@ final class EpisodeCommentReceiptPolicyTests: XCTestCase {
         await task.value
     }
 
+    func testDraftEditedWhilePublishWaitsIsNotClearedByAcceptance() async {
+        let harness = RepositoryHarness(blockPublish: true)
+        let model = EpisodeCommentsModel(repository: harness.repository, receiptStore: MemoryReceiptStore())
+        let observation = Task { await model.observe(target: target) }
+        await eventually { model.activeAuthorPubkey != nil }
+        model.draft = "  Submitted draft  "
+
+        let submission = Task { await model.submit(target: target) }
+        await eventually { harness.publishCount == 1 }
+        model.draft = "Replacement draft"
+        harness.releasePublish()
+        await submission.value
+        harness.receiptContinuation.yield(.accepted)
+
+        await eventually { model.canSubmit }
+        XCTAssertEqual(model.draft, "Replacement draft")
+        XCTAssertEqual(harness.publishedContents, ["Submitted draft"])
+        observation.cancel()
+        await observation.value
+    }
+
     func testMixedAckRollupRetainsUnconfirmedAndPendingEvidence() async {
         let harness = RepositoryHarness()
         let model = EpisodeCommentsModel(repository: harness.repository, receiptStore: MemoryReceiptStore())
@@ -94,6 +115,88 @@ final class EpisodeCommentReceiptPolicyTests: XCTestCase {
         XCTAssertFalse(model.canSubmit)
         XCTAssertEqual(harness.publishCount, 1)
 
+        task.cancel()
+        await task.value
+    }
+
+    func testExplicitFailureBeforeAcceptanceReleasesOnlyTheDraftLock() async {
+        let harness = RepositoryHarness()
+        let store = MemoryReceiptStore()
+        let model = EpisodeCommentsModel(repository: harness.repository, receiptStore: store)
+        let task = Task { await model.observe(target: target) }
+        await eventually { model.activeAuthorPubkey != nil }
+        model.draft = "Try again"
+        await model.submit(target: target)
+
+        harness.receiptContinuation.yield(.failed(reason: "Signing failed"))
+        harness.receiptContinuation.finish()
+
+        await eventually { model.outgoing.first?.phase == .failed("Signing failed") && model.canSubmit }
+        XCTAssertEqual(model.draft, "Try again")
+        XCTAssertTrue(store.records(for: target).isEmpty)
+        task.cancel()
+        await task.value
+    }
+
+    func testEventCorrelationSaveFailureDoesNotBlockAcceptedDraftCleanup() async {
+        let harness = RepositoryHarness()
+        let store = FailingEventCorrelationReceiptStore()
+        let model = EpisodeCommentsModel(repository: harness.repository, receiptStore: store)
+        let task = Task { await model.observe(target: target) }
+        await eventually { model.activeAuthorPubkey != nil }
+        model.draft = "Persisted by receipt ID"
+        await model.submit(target: target)
+
+        harness.receiptContinuation.yield(.signed(eventID: "event-42"))
+        await eventually { model.submitError != nil }
+        harness.receiptContinuation.yield(.accepted)
+
+        await eventually { model.draft.isEmpty }
+        model.draft = "Next comment"
+        XCTAssertTrue(model.canSubmit)
+        XCTAssertEqual(store.records(for: target).map(\.receiptID), [42])
+        task.cancel()
+        await task.value
+    }
+
+    func testSuccessfulEventCorrelationSaveRecoversInitialAnnotationFailure() async {
+        let harness = RepositoryHarness()
+        let store = InitiallyFailingReceiptStore()
+        let model = EpisodeCommentsModel(repository: harness.repository, receiptStore: store)
+        let task = Task { await model.observe(target: target) }
+        await eventually { model.activeAuthorPubkey != nil }
+        model.draft = "Recovery path"
+        await model.submit(target: target)
+        XCTAssertNotNil(model.submitError)
+
+        harness.receiptContinuation.yield(.signed(eventID: "event-42"))
+        await eventually { store.records(for: target).first?.eventID == "event-42" }
+        harness.receiptContinuation.yield(.accepted)
+
+        await eventually { model.draft.isEmpty }
+        model.draft = "Next comment"
+        XCTAssertTrue(model.canSubmit)
+        task.cancel()
+        await task.value
+    }
+
+    func testSignedPersistenceRecoveryUnlocksAlreadyAcceptedDraft() async {
+        let harness = RepositoryHarness()
+        let store = InitiallyFailingReceiptStore()
+        let model = EpisodeCommentsModel(repository: harness.repository, receiptStore: store)
+        let task = Task { await model.observe(target: target) }
+        await eventually { model.activeAuthorPubkey != nil }
+        model.draft = "Acceptance arrived first"
+        await model.submit(target: target)
+
+        harness.receiptContinuation.yield(.accepted)
+        await eventually { model.outgoing.first?.phase == .queued }
+        XCTAssertFalse(model.canSubmit)
+        harness.receiptContinuation.yield(.signed(eventID: "event-42"))
+
+        await eventually { model.draft.isEmpty }
+        model.draft = "Next comment"
+        XCTAssertTrue(model.canSubmit)
         task.cancel()
         await task.value
     }

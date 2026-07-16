@@ -75,6 +75,7 @@ final class EpisodeCommentsModel {
     private let repository: any EpisodeCommentsRepository
     private let receiptStore: any EpisodeCommentReceiptStore
     private var activeReceiptIDs: Set<UInt64> = []
+    private var reattachingReceiptIDs: Set<UInt64> = []
     private var receiptFacts: [UInt64: EpisodeCommentReceiptRollup] = [:]
     private var receiptRecords: [UInt64: PendingEpisodeCommentReceipt] = [:]
     private var draftAwaitingAcceptance: [UInt64: String] = [:]
@@ -95,13 +96,16 @@ final class EpisodeCommentsModel {
             !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    /// Runs one read session. SwiftUI task cancellation withdraws only this
-    /// observation; durable receipt monitors continue independently.
+    /// Cancellation withdraws only this read; durable receipt monitors continue.
     func observe(target: CommentTarget) async {
         isLoading = true
         loadError = nil
         activeAuthorPubkey = try? await repository.activeAuthorPubkey()
         await resumeReceipts(for: target)
+        guard !Task.isCancelled else {
+            isLoading = false
+            return
+        }
 
         do {
             let observation = try await repository.observe(target: target)
@@ -109,7 +113,10 @@ final class EpisodeCommentsModel {
             try await withTaskCancellationHandler {
                 for try await snapshot in observation.updates {
                     guard !Task.isCancelled else { break }
-                    comments = snapshot.comments.sorted { $0.createdAt > $1.createdAt }
+                    comments = snapshot.comments.sorted {
+                        if $0.createdAt != $1.createdAt { return $0.createdAt > $1.createdAt }
+                        return $0.id < $1.id
+                    }
                     acquisition = snapshot.acquisition
                     isLoading = false
                     reconcileCanonicalComments()
@@ -128,10 +135,10 @@ final class EpisodeCommentsModel {
         }
     }
 
-    /// Enqueues a durable write, persists its NMP receipt id immediately, and
-    /// renders only receipt facts until the canonical observation sees it.
+    /// Persists a durable-write receipt and renders facts until canonical observation.
     func submit(target: CommentTarget) async {
-        let content = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let submittedDraft = draft
+        let content = submittedDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard canSubmit, !content.isEmpty else { return }
         isSubmitting = true
         submitError = nil
@@ -152,7 +159,7 @@ final class EpisodeCommentsModel {
                 receiptsMissingRestartAnnotation.insert(receipt.id)
             }
             upsertOutgoing(record, phase: .queued)
-            draftAwaitingAcceptance[receipt.id] = draft
+            draftAwaitingAcceptance[receipt.id] = submittedDraft
             beginMonitoring(receipt, record: record)
         } catch {
             submitError = error.localizedDescription
@@ -167,27 +174,35 @@ final class EpisodeCommentsModel {
             loadError = error.localizedDescription
             return
         }
-        for record in records where !activeReceiptIDs.contains(record.receiptID) {
-            upsertOutgoing(record, phase: .queued)
-            do {
-                switch try await repository.reattachReceipt(id: record.receiptID) {
-                case .attached(let receipt):
-                    beginMonitoring(receipt, record: record)
-                case .notFound:
-                    try? receiptStore.remove(receiptID: record.receiptID)
-                    setPhase(
-                        .deliveryUnknown("Delivery record is no longer available."),
-                        receiptID: record.receiptID
-                    )
-                case .retainedButUnreadable:
-                    setPhase(
-                        .deliveryUnknown("Delivery record exists but could not be read."),
-                        receiptID: record.receiptID
-                    )
-                }
-            } catch {
-                setPhase(.deliveryUnknown(error.localizedDescription), receiptID: record.receiptID)
+        for record in records {
+            await resumeReceipt(record)
+        }
+    }
+
+    private func resumeReceipt(_ record: PendingEpisodeCommentReceipt) async {
+        guard !activeReceiptIDs.contains(record.receiptID),
+              reattachingReceiptIDs.insert(record.receiptID).inserted else { return }
+        defer { reattachingReceiptIDs.remove(record.receiptID) }
+
+        upsertOutgoing(record, phase: .queued)
+        do {
+            switch try await repository.reattachReceipt(id: record.receiptID) {
+            case .attached(let receipt):
+                beginMonitoring(receipt, record: record)
+            case .notFound:
+                try? receiptStore.remove(receiptID: record.receiptID)
+                setPhase(
+                    .deliveryUnknown("Delivery record is no longer available."),
+                    receiptID: record.receiptID
+                )
+            case .retainedButUnreadable:
+                setPhase(
+                    .deliveryUnknown("Delivery record exists but could not be read."),
+                    receiptID: record.receiptID
+                )
             }
+        } catch {
+            setPhase(.deliveryUnknown(error.localizedDescription), receiptID: record.receiptID)
         }
     }
 
@@ -203,12 +218,6 @@ final class EpisodeCommentsModel {
     }
 
     private func apply(_ status: EpisodeCommentWriteStatus, receiptID: UInt64) {
-        if case .accepted = status,
-           !receiptsMissingRestartAnnotation.contains(receiptID),
-           let submittedDraft = draftAwaitingAcceptance.removeValue(forKey: receiptID),
-           draft == submittedDraft {
-            draft = ""
-        }
         var facts = receiptFacts[receiptID] ?? EpisodeCommentReceiptRollup()
         facts.apply(status)
         receiptFacts[receiptID] = facts
@@ -219,13 +228,21 @@ final class EpisodeCommentsModel {
             receiptRecords[receiptID] = record
             do {
                 try receiptStore.save(record)
+                receiptsMissingRestartAnnotation.remove(receiptID)
             } catch {
-                receiptsMissingRestartAnnotation.insert(receiptID)
                 submitError = error.localizedDescription
             }
         }
+        releaseDraftIfAccepted(receiptID: receiptID, facts: facts)
         setPhase(facts.phase(streamEnded: false), receiptID: receiptID)
         reconcileCanonicalComments()
+    }
+
+    private func releaseDraftIfAccepted(receiptID: UInt64, facts: EpisodeCommentReceiptRollup) {
+        guard facts.isDurablyAccepted,
+              !receiptsMissingRestartAnnotation.contains(receiptID),
+              let submittedDraft = draftAwaitingAcceptance.removeValue(forKey: receiptID) else { return }
+        if draft == submittedDraft { draft = "" }
     }
 
     private func finishReceiptStream(receiptID: UInt64) {
@@ -233,6 +250,10 @@ final class EpisodeCommentsModel {
         let facts = receiptFacts[receiptID] ?? EpisodeCommentReceiptRollup()
         let phase = facts.phase(streamEnded: true)
         setPhase(phase, receiptID: receiptID)
+        if case .failed = phase, !facts.isDurablyAccepted {
+            draftAwaitingAcceptance.removeValue(forKey: receiptID)
+            receiptsMissingRestartAnnotation.remove(receiptID)
+        }
         switch phase {
         case .published, .rejected, .gaveUp, .persistenceBlocked, .failed:
             try? receiptStore.remove(receiptID: receiptID)
@@ -255,10 +276,7 @@ final class EpisodeCommentsModel {
         }
     }
 
-    private func upsertOutgoing(
-        _ record: PendingEpisodeCommentReceipt,
-        phase: OutgoingEpisodeCommentPhase
-    ) {
+    private func upsertOutgoing(_ record: PendingEpisodeCommentReceipt, phase: OutgoingEpisodeCommentPhase) {
         guard !outgoing.contains(where: { $0.receiptID == record.receiptID }) else { return }
         receiptRecords[record.receiptID] = record
         if receiptFacts[record.receiptID] == nil {
