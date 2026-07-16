@@ -38,7 +38,7 @@ final class EpisodeCommentsModelTests: XCTestCase {
 
         let older = comment(id: "old", createdAt: 1)
         let newer = comment(id: "new", createdAt: 2)
-        harness.observationContinuation.yield(EpisodeCommentSnapshot(
+        harness.yieldObservation(EpisodeCommentSnapshot(
             comments: [older, newer],
             acquisition: EpisodeCommentAcquisition(
                 sourceCount: 2,
@@ -63,7 +63,7 @@ final class EpisodeCommentsModelTests: XCTestCase {
         await eventually { harness.observeCount == 1 }
         let timestamp = Date(timeIntervalSince1970: 1)
 
-        harness.observationContinuation.yield(EpisodeCommentSnapshot(
+        harness.yieldObservation(EpisodeCommentSnapshot(
             comments: [comment(id: "z", createdAt: timestamp), comment(id: "a", createdAt: timestamp)],
             acquisition: .starting
         ))
@@ -121,7 +121,7 @@ final class EpisodeCommentsModelTests: XCTestCase {
         harness.receiptContinuation.yield(.signed(eventID: "event-42"))
         await eventually { model.outgoing.first?.phase == .signed }
         XCTAssertEqual(store.records(for: target).first?.eventID, "event-42")
-        harness.observationContinuation.yield(EpisodeCommentSnapshot(
+        harness.yieldObservation(EpisodeCommentSnapshot(
             comments: [comment(id: "event-42", createdAt: 3)],
             acquisition: .starting
         ))
@@ -170,6 +170,7 @@ final class EpisodeCommentsModelTests: XCTestCase {
         second.cancel()
         await first.value
         await second.value
+        XCTAssertEqual(harness.observationCancellationCount, 2)
     }
 
     func testCancellationDuringReattachmentDoesNotOpenReadObservation() async {

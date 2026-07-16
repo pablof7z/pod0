@@ -3,17 +3,12 @@ import Foundation
 
 final class RepositoryHarness: @unchecked Sendable {
     let repository: HarnessRepository
-    let observationContinuation: AsyncThrowingStream<EpisodeCommentSnapshot, any Error>.Continuation
     let receiptContinuation: AsyncStream<EpisodeCommentWriteStatus>.Continuation
     private let state: HarnessState
     private let publishGate: AsyncGate?
     private let reattachGate: AsyncGate?
 
     init(blockPublish: Bool = false, blockReattach: Bool = false) {
-        var observationContinuation: AsyncThrowingStream<EpisodeCommentSnapshot, any Error>.Continuation!
-        let observations = AsyncThrowingStream<EpisodeCommentSnapshot, any Error> {
-            observationContinuation = $0
-        }
         var receiptContinuation: AsyncStream<EpisodeCommentWriteStatus>.Continuation!
         let statuses = AsyncStream<EpisodeCommentWriteStatus> { receiptContinuation = $0 }
         let state = HarnessState()
@@ -22,13 +17,9 @@ final class RepositoryHarness: @unchecked Sendable {
         self.state = state
         self.publishGate = publishGate
         self.reattachGate = reattachGate
-        self.observationContinuation = observationContinuation
         self.receiptContinuation = receiptContinuation
         self.repository = HarnessRepository(
             state: state,
-            observation: EpisodeCommentObservation(updates: observations) {
-                state.lock.withLock { state.observationCancelled = true }
-            },
             receipt: EpisodeCommentReceipt(id: 42, statuses: statuses),
             publishGate: publishGate,
             reattachGate: reattachGate
@@ -37,9 +28,16 @@ final class RepositoryHarness: @unchecked Sendable {
 
     var observeCount: Int { state.lock.withLock { state.observeCount } }
     var observationCancelled: Bool { state.lock.withLock { state.observationCancelled } }
+    var observationCancellationCount: Int {
+        state.lock.withLock { state.observationCancellationCount }
+    }
     var reattachedIDs: [UInt64] { state.lock.withLock { state.reattachedIDs } }
     var publishCount: Int { state.lock.withLock { state.publishCount } }
     var publishedContents: [String] { state.lock.withLock { state.publishedContents } }
+
+    func yieldObservation(_ snapshot: EpisodeCommentSnapshot) {
+        state.yieldObservation(snapshot)
+    }
 
     func releasePublish() { publishGate?.open() }
     func releaseReattach() { reattachGate?.open() }
@@ -49,14 +47,46 @@ final class HarnessState: @unchecked Sendable {
     let lock = NSLock()
     var observeCount = 0
     var observationCancelled = false
+    var observationCancellationCount = 0
+    var observationContinuations: [
+        UUID: AsyncThrowingStream<EpisodeCommentSnapshot, any Error>.Continuation
+    ] = [:]
     var reattachedIDs: [UInt64] = []
     var publishCount = 0
     var publishedContents: [String] = []
+
+    func openObservation() -> EpisodeCommentObservation {
+        let id = UUID()
+        var continuation: AsyncThrowingStream<EpisodeCommentSnapshot, any Error>.Continuation!
+        let updates = AsyncThrowingStream<EpisodeCommentSnapshot, any Error> {
+            continuation = $0
+        }
+        lock.withLock {
+            observationContinuations[id] = continuation
+            observeCount += 1
+        }
+        return EpisodeCommentObservation(updates: updates) { [weak self] in
+            self?.cancelObservation(id: id)
+        }
+    }
+
+    func yieldObservation(_ snapshot: EpisodeCommentSnapshot) {
+        let continuations = lock.withLock { Array(observationContinuations.values) }
+        continuations.forEach { $0.yield(snapshot) }
+    }
+
+    private func cancelObservation(id: UUID) {
+        let continuation = lock.withLock {
+            observationCancelled = true
+            observationCancellationCount += 1
+            return observationContinuations.removeValue(forKey: id)
+        }
+        continuation?.finish()
+    }
 }
 
 struct HarnessRepository: EpisodeCommentsRepository {
     let state: HarnessState
-    let observation: EpisodeCommentObservation
     let receipt: EpisodeCommentReceipt
     let publishGate: AsyncGate?
     let reattachGate: AsyncGate?
@@ -65,8 +95,7 @@ struct HarnessRepository: EpisodeCommentsRepository {
     func activeAuthorPubkey() async throws -> String? { String(repeating: "b", count: 64) }
 
     func observe(target: CommentTarget) async throws -> EpisodeCommentObservation {
-        state.lock.withLock { state.observeCount += 1 }
-        return observation
+        state.openObservation()
     }
 
     func publish(content: String, target: CommentTarget) async throws -> EpisodeCommentReceipt {
