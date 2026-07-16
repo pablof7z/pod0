@@ -22,9 +22,10 @@ final class Pod0ControlledRelayHarness: @unchecked Sendable {
 
     private let listener: NWListener
     private let queue = DispatchQueue(label: "pod0.tests.controlled-relay")
-    private let lock = NSLock()
+    let lock = NSLock()
     private var webSockets: [ObjectIdentifier: NWConnection] = [:]
     private var subscriptions: [String: NWConnection] = [:]
+    var seededEvents: [[String: Any]] = []
     private var nip11RequestCount = 0
     private var requestIDs: [String] = []
     private var closeIDs: [String] = []
@@ -109,7 +110,7 @@ final class Pod0ControlledRelayHarness: @unchecked Sendable {
         let headers = Data(
             ("HTTP/1.1 200 OK\r\n" +
                 "Content-Type: application/nostr+json\r\n" +
-                "Cache-Control: no-store\r\n" +
+                "Cache-Control: max-age=60\r\n" +
                 "Content-Length: \(body.count)\r\n" +
                 "Connection: close\r\n\r\n").utf8
         )
@@ -183,10 +184,15 @@ final class Pod0ControlledRelayHarness: @unchecked Sendable {
         switch command {
         case "REQ":
             guard message.count >= 3, let subscriptionID = message[1] as? String else { return }
-            lock.withLock {
+            let events = lock.withLock {
                 subscriptions[subscriptionID] = connection
                 requestIDs.append(subscriptionID)
+                return seededEvents
             }
+            let filters = message.dropFirst(2).compactMap { $0 as? [String: Any] }
+            events.filter { event in
+                filters.contains { Self.event(event, matches: $0) }
+            }.forEach { sendJSON(["EVENT", subscriptionID, $0], on: connection) }
             sendJSON(["EOSE", subscriptionID], on: connection)
         case "CLOSE":
             guard message.count >= 2, let subscriptionID = message[1] as? String else { return }

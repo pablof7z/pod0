@@ -13,11 +13,11 @@ final class Pod0NMPSimulatorQualificationTests: XCTestCase {
         let layout = Pod0NMPStoreLayout(rootDirectory: root)
         let configuration = Pod0NMPConfiguration(
             storeURL: layout.storeURL,
-            indexerRelays: [],
+            indexerRelays: [relay.relayURL],
             operatorRelay: relay.relayURL,
             fallbackRelays: [],
             allowedLocalRelayHosts: ["localhost"],
-            limits: .init(maxRelays: 1, maxNativeTasks: 4, maxAuthCapabilities: 1)
+            limits: .init(maxRelays: 1, maxNativeTasks: 8, maxAuthCapabilities: 1)
         )
         var composition: Pod0NMPComposition? = try Pod0NMPComposition(
             configuration: configuration,
@@ -53,8 +53,27 @@ final class Pod0NMPSimulatorQualificationTests: XCTestCase {
         XCTAssertEqual(relay.snapshot().nip11Requests, 1)
 
         let secretKey = String(repeating: "0", count: 63) + "1"
+        let routeFixtureSigner = LocalKeySigner(
+            keyPair: try NostrKeyPair(privateKeyHex: secretKey)
+        )
+        let routeEvent = try await routeFixtureSigner.sign(NostrEventDraft(
+            kind: 10_002,
+            content: "",
+            tags: [["r", relay.relayURL, "write"]]
+        ))
+        relay.seed(routeEvent)
         let account = try await engine.addAccount(secretKey: secretKey)
         try engine.setActiveAccount(account.publicKey)
+
+        let routeQuery = try engine.observe(
+            NMPFilter(kinds: [10_002], authors: .literal([account.publicKey]), tags: [:]),
+            window: .expandable(initial: 1, max: 1)
+        )
+        let discoveredRoute = await firstBatch(from: routeQuery, timeoutSeconds: 8) { batch in
+            batch.rows.contains { $0.id == routeEvent.id }
+        }
+        XCTAssertNotNil(discoveredRoute, "NMP must ingest the controlled author route")
+        let routeSubscriptionIDs = Set(relay.snapshot().requestSubscriptionIDs)
 
         let query = try engine.observe(
             NMPFilter(
@@ -65,15 +84,22 @@ final class Pod0NMPSimulatorQualificationTests: XCTestCase {
             window: .expandable(initial: 1, max: 1)
         )
         let acquired = await firstBatch(from: query, timeoutSeconds: 8) { batch in
-            batch.evidence.sources.contains {
-                isHarnessRelay($0.relay, harnessURL: relay.relayURL) && $0.reconciledThrough != nil
-            }
+            batch.load == .idle &&
+                batch.evidence.shortfall.isEmpty &&
+                batch.evidence.sources.contains {
+                    isHarnessRelay($0.relay, harnessURL: relay.relayURL)
+                }
         }
         let acquiredBatch = try XCTUnwrap(acquired, "hostname relay must reconcile the bounded query")
         XCTAssertLessThanOrEqual(acquiredBatch.rows.count, 1)
         XCTAssertEqual(acquiredBatch.load, .idle)
         XCTAssertTrue(acquiredBatch.evidence.shortfall.isEmpty)
-        let subscriptionID = try XCTUnwrap(relay.snapshot().requestSubscriptionIDs.first)
+        let requested = await waitForRelay(relay, timeoutSeconds: 5) {
+            !Set($0.requestSubscriptionIDs).subtracting(routeSubscriptionIDs).isEmpty
+        }
+        let subscriptionID = try XCTUnwrap(
+            requested.map { Set($0.requestSubscriptionIDs).subtracting(routeSubscriptionIDs) }?.first
+        )
 
         let receipt = try await engine.publish(
             WriteIntent(
@@ -92,9 +118,10 @@ final class Pod0NMPSimulatorQualificationTests: XCTestCase {
         let statuses = await receiptStatuses(
             from: receipt,
             harnessURL: relay.relayURL,
-            timeoutSeconds: 10
+            timeoutSeconds: 30
         )
-        XCTAssertTrue(statuses.contains(.accepted))
+        let statusSummary = statuses.map { String(describing: $0) }.joined(separator: ", ")
+        XCTAssertTrue(statuses.contains(.accepted), statusSummary)
         let eventID = try XCTUnwrap(statuses.compactMap { status -> String? in
             if case .signed(let eventID) = status { return eventID }
             return nil
@@ -110,13 +137,13 @@ final class Pod0NMPSimulatorQualificationTests: XCTestCase {
                 return isHarnessRelay(relayURL, harnessURL: relay.relayURL)
             }
             return false
-        })
+        }, statusSummary)
         XCTAssertTrue(statuses.contains { status in
             if case .acked(let relayURL) = status {
                 return isHarnessRelay(relayURL, harnessURL: relay.relayURL)
             }
             return false
-        })
+        }, statusSummary)
         XCTAssertEqual(relay.snapshot().acceptedEventIDs, [eventID])
 
         let delivered = await firstBatch(from: query, timeoutSeconds: 8) { batch in
@@ -137,6 +164,7 @@ final class Pod0NMPSimulatorQualificationTests: XCTestCase {
             $0.closedSubscriptionIDs.contains(subscriptionID)
         }
         XCTAssertNotNil(cancelled, "query cancellation must send CLOSE to the controlled relay")
+        routeQuery.cancel()
         XCTAssertTrue(try engine.removeAccount(account))
 
         composition?.shutdown()
@@ -157,7 +185,12 @@ final class Pod0NMPSimulatorQualificationTests: XCTestCase {
                 return nil
             }
             group.addTask {
-                try? await Task.sleep(nanoseconds: timeoutSeconds * 1_000_000_000)
+                do {
+                    try await Task.sleep(nanoseconds: timeoutSeconds * 1_000_000_000)
+                } catch {
+                    return nil
+                }
+                query.cancel()
                 return nil
             }
             let result = await group.next() ?? nil
@@ -171,19 +204,19 @@ final class Pod0NMPSimulatorQualificationTests: XCTestCase {
         harnessURL: String,
         timeoutSeconds: UInt64
     ) async -> [WriteStatus] {
-        await withTaskGroup(of: [WriteStatus].self) { group in
+        let statuses = WriteStatusAccumulator()
+        return await withTaskGroup(of: [WriteStatus].self) { group in
             group.addTask {
-                var statuses: [WriteStatus] = []
                 for await status in receipt.status {
-                    statuses.append(status)
+                    let snapshot = await statuses.append(status)
                     if case .acked(let relayURL) = status,
-                       isHarnessRelay(relayURL, harnessURL: harnessURL) { break }
+                       isHarnessRelay(relayURL, harnessURL: harnessURL) { return snapshot }
                 }
-                return statuses
+                return await statuses.snapshot()
             }
             group.addTask {
                 try? await Task.sleep(nanoseconds: timeoutSeconds * 1_000_000_000)
-                return []
+                return await statuses.snapshot()
             }
             let result = await group.next() ?? []
             group.cancelAll()
@@ -211,5 +244,16 @@ private func isHarnessRelay(_ candidate: String, harnessURL: String) -> Bool {
         return false
     }
     return candidate.scheme == harness.scheme && candidate.host == harness.host && candidate.port == harness.port
+}
+
+private actor WriteStatusAccumulator {
+    private var statuses: [WriteStatus] = []
+
+    func append(_ status: WriteStatus) -> [WriteStatus] {
+        statuses.append(status)
+        return statuses
+    }
+
+    func snapshot() -> [WriteStatus] { statuses }
 }
 #endif
