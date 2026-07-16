@@ -73,11 +73,10 @@ extension AgentTools {
         static let generatePodcastArtwork = "generate_podcast_artwork"
         static let publishEpisode         = "publish_episode"
 
-        /// Every podcast tool name, for orchestrator convenience when wiring
-        /// the main `AgentTools.dispatch` switch. Skill-gated names are
-        /// included here so `dispatch` can route them; whether they are
-        /// callable from a given session is gated separately by the
-        /// `enabledSkills` check in `dispatchPodcast`.
+        /// Every routed domain tool name, for orchestrator convenience when
+        /// wiring the main `AgentTools.dispatch` switch. Skill-gated names
+        /// are included here so `dispatch` can route them; whether they are
+        /// callable from a given session is gated separately.
         static var all: [String] {
             [
                 playEpisode, pausePlayback, setPlaybackRate, setSleepTimer,
@@ -95,6 +94,7 @@ extension AgentTools {
                 ingestYouTubeVideo, searchYouTube,
                 createPodcast, updatePodcast, deleteMyPodcast, listMyPodcasts, generatePodcastArtwork,
                 publishEpisode,
+                Names.listConversations, Names.searchConversations,
             ]
         }
     }
