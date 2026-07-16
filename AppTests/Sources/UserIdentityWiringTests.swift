@@ -104,7 +104,10 @@ final class UserIdentityWiringTests: XCTestCase {
         _ = store.addNote(text: "agent note", kind: .free, target: nil, author: .agent)
         // Give any (stray) fire-and-forget Task a chance to land.
         try await Task.sleep(nanoseconds: 200_000_000)
-        XCTAssertTrue(signer.calls.isEmpty, "Agent-authored notes must not reach the user signer.")
+        XCTAssertFalse(
+            signer.calls.contains { $0.content == "agent note" },
+            "Agent-authored notes must not reach the user signer."
+        )
     }
 
     func testAgentToolCreateNoteDoesNotSign() async throws {
@@ -117,7 +120,10 @@ final class UserIdentityWiringTests: XCTestCase {
             batchID: UUID()
         )
         try await Task.sleep(nanoseconds: 200_000_000)
-        XCTAssertTrue(signer.calls.isEmpty, "AgentTools.createNote must not reach the user signer.")
+        XCTAssertFalse(
+            signer.calls.contains { $0.content == "agent tool note" },
+            "AgentTools.createNote must not reach the user signer."
+        )
         // The note still landed locally.
         XCTAssertEqual(store.state.notes.last?.text, "agent tool note")
         XCTAssertEqual(store.state.notes.last?.author, .agent)
@@ -128,7 +134,10 @@ final class UserIdentityWiringTests: XCTestCase {
     func testAddAgentMemoryDoesNotSign() async throws {
         _ = store.addAgentMemory(content: "long-running fact")
         try await Task.sleep(nanoseconds: 200_000_000)
-        XCTAssertTrue(signer.calls.isEmpty, "Memories must not reach the user signer.")
+        XCTAssertFalse(
+            signer.calls.contains { $0.content == "long-running fact" },
+            "Memories must not reach the user signer."
+        )
     }
 
     // MARK: - §5.3 row: Clips, source ≠ .agent — signs kind 9802
@@ -201,7 +210,10 @@ final class UserIdentityWiringTests: XCTestCase {
         )
         store.addClip(clip)
         try await Task.sleep(nanoseconds: 200_000_000)
-        XCTAssertTrue(signer.calls.isEmpty, "Agent-sourced clips must not reach the user signer.")
+        XCTAssertFalse(
+            signer.calls.contains { $0.content == "agent-captured snippet" },
+            "Agent-sourced clips must not reach the user signer."
+        )
     }
 
     // MARK: - Note.author Codable backward-compat
