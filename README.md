@@ -183,7 +183,7 @@ App/Sources/
 
 ### Prerequisites
 
-- Xcode 15.0+
+- Xcode 26.0+ with the iOS 26 device and simulator SDKs
 - [Tuist](https://tuist.io) 4.x (`curl -Ls https://install.tuist.io | bash`)
 - [Rustup](https://rustup.rs) (the bootstrap installs NMP's pinned toolchain and targets)
 - Apple Developer account
