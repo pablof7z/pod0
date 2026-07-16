@@ -14,6 +14,12 @@
       ]
     },
     {
+      "shipped_at": "2026-07-16T11:00:00Z",
+      "lines": [
+        "Remote agent messages over Nostr are temporarily paused while verified message handling is installed; your preference, conversations, and access decisions are preserved."
+      ]
+    },
+    {
       "shipped_at": "2026-05-15T20:20:00Z",
       "lines": [
         "Sidebar no longer dims the rest of the app when open, and the mini-player has been streamlined — the thin progress strip at its bottom edge is gone."

@@ -47,7 +47,14 @@ let project = Project(
             url: "https://github.com/onevcat/Kingfisher",
             requirement: .upToNextMajor(from: "8.0.0")
         ),
-        .local(path: "../ios-shake-feedback"),
+        .remote(
+            url: "https://github.com/pablof7z/ios-shake-feedback",
+            requirement: .exact("1.0.0")
+        ),
+        // NMP is source-pinned as a submodule. The bootstrap script builds
+        // its generated bindings and XCFramework before Tuist resolves this
+        // local package; neither generated artifact is committed here.
+        .local(path: "Vendor/nmp/Packages/NMP"),
     ],
     settings: .settings(
         base: [

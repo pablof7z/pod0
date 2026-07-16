@@ -3,7 +3,7 @@ name: TestFlight
 on:
   push:
     branches:
-      - main
+      - master
   workflow_dispatch:
     inputs:
       marketing_version:
@@ -26,6 +26,7 @@ env:
   APPLE_TEAM_ID: 456SHKPP26
   APP_BUNDLE_ID: io.f7z.podcast
   WIDGET_BUNDLE_ID: io.f7z.podcast.widget
+  NMP_BUILD_MODE: all
 
 jobs:
   test:

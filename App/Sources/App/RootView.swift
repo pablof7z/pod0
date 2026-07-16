@@ -28,7 +28,6 @@ enum RootTab: String, CaseIterable {
 /// The root view of the app. Hosts the main tab bar (hidden), the feedback
 /// shake gesture, onboarding gate, deep-link routing, and the avatar sidebar.
 struct RootView: View {
-    let relayService: NostrRelayService?
     let scheduledTaskRunner: AgentScheduledTaskRunner?
 
     @Environment(AppStateStore.self) var store
@@ -53,8 +52,8 @@ struct RootView: View {
     @State var generationSourceNostrRootID: String?
     @Namespace var playerNamespace
 
-    var relayServiceIdentity: ObjectIdentifier? {
-        relayService.map(ObjectIdentifier.init)
+    var scheduledTaskRunnerIdentity: ObjectIdentifier? {
+        scheduledTaskRunner.map(ObjectIdentifier.init)
     }
 
     private let sidebarWidth: CGFloat = 300
@@ -75,12 +74,7 @@ struct RootView: View {
                             }
                     }
                 }
-                .task(id: relayServiceIdentity) {
-                    guard let relayService else { return }
-                    relayService.agentResponder.podcastDepsProvider = { [store, playbackState] in
-                        LivePodcastAgentToolDeps.make(store: store, playback: playbackState)
-                    }
-                    relayService.agentResponder.askCoordinator = askCoordinator
+                .task(id: scheduledTaskRunnerIdentity) {
                     scheduledTaskRunner?.podcastDepsProvider = { [store, playbackState] in
                         LivePodcastAgentToolDeps.make(store: store, playback: playbackState)
                     }

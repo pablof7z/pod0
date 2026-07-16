@@ -141,7 +141,7 @@ struct AgentSettingsView: View {
 
     private var nostrSection: some View {
         Section {
-            Toggle("Enabled", isOn: $settings.nostrEnabled)
+            Toggle("Enable when available", isOn: $settings.nostrEnabled)
                 .disabled(!hasNostrKey)
 
             if !hasNostrKey {
@@ -154,12 +154,12 @@ struct AgentSettingsView: View {
                 }
             }
         } header: {
-            Text("Nostr")
+            Text("Remote agent over Nostr")
         } footer: {
             if hasNostrKey {
-                Text("When enabled, this agent can receive and respond to messages over the Nostr network.")
+                Text("Temporarily paused while verified message handling is being installed. Your preference, conversations, and access decisions are preserved; incoming Nostr messages cannot run the agent right now.")
             } else {
-                Text("Generate a Nostr key pair in Identity before enabling this feature.")
+                Text("Generate a Nostr key pair in Identity to save your preference. Remote messages remain paused until verified message handling is ready.")
             }
         }
     }

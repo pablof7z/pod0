@@ -185,6 +185,7 @@ App/Sources/
 
 - Xcode 15.0+
 - [Tuist](https://tuist.io) 4.x (`curl -Ls https://install.tuist.io | bash`)
+- [Rustup](https://rustup.rs) (the bootstrap installs NMP's pinned toolchain and targets)
 - Apple Developer account
 
 ### Setup
@@ -192,7 +193,7 @@ App/Sources/
 1. **Clone and configure**
 
    ```bash
-   git clone <your-repo>
+   git clone --recurse-submodules <your-repo>
    cd podcast-player
    ```
 
@@ -204,12 +205,16 @@ App/Sources/
    let appleTeamID = "456SHKPP26"
    ```
 
-2. **Generate Xcode project**
+2. **Build pinned dependencies and generate the Xcode project**
 
    ```bash
-   tuist generate
+   ./ci_scripts/bootstrap_project.sh
    open Podcastr.xcodeproj
    ```
+
+   The bootstrap verifies the exact NMP gitlink, builds its generated Swift
+   bindings and simulator XCFramework from source, then runs Tuist. See
+   [`docs/nmp-dependency.md`](docs/nmp-dependency.md) for the pin/update policy.
 
 3. **Rename the App Group**
 
@@ -228,7 +233,7 @@ tuist generate && open Podcastr.xcodeproj
 
 ## TestFlight Auto-Deployment
 
-Push to `main` → GitHub Actions runs tests, then archives and uploads to TestFlight automatically.
+Push to `master` → GitHub Actions runs tests, then archives and uploads to TestFlight automatically.
 
 ### Initial Setup
 
@@ -261,7 +266,7 @@ The workflow uses `runs-on: self-hosted`. You need a macOS machine registered as
 **Step 5 — First deploy**
 
 ```bash
-git push origin main
+git push origin master
 # Or trigger manually: GitHub → Actions → TestFlight → Run workflow
 ```
 
@@ -269,7 +274,7 @@ git push origin main
 
 | Script | Purpose |
 |--------|---------|
-| `bootstrap_project.sh` | Installs Tuist if needed, runs `tuist generate` |
+| `bootstrap_project.sh` | Verifies/builds pinned NMP source, installs Tuist if needed, runs `tuist generate` |
 | `ci_post_clone.sh` | Wrapper for Xcode Cloud post-clone hook |
 | `install_signing_assets.sh` | Installs certificate + provisioning profile from base64 secrets |
 | `archive_and_upload.sh` | Archives, exports IPA, uploads to TestFlight via `altool` |

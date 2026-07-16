@@ -3,9 +3,9 @@ import os.log
 
 /// Fires due recurring tasks as headless `AgentChatSession` runs.
 ///
-/// Lifecycle: created in `AppMain.task` alongside `NostrRelayService`.
+/// Lifecycle: created in `AppMain.task` and retained for the app session.
 /// `podcastDepsProvider` is late-bound from `RootView.task(id:)` once
-/// `PlaybackState` is ready — the same pattern the Nostr responder uses.
+/// `PlaybackState` is ready.
 @MainActor
 final class AgentScheduledTaskRunner {
     private let logger = Logger.app("AgentScheduledTaskRunner")
