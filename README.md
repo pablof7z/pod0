@@ -212,8 +212,8 @@ App/Sources/
    open Podcastr.xcodeproj
    ```
 
-   The bootstrap verifies the exact NMP gitlink, builds its generated Swift
-   bindings and simulator XCFramework from source, then runs Tuist. See
+   The bootstrap verifies and stages exact public dependencies, builds NMP's
+   generated Swift bindings and simulator XCFramework from source, then runs Tuist. See
    [`docs/nmp-dependency.md`](docs/nmp-dependency.md) for the pin/update policy.
 
 3. **Rename the App Group**
@@ -225,7 +225,7 @@ App/Sources/
 ### Running
 
 ```bash
-tuist generate && open Podcastr.xcodeproj
+./ci_scripts/bootstrap_project.sh && open Podcastr.xcodeproj
 # Press Cmd+R in Xcode
 ```
 
@@ -274,7 +274,7 @@ git push origin master
 
 | Script | Purpose |
 |--------|---------|
-| `bootstrap_project.sh` | Verifies/builds pinned NMP source, installs Tuist if needed, runs `tuist generate` |
+| `bootstrap_project.sh` | Stages exact dependencies, builds pinned NMP source, installs Tuist if needed, runs `tuist generate` |
 | `ci_post_clone.sh` | Wrapper for Xcode Cloud post-clone hook |
 | `install_signing_assets.sh` | Installs certificate + provisioning profile from base64 secrets |
 | `archive_and_upload.sh` | Archives, exports IPA, uploads to TestFlight via `altool` |

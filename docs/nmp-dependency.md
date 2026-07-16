@@ -5,15 +5,19 @@ Podcastr consumes NMP from the `Vendor/nmp` Git submodule. The gitlink and
 and builds generated Swift bindings plus `NMP.xcframework` from that checkout;
 generated bindings and binaries remain ignored build output.
 
-The package is source-staged but is not yet linked into the app target. With
-the current public packages, linking `NMP` alongside `ShakeFeedbackKit` makes
-Xcode process two static XCFrameworks that both emit `include/module.modulemap`;
-the build fails with a duplicate-output error. Engine composition must resolve
-that packaging collision before adding `.package(product: "NMP")`. The source
-pin and bootstrap remain useful independently and prevent a future integration
-from silently following NMP `master`.
+The app links both the `NMP` and `ShakeFeedbackKit` products. Their upstream
+static XCFrameworks each place `module.modulemap` at the root of `Headers`, so
+an unmodified composition makes Xcode emit both files to
+`include/module.modulemap` and fail with a duplicate output. Podcastr resolves
+the collision without modifying NMP: bootstrap checks out the public
+ShakeFeedbackKit 1.0.0 commit recorded in `Vendor/shake-feedback-revision.txt`,
+copies it into ignored build output, and nests its header and module map under
+`Headers/ShakeFeedbackCoreFFI`. Xcode then emits the two module maps at distinct
+paths while the Swift product and static binary remain those of exact release
+1.0.0.
 
-`ci_scripts/bootstrap_project.sh` performs the complete clean-checkout path.
+`ci_scripts/bootstrap_project.sh` performs the complete clean-checkout path,
+including `ci_scripts/stage_shake_feedback_package.sh` before Tuist generation.
 Its default `NMP_BUILD_MODE=sim-only` produces arm64 and x86_64 simulator
 slices plus the macOS host slice used by SwiftPM. TestFlight sets
 `NMP_BUILD_MODE=all`, which adds the arm64 physical-device slice used by the
@@ -36,3 +40,13 @@ If NMP changes its minimum Rust toolchain, review and update the exact dated
 toolchain in `bootstrap_project.sh` in the same change. Do not commit
 `Vendor/nmp/Packages/NMP/NMP.xcframework`, generated `NMPFFI` sources, or Cargo
 build output.
+
+## Updating ShakeFeedbackKit deliberately
+
+1. Select a public release and resolve its immutable full commit.
+2. Update `SOURCE_VERSION` in `ci_scripts/stage_shake_feedback_package.sh` and
+   the commit in `Vendor/shake-feedback-revision.txt` together.
+3. Confirm the release still uses the expected `ShakeFeedbackCore.xcframework`
+   header names, then run bootstrap and the test suite from clean build output.
+4. Keep the staged checkout under `build/`; never commit the copied package or
+   binary artifacts.

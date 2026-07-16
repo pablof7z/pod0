@@ -21,13 +21,18 @@ final class RepositoryArchitectureTests: XCTestCase {
         let revision = try source("Vendor/nmp-revision.txt")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let nmpConfiguration = try source("App/Sources/NMP/Pod0NMPConfiguration.swift")
+        let shakeRevision = try source("Vendor/shake-feedback-revision.txt")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let shakeStager = try source("ci_scripts/stage_shake_feedback_package.sh")
 
         XCTAssertFalse(project.contains("../"))
-        XCTAssertTrue(project.contains("https://github.com/pablof7z/ios-shake-feedback"))
-        XCTAssertTrue(project.contains("requirement: .exact(\"1.0.0\")"))
+        XCTAssertTrue(project.contains(".local(path: \"build/dependencies/ios-shake-feedback\")"))
+        XCTAssertTrue(shakeStager.contains("SOURCE_URL=\"https://github.com/pablof7z/ios-shake-feedback\""))
+        XCTAssertTrue(shakeStager.contains("SOURCE_VERSION=\"1.0.0\""))
         XCTAssertTrue(project.contains(".local(path: \"Vendor/nmp/Packages/NMP\")"))
         XCTAssertNotNil(revision.range(of: "^[0-9a-f]{40}$", options: .regularExpression))
         XCTAssertTrue(nmpConfiguration.contains("static let testedRevision = \"\(revision)\""))
+        XCTAssertNotNil(shakeRevision.range(of: "^[0-9a-f]{40}$", options: .regularExpression))
     }
 
     func testWorkflowsTargetMaster() throws {

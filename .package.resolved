@@ -1,15 +1,6 @@
 {
   "pins" : [
     {
-      "identity" : "ios-shake-feedback",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/pablof7z/ios-shake-feedback",
-      "state" : {
-        "revision" : "e39760823e009fab1559f66670333306b1de7ba1",
-        "version" : "1.0.0"
-      }
-    },
-    {
       "identity" : "kingfisher",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/onevcat/Kingfisher",

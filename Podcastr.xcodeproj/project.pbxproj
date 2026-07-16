@@ -123,6 +123,7 @@
 		26CA1ED1879CA0171EF9E548 /* AppStateStore+Notes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37044BB268D58811BE2C4BB3 /* AppStateStore+Notes.swift */; };
 		2765C4E7686B37B23BE18A50 /* RSSParserDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 754F4110DAAD3E5235DC8D23 /* RSSParserDelegate.swift */; };
 		27C62FDD4D6D7AC3142A8DD0 /* AgentGeneratedPodcastService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E596094BED4B040AFDFB89DD /* AgentGeneratedPodcastService.swift */; };
+		2804DA33E5F23BA3AEC08A93 /* NMP in Frameworks */ = {isa = PBXBuildFile; productRef = EEC82B2EE4C3F6031CF5D336 /* NMP */; };
 		287A8E11B89D4992B8588DBD /* ClipComposerHandlesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A5D61A2A2E76A46CCB65B50 /* ClipComposerHandlesView.swift */; };
 		288422098CF725F20400053B /* AgentActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A1E29B99F5D8B00AF50D68B /* AgentActivity.swift */; };
 		28AD653AC4E35663DF0848AB /* NostrDiscoverForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = E49DF698FE6620753CE0570B /* NostrDiscoverForm.swift */; };
@@ -1104,6 +1105,7 @@
 		7E5F8AA7EB507730A554BF4E /* AgentMemoryCompiler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentMemoryCompiler.swift; sourceTree = "<group>"; };
 		7F319A8B26D1ABEED3F65F36 /* PlaybackStateAudioCallbackTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackStateAudioCallbackTests.swift; sourceTree = "<group>"; };
 		7F4FE358C4B5A0D71E62CD8E /* ElevenLabsKeyInfoCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevenLabsKeyInfoCard.swift; sourceTree = "<group>"; };
+		7F558B444FA0B873A305E88B /* ios-shake-feedback */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "ios-shake-feedback"; path = "build/dependencies/ios-shake-feedback"; sourceTree = "<group>"; };
 		7FBC06AD93772F6314E1F5AA /* WikiTriggers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikiTriggers.swift; sourceTree = "<group>"; };
 		7FC6F9697FB7667691B485C4 /* Pod0NMPFoundationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pod0NMPFoundationTests.swift; sourceTree = "<group>"; };
 		7FF78AA988AAF2E7049A9844 /* AgentChatTranscriptExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentChatTranscriptExport.swift; sourceTree = "<group>"; };
@@ -1458,6 +1460,7 @@
 				B3970DA45FCC4CB32765FCCD /* SQLiteVec in Frameworks */,
 				DAF43A45B5BEC1A4531656CC /* Kingfisher in Frameworks */,
 				6CC2965885BEB9C1B53478A6 /* ShakeFeedbackKit in Frameworks */,
+				2804DA33E5F23BA3AEC08A93 /* NMP in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1516,6 +1519,7 @@
 		0A5CDE39EE4CA75387FCAC74 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
+				7F558B444FA0B873A305E88B /* ios-shake-feedback */,
 				E27E46087D0D9C416CE87EC8 /* NMP */,
 			);
 			name = Packages;
@@ -2704,6 +2708,7 @@
 				D1C704F1B182FF83C41AAB0F /* SQLiteVec */,
 				AC95E5BC4A660944ADC3109C /* Kingfisher */,
 				AAC63C9CFC71DC57E42F547F /* ShakeFeedbackKit */,
+				EEC82B2EE4C3F6031CF5D336 /* NMP */,
 			);
 			productName = Podcastr;
 			productReference = 85AB8152D55E6C47E39E9A01 /* Podcastr.app */;
@@ -2757,8 +2762,8 @@
 				9E67C9C9E4C6EC730548EE88 /* XCRemoteSwiftPackageReference "secp256k1.swift" */,
 				E6351A58B45DD67BACED66EE /* XCRemoteSwiftPackageReference "SQLiteVec" */,
 				FD91E0E152391009482BC6AE /* XCRemoteSwiftPackageReference "Kingfisher" */,
-				6ACFB5D253BD310A1239CB8F /* XCRemoteSwiftPackageReference "ios-shake-feedback" */,
 				C15647D9A0A2DAAC8B2D0DA7 /* XCLocalSwiftPackageReference "Vendor/nmp/Packages/NMP" */,
+				8820428033937C0362883629 /* XCLocalSwiftPackageReference "build/dependencies/ios-shake-feedback" */,
 			);
 			productRefGroup = EE8ECCB93F31FD087A3D5446 /* Products */;
 			projectDirPath = "";
@@ -3891,6 +3896,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		8820428033937C0362883629 /* XCLocalSwiftPackageReference "build/dependencies/ios-shake-feedback" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "build/dependencies/ios-shake-feedback";
+		};
 		C15647D9A0A2DAAC8B2D0DA7 /* XCLocalSwiftPackageReference "Vendor/nmp/Packages/NMP" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Vendor/nmp/Packages/NMP;
@@ -3898,14 +3907,6 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		6ACFB5D253BD310A1239CB8F /* XCRemoteSwiftPackageReference "ios-shake-feedback" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/pablof7z/ios-shake-feedback";
-			requirement = {
-				kind = exactVersion;
-				version = 1.0.0;
-			};
-		};
 		9E67C9C9E4C6EC730548EE88 /* XCRemoteSwiftPackageReference "secp256k1.swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/GigaBitcoin/secp256k1.swift";
@@ -3948,6 +3949,10 @@
 		D1C704F1B182FF83C41AAB0F /* SQLiteVec */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SQLiteVec;
+		};
+		EEC82B2EE4C3F6031CF5D336 /* NMP */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NMP;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
