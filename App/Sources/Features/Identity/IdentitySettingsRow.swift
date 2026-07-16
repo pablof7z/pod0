@@ -76,7 +76,7 @@ struct IdentitySettingsRow: View {
     private var accessibilityLabel: String {
         let mode: String
         switch identity.mode {
-        case .remoteSigner: mode = "Bunker via Amber"
+        case .remoteSigner: mode = "NIP-46 bunker"
         case .localKey:     mode = "Local key"
         case .none:         mode = "No identity"
         }

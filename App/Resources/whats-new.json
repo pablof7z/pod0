@@ -2,9 +2,15 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-16T12:57:38Z",
+      "lines": [
+        "Profile publishing now stops safely when durable delivery cannot be proven."
+      ]
+    },
+    {
       "shipped_at": "2026-07-16T12:30:10Z",
       "lines": [
-        "Your Nostr identity now signs, publishes, and uploads profile photos through Pod0's single secure identity engine."
+        "Your Nostr identity now uses Pod0's single secure identity engine."
       ]
     },
     {

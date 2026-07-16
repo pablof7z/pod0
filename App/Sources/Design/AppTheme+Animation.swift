@@ -35,10 +35,6 @@ extension AppTheme {
         static let completionExit: Duration = .milliseconds(200)
         /// 350 ms — typing-indicator dot phase cycle step.
         static let typingDotStep: Duration = .milliseconds(350)
-        /// 600 ms — simulated publish latency for a new feedback thread.
-        static let feedbackPublishDelay: Duration = .milliseconds(600)
-        /// 300 ms — simulated reply latency for a feedback thread reply.
-        static let feedbackReplyDelay: Duration = .milliseconds(300)
         /// 120 ms — inter-beat gap for two-beat haptic patterns (complete/reopen).
         static let hapticTwoBeat: Duration = .milliseconds(120)
         /// 100 ms — inter-beat gap for undo haptic pattern.

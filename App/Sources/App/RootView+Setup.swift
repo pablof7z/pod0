@@ -88,31 +88,4 @@ extension RootView {
             playbackState.setEpisode(episode)
         }
     }
-
-    func handleShake() {
-        let now = Date()
-        guard now.timeIntervalSince(lastShakeTime) > 1.0 else { return }
-        lastShakeTime = now
-
-        if feedbackWorkflow.phase == .awaitingScreenshot {
-            feedbackWorkflow.screenshot = captureScreenshot()
-            feedbackWorkflow.phase = .annotating
-        } else {
-            Haptics.medium()
-            feedbackWorkflow.draft = ""
-            feedbackWorkflow.screenshot = nil
-            feedbackWorkflow.annotatedImage = nil
-            feedbackWorkflow.phase = .composing
-            showFeedback = true
-        }
-    }
-
-    func captureScreenshot() -> UIImage? {
-        guard
-            let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-            let window = windowScene.windows.first
-        else { return nil }
-        let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
-        return renderer.image { ctx in window.layer.render(in: ctx.cgContext) }
-    }
 }

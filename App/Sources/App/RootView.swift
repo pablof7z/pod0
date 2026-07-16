@@ -1,5 +1,4 @@
 import CoreSpotlight
-import ShakeFeedbackKit
 import SwiftUI
 
 /// The tabs available at the root navigation level.
@@ -25,8 +24,8 @@ enum RootTab: String, CaseIterable {
     }
 }
 
-/// The root view of the app. Hosts the main tab bar (hidden), the feedback
-/// shake gesture, onboarding gate, deep-link routing, and the avatar sidebar.
+/// The root view of the app. Hosts the main tab bar (hidden), onboarding gate,
+/// deep-link routing, and the avatar sidebar.
 struct RootView: View {
     let scheduledTaskRunner: AgentScheduledTaskRunner?
 
@@ -34,9 +33,6 @@ struct RootView: View {
     @Environment(AgentAskCoordinator.self) var askCoordinator
     @Environment(UserIdentityStore.self) var userIdentity
     @State var selectedTab: RootTab = .home
-    @State var feedbackWorkflow = FeedbackWorkflow()
-    @State var sharedFeedbackStore = ShakeFeedbackStore(config: .podcastr, namespace: "io.f7z.podcast")
-    @State var showFeedback = false
     @State var showSettings = false
     @State var showAgentChat = false
     @State var showSidebar = false
@@ -44,7 +40,6 @@ struct RootView: View {
     @State var agentSession: AgentChatSession?
     @State var agentUnseenMessageCount: Int = 0
     @State var showVoiceMode = false
-    @State var lastShakeTime: Date = .distantPast
     @State var spotlightSheet: SpotlightIndexer.DeepLink?
     @State var playbackState = PlaybackState()
     @State var showFullPlayer = false
@@ -91,15 +86,6 @@ struct RootView: View {
                         .presentationDragIndicator(.visible)
                         .presentationBackgroundInteraction(.disabled)
                 }
-                .onShake { handleShake() }
-                .sheet(isPresented: $showFeedback) {
-                    ShakeFeedbackSheet(store: sharedFeedbackStore)
-                        .presentationDetents([.large])
-                }
-                .task(id: userIdentity.publicKeyHex) {
-                    guard userIdentity.publicKeyHex != nil else { return }
-                    await sharedFeedbackStore.start(hostSigner: PodcastShakeFeedbackSigner(identity: userIdentity))
-                }
                 .sheet(isPresented: $showSettings) {
                     NavigationStack { SettingsView() }
                 }
@@ -127,14 +113,6 @@ struct RootView: View {
                     set: { spotlightSheet = $0?.link }
                 )) { identified in
                     NavigationStack { spotlightDetailView(for: identified.link) }
-                }
-                .fullScreenCover(
-                    isPresented: .init(
-                        get: { feedbackWorkflow.isAnnotationVisible },
-                        set: { if !$0 { feedbackWorkflow.phase = .composing } }
-                    )
-                ) {
-                    ScreenshotAnnotationView(workflow: feedbackWorkflow)
                 }
                 .fullScreenCover(
                     isPresented: Binding(

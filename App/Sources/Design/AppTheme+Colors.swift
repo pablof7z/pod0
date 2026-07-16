@@ -17,7 +17,7 @@ extension AppTheme {
         static let warning = SwiftUI.Color.orange
         static let onboardingChipAI = SwiftUI.Color(red: 0.80, green: 0.70, blue: 1.0)
         static let onboardingChipFriends = SwiftUI.Color(red: 0.60, green: 0.88, blue: 1.0)
-        static let onboardingChipFeedback = SwiftUI.Color(red: 0.70, green: 1.0, blue: 0.85)
+        static let onboardingChipWiki = SwiftUI.Color(red: 0.70, green: 1.0, blue: 0.85)
         static let agentSurface = SwiftUI.Color.indigo
         static let hairline = SwiftUI.Color.secondary.opacity(0.18)
         static let surfaceMuted = SwiftUI.Color.secondary.opacity(0.08)

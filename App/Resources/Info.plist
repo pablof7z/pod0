@@ -87,16 +87,6 @@
 			<key>UIApplicationShortcutItemType</key>
 			<string>$(PRODUCT_BUNDLE_IDENTIFIER).settings</string>
 		</dict>
-		<dict>
-			<key>UIApplicationShortcutItemIconSymbolName</key>
-			<string>exclamationmark.bubble.fill</string>
-			<key>UIApplicationShortcutItemSubtitle</key>
-			<string>Report a bug or share thoughts</string>
-			<key>UIApplicationShortcutItemTitle</key>
-			<string>Send Feedback</string>
-			<key>UIApplicationShortcutItemType</key>
-			<string>$(PRODUCT_BUNDLE_IDENTIFIER).feedback</string>
-		</dict>
 	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>

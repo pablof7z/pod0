@@ -4,13 +4,12 @@ import SwiftUI
 //
 // Per identity-05-synthesis §4.5. Lead paragraph in body / .secondary, hairline
 // divider separates sign-in options from account-management options. Sign-in
-// options are listed first; "Start a new account" is last and destructive.
+// options are shown only while the clean identity slot is empty.
 
 struct AdvancedView: View {
 
     @Environment(UserIdentityStore.self) private var identity
     @Environment(\.dismiss) private var dismiss
-    @State private var startNewConfirm = false
 
     var body: some View {
         Form {
@@ -20,27 +19,38 @@ struct AdvancedView: View {
                     .foregroundStyle(.secondary)
                     .listRowBackground(Color.clear)
             }
-            Section {
-                NavigationLink {
-                    UseMyOwnKeyView(onImportComplete: { dismiss() })
-                } label: {
-                    advancedRow(
-                        title: "Use my own key",
-                        subtitle: "Already have an account from another app?",
-                        systemImage: "key"
-                    )
+            if !identity.hasIdentity {
+                Section {
+                    NavigationLink {
+                        UseMyOwnKeyView(onImportComplete: { dismiss() })
+                    } label: {
+                        advancedRow(
+                            title: "Use my own key",
+                            subtitle: "Already have an account from another app?",
+                            systemImage: "key"
+                        )
+                    }
+                    NavigationLink {
+                        RemoteSignerView()
+                    } label: {
+                        advancedRow(
+                            title: "Sign in with a remote signer",
+                            subtitle: "Keep your key in a separate signing app.",
+                            systemImage: "link.icloud"
+                        )
+                    }
                 }
-                NavigationLink {
-                    RemoteSignerView()
-                } label: {
-                    advancedRow(
-                        title: "Sign in with a remote signer",
-                        subtitle: "Keep your key in a separate signing app.",
-                        systemImage: "link.icloud"
+                Section {
+                    Label(
+                        "Creating a new account is unavailable until NMP issue #588 provides secure key generation.",
+                        systemImage: "exclamationmark.lock"
                     )
+                    .font(AppTheme.Typography.caption)
+                    .foregroundStyle(.secondary)
                 }
             }
-            Section {
+            if identity.hasIdentity {
+                Section {
                 NavigationLink {
                     AccountDetailsView()
                 } label: {
@@ -50,28 +60,11 @@ struct AdvancedView: View {
                         systemImage: "doc.text.magnifyingglass"
                     )
                 }
-                Button(role: .destructive) {
-                    startNewConfirm = true
-                } label: {
-                    advancedRow(
-                        title: "Start a new account",
-                        subtitle: "Replaces the account on this device",
-                        systemImage: "arrow.triangle.2.circlepath",
-                        destructive: true
-                    )
                 }
             }
         }
         .navigationTitle("Advanced")
         .navigationBarTitleDisplayMode(.inline)
-        .alert("Start a new account?", isPresented: $startNewConfirm) {
-            Button("Cancel", role: .cancel) {}
-            Button("Start new", role: .destructive) {
-                Task { await startNewAccount() }
-            }
-        } message: {
-            Text(startNewMessage)
-        }
     }
 
     // MARK: - Row
@@ -107,26 +100,4 @@ struct AdvancedView: View {
         """
     }
 
-    /// Body adapts when the user has connected a bunker (per §4.9 — disconnecting
-    /// doesn't lose the key, so the trailing line is dropped).
-    private var startNewMessage: String {
-        let base = """
-        This will replace your current account on this device. Anything you've already \
-        posted (notes, memories, feedback, clips) stays online but you won't be able \
-        to edit it from here anymore.
-        """
-        if identity.isRemoteSigner {
-            return base
-        }
-        return base + "\n\nIf you have your key saved elsewhere, you can sign back in later under Advanced."
-    }
-
-    // MARK: - Actions
-
-    private func startNewAccount() async {
-        // Per §4.9: clear → start (silently regenerates a new local key).
-        identity.clearIdentity()
-        await identity.start()
-        Haptics.medium()
-    }
 }

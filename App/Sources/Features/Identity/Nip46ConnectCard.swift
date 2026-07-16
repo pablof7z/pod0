@@ -91,7 +91,7 @@ struct Nip46ConnectCard: View {
 
     private var inputRow: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            Text("Paste a bunker URI from Amber, nsec.app, or nsecBunker.")
+            Text("Paste a bunker URI from a NIP-46 bunker service.")
                 .font(AppTheme.Typography.caption)
                 .foregroundStyle(.secondary)
             TextField("bunker://…?relay=wss://…&secret=…", text: $bunkerInput, axis: .vertical)

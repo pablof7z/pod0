@@ -85,7 +85,7 @@ struct ModeBadge: View {
 
     private var label: String {
         switch mode {
-        case .remoteSigner: "Bunker via Amber"
+        case .remoteSigner: "NIP-46 bunker"
         case .localKey:     "Local Key"
         case .none:         "No Identity"
         }

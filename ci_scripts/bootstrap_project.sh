@@ -10,8 +10,6 @@ NMP_BUILD_MODE="${NMP_BUILD_MODE:-sim-only}"
 cd "$REPO_ROOT"
 "$SCRIPT_DIR/verify_repository_dependencies.sh"
 "$SCRIPT_DIR/verify_fail_closed_ingress.sh"
-"$SCRIPT_DIR/stage_shake_feedback_package.sh"
-
 git submodule sync -- Vendor/nmp
 git submodule update --init --recursive Vendor/nmp
 

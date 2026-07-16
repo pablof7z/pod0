@@ -8,15 +8,20 @@ final class UserIdentityWiringTests: XCTestCase {
             .deletingLastPathComponent()
     }
 
-    func testIdentityPublishingUsesNMPDirectly() throws {
+    func testHumanPublishingFailsClosedBeforeSigningOrEnqueue() throws {
         let publishing = try source("App/Sources/Services/UserIdentityStore+Publishing.swift")
+        let identityRoot = try source("App/Sources/Features/Identity/IdentityRootView.swift")
+        let receiptCoordinator = repositoryRoot.appendingPathComponent(
+            "App/Sources/Services/UserIdentityStore+NMPReceipts.swift"
+        )
 
-        XCTAssertTrue(publishing.contains("engine.signEvent"))
-        XCTAssertTrue(publishing.contains("engine.publish"))
-        XCTAssertTrue(publishing.contains("WriteIntent("))
-        XCTAssertTrue(publishing.contains("routing: .authorOutbox"))
-        XCTAssertFalse(publishing.contains("NMPNostrSigner"))
-        XCTAssertFalse(publishing.contains("FeedbackRelayClient().publish"))
+        XCTAssertTrue(publishing.contains("durableCorrelationUnavailable(issue: 591)"))
+        XCTAssertFalse(publishing.contains("engine.signEvent"))
+        XCTAssertFalse(publishing.contains("engine.publish"))
+        XCTAssertFalse(publishing.contains("WriteIntent("))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: receiptCoordinator.path))
+        XCTAssertTrue(identityRoot.contains("NMP issue #591"))
+        XCTAssertFalse(identityRoot.contains("EditProfileView"))
     }
 
     func testIdentityCoreHasNoCompatibilitySigner() throws {
@@ -30,15 +35,15 @@ final class UserIdentityWiringTests: XCTestCase {
         XCTAssertTrue(core.contains("NMP issue #588"))
     }
 
-    func testProfilePhotoUploadUsesNMPBlossomSurface() throws {
+    func testProfilePhotoUploadIsAbsentWhilePublishingIsBlocked() throws {
         let publishing = try source("App/Sources/Services/UserIdentityStore+Publishing.swift")
-        let photo = try source("App/Sources/Features/Identity/ChangePhotoSheet.swift")
+        let photo = repositoryRoot.appendingPathComponent(
+            "App/Sources/Features/Identity/ChangePhotoSheet.swift"
+        )
 
-        XCTAssertTrue(publishing.contains("blossomUploadAuthorizationDraft"))
-        XCTAssertTrue(publishing.contains("BlossomAuthorization.validate"))
-        XCTAssertTrue(publishing.contains("BlossomClient().upload"))
-        XCTAssertTrue(photo.contains("identity.uploadProfilePhoto"))
-        XCTAssertFalse(photo.contains("identity.signer"))
+        XCTAssertFalse(publishing.contains("blossomUploadAuthorizationDraft"))
+        XCTAssertFalse(publishing.contains("BlossomClient().upload"))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: photo.path))
     }
 
     private func source(_ path: String) throws -> String {

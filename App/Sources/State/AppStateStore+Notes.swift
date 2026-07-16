@@ -4,9 +4,7 @@ import Foundation
 
 extension AppStateStore {
 
-    /// User-authored note path. Defaults `author: .user` and fires a
-    /// fire-and-forget kind-1 publish through `UserIdentityStore.shared`
-    /// per the wiring contract in `identity-05-synthesis.md` §5.3.
+    /// User-authored note path. Defaults `author: .user`.
     /// Existing call-sites (`AgentNotesView`, `FriendDetailView`) hit this
     /// signature unchanged.
     @discardableResult
@@ -20,18 +18,6 @@ extension AppStateStore {
     func addNote(text: String, kind: NoteKind = .free, target: Anchor? = nil, author: NoteAuthor) -> Note {
         let note = Note(text: text, kind: kind, target: target, author: author)
         state.notes.append(note)
-        if author == .user {
-            // For episode-anchored notes, forward the episode ID as the coord
-            // so the published kind:1 event carries an ["a", episodeID] tag.
-            let episodeCoord: String?
-            if case .episode(let id, _) = target {
-                episodeCoord = id.uuidString
-            } else {
-                episodeCoord = nil
-            }
-            // Fire-and-forget — relay outage must never block a local action.
-            Task { try? await UserIdentityStore.shared.publishUserNote(note, episodeCoord: episodeCoord) }
-        }
         return note
     }
 

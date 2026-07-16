@@ -3,15 +3,12 @@ import os.log
 
 // MARK: - SleepTimer
 
-/// Drives sleep-timer behavior independent of the audio engine — three modes:
+/// Drives sleep-timer behavior independent of the audio engine:
 ///
 /// 1. **Duration**: fires after N minutes; fades volume over the last 8s, then
 ///    pauses playback.
 /// 2. **End-of-episode**: arms a flag; engine asks `shouldStopAtEnd()` when
 ///    `AVPlayerItem.didPlayToEndTimeNotification` fires.
-/// 3. **Shake-to-extend**: `extend(by:)` shifts the deadline forward — the
-///    integration with the existing `ShakeDetector` (`Design/ShakeDetector.swift`)
-///    happens in the player view (Lane 4). This timer just publishes the API.
 ///
 /// The timer publishes `phase` so the player UI can render a countdown.
 @MainActor
@@ -77,7 +74,7 @@ final class SleepTimer {
         }
     }
 
-    /// Push the deadline forward (shake-to-extend). No-op outside duration mode.
+    /// Push the deadline forward. No-op outside duration mode.
     func extend(by seconds: TimeInterval) {
         guard case .duration = mode, let current = deadline else { return }
         deadline = current.addingTimeInterval(seconds)

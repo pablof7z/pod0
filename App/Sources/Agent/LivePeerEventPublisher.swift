@@ -59,7 +59,7 @@ final class LivePeerEventPublisher: PeerEventPublisherProtocol, @unchecked Senda
         if let peerContext {
             for a in peerContext.rootATags { tags.append(a) }
         } else {
-            tags.append(["a", FeedbackRelayClient.projectCoordinate])
+            tags.append(["a", Pod0FeedbackProtocol.projectCoordinate])
         }
         tags.append(["p", friendPubkeyHex])
         return try await signAndPublish(content: trimmed, tags: tags)

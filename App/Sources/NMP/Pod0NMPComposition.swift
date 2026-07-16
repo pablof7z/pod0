@@ -96,6 +96,7 @@ final class Pod0NMPComposition: Pod0NMPEngineAccess, @unchecked Sendable {
     init(
         configuration: Pod0NMPConfiguration,
         layout: Pod0NMPStoreLayout,
+        localAccountStore: (any NMPLocalAccountCheckpoint)? = nil,
         fileManager: FileManager = .default
     ) throws {
         try layout.prepare(fileManager: fileManager)
@@ -111,7 +112,10 @@ final class Pod0NMPComposition: Pod0NMPEngineAccess, @unchecked Sendable {
                 maxNativeTasks: configuration.limits.maxNativeTasks,
                 maxAuthCapabilities: configuration.limits.maxAuthCapabilities
             )
-            engine = try NMPEngine(config: nmpConfiguration)
+            engine = try NMPEngine(
+                config: nmpConfiguration,
+                localAccountStore: localAccountStore
+            )
         } catch {
             lease.release()
             throw error

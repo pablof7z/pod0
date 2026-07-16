@@ -8,8 +8,6 @@ enum DeepLinkHandler {
     enum Link: Equatable {
         /// Opens the Settings sheet.
         case settings
-        /// Opens the Feedback sheet.
-        case feedback
         /// Opens the AI agent (Ask) tab.
         case agent
         /// Opens the Add Friend sheet pre-filled with the sender's public key and display name.
@@ -39,7 +37,6 @@ enum DeepLinkHandler {
         guard url.scheme == "podcastr" else { return nil }
         switch url.host {
         case "settings": return .settings
-        case "feedback": return .feedback
         case "agent":    return .agent
         case "friend":
             guard url.path == "/add",

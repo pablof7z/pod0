@@ -8,8 +8,6 @@ extension RootView {
         switch link {
         case .settings:
             showSettings = true
-        case .feedback:
-            showFeedback = true
         case .agent:
             openAgentChat()
         case .addFriend(let npub, let name):

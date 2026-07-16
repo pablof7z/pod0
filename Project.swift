@@ -47,10 +47,6 @@ let project = Project(
             url: "https://github.com/onevcat/Kingfisher",
             requirement: .upToNextMajor(from: "8.0.0")
         ),
-        // Bootstrap stages an exact, revision-verified copy of public
-        // ShakeFeedbackKit 1.0.0 and namespaces its static-XCFramework
-        // headers so it can coexist with NMP's static XCFramework.
-        .local(path: "build/dependencies/ios-shake-feedback"),
         // NMP is source-pinned as a submodule. The bootstrap script builds
         // its generated bindings and XCFramework before Tuist resolves this
         // local package; neither generated artifact is committed here.
@@ -83,7 +79,6 @@ let project = Project(
                 .package(product: "P256K"),
                 .package(product: "SQLiteVec"),
                 .package(product: "Kingfisher"),
-                .package(product: "ShakeFeedbackKit"),
                 .package(product: "NMP"),
                 .target(name: "\(appName)Widget"),
             ],

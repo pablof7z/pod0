@@ -8,7 +8,7 @@ import SwiftUI
 //
 // Uses SwiftUI's built-in `.redacted(reason: .placeholder)` modifier to
 // produce the standard system shimmer instead of hand-rolling a gradient —
-// the FeedbackView skeleton state uses the same pattern.
+// other loading skeletons use the same pattern.
 
 struct HomeAgentPickShimmerCard: View {
     let isHero: Bool

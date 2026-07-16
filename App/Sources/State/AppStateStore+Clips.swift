@@ -17,15 +17,6 @@ extension AppStateStore {
 
     func addClip(_ clip: Clip) {
         state.clips.append(clip)
-        // Wiring contract per `identity-05-synthesis.md` §5.3: every clip
-        // source signs and publishes (kind 9802 / NIP-84) except `.agent`,
-        // which stays local. Fire-and-forget so a relay outage never blocks
-        // the user's local capture.
-        if clip.source != .agent {
-            let ep  = episode(id: clip.episodeID)
-            let pod = ep.flatMap { podcast(id: $0.podcastID) }
-            Task { try? await UserIdentityStore.shared.publishUserClip(clip, episode: ep, podcast: pod) }
-        }
     }
 
     /// Convenience: build + persist in one call. Used by `AutoSnipController`
@@ -53,8 +44,6 @@ extension AppStateStore {
             transcriptText: transcriptText ?? "",
             source: source
         )
-        // Route through the primary `addClip(_:)` so the publish wiring
-        // fires uniformly for every entry-point (composer + auto-snip).
         addClip(clip)
         return clip
     }
@@ -62,9 +51,7 @@ extension AppStateStore {
     /// In-place rewrite for the optimistic-then-refine flow used by
     /// `AutoSnipController`: the mechanical clip lands first (instant haptic +
     /// toast), then a background LLM call refines the boundaries and calls
-    /// this to overwrite the span and frozen transcript. We deliberately do
-    /// NOT re-publish NIP-84 here — the initial publish in `addClip(_:)` is
-    /// the user-visible event; refinement is local polish.
+    /// this to overwrite the span and frozen transcript.
     func updateClipBoundaries(
         id: UUID,
         startMs: Int,

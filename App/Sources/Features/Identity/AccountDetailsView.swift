@@ -27,7 +27,7 @@ struct AccountDetailsView: View {
                 detailLine(label: "source", value: sourceLine)
             }
             Section("Profile") {
-                Text("Profile sync runs in the background. A republish trigger lands with Slice B.")
+                Text("Profile publishing is unavailable until NMP issue #591 can prove durable delivery.")
                     .font(AppTheme.Typography.caption)
                     .foregroundStyle(.secondary)
                 Button {
@@ -95,7 +95,7 @@ struct AccountDetailsView: View {
 
     private var modeLabel: String {
         switch identity.mode {
-        case .remoteSigner: return "Bunker via Amber"
+        case .remoteSigner: return "NIP-46 bunker"
         case .localKey:     return "Local Key"
         case .none:         return "—"
         }

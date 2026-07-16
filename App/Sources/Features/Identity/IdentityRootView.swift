@@ -3,22 +3,18 @@ import SwiftUI
 // MARK: - IdentityRootView
 //
 // Per identity-05-synthesis §4.2. T0 paper background — the page reads like
-// front matter, not a config screen. The Edit profile button is the only T3
-// fill on the root. The mode badge is the full-page place where the signer
-// flavour appears (T2 capsule, glass.agent only when Bunker).
+// front matter, not a config screen. The mode badge is the full-page place
+// where the signer flavour appears (T2 capsule, glass.agent only when Bunker).
 
 struct IdentityRootView: View {
 
     private enum Layout {
         static let avatarSize: CGFloat = 96
-        static let editButtonWidth: CGFloat = 220
-        static let editButtonVerticalPadding: CGFloat = 12
         static let blockSpacing: CGFloat = AppTheme.Spacing.lg
         static let aboutQuoteSize: CGFloat = 28
     }
 
     @Environment(UserIdentityStore.self) private var identity
-    @State private var editPresented = false
 
     var body: some View {
         ScrollView {
@@ -36,9 +32,6 @@ struct IdentityRootView: View {
         .background(Color(.systemBackground))
         .navigationTitle("Identity")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(isPresented: $editPresented) {
-            EditProfileView()
-        }
     }
 
     // MARK: - Hero
@@ -62,22 +55,20 @@ struct IdentityRootView: View {
                 }
             }
             ModeBadge(mode: identity.mode, variant: .capsule)
-            editButton
+            profilePublishingUnavailable
         }
         .padding(.horizontal, AppTheme.Spacing.lg)
     }
 
-    private var editButton: some View {
-        Button {
-            editPresented = true
-        } label: {
-            Text("Edit profile")
-                .font(AppTheme.Typography.headline)
-                .frame(width: Layout.editButtonWidth)
-                .padding(.vertical, Layout.editButtonVerticalPadding)
-        }
-        .buttonStyle(.glassProminent)
-        .accessibilityLabel("Edit profile")
+    private var profilePublishingUnavailable: some View {
+        Label(
+            "Profile editing is unavailable until NMP issue #591 can prove durable delivery.",
+            systemImage: "exclamationmark.shield"
+        )
+        .font(AppTheme.Typography.caption)
+        .foregroundStyle(.secondary)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: 320)
     }
 
     // MARK: - Advanced row
@@ -146,7 +137,7 @@ private struct IdentityRootAboutBlock: View {
     private var aboutText: String {
         let raw = profile?.about ?? ""
         if raw.isBlank {
-            return "A new account, freshly minted.\nTell people who you are."
+            return "No published profile is available."
         }
         return raw
     }

@@ -18,13 +18,6 @@ final class DeepLinkHandlerTests: XCTestCase {
         }
     }
 
-    func testResolvesFeedback() {
-        let url = URL(string: "podcastr://feedback")!
-        guard case .feedback = DeepLinkHandler.resolve(url) else {
-            XCTFail("Expected .feedback"); return
-        }
-    }
-
     func testResolvesAgent() {
         let url = URL(string: "podcastr://agent")!
         guard case .agent = DeepLinkHandler.resolve(url) else {

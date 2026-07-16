@@ -80,7 +80,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
             : shortcut.type
         switch suffix {
         case "open-agent": return URL(string: "podcastr://agent")
-        case "feedback":   return URL(string: "podcastr://feedback")
         case "settings":   return URL(string: "podcastr://settings")
         default:           return nil
         }

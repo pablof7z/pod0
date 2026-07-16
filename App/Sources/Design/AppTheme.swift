@@ -41,7 +41,7 @@ enum AppTheme {
         static let pill: CGFloat = 14
         /// 16 pt — standard cards and glass surfaces.
         static let lg: CGFloat = 16
-        /// 18 pt — chat message bubbles (agent and feedback).
+        /// 18 pt — chat message bubbles.
         static let bubble: CGFloat = 18
         /// 24 pt — large hero cards and bottom sheets.
         static let xl: CGFloat = 24
@@ -60,11 +60,9 @@ enum AppTheme {
         /// 64 pt — medium profile avatar.
         static let iconLg: CGFloat = 64
         /// 60 pt — minimum leading/trailing spacer that pushes a chat bubble
-        /// to the opposite edge (used in FeedbackBubble and
-        /// FeedbackThreadDetailView for the image bubble row).
+        /// to the opposite edge in friend conversations.
         static let bubbleSpacer: CGFloat = 60
-        /// 2 pt — vertical padding between adjacent bubble rows in a thread
-        /// (used in FeedbackBubble and FeedbackThreadDetailView).
+        /// 2 pt — vertical padding between adjacent bubble rows in a thread.
         static let bubbleRowSpacing: CGFloat = 2
 
         // MARK: List row insets

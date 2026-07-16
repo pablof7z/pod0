@@ -76,7 +76,7 @@ enum UserIdentityError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noIdentity:
-            "No feedback identity is available."
+            "No identity is available."
         case .nmpUnavailable:
             "The identity engine is unavailable."
         case .nmpKeyGenerationUnavailable:

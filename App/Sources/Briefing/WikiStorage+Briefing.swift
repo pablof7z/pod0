@@ -27,7 +27,7 @@ extension WikiStorage: BriefingWikiStorageProtocol {
                 // Locale-aware fold so the briefing composer's title
                 // lookup matches across Unicode case (Straße / STRASSE,
                 // İstanbul / istanbul) — same shape fix the wiki home
-                // search and feedback search just got.
+                // search uses elsewhere in the app.
                 .filter { $0.title.localizedCaseInsensitiveContains(q) }
                 .sorted { $0.generatedAt > $1.generatedAt }
         }.value

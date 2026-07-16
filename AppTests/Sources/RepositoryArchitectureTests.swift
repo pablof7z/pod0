@@ -21,20 +21,57 @@ final class RepositoryArchitectureTests: XCTestCase {
         let appMain = try source("App/Sources/AppMain.swift")
         let identityCore = try source("App/Sources/Services/UserIdentityStore.swift")
         let identityNMP = try source("App/Sources/Services/UserIdentityStore+NMP.swift")
-        let nip46 = try source("App/Sources/Services/UserIdentityStore+NIP46.swift")
+        let lifecycle = try source("App/Sources/NMP/Pod0HumanIdentityLifecycle.swift")
 
         XCTAssertFalse(appMain.contains(".task { userIdentity.start() }"))
         XCTAssertTrue(appMain.contains("await userIdentity.start(composition: composition)"))
         XCTAssertFalse(identityCore.contains("user-private-key-hex"))
         XCTAssertFalse(identityCore.contains("nip46-session"))
-        XCTAssertFalse(identityNMP.contains("RemoteSigner(relays:"))
         XCTAssertFalse(identityNMP.contains("NostrKeyPair.generate"))
         XCTAssertTrue(identityNMP.contains("nmpKeyGenerationUnavailable"))
         XCTAssertTrue(identityCore.contains("#588"))
-        XCTAssertFalse(nip46.contains("RemoteSigner(relays:"))
-        XCTAssertTrue(nip46.contains("#571"))
-        XCTAssertTrue(identityNMP.contains("NMPKeychainAccountStore("))
-        XCTAssertTrue(identityNMP.contains(".nmp-human-identity"))
+        XCTAssertTrue(appMain.contains("NMPKeychainAccountStore("))
+        XCTAssertTrue(appMain.contains("localAccountStore:"))
+        XCTAssertTrue(appMain.contains(".nmp-human-identity"))
+        XCTAssertFalse(lifecycle.contains("loadSecretKey"))
+        XCTAssertFalse(lifecycle.contains("saveSecretKey"))
+        XCTAssertTrue(lifecycle.contains("issue: 589"))
+    }
+
+    func testLegacyHumanSignerTransportIsAbsentFromAppTarget() throws {
+        let removed = [
+            "App/Sources/Services/Nip46/RemoteSigner.swift",
+            "App/Sources/Services/Nip46/RemoteSignerClient.swift",
+            "App/Sources/Services/Nip46/RemoteSignerTransport.swift",
+            "App/Sources/Services/Nip46/Nip44.swift",
+            "App/Sources/Services/UserIdentityStore+NIP46.swift",
+        ]
+        for path in removed {
+            XCTAssertFalse(FileManager.default.fileExists(atPath: repositoryRoot.appendingPathComponent(path).path))
+        }
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: repositoryRoot.appendingPathComponent("App/Sources/Agent/AgentNostrSigner.swift").path
+        ))
+    }
+
+    func testDormantFeedbackSurfaceIsAbsent() throws {
+        let rootView = try source("App/Sources/App/RootView.swift")
+        let project = try source("Project.swift")
+        let profileFetch = repositoryRoot.appendingPathComponent(
+            "App/Sources/Services/UserIdentityStore+ProfileFetch.swift"
+        )
+        let feedbackDirectory = repositoryRoot.appendingPathComponent(
+            "App/Sources/Features/Feedback"
+        )
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: profileFetch.path))
+        XCTAssertTrue(
+            (try? FileManager.default.contentsOfDirectory(atPath: feedbackDirectory.path).isEmpty)
+                ?? true
+        )
+        XCTAssertFalse(rootView.contains("showFeedback"))
+        XCTAssertFalse(rootView.contains("onShake"))
+        XCTAssertFalse(project.contains("ShakeFeedbackKit"))
     }
 
     func testCleanCommentsBoundaryNeverUsesCustomSigners() throws {
@@ -55,18 +92,13 @@ final class RepositoryArchitectureTests: XCTestCase {
         let revision = try source("Vendor/nmp-revision.txt")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let nmpConfiguration = try source("App/Sources/NMP/Pod0NMPConfiguration.swift")
-        let shakeRevision = try source("Vendor/shake-feedback-revision.txt")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        let shakeStager = try source("ci_scripts/stage_shake_feedback_package.sh")
 
         XCTAssertFalse(project.contains("../"))
-        XCTAssertTrue(project.contains(".local(path: \"build/dependencies/ios-shake-feedback\")"))
-        XCTAssertTrue(shakeStager.contains("SOURCE_URL=\"https://github.com/pablof7z/ios-shake-feedback\""))
-        XCTAssertTrue(shakeStager.contains("SOURCE_VERSION=\"1.0.0\""))
+        XCTAssertFalse(project.contains("ShakeFeedbackKit"))
+        XCTAssertFalse(project.contains("ios-shake-feedback"))
         XCTAssertTrue(project.contains(".local(path: \"Vendor/nmp/Packages/NMP\")"))
         XCTAssertNotNil(revision.range(of: "^[0-9a-f]{40}$", options: .regularExpression))
         XCTAssertTrue(nmpConfiguration.contains("static let testedRevision = \"\(revision)\""))
-        XCTAssertNotNil(shakeRevision.range(of: "^[0-9a-f]{40}$", options: .regularExpression))
     }
 
     func testWorkflowsTargetMaster() throws {

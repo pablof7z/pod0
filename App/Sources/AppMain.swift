@@ -1,6 +1,10 @@
 import os.log
 import SwiftUI
 
+#if canImport(NMP)
+import NMP
+#endif
+
 /// The top-level entry point for the app. Sets up global environment objects.
 @main
 struct PodcastrApp: App {
@@ -93,7 +97,11 @@ struct PodcastrApp: App {
             )
             let composition = try Pod0NMPComposition(
                 configuration: configuration,
-                layout: layout
+                layout: layout,
+                localAccountStore: NMPKeychainAccountStore(
+                    service: "\(Bundle.main.bundleIdentifier ?? "Podcastr").nmp-human-identity",
+                    account: Pod0HumanIdentityLifecycle.localSecretReference
+                )
             )
             nmpComposition = composition
             await userIdentity.start(composition: composition)

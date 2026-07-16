@@ -9,17 +9,12 @@ extension UserIdentityStore {
     /// fail-closed until NMP exposes that capability.
     func start(
         composition: Pod0NMPComposition,
-        secretStore: any NMPLocalAccountCheckpoint = NMPKeychainAccountStore(
-            service: "\(Bundle.main.bundleIdentifier ?? "Podcastr").nmp-human-identity",
-            account: Pod0HumanIdentityLifecycle.localSecretReference
-        ),
         catalogStorage: any Pod0IdentityCatalogStorage = KeychainPod0IdentityCatalogStorage()
     ) async {
         guard nmpComposition == nil else { return }
         nmpComposition = composition
         let lifecycle = Pod0HumanIdentityLifecycle(
             engineAccess: composition,
-            secretStore: secretStore,
             catalogStorage: catalogStorage
         )
         nmpLifecycle = lifecycle
@@ -62,27 +57,20 @@ extension UserIdentityStore {
             )
             adoptNMPIdentity(entry: entry)
         } catch {
-            loginError = "Invalid nsec — check the key and try again."
+            loginError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             throw error
         }
-    }
-
-    func generateKey() async throws {
-        loginError = nil
-        let error = UserIdentityError.nmpKeyGenerationUnavailable
-        loginError = error.errorDescription
-        throw error
     }
 
     func clearIdentity() {
         do {
             try nmpLifecycle?.cachePreservingSignOut()
             loginError = nil
+            clearPublishedState()
         } catch {
-            loginError = String(describing: error)
+            loginError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             logger.error("NMP identity sign-out failed: \(String(describing: error), privacy: .public)")
         }
-        clearPublishedState()
     }
 
     func connectRemoteSigner(uri: String) async {
@@ -109,7 +97,7 @@ extension UserIdentityStore {
         loginError = message
         if case .some(.clientInitiatedNip46CheckpointUnsupported(issue: _)) = nmpLifecycle?.blocker {
             remoteSignerState = .failed(
-                "Scan-to-connect is unavailable until NMP issue #571 can securely restore the session. Paste a bunker link instead."
+                "Scan-to-connect is unavailable until NMP issue #571 can securely restore the session."
             )
         } else {
             remoteSignerState = .failed(message)
@@ -126,9 +114,6 @@ extension UserIdentityStore {
         remoteSignerState = mode == .remoteSigner
             ? .connected(entry.expectedPublicKey)
             : .idle
-        loadCachedProfile(for: entry.expectedPublicKey)
-        let publicKey = entry.expectedPublicKey
-        Task { await fetchAndCacheProfile(pubkeyHex: publicKey) }
     }
 
 }
