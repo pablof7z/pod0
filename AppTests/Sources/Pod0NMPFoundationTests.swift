@@ -2,6 +2,10 @@ import Foundation
 import XCTest
 @testable import Podcastr
 
+#if canImport(NMP)
+import NMP
+#endif
+
 final class Pod0NMPFoundationTests: XCTestCase {
     func testConfigurationClassifiesOnlyOperatorRelayAndIgnoresInvalidValues() {
         let configuration = Pod0NMPConfiguration(
@@ -86,4 +90,147 @@ final class Pod0NMPFoundationTests: XCTestCase {
         XCTAssertFalse(snapshot.supportSummary.lowercased().contains("fully synced"))
         XCTAssertFalse(snapshot.supportSummary.lowercased().contains("complete"))
     }
+
+    #if canImport(NMP)
+    func testRealPinnedCompositionOwnsResetsAndReopensCanonicalStore() async throws {
+        let root = temporaryRoot(named: "lifecycle")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let layout = Pod0NMPStoreLayout(rootDirectory: root)
+        let configuration = offlineConfiguration(layout: layout)
+        let first = try Pod0NMPComposition(configuration: configuration, layout: layout)
+        defer { first.shutdown() }
+
+        XCTAssertEqual(configuration.nmpRevision, Pod0NMPBuild.testedRevision)
+        XCTAssertEqual(configuration.storePath, layout.storeURL.standardizedFileURL.path)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: layout.storeURL.path))
+        XCTAssertEqual(
+            try root.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup,
+            true
+        )
+
+        XCTAssertThrowsError(
+            try Pod0NMPComposition(configuration: configuration, layout: layout)
+        ) { error in
+            XCTAssertEqual(
+                error as? Pod0NMPCompositionError,
+                .storeAlreadyOwned(configuration.storePath)
+            )
+        }
+        XCTAssertThrowsError(try first.resetStoreAfterShutdown()) { error in
+            XCTAssertEqual(error as? Pod0NMPCompositionError, .engineStillRunning)
+        }
+        XCTAssertThrowsError(try NMPEngine.resetPersistentStore(at: configuration.storePath)) {
+            guard case .storeStillOpen(let path) = $0 as? NMPError else {
+                return XCTFail("Expected NMP storeStillOpen, got \($0)")
+            }
+            XCTAssertEqual(path, configuration.storePath)
+        }
+
+        first.shutdown()
+        XCTAssertThrowsError(try first.stageOperatorRelay("wss://next.example")) { error in
+            XCTAssertEqual(error as? Pod0NMPCompositionError, .engineShutdown)
+        }
+
+        let reopened = try Pod0NMPComposition(configuration: configuration, layout: layout)
+        let restartedSnapshot = await firstSnapshot(from: try reopened.diagnostics())
+        XCTAssertNotNil(restartedSnapshot, "Offline restart must immediately expose diagnostics")
+        XCTAssertEqual(restartedSnapshot?.relays, [])
+        XCTAssertEqual(restartedSnapshot?.authSessions, [])
+        reopened.shutdown()
+
+        try reopened.resetStoreAfterShutdown()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: layout.storeURL.path))
+
+        let clean = try Pod0NMPComposition(configuration: configuration, layout: layout)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: layout.storeURL.path))
+        clean.shutdown()
+        try clean.resetStoreAfterShutdown()
+    }
+
+    func testRealDiagnosticsCancellationReturnsCapacityAcrossOfflineRestart() async throws {
+        let root = temporaryRoot(named: "diagnostics")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let layout = Pod0NMPStoreLayout(rootDirectory: root)
+        let configuration = offlineConfiguration(
+            layout: layout,
+            limits: .init(maxRelays: 1, maxNativeTasks: 1, maxAuthCapabilities: 1)
+        )
+        let composition = try Pod0NMPComposition(configuration: configuration, layout: layout)
+
+        var observation: AsyncStream<Pod0NMPDiagnosticsSnapshot>? = try composition.diagnostics()
+        let initial = await firstSnapshot(from: try XCTUnwrap(observation))
+        XCTAssertNotNil(initial, "Pinned NMP must emit an immediate offline diagnostic snapshot")
+        XCTAssertEqual(initial?.relays, [])
+        XCTAssertEqual(initial?.uncoveredAuthorCount, 0)
+        observation = nil
+
+        var replacement: AsyncStream<Pod0NMPDiagnosticsSnapshot>? =
+            try await diagnosticsAfterCancellation(from: composition)
+        let replacementSnapshot = await firstSnapshot(from: try XCTUnwrap(replacement))
+        XCTAssertNotNil(replacementSnapshot)
+        replacement = nil
+
+        composition.shutdown()
+        let restarted = try Pod0NMPComposition(configuration: configuration, layout: layout)
+        let afterRestart = await firstSnapshot(from: try restarted.diagnostics())
+        XCTAssertNotNil(afterRestart)
+        XCTAssertEqual(afterRestart?.relays, [])
+        restarted.shutdown()
+        try restarted.resetStoreAfterShutdown()
+    }
+
+    private func offlineConfiguration(
+        layout: Pod0NMPStoreLayout,
+        limits: Pod0NMPConfiguration.Limits = .appDefault
+    ) -> Pod0NMPConfiguration {
+        Pod0NMPConfiguration(
+            storeURL: layout.storeURL,
+            indexerRelays: [],
+            operatorRelay: nil,
+            fallbackRelays: [],
+            limits: limits
+        )
+    }
+
+    private func temporaryRoot(named name: String) -> URL {
+        FileManager.default.temporaryDirectory
+            .appendingPathComponent("pod0-nmp-\(name)-\(UUID().uuidString)", isDirectory: true)
+    }
+
+    private func firstSnapshot(
+        from stream: AsyncStream<Pod0NMPDiagnosticsSnapshot>,
+        timeoutSeconds: UInt64 = 5
+    ) async -> Pod0NMPDiagnosticsSnapshot? {
+        await withTaskGroup(of: Pod0NMPDiagnosticsSnapshot?.self) { group in
+            group.addTask {
+                for await snapshot in stream {
+                    return snapshot
+                }
+                return nil
+            }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: timeoutSeconds * 1_000_000_000)
+                return nil
+            }
+            let result = await group.next() ?? nil
+            group.cancelAll()
+            return result
+        }
+    }
+
+    private func diagnosticsAfterCancellation(
+        from composition: Pod0NMPComposition
+    ) async throws -> AsyncStream<Pod0NMPDiagnosticsSnapshot> {
+        var lastError: Error?
+        for _ in 0..<100 {
+            do {
+                return try composition.diagnostics()
+            } catch {
+                lastError = error
+                try await Task.sleep(nanoseconds: 10_000_000)
+            }
+        }
+        throw lastError ?? Pod0NMPCompositionError.nmpUnavailable
+    }
+    #endif
 }

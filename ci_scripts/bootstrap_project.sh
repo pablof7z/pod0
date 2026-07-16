@@ -26,15 +26,15 @@ echo "NMP Rust toolchain: $NMP_TOOLCHAIN"
 
 case "$NMP_BUILD_MODE" in
   all)
-    nmp_build_argument=()
+    nmp_build_argument=""
     nmp_targets=(aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios aarch64-apple-darwin)
     ;;
   sim-only)
-    nmp_build_argument=(--sim-only)
+    nmp_build_argument="--sim-only"
     nmp_targets=(aarch64-apple-ios-sim x86_64-apple-ios aarch64-apple-darwin)
     ;;
   macos-only)
-    nmp_build_argument=(--macos-only)
+    nmp_build_argument="--macos-only"
     nmp_targets=(aarch64-apple-darwin)
     ;;
   *)
@@ -52,9 +52,15 @@ rustup target add --toolchain "$NMP_TOOLCHAIN" "${nmp_targets[@]}"
 
 (
   cd "$NMP_PATH"
-  RUSTUP_TOOLCHAIN="$NMP_TOOLCHAIN" \
-    CARGO_TARGET_DIR="${NMP_CARGO_TARGET_DIR:-$REPO_ROOT/build/nmp-cargo}" \
-    scripts/build-swift-xcframework.sh "${nmp_build_argument[@]}"
+  if [[ -n "$nmp_build_argument" ]]; then
+    RUSTUP_TOOLCHAIN="$NMP_TOOLCHAIN" \
+      CARGO_TARGET_DIR="${NMP_CARGO_TARGET_DIR:-$REPO_ROOT/build/nmp-cargo}" \
+      scripts/build-swift-xcframework.sh "$nmp_build_argument"
+  else
+    RUSTUP_TOOLCHAIN="$NMP_TOOLCHAIN" \
+      CARGO_TARGET_DIR="${NMP_CARGO_TARGET_DIR:-$REPO_ROOT/build/nmp-cargo}" \
+      scripts/build-swift-xcframework.sh
+  fi
 )
 
 if ! command -v tuist >/dev/null 2>&1; then
