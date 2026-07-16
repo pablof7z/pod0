@@ -16,6 +16,21 @@ final class EpisodeCommentsModelTests: XCTestCase {
         XCTAssertTrue(message.contains("won't use the old unverified relay path"))
     }
 
+    func testUnavailableProviderRefusesToOpenAReadObservation() async {
+        let repository = UnavailableEpisodeCommentsRepository()
+
+        do {
+            _ = try await repository.observe(target: target)
+            XCTFail("A missing typed NMP comment surface must fail closed")
+        } catch let error as EpisodeCommentsRepositoryError {
+            guard case .unavailable = error else {
+                return XCTFail("Unexpected repository error: \(error)")
+            }
+        } catch {
+            XCTFail("Unexpected error type: \(error)")
+        }
+    }
+
     func testObservationUsesAuthoritativeSnapshotsAndCancelsDemand() async throws {
         let harness = RepositoryHarness()
         let model = EpisodeCommentsModel(repository: harness.repository, receiptStore: MemoryReceiptStore())

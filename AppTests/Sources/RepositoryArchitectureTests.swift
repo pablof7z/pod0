@@ -116,17 +116,43 @@ final class RepositoryArchitectureTests: XCTestCase {
         let adapter = repositoryRoot
             .appendingPathComponent("App/Sources/Services/NMPEpisodeCommentsRepository.swift")
         let commentsRepository = try source("App/Sources/Services/EpisodeCommentsRepository.swift")
+        let commentsDomain = try source("App/Sources/Domain/EpisodeComment.swift")
+        let commentsModel = try source(
+            "App/Sources/Features/EpisodeDetail/EpisodeCommentsModel.swift"
+        )
         let commentsSection = try source(
             "App/Sources/Features/EpisodeDetail/EpisodeCommentsSection.swift"
         )
+        let commentsEnvironment = try source(
+            "App/Sources/Features/EpisodeDetail/EpisodeCommentsEnvironment.swift"
+        )
         let appMain = try source("App/Sources/AppMain.swift")
+        let commentBoundary = [
+            commentsRepository,
+            commentsDomain,
+            commentsModel,
+            commentsSection,
+            commentsEnvironment,
+        ].joined(separator: "\n")
 
         XCTAssertFalse(FileManager.default.fileExists(atPath: adapter.path))
         XCTAssertFalse(commentsRepository.contains("POD0_NMP_TYPED_NIP22"))
-        XCTAssertFalse(commentsRepository.contains("kind: 1111"))
         XCTAssertTrue(commentsRepository.contains("pablof7z/nmp#572"))
         XCTAssertTrue(commentsSection.contains("switch repository.availability"))
+        XCTAssertTrue(commentsEnvironment.contains("UnavailableEpisodeCommentsRepository()"))
         XCTAssertFalse(appMain.contains(".episodeCommentsRepository"))
+
+        let forbiddenRawBoundaryTokens = [
+            "NMPEngine", "NMPQuery", "NMPFilter", "NMPDemand",
+            "WriteIntent", "kind: 1111", "[\"I\"", "[\"K\"", "[\"i\"", "[\"k\"",
+            "#I", "#i", "URLSessionWebSocketTask", "NostrCommentService", "seenIDs",
+        ]
+        for token in forbiddenRawBoundaryTokens {
+            XCTAssertFalse(
+                commentBoundary.contains(token),
+                "Episode comments must not own raw Nostr/NMP boundary token \(token)"
+            )
+        }
     }
 
     private func source(_ path: String) throws -> String {
