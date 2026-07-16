@@ -3,25 +3,36 @@ import Observation
 
 enum OutgoingEpisodeCommentPhase: Equatable, Sendable {
     case queued
-    case awaitingApproval
+    case awaitingCapability
     case signed
     case delivering
+    case awaitingRelay
     case awaitingRelayAuthorization
+    case retrying(eligibleAt: Date)
     case awaitingConfirmation
     case published(relayCount: Int)
+    case rejected(String)
+    case gaveUp(String)
+    case persistenceBlocked(String)
     case failed(String)
     case deliveryUnknown(String)
 
     var label: String {
         switch self {
         case .queued: "Queued"
-        case .awaitingApproval: "Waiting for signing approval"
+        case .awaitingCapability: "Waiting for signing capability"
         case .signed: "Signed"
         case .delivering: "Delivering"
+        case .awaitingRelay: "Waiting for a relay connection"
         case .awaitingRelayAuthorization: "Waiting for relay authorization"
+        case .retrying(let date): "Retrying at \(date.formatted(date: .omitted, time: .shortened))"
         case .awaitingConfirmation: "Sent; waiting for relay confirmation"
         case .published(let count): count == 1 ? "Published to 1 relay" : "Published to \(count) relays"
-        case .failed(let message), .deliveryUnknown(let message): message
+        case .rejected(let message): "Rejected: \(message)"
+        case .gaveUp(let message): "Delivery gave up: \(message)"
+        case .persistenceBlocked(let message): "Delivery could not be persisted: \(message)"
+        case .failed(let message): "Failed: \(message)"
+        case .deliveryUnknown(let message): "Outcome unknown: \(message)"
         }
     }
 }
@@ -30,7 +41,6 @@ struct OutgoingEpisodeComment: Identifiable, Equatable, Sendable {
     var id: UInt64 { receiptID }
 
     let receiptID: UInt64
-    let content: String
     let submittedAt: Date
     var phase: OutgoingEpisodeCommentPhase
 }
@@ -52,6 +62,7 @@ final class EpisodeCommentsModel {
     private let receiptStore: any EpisodeCommentReceiptStore
     private var activeReceiptIDs: Set<UInt64> = []
     private var receiptFacts: [UInt64: ReceiptFacts] = [:]
+    private var receiptRecords: [UInt64: PendingEpisodeCommentReceipt] = [:]
 
     init(
         repository: any EpisodeCommentsRepository,
@@ -114,7 +125,7 @@ final class EpisodeCommentsModel {
             let record = PendingEpisodeCommentReceipt(
                 receiptID: receipt.id,
                 target: target,
-                content: content,
+                eventID: nil,
                 submittedAt: Date()
             )
             receiptStore.save(record)
@@ -166,6 +177,13 @@ final class EpisodeCommentsModel {
         var facts = receiptFacts[receiptID] ?? ReceiptFacts()
         facts.apply(status)
         receiptFacts[receiptID] = facts
+        if case .signed(let eventID) = status,
+           var record = receiptRecords[receiptID],
+           record.eventID != eventID {
+            record.eventID = eventID
+            receiptRecords[receiptID] = record
+            receiptStore.save(record)
+        }
         setPhase(facts.phase(streamEnded: false), receiptID: receiptID)
         reconcileCanonicalComments()
     }
@@ -176,8 +194,9 @@ final class EpisodeCommentsModel {
         let phase = facts.phase(streamEnded: true)
         setPhase(phase, receiptID: receiptID)
         switch phase {
-        case .published, .failed:
+        case .published, .rejected, .gaveUp, .persistenceBlocked, .failed:
             receiptStore.remove(receiptID: receiptID)
+            receiptRecords.removeValue(forKey: receiptID)
         default:
             break
         }
@@ -190,6 +209,8 @@ final class EpisodeCommentsModel {
         }
         for receiptID in observedReceipts {
             receiptStore.remove(receiptID: receiptID)
+            receiptRecords.removeValue(forKey: receiptID)
+            receiptFacts.removeValue(forKey: receiptID)
             outgoing.removeAll { $0.receiptID == receiptID }
         }
     }
@@ -199,10 +220,13 @@ final class EpisodeCommentsModel {
         phase: OutgoingEpisodeCommentPhase
     ) {
         guard !outgoing.contains(where: { $0.receiptID == record.receiptID }) else { return }
+        receiptRecords[record.receiptID] = record
+        if receiptFacts[record.receiptID] == nil {
+            receiptFacts[record.receiptID] = ReceiptFacts(eventID: record.eventID)
+        }
         outgoing.insert(
             OutgoingEpisodeComment(
                 receiptID: record.receiptID,
-                content: record.content,
                 submittedAt: record.submittedAt,
                 phase: phase
             ),
@@ -220,7 +244,6 @@ private struct ReceiptFacts {
     var eventID: String?
     var routedRelays: Set<String> = []
     var acknowledgedRelays: Set<String> = []
-    var terminalFailures: [String] = []
     var latest: EpisodeCommentWriteStatus = .accepted
 
     mutating func apply(_ status: EpisodeCommentWriteStatus) {
@@ -229,11 +252,6 @@ private struct ReceiptFacts {
         case .signed(let id): eventID = id
         case .routed(let relays): routedRelays.formUnion(relays)
         case .acknowledged(let relay): acknowledgedRelays.insert(relay)
-        case .rejected(let relay, let reason): terminalFailures.append("\(relay): \(reason)")
-        case .gaveUp(let relay): terminalFailures.append("\(relay) gave up")
-        case .persistenceBlocked(let relay): terminalFailures.append("\(relay) persistence blocked")
-        case .outcomeUnknown(let relay): terminalFailures.append("\(relay) outcome unknown")
-        case .failed(let reason): terminalFailures.append(reason)
         default: break
         }
     }
@@ -242,18 +260,23 @@ private struct ReceiptFacts {
         if !acknowledgedRelays.isEmpty {
             return .published(relayCount: acknowledgedRelays.count)
         }
-        if streamEnded {
-            if let failure = terminalFailures.first { return .failed(failure) }
-            return .deliveryUnknown("Delivery ended without relay confirmation.")
-        }
         switch latest {
         case .accepted: return .queued
-        case .awaitingCapability: return .awaitingApproval
+        case .awaitingCapability: return .awaitingCapability
         case .signed: return .signed
+        case .awaitingRelay: return .awaitingRelay
         case .sent, .handoffAmbiguous: return .awaitingConfirmation
         case .awaitingAuth: return .awaitingRelayAuthorization
+        case .retryEligible(_, let eligibleAt): return .retrying(eligibleAt: eligibleAt)
+        case .rejected(let relay, let reason): return .rejected("\(relay): \(reason)")
+        case .gaveUp(let relay): return .gaveUp(relay)
+        case .persistenceBlocked(let relay): return .persistenceBlocked(relay)
+        case .outcomeUnknown(let relay): return .deliveryUnknown(relay)
         case .failed(let reason): return .failed(reason)
-        default: return .delivering
+        default:
+            return streamEnded
+                ? .deliveryUnknown("Delivery ended without relay confirmation.")
+                : .delivering
         }
     }
 }

@@ -11,7 +11,7 @@ final class EpisodeCommentReceiptStoreTests: XCTestCase {
         let record = PendingEpisodeCommentReceipt(
             receiptID: 77,
             target: target,
-            content: "Durable",
+            eventID: "event-77",
             submittedAt: Date(timeIntervalSince1970: 123)
         )
 

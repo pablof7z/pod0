@@ -17,6 +17,12 @@ gitlink=$(git ls-files --stage Vendor/nmp | awk '$1 == 160000 { print $2 }')
 [[ -n "$gitlink" ]] || fail "Vendor/nmp is not recorded as a Git submodule"
 [[ "$gitlink" == "$revision" ]] || fail "NMP revision file ($revision) disagrees with gitlink ($gitlink)"
 
+app_revision=$(sed -nE \
+  's/.*static let testedRevision = "([0-9a-f]{40})".*/\1/p' \
+  App/Sources/NMP/Pod0NMPConfiguration.swift)
+[[ "$app_revision" == "$revision" ]] \
+  || fail "Pod0NMPBuild.testedRevision ($app_revision) disagrees with repository pin ($revision)"
+
 grep -Fq 'url = https://github.com/pablof7z/nmp.git' .gitmodules \
   || fail "NMP submodule URL is not the canonical public repository"
 grep -Fq 'url: "https://github.com/pablof7z/ios-shake-feedback"' Project.swift \

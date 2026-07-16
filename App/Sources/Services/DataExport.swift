@@ -18,21 +18,15 @@ enum DataExport {
     /// Versioned envelope around `AppState`. Bumping `schemaVersion` lets
     /// future imports detect and migrate older exports.
     struct Payload: Codable, Sendable {
-        struct Exclusions: Codable, Sendable, Equatable {
-            var unverifiedLegacyNostrHistory: Bool
-            var reason: String
-        }
-
         var schemaVersion: Int
         var generatedAt: Date
         var appVersion: String?
         var buildNumber: String?
         var sourceBundleIdentifier: String?
-        var exclusions: Exclusions
         var state: AppState
     }
 
-    static let currentSchemaVersion = 2
+    static let currentSchemaVersion = 1
 
     private static let encoder: JSONEncoder = {
         let e = JSONEncoder()
@@ -61,18 +55,6 @@ enum DataExport {
     static func redactedState(from state: AppState) -> AppState {
         var copy = state
         copy.settings.legacyOpenRouterAPIKey = nil
-        // These are legacy network/workflow facts whose event IDs, signatures,
-        // provenance, and replacement semantics were never verified. The
-        // migration archive preserves them locally with an explicit warning;
-        // portable exports exclude them by default so another installation
-        // cannot mistake them for authority.
-        copy.nostrPendingApprovals = []
-        copy.pendingFriendMessages = []
-        copy.nostrConversations = []
-        copy.nostrProfileCache = [:]
-        copy.nostrRespondedEventIDs = []
-        copy.nostrSinceCursor = nil
-        copy.settings.nostrPublicRelays = []
         return copy
     }
 
@@ -85,10 +67,6 @@ enum DataExport {
             appVersion: info?["CFBundleShortVersionString"] as? String,
             buildNumber: info?["CFBundleVersion"] as? String,
             sourceBundleIdentifier: Bundle.main.bundleIdentifier,
-            exclusions: Payload.Exclusions(
-                unverifiedLegacyNostrHistory: true,
-                reason: "Legacy Nostr event and routing history is quarantined locally and excluded by default."
-            ),
             state: redactedState(from: state)
         )
     }

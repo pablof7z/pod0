@@ -9,15 +9,15 @@ final class Pod0IdentityCatalogTests: XCTestCase {
             label: "Alice",
             origin: .importedNsec,
             expectedPublicKey: String(repeating: "a", count: 64),
-            capability: .localKey(secretReference: "legacy-human-private-key"),
+            capability: .localKey(secretReference: "human-account-key"),
             createdAt: Date(timeIntervalSince1970: 100)
         )
         let agent = Pod0IdentityCatalogEntry(
             role: .agentPodcast,
             label: "Podcast agent",
-            origin: .legacyAgentKey,
+            origin: .generatedLocally,
             expectedPublicKey: String(repeating: "b", count: 64),
-            capability: .reservedForLaterMilestone(secretReference: "legacy-agent-private-key"),
+            capability: .reservedForLaterMilestone,
             createdAt: Date(timeIntervalSince1970: 200)
         )
         var catalog = Pod0IdentityCatalog(selectedRole: .human)
@@ -40,11 +40,10 @@ final class Pod0IdentityCatalogTests: XCTestCase {
         }
     }
 
-    func testClientInitiatedRestoreBlockerNamesUpstreamGate() throws {
-        let blocker = Pod0IdentityBlocker.clientInitiatedNip46RestoreUnsupported(issue: 571)
+    func testClientInitiatedCheckpointBlockerNamesUpstreamGate() throws {
+        let blocker = Pod0IdentityBlocker.clientInitiatedNip46CheckpointUnsupported(issue: 571)
         let data = try JSONEncoder().encode(blocker)
         let decoded = try JSONDecoder().decode(Pod0IdentityBlocker.self, from: data)
         XCTAssertEqual(decoded, blocker)
     }
 }
-

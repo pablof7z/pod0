@@ -167,12 +167,12 @@ private struct EpisodeCommentsLoadedSection: View {
     private func outgoingRow(_ comment: OutgoingEpisodeComment) -> some View {
         let isFailure: Bool
         switch comment.phase {
-        case .failed, .deliveryUnknown: isFailure = true
+        case .rejected, .gaveUp, .persistenceBlocked, .failed, .deliveryUnknown: isFailure = true
         default: isFailure = false
         }
         return commentCard(
-            author: "You",
-            content: comment.content,
+            author: "Your comment",
+            content: nil,
             date: comment.submittedAt,
             status: comment.phase.label,
             statusColor: isFailure ? .red : .secondary
@@ -181,7 +181,7 @@ private struct EpisodeCommentsLoadedSection: View {
 
     private func commentCard(
         author: String,
-        content: String,
+        content: String?,
         date: Date,
         status: String?,
         statusColor: Color
@@ -196,9 +196,11 @@ private struct EpisodeCommentsLoadedSection: View {
                     .foregroundStyle(.secondary)
                 Spacer()
             }
-            Text(content)
-                .font(.body)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if let content {
+                Text(content)
+                    .font(.body)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             if let status {
                 Text(status)
                     .font(.caption)

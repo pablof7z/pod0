@@ -106,7 +106,8 @@ struct NMPEpisodeCommentsRepository: EpisodeCommentsRepository {
         case .awaitingCapability(let pubkey): return .awaitingCapability(pubkey: pubkey)
         case .signed(let eventID): return .signed(eventID: eventID)
         case .routed(let relays): return .routed(relays: relays)
-        case .awaitingRelay(let relay), .awaitingAuth(let relay): return .awaitingRelay(relay: relay)
+        case .awaitingRelay(let relay): return .awaitingRelay(relay: relay)
+        case .awaitingAuth(let relay): return .awaitingAuth(relay: relay)
         case .retryEligible(let relay, _, let eligibleAt):
             return .retryEligible(
                 relay: relay,

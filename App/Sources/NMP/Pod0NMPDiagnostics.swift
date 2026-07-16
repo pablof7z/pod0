@@ -34,4 +34,3 @@ struct Pod0NMPDiagnosticsSnapshot: Sendable, Equatable {
         return "NMP configured for \(configuration.limits.maxRelays) relays; \(relayCount) active diagnostic rows and \(coverageCount) scoped coverage facts."
     }
 }
-

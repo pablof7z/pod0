@@ -10,14 +10,13 @@ enum Pod0IdentityOrigin: String, Sendable, Codable {
     case importedNsec
     case bunker
     case clientInitiatedNostrConnect
-    case legacyAgentKey
 }
 
 enum Pod0IdentityCapability: Sendable, Codable, Equatable {
     case localKey(secretReference: String)
     case nip46Bunker(uri: String)
     case nip46ClientInitiated(relays: [String])
-    case reservedForLaterMilestone(secretReference: String?)
+    case reservedForLaterMilestone
 }
 
 struct Pod0IdentityCatalogEntry: Sendable, Codable, Equatable, Identifiable {
@@ -60,7 +59,6 @@ struct Pod0IdentityCatalog: Sendable, Codable, Equatable {
         selectedRole = role
     }
 }
-
 enum Pod0IdentityCatalogError: Error, Equatable {
     case unsupportedSchema(Int)
     case roleNotFound(Pod0IdentityRole)
@@ -109,4 +107,3 @@ struct KeychainPod0IdentityCatalogStorage: Pod0IdentityCatalogStorage {
         try KeychainStore.deleteString(service: service, account: account)
     }
 }
-

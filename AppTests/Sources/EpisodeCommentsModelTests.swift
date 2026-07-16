@@ -43,9 +43,9 @@ final class EpisodeCommentsModelTests: XCTestCase {
         await model.submit(target: target)
 
         XCTAssertTrue(model.comments.isEmpty)
-        XCTAssertEqual(model.outgoing.first?.content, "Hello, listeners.")
         XCTAssertEqual(model.outgoing.first?.phase, .queued)
         XCTAssertEqual(store.records(for: target).map(\.receiptID), [42])
+        XCTAssertNil(store.records(for: target).first?.eventID)
 
         harness.receiptContinuation.yield(.sent(relay: "wss://relay.example"))
         await eventually { model.outgoing.first?.phase == .awaitingConfirmation }
@@ -71,6 +71,7 @@ final class EpisodeCommentsModelTests: XCTestCase {
         harness.receiptContinuation.yield(.signed(eventID: "event-42"))
         await eventually { model.outgoing.first?.phase == .signed }
         XCTAssertEqual(model.outgoing.count, 1)
+        XCTAssertEqual(store.records(for: target).first?.eventID, "event-42")
 
         harness.observationContinuation.yield(EpisodeCommentSnapshot(
             comments: [comment(id: "event-42", createdAt: 3)],
@@ -88,7 +89,7 @@ final class EpisodeCommentsModelTests: XCTestCase {
         let record = PendingEpisodeCommentReceipt(
             receiptID: 42,
             target: target,
-            content: "Survive restart",
+            eventID: "event-42",
             submittedAt: Date(timeIntervalSince1970: 5)
         )
         let store = MemoryReceiptStore(records: [record])
@@ -96,11 +97,37 @@ final class EpisodeCommentsModelTests: XCTestCase {
         let task = Task { await model.observe(target: target) }
 
         await eventually { harness.reattachedIDs == [42] }
-        XCTAssertEqual(model.outgoing.first?.content, "Survive restart")
+        XCTAssertEqual(model.outgoing.first?.phase, .queued)
 
         harness.receiptContinuation.yield(.acknowledged(relay: "wss://relay.example"))
         harness.receiptContinuation.finish()
         await eventually { store.records(for: target).isEmpty }
+
+        task.cancel()
+        await task.value
+    }
+
+    func testReceiptRollupKeepsDistinctActionableStates() async throws {
+        let harness = RepositoryHarness()
+        let model = EpisodeCommentsModel(repository: harness.repository, receiptStore: MemoryReceiptStore())
+        let task = Task { await model.observe(target: target) }
+        await eventually { model.activeAuthorPubkey != nil }
+        model.draft = "Status test"
+        await model.submit(target: target)
+
+        harness.receiptContinuation.yield(.awaitingAuth(relay: "wss://relay.example"))
+        await eventually { model.outgoing.first?.phase == .awaitingRelayAuthorization }
+
+        let eligibleAt = Date(timeIntervalSince1970: 10)
+        harness.receiptContinuation.yield(
+            .retryEligible(relay: "wss://relay.example", eligibleAt: eligibleAt)
+        )
+        await eventually { model.outgoing.first?.phase == .retrying(eligibleAt: eligibleAt) }
+
+        harness.receiptContinuation.yield(.outcomeUnknown(relay: "wss://relay.example"))
+        await eventually {
+            model.outgoing.first?.phase == .deliveryUnknown("wss://relay.example")
+        }
 
         task.cancel()
         await task.value

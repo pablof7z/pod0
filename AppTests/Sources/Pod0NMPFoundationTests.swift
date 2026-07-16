@@ -87,4 +87,3 @@ final class Pod0NMPFoundationTests: XCTestCase {
         XCTAssertFalse(snapshot.supportSummary.lowercased().contains("complete"))
     }
 }
-

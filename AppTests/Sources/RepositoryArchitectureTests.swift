@@ -20,12 +20,14 @@ final class RepositoryArchitectureTests: XCTestCase {
         let project = try source("Project.swift")
         let revision = try source("Vendor/nmp-revision.txt")
             .trimmingCharacters(in: .whitespacesAndNewlines)
+        let nmpConfiguration = try source("App/Sources/NMP/Pod0NMPConfiguration.swift")
 
         XCTAssertFalse(project.contains("../"))
         XCTAssertTrue(project.contains("https://github.com/pablof7z/ios-shake-feedback"))
         XCTAssertTrue(project.contains("requirement: .exact(\"1.0.0\")"))
         XCTAssertTrue(project.contains(".local(path: \"Vendor/nmp/Packages/NMP\")"))
         XCTAssertNotNil(revision.range(of: "^[0-9a-f]{40}$", options: .regularExpression))
+        XCTAssertTrue(nmpConfiguration.contains("static let testedRevision = \"\(revision)\""))
     }
 
     func testWorkflowsTargetMaster() throws {

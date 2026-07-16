@@ -8,12 +8,6 @@
       ]
     },
     {
-      "shipped_at": "2026-07-16T11:05:42Z",
-      "lines": [
-        "Nostr identity and network data now use a safer migration foundation, with unverified legacy history quarantined instead of trusted or exported."
-      ]
-    },
-    {
       "shipped_at": "2026-07-16T11:00:00Z",
       "lines": [
         "Remote agent messages over Nostr are temporarily paused while verified message handling is installed; your preference, conversations, and access decisions are preserved."

@@ -7,22 +7,24 @@ engine lifetime. A relay edit calls `stageOperatorRelay` and becomes effective
 only at the next controlled construction.
 
 The selected source baseline is
-`867aecfd83aad47a3ec31ff07f0c564505da0eef`. Bootstrap may replace
-`Pod0NMPBuild.testedRevision` from repository-contained generated pin metadata,
-but runtime code must never resolve a branch.
+`317b7caaf5a83da1e6899efcc5aeb90a85b808c3`. It must match the
+`Vendor/nmp` gitlink, `Vendor/nmp-revision.txt`, and
+`Pod0NMPBuild.testedRevision`; runtime code never resolves a branch.
 
 ## Launch integration
 
 After the pinned NMP package is available to the app target, app composition:
 
 1. creates and prepares `Pod0NMPStoreLayout.applicationSupport()`;
-2. runs `NMPInstalledStateMigration.prepareIfNeeded`, persists the returned
-   active state, and keeps the fail-closed legacy ingress flag effective;
-3. constructs one `Pod0NMPComposition` and retains it for the process lifetime;
-4. loads/migrates `Pod0IdentityCatalog` from Keychain;
-5. constructs `Pod0HumanIdentityLifecycle`, stops any legacy remote signer,
-   and restores only the catalog's human entry;
-6. retains and renders the composition's pushed diagnostics stream.
+2. constructs one `Pod0NMPComposition` and retains it for the process lifetime;
+3. creates or loads the clean-start `Pod0IdentityCatalog` from Keychain;
+4. constructs `Pod0HumanIdentityLifecycle` with the new account secret store
+   and activates only the catalog's human entry;
+5. retains and renders the composition's pushed diagnostics stream.
+
+The foundation does not translate or import state from an older Nostr owner.
+Product data already owned by Pod0 remains outside this boundary and is not
+modified by NMP setup.
 
 No scene-phase callback, reconnect timer, subscription replay, polling loop,
 or settings observer constructs or repairs NMP.
@@ -31,14 +33,10 @@ or settings observer constructs or repairs NMP.
 
 As of the selected revision, Swift `NMPNip46Connection` supports a live
 `bunkerURI` or in-memory invitation. It exposes neither secure export/checkpoint
-nor import/restore of a client-initiated invitation session. Pod0's legacy
-`nostrconnect` schema contains the client session key, but inventing a private
-NMP import door would violate ownership and cannot prove cold-start continuity.
+nor cold-start restoration of a newly created client-initiated invitation
+session. Pod0 does not add a private checkpoint or transport alongside NMP.
 
 `Pod0HumanIdentityLifecycle` therefore reports
-`clientInitiatedNip46RestoreUnsupported(issue: 571)` and does not start either
-NMP or the legacy transport for that identity. M1 cannot close until
-`pablof7z/nmp#571` provides and proves secure checkpoint/import. A legacy remote
-record without a secret is also treated as client-initiated/ambiguous rather
-than guessed to be a reconnectable bunker.
-
+`clientInitiatedNip46CheckpointUnsupported(issue: 571)`. M1 cannot close until
+`pablof7z/nmp#571` provides and proves secure checkpoint and cold-start restore
+for new client-initiated sessions.

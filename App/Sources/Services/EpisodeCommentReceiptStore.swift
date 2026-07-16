@@ -5,7 +5,10 @@ struct PendingEpisodeCommentReceipt: Codable, Equatable, Identifiable, Sendable 
 
     let receiptID: UInt64
     let target: CommentTarget
-    let content: String
+    /// Stable correlation learned from NMP after signing. Draft/event content
+    /// is deliberately absent: NMP's canonical pending row is the only event
+    /// projection rendered by the comments view.
+    var eventID: String?
     let submittedAt: Date
 }
 
@@ -22,7 +25,7 @@ final class UserDefaultsEpisodeCommentReceiptStore: EpisodeCommentReceiptStore, 
     private let key: String
     private let lock = NSLock()
 
-    init(defaults: UserDefaults = .standard, key: String = "episode-comment-receipts-v1") {
+    init(defaults: UserDefaults = .standard, key: String = "episode-comment-receipts-v2") {
         self.defaults = defaults
         self.key = key
     }

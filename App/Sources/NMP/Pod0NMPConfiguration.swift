@@ -5,14 +5,14 @@ import Foundation
 /// value from repository-contained pin metadata, but it must never resolve a
 /// branch name at runtime.
 enum Pod0NMPBuild {
-    static let testedRevision = "867aecfd83aad47a3ec31ff07f0c564505da0eef"
+    static let testedRevision = "317b7caaf5a83da1e6899efcc5aeb90a85b808c3"
 }
 
 /// Construction-time policy for Pod0's one NMP trust domain.
 ///
 /// Relay lanes and resource ceilings are immutable for the lifetime of an
 /// engine. `nostrPublicRelays` is intentionally not accepted here: it is
-/// legacy discovered state without trustworthy provenance, not operator
+/// discovered state without trustworthy provenance, not operator
 /// configuration.
 struct Pod0NMPConfiguration: Sendable, Codable, Hashable {
     struct Limits: Sendable, Codable, Hashable {
@@ -86,4 +86,3 @@ struct Pod0NMPConfiguration: Sendable, Codable, Hashable {
         })).sorted()
     }
 }
-

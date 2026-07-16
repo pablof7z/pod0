@@ -5,15 +5,10 @@ import NMP
 #endif
 
 enum Pod0IdentityBlocker: Sendable, Codable, Equatable {
-    /// Upstream pablof7z/nmp#571: Swift cannot import/checkpoint the legacy
-    /// client session private key, so a client-initiated connection cannot be
-    /// proven to survive a cold launch without re-pairing.
-    case clientInitiatedNip46RestoreUnsupported(issue: Int)
-    /// The legacy schema omitted origin. A secret proves bunker-origin; its
-    /// absence is ambiguous and therefore cannot be promoted to authority.
-    case legacyRemoteOriginAmbiguous
+    /// Upstream pablof7z/nmp#571: a newly paired client-initiated connection
+    /// cannot yet be checkpointed and reopened after a cold launch.
+    case clientInitiatedNip46CheckpointUnsupported(issue: Int)
     case expectedPublicKeyMismatch(expected: String, actual: String)
-    case legacyRemoteTransportStillRunning
 }
 
 enum Pod0HumanIdentityState: Sendable, Equatable {
@@ -35,23 +30,10 @@ enum Pod0HumanIdentityError: Error, Equatable {
     case remoteFailure(String)
 }
 
-protocol Pod0LegacyHumanSecretReading: Sendable {
-    /// The secret is returned to the launch coordinator once, passed directly
-    /// to NMP registration, and never copied into the migration record/logs.
+protocol Pod0HumanSecretReading: Sendable {
+    /// The clean-start account store returns the secret once for direct NMP
+    /// registration. The lifecycle neither persists nor logs it.
     func readLocalHumanSecret(reference: String) throws -> String?
-}
-
-struct KeychainLegacyHumanSecretReader: Pod0LegacyHumanSecretReading {
-    private let service: String
-
-    init(bundleIdentifier: String = Bundle.main.bundleIdentifier ?? "Podcastr") {
-        service = "\(bundleIdentifier).user-identity"
-    }
-
-    func readLocalHumanSecret(reference: String) throws -> String? {
-        guard reference == "legacy-human-private-key" else { return nil }
-        return try KeychainStore.readString(service: service, account: "user-private-key-hex")
-    }
 }
 
 #if canImport(NMP)
@@ -60,7 +42,7 @@ struct KeychainLegacyHumanSecretReader: Pod0LegacyHumanSecretReading {
 @MainActor
 final class Pod0HumanIdentityLifecycle {
     private let engineAccess: any Pod0NMPEngineAccess
-    private let secretReader: any Pod0LegacyHumanSecretReading
+    private let secretReader: any Pod0HumanSecretReading
     private var localRegistration: NMPAccountRegistration?
     private var remoteConnection: NMPNip46Connection?
 
@@ -69,28 +51,22 @@ final class Pod0HumanIdentityLifecycle {
 
     init(
         engineAccess: any Pod0NMPEngineAccess,
-        secretReader: any Pod0LegacyHumanSecretReading = KeychainLegacyHumanSecretReader()
+        secretReader: any Pod0HumanSecretReading
     ) {
         self.engineAccess = engineAccess
         self.secretReader = secretReader
     }
 
-    func restoreHuman(
-        from entry: Pod0IdentityCatalogEntry,
-        legacyRemoteTransportIsStopped: Bool
-    ) async throws {
+    func activateHuman(from entry: Pod0IdentityCatalogEntry) async throws {
         guard entry.role == .human else { throw Pod0HumanIdentityError.wrongRole }
         blocker = nil
         switch entry.capability {
         case .localKey(let reference):
             try await registerLocal(entry: entry, secretReference: reference)
         case .nip46Bunker(let uri):
-            guard legacyRemoteTransportIsStopped else {
-                try block(.legacyRemoteTransportStillRunning)
-            }
             try await connectBunker(entry: entry, uri: uri)
         case .nip46ClientInitiated:
-            try block(.clientInitiatedNip46RestoreUnsupported(issue: 571))
+            try block(.clientInitiatedNip46CheckpointUnsupported(issue: 571))
         case .reservedForLaterMilestone:
             throw Pod0HumanIdentityError.wrongRole
         }
@@ -192,4 +168,3 @@ final class Pod0HumanIdentityLifecycle {
     }
 }
 #endif
-
