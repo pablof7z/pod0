@@ -54,7 +54,7 @@ final class EpisodeCommentsModelTests: XCTestCase {
         harness.receiptContinuation.yield(.acknowledged(relay: "wss://relay.example"))
         harness.receiptContinuation.finish()
         await eventually { model.outgoing.first?.phase == .published(relayCount: 1) }
-        XCTAssertTrue(store.records(for: target).isEmpty)
+        await eventually { store.records(for: target).isEmpty }
 
         observeTask.cancel()
         await observeTask.value

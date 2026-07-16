@@ -28,8 +28,13 @@ final class UserIdentityWiringTests: XCTestCase {
         let made = await AppStateTestSupport.makeIsolatedStore()
         storeFileURL = made.fileURL
         store = made.store
-        signer = RecordingSigner()
         identity = UserIdentityStore.shared
+        // A user-note publish is deliberately fire-and-forget. Clear the
+        // singleton before installing this test's signer so a task retained
+        // by the preceding test cannot be attributed to the next test case.
+        identity._clearSignerForTesting()
+        try await Task.sleep(nanoseconds: 200_000_000)
+        signer = RecordingSigner()
         identity._setSignerForTesting(signer)
     }
 
