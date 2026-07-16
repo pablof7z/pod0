@@ -1,75 +1,59 @@
 import SwiftUI
 
-// MARK: - EpisodeCommentsSection
-//
-// Embedded comments thread for an episode. Hosts:
-//   - A live list of NIP-22 (kind 1111) comments anchored to the Podcasting
-//     2.0 `<podcast:guid>` via NIP-73 (`podcast:item:guid:<guid>`).
-//   - A composer that publishes via the user's configured signer
-//     (`UserIdentityStore.signer`) to the user's configured Nostr relay.
-//
-// This is a section, not a sheet — it lives inside the existing
-// `EpisodeDetailView` scroll, so the user discovers comments in the same
-// surface they're already on. Phase 1 supports top-level comments only;
-// reply threading + reactions are deliberate future work.
-//
-// Comments live entirely in Nostr — there's no local persistence. A
-// dismissed view re-fetches on the next appear from the relay's index.
-// That's fine for v1 and matches Fountain's behaviour.
+/// Episode discussion backed by NMP's typed NIP-22/NIP-73 module. Pod0 owns
+/// presentation and durable receipt-id reattachment, while NMP owns protocol
+/// composition, verification, routing, signing, relay sessions, and retries.
 struct EpisodeCommentsSection: View {
-
     let episode: Episode
 
-    @Environment(AppStateStore.self) private var store
-    @Environment(UserIdentityStore.self) private var identity
+    @Environment(\.episodeCommentsRepository) private var repository
 
-    /// Live websocket subscription. Held in @State so the view's lifetime
-    /// drives the network connection's lifetime.
-    @State private var subscription: NostrCommentService.Subscription?
-    @State private var comments: [EpisodeComment] = []
-    @State private var draft: String = ""
-    @State private var isPublishing = false
-    @State private var errorMessage: String?
-    @FocusState private var composerFocused: Bool
-
-    /// The comment target — only resolves when the episode carries a
-    /// publisher GUID (Podcasting 2.0 `<guid>` element). Episodes without a
-    /// GUID can't be globally addressed on Nostr, so we hide the surface
-    /// rather than fake a key.
     private var target: CommentTarget? {
-        guard !episode.guid.isEmpty else { return nil }
-        return .episode(guid: episode.guid)
+        let guid = episode.guid.trimmingCharacters(in: .whitespacesAndNewlines)
+        return guid.isEmpty ? nil : .episode(guid: guid)
     }
 
     var body: some View {
-        // Parent (EpisodeDetailHeroView) already pads horizontally — no
-        // own padding here, otherwise the section sits in a narrower
-        // gutter than the show notes immediately above it.
-        Group {
-            if let target {
-                content(target: target)
-            } else {
-                unsupportedState
+        if let target {
+            EpisodeCommentsLoadedSection(target: target, repository: repository)
+        } else {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                Image(systemName: "info.circle")
+                    .foregroundStyle(.secondary)
+                Text("This episode has no Podcasting 2.0 GUID, so comments can't be anchored.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
+            .padding(AppTheme.Spacing.sm)
         }
     }
+}
 
-    // MARK: - Content
+private struct EpisodeCommentsLoadedSection: View {
+    let target: CommentTarget
 
-    @ViewBuilder
-    private func content(target: CommentTarget) -> some View {
+    @State private var model: EpisodeCommentsModel
+    @State private var reloadID = UUID()
+    @FocusState private var composerFocused: Bool
+
+    init(target: CommentTarget, repository: any EpisodeCommentsRepository) {
+        self.target = target
+        _model = State(initialValue: EpisodeCommentsModel(repository: repository))
+    }
+
+    var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             header
             composer
-            if let errorMessage {
-                Text(errorMessage)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .padding(.horizontal, AppTheme.Spacing.sm)
+            if let message = model.submitError {
+                statusText(message, color: .red)
+            }
+            if let message = model.loadError {
+                loadFailure(message)
             }
             commentsList
         }
-        .task(id: target) { await openSubscription(target: target) }
+        .task(id: reloadID) { await model.observe(target: target) }
     }
 
     private var header: some View {
@@ -78,8 +62,8 @@ struct EpisodeCommentsSection: View {
                 .foregroundStyle(.secondary)
             Text("Comments")
                 .font(.headline)
-            if !comments.isEmpty {
-                Text("\(comments.count)")
+            if !model.comments.isEmpty {
+                Text("\(model.comments.count)")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 8)
@@ -87,14 +71,34 @@ struct EpisodeCommentsSection: View {
                     .background(.secondary.opacity(0.12), in: .capsule)
             }
             Spacer()
+            acquisitionLabel
         }
     }
 
-    // MARK: - Composer
+    @ViewBuilder
+    private var acquisitionLabel: some View {
+        if model.isLoading {
+            ProgressView()
+                .controlSize(.small)
+                .accessibilityLabel("Loading comments")
+        } else if model.acquisition.connectedSourceCount > 0 {
+            Text("\(model.acquisition.connectedSourceCount) live")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else if model.acquisition.sourceCount > 0 {
+            Text("Cached")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else if model.acquisition.hasShortfall {
+            Text("No relay route")
+                .font(.caption)
+                .foregroundStyle(.orange)
+        }
+    }
 
     private var composer: some View {
         VStack(alignment: .trailing, spacing: AppTheme.Spacing.xs) {
-            TextField("Add a comment…", text: $draft, axis: .vertical)
+            TextField("Add a comment…", text: $model.draft, axis: .vertical)
                 .textFieldStyle(.plain)
                 .focused($composerFocused)
                 .lineLimit(1...4)
@@ -104,163 +108,137 @@ struct EpisodeCommentsSection: View {
             HStack {
                 identityChip
                 Spacer()
-                Button {
-                    Task { await publish() }
-                } label: {
-                    if isPublishing {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Text("Post")
-                            .font(.subheadline.weight(.semibold))
+                Button("Post") { submit() }
+                    .font(.subheadline.weight(.semibold))
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!model.canSubmit)
+                    .overlay {
+                        if model.isSubmitting {
+                            ProgressView().controlSize(.small)
+                        }
                     }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!canPublish)
+                    .opacity(model.isSubmitting ? 0.7 : 1)
             }
         }
     }
 
-    /// Short identity affordance — shows the npub stub the comment will
-    /// post under, or a prompt to set up Nostr if no signer is configured.
     @ViewBuilder
     private var identityChip: some View {
-        if let pubkey = identity.publicKeyHex {
+        if let pubkey = model.activeAuthorPubkey {
             HStack(spacing: 4) {
                 Image(systemName: "person.crop.circle.fill")
                     .foregroundStyle(.secondary)
-                Text(EpisodeComment(
-                    id: "",
-                    target: .episode(guid: ""),
-                    authorPubkeyHex: pubkey,
-                    content: "",
-                    createdAt: Date()
-                ).authorShortKey)
-                .font(.caption.monospaced())
-                .foregroundStyle(.secondary)
+                Text(shortKey(pubkey))
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
             }
         } else {
-            Text("Nostr key not set up")
+            Text("Nostr signing identity unavailable")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
     }
 
-    private var canPublish: Bool {
-        guard !isPublishing else { return false }
-        guard identity.signer != nil else { return false }
-        return !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    // MARK: - List
-
     @ViewBuilder
     private var commentsList: some View {
-        if comments.isEmpty {
-            Text("Be the first to comment. Posts publish to your Nostr relay and stay readable from any NIP-22 client.")
+        if model.comments.isEmpty && model.outgoing.isEmpty && model.loadError == nil && !model.isLoading {
+            Text("Be the first to comment. Published comments remain portable across NIP-22 clients.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .padding(.vertical, AppTheme.Spacing.sm)
         } else {
             VStack(spacing: AppTheme.Spacing.sm) {
-                ForEach(comments) { comment in
-                    commentRow(comment)
-                }
+                ForEach(model.outgoing) { outgoingRow($0) }
+                ForEach(model.comments) { commentRow($0) }
             }
         }
     }
 
     private func commentRow(_ comment: EpisodeComment) -> some View {
+        commentCard(
+            author: comment.authorShortKey,
+            content: comment.content,
+            date: comment.createdAt,
+            status: nil,
+            statusColor: .secondary
+        )
+    }
+
+    private func outgoingRow(_ comment: OutgoingEpisodeComment) -> some View {
+        let isFailure: Bool
+        switch comment.phase {
+        case .failed, .deliveryUnknown: isFailure = true
+        default: isFailure = false
+        }
+        return commentCard(
+            author: "You",
+            content: comment.content,
+            date: comment.submittedAt,
+            status: comment.phase.label,
+            statusColor: isFailure ? .red : .secondary
+        )
+    }
+
+    private func commentCard(
+        author: String,
+        content: String,
+        date: Date,
+        status: String?,
+        statusColor: Color
+    ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: AppTheme.Spacing.xs) {
-                Text(comment.authorShortKey)
+                Text(author)
                     .font(.caption.monospaced().weight(.semibold))
-                    .foregroundStyle(.primary)
-                Text("·")
-                    .foregroundStyle(.tertiary)
-                Text(comment.createdAt, style: .relative)
+                Text("·").foregroundStyle(.tertiary)
+                Text(date, style: .relative)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
             }
-            Text(comment.content)
+            Text(content)
                 .font(.body)
-                .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(AppTheme.Spacing.sm)
-        .background(
-            RoundedRectangle(cornerRadius: AppTheme.Corner.md, style: .continuous)
-                .fill(Color(.secondarySystemBackground))
-        )
-    }
-
-    // MARK: - Unsupported
-
-    private var unsupportedState: some View {
-        HStack(spacing: AppTheme.Spacing.sm) {
-            Image(systemName: "info.circle")
-                .foregroundStyle(.secondary)
-            Text("This episode has no Podcasting 2.0 GUID, so comments can't be anchored. Ask the publisher to add a <podcast:guid> element.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .padding(AppTheme.Spacing.sm)
-    }
-
-    // MARK: - Network lifecycle
-
-    private func openSubscription(target: CommentTarget) async {
-        // Tear down any prior subscription before opening a new one — the
-        // task is keyed on `target`, so this branch only runs when the
-        // target changed (different episode).
-        subscription?.cancel()
-        comments = []
-        let service = NostrCommentService(store: store)
-        let sub = service.subscribe(target: target)
-        subscription = sub
-        for await comment in sub.stream {
-            // Newest first. Comments arrive out of order from the relay
-            // (stored events come oldest-first; live events come in
-            // creation order) — inserting at the head and re-sorting is
-            // O(N log N) per arrival but N is small for episode comments.
-            comments.append(comment)
-            comments.sort { $0.createdAt > $1.createdAt }
-        }
-    }
-
-    private func publish() async {
-        guard let target,
-              let signer = identity.signer,
-              canPublish else { return }
-        let text = draft
-        isPublishing = true
-        errorMessage = nil
-        defer { isPublishing = false }
-        do {
-            let service = NostrCommentService(store: store)
-            let event = try await service.publish(
-                content: text,
-                target: target,
-                signer: signer
-            )
-            // Optimistically append so the user sees their comment land
-            // before the relay echo round-trips through the subscription.
-            let mine = EpisodeComment(
-                id: event.id,
-                target: target,
-                authorPubkeyHex: event.pubkey,
-                content: event.content,
-                createdAt: Date(timeIntervalSince1970: TimeInterval(event.created_at))
-            )
-            if !comments.contains(where: { $0.id == mine.id }) {
-                comments.insert(mine, at: 0)
+            if let status {
+                Text(status)
+                    .font(.caption)
+                    .foregroundStyle(statusColor)
             }
-            draft = ""
-            composerFocused = false
-            Haptics.success()
-        } catch {
-            errorMessage = error.localizedDescription
-            Haptics.error()
         }
+        .padding(AppTheme.Spacing.sm)
+        .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: AppTheme.Corner.md))
+    }
+
+    private func loadFailure(_ message: String) -> some View {
+        HStack {
+            statusText(message, color: .red)
+            Spacer()
+            Button("Retry") { reloadID = UUID() }
+                .font(.caption.weight(.semibold))
+        }
+    }
+
+    private func statusText(_ message: String, color: Color) -> some View {
+        Text(message)
+            .font(.caption)
+            .foregroundStyle(color)
+            .padding(.horizontal, AppTheme.Spacing.sm)
+    }
+
+    private func submit() {
+        Task {
+            await model.submit(target: target)
+            if model.submitError == nil {
+                composerFocused = false
+                Haptics.success()
+            } else {
+                Haptics.error()
+            }
+        }
+    }
+
+    private func shortKey(_ pubkey: String) -> String {
+        guard pubkey.count > 8 else { return pubkey }
+        return "\(pubkey.prefix(4))…\(pubkey.suffix(4))"
     }
 }

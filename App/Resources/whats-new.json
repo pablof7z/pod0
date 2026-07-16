@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-16T11:06:15Z",
+      "lines": [
+        "Episode comments are temporarily paused while their relay connection moves to the safer shared Nostr engine."
+      ]
+    },
+    {
       "shipped_at": "2026-07-16T11:05:42Z",
       "lines": [
         "Nostr identity and network data now use a safer migration foundation, with unverified legacy history quarantined instead of trusted or exported."
