@@ -7,19 +7,16 @@ import os.log
 // real services that ship in the app:
 //
 //   • `PodcastAgentRAGSearchProtocol`  → `LivePodcastRAGAdapter`
-//   • `WikiStorageProtocol`            → `LiveWikiStorageAdapter`
-//   • `BriefingComposerProtocol`       → `LiveBriefingComposerAdapter`
 //   • `EpisodeSummarizerProtocol`      → `LiveEpisodeSummarizerAdapter`
 //   • `EpisodeFetcherProtocol`         → `LiveEpisodeFetcherAdapter`
 //   • `PlaybackHostProtocol`           → `LivePlaybackHostAdapter`
-//   • `PeerEventPublisherProtocol`     → `LivePeerEventPublisher`
 //   • `PerplexityClientProtocol`       → `PerplexityClient`
 //   • `TTSPublisherProtocol`           → `AgentTTSComposer`
 //
-// Constructed once per `AgentChatSession` / `AgentRelayBridge`, the bundle
-// holds weak references to `AppStateStore` and `PlaybackState` so the agent
-// adapters never extend their lifetimes. Heavy adapters (RAG, Briefing,
-// Summarizer) live in their own files; the small ones live here.
+// Constructed once per `AgentChatSession`, the bundle holds weak references
+// to `AppStateStore` and `PlaybackState` so the agent adapters never extend
+// their lifetimes. Heavy adapters (RAG, Summarizer) live in their own files;
+// the small ones live here.
 
 @MainActor
 enum LivePodcastAgentToolDeps {
@@ -36,8 +33,6 @@ enum LivePodcastAgentToolDeps {
         let inventory = LivePodcastInventoryAdapter(store: store)
         return PodcastAgentToolDeps(
             rag: LivePodcastRAGAdapter(store: store),
-            wiki: LiveWikiStorageAdapter(store: store),
-            briefing: LiveBriefingComposerAdapter(store: store),
             summarizer: LiveEpisodeSummarizerAdapter(store: store),
             fetcher: LiveEpisodeFetcherAdapter(store: store),
             playback: LivePlaybackHostAdapter(store: store, playback: playback),
@@ -49,16 +44,12 @@ enum LivePodcastAgentToolDeps {
             ),
             inventory: inventory,
             categories: inventory,
-            peerPublisher: LivePeerEventPublisher(store: store),
-            friendDirectory: LiveFriendDirectoryAdapter(store: store),
-            pendingRegistrar: LivePendingFriendMessageRegistrar(store: store),
             perplexity: PerplexityClient(),
             ttsPublisher: AgentTTSComposer(store: store, playback: playback),
             directory: LivePodcastDirectoryAdapter(),
             subscribe: LivePodcastSubscribeAdapter(store: store),
             youtubeIngestion: LiveYouTubeIngestionAdapter(store: store),
-            ownedPodcasts: LiveAgentOwnedPodcastManager(store: store),
-            peerContext: nil
+            ownedPodcasts: LiveAgentOwnedPodcastManager(store: store)
         )
     }
 }

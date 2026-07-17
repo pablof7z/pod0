@@ -22,17 +22,17 @@ import SQLiteVec
 
 // MARK: - Public protocol
 
-/// On-device store for embedded chunks of transcripts and wiki pages.
+/// On-device store for embedded chunks of transcripts.
 ///
 /// Implementations must be safe to call from any task. The SQLiteVec impl
 /// runs on a serialized actor; the in-memory fallback is also actor-isolated.
 /// All methods are async to leave room for future remote stores without
-/// changing the call sites in `RAGSearch`, Lane 7 (wiki indexer), and
-/// Lane 10 (`query_transcripts` / `query_wiki` agent tools).
+/// changing the call sites in `RAGSearch` and Lane 10
+/// (`query_transcripts` agent tools).
 ///
 /// **Embedding production is owned by the store**, not the caller. The
-/// `Chunk` struct intentionally has no embedding field — callers (Lane 7
-/// wiki indexer, Lane 10 agent tools) only ever read text + metadata.
+/// `Chunk` struct intentionally has no embedding field — callers (Lane 10
+/// agent tools) only ever read text + metadata.
 /// At upsert time the store embeds chunk text via an injected
 /// `EmbeddingsClient`. At query time callers pre-embed the *query* string
 /// (typically via `RAGSearch`, which lives one layer above).

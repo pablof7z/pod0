@@ -221,16 +221,12 @@ final class AgentToolsInventoryTests: XCTestCase {
     ) async -> String {
         let deps = PodcastAgentToolDeps(
             rag: MockRAG(),
-            wiki: MockWiki(),
-            briefing: MockBriefing(),
             summarizer: MockSummarizer(),
             fetcher: MockFetcher(),
             playback: MockPlayback(),
             library: MockLibrary(),
             inventory: inventory,
             categories: inventory,
-            peerPublisher: MockPeerEventPublisher(),
-            friendDirectory: MockFriendDirectory(),
             perplexity: MockPerplexity(),
             ttsPublisher: MockTTSPublisher(),
             directory: directory,

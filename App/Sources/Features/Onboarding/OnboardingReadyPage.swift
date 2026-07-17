@@ -23,7 +23,7 @@ struct OnboardingReadyPage: View {
         ("antenna.radiowaves.left.and.right", "Subscribe via OPML or feed URL", AppTheme.Tint.onboardingChipAI),
         ("headphones", "Listen with chapters & speed control", .white),
         ("sparkles", "Ask the agent about anything you've heard", AppTheme.Tint.onboardingChipFriends),
-        ("book.closed.fill", "Auto-generated wikis from transcripts", AppTheme.Tint.onboardingChipWiki),
+        ("list.bullet.indent", "Auto-generated chapters with ad-skip", AppTheme.Tint.onboardingChipChapters),
     ]
 
     var body: some View {

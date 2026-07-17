@@ -5,11 +5,10 @@ import Foundation
 /// Surfaces a compact podcast inventory (subscriptions, in-progress
 /// episodes, recent unplayed) so the agent can answer "what shows am I
 /// subscribed to" or "what was I listening to" without spending a tool call.
-/// Detailed drill-downs (transcripts, wiki, semantic search) still go
-/// through tools.
+/// Detailed drill-downs (transcripts, semantic search) still go through
+/// tools.
 ///
-/// Includes the friend list, recent notes, and persisted memories the
-/// template ships with.
+/// Includes recent notes and persisted memories the template ships with.
 enum AgentPrompt {
 
     // Inventory caps — keep the prompt under a few KB even with a heavy library.
@@ -79,9 +78,8 @@ enum AgentPrompt {
             sections.append("## Subscriptions (\(followedPodcasts.count))\n\(titles)\(suffix)")
         }
 
-        // AI Inbox: archived episodes are silently soft-hidden from the agent's prompt context.
         let inProgress = state.episodes
-            .filter { !$0.played && !$0.isTriageArchived && $0.playbackPosition > 0 }
+            .filter { !$0.played && $0.playbackPosition > 0 }
             .sorted { $0.pubDate > $1.pubDate }
             .prefix(Cap.inProgress)
         if !inProgress.isEmpty {
@@ -94,9 +92,8 @@ enum AgentPrompt {
         }
 
         let cutoff = Date().addingTimeInterval(-Cap.recentWindowDays * 86_400)
-        // AI Inbox: archived episodes are silently soft-hidden from the agent's prompt context.
         let recentUnplayed = state.episodes
-            .filter { !$0.played && !$0.isTriageArchived && $0.playbackPosition == 0 && $0.pubDate >= cutoff }
+            .filter { !$0.played && $0.playbackPosition == 0 && $0.pubDate >= cutoff }
             .sorted { $0.pubDate > $1.pubDate }
             .prefix(Cap.recentUnplayed)
         if !recentUnplayed.isEmpty {
@@ -106,13 +103,6 @@ enum AgentPrompt {
                 return "- \(truncate(ep.title)) — \(show)"
             }.joined(separator: "\n")
             sections.append("## Recent (last \(Int(Cap.recentWindowDays)) days, unplayed)\n\(lines)")
-        }
-
-        if !state.friends.isEmpty {
-            let list = state.friends
-                .map { "- \($0.displayName) (\(String($0.identifier.prefix(6))))" }
-                .joined(separator: "\n")
-            sections.append("## Friends\n\(list)")
         }
 
         let activeNotes = state.notes

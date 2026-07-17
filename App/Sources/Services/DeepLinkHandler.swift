@@ -10,9 +10,6 @@ enum DeepLinkHandler {
         case settings
         /// Opens the AI agent (Ask) tab.
         case agent
-        /// Opens the Add Friend sheet pre-filled with the sender's public key and display name.
-        /// `npub` is the bech32-encoded public key; `name` is the optional display name.
-        case addFriend(npub: String, name: String?)
         /// Opens the Episode Detail surface for the given episode UUID.
         /// Posted by tapped new-episode notifications.
         case episode(UUID)
@@ -38,14 +35,6 @@ enum DeepLinkHandler {
         switch url.host {
         case "settings": return .settings
         case "agent":    return .agent
-        case "friend":
-            guard url.path == "/add",
-                  let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-                  let npub = components.queryItems?.first(where: { $0.name == "npub" })?.value,
-                  !npub.isEmpty
-            else { return nil }
-            let name = components.queryItems?.first(where: { $0.name == "name" })?.value
-            return .addFriend(npub: npub, name: name)
         case "episode":
             // `podcastr://episode/<uuid>` — host=episode, path="/<uuid>".
             guard let raw = firstPathComponent(of: url),
@@ -94,20 +83,6 @@ enum DeepLinkHandler {
     }
 
     // MARK: - Link builder
-
-    /// Builds an `podcastr://friend/add` URL suitable for sharing in an invite message.
-    static func friendInviteURL(npub: String, name: String?) -> URL? {
-        var components = URLComponents()
-        components.scheme = "podcastr"
-        components.host = "friend"
-        components.path = "/add"
-        var items: [URLQueryItem] = [URLQueryItem(name: "npub", value: npub)]
-        if let name, !name.isEmpty {
-            items.append(URLQueryItem(name: "name", value: name))
-        }
-        components.queryItems = items
-        return components.url
-    }
 
     /// Builds the canonical share URL for an RSS GUID. GUIDs are path data, not
     /// URL syntax, so encode them as one conservative path component.

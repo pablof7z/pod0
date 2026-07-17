@@ -4,7 +4,7 @@ import Foundation
 /// `memoryCompilationModel`. Designed to run as a fire-and-forget background
 /// task after the first assistant text reply lands.
 ///
-/// Reuses `WikiOpenRouterClient` because it already forces the assistant to
+/// Reuses `UtilityLLMClient` because it already forces the assistant to
 /// reply in JSON via `response_format: { "type": "json_object" }`, which lets
 /// us parse a `{"title": "..."}` envelope without prompt-jail breaks.
 enum AgentChatTitleGenerator {
@@ -42,7 +42,7 @@ enum AgentChatTitleGenerator {
         guard LLMProviderCredentialResolver.hasAPIKey(for: reference.provider) else {
             return nil
         }
-        let client = WikiOpenRouterClient.live(model: model)
+        let client = UtilityLLMClient.live(model: model)
         do {
             let json = try await client.compile(
                 systemPrompt: systemPrompt,

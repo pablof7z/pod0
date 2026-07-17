@@ -125,9 +125,8 @@ enum SpotlightIndexer {
         let podcastTitles = Dictionary(
             uniqueKeysWithValues: state.podcasts.map { ($0.id, $0.title) }
         )
-        // AI Inbox: archived episodes are silently soft-hidden from iOS Spotlight search.
         let episodes = state.episodes
-            .filter { !$0.played && !$0.isTriageArchived }
+            .filter { !$0.played }
             .sorted { $0.pubDate > $1.pubDate }
             .prefix(maxIndexedEpisodes)
             .map { makeSearchable(from: $0, showName: podcastTitles[$0.podcastID] ?? "") }

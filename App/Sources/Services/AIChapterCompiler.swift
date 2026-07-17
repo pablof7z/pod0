@@ -3,9 +3,9 @@ import os.log
 
 // MARK: - AIChapterCompiler
 //
-// Asks the configured LLM (via OpenRouter / Ollama, same provider stack the
-// wiki pipeline uses) to do three things in a single round trip from a ready
-// transcript:
+// Asks the configured LLM (via OpenRouter / Ollama, the same provider stack
+// `UtilityLLMClient` gives every utility-compile caller) to do three things
+// in a single round trip from a ready transcript:
 //
 //   1. Synthesise 4–12 chapter boundaries when the episode has none yet.
 //   2. Attach a 1–2 sentence summary to each chapter (the LLM's own boundaries
@@ -106,7 +106,7 @@ final class AIChapterCompiler {
             ? enrichOnlyUserPrompt(transcript: transcript, episode: episode)
             : fullUserPrompt(transcript: transcript, episode: episode)
 
-        let client = WikiOpenRouterClient.live(apiKey: apiKey, model: modelReference.storedID)
+        let client = UtilityLLMClient.live(apiKey: apiKey, model: modelReference.storedID)
         let raw: String
         do {
             raw = try await client.compile(

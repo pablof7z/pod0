@@ -77,7 +77,7 @@ extension AppStateStore {
         state.clips.first(where: { $0.id == id })
     }
 
-    /// All clips, newest first. Used by the Clippings tab.
+    /// All clips, newest first. Used by the Saved screen's Clips segment.
     func allClips() -> [Clip] {
         state.clips.sorted { $0.createdAt > $1.createdAt }
     }

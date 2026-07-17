@@ -32,29 +32,4 @@ final class PodcastSearchTests: XCTestCase {
         XCTAssertEqual(results.episodes.first?.episode.guid, "keto-1")
         XCTAssertEqual(results.shows.first?.podcast.title, "Nutrition Lab")
     }
-
-    func testWikiSearchFindsClaimBodies() {
-        let page = WikiPage(
-            slug: "metabolic-health",
-            title: "Metabolic Health",
-            kind: .topic,
-            scope: .global,
-            summary: "A page about long-term health.",
-            sections: [
-                WikiSection(
-                    heading: "Claims",
-                    kind: .freeform,
-                    ordinal: 0,
-                    claims: [
-                        WikiClaim(text: "Keto changes appetite regulation in the discussed episode.")
-                    ]
-                )
-            ]
-        )
-
-        let results = PodcastSearchEngine.wikiResults(query: "keto appetite", pages: [page])
-
-        XCTAssertEqual(results.first?.page.slug, "metabolic-health")
-        XCTAssertTrue(results.first?.excerpt.contains("Keto") == true)
-    }
 }

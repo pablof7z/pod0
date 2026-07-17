@@ -167,7 +167,7 @@ struct ClipShareSheet: View {
 
     private var videoAction: some View {
         // Video export is intentionally stubbed in this build (see
-        // `ClipVideoComposer` header for the punt details). Surface as
+        // the punt details in `ClipExporter.exportVideo`). Surface as
         // disabled "Coming soon" rather than letting taps surface a raw
         // `notImplemented` error in the user's face.
         actionRow(
@@ -263,7 +263,7 @@ struct ClipShareSheet: View {
     }
 
     // Video render orchestration intentionally omitted — see
-    // `ClipVideoComposer` header for the punt details. The button is
+    // `ClipExporter.exportVideo` for the punt details. The button is
     // disabled in `videoAction` so this code path isn't exercised.
 }
 

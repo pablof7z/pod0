@@ -10,10 +10,11 @@ import UIKit
 ///   - **Copy link with timestamp** — same, with `?t=<seconds>` appended so
 ///     a recipient lands at the current playhead.
 ///   - **Share via system** — SwiftUI `ShareLink` over the deep link.
-///   - **Share quote** — presents `QuoteShareView` for the segment at the
-///     current time. Gated on `episode.transcriptState == .ready` (which
-///     means hidden in this lane until lane 5 / transcript ingestion lands —
-///     `PlayerTranscriptScrollView` is also a placeholder in this build).
+///   - **Share quote** — resolves a short (10-25s) clip around the current
+///     playhead via `ClipBoundaryResolver`, persists it as a real `Clip`
+///     (so it also shows up in Saved > Clips), then presents `ClipShareSheet`
+///     for it — the same sharing pipeline AutoSnip-captured clips use.
+///     Gated on `episode.transcriptState == .ready`.
 struct PlayerShareSheet: View {
 
     @Environment(\.dismiss) private var dismiss
@@ -27,11 +28,9 @@ struct PlayerShareSheet: View {
     /// pre-roll skim doesn't spuriously enable the row.
     private static let timestampedShareMinSeconds: TimeInterval = 5
 
-    /// Resolved transcript segment at the current playhead, surfaced via the
-    /// quote-share sheet. Set when the user taps "Share quote"; reset when the
-    /// sheet dismisses. Optional `Segment` is `Identifiable`, which `sheet(item:)`
-    /// requires.
-    @State private var quotingSegment: Segment?
+    /// The clip persisted for "Share quote", once resolved. Set when the
+    /// user taps the row; drives `ClipShareSheet` via `sheet(item:)`.
+    @State private var quoteClip: Clip?
 
     /// True while the LLM is resolving boundaries for "Share quote". The row
     /// swaps its glyph for a spinner so the user sees the latency is purposeful
@@ -61,8 +60,8 @@ struct PlayerShareSheet: View {
                     Button("Done") { dismiss() }
                 }
             }
-            .sheet(item: $quotingSegment) { segment in
-                quoteSheet(for: segment)
+            .sheet(item: $quoteClip) { clip in
+                quoteSheet(for: clip)
             }
         }
         .presentationDetents([.medium])
@@ -111,7 +110,7 @@ struct PlayerShareSheet: View {
     }
 
     private var shareQuoteButton: some View {
-        Button(action: { presentQuoteAtPlayhead() }) {
+        Button(action: { captureAndShareQuote() }) {
             HStack(spacing: AppTheme.Spacing.md) {
                 Group {
                     if quoteResolving {
@@ -139,13 +138,16 @@ struct PlayerShareSheet: View {
     }
 
     /// Load the persisted transcript for this episode, ask the LLM to pick
-    /// semantic boundaries around the playhead, and present `QuoteShareView`
-    /// for the resulting span. On any failure (no key, network blip, malformed
-    /// response, no transcript) we fall back to today's single-segment behavior
-    /// so the share affordance still works — same defensive path the previous
-    /// implementation took, just preceded by an LLM round-trip when possible.
-    private func presentQuoteAtPlayhead() {
-        guard let transcript = EpisodeDetailView.readyTranscript(for: episode) else {
+    /// short (10-25s) semantic boundaries around the playhead via the same
+    /// `ClipBoundaryResolver` AutoSnip uses, persist the result as a real
+    /// `Clip`, then present `ClipShareSheet` for it. On any failure (no key,
+    /// network blip, malformed response) we fall back to the mechanical
+    /// transcript segment at the playhead so the share affordance still
+    /// works — same defensive path the previous implementation took, just
+    /// preceded by an LLM round-trip when possible.
+    private func captureAndShareQuote() {
+        guard let transcript = EpisodeDetailView.readyTranscript(for: episode),
+              store.podcast(id: episode.podcastID) != nil else {
             Haptics.error()
             return
         }
@@ -156,7 +158,7 @@ struct PlayerShareSheet: View {
         // Falls through to the mechanical fallback below regardless.
         if !LLMProviderCredentialResolver.hasAPIKey(for: modelReference.provider) {
             AutoSnipController.shared.noLLMKeyHintPending = true
-            quotingSegment = transcript.segment(at: state.currentTime)
+            saveQuoteClip(from: transcript.segment(at: state.currentTime))
             return
         }
         quoteResolving = true
@@ -170,38 +172,52 @@ struct PlayerShareSheet: View {
                 modelID: modelID
             )
             if let resolved {
-                quotingSegment = Segment(
-                    start: resolved.startSeconds,
-                    end: resolved.endSeconds,
+                let startMs = Int((resolved.startSeconds * 1000).rounded())
+                let endMs = Int((resolved.endSeconds * 1000).rounded())
+                guard endMs > startMs else { return }
+                quoteClip = store.addClip(
+                    episodeID: episode.id,
+                    subscriptionID: episode.podcastID,
+                    startMs: startMs,
+                    endMs: endMs,
+                    transcriptText: resolved.quotedText,
                     speakerID: resolved.speakerID,
-                    text: resolved.quotedText
+                    source: .touch
                 )
             } else {
                 // Mechanical fallback so a failed LLM call still lets the
                 // user share something. Same shape as the pre-LLM behavior.
-                quotingSegment = transcript.segment(at: playhead)
+                saveQuoteClip(from: transcript.segment(at: playhead))
             }
         }
     }
 
-    @ViewBuilder
-    private func quoteSheet(for segment: Segment) -> some View {
-        let transcript = EpisodeDetailView.readyTranscript(for: episode)
-        QuoteShareView(
-            episode: episode,
-            showName: showName,
-            showImageURL: episode.imageURL,
-            segment: segment,
-            speaker: transcript?.speaker(for: segment.speakerID),
-            deepLink: quoteDeepLink(for: segment)
+    /// Persists a `Clip` from a raw transcript `Segment` — the mechanical
+    /// fallback path, used both when no LLM key is configured and when
+    /// resolution fails.
+    private func saveQuoteClip(from segment: Segment?) {
+        guard let segment else { return }
+        let startMs = Int((segment.start * 1000).rounded())
+        let endMs = Int((segment.end * 1000).rounded())
+        guard endMs > startMs else { return }
+        quoteClip = store.addClip(
+            episodeID: episode.id,
+            subscriptionID: episode.podcastID,
+            startMs: startMs,
+            endMs: endMs,
+            transcriptText: segment.text,
+            speakerID: segment.speakerID,
+            source: .touch
         )
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
     }
 
-    private func quoteDeepLink(for segment: Segment) -> String {
-        DeepLinkHandler.episodeGUIDDeepLink(guid: episode.guid, startTime: segment.start)
-            ?? episode.enclosureURL.absoluteString
+    @ViewBuilder
+    private func quoteSheet(for clip: Clip) -> some View {
+        if let podcast = store.podcast(id: episode.podcastID) {
+            ClipShareSheet(clip: clip, episode: episode, podcast: podcast)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
     }
 
     // MARK: - Row plumbing

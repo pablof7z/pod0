@@ -48,7 +48,7 @@ extension AgentTools {
             ),
             tool(
                 name: Names.ask,
-                description: "Pause this turn to consult the owner via a modal sheet, then resume with their answer. Use sparingly — only when you genuinely need a decision (e.g. a peer agent over Nostr is requesting something sensitive and you want owner consent before acting). The tool result includes the owner's typed answer, or the sentinel strings 'user declined to answer' / 'user did not respond within 5 minutes'. Times out after 5 minutes. Do NOT call for casual clarifications — for those, just reply in chat and wait for the next turn.",
+                description: "Pause this turn to consult the owner via a modal sheet, then resume with their answer. Use sparingly — only when you genuinely need a decision before acting on something sensitive. The tool result includes the owner's typed answer, or the sentinel strings 'user declined to answer' / 'user did not respond within 5 minutes'. Times out after 5 minutes. Do NOT call for casual clarifications — for those, just reply in chat and wait for the next turn.",
                 properties: [
                     "question": [
                         "type": "string",

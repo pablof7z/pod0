@@ -22,7 +22,6 @@ final class DataExportTests: XCTestCase {
         state.podcasts.append(podcast)
         state.subscriptions.append(PodcastSubscription(podcastID: podcast.id))
         state.notes.append(Note(text: "Sample note"))
-        state.friends.append(Friend(displayName: "Alice", identifier: "alice_id"))
 
         let data = try DataExport.encode(DataExport.makePayload(from: state))
 
@@ -33,7 +32,6 @@ final class DataExportTests: XCTestCase {
         XCTAssertEqual(decoded.schemaVersion, DataExport.currentSchemaVersion)
         XCTAssertEqual(decoded.state.podcasts.first?.title, "Round Trip Show")
         XCTAssertEqual(decoded.state.notes.first?.text, "Sample note")
-        XCTAssertEqual(decoded.state.friends.first?.displayName, "Alice")
     }
 
     func testDataExportStatsExcludeDeletedNotes() {

@@ -6,17 +6,15 @@ import Foundation
 /// has heard recur across their library.
 ///
 /// One topic clusters every `ThreadingMention` that points at the same
-/// underlying concept (e.g. "ketogenic diet"). Slug is the dual-link target
-/// shared with the wiki layer; when a topic page exists in the wiki, the
-/// slug matches `WikiPage.slug` so the detail sheet can hand off without a
-/// second resolution step.
+/// underlying concept (e.g. "ketogenic diet"). Slug is a stable,
+/// URL-safe canonical key derived from `displayName` via `SlugNormalizer`.
 ///
 /// Counts are denormalised so the list does not have to re-aggregate
 /// `ThreadingMention` on every render.
 struct ThreadingTopic: Codable, Hashable, Identifiable, Sendable {
 
     var id: UUID
-    /// URL-safe canonical key (matches `WikiPage.normalize(slug:)`).
+    /// URL-safe canonical key (matches `SlugNormalizer.normalize(slug:)`).
     var slug: String
     /// Human-readable label rendered in editorial serif.
     var displayName: String

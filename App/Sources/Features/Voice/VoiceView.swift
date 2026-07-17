@@ -82,7 +82,6 @@ struct VoiceView: View {
         case .listening: return "Listening…"
         case .thinking: return "Thinking…"
         case .speaking: return "Speaking"
-        case .duckedWhileBriefing: return "Briefing"
         case .error(let err): return errorLabel(err)
         }
     }
@@ -92,7 +91,6 @@ struct VoiceView: View {
         case .listening: return AppTheme.Tint.voiceListening
         case .thinking: return AppTheme.Tint.voiceThinking
         case .speaking: return AppTheme.Tint.voiceSpeaking
-        case .duckedWhileBriefing: return .gray
         case .error: return .red
         case .idle: return .white.opacity(0.7)
         }
@@ -123,8 +121,8 @@ struct VoiceView: View {
     }
 
     /// Map the conversation manager's state machine onto the orb's visual
-    /// state. Error and briefing-handoff states collapse onto `.idle` so
-    /// the orb stays consistent — error chrome lives in the badge.
+    /// state. The error state collapses onto `.idle` so the orb stays
+    /// consistent — error chrome lives in the badge.
     private var orbState: VoiceOrbState {
         switch manager.state {
         case .idle: return .idle
@@ -132,7 +130,6 @@ struct VoiceView: View {
         case .thinking: return .thinking(toolName: nil)
         case .speaking:
             return manager.isUserBargingIn ? .bargeIn : .speaking
-        case .duckedWhileBriefing: return .idle
         case .error: return .idle
         }
     }

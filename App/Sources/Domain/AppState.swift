@@ -17,7 +17,6 @@ struct AppState: Codable, Sendable {
     /// per-podcast arrays so `upsertEpisodes(_:)` works for any feed.
     var episodes: [Episode] = []
     var notes: [Note] = []
-    var friends: [Friend] = []
     var agentMemories: [AgentMemory] = []
     /// LLM-consolidated paragraph summarizing the active `agentMemories`.
     /// Produced by `AgentMemoryCompiler` after agent turns. When non-nil,
@@ -32,25 +31,6 @@ struct AppState: Codable, Sendable {
     /// Per-category user preferences keyed by `PodcastCategory.id`.
     var categorySettings: [UUID: CategorySettings] = [:]
     var settings: Settings = Settings()
-    var nostrAllowedPubkeys: Set<String> = []
-    var nostrBlockedPubkeys: Set<String> = []
-    var nostrPendingApprovals: [NostrPendingApproval] = []
-    /// One record per Nostr conversation root (NIP-10) the agent has
-    /// participated in. Surfaces in Settings > Agent > Conversations.
-    var nostrConversations: [NostrConversationRecord] = []
-    /// Cached kind:0 profile metadata keyed by hex pubkey. Hydrated lazily
-    /// when new pubkeys land in pending approvals or conversations.
-    var nostrProfileCache: [String: NostrProfileMetadata] = [:]
-    /// Event ids the agent has already produced a reply for (or has
-    /// deliberately decided to skip). Persisted so a relay re-delivery
-    /// across app restarts can't trigger a duplicate reply.
-    var nostrRespondedEventIDs: Set<String> = []
-    /// Highest `created_at` we've observed on an inbound kind:1 routed to
-    /// the agent. Persisted so a future REQ can carry `since:` and skip
-    /// already-seen events; bumped before the model runs so a crash
-    /// mid-reply still advances the cursor (dedup via
-    /// `nostrRespondedEventIDs` covers the small overlap window).
-    var nostrSinceCursor: Int?
     var agentActivity: [AgentActivityEntry] = []
     /// User-authored transcript excerpts. See `Clip` and the composer in
     /// `App/Sources/Features/EpisodeDetail/Clip/`.
@@ -67,10 +47,6 @@ struct AppState: Codable, Sendable {
     /// `AgentScheduledTaskRunner` on foreground / app-appear. Persisted so
     /// tasks survive restarts.
     var agentScheduledTasks: [AgentScheduledTask] = []
-    /// Outbound `send_friend_message` events awaiting a reply. When the
-    /// friend's kind:1 response arrives, `NostrAgentResponder` claims the
-    /// matching entry and re-invokes the originating conversation.
-    var pendingFriendMessages: [PendingFriendMessage] = []
     /// The episode the user was most recently listening to. Persisted so the
     /// mini-player can be restored after an app restart without requiring the
     /// user to navigate back to the episode.
@@ -80,16 +56,12 @@ struct AppState: Codable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case podcasts, subscriptions, episodes
-        case notes, friends, agentMemories, compiledMemory, settings
+        case notes, agentMemories, compiledMemory, settings
         case categories, categorySettings
-        case nostrAllowedPubkeys, nostrBlockedPubkeys, nostrPendingApprovals
-        case nostrConversations, nostrProfileCache
-        case nostrRespondedEventIDs, nostrSinceCursor
         case agentActivity
         case clips
         case threadingTopics, threadingMentions
         case agentScheduledTasks
-        case pendingFriendMessages
         case lastPlayedEpisodeID
     }
 
@@ -116,25 +88,16 @@ struct AppState: Codable, Sendable {
 
         episodes = try c.decodeIfPresent([Episode].self, forKey: .episodes) ?? []
         notes = try c.decodeIfPresent([Note].self, forKey: .notes) ?? []
-        friends = try c.decodeIfPresent([Friend].self, forKey: .friends) ?? []
         agentMemories = try c.decodeIfPresent([AgentMemory].self, forKey: .agentMemories) ?? []
         compiledMemory = try c.decodeIfPresent(CompiledAgentMemory.self, forKey: .compiledMemory)
         categories = try c.decodeIfPresent([PodcastCategory].self, forKey: .categories) ?? []
         categorySettings = try c.decodeIfPresent([UUID: CategorySettings].self, forKey: .categorySettings) ?? [:]
         settings = try c.decodeIfPresent(Settings.self, forKey: .settings) ?? Settings()
-        nostrAllowedPubkeys = try c.decodeIfPresent(Set<String>.self, forKey: .nostrAllowedPubkeys) ?? []
-        nostrBlockedPubkeys = try c.decodeIfPresent(Set<String>.self, forKey: .nostrBlockedPubkeys) ?? []
-        nostrPendingApprovals = try c.decodeIfPresent([NostrPendingApproval].self, forKey: .nostrPendingApprovals) ?? []
-        nostrConversations = try c.decodeIfPresent([NostrConversationRecord].self, forKey: .nostrConversations) ?? []
-        nostrProfileCache = try c.decodeIfPresent([String: NostrProfileMetadata].self, forKey: .nostrProfileCache) ?? [:]
-        nostrRespondedEventIDs = try c.decodeIfPresent(Set<String>.self, forKey: .nostrRespondedEventIDs) ?? []
-        nostrSinceCursor = try c.decodeIfPresent(Int.self, forKey: .nostrSinceCursor)
         agentActivity = try c.decodeIfPresent([AgentActivityEntry].self, forKey: .agentActivity) ?? []
         clips = try c.decodeIfPresent([Clip].self, forKey: .clips) ?? []
         threadingTopics = try c.decodeIfPresent([ThreadingTopic].self, forKey: .threadingTopics) ?? []
         threadingMentions = try c.decodeIfPresent([ThreadingMention].self, forKey: .threadingMentions) ?? []
         agentScheduledTasks = try c.decodeIfPresent([AgentScheduledTask].self, forKey: .agentScheduledTasks) ?? []
-        pendingFriendMessages = try c.decodeIfPresent([PendingFriendMessage].self, forKey: .pendingFriendMessages) ?? []
         lastPlayedEpisodeID = try c.decodeIfPresent(UUID.self, forKey: .lastPlayedEpisodeID)
     }
 

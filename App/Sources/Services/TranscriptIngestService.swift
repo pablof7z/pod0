@@ -372,49 +372,6 @@ final class TranscriptIngestService {
             await AIChapterCompiler.shared.compileIfNeeded(episodeID: episodeID, store: appStore)
         }
 
-        // STEP 4: Fire-and-forget wiki refresh — auto-trigger pipeline.
-        //
-        // Gated on `wikiAutoGenerateOnTranscriptIngest`. Producer
-        // (`WikiTriggers`) only fans out to slugs that already exist in the
-        // inventory, so a fresh-install user with no compiled pages pays
-        // *zero* LLM cost here — the jobs list is empty and the executor
-        // returns without touching the network. For users who *have*
-        // compiled pages, this is the path that keeps them current as new
-        // episodes land.
-        guard appStore.state.settings.wikiAutoGenerateOnTranscriptIngest else { return }
-        let candidateTopics = wikiCandidateTopics(for: episode)
-        let podcastID = episode.podcastID
-        Task { @MainActor in
-            let inventory = (try? WikiStorage.shared.loadInventory()) ?? WikiInventory()
-            let jobs = WikiTriggers.jobs(
-                for: .episodeTranscribed(
-                    episodeID: episodeID,
-                    podcastID: podcastID,
-                    extractedTopics: candidateTopics,
-                    extractedPeople: []
-                ),
-                inventory: inventory
-            )
-            guard !jobs.isEmpty else { return }
-            WikiRefreshExecutor.shared.run(jobs: jobs)
-        }
-    }
-
-    /// Best-effort list of candidate wiki slugs to consider for refresh,
-    /// derived from this episode's own metadata. No standalone topic
-    /// extractor runs yet (lane 6 territory), so we lean on the title plus
-    /// the chapter titles — both are normalized to slugs and let the
-    /// trigger producer intersect them with the inventory of pages the
-    /// user has already compiled. Nothing here is destructive: an unknown
-    /// slug simply yields no job.
-    private func wikiCandidateTopics(for episode: Episode) -> [String] {
-        var topics: [String] = [episode.title]
-        if let chapters = episode.chapters {
-            topics.append(contentsOf: chapters.map(\.title))
-        }
-        return topics
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
     }
 
     // MARK: - Helpers

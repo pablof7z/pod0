@@ -6,7 +6,6 @@ struct SettingsView: View {
 
     var body: some View {
         List {
-            accountSection
             librarySection
             listeningSection
             intelligenceSection
@@ -27,12 +26,6 @@ struct SettingsView: View {
     }
 
     // MARK: - Sections
-
-    private var accountSection: some View {
-        Section("Account") {
-            IdentitySettingsRow()
-        }
-    }
 
     private var librarySection: some View {
         Section("Library") {
@@ -93,8 +86,7 @@ struct SettingsView: View {
                 SettingsRow(
                     icon: "brain.head.profile",
                     tint: .orange,
-                    title: "Agent",
-                    badge: store.pendingNostrApprovals.count
+                    title: "Agent"
                 )
             }
 
@@ -131,16 +123,6 @@ struct SettingsView: View {
                 )
             }
 
-            NavigationLink {
-                WikiSettingsView()
-            } label: {
-                SettingsRow(
-                    icon: "book.closed.fill",
-                    tint: .indigo,
-                    title: "Wiki",
-                    value: wikiRowValue
-                )
-            }
         }
     }
 
@@ -191,7 +173,6 @@ struct SettingsView: View {
             + store.state.episodes.count
             + store.activeNotes.count
             + store.activeMemories.count
-            + store.state.friends.count
             + store.activeAgentActivityCount
     }
 
@@ -259,13 +240,7 @@ struct SettingsView: View {
     }
 
     private var notificationsRowValue: String? {
-        let s = store.state.settings
-        var on: [String] = []
-        if s.notifyOnNewEpisodes  { on.append("Episodes") }
-        if s.notifyOnBriefingReady { on.append("Briefings") }
-        if on.isEmpty { return "Off" }
-        if on.count == 2 { return "On" }
-        return on.first
+        store.state.settings.notifyOnNewEpisodes ? "On" : "Off"
     }
 
     private var providersRowValue: String {
@@ -276,10 +251,6 @@ struct SettingsView: View {
             s.ollamaCredentialSource != .none,
         ].filter { $0 }.count
         return connected == 0 ? "Not set up" : "\(connected) connected"
-    }
-
-    private var wikiRowValue: String {
-        "Manual"
     }
 
     private var dataStorageSummary: String? {

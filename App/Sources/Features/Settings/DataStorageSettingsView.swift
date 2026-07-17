@@ -18,11 +18,11 @@ struct DataStorageSettingsView: View {
         .alert("Clear All Data?", isPresented: $showClearConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Clear All Data", role: .destructive) {
-                Pod0ResetCoordinator.clearAppDataPreservingIdentities(appState: store)
+                store.clearAllData()
                 Haptics.success()
             }
         } message: {
-            Text("This permanently deletes your Podcastr library and pending-comment indicators. API credentials, your Nostr identities, cached network data, and pending Nostr deliveries are preserved.")
+            Text("This permanently deletes your Podcastr library. API credentials, settings, and cached network data are preserved.")
         }
     }
 
@@ -62,7 +62,7 @@ struct DataStorageSettingsView: View {
                 showClearConfirmation = true
             }
         } footer: {
-            Text("Deletes Podcastr product data and pending-comment indicators. Credentials, identities, Nostr cache, and pending deliveries stay intact.")
+            Text("Deletes Podcastr product data. Credentials and cached network data stay intact.")
         }
     }
 
@@ -71,7 +71,6 @@ struct DataStorageSettingsView: View {
             + store.state.episodes.count
             + store.activeNotes.count
             + store.activeMemories.count
-            + store.state.friends.count
             + store.activeAgentActivityCount
     }
 

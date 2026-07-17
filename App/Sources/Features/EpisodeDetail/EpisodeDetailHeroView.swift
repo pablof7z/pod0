@@ -50,13 +50,6 @@ struct EpisodeDetailHeroView: View {
                 if !descriptionPlain.isEmpty {
                     showNotesSection
                 }
-                // Nostr-anchored comments section. Tightly coupled to the
-                // hero for v1 — a clean injection slot is on the list when
-                // we add comments to clip surfaces too. Hides itself when
-                // the episode lacks a Podcasting 2.0 GUID (no global
-                // address ⇒ no comments target).
-                EpisodeCommentsSection(episode: episode)
-                    .padding(.top, AppTheme.Spacing.md)
                 Spacer(minLength: 80)
             }
             .padding(.horizontal, AppTheme.Spacing.md)

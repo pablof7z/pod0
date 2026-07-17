@@ -11,9 +11,7 @@ import Foundation
 /// contradicting another mention of the same topic.
 ///
 /// `confidence` stays a `Double` (0...1) intentionally — the threading
-/// pipeline reasons about cluster quality with continuous probabilities,
-/// distinct from the wiki's three-band `WikiConfidenceBand` which scores
-/// claim-vs-citation alignment.
+/// pipeline reasons about cluster quality with continuous probabilities.
 struct ThreadingMention: Codable, Hashable, Identifiable, Sendable {
 
     var id: UUID

@@ -7,7 +7,7 @@ final class RAGSearchTests: XCTestCase {
         let episodeID = UUID()
         let podcastID = UUID()
         let embedder = KeywordEmbeddingsClient()
-        let store = InMemoryVectorStore(embedder: embedder)
+        let store = try VectorIndex(embedder: embedder, inMemory: true, dimensions: 4)
         try await store.upsert(chunks: [
             Chunk(
                 episodeID: episodeID,
@@ -42,7 +42,7 @@ final class RAGSearchTests: XCTestCase {
         let otherEpisodeID = UUID()
         let podcastID = UUID()
         let embedder = KeywordEmbeddingsClient()
-        let store = InMemoryVectorStore(embedder: embedder)
+        let store = try VectorIndex(embedder: embedder, inMemory: true, dimensions: 4)
         try await store.upsert(chunks: [
             Chunk(
                 episodeID: selectedEpisodeID,
@@ -68,44 +68,6 @@ final class RAGSearchTests: XCTestCase {
         )
 
         XCTAssertEqual(matches.map(\.chunk.episodeID), [selectedEpisodeID])
-    }
-
-    func testWikiAdapterResolvesCitationByEpisodeTimeSpan() async throws {
-        let episodeID = UUID()
-        let podcastID = UUID()
-        let embedder = KeywordEmbeddingsClient()
-        let index = try VectorIndex(embedder: embedder, inMemory: true, dimensions: 4)
-        let chunk = Chunk(
-            episodeID: episodeID,
-            podcastID: podcastID,
-            text: "Keto diet discussion about insulin sensitivity and appetite.",
-            startMS: 10_000,
-            endMS: 25_000
-        )
-        try await index.upsert(chunks: [chunk])
-
-        let rag = RAGSearch(store: index, embedder: embedder, reranker: nil)
-        let adapter = WikiRAGSearchAdapter(search: rag, index: index)
-        let resolved = try await adapter.chunk(
-            episodeID: episodeID,
-            startMS: 12_000,
-            endMS: 13_000
-        )
-
-        XCTAssertEqual(resolved?.id, chunk.id)
-        XCTAssertEqual(resolved?.startMS, chunk.startMS)
-    }
-
-    @MainActor
-    func testBriefingUnsupportedShowScopeDoesNotWidenToAllContent() {
-        XCTAssertEqual(
-            BriefingRAGSearchAdapter.chunkScope(for: .mySubscriptions, service: RAGService.shared),
-            .all
-        )
-        XCTAssertEqual(
-            BriefingRAGSearchAdapter.chunkScope(for: .thisShow, service: RAGService.shared),
-            .episodes([])
-        )
     }
 
     func testSettingsAwareRerankerSkipsBaseClientWhenDisabled() async throws {

@@ -3,20 +3,6 @@ import Observation
 import WidgetKit
 import os.log
 
-// MARK: - Friend invite
-
-/// Pre-filled data for an incoming friend invite deep-link.
-/// Consumed by `AgentFriendsView` to open `AddFriendSheet` with values already typed in.
-struct PendingFriendInvite: Equatable, Identifiable {
-    /// Bech32-encoded public key of the person being added (full `npub1…` string).
-    let npub: String
-    /// Display name suggested by the invite link; the user can change it before adding.
-    let name: String?
-
-    /// Stable identity derived from the public key — two invites for the same key are the same.
-    var id: String { npub }
-}
-
 /// Single source of truth. All mutations route through here so the `didSet`
 /// observer can persist automatically. UI and agent both call the same methods.
 @MainActor
@@ -25,21 +11,6 @@ final class AppStateStore {
 
     nonisolated private static let logger = Logger.app("AppStateStore")
 
-    // MARK: - Navigation
-
-    /// Pending friend invite dispatched by a `podcastr://friend/add` deep-link.
-    /// Consumed and cleared by `AgentFriendsView` on `.onChange` so it fires exactly once.
-    var pendingFriendInvite: PendingFriendInvite?
-
-    /// Transcript line the user long-pressed in the player. Drained by
-    /// `AgentChatSession.init` and prefilled into the composer; cleared by
-    /// the same call so a later sheet re-open starts blank.
-    ///
-    /// Kept around for the internal-only surfaces (clip composer, quote
-    /// share) that still operate on transcript segments. The primary chapter
-    /// long-press path now writes `pendingChapterAgentContext` instead — the
-    /// user never sees transcript text.
-    var pendingTranscriptAgentContext: TranscriptAgentContext?
 
     /// Chapter the user long-pressed in `PlayerChaptersScrollView`. Drained
     /// by `AgentChatSession.init` and prefilled into the composer; cleared
@@ -53,22 +24,6 @@ final class AppStateStore {
     /// carries the timestamp anchor, the active chapter bounds, and the
     /// transcribed utterance; the agent decides what to do with it.
     var pendingVoiceNoteAgentContext: VoiceNoteAgentContext?
-
-    /// Counterparty pubkey of the most-recent Nostr conversation turn —
-    /// drives the floating "Talking to X" capsule on the main screen.
-    /// Cleared `nostrActivityIndicatorDuration` seconds after the last
-    /// turn lands (each new turn resets the timer). Non-persisted UI state.
-    var activeNostrCounterparty: String?
-
-    /// Cancellable timer that clears `activeNostrCounterparty`. Ignored by
-    /// the @Observable macro so swapping it out doesn't force view
-    /// re-evaluations.
-    @ObservationIgnored
-    var nostrActivityDismissTask: Task<Void, Never>?
-
-    /// How long the "Talking to X" capsule stays visible after the latest
-    /// turn — matched to win-the-day's 10s window.
-    static let nostrActivityIndicatorDuration: TimeInterval = 10
 
     var state: AppState {
         didSet {
@@ -211,14 +166,18 @@ final class AppStateStore {
         recomputeEpisodeProjections()
         // Bootstrap the live RAG stack so the SQLite vector store is opened
         // (and its file path logged) before any view tries to query it.
-        // Hand `self` to the service so the briefing adapter and transcript
-        // ingester can resolve episode/subscription metadata.
+        // Hand `self` to the service so the reranker settings gate and
+        // transcript ingester can resolve episode/subscription metadata.
         RAGService.shared.attach(appStore: self)
         EpisodeDownloadService.shared.attach(appStore: self)
         // Prune agent-activity entries older than 30 days so the persisted log
         // doesn't grow unboundedly across many months of use. This fires one
         // Persistence.save only when stale entries are actually found.
         pruneStaleActivityEntries()
+        // One-time cleanup of the deleted Wiki feature's on-disk pages
+        // (`Application Support/podcastr/wiki/`). Guarded by a UserDefaults
+        // flag so this touches the filesystem at most once per install.
+        Self.cleanupOrphanedWikiFilesIfNeeded()
         // Spotlight indexing is disabled — the formatter pass over hundreds of
         // multi-KB show-notes blobs was monopolizing a cooperative worker for
         // tens of seconds on every state change. Clear anything we previously
@@ -245,6 +204,29 @@ final class AppStateStore {
         // retained on `self` so the observer outlives the init call but
         // dies with the store. See `AppStateStore+PositionDebounce.swift`.
         backgroundObserver = registerBackgroundFlushObserver()
+    }
+
+    /// One-time removal of the deleted Wiki feature's on-disk page store
+    /// (`Application Support/podcastr/wiki/`). The feature is gone and
+    /// nothing reads or writes that directory anymore, so any pages left
+    /// over from a prior install are pure disk waste. Safe to no-op if the
+    /// directory doesn't exist (fresh installs, or a device that already
+    /// ran this cleanup).
+    private static func cleanupOrphanedWikiFilesIfNeeded() {
+        let flagKey = "cleanup.wikiFilesRemoved.v1"
+        guard !UserDefaults.standard.bool(forKey: flagKey) else { return }
+        defer { UserDefaults.standard.set(true, forKey: flagKey) }
+        let fm = FileManager.default
+        guard let base = try? fm.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: false
+        ) else { return }
+        let wikiDir = base
+            .appendingPathComponent("podcastr", isDirectory: true)
+            .appendingPathComponent("wiki", isDirectory: true)
+        try? fm.removeItem(at: wikiDir)
     }
 
     /// Pulls the latest iCloud values into `state.settings`.

@@ -67,7 +67,6 @@ struct Settings: Codable, Hashable, Sendable {
         static let llmModel = "openai/gpt-4o-mini"
         static let elevenLabsSTTModel = "scribe_v1"
         static let elevenLabsTTSModel = "eleven_turbo_v2_5"
-        static let nostrRelayURL = "wss://relay.tenex.chat"
         static let defaultPlaybackRate: Double = 1.0
         static let skipForwardSeconds: Int = 30
         static let skipBackwardSeconds: Int = 15
@@ -91,9 +90,12 @@ struct Settings: Codable, Hashable, Sendable {
     var agentThinkingModelName: String = ""
     var memoryCompilationModel: String = Defaults.llmModel
     var memoryCompilationModelName: String = ""
-    /// Model used by `WikiGenerator`. Kept distinct from `llmModel` so users can pick a
-    /// cheaper / faster model for wiki compilation than for live agent chat — same pattern
-    /// as `memoryCompilationModel`.
+    /// Generic cheap/fast utility model — surfaced in Settings as "Utility
+    /// model" — used by `AutoSnipController` and `PlayerShareSheet` for
+    /// small one-shot compile calls where the live agent chat model would
+    /// be overkill. Field name predates the generic framing (originally
+    /// wiki-compilation-specific) but is kept as-is; renaming would be a
+    /// gratuitous migration for a purely internal identifier.
     var wikiModel: String = Defaults.llmModel
     var wikiModelName: String = ""
     /// Model used by `PodcastCategorizationService`. Kept distinct so users can pick a
@@ -102,7 +104,7 @@ struct Settings: Codable, Hashable, Sendable {
     var categorizationModelName: String = ""
     /// Model used by `AIChapterCompiler` to synthesise chapter boundaries from
     /// a ready transcript. Kept distinct from `wikiModel` so users can pick a
-    /// cheaper / faster model for chapter compile without affecting wiki quality.
+    /// cheaper / faster model for chapter compile independently.
     var chapterCompilationModel: String = Defaults.llmModel
     var chapterCompilationModelName: String = ""
     var embeddingsModel: String = Self.defaultEmbeddingsModel
@@ -201,18 +203,12 @@ struct Settings: Codable, Hashable, Sendable {
     /// valuable thing a third tap can do that single/double don't already cover.
     var headphoneTripleTapAction: HeadphoneGestureAction = .clipNow
 
-    // Wiki
-    /// When `true`, `WikiGenerator` runs (or refreshes) the relevant wiki pages as soon as
-    /// a new transcript finishes ingesting. Defaults off so first-run users don't burn
-    /// tokens before deciding to opt in.
-    var wikiAutoGenerateOnTranscriptIngest: Bool = false
-
     // Transcripts
     /// When `true`, the app pre-fetches publisher-supplied transcripts in the
     /// background as soon as new episodes appear (called from
     /// `AppStateStore.upsertEpisodes` after a feed refresh). Default-on
-    /// because the agent layer (RAG, wiki, briefings, summarisation) only
-    /// works once the transcript exists; publisher transcripts are typically
+    /// because the agent layer (RAG, summarisation) only works once
+    /// the transcript exists; publisher transcripts are typically
     /// tens of KB so the bandwidth cost is small. Toggle off in
     /// Settings → Transcripts to defer everything to manual fetch.
     var autoIngestPublisherTranscripts: Bool = true
@@ -225,20 +221,11 @@ struct Settings: Codable, Hashable, Sendable {
     /// When `true`, fire a local notification when a feed refresh discovers a brand-new
     /// episode for a subscription that has notifications enabled.
     var notifyOnNewEpisodes: Bool = true
-    /// When `true`, fire a local notification when a daily/weekly briefing finishes
-    /// generating and is ready to play.
-    var notifyOnBriefingReady: Bool = true
 
-    // Nostr identity (private key stored in Keychain via NostrCredentialStore)
-    var nostrEnabled: Bool = false
-    var nostrRelayURL: String = Defaults.nostrRelayURL
-    /// Relay list used when publishing NIP-74 podcast events. Initialized from the
-    /// user's NIP-65 kind:10002 outbox relays; falls back to primal + damus when empty.
-    var nostrPublicRelays: [String] = []
-    var nostrProfileName: String = ""
-    var nostrProfileAbout: String = ""
-    var nostrProfilePicture: String = ""
-    var nostrPublicKeyHex: String?
+    // Agent identity — display name and avatar the user configures for the
+    // agent during onboarding. Surfaced in the sidebar/toolbar avatar.
+    var agentDisplayName: String = ""
+    var agentAvatarURLString: String = ""
 
     // Onboarding
     var hasCompletedOnboarding: Bool = false
@@ -268,12 +255,13 @@ struct Settings: Codable, Hashable, Sendable {
         case defaultPlaybackRate, skipForwardSeconds, skipBackwardSeconds, autoMarkPlayedAtEnd
         case autoDeleteDownloadsAfterPlayed, autoPlayNext, autoSkipAds
         case headphoneDoubleTapAction, headphoneTripleTapAction
-        case wikiAutoGenerateOnTranscriptIngest
         case autoIngestPublisherTranscripts, autoFallbackToScribe
-        case notifyOnNewEpisodes, notifyOnBriefingReady
-        case nostrEnabled, nostrRelayURL, nostrPublicRelays
-        case nostrProfileName, nostrProfileAbout, nostrProfilePicture
-        case nostrPublicKeyHex
+        case notifyOnNewEpisodes
+        // RawValues preserved as "nostrProfileName" / "nostrProfilePicture" so
+        // an agent name/avatar set before the Nostr identity removal keeps
+        // decoding into the renamed fields.
+        case agentDisplayName = "nostrProfileName"
+        case agentAvatarURLString = "nostrProfilePicture"
         case hasCompletedOnboarding
         case youtubeExtractorURL
     }
@@ -328,18 +316,11 @@ struct Settings: Codable, Hashable, Sendable {
         autoSkipAds = try c.decodeIfPresent(Bool.self, forKey: .autoSkipAds) ?? false
         headphoneDoubleTapAction = try c.decodeIfPresent(HeadphoneGestureAction.self, forKey: .headphoneDoubleTapAction) ?? .skipForward
         headphoneTripleTapAction = try c.decodeIfPresent(HeadphoneGestureAction.self, forKey: .headphoneTripleTapAction) ?? .clipNow
-        wikiAutoGenerateOnTranscriptIngest = try c.decodeIfPresent(Bool.self, forKey: .wikiAutoGenerateOnTranscriptIngest) ?? false
         autoIngestPublisherTranscripts = try c.decodeIfPresent(Bool.self, forKey: .autoIngestPublisherTranscripts) ?? true
         autoFallbackToScribe = try c.decodeIfPresent(Bool.self, forKey: .autoFallbackToScribe) ?? true
         notifyOnNewEpisodes = try c.decodeIfPresent(Bool.self, forKey: .notifyOnNewEpisodes) ?? true
-        notifyOnBriefingReady = try c.decodeIfPresent(Bool.self, forKey: .notifyOnBriefingReady) ?? true
-        nostrEnabled = try c.decodeIfPresent(Bool.self, forKey: .nostrEnabled) ?? false
-        nostrRelayURL = try c.decodeIfPresent(String.self, forKey: .nostrRelayURL) ?? Defaults.nostrRelayURL
-        nostrPublicRelays = try c.decodeIfPresent([String].self, forKey: .nostrPublicRelays) ?? []
-        nostrProfileName = try c.decodeIfPresent(String.self, forKey: .nostrProfileName) ?? ""
-        nostrProfileAbout = try c.decodeIfPresent(String.self, forKey: .nostrProfileAbout) ?? ""
-        nostrProfilePicture = try c.decodeIfPresent(String.self, forKey: .nostrProfilePicture) ?? ""
-        nostrPublicKeyHex = try c.decodeIfPresent(String.self, forKey: .nostrPublicKeyHex)
+        agentDisplayName = try c.decodeIfPresent(String.self, forKey: .agentDisplayName) ?? ""
+        agentAvatarURLString = try c.decodeIfPresent(String.self, forKey: .agentAvatarURLString) ?? ""
         hasCompletedOnboarding = try c.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? false
         youtubeExtractorURL = try c.decodeIfPresent(String.self, forKey: .youtubeExtractorURL)
 
@@ -399,18 +380,11 @@ struct Settings: Codable, Hashable, Sendable {
         try c.encode(autoSkipAds, forKey: .autoSkipAds)
         try c.encode(headphoneDoubleTapAction, forKey: .headphoneDoubleTapAction)
         try c.encode(headphoneTripleTapAction, forKey: .headphoneTripleTapAction)
-        try c.encode(wikiAutoGenerateOnTranscriptIngest, forKey: .wikiAutoGenerateOnTranscriptIngest)
         try c.encode(autoIngestPublisherTranscripts, forKey: .autoIngestPublisherTranscripts)
         try c.encode(autoFallbackToScribe, forKey: .autoFallbackToScribe)
         try c.encode(notifyOnNewEpisodes, forKey: .notifyOnNewEpisodes)
-        try c.encode(notifyOnBriefingReady, forKey: .notifyOnBriefingReady)
-        try c.encode(nostrEnabled, forKey: .nostrEnabled)
-        try c.encode(nostrRelayURL, forKey: .nostrRelayURL)
-        try c.encode(nostrPublicRelays, forKey: .nostrPublicRelays)
-        try c.encode(nostrProfileName, forKey: .nostrProfileName)
-        try c.encode(nostrProfileAbout, forKey: .nostrProfileAbout)
-        try c.encode(nostrProfilePicture, forKey: .nostrProfilePicture)
-        try c.encodeIfPresent(nostrPublicKeyHex, forKey: .nostrPublicKeyHex)
+        try c.encode(agentDisplayName, forKey: .agentDisplayName)
+        try c.encode(agentAvatarURLString, forKey: .agentAvatarURLString)
         try c.encode(hasCompletedOnboarding, forKey: .hasCompletedOnboarding)
         try c.encodeIfPresent(youtubeExtractorURL, forKey: .youtubeExtractorURL)
     }

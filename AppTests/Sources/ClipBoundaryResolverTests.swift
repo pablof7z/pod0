@@ -3,7 +3,7 @@ import XCTest
 
 /// Pins the pure pieces of `ClipBoundaryResolver`: parsing, validation,
 /// speaker resolution. The LLM round-trip itself is exercised via a stubbed
-/// `WikiOpenRouterClient` so the resolver's full path is testable without a
+/// `UtilityLLMClient` so the resolver's full path is testable without a
 /// real provider key.
 @MainActor
 final class ClipBoundaryResolverTests: XCTestCase {
@@ -112,7 +112,7 @@ final class ClipBoundaryResolverTests: XCTestCase {
          "quotedText": "So the body's ability to switch substrate is the real measure.",
          "speakerLabel": "Guest"}
         """
-        resolver.clientFactory = { _ in WikiOpenRouterClient.stubbed(json: stub) }
+        resolver.clientFactory = { _ in UtilityLLMClient.stubbed(json: stub) }
 
         let resolved = await resolver.resolveBoundaries(
             transcript: makeTranscript(),

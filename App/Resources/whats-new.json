@@ -2,6 +2,42 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-17T18:00:21Z",
+      "lines": [
+        "Share quote now saves a real clip — quotes you share from the player land in Saved > Clips automatically.",
+        "Provider connection screens got a consistent refresh: same connect, validate, and disconnect flow everywhere."
+      ]
+    },
+    {
+      "shipped_at": "2026-07-17T17:29:52Z",
+      "lines": [
+        "Bookmarks and Clippings are now one Saved screen with Clips and Starred segments — same content, one less tab."
+      ]
+    },
+    {
+      "shipped_at": "2026-07-17T17:20:58Z",
+      "lines": [
+        "Removed the dedicated CarPlay dashboard app. Playback controls, Now Playing, and lock-screen/Control Center integration are unaffected."
+      ]
+    },
+    {
+      "shipped_at": "2026-07-17T17:14:56Z",
+      "lines": [
+        "Removed Nostr identity, Friends, episode comments, and remote-agent messaging — the app is now fully local and self-contained.",
+        "Removed the Threading topic-browse screen (its only entry point, Wiki, was already gone).",
+        "Podcast generation, TTS episodes, and artwork generation still work exactly as before — only the Nostr publishing step was removed.",
+        "The sidebar avatar and agent name now come from your onboarding setup rather than a Nostr profile."
+      ]
+    },
+    {
+      "shipped_at": "2026-07-17T15:47:47Z",
+      "lines": [
+        "Streamlined the app: removed Wiki, Briefings, and Inbox triage for a faster, simpler experience.",
+        "New episodes now appear and download immediately, without waiting on a background review pass.",
+        "Home's featured section is back to agent-curated picks."
+      ]
+    },
+    {
       "shipped_at": "2026-07-16T14:47:44Z",
       "lines": [
         "Comment drafts now stay safe through slow posting, restart recovery, and definitive delivery failures."

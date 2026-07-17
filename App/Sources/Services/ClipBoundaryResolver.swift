@@ -3,9 +3,9 @@ import os.log
 
 // MARK: - ClipBoundaryResolver
 //
-// Asks the configured LLM (via OpenRouter / Ollama, same stack as wiki and AI
-// chapters) to pick semantically meaningful start/end timestamps for a clip
-// or shareable quote anchored at the playhead.
+// Asks the configured LLM (via OpenRouter / Ollama, same `UtilityLLMClient`
+// stack as AI chapters) to pick semantically meaningful start/end timestamps
+// for a clip or shareable quote anchored at the playhead.
 //
 // The big idea is asymmetry: when a user taps "clip" or "share quote", they
 // nearly always tap a few seconds *after* the moment of interest. So the
@@ -58,7 +58,7 @@ final class ClipBoundaryResolver {
     /// Client factory — overridable so tests can inject a stubbed client.
     /// Returning `nil` signals "no usable client right now" (no API key) and
     /// the resolver bails to nil without an LLM round-trip.
-    var clientFactory: (LLMModelReference) -> WikiOpenRouterClient? = ClipBoundaryResolver.defaultClientFactory
+    var clientFactory: (LLMModelReference) -> UtilityLLMClient? = ClipBoundaryResolver.defaultClientFactory
 
     private init() {}
 
@@ -265,13 +265,13 @@ final class ClipBoundaryResolver {
 // MARK: - Default client factory
 
 private extension ClipBoundaryResolver {
-    static let defaultClientFactory: (LLMModelReference) -> WikiOpenRouterClient? = { modelReference in
+    static let defaultClientFactory: (LLMModelReference) -> UtilityLLMClient? = { modelReference in
         do {
             guard let key = try LLMProviderCredentialResolver.apiKey(for: modelReference.provider),
                   !key.isEmpty else {
                 return nil
             }
-            return WikiOpenRouterClient.live(apiKey: key, model: modelReference.storedID)
+            return UtilityLLMClient.live(apiKey: key, model: modelReference.storedID)
         } catch {
             return nil
         }

@@ -23,17 +23,15 @@ struct HomeView: View {
     @AppStorage("library.categoryFilterID") private var categoryFilterID: String = ""
     @AppStorage("home.featuredExpanded") private var featuredExpanded: Bool = true
 
-    @State private var triageService = InboxTriageService.shared
+    @State private var picksService = AgentPicksService.shared
     @State private var threadingService = ThreadingInferenceService.shared
     @State private var unsubscribeTarget: Podcast?
     @State private var relatedSheetEpisode: Episode?
     @State private var threadedTodaySheet: ThreadingInferenceService.ActiveTopic?
-    @State private var voiceOverDetailRoute: HomeEpisodeRoute?
     @State private var showAddShowSheet: Bool = false
     @State private var showCategoryPicker: Bool = false
     @State private var showAllContinueListening: Bool = false
     @State private var showAllPodcasts: Bool = false
-    @State private var showInbox: Bool = false
     /// Cached "now" used by the dateline + recency pills. Pinned at body
     /// composition time so a 1Hz playback tick doesn't re-format the
     /// recency pill on every redraw.
@@ -50,9 +48,6 @@ struct HomeView: View {
             .navigationDestination(for: HomeEpisodeRoute.self) { route in
                 EpisodeDetailView(episodeID: route.episodeID)
             }
-            .navigationDestination(item: $voiceOverDetailRoute) { route in
-                EpisodeDetailView(episodeID: route.episodeID)
-            }
             .navigationDestination(for: Podcast.self) { pod in
                 ShowDetailView(podcast: pod)
             }
@@ -61,9 +56,6 @@ struct HomeView: View {
             }
             .navigationDestination(isPresented: $showAllPodcasts) {
                 AllPodcastsListView()
-            }
-            .navigationDestination(isPresented: $showInbox) {
-                InboxView(allowedSubscriptionIDs: allowedSubscriptionIDs)
             }
             .sheet(isPresented: $showAddShowSheet) {
                 AddShowSheet(store: store, onDismiss: { showAddShowSheet = false })
@@ -108,15 +100,20 @@ struct HomeView: View {
                 Text("This removes the show and all its episodes from your library.")
             }
             .task {
-                // Kick AI Inbox triage so freshly-arrived episodes get a
-                // decision. Coalesced — concurrent calls all wait on a
-                // single in-flight pass. Category changes don't need to
-                // re-trigger this since triage decisions are persisted
-                // on episodes and the Inbox bundle just filters them.
-                triageService.triageNewEpisodes(store: store)
+                picksService.ensureFreshPicks(store: store, category: activeCategory)
                 // Bind the threading service to the store so the
                 // "Threaded Today" derivation has somewhere to look.
                 threadingService.attach(store: store)
+            }
+            // Re-curate the featured section whenever the user flips
+            // categories. The picks service treats each category as its
+            // own cache slot, so this either reads a cached bundle or
+            // kicks off a fresh stream. The cross-fade itself is handled
+            // by the `.id`-keyed transition on `HomeFeaturedSection`'s
+            // rail; this `onChange` only owns the data side.
+            .onChange(of: categoryFilterID) { _, _ in
+                picksService.setActiveCategory(selectedCategoryID)
+                picksService.ensureFreshPicks(store: store, category: activeCategory)
             }
             .onAppear { renderedAt = Date() }
             .task(id: topActiveThreadKey) {
@@ -160,30 +157,6 @@ struct HomeView: View {
         return store.category(id: id)
     }
 
-    /// Roll-up of the agent's triage decisions for the subtitle under the
-    /// Inbox section header. Scopes counts to the active category so the
-    /// line reads consistently with the magazine-mode UI. Unplayed-only on
-    /// the inbox side — listened episodes drop off the surface anyway, so
-    /// counting them reads as stale.
-    private var triageCounts: (inbox: Int, archived: Int, shows: Int) {
-        let allowed = allowedSubscriptionIDs
-        var inbox = 0
-        var archived = 0
-        var coveredShows: Set<UUID> = []
-        for episode in store.state.episodes {
-            if let allowed, !allowed.contains(episode.podcastID) { continue }
-            guard let decision = episode.triageDecision else { continue }
-            coveredShows.insert(episode.podcastID)
-            switch decision {
-            case .inbox:
-                if !episode.played { inbox += 1 }
-            case .archived:
-                archived += 1
-            }
-        }
-        return (inbox, archived, coveredShows.count)
-    }
-
     // MARK: - Layout
 
     @ViewBuilder
@@ -199,23 +172,17 @@ struct HomeView: View {
                     )
                 }
 
-                if shouldShowInboxSection {
-                    let triage = triageCounts
+                if shouldShowFeaturedSection {
                     HomeFeaturedSection(
-                        picksBundle: inboxBundle,
-                        isStreaming: triageService.isRunning && inboxBundle.picks.isEmpty,
+                        picksBundle: picksService.bundle(for: selectedCategoryID),
+                        isStreaming: picksService.isStreaming(for: selectedCategoryID),
                         activeThread: topActiveThread,
                         activeCategoryID: selectedCategoryID,
                         activeCategoryName: activeCategory?.name,
-                        inboxCount: triage.inbox,
-                        archivedCount: triage.archived,
-                        showCount: triage.shows,
-                        lastTriagedAt: triageService.lastCompletedAt,
                         isExpanded: $featuredExpanded,
                         onPlayEpisode: playEpisode,
                         onLongPressEpisode: { relatedSheetEpisode = $0 },
-                        onOpenThread: { threadedTodaySheet = topActiveThread },
-                        onSeeAll: { showInbox = true }
+                        onOpenThread: { threadedTodaySheet = topActiveThread }
                     )
                 }
 
@@ -325,20 +292,11 @@ struct HomeView: View {
         activeCategory?.name ?? "Home"
     }
 
-    /// Persisted Inbox bundle for the currently-active category. The
-    /// triage service writes `.inbox` decisions onto episodes; this
-    /// composes the bundle by filtering + sorting them and is therefore
-    /// cheap to recompute on every body pass.
-    private var inboxBundle: HomeAgentPicksBundle {
-        HomeInboxBundleBuilder.make(
-            store: store,
-            allowedSubscriptionIDs: allowedSubscriptionIDs,
-            now: renderedAt
-        )
-    }
-
-    private var shouldShowInboxSection: Bool {
-        !inboxBundle.picks.isEmpty || triageService.isRunning
+    private var shouldShowFeaturedSection: Bool {
+        let bundle = picksService.bundle(for: selectedCategoryID)
+        return !bundle.picks.isEmpty
+            || picksService.isRefreshing(for: selectedCategoryID)
+            || picksService.isStreaming(for: selectedCategoryID)
     }
 
     // MARK: - Toolbar
@@ -375,9 +333,11 @@ struct HomeView: View {
 
     private func refreshAllFeeds() async {
         await SubscriptionRefreshService.shared.refreshAll(store: store)
-        // `refreshAll` already kicks `InboxTriageService.triageNewEpisodes`
-        // after the upsert sweep, so any new episodes get classified on
-        // this pass. The triage service coalesces, so a second call here
-        // is harmless but unnecessary.
+        // Library state moved meaningfully — let the agent picks update on
+        // the next turn instead of waiting on the 6h TTL. We blow every
+        // cached category slot away so each section recurates on first
+        // visit; the active section gets its refresh triggered now.
+        picksService.invalidate()
+        picksService.ensureFreshPicks(store: store, category: activeCategory)
     }
 }

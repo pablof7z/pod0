@@ -57,10 +57,6 @@ final class SubscriptionRefreshService {
     /// the podcast's stored `etag` / `lastModified`. A `304` only bumps
     /// `lastRefreshedAt`; an updated feed upserts every parsed episode and
     /// writes the new cache headers back via `updatePodcast`.
-    ///
-    /// Same triage gate as `refreshAll`: auto-download and new-episode
-    /// notifications are deferred until the AI Inbox triage pass settles
-    /// so archived episodes never produce a banner or auto-download.
     func refresh(_ podcastID: UUID, store: AppStateStore) async throws {
         guard let podcast = store.podcast(id: podcastID),
               podcast.feedURL != nil else {
@@ -75,8 +71,6 @@ final class SubscriptionRefreshService {
             ),
             store: store
         )
-        InboxTriageService.shared.triageNewEpisodes(store: store)
-        await waitForTriageToSettle()
         if let pending {
             dispatchSideEffects(pending, store: store)
         }
@@ -87,10 +81,8 @@ final class SubscriptionRefreshService {
     /// swallowed per-podcast so one failing feed doesn't sink the whole sweep.
     ///
     /// Side-effect ordering: episode upserts are applied as feeds resolve
-    /// (so the UI sees new rows without delay), but auto-download evaluation
-    /// and new-episode notifications are deferred until AI Inbox triage has
-    /// classified the new arrivals. This guarantees archived episodes never
-    /// produce a banner or kick off a background download.
+    /// (so the UI sees new rows without delay); auto-download evaluation and
+    /// new-episode notifications are dispatched immediately after.
     func refreshAll(store: AppStateStore, maxConcurrent: Int = 4) async {
         let podcasts = store.sortedFollowedPodcastsByRecency.filter { $0.feedURL != nil }
         guard !podcasts.isEmpty else { return }
@@ -133,30 +125,8 @@ final class SubscriptionRefreshService {
             index = upper
         }
 
-        // Kick autonomous AI Inbox triage and wait for it to settle before
-        // letting auto-downloads or new-episode banners fire. The service
-        // writes decisions into the store via `applyTriageDecisions`, after
-        // which we filter side effects against the per-episode triage
-        // verdict so archived episodes stay silent on the same cycle they
-        // were created in.
-        InboxTriageService.shared.triageNewEpisodes(store: store)
-        await waitForTriageToSettle()
-
         for pending in pendingSideEffects {
             dispatchSideEffects(pending, store: store)
-        }
-    }
-
-    /// Blocks until the active triage pass (if any) finishes, capped at a
-    /// per-cycle deadline so a stuck LLM call can't hang the refresh loop.
-    /// We pause briefly first so the task spawned by `triageNewEpisodes`
-    /// has a chance to enter its run body and flip `isRunning` true; if it
-    /// returns early (no candidates), the poll exits on the first read.
-    private func waitForTriageToSettle() async {
-        try? await Task.sleep(for: .milliseconds(50))
-        let deadline = Date().addingTimeInterval(60)
-        while InboxTriageService.shared.isRunning, Date() < deadline {
-            try? await Task.sleep(for: .milliseconds(200))
         }
     }
 
@@ -185,10 +155,9 @@ final class SubscriptionRefreshService {
     // MARK: - Private
 
     /// Applies a single feed-fetch outcome to the store and returns the
-    /// side effects (auto-download + notifications) that must be deferred
-    /// until after AI Inbox triage runs. Returns `nil` for `notModified`,
-    /// failures, and feeds that had no prior episode set (the first-ever
-    /// fetch suppresses notifications regardless of triage).
+    /// side effects (auto-download + notifications) to dispatch. Returns
+    /// `nil` for `notModified`, failures, and feeds that had no newly
+    /// inserted episodes.
     private func apply(
         outcome: PodcastRefreshOutcome,
         store: AppStateStore
@@ -227,15 +196,10 @@ final class SubscriptionRefreshService {
         }
     }
 
-    /// Fires the deferred auto-download evaluation and new-episode
-    /// notifications for episodes that survived triage (i.e. weren't
-    /// archived). Archived episodes are silent by contract: no banner,
-    /// no background download, no presence on any "new" surface.
+    /// Fires the auto-download evaluation and new-episode notifications for
+    /// the newly inserted episodes.
     private func dispatchSideEffects(_ pending: PendingSideEffects, store: AppStateStore) {
-        let survivors: [UUID] = pending.newEpisodeIDs.filter { id in
-            guard let ep = store.episode(id: id) else { return false }
-            return !ep.isTriageArchived
-        }
+        let survivors: [UUID] = pending.newEpisodeIDs.filter { store.episode(id: $0) != nil }
         guard !survivors.isEmpty else { return }
 
         EpisodeDownloadService.shared.attach(appStore: store)
@@ -316,9 +280,8 @@ private enum PodcastRefreshOutcome: Sendable {
 
 // MARK: - Pending side effects
 
-/// Per-feed bundle of post-triage side effects. Created during the upsert
-/// sweep and dispatched only after the AI Inbox triage pass settles so
-/// archived episodes never produce a notification or auto-download.
+/// Per-feed bundle of deferred side effects. Created during the upsert
+/// sweep and dispatched once the whole refresh round completes.
 private struct PendingSideEffects {
     let podcast: Podcast
     let newEpisodeIDs: [UUID]

@@ -39,12 +39,12 @@ import os.log
 ///      the old `pollResult` retry loop was unreachable in practice and the
 ///      whole `AsyncJobResponse` code path was a phantom contract.
 ///
-/// The fix: keep the `submit` → `pollResult` shape (so `TranscriptionQueue`
-/// keeps compiling) but make `submit` actually perform the synchronous request,
-/// stash the inline result on the returned `ScribeJob`, and have `pollResult`
-/// just return that inline result. Choose the multipart audio source based on
-/// the URL scheme — `file://` → `file` field with bytes, `https://` →
-/// `source_url` field with the URL string (the server fetches it for us).
+/// The fix: keep the `submit` → `pollResult` shape but make `submit`
+/// actually perform the synchronous request, stash the inline result on the
+/// returned `ScribeJob`, and have `pollResult` just return that inline
+/// result. Choose the multipart audio source based on the URL scheme —
+/// `file://` → `file` field with bytes, `https://` → `source_url` field with
+/// the URL string (the server fetches it for us).
 actor ElevenLabsScribeClient {
 
     enum ScribeError: Swift.Error, LocalizedError, Sendable {
@@ -57,9 +57,8 @@ actor ElevenLabsScribeClient {
         case timedOut
 
         /// User-facing copy. These messages land directly in the
-        /// `TranscribingInProgressView` "Failed" panel via
-        /// `TranscriptionQueue.failed(message:)` — without `LocalizedError`
-        /// the user would see raw Swift case names like
+        /// `TranscribingInProgressView` "Failed" panel — without
+        /// `LocalizedError` the user would see raw Swift case names like
         /// `http(status: 401, body: Optional("..."))`.
         var errorDescription: String? {
             switch self {
@@ -212,7 +211,7 @@ actor ElevenLabsScribeClient {
 
     /// The synchronous endpoint returns the transcript inline, so this is just
     /// a wrapper that unwraps the cached result. The shape is preserved for
-    /// `TranscriptionQueue` (and any future async/webhook path).
+    /// any future async/webhook path.
     func pollResult(_ job: ScribeJob) async throws -> Transcript {
         guard let raw = job.inlineResult else { throw ScribeError.invalidResponse }
         return Transcript.fromScribeRaw(raw, episodeID: job.episodeID, languageHint: job.languageHint)
@@ -351,8 +350,8 @@ struct ScribeWord: Codable, Sendable, Hashable {
 extension Transcript {
     /// Converts a Scribe raw result into our internal `Transcript`. Words of
     /// type `spacing` are dropped. Words of type `audio_event` (`[laughter]`,
-    /// `[music]`) are folded into the body text in-place — the wiki / agent
-    /// surfaces will use them for context, the reader will hide them.
+    /// `[music]`) are folded into the body text in-place — agent surfaces
+    /// will use them for context, the reader will hide them.
     static func fromScribeRaw(
         _ raw: ScribeRawResult,
         episodeID: UUID,

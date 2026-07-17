@@ -39,63 +39,6 @@ actor MockRAG: PodcastAgentRAGSearchProtocol {
     }
 }
 
-actor MockWiki: WikiStorageProtocol {
-    private let result: [WikiHit]
-    private let createResult: WikiCreateResult?
-    private let listResult: [WikiPageListing]
-    init(
-        result: [WikiHit] = [],
-        createResult: WikiCreateResult? = nil,
-        listResult: [WikiPageListing] = []
-    ) {
-        self.result = result
-        self.createResult = createResult
-        self.listResult = listResult
-    }
-
-    func queryWiki(topic: String, scope: PodcastID?, limit: Int) async throws -> [WikiHit] {
-        return result
-    }
-
-    func createWikiPage(title: String, kind: String, scope: PodcastID?) async throws -> WikiCreateResult {
-        return createResult ?? WikiCreateResult(
-            pageID: "mock-page",
-            slug: title.lowercased().replacingOccurrences(of: " ", with: "-"),
-            title: title,
-            kind: kind,
-            summary: "",
-            claimCount: 0,
-            citationCount: 0,
-            confidence: 0
-        )
-    }
-
-    func listWikiPages(scope: PodcastID?, limit: Int) async throws -> [WikiPageListing] {
-        return listResult
-    }
-
-    func deleteWikiPage(slug: String, scope: PodcastID?) async throws {}
-}
-
-actor MockBriefing: BriefingComposerProtocol {
-    private let result: BriefingResult?
-    private let error: Error?
-    private(set) var lastLength: Int = -1
-
-    init(result: BriefingResult? = nil, error: Error? = nil) {
-        self.result = result
-        self.error = error
-    }
-
-    func composeBriefing(scope: String, lengthMinutes: Int, style: String?) async throws -> BriefingResult {
-        lastLength = lengthMinutes
-        if let error = error { throw error }
-        return result ?? BriefingResult(
-            briefingID: "default", title: "Default", estimatedSeconds: 0, episodeIDs: []
-        )
-    }
-}
-
 actor MockSummarizer: EpisodeSummarizerProtocol {
     private let result: EpisodeSummary?
     init(result: EpisodeSummary? = nil) { self.result = result }
@@ -301,62 +244,6 @@ actor MockLibrary: PodcastLibraryProtocol {
             podcastTitle: "Mock Show",
             state: state
         )
-    }
-}
-
-actor MockPeerEventPublisher: PeerEventPublisherProtocol {
-    struct ConversationReplyCall: Equatable {
-        let peerContext: PeerConversationContext
-        let body: String
-        let extraTags: [[String]]
-    }
-    struct FriendMessageCall: Equatable {
-        let friendPubkeyHex: String
-        let body: String
-        let peerContext: PeerConversationContext?
-    }
-    private(set) var conversationReplies: [ConversationReplyCall] = []
-    private(set) var friendMessages: [FriendMessageCall] = []
-    private var nextEventID = 1
-    private let shouldThrow: Bool
-
-    init(shouldThrow: Bool = false) {
-        self.shouldThrow = shouldThrow
-    }
-
-    func publishConversationReply(
-        peerContext: PeerConversationContext,
-        body: String,
-        extraTags: [[String]]
-    ) async throws -> String {
-        if shouldThrow { throw NostrEventPublisherError.noRelayConfigured }
-        conversationReplies.append(.init(peerContext: peerContext, body: body, extraTags: extraTags))
-        defer { nextEventID += 1 }
-        return "peer-reply-\(nextEventID)"
-    }
-
-    func publishFriendMessage(
-        friendPubkeyHex: String,
-        body: String,
-        peerContext: PeerConversationContext?
-    ) async throws -> String {
-        if shouldThrow { throw NostrEventPublisherError.noRelayConfigured }
-        friendMessages.append(.init(friendPubkeyHex: friendPubkeyHex, body: body, peerContext: peerContext))
-        defer { nextEventID += 1 }
-        return "friend-msg-\(nextEventID)"
-    }
-}
-
-actor MockFriendDirectory: FriendDirectoryProtocol {
-    private let knownPubkeys: [String]
-
-    init(knownPubkeys: [String] = []) {
-        self.knownPubkeys = knownPubkeys.map { $0.lowercased() }
-    }
-
-    func resolvePubkey(prefixOrFull: String) async -> String? {
-        let needle = prefixOrFull.lowercased()
-        return knownPubkeys.first { $0.hasPrefix(needle) }
     }
 }
 

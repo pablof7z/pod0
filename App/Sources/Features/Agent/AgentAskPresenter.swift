@@ -2,10 +2,8 @@ import SwiftUI
 
 /// Watches an `AgentAskCoordinator` for pending owner-consultation
 /// requests and auto-presents a sheet whenever the agent calls its
-/// `ask` tool. Mounted once on `RootView` (alongside
-/// `nostrApprovalPresenter()`) so the prompt can interrupt any tab —
-/// critical for peer-agent flows where an inbound Nostr message can
-/// trigger an `ask` while the user is on Home, Library, etc.
+/// `ask` tool. Mounted once on `RootView` so the prompt can interrupt
+/// any tab the user happens to be on.
 ///
 /// The sheet shows the head of the coordinator's FIFO queue. Each
 /// resolve / decline pops the head and reveals the next pending ask.

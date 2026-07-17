@@ -7,7 +7,7 @@ struct AppSidebarView: View {
     @Binding var selectedTab: RootTab
     @Binding var isPresented: Bool
 
-    @Environment(UserIdentityStore.self) private var userIdentity
+    @Environment(AppStateStore.self) private var store
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -24,25 +24,18 @@ struct AppSidebarView: View {
     // MARK: - Header
 
     private var header: some View {
-        let profile = UserProfileDisplay.from(identity: userIdentity)
+        let settings = store.state.settings
+        let name = settings.agentDisplayName.trimmed
         return VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            IdentityAvatarView(
-                url: profile?.pictureURL,
-                initial: profile?.displayName.first,
+            AvatarView(
+                url: URL(string: settings.agentAvatarURLString.trimmed),
+                initial: name.first,
                 size: 72
             )
-            VStack(alignment: .leading, spacing: 3) {
-                Text(profile?.displayName ?? "Welcome")
-                    .font(AppTheme.Typography.title3)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                if let slug = profile?.slug, !slug.isEmpty {
-                    Text("@\(slug)")
-                        .font(AppTheme.Typography.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
+            Text(name.isEmpty ? "Welcome" : name)
+                .font(AppTheme.Typography.title3)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
         }
         .padding(.horizontal, AppTheme.Spacing.lg)
         .padding(.top, AppTheme.Spacing.lg)
@@ -65,16 +58,8 @@ struct AppSidebarView: View {
                 selectedTab = .library
                 dismiss()
             }
-            navRow("Bookmarks", icon: "bookmark.fill", isActive: selectedTab == .bookmarks) {
-                selectedTab = .bookmarks
-                dismiss()
-            }
-            navRow("Clippings", icon: "scissors", isActive: selectedTab == .clippings) {
-                selectedTab = .clippings
-                dismiss()
-            }
-            navRow("Wiki", icon: "book.closed.fill", isActive: selectedTab == .wiki) {
-                selectedTab = .wiki
+            navRow("Saved", icon: "bookmark.fill", isActive: selectedTab == .saved) {
+                selectedTab = .saved
                 dismiss()
             }
         }

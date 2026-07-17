@@ -32,13 +32,6 @@ struct PodcastTranscriptSearchHit: Identifiable, Hashable, Sendable {
     var id: UUID { chunk.id }
 }
 
-struct PodcastWikiSearchHit: Identifiable, Hashable, Sendable {
-    var page: WikiPage
-    var excerpt: String
-    var score: Int
-    var id: UUID { page.id }
-}
-
 enum PodcastSearchEngine {
     static func localResults(
         query: String,
@@ -75,11 +68,8 @@ enum PodcastSearchEngine {
         .sorted(by: ranked)
         .prefix(limit)
 
-        // AI Inbox: archived episodes are silently soft-hidden from in-app search.
-        // The show page remains the recovery surface for archived content.
         let episodes = state.episodes.compactMap { episode -> PodcastEpisodeSearchHit? in
-            guard let podcast = podcastsByID[episode.podcastID],
-                  !episode.isTriageArchived else { return nil }
+            guard let podcast = podcastsByID[episode.podcastID] else { return nil }
             let people = (episode.persons ?? []).map(\.name).joined(separator: " ")
             let soundBites = (episode.soundBites ?? []).compactMap(\.title).joined(separator: " ")
             let fields = [
@@ -105,36 +95,6 @@ enum PodcastSearchEngine {
         .prefix(limit)
 
         return PodcastLocalSearchResults(shows: Array(shows), episodes: Array(episodes))
-    }
-
-    static func wikiResults(
-        query: String,
-        pages: [WikiPage],
-        limit: Int = 8
-    ) -> [PodcastWikiSearchHit] {
-        let trimmed = query.trimmed
-        guard !trimmed.isEmpty else { return [] }
-        let tokens = tokenize(trimmed)
-        return pages.compactMap { page -> PodcastWikiSearchHit? in
-            let claims = page.allClaims.map(\.text)
-            let score = score(
-                fields: [(page.title, 8), (page.summary, 4)] + claims.map { ($0, 3) },
-                query: trimmed,
-                tokens: tokens
-            )
-            guard score > 0 else { return nil }
-            return PodcastWikiSearchHit(
-                page: page,
-                excerpt: bestSnippet([page.summary] + claims, query: trimmed, tokens: tokens),
-                score: score
-            )
-        }
-        .sorted {
-            if $0.score != $1.score { return $0.score > $1.score }
-            return $0.page.generatedAt > $1.page.generatedAt
-        }
-        .prefix(limit)
-        .map { $0 }
     }
 
     private static func ranked(_ lhs: PodcastShowSearchHit, _ rhs: PodcastShowSearchHit) -> Bool {

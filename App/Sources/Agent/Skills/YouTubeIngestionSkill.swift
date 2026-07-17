@@ -14,7 +14,7 @@ enum YouTubeIngestionSkill {
     static let skill = AgentSkill(
         id: AgentSkillID.youtubeIngestion,
         displayName: "YouTube Ingestion",
-        summary: "Search YouTube and download video audio as podcast episodes via a self-hosted extractor; transcribes on ingest so RAG and wiki tools can reference the content.",
+        summary: "Search YouTube and download video audio as podcast episodes via a self-hosted extractor; transcribes on ingest so RAG tools can reference the content.",
         manual: manualText,
         toolNames: [AgentTools.PodcastNames.searchYouTube, AgentTools.PodcastNames.ingestYouTubeVideo],
         schema: { schemaEntries }

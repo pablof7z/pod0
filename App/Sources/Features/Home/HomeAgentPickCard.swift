@@ -2,10 +2,9 @@ import SwiftUI
 
 // MARK: - HomeAgentPickCard
 
-/// Featured-section "agent pick" card species. Visually distinct from the
-/// `HomeResumeCard`: thinner aspect ratio, leading 2-pt accent bar, and a
-/// one-line *because* rationale beneath the title. Tapping the chevron
-/// expands to show the full rationale text.
+/// Featured-section "agent pick" card species. Thinner aspect ratio,
+/// leading 2-pt accent bar, and a one-line *because* rationale beneath the
+/// title. Tapping the chevron expands to show the full rationale text.
 struct HomeAgentPickCard: View {
     let pick: HomeAgentPick
     let episode: Episode

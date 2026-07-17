@@ -16,12 +16,12 @@ import Foundation
 // hop actors. Implementations that touch `@MainActor` state should mark their
 // methods `@MainActor`; the protocol surface tolerates either.
 //
-// Value-type result envelopes (`EpisodeHit`, `BriefingResult`, etc.) live in
+// Value-type result envelopes (`EpisodeHit`, etc.) live in
 // `PodcastAgentToolValues.swift`.
 
 // MARK: - Search & retrieval
 
-/// RAG search across transcripts and wiki content (lane 4/7).
+/// RAG search across transcripts (lane 4).
 public protocol PodcastAgentRAGSearchProtocol: Sendable {
     /// Semantic + keyword episode discovery. `scope` is an optional podcast ID
     /// to constrain the search. Limit defaults to 10.
@@ -35,38 +35,7 @@ public protocol PodcastAgentRAGSearchProtocol: Sendable {
     func findSimilarEpisodes(seedEpisodeID: EpisodeID, k: Int) async throws -> [EpisodeHit]
 }
 
-/// Knowledge wiki storage and retrieval (lane 5).
-public protocol WikiStorageProtocol: Sendable {
-    /// Look up a wiki page by topic. `scope` is an optional podcast ID.
-    func queryWiki(topic: String, scope: PodcastID?, limit: Int) async throws -> [WikiHit]
-
-    /// Compile and persist a new wiki page. Throws when the AI provider key is
-    /// missing or when the RAG index has no evidence for the requested topic.
-    /// `kind` is "topic", "person", or "show" (defaults to "topic" for unknown values).
-    /// `scope` is an optional podcast UUID string; nil produces a global page.
-    func createWikiPage(title: String, kind: String, scope: PodcastID?) async throws -> WikiCreateResult
-
-    /// List existing wiki pages from the inventory. Fast — does not decode page bodies.
-    /// `scope` is an optional podcast UUID string; nil returns all pages.
-    func listWikiPages(scope: PodcastID?, limit: Int) async throws -> [WikiPageListing]
-
-    /// Delete the wiki page at `slug` in the given scope.
-    /// `scope` is an optional podcast UUID string; nil targets global pages.
-    /// No-ops when the page does not exist.
-    func deleteWikiPage(slug: String, scope: PodcastID?) async throws
-}
-
 // MARK: - Composer / summarizer / fetcher
-
-/// Briefing composer (lane 8).
-public protocol BriefingComposerProtocol: Sendable {
-    /// Compose a personalized briefing.
-    /// - Parameters:
-    ///   - scope: keyword like `"this_week"`, `"unlistened"`, or a podcast ID.
-    ///   - lengthMinutes: target length in minutes.
-    ///   - style: optional style hint (`"news"`, `"deep_dive"`, etc).
-    func composeBriefing(scope: String, lengthMinutes: Int, style: String?) async throws -> BriefingResult
-}
 
 /// Summarization for an individual episode (lane 5/8).
 public protocol EpisodeSummarizerProtocol: Sendable {
@@ -162,53 +131,12 @@ public protocol PodcastLibraryProtocol: Sendable {
     ) async throws -> ClipResult
 }
 
-/// Registers outbound friend messages so `NostrAgentResponder` can route
-/// incoming replies back to the originating conversation (in-app chat or
-/// Nostr peer thread). Used by `send_friend_message` immediately after
-/// the root event is published.
-protocol PendingFriendMessageRegistrarProtocol: Sendable {
-    func register(_ message: PendingFriendMessage) async
-}
-
-/// Resolves the user's trusted-friends list for the `send_friend_message`
-/// tool. Gates outbound notes so the agent cannot fire kind:1 events at
-/// arbitrary pubkeys on the user's identity.
-public protocol FriendDirectoryProtocol: Sendable {
-    /// Resolve a hex pubkey or pubkey prefix (e.g. 6 chars, as shown in the
-    /// Friends list) to the full hex pubkey. Returns `nil` when no matching
-    /// friend is found.
-    func resolvePubkey(prefixOrFull: String) async -> String?
-}
-
-/// Publishes peer-conversation events on the user's Nostr identity. Used by
-/// the `end_conversation` and `send_friend_message` agent tools. Implementations
-/// are responsible for signing with the user's agent key, attaching NIP-10
-/// reply tags when a peer context is present, and pushing the event to the
-/// configured relay.
-public protocol PeerEventPublisherProtocol: Sendable {
-    /// Publish a kind:1 reply inside an existing peer conversation. Attaches
-    /// NIP-10 `e`/`p` tags from `peerContext` plus any `extraTags`.
-    func publishConversationReply(
-        peerContext: PeerConversationContext,
-        body: String,
-        extraTags: [[String]]
-    ) async throws -> String
-
-    /// Publish a kind:1 note p-tagged at the friend, optionally threaded
-    /// under an existing peer-conversation root.
-    func publishFriendMessage(
-        friendPubkeyHex: String,
-        body: String,
-        peerContext: PeerConversationContext?
-    ) async throws -> String
-}
-
 // MARK: - Inventory queries
 
 /// Plain-English library inventory queries. None of these go through RAG —
 /// the agent uses them to answer "what am I subscribed to?" or "what was I
 /// listening to?" without spending a search budget. Detail / discovery /
-/// content lookups still go through the search and wiki protocols.
+/// content lookups still go through the search protocol.
 public protocol PodcastInventoryProtocol: Sendable {
     /// Every show the user is currently subscribed to, sorted by title. Caps
     /// at `limit` if the library is huge.
@@ -311,109 +239,66 @@ public protocol PodcastSubscribeProtocol: Sendable {
 
 /// Bundle of every protocol the podcast tool surface needs. Construct once at
 /// app startup; pass to `AgentTools.dispatchPodcast(...)` for every tool call.
-///
-/// `peerContext` is the only per-call-mutable field — the orchestrator should
-/// build a fresh `PodcastAgentToolDeps` (or use `withPeerContext(_:)`) for each
-/// Nostr peer-conversation turn so peer-only tools (`end_conversation`,
-/// `send_friend_message`) can resolve the active root + inbound event.
 struct PodcastAgentToolDeps: Sendable {
     let rag: PodcastAgentRAGSearchProtocol
-    let wiki: WikiStorageProtocol
-    let briefing: BriefingComposerProtocol
     let summarizer: EpisodeSummarizerProtocol
     let fetcher: EpisodeFetcherProtocol
     let playback: PlaybackHostProtocol
     let library: PodcastLibraryProtocol
     let inventory: PodcastInventoryProtocol
     let categories: PodcastCategoryProtocol
-    let peerPublisher: PeerEventPublisherProtocol
-    let friendDirectory: FriendDirectoryProtocol
-    let pendingRegistrar: (any PendingFriendMessageRegistrarProtocol)?
     let perplexity: PerplexityClientProtocol
     let ttsPublisher: TTSPublisherProtocol
     let directory: PodcastDirectoryProtocol
     let subscribe: PodcastSubscribeProtocol
     let youtubeIngestion: YouTubeIngestionProtocol
     let ownedPodcasts: AgentOwnedPodcastManagerProtocol
-    /// Set by the Nostr peer-agent entrypoint per inbound turn. Nil for owner
-    /// chat / voice / other entrypoints — peer-only tools early-return a clean
-    /// tool error in that case.
-    let peerContext: PeerConversationContext?
     /// Set by `AgentChatSession` per dispatch to the active in-app conversation
     /// UUID. Used by `generate_tts_episode` to tag the resulting episode with
     /// its source conversation so the player can surface a tappable link.
     let chatConversationID: UUID?
     init(
         rag: PodcastAgentRAGSearchProtocol,
-        wiki: WikiStorageProtocol,
-        briefing: BriefingComposerProtocol,
         summarizer: EpisodeSummarizerProtocol,
         fetcher: EpisodeFetcherProtocol,
         playback: PlaybackHostProtocol,
         library: PodcastLibraryProtocol,
         inventory: PodcastInventoryProtocol,
         categories: PodcastCategoryProtocol,
-        peerPublisher: PeerEventPublisherProtocol,
-        friendDirectory: FriendDirectoryProtocol,
-        pendingRegistrar: (any PendingFriendMessageRegistrarProtocol)? = nil,
         perplexity: PerplexityClientProtocol,
         ttsPublisher: TTSPublisherProtocol,
         directory: PodcastDirectoryProtocol,
         subscribe: PodcastSubscribeProtocol,
         youtubeIngestion: YouTubeIngestionProtocol,
         ownedPodcasts: AgentOwnedPodcastManagerProtocol,
-        peerContext: PeerConversationContext? = nil,
         chatConversationID: UUID? = nil
     ) {
         self.rag = rag
-        self.wiki = wiki
-        self.briefing = briefing
         self.summarizer = summarizer
         self.fetcher = fetcher
         self.playback = playback
         self.library = library
         self.inventory = inventory
         self.categories = categories
-        self.peerPublisher = peerPublisher
-        self.friendDirectory = friendDirectory
-        self.pendingRegistrar = pendingRegistrar
         self.perplexity = perplexity
         self.ttsPublisher = ttsPublisher
         self.directory = directory
         self.subscribe = subscribe
         self.youtubeIngestion = youtubeIngestion
         self.ownedPodcasts = ownedPodcasts
-        self.peerContext = peerContext
         self.chatConversationID = chatConversationID
-    }
-
-    /// Returns a copy with the supplied peer context. Used by the Nostr
-    /// inbound entrypoint to thread per-turn context without rebuilding adapters.
-    func withPeerContext(_ ctx: PeerConversationContext?) -> PodcastAgentToolDeps {
-        PodcastAgentToolDeps(
-            rag: rag, wiki: wiki, briefing: briefing, summarizer: summarizer,
-            fetcher: fetcher, playback: playback, library: library,
-            inventory: inventory, categories: categories,
-            peerPublisher: peerPublisher, friendDirectory: friendDirectory,
-            pendingRegistrar: pendingRegistrar, perplexity: perplexity,
-            ttsPublisher: ttsPublisher, directory: directory,
-            subscribe: subscribe, youtubeIngestion: youtubeIngestion,
-            ownedPodcasts: ownedPodcasts,
-            peerContext: ctx, chatConversationID: chatConversationID
-        )
     }
 
     func withChatConversationID(_ id: UUID?) -> PodcastAgentToolDeps {
         PodcastAgentToolDeps(
-            rag: rag, wiki: wiki, briefing: briefing, summarizer: summarizer,
+            rag: rag, summarizer: summarizer,
             fetcher: fetcher, playback: playback, library: library,
             inventory: inventory, categories: categories,
-            peerPublisher: peerPublisher, friendDirectory: friendDirectory,
-            pendingRegistrar: pendingRegistrar, perplexity: perplexity,
+            perplexity: perplexity,
             ttsPublisher: ttsPublisher, directory: directory,
             subscribe: subscribe, youtubeIngestion: youtubeIngestion,
             ownedPodcasts: ownedPodcasts,
-            peerContext: peerContext, chatConversationID: id
+            chatConversationID: id
         )
     }
 }

@@ -12,7 +12,7 @@ import Foundation
 /// is first chunked, and used as the primary key in the vector store. The
 /// embedding vector is intentionally **not** part of `Chunk`: it's an internal
 /// implementation detail of the vector store, computed from `text`. Callers
-/// (Lane 7 wiki indexer, Lane 10 agent tools) only ever read text + metadata.
+/// (Lane 10 agent tools) only ever read text + metadata.
 struct Chunk: Sendable, Hashable, Codable, Identifiable {
     /// Stable identifier for this chunk. Used as the primary key in the
     /// vector store and as the dedup key on re-ingest.

@@ -94,23 +94,6 @@ extension AgentTools {
                 required: ["query"]
             ),
             podcastTool(
-                name: PodcastNames.queryWiki,
-                description: "Look up a topic in the LLM-generated podcast wiki. Use this for definitional questions ('what is Zone 2?') or to surface cross-episode context the user has already built up.",
-                properties: [
-                    "topic": ["type": "string", "description": "Topic, person, place, or concept to look up."],
-                    "scope": ["type": "string", "description": "Optional podcast ID to constrain the wiki lookup to one show's wiki."],
-                    "limit": ["type": "integer", "description": "Maximum pages returned (1–10). Defaults to 5."],
-                ],
-                required: ["topic"]
-            ),
-            // NOTE: `create_wiki_page`, `list_wiki_pages`, and
-            // `delete_wiki_page` live under the `wiki_research` skill
-            // (see `App/Sources/Agent/Skills/WikiResearchSkill.swift`).
-            // Their tool name constants stay in `PodcastNames.all` so
-            // `dispatchPodcast` can route them; the LLM only sees their
-            // schemas when the skill is enabled.
-            // `query_wiki` stays always-on as a cheap lookup.
-            podcastTool(
                 name: PodcastNames.queryTranscripts,
                 description: "RAG search over transcript chunks. Returns timestamped excerpts with speaker labels. Use this when the user asks 'what did they say about X?' and you need direct quotes to ground the answer.",
                 properties: [
@@ -119,16 +102,6 @@ extension AgentTools {
                     "limit": ["type": "integer", "description": "Maximum chunks returned (1–25). Defaults to 8."],
                 ],
                 required: ["query"]
-            ),
-            podcastTool(
-                name: PodcastNames.generateBriefing,
-                description: "Compose a personalized TLDR audio briefing across episodes. Use when the user asks 'catch me up on this week' or wants a synthesized digest. Returns a briefing handle the user can play.",
-                properties: [
-                    "scope": ["type": "string", "description": "Selection scope: 'this_week', 'unlistened', a podcast_id, or a custom keyword."],
-                    "length": ["type": "integer", "description": "Target length in minutes (3–30)."],
-                    "style": ["type": "string", "enum": ["news", "deep_dive", "quick_hits"], "description": "Optional style hint."],
-                ],
-                required: ["scope", "length"]
             ),
             podcastTool(
                 name: PodcastNames.perplexitySearch,
@@ -289,7 +262,7 @@ extension AgentTools {
             ),
             podcastTool(
                 name: PodcastNames.createClip,
-                description: "Save a clip of an episode on behalf of the user — creates a timestamped excerpt that appears in the user's Clippings tab. Use when the user says 'clip that', 'save that part', or asks you to bookmark a moment. Always confirm the start/end range with the user before clipping unless they were explicit. Prefer supplying transcript_text when you already have it from query_transcripts.",
+                description: "Save a clip of an episode on behalf of the user — creates a timestamped excerpt that appears in the user's Saved screen (Clips segment). Use when the user says 'clip that', 'save that part', or asks you to bookmark a moment. Always confirm the start/end range with the user before clipping unless they were explicit. Prefer supplying transcript_text when you already have it from query_transcripts.",
                 properties: [
                     "episode_id": ["type": "string", "description": "The episode to clip (UUID string)."],
                     "start_seconds": ["type": "number", "description": "Clip start time in seconds from the episode origin."],
@@ -375,33 +348,7 @@ extension AgentTools {
                 ],
                 required: ["podcast_id"]
             ),
-            podcastTool(
-                name: PodcastNames.sendFriendMessage,
-                description: "Send a Nostr kind:1 text note to a friend on the user's behalf. Use this when the user tells you to message, tell, ask, or hand off something to a named friend — from any context, including owner chat. The friend_pubkey MUST match a friend in the user's Friends list — the tool refuses unknown pubkeys. Inside a peer conversation the note threads as a NIP-10 reply; from owner chat it publishes as a standalone note.",
-                properties: [
-                    "friend_pubkey": ["type": "string", "description": "Hex pubkey or 6-character pubkey prefix of the friend (the prefix is shown in parentheses next to each name in the Friends list). Must match a friend in the user's Friends list."],
-                    "message": ["type": "string", "description": "Plain text body of the note to send. Be direct and concise."],
-                ],
-                required: ["friend_pubkey", "message"]
-            ),
         ] + ownedPodcastSchema
-    }
-
-    /// Tools that are only valid inside a Nostr peer conversation.
-    /// `end_conversation` suppresses a reply to the active peer turn —
-    /// the concept is meaningless in owner-chat.
-    @MainActor
-    static var peerOnlySchema: [[String: Any]] {
-        [
-            podcastTool(
-                name: PodcastNames.endConversation,
-                description: "Signal that you have nothing to say for the current peer message — publish no reply for this turn. Call this INSTEAD OF replying when the latest peer message is mere acknowledgment or social closure (thanks, ok, sounds good, see you) and there is nothing substantive to add. The conversation stays open — future messages from the peer will still be handled. Do not call this if the peer asked a question, made a request, or raised an ambiguity.",
-                properties: [
-                    "reason": ["type": "string", "description": "Why you are not replying. Logged locally for diagnostics; never transmitted to the peer."],
-                ],
-                required: ["reason"]
-            ),
-        ]
     }
 
     /// Local copy of the OpenAI function-tool builder. The base file's helper

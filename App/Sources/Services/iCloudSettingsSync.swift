@@ -8,18 +8,17 @@ import os.log
 /// and survive reinstalls.
 ///
 /// **What is synced.** Only portable, non-secret fields:
-///   - LLM model IDs / names (agent, memory compilation, wiki, embeddings)
+///   - LLM model IDs / names (agent, memory compilation, utility, embeddings)
 ///   - Reranker preference
 ///   - ElevenLabs TTS/STT model IDs, voice ID, and voice name
 ///   - Playback preferences (default rate, skip intervals, auto-mark-played)
-///   - Wiki + transcript automation toggles
+///   - Transcript automation toggles
 ///   - Per-kind notification toggles
-///   - Nostr relay URL and profile metadata (name, about, picture)
+///   - Agent display name and avatar
 ///
 /// **What is NOT synced.** Fields that are device-local, security-sensitive, or
 /// bound to entries in the Keychain:
 ///   - `hasCompletedOnboarding` — local UX gate; reinstall should show onboarding
-///   - `nostrPublicKeyHex` — derived from the private key stored in Keychain
 ///   - `openRouterCredentialSource`, `*BYOKKeyID/Label`, `*ConnectedAt` — tied to
 ///     local Keychain secrets; syncing source without syncing the secret is
 ///     misleading and could make the app appear connected when it isn't
@@ -153,18 +152,11 @@ final class iCloudSettingsSync {
            let v = HeadphoneGestureAction(rawValue: raw)      { settings.headphoneDoubleTapAction = v }
         if let raw = string(.headphoneTripleTapAction),
            let v = HeadphoneGestureAction(rawValue: raw)      { settings.headphoneTripleTapAction = v }
-        if let v = bool(.wikiAutoGenerateOnTranscriptIngest)  { settings.wikiAutoGenerateOnTranscriptIngest = v }
         if let v = bool(.autoIngestPublisherTranscripts)      { settings.autoIngestPublisherTranscripts = v }
         if let v = bool(.autoFallbackToScribe)                { settings.autoFallbackToScribe = v }
         if let v = bool(.notifyOnNewEpisodes)                 { settings.notifyOnNewEpisodes = v }
-        if let v = bool(.notifyOnBriefingReady)               { settings.notifyOnBriefingReady = v }
-        if let v = string(.nostrRelayURL),         !v.isEmpty { settings.nostrRelayURL = v }
-        if let v = kvs.array(forKey: Key.nostrPublicRelays.rawValue) as? [String], !v.isEmpty {
-            settings.nostrPublicRelays = v
-        }
-        if let v = string(.nostrProfileName)                  { settings.nostrProfileName = v }
-        if let v = string(.nostrProfileAbout)                 { settings.nostrProfileAbout = v }
-        if let v = string(.nostrProfilePicture)               { settings.nostrProfilePicture = v }
+        if let v = string(.agentDisplayName)                  { settings.agentDisplayName = v }
+        if let v = string(.agentAvatarURLString)              { settings.agentAvatarURLString = v }
     }
 
     // MARK: - Write helper
@@ -200,16 +192,11 @@ final class iCloudSettingsSync {
         kvs.set(settings.autoDeleteDownloadsAfterPlayed,          forKey: Key.autoDeleteDownloadsAfterPlayed.rawValue)
         kvs.set(settings.headphoneDoubleTapAction.rawValue,       forKey: Key.headphoneDoubleTapAction.rawValue)
         kvs.set(settings.headphoneTripleTapAction.rawValue,       forKey: Key.headphoneTripleTapAction.rawValue)
-        kvs.set(settings.wikiAutoGenerateOnTranscriptIngest,      forKey: Key.wikiAutoGenerateOnTranscriptIngest.rawValue)
         kvs.set(settings.autoIngestPublisherTranscripts,          forKey: Key.autoIngestPublisherTranscripts.rawValue)
         kvs.set(settings.autoFallbackToScribe,                    forKey: Key.autoFallbackToScribe.rawValue)
         kvs.set(settings.notifyOnNewEpisodes,                     forKey: Key.notifyOnNewEpisodes.rawValue)
-        kvs.set(settings.notifyOnBriefingReady,                   forKey: Key.notifyOnBriefingReady.rawValue)
-        kvs.set(settings.nostrRelayURL,                           forKey: Key.nostrRelayURL.rawValue)
-        kvs.set(settings.nostrPublicRelays,                       forKey: Key.nostrPublicRelays.rawValue)
-        kvs.set(settings.nostrProfileName,                        forKey: Key.nostrProfileName.rawValue)
-        kvs.set(settings.nostrProfileAbout,                       forKey: Key.nostrProfileAbout.rawValue)
-        kvs.set(settings.nostrProfilePicture,                     forKey: Key.nostrProfilePicture.rawValue)
+        kvs.set(settings.agentDisplayName,                        forKey: Key.agentDisplayName.rawValue)
+        kvs.set(settings.agentAvatarURLString,                    forKey: Key.agentAvatarURLString.rawValue)
     }
 
     // MARK: - Key namespace
@@ -249,16 +236,13 @@ final class iCloudSettingsSync {
         case autoDeleteDownloadsAfterPlayed      = "sync.settings.autoDeleteDownloadsAfterPlayed"
         case headphoneDoubleTapAction            = "sync.settings.headphoneDoubleTapAction"
         case headphoneTripleTapAction            = "sync.settings.headphoneTripleTapAction"
-        case wikiAutoGenerateOnTranscriptIngest  = "sync.settings.wikiAutoGenerateOnTranscriptIngest"
         case autoIngestPublisherTranscripts      = "sync.settings.autoIngestPublisherTranscripts"
         case autoFallbackToScribe                = "sync.settings.autoFallbackToScribe"
         case notifyOnNewEpisodes                 = "sync.settings.notifyOnNewEpisodes"
-        case notifyOnBriefingReady               = "sync.settings.notifyOnBriefingReady"
-        case nostrRelayURL                       = "sync.settings.nostrRelayURL"
-        case nostrPublicRelays                   = "sync.settings.nostrPublicRelays"
-        case nostrProfileName                    = "sync.settings.nostrProfileName"
-        case nostrProfileAbout                   = "sync.settings.nostrProfileAbout"
-        case nostrProfilePicture                 = "sync.settings.nostrProfilePicture"
+        // RawValues preserved so existing iCloud KVS entries continue to
+        // roundtrip after the Nostr identity removal renamed these fields.
+        case agentDisplayName                    = "sync.settings.nostrProfileName"
+        case agentAvatarURLString                = "sync.settings.nostrProfilePicture"
     }
 }
 

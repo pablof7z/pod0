@@ -87,7 +87,6 @@ final class AgentChatSession {
     /// re-render on coordinator identity changes — only on the
     /// coordinator's own observable state (its `current` ask).
     @ObservationIgnored weak var askCoordinator: AgentAskCoordinator?
-    @ObservationIgnored nonisolated(unsafe) private var delegationObserver: NSObjectProtocol?
     var rawMessages: [[String: Any]] = []
     var rawMessageCountAtLastSendStart: Int = 0
     var messageCountAtLastSendStart: Int = 0
@@ -128,47 +127,22 @@ final class AgentChatSession {
         if drainPendingContext {
             checkAndDrainPendingContext()
         }
-
-        delegationObserver = NotificationCenter.default.addObserver(
-            forName: .agentDelegationDidComplete,
-            object: nil,
-            queue: .main
-        ) { [weak self] notification in
-            let id = notification.object as? UUID
-            MainActor.assumeIsolated {
-                guard let self, let id, id == self.currentConversationID else { return }
-                if let convo = self.history.conversation(id: id) {
-                    self.messages = convo.messages
-                }
-            }
-        }
     }
 
-    deinit {
-        if let observer = delegationObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
-    }
-
-    /// Checks the store for pending ask-agent context (voice note, chapter,
-    /// transcript) and drains it into `seededDraft`. Safe to call multiple
-    /// times — the store fields are cleared on first drain, so later calls
-    /// are no-ops. Called from `init` and from `AgentChatView.onAppear` so
-    /// that a persistent session picks up new context on each sheet open.
+    /// Checks the store for pending ask-agent context (voice note, chapter)
+    /// and drains it into `seededDraft`. Safe to call multiple times — the
+    /// store fields are cleared on first drain, so later calls are no-ops.
+    /// Called from `init` and from `AgentChatView.onAppear` so that a
+    /// persistent session picks up new context on each sheet open.
     func checkAndDrainPendingContext() {
         if let voiceNote = store.pendingVoiceNoteAgentContext {
             seededDraft = voiceNote.prefilledDraft
             seededDraftShouldAutoSend = true
             store.pendingVoiceNoteAgentContext = nil
             store.pendingChapterAgentContext = nil
-            store.pendingTranscriptAgentContext = nil
         } else if let chapter = store.pendingChapterAgentContext {
             seededDraft = chapter.prefilledDraft
             store.pendingChapterAgentContext = nil
-            store.pendingTranscriptAgentContext = nil
-        } else if let pending = store.pendingTranscriptAgentContext {
-            seededDraft = pending.prefilledDraft
-            store.pendingTranscriptAgentContext = nil
         }
     }
 

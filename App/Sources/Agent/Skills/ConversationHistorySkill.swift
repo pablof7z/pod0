@@ -5,8 +5,7 @@ import Foundation
 // Defines the `conversation_history` skill. When activated via
 // `use_skill(skill_id: "conversation_history")` the agent receives the manual
 // below and gains access to two tools: `list_conversations` and
-// `search_conversations`. Both tools cover in-app chat threads and Nostr
-// peer conversations in a unified interface.
+// `search_conversations`, covering in-app chat threads.
 //
 // Search is lexical (case-insensitive substring) rather than embedding-based.
 // The corpus is small enough that full-text scan is fast and avoids the cost
@@ -17,7 +16,7 @@ enum ConversationHistorySkill {
     static let skill = AgentSkill(
         id: AgentSkillID.conversationHistory,
         displayName: "Conversation History",
-        summary: "List and search through past in-app chat threads and Nostr peer conversations. Use when the user wants to recall or find something discussed in a prior session.",
+        summary: "List and search through past in-app chat threads. Use when the user wants to recall or find something discussed in a prior session.",
         manual: manualText,
         toolNames: [
             AgentTools.Names.listConversations,
@@ -31,12 +30,9 @@ enum ConversationHistorySkill {
     private static let manualText: String = """
     # Conversation History Skill
 
-    This skill surfaces the agent's own conversation history across two sources:
-
-    - **In-app**: Chat threads started by the owner in the chat sheet (stored
-      in `ChatHistoryStore`, up to 50 threads × 100 messages each).
-    - **Nostr**: Threads the agent has participated in with Nostr peers
-      (stored in `AppState.nostrConversations`).
+    This skill surfaces the agent's own conversation history: chat threads
+    started by the owner in the chat sheet (stored in `ChatHistoryStore`, up
+    to 50 threads × 100 messages each).
 
     ## When to use this
 
@@ -50,20 +46,15 @@ enum ConversationHistorySkill {
 
     ## Tools
 
-    - `list_conversations(source?, limit?)` — returns summaries of recent
-      conversations: title (or first-message snippet), date, source tag,
-      and message counts. Use this first to orient before searching.
-    - `search_conversations(query, source?, limit?)` — full-text search
-      through message content across all threads. Returns matching message
-      snippets with their conversation context. Use when the user names a
-      specific topic, phrase, or keyword from a prior session.
+    - `list_conversations(limit?)` — returns summaries of recent
+      conversations: title (or first-message snippet), date, and message
+      counts. Use this first to orient before searching.
+    - `search_conversations(query, limit?)` — full-text search through
+      message content across all threads. Returns matching message snippets
+      with their conversation context. Use when the user names a specific
+      topic, phrase, or keyword from a prior session.
 
     ## Parameters
-
-    `source` (both tools):
-    - `"all"` (default) — searches both in-app and Nostr threads.
-    - `"in_app"` — only in-app chat threads.
-    - `"nostr"` — only Nostr peer conversations.
 
     `limit`:
     - `list_conversations`: 1–50, default 20.
@@ -75,15 +66,13 @@ enum ConversationHistorySkill {
        call `list_conversations` to show titles and dates.
     2. If the user names a topic or phrase, call `search_conversations` with
        that phrase as `query` to find relevant message snippets.
-    3. Surface the `conversation_id` (in-app) or `root_event_id` (Nostr) if
-       the user wants to continue a thread — these are the handles they'd
-       need to resume context.
+    3. Surface the `conversation_id` if the user wants to continue a thread —
+       that's the handle they'd need to resume context.
 
     ## Privacy note
 
     This skill exposes the owner's full conversation history. It should only
-    be activated in owner-initiated sessions, not on behalf of a Nostr peer
-    unless the owner has explicitly granted that peer full access.
+    be activated in owner-initiated sessions.
     """
 
     // MARK: - Tool schemas
@@ -99,17 +88,12 @@ enum ConversationHistorySkill {
         functionTool(
             name: AgentTools.Names.listConversations,
             description: """
-            List recent in-app chat threads and/or Nostr peer conversations. \
-            Returns title (or first-message snippet), date, source, and message counts. \
-            Use when the user asks what you've discussed before, or to orient before \
-            a targeted search. Requires the conversation_history skill.
+            List recent in-app chat threads. Returns title (or first-message \
+            snippet), date, and message counts. Use when the user asks what \
+            you've discussed before, or to orient before a targeted search. \
+            Requires the conversation_history skill.
             """,
             properties: [
-                "source": [
-                    "type": "string",
-                    "enum": ["all", "in_app", "nostr"],
-                    "description": "Which conversation store to list. 'all' (default) covers both in-app threads and Nostr peer conversations.",
-                ],
                 "limit": [
                     "type": "integer",
                     "description": "Maximum conversations to return (1–50). Defaults to 20.",
@@ -125,20 +109,15 @@ enum ConversationHistorySkill {
         functionTool(
             name: AgentTools.Names.searchConversations,
             description: """
-            Full-text search through past conversation messages (in-app and/or Nostr). \
-            Returns matching message snippets with conversation context (title, date, source). \
-            Use when the user mentions a specific topic, phrase, or keyword from a prior session. \
-            Requires the conversation_history skill.
+            Full-text search through past conversation messages. Returns \
+            matching message snippets with conversation context (title, date). \
+            Use when the user mentions a specific topic, phrase, or keyword \
+            from a prior session. Requires the conversation_history skill.
             """,
             properties: [
                 "query": [
                     "type": "string",
                     "description": "Case-insensitive keyword or phrase to search for in message text.",
-                ],
-                "source": [
-                    "type": "string",
-                    "enum": ["all", "in_app", "nostr"],
-                    "description": "Which conversation store to search. 'all' (default) covers both in-app threads and Nostr peer conversations.",
                 ],
                 "limit": [
                     "type": "integer",

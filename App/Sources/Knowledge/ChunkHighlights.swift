@@ -1,8 +1,8 @@
 import Foundation
 
-// Lane 6 — RAG: shared highlight computation used by both `VectorIndex`
-// and `InMemoryVectorStore`. Lives in its own file so the in-memory
-// fallback never has to depend on the SQLiteVec-importing VectorIndex.
+// Lane 6 — RAG: shared highlight computation used by `VectorIndex`. Lives
+// in its own file to keep the highlight logic independent of the
+// SQLiteVec-importing search path.
 //
 // The highlights are deliberately approximate: case-insensitive token
 // occurrences, ≥3 chars per token. Good enough for a snippet UI; we can

@@ -293,32 +293,6 @@ final class AppTests: XCTestCase {
         XCTAssertEqual(persisted.playbackPosition, 0)
     }
 
-    // MARK: - Friends
-
-    func testAddFriend() throws {
-        let friend = store.addFriend(displayName: "Alice", identifier: "alice@example.com")
-
-        XCTAssertEqual(friend.displayName, "Alice")
-        XCTAssertEqual(friend.identifier, "alice@example.com")
-        XCTAssertTrue(store.state.friends.contains { $0.id == friend.id })
-    }
-
-    func testUpdateFriendDisplayName() throws {
-        let friend = store.addFriend(displayName: "Bob", identifier: "bob_id")
-
-        store.updateFriendDisplayName(friend.id, newName: "Robert")
-
-        XCTAssertEqual(store.state.friends.first { $0.id == friend.id }?.displayName, "Robert")
-    }
-
-    func testRemoveFriend() throws {
-        let friend = store.addFriend(displayName: "Charlie", identifier: "charlie_id")
-
-        store.removeFriend(friend.id)
-
-        XCTAssertFalse(store.state.friends.contains { $0.id == friend.id })
-    }
-
     // MARK: - Models
 
     func testAnchorCodable() throws {
@@ -328,23 +302,7 @@ final class AppTests: XCTestCase {
         XCTAssertEqual(anchor, decoded)
     }
 
-    func testFriendAnchorCodable() throws {
-        let anchor = Anchor.friend(id: UUID())
-        let data = try JSONEncoder().encode(anchor)
-        let decoded = try JSONDecoder().decode(Anchor.self, from: data)
-        XCTAssertEqual(anchor, decoded)
-    }
-
     // MARK: - AgentPrompt
-
-    func testAgentPromptIncludesFriends() {
-        var state = AppState()
-        state.friends.append(Friend(displayName: "Alice", identifier: "alice_id"))
-
-        let prompt = AgentPrompt.build(for: state)
-
-        XCTAssertTrue(prompt.contains("Alice"))
-    }
 
     func testAgentPromptIncludesMemories() {
         var state = AppState()

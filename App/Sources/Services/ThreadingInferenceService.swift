@@ -16,7 +16,7 @@ import Observation
 /// - `recompute(store:)` — re-derive every topic from the corpus.
 /// - `mentions(forTopic:)` — read-side accessor for the timeline view.
 /// - `ensureTopic(slug:displayName:)` — idempotent get-or-create used by
-///   deep-links from the wiki and from the in-episode agent.
+///   deep-links from the in-episode agent.
 ///
 /// The store reference is wired through `attach(store:)` (mirroring the
 /// `RAGService.attach(appStore:)` pattern) so views and the eventual real
@@ -31,8 +31,8 @@ final class ThreadingInferenceService {
 
     // MARK: Singleton
 
-    /// Process-wide handle. Mirrors `RAGService.shared` / `WikiStorage.shared`
-    /// so views can reach the service without dependency injection.
+    /// Process-wide handle. Mirrors `RAGService.shared` so views can reach
+    /// the service without dependency injection.
     static let shared = ThreadingInferenceService()
 
     // MARK: State
@@ -62,8 +62,8 @@ final class ThreadingInferenceService {
     // MARK: - Public API
 
     /// Bind the service to the running `AppStateStore`. Call from the
-    /// surface that first needs the service (e.g. `ThreadingTopicListView`
-    /// `.task`). Idempotent — repeated calls just refresh the reference.
+    /// surface that first needs the service (e.g. `HomeView.task`).
+    /// Idempotent — repeated calls just refresh the reference.
     func attach(store: AppStateStore) {
         self.store = store
     }
@@ -87,13 +87,6 @@ final class ThreadingInferenceService {
         // not disturbed so a mid-build seed keeps surfacing.
         lastError = nil
         lastRecomputedAt = Date()
-    }
-
-    /// Read-side accessor used by `ThreadingTopicView`. Returns an empty
-    /// list when the service hasn't been attached yet (the timeline view
-    /// will render its own empty state).
-    func mentions(forTopic id: UUID) -> [ThreadingMention] {
-        store?.threadingMentions(forTopic: id) ?? []
     }
 
     /// Topics with the most *unplayed* episode mentions, descending. Used by
@@ -121,7 +114,7 @@ final class ThreadingInferenceService {
         // "is this mention's episode unplayed" check downstream stays an
         // O(1) set membership.
         var eligibleEpisodeIDs: Set<UUID> = []
-        for episode in store.state.episodes where !episode.played && !episode.isTriageArchived {
+        for episode in store.state.episodes where !episode.played {
             if let allowed = subscriptionFilter,
                !allowed.contains(episode.podcastID) { continue }
             eligibleEpisodeIDs.insert(episode.id)
@@ -161,16 +154,16 @@ final class ThreadingInferenceService {
 
     /// Idempotent get-or-create. If a topic with the canonicalised `slug`
     /// already exists, returns it untouched; otherwise inserts a fresh row
-    /// and returns the stored instance. Used by deep-links from the wiki
-    /// ("open thread for X") and by the in-episode agent. Returns the input
-    /// topic verbatim if no store is attached — callers should `attach`
-    /// before relying on persistence.
+    /// and returns the stored instance. Used by deep-links from the
+    /// in-episode agent ("open thread for X"). Returns the input topic
+    /// verbatim if no store is attached — callers should `attach` before
+    /// relying on persistence.
     @discardableResult
     func ensureTopic(
         slug: String,
         displayName: String
     ) -> ThreadingTopic {
-        let normalized = WikiPage.normalize(slug: slug)
+        let normalized = SlugNormalizer.normalize(slug: slug)
         let fresh = ThreadingTopic(
             slug: normalized,
             displayName: displayName,

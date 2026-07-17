@@ -11,7 +11,7 @@ import Foundation
 // SECURITY: This export must never include secrets. We deliberately route
 // through `AppState` only (which holds non-secret connection metadata) and
 // strip the legacy OpenRouter API key field before serialization. Keychain
-// values (OpenRouter, ElevenLabs, Nostr private key) are NOT exported.
+// values (OpenRouter, ElevenLabs) are NOT exported.
 
 enum DataExport {
 
@@ -107,12 +107,11 @@ enum DataExport {
         var subscriptions: Int
         var episodes: Int
         var notes: Int
-        var friends: Int
         var memories: Int
         var agentActivity: Int
 
         var totalRecords: Int {
-            subscriptions + episodes + notes + friends + memories + agentActivity
+            subscriptions + episodes + notes + memories + agentActivity
         }
     }
 
@@ -121,7 +120,6 @@ enum DataExport {
             subscriptions: state.subscriptions.count,
             episodes: state.episodes.count,
             notes: state.notes.filter { !$0.deleted }.count,
-            friends: state.friends.count,
             memories: state.agentMemories.filter { !$0.deleted }.count,
             agentActivity: state.agentActivity.count
         )

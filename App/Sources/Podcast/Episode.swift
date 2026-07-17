@@ -83,23 +83,6 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
     /// commissioned from so the player can surface a tappable source link.
     var generationSource: GenerationSource?
 
-    /// Autonomous AI Inbox triage decision. `nil` until the triage pass has
-    /// run for this episode. See `TriageDecision` for semantics. Drives both
-    /// the Home Inbox surface (`.inbox`) and the silent-dismissal filtering
-    /// for unplayed lists (`.archived`).
-    var triageDecision: TriageDecision?
-
-    /// One-line "because …" reason the agent surfaced this episode in the
-    /// Inbox. Always populated when `triageDecision == .inbox`; `nil`
-    /// otherwise (archived decisions are by design unreviewable per
-    /// product brief, so no rationale is recorded for them).
-    var triageRationale: String?
-
-    /// `true` when the agent flagged this inbox pick as the hero card —
-    /// the single episode the user should listen to first this pass.
-    /// At most one episode per triage pass should carry this flag.
-    var triageIsHero: Bool
-
     /// `true` once `EpisodeMetadataIndexer` has embedded the episode's
     /// title + description into the RAG index. Lets `search_episodes` /
     /// `find_similar_episodes` discover episodes that have no transcript.
@@ -132,9 +115,6 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         transcriptState: TranscriptState = .none,
         adSegments: [AdSegment]? = nil,
         generationSource: GenerationSource? = nil,
-        triageDecision: TriageDecision? = nil,
-        triageRationale: String? = nil,
-        triageIsHero: Bool = false,
         metadataIndexed: Bool = false
     ) {
         self.id = id
@@ -160,9 +140,6 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         self.transcriptState = transcriptState
         self.adSegments = adSegments
         self.generationSource = generationSource
-        self.triageDecision = triageDecision
-        self.triageRationale = triageRationale
-        self.triageIsHero = triageIsHero
         self.metadataIndexed = metadataIndexed
     }
 
@@ -175,7 +152,6 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         case publisherTranscriptURL, publisherTranscriptType, chaptersURL
         case playbackPosition, played, isStarred, downloadState, transcriptState
         case adSegments, generationSource
-        case triageDecision, triageRationale, triageIsHero
         case metadataIndexed
         // Legacy key from the pre-split shape. Decoded as a fallback when
         // `podcastID` is absent. Never written.
@@ -212,10 +188,10 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         downloadState = try c.decodeIfPresent(DownloadState.self, forKey: .downloadState) ?? .notDownloaded
         transcriptState = try c.decodeIfPresent(TranscriptState.self, forKey: .transcriptState) ?? .none
         adSegments = try c.decodeIfPresent([AdSegment].self, forKey: .adSegments)
-        generationSource = try c.decodeIfPresent(GenerationSource.self, forKey: .generationSource)
-        triageDecision = try c.decodeIfPresent(TriageDecision.self, forKey: .triageDecision)
-        triageRationale = try c.decodeIfPresent(String.self, forKey: .triageRationale)
-        triageIsHero = try c.decodeIfPresent(Bool.self, forKey: .triageIsHero) ?? false
+        // `try?` (not `try`) so a legacy/unrecognized source (e.g. the
+        // removed Nostr-peer generation source) degrades to `nil` instead of
+        // failing the whole episode's decode.
+        generationSource = (try? c.decodeIfPresent(GenerationSource.self, forKey: .generationSource)) ?? nil
         metadataIndexed = try c.decodeIfPresent(Bool.self, forKey: .metadataIndexed) ?? false
     }
 
@@ -244,9 +220,6 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         try c.encode(transcriptState, forKey: .transcriptState)
         try c.encodeIfPresent(adSegments, forKey: .adSegments)
         try c.encodeIfPresent(generationSource, forKey: .generationSource)
-        try c.encodeIfPresent(triageDecision, forKey: .triageDecision)
-        try c.encodeIfPresent(triageRationale, forKey: .triageRationale)
-        if triageIsHero { try c.encode(triageIsHero, forKey: .triageIsHero) }
         if metadataIndexed { try c.encode(metadataIndexed, forKey: .metadataIndexed) }
     }
 }
@@ -449,7 +422,6 @@ extension Episode {
     /// Stored on the episode so the player can surface a tappable source link.
     enum GenerationSource: Sendable, Equatable, Hashable {
         case inAppChat(conversationID: UUID)
-        case nostr(rootEventID: String, peerPubkeyHex: String)
     }
 }
 
@@ -457,7 +429,7 @@ extension Episode {
 
 extension Episode.GenerationSource: Codable {
     private enum CodingKeys: String, CodingKey {
-        case type, conversationID, rootEventID, peerPubkeyHex
+        case type, conversationID
     }
 
     init(from decoder: Decoder) throws {
@@ -467,11 +439,11 @@ extension Episode.GenerationSource: Codable {
         case "inAppChat":
             let id = try c.decode(UUID.self, forKey: .conversationID)
             self = .inAppChat(conversationID: id)
-        case "nostr":
-            let rootEventID = try c.decode(String.self, forKey: .rootEventID)
-            let peerPubkeyHex = try c.decode(String.self, forKey: .peerPubkeyHex)
-            self = .nostr(rootEventID: rootEventID, peerPubkeyHex: peerPubkeyHex)
         default:
+            // Covers legacy `"nostr"` rows from the removed Nostr-peer
+            // generation source. Caller decodes this via `try?` so an
+            // unrecognized/legacy type degrades to `nil` rather than
+            // corrupting the whole episode.
             throw DecodingError.dataCorrupted(.init(
                 codingPath: [CodingKeys.type],
                 debugDescription: "Unknown GenerationSource type: \(type)"
@@ -485,10 +457,6 @@ extension Episode.GenerationSource: Codable {
         case .inAppChat(let conversationID):
             try c.encode("inAppChat", forKey: .type)
             try c.encode(conversationID, forKey: .conversationID)
-        case .nostr(let rootEventID, let peerPubkeyHex):
-            try c.encode("nostr", forKey: .type)
-            try c.encode(rootEventID, forKey: .rootEventID)
-            try c.encode(peerPubkeyHex, forKey: .peerPubkeyHex)
         }
     }
 }

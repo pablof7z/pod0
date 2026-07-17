@@ -5,48 +5,17 @@ import Observation
 @MainActor
 final class PodcastSearchViewModel {
     var query: String = ""
-    /// Lags `query` by the debounce interval; drives local + wiki search.
+    /// Lags `query` by the debounce interval; drives local + transcript search.
     var debouncedQuery: String = ""
     private(set) var transcriptResults: [PodcastTranscriptSearchHit] = []
-    private(set) var wikiPages: [WikiPage] = []
     private(set) var isSearchingTranscripts = false
     private(set) var transcriptError: String?
-    private(set) var wikiLoadError: String?
 
-    let wikiStorage: WikiStorage
     private let rag: RAGSearch
     private var activeTranscriptQuery: String?
 
-    init(rag: RAGSearch? = nil, wikiStorage: WikiStorage = .shared) {
+    init(rag: RAGSearch? = nil) {
         self.rag = rag ?? RAGService.shared.search
-        self.wikiStorage = wikiStorage
-    }
-
-    var wikiResults: [PodcastWikiSearchHit] {
-        PodcastSearchEngine.wikiResults(query: debouncedQuery, pages: wikiPages)
-    }
-
-    func loadWikiPages() async {
-        do {
-            let storage = wikiStorage
-            let pages = try await Task.detached(priority: .utility) {
-                try storage.allPages()
-            }.value
-            wikiPages = pages
-            wikiLoadError = nil
-        } catch {
-            wikiPages = []
-            wikiLoadError = error.localizedDescription
-        }
-    }
-
-    func upsertWikiPage(_ page: WikiPage) {
-        wikiPages.removeAll { $0.id == page.id || ($0.slug == page.slug && $0.scope == page.scope) }
-        wikiPages.insert(page, at: 0)
-    }
-
-    func removeWikiPage(id: UUID) {
-        wikiPages.removeAll { $0.id == id }
     }
 
     func searchTranscripts() async {

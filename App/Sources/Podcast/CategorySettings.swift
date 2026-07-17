@@ -8,10 +8,10 @@ import Foundation
 /// `AppState.categorySettings` so a category can be toggled independently
 /// without rewriting its parent record.
 ///
-/// Defaults are intentionally permissive (transcription / RAG / wiki /
-/// briefings all on) so the user never sees silent feature degradation —
-/// they explicitly opt *out* per category for things like Entertainment
-/// where they don't want generated summaries.
+/// Defaults are intentionally permissive (transcription / RAG all on) so
+/// the user never sees silent feature degradation — they explicitly opt
+/// *out* per category for things like Entertainment where they don't want
+/// generated summaries.
 struct CategorySettings: Codable, Sendable, Hashable {
     /// FK back to `PodcastCategory.id`.
     var categoryID: UUID
@@ -29,13 +29,6 @@ struct CategorySettings: Codable, Sendable, Hashable {
     /// and indexed into the RAG vector store.
     var ragEnabled: Bool
 
-    /// Whether per-show wikis are generated for shows in this category.
-    var wikiGenerationEnabled: Bool
-
-    /// Whether episodes from this category are eligible for inclusion in
-    /// daily / weekly briefings.
-    var briefingsEnabled: Bool
-
     /// Whether new-episode notifications fire for shows in this category.
     var notificationsEnabled: Bool
 
@@ -44,16 +37,12 @@ struct CategorySettings: Codable, Sendable, Hashable {
         autoDownloadOverride: AutoDownloadPolicy? = nil,
         transcriptionEnabled: Bool = true,
         ragEnabled: Bool = true,
-        wikiGenerationEnabled: Bool = true,
-        briefingsEnabled: Bool = true,
         notificationsEnabled: Bool = true
     ) {
         self.categoryID = categoryID
         self.autoDownloadOverride = autoDownloadOverride
         self.transcriptionEnabled = transcriptionEnabled
         self.ragEnabled = ragEnabled
-        self.wikiGenerationEnabled = wikiGenerationEnabled
-        self.briefingsEnabled = briefingsEnabled
         self.notificationsEnabled = notificationsEnabled
     }
 
@@ -67,8 +56,6 @@ struct CategorySettings: Codable, Sendable, Hashable {
         case autoDownloadOverride
         case transcriptionEnabled
         case ragEnabled
-        case wikiGenerationEnabled
-        case briefingsEnabled
         case notificationsEnabled
     }
 
@@ -80,8 +67,6 @@ struct CategorySettings: Codable, Sendable, Hashable {
         autoDownloadOverride = try c.decodeIfPresent(AutoDownloadPolicy.self, forKey: .autoDownloadOverride)
         transcriptionEnabled = try c.decodeIfPresent(Bool.self, forKey: .transcriptionEnabled) ?? true
         ragEnabled = try c.decodeIfPresent(Bool.self, forKey: .ragEnabled) ?? true
-        wikiGenerationEnabled = try c.decodeIfPresent(Bool.self, forKey: .wikiGenerationEnabled) ?? true
-        briefingsEnabled = try c.decodeIfPresent(Bool.self, forKey: .briefingsEnabled) ?? true
         notificationsEnabled = try c.decodeIfPresent(Bool.self, forKey: .notificationsEnabled) ?? true
     }
 }
