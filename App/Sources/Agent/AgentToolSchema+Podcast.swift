@@ -262,7 +262,7 @@ extension AgentTools {
             ),
             podcastTool(
                 name: PodcastNames.createClip,
-                description: "Save a clip of an episode on behalf of the user — creates a timestamped excerpt that appears in the user's Clippings tab. Use when the user says 'clip that', 'save that part', or asks you to bookmark a moment. Always confirm the start/end range with the user before clipping unless they were explicit. Prefer supplying transcript_text when you already have it from query_transcripts.",
+                description: "Save a clip of an episode on behalf of the user — creates a timestamped excerpt that appears in the user's Saved screen (Clips segment). Use when the user says 'clip that', 'save that part', or asks you to bookmark a moment. Always confirm the start/end range with the user before clipping unless they were explicit. Prefer supplying transcript_text when you already have it from query_transcripts.",
                 properties: [
                     "episode_id": ["type": "string", "description": "The episode to clip (UUID string)."],
                     "start_seconds": ["type": "number", "description": "Clip start time in seconds from the episode origin."],

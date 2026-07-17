@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-17T17:29:52Z",
+      "lines": [
+        "Bookmarks and Clippings are now one Saved screen with Clips and Starred segments — same content, one less tab."
+      ]
+    },
+    {
       "shipped_at": "2026-07-17T17:20:58Z",
       "lines": [
         "Removed the dedicated CarPlay dashboard app. Playback controls, Now Playing, and lock-screen/Control Center integration are unaffected."

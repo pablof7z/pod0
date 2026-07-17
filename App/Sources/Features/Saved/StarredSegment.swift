@@ -1,34 +1,21 @@
 import SwiftUI
 
-// MARK: - BookmarksView
-
-/// Global Bookmarks screen — every episode that has been starred, clipped, or
-/// annotated with a note. Rows show small chips indicating which content types
-/// are present. Tap a row to open the episode detail.
-struct BookmarksView: View {
+// MARK: - StarredSegment
+//
+// The "Starred" segment of `SavedView` — every episode that has been
+// starred, clipped, or annotated with a note. Rows show small chips
+// indicating which content types are present. Tap a row to open the
+// episode detail. Carries the same behavior the standalone Bookmarks tab
+// had before the Bookmarks/Clippings merge.
+struct StarredSegment: View {
 
     @Environment(AppStateStore.self) private var store
-    @Environment(PlaybackState.self) private var playback
 
-    @State private var searchQuery = ""
-    @State private var episodeNavTarget: UUID?
+    let searchQuery: String
+    let onOpenEpisode: (UUID) -> Void
 
     var body: some View {
-        content
-            .navigationTitle("Bookmarks")
-            .navigationBarTitleDisplayMode(.large)
-            .background(Color(.systemGroupedBackground).ignoresSafeArea())
-            .searchable(text: $searchQuery, prompt: "Search bookmarks")
-            .navigationDestination(item: $episodeNavTarget) { id in
-                EpisodeDetailView(episodeID: id)
-            }
-    }
-
-    // MARK: - Content
-
-    @ViewBuilder
-    private var content: some View {
-        let all = bookmarkedEntries()
+        let all = starredEntries()
         if all.isEmpty {
             emptyState
         } else {
@@ -43,13 +30,13 @@ struct BookmarksView: View {
 
     // MARK: - List
 
-    private func entryList(_ entries: [BookmarkEntry]) -> some View {
+    private func entryList(_ entries: [StarredEntry]) -> some View {
         List(entries) { entry in
             Button {
                 Haptics.selection()
-                episodeNavTarget = entry.episode.id
+                onOpenEpisode(entry.episode.id)
             } label: {
-                BookmarkRow(entry: entry)
+                StarredRow(entry: entry)
             }
             .buttonStyle(.plain)
             .listRowInsets(EdgeInsets(top: AppTheme.Spacing.sm, leading: AppTheme.Spacing.md, bottom: AppTheme.Spacing.sm, trailing: AppTheme.Spacing.md))
@@ -63,7 +50,7 @@ struct BookmarksView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            Label("No Bookmarks Yet", systemImage: "bookmark.fill")
+            Label("No Starred Episodes Yet", systemImage: "bookmark.fill")
         } description: {
             Text("Star an episode, make a clip, or add a note — it will appear here.")
         }
@@ -71,7 +58,7 @@ struct BookmarksView: View {
 
     // MARK: - Data
 
-    private func bookmarkedEntries() -> [BookmarkEntry] {
+    private func starredEntries() -> [StarredEntry] {
         let clipsByEpisode = Dictionary(grouping: store.state.clips, by: \.episodeID)
         let notesByEpisode: [UUID: [Note]] = {
             var result: [UUID: [Note]] = [:]
@@ -82,16 +69,16 @@ struct BookmarksView: View {
             return result
         }()
 
-        var entries: [BookmarkEntry] = []
+        var entries: [StarredEntry] = []
         for episode in store.state.episodes {
             let clips = clipsByEpisode[episode.id] ?? []
             let notes = notesByEpisode[episode.id] ?? []
             guard episode.isStarred || !clips.isEmpty || !notes.isEmpty else { continue }
             let podcast = store.podcast(id: episode.podcastID)
-            entries.append(BookmarkEntry(
+            entries.append(StarredEntry(
                 episode: episode,
                 podcast: podcast,
-                hasBookmark: episode.isStarred,
+                hasStar: episode.isStarred,
                 clipCount: clips.count,
                 noteCount: notes.count
             ))
@@ -100,7 +87,7 @@ struct BookmarksView: View {
         return entries
     }
 
-    private func filtered(_ entries: [BookmarkEntry]) -> [BookmarkEntry] {
+    private func filtered(_ entries: [StarredEntry]) -> [StarredEntry] {
         guard !searchQuery.isEmpty else { return entries }
         let q = searchQuery.lowercased()
         return entries.filter {
@@ -110,21 +97,21 @@ struct BookmarksView: View {
     }
 }
 
-// MARK: - BookmarkEntry
+// MARK: - StarredEntry
 
-private struct BookmarkEntry: Identifiable {
+private struct StarredEntry: Identifiable {
     var id: UUID { episode.id }
     let episode: Episode
     let podcast: Podcast?
-    let hasBookmark: Bool
+    let hasStar: Bool
     let clipCount: Int
     let noteCount: Int
 }
 
-// MARK: - BookmarkRow
+// MARK: - StarredRow
 
-private struct BookmarkRow: View {
-    let entry: BookmarkEntry
+private struct StarredRow: View {
+    let entry: StarredEntry
 
     private static let artworkSize: CGFloat = 52
 
@@ -184,7 +171,7 @@ private struct BookmarkRow: View {
 
     private var chips: some View {
         HStack(spacing: AppTheme.Spacing.xs) {
-            if entry.hasBookmark {
+            if entry.hasStar {
                 chip(icon: "bookmark.fill", color: .accentColor)
             }
             if entry.clipCount > 0 {

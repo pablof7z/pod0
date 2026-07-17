@@ -58,12 +58,8 @@ struct AppSidebarView: View {
                 selectedTab = .library
                 dismiss()
             }
-            navRow("Bookmarks", icon: "bookmark.fill", isActive: selectedTab == .bookmarks) {
-                selectedTab = .bookmarks
-                dismiss()
-            }
-            navRow("Clippings", icon: "scissors", isActive: selectedTab == .clippings) {
-                selectedTab = .clippings
+            navRow("Saved", icon: "bookmark.fill", isActive: selectedTab == .saved) {
+                selectedTab = .saved
                 dismiss()
             }
         }

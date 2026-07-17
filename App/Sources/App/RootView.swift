@@ -5,19 +5,17 @@ import SwiftUI
 ///
 /// Search is reachable via a top-right toolbar button. The Player lives behind
 /// a persistent mini-bar that expands into `PlayerView` on tap. Settings and
-/// Clippings are reachable from the avatar sidebar.
+/// Saved are reachable from the avatar sidebar.
 enum RootTab: String, CaseIterable {
     case home = "Home"
     case library = "Library"
-    case bookmarks = "Bookmarks"
-    case clippings = "Clippings"
+    case saved = "Saved"
 
     var icon: String {
         switch self {
-        case .home:      "house.fill"
-        case .library:   "tray.fill"
-        case .bookmarks: "bookmark.fill"
-        case .clippings: "scissors"
+        case .home:    "house.fill"
+        case .library: "tray.fill"
+        case .saved:   "bookmark.fill"
         }
     }
 }
@@ -224,15 +222,9 @@ struct RootView: View {
                     .toolbar { sharedToolbar() }
             }
             .toolbar(.hidden, for: .tabBar)
-        case .bookmarks:
+        case .saved:
             NavigationStack {
-                BookmarksView()
-                    .toolbar { sharedToolbar() }
-            }
-            .toolbar(.hidden, for: .tabBar)
-        case .clippings:
-            NavigationStack {
-                ClippingsView()
+                SavedView()
                     .toolbar { sharedToolbar() }
             }
             .toolbar(.hidden, for: .tabBar)

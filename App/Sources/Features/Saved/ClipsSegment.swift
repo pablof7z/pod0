@@ -1,42 +1,29 @@
 import SwiftUI
 
-// MARK: - ClippingsView
-
-/// Global Clippings feed — every clip the user has made, newest first,
-/// bucketed into Today / This Week / Earlier. Tap a card to seek and play;
-/// long-press for share / open-episode / delete.
-struct ClippingsView: View {
+// MARK: - ClipsSegment
+//
+// The "Clips" segment of `SavedView` — every clip the user has made, newest
+// first, bucketed into Today / This Week / Earlier. Tap a card to seek and
+// play; swipe or long-press for delete. Carries the same behavior the
+// standalone Clippings tab had before the Bookmarks/Clippings merge.
+struct ClipsSegment: View {
 
     @Environment(AppStateStore.self) private var store
     @Environment(PlaybackState.self) private var playback
 
-    @State private var searchQuery = ""
-    @State private var episodeNavTarget: EpisodeNavTarget?
+    let searchQuery: String
+    let onOpenEpisode: (UUID) -> Void
 
     var body: some View {
-        clipsContent
-            .navigationTitle("Clippings")
-            .navigationBarTitleDisplayMode(.large)
-            .background(Color(.systemGroupedBackground).ignoresSafeArea())
-            .searchable(text: $searchQuery, prompt: "Search clips")
-            .navigationDestination(item: $episodeNavTarget) { target in
-                EpisodeDetailView(episodeID: target.id)
-            }
-    }
-
-    // MARK: - Content
-
-    @ViewBuilder
-    private var clipsContent: some View {
         let all = store.allClips()
         if all.isEmpty {
-            emptyFirst
+            emptyState
         } else {
-            let filtered = filtered(all)
-            if filtered.isEmpty {
+            let filteredClips = filtered(all)
+            if filteredClips.isEmpty {
                 ContentUnavailableView.search(text: searchQuery)
             } else {
-                clipsList(buckets(from: filtered))
+                clipsList(buckets(from: filteredClips))
             }
         }
     }
@@ -72,9 +59,7 @@ struct ClippingsView: View {
                 episode: episode,
                 podcast: podcast,
                 onPlay: { playClip(clip, episode: episode) },
-                onOpenEpisode: {
-                    episodeNavTarget = EpisodeNavTarget(id: episode.id)
-                },
+                onOpenEpisode: { onOpenEpisode(episode.id) },
                 onDelete: {
                     Haptics.delete()
                     store.deleteClip(id: clip.id)
@@ -96,9 +81,9 @@ struct ClippingsView: View {
 
     // MARK: - Empty state
 
-    private var emptyFirst: some View {
+    private var emptyState: some View {
         ContentUnavailableView {
-            Label("No Clippings Yet", systemImage: "scissors")
+            Label("No Clips Yet", systemImage: "scissors")
         } description: {
             Text("Long-press any transcript line to clip a moment, or use your headphones' clip button while listening.")
         }
@@ -140,54 +125,5 @@ struct ClippingsView: View {
         }
         return [("Today", today), ("This Week", thisWeek), ("Earlier", earlier)]
             .filter { !$0.1.isEmpty }
-    }
-}
-
-// MARK: - EpisodeNavTarget
-
-/// Thin Identifiable wrapper so a UUID can drive `.navigationDestination(item:)`.
-private struct EpisodeNavTarget: Identifiable, Hashable {
-    let id: UUID
-}
-
-// MARK: - Preview
-
-#Preview {
-    let store = AppStateStore()
-    let podcast = Podcast(
-        feedURL: URL(string: "https://example.com/feed")!,
-        title: "The Peter Attia Drive"
-    )
-    let episode = Episode(
-        podcastID: podcast.id,
-        guid: "preview",
-        title: "How to Think About Keto",
-        pubDate: Date(),
-        enclosureURL: URL(string: "https://example.com/x.mp3")!
-    )
-    store.state.podcasts = [podcast]
-    store.state.subscriptions = [PodcastSubscription(podcastID: podcast.id)]
-    store.state.episodes = [episode]
-    store.addClip(Clip(
-        episodeID: episode.id,
-        subscriptionID: podcast.id,
-        startMs: 14 * 60_000 + 31_000,
-        endMs: 14 * 60_000 + 58_000,
-        caption: "On metabolism",
-        transcriptText: "Metabolic flexibility isn't a diet — it's a property of the mitochondria.",
-        source: .touch
-    ))
-    store.addClip(Clip(
-        episodeID: episode.id,
-        subscriptionID: podcast.id,
-        startMs: 32 * 60_000,
-        endMs: 32 * 60_000 + 15_000,
-        transcriptText: "Zone 2 training is the bedrock of aerobic capacity.",
-        source: .auto
-    ))
-    return NavigationStack {
-        ClippingsView()
-            .environment(store)
-            .environment(PlaybackState())
     }
 }
