@@ -11,8 +11,8 @@ extension PlaybackState {
     /// Jump to the next chapter's `startTime` in the supplied list. No-op
     /// when there is no next chapter (we're already in the last one).
     /// `navigable` is passed in by the UI so it stays in sync with whatever
-    /// the live store reports (chapters can hydrate after playback starts —
-    /// see `ChaptersHydrationService`).
+    /// the live store reports (verified chapter artifacts may be selected
+    /// after playback starts).
     func seekToNextChapter(in navigable: [Episode.Chapter]) {
         guard let next = Self.nextChapter(after: currentTime, in: navigable) else { return }
         engine.seek(to: next.startTime)

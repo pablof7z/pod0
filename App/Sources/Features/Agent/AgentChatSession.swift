@@ -44,6 +44,7 @@ final class AgentChatSession {
     /// the user just made.
     var loadedFromHistory: Bool = false
     var lastFailedMessage: String?
+    var lastFailedSource: AgentRunSource = .typedChat
     /// ID of the conversation backing this session. Updated whenever the user
     /// starts a new chat or switches to one from the history sheet.
     private(set) var currentConversationID: UUID
@@ -68,6 +69,7 @@ final class AgentChatSession {
     /// so `ChatHistoryStore.mostRecent` skips it and the auto-resume path in
     /// the chat UI isn't hijacked by a background scheduled run.
     var isScheduledTask: Bool = false
+    var scheduledOccurrenceID: String?
 
     /// Composer prefill captured from the various pending-context bridges at
     /// init time. The view drains this exactly once via `consumeSeededDraft()`.
@@ -104,15 +106,24 @@ final class AgentChatSession {
         history: ChatHistoryStore = .shared,
         resumeWindow: TimeInterval? = nil,
         askCoordinator: AgentAskCoordinator? = nil,
-        drainPendingContext: Bool = true
+        drainPendingContext: Bool = true,
+        scheduledOccurrenceID: String? = nil
     ) {
         self.store = store
         self.history = history
         self.podcastDeps = podcastDeps ?? playback.map { LivePodcastAgentToolDeps.make(store: store, playback: $0) }
         self.askCoordinator = askCoordinator
+        self.scheduledOccurrenceID = scheduledOccurrenceID
 
         let window = resumeWindow ?? Self.autoResumeWindow
-        if let recent = history.mostRecent,
+        if let scheduledOccurrenceID,
+           let existing = history.conversation(occurrenceID: scheduledOccurrenceID) {
+            self.currentConversationID = existing.id
+            self.messages = existing.messages
+            self.isUpgraded = existing.isUpgraded
+            self.enabledSkills = existing.enabledSkills
+            self.isScheduledTask = true
+        } else if let recent = history.mostRecent,
            !recent.messages.isEmpty,
            Date().timeIntervalSince(recent.updatedAt) < window {
             self.currentConversationID = recent.id
@@ -121,7 +132,7 @@ final class AgentChatSession {
             self.enabledSkills = recent.enabledSkills
             self.loadedFromHistory = true
         } else {
-            self.currentConversationID = UUID()
+            self.currentConversationID = scheduledOccurrenceID.map(OccurrenceIdentity.uuid(for:)) ?? UUID()
         }
 
         if drainPendingContext {

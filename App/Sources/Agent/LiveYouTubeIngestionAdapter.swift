@@ -67,13 +67,10 @@ final class LiveYouTubeIngestionAdapter: YouTubeIngestionProtocol, @unchecked Se
         var transcriptStatus: String?
         if transcribe {
             Self.logger.info("Enqueuing transcription for \(episode.id, privacy: .public)")
-            await TranscriptIngestService.shared.ingest(episodeID: episode.id)
-            let refreshed = await store.episode(id: episode.id)
-            transcriptStatus = switch refreshed?.transcriptState {
-            case .ready: "ready"
-            case .failed: "failed"
-            default: "queued"
+            await MainActor.run {
+                WorkflowRuntime.shared.requestTranscript(episodeID: episode.id)
             }
+            transcriptStatus = "queued"
         }
 
         return YouTubeIngestionResult(
@@ -104,4 +101,3 @@ final class LiveYouTubeIngestionAdapter: YouTubeIngestionProtocol, @unchecked Se
         try FileManager.default.moveItem(at: tempURL, to: destURL)
     }
 }
-

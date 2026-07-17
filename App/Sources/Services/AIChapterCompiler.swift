@@ -13,21 +13,14 @@ import os.log
 //   3. Mark ad-read spans so the player can auto-skip them
 //      (`Settings.autoSkipAds`) and the chapter rail can stripe overlap.
 //
-// Persists chapters via `AppStateStore.setEpisodeChapters` (with `isAIGenerated`
-// set only when boundaries came from the model) and ads via
-// `setEpisodeAdSegments`.
-//
 // Design notes
-//   • Idempotent — gated on `adSegments == nil`. Once the combined call has
-//     run and persisted ads (even an empty array), the service no-ops. This
-//     matches the previous `AdSegmentDetector` gate and ensures we don't
-//     re-bill on every episode open.
+//   • WorkCoordinator and versioned artifact facts own idempotency.
 //   • Forces `response_format: json_object` for parse stability.
 //   • Two prompt branches: one for "no chapters yet" (produce chapters +
 //     summaries + ads); one for "publisher chapters exist" (produce
 //     summaries-by-index + ads, leave boundaries alone).
 //   • Validates monotonic timestamps and clamps to the episode duration
-//     before persisting; rejects malformed payloads silently.
+//     before returning attempt-scoped output.
 //   • Stays read-only against the network — no Scribe / publisher fetches,
 //     no chunk re-indexing.
 
@@ -68,11 +61,16 @@ final class AIChapterCompiler {
     /// transcript is `.ready` and (b) the episode doesn't already have
     /// cached `adSegments`. No-op otherwise. When publisher chapters already
     /// exist, the boundaries are kept and only summaries + ads are merged in.
-    func compileIfNeeded(episodeID: UUID, store: AppStateStore) async {
-        guard let episode = store.episode(id: episodeID) else { return }
-        guard episode.adSegments == nil else { return }
-        guard case .ready = episode.transcriptState else { return }
-        guard !inFlight.contains(episodeID) else { return }
+    func compile(episodeID: UUID, store: AppStateStore) async throws -> ChapterCompilationOutput {
+        guard let episode = store.episode(id: episodeID) else {
+            throw JobFailure(classification: .invalidInput, message: "Episode no longer exists")
+        }
+        guard case .ready = episode.transcriptState else {
+            throw JobFailure(classification: .missingDependency, message: "Transcript is not ready for chapter compilation.")
+        }
+        guard !inFlight.contains(episodeID) else {
+            throw JobFailure(classification: .transient, message: "Chapter compilation is already running.")
+        }
         inFlight.insert(episodeID)
         defer { inFlight.remove(episodeID) }
 
@@ -80,7 +78,7 @@ final class AIChapterCompiler {
             Self.logger.notice(
                 "compileIfNeeded(\(episodeID, privacy: .public)): transcript file missing"
             )
-            return
+            throw JobFailure(classification: .missingDependency, message: "Transcript file is missing.")
         }
         let modelReference = LLMModelReference(storedID: store.state.settings.chapterCompilationModel)
         let apiKey: String
@@ -90,14 +88,14 @@ final class AIChapterCompiler {
                 Self.logger.info(
                     "compileIfNeeded(\(episodeID, privacy: .public)): no \(modelReference.provider.displayName, privacy: .public) key configured — skipping"
                 )
-                return
+                throw JobFailure(classification: .missingCredential, message: "No chapter-compilation API key is configured.")
             }
             apiKey = resolved
         } catch {
             Self.logger.error(
                 "compileIfNeeded(\(episodeID, privacy: .public)): credential resolve failed: \(String(describing: error), privacy: .public)"
             )
-            return
+            throw error
         }
 
         let hasExistingChapters = (episode.chapters?.isEmpty == false)
@@ -118,30 +116,40 @@ final class AIChapterCompiler {
             Self.logger.error(
                 "compileIfNeeded(\(episodeID, privacy: .public)): LLM call failed: \(String(describing: error), privacy: .public)"
             )
-            return
+            throw error
         }
 
         if hasExistingChapters, let existing = episode.chapters {
             let (summariesByIndex, ads) = parseEnrichOnly(raw, durationCap: episode.duration)
             let enriched = applySummaries(to: existing, indexed: summariesByIndex)
-            store.setEpisodeChapters(episodeID, chapters: enriched)
-            store.setEpisodeAdSegments(episodeID, segments: ads ?? [])
+            guard let ads else {
+                throw JobFailure(
+                    classification: .transient,
+                    message: "Chapter compiler returned an invalid ad-segment payload."
+                )
+            }
             Self.logger.info(
-                "compileIfNeeded(\(episodeID, privacy: .public)): enriched \(existing.count, privacy: .public) publisher chapters, wrote \(ads?.count ?? 0, privacy: .public) ads"
+                "compile(\(episodeID, privacy: .public)): enriched \(existing.count, privacy: .public) publisher chapters, wrote \(ads.count, privacy: .public) ads"
+            )
+            return ChapterCompilationOutput(
+                chapters: enriched,
+                ads: ads,
+                chapterOrigin: .publisherEnriched
             )
         } else {
             guard let parsed = parseFull(raw, durationCap: episode.duration) else {
                 Self.logger.notice(
                     "compileIfNeeded(\(episodeID, privacy: .public)): payload rejected (\(raw.prefix(120), privacy: .public))"
                 )
-                // Still persist an empty ad-segment marker so we don't loop.
-                store.setEpisodeAdSegments(episodeID, segments: [])
-                return
+                throw JobFailure(classification: .transient, message: "Chapter compiler returned an invalid payload.")
             }
-            store.setEpisodeChapters(episodeID, chapters: parsed.chapters)
-            store.setEpisodeAdSegments(episodeID, segments: parsed.ads)
             Self.logger.info(
                 "compileIfNeeded(\(episodeID, privacy: .public)): wrote \(parsed.chapters.count, privacy: .public) AI chapters and \(parsed.ads.count, privacy: .public) ads"
+            )
+            return ChapterCompilationOutput(
+                chapters: parsed.chapters,
+                ads: parsed.ads,
+                chapterOrigin: .generated
             )
         }
     }

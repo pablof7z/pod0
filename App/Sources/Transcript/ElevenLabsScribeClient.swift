@@ -24,9 +24,9 @@ import os.log
 ///   Header: `xi-api-key: <key>`
 ///
 ///   The endpoint is **synchronous by default**: the response body for HTTP 200
-///   is the full transcript JSON (`{ language_code, language_probability, text,
-///   words: [...] }`). The async webhook path is only entered when the request
-///   includes `webhook=true` — we do NOT set that, so we never see a 202.
+///   is the full transcript JSON, including a durable `transcription_id`.
+///   The async webhook path is only entered when the request includes
+///   `webhook=true` — we do not set that.
 ///
 /// Why this client used to never deliver a transcript:
 ///   1. It passed `episode.enclosureURL` (an HTTPS URL) into the multipart
@@ -35,14 +35,11 @@ import os.log
 ///      episode) on the actor before the upload starts — and then races
 ///      against the default 60-second `URLRequest.timeoutInterval`, which
 ///      is far shorter than transcription wall time.
-///   2. There is no documented polling endpoint in the synchronous flow, so
-///      the old `pollResult` retry loop was unreachable in practice and the
-///      whole `AsyncJobResponse` code path was a phantom contract.
 ///
-/// The fix: keep the `submit` → `pollResult` shape but make `submit`
-/// actually perform the synchronous request, stash the inline result on the
-/// returned `ScribeJob`, and have `pollResult` just return that inline
-/// result. Choose the multipart audio source based on the URL scheme —
+/// The client keeps the `submit` → `pollResult` shape: the first process uses
+/// the inline response, while a reconstructed process retrieves the same
+/// transcript through `/v1/speech-to-text/transcripts/{transcription_id}`.
+/// It chooses the multipart audio source based on the URL scheme —
 /// `file://` → `file` field with bytes, `https://` → `source_url` field with
 /// the URL string (the server fetches it for us).
 actor ElevenLabsScribeClient {
@@ -121,8 +118,7 @@ actor ElevenLabsScribeClient {
     // MARK: API
 
     /// Submits an audio source for transcription. The synchronous endpoint
-    /// returns the full transcript inline; we stash it on the returned
-    /// `ScribeJob` and `pollResult` just unwraps it.
+    /// returns both the full transcript and a durable provider transcript ID.
     ///
     /// `audioURL` may be either:
     ///   • a `file://` URL — we read its bytes and POST as the `file` field
@@ -201,7 +197,7 @@ actor ElevenLabsScribeClient {
         }
 
         return ScribeJob(
-            requestID: UUID().uuidString,
+            requestID: raw.transcription_id,
             episodeID: episodeID,
             createdAt: Date(),
             languageHint: languageHint,
@@ -209,11 +205,34 @@ actor ElevenLabsScribeClient {
         )
     }
 
-    /// The synchronous endpoint returns the transcript inline, so this is just
-    /// a wrapper that unwraps the cached result. The shape is preserved for
-    /// any future async/webhook path.
+    /// Returns the inline synchronous result, or reconstructs it by durable
+    /// provider ID after process termination.
     func pollResult(_ job: ScribeJob) async throws -> Transcript {
-        guard let raw = job.inlineResult else { throw ScribeError.invalidResponse }
+        let raw: ScribeRawResult
+        if let inline = job.inlineResult {
+            raw = inline
+        } else {
+            guard let key = try credential(), !key.isEmpty else {
+                throw ScribeError.missingAPIKey
+            }
+            let endpoint = baseURL
+                .appendingPathComponent("v1/speech-to-text/transcripts")
+                .appendingPathComponent(job.requestID)
+            var request = URLRequest(url: endpoint)
+            request.httpMethod = "GET"
+            request.setValue(key, forHTTPHeaderField: "xi-api-key")
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.timeoutInterval = Self.requestTimeout
+            let (data, response) = try await session.data(for: request)
+            try Self.assertOK(response: response, data: data)
+            do {
+                raw = try Self.decoder.decode(ScribeRawResult.self, from: data)
+            } catch {
+                throw ScribeError.decoding(
+                    "Could not decode recovered transcript \(job.requestID): \(error)"
+                )
+            }
+        }
         return Transcript.fromScribeRaw(raw, episodeID: job.episodeID, languageHint: job.languageHint)
     }
 
@@ -332,6 +351,7 @@ struct ScribeJob: Sendable, Hashable {
 }
 
 struct ScribeRawResult: Codable, Sendable, Hashable {
+    let transcription_id: String
     let language_code: String?
     let text: String?
     let words: [ScribeWord]?

@@ -57,13 +57,30 @@ enum EpisodeSQLiteStoreError: LocalizedError {
     }
 }
 
-/// SQLite sidecar for high-cardinality episode records.
+enum EpisodeSQLiteFaultPoint: Equatable, Sendable {
+    case afterEpisodeStatement(Int)
+    case afterMetadataStatement
+    case afterJobStatement(Int)
+    case beforeCommit
+    case afterCommit
+}
+
+/// Authoritative SQLite store for app metadata, episodes, and workflow jobs.
 ///
 /// `AppState` stays the in-memory model used by the UI, but persistence splits
 /// episodes out of the JSON metadata blob so imported libraries do not require
 /// a 70MB+ JSON decode/write on every launch or mutation.
 struct EpisodeSQLiteStore: Sendable {
     let fileURL: URL
+    let faultInjector: @Sendable (EpisodeSQLiteFaultPoint) throws -> Void
+
+    init(
+        fileURL: URL,
+        faultInjector: @escaping @Sendable (EpisodeSQLiteFaultPoint) throws -> Void = { _ in }
+    ) {
+        self.fileURL = fileURL
+        self.faultInjector = faultInjector
+    }
 
     func loadAll() throws -> [Episode] {
         try withDatabase { db in
@@ -100,7 +117,12 @@ struct EpisodeSQLiteStore: Sendable {
         }
     }
 
-    func replaceAll(_ episodes: [Episode]) throws {
+    func replaceAll(
+        _ episodes: [Episode],
+        generation: UInt64? = nil,
+        metadata: Data? = nil,
+        ensuring jobs: [DesiredJob] = []
+    ) throws {
         try withDatabase { db in
             try ensureSchema(in: db)
             try execute("BEGIN IMMEDIATE TRANSACTION", in: db)
@@ -124,8 +146,19 @@ struct EpisodeSQLiteStore: Sendable {
                     }
                     sqlite3_reset(statement)
                     sqlite3_clear_bindings(statement)
+                    try faultInjector(.afterEpisodeStatement(index))
                 }
+                if let generation { try writeGeneration(generation, in: db) }
+                if let metadata {
+                    try writeMetadata(metadata, in: db)
+                    try faultInjector(.afterMetadataStatement)
+                }
+                try JobStore.ensureJobs(jobs, in: db) { index in
+                    try faultInjector(.afterJobStatement(index))
+                }
+                try faultInjector(.beforeCommit)
                 try execute("COMMIT TRANSACTION", in: db)
+                try faultInjector(.afterCommit)
             } catch {
                 try? execute("ROLLBACK TRANSACTION", in: db)
                 throw error
@@ -144,19 +177,38 @@ struct EpisodeSQLiteStore: Sendable {
     func applyDelta(
         upserts: [EpisodeSQLiteRowMutation],
         deleteIDs: [UUID],
-        sortOrderUpdates: [EpisodeSQLiteSortOrderMutation]
+        sortOrderUpdates: [EpisodeSQLiteSortOrderMutation],
+        generation: UInt64? = nil,
+        metadata: Data? = nil,
+        ensuring jobs: [DesiredJob] = []
     ) throws {
-        guard !upserts.isEmpty || !deleteIDs.isEmpty || !sortOrderUpdates.isEmpty else {
+        guard !upserts.isEmpty || !deleteIDs.isEmpty || !sortOrderUpdates.isEmpty
+                || generation != nil || metadata != nil || !jobs.isEmpty else {
             return
         }
         try withDatabase { db in
             try ensureSchema(in: db)
             try execute("BEGIN IMMEDIATE TRANSACTION", in: db)
             do {
-                try deleteRows(deleteIDs, in: db)
-                try upsertRows(upserts, in: db)
-                try updateSortOrders(sortOrderUpdates, in: db)
+                var statementIndex = 0
+                let didMutateEpisode: () throws -> Void = {
+                    try faultInjector(.afterEpisodeStatement(statementIndex))
+                    statementIndex += 1
+                }
+                try deleteRows(deleteIDs, in: db, afterEach: didMutateEpisode)
+                try upsertRows(upserts, in: db, afterEach: didMutateEpisode)
+                try updateSortOrders(sortOrderUpdates, in: db, afterEach: didMutateEpisode)
+                if let generation { try writeGeneration(generation, in: db) }
+                if let metadata {
+                    try writeMetadata(metadata, in: db)
+                    try faultInjector(.afterMetadataStatement)
+                }
+                try JobStore.ensureJobs(jobs, in: db) { index in
+                    try faultInjector(.afterJobStatement(index))
+                }
+                try faultInjector(.beforeCommit)
                 try execute("COMMIT TRANSACTION", in: db)
+                try faultInjector(.afterCommit)
             } catch {
                 try? execute("ROLLBACK TRANSACTION", in: db)
                 throw error
@@ -170,6 +222,52 @@ struct EpisodeSQLiteStore: Sendable {
                 at: URL(fileURLWithPath: fileURL.path + suffix)
             )
         }
+    }
+
+    func loadGeneration() throws -> UInt64 {
+        try withDatabase { db in
+            try ensureSchema(in: db)
+            let statement = try prepare(
+                "SELECT value FROM persistence_metadata WHERE key = 'generation'",
+                in: db
+            )
+            defer { sqlite3_finalize(statement) }
+            guard sqlite3_step(statement) == SQLITE_ROW,
+                  let text = sqlite3_column_text(statement, 0) else { return 0 }
+            return UInt64(String(cString: text)) ?? 0
+        }
+    }
+
+    func setGeneration(_ generation: UInt64) throws {
+        try withDatabase { db in
+            try ensureSchema(in: db)
+            try writeGeneration(generation, in: db)
+        }
+    }
+
+    func loadMetadata() throws -> Data? {
+        try withDatabase { db in
+            try ensureSchema(in: db)
+            let statement = try prepare(
+                "SELECT value FROM persistence_metadata WHERE key = 'app_state'",
+                in: db
+            )
+            defer { sqlite3_finalize(statement) }
+            guard sqlite3_step(statement) == SQLITE_ROW,
+                  let bytes = sqlite3_column_blob(statement, 0) else { return nil }
+            return Data(bytes: bytes, count: Int(sqlite3_column_bytes(statement, 0)))
+        }
+    }
+
+    func commitMetadata(
+        _ metadata: Data,
+        generation: UInt64,
+        ensuring jobs: [DesiredJob] = []
+    ) throws {
+        try applyDelta(
+            upserts: [], deleteIDs: [], sortOrderUpdates: [],
+            generation: generation, metadata: metadata, ensuring: jobs
+        )
     }
 
     static func signature(for episodes: [Episode]) -> EpisodeSQLiteSignature {
@@ -198,187 +296,4 @@ struct EpisodeSQLiteStore: Sendable {
         )
     }
 
-    private func withDatabase<T>(_ body: (OpaquePointer) throws -> T) throws -> T {
-        try ensureParentDirectoryExists()
-        var db: OpaquePointer?
-        let flags = SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX
-        guard sqlite3_open_v2(fileURL.path, &db, flags, nil) == SQLITE_OK, let db else {
-            let message = db.map(Self.errorMessage) ?? "sqlite3_open_v2 returned nil"
-            if let db { sqlite3_close(db) }
-            throw EpisodeSQLiteStoreError.open(message)
-        }
-        defer { sqlite3_close(db) }
-
-        try execute("PRAGMA foreign_keys = ON", in: db)
-        try execute("PRAGMA journal_mode = WAL", in: db)
-        try execute("PRAGMA synchronous = NORMAL", in: db)
-        return try body(db)
-    }
-
-    private func ensureSchema(in db: OpaquePointer) throws {
-        try execute(
-            """
-            CREATE TABLE IF NOT EXISTS episodes(
-                id TEXT PRIMARY KEY NOT NULL,
-                subscription_id TEXT NOT NULL,
-                guid TEXT NOT NULL,
-                pub_date REAL NOT NULL,
-                sort_order INTEGER NOT NULL,
-                payload BLOB NOT NULL
-            )
-            """,
-            in: db
-        )
-        try execute(
-            """
-            CREATE INDEX IF NOT EXISTS episodes_subscription_pubdate_idx
-            ON episodes(subscription_id, pub_date DESC)
-            """,
-            in: db
-        )
-    }
-
-    private func execute(_ sql: String, in db: OpaquePointer) throws {
-        var error: UnsafeMutablePointer<CChar>?
-        defer { sqlite3_free(error) }
-        guard sqlite3_exec(db, sql, nil, nil, &error) == SQLITE_OK else {
-            let message = error.map { String(cString: $0) } ?? Self.errorMessage(db)
-            throw EpisodeSQLiteStoreError.execute(message)
-        }
-    }
-
-    private func prepare(_ sql: String, in db: OpaquePointer) throws -> OpaquePointer {
-        var statement: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK,
-              let statement else {
-            throw EpisodeSQLiteStoreError.prepare(Self.errorMessage(db))
-        }
-        return statement
-    }
-
-    private func deleteRows(_ ids: [UUID], in db: OpaquePointer) throws {
-        guard !ids.isEmpty else { return }
-        let statement = try prepare("DELETE FROM episodes WHERE id = ?", in: db)
-        defer { sqlite3_finalize(statement) }
-        for id in ids {
-            try bindText(id.uuidString, at: 1, to: statement, in: db)
-            try step(statement, in: db)
-            sqlite3_reset(statement)
-            sqlite3_clear_bindings(statement)
-        }
-    }
-
-    private func upsertRows(_ rows: [EpisodeSQLiteRowMutation], in db: OpaquePointer) throws {
-        guard !rows.isEmpty else { return }
-        let statement = try prepare(
-            """
-            INSERT INTO episodes(
-                id, subscription_id, guid, pub_date, sort_order, payload
-            ) VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                subscription_id = excluded.subscription_id,
-                guid = excluded.guid,
-                pub_date = excluded.pub_date,
-                sort_order = excluded.sort_order,
-                payload = excluded.payload
-            """,
-            in: db
-        )
-        defer { sqlite3_finalize(statement) }
-        for row in rows {
-            try bind(row.episode, sortOrder: row.sortOrder, to: statement, in: db)
-            try step(statement, in: db)
-            sqlite3_reset(statement)
-            sqlite3_clear_bindings(statement)
-        }
-    }
-
-    private func updateSortOrders(_ updates: [EpisodeSQLiteSortOrderMutation], in db: OpaquePointer) throws {
-        guard !updates.isEmpty else { return }
-        let statement = try prepare("UPDATE episodes SET sort_order = ? WHERE id = ?", in: db)
-        defer { sqlite3_finalize(statement) }
-        for update in updates {
-            guard sqlite3_bind_int64(statement, 1, Int64(update.sortOrder)) == SQLITE_OK else {
-                throw EpisodeSQLiteStoreError.bind(Self.errorMessage(db))
-            }
-            try bindText(update.id.uuidString, at: 2, to: statement, in: db)
-            try step(statement, in: db)
-            sqlite3_reset(statement)
-            sqlite3_clear_bindings(statement)
-        }
-    }
-
-    private func step(_ statement: OpaquePointer, in db: OpaquePointer) throws {
-        let code = sqlite3_step(statement)
-        guard code == SQLITE_DONE else {
-            throw EpisodeSQLiteStoreError.step(Self.errorMessage(db))
-        }
-    }
-
-    private func bind(_ episode: Episode, sortOrder: Int, to statement: OpaquePointer, in db: OpaquePointer) throws {
-        let payload: Data
-        do {
-            payload = try Self.encoder.encode(episode)
-        } catch {
-            throw EpisodeSQLiteStoreError.bind(error.localizedDescription)
-        }
-
-        try bindText(episode.id.uuidString, at: 1, to: statement, in: db)
-        // SQLite column is historically named `subscription_id`; it now
-        // semantically holds `episode.podcastID`. Column rename intentionally
-        // skipped to avoid migration risk for zero behavior win.
-        try bindText(episode.podcastID.uuidString, at: 2, to: statement, in: db)
-        try bindText(episode.guid, at: 3, to: statement, in: db)
-        guard sqlite3_bind_double(statement, 4, episode.pubDate.timeIntervalSince1970) == SQLITE_OK,
-              sqlite3_bind_int64(statement, 5, Int64(sortOrder)) == SQLITE_OK else {
-            throw EpisodeSQLiteStoreError.bind(Self.errorMessage(db))
-        }
-        let code = payload.withUnsafeBytes { buffer in
-            sqlite3_bind_blob(
-                statement,
-                6,
-                buffer.baseAddress,
-                Int32(payload.count),
-                Self.transientDestructor
-            )
-        }
-        guard code == SQLITE_OK else {
-            throw EpisodeSQLiteStoreError.bind(Self.errorMessage(db))
-        }
-    }
-
-    private func bindText(_ value: String, at index: Int32, to statement: OpaquePointer, in db: OpaquePointer) throws {
-        let code = (value as NSString).utf8String.map {
-            sqlite3_bind_text(statement, index, $0, -1, Self.transientDestructor)
-        } ?? SQLITE_MISUSE
-        guard code == SQLITE_OK else {
-            throw EpisodeSQLiteStoreError.bind(Self.errorMessage(db))
-        }
-    }
-
-    private func ensureParentDirectoryExists() throws {
-        let parent = fileURL.deletingLastPathComponent()
-        try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
-    }
-
-    private static var transientDestructor: sqlite3_destructor_type {
-        unsafeBitCast(-1, to: sqlite3_destructor_type.self)
-    }
-
-    private static func errorMessage(_ db: OpaquePointer) -> String {
-        String(cString: sqlite3_errmsg(db))
-    }
-
-    private static let encoder: JSONEncoder = {
-        let e = JSONEncoder()
-        e.dateEncodingStrategy = .iso8601
-        e.outputFormatting = [.sortedKeys]
-        return e
-    }()
-
-    private static let decoder: JSONDecoder = {
-        let d = JSONDecoder()
-        d.dateDecodingStrategy = .iso8601
-        return d
-    }()
 }

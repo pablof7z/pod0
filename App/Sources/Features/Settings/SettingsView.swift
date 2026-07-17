@@ -201,14 +201,16 @@ struct SettingsView: View {
         var downloaded = 0
         for episode in store.state.episodes {
             switch episode.downloadState {
-            case .queued, .downloading:
-                active += 1
-            case .failed:
-                failed += 1
             case .downloaded:
                 downloaded += 1
             case .notDownloaded:
                 break
+            }
+        }
+        if let jobs = try? WorkflowRuntime.shared.jobStore?.allJobs() {
+            for job in jobs where job.kind == .download {
+                if job.state == .failedPermanent || job.state == .blocked { failed += 1 }
+                else if job.state.isActive { active += 1 }
             }
         }
         if active > 0 { return "\(active) active" }

@@ -47,18 +47,20 @@ extension AppStateStore {
     @discardableResult
     func upsertPodcast(_ incoming: Podcast) -> Podcast {
         if let idx = state.podcasts.firstIndex(where: { $0.id == incoming.id }) {
-            state.podcasts[idx] = merged(state.podcasts[idx], with: incoming)
-            return state.podcasts[idx]
+            let value = merged(state.podcasts[idx], with: incoming)
+            mutateState { $0.podcasts[idx] = value }
+            return value
         }
         if let feedURL = incoming.feedURL,
            let idx = state.podcasts.firstIndex(where: {
                $0.feedURL?.absoluteString.caseInsensitiveCompare(feedURL.absoluteString) == .orderedSame
            }) {
             // Same feed under a different id — keep the existing row.
-            state.podcasts[idx] = merged(state.podcasts[idx], with: incoming)
-            return state.podcasts[idx]
+            let value = merged(state.podcasts[idx], with: incoming)
+            mutateState { $0.podcasts[idx] = value }
+            return value
         }
-        state.podcasts.append(incoming)
+        mutateState { $0.podcasts.append(incoming) }
         return incoming
     }
 
@@ -67,7 +69,7 @@ extension AppStateStore {
     /// metadata (title, imageURL).
     func updatePodcast(_ updated: Podcast) {
         guard let idx = state.podcasts.firstIndex(where: { $0.id == updated.id }) else { return }
-        state.podcasts[idx] = updated
+        mutateState { $0.podcasts[idx] = updated }
     }
 
     /// Merge policy: keep the existing podcast's identity, prefer non-empty

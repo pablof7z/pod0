@@ -23,8 +23,6 @@ enum RootTab: String, CaseIterable {
 /// The root view of the app. Hosts the main tab bar (hidden), onboarding gate,
 /// deep-link routing, and the avatar sidebar.
 struct RootView: View {
-    let scheduledTaskRunner: AgentScheduledTaskRunner?
-
     @Environment(AppStateStore.self) var store
     @Environment(AgentAskCoordinator.self) var askCoordinator
     @State var selectedTab: RootTab = .home
@@ -40,10 +38,6 @@ struct RootView: View {
     @State var showFullPlayer = false
     @State var playerNavSubscriptionID: UUID?
     @Namespace var playerNamespace
-
-    var scheduledTaskRunnerIdentity: ObjectIdentifier? {
-        scheduledTaskRunner.map(ObjectIdentifier.init)
-    }
 
     private let sidebarWidth: CGFloat = 300
 
@@ -63,11 +57,11 @@ struct RootView: View {
                             }
                     }
                 }
-                .task(id: scheduledTaskRunnerIdentity) {
-                    scheduledTaskRunner?.podcastDepsProvider = { [store, playbackState] in
+                .task {
+                    WorkflowRuntime.shared.podcastDepsProvider = { [store, playbackState] in
                         LivePodcastAgentToolDeps.make(store: store, playback: playbackState)
                     }
-                    scheduledTaskRunner?.runDueTasksIfNeeded()
+                    await WorkflowRuntime.shared.reconcileAndDrain()
                 }
                 .onAppear { setupPlaybackHandlers() }
                 .onChange(of: store.state.settings) { _, new in
@@ -124,7 +118,7 @@ struct RootView: View {
                 }
                 .sheet(isPresented: $showSearch) { searchSheet }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-                    scheduledTaskRunner?.runDueTasksIfNeeded()
+                    Task { await WorkflowRuntime.shared.reconcileAndDrain() }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .voiceModeRequested)) { _ in
                     showVoiceMode = true

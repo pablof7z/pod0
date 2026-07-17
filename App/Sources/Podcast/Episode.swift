@@ -1,24 +1,10 @@
 import Foundation
 
-/// A single episode belonging to a `PodcastSubscription`.
-///
-/// Field shape comes from the Lane 2 brief plus
-/// `docs/spec/baseline-podcast-features.md` §1, §3 and the Podcasting 2.0
-/// namespace mapping in `docs/spec/research/transcription-stack.md` §2.
-///
-/// `guid` is non-optional. RSS 2.0 specifies `<guid>` per item; when absent we
-/// synthesize a stable string from the enclosure URL + pubDate (see
-/// `RSSParser.synthesizedGUID(...)`). Lane 6 keys embedding rows off this
-/// `guid`, so it must be deterministic across re-fetches.
+/// A persisted podcast episode. `guid` is stable across feed refreshes.
 struct Episode: Codable, Sendable, Identifiable, Hashable {
     /// Stable local identifier. Distinct from `guid`.
     var id: UUID
-    /// Foreign key to the parent `Podcast.id`. Every episode has a real
-    /// parent podcast — agent-added episodes without a known feed parent
-    /// to `Podcast.unknownID`; TTS-generated episodes parent to the
-    /// "Agent Generated" synthetic podcast row owned by
-    /// `AgentGeneratedPodcastService`. There is no sentinel "no podcast"
-    /// value.
+    /// Foreign key to the parent `Podcast.id` (including synthetic podcasts).
     var podcastID: UUID
     /// Publisher's `<guid>` (or synthetic fallback). Used to dedupe across feed
     /// re-fetches and to key cross-system records (vector store, Spotlight).
@@ -72,6 +58,8 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
     var downloadState: DownloadState
     /// Lifecycle of transcript ingestion.
     var transcriptState: TranscriptState
+    /// Optional user-selected provider for the next durable ingest attempt.
+    var requestedTranscriptProvider: STTProvider?
     /// Ad segments detected by `AIChapterCompiler` from the transcript. `nil`
     /// when detection hasn't been run yet (or the transcript wasn't ready);
     /// an empty array means detection ran and found no ads. Drives the
@@ -83,13 +71,6 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
     /// commissioned from so the player can surface a tappable source link.
     var generationSource: GenerationSource?
 
-    /// `true` once `EpisodeMetadataIndexer` has embedded the episode's
-    /// title + description into the RAG index. Lets `search_episodes` /
-    /// `find_similar_episodes` discover episodes that have no transcript.
-    /// Flipped to `true` after a successful metadata upsert OR after a
-    /// transcript ingestion lands real chunks for the episode (transcript
-    /// chunks subsume the synthetic title/description match).
-    var metadataIndexed: Bool
 
     init(
         id: UUID = UUID(),
@@ -113,9 +94,9 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         isStarred: Bool = false,
         downloadState: DownloadState = .notDownloaded,
         transcriptState: TranscriptState = .none,
+        requestedTranscriptProvider: STTProvider? = nil,
         adSegments: [AdSegment]? = nil,
-        generationSource: GenerationSource? = nil,
-        metadataIndexed: Bool = false
+        generationSource: GenerationSource? = nil
     ) {
         self.id = id
         self.podcastID = podcastID
@@ -138,9 +119,9 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         self.isStarred = isStarred
         self.downloadState = downloadState
         self.transcriptState = transcriptState
+        self.requestedTranscriptProvider = requestedTranscriptProvider
         self.adSegments = adSegments
         self.generationSource = generationSource
-        self.metadataIndexed = metadataIndexed
     }
 
     // MARK: - Codable (forward-compat decoding)
@@ -151,8 +132,8 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         case chapters, persons, soundBites
         case publisherTranscriptURL, publisherTranscriptType, chaptersURL
         case playbackPosition, played, isStarred, downloadState, transcriptState
+        case requestedTranscriptProvider
         case adSegments, generationSource
-        case metadataIndexed
         // Legacy key from the pre-split shape. Decoded as a fallback when
         // `podcastID` is absent. Never written.
         case legacy_subscriptionID = "subscriptionID"
@@ -187,12 +168,15 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         isStarred = try c.decodeIfPresent(Bool.self, forKey: .isStarred) ?? false
         downloadState = try c.decodeIfPresent(DownloadState.self, forKey: .downloadState) ?? .notDownloaded
         transcriptState = try c.decodeIfPresent(TranscriptState.self, forKey: .transcriptState) ?? .none
+        requestedTranscriptProvider = try c.decodeIfPresent(
+            STTProvider.self,
+            forKey: .requestedTranscriptProvider
+        )
         adSegments = try c.decodeIfPresent([AdSegment].self, forKey: .adSegments)
         // `try?` (not `try`) so a legacy/unrecognized source (e.g. the
         // removed Nostr-peer generation source) degrades to `nil` instead of
         // failing the whole episode's decode.
         generationSource = (try? c.decodeIfPresent(GenerationSource.self, forKey: .generationSource)) ?? nil
-        metadataIndexed = try c.decodeIfPresent(Bool.self, forKey: .metadataIndexed) ?? false
     }
 
     func encode(to encoder: Encoder) throws {
@@ -218,9 +202,9 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         try c.encode(isStarred, forKey: .isStarred)
         try c.encode(downloadState, forKey: .downloadState)
         try c.encode(transcriptState, forKey: .transcriptState)
+        try c.encodeIfPresent(requestedTranscriptProvider, forKey: .requestedTranscriptProvider)
         try c.encodeIfPresent(adSegments, forKey: .adSegments)
         try c.encodeIfPresent(generationSource, forKey: .generationSource)
-        if metadataIndexed { try c.encode(metadataIndexed, forKey: .metadataIndexed) }
     }
 }
 

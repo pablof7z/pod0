@@ -72,17 +72,7 @@ struct EpisodeRowDownloadSwipeAction: View {
     let store: AppStateStore
 
     var body: some View {
-        switch episode.downloadState {
-        case .notDownloaded, .queued:
-            Button {
-                Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
-            } label: {
-                Label("Download", systemImage: "arrow.down.circle")
-            }
-            .tint(.blue)
-        case .downloading:
+        if EpisodeDownloadService.shared.progress[episode.id] != nil {
             Button {
                 Haptics.light()
                 EpisodeDownloadService.shared.attach(appStore: store)
@@ -91,7 +81,18 @@ struct EpisodeRowDownloadSwipeAction: View {
                 Label("Cancel", systemImage: "xmark.circle")
             }
             .tint(AppTheme.Tint.warning)
-        case .downloaded:
+        } else {
+            switch episode.downloadState {
+            case .notDownloaded:
+            Button {
+                Haptics.light()
+                EpisodeDownloadService.shared.attach(appStore: store)
+                EpisodeDownloadService.shared.download(episodeID: episode.id)
+            } label: {
+                Label("Download", systemImage: "arrow.down.circle")
+            }
+            .tint(.blue)
+            case .downloaded:
             // Not `role: .destructive` — that paints the swipe button red and
             // makes it visually identical to the existing "Remove" (mark-played)
             // action that sits next to it. Removing the local audio file just
@@ -105,15 +106,7 @@ struct EpisodeRowDownloadSwipeAction: View {
                 Label("Free up", systemImage: "internaldrive")
             }
             .tint(.gray)
-        case .failed:
-            Button {
-                Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
-            } label: {
-                Label("Retry", systemImage: "arrow.clockwise")
             }
-            .tint(.blue)
         }
     }
 }

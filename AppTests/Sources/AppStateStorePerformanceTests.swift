@@ -30,17 +30,27 @@ final class AppStateStorePerformanceTests: XCTestCase {
 
     private var fileURL: URL!
     private var store: AppStateStore!
+    private var downloadEvidenceURLs: [URL] = []
+    private var transcriptEvidenceIDs: [UUID] = []
 
     override func setUp() async throws {
         try await super.setUp()
         let made = AppStateTestSupport.makeIsolatedStore()
         fileURL = made.fileURL
         store = made.store
+        downloadEvidenceURLs = []
+        transcriptEvidenceIDs = []
     }
 
     override func tearDown() async throws {
         if let fileURL {
             AppStateTestSupport.disposeIsolatedStore(at: fileURL)
+        }
+        for url in downloadEvidenceURLs {
+            try? FileManager.default.removeItem(at: url)
+        }
+        for episodeID in transcriptEvidenceIDs {
+            TranscriptStore.shared.delete(episodeID: episodeID)
         }
         store = nil
         fileURL = nil
@@ -49,114 +59,83 @@ final class AppStateStorePerformanceTests: XCTestCase {
 
     // MARK: - Performance
 
-    /// 1000 `unplayedCount(forPodcast:)` calls against a 20-sub /
-    /// 10k-episode state must complete in well under 50 ms. The pre-fix
-    /// reduce was ~10 µs per call (10k iterations + closure dispatch),
-    /// so 1000 calls × 20 subs spent ~200 ms in user time alone — a
-    /// scroll-rate problem. Post-fix is a dict lookup, ~50 ns per call.
-    func testUnplayedCountIsConstantTime() {
+    /// Exercises every hot projection against the same 10k-episode snapshot.
+    /// Persisting that realistic fixture dominates test time, so sharing it
+    /// keeps the suite fast without weakening any individual timing bound.
+    func testProjectionReadsAreConstantTimeAtTenThousandEpisodes() {
         seedLargeState()
         let subs = store.state.subscriptions
 
-        let start = Date()
-        var total = 0
-        for _ in 0..<1_000 {
-            for sub in subs {
-                total += store.unplayedCount(forPodcast: sub.id)
+        do {
+            let start = Date()
+            var total = 0
+            for _ in 0..<1_000 {
+                for sub in subs {
+                    total += store.unplayedCount(forPodcast: sub.id)
+                }
             }
+            let elapsed = Date().timeIntervalSince(start)
+
+            XCTAssertGreaterThan(total, 0, "Sanity: at least one unplayed episode in seed.")
+            XCTAssertLessThan(
+                elapsed, 0.05,
+                "20,000 unplayedCount lookups took \(elapsed)s — projection cache regressed."
+            )
         }
-        let elapsed = Date().timeIntervalSince(start)
 
-        XCTAssertGreaterThan(total, 0, "Sanity: at least one unplayed episode in seed.")
-        XCTAssertLessThan(
-            elapsed, 0.05,
-            "1000 × 20 = 20,000 unplayedCount lookups took \(elapsed)s — projection cache regressed to a per-call O(N) scan."
-        )
-    }
-
-    /// `hasDownloadedEpisode` should be a Set lookup. Same cap as the
-    /// unplayed count test.
-    func testHasDownloadedEpisodeIsConstantTime() {
-        seedLargeState()
-        let subs = store.state.subscriptions
-
-        let start = Date()
-        var hits = 0
-        for _ in 0..<1_000 {
-            for sub in subs where store.hasDownloadedEpisode(forPodcast: sub.id) {
-                hits += 1
+        do {
+            let start = Date()
+            var hits = 0
+            for _ in 0..<1_000 {
+                for sub in subs where store.hasDownloadedEpisode(forPodcast: sub.id) {
+                    hits += 1
+                }
             }
+            let elapsed = Date().timeIntervalSince(start)
+
+            XCTAssertGreaterThan(hits, 0, "Sanity: at least one downloaded episode in seed.")
+            XCTAssertLessThan(elapsed, 0.05, "Downloaded projection lookups took \(elapsed)s.")
         }
-        let elapsed = Date().timeIntervalSince(start)
 
-        XCTAssertGreaterThan(hits, 0, "Sanity: at least one downloaded episode in seed.")
-        XCTAssertLessThan(
-            elapsed, 0.05,
-            "1000 × 20 hasDownloadedEpisode lookups took \(elapsed)s — Set membership regressed."
-        )
-    }
-
-    /// `hasTranscribedEpisode` should be a Set lookup. Same cap as above.
-    func testHasTranscribedEpisodeIsConstantTime() {
-        seedLargeState()
-        let subs = store.state.subscriptions
-
-        let start = Date()
-        var hits = 0
-        for _ in 0..<1_000 {
-            for sub in subs where store.hasTranscribedEpisode(forPodcast: sub.id) {
-                hits += 1
+        do {
+            let start = Date()
+            var hits = 0
+            for _ in 0..<1_000 {
+                for sub in subs where store.hasTranscribedEpisode(forPodcast: sub.id) {
+                    hits += 1
+                }
             }
+            let elapsed = Date().timeIntervalSince(start)
+
+            XCTAssertGreaterThan(hits, 0, "Sanity: at least one transcribed episode in seed.")
+            XCTAssertLessThan(elapsed, 0.05, "Transcript projection lookups took \(elapsed)s.")
         }
-        let elapsed = Date().timeIntervalSince(start)
 
-        XCTAssertGreaterThan(hits, 0, "Sanity: at least one transcribed episode in seed.")
-        XCTAssertLessThan(
-            elapsed, 0.05,
-            "1000 × 20 hasTranscribedEpisode lookups took \(elapsed)s — Set membership regressed."
-        )
-    }
+        do {
+            let largest = largestSubscriptionByEpisodeCount()
+            let start = Date()
+            var totalReturned = 0
+            for _ in 0..<100 {
+                totalReturned += store.episodes(forPodcast: largest.id).count
+            }
+            let elapsed = Date().timeIntervalSince(start)
 
-    /// `episodes(forPodcast:)` returns a precomputed slice. 100 calls
-    /// against the largest seeded show (~500 episodes) must complete in
-    /// well under 100 ms — the pre-fix filter+sort path took ~5 ms each
-    /// for that show, so 100 calls = 500 ms.
-    func testEpisodesForSubscriptionIsCheapPerCall() {
-        seedLargeState()
-        let largest = largestSubscriptionByEpisodeCount()
-
-        let start = Date()
-        var totalReturned = 0
-        for _ in 0..<100 {
-            totalReturned += store.episodes(forPodcast: largest.id).count
+            XCTAssertGreaterThan(totalReturned, 0)
+            XCTAssertLessThan(elapsed, 0.1, "Episode slice lookups took \(elapsed)s.")
         }
-        let elapsed = Date().timeIntervalSince(start)
 
-        XCTAssertGreaterThan(totalReturned, 0)
-        XCTAssertLessThan(
-            elapsed, 0.1,
-            "100 episodes(forPodcast:) calls took \(elapsed)s — projection cache regressed to a per-call filter+sort."
-        )
-    }
+        do {
+            let start = Date()
+            var hits = 0
+            for _ in 0..<1_000 {
+                hits += store.inProgressEpisodes.count
+                hits += store.recentEpisodes(limit: 30).count
+            }
+            let elapsed = Date().timeIntervalSince(start)
 
-    /// `inProgressEpisodes` and `recentEpisodes(limit:)` are read on every
-    /// HomeView render. They must be cheap.
-    func testHomeFeedsAreCheapPerCall() {
-        seedLargeState()
-
-        let start = Date()
-        var hits = 0
-        for _ in 0..<1_000 {
-            hits += store.inProgressEpisodes.count
-            hits += store.recentEpisodes(limit: 30).count
+            XCTAssertGreaterThan(hits, 0)
+            XCTAssertLessThan(elapsed, 0.1, "Home feed projection reads took \(elapsed)s.")
         }
-        let elapsed = Date().timeIntervalSince(start)
-
-        XCTAssertGreaterThan(hits, 0)
-        XCTAssertLessThan(
-            elapsed, 0.1,
-            "1000 × (inProgressEpisodes + recentEpisodes) took \(elapsed)s — Home feed cache regressed."
-        )
     }
 
     func testBatchSubscriptionImportPersistsOnce() {
@@ -216,15 +195,16 @@ final class AppStateStorePerformanceTests: XCTestCase {
         XCTAssertEqual(store.unplayedCount(forPodcast: sub.id), 1)
     }
 
-    func testSetDownloadStateUpdatesHasDownloadedSet() {
+    func testSetDownloadStateUpdatesHasDownloadedSet() throws {
         let sub = addSubscription(title: "Download")
         let ep = makeEpisode(podcastID: sub.id, guid: "d1")
         store.upsertEpisodes([ep], forPodcast: sub.id)
         XCTAssertFalse(store.hasDownloadedEpisode(forPodcast: sub.id))
 
+        let fileURL = try installDownloadEvidence(for: ep)
         store.setEpisodeDownloadState(
             ep.id,
-            state: .downloaded(localFileURL: URL(fileURLWithPath: "/tmp/x.mp3"), byteCount: 100)
+            state: .downloaded(localFileURL: fileURL, byteCount: 100)
         )
         XCTAssertTrue(store.hasDownloadedEpisode(forPodcast: sub.id))
 
@@ -232,12 +212,13 @@ final class AppStateStorePerformanceTests: XCTestCase {
         XCTAssertFalse(store.hasDownloadedEpisode(forPodcast: sub.id))
     }
 
-    func testSetTranscriptStateUpdatesHasTranscribedSet() {
+    func testSetTranscriptStateUpdatesHasTranscribedSet() throws {
         let sub = addSubscription(title: "Transcript")
         let ep = makeEpisode(podcastID: sub.id, guid: "t1")
         store.upsertEpisodes([ep], forPodcast: sub.id)
         XCTAssertFalse(store.hasTranscribedEpisode(forPodcast: sub.id))
 
+        try installTranscriptEvidence(for: ep, source: .scribeV1)
         store.setEpisodeTranscriptState(ep.id, state: .ready(source: .scribe))
         XCTAssertTrue(store.hasTranscribedEpisode(forPodcast: sub.id))
 
@@ -245,14 +226,16 @@ final class AppStateStorePerformanceTests: XCTestCase {
         XCTAssertFalse(store.hasTranscribedEpisode(forPodcast: sub.id))
     }
 
-    func testRemoveSubscriptionEvictsFromAllProjections() {
+    func testRemoveSubscriptionEvictsFromAllProjections() throws {
         let sub = addSubscription(title: "Evict")
         let ep = makeEpisode(podcastID: sub.id, guid: "ev1")
         store.upsertEpisodes([ep], forPodcast: sub.id)
+        let downloadURL = try installDownloadEvidence(for: ep)
         store.setEpisodeDownloadState(
             ep.id,
-            state: .downloaded(localFileURL: URL(fileURLWithPath: "/tmp/x.mp3"), byteCount: 1)
+            state: .downloaded(localFileURL: downloadURL, byteCount: 100)
         )
+        try installTranscriptEvidence(for: ep, source: .publisher)
         store.setEpisodeTranscriptState(ep.id, state: .ready(source: .publisher))
         XCTAssertEqual(store.unplayedCount(forPodcast: sub.id), 1)
         XCTAssertTrue(store.hasDownloadedEpisode(forPodcast: sub.id))
@@ -265,6 +248,27 @@ final class AppStateStorePerformanceTests: XCTestCase {
         XCTAssertFalse(store.hasDownloadedEpisode(forPodcast: sub.id))
         XCTAssertFalse(store.hasTranscribedEpisode(forPodcast: sub.id))
         XCTAssertTrue(store.episodes(forPodcast: sub.id).isEmpty)
+    }
+
+    private func installDownloadEvidence(for episode: Episode) throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("projection-\(episode.id.uuidString).mp3")
+        try Data(repeating: 0x5a, count: 100).write(to: url, options: .atomic)
+        downloadEvidenceURLs.append(url)
+        return url
+    }
+
+    private func installTranscriptEvidence(
+        for episode: Episode,
+        source: TranscriptSource
+    ) throws {
+        try TranscriptStore.shared.save(Transcript(
+            episodeID: episode.id,
+            language: "en-US",
+            source: source,
+            segments: []
+        ))
+        transcriptEvidenceIDs.append(episode.id)
     }
 
     func testEpisodesForSubscriptionStaysSortedNewestFirst() {
@@ -403,11 +407,6 @@ final class AppStateStorePerformanceTests: XCTestCase {
                 title: "Seed Show \(i)"
             )
         }
-        for sub in subs {
-            store.upsertPodcast(sub)
-            store.addSubscription(podcastID: sub.id)
-        }
-
         let now = Date()
         // Spread 10,000 episodes across 20 shows. Use a deterministic
         // round-robin so the largest bucket is predictable for the
@@ -438,8 +437,14 @@ final class AppStateStorePerformanceTests: XCTestCase {
             episodesBySub[subID, default: []].append(ep)
         }
 
-        for (subID, eps) in episodesBySub {
-            store.upsertEpisodes(eps, forPodcast: subID)
+        // Fixture construction is not the behavior measured by these tests.
+        // Assign one complete snapshot so neither AppState copy-on-write nor
+        // the authoritative SQLite backend processes 40 growing intermediates.
+        let episodes = subs.flatMap { episodesBySub[$0.id] ?? [] }
+        store.mutateState { state in
+            state.podcasts = subs
+            state.subscriptions = subs.map { PodcastSubscription(podcastID: $0.id) }
+            state.episodes = episodes
         }
     }
 

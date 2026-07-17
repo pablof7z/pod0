@@ -6,8 +6,8 @@ import Foundation
 /// `Episode.chaptersURL`. The format spec lives at
 /// https://github.com/Podcastindex-org/podcast-namespace/blob/main/chapters/jsonChapters.md
 ///
-/// Pure I/O. No `AppStateStore` writes — the caller (`ChaptersHydrationService`)
-/// owns persistence so this stays unit-testable with a stubbable `URLSession`.
+/// Pure I/O. The durable publisher-chapter executor owns staging and commit,
+/// keeping this unit-testable with a stubbable `URLSession`.
 struct ChaptersClient: Sendable {
 
     enum FetchError: Error, Sendable, Equatable {
@@ -50,11 +50,7 @@ struct ChaptersClient: Sendable {
         return try Self.decode(data)
     }
 
-    /// Shared decoder. `decode` runs once per `chaptersURL` per session
-    /// (deduped by `ChaptersHydrationService`), so the per-call allocator
-    /// pressure is modest — but every `static let`-decoder elsewhere in
-    /// the codebase has followed the same pattern, so mirror it here for
-    /// consistency.
+    /// Shared decoder for the small Podcasting 2.0 JSON payload.
     nonisolated(unsafe) private static let decoder = JSONDecoder()
 
     /// Decode a Podcasting 2.0 chapters JSON payload into `Episode.Chapter`

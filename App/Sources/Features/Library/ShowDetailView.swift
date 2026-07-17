@@ -346,10 +346,8 @@ struct ShowDetailView: View {
     /// Episodes that still need downloading (excludes in-flight and already downloaded).
     private var notDownloadedCount: Int {
         episodes.filter {
-            switch $0.downloadState {
-            case .downloaded, .downloading, .queued: return false
-            default: return true
-            }
+            if case .downloaded = $0.downloadState { return false }
+            return !hasActiveDownloadJob(episodeID: $0.id)
         }.count
     }
 
@@ -357,11 +355,17 @@ struct ShowDetailView: View {
         let service = EpisodeDownloadService.shared
         service.attach(appStore: store)
         for episode in episodes {
-            switch episode.downloadState {
-            case .downloaded, .downloading, .queued: continue
-            default: service.download(episodeID: episode.id)
-            }
+            if case .downloaded = episode.downloadState { continue }
+            guard !hasActiveDownloadJob(episodeID: episode.id) else { continue }
+            service.download(episodeID: episode.id)
         }
         Haptics.success()
+    }
+
+    private func hasActiveDownloadJob(episodeID: UUID) -> Bool {
+        guard let jobs = try? WorkflowRuntime.shared.jobStore?.allJobs() else { return false }
+        return jobs.contains {
+            $0.kind == .download && $0.subjectID == episodeID && $0.state.isActive
+        }
     }
 }

@@ -47,58 +47,45 @@ struct PlayerNoChaptersPlaceholder: View {
     /// generic "no marks" icon otherwise.
     private var glyph: String {
         guard let episode else { return "list.bullet.indent" }
-        switch episode.transcriptState {
-        case .queued, .fetchingPublisher, .transcribing:
-            return "waveform"
-        case .ready:
-            // Transcript is ready but no chapters yet — AI chapter compile
-            // is either in flight or the compile produced nothing usable.
-            return "sparkles"
-        case .failed, .none:
-            return "list.bullet.indent"
-        }
+        if workflowJob(for: episode)?.kind == .transcriptIngest { return "waveform" }
+        if case .ready = episode.transcriptState { return "sparkles" }
+        return "list.bullet.indent"
     }
 
     private var isWorking: Bool {
         guard let episode else { return false }
-        switch episode.transcriptState {
-        case .queued, .fetchingPublisher, .transcribing, .ready:
-            return true
-        case .failed, .none:
-            return false
-        }
+        return workflowJob(for: episode)?.state.isActive == true
     }
 
     private var headline: String {
         guard let episode else { return "No chapters" }
-        switch episode.transcriptState {
-        case .queued, .fetchingPublisher:
-            return "Preparing chapters"
-        case .transcribing:
-            return "Preparing chapters"
-        case .ready:
-            return "Compiling chapters"
-        case .failed, .none:
-            return "No chapters yet"
+        if let job = workflowJob(for: episode), job.state.isActive {
+            return job.kind == .chapterArtifacts ? "Compiling chapters" : "Preparing chapters"
         }
+        if case .ready = episode.transcriptState { return "No chapters yet" }
+        return "No chapters yet"
     }
 
     private var subhead: String {
         guard let episode else { return "Use the scrubber to navigate this episode." }
-        switch episode.transcriptState {
-        case .queued, .fetchingPublisher:
-            return "We're fetching the transcript that powers AI chapters."
-        case .transcribing(let p):
-            let pct = Int((p * 100).rounded())
-            return pct > 0
-                ? "Transcribing — \(pct)% complete. Chapters will appear here."
-                : "Transcribing… Chapters will appear here."
-        case .ready:
-            return "AI chapters are compiling. Use the scrubber until they arrive."
-        case .failed:
-            return "Transcript ingestion failed. Use the scrubber to navigate."
-        case .none:
-            return "This episode has no published chapters. Use the scrubber to navigate."
+        if let job = workflowJob(for: episode) {
+            if job.state == .blocked || job.state == .failedPermanent {
+                return job.lastErrorMessage ?? "Chapter preparation needs attention."
+            }
+            if job.state.isActive {
+                return job.kind == .chapterArtifacts
+                    ? "AI chapters are compiling. Use the scrubber until they arrive."
+                    : "We're preparing the transcript that powers AI chapters."
+            }
+        }
+        return "This episode has no published chapters. Use the scrubber to navigate."
+    }
+
+    private func workflowJob(for episode: Episode) -> WorkJob? {
+        guard let jobs = try? WorkflowRuntime.shared.jobStore?.allJobs() else { return nil }
+        return jobs.last {
+            $0.subjectID == episode.id
+                && ($0.kind == .transcriptIngest || $0.kind == .chapterArtifacts)
         }
     }
 

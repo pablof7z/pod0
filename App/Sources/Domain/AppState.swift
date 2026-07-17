@@ -3,6 +3,9 @@ import Foundation
 // MARK: - AppState
 
 struct AppState: Codable, Sendable {
+    /// Monotonic revision of the authoritative SQLite snapshot. Legacy JSON
+    /// migration imports this value once; normal reads never compare stores.
+    var persistenceGeneration: UInt64 = 0
     /// All podcasts the app knows about. Includes podcasts the user follows
     /// AND podcasts where the only attachment is an agent-added or
     /// manually-added episode. `state.subscriptions` is the projection of
@@ -44,7 +47,7 @@ struct AppState: Codable, Sendable {
     /// without scanning the topic array.
     var threadingMentions: [ThreadingMention] = []
     /// Recurring tasks the agent has scheduled via `schedule_task`. Fired by
-    /// `AgentScheduledTaskRunner` on foreground / app-appear. Persisted so
+    /// the durable workflow coordinator on foreground / background refresh. Persisted so
     /// tasks survive restarts.
     var agentScheduledTasks: [AgentScheduledTask] = []
     /// The episode the user was most recently listening to. Persisted so the
@@ -55,6 +58,7 @@ struct AppState: Codable, Sendable {
     init() {}
 
     private enum CodingKeys: String, CodingKey {
+        case persistenceGeneration
         case podcasts, subscriptions, episodes
         case notes, agentMemories, compiledMemory, settings
         case categories, categorySettings
@@ -70,6 +74,11 @@ struct AppState: Codable, Sendable {
     // `itemOrder` keys (from the inherited todo template) are silently ignored.
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+
+        persistenceGeneration = try c.decodeIfPresent(
+            UInt64.self,
+            forKey: .persistenceGeneration
+        ) ?? 0
 
         // Subscription rows: try slim shape (new format) first. If the file
         // was written by a pre-split build, the rows carry legacy keys

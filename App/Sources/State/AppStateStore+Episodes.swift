@@ -67,15 +67,15 @@ extension AppStateStore {
     /// mutable playback state (`playbackPosition`, `played`, `downloadState`,
     /// `transcriptState`) is preserved.
     ///
-    /// When `evaluateAutoDownload` is true, triggers
-    /// `EpisodeDownloadService.evaluateAutoDownload(...)` for genuinely new
-    /// episode IDs. Initial subscription/import paths pass false so historical
-    /// back-catalog episodes do not queue thousands of downloads at once.
+    /// When `evaluateAutoDownload` is true, the episode mutation atomically
+    /// records a durable discovery occurrence. Its executor later materializes
+    /// bounded follow-on intent from the exact inserted batch.
     @discardableResult
     func upsertEpisodes(
         _ incoming: [Episode],
         forPodcast podcastID: UUID,
-        evaluateAutoDownload: Bool = false
+        evaluateAutoDownload: Bool = false,
+        notificationDiscoveredAt: Date? = nil
     ) -> [UUID] {
         guard !incoming.isEmpty else { return [] }
         var updated = state.episodes
@@ -86,7 +86,8 @@ extension AppStateStore {
             uniquingKeysWith: { first, _ in first }
         )
         var newlyInserted: [UUID] = []
-        for episode in incoming {
+        for rawEpisode in incoming {
+            var episode = rawEpisode
             if let idx = existingByGUID[episode.guid] {
                 let prior = updated[idx]
                 var merged = episode
@@ -96,6 +97,7 @@ extension AppStateStore {
                 merged.isStarred = prior.isStarred
                 merged.downloadState = prior.downloadState
                 merged.transcriptState = prior.transcriptState
+                merged.requestedTranscriptProvider = prior.requestedTranscriptProvider
                 // Preserve AI-compiled/hydrated chapters when the incoming RSS episode
                 // doesn't supply new ones; RSS never carries ad segments so always keep.
                 if merged.chapters == nil || merged.chapters!.isEmpty {
@@ -108,39 +110,49 @@ extension AppStateStore {
                 newlyInserted.append(episode.id)
             }
         }
+        let discoveredAt = notificationDiscoveredAt ?? Date()
+        let inputs = newlyInserted.compactMap { id -> FeedDiscoveryPayload.EpisodeInput? in
+            guard let episode = updated.first(where: { $0.id == id }) else { return nil }
+            return .init(
+                episodeID: id,
+                inputVersion: DesiredStatePlanner.audioVersion(episode),
+                pubDate: episode.pubDate,
+                title: episode.title
+            )
+        }.sorted { $0.episodeID.uuidString < $1.episodeID.uuidString }
+        let batchVersion = ArtifactRepository.version(parts: inputs.flatMap {
+            [$0.episodeID.uuidString, $0.inputVersion]
+        })
+        let occurrence = "discovery:\(podcastID.uuidString):\(batchVersion)"
+        let policy = evaluateAutoDownload ? effectiveAutoDownload(forPodcast: podcastID) : nil
+        let discoveryPayload = FeedDiscoveryPayload(
+            podcastID: podcastID,
+            occurrenceID: occurrence,
+            discoveredAt: discoveredAt,
+            episodes: inputs,
+            autoDownloadPolicy: policy,
+            notificationsEnabled: notificationDiscoveredAt != nil,
+            policyVersion: "feed-policy-v1"
+        )
+        let recordsDiscovery = evaluateAutoDownload || notificationDiscoveredAt != nil
+        let occurrenceJobs = inputs.isEmpty || !recordsDiscovery ? [] : [DesiredJob(
+            idempotencyKey: occurrence,
+            kind: .feedDiscovery,
+            subjectID: podcastID,
+            inputVersion: batchVersion,
+            occurrenceID: occurrence,
+            payload: try? Self.workflowEncoder.encode(discoveryPayload),
+            priority: 40,
+            resourceClass: .planning,
+            maxAttempts: 8
+        )]
         performMutationBatch {
-            state.episodes = updated
+            mutateState(ensuring: occurrenceJobs) { $0.episodes = updated }
             // The didSet fingerprint catches count changes but misses pure
             // merges where count stays equal; explicit invalidation covers both.
             invalidateEpisodeProjections()
         }
-        if evaluateAutoDownload, !newlyInserted.isEmpty {
-            // Attach the service to this store on first reach so the
-            // download lifecycle, the auto-download path, and the AudioEngine
-            // local-file fallback all see the same `appStore`. Idempotent.
-            EpisodeDownloadService.shared.attach(appStore: self)
-            EpisodeDownloadService.shared.evaluateAutoDownload(
-                forPodcast: podcastID,
-                newEpisodeIDs: newlyInserted
-            )
-            // Fire publisher-transcript ingestion for the new IDs so we
-            // don't depend on the user manually opening Episode Detail to
-            // discover a transcript exists. Settings-gated; the service
-            // bails fast when the toggle is off.
-            TranscriptIngestService.shared.evaluateAutoIngest(
-                newEpisodeIDs: newlyInserted
-            )
-        }
-        // Metadata-index every newly-inserted episode, regardless of the
-        // auto-download gate — initial-subscribe paths pass false but the
-        // back-catalog they introduce is exactly the population that needs
-        // title/description coverage for similarity search.
-        if !newlyInserted.isEmpty {
-            EpisodeMetadataIndexer.shared.indexNewlyInserted(
-                newlyInserted,
-                appStore: self
-            )
-        }
+        WorkflowRuntime.shared.wake()
         return newlyInserted
     }
 
@@ -176,7 +188,7 @@ extension AppStateStore {
         // tick (e.g. a stray engine observer firing post-end) doesn't
         // resurrect a non-zero position on its first eager save.
         performMutationBatch {
-            state.episodes = episodes
+            mutateState { $0.episodes = episodes }
             positionCache.removeValue(forKey: id)
             // Cached unplayed counts + in-progress feed must drop this episode.
             invalidateEpisodeProjections()
@@ -198,7 +210,7 @@ extension AppStateStore {
         var episodes = state.episodes
         episodes[idx].playbackPosition = 0
         performMutationBatch {
-            state.episodes = episodes
+            mutateState { $0.episodes = episodes }
             positionCache.removeValue(forKey: id)
             invalidateEpisodeProjections()
         }
@@ -210,7 +222,7 @@ extension AppStateStore {
         var episodes = state.episodes
         episodes[idx].played = false
         performMutationBatch {
-            state.episodes = episodes
+            mutateState { $0.episodes = episodes }
             // Cached unplayed counts + recent feed must re-include this episode.
             invalidateEpisodeProjections()
         }
@@ -222,7 +234,7 @@ extension AppStateStore {
         var episodes = state.episodes
         episodes[idx].isStarred.toggle()
         performMutationBatch {
-            state.episodes = episodes
+            mutateState { $0.episodes = episodes }
         }
     }
 
@@ -233,51 +245,60 @@ extension AppStateStore {
         var episodes = state.episodes
         episodes[idx].isStarred = starred
         performMutationBatch {
-            state.episodes = episodes
+            mutateState { $0.episodes = episodes }
         }
     }
 
-    /// Updates the episode's local download lifecycle (queued / downloading /
-    /// downloaded / failed). The audio engine reads `downloaded` to decide
-    /// between streaming and local file URLs.
-    func setEpisodeDownloadState(_ id: UUID, state newState: DownloadState) {
-        guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
-        var episodes = state.episodes
-        episodes[idx].downloadState = newState
-        performMutationBatch {
-            state.episodes = episodes
-            // Cached `hasDownloadedByShow` set may now need to add or drop this subscription.
-            invalidateEpisodeProjections()
-        }
-    }
-
-    /// Marks every episode in `ids` as covered by the RAG metadata index.
-    /// Single batched mutation so a backfill pass over the whole library
-    /// only triggers one persisted save, regardless of episode count.
-    func setEpisodesMetadataIndexed(_ ids: [UUID]) {
-        guard !ids.isEmpty else { return }
-        let target = Set(ids)
-        var episodes = state.episodes
-        var changed = false
-        for idx in episodes.indices where target.contains(episodes[idx].id) && !episodes[idx].metadataIndexed {
-            episodes[idx].metadataIndexed = true
-            changed = true
-        }
-        guard changed else { return }
-        performMutationBatch {
-            state.episodes = episodes
+    /// Updates stable local-file evidence. Active/retry/failure lifecycle is
+    /// owned exclusively by JobStore.
+    @discardableResult
+    func setEpisodeDownloadState(
+        _ id: UUID,
+        state newState: DownloadState
+    ) -> EpisodeTransitionResult {
+        guard let episode = episode(id: id) else { return .rejected("Episode does not exist") }
+        switch newState {
+        case .notDownloaded:
+            return applyDownloadEvent(.userRemoved, episodeID: id)
+        case .downloaded(let url, let byteCount):
+            guard let data = try? Data(contentsOf: url, options: .mappedIfSafe) else {
+                return .rejected("Downloaded file is missing")
+            }
+            return applyDownloadEvent(.artifactCommitted(.init(
+                inputVersion: DesiredStatePlanner.audioVersion(episode),
+                contentHash: ArtifactRepository.hash(data), fileURL: url,
+                byteCount: byteCount
+            )), episodeID: id)
         }
     }
 
     /// Updates the episode's transcript ingestion lifecycle.
-    func setEpisodeTranscriptState(_ id: UUID, state newState: TranscriptState) {
-        guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
-        var episodes = state.episodes
-        episodes[idx].transcriptState = newState
-        performMutationBatch {
-            state.episodes = episodes
-            // Cached `hasTranscribedByShow` set may now need to add or drop this subscription.
-            invalidateEpisodeProjections()
+    @discardableResult
+    func setEpisodeTranscriptState(
+        _ id: UUID,
+        state newState: TranscriptState
+    ) -> EpisodeTransitionResult {
+        guard let episode = episode(id: id) else { return .rejected("Episode does not exist") }
+        let inputVersion = DesiredStatePlanner.audioVersion(episode)
+        switch newState {
+        case .none:
+            return applyTranscriptEvent(
+                .artifactInvalidated(inputVersion: inputVersion), episodeID: id
+            )
+        case .ready(let source):
+            let selected = try? ArtifactRepository(
+                fileURL: persistence.episodeStore.fileURL
+            ).current(kind: .transcript, subjectID: id)
+            let url = selected?.location.map(URL.init(fileURLWithPath:))
+                ?? TranscriptStore.shared.fileURL(for: id)
+            guard let data = TranscriptStore.shared.verifiedData(at: url, episodeID: id) else {
+                return .rejected("Transcript artifact is not verified")
+            }
+            return applyTranscriptEvent(.artifactCommitted(.init(
+                inputVersion: inputVersion,
+                contentHash: ArtifactRepository.hash(data),
+                fileURL: url, source: source
+            )), episodeID: id)
         }
     }
 
@@ -306,7 +327,7 @@ extension AppStateStore {
             var changed = false
             if let imageURL, updated.imageURL != imageURL { updated.imageURL = imageURL; changed = true }
             if let duration, updated.duration != duration { updated.duration = duration; changed = true }
-            if changed { state.episodes[idx] = updated }
+            if changed { mutateState { $0.episodes[idx] = updated } }
             return state.episodes[idx]
         }
         let episode = Episode(
@@ -319,16 +340,10 @@ extension AppStateStore {
             imageURL: imageURL
         )
         performMutationBatch {
-            state.episodes.append(episode)
+            mutateState { $0.episodes.append(episode) }
             invalidateEpisodeProjections()
         }
-        // Trigger transcript ingest for the new episode. Auto-download is
-        // skipped since the episode is already streaming; for podcasts the
-        // user follows the next feed refresh will surface it via the normal
-        // pipeline anyway.
-        TranscriptIngestService.shared.evaluateAutoIngest(
-            newEpisodeIDs: [episode.id]
-        )
+        WorkflowRuntime.shared.wake()
         return episode
     }
 
@@ -336,14 +351,11 @@ extension AppStateStore {
     /// restored after an app restart. No-op when the value is unchanged.
     func setLastPlayedEpisode(_ id: UUID) {
         guard state.lastPlayedEpisodeID != id else { return }
-        state.lastPlayedEpisodeID = id
+        mutateState { $0.lastPlayedEpisodeID = id }
     }
 
-    /// Persist hydrated chapters for an episode. Used by
-    /// `ChaptersHydrationService` after asynchronously fetching the JSON
-    /// referenced by `episode.chaptersURL`. No-op when `chapters` is empty
-    /// AND the episode already has chapters — we never overwrite real data
-    /// with an empty result.
+    /// Applies the stable projection of a verified chapter artifact. No-op
+    /// when an empty result would overwrite real chapter data.
     func setEpisodeChapters(_ id: UUID, chapters: [Episode.Chapter]) {
         guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
         if chapters.isEmpty, let existing = state.episodes[idx].chapters, !existing.isEmpty {
@@ -351,6 +363,15 @@ extension AppStateStore {
         }
         var episodes = state.episodes
         episodes[idx].chapters = chapters.isEmpty ? nil : chapters
-        state.episodes = episodes
+        mutateState { $0.episodes = episodes }
     }
+}
+
+private extension AppStateStore {
+    static let workflowEncoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.sortedKeys]
+        return encoder
+    }()
 }

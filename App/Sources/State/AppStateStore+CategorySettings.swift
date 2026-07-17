@@ -27,7 +27,7 @@ extension AppStateStore {
     func updateCategorySettings(_ id: UUID, _ block: (inout CategorySettings) -> Void) {
         var record = state.categorySettings[id] ?? .default(for: id)
         block(&record)
-        state.categorySettings[id] = record
+        mutateState { $0.categorySettings[id] = record }
     }
 
     /// Returns the auto-download policy that should actually drive new-episode

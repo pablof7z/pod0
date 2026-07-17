@@ -9,7 +9,7 @@ extension AppStateStore {
     /// Single-write entry-point so the `state.didSet` save fires once per
     /// recompute, regardless of how many categories the model returned.
     func setCategories(_ categories: [PodcastCategory]) {
-        state.categories = categories
+        mutateState { $0.categories = categories }
     }
 
     /// Moves a podcast into one category and removes it from every other
@@ -32,7 +32,7 @@ extension AppStateStore {
             }
         }
         if categories != state.categories {
-            state.categories = categories
+            mutateState { $0.categories = categories }
         }
         return true
     }

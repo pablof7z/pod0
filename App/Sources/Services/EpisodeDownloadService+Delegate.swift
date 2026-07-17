@@ -55,7 +55,8 @@ final class DownloadCoordinator: NSObject, URLSessionDownloadDelegate, @unchecke
         totalBytesExpectedToWrite: Int64
     ) {
         let taskID = downloadTask.taskIdentifier
-        let descID = downloadTask.taskDescription.flatMap(UUID.init(uuidString:))
+        let identity = EpisodeDownloadService.parseTaskDescription(downloadTask.taskDescription)
+        let descID = identity?.episodeID ?? downloadTask.taskDescription.flatMap(UUID.init(uuidString:))
         let expected = totalBytesExpectedToWrite > 0 ? totalBytesExpectedToWrite : nil
         let written = totalBytesWritten
         Task { @MainActor [weak service] in
@@ -82,7 +83,9 @@ final class DownloadCoordinator: NSObject, URLSessionDownloadDelegate, @unchecke
         didFinishDownloadingTo location: URL
     ) {
         let taskID = downloadTask.taskIdentifier
-        let descID = downloadTask.taskDescription.flatMap(UUID.init(uuidString:))
+        let identity = EpisodeDownloadService.parseTaskDescription(downloadTask.taskDescription)
+        let descID = identity?.episodeID
+            ?? downloadTask.taskDescription.flatMap(UUID.init(uuidString:))
 
         // Move the file synchronously here. We don't yet know the destination
         // because we need the Episode for the extension — so move into a temp
@@ -126,7 +129,22 @@ final class DownloadCoordinator: NSObject, URLSessionDownloadDelegate, @unchecke
                 try? FileManager.default.removeItem(at: interim)
                 return
             }
-            service.handleFinished(episodeID: episodeID, interim: interim)
+            guard let jobID = service.taskIDToJobID[taskID] ?? identity?.jobID,
+                  let inputVersion = service.taskIDToInputVersion[taskID]
+                    ?? identity?.inputVersion else {
+                try? FileManager.default.removeItem(at: interim)
+                service.handleFailure(
+                    episodeID: episodeID,
+                    message: "Download finished without durable attempt identity."
+                )
+                return
+            }
+            service.handleFinished(
+                episodeID: episodeID,
+                jobID: jobID,
+                inputVersion: inputVersion,
+                interim: interim
+            )
         }
     }
 
@@ -145,7 +163,9 @@ final class DownloadCoordinator: NSObject, URLSessionDownloadDelegate, @unchecke
             return
         }
         let taskID = task.taskIdentifier
-        let descID = task.taskDescription.flatMap(UUID.init(uuidString:))
+        let descID = EpisodeDownloadService.parseTaskDescription(
+            task.taskDescription
+        )?.episodeID ?? task.taskDescription.flatMap(UUID.init(uuidString:))
         let resumeData = nserr.userInfo[NSURLSessionDownloadTaskResumeData] as? Data
         let httpStatus = (task.response as? HTTPURLResponse)?.statusCode
         let requestURL = task.originalRequest?.url?.absoluteString
@@ -218,70 +238,64 @@ extension EpisodeDownloadService {
         // We only touch the store on terminal events. (See class doc.)
     }
 
-    /// Moves `interim` into the canonical store location and pushes the
-    /// terminal `.downloaded` state to `AppStateStore`.
-    func handleFinished(episodeID: UUID, interim: URL) {
+    /// Stages immutable attempt output. The workflow verifier promotes and
+    /// selects it only while the attempt still owns the lease.
+    func handleFinished(
+        episodeID: UUID,
+        jobID: UUID,
+        inputVersion: String,
+        interim: URL
+    ) {
         guard let store = appStore,
               let episode = store.episode(id: episodeID) else {
             try? FileManager.default.removeItem(at: interim)
             return
         }
-        let destination = EpisodeDownloadStore.shared.localFileURL(for: episode)
-        let fm = FileManager.default
+        let staged: StagedDownloadOutput
         do {
-            // Defensive: clear any pre-existing file at destination.
-            if fm.fileExists(atPath: destination.path) {
-                try fm.removeItem(at: destination)
-            }
-            try fm.moveItem(at: interim, to: destination)
+            staged = try EpisodeDownloadStore.shared.stage(
+                interim,
+                episode: episode,
+                jobID: jobID,
+                inputVersion: inputVersion
+            )
         } catch {
-            logger.error("move-to-final failed: \(error, privacy: .public)")
+            logger.error("download staging failed: \(error, privacy: .public)")
             handleFailure(
                 episodeID: episodeID,
-                message: "Could not save download to library.",
+                message: "Could not stage download for verification.",
                 auditDetails: [
-                    .init("Stage", "move to final destination"),
-                    .init("Destination", destination.lastPathComponent),
+                    .init("Stage", "attempt staging"),
                     .init("Error", String(describing: error)),
                 ]
             )
             return
         }
         EpisodeDownloadStore.shared.clearResumeData(for: episode)
-        let size = EpisodeDownloadStore.shared.byteCount(for: episode) ?? 0
         // Drop in-memory bookkeeping.
         if let task = episodeIDToTask[episodeID] {
             taskIDToEpisodeID[task.taskIdentifier] = nil
+            taskIDToJobID[task.taskIdentifier] = nil
+            taskIDToInputVersion[task.taskIdentifier] = nil
         }
         episodeIDToTask[episodeID] = nil
         clearProgress(for: episodeID)
-        store.setEpisodeDownloadState(
-            episodeID,
-            state: .downloaded(localFileURL: destination, byteCount: size)
-        )
         EpisodeAuditLogStore.shared.record(
             episodeID: episodeID,
             kind: .downloadFinished,
             severity: .success,
-            summary: "Downloaded \(Self.formatBytes(size))",
+            summary: "Downloaded \(Self.formatBytes(staged.byteCount)); verifying",
             details: [
-                .init("Bytes", String(size)),
-                .init("File", destination.lastPathComponent),
+                .init("Bytes", String(staged.byteCount)),
+                .init("File", staged.fileURL.lastPathComponent),
                 .init("URL", episode.enclosureURL.absoluteString),
             ]
         )
         logger.info(
-            "download finished for \(episodeID, privacy: .public) (\(size, privacy: .public) bytes)"
+            "download staged for \(episodeID, privacy: .public) (\(staged.byteCount, privacy: .public) bytes)"
         )
-        // Transcription is data extraction, not a user action. The moment a
-        // file lands on disk we kick the pipeline so the publisher transcript
-        // (or the user's configured STT provider) fills the transcript before
-        // they ever ask. The service is idempotent (`inFlight` dedup) and
-        // gated on per-category opt-out + STT settings/key resolution, so
-        // a double-fire here from any other entry point is harmless.
-        Task { @MainActor in
-            await TranscriptIngestService.shared.ingest(episodeID: episodeID)
-        }
+        finishWaiter(episodeID: episodeID, result: .success(staged.fileURL))
+        WorkflowRuntime.shared.wake()
     }
 
     /// Pushes the terminal `.failed` state. Caller has already squirreled
@@ -293,13 +307,14 @@ extension EpisodeDownloadService {
         message: String,
         auditDetails: [EpisodeAuditEvent.Detail] = []
     ) {
-        guard let store = appStore else { return }
+        guard appStore != nil else { return }
         if let task = episodeIDToTask[episodeID] {
             taskIDToEpisodeID[task.taskIdentifier] = nil
+            taskIDToJobID[task.taskIdentifier] = nil
+            taskIDToInputVersion[task.taskIdentifier] = nil
         }
         episodeIDToTask[episodeID] = nil
         clearProgress(for: episodeID)
-        store.setEpisodeDownloadState(episodeID, state: .failed(message: message))
         EpisodeAuditLogStore.shared.record(
             episodeID: episodeID,
             kind: .downloadFailed,
@@ -309,6 +324,10 @@ extension EpisodeDownloadService {
         )
         logger.notice(
             "download failed for \(episodeID, privacy: .public): \(message, privacy: .public)"
+        )
+        finishWaiter(
+            episodeID: episodeID,
+            result: .failure(JobFailure(classification: .transient, message: message))
         )
     }
 

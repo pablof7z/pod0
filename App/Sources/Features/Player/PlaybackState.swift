@@ -140,7 +140,7 @@ final class PlaybackState {
     var onFlushPositions: () -> Void = { }
 
     /// Called when `setEpisode` loads a *new* episode (`!isSameEpisode`)
-    /// whose `downloadState` is `.notDownloaded` or `.failed`. Receivers
+    /// whose stable download evidence is `.notDownloaded`. Receivers
     /// should kick off the background download → transcription → chapters
     /// pipeline without blocking playback — the audio engine has already
     /// started streaming by the time this closure fires.
@@ -291,13 +291,11 @@ final class PlaybackState {
             // disk. Gated on `!isSameEpisode` because same-episode reloads
             // (Play/Resume taps, deep-link replays, chapter-row taps) fire
             // on every gesture and would otherwise spam the queue. The
-            // receiver (RootView → EpisodeDownloadService) early-returns
-            // for `.downloading` / `.queued` / `.downloaded` so the
-            // common case after the first play is a cheap no-op.
+            // durable idempotency key absorbs duplicate intent elsewhere.
             switch newEpisode.downloadState {
-            case .notDownloaded, .failed:
+            case .notDownloaded:
                 onEnsureDownloadEnqueued(newEpisode.id)
-            case .downloading, .queued, .downloaded:
+            case .downloaded:
                 break
             }
         }

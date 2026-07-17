@@ -6,7 +6,6 @@ import SwiftUI
 struct PodcastrApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var store = AppStateStore()
-    @State private var scheduledTaskRunner: AgentScheduledTaskRunner?
     /// Single global owner-consultation coordinator. Lives here (not on
     /// `AgentChatSession`) so it can pop the same sheet even when the user is
     /// on Home / Library / Clippings — i.e. while no chat session exists.
@@ -33,12 +32,10 @@ struct PodcastrApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(scheduledTaskRunner: scheduledTaskRunner)
+            RootView()
                 .environment(store)
                 .environment(askCoordinator)
-                .task {
-                    scheduledTaskRunner = AgentScheduledTaskRunner(store: store)
-                }
+                .task { await WorkflowRuntime.shared.startAndReconcile() }
                 .task {
                     // Seed a fresh install silently so the first launch
                     // doesn't dump the entire changelog as "new."
@@ -49,15 +46,6 @@ struct PodcastrApp: App {
                     if !unseen.isEmpty {
                         whatsNewPresentation = WhatsNewPresentation(entries: unseen)
                     }
-                }
-                .task {
-                    // One-shot backfill: ensure every episode the user
-                    // already has in the library has its title +
-                    // description embedded so `find_similar_episodes` /
-                    // `search_episodes` can surface untranscribed
-                    // episodes. Throttled + reentrancy-safe; subsequent
-                    // launches no-op once everything is flagged.
-                    await EpisodeMetadataIndexer.shared.runBackfill(appStore: store)
                 }
                 .sheet(item: $whatsNewPresentation) { presentation in
                     WhatsNewSheet(entries: presentation.entries)

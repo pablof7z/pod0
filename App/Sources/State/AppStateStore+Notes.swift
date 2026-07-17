@@ -17,7 +17,7 @@ extension AppStateStore {
     @discardableResult
     func addNote(text: String, kind: NoteKind = .free, target: Anchor? = nil, author: NoteAuthor) -> Note {
         let note = Note(text: text, kind: kind, target: target, author: author)
-        state.notes.append(note)
+        mutateState { $0.notes.append(note) }
         return note
     }
 
@@ -39,17 +39,17 @@ extension AppStateStore {
 
     func deleteNote(_ id: UUID) {
         guard let idx = state.notes.firstIndex(where: { $0.id == id }) else { return }
-        state.notes[idx].deleted = true
+        mutateState { $0.notes[idx].deleted = true }
     }
 
     func restoreNote(_ id: UUID) {
         guard let idx = state.notes.firstIndex(where: { $0.id == id }) else { return }
-        state.notes[idx].deleted = false
+        mutateState { $0.notes[idx].deleted = false }
     }
 
     func updateNote(_ note: Note) {
         guard let idx = state.notes.firstIndex(where: { $0.id == note.id }) else { return }
-        state.notes[idx] = note
+        mutateState { $0.notes[idx] = note }
     }
 
     func clearAllNotes() {
@@ -57,6 +57,6 @@ extension AppStateStore {
         for idx in updated.indices where !updated[idx].deleted {
             updated[idx].deleted = true
         }
-        state.notes = updated
+        mutateState { $0.notes = updated }
     }
 }

@@ -35,8 +35,8 @@ struct MiniPlayerView: View {
     /// has navigable chapters. Returns `nil` for chapter-less episodes so
     /// the metadata line falls back to the show name. Reads from
     /// `AppStateStore` rather than the cached `state.episode` so chapters
-    /// hydrated by `ChaptersHydrationService` after playback started show
-    /// up here without a re-load.
+    /// selected by durable artifact reconciliation after playback started
+    /// show up here without a re-load.
     private var activeChapterTitle: String? {
         guard let stateEpisode = state.episode else { return nil }
         let live = store.episode(id: stateEpisode.id) ?? stateEpisode
@@ -185,14 +185,11 @@ struct MiniPlayerView: View {
     @ViewBuilder
     private var inlineDownloadBadge: some View {
         if let resolved = liveDownloadEpisode {
-            switch resolved.downloadState {
-            case .downloading, .failed:
+            if downloadService.progress[resolved.id] != nil {
                 DownloadProgressBadge(
                     episode: resolved,
                     liveProgress: downloadService.progress[resolved.id]
                 )
-            default:
-                EmptyView()
             }
         }
     }

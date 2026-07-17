@@ -12,6 +12,7 @@ import SwiftUI
 /// itself so the user can't double-tap.
 struct TranscribingInProgressView: View {
     let episode: Episode
+    @Environment(AppStateStore.self) private var store
 
     var body: some View {
         ScrollView {
@@ -31,45 +32,14 @@ struct TranscribingInProgressView: View {
 
     // MARK: - Subviews
 
-    @ViewBuilder
     private var header: some View {
-        switch episode.transcriptState {
-        case .transcribing(let progress):
-            HStack(spacing: AppTheme.Spacing.md) {
-                ProgressView(value: max(0, min(progress, 1)))
-                    .progressViewStyle(.linear)
-                    .tint(AppTheme.Tint.warning)
-                    .frame(maxWidth: .infinity)
-                Text("\(Int((progress * 100).rounded()))%")
-                    .font(.system(.subheadline, design: .monospaced).weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-            .padding(.horizontal, AppTheme.Spacing.md)
-        case .queued, .fetchingPublisher:
-            HStack(spacing: AppTheme.Spacing.sm) {
-                ProgressView()
-                Text(headerLabel)
-                    .font(.system(.subheadline, design: .rounded).weight(.medium))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, AppTheme.Spacing.md)
-        case .failed(let message):
-            Label(message, systemImage: "exclamationmark.triangle.fill")
+        HStack(spacing: AppTheme.Spacing.sm) {
+            if activeJob?.state.isActive == true { ProgressView() }
+            Text(jobStatusLabel)
                 .font(.system(.subheadline, design: .rounded).weight(.medium))
-                .foregroundStyle(AppTheme.Tint.warning)
-                .padding(.horizontal, AppTheme.Spacing.md)
-        case .none, .ready:
-            EmptyView()
+                .foregroundStyle(activeJob?.state == .failedPermanent ? AppTheme.Tint.warning : .secondary)
         }
-    }
-
-    private var headerLabel: String {
-        switch episode.transcriptState {
-        case .queued: return "Queued for transcription"
-        case .fetchingPublisher: return "Fetching publisher transcript"
-        default: return ""
-        }
+        .padding(.horizontal, AppTheme.Spacing.md)
     }
 
     private var copyBlock: some View {
@@ -85,34 +55,27 @@ struct TranscribingInProgressView: View {
     }
 
     private var primaryCopy: String {
-        switch episode.transcriptState {
-        case .none: return "No transcript yet."
-        case .queued: return "Queued for transcription."
-        case .fetchingPublisher: return "Fetching the publisher's transcript."
-        case .transcribing: return "Transcribing this episode."
-        case .failed: return "Transcription didn't finish."
-        case .ready: return "Transcript ready."
+        if case .ready = episode.transcriptState { return "Transcript ready." }
+        if activeJob?.state == .failedPermanent || activeJob?.state == .blocked {
+            return "Transcription needs attention."
         }
+        return activeJob?.state.isActive == true ? "Preparing this transcript." : "No transcript yet."
     }
 
     private var secondaryCopy: String {
-        switch episode.transcriptState {
-        case .none:
-            return "Fetch one below. We'll use the publisher's transcript when available, or your configured transcription provider if no publisher transcript exists."
-        case .queued, .fetchingPublisher, .transcribing:
+        if let message = activeJob?.lastErrorMessage { return message }
+        if activeJob?.state.isActive == true {
             return "The text will appear here when it's ready. Keep listening — this runs in the background."
-        case .failed(let message):
-            return message
-        case .ready:
-            return ""
         }
+        return "Fetch one below. We'll use the publisher's transcript when available, or your configured transcription provider if no publisher transcript exists."
     }
 
     private var cta: some View {
         VStack(spacing: AppTheme.Spacing.sm) {
             Button {
                 let episodeID = episode.id
-                Task { await TranscriptIngestService.shared.ingest(episodeID: episodeID) }
+                store.setEpisodeTranscriptState(episodeID, state: .none)
+                WorkflowRuntime.shared.requestTranscript(episodeID: episodeID)
             } label: {
                 Text("Request transcript")
                     .font(.headline)
@@ -129,14 +92,37 @@ struct TranscribingInProgressView: View {
         }
     }
 
-    /// True when a fresh ingest call would actually do something. While the
-    /// pipeline is mid-flight (`queued`, `fetchingPublisher`, `transcribing`)
-    /// we disable so the user can't pile redundant submits onto the in-flight
-    /// dedup set in `TranscriptIngestService`.
     private var isRequestable: Bool {
-        switch episode.transcriptState {
-        case .none, .failed: return true
-        case .queued, .fetchingPublisher, .transcribing, .ready: return false
+        Self.canRequestTranscript(for: episode.transcriptState)
+    }
+
+    /// Every non-ready state stays manually repairable. The durable job store
+    /// deduplicates repeated taps, including after a process died mid-step.
+    nonisolated static func canRequestTranscript(for state: TranscriptState) -> Bool {
+        switch state {
+        case .none: return true
+        case .ready: return false
+        }
+    }
+
+    private var activeJob: WorkJob? {
+        guard let jobs = try? WorkflowRuntime.shared.jobStore?.allJobs() else { return nil }
+        return jobs.last {
+            $0.kind == .transcriptIngest && $0.subjectID == episode.id
+        }
+    }
+
+    private var jobStatusLabel: String {
+        guard let job = activeJob else { return "Not requested" }
+        switch job.state {
+        case .pending, .leased: return "Queued for transcription"
+        case .running: return "Transcribing"
+        case .retryScheduled: return "Retry scheduled"
+        case .blocked: return "Waiting for setup"
+        case .failedPermanent: return "Transcription failed"
+        case .cancelled: return "Cancelled"
+        case .obsolete: return "Superseded"
+        case .succeeded: return "Transcript ready"
         }
     }
 
@@ -161,17 +147,5 @@ struct TranscribingInProgressView: View {
         transcriptState: .none
     )
     return NavigationStack { TranscribingInProgressView(episode: episode) }
-}
-
-#Preview("Transcribing") {
-    let subID = UUID()
-    let episode = Episode(
-        podcastID: subID,
-        guid: "preview-2",
-        title: "How to Think About Keto",
-        pubDate: Date(),
-        enclosureURL: URL(string: "https://traffic.megaphone.fm/HSW1234567890.mp3")!,
-        transcriptState: .transcribing(progress: 0.42)
-    )
-    return NavigationStack { TranscribingInProgressView(episode: episode) }
+        .environment(AppStateStore())
 }

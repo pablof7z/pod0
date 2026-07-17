@@ -24,9 +24,9 @@ extension AppStateStore {
         positionCache.removeAll()
 
         performMutationBatch {
-            state = AppState()
-            if let settings {
-                state.settings = settings
+            mutateState {
+                $0 = AppState()
+                if let settings { $0.settings = settings }
             }
             invalidateEpisodeProjections()
         }

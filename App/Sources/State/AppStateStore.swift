@@ -25,10 +25,24 @@ final class AppStateStore {
     /// transcribed utterance; the agent decides what to do with it.
     var pendingVoiceNoteAgentContext: VoiceNoteAgentContext?
 
-    var state: AppState {
+    private(set) var state: AppState {
         didSet {
             handleStateDidSet(previousEpisodes: oldValue.episodes)
         }
+    }
+
+    /// The only write gate for companion store extensions and test fixtures.
+    /// Assigning the completed value once keeps persistence and projection
+    /// side effects centralized on `state.didSet`.
+    func mutateState(_ mutation: (inout AppState) -> Void) {
+        var updated = state
+        mutation(&updated)
+        state = updated
+    }
+
+    func mutateState(ensuring jobs: [DesiredJob], _ mutation: (inout AppState) -> Void) {
+        pendingAtomicJobs.append(contentsOf: jobs)
+        mutateState(mutation)
     }
 
     // MARK: - Episode projections (cache)
@@ -85,10 +99,11 @@ final class AppStateStore {
     /// On background, the position cache is flushed to disk so the user
     /// can force-quit + relaunch without losing playback progress.
     /// See `AppStateStore+PositionDebounce.swift` for the rationale.
-    private var backgroundObserver: NSObjectProtocol?
+    private var backgroundObservers: [NSObjectProtocol] = []
 
     var mutationBatchDepth = 0
     var deferredStateSideEffects = false
+    var pendingAtomicJobs: [DesiredJob] = []
     var deferredEpisodeProjectionRebuild = false
     /// Trailing-debounce task for `WidgetCenter.reloadAllTimelines()`.
     /// Cancelled and re-armed on each mutation so a burst (e.g. marking
@@ -170,6 +185,8 @@ final class AppStateStore {
         // transcript ingester can resolve episode/subscription metadata.
         RAGService.shared.attach(appStore: self)
         EpisodeDownloadService.shared.attach(appStore: self)
+        WorkflowRuntime.shared.attach(store: self)
+        BackgroundWorkScheduler.shared.attach(store: self)
         // Prune agent-activity entries older than 30 days so the persisted log
         // doesn't grow unboundedly across many months of use. This fires one
         // Persistence.save only when stale entries are actually found.
@@ -203,7 +220,7 @@ final class AppStateStore {
         // to disk before iOS can suspend or kill the process. Token is
         // retained on `self` so the observer outlives the init call but
         // dies with the store. See `AppStateStore+PositionDebounce.swift`.
-        backgroundObserver = registerBackgroundFlushObserver()
+        backgroundObservers = registerBackgroundFlushObservers()
     }
 
     /// One-time removal of the deleted Wiki feature's on-disk page store
@@ -283,8 +300,8 @@ final class AppStateStore {
         // by the time deinit runs, no other actor work can be racing
         // against us for `self`.
         MainActor.assumeIsolated {
-            if let backgroundObserver {
-                NotificationCenter.default.removeObserver(backgroundObserver)
+            for observer in backgroundObservers {
+                NotificationCenter.default.removeObserver(observer)
             }
             if let iCloudObserver {
                 NotificationCenter.default.removeObserver(iCloudObserver)

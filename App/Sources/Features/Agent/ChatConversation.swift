@@ -18,10 +18,12 @@ struct ChatConversation: Identifiable, Codable, Equatable, Sendable {
     /// LLM request and its manual is part of the conversation history.
     /// Defaults to empty so every new conversation starts lean.
     var enabledSkills: Set<String>
-    /// True for conversations started by `AgentScheduledTaskRunner`. Excluded
-    /// from `ChatHistoryStore.mostRecent` so a scheduled run doesn't hijack
-    /// the auto-resume path when the user opens the chat sheet.
+    /// True for conversations created by a durable scheduled occurrence.
+    /// Excluded from `ChatHistoryStore.mostRecent` so background work doesn't
+    /// hijack the auto-resume path when the user opens the chat sheet.
     var isScheduledTask: Bool
+    /// Canonical identity for at-least-once scheduled output deduplication.
+    var occurrenceID: String?
     let createdAt: Date
     var updatedAt: Date
 
@@ -32,6 +34,7 @@ struct ChatConversation: Identifiable, Codable, Equatable, Sendable {
         isUpgraded: Bool = false,
         enabledSkills: Set<String> = [],
         isScheduledTask: Bool = false,
+        occurrenceID: String? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -41,12 +44,14 @@ struct ChatConversation: Identifiable, Codable, Equatable, Sendable {
         self.isUpgraded = isUpgraded
         self.enabledSkills = enabledSkills
         self.isScheduledTask = isScheduledTask
+        self.occurrenceID = occurrenceID
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, messages, isUpgraded, enabledSkills, isScheduledTask, createdAt, updatedAt
+        case id, title, messages, isUpgraded, enabledSkills, isScheduledTask
+        case occurrenceID, createdAt, updatedAt
     }
 
     init(from decoder: Decoder) throws {
@@ -58,6 +63,7 @@ struct ChatConversation: Identifiable, Codable, Equatable, Sendable {
         // Forward-compat: old persisted snapshots predate these fields.
         enabledSkills = try c.decodeIfPresent(Set<String>.self, forKey: .enabledSkills) ?? []
         isScheduledTask = try c.decodeIfPresent(Bool.self, forKey: .isScheduledTask) ?? false
+        occurrenceID = try c.decodeIfPresent(String.self, forKey: .occurrenceID)
         createdAt = try c.decode(Date.self, forKey: .createdAt)
         updatedAt = try c.decode(Date.self, forKey: .updatedAt)
     }

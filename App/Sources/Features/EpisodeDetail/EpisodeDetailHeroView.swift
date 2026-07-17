@@ -26,12 +26,10 @@ struct EpisodeDetailHeroView: View {
     /// playback is on a different episode (or no chapters); the list
     /// renders flat in that case.
     var activeChapterID: UUID? = nil
-    /// Live download progress in `0...1`, observed from
-    /// `EpisodeDownloadService`. Drives the inline progress pill on the
-    /// action row so the user sees a smooth "Downloading 42%" badge while
-    /// the file is in flight (the Episode's persisted `downloadState` only
-    /// updates at coarse transitions to spare AppStateStore).
+    /// Live transfer progress and durable job state are separate from the
+    /// episode's stable local-file evidence.
     var downloadProgress: Double? = nil
+    var downloadJobState: WorkJobState? = nil
     /// Download / cancel / delete handler bound by the parent. The hero
     /// flips the affordance based on the episode's `downloadState`.
     var onToggleDownload: () -> Void = {}
@@ -164,22 +162,17 @@ struct EpisodeDetailHeroView: View {
 
     @ViewBuilder
     private var downloadPill: some View {
-        switch episode.downloadState {
-        case .notDownloaded, .queued:
+        if case .downloaded = episode.downloadState {
+            Label("Downloaded", systemImage: "checkmark.circle.fill")
+                .font(.system(.subheadline, design: .rounded).weight(.medium))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+                .glassSurface(cornerRadius: AppTheme.Corner.pill, interactive: false)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Downloaded")
+        } else if let downloadProgress {
             Button(action: onToggleDownload) {
-                Label("Download", systemImage: "arrow.down.circle")
-                    .font(.system(.subheadline, design: .rounded).weight(.medium))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 9)
-                    .glassSurface(cornerRadius: AppTheme.Corner.pill, interactive: true)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.primary)
-            .accessibilityHint("Download episode for offline listening")
-        case .downloading(let persistedProgress, _):
-            Button(action: onToggleDownload) {
-                let live = downloadProgress ?? persistedProgress
-                let pct = Int((live.clamped01 * 100).rounded())
+                let pct = Int((downloadProgress.clamped01 * 100).rounded())
                 Label("Downloading \(pct)%", systemImage: "arrow.down.circle.fill")
                     .font(.system(.subheadline, design: .rounded).weight(.medium))
                     .padding(.horizontal, 14)
@@ -188,17 +181,21 @@ struct EpisodeDetailHeroView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(.primary)
-            .accessibilityLabel("Downloading, \(Int(((downloadProgress ?? persistedProgress).clamped01 * 100).rounded())) percent")
+            .accessibilityLabel("Downloading, \(Int((downloadProgress.clamped01 * 100).rounded())) percent")
             .accessibilityHint("Cancels the download")
-        case .downloaded:
-            Label("Downloaded", systemImage: "checkmark.circle.fill")
-                .font(.system(.subheadline, design: .rounded).weight(.medium))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 9)
-                .glassSurface(cornerRadius: AppTheme.Corner.pill, interactive: false)
-                .foregroundStyle(.secondary)
-                .accessibilityLabel("Downloaded")
-        case .failed:
+        } else if downloadJobState == .pending || downloadJobState == .leased ||
+                    downloadJobState == .running || downloadJobState == .retryScheduled {
+            Button(action: onToggleDownload) {
+                Label("Queued", systemImage: "clock")
+                    .font(.system(.subheadline, design: .rounded).weight(.medium))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 9)
+                    .glassSurface(cornerRadius: AppTheme.Corner.pill, interactive: true)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .accessibilityHint("Cancels the download")
+        } else if downloadJobState == .blocked || downloadJobState == .failedPermanent {
             Button(action: onToggleDownload) {
                 Label("Retry", systemImage: "arrow.clockwise")
                     .font(.system(.subheadline, design: .rounded).weight(.medium))
@@ -210,6 +207,17 @@ struct EpisodeDetailHeroView: View {
             .foregroundStyle(AppTheme.Tint.error)
             .accessibilityLabel("Download failed")
             .accessibilityHint("Retries the download")
+        } else {
+            Button(action: onToggleDownload) {
+                Label("Download", systemImage: "arrow.down.circle")
+                    .font(.system(.subheadline, design: .rounded).weight(.medium))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 9)
+                    .glassSurface(cornerRadius: AppTheme.Corner.pill, interactive: true)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.primary)
+            .accessibilityHint("Download episode for offline listening")
         }
     }
 

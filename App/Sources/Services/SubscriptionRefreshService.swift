@@ -63,7 +63,7 @@ final class SubscriptionRefreshService {
             return
         }
         let result = try await client.fetch(podcast)
-        let pending = apply(
+        _ = apply(
             outcome: .success(
                 originalID: podcastID,
                 original: podcast,
@@ -71,25 +71,21 @@ final class SubscriptionRefreshService {
             ),
             store: store
         )
-        if let pending {
-            dispatchSideEffects(pending, store: store)
-        }
     }
 
     /// Refreshes every followed podcast (joined via `subscriptions`),
     /// bounded to `maxConcurrent` in-flight fetches. Errors are logged and
     /// swallowed per-podcast so one failing feed doesn't sink the whole sweep.
     ///
-    /// Side-effect ordering: episode upserts are applied as feeds resolve
-    /// (so the UI sees new rows without delay); auto-download evaluation and
-    /// new-episode notifications are dispatched immediately after.
+    /// Episode upserts are applied as feeds resolve so the UI sees new rows
+    /// without delay. Follow-on intent is recorded atomically with each
+    /// discovery batch and later admitted by WorkCoordinator.
     func refreshAll(store: AppStateStore, maxConcurrent: Int = 4) async {
         let podcasts = store.sortedFollowedPodcastsByRecency.filter { $0.feedURL != nil }
         guard !podcasts.isEmpty else { return }
         let bounded = max(1, maxConcurrent)
         let client = self.client
 
-        var pendingSideEffects: [PendingSideEffects] = []
         var index = 0
         while index < podcasts.count {
             let upper = min(index + bounded, podcasts.count)
@@ -117,17 +113,12 @@ final class SubscriptionRefreshService {
             }
 
             for outcome in outcomes {
-                if let pending = apply(outcome: outcome, store: store) {
-                    pendingSideEffects.append(pending)
-                }
+                _ = apply(outcome: outcome, store: store)
             }
 
             index = upper
         }
 
-        for pending in pendingSideEffects {
-            dispatchSideEffects(pending, store: store)
-        }
     }
 
     /// Starts the periodic refresh loop. Idempotent — the existing in-flight
@@ -161,7 +152,7 @@ final class SubscriptionRefreshService {
     private func apply(
         outcome: PodcastRefreshOutcome,
         store: AppStateStore
-    ) -> PendingSideEffects? {
+    ) -> [UUID] {
         switch outcome {
         case .success(_, let original, let result):
             switch result {
@@ -169,7 +160,7 @@ final class SubscriptionRefreshService {
                 var bumped = original
                 bumped.lastRefreshedAt = lastRefreshedAt
                 store.updatePodcast(bumped)
-                return nil
+                return []
             case .updated(let updatedPodcast, let episodes, _):
                 let priorGUIDs = Set(
                     store.episodes(forPodcast: updatedPodcast.id).map(\.guid)
@@ -178,49 +169,17 @@ final class SubscriptionRefreshService {
                 let newlyInsertedIDs = store.upsertEpisodes(
                     episodes,
                     forPodcast: updatedPodcast.id,
-                    evaluateAutoDownload: false
+                    evaluateAutoDownload: true,
+                    notificationDiscoveredAt: firstEverFetch ? nil : Date()
                 )
                 store.updatePodcast(updatedPodcast)
-                guard !newlyInsertedIDs.isEmpty else { return nil }
-                return PendingSideEffects(
-                    podcast: updatedPodcast,
-                    newEpisodeIDs: newlyInsertedIDs,
-                    suppressNotifications: firstEverFetch
-                )
+                return newlyInsertedIDs
             }
         case .failure(let originalID, let error):
             Self.logger.notice(
                 "refresh failed for \(originalID, privacy: .public): \(error.localizedDescription, privacy: .public)"
             )
-            return nil
-        }
-    }
-
-    /// Fires the auto-download evaluation and new-episode notifications for
-    /// the newly inserted episodes.
-    private func dispatchSideEffects(_ pending: PendingSideEffects, store: AppStateStore) {
-        let survivors: [UUID] = pending.newEpisodeIDs.filter { store.episode(id: $0) != nil }
-        guard !survivors.isEmpty else { return }
-
-        EpisodeDownloadService.shared.attach(appStore: store)
-        EpisodeDownloadService.shared.evaluateAutoDownload(
-            forPodcast: pending.podcast.id,
-            newEpisodeIDs: survivors
-        )
-        TranscriptIngestService.shared.evaluateAutoIngest(
-            newEpisodeIDs: survivors
-        )
-
-        guard !pending.suppressNotifications,
-              let subscription = store.subscription(podcastID: pending.podcast.id),
-              subscription.notificationsEnabled else { return }
-        let episodes = survivors
-            .compactMap { store.episode(id: $0) }
-            .sorted { $0.pubDate > $1.pubDate }
-        guard !episodes.isEmpty else { return }
-        let podcast = pending.podcast
-        Task {
-            await NotificationService.notifyNewEpisodes(episodes, podcast: podcast)
+            return []
         }
     }
 
@@ -276,17 +235,4 @@ final class SubscriptionRefreshService {
 private enum PodcastRefreshOutcome: Sendable {
     case success(originalID: UUID, original: Podcast, result: FeedClient.FeedFetchResult)
     case failure(originalID: UUID, error: Error)
-}
-
-// MARK: - Pending side effects
-
-/// Per-feed bundle of deferred side effects. Created during the upsert
-/// sweep and dispatched once the whole refresh round completes.
-private struct PendingSideEffects {
-    let podcast: Podcast
-    let newEpisodeIDs: [UUID]
-    /// Suppress new-episode banners on the very first fetch of a podcast,
-    /// mirroring the legacy `notifyIfNeeded` semantics (a fresh follow
-    /// shouldn't carpet-bomb the lock screen with back-catalog episodes).
-    let suppressNotifications: Bool
 }

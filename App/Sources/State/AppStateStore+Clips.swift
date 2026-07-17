@@ -16,7 +16,7 @@ extension AppStateStore {
     nonisolated private static let clipsLogger = Logger.app("AppStateStore+Clips")
 
     func addClip(_ clip: Clip) {
-        state.clips.append(clip)
+        mutateState { $0.clips.append(clip) }
     }
 
     /// Convenience: build + persist in one call. Used by `AutoSnipController`
@@ -65,12 +65,12 @@ extension AppStateStore {
         clip.endMs = endMs
         clip.transcriptText = transcriptText
         clip.speakerID = speakerID?.uuidString
-        state.clips[idx] = clip
+        mutateState { $0.clips[idx] = clip }
     }
 
     func deleteClip(id: UUID) {
         guard let idx = state.clips.firstIndex(where: { $0.id == id }) else { return }
-        state.clips.remove(at: idx)
+        mutateState { $0.clips.remove(at: idx) }
     }
 
     func clip(id: UUID) -> Clip? {

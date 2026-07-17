@@ -12,7 +12,8 @@ extension AgentChatSession {
         rawMessages = Array(rawMessages.prefix(rawMessageCountAtLastSendStart))
         messages = Array(messages.prefix(messageCountAtLastSendStart))
         lastFailedMessage = nil
-        sendingTask = Task { await send(msg, source: .typedChat) }
+        let source = lastFailedSource
+        sendingTask = Task { await send(msg, source: source) }
     }
 
     /// Regenerates the last assistant response by dropping it from the
@@ -81,6 +82,7 @@ extension AgentChatSession {
         rawMessageCountAtLastSendStart = rawMessages.count
         messageCountAtLastSendStart = messages.count
         lastFailedMessage = text
+        lastFailedSource = source
         phase = .sending
         persistCurrentConversation()
 
@@ -120,6 +122,7 @@ extension AgentChatSession {
         rawMessageCountAtLastSendStart = rawMessages.count
         messageCountAtLastSendStart = messages.count
         lastFailedMessage = trimmed
+        lastFailedSource = source
 
         rawMessages.append(["role": "user", "content": trimmed])
         messages.append(ChatMessage(role: .user, text: trimmed))

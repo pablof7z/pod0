@@ -59,38 +59,24 @@ struct DownloadProgressBadge: View {
     }
 
     private var render: Render? {
-        switch episode.downloadState {
-        case .notDownloaded:
-            return nil
-        case .queued:
-            return Render(
-                symbol: "clock",
-                label: nil,
-                foreground: AnyShapeStyle(.secondary),
-                accessibilityLabel: "Download queued"
-            )
-        case .downloading(let persisted, _):
-            let resolved = (liveProgress ?? persisted).clamped01
-            let pct = Int((resolved * 100).rounded())
+        if let liveProgress {
+            let pct = Int((liveProgress.clamped01 * 100).rounded())
             return Render(
                 symbol: "arrow.down.circle",
                 label: "\(pct)%",
                 foreground: AnyShapeStyle(.primary),
                 accessibilityLabel: "Downloading, \(pct) percent"
             )
+        }
+        switch episode.downloadState {
+        case .notDownloaded:
+            return nil
         case .downloaded:
             return Render(
                 symbol: "checkmark.circle.fill",
                 label: nil,
                 foreground: AnyShapeStyle(.secondary),
                 accessibilityLabel: "Downloaded"
-            )
-        case .failed:
-            return Render(
-                symbol: "exclamationmark.triangle.fill",
-                label: nil,
-                foreground: AnyShapeStyle(AppTheme.Tint.error),
-                accessibilityLabel: "Download failed"
             )
         }
     }

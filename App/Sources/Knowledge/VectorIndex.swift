@@ -94,9 +94,9 @@ actor VectorIndex: VectorStore {
     static let embeddingDimensions = 1024
 
     private static let logger = Logger.app("VectorIndex")
-    private let db: Database
-    private let dimensions: Int
-    private let embedder: EmbeddingsClient
+    let db: Database
+    let dimensions: Int
+    let embedder: EmbeddingsClient
     private var schemaReady: Bool = false
 
     /// Open (or create) the on-disk store. Defaults to
@@ -169,7 +169,13 @@ actor VectorIndex: VectorStore {
         _ = try await db.execute("BEGIN TRANSACTION")
         do {
             for (chunk, vec) in zip(chunks, vectors) {
-                try await upsertOne(chunk: chunk, vector: vec)
+                try await upsertOne(
+                    chunk: chunk,
+                    vector: vec,
+                    generation: "legacy",
+                    artifactKind: "legacy",
+                    selected: true
+                )
             }
             _ = try await db.execute("COMMIT TRANSACTION")
         } catch {
@@ -178,7 +184,13 @@ actor VectorIndex: VectorStore {
         }
     }
 
-    private func upsertOne(chunk: Chunk, vector: [Float]) async throws {
+    func upsertOne(
+        chunk: Chunk,
+        vector: [Float],
+        generation: String,
+        artifactKind: String,
+        selected: Bool
+    ) async throws {
         let cid = chunk.id.uuidString
         _ = try await db.execute(
             "DELETE FROM chunks_meta WHERE chunk_id = ?", params: [cid])
@@ -190,8 +202,8 @@ actor VectorIndex: VectorStore {
             """
             INSERT INTO chunks_meta(
                 chunk_id, episode_id, podcast_id, speaker_id,
-                start_ms, end_ms, text
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                start_ms, end_ms, text, generation, artifact_kind, selected
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             params: [
                 cid,
@@ -201,6 +213,9 @@ actor VectorIndex: VectorStore {
                 chunk.startMS,
                 chunk.endMS,
                 chunk.text,
+                generation,
+                artifactKind,
+                selected ? 1 : 0,
             ]
         )
         _ = try await db.execute(
@@ -272,7 +287,7 @@ actor VectorIndex: VectorStore {
         // Ask vec0 for an over-fetch and filter post hoc by scope. vec0
         // doesn't support `WHERE` predicates against unindexed metadata, so
         // we widen the candidate window and intersect with chunks_meta.
-        let overfetch = max(k * 4, k + 16)
+        let overfetch = try await candidateLimit(for: k)
         let vecRows = try await db.query(
             """
             SELECT chunk_id, distance
@@ -313,7 +328,7 @@ actor VectorIndex: VectorStore {
             throw VectorStoreError.dimensionMismatch(expected: dimensions, got: queryVector.count)
         }
 
-        let overfetch = max(k * 4, k + 16)
+        let overfetch = try await candidateLimit(for: k)
 
         // Vector candidates.
         let vecRows = try await db.query(
@@ -363,8 +378,15 @@ actor VectorIndex: VectorStore {
 
     // MARK: Schema
 
-    private func ensureSchema() async throws {
+    func ensureSchema() async throws {
         if schemaReady { return }
+        let columns = try await db.query("PRAGMA table_info(chunks_meta)")
+        if !columns.isEmpty,
+           !columns.contains(where: { ($0["name"] as? String) == "artifact_kind" }) {
+            _ = try await db.execute("DROP TABLE IF EXISTS chunks_meta")
+            _ = try await db.execute("DROP TABLE IF EXISTS chunks_vec")
+            _ = try await db.execute("DROP TABLE IF EXISTS chunks_fts")
+        }
         // chunks_meta: ordinary table — needed because vec0 / fts5 are
         // virtual tables and their rowids don't compose with WHERE on
         // arbitrary columns.
@@ -377,7 +399,10 @@ actor VectorIndex: VectorStore {
                 speaker_id TEXT,
                 start_ms   INTEGER NOT NULL,
                 end_ms     INTEGER NOT NULL,
-                text       TEXT NOT NULL
+                text       TEXT NOT NULL,
+                generation TEXT NOT NULL,
+                artifact_kind TEXT NOT NULL,
+                selected INTEGER NOT NULL
             )
             """
         )
@@ -418,7 +443,7 @@ actor VectorIndex: VectorStore {
         let placeholders = Array(repeating: "?", count: cids.count).joined(separator: ",")
         var params: [any Sendable] = cids
         var sql =
-            "SELECT chunk_id, episode_id, podcast_id, speaker_id, start_ms, end_ms, text FROM chunks_meta WHERE chunk_id IN (\(placeholders))"
+            "SELECT chunk_id, episode_id, podcast_id, speaker_id, start_ms, end_ms, text FROM chunks_meta WHERE selected=1 AND chunk_id IN (\(placeholders))"
         if let scope {
             switch scope {
             case .all:
@@ -463,33 +488,10 @@ actor VectorIndex: VectorStore {
         return out
     }
 
-    // MARK: RRF + highlight helpers (static, pure)
-
-    static func rrf(vecRanks: [String], ftsRanks: [String], k: Double = 60) -> [(cid: String, score: Float)] {
-        var scores: [String: Double] = [:]
-        for (i, cid) in vecRanks.enumerated() {
-            scores[cid, default: 0] += 1.0 / (k + Double(i + 1))
-        }
-        for (i, cid) in ftsRanks.enumerated() {
-            scores[cid, default: 0] += 1.0 / (k + Double(i + 1))
-        }
-        return scores
-            .sorted { $0.value > $1.value }
-            .map { (cid: $0.key, score: Float($0.value)) }
-    }
-
-    /// Strip characters FTS5 treats as syntax so user text can be passed
-    /// verbatim. Keeps alphanumerics + whitespace; everything else becomes
-    /// a space. Empty-after-strip → no FTS query.
-    static func sanitizeFTSQuery(_ raw: String) -> String {
-        let cleaned = raw.unicodeScalars.map { scalar -> Character in
-            if CharacterSet.alphanumerics.contains(scalar) || scalar == " " {
-                return Character(scalar)
-            }
-            return " "
-        }
-        let s = String(cleaned).trimmingCharacters(in: .whitespacesAndNewlines)
-        return s
+    private func candidateLimit(for requested: Int) async throws -> Int {
+        let rows = try await db.query("SELECT COUNT(*) AS count FROM chunks_meta WHERE selected=0")
+        let unselected = (rows.first?["count"] as? Int) ?? 0
+        return max(requested * 4, requested + 16) + unselected
     }
 
 }

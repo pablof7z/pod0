@@ -22,7 +22,7 @@ extension AppStateStore {
     // MARK: - Recording
 
     func recordAgentActivity(_ entry: AgentActivityEntry) {
-        state.agentActivity.append(entry)
+        mutateState { $0.agentActivity.append(entry) }
         trimActivityLogIfNeeded()
     }
 
@@ -67,7 +67,7 @@ extension AppStateStore {
         log = log.enumerated()
             .filter { !removeSet.contains($0.offset) }
             .map(\.element)
-        state.agentActivity = log
+        mutateState { $0.agentActivity = log }
     }
 
     /// Prunes activity entries older than `activityMaxAgeSecs`.
@@ -79,7 +79,7 @@ extension AppStateStore {
         let cutoff = Date().addingTimeInterval(-Self.activityMaxAgeSecs)
         let trimmed = state.agentActivity.filter { $0.timestamp >= cutoff }
         guard trimmed.count != state.agentActivity.count else { return }
-        state.agentActivity = trimmed
+        mutateState { $0.agentActivity = trimmed }
     }
 
     func agentActivity(forBatch batchID: UUID) -> [AgentActivityEntry] {
@@ -114,7 +114,7 @@ extension AppStateStore {
         case .memoryRecorded(let memoryID):
             deleteAgentMemory(memoryID)
         }
-        state.agentActivity[idx].undone = true
+        mutateState { $0.agentActivity[idx].undone = true }
     }
 
     func undoAgentActivityBatch(_ batchID: UUID) {

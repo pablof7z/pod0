@@ -21,6 +21,6 @@ extension AppStateStore {
         guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
         var episodes = state.episodes
         episodes[idx].adSegments = segments
-        state.episodes = episodes
+        mutateState { $0.episodes = episodes }
     }
 }

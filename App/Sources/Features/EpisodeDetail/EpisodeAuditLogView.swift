@@ -130,11 +130,10 @@ struct EpisodeAuditLogView: View {
 
     // MARK: - Retry actions
 
-    /// Kicks a fresh transcription. `forceProvider == nil` mirrors the legacy
+    /// Kicks a fresh transcription. `forceProvider == nil` mirrors the default
     /// "Retry transcription" button (publisher → settings-configured STT);
     /// `forceProvider != nil` skips the publisher path and runs the chosen
-    /// provider directly. State is reset to `.none` first so the user sees the
-    /// failure marker clear and the new attempt's events stream in cleanly.
+    /// provider directly. The durable workflow attempt owns its lifecycle.
     private func retryTranscription(forceProvider: STTProvider?) {
         let providerLabel = forceProvider?.displayName ?? "settings-configured provider"
         EpisodeAuditLogStore.shared.record(
@@ -144,14 +143,9 @@ struct EpisodeAuditLogView: View {
             summary: "User tapped retry from Diagnostics (\(providerLabel))",
             details: [.init("Provider", providerLabel)]
         )
-        store.setEpisodeTranscriptState(episode.id, state: .none)
         let episodeID = episode.id
-        Task {
-            await TranscriptIngestService.shared.ingest(
-                episodeID: episodeID,
-                forceProvider: forceProvider
-            )
-        }
+        store.setRequestedTranscriptProvider(episodeID, provider: forceProvider)
+        WorkflowRuntime.shared.requestTranscript(episodeID: episodeID, provider: forceProvider)
     }
 
     /// Providers we can actually run on this device right now. Apple needs the
@@ -254,36 +248,48 @@ struct EpisodeAuditLogView: View {
 
     private var downloadStateSummary: String {
         switch episode.downloadState {
-        case .notDownloaded: return "not downloaded"
-        case .queued: return "queued"
-        case .downloading(let p, _): return "downloading (\(Int(p * 100))%)"
         case .downloaded(_, let bytes): return EpisodeDownloadService.formatBytes(bytes)
-        case .failed(let m): return "failed — \(m)"
+        case .notDownloaded:
+            return jobSummary(downloadJob) ?? "not downloaded"
         }
     }
 
     private var transcriptStateSummary: String {
         switch episode.transcriptState {
-        case .none: return "none"
-        case .queued: return "queued"
-        case .fetchingPublisher: return "fetching publisher"
-        case .transcribing(let p): return "transcribing (\(Int(p * 100))%)"
         case .ready(let source): return "ready (\(String(describing: source)))"
-        case .failed(let m): return "failed — \(m)"
+        case .none:
+            return jobSummary(transcriptJob) ?? "none"
         }
     }
 
-    private var downloadInFlight: Bool {
-        if case .downloading = episode.downloadState { return true }
-        return false
+    private var downloadJob: WorkJob? {
+        WorkflowRuntime.shared.latestJob(kind: .download, subjectID: episode.id)
+    }
+
+    private var transcriptJob: WorkJob? {
+        WorkflowRuntime.shared.latestJob(kind: .transcriptIngest, subjectID: episode.id)
+    }
+
+    private func jobSummary(_ job: WorkJob?) -> String? {
+        guard let job else { return nil }
+        switch job.state {
+        case .pending, .leased: return "queued"
+        case .running: return "running (attempt \(job.attempt))"
+        case .retryScheduled: return "retry scheduled"
+        case .blocked: return "blocked — \(job.lastErrorMessage ?? "dependency unavailable")"
+        case .failedPermanent: return "failed — \(job.lastErrorMessage ?? "unknown error")"
+        case .cancelled: return "cancelled"
+        case .obsolete: return "obsolete"
+        case .succeeded: return "succeeded"
+        }
     }
 
     private var downloadButtonLabel: String {
-        switch episode.downloadState {
-        case .downloaded: return "Already downloaded"
-        case .downloading: return "Downloading…"
-        case .failed: return "Retry download"
-        case .notDownloaded, .queued: return "Start download"
+        if case .downloaded = episode.downloadState { return "Already downloaded" }
+        switch downloadJob?.state {
+        case .pending, .leased, .running, .retryScheduled: return "Download in progress"
+        case .blocked, .failedPermanent: return "Retry download"
+        default: return "Start download"
         }
     }
 
@@ -291,9 +297,10 @@ struct EpisodeAuditLogView: View {
     /// flight — `EpisodeDownloadService.download` early-returns in both
     /// cases, so leaving the button enabled would be a silent no-op.
     private var downloadButtonDisabled: Bool {
-        switch episode.downloadState {
-        case .downloaded, .downloading: return true
-        case .notDownloaded, .queued, .failed: return false
+        if case .downloaded = episode.downloadState { return true }
+        switch downloadJob?.state {
+        case .pending, .leased, .running, .retryScheduled: return true
+        default: return false
         }
     }
 }

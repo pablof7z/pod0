@@ -195,12 +195,9 @@ struct EpisodeRow: View {
 
     @ViewBuilder
     private var downloadProgressBar: some View {
-        if case .downloading(let persisted, _) = episode.downloadState {
-            let p = (downloadService.progress[episode.id] ?? persisted).clamped01
+        if let live = downloadService.progress[episode.id] {
+            let p = live.clamped01
             thinProgressBar(progress: p, color: Color.primary)
-        } else if case .downloaded = episode.downloadState,
-                  case .transcribing(let p) = episode.transcriptState {
-            thinProgressBar(progress: p.clamped01, color: Color.accentColor)
         }
     }
 
@@ -238,28 +235,17 @@ struct EpisodeRow: View {
             parts.append("unplayed")
         }
         switch episode.downloadState {
-        case .downloading(let persisted, _):
-            let pct = Int(((downloadService.progress[episode.id] ?? persisted).clamped01 * 100).rounded())
-            parts.append("downloading \(pct) percent")
         case .downloaded:
             switch episode.transcriptState {
-            case .transcribing(let p):
-                parts.append("transcribing \(Int((p.clamped01 * 100).rounded())) percent")
-            case .queued, .fetchingPublisher:
-                parts.append("transcript queued")
             case .ready:
                 parts.append("transcript available")
-            case .failed:
-                parts.append("transcript failed")
             case .none:
                 parts.append("downloaded")
             }
-        case .failed:
-            parts.append("download failed")
-        case .queued:
-            parts.append("download queued")
         case .notDownloaded:
-            break
+            if let progress = downloadService.progress[episode.id] {
+                parts.append("downloading \(Int((progress.clamped01 * 100).rounded())) percent")
+            }
         }
         return parts.joined(separator: ", ")
     }

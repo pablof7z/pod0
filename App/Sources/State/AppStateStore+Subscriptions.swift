@@ -34,7 +34,7 @@ extension AppStateStore {
     func addSubscription(podcastID: UUID) -> Bool {
         guard state.podcasts.contains(where: { $0.id == podcastID }) else { return false }
         guard !state.subscriptions.contains(where: { $0.podcastID == podcastID }) else { return false }
-        state.subscriptions.append(PodcastSubscription(podcastID: podcastID))
+        mutateState { $0.subscriptions.append(PodcastSubscription(podcastID: podcastID)) }
         return true
     }
 
@@ -44,7 +44,7 @@ extension AppStateStore {
     func addSubscription(_ subscription: PodcastSubscription) -> Bool {
         guard state.podcasts.contains(where: { $0.id == subscription.podcastID }) else { return false }
         guard !state.subscriptions.contains(where: { $0.podcastID == subscription.podcastID }) else { return false }
-        state.subscriptions.append(subscription)
+        mutateState { $0.subscriptions.append(subscription) }
         return true
     }
 
@@ -125,7 +125,7 @@ extension AppStateStore {
         }
 
         performMutationBatch {
-            state = next
+            mutateState { $0 = next }
         }
 
         return SubscriptionImportResult(imported: imported, skipped: skipped)
@@ -141,7 +141,7 @@ extension AppStateStore {
         next.podcasts.removeAll { $0.id == podcastID }
         next.episodes.removeAll { $0.podcastID == podcastID }
         performMutationBatch {
-            state = next
+            mutateState { $0 = next }
             invalidateEpisodeProjections()
         }
     }
@@ -149,13 +149,13 @@ extension AppStateStore {
     /// Toggles new-episode notifications for a subscribed podcast.
     func setSubscriptionNotificationsEnabled(_ podcastID: UUID, enabled: Bool) {
         guard let idx = state.subscriptions.firstIndex(where: { $0.podcastID == podcastID }) else { return }
-        state.subscriptions[idx].notificationsEnabled = enabled
+        mutateState { $0.subscriptions[idx].notificationsEnabled = enabled }
     }
 
     /// Replaces the per-podcast auto-download policy.
     func setSubscriptionAutoDownload(_ podcastID: UUID, policy: AutoDownloadPolicy) {
         guard let idx = state.subscriptions.firstIndex(where: { $0.podcastID == podcastID }) else { return }
-        state.subscriptions[idx].autoDownload = policy
+        mutateState { $0.subscriptions[idx].autoDownload = policy }
     }
 
     static func feedURLKey(_ url: URL) -> String {

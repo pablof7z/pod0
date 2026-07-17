@@ -84,6 +84,7 @@ struct EpisodeDetailView: View {
             },
             activeChapterID: liveActiveChapterID(for: episode),
             downloadProgress: downloadService.progress[episode.id],
+            downloadJobState: downloadJob(for: episode.id)?.state,
             onToggleDownload: { toggleDownload(episode: episode) }
         )
         .navigationTitle(showName)
@@ -91,18 +92,7 @@ struct EpisodeDetailView: View {
         .toolbar { actionsToolbar(episode: episode) }
         .task(id: episode.id) {
             await warmTranscriptIfNeeded(episode: episode)
-            ChaptersHydrationService.shared.hydrateIfNeeded(
-                episode: episode,
-                store: store
-            )
-            // Compile chapters + summaries + ad segments in a single LLM call
-            // for episodes that finished ingesting before the auto-compile hook
-            // in `TranscriptIngestService.persistAndIndex` existed. Idempotent —
-            // early returns once `Episode.adSegments` is non-nil.
-            await AIChapterCompiler.shared.compileIfNeeded(
-                episodeID: episode.id,
-                store: store
-            )
+            WorkflowRuntime.shared.wake()
         }
     }
 
@@ -120,7 +110,7 @@ struct EpisodeDetailView: View {
         // a transcript even though no publisher transcript URL exists.
         let isUnknownExternal = episode.podcastID == Podcast.unknownID
         guard episode.publisherTranscriptURL != nil || isUnknownExternal else { return }
-        await TranscriptIngestService.shared.ingest(episodeID: episode.id)
+        WorkflowRuntime.shared.requestTranscript(episodeID: episode.id)
     }
 
     // MARK: - Missing
@@ -173,18 +163,19 @@ struct EpisodeDetailView: View {
     /// bytes move.
     private func toggleDownload(episode: Episode) {
         EpisodeDownloadService.shared.attach(appStore: store)
-        switch episode.downloadState {
-        case .notDownloaded, .queued, .failed:
-            Haptics.success()
-            EpisodeDownloadService.shared.download(episodeID: episode.id)
-        case .downloading:
+        if case .downloaded = episode.downloadState { return }
+        switch downloadJob(for: episode.id)?.state {
+        case .pending, .leased, .running, .retryScheduled:
             Haptics.light()
             EpisodeDownloadService.shared.cancel(episodeID: episode.id)
-        case .downloaded:
-            // Inline pill is non-interactive in the downloaded state; the
-            // ellipsis menu handles delete confirmation.
-            break
+        default:
+            Haptics.success()
+            EpisodeDownloadService.shared.download(episodeID: episode.id)
         }
+    }
+
+    private func downloadJob(for episodeID: UUID) -> WorkJob? {
+        WorkflowRuntime.shared.latestJob(kind: .download, subjectID: episodeID)
     }
 
     @ToolbarContentBuilder
@@ -192,7 +183,7 @@ struct EpisodeDetailView: View {
         // Inline progress indicator — only present while a download is in
         // flight. Reads `EpisodeDownloadService.progress` directly so it
         // updates at the throttled service cadence (5% / 200ms).
-        if case .downloading = episode.downloadState {
+        if downloadService.progress[episode.id] != nil {
             ToolbarItem(placement: .topBarTrailing) {
                 let live = downloadService.progress[episode.id] ?? 0
                 ProgressView(value: live)
@@ -235,9 +226,11 @@ struct EpisodeDetailView: View {
             .init(startTime: 4810, title: "Practical protocols")
         ]
     )
-    store.state.podcasts = [podcast]
-    store.state.subscriptions = [PodcastSubscription(podcastID: subID)]
-    store.state.episodes = [episode]
+    store.mutateState {
+        $0.podcasts = [podcast]
+        $0.subscriptions = [PodcastSubscription(podcastID: subID)]
+        $0.episodes = [episode]
+    }
     return NavigationStack {
         EpisodeDetailView(episodeID: episode.id)
     }

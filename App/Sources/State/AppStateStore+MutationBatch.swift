@@ -56,7 +56,9 @@ extension AppStateStore {
 
     private func runStateSideEffects() {
         let snapshot = state
-        persistence.save(snapshot)
+        let jobs = pendingAtomicJobs
+        pendingAtomicJobs.removeAll()
+        persistence.save(snapshot, ensuring: jobs)
         scheduleWidgetReload()
         iCloudSettingsSync.shared.push(state.settings)
     }

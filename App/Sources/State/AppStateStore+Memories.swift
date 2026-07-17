@@ -7,23 +7,23 @@ extension AppStateStore {
     @discardableResult
     func addAgentMemory(content: String) -> AgentMemory {
         let memory = AgentMemory(content: content)
-        state.agentMemories.append(memory)
+        mutateState { $0.agentMemories.append(memory) }
         return memory
     }
 
     func updateAgentMemory(_ id: UUID, content: String) {
         guard let idx = state.agentMemories.firstIndex(where: { $0.id == id }) else { return }
-        state.agentMemories[idx].content = content
+        mutateState { $0.agentMemories[idx].content = content }
     }
 
     func deleteAgentMemory(_ id: UUID) {
         guard let idx = state.agentMemories.firstIndex(where: { $0.id == id }) else { return }
-        state.agentMemories[idx].deleted = true
+        mutateState { $0.agentMemories[idx].deleted = true }
     }
 
     func restoreAgentMemory(_ id: UUID) {
         guard let idx = state.agentMemories.firstIndex(where: { $0.id == id }) else { return }
-        state.agentMemories[idx].deleted = false
+        mutateState { $0.agentMemories[idx].deleted = false }
     }
 
     func clearAllAgentMemories() {
@@ -31,7 +31,7 @@ extension AppStateStore {
         for idx in updated.indices where !updated[idx].deleted {
             updated[idx].deleted = true
         }
-        state.agentMemories = updated
+        mutateState { $0.agentMemories = updated }
     }
 
     var activeMemories: [AgentMemory] {
@@ -43,6 +43,6 @@ extension AppStateStore {
     /// set has been emptied. The existing `state.didSet` persistence path
     /// handles save.
     func setCompiledMemory(_ compiled: CompiledAgentMemory?) {
-        state.compiledMemory = compiled
+        mutateState { $0.compiledMemory = compiled }
     }
 }

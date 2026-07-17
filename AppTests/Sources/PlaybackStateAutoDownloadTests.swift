@@ -22,20 +22,6 @@ final class PlaybackStateAutoDownloadTests: XCTestCase {
         XCTAssertEqual(calls, [episode.id])
     }
 
-    func testFailedEpisodeFiresDownloadOnNewLoad() {
-        // `.failed` is the user's only re-try path short of opening the
-        // diagnostics view — playback must re-enqueue it the same as
-        // `.notDownloaded`.
-        let state = PlaybackState()
-        var calls: [UUID] = []
-        state.onEnsureDownloadEnqueued = { calls.append($0) }
-
-        let episode = makeEpisode(downloadState: .failed(message: "previous error"))
-        state.setEpisode(episode)
-
-        XCTAssertEqual(calls, [episode.id])
-    }
-
     func testSameEpisodeReloadDoesNotFireSecondDownload() {
         // Play/Resume taps, deep-link replays, chapter-row taps all hit
         // `setEpisode` on every gesture. Re-firing the download trigger
@@ -61,33 +47,6 @@ final class PlaybackStateAutoDownloadTests: XCTestCase {
         let episode = makeEpisode(
             downloadState: .downloaded(localFileURL: local, byteCount: 4096)
         )
-        state.setEpisode(episode)
-
-        XCTAssertTrue(calls.isEmpty)
-    }
-
-    func testDownloadingEpisodeDoesNotFireDownload() {
-        let state = PlaybackState()
-        var calls: [UUID] = []
-        state.onEnsureDownloadEnqueued = { calls.append($0) }
-
-        let episode = makeEpisode(
-            downloadState: .downloading(progress: 0.42, bytesWritten: 1024)
-        )
-        state.setEpisode(episode)
-
-        XCTAssertTrue(calls.isEmpty)
-    }
-
-    func testQueuedEpisodeDoesNotFireDownload() {
-        // `.queued` means the auto-download policy already scheduled it
-        // for the next Wi-Fi window — re-enqueueing on playback would
-        // bypass the policy the user explicitly opted into.
-        let state = PlaybackState()
-        var calls: [UUID] = []
-        state.onEnsureDownloadEnqueued = { calls.append($0) }
-
-        let episode = makeEpisode(downloadState: .queued)
         state.setEpisode(episode)
 
         XCTAssertTrue(calls.isEmpty)

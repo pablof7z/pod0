@@ -182,22 +182,32 @@ struct DownloadsManagerView: View {
     }
 
     private func status(for episode: Episode) -> DownloadManagerStatus? {
-        switch episode.downloadState {
-        case .notDownloaded:
-            return nil
-        case .queued:
-            return .queued
-        case .downloading(let storedProgress, let bytesWritten):
+        if let progress = downloadService.progress[episode.id] {
             return .downloading(
-                progress: (downloadService.progress[episode.id] ?? storedProgress).clampedDownloadProgress,
-                bytesWritten: bytesWritten,
+                progress: progress.clampedDownloadProgress,
+                bytesWritten: nil,
                 expectedBytes: downloadService.expectedBytes[episode.id]
             )
+        }
+        switch episode.downloadState {
         case .downloaded(_, let byteCount):
             return .downloaded(byteCount: byteCount)
-        case .failed(let message):
-            return .failed(message: message)
+        case .notDownloaded:
+            guard let job = latestDownloadJob(for: episode.id) else { return nil }
+            switch job.state {
+            case .pending, .leased, .retryScheduled: return .queued
+            case .running:
+                return .downloading(progress: 0, bytesWritten: nil, expectedBytes: nil)
+            case .blocked, .failedPermanent:
+                return .failed(message: job.lastErrorMessage ?? "Download needs attention")
+            case .cancelled, .obsolete, .succeeded: return nil
+            }
         }
+    }
+
+    private func latestDownloadJob(for episodeID: UUID) -> WorkJob? {
+        guard let jobs = try? WorkflowRuntime.shared.jobStore?.allJobs() else { return nil }
+        return jobs.last { $0.kind == .download && $0.subjectID == episodeID }
     }
 
     // MARK: - Actions

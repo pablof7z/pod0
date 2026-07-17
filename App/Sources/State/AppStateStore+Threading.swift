@@ -52,11 +52,11 @@ extension AppStateStore {
             merged.contradictionCount = topic.contradictionCount
             merged.lastMentionedAt = topic.lastMentionedAt ?? merged.lastMentionedAt
             stored[idx] = merged
-            state.threadingTopics = stored
+            mutateState { $0.threadingTopics = stored }
             return merged
         }
         stored.append(topic)
-        state.threadingTopics = stored
+        mutateState { $0.threadingTopics = stored }
         return topic
     }
 
@@ -65,8 +65,10 @@ extension AppStateStore {
     /// the two state writes only trigger a single persistence pass.
     func removeThreadingTopic(id: UUID) {
         performMutationBatch {
-            state.threadingTopics.removeAll { $0.id == id }
-            state.threadingMentions.removeAll { $0.topicID == id }
+            mutateState {
+                $0.threadingTopics.removeAll { $0.id == id }
+                $0.threadingMentions.removeAll { $0.topicID == id }
+            }
         }
     }
 
@@ -96,7 +98,7 @@ extension AppStateStore {
         } else {
             stored.append(mention)
         }
-        state.threadingMentions = stored
+        mutateState { $0.threadingMentions = stored }
     }
 
     /// Bulk replace of every mention belonging to `topicID`. Used by the
@@ -106,6 +108,6 @@ extension AppStateStore {
         var stored = state.threadingMentions
         stored.removeAll { $0.topicID == topicID }
         stored.append(contentsOf: mentions)
-        state.threadingMentions = stored
+        mutateState { $0.threadingMentions = stored }
     }
 }

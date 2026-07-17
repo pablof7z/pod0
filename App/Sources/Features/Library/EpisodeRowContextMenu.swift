@@ -183,16 +183,7 @@ struct EpisodeRowContextMenu<Route: Hashable>: View {
 
     @ViewBuilder
     private var downloadButton: some View {
-        switch episode.downloadState {
-        case .notDownloaded, .queued:
-            Button {
-                Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
-            } label: {
-                Label("Download", systemImage: "arrow.down.circle")
-            }
-        case .downloading:
+        if EpisodeDownloadService.shared.progress[episode.id] != nil {
             Button {
                 Haptics.light()
                 EpisodeDownloadService.shared.attach(appStore: store)
@@ -200,7 +191,17 @@ struct EpisodeRowContextMenu<Route: Hashable>: View {
             } label: {
                 Label("Cancel download", systemImage: "xmark.circle")
             }
-        case .downloaded:
+        } else {
+            switch episode.downloadState {
+            case .notDownloaded:
+            Button {
+                Haptics.light()
+                EpisodeDownloadService.shared.attach(appStore: store)
+                EpisodeDownloadService.shared.download(episodeID: episode.id)
+            } label: {
+                Label("Download", systemImage: "arrow.down.circle")
+            }
+            case .downloaded:
             // Match the trailing-swipe behavior — remove immediately. The
             // detail view's `EpisodeDetailActionsMenu` keeps the confirmation
             // dialog because it's hosted on a real `Menu` parent. Inside
@@ -213,13 +214,6 @@ struct EpisodeRowContextMenu<Route: Hashable>: View {
             } label: {
                 Label("Remove download", systemImage: "trash")
             }
-        case .failed:
-            Button {
-                Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
-            } label: {
-                Label("Retry download", systemImage: "arrow.clockwise")
             }
         }
     }

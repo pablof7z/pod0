@@ -62,29 +62,14 @@ final class EpisodeDetailTranscriptTests: XCTestCase {
         XCTAssertNil(resolved)
     }
 
-    /// State-gate: anything other than `.ready` yields `nil` even if a
-    /// transcript happens to be on disk (e.g. an interrupted Scribe job that
-    /// reset state to `.failed`).
-    func testReadyTranscriptReturnsNilForNonReadyStates() throws {
-        let nonReady: [TranscriptState] = [
-            .none,
-            .queued,
-            .fetchingPublisher,
-            .transcribing(progress: 0.5),
-            .failed(message: "boom")
-        ]
-        for state in nonReady {
-            let episode = makeEpisode(state: state)
-            let saved = makeTranscript(episodeID: episode.id)
-            try store.save(saved)
+    /// Stable evidence gate: a file alone is not selected transcript evidence.
+    func testReadyTranscriptReturnsNilWhenTranscriptIsNotSelected() throws {
+        let episode = makeEpisode(state: .none)
+        try store.save(makeTranscript(episodeID: episode.id))
 
-            let resolved = EpisodeDetailView.readyTranscript(for: episode, store: store)
+        let resolved = EpisodeDetailView.readyTranscript(for: episode, store: store)
 
-            XCTAssertNil(
-                resolved,
-                "Expected nil for state \(state) — only .ready should resolve a transcript"
-            )
-        }
+        XCTAssertNil(resolved)
     }
 
     // MARK: - Helpers

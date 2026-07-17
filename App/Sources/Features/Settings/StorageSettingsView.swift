@@ -95,11 +95,17 @@ struct StorageSettingsView: View {
     }
 
     private var lifecycleSection: some View {
-        @Bindable var bindable = store
         return Section {
             Toggle(
                 "Delete after played",
-                isOn: $bindable.state.settings.autoDeleteDownloadsAfterPlayed
+                isOn: Binding(
+                    get: { store.state.settings.autoDeleteDownloadsAfterPlayed },
+                    set: { enabled in
+                        var settings = store.state.settings
+                        settings.autoDeleteDownloadsAfterPlayed = enabled
+                        store.updateSettings(settings)
+                    }
+                )
             )
         } header: {
             Text("Lifecycle")

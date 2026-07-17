@@ -18,6 +18,7 @@ enum NotificationService {
     /// `userNotificationCenter(_:didReceive:...)`) is non-isolated and
     /// it's a plain `String` constant — no actor crossing concern.
     nonisolated static let episodeIDUserInfoKey = "episodeID"
+    nonisolated static let occurrenceIDUserInfoKey = "occurrenceID"
 
     private enum Content {
         static let newEpisodeIDPrefix = "new-episode:"
@@ -28,6 +29,13 @@ enum NotificationService {
     /// (or a one-off `If-None-Match` cache miss) from blowing up the user's
     /// notification stack with hundreds of banners.
     static let maxNewEpisodeNotificationsPerRefresh = 3
+
+    nonisolated static func requestIdentifier(
+        episodeID: UUID,
+        occurrenceID: String?
+    ) -> String {
+        occurrenceID ?? "\(Content.newEpisodeIDPrefix)\(episodeID.uuidString)"
+    }
 
     // MARK: - Authorization
 
@@ -68,22 +76,29 @@ enum NotificationService {
     /// and to compute the actual delta — this function trusts both invariants.
     static func notifyNewEpisodes(
         _ newEpisodes: [Episode],
-        podcast: Podcast
-    ) async {
-        guard !newEpisodes.isEmpty else { return }
+        podcast: Podcast,
+        occurrenceID: String? = nil
+    ) async -> Bool {
+        guard !newEpisodes.isEmpty else { return true }
         let granted = await requestAuthorization()
-        guard granted else { return }
+        guard granted else { return false }
 
         let center = UNUserNotificationCenter.current()
         let capped = newEpisodes.prefix(maxNewEpisodeNotificationsPerRefresh)
 
         for episode in capped {
-            let id = "\(Content.newEpisodeIDPrefix)\(episode.id.uuidString)"
+            let id = requestIdentifier(
+                episodeID: episode.id,
+                occurrenceID: occurrenceID
+            )
             let content = UNMutableNotificationContent()
             content.title = podcast.title
             content.body = "New episode: \(episode.title)"
             content.sound = .default
-            content.userInfo = [Self.episodeIDUserInfoKey: episode.id.uuidString]
+            content.userInfo = [
+                Self.episodeIDUserInfoKey: episode.id.uuidString,
+                Self.occurrenceIDUserInfoKey: occurrenceID ?? id,
+            ]
             // Threading by podcast so iOS groups multiple new-episode banners
             // from the same show into one stack on the lock screen.
             content.threadIdentifier = "podcast:\(podcast.id.uuidString)"
@@ -95,7 +110,9 @@ enum NotificationService {
                 logger.error(
                     "notifyNewEpisode failed for \(episode.id.uuidString, privacy: .public): \(error, privacy: .public)"
                 )
+                return false
             }
         }
+        return true
     }
 }

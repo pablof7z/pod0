@@ -19,6 +19,7 @@ extension AgentChatSession {
             isUpgraded: isUpgraded,
             enabledSkills: enabledSkills,
             isScheduledTask: isScheduledTask,
+            occurrenceID: scheduledOccurrenceID,
             createdAt: existing?.createdAt ?? Date(),
             updatedAt: Date()
         )
@@ -57,6 +58,7 @@ extension AgentChatSession {
         enabledSkills = convo.enabledSkills
         phase = .idle
         lastFailedMessage = nil
+        lastFailedSource = .typedChat
         streamingContent = nil
         currentToolName = nil
         rawMessageCountAtLastSendStart = 0
@@ -87,6 +89,7 @@ extension AgentChatSession {
         enabledSkills = []
         phase = .idle
         lastFailedMessage = nil
+        lastFailedSource = .typedChat
         streamingContent = nil
         currentToolName = nil
         rawMessageCountAtLastSendStart = 0

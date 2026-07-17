@@ -121,16 +121,7 @@ struct PlayerView: View {
             episodeDetailTarget = uuid
         }
         .task(id: state.episode?.id) {
-            if let episode = state.episode {
-                ChaptersHydrationService.shared.hydrateIfNeeded(
-                    episode: episode,
-                    store: store
-                )
-                await AIChapterCompiler.shared.compileIfNeeded(
-                    episodeID: episode.id,
-                    store: store
-                )
-            }
+            if state.episode != nil { WorkflowRuntime.shared.wake() }
             AutoSnipController.shared.attach(playback: state, store: store)
         }
         .overlay(alignment: .top) {
@@ -337,14 +328,9 @@ struct PlayerView: View {
     private var downloadFraction: Double? {
         guard let id = state.episode?.id,
               let episode = store.episode(id: id) ?? state.episode else { return nil }
-        switch episode.downloadState {
-        case .downloading(let persisted, _):
-            return (downloadService.progress[id] ?? persisted).clamped01
-        case .downloaded:
-            return 1.0
-        default:
-            return nil
-        }
+        if let progress = downloadService.progress[id] { return progress.clamped01 }
+        if case .downloaded = episode.downloadState { return 1.0 }
+        return nil
     }
 
     // MARK: - Navigation

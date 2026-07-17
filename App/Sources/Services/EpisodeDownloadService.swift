@@ -6,9 +6,8 @@ import os.log
 
 /// Real implementation of the per-episode enclosure downloader.
 ///
-/// Lifecycle for a single episode:
-/// `.notDownloaded` → `.downloading(progress, bytes)` → `.downloaded(URL, size)`
-/// (or `.failed(message)` on error). Cancellation reverts to `.notDownloaded`.
+/// Durable job lifecycle lives in JobStore. Episode state only projects a
+/// verified selected file as `.downloaded`; progress remains in this service.
 ///
 /// Persistence philosophy:
 /// - **Coarse transitions** push to `AppStateStore` so a relaunch knows the
@@ -36,8 +35,8 @@ final class EpisodeDownloadService {
 
     // MARK: Configuration
 
-    /// Background URLSession identifier — used by both the live session and a
-    /// future `application(_:handleEventsForBackgroundURLSession:…)` hook.
+    /// Background URLSession identifier shared by the live session and the
+    /// AppDelegate background-event handoff.
     static let backgroundSessionIdentifier = "io.f7z.podcast.downloads"
 
     // MARK: Observable surface
@@ -57,12 +56,16 @@ final class EpisodeDownloadService {
     /// Maps the URLSession task identifier to the episode it's downloading.
     /// Lives on the main actor because the lookup happens on hop-back.
     var taskIDToEpisodeID: [Int: UUID] = [:]
+    var taskIDToJobID: [Int: UUID] = [:]
+    var taskIDToInputVersion: [Int: String] = [:]
     /// Inverse — used by `cancel(episodeID:)` to find the live task.
     var episodeIDToTask: [UUID: URLSessionDownloadTask] = [:]
     /// Last published progress value per episode — drives the 5% throttle.
     var lastPublishedProgress: [UUID: Double] = [:]
     /// Wall-clock of the last progress publish — drives the 200 ms throttle.
     var lastPublishedAt: [UUID: Date] = [:]
+    var downloadWaiters: [UUID: [UUID: CheckedContinuation<Result<URL, Error>, Never>]] = [:]
+    var terminalResults: [UUID: Result<URL, Error>] = [:]
 
     /// The store the service mutates. Wired from `RootView.onAppear` so the
     /// service stays a singleton without owning a strong reference at init time.
@@ -74,12 +77,7 @@ final class EpisodeDownloadService {
     private let pathQueue = DispatchQueue(label: "io.f7z.podcast.downloads.path")
     /// Wraps the cached Wi-Fi flag so we can mutate from a background queue
     /// (NWPathMonitor) without tangling with `@Observable`'s tracking.
-    private let pathState = PathState()
-
-    /// Snapshot of the most recent network path — `true` when Wi-Fi is the
-    /// preferred interface. Used by `evaluateAutoDownload` to honour
-    /// `AutoDownloadPolicy.wifiOnly`.
-    var isOnWiFi: Bool { pathState.isWiFi }
+    let pathState = PathState()
 
     // MARK: URLSession
 
@@ -106,10 +104,19 @@ final class EpisodeDownloadService {
         coordinator.bind(service: self)
         pathMonitor.pathUpdateHandler = { [pathState] path in
             let isWiFi = path.usesInterfaceType(.wifi)
-            pathState.set(isWiFi)
-            if isWiFi {
+            let status: DownloadNetworkStatus = if path.status != .satisfied {
+                .unavailable
+            } else if isWiFi {
+                .wifi
+            } else {
+                .other
+            }
+            pathState.set(status)
+            if path.status == .satisfied {
                 Task { @MainActor in
                     EpisodeDownloadService.shared.resumeQueuedDownloadsIfPossible()
+                    WorkflowRuntime.shared.dependencyChanged(for: .autoDownload)
+                    WorkflowRuntime.shared.dependencyChanged(for: .download)
                 }
             }
         }
@@ -149,19 +156,69 @@ final class EpisodeDownloadService {
 
     // MARK: - Public API
 
-    /// Starts (or resumes) a download for the episode with `episodeID`.
-    /// No-op when the episode is already downloading or downloaded.
+    /// Persists user download intent. Only WorkCoordinator may admit the
+    /// matching URLSession transfer.
     func download(episodeID: UUID) {
+        WorkflowRuntime.shared.requestDownload(episodeID: episodeID, origin: .user)
+    }
+
+    func startAdmittedDownload(
+        context: JobAttemptContext,
+        jobStore: JobStore
+    ) async throws -> String {
+        let episodeID = context.job.subjectID
+        guard let store = appStore,
+              let episode = store.episode(id: episodeID) else {
+            throw JobFailure(classification: .invalidInput, message: "Episode no longer exists")
+        }
+        if case .downloaded = episode.downloadState,
+           EpisodeDownloadStore.shared.exists(for: episode),
+           let data = try? Data(
+               contentsOf: EpisodeDownloadStore.shared.localFileURL(for: episode),
+               options: .mappedIfSafe
+           ) {
+            return ArtifactRepository.hash(data)
+        }
+        if let staged = EpisodeDownloadStore.shared.verifiedStagedOutput(
+            episodeID: episodeID,
+            jobID: context.job.id,
+            inputVersion: context.job.inputVersion
+        ) {
+            return staged.contentHash
+        }
+        if episodeIDToTask[episodeID] == nil {
+            terminalResults[episodeID] = nil
+            try startTransfer(
+                episodeID: episodeID,
+                durableJobID: context.job.id,
+                inputVersion: context.job.inputVersion,
+                leaseToken: context.leaseToken,
+                jobStore: jobStore
+            )
+        }
+        let result = await waitForDownload(episodeID: episodeID, waiterID: context.job.id)
+        switch result {
+        case .success(let url):
+            let data = try Data(contentsOf: url, options: .mappedIfSafe)
+            return ArtifactRepository.hash(data)
+        case .failure(let error as JobFailure):
+            throw error
+        case .failure(let error):
+            throw JobFailure(classification: .transient, message: error.localizedDescription)
+        }
+    }
+
+    private func startTransfer(
+        episodeID: UUID,
+        durableJobID: UUID,
+        inputVersion: String,
+        leaseToken: UUID,
+        jobStore: JobStore
+    ) throws {
         guard let store = appStore,
               let episode = store.episode(id: episodeID) else {
             logger.error("download(\(episodeID, privacy: .public)) — store/episode missing")
             return
-        }
-        switch episode.downloadState {
-        case .downloading, .downloaded:
-            return
-        default:
-            break
         }
         guard episodeIDToTask[episodeID] == nil else { return }
 
@@ -185,15 +242,28 @@ final class EpisodeDownloadService {
         )
         // taskDescription lets the coordinator recover the episode ID even
         // after the in-memory map is lost (e.g. background relaunch).
-        task.taskDescription = episodeID.uuidString
+        task.taskDescription = Self.taskDescription(
+            jobID: durableJobID,
+            episodeID: episodeID,
+            inputVersion: inputVersion
+        )
         episodeIDToTask[episodeID] = task
         taskIDToEpisodeID[task.taskIdentifier] = episodeID
+        taskIDToJobID[task.taskIdentifier] = durableJobID
+        taskIDToInputVersion[task.taskIdentifier] = inputVersion
         progress[episodeID] = 0
         expectedBytes[episodeID] = nil
         lastPublishedProgress[episodeID] = 0
         lastPublishedAt[episodeID] = Date()
 
-        store.setEpisodeDownloadState(episodeID, state: .downloading(progress: 0, bytesWritten: nil))
+        try jobStore.recordExternalOperation(
+            id: durableJobID,
+            leaseToken: leaseToken,
+            provider: "backgroundURLSession",
+            externalID: String(task.taskIdentifier),
+            state: "created"
+        )
+
         task.resume()
         EpisodeAuditLogStore.shared.record(
             episodeID: episodeID,
@@ -208,10 +278,97 @@ final class EpisodeDownloadService {
         logger.info("download started for \(episodeID, privacy: .public)")
     }
 
+    private func waitForDownload(episodeID: UUID, waiterID: UUID) async -> Result<URL, Error> {
+        if let terminal = terminalResults[episodeID] { return terminal }
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                if let terminal = terminalResults[episodeID] {
+                    continuation.resume(returning: terminal)
+                } else {
+                    downloadWaiters[episodeID, default: [:]][waiterID] = continuation
+                }
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.finishWaiter(
+                    episodeID: episodeID,
+                    waiterID: waiterID,
+                    result: .failure(JobFailure(
+                        classification: .cancelled,
+                        message: "Local download observation was cancelled."
+                    ))
+                )
+            }
+        }
+    }
+
+    func finishWaiter(
+        episodeID: UUID,
+        waiterID: UUID? = nil,
+        result: Result<URL, Error>
+    ) {
+        if let waiterID {
+            downloadWaiters[episodeID]?.removeValue(forKey: waiterID)?.resume(returning: result)
+            if downloadWaiters[episodeID]?.isEmpty == true { downloadWaiters[episodeID] = nil }
+            return
+        }
+        terminalResults[episodeID] = result
+        let waiters = downloadWaiters.removeValue(forKey: episodeID)
+        waiters?.values.forEach { $0.resume(returning: result) }
+    }
+
+    nonisolated static func taskDescription(
+        jobID: UUID,
+        episodeID: UUID,
+        inputVersion: String
+    ) -> String {
+        "job:\(jobID.uuidString):episode:\(episodeID.uuidString):input:\(inputVersion)"
+    }
+
+    nonisolated static func parseTaskDescription(
+        _ value: String?
+    ) -> (jobID: UUID, episodeID: UUID, inputVersion: String)? {
+        guard let parts = value?.split(separator: ":"), parts.count == 6,
+              parts[0] == "job", parts[2] == "episode", parts[4] == "input",
+              let jobID = UUID(uuidString: String(parts[1])),
+              let episodeID = UUID(uuidString: String(parts[3])) else { return nil }
+        return (jobID, episodeID, String(parts[5]))
+    }
+
+    func reconcileBackgroundTransfers(jobStore: JobStore) async {
+        let tasks = await session.allTasks.compactMap { $0 as? URLSessionDownloadTask }
+        let jobs = (try? jobStore.allJobs()) ?? []
+        let tasksByID = Dictionary(uniqueKeysWithValues: tasks.map { ($0.taskIdentifier, $0) })
+        let facts = tasks.map { task -> BackgroundDownloadTaskFact in
+            let identity = Self.parseTaskDescription(task.taskDescription)
+            return BackgroundDownloadTaskFact(
+                taskIdentifier: task.taskIdentifier,
+                jobID: identity?.jobID,
+                episodeID: identity?.episodeID
+            )
+        }
+        for action in DownloadReconciliationPlanner().plan(tasks: facts, jobs: jobs) {
+            switch action {
+            case .attach(let taskID, let jobID, let episodeID):
+                guard let task = tasksByID[taskID] else { continue }
+                episodeIDToTask[episodeID] = task
+                taskIDToEpisodeID[taskID] = episodeID
+                taskIDToJobID[taskID] = jobID
+                taskIDToInputVersion[taskID] = jobs.first { $0.id == jobID }?.inputVersion
+                try? jobStore.requeueInterrupted(id: jobID)
+            case .cancelOrphan(let taskID):
+                tasksByID[taskID]?.cancel()
+            case .requeueMissingTask(let jobID):
+                try? jobStore.requeueInterrupted(id: jobID)
+            }
+        }
+    }
+
     /// Cancels the in-flight download for `episodeID`. Persists resume data
     /// where the server supports it so a later `download(episodeID:)` can pick
     /// up from the byte we left off at.
     func cancel(episodeID: UUID) {
+        WorkflowRuntime.shared.cancelDownload(episodeID: episodeID)
         guard let task = episodeIDToTask[episodeID] else { return }
         let store = appStore
         task.cancel { [weak self] resumeData in
@@ -227,7 +384,19 @@ final class EpisodeDownloadService {
             }
         }
         episodeIDToTask[episodeID] = nil
+        let removedTaskIDs = taskIDToEpisodeID.compactMap { $0.value == episodeID ? $0.key : nil }
         taskIDToEpisodeID = taskIDToEpisodeID.filter { $0.value != episodeID }
+        for taskID in removedTaskIDs {
+            taskIDToJobID[taskID] = nil
+            taskIDToInputVersion[taskID] = nil
+        }
+        finishWaiter(
+            episodeID: episodeID,
+            result: .failure(JobFailure(
+                classification: .cancelled,
+                message: "Download cancelled by user."
+            ))
+        )
         EpisodeAuditLogStore.shared.record(
             episodeID: episodeID,
             kind: .downloadCancelled,
@@ -253,6 +422,7 @@ final class EpisodeDownloadService {
         }
         clearProgress(for: episodeID)
         store.setEpisodeDownloadState(episodeID, state: .notDownloaded)
+        WorkflowRuntime.shared.dependencyChanged(for: .download)
         EpisodeAuditLogStore.shared.record(
             episodeID: episodeID,
             kind: .downloadDeleted,
@@ -268,25 +438,5 @@ final class EpisodeDownloadService {
         expectedBytes[episodeID] = nil
         lastPublishedProgress[episodeID] = nil
         lastPublishedAt[episodeID] = nil
-    }
-}
-
-// MARK: - PathState
-
-/// Tiny lock-guarded box for the cached Wi-Fi flag. Kept outside `@Observable`
-/// because the `NWPathMonitor` callback runs on a background queue and must
-/// not touch main-actor state directly.
-final class PathState: @unchecked Sendable {
-    private let lock = NSLock()
-    private var _isWiFi: Bool = false
-
-    var isWiFi: Bool {
-        lock.lock(); defer { lock.unlock() }
-        return _isWiFi
-    }
-
-    func set(_ value: Bool) {
-        lock.lock(); defer { lock.unlock() }
-        _isWiFi = value
     }
 }

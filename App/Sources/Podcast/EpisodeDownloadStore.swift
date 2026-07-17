@@ -5,11 +5,9 @@ import os.log
 
 /// Helper that owns the on-disk layout for downloaded episode enclosures.
 ///
-/// Files live under `$applicationSupport/podcastr/downloads/<episodeID>.<ext>`.
-/// The path is deterministic in the episode `id` so a re-launched app can
-/// recompute it without trusting any URL we may have persisted in the
-/// `DownloadState.downloaded(localFileURL:)` payload — iOS may rotate the app
-/// container path, so absolute file URLs from a previous session are brittle.
+/// Selected files are immutable, content-addressed outputs. URLSession
+/// callbacks first write attempt manifests; only a fenced workflow commit
+/// selects a promoted file for playback.
 ///
 /// This type is intentionally tiny: pure path math + file existence checks +
 /// directory bootstrapping. The `EpisodeDownloadService` orchestrates the
@@ -66,7 +64,13 @@ final class EpisodeDownloadStore: @unchecked Sendable {
 
     /// Deterministic on-disk URL for `episode`. Does not check existence.
     func localFileURL(for episode: Episode) -> URL {
-        rootURL.appendingPathComponent("\(episode.id.uuidString).\(fileExtension(for: episode))")
+        if case .downloaded(let selected, _) = episode.downloadState,
+           FileManager.default.fileExists(atPath: selected.path) {
+            return selected
+        }
+        return rootURL.appendingPathComponent(
+            "\(episode.id.uuidString).\(fileExtension(for: episode))"
+        )
     }
 
     /// Resume-data sidecar for `episode`. Used by the service to persist
@@ -102,6 +106,14 @@ final class EpisodeDownloadStore: @unchecked Sendable {
         }
         if fm.fileExists(atPath: resumeURL.path) {
             try? fm.removeItem(at: resumeURL)
+        }
+        for directory in ["artifacts", "attempts"] {
+            let episodeDirectory = rootURL
+                .appendingPathComponent(directory, isDirectory: true)
+                .appendingPathComponent(episode.id.uuidString, isDirectory: true)
+            if fm.fileExists(atPath: episodeDirectory.path) {
+                try? fm.removeItem(at: episodeDirectory)
+            }
         }
     }
 
@@ -155,18 +167,23 @@ final class EpisodeDownloadStore: @unchecked Sendable {
     /// re-walking on every redraw.
     func enumerateOnDisk() -> [OnDiskFile] {
         let fm = FileManager.default
-        guard let entries = try? fm.contentsOfDirectory(
+        guard let enumerator = fm.enumerator(
             at: rootURL,
             includingPropertiesForKeys: [.fileSizeKey],
             options: [.skipsHiddenFiles]
-        ) else {
-            return []
-        }
-        return entries.compactMap { url -> OnDiskFile? in
+        ) else { return [] }
+        return enumerator.compactMap { entry -> OnDiskFile? in
+            guard let url = entry as? URL,
+                  (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+            else { return nil }
             let attrs = try? fm.attributesOfItem(atPath: url.path)
             let bytes = (attrs?[.size] as? NSNumber)?.int64Value ?? 0
+            let relative = url.pathComponents.dropFirst(rootURL.pathComponents.count)
+            let directoryEpisodeID = relative.count >= 2
+                ? UUID(uuidString: String(relative[relative.index(after: relative.startIndex)]))
+                : nil
             let stem = url.deletingPathExtension().lastPathComponent
-            let episodeID = UUID(uuidString: stem)
+            let episodeID = directoryEpisodeID ?? UUID(uuidString: stem)
             let isResume = url.pathExtension.lowercased() == "resume"
             return OnDiskFile(
                 url: url,
@@ -182,7 +199,7 @@ final class EpisodeDownloadStore: @unchecked Sendable {
     /// Infers a usable file extension from the enclosure URL or its MIME type.
     /// Defaults to `mp3` because the overwhelming majority of podcast feeds
     /// ship MP3 and the suffix matters mostly for `AVURLAsset`'s sniffing.
-    private func fileExtension(for episode: Episode) -> String {
+    func fileExtension(for episode: Episode) -> String {
         let pathExt = episode.enclosureURL.pathExtension.lowercased()
         if !pathExt.isEmpty, pathExt.count <= 5 {
             return pathExt

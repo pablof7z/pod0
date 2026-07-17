@@ -3,13 +3,7 @@ import os.log
 
 // MARK: - TranscriptIngestService
 //
-// Owns the end-to-end transcript ingestion pipeline:
-//   1. Pick a publisher transcript URL (or fall back to the selected STT provider).
-//   2. Fetch + parse via `PublisherTranscriptIngestor`.
-//   3. Slice into `Chunk`s via `ChunkBuilder`, supplying podcast/episode FKs.
-//   4. Embed + upsert via `RAGService.shared.index` (which calls the embedder).
-//   5. Persist the parsed `Transcript` JSON to disk for the EpisodeDetail view.
-//   6. Update `Episode.transcriptState` on the live `AppStateStore`.
+// Bounded transcript and semantic-index stages used only by WorkCoordinator.
 //
 // The service stays `@MainActor` because every input + output it touches
 // (state store, episode model, status flips) lives on the main actor; the
@@ -39,10 +33,6 @@ final class TranscriptIngestService {
     private let elevenLabsKey: @Sendable () -> String?
     private let openRouterKey: @Sendable () -> String?
     private let assemblyAIKey: @Sendable () -> String?
-
-    // MARK: In-flight tracking (dedup)
-
-    private var inFlight: Set<UUID> = []
 
     // MARK: Init
 
@@ -82,296 +72,206 @@ final class TranscriptIngestService {
     func resolvedOpenRouterKey() -> String? { openRouterKey() }
     func resolvedAssemblyAIKey() -> String? { assemblyAIKey() }
 
-    // MARK: Public API
+    // MARK: - Durable transcript stage
 
-    /// Ingest the transcript for one episode. Resolves the publisher URL +
-    /// type from `AppStateStore`, fetches, parses, chunks, embeds, upserts,
-    /// then persists the parsed transcript to disk and updates state.
-    /// Idempotent — repeat calls for the same episode no-op while a prior
-    /// call is in flight.
-    ///
-    /// - Parameter forceProvider: When non-nil, bypass the publisher fetch
-    ///   path and the `autoFallbackToScribe` gate, and use this provider
-    ///   instead of `settings.sttProvider` for AI transcription. Used by the
-    ///   Diagnostics "Retry with…" menu so the user can try an alternative
-    ///   provider for one call without flipping their global setting. `nil`
-    ///   preserves existing publisher-first behaviour.
-    func ingest(episodeID: UUID, forceProvider: STTProvider? = nil) async {
-        guard let appStore = rag.appStore else {
-            Self.logger.warning(
-                "ingest(\(episodeID, privacy: .public)): no AppStateStore attached — skipping"
-            )
-            return
+    /// Bounded durable executor entry point. Remote operation identity is
+    /// recorded under the active lease before polling, and an existing
+    /// AssemblyAI identity is resumed instead of resubmitted.
+    func executeJob(
+        context: JobAttemptContext,
+        payload: TranscriptJobPayload,
+        jobStore: JobStore
+    ) async throws -> String {
+        guard let appStore = rag.appStore,
+              let episode = appStore.episode(id: context.job.subjectID) else {
+            throw JobFailure(classification: .invalidInput, message: "Episode no longer exists")
         }
-        guard !inFlight.contains(episodeID) else {
-            Self.logger.debug(
-                "ingest(\(episodeID, privacy: .public)): already in flight — skipping"
-            )
-            return
-        }
-        guard let episode = appStore.episode(id: episodeID) else {
-            Self.logger.warning(
-                "ingest(\(episodeID, privacy: .public)): episode not found in store"
-            )
-            return
-        }
-        // Per-category opt-out: if the user has disabled transcription for
-        // the category this show belongs to, skip ingestion entirely.
-        // Defaults to allow when the show isn't yet categorised.
-        guard appStore.effectiveTranscriptionEnabled(forPodcast: episode.podcastID) else {
-            Self.logger.info(
-                "ingest(\(episodeID, privacy: .public)): transcription disabled for category — skipping"
-            )
-            return
-        }
-
-        inFlight.insert(episodeID)
-        defer { inFlight.remove(episodeID) }
-
-        // Force-provider path: the user picked a specific provider in
-        // Diagnostics. Skip the publisher fetch and the autoFallback gate
-        // and go straight to the chosen STT provider.
-        if let forced = forceProvider {
-            guard resolvedSTTKey(provider: forced) != nil else {
-                Self.logger.info(
-                    "forceProvider=\(forced.displayName, privacy: .public) but no key configured — leaving transcriptState=.none"
-                )
-                appStore.setEpisodeTranscriptState(episodeID, state: .none)
-                return
-            }
-            await runAITranscription(for: episode, provider: forced, appStore: appStore)
-            return
-        }
-
-        // Path A: publisher transcript URL.
-        //
-        // Two error stages here, kept distinct so the log reflects which
-        // step actually failed. The fetch+parse stage tells us whether
-        // the publisher URL was usable at all; the persist stage tells
-        // us whether on-disk storage worked. With the persistAndIndex
-        // refactor, embedding failures no longer throw — so a thrown
-        // error from `persistAndIndex` is a real disk problem, not a
-        // missing-key one, and falling through to Scribe wouldn't help.
-        if let url = episode.publisherTranscriptURL {
-            appStore.setEpisodeTranscriptState(episodeID, state: .fetchingPublisher)
-            let fetched: Transcript?
+        if Self.shouldAttemptPublisher(
+            userInitiated: payload.userInitiated,
+            externalProvider: context.job.externalProvider,
+            externalOperationID: context.job.externalOperationID
+        ), let url = episode.publisherTranscriptURL {
             do {
-                fetched = try await ingestor.ingest(
+                try jobStore.recordExternalOperation(
+                    id: context.job.id,
+                    leaseToken: context.leaseToken,
+                    provider: "publisherTranscript",
+                    externalID: context.job.inputVersion,
+                    state: "fetching"
+                )
+                let transcript = try await ingestor.ingest(
                     url: url,
                     mimeHint: episode.publisherTranscriptType?.rawValue,
-                    episodeID: episodeID,
+                    episodeID: episode.id,
                     language: "en-US"
                 )
-            } catch {
-                Self.logger.notice(
-                    "publisher transcript fetch failed for \(episodeID, privacy: .public): \(String(describing: error), privacy: .public) — trying Scribe fallback"
+                return try persistJobTranscript(
+                    transcript, context: context
                 )
-                // Reset state so the Scribe path can take over cleanly.
-                appStore.setEpisodeTranscriptState(episodeID, state: .none)
-                fetched = nil
+            } catch is CancellationError {
+                throw JobFailure(classification: .cancelled, message: "Publisher fetch cancelled")
+            } catch {
+                Self.logger.notice("Publisher transcript unavailable; falling back: \(error, privacy: .public)")
             }
-            if let transcript = fetched {
-                do {
-                    try await persistAndIndex(
-                        transcript: transcript,
-                        episode: episode,
-                        source: .publisher,
-                        appStore: appStore
-                    )
-                    return
-                } catch {
-                    Self.logger.error(
-                        "publisher transcript persist failed for \(episodeID, privacy: .public): \(String(describing: error), privacy: .public) — disk error, not falling through to Scribe"
-                    )
-                    appStore.setEpisodeTranscriptState(
-                        episodeID,
-                        state: .failed(message: error.localizedDescription)
-                    )
-                    return
-                }
-            }
-            // fetched == nil: fetch threw above; let the Scribe path below run.
         }
 
-        // Path B: AI transcription fallback (ElevenLabs Scribe or OpenRouter Whisper).
-        guard appStore.state.settings.autoFallbackToScribe else {
-            Self.logger.info(
-                "publisher transcript missing for \(episodeID, privacy: .public) and AI transcription disabled in settings — leaving transcriptState=.none"
-            )
-            appStore.setEpisodeTranscriptState(episodeID, state: .none)
-            return
-        }
-        let provider = appStore.state.settings.sttProvider
-        guard resolvedSTTKey(provider: provider) != nil else {
-            Self.logger.info(
-                "no publisher transcript and no \(provider.displayName, privacy: .public) key for \(episodeID, privacy: .public) — leaving transcriptState=.none"
-            )
-            appStore.setEpisodeTranscriptState(episodeID, state: .none)
-            return
-        }
-        await runAITranscription(for: episode, provider: provider, appStore: appStore)
-    }
-
-    // MARK: - Private pipeline
-
-    private func runAITranscription(for episode: Episode, provider: STTProvider, appStore: AppStateStore) async {
-        // Apple on-device STT requires a local file. Skip silently rather than
-        // setting `.failed` — the post-download hook in
-        // `EpisodeDownloadService.handleFinished` re-enters `ingest()` once
-        // the file lands, at which point this guard passes and the AI run
-        // proceeds. Setting `.failed` here at feed-refresh time would mark
-        // every Apple-Native-bound episode as failed before the user has
-        // done anything, which is misleading.
+        let provider = payload.provider
         if provider == .appleNative && !EpisodeDownloadStore.shared.exists(for: episode) {
-            return
+            throw JobFailure(
+                classification: .missingDependency,
+                message: "On-device transcription is waiting for downloaded audio."
+            )
         }
-        appStore.setEpisodeTranscriptState(episode.id, state: .transcribing(progress: 0))
-        // Prefer the on-disk download when present. ElevenLabs Scribe can also
-        // use a `source_url` for remote audio; OpenRouter Whisper only accepts
-        // file uploads so the client downloads the audio to a temp file when
-        // a remote URL is supplied.
-        let audioURL: URL
-        if EpisodeDownloadStore.shared.exists(for: episode) {
-            audioURL = EpisodeDownloadStore.shared.localFileURL(for: episode)
-        } else {
-            audioURL = episode.enclosureURL
-        }
-        // AssemblyAI is URL-based and fetches the audio server-side. Even when
-        // we have the file on disk, we override `audioURL` to the publisher
-        // enclosure so we don't try to base64-encode a 90+ MB local file
-        // through the gateway (the client rejects file:// URLs anyway).
-        let effectiveAudioURL: URL = (provider == .assemblyAI) ? episode.enclosureURL : audioURL
+        let localOrRemote = EpisodeDownloadStore.shared.exists(for: episode)
+            ? EpisodeDownloadStore.shared.localFileURL(for: episode)
+            : episode.enclosureURL
+        let audioURL = provider == .assemblyAI ? episode.enclosureURL : localOrRemote
+        let transcript: Transcript
         do {
-            let transcript: Transcript
             switch provider {
-            case .elevenLabsScribe:
-                let job = try await scribe.submit(audioURL: effectiveAudioURL, episodeID: episode.id)
-                transcript = try await scribe.pollResult(job)
             case .assemblyAI:
-                let raw = appStore.state.settings.assemblyAISTTModel
-                let models = raw
+                let models = payload.modelID
                     .split(separator: ",")
                     .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                     .filter { !$0.isEmpty }
-                let job = try await assemblyAI.submit(
-                    audioURL: effectiveAudioURL,
-                    episodeID: episode.id,
-                    speechModels: models.isEmpty ? ["universal-3-pro", "universal-2"] : models,
-                    speakerLabels: true,
-                    languageDetection: true
-                )
-                transcript = try await assemblyAI.pollResult(job)
+                let selectedModels = models.isEmpty ? ["universal-3-pro", "universal-2"] : models
+                let remoteJob: AssemblyAIJob
+                if context.job.externalProvider == "assemblyAI",
+                   let externalID = context.job.externalOperationID {
+                    remoteJob = AssemblyAIJob(
+                        transcriptID: externalID,
+                        episodeID: episode.id,
+                        createdAt: context.job.updatedAt,
+                        languageHint: nil,
+                        speechModels: selectedModels
+                    )
+                } else {
+                    try jobStore.recordExternalSubmissionIntent(
+                        id: context.job.id,
+                        leaseToken: context.leaseToken,
+                        provider: "assemblyAI"
+                    )
+                    remoteJob = try await assemblyAI.submit(
+                        audioURL: audioURL,
+                        episodeID: episode.id,
+                        speechModels: selectedModels,
+                        speakerLabels: true,
+                        languageDetection: true
+                    )
+                    try jobStore.recordExternalOperation(
+                        id: context.job.id,
+                        leaseToken: context.leaseToken,
+                        provider: "assemblyAI",
+                        externalID: remoteJob.transcriptID,
+                        state: "submitted"
+                    )
+                }
+                transcript = try await assemblyAI.pollResult(remoteJob)
+            case .elevenLabsScribe:
+                let remoteJob: ScribeJob
+                if context.job.externalProvider == "elevenLabsScribe",
+                   let externalID = context.job.externalOperationID {
+                    remoteJob = ScribeJob(
+                        requestID: externalID,
+                        episodeID: episode.id,
+                        createdAt: context.job.updatedAt,
+                        languageHint: nil,
+                        inlineResult: nil
+                    )
+                } else {
+                    try jobStore.recordExternalSubmissionIntent(
+                        id: context.job.id,
+                        leaseToken: context.leaseToken,
+                        provider: "elevenLabsScribe"
+                    )
+                    remoteJob = try await scribe.submit(
+                        audioURL: audioURL,
+                        episodeID: episode.id
+                    )
+                    try jobStore.recordExternalOperation(
+                        id: context.job.id,
+                        leaseToken: context.leaseToken,
+                        provider: "elevenLabsScribe",
+                        externalID: remoteJob.requestID,
+                        state: "responseReceived"
+                    )
+                }
+                transcript = try await scribe.pollResult(remoteJob)
             case .openRouterWhisper:
-                transcript = try await whisper.transcribe(audioURL: effectiveAudioURL, episodeID: episode.id)
+                try jobStore.recordExternalSubmissionIntent(
+                    id: context.job.id,
+                    leaseToken: context.leaseToken,
+                    provider: "openRouterWhisper"
+                )
+                transcript = try await whisper.transcribe(audioURL: audioURL, episodeID: episode.id)
             case .appleNative:
-                transcript = try await appleSTT.transcribe(audioFileURL: effectiveAudioURL, episodeID: episode.id)
+                transcript = try await appleSTT.transcribe(
+                    audioFileURL: audioURL,
+                    episodeID: episode.id
+                )
             }
-            let stateSource: TranscriptState.Source
-            switch provider {
-            case .elevenLabsScribe: stateSource = .scribe
-            case .assemblyAI: stateSource = .assemblyAI
-            case .openRouterWhisper: stateSource = .whisper
-            case .appleNative: stateSource = .onDevice
-            }
-            try await persistAndIndex(
-                transcript: transcript,
-                episode: episode,
-                source: stateSource,
-                appStore: appStore
-            )
+        } catch is CancellationError {
+            throw JobFailure(classification: .cancelled, message: "Transcription cancelled")
+        } catch let failure as JobFailure {
+            throw failure
         } catch {
-            Self.logger.error(
-                "AI transcription failed for \(episode.id, privacy: .public): \(String(describing: error), privacy: .public)"
-            )
-            appStore.setEpisodeTranscriptState(
-                episode.id,
-                state: .failed(message: error.localizedDescription)
-            )
+            throw JobFailure(classification: .transient, message: error.localizedDescription)
         }
+        return try persistJobTranscript(transcript, context: context)
     }
 
-    private func resolvedSTTKey(provider: STTProvider) -> String? {
-        switch provider {
-        case .elevenLabsScribe: return elevenLabsKey()
-        case .openRouterWhisper: return openRouterKey()
-        case .assemblyAI: return assemblyAIKey()
-        case .appleNative: return "native"  // no API key needed; always available
-        }
+    /// Once a resumable paid provider identity exists it is authoritative.
+    /// Retrying the publisher fallback first could overwrite that identity
+    /// and turn a safe poll into a duplicate provider submission after a kill.
+    nonisolated static func shouldAttemptPublisher(
+        userInitiated: Bool,
+        externalProvider: String?,
+        externalOperationID: String?
+    ) -> Bool {
+        guard !userInitiated else { return false }
+        let resumableProviders = ["assemblyAI", "elevenLabsScribe"]
+        return externalOperationID == nil || !resumableProviders.contains(externalProvider ?? "")
     }
 
-    private func persistAndIndex(
-        transcript: Transcript,
-        episode: Episode,
-        source: TranscriptState.Source,
-        appStore: AppStateStore
-    ) async throws {
-        // STEP 1: Persist + flip to `.ready` BEFORE embedding.
-        //
-        // The user's primary value out of this pipeline is "I can read the
-        // transcript." Embedding for RAG search is a nice-to-have that
-        // requires a separate provider key (`OpenRouter` / `Ollama`).
-        // Folding embedding into the same throw-path used to mean: a fresh
-        // user with no embeddings key never sees a transcript at all,
-        // because `VectorIndex.upsert` throws `.missingAPIKey` and the
-        // caller catches it and either falls through to Scribe (which
-        // would hit the same throw) or sets `.failed`. This was the
-        // default first-run experience and matches the reported bug:
-        // "no transcript works, not even ElevenLabs Scribe."
-        //
-        // Save first, mark ready, then attempt embedding. RAG just won't
-        // find this episode's content until the user adds an embeddings
-        // key and explicitly re-embeds; the transcript itself is readable
-        // immediately.
-        try store.save(transcript)
-        appStore.setEpisodeTranscriptState(
-            episode.id,
-            state: .ready(source: source)
-        )
+    private func persistJobTranscript(
+        _ transcript: Transcript,
+        context: JobAttemptContext
+    ) throws -> String {
+        try store.stage(transcript, context: context)
+    }
 
-        // STEP 2: Best-effort embed. Failures are logged but don't throw.
+    /// Runs only the vector-index outcome for an already persisted transcript.
+    /// Failures escape to `WorkCoordinator`, which owns durable backoff.
+    func indexTranscript(
+        episodeID: UUID,
+        generation: String
+    ) async throws -> VectorArtifactReceipt {
+        guard let appStore = rag.appStore,
+              let episode = appStore.episode(id: episodeID) else {
+            throw JobFailure(classification: .invalidInput, message: "Episode no longer exists")
+        }
+        guard case .ready = episode.transcriptState,
+              let transcript = store.load(episodeID: episodeID) else {
+            throw JobFailure(
+                classification: .missingDependency,
+                message: "Transcript is not available for indexing."
+            )
+        }
         let chunkable = ChunkableTranscript(
             transcript: transcript,
             podcastID: episode.podcastID
         )
         let chunks = chunkBuilder.build(from: chunkable)
-
-        do {
-            // Drop any prior chunks for this episode so re-ingestion
-            // replaces rather than accumulates. Idempotent on chunk.id,
-            // but old chunks from a different segment-boundary run would
-            // otherwise linger. This also wipes any synthetic
-            // title/description chunk produced by `EpisodeMetadataIndexer`
-            // — transcript chunks subsume that signal.
-            try await rag.index.deleteAll(forEpisodeID: episode.id)
-            if !chunks.isEmpty {
-                try await rag.index.upsert(chunks: chunks)
-                // Transcript chunks cover this episode in the RAG index,
-                // so the metadata-indexer backfill should skip it next
-                // launch.
-                appStore.setEpisodesMetadataIndexed([episode.id])
-            }
-            Self.logger.info(
-                "ingested transcript for \(episode.id, privacy: .public) — \(chunks.count, privacy: .public) chunks indexed, source=\(String(describing: source), privacy: .public)"
-            )
-        } catch {
-            Self.logger.notice(
-                "transcript saved for \(episode.id, privacy: .public) but RAG indexing failed: \(String(describing: error), privacy: .public) — episode is readable; search won't find it until the user re-embeds with a configured key"
-            )
-        }
-
-        // STEP 3: Fire-and-forget AI chapter compilation when the episode
-        // lacks publisher chapters. The compiler is internally idempotent and
-        // early-returns when chapters already exist, so re-runs of the ingest
-        // pipeline are cheap. Decoupled from the embed step because chapter
-        // compilation runs even when embeddings can't (no API key). The
-        // combined call produces chapters, per-chapter summaries, and ad
-        // segments in one LLM round trip.
-        let episodeID = episode.id
-        Task { @MainActor [weak appStore] in
-            guard let appStore else { return }
-            await AIChapterCompiler.shared.compileIfNeeded(episodeID: episodeID, store: appStore)
-        }
-
+        let receipt = try await rag.index.stageArtifact(
+            chunks: chunks,
+            episodeID: episode.id,
+            generation: generation,
+            artifactKind: VectorIndex.semanticArtifactKind
+        )
+        Self.logger.info(
+            "indexed \(chunks.count, privacy: .public) transcript chunks for \(episode.id, privacy: .public)"
+        )
+        return receipt
     }
 
     // MARK: - Helpers

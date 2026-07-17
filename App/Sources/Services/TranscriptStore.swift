@@ -19,6 +19,15 @@ import os.log
 
 final class TranscriptStore: @unchecked Sendable {
 
+    struct StagedOutput: Codable, Sendable, Equatable {
+        let jobID: UUID
+        let leaseToken: UUID
+        let episodeID: UUID
+        let inputVersion: String
+        let contentHash: String
+        let filePath: String
+    }
+
     // MARK: Singleton
 
     static let shared: TranscriptStore = {
@@ -90,10 +99,82 @@ final class TranscriptStore: @unchecked Sendable {
         )
     }
 
+    /// Writes an attempt-owned output. The selected transcript is never
+    /// overwritten until the producing lease is fenced in SQLite.
+    func stage(_ transcript: Transcript, context: JobAttemptContext) throws -> String {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.sortedKeys]
+        let data = try encoder.encode(transcript)
+        let hash = ArtifactRepository.hash(data)
+        let url = stagedFileURL(for: transcript.episodeID, leaseToken: context.leaseToken)
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true
+        )
+        try data.write(to: url, options: .atomic)
+        let output = StagedOutput(
+            jobID: context.job.id,
+            leaseToken: context.leaseToken,
+            episodeID: transcript.episodeID,
+            inputVersion: context.job.inputVersion,
+            contentHash: hash,
+            filePath: url.path
+        )
+        try encoder.encode(output).write(to: manifestURL(for: url), options: .atomic)
+        return hash
+    }
+
+    func verifiedStagedData(episodeID: UUID, leaseToken: UUID) -> Data? {
+        verifiedData(at: stagedFileURL(for: episodeID, leaseToken: leaseToken), episodeID: episodeID)
+    }
+
+    /// Promotes a verified attempt to an immutable content-addressed path.
+    /// A crash after this move is safe: reconciliation can adopt the file.
+    func promoteStaged(episodeID: UUID, leaseToken: UUID, contentHash: String) throws -> URL {
+        let staged = stagedFileURL(for: episodeID, leaseToken: leaseToken)
+        guard let data = verifiedData(at: staged, episodeID: episodeID),
+              ArtifactRepository.hash(data) == contentHash else {
+            throw JobFailure(classification: .unexpected, message: "Staged transcript failed verification")
+        }
+        let destination = contentFileURL(for: episodeID, contentHash: contentHash)
+        try FileManager.default.createDirectory(
+            at: destination.deletingLastPathComponent(), withIntermediateDirectories: true
+        )
+        if !FileManager.default.fileExists(atPath: destination.path) {
+            try data.write(to: destination, options: .withoutOverwriting)
+        }
+        try? FileManager.default.removeItem(at: staged)
+        try? FileManager.default.removeItem(at: manifestURL(for: staged))
+        return destination
+    }
+
+    func recoverableStagedOutput(episodeID: UUID, inputVersion: String) -> StagedOutput? {
+        let directory = rootURL.appendingPathComponent("staging", isDirectory: true)
+            .appendingPathComponent(episodeID.uuidString, isDirectory: true)
+        guard let urls = try? FileManager.default.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: [.contentModificationDateKey]
+        ) else { return nil }
+        let decoder = JSONDecoder()
+        return urls.filter { $0.pathExtension == "manifest" }.compactMap { url -> StagedOutput? in
+            guard let data = try? Data(contentsOf: url),
+                  let output = try? decoder.decode(StagedOutput.self, from: data),
+                  output.episodeID == episodeID,
+                  output.inputVersion == inputVersion,
+                  let transcriptData = verifiedData(
+                    at: URL(fileURLWithPath: output.filePath), episodeID: episodeID
+                  ),
+                  ArtifactRepository.hash(transcriptData) == output.contentHash else { return nil }
+            return output
+        }.sorted { $0.filePath > $1.filePath }.first
+    }
+
     /// Read the transcript for `episodeID`, or `nil` if none has been
     /// persisted.
     func load(episodeID: UUID) -> Transcript? {
-        let url = fileURL(for: episodeID)
+        let selected = try? ArtifactRepository(
+            fileURL: Persistence.shared.episodeStore.fileURL
+        ).current(kind: .transcript, subjectID: episodeID)
+        let url = selected?.location.map(URL.init(fileURLWithPath:)) ?? fileURL(for: episodeID)
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }
         do {
             let data = try Data(contentsOf: url)
@@ -116,7 +197,40 @@ final class TranscriptStore: @unchecked Sendable {
 
     // MARK: Helpers
 
-    private func fileURL(for episodeID: UUID) -> URL {
+    func fileURL(for episodeID: UUID) -> URL {
         rootURL.appendingPathComponent("\(episodeID.uuidString).json")
+    }
+
+    func stagedFileURL(for episodeID: UUID, leaseToken: UUID) -> URL {
+        rootURL.appendingPathComponent("staging", isDirectory: true)
+            .appendingPathComponent(episodeID.uuidString, isDirectory: true)
+            .appendingPathComponent("\(leaseToken.uuidString).json")
+    }
+
+    private func manifestURL(for stagedURL: URL) -> URL {
+        stagedURL.deletingPathExtension().appendingPathExtension("manifest")
+    }
+
+    func contentFileURL(for episodeID: UUID, contentHash: String) -> URL {
+        rootURL.appendingPathComponent("artifacts", isDirectory: true)
+            .appendingPathComponent(episodeID.uuidString, isDirectory: true)
+            .appendingPathComponent("\(contentHash).json")
+    }
+
+    func verifiedData(episodeID: UUID) -> Data? {
+        let selected = try? ArtifactRepository(
+            fileURL: Persistence.shared.episodeStore.fileURL
+        ).current(kind: .transcript, subjectID: episodeID)
+        let url = selected?.location.map(URL.init(fileURLWithPath:)) ?? fileURL(for: episodeID)
+        return verifiedData(at: url, episodeID: episodeID)
+    }
+
+    func verifiedData(at url: URL, episodeID: UUID) -> Data? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let transcript = try? decoder.decode(Transcript.self, from: data),
+              transcript.episodeID == episodeID else { return nil }
+        return data
     }
 }

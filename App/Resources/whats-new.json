@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-17T22:29:43Z",
+      "lines": [
+        "Downloads, transcripts, chapters, feed refreshes, and scheduled agent runs now resume reliably after interruptions."
+      ]
+    },
+    {
       "shipped_at": "2026-07-17T18:00:21Z",
       "lines": [
         "Share quote now saves a real clip — quotes you share from the player land in Saved > Clips automatically.",

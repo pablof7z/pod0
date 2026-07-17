@@ -113,7 +113,7 @@ final class ScribeRequestEncodingTests: XCTestCase {
         let stub = ScribeStubProtocol.self
         stub.reset()
         stub.responseStatus = 200
-        stub.responseBody = #"{"language_code":"en","text":"Hello world","words":[{"text":"Hello","start":0.0,"end":0.5,"type":"word","speaker_id":"spk_0"}]}"#
+        stub.responseBody = #"{"transcription_id":"scribe-123","language_code":"en","text":"Hello world","words":[{"text":"Hello","start":0.0,"end":0.5,"type":"word","speaker_id":"spk_0"}]}"#
             .data(using: .utf8)!
 
         let config = URLSessionConfiguration.ephemeral
@@ -131,6 +131,7 @@ final class ScribeRequestEncodingTests: XCTestCase {
         let job = try await client.submit(audioURL: remote, episodeID: UUID(), languageHint: nil)
 
         XCTAssertNotNil(job.inlineResult, "submit must populate inlineResult on the sync path")
+        XCTAssertEqual(job.requestID, "scribe-123")
         XCTAssertEqual(job.inlineResult?.text, "Hello world")
         XCTAssertEqual(job.inlineResult?.words?.count, 1)
 
@@ -150,6 +151,37 @@ final class ScribeRequestEncodingTests: XCTestCase {
         XCTAssertTrue(s.contains(remote.absoluteString))
         XCTAssertTrue(s.contains("name=\"model_id\""))
         XCTAssertTrue(s.contains("scribe_v2"))
+    }
+
+    func testPollReconstructsTranscriptByDurableProviderIDWithoutSubmitting() async throws {
+        let stub = ScribeStubProtocol.self
+        stub.reset()
+        stub.responseBody = #"{"transcription_id":"scribe-recovered","language_code":"en","text":"Recovered","words":[{"text":"Recovered","start":0.0,"end":0.8,"type":"word","speaker_id":"spk_0"}]}"#
+            .data(using: .utf8)!
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [stub] + (config.protocolClasses ?? [])
+        let client = ElevenLabsScribeClient(
+            baseURL: URL(string: "https://api.elevenlabs.io")!,
+            session: URLSession(configuration: config),
+            credential: { "test-key-xyz" }
+        )
+        let episodeID = UUID()
+        let recovered = try await client.pollResult(ScribeJob(
+            requestID: "scribe-recovered",
+            episodeID: episodeID,
+            createdAt: Date(),
+            languageHint: nil,
+            inlineResult: nil
+        ))
+
+        XCTAssertEqual(recovered.episodeID, episodeID)
+        XCTAssertEqual(recovered.segments.map(\.text), ["Recovered"])
+        let request = try XCTUnwrap(stub.lastRequest)
+        XCTAssertEqual(request.httpMethod, "GET")
+        XCTAssertEqual(
+            request.url?.absoluteString,
+            "https://api.elevenlabs.io/v1/speech-to-text/transcripts/scribe-recovered"
+        )
     }
 
     /// A 401 must surface as `.http(status: 401, ...)` so the user gets the

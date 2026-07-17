@@ -385,9 +385,7 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
                 case .downloaded:
                     let localURL = EpisodeDownloadStore.shared.localFileURL(for: episode)
                     return .success(localURL)
-                case .failed(let message):
-                    return .failure(AgentTTSError.snippetDownloadFailed(episodeID: episodeID, message: message))
-                default:
+                case .notDownloaded:
                     return nil
                 }
             }

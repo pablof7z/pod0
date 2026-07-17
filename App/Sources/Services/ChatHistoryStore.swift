@@ -36,8 +36,10 @@ final class ChatHistoryStore {
         return d
     }()
 
-    init(fileManager: FileManager = .default) {
-        if let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
+    init(fileManager: FileManager = .default, fileURL: URL? = nil) {
+        if let fileURL {
+            self.fileURL = fileURL
+        } else if let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
             self.fileURL = docs.appendingPathComponent(Self.filename)
         } else {
             self.fileURL = nil
@@ -51,6 +53,10 @@ final class ChatHistoryStore {
 
     func conversation(id: UUID) -> ChatConversation? {
         conversations.first(where: { $0.id == id })
+    }
+
+    func conversation(occurrenceID: String) -> ChatConversation? {
+        conversations.first(where: { $0.occurrenceID == occurrenceID })
     }
 
     /// Inserts or updates a conversation, then re-sorts and trims to caps.
@@ -68,6 +74,12 @@ final class ChatHistoryStore {
         var convo = conversation
         if convo.messages.count > Self.maxMessagesPerConversation {
             convo.messages = Array(convo.messages.suffix(Self.maxMessagesPerConversation))
+        }
+        if let occurrenceID = convo.occurrenceID,
+           let duplicate = conversations.firstIndex(where: {
+               $0.occurrenceID == occurrenceID && $0.id != convo.id
+           }) {
+            conversations.remove(at: duplicate)
         }
         if let idx = conversations.firstIndex(where: { $0.id == convo.id }) {
             conversations[idx] = convo

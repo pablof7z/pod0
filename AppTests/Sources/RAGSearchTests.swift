@@ -70,6 +70,67 @@ final class RAGSearchTests: XCTestCase {
         XCTAssertEqual(matches.map(\.chunk.episodeID), [selectedEpisodeID])
     }
 
+    func testVersionedGenerationIsInvisibleUntilSelectedAndReportsChunkCount() async throws {
+        let episodeID = UUID()
+        let podcastID = UUID()
+        let embedder = KeywordEmbeddingsClient()
+        let store = try VectorIndex(embedder: embedder, inMemory: true, dimensions: 4)
+        let first = try await store.stageArtifact(
+            chunks: [Chunk(
+                episodeID: episodeID,
+                podcastID: podcastID,
+                text: "Keto insulin generation one",
+                startMS: 0,
+                endMS: 1_000
+            )],
+            episodeID: episodeID,
+            generation: "generation-one",
+            artifactKind: VectorIndex.semanticArtifactKind
+        )
+        XCTAssertEqual(first.chunkCount, 1)
+        let verified = try await store.verifyArtifact(episodeID: episodeID, receipt: first)
+        XCTAssertTrue(verified)
+
+        let rag = RAGSearch(store: store, embedder: embedder, reranker: nil)
+        let beforeFirstSelection = try await rag.search(
+            query: "keto insulin", scope: .episode(episodeID),
+            options: .init(k: 5, hybrid: true, rerank: false)
+        )
+        XCTAssertTrue(beforeFirstSelection.isEmpty)
+
+        try await store.selectArtifact(episodeID: episodeID, receipt: first)
+        let selectedFirst = try await store.selectedReceipt(
+            episodeID: episodeID,
+            artifactKind: VectorIndex.semanticArtifactKind
+        )
+        XCTAssertEqual(selectedFirst, first)
+
+        let second = try await store.stageArtifact(
+            chunks: [Chunk(
+                episodeID: episodeID,
+                podcastID: podcastID,
+                text: "Stamp postal generation two",
+                startMS: 0,
+                endMS: 1_000
+            )],
+            episodeID: episodeID,
+            generation: "generation-two",
+            artifactKind: VectorIndex.semanticArtifactKind
+        )
+        let beforeSelection = try await rag.search(
+            query: "keto insulin", scope: .episode(episodeID),
+            options: .init(k: 5, hybrid: true, rerank: false)
+        )
+        XCTAssertEqual(beforeSelection.first?.chunk.text, "Keto insulin generation one")
+
+        try await store.selectArtifact(episodeID: episodeID, receipt: second)
+        let afterSelection = try await rag.search(
+            query: "stamp postal", scope: .episode(episodeID),
+            options: .init(k: 5, hybrid: true, rerank: false)
+        )
+        XCTAssertEqual(afterSelection.first?.chunk.text, "Stamp postal generation two")
+    }
+
     func testSettingsAwareRerankerSkipsBaseClientWhenDisabled() async throws {
         let base = CountingReranker(order: [2, 1, 0])
         let reranker = SettingsAwareRerankerClient(base: base, isEnabled: { false })

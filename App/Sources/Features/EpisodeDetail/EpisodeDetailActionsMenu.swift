@@ -7,11 +7,8 @@ import SwiftUI
 /// `EpisodeDownloadService` (network) so the change persists immediately and
 /// a real `URLSession` task carries the bytes.
 ///
-/// The download menu surfaces four affordances driven by `episode.downloadState`:
-///   - `.notDownloaded` → "Download"
-///   - `.downloading`  → "Cancel download"
-///   - `.downloaded`   → "Remove download" (delete confirmation)
-///   - `.failed`       → "Retry download"
+/// Stable file evidence comes from the episode; active and failed lifecycle
+/// comes from the authoritative workflow job.
 struct EpisodeDetailActionsMenu: View {
     let episode: Episode
     let store: AppStateStore
@@ -72,35 +69,41 @@ struct EpisodeDetailActionsMenu: View {
 
     @ViewBuilder
     private var downloadButton: some View {
-        switch episode.downloadState {
-        case .notDownloaded, .queued:
+        if case .downloaded = episode.downloadState {
+            Button(role: .destructive) {
+                confirmDelete = true
+            } label: {
+                Label("Remove download", systemImage: "trash")
+            }
+        } else {
+            switch downloadJob?.state {
+            case .pending, .leased, .running, .retryScheduled:
+                Button {
+                    EpisodeDownloadService.shared.attach(appStore: store)
+                    EpisodeDownloadService.shared.cancel(episodeID: episode.id)
+                } label: {
+                    Label("Cancel download", systemImage: "xmark.circle")
+                }
+            case .blocked, .failedPermanent:
+                Button {
+                    EpisodeDownloadService.shared.attach(appStore: store)
+                    EpisodeDownloadService.shared.download(episodeID: episode.id)
+                } label: {
+                    Label("Retry download", systemImage: "arrow.clockwise")
+                }
+            default:
             Button {
                 EpisodeDownloadService.shared.attach(appStore: store)
                 EpisodeDownloadService.shared.download(episodeID: episode.id)
             } label: {
                 Label("Download", systemImage: "arrow.down.circle")
             }
-        case .downloading:
-            Button {
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.cancel(episodeID: episode.id)
-            } label: {
-                Label("Cancel download", systemImage: "xmark.circle")
-            }
-        case .downloaded:
-            Button(role: .destructive) {
-                confirmDelete = true
-            } label: {
-                Label("Remove download", systemImage: "trash")
-            }
-        case .failed:
-            Button {
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
-            } label: {
-                Label("Retry download", systemImage: "arrow.clockwise")
             }
         }
+    }
+
+    private var downloadJob: WorkJob? {
+        WorkflowRuntime.shared.latestJob(kind: .download, subjectID: episode.id)
     }
 
     // MARK: - Queue menu item

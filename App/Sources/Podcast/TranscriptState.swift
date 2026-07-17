@@ -1,23 +1,12 @@
 import Foundation
 
-/// Lifecycle of an episode's transcript ingestion.
-///
-/// Lane 5 (transcript ingestion) drives transitions; Library UI renders the
-/// status capsule (`Downloaded · Transcribing 64%` / `Ready` / etc.). The
-/// `source` discriminator lets us label the badge ("Publisher" vs "Scribe").
+/// Stable transcript artifact projection. Execution lifecycle is projected
+/// from JobStore rather than persisted a second time on Episode.
 enum TranscriptState: Codable, Sendable, Hashable {
-    /// No work attempted yet.
+    /// No verified current transcript artifact.
     case none
-    /// Awaiting an upload / publisher-fetch slot.
-    case queued
-    /// Pulling the publisher's `<podcast:transcript>` payload.
-    case fetchingPublisher
-    /// Cloud transcription in flight (e.g. ElevenLabs Scribe). Progress in 0...1.
-    case transcribing(progress: Double)
-    /// Transcript is stored and indexed.
+    /// Transcript is stored and readable. Semantic indexing is a separate artifact.
     case ready(source: Source)
-    /// Final failure; user can retry. `message` is user-facing.
-    case failed(message: String)
 
     /// Where the resolved transcript came from.
     enum Source: String, Codable, Sendable, Hashable {

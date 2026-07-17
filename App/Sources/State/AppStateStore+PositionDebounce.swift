@@ -139,7 +139,7 @@ extension AppStateStore {
 
         if mutated {
             performMutationBatch {
-                state.episodes = working
+                mutateState { $0.episodes = working }
                 // Newly-non-zero playback positions need to land in
                 // `inProgressEpisodesCached`; count-only fingerprinting misses this.
                 invalidateEpisodeProjections()
@@ -176,23 +176,48 @@ extension AppStateStore {
 
     // MARK: - Lifecycle hooks (called from AppStateStore.init)
 
-    /// Subscribes the store to `UIApplication.didEnterBackgroundNotification`
-    /// so the cache is flushed when the user backgrounds the app — covering
-    /// the force-quit window where neither pause nor episode-end fires.
-    /// Returns the observer token; callers retain it on the store so removal
-    /// happens at deinit.
-    func registerBackgroundFlushObserver() -> NSObjectProtocol {
-        NotificationCenter.default.addObserver(
-            forName: UIApplication.didEnterBackgroundNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            // Mirror the iCloud observer pattern already in `init`: the
-            // Notification queue delivers on .main so the closure is
-            // already on the main thread; `assumeIsolated` lets us cross
-            // back into the actor-isolated method without an `await`.
-            MainActor.assumeIsolated {
-                self?.flushPendingPositions()
+    /// Installs suspension/termination boundaries. Each boundary obtains
+    /// background time and awaits the ordered persistence writer before
+    /// ending the OS task.
+    func registerBackgroundFlushObservers() -> [NSObjectProtocol] {
+        let names: [Notification.Name] = [
+            UIApplication.willResignActiveNotification,
+            UIApplication.didEnterBackgroundNotification,
+            UIApplication.willTerminateNotification,
+        ]
+        return names.map { name in
+            NotificationCenter.default.addObserver(
+                forName: name,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.beginSuspensionFlush()
+                }
+            }
+        }
+    }
+
+    /// Testable awaitable durability boundary used by the lifecycle observer.
+    func flushForSuspension() async {
+        flushPendingPositions()
+        await persistence.flush(state)
+    }
+
+    private func beginSuspensionFlush() {
+        let application = UIApplication.shared
+        var backgroundTask = UIBackgroundTaskIdentifier.invalid
+        backgroundTask = application.beginBackgroundTask(withName: "Persist app state") {
+            if backgroundTask != .invalid {
+                application.endBackgroundTask(backgroundTask)
+                backgroundTask = .invalid
+            }
+        }
+        Task { @MainActor [weak self] in
+            await self?.flushForSuspension()
+            if backgroundTask != .invalid {
+                application.endBackgroundTask(backgroundTask)
+                backgroundTask = .invalid
             }
         }
     }

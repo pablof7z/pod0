@@ -2,35 +2,7 @@ import Foundation
 import os
 import os.log
 
-/// Persists `AppState` inside the shared App Group container.
-///
-/// Low-cardinality metadata stays in a JSON file. High-cardinality `Episode`
-/// records live in a SQLite sidecar so a large imported library does not turn
-/// every launch and mutation into a 70MB+ JSON decode/encode.
-///
-/// **Why a file, not `UserDefaults`.** A previous iteration wrote the blob to
-/// `UserDefaults(suiteName: <App Group>)`. Once a user subscribed to a real
-/// podcast, `state.episodes` ballooned the encoded blob past a few MB and
-/// `cfprefsd` silently dropped the value on the next read — `data(forKey:)`
-/// returned the previous (smaller) committed version, so anything written
-/// after the size crossover was lost. The symptom was: complete onboarding,
-/// kill the app, relaunch, and onboarding shows again because the
-/// `hasCompletedOnboarding=true` save (which by then sat alongside the
-/// episode list) never came back through the prefs daemon. `UserDefaults` is
-/// fundamentally not designed for blobs of this size; the App Group
-/// container's filesystem is.
-///
-/// **Atomic writes.** Saves go through `Data.write(to:options: .atomic)` so a
-/// crash mid-write leaves the previous good blob in place rather than a
-/// half-written file that would fail to decode and silently reset the user
-/// to a fresh `AppState`.
-///
-/// **Production vs. tests.** Construct via `Persistence.shared` for production
-/// (writes to `<app-group>/Library/Application Support/podcastr-state.v1.json`).
-/// Tests construct an isolated instance against a unique temp file URL so
-/// fixtures never leak into the real app's storage — the bug where launching
-/// the app after running the test target showed phantom "Test Show" /
-/// "Episode e1" was caused by both contexts writing to the same App Group key.
+/// SQLite-authoritative app-state persistence. JSON is migration-only.
 final class Persistence: Sendable {
 
     /// Shared, production-default instance writing to the App Group container.
@@ -39,7 +11,7 @@ final class Persistence: Sendable {
         writeMode: .background
     )
 
-    enum WriteMode: Sendable {
+    enum WriteMode: Equatable, Sendable {
         case immediate
         case background
     }
@@ -66,40 +38,41 @@ final class Persistence: Sendable {
         )
     }
 
-    /// File this instance reads from / writes to.
     let fileURL: URL
     let episodeStore: EpisodeSQLiteStore
     private let writeMode: WriteMode
+    private let beforeBackgroundEnqueue: @Sendable (UInt64) async -> Void
     private let backgroundWriter = PersistenceBackgroundWriter()
+    private let writeLock = NSLock()
+    private let revision = OSAllocatedUnfairLock<UInt64>(initialState: 0)
+    private let lastWrittenRevision = OSAllocatedUnfairLock<UInt64>(initialState: 0)
     private let episodeSnapshot = OSAllocatedUnfairLock<EpisodeSQLiteSnapshot?>(initialState: nil)
     private let lastEpisodeWriteSummaryLock = OSAllocatedUnfairLock<EpisodeWriteSummary>(initialState: .none)
 
-    /// Lock-protected count of successful `save(_:)` invocations. Production
-    /// code never reads this; the per-second-write regression tests use it
-    /// to assert the position-debounce coalesces N rapid updates into ≤ 2
-    /// disk writes. Atomic so tests can sample it without coordinating with
-    /// the main actor.
+    /// Successful disk-write count used by persistence regression tests.
     private let saveCounter = OSAllocatedUnfairLock<Int>(initialState: 0)
 
     init(
         fileURL: URL,
         writeMode: WriteMode = .immediate,
-        episodeStoreURL: URL? = nil
+        episodeStoreURL: URL? = nil,
+        beforeBackgroundEnqueue: @escaping @Sendable (UInt64) async -> Void = { _ in },
+        faultInjector: @escaping @Sendable (EpisodeSQLiteFaultPoint) throws -> Void = { _ in }
     ) {
         self.fileURL = fileURL
         self.episodeStore = EpisodeSQLiteStore(
-            fileURL: episodeStoreURL ?? Self.episodeStoreURL(for: fileURL)
+            fileURL: episodeStoreURL ?? Self.episodeStoreURL(for: fileURL),
+            faultInjector: faultInjector
         )
         self.writeMode = writeMode
+        self.beforeBackgroundEnqueue = beforeBackgroundEnqueue
     }
 
-    /// Returns the number of times `save(_:)` has been called on this instance.
-    /// Test-only — production code has no reason to inspect this.
     var saveInvocationCount: Int {
         saveCounter.withLock { $0 }
     }
 
-    /// Test-only diagnostic for the most recent episode-sidecar write plan.
+    /// Test-only diagnostic for the most recent authoritative episode write plan.
     /// Production writes never branch on this; regression tests use it to prove
     /// small episode mutations go through row-level deltas instead of a full
     /// `DELETE` + reinsert.
@@ -107,9 +80,6 @@ final class Persistence: Sendable {
         lastEpisodeWriteSummaryLock.withLock { $0 }
     }
 
-    /// Resets the save counter back to 0. Tests call this after the
-    /// `AppStateStore` initialiser has performed its eager save so subsequent
-    /// assertions count only the writes the test itself triggers.
     func resetSaveInvocationCount() {
         saveCounter.withLock { $0 = 0 }
     }
@@ -119,26 +89,88 @@ final class Persistence: Sendable {
     }
 
     // MARK: - State persistence
-
-    /// Encodes `state` to JSON and writes it atomically to `fileURL`.
-    ///
-    /// Intentionally non-throwing: encode/write failures are logged via
-    /// `os.Logger` and the existing persisted file is left untouched (the
-    /// `.atomic` write would refuse to clobber on failure anyway) so a
-    /// transient encoder bug can't drop the user's library.
-    func save(_ state: AppState) {
+    /// Queues or performs an atomic snapshot write without regressing revisions.
+    @discardableResult
+    func save(
+        _ state: AppState,
+        revision requestedRevision: UInt64? = nil,
+        ensuring jobs: [DesiredJob] = []
+    ) -> UInt64 {
+        let nextRevision = revision.withLock { current in
+            if let requestedRevision {
+                current = max(current, requestedRevision)
+                return requestedRevision
+            }
+            current += 1
+            return current
+        }
+        var snapshot = state
+        snapshot.persistenceGeneration = nextRevision
         switch writeMode {
         case .immediate:
-            write(state)
+            write(snapshot, revision: nextRevision, ensuring: jobs)
         case .background:
             let writer = backgroundWriter
-            Task.detached(priority: .utility) { [state, writer] in
-                await writer.enqueue(state, persistence: self)
+            let enqueueBarrier = beforeBackgroundEnqueue
+            Task.detached(priority: .utility) { [snapshot, writer] in
+                await enqueueBarrier(nextRevision)
+                await writer.enqueue(
+                    revision: nextRevision,
+                    state: snapshot,
+                    jobs: jobs,
+                    persistence: self
+                )
             }
+        }
+        return nextRevision
+    }
+
+    func waitUntilWritten(_ revision: UInt64) async -> Bool {
+        switch writeMode {
+        case .immediate:
+            return lastWrittenRevision.withLock { $0 >= revision }
+        case .background:
+            return await backgroundWriter.waitUntilWritten(revision)
         }
     }
 
-    func write(_ state: AppState) {
+    /// Durability boundary for lifecycle suspension. Returns only after the
+    /// exact snapshot (or a newer revision) commits to authoritative SQLite.
+    @discardableResult
+    func flush(_ state: AppState) async -> Bool {
+        let flushRevision = save(state)
+        guard writeMode == .background else {
+            return lastWrittenRevision.withLock { $0 >= flushRevision }
+        }
+        return await backgroundWriter.waitUntilWritten(flushRevision)
+    }
+
+    @discardableResult
+    func write(
+        _ state: AppState,
+        revision writeRevision: UInt64,
+        ensuring jobs: [DesiredJob] = []
+    ) -> Bool {
+        writeLock.withLock {
+            writeLocked(state, revision: writeRevision, ensuring: jobs)
+        }
+    }
+
+    private func writeLocked(
+        _ sourceState: AppState,
+        revision writeRevision: UInt64,
+        ensuring jobs: [DesiredJob]
+    ) -> Bool {
+        guard lastWrittenRevision.withLock({ writeRevision > $0 }) else { return true }
+        var state = sourceState
+        state.persistenceGeneration = writeRevision
+        let metadata: Data
+        do {
+            metadata = try Self.encoder.encode(Self.metadataState(from: state))
+        } catch {
+            Self.logger.error("Persistence.save: encode failed: \(error, privacy: .public)")
+            return false
+        }
         let snapshot = EpisodeSQLiteStore.snapshot(for: state.episodes)
         let previousSnapshot = episodeSnapshot.withLock { $0 }
         if previousSnapshot?.signature != snapshot.signature {
@@ -146,15 +178,26 @@ final class Persistence: Sendable {
                 let summary = try writeEpisodes(
                     state.episodes,
                     snapshot: snapshot,
-                    previousSnapshot: previousSnapshot
+                    previousSnapshot: previousSnapshot,
+                    generation: writeRevision,
+                    metadata: metadata,
+                    ensuring: jobs
                 )
                 episodeSnapshot.withLock { $0 = snapshot }
                 lastEpisodeWriteSummaryLock.withLock { $0 = summary }
             } catch {
                 Self.logger.error("Persistence.save: episode SQLite write failed: \(error, privacy: .public)")
-                return
+                return false
             }
         } else {
+            do {
+                try episodeStore.commitMetadata(
+                    metadata, generation: writeRevision, ensuring: jobs
+                )
+            } catch {
+                Self.logger.error("Persistence.save: metadata transaction failed: \(error, privacy: .public)")
+                return false
+            }
             lastEpisodeWriteSummaryLock.withLock {
                 $0 = EpisodeWriteSummary(
                     kind: .none,
@@ -166,36 +209,52 @@ final class Persistence: Sendable {
             }
         }
 
-        let data: Data
-        do {
-            data = try Self.encoder.encode(Self.metadataState(from: state))
-        } catch {
-            Self.logger.error("Persistence.save: encode failed: \(error, privacy: .public)")
-            return
-        }
-        do {
-            try ensureParentDirectoryExists()
-            try data.write(to: fileURL, options: [.atomic])
-            saveCounter.withLock { $0 += 1 }
-            Self.logger.info("Persistence.save: bytes=\(data.count, privacy: .public)")
-        } catch {
-            Self.logger.error("Persistence.save: write failed at \(self.fileURL.path, privacy: .public): \(error, privacy: .public)")
-        }
+        lastWrittenRevision.withLock { $0 = max($0, writeRevision) }
+        saveCounter.withLock { $0 += 1 }
+        NotificationCenter.default.post(name: .persistenceDidCommitWorkflowJobs, object: self)
+        Self.logger.info("Persistence.save: metadata bytes=\(metadata.count, privacy: .public)")
+        return true
     }
 
     /// Loads and decodes `AppState` from `fileURL`.
     ///
     /// - Returns: The previously saved `AppState`, or a fresh `AppState()`
-    ///   when no persisted file exists yet (including the one-shot path
-    ///   where this is the very first launch under the file-based backend
-    ///   and there's also no legacy `UserDefaults` blob to migrate).
+    ///   when authoritative SQLite and the one-shot legacy JSON source are
+    ///   both absent (the normal first-launch path).
     /// - Throws: Any `DecodingError` produced by `JSONDecoder` when the
     ///   stored data cannot be decoded. Callers fall back to a default state.
     func load() throws -> AppState {
+        if let metadata = try episodeStore.loadMetadata() {
+            var state = try Self.decoder.decode(AppState.self, from: metadata)
+            state.episodes = try episodeStore.loadAll()
+            let loadedEpisodes = state.episodes
+            let generation = try episodeStore.loadGeneration()
+            state.persistenceGeneration = generation
+            episodeSnapshot.withLock { $0 = EpisodeSQLiteStore.snapshot(for: loadedEpisodes) }
+            revision.withLock { $0 = max($0, generation) }
+            lastWrittenRevision.withLock { $0 = max($0, generation) }
+            return state
+        }
         if FileManager.default.fileExists(atPath: fileURL.path) {
             let data = try Data(contentsOf: fileURL)
             var state = try Self.decoder.decode(AppState.self, from: data)
             hydrateEpisodesPreservingMetadata(into: &state)
+            let generation = max(state.persistenceGeneration, 1)
+            state.persistenceGeneration = generation
+            guard write(state, revision: generation) else {
+                throw EpisodeSQLiteStoreError.execute("Unable to commit legacy state migration")
+            }
+            return state
+        }
+        let sqliteOnlyEpisodes = try episodeStore.loadAll()
+        if !sqliteOnlyEpisodes.isEmpty {
+            var state = AppState()
+            state.episodes = sqliteOnlyEpisodes
+            let generation = max(try episodeStore.loadGeneration(), 1)
+            state.persistenceGeneration = generation
+            guard write(state, revision: generation) else {
+                throw EpisodeSQLiteStoreError.execute("Unable to commit SQLite-only migration")
+            }
             return state
         }
         // One-shot migration: an earlier build wrote `AppState` to App Group
@@ -210,9 +269,11 @@ final class Persistence: Sendable {
            let legacyData = Self.appGroupDefaults.data(forKey: Self.legacyStateKey) {
             var migrated = try Self.decoder.decode(AppState.self, from: legacyData)
             try hydrateEpisodes(into: &migrated)
-            let metadata = try Self.encoder.encode(Self.metadataState(from: migrated))
-            try? ensureParentDirectoryExists()
-            try? metadata.write(to: fileURL, options: [.atomic])
+            let generation = max(migrated.persistenceGeneration, 1)
+            migrated.persistenceGeneration = generation
+            guard write(migrated, revision: generation) else {
+                throw EpisodeSQLiteStoreError.execute("Unable to commit UserDefaults migration")
+            }
             Self.appGroupDefaults.removeObject(forKey: Self.legacyStateKey)
             Self.logger.info("Persistence.load: migrated \(legacyData.count, privacy: .public) bytes from legacy UserDefaults key")
             return migrated
@@ -227,57 +288,9 @@ final class Persistence: Sendable {
         try? FileManager.default.removeItem(at: fileURL)
         episodeStore.reset()
         episodeSnapshot.withLock { $0 = nil }
+        revision.withLock { $0 = 0 }
+        lastWrittenRevision.withLock { $0 = 0 }
         resetEpisodeWriteSummary()
-    }
-
-    // MARK: - Suite resolution
-
-    /// The App Group suite name.
-    ///
-    /// Reads `AppGroupIdentifier` from the main bundle's `Info.plist` so
-    /// the value comes from the Tuist `APP_GROUP_IDENTIFIER` build setting
-    /// and stays in sync with the entitlements automatically.
-    ///
-    /// For extension targets (e.g. WidgetKit) whose `Bundle.main` is the
-    /// extension bundle, add `AppGroupIdentifier` to their `Info.plist`
-    /// with the same `$(APP_GROUP_IDENTIFIER)` substitution.
-    static var appGroupIdentifier: String {
-        Bundle.main.object(forInfoDictionaryKey: "AppGroupIdentifier") as? String
-            ?? "group.com.podcastr.app"   // compile-time fallback
-    }
-
-    /// `UserDefaults` instance for the App Group suite. Retained only for
-    /// the legacy-blob migration in `load()`; production reads/writes go
-    /// through the file backend.
-    static var appGroupDefaults: UserDefaults {
-        UserDefaults(suiteName: appGroupIdentifier) ?? .standard
-    }
-
-    /// Absolute file URL for the production state blob inside the App Group
-    /// container. Falls back to the user's caches directory when the App
-    /// Group entitlement is missing (e.g. a stripped-down developer build) —
-    /// parity with the old `appGroupDefaults ?? .standard` fallback.
-    static var appGroupStateFileURL: URL {
-        let manager = FileManager.default
-        let base: URL
-        if let groupContainer = manager.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) {
-            base = groupContainer.appendingPathComponent("Library/Application Support", isDirectory: true)
-        } else {
-            // Fallback: app-local caches. The widget can't reach this, but
-            // neither can it reach UserDefaults.standard — same trade-off
-            // as the previous fallback.
-            let caches = (try? manager.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true))
-                ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            base = caches
-        }
-        return base.appendingPathComponent("podcastr-state.v1.json", isDirectory: false)
-    }
-
-    static func episodeStoreURL(for stateFileURL: URL) -> URL {
-        let baseName = stateFileURL.deletingPathExtension().lastPathComponent
-        return stateFileURL
-            .deletingLastPathComponent()
-            .appendingPathComponent("\(baseName).episodes.sqlite", isDirectory: false)
     }
 
     // MARK: - Static helpers
@@ -326,11 +339,16 @@ final class Persistence: Sendable {
     private func writeEpisodes(
         _ episodes: [Episode],
         snapshot: EpisodeSQLiteSnapshot,
-        previousSnapshot: EpisodeSQLiteSnapshot?
+        previousSnapshot: EpisodeSQLiteSnapshot?,
+        generation: UInt64,
+        metadata: Data,
+        ensuring jobs: [DesiredJob]
     ) throws -> EpisodeWriteSummary {
         guard let previousSnapshot,
               let delta = Self.delta(from: previousSnapshot, to: snapshot, episodes: episodes) else {
-            try episodeStore.replaceAll(episodes)
+            try episodeStore.replaceAll(
+                episodes, generation: generation, metadata: metadata, ensuring: jobs
+            )
             return EpisodeWriteSummary(
                 kind: .replaceAll,
                 upsertCount: episodes.count,
@@ -341,6 +359,7 @@ final class Persistence: Sendable {
         }
 
         guard !delta.isEmpty else {
+            try episodeStore.commitMetadata(metadata, generation: generation, ensuring: jobs)
             return EpisodeWriteSummary(
                 kind: .none,
                 upsertCount: 0,
@@ -350,30 +369,21 @@ final class Persistence: Sendable {
             )
         }
 
-        do {
-            try episodeStore.applyDelta(
-                upserts: delta.upserts,
-                deleteIDs: delta.deleteIDs,
-                sortOrderUpdates: delta.sortOrderUpdates
-            )
-            return EpisodeWriteSummary(
-                kind: .delta,
-                upsertCount: delta.upserts.count,
-                deleteCount: delta.deleteIDs.count,
-                sortOrderUpdateCount: delta.sortOrderUpdates.count,
-                totalEpisodeCount: episodes.count
-            )
-        } catch {
-            Self.logger.error("Persistence.save: episode SQLite delta failed, rebuilding sidecar: \(error, privacy: .public)")
-            try episodeStore.replaceAll(episodes)
-            return EpisodeWriteSummary(
-                kind: .replaceAll,
-                upsertCount: episodes.count,
-                deleteCount: 0,
-                sortOrderUpdateCount: 0,
-                totalEpisodeCount: episodes.count
-            )
-        }
+        try episodeStore.applyDelta(
+            upserts: delta.upserts,
+            deleteIDs: delta.deleteIDs,
+            sortOrderUpdates: delta.sortOrderUpdates,
+            generation: generation,
+            metadata: metadata,
+            ensuring: jobs
+        )
+        return EpisodeWriteSummary(
+            kind: .delta,
+            upsertCount: delta.upserts.count,
+            deleteCount: delta.deleteIDs.count,
+            sortOrderUpdateCount: delta.sortOrderUpdates.count,
+            totalEpisodeCount: episodes.count
+        )
     }
 
     private static func delta(
