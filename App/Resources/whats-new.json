@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-17T17:20:58Z",
+      "lines": [
+        "Removed the dedicated CarPlay dashboard app. Playback controls, Now Playing, and lock-screen/Control Center integration are unaffected."
+      ]
+    },
+    {
       "shipped_at": "2026-07-17T17:14:56Z",
       "lines": [
         "Removed Nostr identity, Friends, episode comments, and remote-agent messaging — the app is now fully local and self-contained.",

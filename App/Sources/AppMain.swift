@@ -36,7 +36,6 @@ struct PodcastrApp: App {
             RootView(scheduledTaskRunner: scheduledTaskRunner)
                 .environment(store)
                 .environment(askCoordinator)
-                .task { CarPlayController.shared.attach(store: store) }
                 .task {
                     scheduledTaskRunner = AgentScheduledTaskRunner(store: store)
                 }
