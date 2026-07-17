@@ -399,8 +399,6 @@ final class AgentToolsPodcastTests: XCTestCase {
 
     private func makeDeps(
         rag: PodcastAgentRAGSearchProtocol = MockRAG(),
-        wiki: WikiStorageProtocol = MockWiki(),
-        briefing: BriefingComposerProtocol = MockBriefing(),
         summarizer: EpisodeSummarizerProtocol = MockSummarizer(),
         fetcher: EpisodeFetcherProtocol = MockFetcher(),
         playback: MockPlayback = MockPlayback(),
@@ -416,8 +414,6 @@ final class AgentToolsPodcastTests: XCTestCase {
         DepsBundle(
             bundle: PodcastAgentToolDeps(
                 rag: rag,
-                wiki: wiki,
-                briefing: briefing,
                 summarizer: summarizer,
                 fetcher: fetcher,
                 playback: playback,

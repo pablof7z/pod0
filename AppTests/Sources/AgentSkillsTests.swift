@@ -13,10 +13,6 @@ final class AgentSkillsTests: XCTestCase {
         XCTAssertNotNil(AgentSkillRegistry.skill(id: AgentSkillID.podcastGeneration))
     }
 
-    func testRegistryListsWikiResearchSkill() {
-        XCTAssertNotNil(AgentSkillRegistry.skill(id: AgentSkillID.wikiResearch))
-    }
-
     func testRegistryUnknownSkillReturnsNil() {
         XCTAssertNil(AgentSkillRegistry.skill(id: "does_not_exist"))
     }
@@ -35,25 +31,6 @@ final class AgentSkillsTests: XCTestCase {
         ])
     }
 
-    func testSchemasForWikiResearchReturnsThreeTools() {
-        let schemas = AgentSkillRegistry.schemas(for: [AgentSkillID.wikiResearch])
-        let names = Set(schemas.compactMap { ($0["function"] as? [String: Any])?["name"] as? String })
-        XCTAssertEqual(names, [
-            AgentTools.PodcastNames.createWikiPage,
-            AgentTools.PodcastNames.listWikiPages,
-            AgentTools.PodcastNames.deleteWikiPage,
-        ])
-    }
-
-    func testQueryWikiStaysAlwaysOn() {
-        // query_wiki is a cheap lookup — it must NOT be skill-gated.
-        XCTAssertNil(AgentSkillRegistry.owningSkillID(forTool: AgentTools.PodcastNames.queryWiki))
-        let podcastNames = Set(AgentTools.podcastSchema.compactMap {
-            ($0["function"] as? [String: Any])?["name"] as? String
-        })
-        XCTAssertTrue(podcastNames.contains(AgentTools.PodcastNames.queryWiki))
-    }
-
     func testOwningSkillLookup() {
         XCTAssertEqual(
             AgentSkillRegistry.owningSkillID(forTool: AgentTools.PodcastNames.generateTTSEpisode),
@@ -63,17 +40,8 @@ final class AgentSkillsTests: XCTestCase {
             AgentSkillRegistry.owningSkillID(forTool: AgentTools.PodcastNames.listAvailableVoices),
             AgentSkillID.podcastGeneration
         )
-        XCTAssertEqual(
-            AgentSkillRegistry.owningSkillID(forTool: AgentTools.PodcastNames.createWikiPage),
-            AgentSkillID.wikiResearch
-        )
-        XCTAssertEqual(
-            AgentSkillRegistry.owningSkillID(forTool: AgentTools.PodcastNames.deleteWikiPage),
-            AgentSkillID.wikiResearch
-        )
         // Non-skill-gated podcast tools — no owner.
         XCTAssertNil(AgentSkillRegistry.owningSkillID(forTool: AgentTools.PodcastNames.playEpisode))
-        XCTAssertNil(AgentSkillRegistry.owningSkillID(forTool: AgentTools.PodcastNames.queryWiki))
     }
 
     func testAllToolNamesCoversEverySkill() {
@@ -154,45 +122,6 @@ final class AgentSkillsTests: XCTestCase {
         )
         let decoded = try decode(json)
         XCTAssertNotNil(decoded["error"])
-    }
-
-    func testDispatchPodcastBlocksWikiToolWhenWikiSkillOff() async throws {
-        let deps = makeDeps()
-        let json = await AgentTools.dispatchPodcast(
-            name: AgentTools.PodcastNames.listWikiPages,
-            args: [:],
-            deps: deps,
-            enabledSkills: []
-        )
-        let decoded = try decode(json)
-        XCTAssertNotNil(decoded["error"])
-        let err = decoded["error"] as? String ?? ""
-        XCTAssertTrue(err.contains("wiki_research"), "Error must mention the missing skill, got: \(err)")
-    }
-
-    func testDispatchPodcastAllowsWikiToolWhenWikiSkillEnabled() async throws {
-        let deps = makeDeps()
-        let json = await AgentTools.dispatchPodcast(
-            name: AgentTools.PodcastNames.listWikiPages,
-            args: [:],
-            deps: deps,
-            enabledSkills: [AgentSkillID.wikiResearch]
-        )
-        let decoded = try decode(json)
-        XCTAssertNil(decoded["error"])
-    }
-
-    func testDispatchPodcastQueryWikiAlwaysOn() async throws {
-        // query_wiki must work without any skill — it's the cheap read path.
-        let deps = makeDeps()
-        let json = await AgentTools.dispatchPodcast(
-            name: AgentTools.PodcastNames.queryWiki,
-            args: ["topic": "anything"],
-            deps: deps,
-            enabledSkills: []
-        )
-        let decoded = try decode(json)
-        XCTAssertNil(decoded["error"])
     }
 
     // MARK: - Prompt catalog
@@ -315,8 +244,6 @@ final class AgentSkillsTests: XCTestCase {
     private func makeDeps() -> PodcastAgentToolDeps {
         PodcastAgentToolDeps(
             rag: MockRAG(),
-            wiki: MockWiki(),
-            briefing: MockBriefing(),
             summarizer: MockSummarizer(),
             fetcher: MockFetcher(),
             playback: MockPlayback(),

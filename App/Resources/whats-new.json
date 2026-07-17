@@ -2,6 +2,14 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-17T15:47:47Z",
+      "lines": [
+        "Streamlined the app: removed Wiki, Briefings, and Inbox triage for a faster, simpler experience.",
+        "New episodes now appear and download immediately, without waiting on a background review pass.",
+        "Home's featured section is back to agent-curated picks."
+      ]
+    },
+    {
       "shipped_at": "2026-07-16T14:47:44Z",
       "lines": [
         "Comment drafts now stay safe through slow posting, restart recovery, and definitive delivery failures."

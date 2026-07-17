@@ -35,7 +35,7 @@ final class TranscriptAutoIngestTests: XCTestCase {
     // MARK: - Settings default
 
     func testAutoIngestDefaultsOn() {
-        // The agent layer (RAG, wiki, briefings) only works once
+        // The agent layer (RAG, summarisation) only works once
         // transcripts exist. Defaulting off would leave most users with no
         // transcripts despite the feeds shipping them — the very bug this
         // helper exists to fix. Lock the default in.

@@ -331,8 +331,6 @@ final class AgentToolsPodcastActionTests: XCTestCase {
         return DepsBundle(
             bundle: PodcastAgentToolDeps(
                 rag: MockRAG(),
-                wiki: MockWiki(),
-                briefing: MockBriefing(),
                 summarizer: MockSummarizer(),
                 fetcher: fetcher,
                 playback: playback,
