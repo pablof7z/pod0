@@ -168,143 +168,25 @@ struct AIProvidersSettingsView: View {
     }
 }
 
+/// Perplexity connection screen — keychain-presence-only provider on the
+/// shared `ProviderConnectionSection` state machine.
 struct PerplexitySettingsView: View {
-    @State private var manualAPIKey = ""
-    @State private var hasStoredKey = false
-    @State private var isConnectingBYOK = false
-    @State private var credentialMessage: String?
-    @State private var credentialError: String?
-    @State private var byokConnect = BYOKConnectService()
-
     var body: some View {
         Form {
-            connectionSection
+            ProviderConnectionSection(config: Self.config)
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Perplexity")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear(perform: refreshCredentialState)
-        .animation(AppTheme.Animation.spring, value: credentialMessage)
-        .animation(AppTheme.Animation.spring, value: credentialError)
-        .animation(AppTheme.Animation.spring, value: isConnectingBYOK)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Save") { saveManualKey() }
-                    .disabled(manualAPIKey.isBlank)
-            }
-        }
     }
 
-    private var connectionSection: some View {
-        Section {
-            Label(statusTitle, systemImage: statusIcon)
-                .foregroundStyle(statusColor)
-
-            Button {
-                Task { await connectWithBYOK() }
-            } label: {
-                HStack {
-                    Label(isConnectingBYOK ? "Connecting..." : "Connect with BYOK", systemImage: "key.viewfinder")
-                    if isConnectingBYOK {
-                        Spacer()
-                        ProgressView()
-                    }
-                }
-            }
-            .disabled(isConnectingBYOK)
-
-            RevealableAPIKeyField("Paste Perplexity API key", text: $manualAPIKey)
-                .onSubmit { saveManualKey() }
-
-            if hasStoredKey {
-                Button(role: .destructive) {
-                    disconnect()
-                } label: {
-                    Label("Disconnect", systemImage: "trash")
-                }
-            }
-
-            if let credentialMessage {
-                Text(credentialMessage)
-                    .font(AppTheme.Typography.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if let credentialError {
-                Text(credentialError)
-                    .inlineErrorText()
-            }
-        } header: {
-            Text("Connection")
-        } footer: {
-            Text("If you have an OpenRouter key configured, online search routes through OpenRouter automatically — no separate Perplexity key needed. A dedicated Perplexity key takes priority if both are set.")
-        }
-    }
-
-    private var statusTitle: String {
-        hasStoredKey ? "Connected" : "Not connected"
-    }
-
-    private var statusIcon: String {
-        hasStoredKey ? "checkmark.seal.fill" : "xmark.seal"
-    }
-
-    private var statusColor: Color {
-        hasStoredKey ? .green : .secondary
-    }
-
-    private func connectWithBYOK() async {
-        credentialError = nil
-        credentialMessage = nil
-        isConnectingBYOK = true
-        defer { isConnectingBYOK = false }
-
-        do {
-            let token = try await byokConnect.connectPerplexity()
-            try PerplexityCredentialStore.saveAPIKey(token.apiKey)
-            manualAPIKey = ""
-            refreshCredentialState()
-            credentialMessage = "Perplexity connected with BYOK."
-            Haptics.success()
-        } catch BYOKConnectError.cancelled {
-            Haptics.warning()
-        } catch {
-            credentialError = error.localizedDescription
-            Haptics.error()
-        }
-    }
-
-    private func saveManualKey() {
-        credentialError = nil
-        credentialMessage = nil
-        do {
-            try PerplexityCredentialStore.saveAPIKey(manualAPIKey)
-            manualAPIKey = ""
-            refreshCredentialState()
-            credentialMessage = "Perplexity key saved in Keychain."
-            Haptics.success()
-        } catch {
-            credentialError = "Perplexity key could not be saved."
-            Haptics.error()
-        }
-    }
-
-    private func disconnect() {
-        credentialError = nil
-        credentialMessage = nil
-        do {
-            try PerplexityCredentialStore.deleteAPIKey()
-            manualAPIKey = ""
-            refreshCredentialState()
-            credentialMessage = "Perplexity disconnected."
-            Haptics.success()
-        } catch {
-            credentialError = "Perplexity key could not be deleted."
-            Haptics.error()
-        }
-    }
-
-    private func refreshCredentialState() {
-        hasStoredKey = PerplexityCredentialStore.hasAPIKey()
-    }
+    private static let config = ProviderConnectionConfig(
+        providerName: "Perplexity",
+        keyPlaceholder: "Paste Perplexity API key",
+        footer: "If you have an OpenRouter key configured, online search routes through OpenRouter automatically — no separate Perplexity key needed. A dedicated Perplexity key takes priority if both are set.",
+        hasKey: { PerplexityCredentialStore.hasAPIKey() },
+        saveKey: { try PerplexityCredentialStore.saveAPIKey($0) },
+        deleteKey: { try PerplexityCredentialStore.deleteAPIKey() },
+        connectBYOK: { try await $0.connectPerplexity() }
+    )
 }

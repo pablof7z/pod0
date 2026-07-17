@@ -314,7 +314,7 @@
 		97CCE164A0148655F43B3E6A /* SubscriptionContextMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DB42C36E4DE9AE40DEA4433 /* SubscriptionContextMenu.swift */; };
 		980E864039749D76B931EC60 /* FeedClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9644E9F83D0C0624F0563AC9 /* FeedClient.swift */; };
 		9845D6DDB679883B6EACB700 /* AgentRunFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 640DFE2047F3A42C04FBF0AB /* AgentRunFilter.swift */; };
-		986910E5BF3199C14AE62E07 /* ElevenLabsConnectionSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 662B78D85568E8C88C077739 /* ElevenLabsConnectionSection.swift */; };
+		986910E5BF3199C14AE62E07 /* ProviderConnectionSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 662B78D85568E8C88C077739 /* ProviderConnectionSection.swift */; };
 		995C6520A1CC8A7D014816DD /* EpisodeRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BF3F5EE242B66F2D08F1F4B /* EpisodeRow.swift */; };
 		9AAC8FCB2A1CFB5B1200FB35 /* OnboardingPages.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5C71BEB7CB9908E8F4D917 /* OnboardingPages.swift */; };
 		9B3E7B29673CD3B761D4321F /* ChaptersClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26F659D3841F9C4F85C7B6E0 /* ChaptersClient.swift */; };
@@ -790,7 +790,7 @@
 		64CCEB4A7701F0ACD3FEA63D /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		654532F9ECE33BB8040DDFFB /* CachedAsyncImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedAsyncImage.swift; sourceTree = "<group>"; };
 		661B46155E318E5D5685CAAA /* PlayerChaptersScrollView+AskAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlayerChaptersScrollView+AskAgent.swift"; sourceTree = "<group>"; };
-		662B78D85568E8C88C077739 /* ElevenLabsConnectionSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevenLabsConnectionSection.swift; sourceTree = "<group>"; };
+		662B78D85568E8C88C077739 /* ProviderConnectionSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderConnectionSection.swift; sourceTree = "<group>"; };
 		67C23A0E19F361DFBDC0F4CC /* OPMLExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OPMLExport.swift; sourceTree = "<group>"; };
 		68330F2571B90C7BBD19CA19 /* AgentTools+PodcastExternal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AgentTools+PodcastExternal.swift"; sourceTree = "<group>"; };
 		69E4104A5505FFCE8930AC80 /* ChatHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatHistoryStore.swift; sourceTree = "<group>"; };
@@ -1434,7 +1434,7 @@
 				B7BF173FF0F27B307790A505 /* AISettingsView.swift */,
 				EB700211550DA4FE9D8A7C77 /* AssemblyAISettingsView.swift */,
 				EE3AF89262E3F0896AF17033 /* BYOKUnifiedProviderSection.swift */,
-				662B78D85568E8C88C077739 /* ElevenLabsConnectionSection.swift */,
+				662B78D85568E8C88C077739 /* ProviderConnectionSection.swift */,
 				78B392F3A48AF766BAE55289 /* ElevenLabsHeroCard.swift */,
 				7F4FE358C4B5A0D71E62CD8E /* ElevenLabsKeyInfoCard.swift */,
 				9C0B5C79857AA606B270E41D /* ElevenLabsKeyValidationService.swift */,
@@ -2418,7 +2418,7 @@
 				A2428F1AE73CAAA57454313F /* AISettingsView.swift in Sources */,
 				F8B443F616555BE2EADD8678 /* AssemblyAISettingsView.swift in Sources */,
 				0E04A7288F9DEC48DFBA32A8 /* BYOKUnifiedProviderSection.swift in Sources */,
-				986910E5BF3199C14AE62E07 /* ElevenLabsConnectionSection.swift in Sources */,
+				986910E5BF3199C14AE62E07 /* ProviderConnectionSection.swift in Sources */,
 				FB7C15147AC581D98285F12D /* ElevenLabsHeroCard.swift in Sources */,
 				A0BEF34D14F0941027FC58FF /* ElevenLabsKeyInfoCard.swift in Sources */,
 				8FF7C3494550574568842219 /* ElevenLabsKeyValidationService.swift in Sources */,
