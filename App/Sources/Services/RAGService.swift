@@ -8,7 +8,8 @@ import os.log
 // and the `RAGSearch` orchestrator that wires them together.
 //
 // Why a `@MainActor` singleton:
-//   - The wiki surface wants a stable, ready-on-launch handle.
+//   - Agent tools/skills (RAG search, podcast generation, YouTube ingestion,
+//     conversation history) want a stable, ready-on-launch handle.
 //   - State the rest of the app cares about (where the SQLite file lives,
 //     when the index was opened) is UI-adjacent.
 //   - The underlying `VectorIndex` is itself an `actor`, so DB work stays
@@ -56,19 +57,11 @@ final class RAGService {
     private(set) weak var appStore: AppStateStore?
     private let providerEmbedder: ProviderEmbeddingsClient
 
-    /// Wire the live `AppStateStore` so the reranker settings gate and the
-    /// wiki adapter can resolve state at retrieval time. Idempotent.
+    /// Wire the live `AppStateStore` so the reranker settings gate can
+    /// resolve state at retrieval time. Idempotent.
     func attach(appStore: AppStateStore) {
         self.appStore = appStore
         providerEmbedder.attach(appStore: appStore)
-    }
-
-    // MARK: Adapters (defined in RAGService+Adapters.swift)
-
-    /// Adapter that conforms to `WikiRAGSearchProtocol` so `WikiGenerator`
-    /// and `WikiVerifier` can take it directly.
-    var wikiRAG: any WikiRAGSearchProtocol {
-        WikiRAGSearchAdapter(search: search, index: index)
     }
 
     // MARK: Init
@@ -101,7 +94,7 @@ final class RAGService {
                 "failed to open on-disk vectors.sqlite (\(String(describing: error), privacy: .public)) — falling back to in-memory store"
             )
             // The in-memory `VectorIndex` keeps the app runnable; data won't
-            // survive a relaunch but the wiki code paths still work.
+            // survive a relaunch but the RAG-dependent code paths still work.
             do {
                 openedIndex = try VectorIndex(embedder: embedder, inMemory: true)
                 resolvedURL = nil

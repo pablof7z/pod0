@@ -5,8 +5,8 @@ import Foundation
 /// Surfaces a compact podcast inventory (subscriptions, in-progress
 /// episodes, recent unplayed) so the agent can answer "what shows am I
 /// subscribed to" or "what was I listening to" without spending a tool call.
-/// Detailed drill-downs (transcripts, wiki, semantic search) still go
-/// through tools.
+/// Detailed drill-downs (transcripts, semantic search) still go through
+/// tools.
 ///
 /// Includes the friend list, recent notes, and persisted memories the
 /// template ships with.

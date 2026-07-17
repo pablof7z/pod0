@@ -25,10 +25,6 @@ extension AgentTools {
         static let setPlaybackRate      = "set_playback_rate"
         static let setSleepTimer        = "set_sleep_timer"
         static let searchEpisodes       = "search_episodes"
-        static let queryWiki            = "query_wiki"
-        static let createWikiPage       = "create_wiki_page"
-        static let listWikiPages        = "list_wiki_pages"
-        static let deleteWikiPage       = "delete_wiki_page"
         static let queryTranscripts     = "query_transcripts"
         static let perplexitySearch     = "perplexity_search"
         static let summarizeEpisode     = "summarize_episode"
@@ -79,7 +75,7 @@ extension AgentTools {
         static var all: [String] {
             [
                 playEpisode, pausePlayback, setPlaybackRate, setSleepTimer,
-                searchEpisodes, queryWiki, createWikiPage, listWikiPages, deleteWikiPage,
+                searchEpisodes,
                 queryTranscripts,
                 perplexitySearch, summarizeEpisode,
                 findSimilarEpisodes, markEpisodePlayed, markEpisodeUnplayed,
@@ -108,8 +104,6 @@ extension AgentTools {
     /// Default limit for transcript-chunk queries (typically smaller payload
     /// per result, but each chunk is verbose).
     static let podcastTranscriptDefaultLimit = 8
-    /// Default limit for wiki page queries.
-    static let podcastWikiDefaultLimit = 5
     /// Default `k` for find_similar_episodes.
     static let findSimilarDefaultK = 5
 
@@ -161,14 +155,6 @@ extension AgentTools {
             return await setSleepTimerTool(args: args, deps: deps)
         case PodcastNames.searchEpisodes:
             return await searchEpisodesTool(args: args, deps: deps)
-        case PodcastNames.queryWiki:
-            return await queryWikiTool(args: args, deps: deps)
-        case PodcastNames.createWikiPage:
-            return await createWikiPageTool(args: args, deps: deps)
-        case PodcastNames.listWikiPages:
-            return await listWikiPagesTool(args: args, deps: deps)
-        case PodcastNames.deleteWikiPage:
-            return await deleteWikiPageTool(args: args, deps: deps)
         case PodcastNames.queryTranscripts:
             return await queryTranscriptsTool(args: args, deps: deps)
         case PodcastNames.perplexitySearch:

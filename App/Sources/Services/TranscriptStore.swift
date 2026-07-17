@@ -10,8 +10,8 @@ import os.log
 // Why a dedicated store rather than a column on the `Episode` model:
 //   - Transcripts can run hundreds of KB; we don't want them in the
 //     periodically-saved `AppState` json blob.
-//   - The reader, the wiki generator, and the agent all need the same
-//     parsed transcript; one file serves all consumers.
+//   - The reader and the agent both need the same parsed transcript; one
+//     file serves all consumers.
 //
 // Thread-safety: the disk surface is conservative — synchronous on the
 // caller's actor. The class is `@unchecked Sendable` because the only

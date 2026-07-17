@@ -16,7 +16,7 @@ import Observation
 /// - `recompute(store:)` — re-derive every topic from the corpus.
 /// - `mentions(forTopic:)` — read-side accessor for the timeline view.
 /// - `ensureTopic(slug:displayName:)` — idempotent get-or-create used by
-///   deep-links from the wiki and from the in-episode agent.
+///   deep-links from the in-episode agent.
 ///
 /// The store reference is wired through `attach(store:)` (mirroring the
 /// `RAGService.attach(appStore:)` pattern) so views and the eventual real
@@ -31,8 +31,8 @@ final class ThreadingInferenceService {
 
     // MARK: Singleton
 
-    /// Process-wide handle. Mirrors `RAGService.shared` / `WikiStorage.shared`
-    /// so views can reach the service without dependency injection.
+    /// Process-wide handle. Mirrors `RAGService.shared` so views can reach
+    /// the service without dependency injection.
     static let shared = ThreadingInferenceService()
 
     // MARK: State
@@ -161,10 +161,10 @@ final class ThreadingInferenceService {
 
     /// Idempotent get-or-create. If a topic with the canonicalised `slug`
     /// already exists, returns it untouched; otherwise inserts a fresh row
-    /// and returns the stored instance. Used by deep-links from the wiki
-    /// ("open thread for X") and by the in-episode agent. Returns the input
-    /// topic verbatim if no store is attached — callers should `attach`
-    /// before relying on persistence.
+    /// and returns the stored instance. Used by deep-links from the
+    /// in-episode agent ("open thread for X"). Returns the input topic
+    /// verbatim if no store is attached — callers should `attach` before
+    /// relying on persistence.
     @discardableResult
     func ensureTopic(
         slug: String,

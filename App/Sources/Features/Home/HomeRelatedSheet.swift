@@ -18,11 +18,6 @@ import SwiftUI
 // speaker registry the codebase doesn't have yet. Surfacing a lens that
 // only matches within a single transcript would feel broken; we left it
 // for follow-up rather than ship a confusing affordance.
-//
-// Bottom of the sheet exposes a *"Compose a wiki page from these"* button
-// that opens `WikiGenerateSheet` with the seed's title prefilled as the
-// topic — the same RAG corpus drives the compile, so the wiki page reflects
-// what the user is reading right now.
 
 struct HomeRelatedSheet: View {
     let seedEpisode: Episode
@@ -33,7 +28,6 @@ struct HomeRelatedSheet: View {
     @State private var lens: Lens = .topic
     @State private var phase: Phase = .loading
     @State private var matches: [Match] = []
-    @State private var showWikiCompose: Bool = false
 
     enum Lens: String, CaseIterable, Identifiable {
         case topic
@@ -74,25 +68,7 @@ struct HomeRelatedSheet: View {
                         }
                     }
                 }
-                .safeAreaInset(edge: .bottom) {
-                    if phase == .ready {
-                        composeButton
-                            .padding(.horizontal, AppTheme.Spacing.md)
-                            .padding(.vertical, AppTheme.Spacing.sm)
-                            .background(.thinMaterial)
-                    }
-                }
                 .task(id: lens) { await loadRelated() }
-                .sheet(isPresented: $showWikiCompose) {
-                    WikiGenerateSheet(
-                        storage: WikiStorage.shared,
-                        onCompile: { _ in
-                            showWikiCompose = false
-                            dismiss()
-                        },
-                        initialTopic: seedEpisode.title
-                    )
-                }
         }
     }
 
@@ -182,23 +158,6 @@ struct HomeRelatedSheet: View {
             }
             .listStyle(.insetGrouped)
         }
-    }
-
-    // MARK: - Compose
-
-    private var composeButton: some View {
-        Button {
-            Haptics.light()
-            showWikiCompose = true
-        } label: {
-            Label("Compose a wiki page from these", systemImage: "doc.text.magnifyingglass")
-                .font(.subheadline.weight(.semibold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, AppTheme.Spacing.sm)
-        }
-        .buttonStyle(.borderedProminent)
-        .tint(AppTheme.Tint.agentSurface)
-        .accessibilityHint("Opens the wiki compose sheet with this topic prefilled.")
     }
 
     // MARK: - Loading

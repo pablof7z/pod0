@@ -8,12 +8,7 @@ import SwiftUI
 /// confidence dot, and an amber seam for contradictions.
 ///
 /// Tap on a timestamp chip dispatches `play_episode` via `PlaybackState`
-/// (set the episode + seek + play) — same contract the wiki citation chip
-/// uses, so the threading and wiki surfaces feel like one fabric.
-///
-/// A glass capsule footer hands off to the wiki page for the same slug,
-/// matching the §3 boundary: threading is *episodic recall*; wiki is
-/// *synthesised knowledge*.
+/// (set the episode + seek + play).
 struct ThreadingTopicView: View {
 
     let topicID: UUID
@@ -21,14 +16,6 @@ struct ThreadingTopicView: View {
     @Environment(AppStateStore.self) private var store
     @Environment(PlaybackState.self) private var playback
     @State private var service = ThreadingInferenceService.shared
-    /// Cached wiki page for this topic's slug, looked up on appear. Drives
-    /// whether the bottom handoff button renders at all — a styled "open
-    /// wiki entry" pill that doesn't open anything is worse than no pill.
-    @State private var existingWikiPage: WikiPage?
-    /// Set when the user taps the wiki handoff; presents the page in a
-    /// sheet so this view doesn't have to coordinate with the parent
-    /// NavigationStack's `.navigationDestination` plumbing.
-    @State private var presentedWikiPage: WikiPage?
 
     var body: some View {
         ScrollView {
@@ -44,7 +31,6 @@ struct ThreadingTopicView: View {
                     }
                     Divider().overlay(Color.primary.opacity(0.18))
                     timeline
-                    wikiHandoff(for: topic)
                 } else {
                     missingTopic
                 }
@@ -57,37 +43,6 @@ struct ThreadingTopicView: View {
         .background(paperBackground)
         .navigationBarTitleDisplayMode(.inline)
         .task { service.attach(store: store) }
-        .task(id: topicID) { loadWikiPage() }
-        .sheet(item: $presentedWikiPage) { page in
-            NavigationStack {
-                WikiPageView(
-                    page: page,
-                    storage: .shared,
-                    onDeleted: { _ in
-                        presentedWikiPage = nil
-                        existingWikiPage = nil
-                    },
-                    onRegenerated: { newPage in
-                        presentedWikiPage = newPage
-                        existingWikiPage = newPage
-                    }
-                )
-            }
-        }
-    }
-
-    /// Tries to read the wiki page that matches this topic's slug. Treated
-    /// as global scope — threading topics span the library, not a single
-    /// show. Failure is silent: the handoff just doesn't render.
-    private func loadWikiPage() {
-        guard let topic else {
-            existingWikiPage = nil
-            return
-        }
-        existingWikiPage = try? WikiStorage.shared.read(
-            slug: SlugNormalizer.normalize(slug: topic.slug),
-            scope: .global
-        )
     }
 
     // MARK: - Sections
@@ -164,37 +119,6 @@ struct ThreadingTopicView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 80)
-    }
-
-    @ViewBuilder
-    private func wikiHandoff(for topic: ThreadingTopic) -> some View {
-        // Only render when a wiki page actually exists. The pill *looked*
-        // tappable before but was a styled `Text` with a glass background —
-        // tapping did nothing, and it always rendered even when the page
-        // hadn't been compiled. Two paper cuts in one. Now: real Button,
-        // visible only when there's somewhere to go.
-        if let page = existingWikiPage {
-            Divider().overlay(Color.primary.opacity(0.10))
-            Button {
-                Haptics.selection()
-                presentedWikiPage = page
-            } label: {
-                Text("Open the wiki entry for \u{201C}\(topic.displayName)\u{201D} \u{2192}")
-                    .font(AppTheme.Typography.caption)
-                    .italic()
-                    .foregroundStyle(AppTheme.Tint.editorialAmber)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color.clear)
-                            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 16))
-                    )
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Open the wiki entry for \(topic.displayName)")
-        }
     }
 
     // MARK: - Actions

@@ -3,8 +3,13 @@ import SwiftUI
 // MARK: - Threading topic list
 
 /// Index view for every cross-episode topic the inference service has
-/// surfaced in the user's library. Lives behind the wiki surface (UX-09 §3
-/// explicitly forbids a tab) — opened from the wiki home's "Threads" row.
+/// surfaced in the user's library.
+///
+/// Note: this view's former entry point (the wiki home's "Threads" row) was
+/// removed along with the wiki feature; it is currently orphaned pending an
+/// owner decision on where topic-browse should live. Left in place and kept
+/// compiling since `ThreadingInferenceService` + `HomeThreadedTodayView`
+/// stay fully live.
 ///
 /// Each row shows: editorial topic name, mention counter, contradiction
 /// dot, and the relative date of the latest mention. Tap pushes

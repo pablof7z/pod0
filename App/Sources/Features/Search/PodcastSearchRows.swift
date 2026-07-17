@@ -3,13 +3,11 @@ import SwiftUI
 enum PodcastSearchDestination: Identifiable, Hashable {
     case show(UUID)
     case episode(UUID)
-    case wiki(WikiPage)
 
     var id: String {
         switch self {
         case .show(let id): "show-\(id)"
         case .episode(let id): "episode-\(id)"
-        case .wiki(let page): "wiki-\(page.id)"
         }
     }
 }
@@ -79,23 +77,6 @@ struct PodcastTranscriptSearchRow: View {
         let s = total % 60
         if h > 0 { return "\(h):\(String(format: "%02d:%02d", m, s))" }
         return "\(m):\(String(format: "%02d", s))"
-    }
-}
-
-struct PodcastWikiSearchRow: View {
-    let hit: PodcastWikiSearchHit
-    let query: String
-
-    var body: some View {
-        SearchResultRow(
-            icon: "book.closed",
-            tint: .brown,
-            title: hit.page.title,
-            subtitle: hit.page.kind.displayName,
-            bodyText: hit.excerpt,
-            footnote: "\(hit.page.citations.count) citations",
-            query: query
-        )
     }
 }
 

@@ -20,7 +20,7 @@ struct PodcastrApp: App {
     /// Single global owner-consultation coordinator. Lives here (not on
     /// `AgentChatSession`) so an inbound peer-agent reply flowing through
     /// `AgentRelayBridge` can pop the same sheet even when the user is on
-    /// Home / Library / Wiki — i.e. while no chat session exists. Mounted
+    /// Home / Library / Clippings — i.e. while no chat session exists. Mounted
     /// on `RootView` via `agentAskPresenter(coordinator:)`.
     @State private var askCoordinator = AgentAskCoordinator()
 

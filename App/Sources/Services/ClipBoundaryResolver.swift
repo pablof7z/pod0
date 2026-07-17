@@ -3,9 +3,9 @@ import os.log
 
 // MARK: - ClipBoundaryResolver
 //
-// Asks the configured LLM (via OpenRouter / Ollama, same stack as wiki and AI
-// chapters) to pick semantically meaningful start/end timestamps for a clip
-// or shareable quote anchored at the playhead.
+// Asks the configured LLM (via OpenRouter / Ollama, same `UtilityLLMClient`
+// stack as AI chapters) to pick semantically meaningful start/end timestamps
+// for a clip or shareable quote anchored at the playhead.
 //
 // The big idea is asymmetry: when a user taps "clip" or "share quote", they
 // nearly always tap a few seconds *after* the moment of interest. So the

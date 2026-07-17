@@ -19,7 +19,6 @@ enum AgentSkillRegistry {
     static var all: [AgentSkill] {
         [
             PodcastGenerationSkill.skill,
-            WikiResearchSkill.skill,
             ConversationHistorySkill.skill,
             YouTubeIngestionSkill.skill,
         ]

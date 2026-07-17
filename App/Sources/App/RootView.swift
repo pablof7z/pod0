@@ -4,14 +4,13 @@ import SwiftUI
 /// The tabs available at the root navigation level.
 ///
 /// Search is reachable via a top-right toolbar button. The Player lives behind
-/// a persistent mini-bar that expands into `PlayerView` on tap. Settings,
-/// Clippings, and Wiki are reachable from the avatar sidebar.
+/// a persistent mini-bar that expands into `PlayerView` on tap. Settings and
+/// Clippings are reachable from the avatar sidebar.
 enum RootTab: String, CaseIterable {
     case home = "Home"
     case library = "Library"
     case bookmarks = "Bookmarks"
     case clippings = "Clippings"
-    case wiki = "Wiki"
 
     var icon: String {
         switch self {
@@ -19,7 +18,6 @@ enum RootTab: String, CaseIterable {
         case .library:   "tray.fill"
         case .bookmarks: "bookmark.fill"
         case .clippings: "scissors"
-        case .wiki:      "book.closed.fill"
         }
     }
 }
@@ -259,12 +257,6 @@ struct RootView: View {
         case .clippings:
             NavigationStack {
                 ClippingsView()
-                    .toolbar { sharedToolbar() }
-            }
-            .toolbar(.hidden, for: .tabBar)
-        case .wiki:
-            NavigationStack {
-                WikiView()
                     .toolbar { sharedToolbar() }
             }
             .toolbar(.hidden, for: .tabBar)

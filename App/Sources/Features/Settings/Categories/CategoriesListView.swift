@@ -80,7 +80,7 @@ struct CategoriesListView: View {
         } header: {
             Text("\(sortedCategories.count) categor\(sortedCategories.count == 1 ? "y" : "ies")")
         } footer: {
-            Text("Tap a category to override auto-download, transcription, RAG, wiki, and notifications for every show inside.")
+            Text("Tap a category to override auto-download, transcription, RAG, and notifications for every show inside.")
         }
     }
 

@@ -91,9 +91,12 @@ struct Settings: Codable, Hashable, Sendable {
     var agentThinkingModelName: String = ""
     var memoryCompilationModel: String = Defaults.llmModel
     var memoryCompilationModelName: String = ""
-    /// Model used by `WikiGenerator`. Kept distinct from `llmModel` so users can pick a
-    /// cheaper / faster model for wiki compilation than for live agent chat — same pattern
-    /// as `memoryCompilationModel`.
+    /// Generic cheap/fast utility model — surfaced in Settings as "Utility
+    /// model" — used by `AutoSnipController` and `PlayerShareSheet` for
+    /// small one-shot compile calls where the live agent chat model would
+    /// be overkill. Field name predates the generic framing (originally
+    /// wiki-compilation-specific) but is kept as-is; renaming would be a
+    /// gratuitous migration for a purely internal identifier.
     var wikiModel: String = Defaults.llmModel
     var wikiModelName: String = ""
     /// Model used by `PodcastCategorizationService`. Kept distinct so users can pick a
@@ -102,7 +105,7 @@ struct Settings: Codable, Hashable, Sendable {
     var categorizationModelName: String = ""
     /// Model used by `AIChapterCompiler` to synthesise chapter boundaries from
     /// a ready transcript. Kept distinct from `wikiModel` so users can pick a
-    /// cheaper / faster model for chapter compile without affecting wiki quality.
+    /// cheaper / faster model for chapter compile independently.
     var chapterCompilationModel: String = Defaults.llmModel
     var chapterCompilationModelName: String = ""
     var embeddingsModel: String = Self.defaultEmbeddingsModel
@@ -201,17 +204,11 @@ struct Settings: Codable, Hashable, Sendable {
     /// valuable thing a third tap can do that single/double don't already cover.
     var headphoneTripleTapAction: HeadphoneGestureAction = .clipNow
 
-    // Wiki
-    /// When `true`, `WikiGenerator` runs (or refreshes) the relevant wiki pages as soon as
-    /// a new transcript finishes ingesting. Defaults off so first-run users don't burn
-    /// tokens before deciding to opt in.
-    var wikiAutoGenerateOnTranscriptIngest: Bool = false
-
     // Transcripts
     /// When `true`, the app pre-fetches publisher-supplied transcripts in the
     /// background as soon as new episodes appear (called from
     /// `AppStateStore.upsertEpisodes` after a feed refresh). Default-on
-    /// because the agent layer (RAG, wiki, summarisation) only works once
+    /// because the agent layer (RAG, summarisation) only works once
     /// the transcript exists; publisher transcripts are typically
     /// tens of KB so the bandwidth cost is small. Toggle off in
     /// Settings → Transcripts to defer everything to manual fetch.
@@ -265,7 +262,6 @@ struct Settings: Codable, Hashable, Sendable {
         case defaultPlaybackRate, skipForwardSeconds, skipBackwardSeconds, autoMarkPlayedAtEnd
         case autoDeleteDownloadsAfterPlayed, autoPlayNext, autoSkipAds
         case headphoneDoubleTapAction, headphoneTripleTapAction
-        case wikiAutoGenerateOnTranscriptIngest
         case autoIngestPublisherTranscripts, autoFallbackToScribe
         case notifyOnNewEpisodes
         case nostrEnabled, nostrRelayURL, nostrPublicRelays
@@ -325,7 +321,6 @@ struct Settings: Codable, Hashable, Sendable {
         autoSkipAds = try c.decodeIfPresent(Bool.self, forKey: .autoSkipAds) ?? false
         headphoneDoubleTapAction = try c.decodeIfPresent(HeadphoneGestureAction.self, forKey: .headphoneDoubleTapAction) ?? .skipForward
         headphoneTripleTapAction = try c.decodeIfPresent(HeadphoneGestureAction.self, forKey: .headphoneTripleTapAction) ?? .clipNow
-        wikiAutoGenerateOnTranscriptIngest = try c.decodeIfPresent(Bool.self, forKey: .wikiAutoGenerateOnTranscriptIngest) ?? false
         autoIngestPublisherTranscripts = try c.decodeIfPresent(Bool.self, forKey: .autoIngestPublisherTranscripts) ?? true
         autoFallbackToScribe = try c.decodeIfPresent(Bool.self, forKey: .autoFallbackToScribe) ?? true
         notifyOnNewEpisodes = try c.decodeIfPresent(Bool.self, forKey: .notifyOnNewEpisodes) ?? true
@@ -395,7 +390,6 @@ struct Settings: Codable, Hashable, Sendable {
         try c.encode(autoSkipAds, forKey: .autoSkipAds)
         try c.encode(headphoneDoubleTapAction, forKey: .headphoneDoubleTapAction)
         try c.encode(headphoneTripleTapAction, forKey: .headphoneTripleTapAction)
-        try c.encode(wikiAutoGenerateOnTranscriptIngest, forKey: .wikiAutoGenerateOnTranscriptIngest)
         try c.encode(autoIngestPublisherTranscripts, forKey: .autoIngestPublisherTranscripts)
         try c.encode(autoFallbackToScribe, forKey: .autoFallbackToScribe)
         try c.encode(notifyOnNewEpisodes, forKey: .notifyOnNewEpisodes)

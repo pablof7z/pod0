@@ -10,9 +10,8 @@ import os.log
 //   - hybrid path:           ~180ms  (no rerank)
 //   - hybrid + rerank path:  ~400ms  (used by the agent for chat-quality answers)
 //
-// This is the single dependency Lane 10 (`query_transcripts`/`query_wiki`
-// agent tools) calls into. Lane 7 (wiki indexer) calls `VectorStore.upsert`
-// directly; only the read side runs through `RAGSearch`.
+// This is the single dependency Lane 10 (`query_transcripts` agent tool)
+// calls into.
 
 /// Orchestrates the embed → retrieve → (optional rerank) RAG flow.
 struct RAGSearch: Sendable {

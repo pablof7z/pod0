@@ -8,11 +8,11 @@ import os.log
 /// and survive reinstalls.
 ///
 /// **What is synced.** Only portable, non-secret fields:
-///   - LLM model IDs / names (agent, memory compilation, wiki, embeddings)
+///   - LLM model IDs / names (agent, memory compilation, utility, embeddings)
 ///   - Reranker preference
 ///   - ElevenLabs TTS/STT model IDs, voice ID, and voice name
 ///   - Playback preferences (default rate, skip intervals, auto-mark-played)
-///   - Wiki + transcript automation toggles
+///   - Transcript automation toggles
 ///   - Per-kind notification toggles
 ///   - Nostr relay URL and profile metadata (name, about, picture)
 ///
@@ -153,7 +153,6 @@ final class iCloudSettingsSync {
            let v = HeadphoneGestureAction(rawValue: raw)      { settings.headphoneDoubleTapAction = v }
         if let raw = string(.headphoneTripleTapAction),
            let v = HeadphoneGestureAction(rawValue: raw)      { settings.headphoneTripleTapAction = v }
-        if let v = bool(.wikiAutoGenerateOnTranscriptIngest)  { settings.wikiAutoGenerateOnTranscriptIngest = v }
         if let v = bool(.autoIngestPublisherTranscripts)      { settings.autoIngestPublisherTranscripts = v }
         if let v = bool(.autoFallbackToScribe)                { settings.autoFallbackToScribe = v }
         if let v = bool(.notifyOnNewEpisodes)                 { settings.notifyOnNewEpisodes = v }
@@ -199,7 +198,6 @@ final class iCloudSettingsSync {
         kvs.set(settings.autoDeleteDownloadsAfterPlayed,          forKey: Key.autoDeleteDownloadsAfterPlayed.rawValue)
         kvs.set(settings.headphoneDoubleTapAction.rawValue,       forKey: Key.headphoneDoubleTapAction.rawValue)
         kvs.set(settings.headphoneTripleTapAction.rawValue,       forKey: Key.headphoneTripleTapAction.rawValue)
-        kvs.set(settings.wikiAutoGenerateOnTranscriptIngest,      forKey: Key.wikiAutoGenerateOnTranscriptIngest.rawValue)
         kvs.set(settings.autoIngestPublisherTranscripts,          forKey: Key.autoIngestPublisherTranscripts.rawValue)
         kvs.set(settings.autoFallbackToScribe,                    forKey: Key.autoFallbackToScribe.rawValue)
         kvs.set(settings.notifyOnNewEpisodes,                     forKey: Key.notifyOnNewEpisodes.rawValue)
@@ -247,7 +245,6 @@ final class iCloudSettingsSync {
         case autoDeleteDownloadsAfterPlayed      = "sync.settings.autoDeleteDownloadsAfterPlayed"
         case headphoneDoubleTapAction            = "sync.settings.headphoneDoubleTapAction"
         case headphoneTripleTapAction            = "sync.settings.headphoneTripleTapAction"
-        case wikiAutoGenerateOnTranscriptIngest  = "sync.settings.wikiAutoGenerateOnTranscriptIngest"
         case autoIngestPublisherTranscripts      = "sync.settings.autoIngestPublisherTranscripts"
         case autoFallbackToScribe                = "sync.settings.autoFallbackToScribe"
         case notifyOnNewEpisodes                 = "sync.settings.notifyOnNewEpisodes"

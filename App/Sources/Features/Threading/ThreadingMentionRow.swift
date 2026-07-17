@@ -135,7 +135,7 @@ struct ThreadingMentionRow: View {
         return parts.joined(separator: ", ")
     }
 
-    /// Editorial amber, shared with `CitationChip` and wiki contradiction
-    /// surfaces. Lives once in `AppTheme.Tint.editorialAmber`.
+    /// Editorial amber, shared across contradiction-highlight surfaces.
+    /// Lives once in `AppTheme.Tint.editorialAmber`.
     static let amber = AppTheme.Tint.editorialAmber
 }

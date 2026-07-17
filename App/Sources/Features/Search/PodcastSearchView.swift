@@ -11,13 +11,13 @@ struct PodcastSearchView: View {
     }
 
     private var hasAnyResults: Bool {
-        !localResults.isEmpty || !model.transcriptResults.isEmpty || !model.wikiResults.isEmpty
+        !localResults.isEmpty || !model.transcriptResults.isEmpty
     }
 
     private var shouldShowTranscriptSection: Bool {
         model.isSearchingTranscripts
             || !model.transcriptResults.isEmpty
-            || (model.transcriptError != nil && localResults.isEmpty && model.wikiResults.isEmpty)
+            || (model.transcriptError != nil && localResults.isEmpty)
     }
 
     var body: some View {
@@ -42,7 +42,6 @@ struct PodcastSearchView: View {
             placement: .navigationBarDrawer(displayMode: .always),
             prompt: "Shows, episodes, transcripts"
         )
-        .task { await model.loadWikiPages() }
         .task(id: model.query) {
             guard !model.query.trimmed.isEmpty else {
                 model.debouncedQuery = ""
@@ -103,20 +102,6 @@ struct PodcastSearchView: View {
         }
 
         transcriptSection
-
-        if !model.wikiResults.isEmpty {
-            Section("Wiki") {
-                ForEach(model.wikiResults) { hit in
-                    Button {
-                        Haptics.selection()
-                        destination = .wiki(hit.page)
-                    } label: {
-                        PodcastWikiSearchRow(hit: hit, query: model.query)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
     }
 
     @ViewBuilder
@@ -152,7 +137,6 @@ struct PodcastSearchView: View {
         localResults.shows.count
             + localResults.episodes.count
             + model.transcriptResults.count
-            + model.wikiResults.count
     }
 
     private func openTranscriptHit(_ hit: PodcastTranscriptSearchHit) {
@@ -188,13 +172,6 @@ struct PodcastSearchView: View {
             } else {
                 missingView("Episode not found")
             }
-        case .wiki(let page):
-            WikiPageView(
-                page: page,
-                storage: model.wikiStorage,
-                onDeleted: { id in model.removeWikiPage(id: id) },
-                onRegenerated: { page in model.upsertWikiPage(page) }
-            )
         }
     }
 

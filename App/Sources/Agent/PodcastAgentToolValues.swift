@@ -122,21 +122,6 @@ public struct TranscriptHit: Sendable, Equatable {
     }
 }
 
-/// A wiki page hit returned by `query_wiki`.
-public struct WikiHit: Sendable, Equatable {
-    public let pageID: String
-    public let title: String
-    public let excerpt: String
-    public let score: Double?
-
-    public init(pageID: String, title: String, excerpt: String, score: Double? = nil) {
-        self.pageID = pageID
-        self.title = title
-        self.excerpt = excerpt
-        self.score = score
-    }
-}
-
 // MARK: - Composer / summarizer / external lookup
 
 /// A summary returned by `summarize_episode`.
@@ -295,8 +280,7 @@ public struct PeerConversationContext: Sendable, Equatable {
 
 /// One subscription row returned by `list_subscriptions`. Compact on purpose:
 /// the agent uses this to pick a `PodcastID` for a follow-up tool call (e.g.
-/// `list_episodes(podcastID:)` or `query_wiki(scope:)`); detail pages are
-/// rendered by other tools.
+/// `list_episodes(podcastID:)`); detail pages are rendered by other tools.
 public struct SubscriptionSummary: Sendable, Equatable {
     public let podcastID: PodcastID
     public let title: String

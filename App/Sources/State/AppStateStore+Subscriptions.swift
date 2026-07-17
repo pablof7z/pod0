@@ -136,10 +136,6 @@ extension AppStateStore {
     /// destructive action on followed podcasts and by the swipe-to-delete
     /// on the all-podcasts list for podcasts the user never followed.
     func deletePodcast(podcastID: UUID) {
-        let removedEpisodeIDs = state.episodes
-            .filter { $0.podcastID == podcastID }
-            .map(\.id)
-
         var next = state
         next.subscriptions.removeAll { $0.podcastID == podcastID }
         next.podcasts.removeAll { $0.id == podcastID }
@@ -147,20 +143,6 @@ extension AppStateStore {
         performMutationBatch {
             state = next
             invalidateEpisodeProjections()
-        }
-
-        // Wiki citation invalidation — same fan-out as before.
-        Task { @MainActor in
-            let inventory = (try? WikiStorage.shared.loadInventory()) ?? WikiInventory()
-            var jobs: [WikiTriggers.WikiRefreshJob] = []
-            for episodeID in removedEpisodeIDs {
-                jobs.append(contentsOf: WikiTriggers.jobs(
-                    for: .episodeRemoved(episodeID: episodeID, podcastID: podcastID),
-                    inventory: inventory
-                ))
-            }
-            guard !jobs.isEmpty else { return }
-            WikiRefreshExecutor.shared.run(jobs: jobs)
         }
     }
 

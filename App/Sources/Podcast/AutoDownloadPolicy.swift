@@ -30,8 +30,8 @@ struct AutoDownloadPolicy: Codable, Sendable, Hashable {
     /// episode the feed reports (Wi-Fi-only). Users who want manual control
     /// can flip the show to `.off` or `.latestN` from Show Detail. This is
     /// the right default for an offline-first listening + transcript app:
-    /// nothing else in the agent layer (transcripts, RAG, wiki) works well
-    /// until the audio is local.
+    /// nothing else in the agent layer (transcripts, RAG) works well until
+    /// the audio is local.
     static let `default` = AutoDownloadPolicy(mode: .allNew, wifiOnly: true)
 
     /// Compact human-readable description used by management surfaces

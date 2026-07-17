@@ -15,9 +15,9 @@ final class AgentRelayBridge {
     /// returns a typed error envelope and the peer-agent loop continues.
     private weak var askCoordinator: AgentAskCoordinator?
     /// Matches `AgentChatSession.maxTurns`. Multi-step tool chains (e.g. a
-    /// peer asking the agent to compile a wiki page or generate a podcast
-    /// episode) routinely use 6–12 turns; the previous 8-turn cap tripped
-    /// mid-chain. 20 is the same ceiling the in-app chat uses.
+    /// peer asking the agent to generate a podcast episode) routinely use
+    /// 6–12 turns; the previous 8-turn cap tripped mid-chain. 20 is the
+    /// same ceiling the in-app chat uses.
     private let maxTurns = 20
 
     init(

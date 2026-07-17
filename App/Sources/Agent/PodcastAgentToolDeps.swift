@@ -16,12 +16,12 @@ import Foundation
 // hop actors. Implementations that touch `@MainActor` state should mark their
 // methods `@MainActor`; the protocol surface tolerates either.
 //
-// Value-type result envelopes (`EpisodeHit`, `WikiHit`, etc.) live in
+// Value-type result envelopes (`EpisodeHit`, etc.) live in
 // `PodcastAgentToolValues.swift`.
 
 // MARK: - Search & retrieval
 
-/// RAG search across transcripts and wiki content (lane 4/7).
+/// RAG search across transcripts (lane 4).
 public protocol PodcastAgentRAGSearchProtocol: Sendable {
     /// Semantic + keyword episode discovery. `scope` is an optional podcast ID
     /// to constrain the search. Limit defaults to 10.
@@ -33,27 +33,6 @@ public protocol PodcastAgentRAGSearchProtocol: Sendable {
 
     /// Find episodes semantically similar to a seed episode.
     func findSimilarEpisodes(seedEpisodeID: EpisodeID, k: Int) async throws -> [EpisodeHit]
-}
-
-/// Knowledge wiki storage and retrieval (lane 5).
-public protocol WikiStorageProtocol: Sendable {
-    /// Look up a wiki page by topic. `scope` is an optional podcast ID.
-    func queryWiki(topic: String, scope: PodcastID?, limit: Int) async throws -> [WikiHit]
-
-    /// Compile and persist a new wiki page. Throws when the AI provider key is
-    /// missing or when the RAG index has no evidence for the requested topic.
-    /// `kind` is "topic", "person", or "show" (defaults to "topic" for unknown values).
-    /// `scope` is an optional podcast UUID string; nil produces a global page.
-    func createWikiPage(title: String, kind: String, scope: PodcastID?) async throws -> WikiCreateResult
-
-    /// List existing wiki pages from the inventory. Fast — does not decode page bodies.
-    /// `scope` is an optional podcast UUID string; nil returns all pages.
-    func listWikiPages(scope: PodcastID?, limit: Int) async throws -> [WikiPageListing]
-
-    /// Delete the wiki page at `slug` in the given scope.
-    /// `scope` is an optional podcast UUID string; nil targets global pages.
-    /// No-ops when the page does not exist.
-    func deleteWikiPage(slug: String, scope: PodcastID?) async throws
 }
 
 // MARK: - Composer / summarizer / fetcher
@@ -198,7 +177,7 @@ public protocol PeerEventPublisherProtocol: Sendable {
 /// Plain-English library inventory queries. None of these go through RAG —
 /// the agent uses them to answer "what am I subscribed to?" or "what was I
 /// listening to?" without spending a search budget. Detail / discovery /
-/// content lookups still go through the search and wiki protocols.
+/// content lookups still go through the search protocol.
 public protocol PodcastInventoryProtocol: Sendable {
     /// Every show the user is currently subscribed to, sorted by title. Caps
     /// at `limit` if the library is huge.
@@ -308,7 +287,6 @@ public protocol PodcastSubscribeProtocol: Sendable {
 /// `send_friend_message`) can resolve the active root + inbound event.
 struct PodcastAgentToolDeps: Sendable {
     let rag: PodcastAgentRAGSearchProtocol
-    let wiki: WikiStorageProtocol
     let summarizer: EpisodeSummarizerProtocol
     let fetcher: EpisodeFetcherProtocol
     let playback: PlaybackHostProtocol
@@ -334,7 +312,6 @@ struct PodcastAgentToolDeps: Sendable {
     let chatConversationID: UUID?
     init(
         rag: PodcastAgentRAGSearchProtocol,
-        wiki: WikiStorageProtocol,
         summarizer: EpisodeSummarizerProtocol,
         fetcher: EpisodeFetcherProtocol,
         playback: PlaybackHostProtocol,
@@ -354,7 +331,6 @@ struct PodcastAgentToolDeps: Sendable {
         chatConversationID: UUID? = nil
     ) {
         self.rag = rag
-        self.wiki = wiki
         self.summarizer = summarizer
         self.fetcher = fetcher
         self.playback = playback
@@ -378,7 +354,7 @@ struct PodcastAgentToolDeps: Sendable {
     /// inbound entrypoint to thread per-turn context without rebuilding adapters.
     func withPeerContext(_ ctx: PeerConversationContext?) -> PodcastAgentToolDeps {
         PodcastAgentToolDeps(
-            rag: rag, wiki: wiki, summarizer: summarizer,
+            rag: rag, summarizer: summarizer,
             fetcher: fetcher, playback: playback, library: library,
             inventory: inventory, categories: categories,
             peerPublisher: peerPublisher, friendDirectory: friendDirectory,
@@ -392,7 +368,7 @@ struct PodcastAgentToolDeps: Sendable {
 
     func withChatConversationID(_ id: UUID?) -> PodcastAgentToolDeps {
         PodcastAgentToolDeps(
-            rag: rag, wiki: wiki, summarizer: summarizer,
+            rag: rag, summarizer: summarizer,
             fetcher: fetcher, playback: playback, library: library,
             inventory: inventory, categories: categories,
             peerPublisher: peerPublisher, friendDirectory: friendDirectory,

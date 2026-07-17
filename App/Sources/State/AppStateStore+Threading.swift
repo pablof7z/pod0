@@ -31,8 +31,8 @@ extension AppStateStore {
         state.threadingTopics.first { $0.id == id }
     }
 
-    /// Looks up a topic by slug — the dual-link target shared with the wiki
-    /// layer. Slug match is case-insensitive against the canonicalised key.
+    /// Looks up a topic by slug. Slug match is case-insensitive against the
+    /// canonicalised key.
     func threadingTopic(slug: String) -> ThreadingTopic? {
         let key = SlugNormalizer.normalize(slug: slug)
         return state.threadingTopics.first { $0.slug == key }

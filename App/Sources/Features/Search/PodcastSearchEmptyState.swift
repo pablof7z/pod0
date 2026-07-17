@@ -10,12 +10,12 @@ import UIKit
 ///     "Sample Marquee User Stories" so the user immediately sees what the
 ///     app can do beyond literal text matching.
 ///   - `noResults` — shown when a typed query returns zero hits across
-///     shows / episodes / transcripts / wiki. Lets the user hand the query
+///     shows / episodes / transcripts. Lets the user hand the query
 ///     off to the conversational agent without retyping.
 ///
-/// Both surfaces use the shared editorial typography (New York serif body)
-/// and the existing `glassSurface` modifier so the pills feel like part of
-/// the calm-on-the-outside aesthetic the rest of the app commits to.
+/// Both surfaces use the shared editorial typography and the existing
+/// `glassSurface` modifier so the pills feel like part of the
+/// calm-on-the-outside aesthetic the rest of the app commits to.
 enum PodcastSearchEmptyState {
 
     /// Examples lifted from `docs/spec/PROJECT_CONTEXT.md` §"Sample Marquee

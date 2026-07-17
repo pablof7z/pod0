@@ -90,7 +90,7 @@ struct AudioComposeAttribution: Codable, Sendable, Hashable, Identifiable {
     /// non-episode sources can also appear.
     var episodeID: UUID?
     /// Foreign key to a source knowledge page, if any.
-    var wikiPageID: UUID?
+    var sourcePageID: UUID?
     /// Human display label — e.g. *"Hard Fork · 34:12"*.
     var displayLabel: String
     /// Timestamp inside the source episode the citation jumps to. Optional
@@ -100,13 +100,13 @@ struct AudioComposeAttribution: Codable, Sendable, Hashable, Identifiable {
     init(
         id: UUID = UUID(),
         episodeID: UUID? = nil,
-        wikiPageID: UUID? = nil,
+        sourcePageID: UUID? = nil,
         displayLabel: String,
         timestampSeconds: TimeInterval? = nil
     ) {
         self.id = id
         self.episodeID = episodeID
-        self.wikiPageID = wikiPageID
+        self.sourcePageID = sourcePageID
         self.displayLabel = displayLabel
         self.timestampSeconds = timestampSeconds
     }

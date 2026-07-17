@@ -350,8 +350,8 @@ struct ScribeWord: Codable, Sendable, Hashable {
 extension Transcript {
     /// Converts a Scribe raw result into our internal `Transcript`. Words of
     /// type `spacing` are dropped. Words of type `audio_event` (`[laughter]`,
-    /// `[music]`) are folded into the body text in-place — the wiki / agent
-    /// surfaces will use them for context, the reader will hide them.
+    /// `[music]`) are folded into the body text in-place — agent surfaces
+    /// will use them for context, the reader will hide them.
     static func fromScribeRaw(
         _ raw: ScribeRawResult,
         episodeID: UUID,
