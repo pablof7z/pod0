@@ -194,7 +194,7 @@ enum PodcastGenerationSkill {
                     ] as [String: Any],
                 ] as [String: Any],
                 "play_now": ["type": "boolean", "description": "If true, immediately start playing the finished episode. Defaults to false."],
-                "podcast_id": ["type": "string", "description": "UUID of an agent-owned podcast to publish the episode to (from create_podcast or list_my_podcasts). Omit to publish to the default 'Agent Generated' show. When the target podcast is public and Nostr is enabled, the episode is automatically published as a NIP-74 kind:30075 event."],
+                "podcast_id": ["type": "string", "description": "UUID of an agent-owned podcast to publish the episode to (from create_podcast or list_my_podcasts). Omit to publish to the default 'Agent Generated' show."],
             ],
             required: ["title", "turns"]
         )

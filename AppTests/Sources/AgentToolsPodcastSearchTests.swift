@@ -168,8 +168,6 @@ final class AgentToolsPodcastSearchTests: XCTestCase {
             library: MockLibrary(),
             inventory: MockInventory(),
             categories: MockInventory(),
-            peerPublisher: MockPeerEventPublisher(),
-            friendDirectory: MockFriendDirectory(),
             perplexity: perplexity,
             ttsPublisher: MockTTSPublisher(),
             directory: MockDirectory(),

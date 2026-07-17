@@ -244,8 +244,6 @@ final class AgentToolsListEpisodesTests: XCTestCase {
             library: MockLibrary(),
             inventory: inventory,
             categories: inventory,
-            peerPublisher: MockPeerEventPublisher(),
-            friendDirectory: MockFriendDirectory(),
             perplexity: MockPerplexity(),
             ttsPublisher: MockTTSPublisher(),
             directory: directory,

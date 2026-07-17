@@ -29,7 +29,6 @@ struct RootView: View {
 
     @Environment(AppStateStore.self) var store
     @Environment(AgentAskCoordinator.self) var askCoordinator
-    @Environment(UserIdentityStore.self) var userIdentity
     @State var selectedTab: RootTab = .home
     @State var showSettings = false
     @State var showAgentChat = false
@@ -42,7 +41,6 @@ struct RootView: View {
     @State var playbackState = PlaybackState()
     @State var showFullPlayer = false
     @State var playerNavSubscriptionID: UUID?
-    @State var generationSourceNostrRootID: String?
     @Namespace var playerNamespace
 
     var scheduledTaskRunnerIdentity: ObjectIdentifier? {
@@ -161,32 +159,10 @@ struct RootView: View {
                         showAgentChat = true
                     }
                 }
-                .onReceive(NotificationCenter.default.publisher(for: .openNostrConversationRequested)) { note in
-                    guard let rootID = note.userInfo?["rootEventID"] as? String else { return }
-                    showFullPlayer = false
-                    generationSourceNostrRootID = rootID
-                }
                 .modifier(PlayerNavSheets(
                     subscriptionID: $playerNavSubscriptionID,
                     store: store
                 ))
-                .sheet(item: Binding(
-                    get: { generationSourceNostrRootID.map(IdentifiedString.init) },
-                    set: { generationSourceNostrRootID = $0?.value }
-                )) { identified in
-                    if let convo = store.state.nostrConversations.first(where: { $0.rootEventID == identified.value }) {
-                        NavigationStack {
-                            NostrConversationDetailView(conversation: convo)
-                                .toolbar {
-                                    ToolbarItem(placement: .topBarLeading) {
-                                        Button("Done") { generationSourceNostrRootID = nil }
-                                    }
-                                }
-                        }
-                    }
-                }
-                .nostrApprovalPresenter()
-                .nostrAgentSurface()
                 .agentAskPresenter(coordinator: askCoordinator)
                 .onOpenURL { handleDeepLink($0) }
                 .onReceive(
@@ -303,14 +279,15 @@ struct RootView: View {
     @ToolbarContentBuilder
     private func sharedToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
-            let profile = UserProfileDisplay.from(identity: userIdentity)
+            let settings = store.state.settings
+            let name = settings.agentDisplayName.trimmed
             Button {
                 Haptics.selection()
                 withAnimation(AppTheme.Animation.spring) { showSidebar = true }
             } label: {
-                IdentityAvatarView(
-                    url: profile?.pictureURL,
-                    initial: profile?.displayName.first,
+                AvatarView(
+                    url: URL(string: settings.agentAvatarURLString.trimmed),
+                    initial: name.first,
                     size: 28
                 )
             }
@@ -326,7 +303,6 @@ struct RootView: View {
             }
             .accessibilityLabel("Settings")
         }
-        NostrConversationsToolbarItem()
         ToolbarItem(placement: .topBarTrailing) {
             Button {
                 Haptics.selection()
@@ -359,11 +335,6 @@ struct RootView: View {
     }
 
     // MARK: - Helper types
-
-    private struct IdentifiedString: Identifiable {
-        let value: String
-        var id: String { value }
-    }
 
     private struct IdentifiedSpotlightLink: Identifiable {
         let link: SpotlightIndexer.DeepLink

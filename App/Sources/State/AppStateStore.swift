@@ -3,20 +3,6 @@ import Observation
 import WidgetKit
 import os.log
 
-// MARK: - Friend invite
-
-/// Pre-filled data for an incoming friend invite deep-link.
-/// Consumed by `AgentFriendsView` to open `AddFriendSheet` with values already typed in.
-struct PendingFriendInvite: Equatable, Identifiable {
-    /// Bech32-encoded public key of the person being added (full `npub1…` string).
-    let npub: String
-    /// Display name suggested by the invite link; the user can change it before adding.
-    let name: String?
-
-    /// Stable identity derived from the public key — two invites for the same key are the same.
-    var id: String { npub }
-}
-
 /// Single source of truth. All mutations route through here so the `didSet`
 /// observer can persist automatically. UI and agent both call the same methods.
 @MainActor
@@ -25,11 +11,6 @@ final class AppStateStore {
 
     nonisolated private static let logger = Logger.app("AppStateStore")
 
-    // MARK: - Navigation
-
-    /// Pending friend invite dispatched by a `podcastr://friend/add` deep-link.
-    /// Consumed and cleared by `AgentFriendsView` on `.onChange` so it fires exactly once.
-    var pendingFriendInvite: PendingFriendInvite?
 
     /// Chapter the user long-pressed in `PlayerChaptersScrollView`. Drained
     /// by `AgentChatSession.init` and prefilled into the composer; cleared
@@ -43,22 +24,6 @@ final class AppStateStore {
     /// carries the timestamp anchor, the active chapter bounds, and the
     /// transcribed utterance; the agent decides what to do with it.
     var pendingVoiceNoteAgentContext: VoiceNoteAgentContext?
-
-    /// Counterparty pubkey of the most-recent Nostr conversation turn —
-    /// drives the floating "Talking to X" capsule on the main screen.
-    /// Cleared `nostrActivityIndicatorDuration` seconds after the last
-    /// turn lands (each new turn resets the timer). Non-persisted UI state.
-    var activeNostrCounterparty: String?
-
-    /// Cancellable timer that clears `activeNostrCounterparty`. Ignored by
-    /// the @Observable macro so swapping it out doesn't force view
-    /// re-evaluations.
-    @ObservationIgnored
-    var nostrActivityDismissTask: Task<Void, Never>?
-
-    /// How long the "Talking to X" capsule stays visible after the latest
-    /// turn — matched to win-the-day's 10s window.
-    static let nostrActivityIndicatorDuration: TimeInterval = 10
 
     var state: AppState {
         didSet {

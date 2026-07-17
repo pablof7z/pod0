@@ -6,8 +6,6 @@ import Foundation
 
 enum Anchor: Codable, Hashable, Sendable {
     case note(id: UUID)
-    /// A note attached directly to a Friend.
-    case friend(id: UUID)
     /// A note anchored to a specific moment in an episode.
     case episode(id: UUID, positionSeconds: TimeInterval)
 
@@ -18,11 +16,18 @@ enum Anchor: Codable, Hashable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         switch try c.decode(Kind.self, forKey: .kind) {
         case .note:   self = .note(id: try c.decode(UUID.self, forKey: .id))
-        case .friend: self = .friend(id: try c.decode(UUID.self, forKey: .id))
         case .episode:
             let id  = try c.decode(UUID.self, forKey: .id)
             let pos = (try? c.decodeIfPresent(TimeInterval.self, forKey: .positionSeconds)) ?? 0
             self = .episode(id: id, positionSeconds: pos)
+        case .friend:
+            // Legacy anchor from the removed Friends feature. Thrown here so
+            // the caller's `try?` degrades this note's `target` to `nil`
+            // instead of losing the whole note.
+            throw DecodingError.dataCorrupted(.init(
+                codingPath: [CodingKeys.kind],
+                debugDescription: "Anchor kind 'friend' is no longer supported"
+            ))
         }
     }
 
@@ -31,9 +36,6 @@ enum Anchor: Codable, Hashable, Sendable {
         switch self {
         case .note(let id):
             try c.encode(Kind.note, forKey: .kind)
-            try c.encode(id, forKey: .id)
-        case .friend(let id):
-            try c.encode(Kind.friend, forKey: .kind)
             try c.encode(id, forKey: .id)
         case .episode(let id, let pos):
             try c.encode(Kind.episode, forKey: .kind)

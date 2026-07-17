@@ -72,7 +72,7 @@ struct ImageGenerationSettingsView: View {
         } header: {
             Text("Blossom Upload")
         } footer: {
-            Text("Generated artwork, episode audio, chapters, and transcripts are uploaded here before being referenced in Nostr events.")
+            Text("Generated podcast artwork is uploaded here so it can be referenced by a public URL.")
         }
     }
 

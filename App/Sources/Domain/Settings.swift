@@ -67,7 +67,6 @@ struct Settings: Codable, Hashable, Sendable {
         static let llmModel = "openai/gpt-4o-mini"
         static let elevenLabsSTTModel = "scribe_v1"
         static let elevenLabsTTSModel = "eleven_turbo_v2_5"
-        static let nostrRelayURL = "wss://relay.tenex.chat"
         static let defaultPlaybackRate: Double = 1.0
         static let skipForwardSeconds: Int = 30
         static let skipBackwardSeconds: Int = 15
@@ -223,16 +222,10 @@ struct Settings: Codable, Hashable, Sendable {
     /// episode for a subscription that has notifications enabled.
     var notifyOnNewEpisodes: Bool = true
 
-    // Nostr identity (private key stored in Keychain via NostrCredentialStore)
-    var nostrEnabled: Bool = false
-    var nostrRelayURL: String = Defaults.nostrRelayURL
-    /// Relay list used when publishing NIP-74 podcast events. Initialized from the
-    /// user's NIP-65 kind:10002 outbox relays; falls back to primal + damus when empty.
-    var nostrPublicRelays: [String] = []
-    var nostrProfileName: String = ""
-    var nostrProfileAbout: String = ""
-    var nostrProfilePicture: String = ""
-    var nostrPublicKeyHex: String?
+    // Agent identity — display name and avatar the user configures for the
+    // agent during onboarding. Surfaced in the sidebar/toolbar avatar.
+    var agentDisplayName: String = ""
+    var agentAvatarURLString: String = ""
 
     // Onboarding
     var hasCompletedOnboarding: Bool = false
@@ -264,9 +257,11 @@ struct Settings: Codable, Hashable, Sendable {
         case headphoneDoubleTapAction, headphoneTripleTapAction
         case autoIngestPublisherTranscripts, autoFallbackToScribe
         case notifyOnNewEpisodes
-        case nostrEnabled, nostrRelayURL, nostrPublicRelays
-        case nostrProfileName, nostrProfileAbout, nostrProfilePicture
-        case nostrPublicKeyHex
+        // RawValues preserved as "nostrProfileName" / "nostrProfilePicture" so
+        // an agent name/avatar set before the Nostr identity removal keeps
+        // decoding into the renamed fields.
+        case agentDisplayName = "nostrProfileName"
+        case agentAvatarURLString = "nostrProfilePicture"
         case hasCompletedOnboarding
         case youtubeExtractorURL
     }
@@ -324,13 +319,8 @@ struct Settings: Codable, Hashable, Sendable {
         autoIngestPublisherTranscripts = try c.decodeIfPresent(Bool.self, forKey: .autoIngestPublisherTranscripts) ?? true
         autoFallbackToScribe = try c.decodeIfPresent(Bool.self, forKey: .autoFallbackToScribe) ?? true
         notifyOnNewEpisodes = try c.decodeIfPresent(Bool.self, forKey: .notifyOnNewEpisodes) ?? true
-        nostrEnabled = try c.decodeIfPresent(Bool.self, forKey: .nostrEnabled) ?? false
-        nostrRelayURL = try c.decodeIfPresent(String.self, forKey: .nostrRelayURL) ?? Defaults.nostrRelayURL
-        nostrPublicRelays = try c.decodeIfPresent([String].self, forKey: .nostrPublicRelays) ?? []
-        nostrProfileName = try c.decodeIfPresent(String.self, forKey: .nostrProfileName) ?? ""
-        nostrProfileAbout = try c.decodeIfPresent(String.self, forKey: .nostrProfileAbout) ?? ""
-        nostrProfilePicture = try c.decodeIfPresent(String.self, forKey: .nostrProfilePicture) ?? ""
-        nostrPublicKeyHex = try c.decodeIfPresent(String.self, forKey: .nostrPublicKeyHex)
+        agentDisplayName = try c.decodeIfPresent(String.self, forKey: .agentDisplayName) ?? ""
+        agentAvatarURLString = try c.decodeIfPresent(String.self, forKey: .agentAvatarURLString) ?? ""
         hasCompletedOnboarding = try c.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? false
         youtubeExtractorURL = try c.decodeIfPresent(String.self, forKey: .youtubeExtractorURL)
 
@@ -393,13 +383,8 @@ struct Settings: Codable, Hashable, Sendable {
         try c.encode(autoIngestPublisherTranscripts, forKey: .autoIngestPublisherTranscripts)
         try c.encode(autoFallbackToScribe, forKey: .autoFallbackToScribe)
         try c.encode(notifyOnNewEpisodes, forKey: .notifyOnNewEpisodes)
-        try c.encode(nostrEnabled, forKey: .nostrEnabled)
-        try c.encode(nostrRelayURL, forKey: .nostrRelayURL)
-        try c.encode(nostrPublicRelays, forKey: .nostrPublicRelays)
-        try c.encode(nostrProfileName, forKey: .nostrProfileName)
-        try c.encode(nostrProfileAbout, forKey: .nostrProfileAbout)
-        try c.encode(nostrProfilePicture, forKey: .nostrProfilePicture)
-        try c.encodeIfPresent(nostrPublicKeyHex, forKey: .nostrPublicKeyHex)
+        try c.encode(agentDisplayName, forKey: .agentDisplayName)
+        try c.encode(agentAvatarURLString, forKey: .agentAvatarURLString)
         try c.encode(hasCompletedOnboarding, forKey: .hasCompletedOnboarding)
         try c.encodeIfPresent(youtubeExtractorURL, forKey: .youtubeExtractorURL)
     }

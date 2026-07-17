@@ -4,7 +4,7 @@ import os.log
 // MARK: - DataExportView
 //
 // Settings → Data → Export. Generates a JSON document of the live `AppState`
-// (items, notes, friends, agent memories, agent activity, non-secret settings)
+// (items, notes, agent memories, agent activity, non-secret settings)
 // and surfaces it through a system share sheet so the user can save it to
 // Files, AirDrop it, or send it through any share extension.
 //
@@ -54,7 +54,6 @@ struct DataExportView: View {
             statRow(icon: "antenna.radiowaves.left.and.right", tint: .pink, label: "Subscriptions", count: stats.subscriptions)
             statRow(icon: "headphones", tint: .blue, label: "Episodes", count: stats.episodes)
             statRow(icon: "note.text", tint: .indigo, label: "Notes", count: stats.notes)
-            statRow(icon: "person.2.fill", tint: .green, label: "Friends", count: stats.friends)
             statRow(icon: "brain.head.profile", tint: .orange, label: "Memories", count: stats.memories)
             statRow(icon: "clock.arrow.circlepath", tint: .gray, label: "Agent activity", count: stats.agentActivity)
         }
@@ -135,7 +134,7 @@ struct DataExportView: View {
         if let size = fileSize, let generatedAt {
             return "\(base) · \(formatBytes(size)) · Last exported \(Self.exportTimeFormatter.string(from: generatedAt))"
         }
-        return "\(base) · Bundles subscriptions, episodes, notes, friends, agent memories, and agent activity. API keys and the Nostr private key are never included."
+        return "\(base) · Bundles subscriptions, episodes, notes, agent memories, and agent activity. API keys are never included."
     }
 
     // MARK: - Actions

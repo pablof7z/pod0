@@ -2,6 +2,15 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-17T17:14:56Z",
+      "lines": [
+        "Removed Nostr identity, Friends, episode comments, and remote-agent messaging — the app is now fully local and self-contained.",
+        "Removed the Threading topic-browse screen (its only entry point, Wiki, was already gone).",
+        "Podcast generation, TTS episodes, and artwork generation still work exactly as before — only the Nostr publishing step was removed.",
+        "The sidebar avatar and agent name now come from your onboarding setup rather than a Nostr profile."
+      ]
+    },
+    {
       "shipped_at": "2026-07-17T15:47:47Z",
       "lines": [
         "Streamlined the app: removed Wiki, Briefings, and Inbox triage for a faster, simpler experience.",

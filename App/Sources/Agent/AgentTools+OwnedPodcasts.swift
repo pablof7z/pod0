@@ -2,17 +2,13 @@ import Foundation
 
 // MARK: - Agent-owned podcast tool handlers
 //
-// Implements five tools backed by `PodcastAgentToolDeps.ownedPodcasts`:
+// Implements four tools backed by `PodcastAgentToolDeps.ownedPodcasts`:
 //
 //   create_podcast           — create a new agent-owned show
 //   update_podcast           — update metadata on an existing agent-owned show
 //   delete_my_podcast        — delete an agent-owned show and all its episodes
 //   list_my_podcasts         — list all agent-owned shows
 //   generate_podcast_artwork — generate artwork via image-gen + Blossom upload
-//
-// `generate_tts_episode` in AgentTools+TTS.swift accepts an optional
-// `podcast_id` parameter; if supplied and the podcast is public and Nostr is
-// enabled, the episode is published to Nostr via `publishEpisodeToNostr`.
 
 extension AgentTools {
 
@@ -28,8 +24,6 @@ extension AgentTools {
         let categories  = (args["categories"] as? [String]) ?? []
         let imageURLStr = (args["image_url"] as? String)?.trimmed.nilIfEmpty
         let imageURL    = imageURLStr.flatMap { URL(string: $0) }
-        let visibilityRaw = (args["visibility"] as? String)?.trimmed ?? "private"
-        let visibility  = Podcast.NostrVisibility(rawValue: visibilityRaw) ?? .private
 
         do {
             let info = try await deps.ownedPodcasts.createPodcast(
@@ -38,8 +32,7 @@ extension AgentTools {
                 author: author,
                 imageURL: imageURL,
                 language: language,
-                categories: categories,
-                visibility: visibility
+                categories: categories
             )
             return toolSuccess(podcastInfoPayload(info))
         } catch {
@@ -58,8 +51,6 @@ extension AgentTools {
         let author      = (args["author"] as? String)?.trimmed.nilIfEmpty
         let imageURLStr = (args["image_url"] as? String)?.trimmed.nilIfEmpty
         let imageURL    = imageURLStr.flatMap { URL(string: $0) }
-        let visibilityRaw = (args["visibility"] as? String)?.trimmed.nilIfEmpty
-        let visibility  = visibilityRaw.flatMap { Podcast.NostrVisibility(rawValue: $0) }
 
         do {
             let info = try await deps.ownedPodcasts.updatePodcast(
@@ -67,8 +58,7 @@ extension AgentTools {
                 title: title,
                 description: description,
                 author: author,
-                imageURL: imageURL,
-                visibility: visibility
+                imageURL: imageURL
             )
             return toolSuccess(podcastInfoPayload(info))
         } catch {
@@ -98,22 +88,6 @@ extension AgentTools {
         return toolSuccess(["count": rows.count, "podcasts": rows])
     }
 
-    // MARK: - publish_episode
-
-    static func publishEpisodeTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
-        guard let episodeID = (args["episode_id"] as? String)?.trimmed, !episodeID.isEmpty else {
-            return toolError("Missing or empty 'episode_id'")
-        }
-        do {
-            guard let naddr = try await deps.ownedPodcasts.publishEpisodeToNostr(episodeID: episodeID) else {
-                return toolError("Episode '\(episodeID)' was not published — verify the podcast is agent-owned, its visibility is 'public', and Nostr is enabled in Settings.")
-            }
-            return toolSuccess(["episode_id": episodeID, "naddr": naddr])
-        } catch {
-            return toolError("publish_episode failed: \(error.localizedDescription)")
-        }
-    }
-
     // MARK: - generate_podcast_artwork
 
     static func generatePodcastArtworkTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
@@ -136,13 +110,9 @@ extension AgentTools {
             "title":         info.title,
             "description":   info.description,
             "author":        info.author,
-            "visibility":    info.visibility,
             "episode_count": info.episodeCount,
         ]
         if let url = info.imageURL { row["image_url"] = url.absoluteString }
-        if let eventID = info.nostrEventID { row["nostr_event_id"] = eventID }
-        if let naddr = info.nostrAddr { row["naddr"] = naddr }
-        if let count = info.episodesPublishedToNostr { row["episodes_published_to_nostr"] = count }
         return row
     }
 }

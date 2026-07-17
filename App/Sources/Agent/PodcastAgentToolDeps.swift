@@ -131,47 +131,6 @@ public protocol PodcastLibraryProtocol: Sendable {
     ) async throws -> ClipResult
 }
 
-/// Registers outbound friend messages so `NostrAgentResponder` can route
-/// incoming replies back to the originating conversation (in-app chat or
-/// Nostr peer thread). Used by `send_friend_message` immediately after
-/// the root event is published.
-protocol PendingFriendMessageRegistrarProtocol: Sendable {
-    func register(_ message: PendingFriendMessage) async
-}
-
-/// Resolves the user's trusted-friends list for the `send_friend_message`
-/// tool. Gates outbound notes so the agent cannot fire kind:1 events at
-/// arbitrary pubkeys on the user's identity.
-public protocol FriendDirectoryProtocol: Sendable {
-    /// Resolve a hex pubkey or pubkey prefix (e.g. 6 chars, as shown in the
-    /// Friends list) to the full hex pubkey. Returns `nil` when no matching
-    /// friend is found.
-    func resolvePubkey(prefixOrFull: String) async -> String?
-}
-
-/// Publishes peer-conversation events on the user's Nostr identity. Used by
-/// the `end_conversation` and `send_friend_message` agent tools. Implementations
-/// are responsible for signing with the user's agent key, attaching NIP-10
-/// reply tags when a peer context is present, and pushing the event to the
-/// configured relay.
-public protocol PeerEventPublisherProtocol: Sendable {
-    /// Publish a kind:1 reply inside an existing peer conversation. Attaches
-    /// NIP-10 `e`/`p` tags from `peerContext` plus any `extraTags`.
-    func publishConversationReply(
-        peerContext: PeerConversationContext,
-        body: String,
-        extraTags: [[String]]
-    ) async throws -> String
-
-    /// Publish a kind:1 note p-tagged at the friend, optionally threaded
-    /// under an existing peer-conversation root.
-    func publishFriendMessage(
-        friendPubkeyHex: String,
-        body: String,
-        peerContext: PeerConversationContext?
-    ) async throws -> String
-}
-
 // MARK: - Inventory queries
 
 /// Plain-English library inventory queries. None of these go through RAG —
@@ -280,11 +239,6 @@ public protocol PodcastSubscribeProtocol: Sendable {
 
 /// Bundle of every protocol the podcast tool surface needs. Construct once at
 /// app startup; pass to `AgentTools.dispatchPodcast(...)` for every tool call.
-///
-/// `peerContext` is the only per-call-mutable field — the orchestrator should
-/// build a fresh `PodcastAgentToolDeps` (or use `withPeerContext(_:)`) for each
-/// Nostr peer-conversation turn so peer-only tools (`end_conversation`,
-/// `send_friend_message`) can resolve the active root + inbound event.
 struct PodcastAgentToolDeps: Sendable {
     let rag: PodcastAgentRAGSearchProtocol
     let summarizer: EpisodeSummarizerProtocol
@@ -293,19 +247,12 @@ struct PodcastAgentToolDeps: Sendable {
     let library: PodcastLibraryProtocol
     let inventory: PodcastInventoryProtocol
     let categories: PodcastCategoryProtocol
-    let peerPublisher: PeerEventPublisherProtocol
-    let friendDirectory: FriendDirectoryProtocol
-    let pendingRegistrar: (any PendingFriendMessageRegistrarProtocol)?
     let perplexity: PerplexityClientProtocol
     let ttsPublisher: TTSPublisherProtocol
     let directory: PodcastDirectoryProtocol
     let subscribe: PodcastSubscribeProtocol
     let youtubeIngestion: YouTubeIngestionProtocol
     let ownedPodcasts: AgentOwnedPodcastManagerProtocol
-    /// Set by the Nostr peer-agent entrypoint per inbound turn. Nil for owner
-    /// chat / voice / other entrypoints — peer-only tools early-return a clean
-    /// tool error in that case.
-    let peerContext: PeerConversationContext?
     /// Set by `AgentChatSession` per dispatch to the active in-app conversation
     /// UUID. Used by `generate_tts_episode` to tag the resulting episode with
     /// its source conversation so the player can surface a tappable link.
@@ -318,16 +265,12 @@ struct PodcastAgentToolDeps: Sendable {
         library: PodcastLibraryProtocol,
         inventory: PodcastInventoryProtocol,
         categories: PodcastCategoryProtocol,
-        peerPublisher: PeerEventPublisherProtocol,
-        friendDirectory: FriendDirectoryProtocol,
-        pendingRegistrar: (any PendingFriendMessageRegistrarProtocol)? = nil,
         perplexity: PerplexityClientProtocol,
         ttsPublisher: TTSPublisherProtocol,
         directory: PodcastDirectoryProtocol,
         subscribe: PodcastSubscribeProtocol,
         youtubeIngestion: YouTubeIngestionProtocol,
         ownedPodcasts: AgentOwnedPodcastManagerProtocol,
-        peerContext: PeerConversationContext? = nil,
         chatConversationID: UUID? = nil
     ) {
         self.rag = rag
@@ -337,33 +280,13 @@ struct PodcastAgentToolDeps: Sendable {
         self.library = library
         self.inventory = inventory
         self.categories = categories
-        self.peerPublisher = peerPublisher
-        self.friendDirectory = friendDirectory
-        self.pendingRegistrar = pendingRegistrar
         self.perplexity = perplexity
         self.ttsPublisher = ttsPublisher
         self.directory = directory
         self.subscribe = subscribe
         self.youtubeIngestion = youtubeIngestion
         self.ownedPodcasts = ownedPodcasts
-        self.peerContext = peerContext
         self.chatConversationID = chatConversationID
-    }
-
-    /// Returns a copy with the supplied peer context. Used by the Nostr
-    /// inbound entrypoint to thread per-turn context without rebuilding adapters.
-    func withPeerContext(_ ctx: PeerConversationContext?) -> PodcastAgentToolDeps {
-        PodcastAgentToolDeps(
-            rag: rag, summarizer: summarizer,
-            fetcher: fetcher, playback: playback, library: library,
-            inventory: inventory, categories: categories,
-            peerPublisher: peerPublisher, friendDirectory: friendDirectory,
-            pendingRegistrar: pendingRegistrar, perplexity: perplexity,
-            ttsPublisher: ttsPublisher, directory: directory,
-            subscribe: subscribe, youtubeIngestion: youtubeIngestion,
-            ownedPodcasts: ownedPodcasts,
-            peerContext: ctx, chatConversationID: chatConversationID
-        )
     }
 
     func withChatConversationID(_ id: UUID?) -> PodcastAgentToolDeps {
@@ -371,12 +294,11 @@ struct PodcastAgentToolDeps: Sendable {
             rag: rag, summarizer: summarizer,
             fetcher: fetcher, playback: playback, library: library,
             inventory: inventory, categories: categories,
-            peerPublisher: peerPublisher, friendDirectory: friendDirectory,
-            pendingRegistrar: pendingRegistrar, perplexity: perplexity,
+            perplexity: perplexity,
             ttsPublisher: ttsPublisher, directory: directory,
             subscribe: subscribe, youtubeIngestion: youtubeIngestion,
             ownedPodcasts: ownedPodcasts,
-            peerContext: peerContext, chatConversationID: id
+            chatConversationID: id
         )
     }
 }

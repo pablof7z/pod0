@@ -247,62 +247,6 @@ actor MockLibrary: PodcastLibraryProtocol {
     }
 }
 
-actor MockPeerEventPublisher: PeerEventPublisherProtocol {
-    struct ConversationReplyCall: Equatable {
-        let peerContext: PeerConversationContext
-        let body: String
-        let extraTags: [[String]]
-    }
-    struct FriendMessageCall: Equatable {
-        let friendPubkeyHex: String
-        let body: String
-        let peerContext: PeerConversationContext?
-    }
-    private(set) var conversationReplies: [ConversationReplyCall] = []
-    private(set) var friendMessages: [FriendMessageCall] = []
-    private var nextEventID = 1
-    private let shouldThrow: Bool
-
-    init(shouldThrow: Bool = false) {
-        self.shouldThrow = shouldThrow
-    }
-
-    func publishConversationReply(
-        peerContext: PeerConversationContext,
-        body: String,
-        extraTags: [[String]]
-    ) async throws -> String {
-        if shouldThrow { throw NostrEventPublisherError.noRelayConfigured }
-        conversationReplies.append(.init(peerContext: peerContext, body: body, extraTags: extraTags))
-        defer { nextEventID += 1 }
-        return "peer-reply-\(nextEventID)"
-    }
-
-    func publishFriendMessage(
-        friendPubkeyHex: String,
-        body: String,
-        peerContext: PeerConversationContext?
-    ) async throws -> String {
-        if shouldThrow { throw NostrEventPublisherError.noRelayConfigured }
-        friendMessages.append(.init(friendPubkeyHex: friendPubkeyHex, body: body, peerContext: peerContext))
-        defer { nextEventID += 1 }
-        return "friend-msg-\(nextEventID)"
-    }
-}
-
-actor MockFriendDirectory: FriendDirectoryProtocol {
-    private let knownPubkeys: [String]
-
-    init(knownPubkeys: [String] = []) {
-        self.knownPubkeys = knownPubkeys.map { $0.lowercased() }
-    }
-
-    func resolvePubkey(prefixOrFull: String) async -> String? {
-        let needle = prefixOrFull.lowercased()
-        return knownPubkeys.first { $0.hasPrefix(needle) }
-    }
-}
-
 actor MockTTSPublisher: TTSPublisherProtocol {
     nonisolated func defaultVoiceID() -> String { "mock-voice" }
     nonisolated func setDefaultVoiceID(_ voiceID: String) {}

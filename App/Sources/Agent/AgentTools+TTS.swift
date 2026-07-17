@@ -78,14 +78,9 @@ extension AgentTools {
         }
 
         // Build the generation source so the player can link back to the
-        // originating conversation (Nostr peer or in-app chat).
+        // originating in-app chat conversation.
         let generationSource: Episode.GenerationSource?
-        if let ctx = deps.peerContext {
-            generationSource = .nostr(
-                rootEventID: ctx.rootEventID,
-                peerPubkeyHex: ctx.peerPubkeyHex
-            )
-        } else if let convID = deps.chatConversationID {
+        if let convID = deps.chatConversationID {
             generationSource = .inAppChat(conversationID: convID)
         } else {
             generationSource = nil
@@ -100,10 +95,6 @@ extension AgentTools {
                 generationSource: generationSource,
                 targetPodcastID: targetPodcastID
             )
-            // Publish to Nostr when the target is an owned public podcast.
-            if targetPodcastID != nil {
-                _ = try? await deps.ownedPodcasts.publishEpisodeToNostr(episodeID: result.episodeID)
-            }
             var payload: [String: Any] = [
                 "episode_id": result.episodeID,
                 "podcast_id": result.podcastID,

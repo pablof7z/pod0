@@ -4,8 +4,8 @@ import Foundation
 //
 // Central catalog of every `AgentSkill` known to the agent. Used by:
 //   - `AgentPrompt` — to render the `## Skills` catalog
-//   - `AgentChatSession+Turns` / `AgentRelayBridge` — to append per-turn
-//     schemas for skills the session has activated
+//   - `AgentChatSession+Turns` — to append per-turn schemas for skills the
+//     session has activated
 //   - `AgentTools.dispatchPodcast` — for the defensive ownership gate
 //
 // `all` and the simple lookups are nonisolated — they return `Sendable`
@@ -66,9 +66,8 @@ enum AgentSkillRegistry {
 
     /// Processes a `use_skill` tool call: parses the args JSON, validates
     /// against the registry, and returns the JSON-encoded tool response plus
-    /// the updated `enabledSkills` set. Single source of truth used by both
-    /// `AgentChatSession+Turns` and `AgentRelayBridge` so the activation
-    /// contract is identical across the two entry points.
+    /// the updated `enabledSkills` set. Single source of truth used by
+    /// `AgentChatSession+Turns`.
     static func activate(
         argsJSON: String,
         currentEnabledSkills enabled: Set<String>

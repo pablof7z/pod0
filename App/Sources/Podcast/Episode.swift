@@ -188,7 +188,10 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         downloadState = try c.decodeIfPresent(DownloadState.self, forKey: .downloadState) ?? .notDownloaded
         transcriptState = try c.decodeIfPresent(TranscriptState.self, forKey: .transcriptState) ?? .none
         adSegments = try c.decodeIfPresent([AdSegment].self, forKey: .adSegments)
-        generationSource = try c.decodeIfPresent(GenerationSource.self, forKey: .generationSource)
+        // `try?` (not `try`) so a legacy/unrecognized source (e.g. the
+        // removed Nostr-peer generation source) degrades to `nil` instead of
+        // failing the whole episode's decode.
+        generationSource = (try? c.decodeIfPresent(GenerationSource.self, forKey: .generationSource)) ?? nil
         metadataIndexed = try c.decodeIfPresent(Bool.self, forKey: .metadataIndexed) ?? false
     }
 
@@ -419,7 +422,6 @@ extension Episode {
     /// Stored on the episode so the player can surface a tappable source link.
     enum GenerationSource: Sendable, Equatable, Hashable {
         case inAppChat(conversationID: UUID)
-        case nostr(rootEventID: String, peerPubkeyHex: String)
     }
 }
 
@@ -427,7 +429,7 @@ extension Episode {
 
 extension Episode.GenerationSource: Codable {
     private enum CodingKeys: String, CodingKey {
-        case type, conversationID, rootEventID, peerPubkeyHex
+        case type, conversationID
     }
 
     init(from decoder: Decoder) throws {
@@ -437,11 +439,11 @@ extension Episode.GenerationSource: Codable {
         case "inAppChat":
             let id = try c.decode(UUID.self, forKey: .conversationID)
             self = .inAppChat(conversationID: id)
-        case "nostr":
-            let rootEventID = try c.decode(String.self, forKey: .rootEventID)
-            let peerPubkeyHex = try c.decode(String.self, forKey: .peerPubkeyHex)
-            self = .nostr(rootEventID: rootEventID, peerPubkeyHex: peerPubkeyHex)
         default:
+            // Covers legacy `"nostr"` rows from the removed Nostr-peer
+            // generation source. Caller decodes this via `try?` so an
+            // unrecognized/legacy type degrades to `nil` rather than
+            // corrupting the whole episode.
             throw DecodingError.dataCorrupted(.init(
                 codingPath: [CodingKeys.type],
                 debugDescription: "Unknown GenerationSource type: \(type)"
@@ -455,10 +457,6 @@ extension Episode.GenerationSource: Codable {
         case .inAppChat(let conversationID):
             try c.encode("inAppChat", forKey: .type)
             try c.encode(conversationID, forKey: .conversationID)
-        case .nostr(let rootEventID, let peerPubkeyHex):
-            try c.encode("nostr", forKey: .type)
-            try c.encode(rootEventID, forKey: .rootEventID)
-            try c.encode(peerPubkeyHex, forKey: .peerPubkeyHex)
         }
     }
 }

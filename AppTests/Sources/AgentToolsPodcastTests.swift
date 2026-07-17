@@ -15,16 +15,10 @@ final class AgentToolsPodcastTests: XCTestCase {
         })
         // Skill-gated tool names live in `PodcastNames.all` (so `dispatch` can
         // route them) but their schemas are owned by the skill, not by
-        // `podcastSchema`. Peer-only tools live in `peerOnlySchema` and are
-        // surfaced only inside Nostr peer conversations. Subtract both before
-        // comparing.
-        let peerOnlyNames: Set<String> = [
-            AgentTools.PodcastNames.endConversation,
-        ]
+        // `podcastSchema`. Subtract those before comparing.
         let expected = Set(AgentTools.PodcastNames.all)
             .subtracting(AgentSkillRegistry.allToolNames)
-            .subtracting(peerOnlyNames)
-        XCTAssertEqual(names, expected, "podcastSchema must cover every non-skill, non-peer-only podcast tool")
+        XCTAssertEqual(names, expected, "podcastSchema must cover every non-skill podcast tool")
     }
 
     func testPodcastSchemaEntriesHaveRequiredOpenAIShape() {
@@ -325,63 +319,6 @@ final class AgentToolsPodcastTests: XCTestCase {
         XCTAssertTrue(result.sources.isEmpty)
     }
 
-    // MARK: - publish_episode
-
-    func testPublishEpisodeSuccessReturnsNaddr() async throws {
-        let ownedPodcasts = MockOwnedPodcasts()
-        let deps = makeDeps(ownedPodcasts: ownedPodcasts)
-        let json = await AgentTools.dispatchPodcast(
-            name: AgentTools.PodcastNames.publishEpisode,
-            args: ["episode_id": "ep-abc"],
-            deps: deps.bundle
-        )
-        let decoded = try decode(json)
-        XCTAssertEqual(decoded["success"] as? Bool, true)
-        XCTAssertEqual(decoded["episode_id"] as? String, "ep-abc")
-        XCTAssertNotNil(decoded["naddr"])
-        let published = await ownedPodcasts.publishedEpisodeIDs
-        XCTAssertEqual(published, ["ep-abc"])
-    }
-
-    func testPublishEpisodeRejectsMissingEpisodeID() async throws {
-        let deps = makeDeps()
-        let json = await AgentTools.dispatchPodcast(
-            name: AgentTools.PodcastNames.publishEpisode,
-            args: [:],
-            deps: deps.bundle
-        )
-        let decoded = try decode(json)
-        XCTAssertNotNil(decoded["error"])
-    }
-
-    func testPublishEpisodeReturnsErrorWhenNotPublished() async throws {
-        let ownedPodcasts = MockOwnedPodcasts()
-        await ownedPodcasts.setShouldFailPublish(true)
-        let deps = makeDeps(ownedPodcasts: ownedPodcasts)
-        let json = await AgentTools.dispatchPodcast(
-            name: AgentTools.PodcastNames.publishEpisode,
-            args: ["episode_id": "ep-private"],
-            deps: deps.bundle
-        )
-        let decoded = try decode(json)
-        XCTAssertNotNil(decoded["error"])
-    }
-
-    func testPublishEpisodeReturnsErrorOnThrow() async throws {
-        let ownedPodcasts = MockOwnedPodcasts()
-        await ownedPodcasts.setPublishError(AgentOwnedPodcastError.noSigningKey)
-        let deps = makeDeps(ownedPodcasts: ownedPodcasts)
-        let json = await AgentTools.dispatchPodcast(
-            name: AgentTools.PodcastNames.publishEpisode,
-            args: ["episode_id": "ep-nosigning"],
-            deps: deps.bundle
-        )
-        let decoded = try decode(json)
-        XCTAssertNotNil(decoded["error"])
-        let errMsg = decoded["error"] as? String ?? ""
-        XCTAssertTrue(errMsg.contains("signing key"), "Expected signing key error, got: \(errMsg)")
-    }
-
     // MARK: - Helpers
 
     private func decode(_ json: String) throws -> [String: Any] {
@@ -405,8 +342,6 @@ final class AgentToolsPodcastTests: XCTestCase {
         library: PodcastLibraryProtocol = MockLibrary(),
         inventory: PodcastInventoryProtocol = MockInventory(),
         categories: PodcastCategoryProtocol = MockInventory(),
-        peerPublisher: PeerEventPublisherProtocol = MockPeerEventPublisher(),
-        friendDirectory: FriendDirectoryProtocol = MockFriendDirectory(),
         perplexity: PerplexityClientProtocol = MockPerplexity(),
         ttsPublisher: TTSPublisherProtocol = MockTTSPublisher(),
         ownedPodcasts: AgentOwnedPodcastManagerProtocol = MockOwnedPodcasts()
@@ -420,8 +355,6 @@ final class AgentToolsPodcastTests: XCTestCase {
                 library: library,
                 inventory: inventory,
                 categories: categories,
-                peerPublisher: peerPublisher,
-                friendDirectory: friendDirectory,
                 perplexity: perplexity,
                 ttsPublisher: ttsPublisher,
                 directory: MockDirectory(),

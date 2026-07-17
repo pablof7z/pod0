@@ -32,9 +32,4 @@ extension Notification.Name {
     /// dismisses the player, switches to the target conversation, and opens
     /// the agent chat sheet.
     static let openAgentChatConversation = Notification.Name("io.f7z.podcast.openAgentChatConversation")
-    /// Posted by `PlayerGenerationSourceChip` when the user taps a Nostr
-    /// conversation source. `userInfo["rootEventID"]` carries the root event
-    /// ID string. `RootView` dismisses the player and presents
-    /// `NostrConversationDetailView`.
-    static let openNostrConversationRequested = Notification.Name("io.f7z.podcast.openNostrConversationRequested")
 }

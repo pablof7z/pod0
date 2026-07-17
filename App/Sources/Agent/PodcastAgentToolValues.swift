@@ -243,39 +243,6 @@ public struct FeedRefreshResult: Sendable, Equatable {
     }
 }
 
-// MARK: - Peer conversation context
-
-/// Per-inbound-turn context the agent's peer tools need to act on the
-/// conversation that triggered this run. Built by the Nostr inbound
-/// entrypoint and threaded through `PodcastAgentToolDeps`. Owner-chat
-/// callers leave this nil; peer-only tools (`end_conversation`,
-/// `send_friend_message`) early-return a clean tool error when it's absent.
-public struct PeerConversationContext: Sendable, Equatable {
-    /// Hex event id of the NIP-10 conversation root. May equal
-    /// `inboundEventID` when this is a fresh root.
-    public let rootEventID: String
-    /// Hex event id of the latest inbound peer event driving this run.
-    public let inboundEventID: String
-    /// 32-byte x-only public key of the peer (hex-encoded).
-    public let peerPubkeyHex: String
-    /// `a` tags (NIP-33 parameterized replaceable refs) carried by the root
-    /// event. Forwarded verbatim onto outbound replies so the conversation
-    /// continues to reference the same coordinate.
-    public let rootATags: [[String]]
-
-    public init(
-        rootEventID: String,
-        inboundEventID: String,
-        peerPubkeyHex: String,
-        rootATags: [[String]] = []
-    ) {
-        self.rootEventID = rootEventID
-        self.inboundEventID = inboundEventID
-        self.peerPubkeyHex = peerPubkeyHex
-        self.rootATags = rootATags
-    }
-}
-
 // MARK: - Inventory rows
 
 /// One subscription row returned by `list_subscriptions`. Compact on purpose:

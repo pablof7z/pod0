@@ -127,25 +127,15 @@ actor MockSubscribe: PodcastSubscribeProtocol {
 // MARK: - MockOwnedPodcasts
 
 actor MockOwnedPodcasts: AgentOwnedPodcastManagerProtocol {
-    enum PublishError: Error { case notOwned, privateVisibility, nostrDisabled }
-
-    private(set) var publishedEpisodeIDs: [EpisodeID] = []
-    private var shouldFailPublish: Bool = false
-    private var publishError: Error?
     var ownedPodcasts: [AgentOwnedPodcastInfo] = []
-
-    func setShouldFailPublish(_ value: Bool) { shouldFailPublish = value }
-    func setPublishError(_ error: Error?) { publishError = error }
 
     func createPodcast(
         title: String, description: String, author: String,
-        imageURL: URL?, language: String?, categories: [String],
-        visibility: Podcast.NostrVisibility
+        imageURL: URL?, language: String?, categories: [String]
     ) async throws -> AgentOwnedPodcastInfo {
         let info = AgentOwnedPodcastInfo(
             podcastID: UUID().uuidString, title: title, description: description,
-            author: author, imageURL: imageURL, visibility: visibility.rawValue,
-            episodeCount: 0, nostrEventID: nil, nostrAddr: nil, episodesPublishedToNostr: nil
+            author: author, imageURL: imageURL, episodeCount: 0
         )
         ownedPodcasts.append(info)
         return info
@@ -153,7 +143,7 @@ actor MockOwnedPodcasts: AgentOwnedPodcastManagerProtocol {
 
     func updatePodcast(
         podcastID: PodcastID, title: String?, description: String?,
-        author: String?, imageURL: URL?, visibility: Podcast.NostrVisibility?
+        author: String?, imageURL: URL?
     ) async throws -> AgentOwnedPodcastInfo {
         guard let idx = ownedPodcasts.firstIndex(where: { $0.podcastID == podcastID }) else {
             throw AgentOwnedPodcastError.notFound(podcastID)
@@ -165,9 +155,7 @@ actor MockOwnedPodcasts: AgentOwnedPodcastManagerProtocol {
             description: description ?? existing.description,
             author: author ?? existing.author,
             imageURL: imageURL ?? existing.imageURL,
-            visibility: visibility?.rawValue ?? existing.visibility,
-            episodeCount: existing.episodeCount,
-            nostrEventID: nil, nostrAddr: nil, episodesPublishedToNostr: nil
+            episodeCount: existing.episodeCount
         )
         ownedPodcasts[idx] = updated
         return updated
@@ -181,13 +169,6 @@ actor MockOwnedPodcasts: AgentOwnedPodcastManagerProtocol {
 
     func generateAndUploadArtwork(prompt: String) async throws -> URL {
         return URL(string: "https://blossom.example.com/mock-artwork.png")!
-    }
-
-    func publishEpisodeToNostr(episodeID: EpisodeID) async throws -> String? {
-        if let err = publishError { throw err }
-        if shouldFailPublish { return nil }
-        publishedEpisodeIDs.append(episodeID)
-        return "naddr1mock\(episodeID)"
     }
 }
 

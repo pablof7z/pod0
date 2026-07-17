@@ -348,33 +348,7 @@ extension AgentTools {
                 ],
                 required: ["podcast_id"]
             ),
-            podcastTool(
-                name: PodcastNames.sendFriendMessage,
-                description: "Send a Nostr kind:1 text note to a friend on the user's behalf. Use this when the user tells you to message, tell, ask, or hand off something to a named friend — from any context, including owner chat. The friend_pubkey MUST match a friend in the user's Friends list — the tool refuses unknown pubkeys. Inside a peer conversation the note threads as a NIP-10 reply; from owner chat it publishes as a standalone note.",
-                properties: [
-                    "friend_pubkey": ["type": "string", "description": "Hex pubkey or 6-character pubkey prefix of the friend (the prefix is shown in parentheses next to each name in the Friends list). Must match a friend in the user's Friends list."],
-                    "message": ["type": "string", "description": "Plain text body of the note to send. Be direct and concise."],
-                ],
-                required: ["friend_pubkey", "message"]
-            ),
         ] + ownedPodcastSchema
-    }
-
-    /// Tools that are only valid inside a Nostr peer conversation.
-    /// `end_conversation` suppresses a reply to the active peer turn —
-    /// the concept is meaningless in owner-chat.
-    @MainActor
-    static var peerOnlySchema: [[String: Any]] {
-        [
-            podcastTool(
-                name: PodcastNames.endConversation,
-                description: "Signal that you have nothing to say for the current peer message — publish no reply for this turn. Call this INSTEAD OF replying when the latest peer message is mere acknowledgment or social closure (thanks, ok, sounds good, see you) and there is nothing substantive to add. The conversation stays open — future messages from the peer will still be handled. Do not call this if the peer asked a question, made a request, or raised an ambiguity.",
-                properties: [
-                    "reason": ["type": "string", "description": "Why you are not replying. Logged locally for diagnostics; never transmitted to the peer."],
-                ],
-                required: ["reason"]
-            ),
-        ]
     }
 
     /// Local copy of the OpenAI function-tool builder. The base file's helper

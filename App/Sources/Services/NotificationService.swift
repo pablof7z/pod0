@@ -2,7 +2,7 @@ import Foundation
 import UserNotifications
 import os.log
 
-/// Local notifications for non-task surfaces (currently: Nostr contact requests).
+/// Local notifications for non-task surfaces (currently: new-episode alerts).
 @MainActor
 enum NotificationService {
 
@@ -20,9 +20,6 @@ enum NotificationService {
     nonisolated static let episodeIDUserInfoKey = "episodeID"
 
     private enum Content {
-        static let approvalTitle = "New contact request"
-        static let approvalBody = "Someone wants to reach your agent. Open the app to review."
-        static let approvalIDPrefix = "nostr-approval:"
         static let newEpisodeIDPrefix = "new-episode:"
     }
 
@@ -55,32 +52,6 @@ enum NotificationService {
             }
         @unknown default:
             return false
-        }
-    }
-
-    // MARK: - Nostr approval
-
-    /// Fires an immediate notification when an unknown Nostr sender requests access.
-    /// Deduped by pubkey — won't fire again if one is already pending for that key.
-    static func notifyPendingApproval(pubkeyHex: String) async {
-        let center = UNUserNotificationCenter.current()
-        let pending = await center.pendingNotificationRequests()
-        let id = "\(Content.approvalIDPrefix)\(pubkeyHex)"
-        guard !pending.contains(where: { $0.identifier == id }) else { return }
-
-        let granted = await requestAuthorization()
-        guard granted else { return }
-
-        let content = UNMutableNotificationContent()
-        content.title = Content.approvalTitle
-        content.body = Content.approvalBody
-        content.sound = .default
-
-        let request = UNNotificationRequest(identifier: id, content: content, trigger: nil)
-        do {
-            try await center.add(request)
-        } catch {
-            logger.error("notifyPendingApproval failed for pubkey \(pubkeyHex, privacy: .public): \(error, privacy: .public)")
         }
     }
 

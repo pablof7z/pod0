@@ -4,73 +4,26 @@ struct AgentSettingsView: View {
     @Environment(AppStateStore.self) private var store
     @ObservedObject private var runLogger = AgentRunLogger.shared
     @State private var settings: Settings = Settings()
-    @State private var hasNostrKey: Bool = false
 
     var body: some View {
         List {
             agentSection
-            nostrSection
         }
         .settingsListStyle()
         .navigationTitle("Agent")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             settings = store.state.settings
-            hasNostrKey = NostrCredentialStore.hasPrivateKey()
         }
         .onChange(of: settings) { _, new in
             store.updateSettings(new)
         }
-        .onChange(of: settings.nostrEnabled) { Haptics.selection() }
     }
 
     // MARK: - Sections
 
     private var agentSection: some View {
         Section("Agent") {
-            NavigationLink {
-                AgentIdentityView()
-            } label: {
-                SettingsRow(
-                    icon: "person.crop.circle",
-                    tint: .pink,
-                    title: "Identity"
-                )
-            }
-
-            NavigationLink {
-                AgentFriendsView()
-            } label: {
-                SettingsRow(
-                    icon: "person.2.fill",
-                    tint: .blue,
-                    title: "Friends",
-                    badge: store.state.friends.count
-                )
-            }
-
-            NavigationLink {
-                AgentAccessControlView()
-            } label: {
-                SettingsRow(
-                    icon: "checkmark.shield.fill",
-                    tint: .green,
-                    title: "Access Control",
-                    badge: store.pendingNostrApprovals.count
-                )
-            }
-
-            NavigationLink {
-                NostrConversationsView()
-            } label: {
-                SettingsRow(
-                    icon: "bubble.left.and.bubble.right.fill",
-                    tint: .cyan,
-                    title: "Conversations",
-                    badge: store.state.nostrConversations.count
-                )
-            }
-
             NavigationLink {
                 AgentMemoriesView()
             } label: {
@@ -124,42 +77,6 @@ struct AgentSettingsView: View {
                     title: "Activity Log",
                     badge: store.activeAgentActivityCount
                 )
-            }
-
-            NavigationLink {
-                AgentPodcastsView()
-            } label: {
-                SettingsRow(
-                    icon: "mic.fill",
-                    tint: .red,
-                    title: "Podcasts",
-                    badge: store.allPodcasts.filter { $0.ownerPubkeyHex != nil }.count
-                )
-            }
-        }
-    }
-
-    private var nostrSection: some View {
-        Section {
-            Toggle("Enable when available", isOn: $settings.nostrEnabled)
-                .disabled(!hasNostrKey)
-
-            if !hasNostrKey {
-                NavigationLink {
-                    AgentIdentityView()
-                } label: {
-                    Label("Set up identity first", systemImage: "person.crop.circle.badge.exclamationmark")
-                        .foregroundStyle(.secondary)
-                        .font(AppTheme.Typography.callout)
-                }
-            }
-        } header: {
-            Text("Remote agent over Nostr")
-        } footer: {
-            if hasNostrKey {
-                Text("Temporarily paused while verified message handling is being installed. Your preference, conversations, and access decisions are preserved; incoming Nostr messages cannot run the agent right now.")
-            } else {
-                Text("Generate a Nostr key pair in Identity to save your preference. Remote messages remain paused until verified message handling is ready.")
             }
         }
     }

@@ -61,10 +61,10 @@ extension OnboardingView {
         let nameTrimmed = agentNameDraft.trimmed
         let pictureTrimmed = profilePictureDraft.trimmed
         if !nameTrimmed.isEmpty {
-            s.nostrProfileName = nameTrimmed
+            s.agentDisplayName = nameTrimmed
         }
         if !pictureTrimmed.isEmpty {
-            s.nostrProfilePicture = pictureTrimmed
+            s.agentAvatarURLString = pictureTrimmed
         }
         store.updateSettings(s)
         Haptics.success()

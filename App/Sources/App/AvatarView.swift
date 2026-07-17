@@ -1,19 +1,16 @@
 import SwiftUI
 
-// MARK: - IdentityAvatarView
+// MARK: - AvatarView
 //
-// Reusable avatar for every Identity surface. T0 paper, 1pt hairline ring,
-// no breathing/rotation per identity-05-synthesis §4.2. Falls back to the
-// display-name initial when the picture URL is empty / fails.
+// Reusable circular avatar for the sidebar and toolbar. T0 paper, 1pt
+// hairline ring. Falls back to the display-name initial when the picture
+// URL is empty / fails to load.
 
-struct IdentityAvatarView: View {
+struct AvatarView: View {
 
     let url: URL?
     let initial: Character?
     var size: CGFloat = 96
-    /// Tints the hairline ring. Default is the muted hairline colour; the
-    /// Settings row tints `accent.live` (red) when remote signer failed and
-    /// `warning` (orange) when last-acked age > 24h (per §4.1).
     var ringColor: Color = AppTheme.Tint.hairline
 
     var body: some View {

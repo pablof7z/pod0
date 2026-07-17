@@ -8,8 +8,7 @@ import Foundation
 /// Detailed drill-downs (transcripts, semantic search) still go through
 /// tools.
 ///
-/// Includes the friend list, recent notes, and persisted memories the
-/// template ships with.
+/// Includes recent notes and persisted memories the template ships with.
 enum AgentPrompt {
 
     // Inventory caps — keep the prompt under a few KB even with a heavy library.
@@ -104,13 +103,6 @@ enum AgentPrompt {
                 return "- \(truncate(ep.title)) — \(show)"
             }.joined(separator: "\n")
             sections.append("## Recent (last \(Int(Cap.recentWindowDays)) days, unplayed)\n\(lines)")
-        }
-
-        if !state.friends.isEmpty {
-            let list = state.friends
-                .map { "- \($0.displayName) (\(String($0.identifier.prefix(6))))" }
-                .joined(separator: "\n")
-            sections.append("## Friends\n\(list)")
         }
 
         let activeNotes = state.notes

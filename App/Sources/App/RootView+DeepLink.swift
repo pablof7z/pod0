@@ -10,11 +10,6 @@ extension RootView {
             showSettings = true
         case .agent:
             openAgentChat()
-        case .addFriend(let npub, let name):
-            showSettings = true
-            Task { @MainActor in
-                store.pendingFriendInvite = PendingFriendInvite(npub: npub, name: name)
-            }
         case .episode(let uuid):
             spotlightSheet = .episode(uuid)
         case .episodeByGUID(let guid, let startTime):

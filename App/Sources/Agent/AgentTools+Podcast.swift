@@ -34,8 +34,6 @@ extension AgentTools {
         static let downloadEpisode      = "download_episode"
         static let requestTranscription = "request_transcription"
         static let refreshFeed          = "refresh_feed"
-        static let endConversation      = "end_conversation"
-        static let sendFriendMessage    = "send_friend_message"
         static let listSubscriptions    = "list_subscriptions"
         static let listPodcasts         = "list_podcasts"
         static let listCategories       = "list_categories"
@@ -66,7 +64,6 @@ extension AgentTools {
         static let deleteMyPodcast        = "delete_my_podcast"
         static let listMyPodcasts         = "list_my_podcasts"
         static let generatePodcastArtwork = "generate_podcast_artwork"
-        static let publishEpisode         = "publish_episode"
 
         /// Every routed domain tool name, for orchestrator convenience when
         /// wiring the main `AgentTools.dispatch` switch. Skill-gated names
@@ -80,7 +77,6 @@ extension AgentTools {
                 perplexitySearch, summarizeEpisode,
                 findSimilarEpisodes, markEpisodePlayed, markEpisodeUnplayed,
                 downloadEpisode, requestTranscription, refreshFeed,
-                endConversation, sendFriendMessage,
                 listSubscriptions, listPodcasts, listCategories, changePodcastCategory,
                 listEpisodes, listInProgress, listRecentUnplayed,
                 createClip, downloadAndTranscribe,
@@ -88,7 +84,6 @@ extension AgentTools {
                 searchPodcastDirectory, subscribePodcast, deletePodcast,
                 ingestYouTubeVideo, searchYouTube,
                 createPodcast, updatePodcast, deleteMyPodcast, listMyPodcasts, generatePodcastArtwork,
-                publishEpisode,
                 Names.listConversations, Names.searchConversations,
             ]
         }
@@ -173,10 +168,6 @@ extension AgentTools {
             return await requestTranscriptionTool(args: args, deps: deps)
         case PodcastNames.refreshFeed:
             return await refreshFeedTool(args: args, deps: deps)
-        case PodcastNames.endConversation:
-            return await endConversationTool(args: args, deps: deps)
-        case PodcastNames.sendFriendMessage:
-            return await sendFriendMessageTool(args: args, deps: deps)
         case PodcastNames.listSubscriptions:
             return await listSubscriptionsTool(args: args, deps: deps)
         case PodcastNames.listPodcasts:
@@ -221,8 +212,6 @@ extension AgentTools {
             return await listMyPodcastsTool(args: args, deps: deps)
         case PodcastNames.generatePodcastArtwork:
             return await generatePodcastArtworkTool(args: args, deps: deps)
-        case PodcastNames.publishEpisode:
-            return await publishEpisodeTool(args: args, deps: deps)
         default:
             return toolError("Unknown podcast tool: \(name)")
         }

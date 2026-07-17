@@ -26,8 +26,8 @@ import SwiftUI
 ///
 /// ### Generic constraint
 /// The spec calls for `Hashable & Identifiable`. We relax to plain
-/// `Hashable` so callers like `AgentAccessControlView.AccessTab` (which
-/// conform to `Hashable` only) don't need a one-line conformance shim.
+/// `Hashable` so callers like `AddShowSheet.Mode` (which conform to
+/// `Hashable` only) don't need a one-line conformance shim.
 /// Identity is derived from the value itself via `\.self`, which is
 /// exactly what `Identifiable` would
 /// produce for a value-type enum anyway.

@@ -250,8 +250,6 @@ final class AgentSkillsTests: XCTestCase {
             library: MockLibrary(),
             inventory: MockInventory(),
             categories: MockInventory(),
-            peerPublisher: MockPeerEventPublisher(),
-            friendDirectory: MockFriendDirectory(),
             perplexity: MockPerplexity(),
             ttsPublisher: MockTTSPublisher(),
             directory: MockDirectory(),
