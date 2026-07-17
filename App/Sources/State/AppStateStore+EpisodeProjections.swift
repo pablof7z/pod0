@@ -79,11 +79,8 @@ extension AppStateStore {
 
             // Unplayed-count bucket. Default to 0 so the dict has an entry
             // for every show that has any episode at all (cheaper than
-            // checking `contains` on read). AI Inbox: silently-archived
-            // episodes (triageDecision == .archived) drop out of the count
-            // so the dot indicator and "X unplayed" labels reflect what the
-            // user is actually expected to hear, not the noisy raw feed.
-            if !episode.played && !episode.isTriageArchived {
+            // checking `contains` on read).
+            if !episode.played {
                 unplayed[podID, default: 0] += 1
             } else if unplayed[podID] == nil {
                 // Ensure the show has *some* entry so reads default to 0
@@ -103,15 +100,11 @@ extension AppStateStore {
             // Per-show index cache: append indexes now, sort once per show.
             byShow[podID, default: []].append(index)
 
-            // In-progress: persisted position > 0 AND not played AND not
-            // triage-archived. The position-cache fold at read time also
-            // surfaces episodes whose cached position crossed zero but
-            // haven't been persisted yet (`inProgressEpisodesView`).
-            // Archived check is defensive — if the user already started an
-            // episode the triage pass wouldn't have archived it, but a
-            // user-initiated archive (future) shouldn't keep it on the
-            // Continue Listening rail either.
-            if !episode.played, episode.playbackPosition > 0, !episode.isTriageArchived {
+            // In-progress: persisted position > 0 AND not played. The
+            // position-cache fold at read time also surfaces episodes whose
+            // cached position crossed zero but haven't been persisted yet
+            // (`inProgressEpisodesView`).
+            if !episode.played, episode.playbackPosition > 0 {
                 inProgress.append(episode)
             }
         }
@@ -130,13 +123,9 @@ extension AppStateStore {
         // recentEpisodesCached: top-N unplayed episodes across all shows.
         // We do a global sort + prefix here. For 10k episodes this is
         // still cheap (single 10k sort, no allocation per cell).
-        // AI Inbox: triage-archived episodes are silently dismissed and
-        // must not appear in the recent feed either, otherwise the agent's
-        // archive decision has no effect on the surfaces it was meant to
-        // de-clutter.
         recent = episodes.indices
             .lazy
-            .filter { !episodes[$0].played && !episodes[$0].isTriageArchived }
+            .filter { !episodes[$0].played }
             .sorted { episodes[$0].pubDate > episodes[$1].pubDate }
             .prefix(Self.recentEpisodesCacheLimit)
             .map { episodes[$0] }

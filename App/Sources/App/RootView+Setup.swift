@@ -29,9 +29,6 @@ extension RootView {
             EpisodeDownloadService.shared.attach(appStore: store)
             EpisodeDownloadService.shared.ensureDownloadEnqueued(episodeID: id)
         }
-        playbackState.onClearTriageDecision = { [store] id in
-            store.clearTriageDecision(id)
-        }
         playbackState.onSegmentFinished = { [store, playbackState] in
             let advanced = playbackState.playNext { store.episode(id: $0) }
             if !advanced {

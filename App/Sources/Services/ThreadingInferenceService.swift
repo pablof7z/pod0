@@ -121,7 +121,7 @@ final class ThreadingInferenceService {
         // "is this mention's episode unplayed" check downstream stays an
         // O(1) set membership.
         var eligibleEpisodeIDs: Set<UUID> = []
-        for episode in store.state.episodes where !episode.played && !episode.isTriageArchived {
+        for episode in store.state.episodes where !episode.played {
             if let allowed = subscriptionFilter,
                !allowed.contains(episode.podcastID) { continue }
             eligibleEpisodeIDs.insert(episode.id)

@@ -176,13 +176,6 @@ final class PlaybackState {
     /// found nothing.
     var adSegments: [Episode.AdSegment] = []
 
-    /// Called from `setEpisode` when the user starts playback on an episode
-    /// the agent had triage-archived. Receivers should clear the archive so
-    /// the episode behaves normally for Continue Listening, unplayed counts,
-    /// and recent feeds going forward. Wired by `RootView` to
-    /// `AppStateStore.clearTriageDecision`.
-    var onClearTriageDecision: (UUID) -> Void = { _ in }
-
     /// Resolves the parent show name for a given episode. Called by the
     /// snapshot writer so the widget can render the show subtitle without
     /// `PlaybackState` needing to know about `AppStateStore`. Returns `""`
@@ -266,12 +259,6 @@ final class PlaybackState {
             didFireFinishedFor = nil
         }
         episode = newEpisode
-        // Rescue: starting playback on a triage-archived episode clears the
-        // archive so the episode behaves normally for Continue Listening,
-        // unplayed counts, and recent feeds going forward.
-        if newEpisode.isTriageArchived {
-            onClearTriageDecision(newEpisode.id)
-        }
         // Refresh the local ad-segments cache from the newly-loaded episode
         // so the 1-second auto-skip loop has the right list. On same-episode
         // reloads we still refresh — detection may have completed since the

@@ -75,11 +75,8 @@ enum PodcastSearchEngine {
         .sorted(by: ranked)
         .prefix(limit)
 
-        // AI Inbox: archived episodes are silently soft-hidden from in-app search.
-        // The show page remains the recovery surface for archived content.
         let episodes = state.episodes.compactMap { episode -> PodcastEpisodeSearchHit? in
-            guard let podcast = podcastsByID[episode.podcastID],
-                  !episode.isTriageArchived else { return nil }
+            guard let podcast = podcastsByID[episode.podcastID] else { return nil }
             let people = (episode.persons ?? []).map(\.name).joined(separator: " ")
             let soundBites = (episode.soundBites ?? []).compactMap(\.title).joined(separator: " ")
             let fields = [

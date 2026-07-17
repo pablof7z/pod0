@@ -96,12 +96,6 @@ extension AppStateStore {
                 merged.isStarred = prior.isStarred
                 merged.downloadState = prior.downloadState
                 merged.transcriptState = prior.transcriptState
-                // Preserve the AI Inbox triage verdict across feed refreshes;
-                // without this, an archived episode reappears on the next
-                // refresh and the LLM redoes the classification.
-                merged.triageDecision = prior.triageDecision
-                merged.triageRationale = prior.triageRationale
-                merged.triageIsHero = prior.triageIsHero
                 // Preserve AI-compiled/hydrated chapters when the incoming RSS episode
                 // doesn't supply new ones; RSS never carries ad segments so always keep.
                 if merged.chapters == nil || merged.chapters!.isEmpty {

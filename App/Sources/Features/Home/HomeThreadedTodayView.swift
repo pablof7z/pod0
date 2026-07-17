@@ -139,8 +139,7 @@ struct HomeThreadedTodayView: View {
     /// `threadingMentions(forTopic:)` already filters those, but we also
     /// re-check `played` here because the store accessor doesn't.
     private var rows: [Row] {
-        // AI Inbox: archived episodes are silently soft-hidden from threading topics.
-        let unplayedIDs = Set(store.state.episodes.filter { !$0.played && !$0.isTriageArchived }.map(\.id))
+        let unplayedIDs = Set(store.state.episodes.filter { !$0.played }.map(\.id))
         return store.threadingMentions(forTopic: active.topic.id)
             .filter { unplayedIDs.contains($0.episodeID) }
             .compactMap { mention in

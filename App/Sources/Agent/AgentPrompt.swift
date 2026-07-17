@@ -79,9 +79,8 @@ enum AgentPrompt {
             sections.append("## Subscriptions (\(followedPodcasts.count))\n\(titles)\(suffix)")
         }
 
-        // AI Inbox: archived episodes are silently soft-hidden from the agent's prompt context.
         let inProgress = state.episodes
-            .filter { !$0.played && !$0.isTriageArchived && $0.playbackPosition > 0 }
+            .filter { !$0.played && $0.playbackPosition > 0 }
             .sorted { $0.pubDate > $1.pubDate }
             .prefix(Cap.inProgress)
         if !inProgress.isEmpty {
@@ -94,9 +93,8 @@ enum AgentPrompt {
         }
 
         let cutoff = Date().addingTimeInterval(-Cap.recentWindowDays * 86_400)
-        // AI Inbox: archived episodes are silently soft-hidden from the agent's prompt context.
         let recentUnplayed = state.episodes
-            .filter { !$0.played && !$0.isTriageArchived && $0.playbackPosition == 0 && $0.pubDate >= cutoff }
+            .filter { !$0.played && $0.playbackPosition == 0 && $0.pubDate >= cutoff }
             .sorted { $0.pubDate > $1.pubDate }
             .prefix(Cap.recentUnplayed)
         if !recentUnplayed.isEmpty {
