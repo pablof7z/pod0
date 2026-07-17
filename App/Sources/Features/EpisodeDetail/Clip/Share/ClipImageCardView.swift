@@ -2,12 +2,12 @@ import SwiftUI
 
 // MARK: - ClipImageCardView
 //
-// Editorial 1080×1080 share card per UX-03 §6.5. Mirrors `QuoteShareView`'s
-// composition (artwork, show name, italic pull-quote, speaker chip,
-// timestamp, deep-link footer) but rendered at the larger square size used
-// by `ClipExporter.exportImage`. The card is intentionally self-contained:
-// callers hand in fully-resolved strings + pre-fetched artwork so the
-// `ImageRenderer` snapshot is deterministic.
+// Editorial 1080×1080 share card per UX-03 §6.5: artwork, show name, italic
+// pull-quote, speaker chip, timestamp, deep-link footer — rendered at the
+// square size used by `ClipExporter.exportImage`. The card is intentionally
+// self-contained: callers hand in fully-resolved strings + pre-fetched
+// artwork so the `ImageRenderer` snapshot is deterministic. Shared by both
+// the Clips segment's `ClipShareSheet` and the player's "Share quote" flow.
 struct ClipImageCardView: View {
     let showName: String
     let episodeTitle: String
