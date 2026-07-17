@@ -11,9 +11,7 @@ import UIKit
 ///     a recipient lands at the current playhead.
 ///   - **Share via system** — SwiftUI `ShareLink` over the deep link.
 ///   - **Share quote** — presents `QuoteShareView` for the segment at the
-///     current time. Gated on `episode.transcriptState == .ready` (which
-///     means hidden in this lane until lane 5 / transcript ingestion lands —
-///     `PlayerTranscriptScrollView` is also a placeholder in this build).
+///     current time. Gated on `episode.transcriptState == .ready`.
 struct PlayerShareSheet: View {
 
     @Environment(\.dismiss) private var dismiss

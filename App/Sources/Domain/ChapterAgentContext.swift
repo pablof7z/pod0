@@ -9,9 +9,8 @@ import Foundation
 /// the time range. The user reads a chapter title, asks a question, and gets
 /// an answer; they never see the transcript text.
 ///
-/// Mirrors `TranscriptAgentContext`'s read-and-clear pattern via
-/// `AppStateStore.pendingChapterAgentContext`; `AgentChatSession` drains it on
-/// init and seeds the composer once.
+/// Read-and-clear pattern via `AppStateStore.pendingChapterAgentContext`;
+/// `AgentChatSession` drains it on init and seeds the composer once.
 struct ChapterAgentContext: Equatable, Identifiable {
     let id: UUID
     let episodeID: UUID

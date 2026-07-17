@@ -1,8 +1,8 @@
 import XCTest
 @testable import Podcastr
 
-/// Coverage for the magazine-mode category-scoping derivations: resume
-/// rail filtering, dateline prefix + per-category counts, and the
+/// Coverage for the magazine-mode category-scoping derivations: episode
+/// filtering, topic scoping, and the
 /// `ThreadingInferenceService.topActiveTopics(subscriptionFilter:)`
 /// scope. Each derivation is pure (no SwiftUI environment, no live
 /// store outside the threading test) so the tests are fast and stable.
@@ -59,81 +59,7 @@ final class HomeCategoryScopeTests: XCTestCase {
         XCTAssertTrue(scoped.isEmpty)
     }
 
-    // MARK: - Dateline prefix + scoped counts
-
-    func testDatelinePrefixPrependsCategoryName() {
-        let now = make(year: 2026, month: 5, day: 5)
-        let components = HomeDateline.components(
-            episodes: [],
-            topics: [],
-            now: now,
-            calendar: calendar,
-            locale: locale,
-            categoryName: "Learning"
-        )
-        XCTAssertEqual(components.categoryPrefix, "LEARNING")
-        XCTAssertEqual(components.rendered, "LEARNING · TUESDAY · MAY 5")
-    }
-
-    func testDatelineWithoutCategoryHasEmptyPrefix() {
-        let now = make(year: 2026, month: 5, day: 5)
-        let components = HomeDateline.components(
-            episodes: [],
-            topics: [],
-            now: now,
-            calendar: calendar,
-            locale: locale
-        )
-        XCTAssertEqual(components.categoryPrefix, "")
-        XCTAssertEqual(components.rendered, "TUESDAY · MAY 5")
-    }
-
-    func testDatelineNewCountScopedToAllowedSubscriptions() {
-        let now = make(year: 2026, month: 5, day: 5)
-        let inCategory = UUID()
-        let outOfCategory = UUID()
-
-        // Two unplayed episodes inside the category, one outside.
-        let inOne = makeEpisode(
-            podcastID: inCategory,
-            pubDate: now.addingTimeInterval(-3_600),
-            played: false
-        )
-        let inTwo = makeEpisode(
-            podcastID: inCategory,
-            pubDate: now.addingTimeInterval(-7_200),
-            played: false
-        )
-        let out = makeEpisode(
-            podcastID: outOfCategory,
-            pubDate: now.addingTimeInterval(-3_600),
-            played: false
-        )
-
-        let scoped = HomeDateline.components(
-            episodes: [inOne, inTwo, out],
-            topics: [],
-            now: now,
-            calendar: calendar,
-            locale: locale,
-            categoryName: "Learning",
-            allowedSubscriptionIDs: [inCategory]
-        )
-        XCTAssertEqual(scoped.newCount, 2)
-        XCTAssertEqual(scoped.rendered, "LEARNING · TUESDAY · MAY 5 · 2 NEW")
-
-        // Sanity check: same input, no scope = 3 NEW.
-        let unscoped = HomeDateline.components(
-            episodes: [inOne, inTwo, out],
-            topics: [],
-            now: now,
-            calendar: calendar,
-            locale: locale
-        )
-        XCTAssertEqual(unscoped.newCount, 3)
-    }
-
-    // MARK: - topicsInCategory (drives dateline contradiction count)
+    // MARK: - topicsInCategory
 
     func testTopicsInCategoryNilFilterReturnsTopicsUntouched() {
         let topic = ThreadingTopic(
@@ -212,8 +138,7 @@ final class HomeCategoryScopeTests: XCTestCase {
         XCTAssertEqual(scoped.count, 1)
     }
 
-    func testDatelineContradictionCountScopedToCategory() {
-        let now = make(year: 2026, month: 5, day: 5)
+    func testTopicsInCategoryContradictionCountScopedToCategory() {
         let inCategorySub = UUID()
         let outOfCategorySub = UUID()
         let inCategoryEpisode = makeEpisode(podcastID: inCategorySub)
@@ -252,22 +177,9 @@ final class HomeCategoryScopeTests: XCTestCase {
             allowedSubscriptionIDs: [inCategorySub]
         )
 
-        let components = HomeDateline.components(
-            episodes: [inCategoryEpisode, outOfCategoryEpisode],
-            topics: scopedTopics,
-            now: now,
-            calendar: calendar,
-            locale: locale,
-            categoryName: "Learning",
-            allowedSubscriptionIDs: [inCategorySub]
-        )
-        // Only the in-category topic with `contradictionCount > 0` is
-        // visible, so the dateline reads "1 CONTRADICTION", not "2".
-        XCTAssertEqual(components.contradictionCount, 1)
-        XCTAssertEqual(
-            components.rendered,
-            "LEARNING · TUESDAY · MAY 5 · 1 CONTRADICTION"
-        )
+        // Only the in-category topic survives the scope.
+        XCTAssertEqual(scopedTopics.map(\.id), [inCategoryTopic.id])
+        XCTAssertEqual(scopedTopics.first?.contradictionCount, 2)
     }
 
     // MARK: - topActiveTopics with subscription filter

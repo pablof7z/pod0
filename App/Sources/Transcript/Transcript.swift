@@ -7,7 +7,8 @@ import Foundation
 /// JSON, WebVTT, SRT) or from ElevenLabs Scribe / on-device speech analysis.
 ///
 /// Sendable because instances are passed across actor boundaries — UI on
-/// `@MainActor`, queue on `TranscriptionQueue`, network on `URLSession`.
+/// `@MainActor`, ingest on the transcript client actors, network on
+/// `URLSession`.
 struct Transcript: Codable, Sendable, Identifiable, Hashable {
     let id: UUID
     let episodeID: UUID

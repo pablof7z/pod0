@@ -4,9 +4,9 @@ import Foundation
 // MARK: - ClipAudioComposer
 //
 // Third clip-share fidelity (Image / Video / Audio + universal link). The
-// image card and link already ship; video is intentionally stubbed in
-// `ClipVideoComposer`. Audio is the cheapest of the three to do right
-// because the heavy lifting belongs to `AVAssetExportSession` — no
+// image card and link already ship; video is intentionally stubbed (see
+// `ClipExporter.exportVideo`). Audio is the cheapest of the three to do
+// right because the heavy lifting belongs to `AVAssetExportSession` — no
 // compositing, no overlay layers, no generator video track.
 //
 // Pipeline:
@@ -84,7 +84,7 @@ enum ClipAudioComposer {
 
     // MARK: - Helpers
 
-    /// Same precondition shape as `ClipVideoComposer.resolveLocalAudioURL`.
+    /// Same precondition shape as `ClipExporter.exportVideo`'s local-audio check.
     /// Kept independent (rather than reaching across files) so the
     /// audio path stays self-contained and the video stub is free to
     /// evolve without coupling them.

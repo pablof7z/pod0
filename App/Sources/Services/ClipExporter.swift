@@ -127,10 +127,15 @@ actor ClipExporter {
         )
     }
 
-    /// Renders the audio segment + subtitle-burned video. v1 stubs this
-    /// when AVFoundation wiring isn't ready in the build window — see
-    /// commit message. Wires through `ClipVideoOverlayLayer` for the
-    /// subtitle CALayer.
+    /// Renders the audio segment + subtitle-burned video. Stubbed pending
+    /// generator-track wiring (`AVVideoCompositionCoreAnimationTool` needs
+    /// real frames flowing through the composition's video track; an empty
+    /// track compiles but yields `AVErrorInvalidVideoComposition` at export
+    /// time). Image + Link share targets are fully wired; video is the
+    /// explicit long pole. Surfaces the audio precondition first so the
+    /// punt error is less noisy when the user wouldn't have been able to
+    /// render anyway — keeps parity with what a real implementation will
+    /// require (download-first).
     func exportVideo(
         _ clip: Clip,
         episode: Episode,
@@ -138,18 +143,11 @@ actor ClipExporter {
         theme: SubtitleStyle,
         aspectRatio: ClipVideo.Aspect
     ) async throws -> URL {
-        try await ClipVideoComposer.export(
-            clip: clip,
-            episode: episode,
-            podcast: podcast,
-            theme: theme,
-            aspectRatio: aspectRatio,
-            artworkProvider: { @Sendable in
-                await Self.loadArtwork(
-                    episodeImageURL: episode.imageURL,
-                    subscriptionImageURL: podcast.imageURL
-                )
-            }
+        guard EpisodeDownloadStore.shared.exists(for: episode) else {
+            throw ExportError.audioUnavailable
+        }
+        throw ExportError.notImplemented(
+            "Video export is pending generator-track wiring."
         )
     }
 

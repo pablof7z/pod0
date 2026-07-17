@@ -29,8 +29,8 @@ import os.log
 //     because every episode that lacks a local file always has an enclosure
 //     URL - and we prefer the URL anyway to avoid client-side upload.
 //
-// The submit / poll split matches `ElevenLabsScribeClient` so `TranscriptionQueue`
-// uses an identical lifecycle.
+// The submit / poll split matches `ElevenLabsScribeClient` so callers see an
+// identical lifecycle across both providers.
 
 actor AssemblyAITranscriptClient {
 

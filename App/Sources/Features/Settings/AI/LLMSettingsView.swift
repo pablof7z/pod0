@@ -465,9 +465,3 @@ struct AIModelsSettingsView: View {
         }
     }
 }
-
-struct LLMSettingsView: View {
-    var body: some View {
-        AIModelsSettingsView()
-    }
-}

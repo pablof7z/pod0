@@ -9,10 +9,6 @@ import Foundation
 // window itself via its tool inventory; the user never sees raw transcript
 // text.
 //
-// Mirrors `AskAgentDispatcher` (transcript-segment flavour) so the two paths
-// can co-exist while transcript-segment dispatches stay internal to clip /
-// quote surfaces.
-
 enum ChapterAskAgentDispatcher {
 
     /// Builds the `ChapterAgentContext` for the long-pressed chapter and

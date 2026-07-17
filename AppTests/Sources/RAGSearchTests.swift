@@ -7,7 +7,7 @@ final class RAGSearchTests: XCTestCase {
         let episodeID = UUID()
         let podcastID = UUID()
         let embedder = KeywordEmbeddingsClient()
-        let store = InMemoryVectorStore(embedder: embedder)
+        let store = try VectorIndex(embedder: embedder, inMemory: true, dimensions: 4)
         try await store.upsert(chunks: [
             Chunk(
                 episodeID: episodeID,
@@ -42,7 +42,7 @@ final class RAGSearchTests: XCTestCase {
         let otherEpisodeID = UUID()
         let podcastID = UUID()
         let embedder = KeywordEmbeddingsClient()
-        let store = InMemoryVectorStore(embedder: embedder)
+        let store = try VectorIndex(embedder: embedder, inMemory: true, dimensions: 4)
         try await store.upsert(chunks: [
             Chunk(
                 episodeID: selectedEpisodeID,

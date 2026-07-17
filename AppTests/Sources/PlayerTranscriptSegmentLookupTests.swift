@@ -1,12 +1,9 @@
 import XCTest
 @testable import Podcastr
 
-/// Polish-surface coverage for `PlayerTranscriptScrollView`'s active-segment
-/// resolver — the binary-search lookup it newly relies on for follow-along
-/// row tinting + auto-scroll. The view itself is hard to drive in isolation
-/// (it pulls `AppStateStore` via `@Environment` and a `@Bindable PlaybackState`),
-/// but the lookup is a pure function on `Transcript` so we can pin its
-/// behaviour at the boundaries that matter for the player surface:
+/// Coverage for `Transcript.segment(at:)` — the binary-search active-segment
+/// lookup used by follow-along row tinting + auto-scroll surfaces. Pinned at
+/// the boundaries that matter for playback:
 ///
 ///  - Before the first segment starts → `nil` (UI keeps inactive styling).
 ///  - At an exact segment `start` → that segment.

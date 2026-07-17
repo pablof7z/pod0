@@ -168,12 +168,6 @@ struct AIProvidersSettingsView: View {
     }
 }
 
-struct AISettingsView: View {
-    var body: some View {
-        AIProvidersSettingsView()
-    }
-}
-
 struct PerplexitySettingsView: View {
     @State private var manualAPIKey = ""
     @State private var hasStoredKey = false

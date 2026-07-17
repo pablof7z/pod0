@@ -31,16 +31,6 @@ final class AppStateStore {
     /// Consumed and cleared by `AgentFriendsView` on `.onChange` so it fires exactly once.
     var pendingFriendInvite: PendingFriendInvite?
 
-    /// Transcript line the user long-pressed in the player. Drained by
-    /// `AgentChatSession.init` and prefilled into the composer; cleared by
-    /// the same call so a later sheet re-open starts blank.
-    ///
-    /// Kept around for the internal-only surfaces (clip composer, quote
-    /// share) that still operate on transcript segments. The primary chapter
-    /// long-press path now writes `pendingChapterAgentContext` instead — the
-    /// user never sees transcript text.
-    var pendingTranscriptAgentContext: TranscriptAgentContext?
-
     /// Chapter the user long-pressed in `PlayerChaptersScrollView`. Drained
     /// by `AgentChatSession.init` and prefilled into the composer; cleared
     /// by the same call so a later sheet re-open starts blank. Carries no

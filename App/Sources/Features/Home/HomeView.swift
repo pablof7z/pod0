@@ -28,7 +28,6 @@ struct HomeView: View {
     @State private var unsubscribeTarget: Podcast?
     @State private var relatedSheetEpisode: Episode?
     @State private var threadedTodaySheet: ThreadingInferenceService.ActiveTopic?
-    @State private var voiceOverDetailRoute: HomeEpisodeRoute?
     @State private var showAddShowSheet: Bool = false
     @State private var showCategoryPicker: Bool = false
     @State private var showAllContinueListening: Bool = false
@@ -48,9 +47,6 @@ struct HomeView: View {
             .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .refreshable { await refreshAllFeeds() }
             .navigationDestination(for: HomeEpisodeRoute.self) { route in
-                EpisodeDetailView(episodeID: route.episodeID)
-            }
-            .navigationDestination(item: $voiceOverDetailRoute) { route in
                 EpisodeDetailView(episodeID: route.episodeID)
             }
             .navigationDestination(for: Podcast.self) { pod in
