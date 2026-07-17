@@ -62,8 +62,8 @@ final class ThreadingInferenceService {
     // MARK: - Public API
 
     /// Bind the service to the running `AppStateStore`. Call from the
-    /// surface that first needs the service (e.g. `ThreadingTopicListView`
-    /// `.task`). Idempotent — repeated calls just refresh the reference.
+    /// surface that first needs the service (e.g. `HomeView.task`).
+    /// Idempotent — repeated calls just refresh the reference.
     func attach(store: AppStateStore) {
         self.store = store
     }
@@ -87,13 +87,6 @@ final class ThreadingInferenceService {
         // not disturbed so a mid-build seed keeps surfacing.
         lastError = nil
         lastRecomputedAt = Date()
-    }
-
-    /// Read-side accessor used by `ThreadingTopicView`. Returns an empty
-    /// list when the service hasn't been attached yet (the timeline view
-    /// will render its own empty state).
-    func mentions(forTopic id: UUID) -> [ThreadingMention] {
-        store?.threadingMentions(forTopic: id) ?? []
     }
 
     /// Topics with the most *unplayed* episode mentions, descending. Used by
