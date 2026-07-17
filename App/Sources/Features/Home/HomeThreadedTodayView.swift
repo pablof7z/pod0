@@ -10,13 +10,6 @@ import SwiftUI
 // starts playback. "Play through" enqueues every mention's episode into
 // `PlaybackState.queue` and starts the first one — the player then walks
 // the queue naturally as each episode finishes.
-//
-// "Save as briefing" hands off to `BriefingComposeSheet` with the topic
-// pre-loaded as the freeform query + `BriefingScope.thisTopic` selected.
-// The full playlist isn't pre-injected into the briefing model — the
-// briefing pipeline builds its own segment plan from the topic; pre-
-// loading the playlist would force the compose surface to grow a new
-// "explicit segment list" input we don't need today.
 
 struct HomeThreadedTodayView: View {
 
@@ -25,8 +18,6 @@ struct HomeThreadedTodayView: View {
     @Environment(AppStateStore.self) private var store
     @Environment(PlaybackState.self) private var playback
     @Environment(\.dismiss) private var dismiss
-
-    @State private var showBriefingCompose: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -49,21 +40,6 @@ struct HomeThreadedTodayView: View {
                         dismiss()
                     }
                 }
-            }
-            .sheet(isPresented: $showBriefingCompose) {
-                BriefingComposeSheet(
-                    onCompose: { _ in
-                        // The Briefings tab actually composes; from here we
-                        // just hand off the request. Composing in-place
-                        // would duplicate `BriefingsViewModel` state with
-                        // no UX win — the user goes back to Home or to
-                        // Briefings to see the result either way.
-                        showBriefingCompose = false
-                    },
-                    initialFreeformQuery: active.topic.displayName,
-                    initialScope: .thisTopic
-                )
-                .presentationDetents([.medium, .large])
             }
         }
     }
@@ -90,30 +66,17 @@ struct HomeThreadedTodayView: View {
     // MARK: - Actions
 
     private var actionRow: some View {
-        HStack(spacing: AppTheme.Spacing.sm) {
-            Button {
-                Haptics.medium()
-                playThroughAll()
-            } label: {
-                Label("Play through", systemImage: "play.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.vertical, AppTheme.Spacing.sm)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(AppTheme.Tint.agentSurface)
-
-            Button {
-                Haptics.light()
-                showBriefingCompose = true
-            } label: {
-                Label("Save as briefing", systemImage: "tray.and.arrow.down")
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.vertical, AppTheme.Spacing.sm)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
+        Button {
+            Haptics.medium()
+            playThroughAll()
+        } label: {
+            Label("Play through", systemImage: "play.fill")
+                .font(.subheadline.weight(.semibold))
+                .padding(.vertical, AppTheme.Spacing.sm)
+                .frame(maxWidth: .infinity)
         }
+        .buttonStyle(.borderedProminent)
+        .tint(AppTheme.Tint.agentSurface)
     }
 
     // MARK: - Playlist

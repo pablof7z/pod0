@@ -201,7 +201,7 @@ final class AppStateStore {
         recomputeEpisodeProjections()
         // Bootstrap the live RAG stack so the SQLite vector store is opened
         // (and its file path logged) before any view tries to query it.
-        // Hand `self` to the service so the briefing adapter and transcript
+        // Hand `self` to the service so the wiki adapter and transcript
         // ingester can resolve episode/subscription metadata.
         RAGService.shared.attach(appStore: self)
         EpisodeDownloadService.shared.attach(appStore: self)

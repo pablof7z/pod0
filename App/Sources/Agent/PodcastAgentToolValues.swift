@@ -139,30 +139,6 @@ public struct WikiHit: Sendable, Equatable {
 
 // MARK: - Composer / summarizer / external lookup
 
-/// A composed briefing artifact. The agent renders this back to the user as a
-/// single hero card; lane 8 owns the actual TTS rendering.
-public struct BriefingResult: Sendable, Equatable {
-    public let briefingID: String
-    public let title: String
-    public let estimatedSeconds: Int
-    public let episodeIDs: [EpisodeID]
-    public let scriptPreview: String?
-
-    public init(
-        briefingID: String,
-        title: String,
-        estimatedSeconds: Int,
-        episodeIDs: [EpisodeID],
-        scriptPreview: String? = nil
-    ) {
-        self.briefingID = briefingID
-        self.title = title
-        self.estimatedSeconds = estimatedSeconds
-        self.episodeIDs = episodeIDs
-        self.scriptPreview = scriptPreview
-    }
-}
-
 /// A summary returned by `summarize_episode`.
 public struct EpisodeSummary: Sendable, Equatable {
 

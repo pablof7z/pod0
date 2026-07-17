@@ -6,7 +6,7 @@ import SwiftUI
 // per-category knobs:
 //   • Auto-download override (off when the toggle is off; falls back to
 //     the per-subscription policy as it stands today).
-//   • Per-feature toggles: transcription, RAG, wiki, briefings, notifs.
+//   • Per-feature toggles: transcription, RAG, wiki, notifs.
 //   • Read-only list of subscriptions in this category.
 //
 // The auto-download picker mirrors `ShowDetailSettingsSheet`'s 3-way
@@ -64,9 +64,6 @@ struct CategoryDetailView: View {
             }
             Toggle(isOn: toggleBinding(\.wikiGenerationEnabled)) {
                 Label("Wiki generation", systemImage: "book.closed.fill")
-            }
-            Toggle(isOn: toggleBinding(\.briefingsEnabled)) {
-                Label("Briefings", systemImage: "sparkles.tv.fill")
             }
             Toggle(isOn: toggleBinding(\.notificationsEnabled)) {
                 Label("Notifications", systemImage: "bell.fill")

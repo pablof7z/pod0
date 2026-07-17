@@ -157,7 +157,6 @@ final class iCloudSettingsSync {
         if let v = bool(.autoIngestPublisherTranscripts)      { settings.autoIngestPublisherTranscripts = v }
         if let v = bool(.autoFallbackToScribe)                { settings.autoFallbackToScribe = v }
         if let v = bool(.notifyOnNewEpisodes)                 { settings.notifyOnNewEpisodes = v }
-        if let v = bool(.notifyOnBriefingReady)               { settings.notifyOnBriefingReady = v }
         if let v = string(.nostrRelayURL),         !v.isEmpty { settings.nostrRelayURL = v }
         if let v = kvs.array(forKey: Key.nostrPublicRelays.rawValue) as? [String], !v.isEmpty {
             settings.nostrPublicRelays = v
@@ -204,7 +203,6 @@ final class iCloudSettingsSync {
         kvs.set(settings.autoIngestPublisherTranscripts,          forKey: Key.autoIngestPublisherTranscripts.rawValue)
         kvs.set(settings.autoFallbackToScribe,                    forKey: Key.autoFallbackToScribe.rawValue)
         kvs.set(settings.notifyOnNewEpisodes,                     forKey: Key.notifyOnNewEpisodes.rawValue)
-        kvs.set(settings.notifyOnBriefingReady,                   forKey: Key.notifyOnBriefingReady.rawValue)
         kvs.set(settings.nostrRelayURL,                           forKey: Key.nostrRelayURL.rawValue)
         kvs.set(settings.nostrPublicRelays,                       forKey: Key.nostrPublicRelays.rawValue)
         kvs.set(settings.nostrProfileName,                        forKey: Key.nostrProfileName.rawValue)
@@ -253,7 +251,6 @@ final class iCloudSettingsSync {
         case autoIngestPublisherTranscripts      = "sync.settings.autoIngestPublisherTranscripts"
         case autoFallbackToScribe                = "sync.settings.autoFallbackToScribe"
         case notifyOnNewEpisodes                 = "sync.settings.notifyOnNewEpisodes"
-        case notifyOnBriefingReady               = "sync.settings.notifyOnBriefingReady"
         case nostrRelayURL                       = "sync.settings.nostrRelayURL"
         case nostrPublicRelays                   = "sync.settings.nostrPublicRelays"
         case nostrProfileName                    = "sync.settings.nostrProfileName"

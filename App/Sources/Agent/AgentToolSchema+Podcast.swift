@@ -121,16 +121,6 @@ extension AgentTools {
                 required: ["query"]
             ),
             podcastTool(
-                name: PodcastNames.generateBriefing,
-                description: "Compose a personalized TLDR audio briefing across episodes. Use when the user asks 'catch me up on this week' or wants a synthesized digest. Returns a briefing handle the user can play.",
-                properties: [
-                    "scope": ["type": "string", "description": "Selection scope: 'this_week', 'unlistened', a podcast_id, or a custom keyword."],
-                    "length": ["type": "integer", "description": "Target length in minutes (3–30)."],
-                    "style": ["type": "string", "enum": ["news", "deep_dive", "quick_hits"], "description": "Optional style hint."],
-                ],
-                required: ["scope", "length"]
-            ),
-            podcastTool(
                 name: PodcastNames.perplexitySearch,
                 description: "Run an online web search via Perplexity for facts that are NOT in the user's podcast corpus. Use for current events, fact-checks, citation lookups, or contrarian-take queries.",
                 properties: [

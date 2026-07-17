@@ -162,35 +162,6 @@ final class AudioConversationManager {
         }
     }
 
-    // MARK: - Public — briefing handoff
-
-    /// Lane 9 (Briefings) calls this to take ownership of the audio output
-    /// for the duration of a briefing. We tear down our own TTS, ask the
-    /// audio coordinator to duck other media, and park in
-    /// `duckedWhileBriefing` until the briefing finishes.
-    ///
-    /// `briefing` is opaque to us — Lane 9 owns the playback. We just need
-    /// a handle so we can resume listening when it completes.
-    func attachToBriefing(_ briefing: VoiceBriefingHandle) {
-        speakingTask?.cancel()
-        speakingTask = nil
-        Task { @MainActor in
-            do {
-                try await audioCoordinator.duckOthersForBriefing()
-                state = .duckedWhileBriefing
-                await briefing.waitUntilFinished()
-                try await audioCoordinator.unduckOthersAfterBriefing()
-                if isAmbient {
-                    beginListening(ambient: true)
-                } else {
-                    state = .idle
-                }
-            } catch {
-                state = .error(VoiceError(from: error))
-            }
-        }
-    }
-
     // MARK: - State machine internals
 
     private func beginListening(ambient: Bool) {
