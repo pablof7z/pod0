@@ -2,6 +2,13 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-17T18:00:21Z",
+      "lines": [
+        "Share quote now saves a real clip — quotes you share from the player land in Saved > Clips automatically.",
+        "Provider connection screens got a consistent refresh: same connect, validate, and disconnect flow everywhere."
+      ]
+    },
+    {
       "shipped_at": "2026-07-17T17:29:52Z",
       "lines": [
         "Bookmarks and Clippings are now one Saved screen with Clips and Starred segments — same content, one less tab."
