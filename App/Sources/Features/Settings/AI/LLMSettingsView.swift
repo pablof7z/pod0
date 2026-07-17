@@ -50,7 +50,7 @@ struct AIModelsSettingsView: View {
         }
         .sheet(isPresented: $wikiSelectorPresented) {
             NavigationStack {
-                OpenRouterModelSelectorView(selectedModelID: wikiModelBinding, selectedModelName: wikiModelNameBinding, role: "Wiki")
+                OpenRouterModelSelectorView(selectedModelID: wikiModelBinding, selectedModelName: wikiModelNameBinding, role: "Utility model")
             }
             .presentationDragIndicator(.visible)
         }
@@ -112,9 +112,9 @@ struct AIModelsSettingsView: View {
             ModelPreviewCard(model: catalogModel(for: store.state.settings.memoryCompilationModel))
 
             modelRow(
-                icon: "book.closed.fill",
+                icon: "wrench.and.screwdriver.fill",
                 tint: .indigo,
-                role: "Wiki",
+                role: "Utility model",
                 modelID: store.state.settings.wikiModel,
                 modelName: store.state.settings.wikiModelName
             ) {

@@ -319,7 +319,7 @@ struct WikiGenerateSheet: View {
     }
 
     private func humanize(_ error: Error) -> String {
-        if let wiki = error as? WikiClientError {
+        if let wiki = error as? UtilityLLMClientError {
             return wiki.errorDescription ?? "Compile failed."
         }
         if let gen = error as? WikiGeneratorError {

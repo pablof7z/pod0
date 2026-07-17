@@ -62,33 +62,19 @@ struct BriefingSegment: Codable, Sendable, Hashable, Identifiable {
 // MARK: - Attribution
 
 /// A single cited source attached to a segment (or a sentence within one).
-struct BriefingAttribution: Codable, Sendable, Hashable, Identifiable {
-    var id: UUID
-    /// Foreign key to the source episode (matches `Episode.id`). Optional so
-    /// wiki-only or web-search-backed citations can also appear.
-    var episodeID: UUID?
-    /// Foreign key to the source wiki page (matches `WikiPage.id`).
-    var wikiPageID: UUID?
-    /// Human display label — e.g. *"Hard Fork · 34:12"*.
-    var displayLabel: String
-    /// Timestamp inside the source episode the citation jumps to. Optional
-    /// for non-episode sources.
-    var timestampSeconds: TimeInterval?
+///
+/// This is a bridge to the shared `AudioComposeAttribution` type (moved to
+/// `App/Sources/Audio/` since `AgentTTSComposer` — a kept feature — builds
+/// on the same track/attribution shape). Kept as a typealias here so the
+/// rest of the briefing pipeline can keep using the `BriefingAttribution`
+/// name unchanged until the whole Briefing feature is deleted.
+typealias BriefingAttribution = AudioComposeAttribution
 
-    init(
-        id: UUID = UUID(),
-        episodeID: UUID? = nil,
-        wikiPageID: UUID? = nil,
-        displayLabel: String,
-        timestampSeconds: TimeInterval? = nil
-    ) {
-        self.id = id
-        self.episodeID = episodeID
-        self.wikiPageID = wikiPageID
-        self.displayLabel = displayLabel
-        self.timestampSeconds = timestampSeconds
-    }
-}
+/// Bridges to the shared `AudioComposeTrack`/`ComposedAudioStitcher` types
+/// (moved to `App/Sources/Audio/` for `AgentTTSComposer`). See
+/// `BriefingAttribution` above for the same rationale.
+typealias BriefingTrack = AudioComposeTrack
+typealias BriefingAudioStitcher = ComposedAudioStitcher
 
 // MARK: - Quote
 

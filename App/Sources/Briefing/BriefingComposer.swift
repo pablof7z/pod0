@@ -234,7 +234,7 @@ final class BriefingComposer: BriefingComposing, @unchecked Sendable {
             candidates: candidates,
             wikiTitles: wikiTitles
         )
-        let client = WikiOpenRouterClient(
+        let client = UtilityLLMClient(
             mode: .live(apiKey: apiKey, modelReference: LLMModelReference(storedID: model))
         )
         let json = try await client.compile(

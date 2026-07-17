@@ -37,7 +37,7 @@ enum CategorizationError: LocalizedError {
 /// `isRunning` before starting; `recompute(store:)` returns immediately
 /// if a run is already in progress.
 ///
-/// Networking goes through `WikiOpenRouterClient`, which already owns the
+/// Networking goes through `UtilityLLMClient`, which already owns the
 /// provider-specific OpenRouter/Ollama request shape. `BYOKConnectService`
 /// only handles key acquisition.
 @MainActor
@@ -109,7 +109,7 @@ final class PodcastCategorizationService {
         isRunning = true
         defer { isRunning = false }
 
-        let client = WikiOpenRouterClient(
+        let client = UtilityLLMClient(
             mode: .live(apiKey: apiKey, modelReference: modelReference),
             urlSession: urlSession
         )

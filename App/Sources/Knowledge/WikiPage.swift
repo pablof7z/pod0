@@ -145,29 +145,10 @@ struct WikiPage: Codable, Hashable, Identifiable, Sendable {
 
     // MARK: - Slug normalization
 
-    /// Canonicalises the supplied string into a URL-safe slug. Lowercase,
-    /// dash-separated, no diacritics, only `[a-z0-9-]` retained. Used
-    /// both as the on-disk filename and as the dual-link target.
+    /// Canonicalises the supplied string into a URL-safe slug. Used both
+    /// as the on-disk filename and as the dual-link target.
     static func normalize(slug: String) -> String {
-        let folded = slug
-            .folding(options: .diacriticInsensitive, locale: .current)
-            .lowercased()
-        let allowed = Set("abcdefghijklmnopqrstuvwxyz0123456789-")
-        var out = ""
-        var lastWasDash = false
-        for char in folded {
-            if allowed.contains(char) {
-                out.append(char)
-                lastWasDash = char == "-"
-            } else if char.isWhitespace || char == "_" {
-                if !lastWasDash {
-                    out.append("-")
-                    lastWasDash = true
-                }
-            }
-        }
-        let trimmed = out.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
-        return trimmed.isEmpty ? "untitled" : trimmed
+        SlugNormalizer.normalize(slug: slug)
     }
 }
 

@@ -8,7 +8,7 @@ import Foundation
 /// Pipeline:
 ///   1. Gather candidate sources via `WikiRAGSearchProtocol`.
 ///   2. Compose the appropriate prompt (topic / person / show / audit).
-///   3. Call `WikiOpenRouterClient.compile` (live or stubbed).
+///   3. Call `UtilityLLMClient.compile` (live or stubbed).
 ///   4. Parse the JSON response into a draft page.
 ///   5. Run `WikiVerifier` to drop unverified claims.
 ///   6. Persist via `WikiStorage` (optional — caller decides).
@@ -17,13 +17,13 @@ import Foundation
 struct WikiGenerator: Sendable {
 
     let rag: any WikiRAGSearchProtocol
-    let client: WikiOpenRouterClient
+    let client: UtilityLLMClient
     let storage: WikiStorage
     let model: String
 
     init(
         rag: any WikiRAGSearchProtocol,
-        client: WikiOpenRouterClient,
+        client: UtilityLLMClient,
         storage: WikiStorage,
         model: String = "openai/gpt-4o-mini"
     ) {
@@ -156,7 +156,8 @@ struct WikiGenerator: Sendable {
     ) async throws -> WikiVerifyResult {
         let json = try await client.compile(
             systemPrompt: WikiPrompts.system,
-            userPrompt: userPrompt
+            userPrompt: userPrompt,
+            feature: CostFeature.wikiCompile
         )
         var draft = try WikiResponseParser.parse(
             json: json,

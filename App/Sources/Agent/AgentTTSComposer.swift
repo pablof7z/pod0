@@ -9,7 +9,7 @@ import os.log
 //
 // Turn types:
 //   .speech   — text → ElevenLabs TTS → temp mp3 → stitched in
-//   .snippet  — existing episode clip → time-trimmed via BriefingAudioStitcher
+//   .snippet  — existing episode clip → time-trimmed via ComposedAudioStitcher
 //
 // After stitching, a `Transcript` is built from the turn text and saved to
 // `TranscriptStore`. Chapters are synthesised directly from the turn structure
@@ -63,14 +63,14 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
             throw AgentTTSError.notConfigured
         }
 
-        // 1. Build BriefingTrack list (one per turn); skips tracks whose audio
+        // 1. Build AudioComposeTrack list (one per turn); skips tracks whose audio
         //    fails to load so chapter math stays in sync with tracks.
         let (tracks, trackDurations, survivingTurns) = try await buildTracks(for: turns)
 
         // 2. Stitch tracks into a single m4a.
         let episodeID = UUID()
         let outputURL = try AgentGeneratedPodcastService.audioFileURL(episodeID: episodeID)
-        let durationSeconds = try await BriefingAudioStitcher.stitch(tracks: tracks, outputURL: outputURL)
+        let durationSeconds = try await ComposedAudioStitcher.stitch(tracks: tracks, outputURL: outputURL)
 
         // 3. Build chapters and transcript from SURVIVING turns + resolved
         //    durations — uses the filtered list so indices stay aligned.
@@ -146,7 +146,7 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
 
     // MARK: - Track building
 
-    /// Builds `BriefingTrack` values and returns the per-turn audio durations
+    /// Builds `AudioComposeTrack` values and returns the per-turn audio durations
     /// plus the surviving turns (turns whose audio loaded successfully).
     ///
     /// A turn is silently skipped — with an error log — when its audio asset
@@ -154,11 +154,11 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
     /// durations from corrupting chapter start-time math. If every turn is
     /// skipped, throws `AgentTTSError.noPlayableContent`.
     private func buildTracks(for turns: [TTSTurn]) async throws -> (
-        tracks: [BriefingTrack],
+        tracks: [AudioComposeTrack],
         durations: [Double],
         survivingTurns: [TTSTurn]
     ) {
-        var tracks: [BriefingTrack] = []
+        var tracks: [AudioComposeTrack] = []
         var durations: [Double] = []
         var survivingTurns: [TTSTurn] = []
         let dummySegmentID = UUID()
@@ -177,7 +177,7 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
                     )
                     continue
                 }
-                tracks.append(BriefingTrack(
+                tracks.append(AudioComposeTrack(
                     segmentID: dummySegmentID,
                     indexInSegment: index,
                     kind: .tts,
@@ -192,7 +192,7 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
             case .snippet(let episodeID, let start, let end, let label):
                 let enclosureURL = try await resolveEpisodeAudio(episodeID: episodeID)
                 let duration = end - start
-                tracks.append(BriefingTrack(
+                tracks.append(AudioComposeTrack(
                     segmentID: dummySegmentID,
                     indexInSegment: index,
                     kind: .quote,

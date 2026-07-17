@@ -85,7 +85,7 @@ struct ThreadingTopicView: View {
             return
         }
         existingWikiPage = try? WikiStorage.shared.read(
-            slug: WikiPage.normalize(slug: topic.slug),
+            slug: SlugNormalizer.normalize(slug: topic.slug),
             scope: .global
         )
     }

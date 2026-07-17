@@ -271,7 +271,7 @@ struct WikiPageView: View {
             try generator.persist(result.page)
             onRegenerated(result.page)
         } catch {
-            actionError = (error as? WikiClientError)?.errorDescription
+            actionError = (error as? UtilityLLMClientError)?.errorDescription
                 ?? error.localizedDescription
         }
     }

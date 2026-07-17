@@ -170,7 +170,7 @@ final class ThreadingInferenceService {
         slug: String,
         displayName: String
     ) -> ThreadingTopic {
-        let normalized = WikiPage.normalize(slug: slug)
+        let normalized = SlugNormalizer.normalize(slug: slug)
         let fresh = ThreadingTopic(
             slug: normalized,
             displayName: displayName,

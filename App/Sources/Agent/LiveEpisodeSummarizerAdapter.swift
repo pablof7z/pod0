@@ -8,7 +8,7 @@ import Foundation
 // the publisher's `description` so the tool still returns something useful
 // rather than an error envelope.
 //
-// Prompt layout uses `WikiOpenRouterClient.live` because that path already
+// Prompt layout uses `UtilityLLMClient.live` because that path already
 // forces structured JSON output for OpenRouter and Ollama — we want a
 // `{summary, bullets}` payload back, not a free-form chat reply.
 
@@ -44,7 +44,7 @@ struct LiveEpisodeSummarizerAdapter: EpisodeSummarizerProtocol {
                 source: .publisherDescription
             )
         }
-        let client = WikiOpenRouterClient.live(model: model)
+        let client = UtilityLLMClient.live(model: model)
         let lengthHint = (length ?? "medium").lowercased()
         let json = try await client.compile(
             systemPrompt: Self.systemPrompt(),

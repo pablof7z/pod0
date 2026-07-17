@@ -1,23 +1,20 @@
 import AVFoundation
 import Foundation
 
-// MARK: - BriefingAudioStitcher
+// MARK: - ComposedAudioStitcher
 
-/// Concatenates a list of `BriefingTrack`s into a single playable .m4a using
-/// `AVMutableComposition` + `AVAssetExportSession`. The result lives at the
-/// path `BriefingStorage` chose for the briefing's stitched audio.
+/// Concatenates a list of `AudioComposeTrack`s into a single playable .m4a
+/// using `AVMutableComposition` + `AVAssetExportSession`.
 ///
 /// Stitching is deterministic and order-preserving: track[0] starts at 00:00,
-/// track[N] starts at the cumulative end of track[N-1]. No crossfades — the
-/// player handles segment-transition motion via `glassEffectID`, not via the
-/// audio file itself.
-struct BriefingAudioStitcher: Sendable {
+/// track[N] starts at the cumulative end of track[N-1]. No crossfades — chrome
+/// handles segment-transition motion, not the audio file itself.
+struct ComposedAudioStitcher: Sendable {
 
     /// Concatenates the supplied tracks into one composition exported to
-    /// `outputURL`. Returns the realised total duration so the caller can
-    /// stash it on `BriefingScript.totalDurationSeconds`.
+    /// `outputURL`. Returns the realised total duration.
     static func stitch(
-        tracks: [BriefingTrack],
+        tracks: [AudioComposeTrack],
         outputURL: URL
     ) async throws -> TimeInterval {
         guard !tracks.isEmpty else {
@@ -60,7 +57,7 @@ struct BriefingAudioStitcher: Sendable {
     // MARK: Track appending
 
     private static func appendTrack(
-        _ track: BriefingTrack,
+        _ track: AudioComposeTrack,
         into audioTrack: AVMutableCompositionTrack,
         at cursor: inout CMTime
     ) async throws {
@@ -110,8 +107,8 @@ struct BriefingAudioStitcher: Sendable {
     }
 
     /// Inserts `durationSeconds` of silence at `cursor` by writing a temp
-    /// silent m4a and splicing it. Used when a quote source can't be loaded
-    /// — the spec requires we never drop a citation silently.
+    /// silent m4a and splicing it. Used when a source can't be loaded — the
+    /// caller's timeline must never drop a citation silently.
     private static func insertSilence(
         into audioTrack: AVMutableCompositionTrack,
         at cursor: inout CMTime,
@@ -119,7 +116,7 @@ struct BriefingAudioStitcher: Sendable {
     ) async throws {
         guard durationSeconds > 0 else { return }
         let tmp = FileManager.default.temporaryDirectory
-            .appendingPathComponent("briefing-silence-\(UUID().uuidString).m4a")
+            .appendingPathComponent("audio-compose-silence-\(UUID().uuidString).m4a")
         try SilentAudioWriter.writeSilence(durationSeconds: durationSeconds, to: tmp)
         defer { try? FileManager.default.removeItem(at: tmp) }
 
@@ -166,11 +163,11 @@ struct BriefingAudioStitcher: Sendable {
         var errorDescription: String? {
             switch self {
             case .noTracks:
-                "Cannot stitch a briefing with zero tracks."
+                "Cannot stitch a composition with zero tracks."
             case .cannotAllocateTrack:
                 "Could not allocate an audio track in the composition."
             case .cannotCreateExportSession:
-                "Could not create export session for stitched briefing."
+                "Could not create export session for stitched audio."
             case .cannotLoadAsset(let url, let err):
                 "Could not load \(url.lastPathComponent): \(err.localizedDescription)"
             case .insertFailed(let err):

@@ -16,7 +16,7 @@ import Foundation
 struct ThreadingTopic: Codable, Hashable, Identifiable, Sendable {
 
     var id: UUID
-    /// URL-safe canonical key (matches `WikiPage.normalize(slug:)`).
+    /// URL-safe canonical key (matches `SlugNormalizer.normalize(slug:)`).
     var slug: String
     /// Human-readable label rendered in editorial serif.
     var displayName: String

@@ -1,9 +1,11 @@
 import Foundation
 
-// MARK: - Wiki LLM client
+// MARK: - Utility LLM client
 
-/// Stripped-down provider client tuned for the wiki
-/// compile pipeline.
+/// Stripped-down provider client tuned for small, non-interactive compile
+/// turns (chapter/ad-detection compilation, clip boundary refinement,
+/// podcast categorization, chat title generation, and similar utility
+/// calls).
 ///
 /// Differs from `AgentOpenRouterClient` (which streams SSE deltas and
 /// supports tool calls) on purpose:
@@ -13,18 +15,17 @@ import Foundation
 ///   • There are no tool calls — the only side effect is the synthesis.
 ///
 /// `Agent/` is intentionally untouched; we duplicate the small request
-/// scaffolding rather than couple the wiki pipeline to the agent loop.
+/// scaffolding rather than couple these utility calls to the agent loop.
 ///
 /// All real network calls are gated behind the `live` initialiser.
-/// The `stubbed` initialiser returns deterministic fixture JSON so the
-/// generator pipeline is exercisable in tests and previews without an
-/// API key (lane 7's "real LLM calls are stubbed" constraint).
-struct WikiOpenRouterClient: Sendable {
+/// The `stubbed` initialiser returns deterministic fixture JSON so callers
+/// are exercisable in tests and previews without an API key.
+struct UtilityLLMClient: Sendable {
 
     /// Shared decoder for the per-call `OpenRouterUsagePayload` parse —
-    /// the previous shape allocated one per wiki compile, on top of the
-    /// already-expensive LLM round-trip. Tiny win individually; matches
-    /// the pattern other clients in the codebase already follow.
+    /// avoids allocating one per compile, on top of the already-expensive
+    /// LLM round-trip. Tiny win individually; matches the pattern other
+    /// clients in the codebase already follow.
     nonisolated(unsafe) private static let usageDecoder = JSONDecoder()
 
 
@@ -35,7 +36,7 @@ struct WikiOpenRouterClient: Sendable {
         case live(apiKey: String?, modelReference: LLMModelReference)
 
         /// Stub mode — returns the supplied JSON string verbatim. Used
-        /// by tests, previews, and the lane-7 stubbed pipeline path.
+        /// by tests and previews.
         case stubbed(json: String)
     }
 
@@ -51,8 +52,8 @@ struct WikiOpenRouterClient: Sendable {
 
     init(
         mode: Mode,
-        endpoint: URL = WikiOpenRouterClient.defaultEndpoint,
-        ollamaEndpoint: URL = WikiOpenRouterClient.defaultOllamaEndpoint,
+        endpoint: URL = UtilityLLMClient.defaultEndpoint,
+        ollamaEndpoint: URL = UtilityLLMClient.defaultOllamaEndpoint,
         urlSession: URLSession = .shared
     ) {
         self.mode = mode
@@ -63,29 +64,29 @@ struct WikiOpenRouterClient: Sendable {
 
     // MARK: - Convenience constructors
 
-    static func live(apiKey: String, model: String = "openai/gpt-4o-mini") -> WikiOpenRouterClient {
-        WikiOpenRouterClient(mode: .live(apiKey: apiKey, modelReference: LLMModelReference(storedID: model)))
+    static func live(apiKey: String, model: String = "openai/gpt-4o-mini") -> UtilityLLMClient {
+        UtilityLLMClient(mode: .live(apiKey: apiKey, modelReference: LLMModelReference(storedID: model)))
     }
 
-    static func live(model: String = "openai/gpt-4o-mini") -> WikiOpenRouterClient {
-        WikiOpenRouterClient(mode: .live(apiKey: nil, modelReference: LLMModelReference(storedID: model)))
+    static func live(model: String = "openai/gpt-4o-mini") -> UtilityLLMClient {
+        UtilityLLMClient(mode: .live(apiKey: nil, modelReference: LLMModelReference(storedID: model)))
     }
 
-    static func stubbed(json: String) -> WikiOpenRouterClient {
-        WikiOpenRouterClient(mode: .stubbed(json: json))
+    static func stubbed(json: String) -> UtilityLLMClient {
+        UtilityLLMClient(mode: .stubbed(json: json))
     }
 
     // MARK: - Public API
 
     /// Sends a system + user prompt to the selected provider and returns the raw
     /// JSON content of the assistant message. Caller is responsible for
-    /// decoding (see `WikiResponseParser`).
+    /// decoding.
     ///
     /// In stubbed mode returns the stored fixture JSON unchanged.
     func compile(
         systemPrompt: String,
         userPrompt: String,
-        feature: String = CostFeature.wikiCompile
+        feature: String
     ) async throws -> String {
         switch mode {
         case .stubbed(let json):
@@ -116,7 +117,7 @@ struct WikiOpenRouterClient: Sendable {
         } else if let key = try LLMProviderCredentialResolver.apiKey(for: modelReference.provider), !key.isEmpty {
             resolvedKey = key
         } else {
-            throw WikiClientError.missingCredential(provider: modelReference.provider.displayName)
+            throw UtilityLLMClientError.missingCredential(provider: modelReference.provider.displayName)
         }
 
         switch modelReference.provider {
@@ -170,11 +171,11 @@ struct WikiOpenRouterClient: Sendable {
         let latencyMs = Int(Date().timeIntervalSince(start) * 1000)
 
         guard let http = response as? HTTPURLResponse else {
-            throw WikiClientError.malformedResponse
+            throw UtilityLLMClientError.malformedResponse
         }
         guard (200..<300).contains(http.statusCode) else {
             let bodyString = String(data: data, encoding: .utf8) ?? ""
-            throw WikiClientError.httpError(status: http.statusCode, body: bodyString)
+            throw UtilityLLMClientError.httpError(status: http.statusCode, body: bodyString)
         }
 
         guard
@@ -183,7 +184,7 @@ struct WikiOpenRouterClient: Sendable {
             let message = choices.first?["message"] as? [String: Any],
             let content = message["content"] as? String
         else {
-            throw WikiClientError.malformedResponse
+            throw UtilityLLMClientError.malformedResponse
         }
 
         if let usageRaw = json["usage"] {
@@ -236,11 +237,11 @@ struct WikiOpenRouterClient: Sendable {
         let latencyMs = Int(Date().timeIntervalSince(start) * 1000)
 
         guard let http = response as? HTTPURLResponse else {
-            throw WikiClientError.malformedResponse
+            throw UtilityLLMClientError.malformedResponse
         }
         guard (200..<300).contains(http.statusCode) else {
             let bodyString = String(data: data, encoding: .utf8) ?? ""
-            throw WikiClientError.httpError(status: http.statusCode, body: bodyString)
+            throw UtilityLLMClientError.httpError(status: http.statusCode, body: bodyString)
         }
 
         guard
@@ -248,7 +249,7 @@ struct WikiOpenRouterClient: Sendable {
             let message = json["message"] as? [String: Any],
             let content = message["content"] as? String
         else {
-            throw WikiClientError.malformedResponse
+            throw UtilityLLMClientError.malformedResponse
         }
 
         let promptTokens = (json["prompt_eval_count"] as? Int) ?? 0
@@ -272,7 +273,7 @@ struct WikiOpenRouterClient: Sendable {
 
 // MARK: - Errors
 
-enum WikiClientError: LocalizedError {
+enum UtilityLLMClientError: LocalizedError {
     case missingCredential(provider: String)
     case httpError(status: Int, body: String)
     case malformedResponse
@@ -282,9 +283,9 @@ enum WikiClientError: LocalizedError {
         case .missingCredential(let provider):
             "\(provider) is not connected. Add a key in Settings."
         case .httpError(let status, let body):
-            "Wiki API error (\(status)): \(body.prefix(200))"
+            "API error (\(status)): \(body.prefix(200))"
         case .malformedResponse:
-            "Malformed response from wiki API"
+            "Malformed response from utility LLM API"
         }
     }
 }

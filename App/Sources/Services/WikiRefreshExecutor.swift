@@ -44,7 +44,7 @@ final class WikiRefreshExecutor {
 
     /// Resolves the live LLM client for a given model id. Tests inject a
     /// stub that records the call and returns a canned client.
-    let makeClient: @MainActor (_ model: String) -> WikiOpenRouterClient
+    let makeClient: @MainActor (_ model: String) -> UtilityLLMClient
 
     /// Test-injectable AppStateStore lookup. Defaults to the
     /// `RAGService.shared.appStore` reference that the app boot wires up.
@@ -65,7 +65,7 @@ final class WikiRefreshExecutor {
 
     init(
         storage: WikiStorage = .shared,
-        makeClient: @escaping @MainActor (_ model: String) -> WikiOpenRouterClient = { model in
+        makeClient: @escaping @MainActor (_ model: String) -> UtilityLLMClient = { model in
             .live(model: model)
         },
         resolveAppStore: @escaping @MainActor () -> AppStateStore? = {
