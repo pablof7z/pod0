@@ -125,7 +125,15 @@ final class WorkflowRuntime {
         )
         let inserted = try jobStore.ensureJob(desired)
         if !inserted {
-            try jobStore.rearmJob(idempotencyKey: desired.idempotencyKey)
+            let shouldRearmSucceeded: Bool
+            switch episode.downloadState {
+            case .notDownloaded: shouldRearmSucceeded = true
+            case .downloaded: shouldRearmSucceeded = false
+            }
+            try jobStore.rearmJob(
+                idempotencyKey: desired.idempotencyKey,
+                includeSucceeded: shouldRearmSucceeded
+            )
         }
         guard let persisted = try jobStore.job(idempotencyKey: desired.idempotencyKey) else {
             throw JobStoreError.corruptRow

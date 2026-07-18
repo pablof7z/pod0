@@ -51,7 +51,7 @@ final class FeedDiscoveryJobExecutor: JobExecutor {
         if payload.notificationsEnabled,
            store.state.settings.notifyOnNewEpisodes,
            store.subscription(podcastID: payload.podcastID)?.notificationsEnabled == true {
-            for input in sorted {
+            for input in sorted.prefix(NotificationService.maxNewEpisodeNotificationsPerRefresh) {
                 let occurrence = "notification:\(payload.occurrenceID):\(input.episodeID.uuidString)"
                 let child = NotificationJobPayload(
                     discoveredAt: payload.discoveredAt,

@@ -355,6 +355,40 @@ final class EpisodeDownloadServiceTests: XCTestCase {
         )
     }
 
+    func testManualDownloadIntentRearmsSucceededRowAfterLocalArtifactRemoval() throws {
+        let made = AppStateTestSupport.makeIsolatedStore()
+        defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
+        let episode = Episode(
+            podcastID: UUID(),
+            guid: "manual-redownload",
+            title: "Manual re-download",
+            pubDate: Date(),
+            enclosureURL: URL(string: "https://example.com/manual-redownload.mp3")!
+        )
+        made.store.upsertEpisodes([episode], forPodcast: episode.podcastID)
+
+        let runtime = WorkflowRuntime.shared
+        let initial = try runtime.persistDownloadIntent(episodeID: episode.id, origin: .user)
+        let jobs = try XCTUnwrap(runtime.jobStore)
+        let claimed = try XCTUnwrap(try jobs.claimDueJobs(
+            resourceClass: .download,
+            capacity: 1,
+            now: Date(),
+            owner: "redownload-test",
+            leaseDuration: 60
+        ).first)
+        let token = try XCTUnwrap(claimed.leaseToken)
+        try jobs.markRunning(id: initial.id, leaseToken: token)
+        try jobs.complete(id: initial.id, leaseToken: token, outputVersion: initial.inputVersion)
+        XCTAssertEqual(try jobs.job(idempotencyKey: initial.idempotencyKey)?.state, .succeeded)
+
+        let rearmed = try runtime.persistDownloadIntent(episodeID: episode.id, origin: .user)
+
+        XCTAssertEqual(rearmed.id, initial.id)
+        XCTAssertEqual(rearmed.state, .pending)
+        XCTAssertEqual(rearmed.attempt, 0)
+    }
+
     private func downloadJob(key: String, subject: UUID, priority: Int) -> DesiredJob {
         DesiredJob(
             idempotencyKey: key,

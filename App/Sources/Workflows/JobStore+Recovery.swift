@@ -81,7 +81,11 @@ extension JobStore {
     /// Re-arms one canonical occurrence after an explicit user retry. Keeping
     /// the same row preserves its durable identity while clearing ownership
     /// and provider state from the prior terminal attempt.
-    func rearmJob(idempotencyKey: String, now: Date = Date()) throws {
+    func rearmJob(
+        idempotencyKey: String,
+        includeSucceeded: Bool = false,
+        now: Date = Date()
+    ) throws {
         try withDatabase { db in
             let statement = try WorkflowSQLite.prepare(
                 """
@@ -91,7 +95,10 @@ extension JobStore {
                     external_operation_state=NULL, last_error_class=NULL,
                     last_error_message=NULL, updated_at=?
                 WHERE idempotency_key=?
-                  AND state IN ('blocked','failedPermanent','cancelled')
+                  AND (
+                    state IN ('blocked','failedPermanent','cancelled')
+                    OR (?=1 AND state='succeeded')
+                  )
                 """,
                 db: db
             )
@@ -99,6 +106,7 @@ extension JobStore {
             try WorkflowSQLite.bind(now, 1, statement, db)
             try WorkflowSQLite.bind(now, 2, statement, db)
             try WorkflowSQLite.bind(idempotencyKey, 3, statement, db)
+            try WorkflowSQLite.bind(Int64(includeSucceeded ? 1 : 0), 4, statement, db)
             try WorkflowSQLite.stepDone(statement, db)
         }
     }

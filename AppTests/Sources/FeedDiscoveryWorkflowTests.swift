@@ -15,7 +15,7 @@ final class FeedDiscoveryWorkflowTests: XCTestCase {
             title: "Discovery"
         )
         let base = Date(timeIntervalSince1970: 20_000)
-        let episodes = (0..<3).map { index in
+        let episodes = (0..<5).map { index in
             Episode(
                 podcastID: podcast.id,
                 guid: "episode-\(index)",
@@ -88,6 +88,10 @@ final class FeedDiscoveryWorkflowTests: XCTestCase {
         )
         XCTAssertEqual(notifications.count, 3)
         XCTAssertEqual(Set(notifications.compactMap(\.occurrenceID)).count, 3)
+        XCTAssertEqual(
+            Set(notifications.map(\.subjectID)),
+            Set(episodes.sorted { $0.pubDate > $1.pubDate }.prefix(3).map(\.id))
+        )
     }
 
     func testExpiredNotificationOccurrenceBecomesObsoleteBeforeDelivery() async throws {
