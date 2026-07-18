@@ -21,7 +21,16 @@ pub struct PodcastRecord {
     pub kind: PodcastKind,
     pub feed_identity: Option<FeedIdentityV1>,
     pub title: String,
+    pub author: String,
+    pub image_url: Option<String>,
+    pub description: String,
+    pub language: Option<String>,
+    pub categories: Vec<String>,
     pub discovered_at: UnixTimestampMilliseconds,
+    pub title_is_placeholder: bool,
+    pub last_refreshed_at: Option<UnixTimestampMilliseconds>,
+    pub etag: Option<String>,
+    pub last_modified: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
@@ -126,11 +135,14 @@ pub struct EpisodeRecord {
     /// case-sensitive matching is scoped to the parent podcast.
     pub publisher_guid: String,
     pub title: String,
+    pub description: String,
     pub published_at: UnixTimestampMilliseconds,
     pub duration_milliseconds: Option<u64>,
     pub enclosure_url: String,
     pub enclosure_mime_type: Option<String>,
+    pub image_url: Option<String>,
     pub listening: EpisodeListeningState,
+    pub is_starred: bool,
     pub download: DownloadArtifactStatus,
     pub transcript: TranscriptArtifactStatus,
 }

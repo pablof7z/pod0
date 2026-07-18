@@ -6,9 +6,9 @@ import uniffi.pod0_application.ProjectionEnvelope
 import uniffi.pod0_application.ProjectionRequest
 import uniffi.pod0_application.ProjectionScope
 import uniffi.pod0_domain.*
-import uniffi.pod0_facade.Pod0Facade
-import uniffi.pod0_facade.ProjectionSubscriber
+import uniffi.pod0_facade.*
 import java.io.File
+import java.nio.file.Files
 
 private class RecordingSubscriber : ProjectionSubscriber {
     val revisions = mutableListOf<ULong>()
@@ -19,16 +19,16 @@ private class RecordingSubscriber : ProjectionSubscriber {
 }
 
 fun main(args: Array<String>) {
-    check(args.size == 2)
+    check(args.size == 3)
     val fixture = decodeProperties(File(args[0]).readText())
     check(fixture["fixture_version"] == "1")
     check(fixture["schema_component"] == "kernel")
     check(fixture["stored_version"]?.toUInt() == 2u)
     check(fixture["supported_min"]?.toUInt() == 0u)
-    check(fixture["supported_max"]?.toUInt() == 3u)
+    check(fixture["supported_max"]?.toUInt() == 4u)
     check(fixture["access_mode"] == "migration_only")
     check(fixture["migration_state"] == "required")
-    check(fixture["target_version"]?.toUInt() == 3u)
+    check(fixture["target_version"]?.toUInt() == 4u)
     check(fixture["store_id_high"]?.toULong() == 10UL)
     check(fixture["store_id_low"]?.toULong() == 11UL)
     check(fixture["command_id_high"]?.toULong() == 1UL)
@@ -40,6 +40,7 @@ fun main(args: Array<String>) {
     check(fixture["optional_safe_detail"] == "null")
 
     qualifyListeningDomain(decodeProperties(File(args[1]).readText()))
+    qualifyListeningImport(File(args[2]))
 
     val facade = Pod0Facade()
     try {
@@ -105,6 +106,37 @@ fun main(args: Array<String>) {
         check(subscriber.revisions == listOf(0UL, 1UL, 2UL, 3UL))
     } finally {
         facade.destroy()
+    }
+}
+
+private fun qualifyListeningImport(source: File) {
+    val root = Files.createTempDirectory("pod0-listening-import").toFile()
+    try {
+        val plan = inspectLegacyListeningSource(source.absolutePath)
+        check(plan.sourceKind == LegacyListeningSourceKind.LEGACY_JSON)
+        check(plan.podcastCount == 1u && plan.subscriptionCount == 1u && plan.episodeCount == 1u)
+        val report = stageLegacyListeningImport(
+            source.absolutePath,
+            File(root, "source.backup.json").absolutePath,
+            File(root, "core.sqlite").absolutePath,
+            File(root, "core.backup.sqlite").absolutePath,
+            plan,
+            CommandId(0UL, 1UL),
+            CommandId(0UL, 2UL),
+            1_721_322_000_000L,
+        )
+        check(report.staged && !report.reusedExisting)
+        val imported = readStagedLegacyListeningImport(
+            File(root, "core.sqlite").absolutePath,
+            CommandId(0UL, 1UL),
+        ).snapshot
+        check(imported.podcasts.single().title == "Legacy Kotlin fixture")
+        check(imported.episodes.single().listening.resumePositionMilliseconds == 32_250UL)
+        check(imported.episodes.single().listening.completion == CompletionStatus.Completed(CompletionCause.LegacyPlayedFlag))
+        check(imported.episodes.single().isStarred)
+        check(imported.playback.activeEpisodeId == imported.episodes.single().episodeId)
+    } finally {
+        root.deleteRecursively()
     }
 }
 
@@ -182,7 +214,16 @@ private fun qualifyListeningDomain(fixture: Map<String, String>) {
                 PodcastKind.Rss,
                 feed,
                 fixture.getValue("podcast_title"),
+                fixture.getValue("podcast_author"),
+                fixture["podcast_image_url"],
+                fixture.getValue("podcast_description"),
+                fixture["podcast_language"],
+                fixture.getValue("podcast_categories").split(","),
                 UnixTimestampMilliseconds(fixture.getValue("podcast_discovered_at_ms").toLong()),
+                fixture.getValue("podcast_title_is_placeholder").toBooleanStrict(),
+                UnixTimestampMilliseconds(fixture.getValue("podcast_last_refreshed_at_ms").toLong()),
+                fixture["podcast_etag"],
+                fixture["podcast_last_modified"],
             ),
         ),
         subscriptions = listOf(
@@ -203,14 +244,17 @@ private fun qualifyListeningDomain(fixture: Map<String, String>) {
                 podcastId,
                 fixture.getValue("episode_guid"),
                 fixture.getValue("episode_title"),
+                fixture.getValue("episode_description"),
                 UnixTimestampMilliseconds(fixture.getValue("episode_published_at_ms").toLong()),
                 fixture.getValue("episode_duration_ms").toULong(),
                 fixture.getValue("episode_enclosure_url"),
                 fixture["episode_enclosure_mime"],
+                fixture["episode_image_url"],
                 EpisodeListeningState(
                     fixture.getValue("episode_resume_position_ms").toULong(),
                     CompletionStatus.InProgress,
                 ),
+                fixture.getValue("episode_is_starred").toBooleanStrict(),
                 DownloadArtifactStatus.Available(
                     artifact("download_schema_version", "download_opaque_key"),
                     fixture.getValue("download_byte_count").toULong(),

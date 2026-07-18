@@ -2,21 +2,11 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use pod0_domain::CommandId;
 use rusqlite::Connection;
-use tempfile::TempDir;
 
 use crate::migration::{MigrationBoundary, MigrationObserver};
+use crate::recovery_test_support::*;
 use crate::*;
-
-#[derive(Clone, Copy)]
-struct FixedClock;
-
-impl MigrationClock for FixedClock {
-    fn now_milliseconds(&self) -> i64 {
-        1_721_322_000_000
-    }
-}
 
 struct FailOnce(AtomicBool);
 
@@ -147,7 +137,9 @@ fn verified_backup_restores_only_to_a_new_destination() {
     assert_eq!(evidence.schema_version, 2);
     assert_eq!(
         fixture.migrator.inspect(&restored).migration_state,
-        MigrationState::Required { target_version: 3 }
+        MigrationState::Required {
+            target_version: CURRENT_SCHEMA_VERSION
+        }
     );
     assert_eq!(
         restore_backup_to_new_store(&fixture.backup, &restored),
@@ -175,7 +167,9 @@ fn backup_path_must_not_alias_the_source_store() {
     assert!(!fixture.backup.exists());
     assert_eq!(
         fixture.migrator.inspect(&fixture.store).migration_state,
-        MigrationState::Required { target_version: 3 }
+        MigrationState::Required {
+            target_version: CURRENT_SCHEMA_VERSION
+        }
     );
 }
 
@@ -201,7 +195,9 @@ fn backup_from_another_store_is_never_reused() {
     );
     assert_eq!(
         second.migrator.inspect(&second.store).migration_state,
-        MigrationState::Required { target_version: 3 }
+        MigrationState::Required {
+            target_version: CURRENT_SCHEMA_VERSION
+        }
     );
 }
 
@@ -246,7 +242,7 @@ fn cross_language_schema_fixture_matches_rust_contract() {
     );
     assert_eq!(values["migration_state"], "required");
     assert_eq!(values["access_mode"], "migration_only");
-    assert_eq!(values["target_version"], "3");
+    assert_eq!(values["target_version"], "4");
     assert_eq!(values["store_id_high"], "10");
     assert_eq!(values["store_id_low"], "11");
     assert_eq!(values["command_id_high"], "1");
@@ -256,43 +252,4 @@ fn cross_language_schema_fixture_matches_rust_contract() {
     assert_eq!(values["error_kind"], "unsupported");
     assert_eq!(values["error_wire_code"], "9001");
     assert_eq!(values["optional_safe_detail"], "null");
-}
-
-struct Fixture {
-    _directory: TempDir,
-    store: std::path::PathBuf,
-    backup: std::path::PathBuf,
-    migrator: CoreStoreMigrator<FixedClock>,
-}
-
-impl Fixture {
-    fn new() -> Self {
-        let directory = tempfile::tempdir().unwrap();
-        Self {
-            store: directory.path().join("core.sqlite"),
-            backup: directory.path().join("core.backup.sqlite"),
-            _directory: directory,
-            migrator: CoreStoreMigrator::new(FixedClock),
-        }
-    }
-
-    fn migrate_to_current(&self, value: u64) -> Result<MigrationReport, StorageError> {
-        self.migrator
-            .migrate(&self.store, CURRENT_SCHEMA_VERSION, &self.backup, id(value))
-    }
-}
-
-fn id(value: u64) -> CommandId {
-    CommandId::from_parts(0, value)
-}
-
-fn table_exists(path: &std::path::Path, table: &str) -> bool {
-    Connection::open(path)
-        .unwrap()
-        .query_row(
-            "SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?1)",
-            [table],
-            |row| row.get(0),
-        )
-        .unwrap()
 }

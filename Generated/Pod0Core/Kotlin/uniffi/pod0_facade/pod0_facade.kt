@@ -41,13 +41,19 @@ import uniffi.pod0_application.HostObservationEnvelope
 import uniffi.pod0_application.HostRequestEnvelope
 import uniffi.pod0_application.ProjectionEnvelope
 import uniffi.pod0_application.ProjectionRequest
+import uniffi.pod0_domain.CommandId
+import uniffi.pod0_domain.FfiConverterTypeCommandId
+import uniffi.pod0_domain.FfiConverterTypeListeningDomainSnapshot
 import uniffi.pod0_domain.FfiConverterTypeSubscriptionId
+import uniffi.pod0_domain.ListeningDomainSnapshot
 import uniffi.pod0_domain.SubscriptionId
 import uniffi.pod0_application.RustBuffer as RustBufferCommandEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferHostObservationEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferHostRequestEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionRequest
+import uniffi.pod0_domain.RustBuffer as RustBufferCommandId
+import uniffi.pod0_domain.RustBuffer as RustBufferListeningDomainSnapshot
 import uniffi.pod0_domain.RustBuffer as RustBufferSubscriptionId
 
 // This is a helper for safely working with byte buffers returned from the Rust code.
@@ -713,6 +719,12 @@ internal object IntegrityCheckingUniffiLib {
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
     }
+    external fun uniffi_pod0_facade_checksum_func_inspect_legacy_listening_source(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_read_staged_legacy_listening_import(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_stage_legacy_listening_import(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_projectionsubscriber_receive(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_dispatch(
@@ -776,6 +788,12 @@ internal object UniffiLib {
     ): RustBufferSubscriptionId.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_unsubscribe(`ptr`: Long,`subscriptionId`: RustBufferSubscriptionId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
+    external fun uniffi_pod0_facade_fn_func_inspect_legacy_listening_source(`sourcePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_read_staged_legacy_listening_import(`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_stage_legacy_listening_import(`sourcePath`: RustBuffer.ByValue,`sourceBackupPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`targetSchemaBackupPath`: RustBuffer.ByValue,`expectedPlan`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,`targetStoreId`: RustBufferCommandId.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun ffi_pod0_facade_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun ffi_pod0_facade_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -895,6 +913,15 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_pod0_facade_checksum_func_inspect_legacy_listening_source() != 2539) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_read_staged_legacy_listening_import() != 31272) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_stage_legacy_listening_import() != 21059) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pod0_facade_checksum_method_projectionsubscriber_receive() != 9631) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1131,6 +1158,98 @@ public object FfiConverterUShort: FfiConverter<UShort, Short> {
 
     override fun write(value: UShort, buf: ByteBuffer) {
         buf.putShort(value.toShort())
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterUInt: FfiConverter<UInt, Int> {
+    override fun lift(value: Int): UInt {
+        return value.toUInt()
+    }
+
+    override fun read(buf: ByteBuffer): UInt {
+        return lift(buf.getInt())
+    }
+
+    override fun lower(value: UInt): Int {
+        return value.toInt()
+    }
+
+    override fun allocationSize(value: UInt) = 4UL
+
+    override fun write(value: UInt, buf: ByteBuffer) {
+        buf.putInt(value.toInt())
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterULong: FfiConverter<ULong, Long> {
+    override fun lift(value: Long): ULong {
+        return value.toULong()
+    }
+
+    override fun read(buf: ByteBuffer): ULong {
+        return lift(buf.getLong())
+    }
+
+    override fun lower(value: ULong): Long {
+        return value.toLong()
+    }
+
+    override fun allocationSize(value: ULong) = 8UL
+
+    override fun write(value: ULong, buf: ByteBuffer) {
+        buf.putLong(value.toLong())
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterLong: FfiConverter<Long, Long> {
+    override fun lift(value: Long): Long {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Long {
+        return buf.getLong()
+    }
+
+    override fun lower(value: Long): Long {
+        return value
+    }
+
+    override fun allocationSize(value: Long) = 8UL
+
+    override fun write(value: Long, buf: ByteBuffer) {
+        buf.putLong(value)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterBoolean: FfiConverter<Boolean, Byte> {
+    override fun lift(value: Byte): Boolean {
+        return value.toInt() != 0
+    }
+
+    override fun read(buf: ByteBuffer): Boolean {
+        return lift(buf.get())
+    }
+
+    override fun lower(value: Boolean): Byte {
+        return if (value) 1.toByte() else 0.toByte()
+    }
+
+    override fun allocationSize(value: Boolean) = 1UL
+
+    override fun write(value: Boolean, buf: ByteBuffer) {
+        buf.put(lower(value))
     }
 }
 
@@ -1860,6 +1979,410 @@ public object FfiConverterTypeProjectionSubscriber: FfiConverter<ProjectionSubsc
 
 
 
+data class LegacyListeningBackupEvidence (
+    val `sourceKind`: LegacyListeningSourceKind
+    ,
+    val `sourceHash`: kotlin.String
+    ,
+    val `sourceGeneration`: kotlin.ULong
+    ,
+    val `byteCount`: kotlin.ULong
+    ,
+    val `reusedExisting`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyListeningBackupEvidence: FfiConverterRustBuffer<LegacyListeningBackupEvidence> {
+    override fun read(buf: ByteBuffer): LegacyListeningBackupEvidence {
+        return LegacyListeningBackupEvidence(
+            FfiConverterTypeLegacyListeningSourceKind.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyListeningBackupEvidence) = (
+            FfiConverterTypeLegacyListeningSourceKind.allocationSize(value.`sourceKind`) +
+            FfiConverterString.allocationSize(value.`sourceHash`) +
+            FfiConverterULong.allocationSize(value.`sourceGeneration`) +
+            FfiConverterULong.allocationSize(value.`byteCount`) +
+            FfiConverterBoolean.allocationSize(value.`reusedExisting`)
+    )
+
+    override fun write(value: LegacyListeningBackupEvidence, buf: ByteBuffer) {
+            FfiConverterTypeLegacyListeningSourceKind.write(value.`sourceKind`, buf)
+            FfiConverterString.write(value.`sourceHash`, buf)
+            FfiConverterULong.write(value.`sourceGeneration`, buf)
+            FfiConverterULong.write(value.`byteCount`, buf)
+            FfiConverterBoolean.write(value.`reusedExisting`, buf)
+    }
+}
+
+
+
+data class LegacyListeningImportPlan (
+    val `sourceKind`: LegacyListeningSourceKind
+    ,
+    val `sourceHash`: kotlin.String
+    ,
+    val `sourceGeneration`: kotlin.ULong
+    ,
+    val `podcastCount`: kotlin.UInt
+    ,
+    val `subscriptionCount`: kotlin.UInt
+    ,
+    val `episodeCount`: kotlin.UInt
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyListeningImportPlan: FfiConverterRustBuffer<LegacyListeningImportPlan> {
+    override fun read(buf: ByteBuffer): LegacyListeningImportPlan {
+        return LegacyListeningImportPlan(
+            FfiConverterTypeLegacyListeningSourceKind.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyListeningImportPlan) = (
+            FfiConverterTypeLegacyListeningSourceKind.allocationSize(value.`sourceKind`) +
+            FfiConverterString.allocationSize(value.`sourceHash`) +
+            FfiConverterULong.allocationSize(value.`sourceGeneration`) +
+            FfiConverterUInt.allocationSize(value.`podcastCount`) +
+            FfiConverterUInt.allocationSize(value.`subscriptionCount`) +
+            FfiConverterUInt.allocationSize(value.`episodeCount`)
+    )
+
+    override fun write(value: LegacyListeningImportPlan, buf: ByteBuffer) {
+            FfiConverterTypeLegacyListeningSourceKind.write(value.`sourceKind`, buf)
+            FfiConverterString.write(value.`sourceHash`, buf)
+            FfiConverterULong.write(value.`sourceGeneration`, buf)
+            FfiConverterUInt.write(value.`podcastCount`, buf)
+            FfiConverterUInt.write(value.`subscriptionCount`, buf)
+            FfiConverterUInt.write(value.`episodeCount`, buf)
+    }
+}
+
+
+
+data class LegacyListeningImportReport (
+    val `importId`: CommandId
+    ,
+    val `plan`: LegacyListeningImportPlan
+    ,
+    val `targetRevision`: kotlin.ULong
+    ,
+    val `backup`: LegacyListeningBackupEvidence
+    ,
+    val `staged`: kotlin.Boolean
+    ,
+    val `reusedExisting`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyListeningImportReport: FfiConverterRustBuffer<LegacyListeningImportReport> {
+    override fun read(buf: ByteBuffer): LegacyListeningImportReport {
+        return LegacyListeningImportReport(
+            FfiConverterTypeCommandId.read(buf),
+            FfiConverterTypeLegacyListeningImportPlan.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterTypeLegacyListeningBackupEvidence.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyListeningImportReport) = (
+            FfiConverterTypeCommandId.allocationSize(value.`importId`) +
+            FfiConverterTypeLegacyListeningImportPlan.allocationSize(value.`plan`) +
+            FfiConverterULong.allocationSize(value.`targetRevision`) +
+            FfiConverterTypeLegacyListeningBackupEvidence.allocationSize(value.`backup`) +
+            FfiConverterBoolean.allocationSize(value.`staged`) +
+            FfiConverterBoolean.allocationSize(value.`reusedExisting`)
+    )
+
+    override fun write(value: LegacyListeningImportReport, buf: ByteBuffer) {
+            FfiConverterTypeCommandId.write(value.`importId`, buf)
+            FfiConverterTypeLegacyListeningImportPlan.write(value.`plan`, buf)
+            FfiConverterULong.write(value.`targetRevision`, buf)
+            FfiConverterTypeLegacyListeningBackupEvidence.write(value.`backup`, buf)
+            FfiConverterBoolean.write(value.`staged`, buf)
+            FfiConverterBoolean.write(value.`reusedExisting`, buf)
+    }
+}
+
+
+
+data class LegacyListeningImportVerification (
+    val `report`: LegacyListeningImportReport
+    ,
+    val `snapshot`: ListeningDomainSnapshot
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyListeningImportVerification: FfiConverterRustBuffer<LegacyListeningImportVerification> {
+    override fun read(buf: ByteBuffer): LegacyListeningImportVerification {
+        return LegacyListeningImportVerification(
+            FfiConverterTypeLegacyListeningImportReport.read(buf),
+            FfiConverterTypeListeningDomainSnapshot.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyListeningImportVerification) = (
+            FfiConverterTypeLegacyListeningImportReport.allocationSize(value.`report`) +
+            FfiConverterTypeListeningDomainSnapshot.allocationSize(value.`snapshot`)
+    )
+
+    override fun write(value: LegacyListeningImportVerification, buf: ByteBuffer) {
+            FfiConverterTypeLegacyListeningImportReport.write(value.`report`, buf)
+            FfiConverterTypeListeningDomainSnapshot.write(value.`snapshot`, buf)
+    }
+}
+
+
+
+
+
+sealed class LegacyListeningMigrationException: kotlin.Exception() {
+
+    class SourceChanged(
+        ) : LegacyListeningMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class SourceInvalid(
+        ) : LegacyListeningMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class BackupConflict(
+        ) : LegacyListeningMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class ImportConflict(
+        ) : LegacyListeningMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class ImportNotFound(
+        ) : LegacyListeningMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class TargetBlocked(
+        ) : LegacyListeningMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class Interrupted(
+        ) : LegacyListeningMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class StorageUnavailable(
+        ) : LegacyListeningMigrationException() {
+        override val message
+            get() = ""
+    }
+
+
+
+
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<LegacyListeningMigrationException> {
+        override fun lift(error_buf: RustBuffer.ByValue): LegacyListeningMigrationException = FfiConverterTypeLegacyListeningMigrationError.lift(error_buf)
+    }
+
+
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyListeningMigrationError : FfiConverterRustBuffer<LegacyListeningMigrationException> {
+    override fun read(buf: ByteBuffer): LegacyListeningMigrationException {
+
+
+        return when(buf.getInt()) {
+            1 -> LegacyListeningMigrationException.SourceChanged()
+            2 -> LegacyListeningMigrationException.SourceInvalid()
+            3 -> LegacyListeningMigrationException.BackupConflict()
+            4 -> LegacyListeningMigrationException.ImportConflict()
+            5 -> LegacyListeningMigrationException.ImportNotFound()
+            6 -> LegacyListeningMigrationException.TargetBlocked()
+            7 -> LegacyListeningMigrationException.Interrupted()
+            8 -> LegacyListeningMigrationException.StorageUnavailable()
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: LegacyListeningMigrationException): ULong {
+        return when(value) {
+            is LegacyListeningMigrationException.SourceChanged -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyListeningMigrationException.SourceInvalid -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyListeningMigrationException.BackupConflict -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyListeningMigrationException.ImportConflict -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyListeningMigrationException.ImportNotFound -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyListeningMigrationException.TargetBlocked -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyListeningMigrationException.Interrupted -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyListeningMigrationException.StorageUnavailable -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: LegacyListeningMigrationException, buf: ByteBuffer) {
+        when(value) {
+            is LegacyListeningMigrationException.SourceChanged -> {
+                buf.putInt(1)
+                Unit
+            }
+            is LegacyListeningMigrationException.SourceInvalid -> {
+                buf.putInt(2)
+                Unit
+            }
+            is LegacyListeningMigrationException.BackupConflict -> {
+                buf.putInt(3)
+                Unit
+            }
+            is LegacyListeningMigrationException.ImportConflict -> {
+                buf.putInt(4)
+                Unit
+            }
+            is LegacyListeningMigrationException.ImportNotFound -> {
+                buf.putInt(5)
+                Unit
+            }
+            is LegacyListeningMigrationException.TargetBlocked -> {
+                buf.putInt(6)
+                Unit
+            }
+            is LegacyListeningMigrationException.Interrupted -> {
+                buf.putInt(7)
+                Unit
+            }
+            is LegacyListeningMigrationException.StorageUnavailable -> {
+                buf.putInt(8)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+
+enum class LegacyListeningSourceKind {
+
+    SWIFT_SQLITE,
+    LEGACY_JSON;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyListeningSourceKind: FfiConverterRustBuffer<LegacyListeningSourceKind> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyListeningSourceKind.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyListeningSourceKind) = 4UL
+
+    override fun write(value: LegacyListeningSourceKind, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 
 
 sealed class ProjectionDeliveryException: kotlin.Exception() {
@@ -1962,3 +2485,61 @@ public object FfiConverterSequenceTypeHostRequestEnvelope: FfiConverterRustBuffe
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    @Throws(LegacyListeningMigrationException::class) fun `inspectLegacyListeningSource`(`sourcePath`: kotlin.String): LegacyListeningImportPlan {
+            return FfiConverterTypeLegacyListeningImportPlan.lift(
+    uniffiRustCallWithError(LegacyListeningMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_inspect_legacy_listening_source(
+
+
+        FfiConverterString.lower(`sourcePath`),_status)
+}
+    )
+    }
+
+
+    @Throws(LegacyListeningMigrationException::class) fun `readStagedLegacyListeningImport`(`targetPath`: kotlin.String, `importId`: CommandId): LegacyListeningImportVerification {
+            return FfiConverterTypeLegacyListeningImportVerification.lift(
+    uniffiRustCallWithError(LegacyListeningMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_read_staged_legacy_listening_import(
+
+
+        FfiConverterString.lower(`targetPath`),
+        FfiConverterTypeCommandId.lower(`importId`),_status)
+}
+    )
+    }
+
+
+    @Throws(LegacyListeningMigrationException::class) fun `stageLegacyListeningImport`(`sourcePath`: kotlin.String, `sourceBackupPath`: kotlin.String, `targetPath`: kotlin.String, `targetSchemaBackupPath`: kotlin.String, `expectedPlan`: LegacyListeningImportPlan, `importId`: CommandId, `targetStoreId`: CommandId, `observedAtMilliseconds`: kotlin.Long): LegacyListeningImportReport {
+            return FfiConverterTypeLegacyListeningImportReport.lift(
+    uniffiRustCallWithError(LegacyListeningMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_stage_legacy_listening_import(
+
+
+        FfiConverterString.lower(`sourcePath`),
+        FfiConverterString.lower(`sourceBackupPath`),
+        FfiConverterString.lower(`targetPath`),
+        FfiConverterString.lower(`targetSchemaBackupPath`),
+        FfiConverterTypeLegacyListeningImportPlan.lower(`expectedPlan`),
+        FfiConverterTypeCommandId.lower(`importId`),
+        FfiConverterTypeCommandId.lower(`targetStoreId`),
+        FfiConverterLong.lower(`observedAtMilliseconds`),_status)
+}
+    )
+    }

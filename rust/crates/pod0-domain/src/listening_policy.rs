@@ -198,7 +198,8 @@ pub fn validate_listening_snapshot(
         }
         if matches!(
             episode.listening.completion,
-            CompletionStatus::Completed { .. }
+            CompletionStatus::Completed { cause }
+                if !matches!(cause, crate::CompletionCause::LegacyPlayedFlag)
         ) && episode.listening.resume_position_milliseconds != 0
         {
             return Err(ListeningDomainError::CompletedEpisodeHasResumePosition);

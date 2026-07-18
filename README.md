@@ -25,8 +25,10 @@ product/repository name used by the architecture and roadmap.
 Master also contains the additive Pod0 Rust kernel, one typed UniFFI facade,
 generated Swift and Kotlin bindings, deterministic Apple packaging, and the
 versioned app-core SQLite migration/backup mechanism. The facade is linked into
-iOS for compile/runtime qualification but Rust owns no user data yet; Swift
-remains authoritative until the first complete vertical-slice cutover. There
+iOS for compile/runtime qualification. A typed, verified importer can stage the
+current Swift listening library in Rust and read it back through both generated
+bindings, but the marker remains `staged`: Rust owns no live user data yet and
+Swift remains authoritative until the first complete vertical-slice cutover. There
 is no Android application. Generic NMP is pinned behind the Pod0 adapter and is
 not linked into the facade while security issue #85 is open.
 
@@ -52,6 +54,7 @@ Authoritative engineering sources:
 
 - [Current architecture overview](docs/architecture.md)
 - [Accepted ADRs](docs/architecture/README.md)
+- [App-core schema migration policy](docs/architecture/schema-migrations.md)
 - [Swift ownership inventory](docs/architecture/ownership.md)
 - [iOS-first shared-core roadmap](Plans/2026-07-18-ios-first-rust-nmp-roadmap.md)
 - [Live GitHub milestones](https://github.com/pablof7z/pod0/milestones)

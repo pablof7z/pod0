@@ -487,6 +487,78 @@ fileprivate struct FfiConverterUInt16: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
+    typealias FfiType = UInt32
+    typealias SwiftType = UInt32
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt32 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterUInt64: FfiConverterPrimitive {
+    typealias FfiType = UInt64
+    typealias SwiftType = UInt64
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt64 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterInt64: FfiConverterPrimitive {
+    typealias FfiType = Int64
+    typealias SwiftType = Int64
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Int64 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: Int64, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterBool : FfiConverter {
+    typealias FfiType = Int8
+    typealias SwiftType = Bool
+
+    public static func lift(_ value: Int8) throws -> Bool {
+        return value != 0
+    }
+
+    public static func lower(_ value: Bool) -> Int8 {
+        return value ? 1 : 0
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Bool {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: Bool, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterString: FfiConverter {
     typealias SwiftType = String
     typealias FfiType = RustBuffer
@@ -922,6 +994,445 @@ public func FfiConverterTypeProjectionSubscriber_lower(_ value: ProjectionSubscr
 
 
 
+public struct LegacyListeningBackupEvidence: Equatable, Hashable {
+    public let sourceKind: LegacyListeningSourceKind
+    public let sourceHash: String
+    public let sourceGeneration: UInt64
+    public let byteCount: UInt64
+    public let reusedExisting: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceKind: LegacyListeningSourceKind, sourceHash: String, sourceGeneration: UInt64, byteCount: UInt64, reusedExisting: Bool) {
+        self.sourceKind = sourceKind
+        self.sourceHash = sourceHash
+        self.sourceGeneration = sourceGeneration
+        self.byteCount = byteCount
+        self.reusedExisting = reusedExisting
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyListeningBackupEvidence: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyListeningBackupEvidence: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyListeningBackupEvidence {
+        return
+            try LegacyListeningBackupEvidence(
+                sourceKind: FfiConverterTypeLegacyListeningSourceKind.read(from: &buf),
+                sourceHash: FfiConverterString.read(from: &buf),
+                sourceGeneration: FfiConverterUInt64.read(from: &buf),
+                byteCount: FfiConverterUInt64.read(from: &buf),
+                reusedExisting: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyListeningBackupEvidence, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyListeningSourceKind.write(value.sourceKind, into: &buf)
+        FfiConverterString.write(value.sourceHash, into: &buf)
+        FfiConverterUInt64.write(value.sourceGeneration, into: &buf)
+        FfiConverterUInt64.write(value.byteCount, into: &buf)
+        FfiConverterBool.write(value.reusedExisting, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyListeningBackupEvidence_lift(_ buf: RustBuffer) throws -> LegacyListeningBackupEvidence {
+    return try FfiConverterTypeLegacyListeningBackupEvidence.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyListeningBackupEvidence_lower(_ value: LegacyListeningBackupEvidence) -> RustBuffer {
+    return FfiConverterTypeLegacyListeningBackupEvidence.lower(value)
+}
+
+
+public struct LegacyListeningImportPlan: Equatable, Hashable {
+    public let sourceKind: LegacyListeningSourceKind
+    public let sourceHash: String
+    public let sourceGeneration: UInt64
+    public let podcastCount: UInt32
+    public let subscriptionCount: UInt32
+    public let episodeCount: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceKind: LegacyListeningSourceKind, sourceHash: String, sourceGeneration: UInt64, podcastCount: UInt32, subscriptionCount: UInt32, episodeCount: UInt32) {
+        self.sourceKind = sourceKind
+        self.sourceHash = sourceHash
+        self.sourceGeneration = sourceGeneration
+        self.podcastCount = podcastCount
+        self.subscriptionCount = subscriptionCount
+        self.episodeCount = episodeCount
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyListeningImportPlan: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyListeningImportPlan: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyListeningImportPlan {
+        return
+            try LegacyListeningImportPlan(
+                sourceKind: FfiConverterTypeLegacyListeningSourceKind.read(from: &buf),
+                sourceHash: FfiConverterString.read(from: &buf),
+                sourceGeneration: FfiConverterUInt64.read(from: &buf),
+                podcastCount: FfiConverterUInt32.read(from: &buf),
+                subscriptionCount: FfiConverterUInt32.read(from: &buf),
+                episodeCount: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyListeningImportPlan, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyListeningSourceKind.write(value.sourceKind, into: &buf)
+        FfiConverterString.write(value.sourceHash, into: &buf)
+        FfiConverterUInt64.write(value.sourceGeneration, into: &buf)
+        FfiConverterUInt32.write(value.podcastCount, into: &buf)
+        FfiConverterUInt32.write(value.subscriptionCount, into: &buf)
+        FfiConverterUInt32.write(value.episodeCount, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyListeningImportPlan_lift(_ buf: RustBuffer) throws -> LegacyListeningImportPlan {
+    return try FfiConverterTypeLegacyListeningImportPlan.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyListeningImportPlan_lower(_ value: LegacyListeningImportPlan) -> RustBuffer {
+    return FfiConverterTypeLegacyListeningImportPlan.lower(value)
+}
+
+
+public struct LegacyListeningImportReport: Equatable, Hashable {
+    public let importId: CommandId
+    public let plan: LegacyListeningImportPlan
+    public let targetRevision: UInt64
+    public let backup: LegacyListeningBackupEvidence
+    public let staged: Bool
+    public let reusedExisting: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(importId: CommandId, plan: LegacyListeningImportPlan, targetRevision: UInt64, backup: LegacyListeningBackupEvidence, staged: Bool, reusedExisting: Bool) {
+        self.importId = importId
+        self.plan = plan
+        self.targetRevision = targetRevision
+        self.backup = backup
+        self.staged = staged
+        self.reusedExisting = reusedExisting
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyListeningImportReport: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyListeningImportReport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyListeningImportReport {
+        return
+            try LegacyListeningImportReport(
+                importId: FfiConverterTypeCommandId.read(from: &buf),
+                plan: FfiConverterTypeLegacyListeningImportPlan.read(from: &buf),
+                targetRevision: FfiConverterUInt64.read(from: &buf),
+                backup: FfiConverterTypeLegacyListeningBackupEvidence.read(from: &buf),
+                staged: FfiConverterBool.read(from: &buf),
+                reusedExisting: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyListeningImportReport, into buf: inout [UInt8]) {
+        FfiConverterTypeCommandId.write(value.importId, into: &buf)
+        FfiConverterTypeLegacyListeningImportPlan.write(value.plan, into: &buf)
+        FfiConverterUInt64.write(value.targetRevision, into: &buf)
+        FfiConverterTypeLegacyListeningBackupEvidence.write(value.backup, into: &buf)
+        FfiConverterBool.write(value.staged, into: &buf)
+        FfiConverterBool.write(value.reusedExisting, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyListeningImportReport_lift(_ buf: RustBuffer) throws -> LegacyListeningImportReport {
+    return try FfiConverterTypeLegacyListeningImportReport.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyListeningImportReport_lower(_ value: LegacyListeningImportReport) -> RustBuffer {
+    return FfiConverterTypeLegacyListeningImportReport.lower(value)
+}
+
+
+public struct LegacyListeningImportVerification: Equatable, Hashable {
+    public let report: LegacyListeningImportReport
+    public let snapshot: ListeningDomainSnapshot
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(report: LegacyListeningImportReport, snapshot: ListeningDomainSnapshot) {
+        self.report = report
+        self.snapshot = snapshot
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyListeningImportVerification: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyListeningImportVerification: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyListeningImportVerification {
+        return
+            try LegacyListeningImportVerification(
+                report: FfiConverterTypeLegacyListeningImportReport.read(from: &buf),
+                snapshot: FfiConverterTypeListeningDomainSnapshot.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyListeningImportVerification, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyListeningImportReport.write(value.report, into: &buf)
+        FfiConverterTypeListeningDomainSnapshot.write(value.snapshot, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyListeningImportVerification_lift(_ buf: RustBuffer) throws -> LegacyListeningImportVerification {
+    return try FfiConverterTypeLegacyListeningImportVerification.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyListeningImportVerification_lower(_ value: LegacyListeningImportVerification) -> RustBuffer {
+    return FfiConverterTypeLegacyListeningImportVerification.lower(value)
+}
+
+
+public
+enum LegacyListeningMigrationError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+
+
+
+    case SourceChanged
+    case SourceInvalid
+    case BackupConflict
+    case ImportConflict
+    case ImportNotFound
+    case TargetBlocked
+    case Interrupted
+    case StorageUnavailable
+
+
+
+
+
+
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+
+}
+
+#if compiler(>=6)
+extension LegacyListeningMigrationError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyListeningMigrationError: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyListeningMigrationError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyListeningMigrationError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+
+
+
+        case 1: return .SourceChanged
+        case 2: return .SourceInvalid
+        case 3: return .BackupConflict
+        case 4: return .ImportConflict
+        case 5: return .ImportNotFound
+        case 6: return .TargetBlocked
+        case 7: return .Interrupted
+        case 8: return .StorageUnavailable
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyListeningMigrationError, into buf: inout [UInt8]) {
+        switch value {
+
+
+
+
+
+        case .SourceChanged:
+            writeInt(&buf, Int32(1))
+
+
+        case .SourceInvalid:
+            writeInt(&buf, Int32(2))
+
+
+        case .BackupConflict:
+            writeInt(&buf, Int32(3))
+
+
+        case .ImportConflict:
+            writeInt(&buf, Int32(4))
+
+
+        case .ImportNotFound:
+            writeInt(&buf, Int32(5))
+
+
+        case .TargetBlocked:
+            writeInt(&buf, Int32(6))
+
+
+        case .Interrupted:
+            writeInt(&buf, Int32(7))
+
+
+        case .StorageUnavailable:
+            writeInt(&buf, Int32(8))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyListeningMigrationError_lift(_ buf: RustBuffer) throws -> LegacyListeningMigrationError {
+    return try FfiConverterTypeLegacyListeningMigrationError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyListeningMigrationError_lower(_ value: LegacyListeningMigrationError) -> RustBuffer {
+    return FfiConverterTypeLegacyListeningMigrationError.lower(value)
+}
+
+
+
+public enum LegacyListeningSourceKind: Equatable, Hashable {
+
+    case swiftSqlite
+    case legacyJson
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyListeningSourceKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyListeningSourceKind: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyListeningSourceKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyListeningSourceKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .swiftSqlite
+
+        case 2: return .legacyJson
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyListeningSourceKind, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .swiftSqlite:
+            writeInt(&buf, Int32(1))
+
+
+        case .legacyJson:
+            writeInt(&buf, Int32(2))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyListeningSourceKind_lift(_ buf: RustBuffer) throws -> LegacyListeningSourceKind {
+    return try FfiConverterTypeLegacyListeningSourceKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyListeningSourceKind_lower(_ value: LegacyListeningSourceKind) -> RustBuffer {
+    return FfiConverterTypeLegacyListeningSourceKind.lower(value)
+}
+
+
+
 public
 enum ProjectionDeliveryError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
@@ -1026,6 +1537,38 @@ fileprivate struct FfiConverterSequenceTypeHostRequestEnvelope: FfiConverterRust
         return seq
     }
 }
+public func inspectLegacyListeningSource(sourcePath: String)throws  -> LegacyListeningImportPlan  {
+    return try  FfiConverterTypeLegacyListeningImportPlan_lift(try rustCallWithError(FfiConverterTypeLegacyListeningMigrationError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_inspect_legacy_listening_source(
+        FfiConverterString.lower(sourcePath),uniffiCallStatus
+    )
+})
+}
+public func readStagedLegacyListeningImport(targetPath: String, importId: CommandId)throws  -> LegacyListeningImportVerification  {
+    return try  FfiConverterTypeLegacyListeningImportVerification_lift(try rustCallWithError(FfiConverterTypeLegacyListeningMigrationError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_read_staged_legacy_listening_import(
+        FfiConverterString.lower(targetPath),
+        FfiConverterTypeCommandId_lower(importId),uniffiCallStatus
+    )
+})
+}
+public func stageLegacyListeningImport(sourcePath: String, sourceBackupPath: String, targetPath: String, targetSchemaBackupPath: String, expectedPlan: LegacyListeningImportPlan, importId: CommandId, targetStoreId: CommandId, observedAtMilliseconds: Int64)throws  -> LegacyListeningImportReport  {
+    return try  FfiConverterTypeLegacyListeningImportReport_lift(try rustCallWithError(FfiConverterTypeLegacyListeningMigrationError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_stage_legacy_listening_import(
+        FfiConverterString.lower(sourcePath),
+        FfiConverterString.lower(sourceBackupPath),
+        FfiConverterString.lower(targetPath),
+        FfiConverterString.lower(targetSchemaBackupPath),
+        FfiConverterTypeLegacyListeningImportPlan_lower(expectedPlan),
+        FfiConverterTypeCommandId_lower(importId),
+        FfiConverterTypeCommandId_lower(targetStoreId),
+        FfiConverterInt64.lower(observedAtMilliseconds),uniffiCallStatus
+    )
+})
+}
 
 private enum InitializationResult {
     case ok
@@ -1041,6 +1584,15 @@ private let initializationResult: InitializationResult = {
     let scaffolding_contract_version = ffi_pod0_facade_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_inspect_legacy_listening_source() != 2539) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_read_staged_legacy_listening_import() != 31272) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_stage_legacy_listening_import() != 21059) {
+        return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_projectionsubscriber_receive() != 9631) {
         return InitializationResult.apiChecksumMismatch

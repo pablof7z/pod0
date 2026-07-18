@@ -14,7 +14,15 @@ final class Pod0ListeningDomainBindingTests: XCTestCase {
             kind: .rss,
             feedURL: feedURL,
             title: fixture["podcast_title"]!,
-            discoveredAt: date(fixture, "podcast_discovered_at_ms")
+            author: fixture["podcast_author"]!,
+            imageURL: URL(string: fixture["podcast_image_url"]!),
+            description: fixture["podcast_description"]!,
+            language: fixture["podcast_language"],
+            categories: fixture["podcast_categories"]!.split(separator: ",").map(String.init),
+            discoveredAt: date(fixture, "podcast_discovered_at_ms"),
+            lastRefreshedAt: date(fixture, "podcast_last_refreshed_at_ms"),
+            etag: fixture["podcast_etag"],
+            lastModified: fixture["podcast_last_modified"]
         )
         let subscription = PodcastSubscription(
             podcastID: podcastUUID,
@@ -28,11 +36,14 @@ final class Pod0ListeningDomainBindingTests: XCTestCase {
             podcastID: podcastUUID,
             guid: fixture["episode_guid"]!,
             title: fixture["episode_title"]!,
+            description: fixture["episode_description"]!,
             pubDate: date(fixture, "episode_published_at_ms"),
             duration: seconds(fixture, "episode_duration_ms"),
             enclosureURL: try XCTUnwrap(URL(string: fixture["episode_enclosure_url"]!)),
             enclosureMimeType: fixture["episode_enclosure_mime"],
+            imageURL: URL(string: fixture["episode_image_url"]!),
             playbackPosition: seconds(fixture, "episode_resume_position_ms"),
+            isStarred: true,
             downloadState: .downloaded(
                 localFileURL: URL(fileURLWithPath: "/fixture/episode-42.mp3"),
                 byteCount: Int64(fixture["download_byte_count"]!)!
@@ -157,11 +168,22 @@ final class Pod0ListeningDomainBindingTests: XCTestCase {
                 kind: .rss,
                 feedIdentity: try makeFeedIdentityV1(feedUrl: podcast.feedURL!.absoluteString),
                 title: podcast.title,
-                discoveredAt: .init(value: milliseconds(podcast.discoveredAt))
+                author: podcast.author,
+                imageUrl: podcast.imageURL?.absoluteString,
+                description: podcast.description,
+                language: podcast.language,
+                categories: podcast.categories,
+                discoveredAt: .init(value: epochMilliseconds(podcast.discoveredAt)),
+                titleIsPlaceholder: podcast.titleIsPlaceholder,
+                lastRefreshedAt: podcast.lastRefreshedAt.map {
+                    .init(value: epochMilliseconds($0))
+                },
+                etag: podcast.etag,
+                lastModified: podcast.lastModified
             )],
             subscriptions: [PodcastSubscriptionRecord(
                 podcastId: podcastID,
-                subscribedAt: .init(value: milliseconds(subscription.subscribedAt)),
+                subscribedAt: .init(value: epochMilliseconds(subscription.subscribedAt)),
                 autoDownload: Pod0Core.AutoDownloadPolicy(
                     mode: .latest(count: UInt16(int(fixture, "auto_download_latest_count"))),
                     wifiOnly: subscription.autoDownload.wifiOnly
@@ -174,14 +196,17 @@ final class Pod0ListeningDomainBindingTests: XCTestCase {
                 podcastId: podcastID,
                 publisherGuid: episode.guid,
                 title: episode.title,
-                publishedAt: .init(value: milliseconds(episode.pubDate)),
-                durationMilliseconds: UInt64(milliseconds(episode.duration!)),
+                description: episode.description,
+                publishedAt: .init(value: epochMilliseconds(episode.pubDate)),
+                durationMilliseconds: UInt64(durationMilliseconds(episode.duration!)),
                 enclosureUrl: episode.enclosureURL.absoluteString,
                 enclosureMimeType: episode.enclosureMimeType,
+                imageUrl: episode.imageURL?.absoluteString,
                 listening: EpisodeListeningState(
-                    resumePositionMilliseconds: UInt64(milliseconds(episode.playbackPosition)),
+                    resumePositionMilliseconds: UInt64(durationMilliseconds(episode.playbackPosition)),
                     completion: .inProgress
                 ),
+                isStarred: episode.isStarred,
                 download: .available(
                     reference: reference("download_schema_version", "download_opaque_key"),
                     byteCount: uint(fixture, "download_byte_count")
@@ -219,67 +244,4 @@ final class Pod0ListeningDomainBindingTests: XCTestCase {
         )
     }
 
-    private func loadListeningFixture() throws -> [String: String] {
-        let url = try XCTUnwrap(Bundle(for: Self.self).url(
-            forResource: "listening-domain-v1",
-            withExtension: "properties"
-        ))
-        return try String(contentsOf: url, encoding: .utf8)
-            .split(whereSeparator: \.isNewline)
-            .filter { !$0.isEmpty && !$0.hasPrefix("#") }
-            .reduce(into: [:]) { output, line in
-                let parts = line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
-                if parts.count == 2 { output[String(parts[0])] = String(parts[1]) }
-            }
-    }
-
-    private func codableRoundTrip<T: Codable>(_ value: T) throws -> T {
-        try JSONDecoder().decode(T.self, from: JSONEncoder().encode(value))
-    }
-
-    private func legacyRoundTrip<T: Codable>(
-        _ value: T,
-        replacing keys: (String, String)?,
-        removing: [String]
-    ) throws -> T {
-        var object = try XCTUnwrap(
-            JSONSerialization.jsonObject(with: JSONEncoder().encode(value)) as? [String: Any]
-        )
-        if let keys { object[keys.1] = object.removeValue(forKey: keys.0) }
-        removing.forEach { object.removeValue(forKey: $0) }
-        object["futureFieldUnknownToV1"] = "ignored"
-        return try JSONDecoder().decode(T.self, from: JSONSerialization.data(withJSONObject: object))
-    }
-
-    private func corePodcastID(_ id: UUID) -> PodcastId {
-        let parts = uuidParts(id)
-        return PodcastId(high: parts.high, low: parts.low)
-    }
-
-    private func coreEpisodeID(_ id: UUID) -> EpisodeId {
-        let parts = uuidParts(id)
-        return EpisodeId(high: parts.high, low: parts.low)
-    }
-
-    private func uuidParts(_ id: UUID) -> (high: UInt64, low: UInt64) {
-        let hex = id.uuidString.replacingOccurrences(of: "-", with: "")
-        return (
-            UInt64(hex.prefix(16), radix: 16)!,
-            UInt64(hex.suffix(16), radix: 16)!
-        )
-    }
-
-    private func uint(_ values: [String: String], _ key: String) -> UInt64 { UInt64(values[key]!)! }
-    private func int(_ values: [String: String], _ key: String) -> Int { Int(values[key]!)! }
-    private func date(_ values: [String: String], _ key: String) -> Date {
-        Date(timeIntervalSince1970: Double(values[key]!)! / 1_000)
-    }
-    private func seconds(_ values: [String: String], _ key: String) -> Double {
-        Double(values[key]!)! / 1_000
-    }
-    private func doublePermille(_ values: [String: String], _ key: String) -> Double {
-        Double(values[key]!)! / 1_000
-    }
-    private func milliseconds(_ date: Date) -> Int64 { Int64((date.timeIntervalSince1970 * 1_000).rounded()) }
-    private func milliseconds(_ seconds: Double) -> Int64 { Int64((seconds * 1_000).rounded()) }
 }

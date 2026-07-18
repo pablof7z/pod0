@@ -23,7 +23,7 @@ fn id(values: &BTreeMap<&str, &str>, prefix: &str) -> (u64, u64) {
     )
 }
 
-fn golden_snapshot() -> ListeningDomainSnapshot {
+pub(crate) fn golden_snapshot() -> ListeningDomainSnapshot {
     let values = fixture();
     let (podcast_high, podcast_low) = id(&values, "podcast_id");
     let podcast_id = PodcastId::from_parts(podcast_high, podcast_low);
@@ -45,10 +45,25 @@ fn golden_snapshot() -> ListeningDomainSnapshot {
             kind: PodcastKind::Rss,
             feed_identity: Some(feed_identity),
             title: values["podcast_title"].to_owned(),
+            author: values["podcast_author"].to_owned(),
+            image_url: Some(values["podcast_image_url"].to_owned()),
+            description: values["podcast_description"].to_owned(),
+            language: Some(values["podcast_language"].to_owned()),
+            categories: values["podcast_categories"]
+                .split(',')
+                .map(str::to_owned)
+                .collect(),
             discovered_at: UnixTimestampMilliseconds::new(number(
                 &values,
                 "podcast_discovered_at_ms",
             )),
+            title_is_placeholder: false,
+            last_refreshed_at: Some(UnixTimestampMilliseconds::new(number(
+                &values,
+                "podcast_last_refreshed_at_ms",
+            ))),
+            etag: Some(values["podcast_etag"].to_owned()),
+            last_modified: Some(values["podcast_last_modified"].to_owned()),
         }],
         subscriptions: vec![PodcastSubscriptionRecord {
             podcast_id,
@@ -72,6 +87,7 @@ fn golden_snapshot() -> ListeningDomainSnapshot {
             podcast_id,
             publisher_guid: values["episode_guid"].to_owned(),
             title: values["episode_title"].to_owned(),
+            description: values["episode_description"].to_owned(),
             published_at: UnixTimestampMilliseconds::new(number(
                 &values,
                 "episode_published_at_ms",
@@ -79,10 +95,12 @@ fn golden_snapshot() -> ListeningDomainSnapshot {
             duration_milliseconds: Some(number(&values, "episode_duration_ms")),
             enclosure_url: values["episode_enclosure_url"].to_owned(),
             enclosure_mime_type: Some(values["episode_enclosure_mime"].to_owned()),
+            image_url: Some(values["episode_image_url"].to_owned()),
             listening: EpisodeListeningState {
                 resume_position_milliseconds: number(&values, "episode_resume_position_ms"),
                 completion: CompletionStatus::InProgress,
             },
+            is_starred: true,
             download: DownloadArtifactStatus::Available {
                 reference: artifact("download_schema_version", "download_opaque_key"),
                 byte_count: number(&values, "download_byte_count"),
@@ -258,30 +276,5 @@ fn modern_parent_wins_and_ambiguous_identity_fails_closed() {
     assert!(matches!(
         error,
         Err(ListeningDomainError::AmbiguousPodcastFeedIdentity)
-    ));
-}
-
-#[test]
-fn completion_queue_and_forward_compatibility_invariants_are_explicit() {
-    let mut snapshot = golden_snapshot();
-    snapshot.episodes[0].listening.completion = CompletionStatus::Completed {
-        cause: CompletionCause::NaturalEnd,
-    };
-    assert!(matches!(
-        validate_listening_snapshot(snapshot.clone()),
-        Err(ListeningDomainError::CompletedEpisodeHasResumePosition)
-    ));
-    snapshot.episodes[0].listening.resume_position_milliseconds = 0;
-    snapshot.playback.sleep_mode = PlaybackSleepMode::Unsupported { wire_code: 77 };
-    snapshot.episodes[0].transcript = TranscriptArtifactStatus::Unsupported { wire_code: 88 };
-    assert!(validate_listening_snapshot(snapshot).is_ok());
-
-    let mut duplicate = golden_snapshot();
-    let mut duplicate_episode = duplicate.episodes[0].clone();
-    duplicate_episode.episode_id = EpisodeId::from_parts(90, 91);
-    duplicate.episodes.push(duplicate_episode);
-    assert!(matches!(
-        validate_listening_snapshot(duplicate),
-        Err(ListeningDomainError::AmbiguousEpisodeIdentity)
     ));
 }

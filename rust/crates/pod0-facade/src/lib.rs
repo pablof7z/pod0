@@ -28,10 +28,17 @@ pub use pod0_domain::{
 
 uniffi::setup_scaffolding!();
 
+mod listening_migration;
 mod runtime;
 mod runtime_state;
 #[cfg(test)]
 mod runtime_tests;
+pub use listening_migration::{
+    LegacyListeningBackupEvidence, LegacyListeningImportPlan, LegacyListeningImportReport,
+    LegacyListeningImportVerification, LegacyListeningMigrationError, LegacyListeningSourceKind,
+    inspect_legacy_listening_source, read_staged_legacy_listening_import,
+    stage_legacy_listening_import,
+};
 pub use runtime::Pod0Facade;
 
 #[derive(Debug, uniffi::Error)]

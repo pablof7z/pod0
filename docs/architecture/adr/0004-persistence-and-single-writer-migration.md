@@ -18,8 +18,11 @@ these Codable payloads with Swift.
 The app-core schema mechanism now exists in `pod0-storage`: sequential locked
 SQL versions, transactional forward migration, a restart journal, verified
 SQLite backups, staged/authoritative domain markers, and read-only blocked
-states. It contains no imported user records and is not consumed by the iOS
-facade yet. Swift remains the sole writer until the first vertical slice.
+states. Schema v4 adds normalized listening tables and a one-shot importer for
+the current Swift SQLite store plus pre-SQLite legacy JSON. Swift, Kotlin, and
+Rust tests inspect, stage, and read back the same typed projection. The importer
+can only write a `staged` marker; Swift remains the sole writer until the first
+vertical-slice cutover.
 
 ## Decision
 
@@ -54,7 +57,8 @@ tested export/restore path; silently re-enabling the old writer is forbidden.
 
 ## Failure behavior
 
-- Import and migration cancellation is idempotent and restartable.
+- Import and migration interruption before commit rolls back atomically; retry
+  is idempotent and restartable.
 - Ambiguous identity, corrupt rows, unsupported schema, and partial staging
   produce typed diagnostic state.
 - Migration failure never deletes, truncates, or silently replaces user data.

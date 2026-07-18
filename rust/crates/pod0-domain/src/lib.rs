@@ -73,6 +73,8 @@ pub use listening_error::*;
 pub use listening_policy::*;
 
 #[cfg(test)]
+mod listening_completion_tests;
+#[cfg(test)]
 mod listening_tests;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, uniffi::Record)]

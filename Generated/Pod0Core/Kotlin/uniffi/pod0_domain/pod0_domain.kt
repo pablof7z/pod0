@@ -1436,6 +1436,8 @@ data class EpisodeRecord (
     ,
     val `title`: kotlin.String
     ,
+    val `description`: kotlin.String
+    ,
     val `publishedAt`: UnixTimestampMilliseconds
     ,
     val `durationMilliseconds`: kotlin.ULong?
@@ -1444,7 +1446,11 @@ data class EpisodeRecord (
     ,
     val `enclosureMimeType`: kotlin.String?
     ,
+    val `imageUrl`: kotlin.String?
+    ,
     val `listening`: EpisodeListeningState
+    ,
+    val `isStarred`: kotlin.Boolean
     ,
     val `download`: DownloadArtifactStatus
     ,
@@ -1469,11 +1475,14 @@ public object FfiConverterTypeEpisodeRecord: FfiConverterRustBuffer<EpisodeRecor
             FfiConverterTypePodcastId.read(buf),
             FfiConverterString.read(buf),
             FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
             FfiConverterTypeUnixTimestampMilliseconds.read(buf),
             FfiConverterOptionalULong.read(buf),
             FfiConverterString.read(buf),
             FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
             FfiConverterTypeEpisodeListeningState.read(buf),
+            FfiConverterBoolean.read(buf),
             FfiConverterTypeDownloadArtifactStatus.read(buf),
             FfiConverterTypeTranscriptArtifactStatus.read(buf),
         )
@@ -1484,11 +1493,14 @@ public object FfiConverterTypeEpisodeRecord: FfiConverterRustBuffer<EpisodeRecor
             FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
             FfiConverterString.allocationSize(value.`publisherGuid`) +
             FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterString.allocationSize(value.`description`) +
             FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`publishedAt`) +
             FfiConverterOptionalULong.allocationSize(value.`durationMilliseconds`) +
             FfiConverterString.allocationSize(value.`enclosureUrl`) +
             FfiConverterOptionalString.allocationSize(value.`enclosureMimeType`) +
+            FfiConverterOptionalString.allocationSize(value.`imageUrl`) +
             FfiConverterTypeEpisodeListeningState.allocationSize(value.`listening`) +
+            FfiConverterBoolean.allocationSize(value.`isStarred`) +
             FfiConverterTypeDownloadArtifactStatus.allocationSize(value.`download`) +
             FfiConverterTypeTranscriptArtifactStatus.allocationSize(value.`transcript`)
     )
@@ -1498,11 +1510,14 @@ public object FfiConverterTypeEpisodeRecord: FfiConverterRustBuffer<EpisodeRecor
             FfiConverterTypePodcastId.write(value.`podcastId`, buf)
             FfiConverterString.write(value.`publisherGuid`, buf)
             FfiConverterString.write(value.`title`, buf)
+            FfiConverterString.write(value.`description`, buf)
             FfiConverterTypeUnixTimestampMilliseconds.write(value.`publishedAt`, buf)
             FfiConverterOptionalULong.write(value.`durationMilliseconds`, buf)
             FfiConverterString.write(value.`enclosureUrl`, buf)
             FfiConverterOptionalString.write(value.`enclosureMimeType`, buf)
+            FfiConverterOptionalString.write(value.`imageUrl`, buf)
             FfiConverterTypeEpisodeListeningState.write(value.`listening`, buf)
+            FfiConverterBoolean.write(value.`isStarred`, buf)
             FfiConverterTypeDownloadArtifactStatus.write(value.`download`, buf)
             FfiConverterTypeTranscriptArtifactStatus.write(value.`transcript`, buf)
     }
@@ -1861,7 +1876,25 @@ data class PodcastRecord (
     ,
     val `title`: kotlin.String
     ,
+    val `author`: kotlin.String
+    ,
+    val `imageUrl`: kotlin.String?
+    ,
+    val `description`: kotlin.String
+    ,
+    val `language`: kotlin.String?
+    ,
+    val `categories`: List<kotlin.String>
+    ,
     val `discoveredAt`: UnixTimestampMilliseconds
+    ,
+    val `titleIsPlaceholder`: kotlin.Boolean
+    ,
+    val `lastRefreshedAt`: UnixTimestampMilliseconds?
+    ,
+    val `etag`: kotlin.String?
+    ,
+    val `lastModified`: kotlin.String?
 
 ){
 
@@ -1882,7 +1915,16 @@ public object FfiConverterTypePodcastRecord: FfiConverterRustBuffer<PodcastRecor
             FfiConverterTypePodcastKind.read(buf),
             FfiConverterOptionalTypeFeedIdentityV1.read(buf),
             FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceString.read(buf),
             FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
         )
     }
 
@@ -1891,7 +1933,16 @@ public object FfiConverterTypePodcastRecord: FfiConverterRustBuffer<PodcastRecor
             FfiConverterTypePodcastKind.allocationSize(value.`kind`) +
             FfiConverterOptionalTypeFeedIdentityV1.allocationSize(value.`feedIdentity`) +
             FfiConverterString.allocationSize(value.`title`) +
-            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`discoveredAt`)
+            FfiConverterString.allocationSize(value.`author`) +
+            FfiConverterOptionalString.allocationSize(value.`imageUrl`) +
+            FfiConverterString.allocationSize(value.`description`) +
+            FfiConverterOptionalString.allocationSize(value.`language`) +
+            FfiConverterSequenceString.allocationSize(value.`categories`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`discoveredAt`) +
+            FfiConverterBoolean.allocationSize(value.`titleIsPlaceholder`) +
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.allocationSize(value.`lastRefreshedAt`) +
+            FfiConverterOptionalString.allocationSize(value.`etag`) +
+            FfiConverterOptionalString.allocationSize(value.`lastModified`)
     )
 
     override fun write(value: PodcastRecord, buf: ByteBuffer) {
@@ -1899,7 +1950,16 @@ public object FfiConverterTypePodcastRecord: FfiConverterRustBuffer<PodcastRecor
             FfiConverterTypePodcastKind.write(value.`kind`, buf)
             FfiConverterOptionalTypeFeedIdentityV1.write(value.`feedIdentity`, buf)
             FfiConverterString.write(value.`title`, buf)
+            FfiConverterString.write(value.`author`, buf)
+            FfiConverterOptionalString.write(value.`imageUrl`, buf)
+            FfiConverterString.write(value.`description`, buf)
+            FfiConverterOptionalString.write(value.`language`, buf)
+            FfiConverterSequenceString.write(value.`categories`, buf)
             FfiConverterTypeUnixTimestampMilliseconds.write(value.`discoveredAt`, buf)
+            FfiConverterBoolean.write(value.`titleIsPlaceholder`, buf)
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.write(value.`lastRefreshedAt`, buf)
+            FfiConverterOptionalString.write(value.`etag`, buf)
+            FfiConverterOptionalString.write(value.`lastModified`, buf)
     }
 }
 
@@ -3733,6 +3793,66 @@ public object FfiConverterOptionalTypePodcastId: FfiConverterRustBuffer<PodcastI
         } else {
             buf.put(1)
             FfiConverterTypePodcastId.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeUnixTimestampMilliseconds: FfiConverterRustBuffer<UnixTimestampMilliseconds?> {
+    override fun read(buf: ByteBuffer): UnixTimestampMilliseconds? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeUnixTimestampMilliseconds.read(buf)
+    }
+
+    override fun allocationSize(value: UnixTimestampMilliseconds?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value)
+        }
+    }
+
+    override fun write(value: UnixTimestampMilliseconds?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.String>> {
+    override fun read(buf: ByteBuffer): List<kotlin.String> {
+        val len = buf.getInt()
+        return List<kotlin.String>(len) {
+            FfiConverterString.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.String>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterString.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.String>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterString.write(it, buf)
         }
     }
 }

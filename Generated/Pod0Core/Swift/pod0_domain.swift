@@ -1046,11 +1046,14 @@ public struct EpisodeRecord: Equatable, Hashable {
      */
     public let publisherGuid: String
     public let title: String
+    public let description: String
     public let publishedAt: UnixTimestampMilliseconds
     public let durationMilliseconds: UInt64?
     public let enclosureUrl: String
     public let enclosureMimeType: String?
+    public let imageUrl: String?
     public let listening: EpisodeListeningState
+    public let isStarred: Bool
     public let download: DownloadArtifactStatus
     public let transcript: TranscriptArtifactStatus
 
@@ -1060,16 +1063,19 @@ public struct EpisodeRecord: Equatable, Hashable {
         /**
          * Publisher GUID or the deterministic Swift `synth::` fallback. Exact,
          * case-sensitive matching is scoped to the parent podcast.
-         */publisherGuid: String, title: String, publishedAt: UnixTimestampMilliseconds, durationMilliseconds: UInt64?, enclosureUrl: String, enclosureMimeType: String?, listening: EpisodeListeningState, download: DownloadArtifactStatus, transcript: TranscriptArtifactStatus) {
+         */publisherGuid: String, title: String, description: String, publishedAt: UnixTimestampMilliseconds, durationMilliseconds: UInt64?, enclosureUrl: String, enclosureMimeType: String?, imageUrl: String?, listening: EpisodeListeningState, isStarred: Bool, download: DownloadArtifactStatus, transcript: TranscriptArtifactStatus) {
         self.episodeId = episodeId
         self.podcastId = podcastId
         self.publisherGuid = publisherGuid
         self.title = title
+        self.description = description
         self.publishedAt = publishedAt
         self.durationMilliseconds = durationMilliseconds
         self.enclosureUrl = enclosureUrl
         self.enclosureMimeType = enclosureMimeType
+        self.imageUrl = imageUrl
         self.listening = listening
+        self.isStarred = isStarred
         self.download = download
         self.transcript = transcript
     }
@@ -1094,11 +1100,14 @@ public struct FfiConverterTypeEpisodeRecord: FfiConverterRustBuffer {
                 podcastId: FfiConverterTypePodcastId.read(from: &buf),
                 publisherGuid: FfiConverterString.read(from: &buf),
                 title: FfiConverterString.read(from: &buf),
+                description: FfiConverterString.read(from: &buf),
                 publishedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
                 durationMilliseconds: FfiConverterOptionUInt64.read(from: &buf),
                 enclosureUrl: FfiConverterString.read(from: &buf),
                 enclosureMimeType: FfiConverterOptionString.read(from: &buf),
+                imageUrl: FfiConverterOptionString.read(from: &buf),
                 listening: FfiConverterTypeEpisodeListeningState.read(from: &buf),
+                isStarred: FfiConverterBool.read(from: &buf),
                 download: FfiConverterTypeDownloadArtifactStatus.read(from: &buf),
                 transcript: FfiConverterTypeTranscriptArtifactStatus.read(from: &buf)
         )
@@ -1109,11 +1118,14 @@ public struct FfiConverterTypeEpisodeRecord: FfiConverterRustBuffer {
         FfiConverterTypePodcastId.write(value.podcastId, into: &buf)
         FfiConverterString.write(value.publisherGuid, into: &buf)
         FfiConverterString.write(value.title, into: &buf)
+        FfiConverterString.write(value.description, into: &buf)
         FfiConverterTypeUnixTimestampMilliseconds.write(value.publishedAt, into: &buf)
         FfiConverterOptionUInt64.write(value.durationMilliseconds, into: &buf)
         FfiConverterString.write(value.enclosureUrl, into: &buf)
         FfiConverterOptionString.write(value.enclosureMimeType, into: &buf)
+        FfiConverterOptionString.write(value.imageUrl, into: &buf)
         FfiConverterTypeEpisodeListeningState.write(value.listening, into: &buf)
+        FfiConverterBool.write(value.isStarred, into: &buf)
         FfiConverterTypeDownloadArtifactStatus.write(value.download, into: &buf)
         FfiConverterTypeTranscriptArtifactStatus.write(value.transcript, into: &buf)
     }
@@ -1604,16 +1616,34 @@ public struct PodcastRecord: Equatable, Hashable {
     public let kind: PodcastKind
     public let feedIdentity: FeedIdentityV1?
     public let title: String
+    public let author: String
+    public let imageUrl: String?
+    public let description: String
+    public let language: String?
+    public let categories: [String]
     public let discoveredAt: UnixTimestampMilliseconds
+    public let titleIsPlaceholder: Bool
+    public let lastRefreshedAt: UnixTimestampMilliseconds?
+    public let etag: String?
+    public let lastModified: String?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(podcastId: PodcastId, kind: PodcastKind, feedIdentity: FeedIdentityV1?, title: String, discoveredAt: UnixTimestampMilliseconds) {
+    public init(podcastId: PodcastId, kind: PodcastKind, feedIdentity: FeedIdentityV1?, title: String, author: String, imageUrl: String?, description: String, language: String?, categories: [String], discoveredAt: UnixTimestampMilliseconds, titleIsPlaceholder: Bool, lastRefreshedAt: UnixTimestampMilliseconds?, etag: String?, lastModified: String?) {
         self.podcastId = podcastId
         self.kind = kind
         self.feedIdentity = feedIdentity
         self.title = title
+        self.author = author
+        self.imageUrl = imageUrl
+        self.description = description
+        self.language = language
+        self.categories = categories
         self.discoveredAt = discoveredAt
+        self.titleIsPlaceholder = titleIsPlaceholder
+        self.lastRefreshedAt = lastRefreshedAt
+        self.etag = etag
+        self.lastModified = lastModified
     }
 
 
@@ -1636,7 +1666,16 @@ public struct FfiConverterTypePodcastRecord: FfiConverterRustBuffer {
                 kind: FfiConverterTypePodcastKind.read(from: &buf),
                 feedIdentity: FfiConverterOptionTypeFeedIdentityV1.read(from: &buf),
                 title: FfiConverterString.read(from: &buf),
-                discoveredAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf)
+                author: FfiConverterString.read(from: &buf),
+                imageUrl: FfiConverterOptionString.read(from: &buf),
+                description: FfiConverterString.read(from: &buf),
+                language: FfiConverterOptionString.read(from: &buf),
+                categories: FfiConverterSequenceString.read(from: &buf),
+                discoveredAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                titleIsPlaceholder: FfiConverterBool.read(from: &buf),
+                lastRefreshedAt: FfiConverterOptionTypeUnixTimestampMilliseconds.read(from: &buf),
+                etag: FfiConverterOptionString.read(from: &buf),
+                lastModified: FfiConverterOptionString.read(from: &buf)
         )
     }
 
@@ -1645,7 +1684,16 @@ public struct FfiConverterTypePodcastRecord: FfiConverterRustBuffer {
         FfiConverterTypePodcastKind.write(value.kind, into: &buf)
         FfiConverterOptionTypeFeedIdentityV1.write(value.feedIdentity, into: &buf)
         FfiConverterString.write(value.title, into: &buf)
+        FfiConverterString.write(value.author, into: &buf)
+        FfiConverterOptionString.write(value.imageUrl, into: &buf)
+        FfiConverterString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.language, into: &buf)
+        FfiConverterSequenceString.write(value.categories, into: &buf)
         FfiConverterTypeUnixTimestampMilliseconds.write(value.discoveredAt, into: &buf)
+        FfiConverterBool.write(value.titleIsPlaceholder, into: &buf)
+        FfiConverterOptionTypeUnixTimestampMilliseconds.write(value.lastRefreshedAt, into: &buf)
+        FfiConverterOptionString.write(value.etag, into: &buf)
+        FfiConverterOptionString.write(value.lastModified, into: &buf)
     }
 }
 
@@ -3180,6 +3228,55 @@ fileprivate struct FfiConverterOptionTypePodcastId: FfiConverterRustBuffer {
         case 1: return try FfiConverterTypePodcastId.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeUnixTimestampMilliseconds: FfiConverterRustBuffer {
+    typealias SwiftType = UnixTimestampMilliseconds?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeUnixTimestampMilliseconds.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
+    typealias SwiftType = [String]
+
+    public static func write(_ value: [String], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterString.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [String] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [String]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterString.read(from: &buf))
+        }
+        return seq
     }
 }
 
