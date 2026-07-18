@@ -174,6 +174,25 @@ final class WorkflowRuntime {
         }
     }
 
+    func perform(
+        _ action: WorkflowJobAction,
+        on projection: WorkflowJobProjection
+    ) -> WorkflowJobActionResult {
+        guard let jobStore else { return .failed("Workflow storage is unavailable.") }
+        do {
+            let result = try jobStore.perform(
+                action,
+                jobID: projection.id,
+                expectedUpdatedAt: projection.updatedAt
+            )
+            if case .accepted = result { wake() }
+            return result
+        } catch {
+            Self.logger.error("Unable to perform workflow action: \(error, privacy: .public)")
+            return .failed("Pod0 couldn't update this work. Try again.")
+        }
+    }
+
     func latestJob(kind: WorkJobKind, subjectID: UUID) -> WorkJob? {
         guard let jobs = try? jobStore?.allJobs() else { return nil }
         return jobs.last { $0.kind == kind && $0.subjectID == subjectID }

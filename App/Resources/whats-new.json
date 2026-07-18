@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-18T13:15:06Z",
+      "lines": [
+        "Episode details and scheduled tasks now explain what background work is doing and offer only safe next steps when it needs attention."
+      ]
+    },
+    {
       "shipped_at": "2026-07-18T13:00:38Z",
       "lines": [
         "Downloads, transcripts, chapters, and scheduled tasks now update live as background work runs or needs attention."

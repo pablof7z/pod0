@@ -5,6 +5,20 @@ struct WorkflowJobKey: Hashable, Sendable {
     let subjectID: UUID
 }
 
+enum WorkflowJobAction: String, CaseIterable, Sendable, Equatable {
+    case retry
+    case cancel
+}
+
+enum WorkflowJobActionResult: Sendable, Equatable {
+    case accepted(WorkflowJobAction)
+    case stale
+    case notAllowed
+    case alreadyComplete
+    case notFound
+    case failed(String)
+}
+
 /// Coarse lifecycle state rendered by native screens. Lease ownership and
 /// payload bytes stay inside the durable workflow implementation.
 struct WorkflowJobProjection: Identifiable, Sendable, Equatable {
@@ -23,6 +37,7 @@ struct WorkflowJobProjection: Identifiable, Sendable, Equatable {
     let lastErrorMessage: String?
     let createdAt: Date
     let updatedAt: Date
+    let allowedActions: Set<WorkflowJobAction>
 
     var key: WorkflowJobKey {
         WorkflowJobKey(kind: kind, subjectID: subjectID)
@@ -44,6 +59,23 @@ struct WorkflowJobProjection: Identifiable, Sendable, Equatable {
         lastErrorMessage = job.lastErrorMessage
         createdAt = job.createdAt
         updatedAt = job.updatedAt
+        allowedActions = Self.actions(for: job.state, errorClass: job.lastErrorClass)
+    }
+
+    private static func actions(
+        for state: WorkJobState,
+        errorClass: JobErrorClass?
+    ) -> Set<WorkflowJobAction> {
+        switch state {
+        case .pending, .leased, .running, .retryScheduled:
+            return [.cancel]
+        case .blocked:
+            return errorClass == .unsafeToRetry ? [.cancel] : [.retry, .cancel]
+        case .failedPermanent, .cancelled:
+            return errorClass == .unsafeToRetry ? [] : [.retry]
+        case .obsolete, .succeeded:
+            return []
+        }
     }
 }
 

@@ -6,6 +6,8 @@ struct AgentScheduledTasksView: View {
 
     @State private var showCreate = false
     @State private var editingTask: AgentScheduledTask? = nil
+    @State private var showProviderSettings = false
+    @State private var workflowActionNotice: WorkflowActionNotice?
 
     // MARK: - Derived
 
@@ -35,6 +37,16 @@ struct AgentScheduledTasksView: View {
             AgentScheduledTaskFormSheet(mode: .edit(task)) { label, prompt, interval in
                 store.updateScheduledTask(id: task.id, label: label, prompt: prompt, intervalSeconds: interval)
             }
+        }
+        .sheet(isPresented: $showProviderSettings) {
+            NavigationStack { AIProvidersSettingsView() }
+        }
+        .alert(item: $workflowActionNotice) { notice in
+            Alert(
+                title: Text(notice.title),
+                message: Text(notice.message),
+                dismissButton: .default(Text("OK"))
+            )
         }
     }
 
@@ -75,8 +87,28 @@ struct AgentScheduledTasksView: View {
                     Button("Delete", role: .destructive) {
                         store.removeScheduledTask(id: task.id)
                     }
+                    if let job = job(for: task) {
+                        Divider()
+                        if job.lastErrorClass == .missingCredential {
+                            Button("Connect provider") { showProviderSettings = true }
+                        }
+                        if job.allowedActions.contains(.retry) {
+                            Button("Retry now") { perform(.retry, on: job) }
+                        }
+                        if job.allowedActions.contains(.cancel) {
+                            Button("Cancel run", role: .destructive) { perform(.cancel, on: job) }
+                        }
+                    }
                 }
         }
+    }
+
+    private func job(for task: AgentScheduledTask) -> WorkflowJobProjection? {
+        workflows.latest(kind: .scheduledAgentRun, subjectID: task.id)
+    }
+
+    private func perform(_ action: WorkflowJobAction, on job: WorkflowJobProjection) {
+        workflowActionNotice = .make(for: workflows.perform(action, on: job))
     }
 
     @ToolbarContentBuilder
@@ -116,6 +148,18 @@ struct AgentScheduledTasksView: View {
                     }
                 }
 
+                if let job {
+                    Label(WorkflowPresentationCopy.title(for: job), systemImage: jobIcon(job))
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(jobNeedsAttention ? AppTheme.Tint.warning : .secondary)
+                    if job.state == .running || job.state == .retryScheduled || jobNeedsAttention {
+                        Text(WorkflowPresentationCopy.detail(for: job))
+                            .font(AppTheme.Typography.caption2)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
                 HStack(spacing: AppTheme.Spacing.sm) {
                     Label(intervalLabel(task.intervalSeconds), systemImage: "repeat")
                         .font(AppTheme.Typography.caption2)
@@ -128,13 +172,15 @@ struct AgentScheduledTasksView: View {
                         .font(AppTheme.Typography.mono)
                         .foregroundStyle(.tertiary)
 
-                    if let jobLabel {
-                        Text(jobLabel)
-                            .font(AppTheme.Typography.caption2)
-                            .foregroundStyle(jobNeedsAttention ? AppTheme.Tint.warning : .secondary)
-                    }
                 }
                 .padding(.leading, 18)
+
+                if let lastRunAt = task.lastRunAt {
+                    Text("Last run: \(RelativeTimestamp.extended(lastRunAt))")
+                        .font(AppTheme.Typography.caption2)
+                        .foregroundStyle(.tertiary)
+                        .padding(.leading, 18)
+                }
             }
             .padding(.vertical, AppTheme.Spacing.xs)
         }
@@ -159,25 +205,23 @@ struct AgentScheduledTasksView: View {
             return "Next: \(RelativeTimestamp.extended(task.nextRunAt))"
         }
 
-        private var jobLabel: String? {
-            guard let state = workflows.latest(
-                kind: .scheduledAgentRun,
-                subjectID: task.id
-            )?.state else { return nil }
-            switch state {
-            case .pending, .leased: return "Queued"
-            case .running: return "Running"
-            case .retryScheduled: return "Retry scheduled"
-            case .blocked, .failedPermanent: return "Needs attention"
-            case .succeeded: return "Last run complete"
-            case .cancelled: return "Cancelled"
-            case .obsolete: return nil
-            }
+        private var job: WorkflowJobProjection? {
+            workflows.latest(kind: .scheduledAgentRun, subjectID: task.id)
         }
 
         private var jobNeedsAttention: Bool {
-            let state = workflows.latest(kind: .scheduledAgentRun, subjectID: task.id)?.state
+            let state = job?.state
             return state == .blocked || state == .failedPermanent
+        }
+
+        private func jobIcon(_ job: WorkflowJobProjection) -> String {
+            if jobNeedsAttention { return "exclamationmark.triangle" }
+            switch job.state {
+            case .running: return "sparkles"
+            case .succeeded: return "checkmark.circle"
+            case .cancelled: return "pause.circle"
+            default: return "clock"
+            }
         }
     }
 }

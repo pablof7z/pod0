@@ -136,6 +136,13 @@ final class WorkflowClient {
         WorkflowRuntime.shared.dismissDownloadFailure(episodeID: episodeID)
     }
 
+    func perform(
+        _ action: WorkflowJobAction,
+        on projection: WorkflowJobProjection
+    ) -> WorkflowJobActionResult {
+        WorkflowRuntime.shared.perform(action, on: projection)
+    }
+
     private func receiveChange(at changedPath: String?) {
         guard let databaseURL,
               changedPath == databaseURL.standardizedFileURL.path else { return }

@@ -35,6 +35,8 @@ struct EpisodeDetailView: View {
     /// Live download service — observed so the toolbar's progress indicator
     /// updates smoothly without re-persisting `AppStateStore` on every tick.
     @State private var downloadService = EpisodeDownloadService.shared
+    @State private var showProviderSettings = false
+    @State private var workflowActionNotice: WorkflowActionNotice?
 
     // MARK: Body
 
@@ -49,7 +51,10 @@ struct EpisodeDetailView: View {
         .background(Color(.systemBackground).ignoresSafeArea())
         .workflowProjectionScope(
             subjectIDs: [episodeID],
-            kinds: [.download, .transcriptIngest, .chapterArtifacts]
+            kinds: [
+                .download, .transcriptIngest, .transcriptIndex,
+                .publisherChapters, .chapterArtifacts, .metadataIndex,
+            ]
         )
     }
 
@@ -60,6 +65,7 @@ struct EpisodeDetailView: View {
         let subscription = store.podcast(id: episode.podcastID)
         let showName = subscription?.title ?? "Podcast"
         let showImageURL = subscription?.imageURL
+        let preparationStatus = preparationStatus(for: episode)
 
         // No inline player chrome — the global `MiniPlayerView` lives as
         // the tab's bottom accessory and is always visible while an episode
@@ -90,11 +96,25 @@ struct EpisodeDetailView: View {
             activeChapterID: liveActiveChapterID(for: episode),
             downloadProgress: downloadService.progress[episode.id],
             downloadJobState: downloadJob(for: episode.id)?.state,
+            preparationStatus: preparationStatus,
+            onPreparationAction: { action, job in
+                performPreparationAction(action, job: job, episode: episode)
+            },
             onToggleDownload: { toggleDownload(episode: episode) }
         )
         .navigationTitle(showName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { actionsToolbar(episode: episode) }
+        .sheet(isPresented: $showProviderSettings) {
+            NavigationStack { AIProvidersSettingsView() }
+        }
+        .alert(item: $workflowActionNotice) { notice in
+            Alert(
+                title: Text(notice.title),
+                message: Text(notice.message),
+                dismissButton: .default(Text("OK"))
+            )
+        }
         .task(id: episode.id) {
             await warmTranscriptIfNeeded(episode: episode)
             workflows.wake()
@@ -181,6 +201,33 @@ struct EpisodeDetailView: View {
 
     private func downloadJob(for episodeID: UUID) -> WorkflowJobProjection? {
         workflows.latest(kind: .download, subjectID: episodeID)
+    }
+
+    private func preparationStatus(for episode: Episode) -> EpisodePreparationStatus? {
+        let kinds: [WorkJobKind] = [
+            .transcriptIngest, .transcriptIndex, .publisherChapters,
+            .chapterArtifacts, .metadataIndex,
+        ]
+        let jobs = kinds.compactMap { workflows.latest(kind: $0, subjectID: episode.id) }
+        return EpisodePreparationPresenter.make(episode: episode, jobs: jobs)
+    }
+
+    private func performPreparationAction(
+        _ action: EpisodePreparationActionKind,
+        job: WorkflowJobProjection?,
+        episode: Episode
+    ) {
+        switch action {
+        case .openProviders:
+            showProviderSettings = true
+        case .downloadEpisode:
+            EpisodeDownloadService.shared.attach(appStore: store)
+            EpisodeDownloadService.shared.download(episodeID: episode.id)
+        case .retry, .cancel:
+            guard let job else { return }
+            let workflowAction: WorkflowJobAction = action == .retry ? .retry : .cancel
+            workflowActionNotice = .make(for: workflows.perform(workflowAction, on: job))
+        }
     }
 
     @ToolbarContentBuilder

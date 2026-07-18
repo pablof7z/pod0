@@ -1,5 +1,4 @@
 import SwiftUI
-
 // MARK: - EpisodeDetailHeroView
 
 /// Magazine-cover layout for an episode in `.detail` mode (UX-03 §6.1):
@@ -15,11 +14,7 @@ struct EpisodeDetailHeroView: View {
     let isPlayed: Bool
     let onPlay: () -> Void
     let onPlayChapter: (Episode.Chapter) -> Void
-    /// `true` when this episode is already queued in `PlaybackState.queue` —
-    /// drives the "Queued" disabled state on the Add to Queue button.
     var isInQueue: Bool = false
-    /// Tap handler for the new Add to Queue affordance. No-op default
-    /// preserves call sites that don't yet wire it up.
     var onAddToQueue: () -> Void = {}
     /// Active chapter id when this episode is currently playing — drives
     /// the live "you are here" highlight in the chapters list. `nil` when
@@ -30,6 +25,8 @@ struct EpisodeDetailHeroView: View {
     /// episode's stable local-file evidence.
     var downloadProgress: Double? = nil
     var downloadJobState: WorkJobState? = nil
+    var preparationStatus: EpisodePreparationStatus? = nil
+    var onPreparationAction: (EpisodePreparationActionKind, WorkflowJobProjection?) -> Void = { _, _ in }
     /// Download / cancel / delete handler bound by the parent. The hero
     /// flips the affordance based on the episode's `downloadState`.
     var onToggleDownload: () -> Void = {}
@@ -39,6 +36,9 @@ struct EpisodeDetailHeroView: View {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
                 hero
                 actionRow
+                if let preparationStatus {
+                    EpisodePreparationStatusView(status: preparationStatus, onAction: onPreparationAction)
+                }
                 if !descriptionPlain.isEmpty {
                     summarySection
                 }
