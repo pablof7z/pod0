@@ -18,6 +18,9 @@ extension AppStateStore {
     func addNote(text: String, kind: NoteKind = .free, target: Anchor? = nil, author: NoteAuthor) -> Note {
         let note = Note(text: text, kind: kind, target: target, author: author)
         mutateState { $0.notes.append(note) }
+        if author == .user {
+            recordProductSignal(.once(name: .noteCreated, subjectID: note.id, outcome: .created))
+        }
         return note
     }
 

@@ -51,6 +51,17 @@
       "includes": ["App/Sources/Design/", "App/Sources/Voice/"]
     },
     {
+      "id": "native-product-signals",
+      "classification": "native_by_design",
+      "current_owner": "Swift local product-signal adapter",
+      "target_owner": "Platform-native privacy and evaluation adapters",
+      "reason": "Content-free evaluation observations, local consent controls, and manual OS sharing are native product-validation infrastructure rather than authoritative domain state.",
+      "boundary": "Accept typed committed outcomes from domain owners; never influence commands, projections, or durable product decisions.",
+      "persisted_state": "Bounded local signal archive with a random, user-rotatable install identifier.",
+      "priority": "keep_native",
+      "includes": ["App/Sources/ProductSignals/"]
+    },
+    {
       "id": "shared-domain-models",
       "classification": "shared_rust_now",
       "current_owner": "Swift Codable domain records",

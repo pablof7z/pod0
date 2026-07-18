@@ -18,9 +18,9 @@ final class PlaybackState {
 
     // MARK: - Engine
 
-    /// The single `AVPlayer`-backed engine. Held here so SwiftUI views can also
-    /// reach into `engine.sleepTimer.phase` for countdown rendering.
+    /// The single `AVPlayer`-backed engine.
     let engine: AudioEngine
+    var productSignals: any ProductSignalSink
 
     // MARK: - Observable surface (matches the binding contract the UI expects)
 
@@ -80,14 +80,10 @@ final class PlaybackState {
 
     // MARK: - Persistence hooks (wired by RootView at .onAppear time)
 
-    /// Called once per second while playback advances. Receivers should
-    /// persist the playhead so the user resumes where they left off across
-    /// app launches.
+    /// Called once per second while playback advances.
     var onPersistPosition: (UUID, TimeInterval) -> Void = { _, _ in }
 
-    /// Called once per episode when the playhead reaches the end. Receivers
-    /// should mark the episode as fully played. Gated by `autoMarkPlayedOnFinish`
-    /// (mirrors `Settings.autoMarkPlayedAtEnd`) so the user can opt out of auto-mark.
+    /// Called once per episode when the playhead reaches the end.
     var onEpisodeFinished: (UUID) -> Void = { _ in }
 
     /// Called when the playhead reaches `currentSegmentEndTime` for a bounded
@@ -190,8 +186,9 @@ final class PlaybackState {
 
     // MARK: - Init
 
-    init(engine: AudioEngine = AudioEngine()) {
+    init(engine: AudioEngine = AudioEngine(), productSignals: any ProductSignalSink = DiscardingProductSignalSink.shared) {
         self.engine = engine
+        self.productSignals = productSignals
         configureAudioEngineCallbacks()
     }
 
@@ -243,6 +240,7 @@ final class PlaybackState {
             engine.load(newEpisode)
             if newEpisode.playbackPosition > 0 {
                 engine.seek(to: newEpisode.playbackPosition)
+                recordResumeAttempt(expectedPosition: newEpisode.playbackPosition)
             }
         } else {
             engine.refreshMetadata(for: newEpisode)
@@ -298,10 +296,12 @@ final class PlaybackState {
         }
         engine.play()
         if case .failed = engine.state {
+            recordPlaybackSignal(name: .playStarted, outcome: .failed)
             playbackRequested = false
             writeNowPlayingSnapshot(force: true)
             return
         }
+        recordPlaybackSignal(name: .playStarted, outcome: .succeeded)
         startPersistenceLoop()
         // Force-write the snapshot so the widget's play/pause glyph
         // flips immediately — the throttled persistence-loop write would

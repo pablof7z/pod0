@@ -32,9 +32,11 @@ extension AppStateStore {
     /// exist (call `upsertPodcast` or `ensurePodcast(feedURL:)` first).
     @discardableResult
     func addSubscription(podcastID: UUID) -> Bool {
+        let isFirst = state.subscriptions.isEmpty
         guard state.podcasts.contains(where: { $0.id == podcastID }) else { return false }
         guard !state.subscriptions.contains(where: { $0.podcastID == podcastID }) else { return false }
         mutateState { $0.subscriptions.append(PodcastSubscription(podcastID: podcastID)) }
+        if isFirst { recordProductSignal(.init(name: .firstSubscription, outcome: .created)) }
         return true
     }
 
@@ -42,9 +44,11 @@ extension AppStateStore {
     /// the OPML import path which materializes the row inline.
     @discardableResult
     func addSubscription(_ subscription: PodcastSubscription) -> Bool {
+        let isFirst = state.subscriptions.isEmpty
         guard state.podcasts.contains(where: { $0.id == subscription.podcastID }) else { return false }
         guard !state.subscriptions.contains(where: { $0.podcastID == subscription.podcastID }) else { return false }
         mutateState { $0.subscriptions.append(subscription) }
+        if isFirst { recordProductSignal(.init(name: .firstSubscription, outcome: .created)) }
         return true
     }
 
@@ -53,6 +57,7 @@ extension AppStateStore {
     /// are skipped — call refresh on them instead.
     @discardableResult
     func addSubscriptions(_ payloads: [SubscriptionImportPayload]) -> SubscriptionImportResult {
+        let isFirst = state.subscriptions.isEmpty
         guard !payloads.isEmpty else {
             return SubscriptionImportResult(imported: 0, skipped: 0)
         }
@@ -127,6 +132,7 @@ extension AppStateStore {
         performMutationBatch {
             mutateState { $0 = next }
         }
+        if isFirst { recordProductSignal(.init(name: .firstSubscription, outcome: .created)) }
 
         return SubscriptionImportResult(imported: imported, skipped: skipped)
     }

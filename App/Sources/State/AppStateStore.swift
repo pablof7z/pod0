@@ -10,8 +10,7 @@ import os.log
 final class AppStateStore {
 
     nonisolated private static let logger = Logger.app("AppStateStore")
-
-
+    let productSignals: any ProductSignalSink
     /// Chapter the user long-pressed in `PlayerChaptersScrollView`. Drained
     /// by `AgentChatSession.init` and prefilled into the composer; cleared
     /// by the same call so a later sheet re-open starts blank. Carries no
@@ -32,8 +31,6 @@ final class AppStateStore {
     }
 
     /// The only write gate for companion store extensions and test fixtures.
-    /// Assigning the completed value once keeps persistence and projection
-    /// side effects centralized on `state.didSet`.
     func mutateState(_ mutation: (inout AppState) -> Void) {
         var updated = state
         mutation(&updated)
@@ -132,9 +129,7 @@ final class AppStateStore {
     /// `flushPendingPositions()`.
     var positionCache: [UUID: TimeInterval] = [:]
 
-    /// Pending trailing-debounce flush task. Cancelled and re-armed on each
-    /// `setEpisodePlaybackPosition` call so the deadline keeps moving while
-    /// updates stream in (true trailing debounce).
+    /// Pending trailing-debounce flush task.
     var positionFlushTask: Task<Void, Never>?
 
     /// Wall-clock time of the most recent position flush. Drives the
@@ -144,13 +139,18 @@ final class AppStateStore {
     /// position.
     var lastPositionFlush: Date?
 
-    init(persistence: Persistence = .shared) {
+    init(persistence: Persistence = .shared,
+         productSignals: any ProductSignalSink = DiscardingProductSignalSink.shared) {
         self.persistence = persistence
+        self.productSignals = productSignals
         var loadedState: AppState
         do {
             loadedState = try persistence.load()
         } catch {
             Self.logger.error("Persistence.load failed: \(error, privacy: .public) — starting with empty state")
+            Task { await productSignals.record(.init(
+                name: .dataLossEvidence, outcome: .detected, errorClass: .corruptArtifact
+            )) }
             loadedState = AppState()
         }
         Self.migrateLegacyOpenRouterSecretIfNeeded(in: &loadedState, persistence: persistence)

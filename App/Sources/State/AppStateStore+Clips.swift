@@ -17,6 +17,7 @@ extension AppStateStore {
 
     func addClip(_ clip: Clip) {
         mutateState { $0.clips.append(clip) }
+        recordProductSignal(.once(name: .clipCreated, subjectID: clip.id, outcome: .created))
     }
 
     /// Convenience: build + persist in one call. Used by `AutoSnipController`

@@ -4,8 +4,9 @@ import SwiftUI
 /// The top-level entry point for the app. Sets up global environment objects.
 @main
 struct PodcastrApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @State private var store = AppStateStore()
+    @State private var store = AppStateStore(productSignals: ProductSignalStore.shared)
     /// Single global owner-consultation coordinator. Lives here (not on
     /// `AgentChatSession`) so it can pop the same sheet even when the user is
     /// on Home / Library / Clippings — i.e. while no chat session exists.
@@ -38,6 +39,9 @@ struct PodcastrApp: App {
                 .environment(askCoordinator)
                 .environment(workflows)
                 .task { await workflows.startAndReconcile() }
+                .onChange(of: scenePhase, initial: true) { _, phase in
+                    Task { await ProductSignalStore.shared.setSessionActive(phase == .active) }
+                }
                 .task {
                     // Seed a fresh install silently so the first launch
                     // doesn't dump the entire changelog as "new."

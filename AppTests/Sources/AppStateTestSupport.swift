@@ -39,7 +39,8 @@ enum AppStateTestSupport {
     @MainActor
     static func makeIsolatedStore(
         fileURL: URL = AppStateTestSupport.uniqueTempFileURL(),
-        reset: Bool = true
+        reset: Bool = true,
+        productSignals: any ProductSignalSink = DiscardingProductSignalSink.shared
     ) -> (store: AppStateStore, fileURL: URL) {
         if reset {
             // Belt-and-suspenders: clear anything a previous (crashed) test
@@ -47,7 +48,7 @@ enum AppStateTestSupport {
             try? FileManager.default.removeItem(at: fileURL)
         }
         let persistence = Persistence(fileURL: fileURL)
-        let store = AppStateStore(persistence: persistence)
+        let store = AppStateStore(persistence: persistence, productSignals: productSignals)
         return (store, fileURL)
     }
 

@@ -35,6 +35,23 @@ final class RecallAnswerServiceTests: XCTestCase {
         )])
     }
 
+    func testGroundedRecallEmitsContentFreeOutcomeSignals() async {
+        let sink = RecordingProductSignalSink()
+        let service = RecallAnswerService(rag: RecallRAGStub(hits: [goldenHit], readiness: .ready), productSignals: sink) { _ in
+            RecallEvidenceMetadata(episodeTitle: "The Habit Loop", podcastTitle: "Practical Minds")
+        }
+
+        _ = await service.answer(query: "private question about habits")
+        let arrived = await ProductSignalTestSupport.eventually {
+            await sink.captured().count == 3
+        }
+        let captured = await sink.captured()
+
+        XCTAssertTrue(arrived)
+        XCTAssertEqual(Set(captured.map(\.name)), [.recallAsked, .recallGrounded, .transcriptUsed])
+        XCTAssertEqual(captured.first { $0.name == .recallGrounded }?.outcome, .grounded)
+    }
+
     func testEmptyRecallDistinguishesIndexingMissingAndNoEvidence() async {
         for (readiness, status) in [
             (TranscriptCorpusReadiness.indexing, RecallAnswer.Status.indexing),

@@ -23,7 +23,7 @@
     "App/Sources/Transcript/AssemblyAITranscriptClient.swift": 470,
     "App/Sources/Features/Settings/AI/LLMSettingsView.swift": 467,
     "AppTests/Sources/AppTests.swift": 458,
-    "App/Sources/Audio/AudioEngine.swift": 452,
+    "App/Sources/Audio/AudioEngine.swift": 451,
     "AppTests/Sources/AppStateStorePerformanceTests.swift": 443,
     "App/Sources/Transcript/ElevenLabsScribeClient.swift": 443,
     "App/Sources/Services/EpisodeDownloadService.swift": 434,

@@ -13,6 +13,7 @@ enum RecallPlaybackHandoff {
         playback.seek(to: Double(evidence.startMilliseconds) / 1_000)
         if !playback.isPlaying { playback.play() }
         RecallQualityLogger.citationTapped()
+        store.recordProductSignal(.init(name: .recallCitationOpened, outcome: .opened))
         return true
     }
 }

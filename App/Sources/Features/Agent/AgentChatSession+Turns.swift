@@ -1,7 +1,6 @@
 import Foundation
 
-// Turn-loop, retry/regenerate, and small response-shaping helpers split out of
-// `AgentChatSession` so the core class stays under the 500-line file limit.
+// Turn-loop, retry/regenerate, and response helpers keep the core class under 500 lines.
 // Members touched here are intentionally module-internal on the parent type;
 // extension files cannot see `private` members.
 
@@ -160,8 +159,8 @@ extension AgentChatSession {
         await runAgentTurns(batchID: UUID(), source: source, initialInput: trimmed)
     }
 
-    /// Executes the streaming agent turn-loop, processing LLM responses and tool
-    /// calls until the model produces a text-only reply, the task is cancelled, a
+    /// Executes the streaming agent turn-loop. Processes LLM responses and tool calls
+    /// until the model produces a text-only reply, the task is cancelled, a
     /// network error occurs, or `maxTurns` is exhausted.
     func runAgentTurns(batchID: UUID, source: AgentRunSource, initialInput: String) async {
         var batchActionCount = 0
@@ -247,6 +246,7 @@ extension AgentChatSession {
                 lastFailedMessage = nil
                 phase = .idle
                 persistCurrentConversation()
+                store.recordProductSignal(.init(name: .agentTurnCompleted, outcome: .succeeded))
                 // Fire-and-forget memory compile. The compiler short-circuits
                 // when active-memory ids match the previous compile's
                 // `sourceMemoryIDs`, so this is a cheap no-op when the run

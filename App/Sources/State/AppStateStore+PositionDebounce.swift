@@ -85,6 +85,14 @@ extension AppStateStore {
         // to the persisted record.
         let liveCurrent = positionCache[id] ?? state.episodes[idx].playbackPosition
         guard liveCurrent != position else { return }
+        if liveCurrent < 300, position >= 300 {
+            recordProductSignal(.once(
+                name: .meaningfulListening,
+                subjectID: id,
+                outcome: .succeeded,
+                domainRevision: state.persistenceGeneration
+            ))
+        }
 
         positionCache[id] = position
 

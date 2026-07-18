@@ -55,6 +55,7 @@ extension AgentChatSession {
         ))
         phase = .idle
         persistCurrentConversation()
+        store.recordProductSignal(.init(name: .agentTurnCompleted, outcome: .succeeded))
         maybeGenerateTitle()
     }
 }

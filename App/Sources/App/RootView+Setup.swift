@@ -6,6 +6,7 @@ extension RootView {
     /// closures reference the live `store` and `playbackState` values that
     /// exist at the point the root view first appears.
     func setupPlaybackHandlers() {
+        playbackState.productSignals = store.productSignals
         playbackState.onPersistPosition = { [store] id, position in
             store.setEpisodePlaybackPosition(id, position: position)
             store.setLastPlayedEpisode(id)

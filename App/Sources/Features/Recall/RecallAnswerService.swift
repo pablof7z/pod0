@@ -6,17 +6,20 @@ struct RecallAnswerService {
 
     private let rag: any PodcastAgentRAGSearchProtocol
     private let metadata: MetadataResolver
+    private let productSignals: any ProductSignalSink
 
     init(
         rag: any PodcastAgentRAGSearchProtocol,
+        productSignals: any ProductSignalSink = DiscardingProductSignalSink.shared,
         metadata: @escaping MetadataResolver
     ) {
         self.rag = rag
+        self.productSignals = productSignals
         self.metadata = metadata
     }
 
     init(rag: any PodcastAgentRAGSearchProtocol, store: AppStateStore) {
-        self.init(rag: rag) { episodeID in
+        self.init(rag: rag, productSignals: store.productSignals) { episodeID in
             guard let episode = store.episode(id: episodeID) else { return nil }
             return RecallEvidenceMetadata(
                 episodeTitle: episode.title,
@@ -27,6 +30,7 @@ struct RecallAnswerService {
 
     func answer(query: String, limit: Int = 3) async -> RecallAnswer {
         let started = ContinuousClock.now
+        record(.init(name: .recallAsked, outcome: .started))
         let answer: RecallAnswer
         do {
             let hits = try await rag.queryTranscripts(
@@ -58,6 +62,13 @@ struct RecallAnswerService {
             evidenceCount: answer.evidence.count,
             duration: ContinuousClock.now - started
         )
+        let latency = ProductSignalLatencyBucket.bucket(ContinuousClock.now - started)
+        record(.init(
+            name: .recallGrounded,
+            outcome: Self.signalOutcome(answer.status),
+            latencyBucket: latency
+        ))
+        if !answer.evidence.isEmpty { record(.init(name: .transcriptUsed, outcome: .used)) }
         return answer
     }
 
@@ -122,5 +133,17 @@ struct RecallAnswerService {
     private static func milliseconds(_ seconds: TimeInterval) -> Int64 {
         guard seconds.isFinite else { return 0 }
         return Int64((max(0, seconds) * 1_000).rounded())
+    }
+
+    private func record(_ observation: ProductSignalObservation) {
+        Task { await productSignals.record(observation) }
+    }
+
+    private static func signalOutcome(_ status: RecallAnswer.Status) -> ProductSignalOutcome {
+        switch status {
+        case .ready: .grounded
+        case .cancelled: .cancelled
+        case .indexing, .transcriptMissing, .noEvidence, .unavailable: .noEvidence
+        }
     }
 }

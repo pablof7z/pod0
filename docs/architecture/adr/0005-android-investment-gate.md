@@ -35,6 +35,10 @@ The gate report records evidence quality and returns:
   path; M6 remains closed.
 - **Stop:** evidence contradicts the investment thesis; do not start M6.
 
+Metric definitions, thresholds, cohort rules, minimum samples, confidence
+intervals, and privacy constraints are predeclared in
+[`product-proof-metrics.md`](../../validation/product-proof-metrics.md).
+
 ## Pre-gate Android work allowed
 
 - Generate and compile Kotlin bindings from the same facade as Swift.

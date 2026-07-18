@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-18T15:32:46Z",
+      "lines": [
+        "Product Signals in Settings now lets you inspect, delete, or manually export private on-device usage signals."
+      ]
+    },
+    {
       "shipped_at": "2026-07-18T15:06:33Z",
       "lines": [
         "Large downloads and artifact checks now finish without freezing the app."

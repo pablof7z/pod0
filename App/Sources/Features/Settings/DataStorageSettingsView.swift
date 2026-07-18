@@ -38,6 +38,16 @@ struct DataStorageSettingsView: View {
                     value: dataRecordCount > 0 ? "\(dataRecordCount) records" : nil
                 )
             }
+            NavigationLink {
+                ProductSignalsView()
+            } label: {
+                SettingsRow(
+                    icon: "waveform.path.ecg",
+                    tint: .indigo,
+                    title: "Product Signals",
+                    value: "Private & local"
+                )
+            }
         }
     }
 

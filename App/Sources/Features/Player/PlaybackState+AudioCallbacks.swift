@@ -33,6 +33,13 @@ extension PlaybackState {
         engine.onAudioSessionEvent = { [weak self] event in
             self?.handleAudioSessionEvent(event)
         }
+        engine.onFailure = { [weak self] failure in
+            self?.recordPlaybackSignal(
+                name: .playbackError,
+                outcome: .failed,
+                errorClass: failure.code
+            )
+        }
     }
 
     func setRate(_ newRate: Double) {

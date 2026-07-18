@@ -28,5 +28,6 @@ extension AppStateStore {
             invalidateEpisodeProjections()
         }
         SpotlightIndexer.clearAll()
+        Task { await productSignals.deleteAll() }
     }
 }

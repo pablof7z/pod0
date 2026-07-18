@@ -112,6 +112,14 @@ extension AppStateStore {
             mutateState { $0.episodes = episodes }
             invalidateEpisodeProjections()
         }
+        if case .ready = next {
+            recordProductSignal(.once(
+                name: .transcriptReady,
+                subjectID: episodeID,
+                outcome: .ready,
+                domainRevision: state.persistenceGeneration
+            ))
+        }
         return .applied
     }
 

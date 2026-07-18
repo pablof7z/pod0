@@ -42,6 +42,7 @@ final class AudioEngine {
     private(set) var duration: TimeInterval = 0
     private(set) var rate: Double = 1.0
     private(set) var episode: Episode?
+    var onFailure: (ProductFailure) -> Void = { _ in }
 
     /// `true` once the natural end-of-item observer has fired for the current
     /// episode. Distinguishes "user paused at 99.9 % of duration" from "episode
@@ -59,9 +60,7 @@ final class AudioEngine {
     /// Sleep-timer surface so the player UI can render the countdown.
     let sleepTimer = SleepTimer()
 
-    /// Called when `SleepTimer` fires. `PlaybackState` overrides this so timer
-    /// pauses travel through the same persistence and snapshot side effects as
-    /// an in-app pause.
+    /// Called when `SleepTimer` fires.
     var onSleepTimerFire: () -> Void = {}
 
     /// NowPlaying surface — exposed so the player can push artwork mid-playback
@@ -219,7 +218,7 @@ final class AudioEngine {
         } catch {
             let engineError = EngineError(error)
             logger.error("Audio session activation failed: \(engineError.description, privacy: .public)")
-            state = .failed(engineError)
+            setState(.failed(engineError))
             return
         }
         applyEffectiveVolume()
@@ -437,9 +436,9 @@ final class AudioEngine {
 
     // MARK: - State setter (used from +Observers extension)
 
-    /// Exposed for the observer extension; internal so call-sites stay tidy.
     func setState(_ newState: State) {
         self.state = newState
+        if case let .failed(error) = newState { onFailure(error.failure) }
     }
 
     func setDuration(_ newDuration: TimeInterval) {
