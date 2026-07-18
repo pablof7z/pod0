@@ -75,4 +75,27 @@ struct ChatConversation: Identifiable, Codable, Equatable, Sendable {
         }
         return ""
     }
+
+    /// A scheduled occurrence is complete only after its latest user prompt
+    /// has a durable, non-empty assistant response and no later terminal
+    /// error. Persisting the prompt alone is an interruption checkpoint, not
+    /// proof that the scheduled work produced an output.
+    var hasCompletedScheduledOutput: Bool {
+        guard isScheduledTask, occurrenceID != nil,
+              let userIndex = messages.lastIndex(where: {
+                  if case .user = $0.role { return true }
+                  return false
+              }) else { return false }
+        for message in messages.suffix(from: messages.index(after: userIndex)).reversed() {
+            switch message.role {
+            case .assistant:
+                return !message.text.isBlank
+            case .error:
+                return false
+            case .user, .toolBatch, .skillActivated:
+                continue
+            }
+        }
+        return false
+    }
 }

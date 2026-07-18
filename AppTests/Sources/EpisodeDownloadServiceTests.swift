@@ -277,6 +277,118 @@ final class EpisodeDownloadServiceTests: XCTestCase {
         XCTAssertEqual(size, Int64(bytes.count))
     }
 
+    func testCancelledQueuedDownloadCannotBeClaimedOrExecuted() async throws {
+        let stateURL = AppStateTestSupport.uniqueTempFileURL()
+        let databaseURL = Persistence.episodeStoreURL(for: stateURL)
+        defer { AppStateTestSupport.disposeIsolatedStore(at: stateURL) }
+        let jobs = JobStore(fileURL: databaseURL)
+        let subject = UUID()
+        let desired = downloadJob(
+            key: "download:\(subject):v1:user-cancelled-before-start",
+            subject: subject,
+            priority: 100
+        )
+        _ = try jobs.ensureJob(desired)
+        try jobs.cancelActiveJobs(kind: .download, subjectID: subject)
+        let executor = DownloadExecutionProbe()
+        let coordinator = WorkCoordinator(
+            jobStore: jobs,
+            executors: [.download: executor],
+            capacities: [.download: 1]
+        )
+
+        await coordinator.drainDueJobs()
+
+        let runCount = await executor.runCount
+        XCTAssertEqual(runCount, 0)
+        XCTAssertEqual(
+            try jobs.job(idempotencyKey: desired.idempotencyKey)?.state,
+            .cancelled
+        )
+        XCTAssertTrue(try jobs.claimDueJobs(
+            resourceClass: .download,
+            capacity: 1,
+            now: Date(),
+            owner: "cancel-verifier",
+            leaseDuration: 60
+        ).isEmpty)
+    }
+
+    func testDismissedDownloadFailureIsHiddenButRemainsRetryable() throws {
+        let stateURL = AppStateTestSupport.uniqueTempFileURL()
+        let databaseURL = Persistence.episodeStoreURL(for: stateURL)
+        defer { AppStateTestSupport.disposeIsolatedStore(at: stateURL) }
+        let jobs = JobStore(fileURL: databaseURL)
+        let subject = UUID()
+        let desired = downloadJob(
+            key: "download:\(subject):v1:user-failed",
+            subject: subject,
+            priority: 100
+        )
+        _ = try jobs.ensureJob(desired)
+        let claimed = try XCTUnwrap(try jobs.claimDueJobs(
+            resourceClass: .download,
+            capacity: 1,
+            now: Date(),
+            owner: "failure-test",
+            leaseDuration: 60
+        ).first)
+        let token = try XCTUnwrap(claimed.leaseToken)
+        try jobs.markRunning(id: claimed.id, leaseToken: token)
+        try jobs.markFailedPermanent(
+            id: claimed.id,
+            leaseToken: token,
+            error: JobFailure(classification: .unexpected, message: "failed")
+        )
+
+        try jobs.dismissJobsNeedingAttention(kind: .download, subjectID: subject)
+
+        let dismissed = try XCTUnwrap(jobs.job(idempotencyKey: desired.idempotencyKey))
+        XCTAssertEqual(dismissed.state, .cancelled)
+        XCTAssertEqual(dismissed.lastErrorClass, .cancelled)
+        XCTAssertEqual(dismissed.lastErrorMessage, "Dismissed by user")
+
+        try jobs.rearmJob(idempotencyKey: desired.idempotencyKey)
+        XCTAssertEqual(
+            try jobs.job(idempotencyKey: desired.idempotencyKey)?.state,
+            .pending
+        )
+    }
+
+    func testManualDownloadIntentRearmsSucceededRowAfterLocalArtifactRemoval() throws {
+        let made = AppStateTestSupport.makeIsolatedStore()
+        defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
+        let episode = Episode(
+            podcastID: UUID(),
+            guid: "manual-redownload",
+            title: "Manual re-download",
+            pubDate: Date(),
+            enclosureURL: URL(string: "https://example.com/manual-redownload.mp3")!
+        )
+        made.store.upsertEpisodes([episode], forPodcast: episode.podcastID)
+
+        let runtime = WorkflowRuntime.shared
+        let initial = try runtime.persistDownloadIntent(episodeID: episode.id, origin: .user)
+        let jobs = try XCTUnwrap(runtime.jobStore)
+        let claimed = try XCTUnwrap(try jobs.claimDueJobs(
+            resourceClass: .download,
+            capacity: 1,
+            now: Date(),
+            owner: "redownload-test",
+            leaseDuration: 60
+        ).first)
+        let token = try XCTUnwrap(claimed.leaseToken)
+        try jobs.markRunning(id: initial.id, leaseToken: token)
+        try jobs.complete(id: initial.id, leaseToken: token, outputVersion: initial.inputVersion)
+        XCTAssertEqual(try jobs.job(idempotencyKey: initial.idempotencyKey)?.state, .succeeded)
+
+        let rearmed = try runtime.persistDownloadIntent(episodeID: episode.id, origin: .user)
+
+        XCTAssertEqual(rearmed.id, initial.id)
+        XCTAssertEqual(rearmed.state, .pending)
+        XCTAssertEqual(rearmed.attempt, 0)
+    }
+
     private func downloadJob(key: String, subject: UUID, priority: Int) -> DesiredJob {
         DesiredJob(
             idempotencyKey: key,
@@ -287,5 +399,14 @@ final class EpisodeDownloadServiceTests: XCTestCase {
             priority: priority,
             resourceClass: .download
         )
+    }
+}
+
+private actor DownloadExecutionProbe: JobExecutor {
+    private(set) var runCount = 0
+
+    func run(_ context: JobAttemptContext) async throws -> JobOutcome {
+        runCount += 1
+        return .succeeded(outputVersion: context.job.inputVersion)
     }
 }

@@ -231,6 +231,20 @@ final class JobStoreCoordinatorTests: XCTestCase {
         XCTAssertEqual(Set(try store.allJobs().map(\.state)), [.succeeded])
     }
 
+    func testEnsureJobsBatchRollsBackCompletelyWhenInterrupted() throws {
+        struct Interrupted: Error {}
+        let desired = (0..<3).map { makeDesired(key: "atomic-batch-\($0)") }
+
+        XCTAssertThrowsError(try store.ensureJobs(desired) { index in
+            if index == 0 { throw Interrupted() }
+        }) { error in
+            XCTAssertTrue(error is Interrupted)
+        }
+
+        XCTAssertTrue(try store.allJobs().isEmpty)
+        XCTAssertEqual(try store.ensureJobs(desired), 3)
+    }
+
     func testMixedBacklogRespectsEveryResourceLaneIndependently() async throws {
         let lanes: [(WorkJobKind, WorkResourceClass, Int)] = [
             (.feedDiscovery, .planning, 1),

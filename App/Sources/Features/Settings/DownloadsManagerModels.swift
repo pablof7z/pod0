@@ -111,7 +111,7 @@ enum DownloadManagerAction {
     case start
     case retry
     case cancel
-    case clearFailed
+    case dismissFailure
     case delete
 }
 

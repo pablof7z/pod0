@@ -42,7 +42,7 @@ extension AppStateStore {
         episodeID: UUID
     ) -> EpisodeTransitionResult {
         guard let index = state.episodes.firstIndex(where: { $0.id == episodeID }) else {
-            return reject("Episode does not exist")
+            return rejectEpisodeTransition("Episode does not exist")
         }
         let episode = state.episodes[index]
         let next: DownloadState
@@ -54,7 +54,9 @@ extension AppStateStore {
             guard let data = try? Data(contentsOf: evidence.fileURL, options: .mappedIfSafe),
                   Int64(data.count) == evidence.byteCount,
                   ArtifactRepository.hash(data) == evidence.contentHash else {
-                return reject("Download evidence is missing or failed integrity verification")
+                return rejectEpisodeTransition(
+                    "Download evidence is missing or failed integrity verification"
+                )
             }
             next = .downloaded(
                 localFileURL: evidence.fileURL,
@@ -82,7 +84,7 @@ extension AppStateStore {
         episodeID: UUID
     ) -> EpisodeTransitionResult {
         guard let index = state.episodes.firstIndex(where: { $0.id == episodeID }) else {
-            return reject("Episode does not exist")
+            return rejectEpisodeTransition("Episode does not exist")
         }
         let episode = state.episodes[index]
         let next: TranscriptState
@@ -94,7 +96,9 @@ extension AppStateStore {
             guard let data = TranscriptStore.shared.verifiedData(
                 at: evidence.fileURL, episodeID: episodeID
             ), ArtifactRepository.hash(data) == evidence.contentHash else {
-                return reject("Transcript evidence is missing, unparseable, or corrupt")
+                return rejectEpisodeTransition(
+                    "Transcript evidence is missing, unparseable, or corrupt"
+                )
             }
             next = .ready(source: evidence.source)
         case .artifactInvalidated(let inputVersion):
@@ -111,7 +115,7 @@ extension AppStateStore {
         return .applied
     }
 
-    private func reject(_ message: String) -> EpisodeTransitionResult {
+    func rejectEpisodeTransition(_ message: String) -> EpisodeTransitionResult {
         Logger.app("EpisodeStateTransitions").error("Rejected domain event: \(message, privacy: .public)")
         return .rejected(message)
     }

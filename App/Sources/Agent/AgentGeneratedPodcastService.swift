@@ -116,14 +116,38 @@ struct AgentGeneratedPodcastService: Sendable {
             enclosureURL: audioURL,
             enclosureMimeType: "audio/mp4",
             imageURL: imageURL,
-            downloadState: .downloaded(
-                localFileURL: audioURL,
-                byteCount: (try? FileManager.default.attributesOfItem(atPath: audioURL.path)[.size] as? Int64) ?? 0
-            ),
+            downloadState: .notDownloaded,
             generationSource: generationSource
         )
         store.upsertEpisodes([episode], forPodcast: podcastID, evaluateAutoDownload: false)
+        do {
+            let data = try Data(contentsOf: audioURL, options: .mappedIfSafe)
+            let hash = ArtifactRepository.hash(data)
+            let repository = ArtifactRepository(fileURL: store.persistence.episodeStore.fileURL)
+            try repository.adopt(ArtifactRecord(
+                kind: .downloadFile,
+                subjectID: episode.id,
+                inputVersion: DesiredStatePlanner.audioVersion(episode),
+                outputVersion: hash,
+                contentHash: hash,
+                location: audioURL.path,
+                origin: "agent-generated",
+                schemaVersion: 1,
+                integrity: .available,
+                verifiedAt: Date()
+            ))
+            _ = store.applyDownloadEvent(.artifactCommitted(.init(
+                inputVersion: DesiredStatePlanner.audioVersion(episode),
+                contentHash: hash,
+                fileURL: audioURL,
+                byteCount: Int64(data.count)
+            )), episodeID: episode.id)
+        } catch {
+            logger.error(
+                "Could not verify generated episode audio at \(audioURL.path, privacy: .public): \(error, privacy: .public)"
+            )
+        }
         logger.info("Published agent episode '\(title, privacy: .public)' id=\(episodeID, privacy: .public)")
-        return episode
+        return store.episode(id: episode.id) ?? episode
     }
 }

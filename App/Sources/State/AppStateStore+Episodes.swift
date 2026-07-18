@@ -86,8 +86,7 @@ extension AppStateStore {
             uniquingKeysWith: { first, _ in first }
         )
         var newlyInserted: [UUID] = []
-        for rawEpisode in incoming {
-            var episode = rawEpisode
+        for episode in incoming {
             if let idx = existingByGUID[episode.guid] {
                 let prior = updated[idx]
                 var merged = episode
@@ -95,8 +94,10 @@ extension AppStateStore {
                 merged.playbackPosition = prior.playbackPosition
                 merged.played = prior.played
                 merged.isStarred = prior.isStarred
-                merged.downloadState = prior.downloadState
-                merged.transcriptState = prior.transcriptState
+                let audioInputChanged = DesiredStatePlanner.audioVersion(prior)
+                    != DesiredStatePlanner.audioVersion(merged)
+                merged.downloadState = audioInputChanged ? .notDownloaded : prior.downloadState
+                merged.transcriptState = audioInputChanged ? .none : prior.transcriptState
                 merged.requestedTranscriptProvider = prior.requestedTranscriptProvider
                 // Preserve AI-compiled/hydrated chapters when the incoming RSS episode
                 // doesn't supply new ones; RSS never carries ad segments so always keep.
@@ -256,17 +257,31 @@ extension AppStateStore {
         _ id: UUID,
         state newState: DownloadState
     ) -> EpisodeTransitionResult {
-        guard let episode = episode(id: id) else { return .rejected("Episode does not exist") }
+        guard let episode = episode(id: id) else {
+            return rejectEpisodeTransition("Episode does not exist")
+        }
         switch newState {
         case .notDownloaded:
             return applyDownloadEvent(.userRemoved, episodeID: id)
         case .downloaded(let url, let byteCount):
-            guard let data = try? Data(contentsOf: url, options: .mappedIfSafe) else {
-                return .rejected("Downloaded file is missing")
+            let selected = try? ArtifactRepository(
+                fileURL: persistence.episodeStore.fileURL
+            ).current(kind: .downloadFile, subjectID: id)
+            let inputVersion = DesiredStatePlanner.audioVersion(episode)
+            guard let selected,
+                  selected.integrity == .available,
+                  selected.inputVersion == inputVersion,
+                  selected.location == url.path,
+                  let data = try? Data(contentsOf: url, options: .mappedIfSafe),
+                  selected.contentHash == ArtifactRepository.hash(data),
+                  Int64(data.count) == byteCount else {
+                return rejectEpisodeTransition(
+                    "Downloaded state requires matching selected artifact evidence"
+                )
             }
             return applyDownloadEvent(.artifactCommitted(.init(
-                inputVersion: DesiredStatePlanner.audioVersion(episode),
-                contentHash: ArtifactRepository.hash(data), fileURL: url,
+                inputVersion: selected.inputVersion,
+                contentHash: selected.contentHash, fileURL: url,
                 byteCount: byteCount
             )), episodeID: id)
         }
@@ -278,7 +293,9 @@ extension AppStateStore {
         _ id: UUID,
         state newState: TranscriptState
     ) -> EpisodeTransitionResult {
-        guard let episode = episode(id: id) else { return .rejected("Episode does not exist") }
+        guard let episode = episode(id: id) else {
+            return rejectEpisodeTransition("Episode does not exist")
+        }
         let inputVersion = DesiredStatePlanner.audioVersion(episode)
         switch newState {
         case .none:
@@ -289,14 +306,22 @@ extension AppStateStore {
             let selected = try? ArtifactRepository(
                 fileURL: persistence.episodeStore.fileURL
             ).current(kind: .transcript, subjectID: id)
-            let url = selected?.location.map(URL.init(fileURLWithPath:))
-                ?? TranscriptStore.shared.fileURL(for: id)
-            guard let data = TranscriptStore.shared.verifiedData(at: url, episodeID: id) else {
-                return .rejected("Transcript artifact is not verified")
+            guard let selected,
+                  selected.integrity == .available,
+                  selected.inputVersion == inputVersion,
+                  let location = selected.location else {
+                return rejectEpisodeTransition(
+                    "Transcript state requires current selected artifact evidence"
+                )
+            }
+            let url = URL(fileURLWithPath: location)
+            guard let data = TranscriptStore.shared.verifiedData(at: url, episodeID: id),
+                  ArtifactRepository.hash(data) == selected.contentHash else {
+                return rejectEpisodeTransition("Transcript artifact is not verified")
             }
             return applyTranscriptEvent(.artifactCommitted(.init(
-                inputVersion: inputVersion,
-                contentHash: ArtifactRepository.hash(data),
+                inputVersion: selected.inputVersion,
+                contentHash: selected.contentHash,
                 fileURL: url, source: source
             )), episodeID: id)
         }
@@ -361,8 +386,10 @@ extension AppStateStore {
         if chapters.isEmpty, let existing = state.episodes[idx].chapters, !existing.isEmpty {
             return
         }
+        let projected = chapters.isEmpty ? nil : chapters
+        guard state.episodes[idx].chapters != projected else { return }
         var episodes = state.episodes
-        episodes[idx].chapters = chapters.isEmpty ? nil : chapters
+        episodes[idx].chapters = projected
         mutateState { $0.episodes = episodes }
     }
 }

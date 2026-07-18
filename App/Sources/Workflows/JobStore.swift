@@ -5,11 +5,22 @@ struct JobStore: Sendable {
     let fileURL: URL
 
     @discardableResult
-    func ensureJobs(_ desired: [DesiredJob]) throws -> Int {
+    func ensureJobs(
+        _ desired: [DesiredJob],
+        afterEach: (Int) throws -> Void = { _ in }
+    ) throws -> Int {
         try withDatabase { db in
-            let before = sqlite3_total_changes(db)
-            try Self.ensureJobs(desired, in: db)
-            return Int(sqlite3_total_changes(db) - before)
+            try WorkflowSQLite.execute("BEGIN IMMEDIATE TRANSACTION", db)
+            do {
+                let before = sqlite3_total_changes(db)
+                try Self.ensureJobs(desired, in: db, afterEach: afterEach)
+                let inserted = Int(sqlite3_total_changes(db) - before)
+                try WorkflowSQLite.execute("COMMIT TRANSACTION", db)
+                return inserted
+            } catch {
+                try? WorkflowSQLite.execute("ROLLBACK TRANSACTION", db)
+                throw error
+            }
         }
     }
 
@@ -265,34 +276,7 @@ extension JobStore {
     }
 
     func ensureSchema(_ db: OpaquePointer) throws {
-        if try WorkflowSQLite.tableExists("jobs", db),
-           try !WorkflowSQLite.columnExists("idempotency_key", table: "jobs", db) {
-            try WorkflowSQLite.execute("DROP TABLE jobs", db)
-        }
-        try WorkflowSQLite.execute(
-            """
-            CREATE TABLE IF NOT EXISTS jobs(
-                id TEXT PRIMARY KEY NOT NULL,
-                idempotency_key TEXT UNIQUE NOT NULL,
-                kind TEXT NOT NULL, subject_id TEXT NOT NULL,
-                input_version TEXT NOT NULL, occurrence_id TEXT,
-                payload_version INTEGER NOT NULL, payload BLOB,
-                state TEXT NOT NULL, priority INTEGER NOT NULL,
-                resource_class TEXT NOT NULL, attempt INTEGER NOT NULL,
-                max_attempts INTEGER NOT NULL, not_before REAL NOT NULL,
-                lease_token TEXT, lease_owner TEXT, lease_expires_at REAL,
-                external_provider TEXT, external_operation_id TEXT,
-                external_operation_state TEXT, output_version TEXT,
-                last_error_class TEXT, last_error_message TEXT,
-                created_at REAL NOT NULL, updated_at REAL NOT NULL
-            )
-            """,
-            db
-        )
-        try WorkflowSQLite.execute(
-            "CREATE INDEX IF NOT EXISTS jobs_due_v2 ON jobs(resource_class,state,not_before,priority)",
-            db
-        )
+        try WorkflowSchemaMigrations.ensureJobs(db)
     }
 
     func reclaimExpiredLeases(

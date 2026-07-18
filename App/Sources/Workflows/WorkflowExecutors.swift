@@ -49,8 +49,9 @@ final class FeedDiscoveryJobExecutor: JobExecutor {
         }
 
         if payload.notificationsEnabled,
+           store.state.settings.notifyOnNewEpisodes,
            store.subscription(podcastID: payload.podcastID)?.notificationsEnabled == true {
-            for input in sorted {
+            for input in sorted.prefix(NotificationService.maxNewEpisodeNotificationsPerRefresh) {
                 let occurrence = "notification:\(payload.occurrenceID):\(input.episodeID.uuidString)"
                 let child = NotificationJobPayload(
                     discoveredAt: payload.discoveredAt,
@@ -254,7 +255,26 @@ final class MetadataIndexJobExecutor: JobExecutor {
 @MainActor
 final class AutoDownloadJobExecutor: JobExecutor {
     private let store: AppStateStore
-    init(store: AppStateStore) { self.store = store }
+    private let persistDownload: @MainActor @Sendable (
+        UUID,
+        DownloadIntentOrigin
+    ) throws -> WorkJob
+
+    init(
+        store: AppStateStore,
+        persistDownload: @escaping @MainActor @Sendable (
+            UUID,
+            DownloadIntentOrigin
+        ) throws -> WorkJob = { episodeID, origin in
+            try WorkflowRuntime.shared.persistDownloadIntent(
+                episodeID: episodeID,
+                origin: origin
+            )
+        }
+    ) {
+        self.store = store
+        self.persistDownload = persistDownload
+    }
 
     func run(_ context: JobAttemptContext) async throws -> JobOutcome {
         guard let episode = store.episode(id: context.job.subjectID) else { return .obsolete }
@@ -270,9 +290,7 @@ final class AutoDownloadJobExecutor: JobExecutor {
                 )
             )
         }
-        WorkflowRuntime.shared.requestDownload(
-            episodeID: episode.id, origin: .autoDownload
-        )
+        _ = try persistDownload(episode.id, .autoDownload)
         return .succeeded(outputVersion: context.job.inputVersion)
     }
 }
@@ -287,6 +305,7 @@ final class NewEpisodeNotificationJobExecutor: JobExecutor {
         guard Date().timeIntervalSince(payload.discoveredAt) <= 24 * 60 * 60 else { return .obsolete }
         guard let episode = store.episode(id: context.job.subjectID),
               let podcast = store.podcast(id: episode.podcastID) else { return .obsolete }
+        guard store.state.settings.notifyOnNewEpisodes else { return .obsolete }
         guard store.subscription(podcastID: episode.podcastID)?.notificationsEnabled == true else {
             return .obsolete
         }
@@ -303,15 +322,18 @@ final class NewEpisodeNotificationJobExecutor: JobExecutor {
 final class ScheduledAgentRunJobExecutor: JobExecutor {
     private let store: AppStateStore
     private let artifacts: ArtifactRepository
+    private let history: ChatHistoryStore
     private let deps: @MainActor @Sendable () -> PodcastAgentToolDeps?
 
     init(
         store: AppStateStore,
         artifacts: ArtifactRepository,
+        history: ChatHistoryStore = .shared,
         deps: @escaping @MainActor @Sendable () -> PodcastAgentToolDeps?
     ) {
         self.store = store
         self.artifacts = artifacts
+        self.history = history
         self.deps = deps
     }
 
@@ -323,7 +345,7 @@ final class ScheduledAgentRunJobExecutor: JobExecutor {
             return .succeeded(outputVersion: context.job.occurrenceID)
         }
         if let occurrenceID = context.job.occurrenceID,
-           ChatHistoryStore.shared.conversation(occurrenceID: occurrenceID) != nil {
+           history.conversation(occurrenceID: occurrenceID)?.hasCompletedScheduledOutput == true {
             return .succeeded(outputVersion: occurrenceID)
         }
         let reference = LLMModelReference(storedID: payload.modelID)
@@ -336,15 +358,26 @@ final class ScheduledAgentRunJobExecutor: JobExecutor {
         let session = AgentChatSession(
             store: store,
             podcastDeps: deps(),
-            history: .shared,
+            history: history,
             resumeWindow: 0,
             drainPendingContext: false,
             scheduledOccurrenceID: context.job.occurrenceID
         )
         session.isScheduledTask = true
-        await session.send(payload.prompt, source: .scheduledTask)
+        if context.job.occurrenceID.flatMap({ history.conversation(occurrenceID: $0) }) != nil {
+            await session.resumeScheduledRun(fallbackPrompt: payload.prompt)
+        } else {
+            await session.send(payload.prompt, source: .scheduledTask)
+        }
         if case .failed(let message) = session.phase {
             throw JobFailure(classification: .transient, message: message)
+        }
+        guard let occurrenceID = context.job.occurrenceID,
+              history.conversation(occurrenceID: occurrenceID)?.hasCompletedScheduledOutput == true else {
+            throw JobFailure(
+                classification: .transient,
+                message: "Scheduled agent run did not produce a completed assistant response."
+            )
         }
         return .succeeded(outputVersion: context.job.occurrenceID)
     }

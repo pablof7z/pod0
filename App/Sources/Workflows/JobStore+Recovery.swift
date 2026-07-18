@@ -81,7 +81,11 @@ extension JobStore {
     /// Re-arms one canonical occurrence after an explicit user retry. Keeping
     /// the same row preserves its durable identity while clearing ownership
     /// and provider state from the prior terminal attempt.
-    func rearmJob(idempotencyKey: String, now: Date = Date()) throws {
+    func rearmJob(
+        idempotencyKey: String,
+        includeSucceeded: Bool = false,
+        now: Date = Date()
+    ) throws {
         try withDatabase { db in
             let statement = try WorkflowSQLite.prepare(
                 """
@@ -91,7 +95,10 @@ extension JobStore {
                     external_operation_state=NULL, last_error_class=NULL,
                     last_error_message=NULL, updated_at=?
                 WHERE idempotency_key=?
-                  AND state IN ('blocked','failedPermanent','cancelled')
+                  AND (
+                    state IN ('blocked','failedPermanent','cancelled')
+                    OR (?=1 AND state='succeeded')
+                  )
                 """,
                 db: db
             )
@@ -99,7 +106,49 @@ extension JobStore {
             try WorkflowSQLite.bind(now, 1, statement, db)
             try WorkflowSQLite.bind(now, 2, statement, db)
             try WorkflowSQLite.bind(idempotencyKey, 3, statement, db)
+            try WorkflowSQLite.bind(Int64(includeSucceeded ? 1 : 0), 4, statement, db)
             try WorkflowSQLite.stepDone(statement, db)
+        }
+    }
+
+    /// Re-arms derivable work whose previously selected output no longer
+    /// satisfies desired state. The canonical row remains the lineage anchor:
+    /// attempts are retained, a fresh attempt budget is added, and any old
+    /// lease or provider identity is fenced before the repair becomes runnable.
+    @discardableResult
+    func rearmSucceededRepairs(
+        _ desired: [DesiredJob],
+        now: Date = Date()
+    ) throws -> Int {
+        try withDatabase { db in
+            let statement = try WorkflowSQLite.prepare(
+                """
+                UPDATE jobs SET state='pending', max_attempts=max_attempts+?,
+                    not_before=?, lease_token=NULL, lease_owner=NULL,
+                    lease_expires_at=NULL, external_provider=NULL,
+                    external_operation_id=NULL, external_operation_state=NULL,
+                    last_error_class=NULL, last_error_message=NULL, updated_at=?
+                WHERE idempotency_key=? AND kind=? AND subject_id=?
+                  AND input_version=? AND occurrence_id IS NULL
+                  AND state='succeeded'
+                """,
+                db: db
+            )
+            defer { sqlite3_finalize(statement) }
+            let before = sqlite3_total_changes(db)
+            for job in desired where job.occurrenceID == nil {
+                try WorkflowSQLite.bind(Int64(job.maxAttempts), 1, statement, db)
+                try WorkflowSQLite.bind(now, 2, statement, db)
+                try WorkflowSQLite.bind(now, 3, statement, db)
+                try WorkflowSQLite.bind(job.idempotencyKey, 4, statement, db)
+                try WorkflowSQLite.bind(job.kind.rawValue, 5, statement, db)
+                try WorkflowSQLite.bind(job.subjectID.uuidString, 6, statement, db)
+                try WorkflowSQLite.bind(job.inputVersion, 7, statement, db)
+                try WorkflowSQLite.stepDone(statement, db)
+                sqlite3_reset(statement)
+                sqlite3_clear_bindings(statement)
+            }
+            return Int(sqlite3_total_changes(db) - before)
         }
     }
 
@@ -234,6 +283,33 @@ extension JobStore {
                     last_error_message='Cancelled by user',updated_at=?
                 WHERE kind=? AND subject_id=?
                   AND state IN ('pending','leased','running','retryScheduled','blocked')
+                """,
+                db: db
+            )
+            defer { sqlite3_finalize(statement) }
+            try WorkflowSQLite.bind(now, 1, statement, db)
+            try WorkflowSQLite.bind(kind.rawValue, 2, statement, db)
+            try WorkflowSQLite.bind(subjectID.uuidString, 3, statement, db)
+            try WorkflowSQLite.stepDone(statement, db)
+        }
+    }
+
+    /// Hides terminal work the user has explicitly dismissed. Unlike changing
+    /// the episode's stable artifact projection, this updates the authoritative
+    /// lifecycle row. A later explicit retry can re-arm the same canonical job.
+    func dismissJobsNeedingAttention(
+        kind: WorkJobKind,
+        subjectID: UUID,
+        now: Date = Date()
+    ) throws {
+        try withDatabase { db in
+            let statement = try WorkflowSQLite.prepare(
+                """
+                UPDATE jobs SET state='cancelled',lease_token=NULL,lease_owner=NULL,
+                    lease_expires_at=NULL,last_error_class='cancelled',
+                    last_error_message='Dismissed by user',updated_at=?
+                WHERE kind=? AND subject_id=?
+                  AND state IN ('blocked','failedPermanent')
                 """,
                 db: db
             )

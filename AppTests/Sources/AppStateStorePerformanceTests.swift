@@ -29,9 +29,9 @@ import XCTest
 final class AppStateStorePerformanceTests: XCTestCase {
 
     private var fileURL: URL!
-    private var store: AppStateStore!
-    private var downloadEvidenceURLs: [URL] = []
-    private var transcriptEvidenceIDs: [UUID] = []
+    var store: AppStateStore!
+    var downloadEvidenceURLs: [URL] = []
+    var transcriptEvidenceIDs: [UUID] = []
 
     override func setUp() async throws {
         try await super.setUp()
@@ -248,27 +248,6 @@ final class AppStateStorePerformanceTests: XCTestCase {
         XCTAssertFalse(store.hasDownloadedEpisode(forPodcast: sub.id))
         XCTAssertFalse(store.hasTranscribedEpisode(forPodcast: sub.id))
         XCTAssertTrue(store.episodes(forPodcast: sub.id).isEmpty)
-    }
-
-    private func installDownloadEvidence(for episode: Episode) throws -> URL {
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("projection-\(episode.id.uuidString).mp3")
-        try Data(repeating: 0x5a, count: 100).write(to: url, options: .atomic)
-        downloadEvidenceURLs.append(url)
-        return url
-    }
-
-    private func installTranscriptEvidence(
-        for episode: Episode,
-        source: TranscriptSource
-    ) throws {
-        try TranscriptStore.shared.save(Transcript(
-            episodeID: episode.id,
-            language: "en-US",
-            source: source,
-            segments: []
-        ))
-        transcriptEvidenceIDs.append(episode.id)
     }
 
     func testEpisodesForSubscriptionStaysSortedNewestFirst() {

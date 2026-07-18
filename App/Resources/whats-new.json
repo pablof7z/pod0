@@ -2,6 +2,36 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-18T11:31:05Z",
+      "lines": [
+        "Generated episodes and saved transcripts now verify their files before appearing ready, and repair automatically if files are damaged."
+      ]
+    },
+    {
+      "shipped_at": "2026-07-18T11:27:49Z",
+      "lines": [
+        "Deleted episodes can be downloaded again, and feed refreshes now keep new-episode alerts to a sensible maximum."
+      ]
+    },
+    {
+      "shipped_at": "2026-07-18T11:13:18Z",
+      "lines": [
+        "Scheduled agents now resume safely after interruptions, and transcript work restarts automatically when you connect a provider."
+      ]
+    },
+    {
+      "shipped_at": "2026-07-18T11:06:21Z",
+      "lines": [
+        "Interrupted or damaged transcripts and chapters now repair themselves without getting stuck or repeatedly saving in the background."
+      ]
+    },
+    {
+      "shipped_at": "2026-07-18T11:00:24Z",
+      "lines": [
+        "Cancelled downloads now stop reliably, and turning off new-episode alerts also clears pending notifications."
+      ]
+    },
+    {
       "shipped_at": "2026-07-18T10:37:59Z",
       "lines": [
         "Removed the last inactive Nostr controls; podcast artwork uploads still work as before."

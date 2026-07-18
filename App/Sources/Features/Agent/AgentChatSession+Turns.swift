@@ -75,7 +75,13 @@ extension AgentChatSession {
             return
         }
 
-        if !rawMessages.isEmpty {
+        if rawMessages.isEmpty {
+            rawMessages.append([
+                "role": "system",
+                "content": AgentPrompt.build(for: store.state),
+            ])
+            seedRawMessagesFromHistory()
+        } else {
             rawMessages[0] = ["role": "system", "content": AgentPrompt.build(for: store.state)]
         }
 
@@ -87,6 +93,28 @@ extension AgentChatSession {
         persistCurrentConversation()
 
         await runAgentTurns(batchID: UUID(), source: source, initialInput: text)
+    }
+
+    /// Continues a scheduled occurrence after a process interruption without
+    /// duplicating its already-persisted user prompt. Any partial/error tail
+    /// is discarded and the exact durable prompt is attempted again.
+    func resumeScheduledRun(fallbackPrompt: String) async {
+        guard scheduledOccurrenceID != nil else {
+            await send(fallbackPrompt, source: .scheduledTask)
+            return
+        }
+        guard let userIndex = messages.lastIndex(where: {
+            if case .user = $0.role { return true }
+            return false
+        }) else {
+            await send(fallbackPrompt, source: .scheduledTask)
+            return
+        }
+        let prompt = messages[userIndex].text
+        messages = Array(messages.prefix(through: userIndex))
+        rawMessages = []
+        persistCurrentConversation()
+        await regenerateSend(prompt, source: .scheduledTask)
     }
 
     /// Begins an agent turn in a stored `Task` so the caller can cancel it via

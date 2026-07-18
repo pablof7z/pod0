@@ -149,12 +149,15 @@ enum JobStoreError: LocalizedError {
     case sqlite(String)
     case transitionRejected
     case corruptRow
+    case unsupportedSchema(component: String, detail: String)
 
     var errorDescription: String? {
         switch self {
         case .sqlite(let message): "Workflow database failed: \(message)"
         case .transitionRejected: "The job attempt no longer owns the active lease."
         case .corruptRow: "A workflow job row is invalid."
+        case .unsupportedSchema(let component, let detail):
+            "The \(component) workflow schema is unsupported: \(detail)."
         }
     }
 }

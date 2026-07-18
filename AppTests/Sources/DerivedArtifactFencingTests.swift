@@ -177,6 +177,49 @@ final class DerivedArtifactFencingTests: XCTestCase {
         XCTAssertEqual(history.map(\.integrity), [.available, .stale])
     }
 
+    func testFailedAdoptionKeepsPreviouslySelectedArtifact() throws {
+        enum InjectedFailure: Error { case stop }
+        let subject = UUID()
+        let first = ArtifactRecord(
+            kind: .transcript,
+            subjectID: subject,
+            inputVersion: "audio-v1",
+            outputVersion: "transcript-v1",
+            contentHash: "hash-v1",
+            location: "/tmp/transcript-v1.json",
+            origin: "publisher",
+            schemaVersion: 1,
+            integrity: .available,
+            verifiedAt: Date(timeIntervalSince1970: 1_000)
+        )
+        let second = ArtifactRecord(
+            kind: .transcript,
+            subjectID: subject,
+            inputVersion: "audio-v2",
+            outputVersion: "transcript-v2",
+            contentHash: "hash-v2",
+            location: "/tmp/transcript-v2.json",
+            origin: "scribe",
+            schemaVersion: 1,
+            integrity: .available,
+            verifiedAt: Date(timeIntervalSince1970: 2_000)
+        )
+        try ArtifactRepository(fileURL: databaseURL).adopt(first)
+        let failing = ArtifactRepository(
+            fileURL: databaseURL,
+            adoptFaultInjector: { throw InjectedFailure.stop }
+        )
+
+        XCTAssertThrowsError(try failing.adopt(second))
+        XCTAssertEqual(
+            try ArtifactRepository(fileURL: databaseURL).current(
+                kind: .transcript,
+                subjectID: subject
+            ),
+            first
+        )
+    }
+
     private func records(
         subject: UUID,
         input: String,

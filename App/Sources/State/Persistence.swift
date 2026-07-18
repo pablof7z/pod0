@@ -161,7 +161,21 @@ final class Persistence: Sendable {
         revision writeRevision: UInt64,
         ensuring jobs: [DesiredJob]
     ) -> Bool {
-        guard lastWrittenRevision.withLock({ writeRevision > $0 }) else { return true }
+        guard lastWrittenRevision.withLock({ writeRevision > $0 }) else {
+            guard !jobs.isEmpty else { return true }
+            do {
+                _ = try JobStore(fileURL: episodeStore.fileURL).ensureJobs(jobs)
+                saveCounter.withLock { $0 += 1 }
+                NotificationCenter.default.post(
+                    name: .persistenceDidCommitWorkflowJobs,
+                    object: self
+                )
+                return true
+            } catch {
+                Self.logger.error("Persistence.save: stale snapshot job commit failed: \(error, privacy: .public)")
+                return false
+            }
+        }
         var state = sourceState
         state.persistenceGeneration = writeRevision
         let metadata: Data

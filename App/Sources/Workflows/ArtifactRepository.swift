@@ -36,6 +36,15 @@ struct ArtifactRecord: Sendable, Equatable {
 
 struct ArtifactRepository: Sendable {
     let fileURL: URL
+    private let adoptFaultInjector: (@Sendable () throws -> Void)?
+
+    init(
+        fileURL: URL,
+        adoptFaultInjector: (@Sendable () throws -> Void)? = nil
+    ) {
+        self.fileURL = fileURL
+        self.adoptFaultInjector = adoptFaultInjector
+    }
 
     func current(kind: ArtifactKind, subjectID: UUID) throws -> ArtifactRecord? {
         try withDatabase { db in
@@ -151,7 +160,16 @@ struct ArtifactRepository: Sendable {
     /// Records a verified artifact found by reconciliation. This is used only
     /// for adoption when no active attempt owns the already-written output.
     func adopt(_ record: ArtifactRecord) throws {
-        try withDatabase { db in try upsert(record, db: db) }
+        try withDatabase { db in
+            try WorkflowSQLite.execute("BEGIN IMMEDIATE TRANSACTION", db)
+            do {
+                try upsert(record, db: db, beforeSelection: adoptFaultInjector)
+                try WorkflowSQLite.execute("COMMIT TRANSACTION", db)
+            } catch {
+                try? WorkflowSQLite.execute("ROLLBACK TRANSACTION", db)
+                throw error
+            }
+        }
     }
 
     func markIntegrity(
@@ -191,31 +209,14 @@ private extension ArtifactRepository {
     }
 
     func ensureSchema(_ db: OpaquePointer) throws {
-        if try WorkflowSQLite.tableExists("artifacts", db),
-           try !WorkflowSQLite.columnExists("selected", table: "artifacts", db) {
-            try WorkflowSQLite.execute("DROP TABLE artifacts", db)
-        }
-        try WorkflowSQLite.execute(
-            """
-            CREATE TABLE IF NOT EXISTS artifacts(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                kind TEXT NOT NULL, subject_id TEXT NOT NULL,
-                input_version TEXT NOT NULL, output_version TEXT NOT NULL,
-                content_hash TEXT NOT NULL, location TEXT, origin TEXT,
-                schema_version INTEGER NOT NULL, integrity TEXT NOT NULL,
-                verified_at REAL NOT NULL, selected INTEGER NOT NULL,
-                UNIQUE(kind,subject_id,input_version,output_version)
-            )
-            """,
-            db
-        )
-        try WorkflowSQLite.execute(
-            "CREATE UNIQUE INDEX IF NOT EXISTS artifacts_selected_v2 ON artifacts(kind,subject_id) WHERE selected=1",
-            db
-        )
+        try WorkflowSchemaMigrations.ensureArtifacts(db)
     }
 
-    func upsert(_ record: ArtifactRecord, db: OpaquePointer) throws {
+    func upsert(
+        _ record: ArtifactRecord,
+        db: OpaquePointer,
+        beforeSelection: (@Sendable () throws -> Void)? = nil
+    ) throws {
         let deselect = try WorkflowSQLite.prepare(
             "UPDATE artifacts SET selected=0, integrity='stale' WHERE kind=? AND subject_id=? AND selected=1",
             db: db
@@ -224,6 +225,7 @@ private extension ArtifactRepository {
         try WorkflowSQLite.bind(record.subjectID.uuidString, 2, deselect, db)
         try WorkflowSQLite.stepDone(deselect, db)
         sqlite3_finalize(deselect)
+        try beforeSelection?()
         let statement = try WorkflowSQLite.prepare(
             """
             INSERT INTO artifacts(

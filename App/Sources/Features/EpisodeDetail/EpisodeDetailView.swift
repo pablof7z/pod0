@@ -226,11 +226,9 @@ struct EpisodeDetailView: View {
             .init(startTime: 4810, title: "Practical protocols")
         ]
     )
-    store.mutateState {
-        $0.podcasts = [podcast]
-        $0.subscriptions = [PodcastSubscription(podcastID: subID)]
-        $0.episodes = [episode]
-    }
+    store.upsertPodcast(podcast)
+    store.addSubscription(podcastID: subID)
+    store.upsertEpisodes([episode], forPodcast: subID)
     return NavigationStack {
         EpisodeDetailView(episodeID: episode.id)
     }
