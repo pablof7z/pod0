@@ -86,8 +86,7 @@ extension AppStateStore {
             uniquingKeysWith: { first, _ in first }
         )
         var newlyInserted: [UUID] = []
-        for rawEpisode in incoming {
-            var episode = rawEpisode
+        for episode in incoming {
             if let idx = existingByGUID[episode.guid] {
                 let prior = updated[idx]
                 var merged = episode

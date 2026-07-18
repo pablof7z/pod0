@@ -274,7 +274,7 @@ final class WorkflowStateTransitionTests: XCTestCase {
         store.upsertEpisodes([refreshed], forPodcast: refreshed.podcastID)
 
         XCTAssertEqual(store.episode(id: episode.id)?.downloadState, .notDownloaded)
-        XCTAssertEqual(store.episode(id: episode.id)?.transcriptState, .none)
+        XCTAssertEqual(store.episode(id: episode.id)?.transcriptState, .some(.none))
         XCTAssertFalse(store.hasDownloadedByShow.contains(episode.podcastID))
         XCTAssertFalse(store.hasTranscribedByShow.contains(episode.podcastID))
     }
