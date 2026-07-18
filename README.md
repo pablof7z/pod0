@@ -2,7 +2,7 @@
 
 A next-generation iOS podcast player built around an embedded AI agent that has perfect knowledge of every podcast the user is subscribed to — including episodes they have not listened to yet.
 
-> Bootstrapped from [`ios-app-template`](https://github.com/pablofernandez/ios-app-template). The sections below describe the inherited template foundations (shake-to-feedback, agent loop, friends, TestFlight CI). Podcast-specific modules live under `App/Sources/{Audio,Podcast,Transcript,Knowledge,Voice,Briefing}` and the new feature folders under `App/Sources/Features/`.
+> Bootstrapped from [`ios-app-template`](https://github.com/pablofernandez/ios-app-template). Podcast-specific modules live under `App/Sources/{Audio,Podcast,Transcript,Knowledge,Voice}` and feature folders under `App/Sources/Features/`.
 
 See [`docs/spec/PRODUCT_SPEC.md`](docs/spec/PRODUCT_SPEC.md) for the product spec entry point, or [`docs/spec/PROJECT_CONTEXT.md`](docs/spec/PROJECT_CONTEXT.md) for the vision summary. Engineering guidelines (file-size limits, etc.) in [`AGENTS.md`](AGENTS.md).
 
@@ -66,7 +66,6 @@ Implementation lives in:
 - `App/Sources/Features/Feedback/ScreenshotAnnotationView.swift` — canvas annotation
 
 To wire up actual submission, edit `FeedbackView.performSubmission()`. Options:
-- **Nostr kind:1 event** — used in win-the-day and highlighter
 - **GitHub issue via API** — for internal tooling
 - **Email** — via `MFMailComposeViewController`
 - **Custom webhook** — POST to your backend
@@ -91,16 +90,6 @@ Architecture mirrors win-the-day-app's `AgentSession`:
 Add new tools in `AgentTools.schema` and `AgentTools.dispatch`.
 
 Configure provider keys via **Settings → Intelligence → Providers**, then assign role-specific models via **Settings → Intelligence → Models**. Provider keys are stored in Keychain; app state stores only non-secret connection metadata. Speech-to-text can use ElevenLabs, AssemblyAI, OpenRouter Whisper, or Apple on-device transcription; narration remains ElevenLabs-backed.
-
-### Friends & Collaborators
-A `Friend` model representing trusted contacts whose agents can create/modify items in your app. When a friend's agent acts, items are tagged with `requestedByFriendID` and `requestedByDisplayName` for provenance display.
-
-- `App/Sources/Domain/Models.swift` — `Friend` struct with `id`, `displayName`, `identifier`
-- `App/Sources/State/AppStateStore.swift` — `addFriend`, `removeFriend`, `updateFriendDisplayName`
-- `App/Sources/Features/Friends/FriendsView.swift` — list, add, swipe-to-remove
-- `App/Sources/Features/Friends/FriendDetailView.swift` — rename, see shared tasks, remove
-
-The `identifier` field is app-specific. Replace with a Nostr pubkey, username, email, or any unique string your infrastructure uses.
 
 ### Anchor System
 A polymorphic `enum Anchor` links notes to items or other entities. Discriminated-union style with a `kind` field for clean JSON round-trips. Add new anchor cases as your domain grows.
@@ -145,7 +134,7 @@ App/Sources/
 ├── App/
 │   ├── RootView.swift         TabView + shake handler + feedback orchestration
 ├── Domain/
-│   └── Models.swift           Item, Note, Friend, AgentMemory, Anchor, AppState
+│   └── Models.swift           Item, Note, AgentMemory, Anchor, AppState
 ├── State/
 │   ├── AppStateStore.swift    @Observable store — all mutations route here
 │   └── Persistence.swift      JSON encode/decode to App Group UserDefaults
@@ -165,9 +154,6 @@ App/Sources/
 │   └── AgentTools.swift       Tool schema + dispatcher
 └── Features/
     ├── Home/HomeView.swift    Item list + add + agent compose
-    ├── Friends/
-    │   ├── FriendsView.swift
-    │   └── FriendDetailView.swift
     ├── Feedback/
     │   ├── FeedbackWorkflow.swift
     │   ├── FeedbackView.swift
@@ -185,7 +171,6 @@ App/Sources/
 
 - Xcode 26.4+ with the iOS 26 device and simulator SDKs (required for Swift package traits)
 - [Tuist](https://tuist.io) 4.x (`curl -Ls https://install.tuist.io | bash`)
-- [Rustup](https://rustup.rs) (the bootstrap installs NMP's pinned toolchain and targets)
 - Apple Developer account
 
 ### Setup
@@ -193,7 +178,7 @@ App/Sources/
 1. **Clone and configure**
 
    ```bash
-   git clone --recurse-submodules <your-repo>
+   git clone <your-repo>
    cd podcast-player
    ```
 
@@ -205,16 +190,14 @@ App/Sources/
    let appleTeamID = "456SHKPP26"
    ```
 
-2. **Build pinned dependencies and generate the Xcode project**
+2. **Generate the Xcode project**
 
    ```bash
    ./ci_scripts/bootstrap_project.sh
    open Podcastr.xcodeproj
    ```
 
-   The bootstrap verifies and stages exact public dependencies, builds NMP's
-   generated Swift bindings and simulator XCFramework from source, then runs Tuist. See
-   [`docs/nmp-dependency.md`](docs/nmp-dependency.md) for the pin/update policy.
+   The bootstrap installs Tuist when needed and generates the Xcode project.
 
 3. **Rename the App Group**
 
@@ -274,7 +257,7 @@ git push origin master
 
 | Script | Purpose |
 |--------|---------|
-| `bootstrap_project.sh` | Stages exact dependencies, builds pinned NMP source, installs Tuist if needed, runs `tuist generate` |
+| `bootstrap_project.sh` | Installs Tuist if needed and runs `tuist generate` |
 | `ci_post_clone.sh` | Wrapper for Xcode Cloud post-clone hook |
 | `install_signing_assets.sh` | Installs certificate + provisioning profile from base64 secrets |
 | `archive_and_upload.sh` | Archives, exports IPA, uploads to TestFlight via `altool` |
@@ -343,23 +326,17 @@ In `FeedbackView.performSubmission()`, replace the placeholder with your backend
 private func performSubmission() async throws {
     let body = workflow.draft
     let image = workflow.annotatedImage ?? workflow.screenshot
-    // POST to your API, publish Nostr event, send email, etc.
+    // POST to your API, send email, etc.
 }
 ```
-
-### Adding Nostr friends (advanced)
-
-Replace `Friend.identifier` with a Nostr hex pubkey. See win-the-day-app's `NostrRelay.swift`, `NostrAgentService.swift`, and `UserIdentityStore.swift` for the full NIP-01/NIP-10/NIP-46 implementation.
-
----
 
 ## Sources
 
 This template is distilled from:
 
-- **[win-the-day-app](../win-the-day-app)** (RockingLife) — shake feedback, screenshot annotation, agent session loop, friends via Nostr, AppStateStore pattern, CI/CD scripts
-- **[cut-tracker](../cut-tracker)** (WeightTracker) — Shared/iOS architecture split, SwiftData patterns, Nostr coach agent, voice check-ins
-- **[highlighter](../highlighter)** — ShakeDetector pattern, iOS OCR capture, Nostr social reading
+- **[win-the-day-app](../win-the-day-app)** (RockingLife) — shake feedback, screenshot annotation, agent session loop, AppStateStore pattern, CI/CD scripts
+- **[cut-tracker](../cut-tracker)** (WeightTracker) — Shared/iOS architecture split, SwiftData patterns, voice check-ins
+- **[highlighter](../highlighter)** — ShakeDetector pattern and iOS OCR capture
 
 ---
 

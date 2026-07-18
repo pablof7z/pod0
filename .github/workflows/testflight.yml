@@ -26,7 +26,6 @@ env:
   APPLE_TEAM_ID: 456SHKPP26
   APP_BUNDLE_ID: io.f7z.podcast
   WIDGET_BUNDLE_ID: io.f7z.podcast.widget
-  NMP_BUILD_MODE: all
 
 jobs:
   test:

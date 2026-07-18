@@ -218,7 +218,6 @@
 		6082CB7A1CBE03B2AC56040A /* LivePodcastRAGAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26A735604F439E2BB4A10A52 /* LivePodcastRAGAdapter.swift */; };
 		60DC0A7FEBBAB9FFDC42C7F8 /* HandoffActivityType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DDA1CE694B40E9FDC592665 /* HandoffActivityType.swift */; };
 		6137F15C0FBF81BB9A8B14FA /* RAGSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3AAD15F0A5EED308179615E /* RAGSearch.swift */; };
-		61CC869428D474EEF2CA9FF7 /* Bech32.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B6FE38C2893D5E47E328069 /* Bech32.swift */; };
 		62C9A71B2AC8A31D92006160 /* whats-new.json in Resources */ = {isa = PBXBuildFile; fileRef = FDDE0135D737F1677B521BE8 /* whats-new.json */; };
 		6379A29002FEAB95C9077F03 /* TranscriptsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9678378224EA5AB7669C20A0 /* TranscriptsSettingsView.swift */; };
 		641F2588DE631E18F6DCC548 /* OPMLImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107A4F56C8B628B04E067F78 /* OPMLImportTests.swift */; };
@@ -240,7 +239,6 @@
 		6A74F4F679BE1BC52B0A2728 /* OnboardingAISetupPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8200C9B29F01A8001A49ADF1 /* OnboardingAISetupPage.swift */; };
 		6A9CCF09E39CA0D09D80DA78 /* WorkflowSQLite.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3FC91748AF64CE72EE4EA81 /* WorkflowSQLite.swift */; };
 		6B73B05CAF1E0BBC4E341B07 /* FeedDiscoveryWorkflowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17741766C3B15EEB235AE655 /* FeedDiscoveryWorkflowTests.swift */; };
-		6CC2965885BEB9C1B53478A6 /* NMP in Frameworks */ = {isa = PBXBuildFile; productRef = EEC82B2EE4C3F6031CF5D336 /* NMP */; };
 		6D703EBB91024FAA8CDE300F /* AskAgentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29B7C2595F8831855C66B0B5 /* AskAgentView.swift */; };
 		6E3092214365D7320359F8B9 /* NumberExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B6878A00045AF65BAE84954 /* NumberExtensions.swift */; };
 		6EC1ED2C5FD33C2A56D9C068 /* PlayerControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC5A32C0AE5250A9EFB48503 /* PlayerControlsView.swift */; };
@@ -673,7 +671,6 @@
 		1A6FADCFDDD72BCF205768D4 /* SleepTimer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepTimer.swift; sourceTree = "<group>"; };
 		1AADC91A3529BEF090A12B53 /* EpisodeDetailTranscriptTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeDetailTranscriptTests.swift; sourceTree = "<group>"; };
 		1B5149E1C7DBDCE872668E5D /* PlaybackState+HeadphoneGestures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlaybackState+HeadphoneGestures.swift"; sourceTree = "<group>"; };
-		1B6FE38C2893D5E47E328069 /* Bech32.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bech32.swift; sourceTree = "<group>"; };
 		1BE94D97C7CBAFF7A0974685 /* SRTParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SRTParser.swift; sourceTree = "<group>"; };
 		1C0D3294375130D07F658B6C /* JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobStore.swift; sourceTree = "<group>"; };
 		1C3E3000629215F397FAF146 /* KeyInfoCardShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyInfoCardShared.swift; sourceTree = "<group>"; };
@@ -1095,7 +1092,6 @@
 		E0E3B0BFDBD2746E7BC2A672 /* VoiceTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceTypes.swift; sourceTree = "<group>"; };
 		E11C803B51B48C93B46F0F4B /* PodcastAgentToolValues+Inventory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PodcastAgentToolValues+Inventory.swift"; sourceTree = "<group>"; };
 		E1CA95C0A91FA2689DE5A2D3 /* EpisodeSQLiteStore+Statements.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EpisodeSQLiteStore+Statements.swift"; sourceTree = "<group>"; };
-		E27E46087D0D9C416CE87EC8 /* NMP */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NMP; path = Vendor/nmp/Packages/NMP; sourceTree = "<group>"; };
 		E292AE2975F658126600FBE8 /* WorkCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkCoordinator.swift; sourceTree = "<group>"; };
 		E30B0ADA63732E117A3CDA25 /* OllamaSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaSettingsView.swift; sourceTree = "<group>"; };
 		E39D85E4B13CD42BCEDDFE48 /* HighlightedTextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighlightedTextTests.swift; sourceTree = "<group>"; };
@@ -1169,7 +1165,6 @@
 				D296A3A113B7CA431F3F4B45 /* P256K in Frameworks */,
 				B3970DA45FCC4CB32765FCCD /* SQLiteVec in Frameworks */,
 				DAF43A45B5BEC1A4531656CC /* Kingfisher in Frameworks */,
-				6CC2965885BEB9C1B53478A6 /* NMP in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1211,14 +1206,6 @@
 				70FBF6733DF99C6972EAF9E0 /* PodcastrTests-Info.plist */,
 			);
 			path = InfoPlists;
-			sourceTree = "<group>";
-		};
-		0A5CDE39EE4CA75387FCAC74 /* Packages */ = {
-			isa = PBXGroup;
-			children = (
-				E27E46087D0D9C416CE87EC8 /* NMP */,
-			);
-			name = Packages;
 			sourceTree = "<group>";
 		};
 		169CC4A1645254DED6A51309 /* Voice */ = {
@@ -1351,7 +1338,6 @@
 			children = (
 				EE8ECCB93F31FD087A3D5446 /* Products */,
 				5EA43519AED085354A9F3CEE /* Project */,
-				0A5CDE39EE4CA75387FCAC74 /* Packages */,
 			);
 			sourceTree = "<group>";
 		};
@@ -1898,7 +1884,6 @@
 				BFF88F01DD5CDEFC300DD7F3 /* AgentPicksStreamingParser.swift */,
 				CA9B23681B1B9A54B3F9C90E /* AIChapterCompiler.swift */,
 				587C7D9278E988FCED0A5663 /* AssemblyAICredentialStore.swift */,
-				1B6FE38C2893D5E47E328069 /* Bech32.swift */,
 				92CA53594D5B5B3AC527ABCC /* BlossomUploader.swift */,
 				A04BFBCE02E158B5F49611AB /* BYOKConnectService.swift */,
 				3ABC2DEEFBE58AA45D6E33C8 /* BYOKCredentialImporter.swift */,
@@ -2191,7 +2176,6 @@
 				A865ADD09595500A328B6A66 /* P256K */,
 				D1C704F1B182FF83C41AAB0F /* SQLiteVec */,
 				AC95E5BC4A660944ADC3109C /* Kingfisher */,
-				EEC82B2EE4C3F6031CF5D336 /* NMP */,
 			);
 			productName = Podcastr;
 			productReference = 85AB8152D55E6C47E39E9A01 /* Podcastr.app */;
@@ -2245,7 +2229,6 @@
 				9E67C9C9E4C6EC730548EE88 /* XCRemoteSwiftPackageReference "secp256k1.swift" */,
 				E6351A58B45DD67BACED66EE /* XCRemoteSwiftPackageReference "SQLiteVec" */,
 				FD91E0E152391009482BC6AE /* XCRemoteSwiftPackageReference "Kingfisher" */,
-				C15647D9A0A2DAAC8B2D0DA7 /* XCLocalSwiftPackageReference "Vendor/nmp/Packages/NMP" */,
 			);
 			productRefGroup = EE8ECCB93F31FD087A3D5446 /* Products */;
 			projectDirPath = "";
@@ -2633,7 +2616,6 @@
 				A298ACE23AB733748C547EC0 /* BYOKConnectService.swift in Sources */,
 				A824EDCFFC735AD20CAD1DE2 /* BYOKCredentialImporter.swift in Sources */,
 				2F4DFD59DF256708120F7BD0 /* BYOKModels.swift in Sources */,
-				61CC869428D474EEF2CA9FF7 /* Bech32.swift in Sources */,
 				4BDBBB305AE94E07BCDC1F97 /* BlossomUploader.swift in Sources */,
 				90A3109488CB8CF566708810 /* ChatHistoryStore.swift in Sources */,
 				AD9AB76F11EF3865A4C5D811 /* ClipBoundaryResolver.swift in Sources */,
@@ -3233,13 +3215,6 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		C15647D9A0A2DAAC8B2D0DA7 /* XCLocalSwiftPackageReference "Vendor/nmp/Packages/NMP" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = Vendor/nmp/Packages/NMP;
-		};
-/* End XCLocalSwiftPackageReference section */
-
 /* Begin XCRemoteSwiftPackageReference section */
 		9E67C9C9E4C6EC730548EE88 /* XCRemoteSwiftPackageReference "secp256k1.swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -3279,10 +3254,6 @@
 		D1C704F1B182FF83C41AAB0F /* SQLiteVec */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SQLiteVec;
-		};
-		EEC82B2EE4C3F6031CF5D336 /* NMP */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = NMP;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

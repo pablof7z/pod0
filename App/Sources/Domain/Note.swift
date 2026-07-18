@@ -41,10 +41,7 @@ struct Note: Codable, Identifiable, Hashable, Sendable {
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         text = try c.decodeIfPresent(String.self, forKey: .text) ?? ""
         kind = try c.decodeIfPresent(NoteKind.self, forKey: .kind) ?? .free
-        // `try?` (not `try`) so a legacy anchor kind (e.g. the removed
-        // Friends `.friend` anchor) degrades to `nil` instead of failing the
-        // whole note's decode.
-        target = (try? c.decodeIfPresent(Anchor.self, forKey: .target)) ?? nil
+        target = try c.decodeIfPresent(Anchor.self, forKey: .target)
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
         deleted = try c.decodeIfPresent(Bool.self, forKey: .deleted) ?? false
         // Legacy snapshots (pre-NoteAuthor) default to `.user` — they were all

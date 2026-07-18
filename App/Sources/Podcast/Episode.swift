@@ -173,10 +173,7 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
             forKey: .requestedTranscriptProvider
         )
         adSegments = try c.decodeIfPresent([AdSegment].self, forKey: .adSegments)
-        // `try?` (not `try`) so a legacy/unrecognized source (e.g. the
-        // removed Nostr-peer generation source) degrades to `nil` instead of
-        // failing the whole episode's decode.
-        generationSource = (try? c.decodeIfPresent(GenerationSource.self, forKey: .generationSource)) ?? nil
+        generationSource = try c.decodeIfPresent(GenerationSource.self, forKey: .generationSource)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -424,10 +421,6 @@ extension Episode.GenerationSource: Codable {
             let id = try c.decode(UUID.self, forKey: .conversationID)
             self = .inAppChat(conversationID: id)
         default:
-            // Covers legacy `"nostr"` rows from the removed Nostr-peer
-            // generation source. Caller decodes this via `try?` so an
-            // unrecognized/legacy type degrades to `nil` rather than
-            // corrupting the whole episode.
             throw DecodingError.dataCorrupted(.init(
                 codingPath: [CodingKeys.type],
                 debugDescription: "Unknown GenerationSource type: \(type)"

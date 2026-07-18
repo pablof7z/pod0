@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-18T10:37:59Z",
+      "lines": [
+        "Removed the last inactive Nostr controls; podcast artwork uploads still work as before."
+      ]
+    },
+    {
       "shipped_at": "2026-07-17T22:29:43Z",
       "lines": [
         "Downloads, transcripts, chapters, feed refreshes, and scheduled agent runs now resume reliably after interruptions."

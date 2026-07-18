@@ -1,7 +1,6 @@
 import Foundation
 
-/// Neutral NIP-01 event value used by both NMP-backed human publishing and
-/// the separately owned nonhuman agent publisher.
+/// Minimal NIP-01 event value used for ephemeral Blossom upload authorization.
 struct NostrEventDraft: Sendable, Equatable {
     var kind: Int
     var content: String

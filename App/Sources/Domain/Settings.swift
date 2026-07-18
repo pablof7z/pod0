@@ -257,11 +257,7 @@ struct Settings: Codable, Hashable, Sendable {
         case headphoneDoubleTapAction, headphoneTripleTapAction
         case autoIngestPublisherTranscripts, autoFallbackToScribe
         case notifyOnNewEpisodes
-        // RawValues preserved as "nostrProfileName" / "nostrProfilePicture" so
-        // an agent name/avatar set before the Nostr identity removal keeps
-        // decoding into the renamed fields.
-        case agentDisplayName = "nostrProfileName"
-        case agentAvatarURLString = "nostrProfilePicture"
+        case agentDisplayName, agentAvatarURLString
         case hasCompletedOnboarding
         case youtubeExtractorURL
     }
@@ -475,4 +471,3 @@ struct Settings: Codable, Hashable, Sendable {
         elevenLabsConnectedAt = nil
     }
 }
-

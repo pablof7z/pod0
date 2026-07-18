@@ -15,7 +15,7 @@ struct AgentRunFilterBar: View {
     /// Result count after filtering. Same purpose as `totalRuns`.
     let filteredRuns: Int
 
-    private let allSources: [AgentRunSource] = [.typedChat, .voiceMessage, .nostrInbound, .manual]
+    private let allSources: [AgentRunSource] = [.typedChat, .voiceMessage, .manual]
     private let allOutcomes: [AgentRunOutcome] = [.completed, .turnsExhausted, .failed, .cancelled]
 
     var body: some View {

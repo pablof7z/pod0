@@ -3,7 +3,6 @@ import Foundation
 enum AgentRunSource: String, Codable, Sendable {
     case typedChat
     case voiceMessage
-    case nostrInbound
     case manual
     case scheduledTask
 }

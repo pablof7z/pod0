@@ -239,10 +239,8 @@ final class iCloudSettingsSync {
         case autoIngestPublisherTranscripts      = "sync.settings.autoIngestPublisherTranscripts"
         case autoFallbackToScribe                = "sync.settings.autoFallbackToScribe"
         case notifyOnNewEpisodes                 = "sync.settings.notifyOnNewEpisodes"
-        // RawValues preserved so existing iCloud KVS entries continue to
-        // roundtrip after the Nostr identity removal renamed these fields.
-        case agentDisplayName                    = "sync.settings.nostrProfileName"
-        case agentAvatarURLString                = "sync.settings.nostrProfilePicture"
+        case agentDisplayName                    = "sync.settings.agentDisplayName"
+        case agentAvatarURLString                = "sync.settings.agentAvatarURLString"
     }
 }
 

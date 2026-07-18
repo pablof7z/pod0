@@ -2,7 +2,7 @@ import CryptoKit
 import Foundation
 import P256K
 
-/// Nonhuman agent signing seam. Human identity never uses this protocol.
+/// Ephemeral signing seam used only for Blossom upload authorization.
 protocol NostrSigner: Sendable {
     func publicKey() async throws -> String
     func sign(_ draft: NostrEventDraft) async throws -> SignedNostrEvent

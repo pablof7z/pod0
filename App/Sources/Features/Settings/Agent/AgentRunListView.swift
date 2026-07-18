@@ -158,7 +158,6 @@ enum AgentRunSourceStyle {
         switch source {
         case .typedChat:     return "keyboard"
         case .voiceMessage:  return "waveform"
-        case .nostrInbound:  return "bolt"
         case .manual:        return "play"
         case .scheduledTask: return "clock"
         }
@@ -168,7 +167,6 @@ enum AgentRunSourceStyle {
         switch source {
         case .typedChat:     return "Typed chat"
         case .voiceMessage:  return "Voice message"
-        case .nostrInbound:  return "Nostr inbound"
         case .manual:        return "Manual"
         case .scheduledTask: return "Scheduled task"
         }

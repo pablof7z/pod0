@@ -9,7 +9,7 @@ enum Anchor: Codable, Hashable, Sendable {
     /// A note anchored to a specific moment in an episode.
     case episode(id: UUID, positionSeconds: TimeInterval)
 
-    private enum Kind: String, Codable { case note, friend, episode }
+    private enum Kind: String, Codable { case note, episode }
     private enum CodingKeys: String, CodingKey { case kind, id, positionSeconds }
 
     init(from decoder: Decoder) throws {
@@ -20,14 +20,6 @@ enum Anchor: Codable, Hashable, Sendable {
             let id  = try c.decode(UUID.self, forKey: .id)
             let pos = (try? c.decodeIfPresent(TimeInterval.self, forKey: .positionSeconds)) ?? 0
             self = .episode(id: id, positionSeconds: pos)
-        case .friend:
-            // Legacy anchor from the removed Friends feature. Thrown here so
-            // the caller's `try?` degrades this note's `target` to `nil`
-            // instead of losing the whole note.
-            throw DecodingError.dataCorrupted(.init(
-                codingPath: [CodingKeys.kind],
-                debugDescription: "Anchor kind 'friend' is no longer supported"
-            ))
         }
     }
 

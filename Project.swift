@@ -47,10 +47,6 @@ let project = Project(
             url: "https://github.com/onevcat/Kingfisher",
             requirement: .upToNextMajor(from: "8.0.0")
         ),
-        // NMP is source-pinned as a submodule. The bootstrap script builds
-        // its generated bindings and XCFramework before Tuist resolves this
-        // local package; neither generated artifact is committed here.
-        .local(path: "Vendor/nmp/Packages/NMP"),
     ],
     settings: .settings(
         base: [
@@ -79,7 +75,6 @@ let project = Project(
                 .package(product: "P256K"),
                 .package(product: "SQLiteVec"),
                 .package(product: "Kingfisher"),
-                .package(product: "NMP"),
                 .target(name: "\(appName)Widget"),
             ],
             settings: .settings(
