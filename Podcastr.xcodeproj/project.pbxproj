@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A11CE000000000000000001 /* WorkflowSchemaMigrations.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE000000000000000003 /* WorkflowSchemaMigrations.swift */; };
+		A11CE000000000000000002 /* WorkflowSchemaMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE000000000000000004 /* WorkflowSchemaMigrationTests.swift */; };
 		00398F2D3677B88258458499 /* AIChapterCompiler.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9B23681B1B9A54B3F9C90E /* AIChapterCompiler.swift */; };
 		00D0604F92F2793F9CA70A84 /* HighlightedTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E39D85E4B13CD42BCEDDFE48 /* HighlightedTextTests.swift */; };
 		01CEF64E8090D455830F6038 /* DownloadReconciliationPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C73EEC47ABDC89046500A473 /* DownloadReconciliationPlanner.swift */; };
@@ -617,6 +619,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A11CE000000000000000003 /* WorkflowSchemaMigrations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowSchemaMigrations.swift; sourceTree = "<group>"; };
+		A11CE000000000000000004 /* WorkflowSchemaMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowSchemaMigrationTests.swift; sourceTree = "<group>"; };
 		0066858CC2F8B6E6B570CD47 /* Settings+Embeddings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Settings+Embeddings.swift"; sourceTree = "<group>"; };
 		00B04A75C4999049C420ABF6 /* SortedSubscriptionsByRecencyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SortedSubscriptionsByRecencyTests.swift; sourceTree = "<group>"; };
 		00CCF5D6D1819CA4405F0B7A /* AudioSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionCoordinator.swift; sourceTree = "<group>"; };
@@ -1764,6 +1768,7 @@
 		9DFEBDD0B7DE5B795F2AC05F /* Sources */ = {
 			isa = PBXGroup;
 			children = (
+				A11CE000000000000000004 /* WorkflowSchemaMigrationTests.swift */,
 				8685233AADD5B7B1D4130785 /* AdSegmentDetectorTests.swift */,
 				15A2D929FA7CC3D15CA4ABB8 /* AgentNostrSignerTests.swift */,
 				993B6C0FB5FD98225D5603F9 /* AgentPicksFallbackTests.swift */,
@@ -2148,6 +2153,7 @@
 				37D4A39DB63529BC6011FE6C /* WorkflowProcessReconstructionHarness.swift */,
 				F3FAC13B9D5D6EC0946A22E7 /* WorkflowRuntime.swift */,
 				D3FC91748AF64CE72EE4EA81 /* WorkflowSQLite.swift */,
+				A11CE000000000000000003 /* WorkflowSchemaMigrations.swift */,
 				98290E5BED82A45D3111528A /* WorkJob.swift */,
 			);
 			path = Workflows;
@@ -2302,6 +2308,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A11CE000000000000000001 /* WorkflowSchemaMigrations.swift in Sources */,
 				2B5DDA70540B8A2F48A59467 /* AgentAskCoordinator.swift in Sources */,
 				27C62FDD4D6D7AC3142A8DD0 /* AgentGeneratedPodcastService.swift in Sources */,
 				773752A9C8461195BC448FC0 /* AgentMemoryCompiler.swift in Sources */,
@@ -2780,6 +2787,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A11CE000000000000000002 /* WorkflowSchemaMigrationTests.swift in Sources */,
 				F1199D808E01A75817CA5DD0 /* AdSegmentDetectorTests.swift in Sources */,
 				B3A905E197AB568191C7B2A6 /* AgentNostrSignerTests.swift in Sources */,
 				51D54838155F84B8E0D4C8B7 /* AgentPicksFallbackTests.swift in Sources */,

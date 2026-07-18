@@ -209,28 +209,7 @@ private extension ArtifactRepository {
     }
 
     func ensureSchema(_ db: OpaquePointer) throws {
-        if try WorkflowSQLite.tableExists("artifacts", db),
-           try !WorkflowSQLite.columnExists("selected", table: "artifacts", db) {
-            try WorkflowSQLite.execute("DROP TABLE artifacts", db)
-        }
-        try WorkflowSQLite.execute(
-            """
-            CREATE TABLE IF NOT EXISTS artifacts(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                kind TEXT NOT NULL, subject_id TEXT NOT NULL,
-                input_version TEXT NOT NULL, output_version TEXT NOT NULL,
-                content_hash TEXT NOT NULL, location TEXT, origin TEXT,
-                schema_version INTEGER NOT NULL, integrity TEXT NOT NULL,
-                verified_at REAL NOT NULL, selected INTEGER NOT NULL,
-                UNIQUE(kind,subject_id,input_version,output_version)
-            )
-            """,
-            db
-        )
-        try WorkflowSQLite.execute(
-            "CREATE UNIQUE INDEX IF NOT EXISTS artifacts_selected_v2 ON artifacts(kind,subject_id) WHERE selected=1",
-            db
-        )
+        try WorkflowSchemaMigrations.ensureArtifacts(db)
     }
 
     func upsert(
