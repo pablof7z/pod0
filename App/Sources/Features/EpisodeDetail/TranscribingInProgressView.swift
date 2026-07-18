@@ -13,6 +13,7 @@ import SwiftUI
 struct TranscribingInProgressView: View {
     let episode: Episode
     @Environment(AppStateStore.self) private var store
+    @Environment(WorkflowClient.self) private var workflows
 
     var body: some View {
         ScrollView {
@@ -28,6 +29,7 @@ struct TranscribingInProgressView: View {
         }
         .background(Color(.systemBackground).ignoresSafeArea())
         .navigationTitle("Transcript")
+        .workflowProjectionScope(subjectIDs: [episode.id], kinds: [.transcriptIngest])
     }
 
     // MARK: - Subviews
@@ -75,7 +77,7 @@ struct TranscribingInProgressView: View {
             Button {
                 let episodeID = episode.id
                 store.setEpisodeTranscriptState(episodeID, state: .none)
-                WorkflowRuntime.shared.requestTranscript(episodeID: episodeID)
+                workflows.requestTranscript(episodeID: episodeID)
             } label: {
                 Text("Request transcript")
                     .font(.headline)
@@ -105,11 +107,8 @@ struct TranscribingInProgressView: View {
         }
     }
 
-    private var activeJob: WorkJob? {
-        guard let jobs = try? WorkflowRuntime.shared.jobStore?.allJobs() else { return nil }
-        return jobs.last {
-            $0.kind == .transcriptIngest && $0.subjectID == episode.id
-        }
+    private var activeJob: WorkflowJobProjection? {
+        workflows.latest(kind: .transcriptIngest, subjectID: episode.id)
     }
 
     private var jobStatusLabel: String {
@@ -148,4 +147,5 @@ struct TranscribingInProgressView: View {
     )
     return NavigationStack { TranscribingInProgressView(episode: episode) }
         .environment(AppStateStore())
+        .environment(WorkflowClient())
 }

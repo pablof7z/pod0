@@ -47,6 +47,7 @@ struct AllEpisodesEpisodeList: View {
                 trailing: AppTheme.Spacing.lg
             ))
             .listRowBackground(Color(.systemBackground))
+            .workflowProjectionScope(subjectIDs: [ep.id], kinds: [.download])
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 EpisodeRowLeadingSwipeAction(episode: ep, playback: playback)
             }

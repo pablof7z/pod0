@@ -4,6 +4,7 @@ import SwiftUI
 
 struct DownloadsManagerView: View {
     @Environment(AppStateStore.self) private var store
+    @Environment(WorkflowClient.self) private var workflows
     @State private var downloadService = EpisodeDownloadService.shared
     @State private var confirmCancelActive = false
     @State private var confirmDeleteDownloaded = false
@@ -30,6 +31,7 @@ struct DownloadsManagerView: View {
         .settingsListStyle()
         .navigationTitle("Downloads")
         .navigationBarTitleDisplayMode(.large)
+        .workflowAttentionScope(kinds: [.download])
         .task {
             downloadService.attach(appStore: store)
         }
@@ -205,9 +207,8 @@ struct DownloadsManagerView: View {
         }
     }
 
-    private func latestDownloadJob(for episodeID: UUID) -> WorkJob? {
-        guard let jobs = try? WorkflowRuntime.shared.jobStore?.allJobs() else { return nil }
-        return jobs.last { $0.kind == .download && $0.subjectID == episodeID }
+    private func latestDownloadJob(for episodeID: UUID) -> WorkflowJobProjection? {
+        workflows.latest(kind: .download, subjectID: episodeID)
     }
 
     // MARK: - Actions
@@ -223,7 +224,7 @@ struct DownloadsManagerView: View {
             downloadService.cancel(episodeID: row.id)
         case .dismissFailure:
             Haptics.light()
-            WorkflowRuntime.shared.dismissDownloadFailure(episodeID: row.id)
+            workflows.dismissDownloadFailure(episodeID: row.id)
         case .delete:
             Haptics.warning()
             downloadService.delete(episodeID: row.id)

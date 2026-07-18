@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(AppStateStore.self) private var store
+    @Environment(WorkflowClient.self) private var workflows
     @State private var storageSummary: String?
 
     var body: some View {
@@ -15,6 +16,7 @@ struct SettingsView: View {
         .settingsListStyle()
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.large)
+        .workflowAttentionScope(kinds: [.download])
         .task {
             // Cheap directory walk; runs once when Settings opens so the
             // Data & Storage row can show the total without a navigation push.
@@ -207,11 +209,9 @@ struct SettingsView: View {
                 break
             }
         }
-        if let jobs = try? WorkflowRuntime.shared.jobStore?.allJobs() {
-            for job in jobs where job.kind == .download {
-                if job.state == .failedPermanent || job.state == .blocked { failed += 1 }
-                else if job.state.isActive { active += 1 }
-            }
+        for job in workflows.jobs(kind: .download) {
+            if job.state == .failedPermanent || job.state == .blocked { failed += 1 }
+            else if job.state.isActive { active += 1 }
         }
         if active > 0 { return "\(active) active" }
         if failed > 0 { return "\(failed) failed" }

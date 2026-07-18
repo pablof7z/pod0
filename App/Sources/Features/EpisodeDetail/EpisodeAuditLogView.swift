@@ -5,25 +5,22 @@ import SwiftUI
 /// "Diagnostics" sheet for a single episode. Answers the user's question:
 /// *why doesn't this episode have a transcript / why didn't the download work?*
 ///
-/// Renders the full audit log (download + transcript pipeline decisions, both
-/// attempts and silent skips) in reverse-chronological order. Each row
-/// summarises the event; tapping reveals every captured detail (URLs, HTTP
-/// statuses, error strings, audio source, etc.).
+/// Renders the full audit log in reverse-chronological order. Each row
+/// summarises the event; tapping reveals its captured details.
 ///
 /// Two retry affordances at the top:
 ///   - "Retry transcription" pushes a fresh `TranscriptIngestService.ingest`
 ///     so the user can watch new events stream in.
 ///   - "Retry download" kicks the download service for failed / missing files.
 struct EpisodeAuditLogView: View {
-
     let episode: Episode
 
     @Environment(AppStateStore.self) private var store
+    @Environment(WorkflowClient.self) private var workflows
     @Environment(\.dismiss) private var dismiss
 
     @State private var auditStore = EpisodeAuditLogStore.shared
     @State private var expandedEventIDs: Set<UUID> = []
-
     private var events: [EpisodeAuditEvent] {
         auditStore.eventsNewestFirst(for: episode.id)
     }
@@ -56,8 +53,11 @@ struct EpisodeAuditLogView: View {
                 }
             }
         }
+        .workflowProjectionScope(
+            subjectIDs: [episode.id],
+            kinds: [.download, .transcriptIngest]
+        )
     }
-
     // MARK: - Sections
 
     private var summarySection: some View {
@@ -145,7 +145,7 @@ struct EpisodeAuditLogView: View {
         )
         let episodeID = episode.id
         store.setRequestedTranscriptProvider(episodeID, provider: forceProvider)
-        WorkflowRuntime.shared.requestTranscript(episodeID: episodeID, provider: forceProvider)
+        workflows.requestTranscript(episodeID: episodeID, provider: forceProvider)
     }
 
     /// Providers we can actually run on this device right now. Apple needs the
@@ -262,15 +262,15 @@ struct EpisodeAuditLogView: View {
         }
     }
 
-    private var downloadJob: WorkJob? {
-        WorkflowRuntime.shared.latestJob(kind: .download, subjectID: episode.id)
+    private var downloadJob: WorkflowJobProjection? {
+        workflows.latest(kind: .download, subjectID: episode.id)
     }
 
-    private var transcriptJob: WorkJob? {
-        WorkflowRuntime.shared.latestJob(kind: .transcriptIngest, subjectID: episode.id)
+    private var transcriptJob: WorkflowJobProjection? {
+        workflows.latest(kind: .transcriptIngest, subjectID: episode.id)
     }
 
-    private func jobSummary(_ job: WorkJob?) -> String? {
+    private func jobSummary(_ job: WorkflowJobProjection?) -> String? {
         guard let job else { return nil }
         switch job.state {
         case .pending, .leased: return "queued"

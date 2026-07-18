@@ -70,6 +70,7 @@ struct EpisodeRowTrailingSwipeAction: View {
 struct EpisodeRowDownloadSwipeAction: View {
     let episode: Episode
     let store: AppStateStore
+    @Environment(WorkflowClient.self) private var workflows
 
     var body: some View {
         if case .downloaded = episode.downloadState {
@@ -114,7 +115,7 @@ struct EpisodeRowDownloadSwipeAction: View {
     }
 
     private var downloadJobState: WorkJobState? {
-        WorkflowRuntime.shared.latestJob(kind: .download, subjectID: episode.id)?.state
+        workflows.latest(kind: .download, subjectID: episode.id)?.state
     }
 
     private var downloadIsActive: Bool {

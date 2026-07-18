@@ -28,6 +28,7 @@ struct EpisodeDetailView: View {
 
     @Environment(AppStateStore.self) private var store
     @Environment(PlaybackState.self) private var playback
+    @Environment(WorkflowClient.self) private var workflows
 
     // MARK: State
 
@@ -46,6 +47,10 @@ struct EpisodeDetailView: View {
             }
         }
         .background(Color(.systemBackground).ignoresSafeArea())
+        .workflowProjectionScope(
+            subjectIDs: [episodeID],
+            kinds: [.download, .transcriptIngest, .chapterArtifacts]
+        )
     }
 
     // MARK: - Loaded
@@ -92,7 +97,7 @@ struct EpisodeDetailView: View {
         .toolbar { actionsToolbar(episode: episode) }
         .task(id: episode.id) {
             await warmTranscriptIfNeeded(episode: episode)
-            WorkflowRuntime.shared.wake()
+            workflows.wake()
         }
     }
 
@@ -110,7 +115,7 @@ struct EpisodeDetailView: View {
         // a transcript even though no publisher transcript URL exists.
         let isUnknownExternal = episode.podcastID == Podcast.unknownID
         guard episode.publisherTranscriptURL != nil || isUnknownExternal else { return }
-        WorkflowRuntime.shared.requestTranscript(episodeID: episode.id)
+        workflows.requestTranscript(episodeID: episode.id)
     }
 
     // MARK: - Missing
@@ -174,8 +179,8 @@ struct EpisodeDetailView: View {
         }
     }
 
-    private func downloadJob(for episodeID: UUID) -> WorkJob? {
-        WorkflowRuntime.shared.latestJob(kind: .download, subjectID: episodeID)
+    private func downloadJob(for episodeID: UUID) -> WorkflowJobProjection? {
+        workflows.latest(kind: .download, subjectID: episodeID)
     }
 
     @ToolbarContentBuilder
@@ -234,4 +239,5 @@ struct EpisodeDetailView: View {
     }
     .environment(store)
     .environment(playback)
+    .environment(WorkflowClient())
 }

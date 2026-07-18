@@ -11,6 +11,7 @@ struct PodcastrApp: App {
     /// on Home / Library / Clippings — i.e. while no chat session exists.
     /// Mounted on `RootView` via `agentAskPresenter(coordinator:)`.
     @State private var askCoordinator = AgentAskCoordinator()
+    @State private var workflows = WorkflowClient()
 
     // MARK: - What's-new sheet wiring
     //
@@ -35,7 +36,8 @@ struct PodcastrApp: App {
             RootView()
                 .environment(store)
                 .environment(askCoordinator)
-                .task { await WorkflowRuntime.shared.startAndReconcile() }
+                .environment(workflows)
+                .task { await workflows.startAndReconcile() }
                 .task {
                     // Seed a fresh install silently so the first launch
                     // doesn't dump the entire changelog as "new."

@@ -19,12 +19,12 @@ enum RootTab: String, CaseIterable {
         }
     }
 }
-
 /// The root view of the app. Hosts the main tab bar (hidden), onboarding gate,
 /// deep-link routing, and the avatar sidebar.
 struct RootView: View {
     @Environment(AppStateStore.self) var store
     @Environment(AgentAskCoordinator.self) var askCoordinator
+    @Environment(WorkflowClient.self) var workflows
     @State var selectedTab: RootTab = .home
     @State var showSettings = false
     @State var showAgentChat = false
@@ -58,10 +58,10 @@ struct RootView: View {
                     }
                 }
                 .task {
-                    WorkflowRuntime.shared.podcastDepsProvider = { [store, playbackState] in
+                    workflows.configurePodcastDependencies { [store, playbackState] in
                         LivePodcastAgentToolDeps.make(store: store, playback: playbackState)
                     }
-                    await WorkflowRuntime.shared.reconcileAndDrain()
+                    await workflows.reconcileAndDrain()
                 }
                 .onAppear { setupPlaybackHandlers() }
                 .onChange(of: store.state.settings) { _, new in
@@ -118,7 +118,7 @@ struct RootView: View {
                 }
                 .sheet(isPresented: $showSearch) { searchSheet }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-                    Task { await WorkflowRuntime.shared.reconcileAndDrain() }
+                    Task { await workflows.reconcileAndDrain() }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .voiceModeRequested)) { _ in
                     showVoiceMode = true

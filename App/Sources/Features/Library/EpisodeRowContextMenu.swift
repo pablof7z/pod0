@@ -41,6 +41,7 @@ struct EpisodeRowContextMenu<Route: Hashable>: View {
     /// Live download service — observed so the surfaced affordance flips between
     /// Download / Cancel / Remove / Retry as the underlying state moves.
     @State private var downloadService = EpisodeDownloadService.shared
+    @Environment(WorkflowClient.self) private var workflows
 
     var body: some View {
         // No wrapping container view — `.contextMenu` walks the body looking
@@ -223,7 +224,7 @@ struct EpisodeRowContextMenu<Route: Hashable>: View {
     }
 
     private var downloadJobState: WorkJobState? {
-        WorkflowRuntime.shared.latestJob(kind: .download, subjectID: episode.id)?.state
+        workflows.latest(kind: .download, subjectID: episode.id)?.state
     }
 
     private var downloadIsActive: Bool {

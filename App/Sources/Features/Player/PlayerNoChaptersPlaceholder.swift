@@ -15,6 +15,7 @@ import SwiftUI
 
 struct PlayerNoChaptersPlaceholder: View {
     let episode: Episode?
+    @Environment(WorkflowClient.self) private var workflows
 
     var body: some View {
         VStack(spacing: AppTheme.Spacing.sm) {
@@ -38,6 +39,10 @@ struct PlayerNoChaptersPlaceholder: View {
         .background(cardBackground)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(headline). \(subhead)")
+        .workflowProjectionScope(
+            subjectIDs: episode.map { [$0.id] } ?? [],
+            kinds: [.transcriptIngest, .chapterArtifacts]
+        )
     }
 
     // MARK: - Copy
@@ -81,12 +86,10 @@ struct PlayerNoChaptersPlaceholder: View {
         return "This episode has no published chapters. Use the scrubber to navigate."
     }
 
-    private func workflowJob(for episode: Episode) -> WorkJob? {
-        guard let jobs = try? WorkflowRuntime.shared.jobStore?.allJobs() else { return nil }
-        return jobs.last {
-            $0.subjectID == episode.id
-                && ($0.kind == .transcriptIngest || $0.kind == .chapterArtifacts)
-        }
+    private func workflowJob(for episode: Episode) -> WorkflowJobProjection? {
+        let transcript = workflows.latest(kind: .transcriptIngest, subjectID: episode.id)
+        let chapters = workflows.latest(kind: .chapterArtifacts, subjectID: episode.id)
+        return [transcript, chapters].compactMap { $0 }.max { $0.updatedAt < $1.updatedAt }
     }
 
     // MARK: - Background

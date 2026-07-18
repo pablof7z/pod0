@@ -16,6 +16,7 @@ import SwiftUI
 struct ShowDetailView: View {
 
     @Environment(AppStateStore.self) private var store
+    @Environment(WorkflowClient.self) private var workflows
     @Environment(\.dismiss) private var dismiss
 
     let podcast: Podcast
@@ -141,6 +142,7 @@ struct ShowDetailView: View {
         .navigationDestination(item: $voiceOverDetailRoute) { route in
             LibraryEpisodePlaceholder(route: route)
         }
+        .workflowProjectionScope(subjectIDs: episodes.map(\.id), kinds: [.download])
     }
 
     // MARK: - Live snapshot
@@ -363,9 +365,6 @@ struct ShowDetailView: View {
     }
 
     private func hasActiveDownloadJob(episodeID: UUID) -> Bool {
-        guard let jobs = try? WorkflowRuntime.shared.jobStore?.allJobs() else { return false }
-        return jobs.contains {
-            $0.kind == .download && $0.subjectID == episodeID && $0.state.isActive
-        }
+        workflows.latest(kind: .download, subjectID: episodeID)?.state.isActive == true
     }
 }

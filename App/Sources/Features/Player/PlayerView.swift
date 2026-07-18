@@ -3,18 +3,14 @@ import SwiftUI
 
 /// Full-screen Now Playing surface.
 ///
-/// Layout: a single vertical `ScrollView` whose content is the compact
-/// episode header (artwork left, title/show/metadata right) followed by the
-/// chapter rail. The top bar floats with the close button + the
-/// share/AirPlay/more cluster, swapping the middle label from show-name to a
-/// compact artwork+title once the hero has scrolled offscreen. The playback
+/// The top bar floats above a paged chapters/show-notes surface. The playback
 /// chrome (scrubber + transport + action cluster) floats at the bottom in a
 /// single glass island via `safeAreaInset(edge: .bottom)`. Colors and fonts
 /// use semantic / Dynamic Type styles so the surface adapts to the user's
 /// appearance settings and accent color.
 struct PlayerView: View {
-
     @Environment(AppStateStore.self) private var store
+    @Environment(WorkflowClient.self) private var workflows
     @Bindable var state: PlaybackState
     @Environment(\.dismiss) private var dismiss
     let glassNamespace: Namespace.ID
@@ -121,7 +117,7 @@ struct PlayerView: View {
             episodeDetailTarget = uuid
         }
         .task(id: state.episode?.id) {
-            if state.episode != nil { WorkflowRuntime.shared.wake() }
+            if state.episode != nil { workflows.wake() }
             AutoSnipController.shared.attach(playback: state, store: store)
         }
         .overlay(alignment: .top) {
@@ -132,6 +128,10 @@ struct PlayerView: View {
             }
             .padding(.top, AppTheme.Spacing.lg)
         }
+        .workflowProjectionScope(
+            subjectIDs: state.episode.map { [$0.id] } ?? [],
+            kinds: [.transcriptIngest, .chapterArtifacts]
+        )
     }
 
     // MARK: - Top bar

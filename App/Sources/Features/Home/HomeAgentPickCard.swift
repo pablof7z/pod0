@@ -31,6 +31,7 @@ struct HomeAgentPickCard: View {
         )
         .contentShape(RoundedRectangle(cornerRadius: AppTheme.Corner.lg, style: .continuous))
         .onTapGesture(perform: onPlay)
+        .workflowProjectionScope(subjectIDs: [episode.id], kinds: [.download])
         .contextMenu {
             EpisodeRowContextMenu(
                 episode: episode,

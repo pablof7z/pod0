@@ -10,12 +10,16 @@ final class WorkflowRuntime {
     private(set) var jobStore: JobStore?
     private(set) var artifactRepository: ArtifactRepository?
     private var coordinator: WorkCoordinator?
+    private weak var client: WorkflowClient?
     private lazy var persistenceObserver: NSObjectProtocol = NotificationCenter.default.addObserver(
         forName: .persistenceDidCommitWorkflowJobs,
         object: nil,
         queue: .main
     ) { [weak self] _ in
-        MainActor.assumeIsolated { self?.wake() }
+        MainActor.assumeIsolated {
+            self?.client?.refresh()
+            self?.wake()
+        }
     }
     var podcastDepsProvider: @MainActor @Sendable () -> PodcastAgentToolDeps? = { nil }
 
@@ -30,6 +34,7 @@ final class WorkflowRuntime {
         let artifacts = ArtifactRepository(fileURL: databaseURL)
         jobStore = jobs
         artifactRepository = artifacts
+        client?.attach(jobStore: jobs)
 
         let scheduled = ScheduledAgentRunJobExecutor(
             store: store,
@@ -58,6 +63,12 @@ final class WorkflowRuntime {
             executors: executors,
             verifiers: verifiers
         )
+    }
+
+    func attach(client: WorkflowClient) {
+        _ = persistenceObserver
+        self.client = client
+        if let jobStore { client.attach(jobStore: jobStore) }
     }
 
     func startAndReconcile() async {

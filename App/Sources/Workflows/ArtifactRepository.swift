@@ -155,6 +155,7 @@ struct ArtifactRepository: Sendable {
                 throw error
             }
         }
+        WorkflowJobChangeSignal.post(fileURL: fileURL)
     }
 
     /// Records a verified artifact found by reconciliation. This is used only

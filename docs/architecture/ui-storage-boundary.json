@@ -23,13 +23,6 @@
   ],
   "exceptions": [
     {
-      "file": "App/Sources/App/RootView.swift",
-      "rules": ["workflow-runtime-access"],
-      "issues": [51, 60],
-      "reason": "Current composition/wake bridge until observable workflow projections and shared runtime cutover.",
-      "deletion_target": "Replace direct singleton calls with injected typed application intents/projections."
-    },
-    {
       "file": "App/Sources/Features/Agent/AgentChatSession.swift",
       "rules": ["chat-history-store-access"],
       "issues": [60],
@@ -51,60 +44,11 @@
       "deletion_target": "Dispatch shared recall command and render evidence projection."
     },
     {
-      "file": "App/Sources/Features/Player/PlayerView.swift",
-      "rules": ["workflow-runtime-access"],
-      "issues": [51, 60],
-      "reason": "Temporary workflow wake call on player appearance.",
-      "deletion_target": "Dispatch a typed lifecycle/opportunity intent through the application adapter."
-    },
-    {
-      "file": "App/Sources/Features/Player/PlayerNoChaptersPlaceholder.swift",
-      "rules": ["workflow-runtime-access"],
-      "issues": [50, 51],
-      "reason": "Current placeholder reads jobs directly to infer chapter state.",
-      "deletion_target": "Render the authoritative workflow projection from #51."
-    },
-    {
-      "file": "App/Sources/Features/Settings/SettingsView.swift",
-      "rules": ["workflow-runtime-access"],
-      "issues": [51, 52],
-      "reason": "Current diagnostics summary reads workflow rows directly.",
-      "deletion_target": "Consume the complete diagnostic projection from #51/#52."
-    },
-    {
-      "file": "App/Sources/Features/Library/ShowDetailView.swift",
-      "rules": ["workflow-runtime-access"],
-      "issues": [50, 51],
-      "reason": "Current show detail derives transient workflow status from the runtime.",
-      "deletion_target": "Consume a subject-scoped workflow projection."
-    },
-    {
       "file": "App/Sources/Features/Player/AutoSnip/AutoSnipController.swift",
       "rules": ["transcript-store-access"],
       "issues": [59, 60],
       "reason": "Temporary product-proof controller reads transcript artifacts for clip capture.",
       "deletion_target": "Request a typed transcript span/clip commit from the shared core."
-    },
-    {
-      "file": "App/Sources/Features/Library/EpisodeRowSwipeActions.swift",
-      "rules": ["workflow-runtime-access"],
-      "issues": [51],
-      "reason": "Current row action reads download job state directly.",
-      "deletion_target": "Render action availability from the authoritative job projection."
-    },
-    {
-      "file": "App/Sources/Features/Library/EpisodeRowContextMenu.swift",
-      "rules": ["workflow-runtime-access"],
-      "issues": [51],
-      "reason": "Current context menu reads download job state directly.",
-      "deletion_target": "Render action availability from the authoritative job projection."
-    },
-    {
-      "file": "App/Sources/Features/Settings/DownloadsManagerView.swift",
-      "rules": ["workflow-runtime-access"],
-      "issues": [51, 52],
-      "reason": "Current downloads manager reads/actions the workflow singleton.",
-      "deletion_target": "Consume projections and dispatch validated typed retry/dismiss commands."
     },
     {
       "file": "App/Sources/Features/Search/PodcastSearchViewModel.swift",
@@ -115,31 +59,10 @@
     },
     {
       "file": "App/Sources/Features/EpisodeDetail/EpisodeDetailView.swift",
-      "rules": ["workflow-runtime-access", "transcript-store-access"],
-      "issues": [50, 51, 59, 60],
-      "reason": "Current detail screen requests/reads workflow and transcript state directly.",
-      "deletion_target": "Use typed workflow/transcript commands and subject-scoped projections."
-    },
-    {
-      "file": "App/Sources/Features/EpisodeDetail/EpisodeAuditLogView.swift",
-      "rules": ["workflow-runtime-access"],
-      "issues": [51, 52],
-      "reason": "Current audit view requests/reads workflow state directly.",
-      "deletion_target": "Use the complete diagnostic projection and validated commands."
-    },
-    {
-      "file": "App/Sources/Features/EpisodeDetail/TranscribingInProgressView.swift",
-      "rules": ["workflow-runtime-access"],
-      "issues": [50, 51],
-      "reason": "Current progress view requests/reads workflow state directly.",
-      "deletion_target": "Use the observable lifecycle projection and typed retry intent."
-    },
-    {
-      "file": "App/Sources/Features/EpisodeDetail/EpisodeDetailActionsMenu.swift",
-      "rules": ["workflow-runtime-access"],
-      "issues": [51],
-      "reason": "Current action menu reads download workflow state directly.",
-      "deletion_target": "Use projection-supplied action capabilities."
+      "rules": ["transcript-store-access"],
+      "issues": [59, 60],
+      "reason": "Current detail screen reads the temporary Swift transcript artifact store.",
+      "deletion_target": "Render a bounded transcript projection from the shared core."
     }
   ]
 }

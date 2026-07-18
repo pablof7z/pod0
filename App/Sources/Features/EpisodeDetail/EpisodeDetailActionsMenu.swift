@@ -17,6 +17,7 @@ struct EpisodeDetailActionsMenu: View {
     /// (rather than threaded through every call-site) to match the pattern used
     /// by every other feature view in the app (Home, Library, Search, Agent).
     @Environment(PlaybackState.self) private var playback
+    @Environment(WorkflowClient.self) private var workflows
 
     @State private var confirmDelete: Bool = false
     @State private var showDiagnostics: Bool = false
@@ -102,8 +103,8 @@ struct EpisodeDetailActionsMenu: View {
         }
     }
 
-    private var downloadJob: WorkJob? {
-        WorkflowRuntime.shared.latestJob(kind: .download, subjectID: episode.id)
+    private var downloadJob: WorkflowJobProjection? {
+        workflows.latest(kind: .download, subjectID: episode.id)
     }
 
     // MARK: - Queue menu item
