@@ -53,6 +53,7 @@ Regenerate or verify the language bindings with:
 ./scripts/generate_core_bindings.sh
 ./scripts/check_core_binding_drift.sh
 ./scripts/check_kotlin_core_bindings.sh
+./scripts/check_core_portability.sh
 ```
 
 `generate_core_bindings.sh` invokes the in-workspace UniFFI 0.32.0 CLI and
@@ -64,6 +65,11 @@ iOS device and simulator static libraries into the ignored
 `.build/pod0core/Pod0CoreFFI.xcframework` before Tuist generates the project.
 The bootstrap then normalizes Tuist's local binary reference to `SOURCE_ROOT`
 so the committed Xcode project contains no checkout-specific absolute path.
+The portability check pins cargo-ndk 4.1.2, Android NDK 26.3.11579264, and API
+23; it checks every workspace crate on Android arm64 and links facade libraries
+for Android arm64/x86_64. Those results prove API portability, not permission
+to begin the M6 Android application phase; the M5 product/architecture gate
+remains authoritative.
 
 ## Security hold on NMP consumption
 

@@ -31,7 +31,7 @@ jobs:
   test:
     name: Build and Test
     runs-on: self-hosted
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       - name: Check out repository
@@ -44,6 +44,7 @@ jobs:
         run: |
           command -v cargo-deny >/dev/null || cargo install cargo-deny --version 0.20.2 --locked
           command -v cargo-audit >/dev/null || cargo install cargo-audit --version 0.22.2 --locked
+          cargo ndk --version 2>/dev/null | grep -q ' 4.1.2$' || cargo install cargo-ndk --version 4.1.2 --locked
 
       - name: Validate Rust workspace
         run: ./scripts/check_rust.sh
@@ -53,6 +54,9 @@ jobs:
 
       - name: Compile and exercise Kotlin bindings
         run: ./scripts/check_kotlin_core_bindings.sh
+
+      - name: Validate Apple and Android core portability
+        run: ./scripts/check_core_portability.sh
 
       - name: Bootstrap project
         run: ./ci_scripts/bootstrap_project.sh

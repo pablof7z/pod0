@@ -122,7 +122,15 @@ Shared-core and generated-binding checks:
 ./scripts/check_rust.sh
 ./scripts/check_core_binding_drift.sh
 ./scripts/check_kotlin_core_bindings.sh
+./scripts/check_core_portability.sh
 ```
+
+The portability gate uses Rust 1.93.0, cargo-ndk 4.1.2, Android NDK
+26.3.11579264, and Android API 23. It checks the complete workspace for
+Android arm64, links facade libraries for Android arm64 and x86_64, and builds
+the same Apple device/simulator XCFramework consumed by iOS. A green Android
+compile is readiness evidence only; it does not open the gated Android product
+phase or supersede the M5 validation decision.
 
 iOS tests:
 
