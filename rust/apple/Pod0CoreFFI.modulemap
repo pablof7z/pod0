@@ -1,0 +1,14 @@
+module pod0_domainFFI {
+  header "pod0_domainFFI.h"
+  export *
+}
+
+module pod0_applicationFFI {
+  header "pod0_applicationFFI.h"
+  export *
+}
+
+module pod0_facadeFFI {
+  header "pod0_facadeFFI.h"
+  export *
+}

@@ -12,3 +12,5 @@ DerivedDevice/
 *.dSYM.zip
 *.dSYM
 rust/target/
+.build/pod0core/
+.build/pod0-tools/

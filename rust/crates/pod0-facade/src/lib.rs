@@ -18,10 +18,42 @@ pub use pod0_domain::{
     SubscriptionId, UnixTimestampMilliseconds,
 };
 
+uniffi::setup_scaffolding!();
+
+mod runtime;
+mod runtime_state;
+#[cfg(test)]
+mod runtime_tests;
+pub use runtime::Pod0Facade;
+
+#[derive(Debug, uniffi::Error)]
+pub enum ProjectionDeliveryError {
+    CallbackFailed { safe_message: String },
+    UnexpectedCallback,
+}
+
+impl std::fmt::Display for ProjectionDeliveryError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::CallbackFailed { safe_message } => formatter.write_str(safe_message),
+            Self::UnexpectedCallback => formatter.write_str("projection callback failed"),
+        }
+    }
+}
+
+impl std::error::Error for ProjectionDeliveryError {}
+
+impl From<uniffi::UnexpectedUniFFICallbackError> for ProjectionDeliveryError {
+    fn from(_: uniffi::UnexpectedUniFFICallbackError) -> Self {
+        Self::UnexpectedCallback
+    }
+}
+
 /// Event-driven projection delivery. The generated Swift and Kotlin callback
-/// interfaces will derive from this single app-owned surface in issue #76.
+/// interfaces derive from this single app-owned surface.
+#[uniffi::export(with_foreign)]
 pub trait ProjectionSubscriber: Send + Sync {
-    fn receive(&self, projection: ProjectionEnvelope);
+    fn receive(&self, projection: ProjectionEnvelope) -> Result<(), ProjectionDeliveryError>;
 }
 
 /// Shape of the one native/core API. Dispatch and host observation methods do
@@ -39,13 +71,12 @@ pub trait Pod0ApplicationApi: Send + Sync {
     fn record_host_observation(&self, observation: HostObservationEnvelope);
 }
 
-/// The sole app-owned native/core boundary. This bootstrap wrapper proves the
-/// dependency direction; issue #74 adds the real bounded listening contract.
-pub struct Pod0Facade<C> {
+/// An internal deterministic probe retained for injected-time characterization.
+pub struct KernelProbeFacade<C> {
     application: KernelApplication<C>,
 }
 
-impl<C: Clock> Pod0Facade<C> {
+impl<C: Clock> KernelProbeFacade<C> {
     #[must_use]
     pub const fn new(clock: C) -> Self {
         Self {
@@ -77,7 +108,7 @@ mod tests {
             command_id: CommandId::from_bytes([4; 16]),
         };
 
-        let projection = Pod0Facade::new(FixedClock).dispatch_probe(command);
+        let projection = KernelProbeFacade::new(FixedClock).dispatch_probe(command);
 
         assert_eq!(projection.command_id, command.command_id);
         assert_eq!(projection.observed_at.value(), 42);

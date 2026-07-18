@@ -12,6 +12,13 @@ Swift NMP surface was removed after product narrowing. Pod0 still intends to
 use Nostr for identity, coordination, publishing, and remote-agent flows, but
 generic NMP must not become a home for podcast application concepts.
 
+## Implementation status
+
+The workspace and exact NMP pin landed after this decision. NMP remains
+isolated in `pod0-nmp`; no application crate or iOS binary consumes it while
+security issue #85 is open. The generated native facade is app-owned and no
+Swift NMP surface has been restored.
+
 ## Decision
 
 Create one Pod0-owned Rust workspace with cohesive crates or modules for:

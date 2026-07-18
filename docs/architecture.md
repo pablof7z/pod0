@@ -7,11 +7,14 @@ index](architecture/README.md).
 ## Current implementation
 
 Pod0 is a Swift 6/Tuist iOS+iPadOS application with a widget. `rust/` is an
-additive Pod0-owned domain/application/facade workspace with deterministic
-bootstrap tests and an exact generic NMP pin. It owns no user data and is not
-linked into the app yet. There is no generated FFI layer, Kotlin binding, or
-Android project. The NMP adapter remains isolated from the facade while the
-security hold in issue #85 is active.
+additive Pod0-owned domain/application/facade workspace with a typed UniFFI
+surface, deterministic bootstrap tests, and an exact generic NMP pin. Generated
+Swift and Kotlin APIs derive from the same Rust metadata. The Swift API is
+linked into iOS as `Pod0Core` and has a runtime smoke test; the Kotlin API has a
+JVM compile/runtime smoke test. The bootstrap facade is in-memory and owns no
+user data, so Swift remains authoritative. There is no Android project. The NMP
+adapter remains isolated from the facade while the security hold in issue #85
+is active.
 
 ### Application state
 
@@ -91,8 +94,8 @@ The Pod0 Rust kernel progressively owns:
 
 ## Native/shared communication
 
-There is one app-owned facade contract; issue #76 will generate its UniFFI
-Swift and Kotlin bindings.
+There is one app-owned facade contract with committed, reproducibly generated
+Swift and Kotlin bindings. CI rejects drift from Rust metadata.
 
 - Native dispatches typed fire-and-forget commands.
 - One Rust actor is the writer for migrated state.

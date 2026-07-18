@@ -5,7 +5,7 @@ pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct CommandEnvelope {
     pub command_id: CommandId,
     pub cancellation_id: CancellationId,
@@ -13,7 +13,7 @@ pub struct CommandEnvelope {
     pub command: ApplicationCommand,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum ApplicationCommand {
     SubscribeToFeed { feed_url: String },
     Unsubscribe { podcast_id: PodcastId },
@@ -22,14 +22,14 @@ pub enum ApplicationCommand {
     Unsupported { wire_code: u32 },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum ProjectionScope {
     Library,
     Playback,
     Unsupported { wire_code: u32 },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct ProjectionRequest {
     pub scope: ProjectionScope,
     pub max_items: u16,
@@ -42,27 +42,27 @@ impl ProjectionRequest {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct ProjectionEnvelope {
     pub contract_version: u32,
     pub state_revision: StateRevision,
     pub projection: Projection,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum Projection {
-    Library(LibraryProjection),
-    Playback(PlaybackProjection),
-    Unsupported(UnsupportedProjection),
+    Library { value: LibraryProjection },
+    Playback { value: PlaybackProjection },
+    Unsupported { value: UnsupportedProjection },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct UnsupportedProjection {
     pub wire_code: u32,
     pub message: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct LibraryProjection {
     pub podcasts: Vec<PodcastSummary>,
     pub episodes: Vec<EpisodeSummary>,
@@ -81,14 +81,14 @@ impl LibraryProjection {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct PodcastSummary {
     pub podcast_id: PodcastId,
     pub title: String,
     pub subscribed: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct EpisodeSummary {
     pub episode_id: EpisodeId,
     pub podcast_id: PodcastId,
@@ -98,7 +98,7 @@ pub struct EpisodeSummary {
     pub completed: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct PlaybackProjection {
     pub current: Option<PlaybackItem>,
     pub queue: Vec<EpisodeId>,
@@ -113,7 +113,7 @@ impl PlaybackProjection {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct PlaybackItem {
     pub episode_id: EpisodeId,
     pub title: String,
@@ -121,7 +121,7 @@ pub struct PlaybackItem {
     pub policy_state: PlaybackPolicyState,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum PlaybackPolicyState {
     Idle,
     AwaitingHost,
@@ -131,7 +131,7 @@ pub enum PlaybackPolicyState {
     Unsupported { wire_code: u32 },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct OperationProjection {
     pub command_id: CommandId,
     pub cancellation_id: CancellationId,
@@ -139,7 +139,7 @@ pub struct OperationProjection {
     pub failure: Option<CoreFailure>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum OperationStage {
     Accepted,
     Running,
@@ -160,7 +160,7 @@ impl OperationStage {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct CoreFailure {
     pub code: CoreFailureCode,
     pub safe_detail: Option<String>,
@@ -168,7 +168,7 @@ pub struct CoreFailure {
     pub user_action: UserAction,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum CoreFailureCode {
     InvalidCommand,
     RevisionConflict,
@@ -179,7 +179,7 @@ pub enum CoreFailureCode {
     Unsupported { wire_code: u32 },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum Retryability {
     Never,
     Automatic,
@@ -187,7 +187,7 @@ pub enum Retryability {
     Unsupported { wire_code: u32 },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum UserAction {
     None,
     Retry,

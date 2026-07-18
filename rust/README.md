@@ -16,16 +16,18 @@ import and cutover. The permanent operating rule is:
   adapts NMP's public Rust facade; Pod0 nouns never enter NMP crates.
 - `pod0-facade` is the one app-owned native/core boundary. Its typed
   command/projection/event/host-request contract is documented in
-  [`FACADE_CONTRACT.md`](FACADE_CONTRACT.md), and #76 will derive Swift and
-  Kotlin bindings from that same source.
+  [`FACADE_CONTRACT.md`](FACADE_CONTRACT.md). Swift and Kotlin bindings derive
+  from that same source and are committed under `Generated/Pod0Core`.
 
 No crate may depend on NMP mechanism crates such as `nmp-engine`, `nmp-store`,
 or `nmp-ffi`. Pod0 will not import NMP's generated Swift/Kotlin bindings as a
 second bridge; the app-owned facade composes NMP inside Rust.
 
-The bootstrap probe is deliberately non-durable. It proves crate direction,
-injected time, deterministic output, and facade shape without inventing the
-listening model ahead of issue #78.
+The bootstrap runtime is deliberately non-durable. Its serialized in-memory
+writer proves crate direction, typed commands/projections/host effects,
+subscription lifecycle, cancellation, and binding shape without inventing the
+listening model ahead of issue #78. Dispatch performs no I/O or long-running
+work; issue #78 replaces this scaffold with the durable application actor.
 
 ## Reproducible checks
 
@@ -38,6 +40,24 @@ From the repository root:
 The script uses the exact toolchain in `rust-toolchain.toml`, the committed
 lockfile, formatting and Clippy gates, workspace tests, the dependency-boundary
 checker, `cargo-deny` license/source/advisory policy, and `cargo-audit`.
+
+Regenerate or verify the language bindings with:
+
+```sh
+./scripts/generate_core_bindings.sh
+./scripts/check_core_binding_drift.sh
+./scripts/check_kotlin_core_bindings.sh
+```
+
+`generate_core_bindings.sh` invokes the in-workspace UniFFI 0.32.0 CLI and
+updates both generated languages atomically. The drift check regenerates into a
+temporary directory and compares every file. The Kotlin check uses pinned,
+SHA-verified Kotlin, Temurin, and JNA artifacts to compile and exercise the
+generated facade. `ci_scripts/bootstrap_project.sh` builds deterministic arm64
+iOS device and simulator static libraries into the ignored
+`.build/pod0core/Pod0CoreFFI.xcframework` before Tuist generates the project.
+The bootstrap then normalizes Tuist's local binary reference to `SOURCE_ROOT`
+so the committed Xcode project contains no checkout-specific absolute path.
 
 ## Security hold on NMP consumption
 

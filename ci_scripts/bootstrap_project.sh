@@ -6,8 +6,11 @@ REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 
 cd "$REPO_ROOT"
 
+./scripts/build_pod0_core_apple.sh
+
 if ! command -v tuist >/dev/null 2>&1; then
   curl -Ls https://install.tuist.io | bash
 fi
 
 tuist generate --no-open
+python3 scripts/normalize_pod0_core_project.py

@@ -2,8 +2,8 @@
 
 This contract is the only allowed boundary between native applications and the
 Pod0 product kernel. Rust definitions are authoritative. Swift and Kotlin
-bindings will be generated from this surface in issue #76; native code must not
-create a parallel wire model.
+bindings are generated from this surface into `Generated/Pod0Core`; native code
+must not create a parallel wire model.
 
 ## Interaction model
 
@@ -81,8 +81,10 @@ decides retry, fallback, and durable state.
 ## Current bootstrap limitation
 
 The contract types, idempotency ledger, host-observation correlation, bounds,
-and subscription lifecycle are implemented and tested. No product domain has
-cut over: Swift remains the source of truth until the complete first listening
-slice imports data, enables the Rust actor, verifies parity, and deletes the
-replaced Swift ownership. The NMP adapter remains isolated by the security hold
-in issue #85.
+subscription lifecycle, Swift runtime bridge, and Kotlin runtime bridge are
+implemented and tested. The current serialized writer is an in-memory
+qualification scaffold: it performs no I/O and is not a durable authority. No
+product domain has cut over. Swift remains the source of truth until the
+complete first listening slice imports data, enables the durable Rust actor,
+verifies parity, and deletes the replaced Swift ownership. The NMP adapter
+remains isolated by the security hold in issue #85.

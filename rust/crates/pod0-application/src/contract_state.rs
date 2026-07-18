@@ -33,14 +33,15 @@ impl CommandLedger {
                 CommandRegistration::ConflictingReuse
             };
         }
-        if command
+        let is_stale = command
             .expected_revision
-            .is_some_and(|expected| expected != current_revision)
-        {
-            return CommandRegistration::StaleRevision;
-        }
+            .is_some_and(|expected| expected != current_revision);
         self.commands.insert(command.command_id, command);
-        CommandRegistration::Accepted
+        if is_stale {
+            CommandRegistration::StaleRevision
+        } else {
+            CommandRegistration::Accepted
+        }
     }
 }
 
@@ -73,6 +74,13 @@ pub struct HostRequestLedger {
 }
 
 impl HostRequestLedger {
+    #[must_use]
+    pub fn command_id(&self, request_id: HostRequestId) -> Option<CommandId> {
+        self.requests
+            .get(&request_id)
+            .map(|request| request.envelope.command_id)
+    }
+
     #[must_use]
     pub fn register(&mut self, request: HostRequestEnvelope) -> bool {
         if self.requests.contains_key(&request.request_id) {

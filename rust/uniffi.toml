@@ -1,0 +1,6 @@
+[defaults.bindings.swift]
+generate_immutable_records = true
+
+[defaults.bindings.kotlin]
+generate_immutable_records = true
+kotlin_target_version = "2.4.10"

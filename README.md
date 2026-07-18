@@ -22,10 +22,13 @@ product/repository name used by the architecture and roadmap.
   versioned artifacts, background opportunities, and process-reconstruction
   tests.
 
-Master is currently Swift-only. It does **not** yet contain a Rust workspace,
-UniFFI bindings, Kotlin source, an Android application, or an active generic NMP
-integration. Those enter through the staged roadmap below, not through the
-deleted legacy Swift NMP surface.
+Master also contains the additive Pod0 Rust kernel, one typed UniFFI facade,
+generated Swift and Kotlin bindings, and deterministic Apple packaging. The
+facade is linked into iOS for compile/runtime qualification but owns no user
+data yet; Swift remains authoritative until the first complete vertical-slice
+cutover. There is no Android application. Generic NMP is pinned behind the
+Pod0 adapter and is not linked into the facade while security issue #85 is
+open.
 
 ## Architecture
 
@@ -73,6 +76,10 @@ App/Sources/
 ├── Features/     SwiftUI presentation plus tracked temporary controllers
 ├── Voice/        Apple audio/speech capture
 └── Design/       SF typography, haptics, animation, native materials
+
+rust/              Pod0 domain, application, facade, and isolated NMP adapter
+Generated/Pod0Core generated Swift and Kotlin sources from one UniFFI artifact
+BindingsSmoke/     generated-binding runtime qualification harnesses
 ```
 
 `App/Widget` contains the native widget extension. `AppTests/Sources` contains
@@ -84,6 +91,7 @@ Requirements:
 
 - Xcode 26.4 or newer with an iOS 26 simulator runtime.
 - Tuist 4.x.
+- Rust 1.93.0 through the committed `rust-toolchain.toml`.
 - An Apple Developer account for signed device/TestFlight builds.
 
 Generate the project:
@@ -106,6 +114,14 @@ Architecture checks:
 
 ```bash
 python3 scripts/check_architecture.py --self-test
+```
+
+Shared-core and generated-binding checks:
+
+```bash
+./scripts/check_rust.sh
+./scripts/check_core_binding_drift.sh
+./scripts/check_kotlin_core_bindings.sh
 ```
 
 iOS tests:

@@ -40,6 +40,17 @@
       ]
     },
     {
+      "id": "native-core-binding-adapter",
+      "classification": "native_by_design",
+      "current_owner": "Swift generated-core module integration",
+      "target_owner": "Swift and future Kotlin projection adapters",
+      "reason": "Native shells import the generated app-owned facade and translate bounded projections into platform-observable presentation state.",
+      "boundary": "Use generated facade types directly; do not mirror durable models or make product decisions in the adapter.",
+      "persisted_state": "None.",
+      "priority": "keep_native",
+      "includes": ["App/Sources/Core/"]
+    },
+    {
       "id": "native-design-and-voice",
       "classification": "native_by_design",
       "current_owner": "Swift design and Apple speech/audio capture",

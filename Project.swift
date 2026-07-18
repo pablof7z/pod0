@@ -17,6 +17,7 @@ let appBundleID = "io.f7z.podcast"
 // pattern) so the working title can change without re-provisioning the group.
 let appGroupID = "group.com.podcastr.app"
 let widgetBundleID = "\(appBundleID).widget"
+let coreBindingsName = "Pod0Core"
 
 // MARK: - Project
 
@@ -59,6 +60,27 @@ let project = Project(
     ),
     targets: [
         .target(
+            name: coreBindingsName,
+            destinations: [.iPhone, .iPad],
+            product: .framework,
+            bundleId: "\(appBundleID).core",
+            deploymentTargets: deploymentTarget,
+            infoPlist: .default,
+            sources: ["Generated/Pod0Core/Swift/*.swift"],
+            dependencies: [
+                .xcframework(
+                    path: .relativeToRoot(".build/pod0core/Pod0CoreFFI.xcframework")
+                ),
+            ],
+            settings: .settings(
+                base: [
+                    "SWIFT_VERSION": "6.0",
+                    "SWIFT_STRICT_CONCURRENCY": "complete",
+                    "SKIP_INSTALL": "YES",
+                ]
+            )
+        ),
+        .target(
             name: appName,
             destinations: [.iPhone, .iPad],
             product: .app,
@@ -75,6 +97,7 @@ let project = Project(
                 .package(product: "P256K"),
                 .package(product: "SQLiteVec"),
                 .package(product: "Kingfisher"),
+                .target(name: coreBindingsName),
                 .target(name: "\(appName)Widget"),
             ],
             settings: .settings(
@@ -123,7 +146,10 @@ let project = Project(
             bundleId: "\(appBundleID).tests",
             deploymentTargets: deploymentTarget,
             sources: ["AppTests/Sources/**"],
-            dependencies: [.target(name: appName)],
+            dependencies: [
+                .target(name: appName),
+                .target(name: coreBindingsName),
+            ],
             settings: .settings(
                 base: [
                     "GENERATE_INFOPLIST_FILE": "YES",

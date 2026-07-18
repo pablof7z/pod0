@@ -2,6 +2,8 @@
 
 use pod0_domain::{CommandId, UnixTimestampMilliseconds};
 
+uniffi::setup_scaffolding!();
+
 mod contract;
 mod contract_state;
 #[cfg(test)]

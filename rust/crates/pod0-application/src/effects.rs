@@ -12,7 +12,7 @@ pub fn bounded_host_request_count(requested: u16) -> usize {
     usize::from(requested.clamp(1, crate::MAX_HOST_REQUEST_BATCH))
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct DomainEventEnvelope {
     pub event_id: DomainEventId,
     pub state_revision: StateRevision,
@@ -21,7 +21,7 @@ pub struct DomainEventEnvelope {
     pub event: DomainEvent,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum DomainEvent {
     CommandAccepted,
     HostRequestIssued {
@@ -45,7 +45,7 @@ pub enum DomainEvent {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct HostRequestEnvelope {
     pub request_id: HostRequestId,
     pub command_id: CommandId,
@@ -54,7 +54,7 @@ pub struct HostRequestEnvelope {
     pub request: HostRequest,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum HostRequest {
     FetchFeed {
         feed_url: String,
@@ -73,7 +73,7 @@ pub enum HostRequest {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct HostObservationEnvelope {
     pub request_id: HostRequestId,
     pub cancellation_id: CancellationId,
@@ -81,7 +81,7 @@ pub struct HostObservationEnvelope {
     pub observation: HostObservation,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum HostObservation {
     FeedBytesFetched {
         bytes: Vec<u8>,
@@ -107,7 +107,7 @@ pub enum HostObservation {
     },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum PlaybackStopReason {
     UserInitiated,
     ReachedEnd,
@@ -117,7 +117,7 @@ pub enum PlaybackStopReason {
     Unsupported { wire_code: u32 },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum HostFailureCode {
     Offline,
     TimedOut,

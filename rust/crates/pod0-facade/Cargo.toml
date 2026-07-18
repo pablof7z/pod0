@@ -9,6 +9,7 @@ publish.workspace = true
 [dependencies]
 pod0-application.workspace = true
 pod0-domain.workspace = true
+uniffi.workspace = true
 
 [lib]
 path = "src/lib.rs"

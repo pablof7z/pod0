@@ -1,11 +1,13 @@
 #![forbid(unsafe_code)]
 
+uniffi::setup_scaffolding!();
+
 macro_rules! opaque_id {
     ($name:ident) => {
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, uniffi::Record)]
         pub struct $name {
-            high: u64,
-            low: u64,
+            pub high: u64,
+            pub low: u64,
         }
 
         impl $name {
@@ -61,37 +63,41 @@ opaque_id!(DomainEventId);
 opaque_id!(PodcastId);
 opaque_id!(EpisodeId);
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct StateRevision(u64);
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, uniffi::Record)]
+pub struct StateRevision {
+    pub value: u64,
+}
 
 impl StateRevision {
-    pub const INITIAL: Self = Self(0);
+    pub const INITIAL: Self = Self { value: 0 };
 
     #[must_use]
     pub const fn new(value: u64) -> Self {
-        Self(value)
+        Self { value }
     }
 
     #[must_use]
     pub const fn value(self) -> u64 {
-        self.0
+        self.value
     }
 }
 
 /// Kernel-owned time representation with an explicit unit and no platform
 /// date type at the shared boundary.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct UnixTimestampMilliseconds(i64);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, uniffi::Record)]
+pub struct UnixTimestampMilliseconds {
+    pub value: i64,
+}
 
 impl UnixTimestampMilliseconds {
     #[must_use]
     pub const fn new(value: i64) -> Self {
-        Self(value)
+        Self { value }
     }
 
     #[must_use]
     pub const fn value(self) -> i64 {
-        self.0
+        self.value
     }
 }
 

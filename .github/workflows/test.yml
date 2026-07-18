@@ -30,6 +30,12 @@ jobs:
       - name: Validate Rust workspace
         run: ./scripts/check_rust.sh
 
+      - name: Detect generated binding drift
+        run: ./scripts/check_core_binding_drift.sh
+
+      - name: Compile and exercise Kotlin bindings
+        run: ./scripts/check_kotlin_core_bindings.sh
+
       - name: Bootstrap project
         run: ./ci_scripts/bootstrap_project.sh
 

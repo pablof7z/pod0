@@ -55,9 +55,18 @@ fn command_retries_are_idempotent_and_reuse_conflicts() {
         ledger.register(command(1, None), StateRevision::new(3)),
         CommandRegistration::ConflictingReuse
     );
+    let stale = command(2, Some(2));
     assert_eq!(
-        ledger.register(command(2, Some(2)), StateRevision::new(3)),
+        ledger.register(stale.clone(), StateRevision::new(3)),
         CommandRegistration::StaleRevision
+    );
+    assert_eq!(
+        ledger.register(stale, StateRevision::new(2)),
+        CommandRegistration::Duplicate
+    );
+    assert_eq!(
+        ledger.register(command(2, None), StateRevision::new(2)),
+        CommandRegistration::ConflictingReuse
     );
 }
 

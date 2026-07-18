@@ -12,6 +12,14 @@ mirrors, or arbitrary JSON RPC would make schema evolution and single ownership
 unreliable. The facade must preserve native responsiveness and be implementable
 by both Swift and Kotlin.
 
+## Implementation status
+
+The first contract and generated Swift/Kotlin APIs now exist. Swift runtime and
+Kotlin JVM smoke tests exercise the same facade metadata, and CI regenerates
+both languages to detect drift. The current runtime is deliberately in-memory
+and non-authoritative; the first durable vertical slice replaces it with the
+single-writer actor described below.
+
 ## Decision
 
 Pod0 exposes exactly one app-owned UniFFI facade. It uses typed, versioned:
