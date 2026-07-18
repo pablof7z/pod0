@@ -25,7 +25,9 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
             guard let data = TranscriptStore.shared.verifiedStagedData(
                 episodeID: job.subjectID, leaseToken: leaseToken
             ),
-                  ArtifactRepository.hash(data) == outputVersion else { return false }
+                  ArtifactRepository.hash(data) == outputVersion,
+                  let transcript = try? Self.decoder.decode(Transcript.self, from: data),
+                  transcript.episodeID == job.subjectID else { return false }
             let selectedURL = try TranscriptStore.shared.promoteStaged(
                 episodeID: job.subjectID,
                 leaseToken: leaseToken,
@@ -35,7 +37,7 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
                 .transcript, job: job, output: outputVersion,
                 hash: outputVersion,
                 location: selectedURL.path,
-                origin: "workflow"
+                origin: Self.projectedSource(transcript.source).rawValue
             )]
         case .transcriptIndex:
             guard TranscriptStore.shared.verifiedData(episodeID: job.subjectID) != nil,
@@ -138,7 +140,7 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
                   occurrenceID == outputVersion,
                   ChatHistoryStore.shared.conversation(
                     occurrenceID: occurrenceID
-                  ) != nil else { return false }
+                  )?.hasCompletedScheduledOutput == true else { return false }
             records = [record(.scheduledOutput, job: job, output: outputVersion, hash: outputVersion)]
         case .download:
             guard let episode = appStore.episode(id: job.subjectID) else { return false }
@@ -205,21 +207,11 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
         switch record.kind {
         case .transcript:
             guard let location = record.location else { return }
-            let provider = (try? Self.decoder.decode(
-                TranscriptJobPayload.self, from: job.payload ?? Data()
-            ))?.provider
-            let source: TranscriptState.Source = switch provider {
-            case .elevenLabsScribe: .scribe
-            case .openRouterWhisper: .whisper
-            case .assemblyAI: .assemblyAI
-            case .appleNative: .onDevice
-            case nil: .other
-            }
             _ = appStore.applyTranscriptEvent(.artifactCommitted(.init(
                 inputVersion: record.inputVersion,
                 contentHash: record.contentHash,
                 fileURL: URL(fileURLWithPath: location),
-                source: source
+                source: TranscriptState.Source(rawValue: record.origin ?? "") ?? .other
             )), episodeID: record.subjectID)
         case .downloadFile:
             guard let location = record.location,
@@ -278,4 +270,16 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
         decoder.dateDecodingStrategy = .iso8601
         return decoder
     }()
+
+    private static func projectedSource(
+        _ source: TranscriptSource
+    ) -> TranscriptState.Source {
+        switch source {
+        case .publisher: .publisher
+        case .scribeV1: .scribe
+        case .whisper: .whisper
+        case .onDevice: .onDevice
+        case .assemblyAI: .assemblyAI
+        }
+    }
 }

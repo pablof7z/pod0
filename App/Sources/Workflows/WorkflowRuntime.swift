@@ -83,7 +83,27 @@ final class WorkflowRuntime {
         episodeID: UUID,
         origin: DownloadIntentOrigin = .user
     ) {
-        guard let episode = appStore?.episode(id: episodeID), let jobStore else { return }
+        do {
+            _ = try persistDownloadIntent(episodeID: episodeID, origin: origin)
+        } catch {
+            Self.logger.error("Unable to persist download intent: \(error, privacy: .public)")
+        }
+    }
+
+    /// Persists and confirms the canonical child intent. Workflow executors
+    /// use this throwing form so a parent occurrence cannot report success
+    /// after a failed child handoff.
+    @discardableResult
+    func persistDownloadIntent(
+        episodeID: UUID,
+        origin: DownloadIntentOrigin
+    ) throws -> WorkJob {
+        guard let episode = appStore?.episode(id: episodeID), let jobStore else {
+            throw JobFailure(
+                classification: .invalidInput,
+                message: "Download intent has no attached episode or workflow store."
+            )
+        }
         let inputVersion = DesiredStatePlanner.audioVersion(episode)
         let payload = DownloadJobPayload(
             origin: origin,
@@ -103,15 +123,15 @@ final class WorkflowRuntime {
             resourceClass: .download,
             maxAttempts: 8
         )
-        do {
-            let inserted = try jobStore.ensureJob(desired)
-            if !inserted {
-                try jobStore.rearmJob(idempotencyKey: desired.idempotencyKey)
-            }
-            wake()
-        } catch {
-            Self.logger.error("Unable to persist download intent: \(error, privacy: .public)")
+        let inserted = try jobStore.ensureJob(desired)
+        if !inserted {
+            try jobStore.rearmJob(idempotencyKey: desired.idempotencyKey)
         }
+        guard let persisted = try jobStore.job(idempotencyKey: desired.idempotencyKey) else {
+            throw JobStoreError.corruptRow
+        }
+        wake()
+        return persisted
     }
 
     func cancelDownload(episodeID: UUID) {

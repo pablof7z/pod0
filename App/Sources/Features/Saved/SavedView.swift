@@ -69,11 +69,9 @@ struct SavedView: View {
         pubDate: Date(),
         enclosureURL: URL(string: "https://example.com/x.mp3")!
     )
-    store.mutateState {
-        $0.podcasts = [podcast]
-        $0.subscriptions = [PodcastSubscription(podcastID: podcast.id)]
-        $0.episodes = [episode]
-    }
+    store.upsertPodcast(podcast)
+    store.addSubscription(podcastID: podcast.id)
+    store.upsertEpisodes([episode], forPodcast: podcast.id)
     store.addClip(Clip(
         episodeID: episode.id,
         subscriptionID: podcast.id,

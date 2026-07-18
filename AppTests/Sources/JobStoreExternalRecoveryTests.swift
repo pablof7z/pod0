@@ -116,6 +116,57 @@ final class JobStoreExternalRecoveryTests: XCTestCase {
             externalProvider: "publisherTranscript",
             externalOperationID: "input-v1"
         ))
+        XCTAssertFalse(TranscriptIngestService.shouldAttemptPublisher(
+            userInitiated: false,
+            externalProvider: "assemblyAI",
+            externalOperationID: nil
+        ))
+        XCTAssertFalse(TranscriptIngestService.shouldAttemptPublisher(
+            userInitiated: false,
+            externalProvider: "unexpected-provider",
+            externalOperationID: "unknown-123"
+        ))
+    }
+
+    func testProviderRecoveryAcceptsOnlyMatchingCompleteIdentity() throws {
+        XCTAssertNil(try TranscriptIngestService.resumableExternalOperationID(
+            expectedProvider: "assemblyAI",
+            recordedProvider: nil,
+            recordedID: nil
+        ))
+        XCTAssertNil(try TranscriptIngestService.resumableExternalOperationID(
+            expectedProvider: "assemblyAI",
+            recordedProvider: "publisherTranscript",
+            recordedID: "input-v1"
+        ))
+        XCTAssertEqual(
+            try TranscriptIngestService.resumableExternalOperationID(
+                expectedProvider: "assemblyAI",
+                recordedProvider: "assemblyAI",
+                recordedID: "provider-123"
+            ),
+            "provider-123"
+        )
+
+        for evidence in [
+            ("assemblyAI" as String?, nil as String?),
+            ("elevenLabsScribe", "provider-123"),
+            (nil, "provider-123"),
+        ] {
+            XCTAssertThrowsError(try TranscriptIngestService.resumableExternalOperationID(
+                expectedProvider: "assemblyAI",
+                recordedProvider: evidence.0,
+                recordedID: evidence.1
+            )) { error in
+                XCTAssertEqual(
+                    error as? JobFailure,
+                    JobFailure(
+                        classification: .unsafeToRetry,
+                        message: "Recorded provider identity does not match the transcript executor."
+                    )
+                )
+            }
+        }
     }
 
     private func claimRemote(

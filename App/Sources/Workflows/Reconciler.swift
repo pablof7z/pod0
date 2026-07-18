@@ -189,7 +189,9 @@ struct Reconciler {
                 )
                 try adoptTranscript(
                     episode: episode, inputVersion: audioVersion,
-                    hash: staged.contentHash, location: url.path, origin: "recovered-attempt"
+                    hash: staged.contentHash,
+                    location: url.path,
+                    origin: transcriptOrigin(at: url, episodeID: episode.id)
                 )
                 adopted += 1
             } else if let data = TranscriptStore.shared.verifiedData(
@@ -404,6 +406,23 @@ struct Reconciler {
     private func transcriptOrigin(_ episode: Episode) -> String {
         if case .ready(let source) = episode.transcriptState { return source.rawValue }
         return "adopted"
+    }
+
+    private func transcriptOrigin(at url: URL, episodeID: UUID) -> String {
+        guard let data = TranscriptStore.shared.verifiedData(
+            at: url,
+            episodeID: episodeID
+        ),
+              let transcript = try? Self.decoder.decode(Transcript.self, from: data) else {
+            return TranscriptState.Source.other.rawValue
+        }
+        return switch transcript.source {
+        case .publisher: TranscriptState.Source.publisher.rawValue
+        case .scribeV1: TranscriptState.Source.scribe.rawValue
+        case .whisper: TranscriptState.Source.whisper.rawValue
+        case .onDevice: TranscriptState.Source.onDevice.rawValue
+        case .assemblyAI: TranscriptState.Source.assemblyAI.rawValue
+        }
     }
 
     private func prerequisitesAreAvailable(for job: WorkJob) -> Bool {

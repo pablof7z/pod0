@@ -126,6 +126,11 @@ final class TranscriptIngestService {
             ? EpisodeDownloadStore.shared.localFileURL(for: episode)
             : episode.enclosureURL
         let audioURL = provider == .assemblyAI ? episode.enclosureURL : localOrRemote
+        let resumedExternalID = try Self.resumableExternalOperationID(
+            expectedProvider: Self.externalProviderName(for: provider),
+            recordedProvider: context.job.externalProvider,
+            recordedID: context.job.externalOperationID
+        )
         let transcript: Transcript
         do {
             switch provider {
@@ -136,8 +141,7 @@ final class TranscriptIngestService {
                     .filter { !$0.isEmpty }
                 let selectedModels = models.isEmpty ? ["universal-3-pro", "universal-2"] : models
                 let remoteJob: AssemblyAIJob
-                if context.job.externalProvider == "assemblyAI",
-                   let externalID = context.job.externalOperationID {
+                if let externalID = resumedExternalID {
                     remoteJob = AssemblyAIJob(
                         transcriptID: externalID,
                         episodeID: episode.id,
@@ -169,8 +173,7 @@ final class TranscriptIngestService {
                 transcript = try await assemblyAI.pollResult(remoteJob)
             case .elevenLabsScribe:
                 let remoteJob: ScribeJob
-                if context.job.externalProvider == "elevenLabsScribe",
-                   let externalID = context.job.externalOperationID {
+                if let externalID = resumedExternalID {
                     remoteJob = ScribeJob(
                         requestID: externalID,
                         episodeID: episode.id,
@@ -198,6 +201,12 @@ final class TranscriptIngestService {
                 }
                 transcript = try await scribe.pollResult(remoteJob)
             case .openRouterWhisper:
+                guard resumedExternalID == nil else {
+                    throw JobFailure(
+                        classification: .unsafeToRetry,
+                        message: "OpenRouter transcription cannot resume a recorded external operation."
+                    )
+                }
                 try jobStore.recordExternalSubmissionIntent(
                     id: context.job.id,
                     leaseToken: context.leaseToken,
@@ -205,6 +214,12 @@ final class TranscriptIngestService {
                 )
                 transcript = try await whisper.transcribe(audioURL: audioURL, episodeID: episode.id)
             case .appleNative:
+                guard resumedExternalID == nil else {
+                    throw JobFailure(
+                        classification: .unsafeToRetry,
+                        message: "On-device transcription cannot resume a remote operation."
+                    )
+                }
                 transcript = try await appleSTT.transcribe(
                     audioFileURL: audioURL,
                     episodeID: episode.id
@@ -229,8 +244,37 @@ final class TranscriptIngestService {
         externalOperationID: String?
     ) -> Bool {
         guard !userInitiated else { return false }
-        let resumableProviders = ["assemblyAI", "elevenLabsScribe"]
-        return externalOperationID == nil || !resumableProviders.contains(externalProvider ?? "")
+        return (externalProvider == nil && externalOperationID == nil)
+            || externalProvider == "publisherTranscript"
+    }
+
+    /// Resolves durable provider evidence without ever laundering a
+    /// mismatched or half-recorded submission into a fresh paid request.
+    nonisolated static func resumableExternalOperationID(
+        expectedProvider: String,
+        recordedProvider: String?,
+        recordedID: String?
+    ) throws -> String? {
+        if recordedProvider == nil, recordedID == nil { return nil }
+        if recordedProvider == "publisherTranscript" { return nil }
+        guard recordedProvider == expectedProvider,
+              let recordedID,
+              !recordedID.isBlank else {
+            throw JobFailure(
+                classification: .unsafeToRetry,
+                message: "Recorded provider identity does not match the transcript executor."
+            )
+        }
+        return recordedID
+    }
+
+    nonisolated private static func externalProviderName(for provider: STTProvider) -> String {
+        switch provider {
+        case .assemblyAI: "assemblyAI"
+        case .elevenLabsScribe: "elevenLabsScribe"
+        case .openRouterWhisper: "openRouterWhisper"
+        case .appleNative: "appleNative"
+        }
     }
 
     private func persistJobTranscript(
