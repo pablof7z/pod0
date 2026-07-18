@@ -43,7 +43,7 @@ enum WorkJobState: String, CaseIterable, Codable, Sendable {
     }
 }
 
-enum JobErrorClass: String, Codable, Sendable {
+enum JobErrorClass: String, CaseIterable, Codable, Sendable {
     case transient
     case rateLimited
     case missingCredential

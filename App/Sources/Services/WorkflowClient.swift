@@ -12,7 +12,8 @@ final class WorkflowClient {
 
     nonisolated private static let logger = Logger.app("WorkflowClient")
     private(set) var revision: UInt64 = 0
-    private var jobsByKey: [WorkflowJobKey: WorkflowJobProjection] = [:]
+    private var jobsByID: [UUID: WorkflowJobProjection] = [:]
+    private var latestByKey: [WorkflowJobKey: WorkflowJobProjection] = [:]
 
     @ObservationIgnored private var registrations: [UUID: WorkflowProjectionRequest] = [:]
     @ObservationIgnored private var loader: Loader?
@@ -53,16 +54,23 @@ final class WorkflowClient {
     }
 
     func latest(kind: WorkJobKind, subjectID: UUID) -> WorkflowJobProjection? {
-        jobsByKey[WorkflowJobKey(kind: kind, subjectID: subjectID)]
+        latestByKey[WorkflowJobKey(kind: kind, subjectID: subjectID)]
     }
 
     func jobs(kind: WorkJobKind) -> [WorkflowJobProjection] {
-        jobsByKey.values
+        jobsByID.values
             .filter { $0.kind == kind }
             .sorted {
                 if $0.updatedAt != $1.updatedAt { return $0.updatedAt > $1.updatedAt }
                 return $0.id.uuidString > $1.id.uuidString
             }
+    }
+
+    func allJobs() -> [WorkflowJobProjection] {
+        jobsByID.values.sorted {
+            if $0.updatedAt != $1.updatedAt { return $0.updatedAt > $1.updatedAt }
+            return $0.id.uuidString > $1.id.uuidString
+        }
     }
 
     @discardableResult
@@ -153,25 +161,34 @@ final class WorkflowClient {
         var subjects: Set<UUID> = []
         var kinds: Set<WorkJobKind> = []
         var attentionKinds: Set<WorkJobKind> = []
+        var recentKinds: Set<WorkJobKind> = []
         for request in registrations.values where !request.isEmpty {
             subjects.formUnion(request.subjectIDs)
             kinds.formUnion(request.kinds)
             attentionKinds.formUnion(request.attentionKinds)
+            recentKinds.formUnion(request.recentKinds)
         }
-        guard (!subjects.isEmpty && !kinds.isEmpty) || !attentionKinds.isEmpty else { return nil }
+        guard (!subjects.isEmpty && !kinds.isEmpty)
+                || !attentionKinds.isEmpty || !recentKinds.isEmpty else { return nil }
         return WorkflowProjectionQuery(
             subjectIDs: subjects.sorted { $0.uuidString < $1.uuidString },
             kinds: kinds.sorted { $0.rawValue < $1.rawValue },
             attentionKinds: attentionKinds.sorted { $0.rawValue < $1.rawValue },
+            recentKinds: recentKinds.sorted { $0.rawValue < $1.rawValue },
             limit: 1_000
         )
     }
 
     private func replaceJobs(_ jobs: [WorkflowJobProjection], generation: UInt64) {
         guard generation == self.generation else { return }
-        let replacement = Dictionary(uniqueKeysWithValues: jobs.map { ($0.key, $0) })
-        guard replacement != jobsByKey else { return }
-        jobsByKey = replacement
+        let replacement = Dictionary(uniqueKeysWithValues: jobs.map { ($0.id, $0) })
+        guard replacement != jobsByID else { return }
+        jobsByID = replacement
+        var latest: [WorkflowJobKey: WorkflowJobProjection] = [:]
+        for job in jobs.sorted(by: { $0.updatedAt > $1.updatedAt }) where latest[job.key] == nil {
+            latest[job.key] = job
+        }
+        latestByKey = latest
         revision &+= 1
     }
 }

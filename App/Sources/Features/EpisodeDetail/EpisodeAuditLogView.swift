@@ -21,6 +21,7 @@ struct EpisodeAuditLogView: View {
 
     @State private var auditStore = EpisodeAuditLogStore.shared
     @State private var expandedEventIDs: Set<UUID> = []
+    @State private var actionNotice: WorkflowActionNotice?
     private var events: [EpisodeAuditEvent] {
         auditStore.eventsNewestFirst(for: episode.id)
     }
@@ -29,7 +30,7 @@ struct EpisodeAuditLogView: View {
         NavigationStack {
             List {
                 summarySection
-                actionsSection
+                workflowSection
                 eventsSection
                 metadataSection
             }
@@ -53,9 +54,16 @@ struct EpisodeAuditLogView: View {
                 }
             }
         }
+        .alert(item: $actionNotice) { notice in
+            Alert(
+                title: Text(notice.title),
+                message: Text(notice.message),
+                dismissButton: .default(Text("OK"))
+            )
+        }
         .workflowProjectionScope(
             subjectIDs: [episode.id],
-            kinds: [.download, .transcriptIngest]
+            kinds: WorkJobKind.allCases
         )
     }
     // MARK: - Sections
@@ -93,90 +101,53 @@ struct EpisodeAuditLogView: View {
         }
     }
 
-    private var actionsSection: some View {
+    private var workflowSection: some View {
         Section {
-            Button {
-                retryTranscription(forceProvider: nil)
-            } label: {
-                Label("Retry transcription", systemImage: "arrow.clockwise")
-            }
-            if !availableRetryProviders.isEmpty {
-                Menu {
-                    ForEach(availableRetryProviders, id: \.self) { provider in
-                        Button {
-                            retryTranscription(forceProvider: provider)
-                        } label: {
-                            Label(provider.displayName, systemImage: providerIcon(provider))
-                        }
-                    }
-                } label: {
-                    Label("Retry with…", systemImage: "arrow.triangle.2.circlepath")
+            if workflowJobs.isEmpty {
+                Text("No durable work has been scheduled for this episode.")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(workflowJobs) { job in
+                    WorkflowDiagnosticRow(job: job, showsSubject: false, onAction: perform)
                 }
             }
-            Button {
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
-            } label: {
-                Label(downloadButtonLabel, systemImage: "arrow.down.circle")
+            if transcriptJob == nil, case .none = episode.transcriptState {
+                Button("Request transcript", systemImage: "waveform.badge.mic") {
+                    requestTranscript()
+                }
             }
-            .disabled(downloadButtonDisabled)
+            if downloadJob == nil, case .notDownloaded = episode.downloadState {
+                Button("Start download", systemImage: "arrow.down.circle") {
+                    EpisodeDownloadService.shared.attach(appStore: store)
+                    EpisodeDownloadService.shared.download(episodeID: episode.id)
+                }
+            }
         } header: {
-            Text("Actions")
+            Text("Durable work")
         } footer: {
-            Text("Watch new events appear above as the pipeline runs.")
+            Text("Actions appear only when the current revision permits them. Sensitive provider and lease details are never displayed.")
                 .font(.footnote)
         }
     }
 
-    // MARK: - Retry actions
+    private var workflowJobs: [WorkflowJobProjection] {
+        WorkJobKind.allCases
+            .compactMap { workflows.latest(kind: $0, subjectID: episode.id) }
+            .sorted { $0.updatedAt > $1.updatedAt }
+    }
 
-    /// Kicks a fresh transcription. `forceProvider == nil` mirrors the default
-    /// "Retry transcription" button (publisher → settings-configured STT);
-    /// `forceProvider != nil` skips the publisher path and runs the chosen
-    /// provider directly. The durable workflow attempt owns its lifecycle.
-    private func retryTranscription(forceProvider: STTProvider?) {
-        let providerLabel = forceProvider?.displayName ?? "settings-configured provider"
+    private func requestTranscript() {
         EpisodeAuditLogStore.shared.record(
             episodeID: episode.id,
             kind: .transcriptRetryRequested,
             severity: .info,
-            summary: "User tapped retry from Diagnostics (\(providerLabel))",
-            details: [.init("Provider", providerLabel)]
+            summary: "User requested a transcript from Diagnostics"
         )
-        let episodeID = episode.id
-        store.setRequestedTranscriptProvider(episodeID, provider: forceProvider)
-        workflows.requestTranscript(episodeID: episodeID, provider: forceProvider)
+        workflows.requestTranscript(episodeID: episode.id)
     }
 
-    /// Providers we can actually run on this device right now. Apple needs the
-    /// episode downloaded (Apple's `SpeechTranscriber` requires a local file);
-    /// ElevenLabs and OpenRouter each need their respective key configured.
-    /// Order matches user-mental-priority: on-device first when available
-    /// (free, private, offline), then the cloud options.
-    private var availableRetryProviders: [STTProvider] {
-        var out: [STTProvider] = []
-        if case .downloaded = episode.downloadState {
-            out.append(.appleNative)
-        }
-        if ElevenLabsCredentialStore.hasAPIKey() {
-            out.append(.elevenLabsScribe)
-        }
-        if AssemblyAICredentialStore.hasAPIKey() {
-            out.append(.assemblyAI)
-        }
-        if OpenRouterCredentialStore.hasAPIKey() {
-            out.append(.openRouterWhisper)
-        }
-        return out
-    }
-
-    private func providerIcon(_ provider: STTProvider) -> String {
-        switch provider {
-        case .appleNative: return "cpu"
-        case .elevenLabsScribe: return "waveform.and.mic"
-        case .assemblyAI: return "waveform.badge.mic"
-        case .openRouterWhisper: return "network"
-        }
+    private func perform(_ action: WorkflowJobAction, on job: WorkflowJobProjection) {
+        actionNotice = .make(for: workflows.perform(action, on: job))
     }
 
     @ViewBuilder
@@ -271,37 +242,7 @@ struct EpisodeAuditLogView: View {
     }
 
     private func jobSummary(_ job: WorkflowJobProjection?) -> String? {
-        guard let job else { return nil }
-        switch job.state {
-        case .pending, .leased: return "queued"
-        case .running: return "running (attempt \(job.attempt))"
-        case .retryScheduled: return "retry scheduled"
-        case .blocked: return "blocked — \(job.lastErrorMessage ?? "dependency unavailable")"
-        case .failedPermanent: return "failed — \(job.lastErrorMessage ?? "unknown error")"
-        case .cancelled: return "cancelled"
-        case .obsolete: return "obsolete"
-        case .succeeded: return "succeeded"
-        }
-    }
-
-    private var downloadButtonLabel: String {
-        if case .downloaded = episode.downloadState { return "Already downloaded" }
-        switch downloadJob?.state {
-        case .pending, .leased, .running, .retryScheduled: return "Download in progress"
-        case .blocked, .failedPermanent: return "Retry download"
-        default: return "Start download"
-        }
-    }
-
-    /// Button is inert when the download is already on disk or actively in
-    /// flight — `EpisodeDownloadService.download` early-returns in both
-    /// cases, so leaving the button enabled would be a silent no-op.
-    private var downloadButtonDisabled: Bool {
-        if case .downloaded = episode.downloadState { return true }
-        switch downloadJob?.state {
-        case .pending, .leased, .running, .retryScheduled: return true
-        default: return false
-        }
+        job.map { WorkflowDiagnosticPresenter.stateTitle($0.state).lowercased() }
     }
 }
 
@@ -324,7 +265,7 @@ private struct EpisodeAuditEventRow: View {
                         Text(event.kind.displayLabel)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.primary)
-                        Text(event.summary)
+                        Text(EpisodeAuditPresentation.summary(for: event))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.leading)
@@ -352,13 +293,13 @@ private struct EpisodeAuditEventRow: View {
 
     @ViewBuilder
     private var detailGrid: some View {
-        if event.details.isEmpty {
+        if safeDetails.isEmpty {
             Text("No additional detail captured.")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         } else {
             VStack(alignment: .leading, spacing: 4) {
-                ForEach(Array(event.details.enumerated()), id: \.offset) { _, detail in
+                ForEach(Array(safeDetails.enumerated()), id: \.offset) { _, detail in
                     HStack(alignment: .top, spacing: 8) {
                         Text(detail.label)
                             .font(.caption2.weight(.medium))
@@ -375,6 +316,10 @@ private struct EpisodeAuditEventRow: View {
             }
             .padding(.vertical, 4)
         }
+    }
+
+    private var safeDetails: [EpisodeAuditEvent.Detail] {
+        EpisodeAuditPresentation.details(for: event)
     }
 
     private var tint: Color {

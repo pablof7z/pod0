@@ -44,7 +44,7 @@
     "AppTests/Sources/PersistenceDurabilityTests.swift": 397,
     "App/Sources/Services/AgentPicksService.swift": 396,
     "App/Sources/Voice/AudioConversationManager.swift": 392,
-    "App/Sources/Features/EpisodeDetail/EpisodeAuditLogView.swift": 388,
+    "App/Sources/Features/EpisodeDetail/EpisodeAuditLogView.swift": 333,
     "App/Sources/Features/Settings/Agent/AgentRunDetailView.swift": 385,
     "App/Sources/Agent/AgentToolSchema+Podcast.swift": 376,
     "AppTests/Sources/AgentToolsPodcastMocks.swift": 372,

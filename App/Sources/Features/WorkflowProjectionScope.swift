@@ -37,4 +37,10 @@ extension View {
             attentionKinds: kinds
         )))
     }
+
+    func workflowRecentScope(kinds: some Sequence<WorkJobKind>) -> some View {
+        modifier(WorkflowProjectionScopeModifier(request: WorkflowProjectionRequest(
+            recentKinds: kinds
+        )))
+    }
 }

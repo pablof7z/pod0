@@ -16,7 +16,7 @@ struct SettingsView: View {
         .settingsListStyle()
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.large)
-        .workflowAttentionScope(kinds: [.download])
+        .workflowAttentionScope(kinds: WorkJobKind.allCases)
         .task {
             // Cheap directory walk; runs once when Settings opens so the
             // Data & Storage row can show the total without a navigation push.
@@ -151,6 +151,17 @@ struct SettingsView: View {
                     value: dataStorageSummary
                 )
             }
+
+            NavigationLink {
+                WorkflowDiagnosticsView()
+            } label: {
+                SettingsRow(
+                    icon: "stethoscope",
+                    tint: .indigo,
+                    title: "Workflow Diagnostics",
+                    value: workflowSummaryLabel
+                )
+            }
         }
     }
 
@@ -217,6 +228,14 @@ struct SettingsView: View {
         if failed > 0 { return "\(failed) failed" }
         if downloaded > 0 { return "\(downloaded) saved" }
         return nil
+    }
+
+    private var workflowSummaryLabel: String? {
+        let jobs = workflows.allJobs()
+        let failed = jobs.filter { $0.state == .blocked || $0.state == .failedPermanent }.count
+        if failed > 0 { return "\(failed) need attention" }
+        let active = jobs.filter { $0.state.isActive }.count
+        return active > 0 ? "\(active) active" : nil
     }
 
     private var playbackSummary: String {

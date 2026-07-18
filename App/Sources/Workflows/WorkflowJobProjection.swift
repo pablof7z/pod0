@@ -85,19 +85,22 @@ struct WorkflowProjectionRequest: Hashable, Sendable {
     let subjectIDs: Set<UUID>
     let kinds: Set<WorkJobKind>
     let attentionKinds: Set<WorkJobKind>
+    let recentKinds: Set<WorkJobKind>
 
     init(
         subjectIDs: some Sequence<UUID> = [],
         kinds: some Sequence<WorkJobKind> = [],
-        attentionKinds: some Sequence<WorkJobKind> = []
+        attentionKinds: some Sequence<WorkJobKind> = [],
+        recentKinds: some Sequence<WorkJobKind> = []
     ) {
         self.subjectIDs = Set(subjectIDs)
         self.kinds = Set(kinds)
         self.attentionKinds = Set(attentionKinds)
+        self.recentKinds = Set(recentKinds)
     }
 
     var isEmpty: Bool {
-        (subjectIDs.isEmpty || kinds.isEmpty) && attentionKinds.isEmpty
+        (subjectIDs.isEmpty || kinds.isEmpty) && attentionKinds.isEmpty && recentKinds.isEmpty
     }
 }
 
@@ -105,5 +108,6 @@ struct WorkflowProjectionQuery: Sendable, Equatable {
     let subjectIDs: [UUID]
     let kinds: [WorkJobKind]
     let attentionKinds: [WorkJobKind]
+    let recentKinds: [WorkJobKind]
     let limit: Int
 }

@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-18T13:27:16Z",
+      "lines": [
+        "Workflow Diagnostics now shows every background task with safe details and only actions that can actually run."
+      ]
+    },
+    {
       "shipped_at": "2026-07-18T13:15:06Z",
       "lines": [
         "Episode details and scheduled tasks now explain what background work is doing and offer only safe next steps when it needs attention."

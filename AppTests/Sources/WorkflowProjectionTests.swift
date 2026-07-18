@@ -156,14 +156,31 @@ final class WorkflowProjectionTests: XCTestCase {
         )
 
         let attention = try store.projections(for: WorkflowProjectionQuery(
-            subjectIDs: [], kinds: [], attentionKinds: [.download], limit: 1
+            subjectIDs: [], kinds: [], attentionKinds: [.download], recentKinds: [], limit: 1
         ))
         XCTAssertEqual(attention.count, 1)
         XCTAssertEqual(attention.first?.subjectID, activeID)
         let terminal = try store.projections(for: WorkflowProjectionQuery(
-            subjectIDs: [succeededID], kinds: [.download], attentionKinds: [], limit: 10
+            subjectIDs: [succeededID], kinds: [.download], attentionKinds: [],
+            recentKinds: [], limit: 10
         ))
         XCTAssertEqual(terminal.first?.state, .succeeded)
+    }
+
+    func testRecentQueryKeepsDistinctRowsForSameSubjectAndHonorsLimit() throws {
+        let subjectID = UUID()
+        try insert(subject: subjectID, key: "history-1", kind: .download)
+        try insert(subject: subjectID, key: "history-2", kind: .download)
+        let history = try store.projections(for: WorkflowProjectionQuery(
+            subjectIDs: [], kinds: [], attentionKinds: [],
+            recentKinds: [.download], limit: 10
+        ))
+        XCTAssertEqual(history.count, 2)
+        let bounded = try store.projections(for: WorkflowProjectionQuery(
+            subjectIDs: [], kinds: [], attentionKinds: [],
+            recentKinds: [.download], limit: 1
+        ))
+        XCTAssertEqual(bounded.count, 1)
     }
 
     private func insert(

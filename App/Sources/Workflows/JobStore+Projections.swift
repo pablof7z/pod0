@@ -6,7 +6,9 @@ extension JobStore {
         let subjectIDs = Array(Set(query.subjectIDs)).sorted { $0.uuidString < $1.uuidString }
         let kinds = Array(Set(query.kinds)).sorted { $0.rawValue < $1.rawValue }
         let attentionKinds = Array(Set(query.attentionKinds)).sorted { $0.rawValue < $1.rawValue }
-        guard (!subjectIDs.isEmpty && !kinds.isEmpty) || !attentionKinds.isEmpty else { return [] }
+        let recentKinds = Array(Set(query.recentKinds)).sorted { $0.rawValue < $1.rawValue }
+        guard (!subjectIDs.isEmpty && !kinds.isEmpty)
+                || !attentionKinds.isEmpty || !recentKinds.isEmpty else { return [] }
 
         return try withDatabase(publishChanges: false) { db in
             var clauses: [String] = []
@@ -21,6 +23,9 @@ extension JobStore {
                     "(kind IN (\(placeholders(attentionKinds.count))) "
                         + "AND state IN ('pending','leased','running','retryScheduled','blocked','failedPermanent'))"
                 )
+            }
+            if !recentKinds.isEmpty {
+                clauses.append("(kind IN (\(placeholders(recentKinds.count))))")
             }
             let statement = try WorkflowSQLite.prepare(
                 """
@@ -47,14 +52,24 @@ extension JobStore {
                 try WorkflowSQLite.bind(kind.rawValue, index, statement, db)
                 index += 1
             }
+            for kind in recentKinds {
+                try WorkflowSQLite.bind(kind.rawValue, index, statement, db)
+                index += 1
+            }
             try WorkflowSQLite.bind(Int64(min(max(query.limit, 1), 1_000)), index, statement, db)
 
-            var latest: [WorkflowJobKey: WorkflowJobProjection] = [:]
+            let historyKinds = Set(recentKinds)
+            var selected: [WorkflowJobProjection] = []
+            var latestKeys: Set<WorkflowJobKey> = []
             for job in try readRows(statement) {
                 let projection = WorkflowJobProjection(job: job)
-                if latest[projection.key] == nil { latest[projection.key] = projection }
+                if historyKinds.contains(job.kind) {
+                    selected.append(projection)
+                } else if latestKeys.insert(projection.key).inserted {
+                    selected.append(projection)
+                }
             }
-            return latest.values.sorted {
+            return selected.sorted {
                 if $0.updatedAt != $1.updatedAt { return $0.updatedAt > $1.updatedAt }
                 return $0.id.uuidString > $1.id.uuidString
             }
