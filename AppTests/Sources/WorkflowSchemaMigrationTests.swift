@@ -175,6 +175,20 @@ final class WorkflowSchemaMigrationTests: XCTestCase {
             XCTAssertEqual(try schemaVersion("artifacts"), 2)
         }
     }
+
+    func testRepeatedSchemaValidationDoesNotReportPhantomJobChanges() throws {
+        let store = JobStore(fileURL: fileURL)
+        let desired = DesiredJob(
+            idempotencyKey: "schema-counting",
+            kind: .metadataIndex,
+            subjectID: UUID(),
+            inputVersion: "v1",
+            resourceClass: .embedding
+        )
+
+        XCTAssertEqual(try store.ensureJobs([desired]), 1)
+        XCTAssertEqual(try store.ensureJobs([desired]), 0)
+    }
 }
 
 private extension WorkflowSchemaMigrationTests {

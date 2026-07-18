@@ -180,6 +180,7 @@ private extension WorkflowSchemaMigrations {
             """
             INSERT INTO workflow_schema_versions(component,version) VALUES(?,?)
             ON CONFLICT(component) DO UPDATE SET version=excluded.version
+            WHERE workflow_schema_versions.version <> excluded.version
             """,
             db: db
         )
