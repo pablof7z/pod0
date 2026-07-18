@@ -19,6 +19,9 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Validate architecture ownership
+        run: python3 scripts/check_architecture_ownership.py
+
       - name: Bootstrap project
         run: ./ci_scripts/bootstrap_project.sh
 
