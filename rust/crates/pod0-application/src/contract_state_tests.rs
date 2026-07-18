@@ -1,4 +1,6 @@
-use pod0_domain::{CancellationId, CommandId, EpisodeId, HostRequestId, StateRevision};
+use pod0_domain::{
+    CancellationId, CommandId, EpisodeId, HostRequestId, StateRevision, UnixTimestampMilliseconds,
+};
 
 use crate::{
     ApplicationCommand, CommandEnvelope, CommandLedger, CommandRegistration, HostObservation,
@@ -23,6 +25,7 @@ fn host_request() -> HostRequestEnvelope {
         command_id: CommandId::from_parts(0, 1),
         cancellation_id: CancellationId::from_parts(0, 2),
         issued_revision: StateRevision::new(4),
+        deadline_at: None,
         request: HostRequest::StopPlayback {
             episode_id: EpisodeId::from_parts(1, 1),
         },
@@ -34,6 +37,8 @@ fn observation() -> HostObservationEnvelope {
         request_id: HostRequestId::from_parts(0, 7),
         cancellation_id: CancellationId::from_parts(0, 2),
         observed_request_revision: StateRevision::new(4),
+        sequence_number: 0,
+        observed_at: UnixTimestampMilliseconds::new(1_000),
         observation: HostObservation::Cancelled,
     }
 }
@@ -98,6 +103,8 @@ fn mismatched_or_oversized_host_results_cannot_commit() {
     let mut request = host_request();
     request.request = HostRequest::FetchFeed {
         feed_url: "https://example.test/feed".to_owned(),
+        entity_tag: None,
+        last_modified: None,
         maximum_response_bytes: 2,
     };
     assert!(ledger.register(request));
@@ -121,10 +128,72 @@ fn mismatched_or_oversized_host_results_cannot_commit() {
         bytes: vec![1, 2, 3],
         entity_tag: None,
         last_modified: None,
+        response_url: "https://example.test/feed".to_owned(),
+        http_status: 200,
     };
     assert_eq!(
         ledger.accept_observation(&result),
         ObservationAcceptance::PayloadTooLarge
+    );
+
+    result.observation = HostObservation::PlaybackObserved {
+        value: crate::PlaybackLifecycleObservation {
+            episode_id: None,
+            state: crate::PlaybackHostState::Idle,
+            position_milliseconds: 0,
+            duration_milliseconds: 0,
+            route: crate::PlaybackAudioRoute::Unknown,
+            interruption: crate::PlaybackInterruption::None,
+            ended: false,
+        },
+    };
+    assert_eq!(
+        ledger.accept_observation(&result),
+        ObservationAcceptance::MismatchedPayload
+    );
+}
+
+#[test]
+fn playback_observation_stream_accepts_increasing_sequences_only() {
+    let mut ledger = HostRequestLedger::default();
+    let mut request = host_request();
+    request.request = HostRequest::ObservePlayback {
+        episode_id: None,
+        minimum_interval_milliseconds: 1_000,
+    };
+    assert!(ledger.register(request));
+
+    let mut update = observation();
+    update.sequence_number = 1;
+    update.observation = HostObservation::PlaybackObserved {
+        value: crate::PlaybackLifecycleObservation {
+            episode_id: None,
+            state: crate::PlaybackHostState::Idle,
+            position_milliseconds: 0,
+            duration_milliseconds: 0,
+            route: crate::PlaybackAudioRoute::Unknown,
+            interruption: crate::PlaybackInterruption::None,
+            ended: false,
+        },
+    };
+    assert_eq!(
+        ledger.accept_observation(&update),
+        ObservationAcceptance::Accepted
+    );
+    assert_eq!(
+        ledger.accept_observation(&update),
+        ObservationAcceptance::Duplicate
+    );
+
+    update.sequence_number = 3;
+    assert_eq!(
+        ledger.accept_observation(&update),
+        ObservationAcceptance::Accepted
+    );
+    update.sequence_number = 2;
+    assert_eq!(
+        ledger.accept_observation(&update),
+        ObservationAcceptance::OutOfOrder
     );
 }
 

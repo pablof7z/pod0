@@ -56,11 +56,21 @@ needed for resume, completion, interruption, or queue policy return to Rust.
 ## Host effects and cancellation
 
 Every `HostRequestEnvelope` carries request, command, cancellation, and issued
-revision identities. Observations must echo the request ID, cancellation ID,
-and issued revision. Unknown, duplicate, mismatched, stale, oversized, or
-post-cancellation observations cannot commit. Feed bytes are bounded by the
-request's declared maximum. The native host reports raw failure codes; Rust
-decides retry, fallback, and durable state.
+revision identities plus an optional absolute deadline. Observations echo the
+request ID, cancellation ID, issued revision, a monotonic sequence, and their
+observation time. Unknown, duplicate, out-of-order, mismatched, stale,
+oversized, expired, or post-cancellation observations cannot commit. Feed bytes
+are bounded by the request's declared maximum and carry only HTTP/cache
+evidence; feed normalization remains in Rust. The native host reports raw
+failure codes; Rust decides retry, fallback, and durable state.
+
+Playback uses typed load/play/pause/seek/rate/timer requests. A long-lived
+`ObservePlayback` request returns lifecycle boundaries immediately and
+coalesces position-only updates to `500...5000 ms`; its sequence remains open
+until explicit cancellation. AVFoundation route names and errors are mapped to
+the bounded generated vocabulary. UI playhead animation never uses this stream.
+This expansion replaces the bootstrap playback variants and advances the
+facade contract to version 2 before any durable domain cutover.
 
 ## Compatibility rules
 
@@ -80,9 +90,10 @@ decides retry, fallback, and durable state.
 
 ## Current bootstrap limitation
 
-The contract types, idempotency ledger, host-observation correlation, bounds,
-subscription lifecycle, Swift runtime bridge, and Kotlin runtime bridge are
-implemented and tested. The current serialized writer is an in-memory
+The contract types, idempotency/sequence ledger, host-observation correlation,
+bounds, subscription lifecycle, cancellable URLSession and AVFoundation host
+adapters, Swift runtime bridge, and Kotlin runtime bridge are implemented and
+tested. The current serialized writer is an in-memory
 qualification scaffold: it performs no I/O and is not a durable authority. No
 product domain has cut over. Swift remains the source of truth until the
 complete first listening slice imports data, enables the durable Rust actor,

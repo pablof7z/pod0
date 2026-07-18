@@ -94,10 +94,14 @@ fn cancellation_prevents_late_host_observation_from_committing() {
         request_id: request.request_id,
         cancellation_id: request.cancellation_id,
         observed_request_revision: request.issued_revision,
+        sequence_number: 0,
+        observed_at: UnixTimestampMilliseconds::new(1_000),
         observation: HostObservation::FeedBytesFetched {
             bytes: b"ignored late result".to_vec(),
             entity_tag: None,
             last_modified: None,
+            response_url: "https://example.test/feed".to_owned(),
+            http_status: 200,
         },
     });
 

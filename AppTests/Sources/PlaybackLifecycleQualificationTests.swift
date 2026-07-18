@@ -1,4 +1,5 @@
 import AVFoundation
+import Pod0Core
 import XCTest
 @testable import Podcastr
 
@@ -29,15 +30,14 @@ final class PlaybackLifecycleQualificationTests: XCTestCase {
         XCTAssertEqual(flushCount, 2, "Episode load and interruption must each create a durability boundary")
         XCTAssertEqual(
             state.lastHostObservation,
-            PlaybackObservation(
-                episodeID: episode.id,
-                hostState: .paused,
+            PlaybackLifecycleObservation(
+                episodeId: EpisodeId(uuid: episode.id),
+                state: .paused,
                 positionMilliseconds: 84_250,
                 durationMilliseconds: 600_000,
                 route: .bluetooth,
                 interruption: .began,
-                ended: false,
-                observedAt: observedAt
+                ended: false
             )
         )
     }

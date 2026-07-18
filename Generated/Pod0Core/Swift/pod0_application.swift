@@ -863,14 +863,18 @@ public struct HostObservationEnvelope: Equatable, Hashable {
     public let requestId: HostRequestId
     public let cancellationId: CancellationId
     public let observedRequestRevision: StateRevision
+    public let sequenceNumber: UInt64
+    public let observedAt: UnixTimestampMilliseconds
     public let observation: HostObservation
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(requestId: HostRequestId, cancellationId: CancellationId, observedRequestRevision: StateRevision, observation: HostObservation) {
+    public init(requestId: HostRequestId, cancellationId: CancellationId, observedRequestRevision: StateRevision, sequenceNumber: UInt64, observedAt: UnixTimestampMilliseconds, observation: HostObservation) {
         self.requestId = requestId
         self.cancellationId = cancellationId
         self.observedRequestRevision = observedRequestRevision
+        self.sequenceNumber = sequenceNumber
+        self.observedAt = observedAt
         self.observation = observation
     }
 
@@ -893,6 +897,8 @@ public struct FfiConverterTypeHostObservationEnvelope: FfiConverterRustBuffer {
                 requestId: FfiConverterTypeHostRequestId.read(from: &buf),
                 cancellationId: FfiConverterTypeCancellationId.read(from: &buf),
                 observedRequestRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                sequenceNumber: FfiConverterUInt64.read(from: &buf),
+                observedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
                 observation: FfiConverterTypeHostObservation.read(from: &buf)
         )
     }
@@ -901,6 +907,8 @@ public struct FfiConverterTypeHostObservationEnvelope: FfiConverterRustBuffer {
         FfiConverterTypeHostRequestId.write(value.requestId, into: &buf)
         FfiConverterTypeCancellationId.write(value.cancellationId, into: &buf)
         FfiConverterTypeStateRevision.write(value.observedRequestRevision, into: &buf)
+        FfiConverterUInt64.write(value.sequenceNumber, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.observedAt, into: &buf)
         FfiConverterTypeHostObservation.write(value.observation, into: &buf)
     }
 }
@@ -926,15 +934,17 @@ public struct HostRequestEnvelope: Equatable, Hashable {
     public let commandId: CommandId
     public let cancellationId: CancellationId
     public let issuedRevision: StateRevision
+    public let deadlineAt: UnixTimestampMilliseconds?
     public let request: HostRequest
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(requestId: HostRequestId, commandId: CommandId, cancellationId: CancellationId, issuedRevision: StateRevision, request: HostRequest) {
+    public init(requestId: HostRequestId, commandId: CommandId, cancellationId: CancellationId, issuedRevision: StateRevision, deadlineAt: UnixTimestampMilliseconds?, request: HostRequest) {
         self.requestId = requestId
         self.commandId = commandId
         self.cancellationId = cancellationId
         self.issuedRevision = issuedRevision
+        self.deadlineAt = deadlineAt
         self.request = request
     }
 
@@ -958,6 +968,7 @@ public struct FfiConverterTypeHostRequestEnvelope: FfiConverterRustBuffer {
                 commandId: FfiConverterTypeCommandId.read(from: &buf),
                 cancellationId: FfiConverterTypeCancellationId.read(from: &buf),
                 issuedRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                deadlineAt: FfiConverterOptionTypeUnixTimestampMilliseconds.read(from: &buf),
                 request: FfiConverterTypeHostRequest.read(from: &buf)
         )
     }
@@ -967,6 +978,7 @@ public struct FfiConverterTypeHostRequestEnvelope: FfiConverterRustBuffer {
         FfiConverterTypeCommandId.write(value.commandId, into: &buf)
         FfiConverterTypeCancellationId.write(value.cancellationId, into: &buf)
         FfiConverterTypeStateRevision.write(value.issuedRevision, into: &buf)
+        FfiConverterOptionTypeUnixTimestampMilliseconds.write(value.deadlineAt, into: &buf)
         FfiConverterTypeHostRequest.write(value.request, into: &buf)
     }
 }
@@ -1170,6 +1182,80 @@ public func FfiConverterTypePlaybackItem_lift(_ buf: RustBuffer) throws -> Playb
 #endif
 public func FfiConverterTypePlaybackItem_lower(_ value: PlaybackItem) -> RustBuffer {
     return FfiConverterTypePlaybackItem.lower(value)
+}
+
+
+public struct PlaybackLifecycleObservation: Equatable, Hashable {
+    public let episodeId: EpisodeId?
+    public let state: PlaybackHostState
+    public let positionMilliseconds: UInt64
+    public let durationMilliseconds: UInt64
+    public let route: PlaybackAudioRoute
+    public let interruption: PlaybackInterruption
+    public let ended: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(episodeId: EpisodeId?, state: PlaybackHostState, positionMilliseconds: UInt64, durationMilliseconds: UInt64, route: PlaybackAudioRoute, interruption: PlaybackInterruption, ended: Bool) {
+        self.episodeId = episodeId
+        self.state = state
+        self.positionMilliseconds = positionMilliseconds
+        self.durationMilliseconds = durationMilliseconds
+        self.route = route
+        self.interruption = interruption
+        self.ended = ended
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PlaybackLifecycleObservation: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePlaybackLifecycleObservation: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PlaybackLifecycleObservation {
+        return
+            try PlaybackLifecycleObservation(
+                episodeId: FfiConverterOptionTypeEpisodeId.read(from: &buf),
+                state: FfiConverterTypePlaybackHostState.read(from: &buf),
+                positionMilliseconds: FfiConverterUInt64.read(from: &buf),
+                durationMilliseconds: FfiConverterUInt64.read(from: &buf),
+                route: FfiConverterTypePlaybackAudioRoute.read(from: &buf),
+                interruption: FfiConverterTypePlaybackInterruption.read(from: &buf),
+                ended: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PlaybackLifecycleObservation, into buf: inout [UInt8]) {
+        FfiConverterOptionTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterTypePlaybackHostState.write(value.state, into: &buf)
+        FfiConverterUInt64.write(value.positionMilliseconds, into: &buf)
+        FfiConverterUInt64.write(value.durationMilliseconds, into: &buf)
+        FfiConverterTypePlaybackAudioRoute.write(value.route, into: &buf)
+        FfiConverterTypePlaybackInterruption.write(value.interruption, into: &buf)
+        FfiConverterBool.write(value.ended, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlaybackLifecycleObservation_lift(_ buf: RustBuffer) throws -> PlaybackLifecycleObservation {
+    return try FfiConverterTypePlaybackLifecycleObservation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlaybackLifecycleObservation_lower(_ value: PlaybackLifecycleObservation) -> RustBuffer {
+    return FfiConverterTypePlaybackLifecycleObservation.lower(value)
 }
 
 
@@ -1788,6 +1874,7 @@ public enum HostFailureCode: Equatable, Hashable {
     case timedOut
     case permissionDenied
     case invalidResponse
+    case responseTooLarge
     case mediaUnavailable
     case platformFailure
     case unsupported(wireCode: UInt32
@@ -1821,11 +1908,13 @@ public struct FfiConverterTypeHostFailureCode: FfiConverterRustBuffer {
 
         case 4: return .invalidResponse
 
-        case 5: return .mediaUnavailable
+        case 5: return .responseTooLarge
 
-        case 6: return .platformFailure
+        case 6: return .mediaUnavailable
 
-        case 7: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 7: return .platformFailure
+
+        case 8: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -1852,16 +1941,20 @@ public struct FfiConverterTypeHostFailureCode: FfiConverterRustBuffer {
             writeInt(&buf, Int32(4))
 
 
-        case .mediaUnavailable:
+        case .responseTooLarge:
             writeInt(&buf, Int32(5))
 
 
-        case .platformFailure:
+        case .mediaUnavailable:
             writeInt(&buf, Int32(6))
 
 
-        case let .unsupported(wireCode):
+        case .platformFailure:
             writeInt(&buf, Int32(7))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(8))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -1888,11 +1981,11 @@ public func FfiConverterTypeHostFailureCode_lower(_ value: HostFailureCode) -> R
 
 public enum HostObservation: Equatable, Hashable {
 
-    case feedBytesFetched(bytes: Data, entityTag: String?, lastModified: String?
+    case feedBytesFetched(bytes: Data, entityTag: String?, lastModified: String?, responseUrl: String, httpStatus: UInt16
     )
-    case playbackStarted(episodeId: EpisodeId, actualPositionMilliseconds: UInt64
+    case feedNotModified(entityTag: String?, lastModified: String?, responseUrl: String
     )
-    case playbackStopped(episodeId: EpisodeId, actualPositionMilliseconds: UInt64, reason: PlaybackStopReason
+    case playbackObserved(value: PlaybackLifecycleObservation
     )
     case failed(code: HostFailureCode, safeDetail: String?
     )
@@ -1920,13 +2013,13 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
         let variant: Int32 = try readInt(&buf)
         switch variant {
 
-        case 1: return .feedBytesFetched(bytes: try FfiConverterData.read(from: &buf), entityTag: try FfiConverterOptionString.read(from: &buf), lastModified: try FfiConverterOptionString.read(from: &buf)
+        case 1: return .feedBytesFetched(bytes: try FfiConverterData.read(from: &buf), entityTag: try FfiConverterOptionString.read(from: &buf), lastModified: try FfiConverterOptionString.read(from: &buf), responseUrl: try FfiConverterString.read(from: &buf), httpStatus: try FfiConverterUInt16.read(from: &buf)
         )
 
-        case 2: return .playbackStarted(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), actualPositionMilliseconds: try FfiConverterUInt64.read(from: &buf)
+        case 2: return .feedNotModified(entityTag: try FfiConverterOptionString.read(from: &buf), lastModified: try FfiConverterOptionString.read(from: &buf), responseUrl: try FfiConverterString.read(from: &buf)
         )
 
-        case 3: return .playbackStopped(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), actualPositionMilliseconds: try FfiConverterUInt64.read(from: &buf), reason: try FfiConverterTypePlaybackStopReason.read(from: &buf)
+        case 3: return .playbackObserved(value: try FfiConverterTypePlaybackLifecycleObservation.read(from: &buf)
         )
 
         case 4: return .failed(code: try FfiConverterTypeHostFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf)
@@ -1945,24 +2038,25 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
         switch value {
 
 
-        case let .feedBytesFetched(bytes,entityTag,lastModified):
+        case let .feedBytesFetched(bytes,entityTag,lastModified,responseUrl,httpStatus):
             writeInt(&buf, Int32(1))
             FfiConverterData.write(bytes, into: &buf)
             FfiConverterOptionString.write(entityTag, into: &buf)
             FfiConverterOptionString.write(lastModified, into: &buf)
+            FfiConverterString.write(responseUrl, into: &buf)
+            FfiConverterUInt16.write(httpStatus, into: &buf)
 
 
-        case let .playbackStarted(episodeId,actualPositionMilliseconds):
+        case let .feedNotModified(entityTag,lastModified,responseUrl):
             writeInt(&buf, Int32(2))
-            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
-            FfiConverterUInt64.write(actualPositionMilliseconds, into: &buf)
+            FfiConverterOptionString.write(entityTag, into: &buf)
+            FfiConverterOptionString.write(lastModified, into: &buf)
+            FfiConverterString.write(responseUrl, into: &buf)
 
 
-        case let .playbackStopped(episodeId,actualPositionMilliseconds,reason):
+        case let .playbackObserved(value):
             writeInt(&buf, Int32(3))
-            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
-            FfiConverterUInt64.write(actualPositionMilliseconds, into: &buf)
-            FfiConverterTypePlaybackStopReason.write(reason, into: &buf)
+            FfiConverterTypePlaybackLifecycleObservation.write(value, into: &buf)
 
 
         case let .failed(code,safeDetail):
@@ -2003,9 +2097,23 @@ public func FfiConverterTypeHostObservation_lower(_ value: HostObservation) -> R
 
 public enum HostRequest: Equatable, Hashable {
 
-    case fetchFeed(feedUrl: String, maximumResponseBytes: UInt64
+    case fetchFeed(feedUrl: String, entityTag: String?, lastModified: String?, maximumResponseBytes: UInt64
     )
-    case startPlayback(episodeId: EpisodeId, audioUrl: String, startPositionMilliseconds: UInt64
+    case loadMedia(episodeId: EpisodeId, audioUrl: String, startPositionMilliseconds: UInt64
+    )
+    case play(episodeId: EpisodeId, transitionCue: PlaybackTransitionCue
+    )
+    case pause(episodeId: EpisodeId
+    )
+    case seek(episodeId: EpisodeId, positionMilliseconds: UInt64
+    )
+    case setRate(episodeId: EpisodeId, rate: PlaybackRatePermille
+    )
+    case armNativeTimer(episodeId: EpisodeId, mode: NativeTimerMode
+    )
+    case cancelNativeTimer(episodeId: EpisodeId
+    )
+    case observePlayback(episodeId: EpisodeId?, minimumIntervalMilliseconds: UInt32
     )
     case stopPlayback(episodeId: EpisodeId
     )
@@ -2032,16 +2140,37 @@ public struct FfiConverterTypeHostRequest: FfiConverterRustBuffer {
         let variant: Int32 = try readInt(&buf)
         switch variant {
 
-        case 1: return .fetchFeed(feedUrl: try FfiConverterString.read(from: &buf), maximumResponseBytes: try FfiConverterUInt64.read(from: &buf)
+        case 1: return .fetchFeed(feedUrl: try FfiConverterString.read(from: &buf), entityTag: try FfiConverterOptionString.read(from: &buf), lastModified: try FfiConverterOptionString.read(from: &buf), maximumResponseBytes: try FfiConverterUInt64.read(from: &buf)
         )
 
-        case 2: return .startPlayback(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), audioUrl: try FfiConverterString.read(from: &buf), startPositionMilliseconds: try FfiConverterUInt64.read(from: &buf)
+        case 2: return .loadMedia(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), audioUrl: try FfiConverterString.read(from: &buf), startPositionMilliseconds: try FfiConverterUInt64.read(from: &buf)
         )
 
-        case 3: return .stopPlayback(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
+        case 3: return .play(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), transitionCue: try FfiConverterTypePlaybackTransitionCue.read(from: &buf)
         )
 
-        case 4: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 4: return .pause(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
+        )
+
+        case 5: return .seek(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), positionMilliseconds: try FfiConverterUInt64.read(from: &buf)
+        )
+
+        case 6: return .setRate(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), rate: try FfiConverterTypePlaybackRatePermille.read(from: &buf)
+        )
+
+        case 7: return .armNativeTimer(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), mode: try FfiConverterTypeNativeTimerMode.read(from: &buf)
+        )
+
+        case 8: return .cancelNativeTimer(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
+        )
+
+        case 9: return .observePlayback(episodeId: try FfiConverterOptionTypeEpisodeId.read(from: &buf), minimumIntervalMilliseconds: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        case 10: return .stopPlayback(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
+        )
+
+        case 11: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -2052,26 +2181,68 @@ public struct FfiConverterTypeHostRequest: FfiConverterRustBuffer {
         switch value {
 
 
-        case let .fetchFeed(feedUrl,maximumResponseBytes):
+        case let .fetchFeed(feedUrl,entityTag,lastModified,maximumResponseBytes):
             writeInt(&buf, Int32(1))
             FfiConverterString.write(feedUrl, into: &buf)
+            FfiConverterOptionString.write(entityTag, into: &buf)
+            FfiConverterOptionString.write(lastModified, into: &buf)
             FfiConverterUInt64.write(maximumResponseBytes, into: &buf)
 
 
-        case let .startPlayback(episodeId,audioUrl,startPositionMilliseconds):
+        case let .loadMedia(episodeId,audioUrl,startPositionMilliseconds):
             writeInt(&buf, Int32(2))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterString.write(audioUrl, into: &buf)
             FfiConverterUInt64.write(startPositionMilliseconds, into: &buf)
 
 
-        case let .stopPlayback(episodeId):
+        case let .play(episodeId,transitionCue):
             writeInt(&buf, Int32(3))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypePlaybackTransitionCue.write(transitionCue, into: &buf)
+
+
+        case let .pause(episodeId):
+            writeInt(&buf, Int32(4))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+
+
+        case let .seek(episodeId,positionMilliseconds):
+            writeInt(&buf, Int32(5))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterUInt64.write(positionMilliseconds, into: &buf)
+
+
+        case let .setRate(episodeId,rate):
+            writeInt(&buf, Int32(6))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypePlaybackRatePermille.write(rate, into: &buf)
+
+
+        case let .armNativeTimer(episodeId,mode):
+            writeInt(&buf, Int32(7))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeNativeTimerMode.write(mode, into: &buf)
+
+
+        case let .cancelNativeTimer(episodeId):
+            writeInt(&buf, Int32(8))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+
+
+        case let .observePlayback(episodeId,minimumIntervalMilliseconds):
+            writeInt(&buf, Int32(9))
+            FfiConverterOptionTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterUInt32.write(minimumIntervalMilliseconds, into: &buf)
+
+
+        case let .stopPlayback(episodeId):
+            writeInt(&buf, Int32(10))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(4))
+            writeInt(&buf, Int32(11))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -2091,6 +2262,85 @@ public func FfiConverterTypeHostRequest_lift(_ buf: RustBuffer) throws -> HostRe
 #endif
 public func FfiConverterTypeHostRequest_lower(_ value: HostRequest) -> RustBuffer {
     return FfiConverterTypeHostRequest.lower(value)
+}
+
+
+
+
+public enum NativeTimerMode: Equatable, Hashable {
+
+    case duration(durationMilliseconds: UInt64
+    )
+    case endOfEpisode
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension NativeTimerMode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNativeTimerMode: FfiConverterRustBuffer {
+    typealias SwiftType = NativeTimerMode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NativeTimerMode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .duration(durationMilliseconds: try FfiConverterUInt64.read(from: &buf)
+        )
+
+        case 2: return .endOfEpisode
+
+        case 3: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: NativeTimerMode, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .duration(durationMilliseconds):
+            writeInt(&buf, Int32(1))
+            FfiConverterUInt64.write(durationMilliseconds, into: &buf)
+
+
+        case .endOfEpisode:
+            writeInt(&buf, Int32(2))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNativeTimerMode_lift(_ buf: RustBuffer) throws -> NativeTimerMode {
+    return try FfiConverterTypeNativeTimerMode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNativeTimerMode_lower(_ value: NativeTimerMode) -> RustBuffer {
+    return FfiConverterTypeNativeTimerMode.lower(value)
 }
 
 
@@ -2195,6 +2445,318 @@ public func FfiConverterTypeOperationStage_lift(_ buf: RustBuffer) throws -> Ope
 #endif
 public func FfiConverterTypeOperationStage_lower(_ value: OperationStage) -> RustBuffer {
     return FfiConverterTypeOperationStage.lower(value)
+}
+
+
+
+
+public enum PlaybackAudioRoute: Equatable, Hashable {
+
+    case builtIn
+    case wired
+    case bluetooth
+    case airPlay
+    case car
+    case external
+    case unknown
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PlaybackAudioRoute: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePlaybackAudioRoute: FfiConverterRustBuffer {
+    typealias SwiftType = PlaybackAudioRoute
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PlaybackAudioRoute {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .builtIn
+
+        case 2: return .wired
+
+        case 3: return .bluetooth
+
+        case 4: return .airPlay
+
+        case 5: return .car
+
+        case 6: return .external
+
+        case 7: return .unknown
+
+        case 8: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: PlaybackAudioRoute, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .builtIn:
+            writeInt(&buf, Int32(1))
+
+
+        case .wired:
+            writeInt(&buf, Int32(2))
+
+
+        case .bluetooth:
+            writeInt(&buf, Int32(3))
+
+
+        case .airPlay:
+            writeInt(&buf, Int32(4))
+
+
+        case .car:
+            writeInt(&buf, Int32(5))
+
+
+        case .external:
+            writeInt(&buf, Int32(6))
+
+
+        case .unknown:
+            writeInt(&buf, Int32(7))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(8))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlaybackAudioRoute_lift(_ buf: RustBuffer) throws -> PlaybackAudioRoute {
+    return try FfiConverterTypePlaybackAudioRoute.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlaybackAudioRoute_lower(_ value: PlaybackAudioRoute) -> RustBuffer {
+    return FfiConverterTypePlaybackAudioRoute.lower(value)
+}
+
+
+
+
+public enum PlaybackHostState: Equatable, Hashable {
+
+    case idle
+    case loading
+    case prepared
+    case playing
+    case paused
+    case buffering
+    case failed
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PlaybackHostState: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePlaybackHostState: FfiConverterRustBuffer {
+    typealias SwiftType = PlaybackHostState
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PlaybackHostState {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .idle
+
+        case 2: return .loading
+
+        case 3: return .prepared
+
+        case 4: return .playing
+
+        case 5: return .paused
+
+        case 6: return .buffering
+
+        case 7: return .failed
+
+        case 8: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: PlaybackHostState, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .idle:
+            writeInt(&buf, Int32(1))
+
+
+        case .loading:
+            writeInt(&buf, Int32(2))
+
+
+        case .prepared:
+            writeInt(&buf, Int32(3))
+
+
+        case .playing:
+            writeInt(&buf, Int32(4))
+
+
+        case .paused:
+            writeInt(&buf, Int32(5))
+
+
+        case .buffering:
+            writeInt(&buf, Int32(6))
+
+
+        case .failed:
+            writeInt(&buf, Int32(7))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(8))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlaybackHostState_lift(_ buf: RustBuffer) throws -> PlaybackHostState {
+    return try FfiConverterTypePlaybackHostState.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlaybackHostState_lower(_ value: PlaybackHostState) -> RustBuffer {
+    return FfiConverterTypePlaybackHostState.lower(value)
+}
+
+
+
+
+public enum PlaybackInterruption: Equatable, Hashable {
+
+    case none
+    case began
+    case endedShouldResume
+    case endedShouldRemainPaused
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PlaybackInterruption: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePlaybackInterruption: FfiConverterRustBuffer {
+    typealias SwiftType = PlaybackInterruption
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PlaybackInterruption {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .none
+
+        case 2: return .began
+
+        case 3: return .endedShouldResume
+
+        case 4: return .endedShouldRemainPaused
+
+        case 5: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: PlaybackInterruption, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .none:
+            writeInt(&buf, Int32(1))
+
+
+        case .began:
+            writeInt(&buf, Int32(2))
+
+
+        case .endedShouldResume:
+            writeInt(&buf, Int32(3))
+
+
+        case .endedShouldRemainPaused:
+            writeInt(&buf, Int32(4))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlaybackInterruption_lift(_ buf: RustBuffer) throws -> PlaybackInterruption {
+    return try FfiConverterTypePlaybackInterruption.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlaybackInterruption_lower(_ value: PlaybackInterruption) -> RustBuffer {
+    return FfiConverterTypePlaybackInterruption.lower(value)
 }
 
 
@@ -2389,6 +2951,85 @@ public func FfiConverterTypePlaybackStopReason_lift(_ buf: RustBuffer) throws ->
 #endif
 public func FfiConverterTypePlaybackStopReason_lower(_ value: PlaybackStopReason) -> RustBuffer {
     return FfiConverterTypePlaybackStopReason.lower(value)
+}
+
+
+
+
+public enum PlaybackTransitionCue: Equatable, Hashable {
+
+    case immediate
+    case fadeIn(durationMilliseconds: UInt32
+    )
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PlaybackTransitionCue: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePlaybackTransitionCue: FfiConverterRustBuffer {
+    typealias SwiftType = PlaybackTransitionCue
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PlaybackTransitionCue {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .immediate
+
+        case 2: return .fadeIn(durationMilliseconds: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        case 3: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: PlaybackTransitionCue, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .immediate:
+            writeInt(&buf, Int32(1))
+
+
+        case let .fadeIn(durationMilliseconds):
+            writeInt(&buf, Int32(2))
+            FfiConverterUInt32.write(durationMilliseconds, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlaybackTransitionCue_lift(_ buf: RustBuffer) throws -> PlaybackTransitionCue {
+    return try FfiConverterTypePlaybackTransitionCue.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlaybackTransitionCue_lower(_ value: PlaybackTransitionCue) -> RustBuffer {
+    return FfiConverterTypePlaybackTransitionCue.lower(value)
 }
 
 
@@ -2822,6 +3463,30 @@ fileprivate struct FfiConverterOptionTypePlaybackItem: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeEpisodeId: FfiConverterRustBuffer {
+    typealias SwiftType = EpisodeId?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeEpisodeId.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeEpisodeId.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeStateRevision: FfiConverterRustBuffer {
     typealias SwiftType = StateRevision?
 
@@ -2838,6 +3503,30 @@ fileprivate struct FfiConverterOptionTypeStateRevision: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeStateRevision.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeUnixTimestampMilliseconds: FfiConverterRustBuffer {
+    typealias SwiftType = UnixTimestampMilliseconds?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeUnixTimestampMilliseconds.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }

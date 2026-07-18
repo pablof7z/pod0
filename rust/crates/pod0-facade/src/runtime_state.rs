@@ -51,8 +51,11 @@ impl FacadeState {
                     command_id: envelope.command_id,
                     cancellation_id: envelope.cancellation_id,
                     issued_revision: self.revision,
+                    deadline_at: None,
                     request: HostRequest::FetchFeed {
                         feed_url,
+                        entity_tag: None,
+                        last_modified: None,
                         maximum_response_bytes: MAX_FEED_RESPONSE_BYTES,
                     },
                 };
@@ -105,6 +108,9 @@ impl FacadeState {
 
     pub(super) fn record_host_observation(&mut self, observation: HostObservationEnvelope) -> bool {
         let command_id = self.host_requests.command_id(observation.request_id);
+        let is_playback_stream = self
+            .host_requests
+            .is_playback_observation_stream(observation.request_id);
         if self.host_requests.accept_observation(&observation) != ObservationAcceptance::Accepted {
             return false;
         }
@@ -125,10 +131,13 @@ impl FacadeState {
                 OperationStage::Cancelled,
                 Some(failure(CoreFailureCode::Cancelled)),
             ),
-            HostObservation::FeedBytesFetched { .. } => {
+            HostObservation::FeedBytesFetched { .. } | HostObservation::FeedNotModified { .. } => {
                 self.fail(command_id, CoreFailureCode::Unsupported { wire_code: 1 });
             }
-            HostObservation::PlaybackStarted { .. } | HostObservation::PlaybackStopped { .. } => {
+            HostObservation::PlaybackObserved { .. } if is_playback_stream => {
+                self.finish(command_id, OperationStage::Running, None);
+            }
+            HostObservation::PlaybackObserved { .. } => {
                 self.finish(command_id, OperationStage::Succeeded, None);
             }
             HostObservation::Unsupported { wire_code } => {

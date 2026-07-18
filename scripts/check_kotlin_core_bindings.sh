@@ -54,9 +54,13 @@ KOTLIN_SOURCES=()
 while IFS= read -r source; do
   KOTLIN_SOURCES+=("$source")
 done < <(find "$REPO_ROOT/Generated/Pod0Core/Kotlin" -name '*.kt' -type f | sort)
+SMOKE_SOURCES=()
+while IFS= read -r source; do
+  SMOKE_SOURCES+=("$source")
+done < <(find "$REPO_ROOT/BindingsSmoke/Kotlin" -name '*.kt' -type f | sort)
 "$KOTLIN_HOME/bin/kotlinc" \
   "${KOTLIN_SOURCES[@]}" \
-  "$REPO_ROOT/BindingsSmoke/Kotlin/Main.kt" \
+  "${SMOKE_SOURCES[@]}" \
   -classpath "$JNA_JAR" \
   -jvm-target 21 \
   -include-runtime \

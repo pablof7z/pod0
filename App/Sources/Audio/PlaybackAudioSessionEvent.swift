@@ -13,14 +13,14 @@ enum PlaybackRouteChangeReason: String, Equatable, Sendable {
 }
 
 enum PlaybackAudioSessionEvent: Equatable, Sendable {
-    case interruptionBegan(route: PlaybackAudioRoute)
-    case interruptionEnded(shouldResume: Bool, route: PlaybackAudioRoute)
+    case interruptionBegan(route: NativePlaybackAudioRoute)
+    case interruptionEnded(shouldResume: Bool, route: NativePlaybackAudioRoute)
     case routeChanged(
         reason: PlaybackRouteChangeReason,
-        previous: PlaybackAudioRoute,
-        current: PlaybackAudioRoute
+        previous: NativePlaybackAudioRoute,
+        current: NativePlaybackAudioRoute
     )
-    case mediaServicesWereReset(route: PlaybackAudioRoute)
+    case mediaServicesWereReset(route: NativePlaybackAudioRoute)
 }
 
 /// Converts process-wide AVAudioSession notifications into bounded typed host
@@ -67,13 +67,13 @@ final class PlaybackAudioSessionObserver {
         tokens.append(token)
     }
 
-    private var currentRoute: PlaybackAudioRoute {
+    private var currentRoute: NativePlaybackAudioRoute {
         Self.route(for: session.currentRoute.outputs.map(\.portType))
     }
 
     nonisolated static func event(
         from notification: Notification,
-        currentRoute: PlaybackAudioRoute
+        currentRoute: NativePlaybackAudioRoute
     ) -> PlaybackAudioSessionEvent? {
         switch notification.name {
         case AVAudioSession.interruptionNotification:
@@ -116,7 +116,7 @@ final class PlaybackAudioSessionObserver {
         }
     }
 
-    nonisolated static func route(for ports: [AVAudioSession.Port]) -> PlaybackAudioRoute {
+    nonisolated static func route(for ports: [AVAudioSession.Port]) -> NativePlaybackAudioRoute {
         guard !ports.isEmpty else { return .unknown }
         if ports.contains(where: { [.headphones, .headsetMic, .lineOut].contains($0) }) {
             return .wired
@@ -160,7 +160,9 @@ extension AudioEngine {
     func configureAudioSessionObserver() {
         let observer = PlaybackAudioSessionObserver()
         observer.onEvent = { [weak self] event in
-            self?.onAudioSessionEvent(event)
+            guard let self else { return }
+            self.onAudioSessionEvent(event)
+            self.onHostAudioSessionEvent(event)
         }
         audioSessionObserver = observer
     }

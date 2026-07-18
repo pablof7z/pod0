@@ -5,9 +5,7 @@ import Kingfisher
 import MediaPlayer
 import os.log
 import UIKit
-
 // MARK: - AudioEngine
-
 /// Wraps a single `AVPlayer`, exposes an `@Observable` playback state, and
 /// brokers commands from the player UI, the agent, and Now Playing controls.
 ///
@@ -23,9 +21,7 @@ import UIKit
 @MainActor
 @Observable
 final class AudioEngine {
-
     // MARK: - State
-
     enum State: Equatable, Sendable {
         case idle
         case loading(Episode)
@@ -34,16 +30,13 @@ final class AudioEngine {
         case buffering
         case failed(EngineError)
     }
-
     // MARK: - Observable surface
-
     private(set) var state: State = .idle
     private(set) var currentTime: TimeInterval = 0
     private(set) var duration: TimeInterval = 0
     private(set) var rate: Double = 1.0
     private(set) var episode: Episode?
     var onFailure: (ProductFailure) -> Void = { _ in }
-
     /// `true` once the natural end-of-item observer has fired for the current
     /// episode. Distinguishes "user paused at 99.9 % of duration" from "episode
     /// genuinely finished" — the two are otherwise indistinguishable from a
@@ -131,6 +124,8 @@ final class AudioEngine {
     /// Typed host lifecycle events. PlaybackState owns the pause/resume and
     /// persistence policy so system and in-app commands share one boundary.
     var onAudioSessionEvent: (PlaybackAudioSessionEvent) -> Void = { _ in }
+    var onHostStateChanged: () -> Void = { }
+    var onHostAudioSessionEvent: (PlaybackAudioSessionEvent) -> Void = { _ in }
 
     /// Per-effect multiplier that composes into `player.volume` via
     /// `applyEffectiveVolume`. Sleep timer drives `sleepFadeMultiplier`.
@@ -162,7 +157,7 @@ final class AudioEngine {
     /// `localFileURL` baked into `DownloadState.downloaded`) because iOS may
     /// rotate the app container path across launches, leaving the persisted
     /// absolute URL stale. Falls back to streaming when no local file exists.
-    func load(_ episode: Episode) {
+    func load(_ episode: Episode, requestedURL: URL? = nil) {
         let url: URL = {
             if EpisodeDownloadStore.shared.exists(for: episode) {
                 return EpisodeDownloadStore.shared.localFileURL(for: episode)
@@ -175,13 +170,13 @@ final class AudioEngine {
                FileManager.default.fileExists(atPath: freshURL.path) {
                 return freshURL
             }
-            return episode.enclosureURL
+            return requestedURL ?? episode.enclosureURL
         }()
         teardownItemObservers()
         self.episode = episode
-        state = .loading(episode)
-        currentTime = 0
-        duration = episode.duration ?? 0
+        setState(.loading(episode))
+        setCurrentTime(0)
+        setDuration(episode.duration ?? 0)
         didReachNaturalEnd = false
 
         let asset = AVURLAsset(url: url)
@@ -223,14 +218,14 @@ final class AudioEngine {
         }
         applyEffectiveVolume()
         player.playImmediately(atRate: Float(rate))
-        if state != .buffering { state = .playing }
+        if state != .buffering { setState(.playing) }
         publishNowPlaying()
     }
 
     /// Pause without releasing the audio session — quicker resume.
     func pause() {
         player.pause()
-        state = .paused
+        setState(.paused)
         publishNowPlaying()
     }
 
@@ -260,7 +255,7 @@ final class AudioEngine {
         if duration <= 0 || target < duration - 5 {
             didReachNaturalEnd = false
         }
-        currentTime = target
+        setCurrentTime(target)
         let time = CMTime(seconds: target, preferredTimescale: 600)
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
             Task { @MainActor in
@@ -287,11 +282,13 @@ final class AudioEngine {
             player.rate = Float(clamped)
         }
         publishNowPlaying()
+        onHostStateChanged()
     }
 
     /// Arm a sleep-timer mode. See `SleepTimer.Mode`.
     func setSleepTimer(_ mode: SleepTimer.Mode) {
         sleepTimer.set(mode)
+        onHostStateChanged()
     }
 
     func setNowPlayingCallbacks(_ callbacks: NowPlayingCenter.Callbacks) {
@@ -332,7 +329,7 @@ final class AudioEngine {
         }
     }
 
-    private func applyEffectiveVolume() {
+    func applyEffectiveVolume() {
         player.volume = fadeBaseVolume * sleepFadeMultiplier
     }
 
@@ -439,13 +436,16 @@ final class AudioEngine {
     func setState(_ newState: State) {
         self.state = newState
         if case let .failed(error) = newState { onFailure(error.failure) }
+        onHostStateChanged()
     }
 
     func setDuration(_ newDuration: TimeInterval) {
         self.duration = newDuration
+        onHostStateChanged()
     }
 
     func setCurrentTime(_ newTime: TimeInterval) {
         self.currentTime = newTime
+        onHostStateChanged()
     }
 }

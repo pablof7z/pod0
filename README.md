@@ -28,9 +28,12 @@ versioned app-core SQLite migration/backup mechanism. The facade is linked into
 iOS for compile/runtime qualification. A typed, verified importer can stage the
 current Swift listening library in Rust and read it back through both generated
 bindings, but the marker remains `staged`: Rust owns no live user data yet and
-Swift remains authoritative until the first complete vertical-slice cutover. There
-is no Android application. Generic NMP is pinned behind the Pod0 adapter and is
-not linked into the facade while security issue #85 is open.
+Swift remains authoritative until the first complete vertical-slice cutover.
+Typed, cancellable URLSession and AVFoundation adapters can execute generated
+feed/playback host requests and return bounded observations without moving
+native media behavior into Rust. There is no Android application. Generic NMP
+is pinned behind the Pod0 adapter and is not linked into the facade while
+security issue #85 is open.
 
 ## Architecture
 

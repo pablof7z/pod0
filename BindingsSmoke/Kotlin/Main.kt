@@ -1,10 +1,4 @@
-import uniffi.pod0_application.ApplicationCommand
-import uniffi.pod0_application.CoreFailureCode
-import uniffi.pod0_application.OperationStage
-import uniffi.pod0_application.Projection
-import uniffi.pod0_application.ProjectionEnvelope
-import uniffi.pod0_application.ProjectionRequest
-import uniffi.pod0_application.ProjectionScope
+import uniffi.pod0_application.*
 import uniffi.pod0_domain.*
 import uniffi.pod0_facade.*
 import java.io.File
@@ -41,6 +35,7 @@ fun main(args: Array<String>) {
 
     qualifyListeningDomain(decodeProperties(File(args[1]).readText()))
     qualifyListeningImport(File(args[2]))
+    qualifyNativeHostContract()
 
     val facade = Pod0Facade()
     try {
@@ -60,6 +55,7 @@ fun main(args: Array<String>) {
         check(subscriber.revisions == listOf(0UL, 1UL))
 
         val projection = facade.snapshot(request).projection
+        check(facade.snapshot(request).contractVersion == 2u)
         check(projection is Projection.Library)
         val unsupportedOperation = projection.value.operations.single()
         check(unsupportedOperation.commandId == CommandId(0UL, 1UL))

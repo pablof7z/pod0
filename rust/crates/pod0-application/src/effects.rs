@@ -1,15 +1,25 @@
 use pod0_domain::{
-    CancellationId, CommandId, DomainEventId, EpisodeId, HostRequestId, PodcastId, StateRevision,
-    UnixTimestampMilliseconds,
+    CancellationId, CommandId, DomainEventId, EpisodeId, HostRequestId, PlaybackRatePermille,
+    PodcastId, StateRevision, UnixTimestampMilliseconds,
 };
 
 use crate::OperationStage;
 
 pub const MAX_FEED_RESPONSE_BYTES: u64 = 8 * 1_024 * 1_024;
+pub const MIN_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS: u32 = 500;
+pub const MAX_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS: u32 = 5_000;
 
 #[must_use]
 pub fn bounded_host_request_count(requested: u16) -> usize {
     usize::from(requested.clamp(1, crate::MAX_HOST_REQUEST_BATCH))
+}
+
+#[must_use]
+pub fn bounded_playback_observation_interval(requested_milliseconds: u32) -> u32 {
+    requested_milliseconds.clamp(
+        MIN_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS,
+        MAX_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS,
+    )
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
@@ -51,6 +61,7 @@ pub struct HostRequestEnvelope {
     pub command_id: CommandId,
     pub cancellation_id: CancellationId,
     pub issued_revision: StateRevision,
+    pub deadline_at: Option<UnixTimestampMilliseconds>,
     pub request: HostRequest,
 }
 
@@ -58,12 +69,40 @@ pub struct HostRequestEnvelope {
 pub enum HostRequest {
     FetchFeed {
         feed_url: String,
+        entity_tag: Option<String>,
+        last_modified: Option<String>,
         maximum_response_bytes: u64,
     },
-    StartPlayback {
+    LoadMedia {
         episode_id: EpisodeId,
         audio_url: String,
         start_position_milliseconds: u64,
+    },
+    Play {
+        episode_id: EpisodeId,
+        transition_cue: PlaybackTransitionCue,
+    },
+    Pause {
+        episode_id: EpisodeId,
+    },
+    Seek {
+        episode_id: EpisodeId,
+        position_milliseconds: u64,
+    },
+    SetRate {
+        episode_id: EpisodeId,
+        rate: PlaybackRatePermille,
+    },
+    ArmNativeTimer {
+        episode_id: EpisodeId,
+        mode: NativeTimerMode,
+    },
+    CancelNativeTimer {
+        episode_id: EpisodeId,
+    },
+    ObservePlayback {
+        episode_id: Option<EpisodeId>,
+        minimum_interval_milliseconds: u32,
     },
     StopPlayback {
         episode_id: EpisodeId,
@@ -78,6 +117,8 @@ pub struct HostObservationEnvelope {
     pub request_id: HostRequestId,
     pub cancellation_id: CancellationId,
     pub observed_request_revision: StateRevision,
+    pub sequence_number: u64,
+    pub observed_at: UnixTimestampMilliseconds,
     pub observation: HostObservation,
 }
 
@@ -87,15 +128,16 @@ pub enum HostObservation {
         bytes: Vec<u8>,
         entity_tag: Option<String>,
         last_modified: Option<String>,
+        response_url: String,
+        http_status: u16,
     },
-    PlaybackStarted {
-        episode_id: EpisodeId,
-        actual_position_milliseconds: u64,
+    FeedNotModified {
+        entity_tag: Option<String>,
+        last_modified: Option<String>,
+        response_url: String,
     },
-    PlaybackStopped {
-        episode_id: EpisodeId,
-        actual_position_milliseconds: u64,
-        reason: PlaybackStopReason,
+    PlaybackObserved {
+        value: PlaybackLifecycleObservation,
     },
     Failed {
         code: HostFailureCode,
@@ -105,6 +147,64 @@ pub enum HostObservation {
     Unsupported {
         wire_code: u32,
     },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum PlaybackTransitionCue {
+    Immediate,
+    FadeIn { duration_milliseconds: u32 },
+    Unsupported { wire_code: u32 },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum NativeTimerMode {
+    Duration { duration_milliseconds: u64 },
+    EndOfEpisode,
+    Unsupported { wire_code: u32 },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct PlaybackLifecycleObservation {
+    pub episode_id: Option<EpisodeId>,
+    pub state: PlaybackHostState,
+    pub position_milliseconds: u64,
+    pub duration_milliseconds: u64,
+    pub route: PlaybackAudioRoute,
+    pub interruption: PlaybackInterruption,
+    pub ended: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum PlaybackHostState {
+    Idle,
+    Loading,
+    Prepared,
+    Playing,
+    Paused,
+    Buffering,
+    Failed,
+    Unsupported { wire_code: u32 },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum PlaybackAudioRoute {
+    BuiltIn,
+    Wired,
+    Bluetooth,
+    AirPlay,
+    Car,
+    External,
+    Unknown,
+    Unsupported { wire_code: u32 },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum PlaybackInterruption {
+    None,
+    Began,
+    EndedShouldResume,
+    EndedShouldRemainPaused,
+    Unsupported { wire_code: u32 },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
@@ -123,6 +223,7 @@ pub enum HostFailureCode {
     TimedOut,
     PermissionDenied,
     InvalidResponse,
+    ResponseTooLarge,
     MediaUnavailable,
     PlatformFailure,
     Unsupported { wire_code: u32 },

@@ -7,10 +7,13 @@ pub use pod0_application::{
     DomainEventEnvelope, EpisodeSummary, FACADE_CONTRACT_VERSION, HostFailureCode, HostObservation,
     HostObservationEnvelope, HostRequest, HostRequestEnvelope, KernelProbeCommand,
     KernelProbeProjection, LibraryProjection, MAX_FEED_RESPONSE_BYTES, MAX_HOST_REQUEST_BATCH,
-    MAX_OPERATION_ITEMS, MAX_PROJECTION_ITEMS, OperationProjection, OperationStage, PlaybackItem,
-    PlaybackPolicyState, PlaybackProjection, PlaybackStopReason, PodcastSummary, Projection,
-    ProjectionEnvelope, ProjectionRequest, ProjectionScope, Retryability, UnsupportedProjection,
-    UserAction, bounded_host_request_count,
+    MAX_OPERATION_ITEMS, MAX_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, MAX_PROJECTION_ITEMS,
+    MIN_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, NativeTimerMode, OperationProjection,
+    OperationStage, PlaybackAudioRoute, PlaybackHostState, PlaybackInterruption, PlaybackItem,
+    PlaybackLifecycleObservation, PlaybackPolicyState, PlaybackProjection, PlaybackStopReason,
+    PlaybackTransitionCue, PodcastSummary, Projection, ProjectionEnvelope, ProjectionRequest,
+    ProjectionScope, Retryability, UnsupportedProjection, UserAction, bounded_host_request_count,
+    bounded_playback_observation_interval,
 };
 use pod0_application::{Clock, KernelApplication};
 pub use pod0_domain::{
@@ -150,5 +153,8 @@ mod tests {
             bounded_host_request_count(u16::MAX),
             usize::from(MAX_HOST_REQUEST_BATCH)
         );
+        assert_eq!(bounded_playback_observation_interval(0), 500);
+        assert_eq!(bounded_playback_observation_interval(1_000), 1_000);
+        assert_eq!(bounded_playback_observation_interval(u32::MAX), 5_000);
     }
 }

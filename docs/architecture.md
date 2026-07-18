@@ -13,10 +13,14 @@ Swift and Kotlin APIs derive from the same Rust metadata. The Swift API is
 linked into iOS as `Pod0Core` and has a runtime smoke test; the Kotlin API has a
 JVM compile/runtime smoke test. `pod0-storage` now provides versioned,
 transactional core-schema migrations, verified backup/restore-to-staging, a
-restart journal, and typed read-only failure states. It imports no Swift data.
-The bootstrap facade is in-memory and owns no user data, so Swift remains
-authoritative. There is no Android project. The NMP adapter remains isolated
-from the facade while the security hold in issue #85 is active.
+restart journal, typed read-only failure states, and a verified staged import of
+the current Swift listening library. Cancellable native host adapters now
+execute typed feed requests through URLSession and playback requests through
+AVFoundation, returning correlated bounded observations through the generated
+contract. The bootstrap facade is in-memory and the import marker is not
+authoritative, so Swift remains the live writer. There is no Android project.
+The NMP adapter remains isolated from the facade while the security hold in
+issue #85 is active.
 
 ### Application state
 
@@ -74,8 +78,10 @@ and routes, media controls, BGTask/URLSession entry points, notifications,
 Keychain/biometric prompts, widgets, Spotlight, file/share integration, and
 Apple speech/audio capture.
 
-These native components eventually execute typed host requests and return raw
-observations. They do not become a second durable policy owner.
+The feed and playback adapters now execute typed host requests and return raw,
+deadline/cancellation-safe observations. Other native components adopt the same
+boundary as their domains migrate. They do not become a second durable policy
+owner.
 
 ## Target ownership
 
@@ -102,6 +108,10 @@ Swift and Kotlin bindings. CI rejects drift from Rust metadata.
 - Native dispatches typed fire-and-forget commands.
 - One Rust actor is the writer for migrated state.
 - Async/native results return as typed internal events or host observations.
+- Feed hosts return bounded bytes, validators, redirect URL, and HTTP evidence;
+  Swift does not normalize the payload on the shared path.
+- Playback hosts execute AVFoundation primitives and coalesce lifecycle
+  observations; queue/resume/completion decisions never enter the adapter.
 - Open views receive bounded, revisioned, screen-shaped projections.
 - Operation failure and cancellation appear in projection state, not thrown
   per-operation FFI results.

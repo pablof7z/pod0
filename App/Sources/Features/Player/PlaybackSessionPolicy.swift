@@ -11,8 +11,8 @@ enum PlaybackSessionPolicyAction: Equatable, Sendable {
 /// PlaybackState executes the resulting host action and persistence boundary.
 struct PlaybackSessionPolicy: Equatable, Sendable {
     private(set) var interruptedEpisodeID: UUID?
-    private(set) var interruption: PlaybackInterruption = .none
-    private(set) var route: PlaybackAudioRoute = .unknown
+    private(set) var interruption: NativePlaybackInterruption = .none
+    private(set) var route: NativePlaybackAudioRoute = .unknown
 
     mutating func handle(
         _ event: PlaybackAudioSessionEvent,

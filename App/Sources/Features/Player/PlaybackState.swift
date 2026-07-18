@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import Pod0Core
 import SwiftUI
 
 // MARK: - PlaybackState
@@ -181,9 +182,8 @@ final class PlaybackState {
     var skippedAdSegmentIDs: Set<UUID> = []
     var sessionPolicy = PlaybackSessionPolicy()
     var playbackRequested = false
-    var lastHostObservation: PlaybackObservation?
-    var onHostObservation: (PlaybackObservation) -> Void = { _ in }
-
+    var lastHostObservation: PlaybackLifecycleObservation?
+    var onHostObservation: (PlaybackLifecycleObservation) -> Void = { _ in }
     // MARK: - Init
 
     init(engine: AudioEngine = AudioEngine(), productSignals: any ProductSignalSink = DiscardingProductSignalSink.shared) {

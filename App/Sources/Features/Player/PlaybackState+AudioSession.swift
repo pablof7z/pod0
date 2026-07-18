@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 
 extension PlaybackState {
     var playbackFailure: UserFacingFailure? {
@@ -8,7 +9,7 @@ extension PlaybackState {
 
     func handleAudioSessionEvent(
         _ event: PlaybackAudioSessionEvent,
-        observedAt: Date = Date()
+        observedAt _: Date = Date()
     ) {
         let action = sessionPolicy.handle(
             event,
@@ -34,21 +35,20 @@ extension PlaybackState {
             resumeAfterSystemBoundary()
         }
 
-        let observation = makeHostObservation(observedAt: observedAt)
+        let observation = makeHostObservation()
         lastHostObservation = observation
         onHostObservation(observation)
     }
 
-    func makeHostObservation(observedAt: Date = Date()) -> PlaybackObservation {
-        PlaybackObservation(
-            episodeID: episode?.id,
-            hostState: engine.state.hostState,
+    func makeHostObservation() -> PlaybackLifecycleObservation {
+        PlaybackLifecycleObservation(
+            episodeId: episode.map { EpisodeId(uuid: $0.id) },
+            state: engine.state.hostState,
             positionMilliseconds: Self.milliseconds(engine.currentTime),
             durationMilliseconds: Self.milliseconds(duration),
-            route: sessionPolicy.route,
-            interruption: sessionPolicy.interruption,
-            ended: engine.didReachNaturalEnd,
-            observedAt: observedAt
+            route: sessionPolicy.route.coreRoute,
+            interruption: sessionPolicy.interruption.coreInterruption,
+            ended: engine.didReachNaturalEnd
         )
     }
 
@@ -98,14 +98,14 @@ extension PlaybackState {
         resumeAfterSystemBoundary()
     }
 
-    private static func milliseconds(_ seconds: TimeInterval) -> Int64 {
+    private static func milliseconds(_ seconds: TimeInterval) -> UInt64 {
         guard seconds.isFinite else { return 0 }
-        return Int64((max(0, seconds) * 1_000).rounded())
+        return UInt64((max(0, seconds) * 1_000).rounded())
     }
 }
 
 private extension AudioEngine.State {
-    var hostState: PlaybackHostState {
+    var hostState: Pod0Core.PlaybackHostState {
         switch self {
         case .idle: .idle
         case .loading: .loading
@@ -113,6 +113,31 @@ private extension AudioEngine.State {
         case .paused: .paused
         case .buffering: .buffering
         case .failed: .failed
+        }
+    }
+}
+
+private extension NativePlaybackAudioRoute {
+    var coreRoute: Pod0Core.PlaybackAudioRoute {
+        switch self {
+        case .builtIn: .builtIn
+        case .wired: .wired
+        case .bluetooth: .bluetooth
+        case .airPlay: .airPlay
+        case .car: .car
+        case .external: .external
+        case .unknown: .unknown
+        }
+    }
+}
+
+private extension NativePlaybackInterruption {
+    var coreInterruption: Pod0Core.PlaybackInterruption {
+        switch self {
+        case .none: .none
+        case .began: .began
+        case .endedShouldResume: .endedShouldResume
+        case .endedShouldRemainPaused: .endedShouldRemainPaused
         }
     }
 }

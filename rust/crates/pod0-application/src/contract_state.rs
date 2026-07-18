@@ -55,6 +55,7 @@ enum HostRequestStatus {
 struct TrackedHostRequest {
     envelope: HostRequestEnvelope,
     status: HostRequestStatus,
+    last_sequence_number: Option<u64>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -65,6 +66,8 @@ pub enum ObservationAcceptance {
     Cancelled,
     CancellationMismatch,
     StaleRequestRevision,
+    OutOfOrder,
+    MismatchedPayload,
     PayloadTooLarge,
 }
 
@@ -82,6 +85,16 @@ impl HostRequestLedger {
     }
 
     #[must_use]
+    pub fn is_playback_observation_stream(&self, request_id: HostRequestId) -> bool {
+        self.requests.get(&request_id).is_some_and(|request| {
+            matches!(
+                request.envelope.request,
+                HostRequest::ObservePlayback { .. }
+            )
+        })
+    }
+
+    #[must_use]
     pub fn register(&mut self, request: HostRequestEnvelope) -> bool {
         if self.requests.contains_key(&request.request_id) {
             return false;
@@ -91,6 +104,7 @@ impl HostRequestLedger {
             TrackedHostRequest {
                 envelope: request,
                 status: HostRequestStatus::Outstanding,
+                last_sequence_number: None,
             },
         );
         true
@@ -125,8 +139,21 @@ impl HostRequestLedger {
         if request.envelope.issued_revision != observation.observed_request_revision {
             return ObservationAcceptance::StaleRequestRevision;
         }
+        if request
+            .last_sequence_number
+            .is_some_and(|sequence| observation.sequence_number <= sequence)
+        {
+            return if request.last_sequence_number == Some(observation.sequence_number) {
+                ObservationAcceptance::Duplicate
+            } else {
+                ObservationAcceptance::OutOfOrder
+            };
+        }
         if request.status == HostRequestStatus::Cancelled {
             return ObservationAcceptance::Cancelled;
+        }
+        if !observation_matches_request(&request.envelope.request, &observation.observation) {
+            return ObservationAcceptance::MismatchedPayload;
         }
         if let (
             HostRequest::FetchFeed {
@@ -139,8 +166,62 @@ impl HostRequestLedger {
         {
             return ObservationAcceptance::PayloadTooLarge;
         }
-        request.status = HostRequestStatus::Completed;
+        request.last_sequence_number = Some(observation.sequence_number);
+        let is_stream_update = matches!(
+            (&request.envelope.request, &observation.observation),
+            (
+                HostRequest::ObservePlayback { .. },
+                HostObservation::PlaybackObserved { .. }
+            )
+        );
+        if !is_stream_update {
+            request.status = HostRequestStatus::Completed;
+        }
         ObservationAcceptance::Accepted
+    }
+}
+
+fn observation_matches_request(request: &HostRequest, observation: &HostObservation) -> bool {
+    if matches!(
+        observation,
+        HostObservation::Failed { .. } | HostObservation::Cancelled
+    ) {
+        return true;
+    }
+    match (request, observation) {
+        (
+            HostRequest::FetchFeed { .. },
+            HostObservation::FeedBytesFetched { .. } | HostObservation::FeedNotModified { .. },
+        ) => true,
+        (
+            HostRequest::ObservePlayback {
+                episode_id: expected,
+                ..
+            },
+            HostObservation::PlaybackObserved { value },
+        ) => expected.is_none() || *expected == value.episode_id,
+        (request, HostObservation::PlaybackObserved { value }) => {
+            playback_request_episode_id(request)
+                .is_some_and(|expected| value.episode_id == Some(expected))
+        }
+        (HostRequest::Unsupported { .. }, HostObservation::Unsupported { .. }) => true,
+        _ => false,
+    }
+}
+
+fn playback_request_episode_id(request: &HostRequest) -> Option<pod0_domain::EpisodeId> {
+    match request {
+        HostRequest::LoadMedia { episode_id, .. }
+        | HostRequest::Play { episode_id, .. }
+        | HostRequest::Pause { episode_id }
+        | HostRequest::Seek { episode_id, .. }
+        | HostRequest::SetRate { episode_id, .. }
+        | HostRequest::ArmNativeTimer { episode_id, .. }
+        | HostRequest::CancelNativeTimer { episode_id }
+        | HostRequest::StopPlayback { episode_id } => Some(*episode_id),
+        HostRequest::FetchFeed { .. }
+        | HostRequest::ObservePlayback { .. }
+        | HostRequest::Unsupported { .. } => None,
     }
 }
 
