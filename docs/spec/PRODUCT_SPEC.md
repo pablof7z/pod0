@@ -1,8 +1,13 @@
 # Podcastr — Product Spec
 
+> **Historical, non-authoritative research.** See [`README.md`](README.md) for
+> status and the current architecture/roadmap sources. This file is not an
+> implementation inventory.
+
 > Synthesized from the project context, the baseline-feature checklist, fifteen UX briefs, five research notes, the architecture report, and the live skeleton on disk. Where briefs disagreed, this document has chosen a position. Dissent and undecided items are listed in the linked open-decisions section.
 
-**Status:** decision-grade. This file is the entry point; the detailed spec is split by section to keep every file under the AGENTS.md 500-line hard limit.
+**Historical status:** pre-narrowing decision record. The detailed spec is
+retained for research context and is superseded where master/ADRs differ.
 
 ---
 

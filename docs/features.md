@@ -1,5 +1,11 @@
 # Feature Reference
 
+> **Historical template/feature research.** This document contains removed and
+> superseded friend, Nostr, persistence, and agent examples. It is retained as
+> provenance, not as a current implementation guide. Use
+> [`architecture.md`](architecture.md), the
+> [architecture ADRs](architecture/README.md), and code/tests on `master`.
+
 ## Agent System
 
 **Source:** win-the-day-app `RockingLife/Agent/AgentSession.swift`, `AgentPrompt.swift`, `Agent/Tools.swift`

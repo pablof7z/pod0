@@ -1,5 +1,9 @@
 # Podcast Player — Project Context
 
+> **Historical, non-authoritative research.** See [`README.md`](README.md).
+> Claims about inherited friends, Nostr, feedback, persistence, paths, or
+> shipped features do not describe current `master`.
+
 > Shared context for all UX/research/engineering agents working on the spec phase.
 
 ## Vision

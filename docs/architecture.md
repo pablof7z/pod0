@@ -1,99 +1,131 @@
-# Architecture
+# Pod0 architecture
 
-## Overview
+This page describes the implementation on `master` and the accepted migration
+direction. Detailed invariants live in the [architecture decision
+index](architecture/README.md).
 
-The template follows a **single-store, observable** pattern derived from win-the-day-app's `AppStateStore`. There is no MVVM layer, no TCA effects system — just:
+## Current implementation
 
-1. `AppState` — a `Codable` struct (the data)
-2. `AppStateStore` — an `@Observable` class wrapping `AppState` (the mutations)
-3. SwiftUI views that read from the store via `@Environment`
+Pod0 is a Swift 6/Tuist iOS+iPadOS application with a widget. There is currently
+no Rust workspace, FFI layer, Kotlin binding, Android project, or active generic
+NMP dependency.
 
-## Data flow
+### Application state
 
-```
-User action
-    → View calls AppStateStore method
-        → Store mutates state
-            → didSet fires → Persistence.save()
-                → UserDefaults updated
-                    → @Observable propagates to dependent views
-                        → SwiftUI re-renders
-```
+`AppStateStore` is the current `@MainActor @Observable` application-state owner.
+Views and agent adapters call typed domain methods on the store; direct
+`mutateState` calls outside `App/Sources/State` are rejected by tests.
 
-Agent actions follow the same path: `AgentTools.dispatch()` calls the same `AppStateStore` methods as the UI.
+`AppState` currently contains podcasts, subscriptions, episodes, notes, clips,
+settings, agent memory/activity, categories, threading records, scheduled tasks,
+and the last-played episode. This is migration input, not the final
+cross-platform schema.
 
-## Module boundaries
+### Persistence topology
 
-```
-AppState (Codable, Sendable)
-  ↓ owns
-  [Item], [Note], [Friend], [AgentMemory], Settings
+`Persistence` is SQLite-authoritative. Normal reads and writes do not compare a
+JSON store.
 
-AppStateStore (@Observable, @MainActor)
-  ↓ wraps
-  AppState
-  ↓ calls
-  Persistence.save() on every mutation
+- `persistence_metadata` stores a JSON-encoded `AppState` metadata snapshot
+  without the episode array plus a monotonic generation.
+- `episodes` stores one versioned JSON payload per episode with stable local ID
+  and sort order.
+- Workflow schema metadata, jobs, and artifact records share the authoritative
+  SQLite transaction boundary where atomic state/job creation is required.
+- Transcript, download, staged artifact, and vector-index files are derived or
+  independently versioned artifacts under application support.
+- Legacy JSON is imported once and is never a concurrent authority.
+- Keychain stores provider secrets. iCloud KVS carries selected non-secret
+  settings. The widget reads a bounded app-group snapshot.
 
-AgentSession (@Observable, @MainActor)
-  ↓ reads
-  AppStateStore.state (for system prompt)
-  ↓ writes via
-  AgentTools.dispatch() → AppStateStore methods
-```
+State writes use monotonic revisions and a serialized background writer.
+Lifecycle suspension flushes the required revision. Episode position writes are
+debounced and bounded so playback does not rewrite the complete metadata
+snapshot every second.
 
-## Key decisions
+### Durable workflows
 
-### Why JSON blob over SwiftData?
+The Swift workflow runtime currently provides:
 
-JSON blob to UserDefaults (app group) is:
-- Zero schema migration complexity for small data
-- Trivially shareable with widgets/extensions (just read the same key)
-- Easy to backup, inspect, and debug
-- Fully compatible with CloudKit KVS sync
+- deterministic desired-job planning;
+- idempotency keys and occurrence identity;
+- SQLite job state, leases, fencing tokens, attempt/retry/block state;
+- external-operation evidence to avoid duplicate provider charges;
+- staged artifact verification and atomic adoption;
+- BGTask opportunities and background URLSession reconciliation;
+- restartable schema migrations and a process-reconstruction harness.
 
-Secrets do not go in this blob. OpenRouter keys from BYOK or manual entry are stored in Keychain via `OpenRouterCredentialStore`; `Settings` stores only non-secret connection metadata.
+This implementation is a characterization baseline for the later Rust workflow
+migration. It is not disposable scaffolding.
 
-For large datasets (thousands of items, time-series data), use SwiftData like cut-tracker does. The `Persistence` module is the only change needed.
+### Presentation and platform capabilities
 
-### Why @Observable over ObservableObject?
+SwiftUI owns rendering, native navigation/transitions, accessibility, animation,
+and transient presentation state. Swift also owns AVFoundation, audio sessions
+and routes, media controls, BGTask/URLSession entry points, notifications,
+Keychain/biometric prompts, widgets, Spotlight, file/share integration, and
+Apple speech/audio capture.
 
-Swift 5.9+ `@Observable` avoids the `objectWillChange` publisher firing on every property change. Only views that actually read a property re-render when that property changes. This is strictly better than `@Published` on a monolithic `@StateObject`.
+These native components eventually execute typed host requests and return raw
+observations. They do not become a second durable policy owner.
 
-### Why not TCA?
+## Target ownership
 
-TCA (The Composable Architecture) is excellent for large teams and complex side effects. This template favors simplicity: direct method calls, no reducer boilerplate, no effect publishers. Add TCA if your project needs it.
+The [machine-readable ownership inventory](architecture/ownership.json)
+classifies every production Swift file. Its checker fails on uncovered or
+ambiguous production code.
 
-### Swift 6 strict concurrency
+The Pod0 Rust kernel progressively owns:
 
-All models are `Sendable`. `AppStateStore` and `AgentSession` are `@MainActor`. `AgentTools.dispatch` is `@MainActor`. This satisfies Swift 6's strict concurrency without data races.
+- stable product identities, schemas, and migrations;
+- subscription/feed normalization and durable library state;
+- queue, resume, completion, playback-rate, and sleep-timer policy;
+- transcript normalization, chapters, semantic spans, provenance, and search;
+- highlights, notes, clips, conversations, briefings, and artifacts;
+- download/workflow desired state, retry, cancellation, and recovery;
+- agent validation, permission, commit, and generated-artifact semantics;
+- Pod0-specific Nostr behavior over a pinned generic NMP dependency.
 
-## Liquid Glass design system (iOS 26)
+## Native/shared communication
 
-The template targets iOS 26 and uses Apple's native Liquid Glass material throughout:
+There will be one app-owned UniFFI facade.
 
-- **`GlassSurface.swift`** — `.glassSurface(cornerRadius:)` modifier backed by `.glassEffect()`. Tinted variant for status banners.
-- **`HomeView`** — Glass FAB row (Add + Ask Agent) at the bottom, glass agent-status banner with tint keyed to session state.
-- **`FriendDetailView`** — Profile header card uses `.glassSurface()` pinned above the List.
-- Toolbar and tab bar glass are handled automatically by iOS 26; no additional code required.
+- Native dispatches typed fire-and-forget commands.
+- One Rust actor is the writer for migrated state.
+- Async/native results return as typed internal events or host observations.
+- Open views receive bounded, revisioned, screen-shaped projections.
+- Operation failure and cancellation appear in projection state, not thrown
+  per-operation FFI results.
+- Subscriptions are explicit and event-driven; polling is forbidden.
+- High-frequency playhead animation stays native. Only bounded observations
+  needed for durable policy cross FFI.
 
-Key patterns:
-- Always wrap sibling glass elements in `GlassEffectContainer(spacing:)` for performance and morphing.
-- Use `glassEffectID(_:in:)` + `@Namespace` for smooth morphing transitions.
-- Use `.interactive()` only on controls that respond to touch (buttons, toggles).
-- Avoid stacking too many nested glass layers — reserve for key chrome and interactive elements.
+See [ADR-0003](architecture/adr/0003-typed-uniffi-application-facade.md).
 
-## Extension points
+## Migration sequence
 
-| What | Where | How |
-|------|-------|-----|
-| New data type | `Domain/Models.swift` → `AppState` | Add `var things: [Thing] = []` to AppState |
-| New mutation | `State/AppStateStore.swift` | Add a method that mutates `state.X` |
-| New agent tool | `Agent/AgentTools.swift` | Add to `schema` and `dispatch` |
-| New tab | `App/RootView.swift` | Add to `RootTab`, add `NavigationStack` in switch |
-| New friend identifier type | `Domain/Models.swift` `Friend.identifier` | Change to an enum or typed ID |
-| iCloud sync | `State/Persistence.swift` | Add NSUbiquitousKeyValueStore alongside UserDefaults |
-| SwiftData | Replace `Persistence.swift` | Use `ModelContainer` + `@Model` classes |
-| Watch extension | Add target to `Project.swift` | Communicate via `WCSession` + App Group |
-| Widget | Add target to `Project.swift` | Share state via App Group UserDefaults |
-| Glass tint for new status | `GlassSurface.swift` extension | Use `.glassSurface(cornerRadius:tint:)` overload |
+1. Architecture rules, ownership inventory, and CI ratchets.
+2. iOS listening-to-recall product proof in parallel.
+3. Rust workspace, schemas, typed facade, Swift/Kotlin generation, and
+   Apple/Android compile checks.
+4. Subscribe → library → episode detail → native play → durable resume as the
+   first complete Rust-authoritative slice.
+5. Transcript/knowledge vertical slices.
+6. Download/workflow/agent/Nostr vertical slices.
+7. Evidence-based Android investment gate; Android product work only after go.
+
+Every cutover uses one writer, preserves existing data, verifies migration and
+restart behavior, and deletes replaced ownership immediately. The executable
+dependency graph is in the [roadmap](../Plans/2026-07-18-ios-first-rust-nmp-roadmap.md).
+
+## Enforcement
+
+- `scripts/check_architecture_ownership.py` covers every production Swift file.
+- `scripts/check_ui_storage_boundary.py` rejects new presentation-to-repository
+  access and tracks exact temporary exceptions with deletion issues.
+- `AppStateMutationBoundaryTests` rejects direct production `mutateState` use
+  outside the State domain.
+- The pull-request template requires an ownership declaration for
+  cross-platform-sensitive work.
+- CI and AGENTS.md enforce architecture, typography, changelog, and line-limit
+  rules as their ratchets land.
