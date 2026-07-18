@@ -20,6 +20,7 @@ The operating rule is:
 
 - [iOS-first shared-core roadmap](../../Plans/2026-07-18-ios-first-rust-nmp-roadmap.md)
 - [Swift ownership inventory](ownership.md)
+- [Native UI to durable-state boundary](ui-storage-boundary.md)
 - [Ownership inventory issue](https://github.com/pablof7z/pod0/issues/64)
 - [Architecture guardrail epic](https://github.com/pablof7z/pod0/issues/55)
 - [First Rust-backed listening slice](https://github.com/pablof7z/pod0/issues/58)

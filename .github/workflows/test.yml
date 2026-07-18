@@ -22,6 +22,11 @@ jobs:
       - name: Validate architecture ownership
         run: python3 scripts/check_architecture_ownership.py
 
+      - name: Validate native UI storage boundary
+        run: |
+          python3 scripts/check_ui_storage_boundary.py --self-test
+          python3 scripts/check_ui_storage_boundary.py
+
       - name: Bootstrap project
         run: ./ci_scripts/bootstrap_project.sh
 
