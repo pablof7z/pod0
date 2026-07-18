@@ -62,6 +62,18 @@ opaque_id!(HostRequestId);
 opaque_id!(DomainEventId);
 opaque_id!(PodcastId);
 opaque_id!(EpisodeId);
+opaque_id!(QueueEntryId);
+
+mod listening;
+mod listening_error;
+mod listening_policy;
+
+pub use listening::*;
+pub use listening_error::*;
+pub use listening_policy::*;
+
+#[cfg(test)]
+mod listening_tests;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, uniffi::Record)]
 pub struct StateRevision {

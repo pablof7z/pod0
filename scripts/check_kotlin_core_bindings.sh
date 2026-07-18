@@ -64,5 +64,7 @@ done < <(find "$REPO_ROOT/Generated/Pod0Core/Kotlin" -name '*.kt' -type f | sort
 "$JAVA_HOME/bin/java" \
   -Djna.library.path="$CARGO_OUTPUT/release" \
   -classpath "$TOOLS_ROOT/smoke/pod0-core-bindings.jar:$JNA_JAR" \
-  MainKt "$REPO_ROOT/Fixtures/CoreSchema/schema-status-v1.properties"
+  MainKt \
+  "$REPO_ROOT/Fixtures/CoreSchema/schema-status-v1.properties" \
+  "$REPO_ROOT/Fixtures/CoreListening/listening-domain-v1.properties"
 echo "Kotlin generated binding compile and runtime smoke passed"

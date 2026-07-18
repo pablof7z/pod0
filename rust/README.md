@@ -29,9 +29,11 @@ second bridge; the app-owned facade composes NMP inside Rust.
 
 The bootstrap runtime is deliberately non-durable. Its serialized in-memory
 writer proves crate direction, typed commands/projections/host effects,
-subscription lifecycle, cancellation, and binding shape without inventing the
-listening model ahead of issue #78. Dispatch performs no I/O or long-running
-work; issue #78 replaces this scaffold with the durable application actor.
+subscription lifecycle, cancellation, and binding shape. Issue #78 adds the
+validated target listening types and identity rules documented in
+[`LISTENING_DOMAIN_V1.md`](LISTENING_DOMAIN_V1.md), but does not cut over the
+runtime or user data. Dispatch still performs no I/O or long-running work;
+issues #79–#82 implement and cut over the first durable vertical slice.
 
 ## Reproducible checks
 

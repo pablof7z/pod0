@@ -672,6 +672,16 @@ internal object IntegrityCheckingUniffiLib {
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
     }
+    external fun uniffi_pod0_domain_checksum_func_make_feed_identity_v1(
+    ): Int
+    external fun uniffi_pod0_domain_checksum_func_resolve_episode_identity_v1(
+    ): Int
+    external fun uniffi_pod0_domain_checksum_func_resolve_legacy_parent_id(
+    ): Int
+    external fun uniffi_pod0_domain_checksum_func_resolve_podcast_identity_v1(
+    ): Int
+    external fun uniffi_pod0_domain_checksum_func_validate_listening_snapshot(
+    ): Int
     external fun ffi_pod0_domain_uniffi_contract_version(
     ): Int
 
@@ -685,6 +695,16 @@ internal object UniffiLib {
         Native.register(UniffiLib::class.java, findLibraryName(componentName = "pod0_domain"))
 
     }
+    external fun uniffi_pod0_domain_fn_func_make_feed_identity_v1(`feedUrl`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_domain_fn_func_resolve_episode_identity_v1(`incomingId`: RustBuffer.ByValue,`podcastId`: RustBuffer.ByValue,`publisherGuid`: RustBuffer.ByValue,`existing`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_domain_fn_func_resolve_legacy_parent_id(`modernParentId`: RustBuffer.ByValue,`legacyParentId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_domain_fn_func_resolve_podcast_identity_v1(`incomingId`: RustBuffer.ByValue,`incomingFeedUrl`: RustBuffer.ByValue,`existing`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_domain_fn_func_validate_listening_snapshot(`snapshot`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun ffi_pod0_domain_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun ffi_pod0_domain_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -804,6 +824,21 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_pod0_domain_checksum_func_make_feed_identity_v1() != 530) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_domain_checksum_func_resolve_episode_identity_v1() != 9145) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_domain_checksum_func_resolve_legacy_parent_id() != 32734) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_domain_checksum_func_resolve_podcast_identity_v1() != 41929) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_domain_checksum_func_validate_listening_snapshot() != 19986) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
 }
 
 /**
@@ -900,6 +935,56 @@ object NoHandle
 /**
  * @suppress
  */
+public object FfiConverterUShort: FfiConverter<UShort, Short> {
+    override fun lift(value: Short): UShort {
+        return value.toUShort()
+    }
+
+    fun lift(value: Int): UShort {
+        return value.toUShort()
+    }
+
+    override fun read(buf: ByteBuffer): UShort {
+        return lift(buf.getShort())
+    }
+
+    override fun lower(value: UShort): Short {
+        return value.toShort()
+    }
+
+    override fun allocationSize(value: UShort) = 2UL
+
+    override fun write(value: UShort, buf: ByteBuffer) {
+        buf.putShort(value.toShort())
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterUInt: FfiConverter<UInt, Int> {
+    override fun lift(value: Int): UInt {
+        return value.toUInt()
+    }
+
+    override fun read(buf: ByteBuffer): UInt {
+        return lift(buf.getInt())
+    }
+
+    override fun lower(value: UInt): Int {
+        return value.toInt()
+    }
+
+    override fun allocationSize(value: UInt) = 4UL
+
+    override fun write(value: UInt, buf: ByteBuffer) {
+        buf.putInt(value.toInt())
+    }
+}
+
+/**
+ * @suppress
+ */
 public object FfiConverterULong: FfiConverter<ULong, Long> {
     override fun lift(value: Long): ULong {
         return value.toULong()
@@ -940,6 +1025,29 @@ public object FfiConverterLong: FfiConverter<Long, Long> {
 
     override fun write(value: Long, buf: ByteBuffer) {
         buf.putLong(value)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterBoolean: FfiConverter<Boolean, Byte> {
+    override fun lift(value: Byte): Boolean {
+        return value.toInt() != 0
+    }
+
+    override fun read(buf: ByteBuffer): Boolean {
+        return lift(buf.get())
+    }
+
+    override fun lower(value: Boolean): Byte {
+        return if (value) 1.toByte() else 0.toByte()
+    }
+
+    override fun allocationSize(value: Boolean) = 1UL
+
+    override fun write(value: Boolean, buf: ByteBuffer) {
+        buf.put(lower(value))
     }
 }
 
@@ -997,6 +1105,86 @@ public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
         val byteBuf = toUtf8(value)
         buf.putInt(byteBuf.limit())
         buf.put(byteBuf)
+    }
+}
+
+
+
+/**
+ * Opaque durable artifact identity. Payloads and host file URLs do not cross
+ * this domain boundary; their owning workflow resolves this versioned key.
+ */
+data class ArtifactReference (
+    val `schemaVersion`: kotlin.UInt
+    ,
+    val `opaqueKey`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeArtifactReference: FfiConverterRustBuffer<ArtifactReference> {
+    override fun read(buf: ByteBuffer): ArtifactReference {
+        return ArtifactReference(
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ArtifactReference) = (
+            FfiConverterUInt.allocationSize(value.`schemaVersion`) +
+            FfiConverterString.allocationSize(value.`opaqueKey`)
+    )
+
+    override fun write(value: ArtifactReference, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`schemaVersion`, buf)
+            FfiConverterString.write(value.`opaqueKey`, buf)
+    }
+}
+
+
+
+data class AutoDownloadPolicy (
+    val `mode`: AutoDownloadMode
+    ,
+    val `wifiOnly`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAutoDownloadPolicy: FfiConverterRustBuffer<AutoDownloadPolicy> {
+    override fun read(buf: ByteBuffer): AutoDownloadPolicy {
+        return AutoDownloadPolicy(
+            FfiConverterTypeAutoDownloadMode.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AutoDownloadPolicy) = (
+            FfiConverterTypeAutoDownloadMode.allocationSize(value.`mode`) +
+            FfiConverterBoolean.allocationSize(value.`wifiOnly`)
+    )
+
+    override fun write(value: AutoDownloadPolicy, buf: ByteBuffer) {
+            FfiConverterTypeAutoDownloadMode.write(value.`mode`, buf)
+            FfiConverterBoolean.write(value.`wifiOnly`, buf)
     }
 }
 
@@ -1154,6 +1342,216 @@ public object FfiConverterTypeEpisodeId: FfiConverterRustBuffer<EpisodeId> {
 
 
 
+data class EpisodeIdentityRecord (
+    val `episodeId`: EpisodeId
+    ,
+    val `podcastId`: PodcastId
+    ,
+    val `publisherGuid`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEpisodeIdentityRecord: FfiConverterRustBuffer<EpisodeIdentityRecord> {
+    override fun read(buf: ByteBuffer): EpisodeIdentityRecord {
+        return EpisodeIdentityRecord(
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EpisodeIdentityRecord) = (
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterString.allocationSize(value.`publisherGuid`)
+    )
+
+    override fun write(value: EpisodeIdentityRecord, buf: ByteBuffer) {
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterString.write(value.`publisherGuid`, buf)
+    }
+}
+
+
+
+data class EpisodeListeningState (
+    val `resumePositionMilliseconds`: kotlin.ULong
+    ,
+    val `completion`: CompletionStatus
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEpisodeListeningState: FfiConverterRustBuffer<EpisodeListeningState> {
+    override fun read(buf: ByteBuffer): EpisodeListeningState {
+        return EpisodeListeningState(
+            FfiConverterULong.read(buf),
+            FfiConverterTypeCompletionStatus.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EpisodeListeningState) = (
+            FfiConverterULong.allocationSize(value.`resumePositionMilliseconds`) +
+            FfiConverterTypeCompletionStatus.allocationSize(value.`completion`)
+    )
+
+    override fun write(value: EpisodeListeningState, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`resumePositionMilliseconds`, buf)
+            FfiConverterTypeCompletionStatus.write(value.`completion`, buf)
+    }
+}
+
+
+
+data class EpisodeRecord (
+    val `episodeId`: EpisodeId
+    ,
+    val `podcastId`: PodcastId
+    ,
+    /**
+     * Publisher GUID or the deterministic Swift `synth::` fallback. Exact,
+     * case-sensitive matching is scoped to the parent podcast.
+     */
+    val `publisherGuid`: kotlin.String
+    ,
+    val `title`: kotlin.String
+    ,
+    val `publishedAt`: UnixTimestampMilliseconds
+    ,
+    val `durationMilliseconds`: kotlin.ULong?
+    ,
+    val `enclosureUrl`: kotlin.String
+    ,
+    val `enclosureMimeType`: kotlin.String?
+    ,
+    val `listening`: EpisodeListeningState
+    ,
+    val `download`: DownloadArtifactStatus
+    ,
+    val `transcript`: TranscriptArtifactStatus
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEpisodeRecord: FfiConverterRustBuffer<EpisodeRecord> {
+    override fun read(buf: ByteBuffer): EpisodeRecord {
+        return EpisodeRecord(
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeEpisodeListeningState.read(buf),
+            FfiConverterTypeDownloadArtifactStatus.read(buf),
+            FfiConverterTypeTranscriptArtifactStatus.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EpisodeRecord) = (
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterString.allocationSize(value.`publisherGuid`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`publishedAt`) +
+            FfiConverterOptionalULong.allocationSize(value.`durationMilliseconds`) +
+            FfiConverterString.allocationSize(value.`enclosureUrl`) +
+            FfiConverterOptionalString.allocationSize(value.`enclosureMimeType`) +
+            FfiConverterTypeEpisodeListeningState.allocationSize(value.`listening`) +
+            FfiConverterTypeDownloadArtifactStatus.allocationSize(value.`download`) +
+            FfiConverterTypeTranscriptArtifactStatus.allocationSize(value.`transcript`)
+    )
+
+    override fun write(value: EpisodeRecord, buf: ByteBuffer) {
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterString.write(value.`publisherGuid`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`publishedAt`, buf)
+            FfiConverterOptionalULong.write(value.`durationMilliseconds`, buf)
+            FfiConverterString.write(value.`enclosureUrl`, buf)
+            FfiConverterOptionalString.write(value.`enclosureMimeType`, buf)
+            FfiConverterTypeEpisodeListeningState.write(value.`listening`, buf)
+            FfiConverterTypeDownloadArtifactStatus.write(value.`download`, buf)
+            FfiConverterTypeTranscriptArtifactStatus.write(value.`transcript`, buf)
+    }
+}
+
+
+
+/**
+ * Versioned comparison identity matching the current Swift store exactly:
+ * lowercase the complete absolute URL without trimming a trailing slash.
+ */
+data class FeedIdentityV1 (
+    val `sourceUrl`: kotlin.String
+    ,
+    val `comparisonKey`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFeedIdentityV1: FfiConverterRustBuffer<FeedIdentityV1> {
+    override fun read(buf: ByteBuffer): FeedIdentityV1 {
+        return FeedIdentityV1(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FeedIdentityV1) = (
+            FfiConverterString.allocationSize(value.`sourceUrl`) +
+            FfiConverterString.allocationSize(value.`comparisonKey`)
+    )
+
+    override fun write(value: FeedIdentityV1, buf: ByteBuffer) {
+            FfiConverterString.write(value.`sourceUrl`, buf)
+            FfiConverterString.write(value.`comparisonKey`, buf)
+    }
+}
+
+
+
 data class HostRequestId (
     val `high`: kotlin.ULong
     ,
@@ -1192,6 +1590,192 @@ public object FfiConverterTypeHostRequestId: FfiConverterRustBuffer<HostRequestI
 
 
 
+data class ListeningDomainSnapshot (
+    val `podcasts`: List<PodcastRecord>
+    ,
+    val `subscriptions`: List<PodcastSubscriptionRecord>
+    ,
+    val `episodes`: List<EpisodeRecord>
+    ,
+    val `playback`: ListeningPlaybackPolicy
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeListeningDomainSnapshot: FfiConverterRustBuffer<ListeningDomainSnapshot> {
+    override fun read(buf: ByteBuffer): ListeningDomainSnapshot {
+        return ListeningDomainSnapshot(
+            FfiConverterSequenceTypePodcastRecord.read(buf),
+            FfiConverterSequenceTypePodcastSubscriptionRecord.read(buf),
+            FfiConverterSequenceTypeEpisodeRecord.read(buf),
+            FfiConverterTypeListeningPlaybackPolicy.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ListeningDomainSnapshot) = (
+            FfiConverterSequenceTypePodcastRecord.allocationSize(value.`podcasts`) +
+            FfiConverterSequenceTypePodcastSubscriptionRecord.allocationSize(value.`subscriptions`) +
+            FfiConverterSequenceTypeEpisodeRecord.allocationSize(value.`episodes`) +
+            FfiConverterTypeListeningPlaybackPolicy.allocationSize(value.`playback`)
+    )
+
+    override fun write(value: ListeningDomainSnapshot, buf: ByteBuffer) {
+            FfiConverterSequenceTypePodcastRecord.write(value.`podcasts`, buf)
+            FfiConverterSequenceTypePodcastSubscriptionRecord.write(value.`subscriptions`, buf)
+            FfiConverterSequenceTypeEpisodeRecord.write(value.`episodes`, buf)
+            FfiConverterTypeListeningPlaybackPolicy.write(value.`playback`, buf)
+    }
+}
+
+
+
+data class ListeningPlaybackPolicy (
+    val `activeEpisodeId`: EpisodeId?
+    ,
+    val `queue`: List<QueueEntry>
+    ,
+    val `rate`: PlaybackRatePermille
+    ,
+    val `sleepMode`: PlaybackSleepMode
+    ,
+    val `autoMarkPlayedAtNaturalEnd`: kotlin.Boolean
+    ,
+    val `autoPlayNext`: kotlin.Boolean
+    ,
+    val `revision`: StateRevision
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeListeningPlaybackPolicy: FfiConverterRustBuffer<ListeningPlaybackPolicy> {
+    override fun read(buf: ByteBuffer): ListeningPlaybackPolicy {
+        return ListeningPlaybackPolicy(
+            FfiConverterOptionalTypeEpisodeId.read(buf),
+            FfiConverterSequenceTypeQueueEntry.read(buf),
+            FfiConverterTypePlaybackRatePermille.read(buf),
+            FfiConverterTypePlaybackSleepMode.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ListeningPlaybackPolicy) = (
+            FfiConverterOptionalTypeEpisodeId.allocationSize(value.`activeEpisodeId`) +
+            FfiConverterSequenceTypeQueueEntry.allocationSize(value.`queue`) +
+            FfiConverterTypePlaybackRatePermille.allocationSize(value.`rate`) +
+            FfiConverterTypePlaybackSleepMode.allocationSize(value.`sleepMode`) +
+            FfiConverterBoolean.allocationSize(value.`autoMarkPlayedAtNaturalEnd`) +
+            FfiConverterBoolean.allocationSize(value.`autoPlayNext`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`revision`)
+    )
+
+    override fun write(value: ListeningPlaybackPolicy, buf: ByteBuffer) {
+            FfiConverterOptionalTypeEpisodeId.write(value.`activeEpisodeId`, buf)
+            FfiConverterSequenceTypeQueueEntry.write(value.`queue`, buf)
+            FfiConverterTypePlaybackRatePermille.write(value.`rate`, buf)
+            FfiConverterTypePlaybackSleepMode.write(value.`sleepMode`, buf)
+            FfiConverterBoolean.write(value.`autoMarkPlayedAtNaturalEnd`, buf)
+            FfiConverterBoolean.write(value.`autoPlayNext`, buf)
+            FfiConverterTypeStateRevision.write(value.`revision`, buf)
+    }
+}
+
+
+
+/**
+ * Integer thousandths avoid platform floating-point drift at the boundary.
+ * 1.7x is represented as 1700.
+ */
+data class PlaybackRatePermille (
+    val `value`: kotlin.UShort
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePlaybackRatePermille: FfiConverterRustBuffer<PlaybackRatePermille> {
+    override fun read(buf: ByteBuffer): PlaybackRatePermille {
+        return PlaybackRatePermille(
+            FfiConverterUShort.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PlaybackRatePermille) = (
+            FfiConverterUShort.allocationSize(value.`value`)
+    )
+
+    override fun write(value: PlaybackRatePermille, buf: ByteBuffer) {
+            FfiConverterUShort.write(value.`value`, buf)
+    }
+}
+
+
+
+data class PlaybackSegment (
+    val `startPositionMilliseconds`: kotlin.ULong?
+    ,
+    val `endPositionMilliseconds`: kotlin.ULong?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePlaybackSegment: FfiConverterRustBuffer<PlaybackSegment> {
+    override fun read(buf: ByteBuffer): PlaybackSegment {
+        return PlaybackSegment(
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PlaybackSegment) = (
+            FfiConverterOptionalULong.allocationSize(value.`startPositionMilliseconds`) +
+            FfiConverterOptionalULong.allocationSize(value.`endPositionMilliseconds`)
+    )
+
+    override fun write(value: PlaybackSegment, buf: ByteBuffer) {
+            FfiConverterOptionalULong.write(value.`startPositionMilliseconds`, buf)
+            FfiConverterOptionalULong.write(value.`endPositionMilliseconds`, buf)
+    }
+}
+
+
+
 data class PodcastId (
     val `high`: kotlin.ULong
     ,
@@ -1223,6 +1807,240 @@ public object FfiConverterTypePodcastId: FfiConverterRustBuffer<PodcastId> {
     )
 
     override fun write(value: PodcastId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class PodcastIdentityRecord (
+    val `podcastId`: PodcastId
+    ,
+    val `feedIdentity`: FeedIdentityV1
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePodcastIdentityRecord: FfiConverterRustBuffer<PodcastIdentityRecord> {
+    override fun read(buf: ByteBuffer): PodcastIdentityRecord {
+        return PodcastIdentityRecord(
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterTypeFeedIdentityV1.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PodcastIdentityRecord) = (
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterTypeFeedIdentityV1.allocationSize(value.`feedIdentity`)
+    )
+
+    override fun write(value: PodcastIdentityRecord, buf: ByteBuffer) {
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterTypeFeedIdentityV1.write(value.`feedIdentity`, buf)
+    }
+}
+
+
+
+data class PodcastRecord (
+    val `podcastId`: PodcastId
+    ,
+    val `kind`: PodcastKind
+    ,
+    val `feedIdentity`: FeedIdentityV1?
+    ,
+    val `title`: kotlin.String
+    ,
+    val `discoveredAt`: UnixTimestampMilliseconds
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePodcastRecord: FfiConverterRustBuffer<PodcastRecord> {
+    override fun read(buf: ByteBuffer): PodcastRecord {
+        return PodcastRecord(
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterTypePodcastKind.read(buf),
+            FfiConverterOptionalTypeFeedIdentityV1.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PodcastRecord) = (
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterTypePodcastKind.allocationSize(value.`kind`) +
+            FfiConverterOptionalTypeFeedIdentityV1.allocationSize(value.`feedIdentity`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`discoveredAt`)
+    )
+
+    override fun write(value: PodcastRecord, buf: ByteBuffer) {
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterTypePodcastKind.write(value.`kind`, buf)
+            FfiConverterOptionalTypeFeedIdentityV1.write(value.`feedIdentity`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`discoveredAt`, buf)
+    }
+}
+
+
+
+data class PodcastSubscriptionRecord (
+    val `podcastId`: PodcastId
+    ,
+    val `subscribedAt`: UnixTimestampMilliseconds
+    ,
+    val `autoDownload`: AutoDownloadPolicy
+    ,
+    val `notificationsEnabled`: kotlin.Boolean
+    ,
+    val `defaultPlaybackRate`: PlaybackRatePermille?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePodcastSubscriptionRecord: FfiConverterRustBuffer<PodcastSubscriptionRecord> {
+    override fun read(buf: ByteBuffer): PodcastSubscriptionRecord {
+        return PodcastSubscriptionRecord(
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeAutoDownloadPolicy.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalTypePlaybackRatePermille.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PodcastSubscriptionRecord) = (
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`subscribedAt`) +
+            FfiConverterTypeAutoDownloadPolicy.allocationSize(value.`autoDownload`) +
+            FfiConverterBoolean.allocationSize(value.`notificationsEnabled`) +
+            FfiConverterOptionalTypePlaybackRatePermille.allocationSize(value.`defaultPlaybackRate`)
+    )
+
+    override fun write(value: PodcastSubscriptionRecord, buf: ByteBuffer) {
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`subscribedAt`, buf)
+            FfiConverterTypeAutoDownloadPolicy.write(value.`autoDownload`, buf)
+            FfiConverterBoolean.write(value.`notificationsEnabled`, buf)
+            FfiConverterOptionalTypePlaybackRatePermille.write(value.`defaultPlaybackRate`, buf)
+    }
+}
+
+
+
+data class QueueEntry (
+    /**
+     * Slot identity is independent of episode identity, allowing the same
+     * episode to appear as multiple non-adjacent bounded segments.
+     */
+    val `queueEntryId`: QueueEntryId
+    ,
+    val `episodeId`: EpisodeId
+    ,
+    val `segment`: PlaybackSegment?
+    ,
+    val `label`: kotlin.String?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeQueueEntry: FfiConverterRustBuffer<QueueEntry> {
+    override fun read(buf: ByteBuffer): QueueEntry {
+        return QueueEntry(
+            FfiConverterTypeQueueEntryId.read(buf),
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterOptionalTypePlaybackSegment.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: QueueEntry) = (
+            FfiConverterTypeQueueEntryId.allocationSize(value.`queueEntryId`) +
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterOptionalTypePlaybackSegment.allocationSize(value.`segment`) +
+            FfiConverterOptionalString.allocationSize(value.`label`)
+    )
+
+    override fun write(value: QueueEntry, buf: ByteBuffer) {
+            FfiConverterTypeQueueEntryId.write(value.`queueEntryId`, buf)
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterOptionalTypePlaybackSegment.write(value.`segment`, buf)
+            FfiConverterOptionalString.write(value.`label`, buf)
+    }
+}
+
+
+
+data class QueueEntryId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeQueueEntryId: FfiConverterRustBuffer<QueueEntryId> {
+    override fun read(buf: ByteBuffer): QueueEntryId {
+        return QueueEntryId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: QueueEntryId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: QueueEntryId, buf: ByteBuffer) {
             FfiConverterULong.write(value.`high`, buf)
             FfiConverterULong.write(value.`low`, buf)
     }
@@ -1335,3 +2153,1826 @@ public object FfiConverterTypeUnixTimestampMilliseconds: FfiConverterRustBuffer<
             FfiConverterLong.write(value.`value`, buf)
     }
 }
+
+
+
+sealed class AutoDownloadMode {
+
+    object Off : AutoDownloadMode()
+
+
+    data class Latest(
+        val `count`: kotlin.UShort) : AutoDownloadMode()
+
+    {
+
+
+        companion object
+    }
+
+    object AllNew : AutoDownloadMode()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : AutoDownloadMode()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAutoDownloadMode : FfiConverterRustBuffer<AutoDownloadMode>{
+    override fun read(buf: ByteBuffer): AutoDownloadMode {
+        return when(buf.getInt()) {
+            1 -> AutoDownloadMode.Off
+            2 -> AutoDownloadMode.Latest(
+                FfiConverterUShort.read(buf),
+                )
+            3 -> AutoDownloadMode.AllNew
+            4 -> AutoDownloadMode.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: AutoDownloadMode): ULong = when(value) {
+        is AutoDownloadMode.Off -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is AutoDownloadMode.Latest -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUShort.allocationSize(value.`count`)
+            )
+        }
+        is AutoDownloadMode.AllNew -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is AutoDownloadMode.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: AutoDownloadMode, buf: ByteBuffer) {
+        when(value) {
+            is AutoDownloadMode.Off -> {
+                buf.putInt(1)
+                Unit
+            }
+            is AutoDownloadMode.Latest -> {
+                buf.putInt(2)
+                FfiConverterUShort.write(value.`count`, buf)
+                Unit
+            }
+            is AutoDownloadMode.AllNew -> {
+                buf.putInt(3)
+                Unit
+            }
+            is AutoDownloadMode.Unsupported -> {
+                buf.putInt(4)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class CompletionCause {
+
+    object NaturalEnd : CompletionCause()
+
+
+    object ExplicitUserAction : CompletionCause()
+
+
+    object LegacyPlayedFlag : CompletionCause()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : CompletionCause()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCompletionCause : FfiConverterRustBuffer<CompletionCause>{
+    override fun read(buf: ByteBuffer): CompletionCause {
+        return when(buf.getInt()) {
+            1 -> CompletionCause.NaturalEnd
+            2 -> CompletionCause.ExplicitUserAction
+            3 -> CompletionCause.LegacyPlayedFlag
+            4 -> CompletionCause.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: CompletionCause): ULong = when(value) {
+        is CompletionCause.NaturalEnd -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CompletionCause.ExplicitUserAction -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CompletionCause.LegacyPlayedFlag -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CompletionCause.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: CompletionCause, buf: ByteBuffer) {
+        when(value) {
+            is CompletionCause.NaturalEnd -> {
+                buf.putInt(1)
+                Unit
+            }
+            is CompletionCause.ExplicitUserAction -> {
+                buf.putInt(2)
+                Unit
+            }
+            is CompletionCause.LegacyPlayedFlag -> {
+                buf.putInt(3)
+                Unit
+            }
+            is CompletionCause.Unsupported -> {
+                buf.putInt(4)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class CompletionStatus {
+
+    object InProgress : CompletionStatus()
+
+
+    data class Completed(
+        val `cause`: uniffi.pod0_domain.CompletionCause) : CompletionStatus()
+
+    {
+
+
+        companion object
+    }
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : CompletionStatus()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCompletionStatus : FfiConverterRustBuffer<CompletionStatus>{
+    override fun read(buf: ByteBuffer): CompletionStatus {
+        return when(buf.getInt()) {
+            1 -> CompletionStatus.InProgress
+            2 -> CompletionStatus.Completed(
+                FfiConverterTypeCompletionCause.read(buf),
+                )
+            3 -> CompletionStatus.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: CompletionStatus): ULong = when(value) {
+        is CompletionStatus.InProgress -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CompletionStatus.Completed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeCompletionCause.allocationSize(value.`cause`)
+            )
+        }
+        is CompletionStatus.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: CompletionStatus, buf: ByteBuffer) {
+        when(value) {
+            is CompletionStatus.InProgress -> {
+                buf.putInt(1)
+                Unit
+            }
+            is CompletionStatus.Completed -> {
+                buf.putInt(2)
+                FfiConverterTypeCompletionCause.write(value.`cause`, buf)
+                Unit
+            }
+            is CompletionStatus.Unsupported -> {
+                buf.putInt(3)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class DownloadArtifactStatus {
+
+    object Unavailable : DownloadArtifactStatus()
+
+
+    data class Available(
+        val `reference`: uniffi.pod0_domain.ArtifactReference,
+        val `byteCount`: kotlin.ULong) : DownloadArtifactStatus()
+
+    {
+
+
+        companion object
+    }
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : DownloadArtifactStatus()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDownloadArtifactStatus : FfiConverterRustBuffer<DownloadArtifactStatus>{
+    override fun read(buf: ByteBuffer): DownloadArtifactStatus {
+        return when(buf.getInt()) {
+            1 -> DownloadArtifactStatus.Unavailable
+            2 -> DownloadArtifactStatus.Available(
+                FfiConverterTypeArtifactReference.read(buf),
+                FfiConverterULong.read(buf),
+                )
+            3 -> DownloadArtifactStatus.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: DownloadArtifactStatus): ULong = when(value) {
+        is DownloadArtifactStatus.Unavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadArtifactStatus.Available -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeArtifactReference.allocationSize(value.`reference`)
+                + FfiConverterULong.allocationSize(value.`byteCount`)
+            )
+        }
+        is DownloadArtifactStatus.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: DownloadArtifactStatus, buf: ByteBuffer) {
+        when(value) {
+            is DownloadArtifactStatus.Unavailable -> {
+                buf.putInt(1)
+                Unit
+            }
+            is DownloadArtifactStatus.Available -> {
+                buf.putInt(2)
+                FfiConverterTypeArtifactReference.write(value.`reference`, buf)
+                FfiConverterULong.write(value.`byteCount`, buf)
+                Unit
+            }
+            is DownloadArtifactStatus.Unsupported -> {
+                buf.putInt(3)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class EpisodeIdentityResolution {
+
+    data class AcceptIncoming(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId) : EpisodeIdentityResolution()
+
+    {
+
+
+        companion object
+    }
+
+    data class PreserveExisting(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId) : EpisodeIdentityResolution()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEpisodeIdentityResolution : FfiConverterRustBuffer<EpisodeIdentityResolution>{
+    override fun read(buf: ByteBuffer): EpisodeIdentityResolution {
+        return when(buf.getInt()) {
+            1 -> EpisodeIdentityResolution.AcceptIncoming(
+                FfiConverterTypeEpisodeId.read(buf),
+                )
+            2 -> EpisodeIdentityResolution.PreserveExisting(
+                FfiConverterTypeEpisodeId.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: EpisodeIdentityResolution): ULong = when(value) {
+        is EpisodeIdentityResolution.AcceptIncoming -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+            )
+        }
+        is EpisodeIdentityResolution.PreserveExisting -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+            )
+        }
+    }
+
+    override fun write(value: EpisodeIdentityResolution, buf: ByteBuffer) {
+        when(value) {
+            is EpisodeIdentityResolution.AcceptIncoming -> {
+                buf.putInt(1)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                Unit
+            }
+            is EpisodeIdentityResolution.PreserveExisting -> {
+                buf.putInt(2)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+
+sealed class ListeningDomainException: kotlin.Exception() {
+
+    class InvalidFeedUrl(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class InvalidFeedComparisonKey(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class AmbiguousPodcastFeedIdentity(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class PodcastIdConflict(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class MissingLegacyParentIdentity(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class EmptyPublisherGuid(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class AmbiguousEpisodeIdentity(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class EpisodeIdConflict(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class DuplicatePodcastId(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class DuplicateSubscription(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class DuplicateEpisodeId(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class DuplicateQueueEntryId(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class MissingPodcast(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class MissingEpisode(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class InvalidLatestCount(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class InvalidPlaybackRate(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class InvalidArtifactReference(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class InvalidSegmentBounds(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class InvalidSleepDuration(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+    class CompletedEpisodeHasResumePosition(
+        ) : ListeningDomainException() {
+        override val message
+            get() = ""
+    }
+
+
+
+
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<ListeningDomainException> {
+        override fun lift(error_buf: RustBuffer.ByValue): ListeningDomainException = FfiConverterTypeListeningDomainError.lift(error_buf)
+    }
+
+
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeListeningDomainError : FfiConverterRustBuffer<ListeningDomainException> {
+    override fun read(buf: ByteBuffer): ListeningDomainException {
+
+
+        return when(buf.getInt()) {
+            1 -> ListeningDomainException.InvalidFeedUrl()
+            2 -> ListeningDomainException.InvalidFeedComparisonKey()
+            3 -> ListeningDomainException.AmbiguousPodcastFeedIdentity()
+            4 -> ListeningDomainException.PodcastIdConflict()
+            5 -> ListeningDomainException.MissingLegacyParentIdentity()
+            6 -> ListeningDomainException.EmptyPublisherGuid()
+            7 -> ListeningDomainException.AmbiguousEpisodeIdentity()
+            8 -> ListeningDomainException.EpisodeIdConflict()
+            9 -> ListeningDomainException.DuplicatePodcastId()
+            10 -> ListeningDomainException.DuplicateSubscription()
+            11 -> ListeningDomainException.DuplicateEpisodeId()
+            12 -> ListeningDomainException.DuplicateQueueEntryId()
+            13 -> ListeningDomainException.MissingPodcast()
+            14 -> ListeningDomainException.MissingEpisode()
+            15 -> ListeningDomainException.InvalidLatestCount()
+            16 -> ListeningDomainException.InvalidPlaybackRate()
+            17 -> ListeningDomainException.InvalidArtifactReference()
+            18 -> ListeningDomainException.InvalidSegmentBounds()
+            19 -> ListeningDomainException.InvalidSleepDuration()
+            20 -> ListeningDomainException.CompletedEpisodeHasResumePosition()
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ListeningDomainException): ULong {
+        return when(value) {
+            is ListeningDomainException.InvalidFeedUrl -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.InvalidFeedComparisonKey -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.AmbiguousPodcastFeedIdentity -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.PodcastIdConflict -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.MissingLegacyParentIdentity -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.EmptyPublisherGuid -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.AmbiguousEpisodeIdentity -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.EpisodeIdConflict -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.DuplicatePodcastId -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.DuplicateSubscription -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.DuplicateEpisodeId -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.DuplicateQueueEntryId -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.MissingPodcast -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.MissingEpisode -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.InvalidLatestCount -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.InvalidPlaybackRate -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.InvalidArtifactReference -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.InvalidSegmentBounds -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.InvalidSleepDuration -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is ListeningDomainException.CompletedEpisodeHasResumePosition -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: ListeningDomainException, buf: ByteBuffer) {
+        when(value) {
+            is ListeningDomainException.InvalidFeedUrl -> {
+                buf.putInt(1)
+                Unit
+            }
+            is ListeningDomainException.InvalidFeedComparisonKey -> {
+                buf.putInt(2)
+                Unit
+            }
+            is ListeningDomainException.AmbiguousPodcastFeedIdentity -> {
+                buf.putInt(3)
+                Unit
+            }
+            is ListeningDomainException.PodcastIdConflict -> {
+                buf.putInt(4)
+                Unit
+            }
+            is ListeningDomainException.MissingLegacyParentIdentity -> {
+                buf.putInt(5)
+                Unit
+            }
+            is ListeningDomainException.EmptyPublisherGuid -> {
+                buf.putInt(6)
+                Unit
+            }
+            is ListeningDomainException.AmbiguousEpisodeIdentity -> {
+                buf.putInt(7)
+                Unit
+            }
+            is ListeningDomainException.EpisodeIdConflict -> {
+                buf.putInt(8)
+                Unit
+            }
+            is ListeningDomainException.DuplicatePodcastId -> {
+                buf.putInt(9)
+                Unit
+            }
+            is ListeningDomainException.DuplicateSubscription -> {
+                buf.putInt(10)
+                Unit
+            }
+            is ListeningDomainException.DuplicateEpisodeId -> {
+                buf.putInt(11)
+                Unit
+            }
+            is ListeningDomainException.DuplicateQueueEntryId -> {
+                buf.putInt(12)
+                Unit
+            }
+            is ListeningDomainException.MissingPodcast -> {
+                buf.putInt(13)
+                Unit
+            }
+            is ListeningDomainException.MissingEpisode -> {
+                buf.putInt(14)
+                Unit
+            }
+            is ListeningDomainException.InvalidLatestCount -> {
+                buf.putInt(15)
+                Unit
+            }
+            is ListeningDomainException.InvalidPlaybackRate -> {
+                buf.putInt(16)
+                Unit
+            }
+            is ListeningDomainException.InvalidArtifactReference -> {
+                buf.putInt(17)
+                Unit
+            }
+            is ListeningDomainException.InvalidSegmentBounds -> {
+                buf.putInt(18)
+                Unit
+            }
+            is ListeningDomainException.InvalidSleepDuration -> {
+                buf.putInt(19)
+                Unit
+            }
+            is ListeningDomainException.CompletedEpisodeHasResumePosition -> {
+                buf.putInt(20)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+sealed class PlaybackSleepMode {
+
+    object Off : PlaybackSleepMode()
+
+
+    data class Duration(
+        val `durationMilliseconds`: kotlin.ULong) : PlaybackSleepMode()
+
+    {
+
+
+        companion object
+    }
+
+    object EndOfEpisode : PlaybackSleepMode()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : PlaybackSleepMode()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePlaybackSleepMode : FfiConverterRustBuffer<PlaybackSleepMode>{
+    override fun read(buf: ByteBuffer): PlaybackSleepMode {
+        return when(buf.getInt()) {
+            1 -> PlaybackSleepMode.Off
+            2 -> PlaybackSleepMode.Duration(
+                FfiConverterULong.read(buf),
+                )
+            3 -> PlaybackSleepMode.EndOfEpisode
+            4 -> PlaybackSleepMode.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: PlaybackSleepMode): ULong = when(value) {
+        is PlaybackSleepMode.Off -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PlaybackSleepMode.Duration -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterULong.allocationSize(value.`durationMilliseconds`)
+            )
+        }
+        is PlaybackSleepMode.EndOfEpisode -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PlaybackSleepMode.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: PlaybackSleepMode, buf: ByteBuffer) {
+        when(value) {
+            is PlaybackSleepMode.Off -> {
+                buf.putInt(1)
+                Unit
+            }
+            is PlaybackSleepMode.Duration -> {
+                buf.putInt(2)
+                FfiConverterULong.write(value.`durationMilliseconds`, buf)
+                Unit
+            }
+            is PlaybackSleepMode.EndOfEpisode -> {
+                buf.putInt(3)
+                Unit
+            }
+            is PlaybackSleepMode.Unsupported -> {
+                buf.putInt(4)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class PodcastIdentityResolution {
+
+    data class AcceptIncoming(
+        val `podcastId`: uniffi.pod0_domain.PodcastId) : PodcastIdentityResolution()
+
+    {
+
+
+        companion object
+    }
+
+    data class PreserveExisting(
+        val `podcastId`: uniffi.pod0_domain.PodcastId) : PodcastIdentityResolution()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePodcastIdentityResolution : FfiConverterRustBuffer<PodcastIdentityResolution>{
+    override fun read(buf: ByteBuffer): PodcastIdentityResolution {
+        return when(buf.getInt()) {
+            1 -> PodcastIdentityResolution.AcceptIncoming(
+                FfiConverterTypePodcastId.read(buf),
+                )
+            2 -> PodcastIdentityResolution.PreserveExisting(
+                FfiConverterTypePodcastId.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: PodcastIdentityResolution): ULong = when(value) {
+        is PodcastIdentityResolution.AcceptIncoming -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+            )
+        }
+        is PodcastIdentityResolution.PreserveExisting -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+            )
+        }
+    }
+
+    override fun write(value: PodcastIdentityResolution, buf: ByteBuffer) {
+        when(value) {
+            is PodcastIdentityResolution.AcceptIncoming -> {
+                buf.putInt(1)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                Unit
+            }
+            is PodcastIdentityResolution.PreserveExisting -> {
+                buf.putInt(2)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class PodcastKind {
+
+    object Rss : PodcastKind()
+
+
+    object Synthetic : PodcastKind()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : PodcastKind()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePodcastKind : FfiConverterRustBuffer<PodcastKind>{
+    override fun read(buf: ByteBuffer): PodcastKind {
+        return when(buf.getInt()) {
+            1 -> PodcastKind.Rss
+            2 -> PodcastKind.Synthetic
+            3 -> PodcastKind.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: PodcastKind): ULong = when(value) {
+        is PodcastKind.Rss -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PodcastKind.Synthetic -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PodcastKind.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: PodcastKind, buf: ByteBuffer) {
+        when(value) {
+            is PodcastKind.Rss -> {
+                buf.putInt(1)
+                Unit
+            }
+            is PodcastKind.Synthetic -> {
+                buf.putInt(2)
+                Unit
+            }
+            is PodcastKind.Unsupported -> {
+                buf.putInt(3)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class TranscriptArtifactStatus {
+
+    object Unavailable : TranscriptArtifactStatus()
+
+
+    data class Available(
+        val `reference`: uniffi.pod0_domain.ArtifactReference,
+        val `source`: uniffi.pod0_domain.TranscriptSource) : TranscriptArtifactStatus()
+
+    {
+
+
+        companion object
+    }
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : TranscriptArtifactStatus()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptArtifactStatus : FfiConverterRustBuffer<TranscriptArtifactStatus>{
+    override fun read(buf: ByteBuffer): TranscriptArtifactStatus {
+        return when(buf.getInt()) {
+            1 -> TranscriptArtifactStatus.Unavailable
+            2 -> TranscriptArtifactStatus.Available(
+                FfiConverterTypeArtifactReference.read(buf),
+                FfiConverterTypeTranscriptSource.read(buf),
+                )
+            3 -> TranscriptArtifactStatus.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: TranscriptArtifactStatus): ULong = when(value) {
+        is TranscriptArtifactStatus.Unavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptArtifactStatus.Available -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeArtifactReference.allocationSize(value.`reference`)
+                + FfiConverterTypeTranscriptSource.allocationSize(value.`source`)
+            )
+        }
+        is TranscriptArtifactStatus.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: TranscriptArtifactStatus, buf: ByteBuffer) {
+        when(value) {
+            is TranscriptArtifactStatus.Unavailable -> {
+                buf.putInt(1)
+                Unit
+            }
+            is TranscriptArtifactStatus.Available -> {
+                buf.putInt(2)
+                FfiConverterTypeArtifactReference.write(value.`reference`, buf)
+                FfiConverterTypeTranscriptSource.write(value.`source`, buf)
+                Unit
+            }
+            is TranscriptArtifactStatus.Unsupported -> {
+                buf.putInt(3)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class TranscriptSource {
+
+    object Publisher : TranscriptSource()
+
+
+    object Scribe : TranscriptSource()
+
+
+    object Whisper : TranscriptSource()
+
+
+    object OnDevice : TranscriptSource()
+
+
+    object AssemblyAi : TranscriptSource()
+
+
+    object Other : TranscriptSource()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : TranscriptSource()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptSource : FfiConverterRustBuffer<TranscriptSource>{
+    override fun read(buf: ByteBuffer): TranscriptSource {
+        return when(buf.getInt()) {
+            1 -> TranscriptSource.Publisher
+            2 -> TranscriptSource.Scribe
+            3 -> TranscriptSource.Whisper
+            4 -> TranscriptSource.OnDevice
+            5 -> TranscriptSource.AssemblyAi
+            6 -> TranscriptSource.Other
+            7 -> TranscriptSource.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: TranscriptSource): ULong = when(value) {
+        is TranscriptSource.Publisher -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptSource.Scribe -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptSource.Whisper -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptSource.OnDevice -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptSource.AssemblyAi -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptSource.Other -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptSource.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: TranscriptSource, buf: ByteBuffer) {
+        when(value) {
+            is TranscriptSource.Publisher -> {
+                buf.putInt(1)
+                Unit
+            }
+            is TranscriptSource.Scribe -> {
+                buf.putInt(2)
+                Unit
+            }
+            is TranscriptSource.Whisper -> {
+                buf.putInt(3)
+                Unit
+            }
+            is TranscriptSource.OnDevice -> {
+                buf.putInt(4)
+                Unit
+            }
+            is TranscriptSource.AssemblyAi -> {
+                buf.putInt(5)
+                Unit
+            }
+            is TranscriptSource.Other -> {
+                buf.putInt(6)
+                Unit
+            }
+            is TranscriptSource.Unsupported -> {
+                buf.putInt(7)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalULong: FfiConverterRustBuffer<kotlin.ULong?> {
+    override fun read(buf: ByteBuffer): kotlin.ULong? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterULong.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.ULong?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterULong.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.ULong?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterULong.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?> {
+    override fun read(buf: ByteBuffer): kotlin.String? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterString.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.String?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterString.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.String?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterString.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeEpisodeId: FfiConverterRustBuffer<EpisodeId?> {
+    override fun read(buf: ByteBuffer): EpisodeId? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeEpisodeId.read(buf)
+    }
+
+    override fun allocationSize(value: EpisodeId?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeEpisodeId.allocationSize(value)
+        }
+    }
+
+    override fun write(value: EpisodeId?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeEpisodeId.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeFeedIdentityV1: FfiConverterRustBuffer<FeedIdentityV1?> {
+    override fun read(buf: ByteBuffer): FeedIdentityV1? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFeedIdentityV1.read(buf)
+    }
+
+    override fun allocationSize(value: FeedIdentityV1?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFeedIdentityV1.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FeedIdentityV1?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFeedIdentityV1.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypePlaybackRatePermille: FfiConverterRustBuffer<PlaybackRatePermille?> {
+    override fun read(buf: ByteBuffer): PlaybackRatePermille? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypePlaybackRatePermille.read(buf)
+    }
+
+    override fun allocationSize(value: PlaybackRatePermille?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypePlaybackRatePermille.allocationSize(value)
+        }
+    }
+
+    override fun write(value: PlaybackRatePermille?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypePlaybackRatePermille.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypePlaybackSegment: FfiConverterRustBuffer<PlaybackSegment?> {
+    override fun read(buf: ByteBuffer): PlaybackSegment? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypePlaybackSegment.read(buf)
+    }
+
+    override fun allocationSize(value: PlaybackSegment?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypePlaybackSegment.allocationSize(value)
+        }
+    }
+
+    override fun write(value: PlaybackSegment?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypePlaybackSegment.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypePodcastId: FfiConverterRustBuffer<PodcastId?> {
+    override fun read(buf: ByteBuffer): PodcastId? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypePodcastId.read(buf)
+    }
+
+    override fun allocationSize(value: PodcastId?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypePodcastId.allocationSize(value)
+        }
+    }
+
+    override fun write(value: PodcastId?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypePodcastId.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeEpisodeIdentityRecord: FfiConverterRustBuffer<List<EpisodeIdentityRecord>> {
+    override fun read(buf: ByteBuffer): List<EpisodeIdentityRecord> {
+        val len = buf.getInt()
+        return List<EpisodeIdentityRecord>(len) {
+            FfiConverterTypeEpisodeIdentityRecord.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<EpisodeIdentityRecord>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeEpisodeIdentityRecord.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<EpisodeIdentityRecord>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeEpisodeIdentityRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeEpisodeRecord: FfiConverterRustBuffer<List<EpisodeRecord>> {
+    override fun read(buf: ByteBuffer): List<EpisodeRecord> {
+        val len = buf.getInt()
+        return List<EpisodeRecord>(len) {
+            FfiConverterTypeEpisodeRecord.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<EpisodeRecord>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeEpisodeRecord.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<EpisodeRecord>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeEpisodeRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypePodcastIdentityRecord: FfiConverterRustBuffer<List<PodcastIdentityRecord>> {
+    override fun read(buf: ByteBuffer): List<PodcastIdentityRecord> {
+        val len = buf.getInt()
+        return List<PodcastIdentityRecord>(len) {
+            FfiConverterTypePodcastIdentityRecord.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<PodcastIdentityRecord>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypePodcastIdentityRecord.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<PodcastIdentityRecord>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypePodcastIdentityRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypePodcastRecord: FfiConverterRustBuffer<List<PodcastRecord>> {
+    override fun read(buf: ByteBuffer): List<PodcastRecord> {
+        val len = buf.getInt()
+        return List<PodcastRecord>(len) {
+            FfiConverterTypePodcastRecord.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<PodcastRecord>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypePodcastRecord.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<PodcastRecord>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypePodcastRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypePodcastSubscriptionRecord: FfiConverterRustBuffer<List<PodcastSubscriptionRecord>> {
+    override fun read(buf: ByteBuffer): List<PodcastSubscriptionRecord> {
+        val len = buf.getInt()
+        return List<PodcastSubscriptionRecord>(len) {
+            FfiConverterTypePodcastSubscriptionRecord.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<PodcastSubscriptionRecord>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypePodcastSubscriptionRecord.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<PodcastSubscriptionRecord>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypePodcastSubscriptionRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeQueueEntry: FfiConverterRustBuffer<List<QueueEntry>> {
+    override fun read(buf: ByteBuffer): List<QueueEntry> {
+        val len = buf.getInt()
+        return List<QueueEntry>(len) {
+            FfiConverterTypeQueueEntry.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<QueueEntry>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeQueueEntry.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<QueueEntry>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeQueueEntry.write(it, buf)
+        }
+    }
+}
+    @Throws(ListeningDomainException::class) fun `makeFeedIdentityV1`(`feedUrl`: kotlin.String): FeedIdentityV1 {
+            return FfiConverterTypeFeedIdentityV1.lift(
+    uniffiRustCallWithError(ListeningDomainException) { _status ->
+    UniffiLib.uniffi_pod0_domain_fn_func_make_feed_identity_v1(
+
+
+        FfiConverterString.lower(`feedUrl`),_status)
+}
+    )
+    }
+
+
+    @Throws(ListeningDomainException::class) fun `resolveEpisodeIdentityV1`(`incomingId`: EpisodeId, `podcastId`: PodcastId, `publisherGuid`: kotlin.String, `existing`: List<EpisodeIdentityRecord>): EpisodeIdentityResolution {
+            return FfiConverterTypeEpisodeIdentityResolution.lift(
+    uniffiRustCallWithError(ListeningDomainException) { _status ->
+    UniffiLib.uniffi_pod0_domain_fn_func_resolve_episode_identity_v1(
+
+
+        FfiConverterTypeEpisodeId.lower(`incomingId`),
+        FfiConverterTypePodcastId.lower(`podcastId`),
+        FfiConverterString.lower(`publisherGuid`),
+        FfiConverterSequenceTypeEpisodeIdentityRecord.lower(`existing`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Resolve modern-vs-legacy parent fields with the same precedence as Swift
+         * Codable: the modern key wins when both are present.
+         */
+    @Throws(ListeningDomainException::class) fun `resolveLegacyParentId`(`modernParentId`: PodcastId?, `legacyParentId`: PodcastId?): PodcastId {
+            return FfiConverterTypePodcastId.lift(
+    uniffiRustCallWithError(ListeningDomainException) { _status ->
+    UniffiLib.uniffi_pod0_domain_fn_func_resolve_legacy_parent_id(
+
+
+        FfiConverterOptionalTypePodcastId.lower(`modernParentId`),
+        FfiConverterOptionalTypePodcastId.lower(`legacyParentId`),_status)
+}
+    )
+    }
+
+
+    @Throws(ListeningDomainException::class) fun `resolvePodcastIdentityV1`(`incomingId`: PodcastId, `incomingFeedUrl`: kotlin.String, `existing`: List<PodcastIdentityRecord>): PodcastIdentityResolution {
+            return FfiConverterTypePodcastIdentityResolution.lift(
+    uniffiRustCallWithError(ListeningDomainException) { _status ->
+    UniffiLib.uniffi_pod0_domain_fn_func_resolve_podcast_identity_v1(
+
+
+        FfiConverterTypePodcastId.lower(`incomingId`),
+        FfiConverterString.lower(`incomingFeedUrl`),
+        FfiConverterSequenceTypePodcastIdentityRecord.lower(`existing`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Typed import/preflight boundary used by native migration adapters. It never
+         * generates identities or mutates durable state.
+         */
+    @Throws(ListeningDomainException::class) fun `validateListeningSnapshot`(`snapshot`: ListeningDomainSnapshot): ListeningDomainSnapshot {
+            return FfiConverterTypeListeningDomainSnapshot.lift(
+    uniffiRustCallWithError(ListeningDomainException) { _status ->
+    UniffiLib.uniffi_pod0_domain_fn_func_validate_listening_snapshot(
+
+
+        FfiConverterTypeListeningDomainSnapshot.lower(`snapshot`),_status)
+}
+    )
+    }

@@ -14,8 +14,16 @@ pub use pod0_application::{
 };
 use pod0_application::{Clock, KernelApplication};
 pub use pod0_domain::{
-    CancellationId, CommandId, DomainEventId, EpisodeId, HostRequestId, PodcastId, StateRevision,
-    SubscriptionId, UnixTimestampMilliseconds,
+    ArtifactReference, AutoDownloadMode, AutoDownloadPolicy, CancellationId, CommandId,
+    CompletionCause, CompletionStatus, DomainEventId, DownloadArtifactStatus, EpisodeId,
+    EpisodeIdentityRecord, EpisodeIdentityResolution, EpisodeListeningState, EpisodeRecord,
+    FeedIdentityV1, HostRequestId, ListeningDomainError, ListeningDomainSnapshot,
+    ListeningPlaybackPolicy, PlaybackRatePermille, PlaybackSegment, PlaybackSleepMode, PodcastId,
+    PodcastIdentityRecord, PodcastIdentityResolution, PodcastKind, PodcastRecord,
+    PodcastSubscriptionRecord, QueueEntry, QueueEntryId, StateRevision, SubscriptionId,
+    TranscriptArtifactStatus, TranscriptSource, UnixTimestampMilliseconds, make_feed_identity_v1,
+    resolve_episode_identity_v1, resolve_legacy_parent_id, resolve_podcast_identity_v1,
+    validate_listening_snapshot,
 };
 
 uniffi::setup_scaffolding!();
