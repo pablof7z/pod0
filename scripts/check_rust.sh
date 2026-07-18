@@ -9,6 +9,7 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 cargo test --workspace --all-features --locked
 python3 "$SCRIPT_DIR/check_rust_dependency_policy.py"
+python3 "$SCRIPT_DIR/check_rust_facade_boundary.py"
 
 if ! command -v cargo-deny >/dev/null 2>&1; then
   echo "cargo-deny 0.20.2 is required" >&2

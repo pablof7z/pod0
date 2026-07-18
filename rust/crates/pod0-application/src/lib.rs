@@ -2,6 +2,16 @@
 
 use pod0_domain::{CommandId, UnixTimestampMilliseconds};
 
+mod contract;
+mod contract_state;
+#[cfg(test)]
+mod contract_state_tests;
+mod effects;
+
+pub use contract::*;
+pub use contract_state::*;
+pub use effects::*;
+
 pub const CORE_SCHEMA_VERSION: u32 = 1;
 
 /// The kernel owns time. Hosts provide an observation through this capability;

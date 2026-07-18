@@ -1,0 +1,166 @@
+use std::collections::BTreeMap;
+
+use pod0_domain::{CancellationId, CommandId, HostRequestId, StateRevision, SubscriptionId};
+
+use crate::{
+    CommandEnvelope, HostObservation, HostObservationEnvelope, HostRequest, HostRequestEnvelope,
+    ProjectionRequest,
+};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CommandRegistration {
+    Accepted,
+    Duplicate,
+    ConflictingReuse,
+    StaleRevision,
+}
+
+#[derive(Default)]
+pub struct CommandLedger {
+    commands: BTreeMap<CommandId, CommandEnvelope>,
+}
+
+impl CommandLedger {
+    pub fn register(
+        &mut self,
+        command: CommandEnvelope,
+        current_revision: StateRevision,
+    ) -> CommandRegistration {
+        if let Some(existing) = self.commands.get(&command.command_id) {
+            return if existing == &command {
+                CommandRegistration::Duplicate
+            } else {
+                CommandRegistration::ConflictingReuse
+            };
+        }
+        if command
+            .expected_revision
+            .is_some_and(|expected| expected != current_revision)
+        {
+            return CommandRegistration::StaleRevision;
+        }
+        self.commands.insert(command.command_id, command);
+        CommandRegistration::Accepted
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum HostRequestStatus {
+    Outstanding,
+    Cancelled,
+    Completed,
+}
+
+struct TrackedHostRequest {
+    envelope: HostRequestEnvelope,
+    status: HostRequestStatus,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ObservationAcceptance {
+    Accepted,
+    UnknownRequest,
+    Duplicate,
+    Cancelled,
+    CancellationMismatch,
+    StaleRequestRevision,
+    PayloadTooLarge,
+}
+
+#[derive(Default)]
+pub struct HostRequestLedger {
+    requests: BTreeMap<HostRequestId, TrackedHostRequest>,
+}
+
+impl HostRequestLedger {
+    #[must_use]
+    pub fn register(&mut self, request: HostRequestEnvelope) -> bool {
+        if self.requests.contains_key(&request.request_id) {
+            return false;
+        }
+        self.requests.insert(
+            request.request_id,
+            TrackedHostRequest {
+                envelope: request,
+                status: HostRequestStatus::Outstanding,
+            },
+        );
+        true
+    }
+
+    pub fn cancel(&mut self, cancellation_id: CancellationId) -> usize {
+        let mut cancelled = 0;
+        for request in self.requests.values_mut() {
+            if request.envelope.cancellation_id == cancellation_id
+                && request.status == HostRequestStatus::Outstanding
+            {
+                request.status = HostRequestStatus::Cancelled;
+                cancelled += 1;
+            }
+        }
+        cancelled
+    }
+
+    pub fn accept_observation(
+        &mut self,
+        observation: &HostObservationEnvelope,
+    ) -> ObservationAcceptance {
+        let Some(request) = self.requests.get_mut(&observation.request_id) else {
+            return ObservationAcceptance::UnknownRequest;
+        };
+        if request.status == HostRequestStatus::Completed {
+            return ObservationAcceptance::Duplicate;
+        }
+        if request.envelope.cancellation_id != observation.cancellation_id {
+            return ObservationAcceptance::CancellationMismatch;
+        }
+        if request.envelope.issued_revision != observation.observed_request_revision {
+            return ObservationAcceptance::StaleRequestRevision;
+        }
+        if request.status == HostRequestStatus::Cancelled {
+            return ObservationAcceptance::Cancelled;
+        }
+        if let (
+            HostRequest::FetchFeed {
+                maximum_response_bytes,
+                ..
+            },
+            HostObservation::FeedBytesFetched { bytes, .. },
+        ) = (&request.envelope.request, &observation.observation)
+            && u64::try_from(bytes.len()).map_or(true, |size| size > *maximum_response_bytes)
+        {
+            return ObservationAcceptance::PayloadTooLarge;
+        }
+        request.status = HostRequestStatus::Completed;
+        ObservationAcceptance::Accepted
+    }
+}
+
+#[derive(Default)]
+pub struct SubscriptionRegistry {
+    next_value: u64,
+    subscriptions: BTreeMap<SubscriptionId, ProjectionRequest>,
+}
+
+impl SubscriptionRegistry {
+    #[must_use]
+    pub fn subscribe(&mut self, request: ProjectionRequest) -> SubscriptionId {
+        self.next_value = self
+            .next_value
+            .checked_add(1)
+            .expect("subscription ID exhausted");
+        let id = SubscriptionId::from_parts(0, self.next_value);
+        self.subscriptions.insert(id, request);
+        id
+    }
+
+    #[must_use]
+    pub fn unsubscribe(&mut self, subscription_id: SubscriptionId) -> bool {
+        self.subscriptions.remove(&subscription_id).is_some()
+    }
+
+    #[must_use]
+    pub fn request(&self, subscription_id: SubscriptionId) -> Option<ProjectionRequest> {
+        self.subscriptions.get(&subscription_id).copied()
+    }
+}

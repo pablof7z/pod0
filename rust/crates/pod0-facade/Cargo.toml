@@ -8,8 +8,6 @@ publish.workspace = true
 
 [dependencies]
 pod0-application.workspace = true
-
-[dev-dependencies]
 pod0-domain.workspace = true
 
 [lib]

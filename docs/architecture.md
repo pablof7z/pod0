@@ -6,9 +6,12 @@ index](architecture/README.md).
 
 ## Current implementation
 
-Pod0 is a Swift 6/Tuist iOS+iPadOS application with a widget. There is currently
-no Rust workspace, FFI layer, Kotlin binding, Android project, or active generic
-NMP dependency.
+Pod0 is a Swift 6/Tuist iOS+iPadOS application with a widget. `rust/` is an
+additive Pod0-owned domain/application/facade workspace with deterministic
+bootstrap tests and an exact generic NMP pin. It owns no user data and is not
+linked into the app yet. There is no generated FFI layer, Kotlin binding, or
+Android project. The NMP adapter remains isolated from the facade while the
+security hold in issue #85 is active.
 
 ### Application state
 
@@ -88,7 +91,8 @@ The Pod0 Rust kernel progressively owns:
 
 ## Native/shared communication
 
-There will be one app-owned UniFFI facade.
+There is one app-owned facade contract; issue #76 will generate its UniFFI
+Swift and Kotlin bindings.
 
 - Native dispatches typed fire-and-forget commands.
 - One Rust actor is the writer for migrated state.

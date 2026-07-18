@@ -14,9 +14,10 @@ import and cutover. The permanent operating rule is:
   through an explicit interface.
 - `pod0-nmp` is the only crate allowed to depend directly on generic NMP. It
   adapts NMP's public Rust facade; Pod0 nouns never enter NMP crates.
-- `pod0-facade` is the one app-owned native/core boundary. Issue #74 will grow
-  its typed command/projection/event/host-request contract, and #76 will derive
-  Swift and Kotlin bindings from that same source.
+- `pod0-facade` is the one app-owned native/core boundary. Its typed
+  command/projection/event/host-request contract is documented in
+  [`FACADE_CONTRACT.md`](FACADE_CONTRACT.md), and #76 will derive Swift and
+  Kotlin bindings from that same source.
 
 No crate may depend on NMP mechanism crates such as `nmp-engine`, `nmp-store`,
 or `nmp-ffi`. Pod0 will not import NMP's generated Swift/Kotlin bindings as a
