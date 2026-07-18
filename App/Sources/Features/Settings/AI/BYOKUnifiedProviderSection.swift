@@ -84,7 +84,7 @@ struct BYOKUnifiedProviderSection: View {
         } catch BYOKConnectError.cancelled {
             Haptics.warning()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = UserFacingFailurePresenter.make(error: error, canRetry: true).message
             Haptics.error()
         }
     }

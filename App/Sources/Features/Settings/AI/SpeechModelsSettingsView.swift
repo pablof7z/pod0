@@ -216,7 +216,7 @@ struct SpeechModelsSettingsView: View {
                 model: current.elevenLabsTTSModel
             )
         } catch {
-            testVoiceError = error.localizedDescription
+            testVoiceError = UserFacingFailurePresenter.make(error: error, canRetry: true).message
         }
     }
 }

@@ -227,11 +227,7 @@ final class TranscriptIngestService {
             }
         } catch is CancellationError {
             throw JobFailure(classification: .cancelled, message: "Transcription cancelled")
-        } catch let failure as JobFailure {
-            throw failure
-        } catch {
-            throw JobFailure(classification: .transient, message: error.localizedDescription)
-        }
+        } catch { throw JobFailure.classify(error) }
         return try persistJobTranscript(transcript, context: context)
     }
 

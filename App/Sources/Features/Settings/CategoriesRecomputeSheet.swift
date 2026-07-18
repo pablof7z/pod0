@@ -189,12 +189,8 @@ struct CategoriesRecomputeSheet: View {
             try await service.recompute(store: store)
             phase = .finished(count: store.state.categories.count)
             Haptics.success()
-        } catch let error as CategorizationError {
-            errorMessage = error.errorDescription
-            phase = .failed
-            Haptics.error()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = UserFacingFailurePresenter.make(error: error, canRetry: true).message
             phase = .failed
             Haptics.error()
         }

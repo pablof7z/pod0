@@ -64,7 +64,8 @@ struct OpenRouterSettingsView: View {
     }
 }
 
-enum OpenRouterKeyValidationError: LocalizedError {
+enum OpenRouterKeyValidationError: LocalizedError, ProductFailureConvertible {
     case noStoredKey
     var errorDescription: String? { "No stored key found." }
+    var productFailure: ProductFailure { ProductFailure(code: .missingCredential) }
 }

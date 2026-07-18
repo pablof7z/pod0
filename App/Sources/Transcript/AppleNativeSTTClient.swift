@@ -23,7 +23,7 @@ actor AppleNativeSTTClient {
 
     // MARK: Errors
 
-    enum STTError: Error, LocalizedError, Sendable {
+    enum STTError: Error, LocalizedError, ProductFailureConvertible, Sendable {
         case unavailable
         case notAuthorized
         case requiresLocalFile
@@ -46,6 +46,19 @@ actor AppleNativeSTTClient {
             case .noResults:
                 return "Transcription produced no results. The audio may be too short or in an unsupported format."
             }
+        }
+
+        var productFailure: ProductFailure {
+            let code: ProductFailureCode
+            switch self {
+            case .requiresLocalFile, .modelUnavailableForLocale:
+                code = .missingDependency
+            case .audioFileUnreadable, .noResults:
+                code = .unsupportedFormat
+            case .unavailable, .notAuthorized:
+                code = .missingDependency
+            }
+            return ProductFailure(code: code)
         }
     }
 

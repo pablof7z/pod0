@@ -63,8 +63,8 @@ struct AgentRunDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 headerSection
-                if let reason = run.failureReason {
-                    failureSection(reason)
+                if let failure = run.presentedFailure {
+                    AgentRunFailureView(failure: failure)
                 }
                 toolsUsedSection
                 inspectionLinksSection
@@ -117,9 +117,9 @@ struct AgentRunDetailView: View {
                         Label("Copy initial input", systemImage: "text.bubble")
                     }
                 }
-                if let reason = run.failureReason {
+                if let failure = run.presentedFailure {
                     Button {
-                        copy(reason, label: "Copied failure reason")
+                        copy(failure.diagnosticSummary, label: "Copied failure reason")
                     } label: {
                         Label("Copy failure reason", systemImage: "exclamationmark.triangle")
                     }
@@ -163,24 +163,6 @@ struct AgentRunDetailView: View {
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color(.secondarySystemBackground))
-        )
-    }
-
-    private func failureSection(_ reason: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Failure", systemImage: "xmark.circle.fill")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(AppTheme.Tint.error)
-            Text(reason)
-                .font(.caption.monospaced())
-                .foregroundStyle(.primary)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(AppTheme.Tint.error.opacity(0.12))
         )
     }
 

@@ -16,7 +16,7 @@ enum WorkflowJobActionResult: Sendable, Equatable {
     case notAllowed
     case alreadyComplete
     case notFound
-    case failed(String)
+    case failed
 }
 
 /// Coarse lifecycle state rendered by native screens. Lease ownership and
@@ -70,9 +70,19 @@ struct WorkflowJobProjection: Identifiable, Sendable, Equatable {
         case .pending, .leased, .running, .retryScheduled:
             return [.cancel]
         case .blocked:
-            return errorClass == .unsafeToRetry ? [.cancel] : [.retry, .cancel]
+            switch errorClass {
+            case .unsafeToRetry, .invalidInput, .unsupportedFormat:
+                return [.cancel]
+            default:
+                return [.retry, .cancel]
+            }
         case .failedPermanent, .cancelled:
-            return errorClass == .unsafeToRetry ? [] : [.retry]
+            switch errorClass {
+            case .unsafeToRetry, .invalidInput, .unsupportedFormat:
+                return []
+            default:
+                return [.retry]
+            }
         case .obsolete, .succeeded:
             return []
         }

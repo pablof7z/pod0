@@ -240,7 +240,7 @@ struct ClipShareSheet: View {
             )
             imageURL = url
         } catch {
-            lastError = "Couldn't render image: \(error.localizedDescription)"
+            lastError = "Pod0 couldn't render this image safely. Try again."
         }
     }
 
@@ -258,7 +258,7 @@ struct ClipShareSheet: View {
         } catch ClipExporter.ExportError.audioUnavailable {
             lastError = "Download this episode first — audio export needs the local file."
         } catch {
-            lastError = "Couldn't render audio: \(error.localizedDescription)"
+            lastError = "Pod0 couldn't render this audio safely. Try again."
         }
     }
 

@@ -112,7 +112,7 @@ final class DownloadCoordinator: NSObject, URLSessionDownloadDelegate, @unchecke
                 guard let episodeID else { return }
                 service.handleFailure(
                     episodeID: episodeID,
-                    message: "Could not save download.",
+                    message: "Could not save download.", classification: .corruptArtifact,
                     auditDetails: [
                         .init("Stage", "staging move"),
                         .init("Error", errorString),
@@ -169,7 +169,7 @@ final class DownloadCoordinator: NSObject, URLSessionDownloadDelegate, @unchecke
         let resumeData = nserr.userInfo[NSURLSessionDownloadTaskResumeData] as? Data
         let httpStatus = (task.response as? HTTPURLResponse)?.statusCode
         let requestURL = task.originalRequest?.url?.absoluteString
-        let errorDescription = error.localizedDescription
+        let productFailure = ProductFailure.classify(error)
         let errorDomain = nserr.domain
         let errorCode = nserr.code
         Task { @MainActor [weak service] in
@@ -190,7 +190,7 @@ final class DownloadCoordinator: NSObject, URLSessionDownloadDelegate, @unchecke
             if resumeData != nil { details.append(.init("Resume data saved", "yes")) }
             service.handleFailure(
                 episodeID: episodeID,
-                message: errorDescription,
+                message: productFailure.diagnosticSummary, classification: productFailure.code.jobErrorClass,
                 auditDetails: details
             )
         }
@@ -263,7 +263,7 @@ extension EpisodeDownloadService {
             logger.error("download staging failed: \(error, privacy: .public)")
             handleFailure(
                 episodeID: episodeID,
-                message: "Could not stage download for verification.",
+                message: "Could not stage download for verification.", classification: .corruptArtifact,
                 auditDetails: [
                     .init("Stage", "attempt staging"),
                     .init("Error", String(describing: error)),
@@ -304,7 +304,7 @@ extension EpisodeDownloadService {
     /// the Diagnostics sheet can show *why* a download failed.
     func handleFailure(
         episodeID: UUID,
-        message: String,
+        message: String, classification: JobErrorClass = .unexpected,
         auditDetails: [EpisodeAuditEvent.Detail] = []
     ) {
         guard appStore != nil else { return }
@@ -327,7 +327,7 @@ extension EpisodeDownloadService {
         )
         finishWaiter(
             episodeID: episodeID,
-            result: .failure(JobFailure(classification: .transient, message: message))
+            result: .failure(JobFailure(classification: classification, message: message))
         )
     }
 

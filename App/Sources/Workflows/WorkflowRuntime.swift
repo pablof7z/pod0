@@ -178,7 +178,7 @@ final class WorkflowRuntime {
         _ action: WorkflowJobAction,
         on projection: WorkflowJobProjection
     ) -> WorkflowJobActionResult {
-        guard let jobStore else { return .failed("Workflow storage is unavailable.") }
+        guard let jobStore else { return .failed }
         do {
             let result = try jobStore.perform(
                 action,
@@ -189,7 +189,7 @@ final class WorkflowRuntime {
             return result
         } catch {
             Self.logger.error("Unable to perform workflow action: \(error, privacy: .public)")
-            return .failed("Pod0 couldn't update this work. Try again.")
+            return .failed
         }
     }
 

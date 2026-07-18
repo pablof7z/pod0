@@ -4,7 +4,6 @@ enum AgentOllamaClient {
     private enum NetworkConstants {
         static let chatURL = URL(string: "https://ollama.com/api/chat")!
         static let requestTimeout: TimeInterval = 60
-        static let maxErrorBodyBytes: Int = 512
     }
 
     @MainActor
@@ -40,16 +39,7 @@ enum AgentOllamaClient {
             throw AgentError.malformedResponse
         }
         guard (200..<300).contains(http.statusCode) else {
-            var bodyChunks: [String] = []
-            for try await line in bytes.lines {
-                bodyChunks.append(line)
-                if bodyChunks.joined().count > NetworkConstants.maxErrorBodyBytes { break }
-            }
-            let detail = AgentOpenRouterClient.extractErrorMessage(
-                from: bodyChunks.joined(),
-                statusCode: http.statusCode
-            )
-            throw AgentError.httpError(detail)
+            throw AgentError.http(status: http.statusCode)
         }
 
         var content = ""

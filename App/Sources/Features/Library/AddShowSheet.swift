@@ -135,7 +135,10 @@ struct AddByURLForm: View {
             }
 
             if let error {
-                Label(error.localizedDescription, systemImage: "exclamationmark.triangle.fill")
+                Label(
+                    error.errorDescription ?? "Pod0 couldn't subscribe to that feed.",
+                    systemImage: "exclamationmark.triangle.fill"
+                )
                     .font(AppTheme.Typography.caption)
                     .foregroundStyle(AppTheme.Tint.error)
             }
@@ -189,7 +192,7 @@ struct AddByURLForm: View {
             Haptics.warning()
         } catch {
             isWorking = false
-            self.error = .transport(error.localizedDescription)
+            self.error = .transport(ProductFailure.classify(error).diagnosticSummary)
             Haptics.warning()
         }
     }

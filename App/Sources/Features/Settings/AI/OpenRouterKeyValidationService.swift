@@ -108,7 +108,7 @@ struct OpenRouterKeyValidationService: Sendable {
 
 // MARK: - Errors
 
-enum ValidationError: LocalizedError {
+enum ValidationError: LocalizedError, ProductFailureConvertible {
     case invalidURL
     case networkError
     case invalidKey
@@ -124,5 +124,16 @@ enum ValidationError: LocalizedError {
         case .decodingError:          return "Unexpected response from OpenRouter."
         }
     }
-}
 
+    var productFailure: ProductFailure {
+        let code: ProductFailureCode
+        switch self {
+        case .invalidKey: code = .missingCredential
+        case .networkError: code = .network
+        case .serverError(let statusCode) where statusCode == 429: code = .rateLimited
+        case .invalidURL: code = .invalidInput
+        case .serverError, .decodingError: code = .unexpected
+        }
+        return ProductFailure(code: code)
+    }
+}

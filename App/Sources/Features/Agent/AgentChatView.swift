@@ -179,7 +179,6 @@ struct AgentChatView: View {
         // file-URL items.
         SystemShareSheet.present(items: [url])
     }
-
     @ViewBuilder
     private var content: some View {
         VStack(spacing: 0) {
@@ -234,18 +233,19 @@ struct AgentChatView: View {
 
     @ViewBuilder
     private func errorBanner(session: AgentChatSession) -> some View {
-        if case .failed(let msg) = session.phase {
+        if case .failed(let failure) = session.phase {
+            let presented = UserFacingFailurePresenter.make(failure: failure, canRetry: session.lastFailedMessage != nil)
             HStack(spacing: AppTheme.Spacing.sm) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(AppTheme.Tint.warning)
                     .font(AppTheme.Typography.caption)
                     .accessibilityHidden(true)
-                Text(msg)
+                Text(presented.message)
                     .font(AppTheme.Typography.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
                 Spacer(minLength: 0)
-                if session.lastFailedMessage != nil {
+                if presented.recoveryAction == .retry, session.lastFailedMessage != nil {
                     Button("Retry") {
                         Haptics.selection()
                         session.retry()

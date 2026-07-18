@@ -162,7 +162,7 @@ struct DataExportView: View {
             // presentation context, not a SwiftUI modal scope).
             SystemShareSheet.present(items: [url])
         } catch {
-            errorMessage = "Could not generate export: \(error.localizedDescription)"
+            errorMessage = "Pod0 couldn't generate the export safely. Try again."
             fileURL = nil
             fileSize = nil
             Haptics.error()

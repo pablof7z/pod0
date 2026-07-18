@@ -47,12 +47,12 @@ struct SubscriptionService {
                 return "That doesn't look like a valid feed URL."
             case .alreadySubscribed(let title):
                 return "You're already subscribed to \(title)."
-            case .transport(let message):
-                return "Couldn't reach the feed: \(message)"
+            case .transport:
+                return "Couldn't reach the feed. Check your connection and try again."
             case .http(let status):
                 return Self.humanizeHTTPStatus(status)
-            case .parse(let message):
-                return message
+            case .parse:
+                return "Pod0 couldn't read a podcast feed at that address."
             }
         }
 

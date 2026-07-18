@@ -128,7 +128,7 @@ struct RAGSearch: Sendable {
             // Reranking is a quality lift, not a correctness gate. If the
             // network call fails we still return the hybrid results — the
             // agent's answer is degraded but not broken.
-            Self.logger.warning("Reranker failed; falling back to hybrid order: \(error.localizedDescription, privacy: .public)")
+            Self.logger.warning("Reranker fallback: \(ProductFailure.classify(error).diagnosticSummary, privacy: .public)")
             return Array(candidates.prefix(options.k))
         }
     }

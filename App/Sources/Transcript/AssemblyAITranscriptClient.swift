@@ -74,6 +74,7 @@ actor AssemblyAITranscriptClient {
                 return "Transcription took too long. Try again - long episodes can take several minutes."
             }
         }
+
     }
 
     private static let logger = Logger.app("AssemblyAITranscriptClient")
@@ -180,8 +181,7 @@ actor AssemblyAITranscriptClient {
         do {
             payload = try Self.decoder.decode(AssemblyAITranscriptPayload.self, from: data)
         } catch {
-            let preview = String(data: data.prefix(500), encoding: .utf8) ?? "<binary>"
-            Self.logger.error("submit decode failed: \(String(describing: error), privacy: .public) body=\(preview, privacy: .public)")
+            Self.logger.error("AssemblyAI submit decode failed: \(String(describing: error), privacy: .private)")
             throw TranscribeError.decoding("Could not decode /v2/transcript submit response: \(error)")
         }
 
@@ -245,8 +245,7 @@ actor AssemblyAITranscriptClient {
             do {
                 payload = try Self.decoder.decode(AssemblyAITranscriptPayload.self, from: data)
             } catch {
-                let preview = String(data: data.prefix(500), encoding: .utf8) ?? "<binary>"
-                Self.logger.error("poll decode failed: \(String(describing: error), privacy: .public) body=\(preview, privacy: .public)")
+                Self.logger.error("AssemblyAI poll decode failed: \(String(describing: error), privacy: .private)")
                 throw TranscribeError.decoding("Could not decode /v2/transcript poll response: \(error)")
             }
 

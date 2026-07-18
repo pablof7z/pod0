@@ -78,11 +78,12 @@ struct OpenRouterModelCatalogService: Sendable {
     }
 }
 
-enum CatalogError: LocalizedError {
+enum CatalogError: LocalizedError, ProductFailureConvertible {
     case decoding(String)
     var errorDescription: String? {
         switch self { case .decoding(let msg): return msg }
     }
+    var productFailure: ProductFailure { ProductFailure(code: .unexpected) }
 }
 
 // MARK: - Public model type

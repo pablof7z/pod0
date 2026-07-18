@@ -20,7 +20,7 @@ func configureElevenLabsAudioPlaybackSession() {
     }
 }
 
-enum ElevenLabsTTSPreviewError: LocalizedError {
+enum ElevenLabsTTSPreviewError: LocalizedError, ProductFailureConvertible {
     case missingAPIKey
     case missingVoiceID
     case bodyEncoding(String)
@@ -37,6 +37,18 @@ enum ElevenLabsTTSPreviewError: LocalizedError {
         case .transport(let m):    return m
         case .playback(let m):     return "Playback failed: \(m)"
         }
+    }
+
+    var productFailure: ProductFailure {
+        let code: ProductFailureCode
+        switch self {
+        case .missingAPIKey: code = .missingCredential
+        case .missingVoiceID, .bodyEncoding: code = .invalidInput
+        case .transport: code = .network
+        case .server(let status) where status == 429: code = .rateLimited
+        case .server, .playback: code = .unexpected
+        }
+        return ProductFailure(code: code)
     }
 }
 

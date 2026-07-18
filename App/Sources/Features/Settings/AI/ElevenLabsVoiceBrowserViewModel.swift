@@ -62,7 +62,7 @@ final class ElevenLabsVoiceBrowserViewModel {
             phase = .needsAPIKey
             voices = []
         } catch {
-            phase = .error(error.localizedDescription)
+            phase = .error(UserFacingFailurePresenter.make(error: error, canRetry: true).message)
         }
     }
 

@@ -48,6 +48,7 @@ actor OpenRouterWhisperClient {
                 return "Transcription took too long. Try again."
             }
         }
+
     }
 
     private static let logger = Logger.app("OpenRouterWhisperClient")
@@ -117,7 +118,7 @@ actor OpenRouterWhisperClient {
         guard let http = response as? HTTPURLResponse else { throw WhisperError.invalidResponse }
         guard (200..<300).contains(http.statusCode) else {
             let body = String(data: data, encoding: .utf8)
-            Self.logger.error("Whisper HTTP \(http.statusCode, privacy: .public): \(body ?? "", privacy: .public)")
+            Self.logger.error("Whisper request failed with HTTP \(http.statusCode, privacy: .public)")
             throw WhisperError.http(status: http.statusCode, body: body)
         }
 
@@ -125,8 +126,7 @@ actor OpenRouterWhisperClient {
         do {
             raw = try Self.decoder.decode(WhisperVerboseResponse.self, from: data)
         } catch {
-            let preview = String(data: data.prefix(500), encoding: .utf8) ?? "<binary>"
-            Self.logger.error("Whisper decode failed: \(String(describing: error), privacy: .public) body=\(preview, privacy: .public)")
+            Self.logger.error("Whisper response decode failed: \(String(describing: error), privacy: .private)")
             throw WhisperError.decoding("Could not decode transcription response: \(error)")
         }
 

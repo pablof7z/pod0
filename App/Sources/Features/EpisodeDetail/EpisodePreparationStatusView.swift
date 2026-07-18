@@ -53,26 +53,7 @@ enum WorkflowPresentationCopy {
     }
 
     static func failureDetail(for job: WorkflowJobProjection) -> String {
-        switch job.lastErrorClass {
-        case .missingCredential:
-            return job.kind == .scheduledAgentRun
-                ? "Connect the required provider so this task can run."
-                : "Connect the required provider to continue preparing this episode."
-        case .missingDependency:
-            return job.kind == .transcriptIngest
-                ? "A local audio file or earlier preparation step is still required."
-                : "Waiting for an earlier preparation step to finish."
-        case .rateLimited:
-            return "The provider is busy. Pod0 will retry without losing progress."
-        case .unsafeToRetry:
-            return "Pod0 paused after an interrupted provider submission to avoid duplicate work."
-        case .invalidInput:
-            return "The current source cannot be prepared. Check the episode or task setup."
-        case .cancelled:
-            return "This work was cancelled."
-        case .transient, .unexpected, .none:
-            return "Preparation stopped safely. Retry when you're ready."
-        }
+        UserFacingFailurePresenter.make(job: job).message
     }
 
     private static func noun(for kind: WorkJobKind) -> String {
@@ -281,8 +262,11 @@ struct WorkflowActionNotice: Identifiable {
             return .init(title: "Already finished", message: "No action is needed.")
         case .notFound:
             return .init(title: "Work not found", message: "The old workflow record is no longer available.")
-        case .failed(let message):
-            return .init(title: "Couldn't update work", message: message)
+        case .failed:
+            return .init(
+                title: "Couldn't update work",
+                message: "Pod0 could not safely update this work. Review its current status and try again."
+            )
         }
     }
 }

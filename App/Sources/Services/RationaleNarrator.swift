@@ -80,7 +80,7 @@ final class RationaleNarrator {
                 try await speakViaElevenLabs(text: trimmed, voiceID: voiceID, ttsModel: ttsModel)
                 return
             } catch {
-                Self.logger.notice("ElevenLabs rationale narration failed; falling back to AVSpeech: \(error.localizedDescription, privacy: .public)")
+                Self.logger.notice("ElevenLabs narration fallback: \(ProductFailure.classify(error).diagnosticSummary, privacy: .public)")
             }
         }
 

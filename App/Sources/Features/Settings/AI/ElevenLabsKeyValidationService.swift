@@ -106,7 +106,7 @@ struct ElevenLabsKeyValidationService: Sendable {
 
 // MARK: - Errors
 
-enum ElevenLabsValidationError: LocalizedError {
+enum ElevenLabsValidationError: LocalizedError, ProductFailureConvertible {
     case invalidURL
     case networkError
     case invalidKey
@@ -122,5 +122,16 @@ enum ElevenLabsValidationError: LocalizedError {
         case .decodingError:          return "Unexpected response from ElevenLabs."
         }
     }
-}
 
+    var productFailure: ProductFailure {
+        let code: ProductFailureCode
+        switch self {
+        case .invalidKey: code = .missingCredential
+        case .networkError: code = .network
+        case .serverError(let statusCode) where statusCode == 429: code = .rateLimited
+        case .invalidURL: code = .invalidInput
+        case .serverError, .decodingError: code = .unexpected
+        }
+        return ProductFailure(code: code)
+    }
+}

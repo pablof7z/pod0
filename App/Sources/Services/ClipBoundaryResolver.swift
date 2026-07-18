@@ -117,7 +117,7 @@ final class ClipBoundaryResolver {
                 feature: Self.costFeatureKey
             )
         } catch {
-            Self.logger.error("resolveBoundaries: LLM failed: \(String(describing: error), privacy: .public)")
+            Self.logger.error("resolveBoundaries: \(ProductFailure.classify(error).diagnosticSummary, privacy: .public)")
             return nil
         }
         return parse(raw, transcript: transcript)

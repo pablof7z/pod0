@@ -331,8 +331,8 @@ struct OPMLImportContent: View {
 
     private func handleFileImport(_ result: Result<[URL], Error>) {
         switch result {
-        case .failure(let error):
-            parseError = error.localizedDescription
+        case .failure:
+            parseError = "Pod0 couldn't open that OPML file."
         case .success(let urls):
             guard let url = urls.first else { return }
             do {
@@ -341,7 +341,7 @@ struct OPMLImportContent: View {
                 let data = try Data(contentsOf: url)
                 try parseAndAdvance(data: data)
             } catch {
-                parseError = "Couldn't read the OPML file: \(error.localizedDescription)"
+                parseError = "Pod0 couldn't read that OPML file."
             }
         }
     }
@@ -354,7 +354,7 @@ struct OPMLImportContent: View {
         do {
             try parseAndAdvance(data: data)
         } catch {
-            parseError = error.localizedDescription
+            parseError = "That text isn't a readable OPML subscription list."
         }
     }
 
@@ -397,7 +397,7 @@ struct OPMLImportContent: View {
                 errors.append(.init(
                     feedURL: feedURL,
                     title: entry.title,
-                    message: error.localizedDescription
+                    message: UserFacingFailurePresenter.make(error: error, canRetry: true).message
                 ))
             }
             withAnimation {

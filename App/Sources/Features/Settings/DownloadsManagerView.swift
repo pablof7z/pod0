@@ -201,7 +201,7 @@ struct DownloadsManagerView: View {
             case .running:
                 return .downloading(progress: 0, bytesWritten: nil, expectedBytes: nil)
             case .blocked, .failedPermanent:
-                return .failed(message: job.lastErrorMessage ?? "Download needs attention")
+                return .failed(message: WorkflowPresentationCopy.failureDetail(for: job))
             case .cancelled, .obsolete, .succeeded: return nil
             }
         }

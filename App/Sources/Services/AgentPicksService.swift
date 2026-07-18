@@ -197,7 +197,7 @@ final class AgentPicksService {
                     return
                 }
             } catch {
-                Self.logger.error("Agent picks LLM call failed: \(error.localizedDescription, privacy: .public)")
+                Self.logger.error("Agent picks failed: \(ProductFailure.classify(error).diagnosticSummary, privacy: .public)")
             }
         }
 

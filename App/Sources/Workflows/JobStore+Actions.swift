@@ -51,7 +51,8 @@ extension JobStore {
                     last_error_message=NULL, updated_at=?
                 WHERE id=? AND updated_at=?
                   AND state IN ('blocked','failedPermanent','cancelled')
-                  AND COALESCE(last_error_class,'') <> 'unsafeToRetry'
+                  AND COALESCE(last_error_class,'') NOT IN
+                      ('unsafeToRetry','invalidInput','unsupportedFormat')
                 """
         case .cancel:
             return """

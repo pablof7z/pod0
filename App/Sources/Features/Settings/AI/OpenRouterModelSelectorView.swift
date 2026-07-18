@@ -313,7 +313,7 @@ final class OpenRouterModelSelectorViewModel {
         do {
             models = try await service.fetchModels()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = UserFacingFailurePresenter.make(error: error, canRetry: true).message
         }
     }
 }

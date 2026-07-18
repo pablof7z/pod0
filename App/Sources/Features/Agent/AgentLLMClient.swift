@@ -12,13 +12,11 @@ enum AgentLLMClient {
     ) async throws -> AgentResult {
         let reference = LLMModelReference(storedID: model)
         guard !reference.isEmpty else {
-            throw AgentError.httpError("No model selected.")
+            throw AgentError.invalidInput
         }
         guard let apiKey = try LLMProviderCredentialResolver.apiKey(for: reference.provider),
               !apiKey.isEmpty else {
-            throw AgentError.httpError(
-                LLMProviderCredentialResolver.missingCredentialMessage(for: reference.provider)
-            )
+            throw AgentError.missingCredential
         }
 
         switch reference.provider {

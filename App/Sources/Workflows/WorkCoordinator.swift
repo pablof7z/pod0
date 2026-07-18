@@ -223,10 +223,10 @@ actor WorkCoordinator {
         switch failure.classification {
         case .missingCredential, .unsafeToRetry: .blocked(reason: failure)
         case .missingDependency: .waitingForDependency(failure)
-        case .invalidInput: .failedPermanent(failure)
+        case .invalidInput, .unsupportedFormat: .failedPermanent(failure)
         case .cancelled:
             .retry(notBefore: clock(), error: failure)
-        case .transient, .rateLimited, .unexpected:
+        case .transient, .rateLimited, .offline, .network, .corruptArtifact, .unexpected:
             job.attempt >= job.maxAttempts
                 ? .failedPermanent(failure)
                 : .retry(notBefore: backoffDate(for: job), error: failure)

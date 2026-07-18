@@ -113,10 +113,9 @@ final class AIChapterCompiler {
                 feature: Self.costFeatureKey
             )
         } catch {
-            Self.logger.error(
-                "compileIfNeeded(\(episodeID, privacy: .public)): LLM call failed: \(String(describing: error), privacy: .public)"
-            )
-            throw error
+            let failure = ProductFailure.classify(error)
+            Self.logger.error("compileIfNeeded(\(episodeID, privacy: .public)): \(failure.diagnosticSummary, privacy: .public)")
+            throw failure
         }
 
         if hasExistingChapters, let existing = episode.chapters {

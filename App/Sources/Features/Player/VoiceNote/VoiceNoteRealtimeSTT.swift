@@ -143,7 +143,7 @@ final class VoiceNoteRealtimeSTT: ObservableObject {
             return
         } catch {
             guard isRecording || shouldAcceptAudio else { return }
-            realtimeUnavailable(with: error.localizedDescription)
+            realtimeUnavailable(error)
         }
     }
 
@@ -242,7 +242,7 @@ final class VoiceNoteRealtimeSTT: ObservableObject {
             do {
                 try await sendAudio(data, through: webSocketTask)
             } catch {
-                realtimeUnavailable(with: error.localizedDescription)
+                realtimeUnavailable(error)
                 break
             }
         }
@@ -272,7 +272,7 @@ final class VoiceNoteRealtimeSTT: ObservableObject {
                 @unknown default: break
                 }
             } catch {
-                if !isClosing { realtimeUnavailable(with: error.localizedDescription) }
+                if !isClosing { realtimeUnavailable(error) }
                 return
             }
         }
@@ -292,7 +292,7 @@ final class VoiceNoteRealtimeSTT: ObservableObject {
                 break
             default:
                 if event.messageType.contains("error") {
-                    realtimeUnavailable(with: event.errorMessage)
+                    realtimeUnavailable(ProductFailure(code: .unexpected))
                 }
             }
         } catch {
@@ -317,8 +317,9 @@ final class VoiceNoteRealtimeSTT: ObservableObject {
         transcript = text
     }
 
-    private func realtimeUnavailable(with message: String) {
-        errorMessage = message.isEmpty ? "Live transcription unavailable." : message
+    private func realtimeUnavailable(_ error: Error) {
+        let failure = ProductFailure.classify(error)
+        errorMessage = UserFacingFailurePresenter.make(failure: failure, canRetry: true).message
         shouldQueueAudio = false
         shouldSendAudio = false
         pendingAudioChunks.removeAll()
@@ -344,7 +345,6 @@ final class VoiceNoteRealtimeSTT: ObservableObject {
 }
 
 // MARK: - Error
-
 enum VoiceNoteSTTError: LocalizedError {
     case micPermissionDenied
     case invalidResponse

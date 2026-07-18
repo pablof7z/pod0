@@ -4,7 +4,7 @@ import os.log
 
 // MARK: - Errors
 
-enum CategorizationError: LocalizedError {
+enum CategorizationError: LocalizedError, ProductFailureConvertible {
     case noAPIKey(provider: String)
     case noSubscriptions
     case noModelSelected
@@ -24,6 +24,19 @@ enum CategorizationError: LocalizedError {
         case .httpError(let status, let body):
             return "Categorization API error (\(status)): \(body.prefix(200))"
         }
+    }
+
+    var productFailure: ProductFailure {
+        let code: ProductFailureCode
+        switch self {
+        case .noAPIKey: code = .missingCredential
+        case .noSubscriptions, .noModelSelected: code = .invalidInput
+        case .httpError(let status, _) where status == 429: code = .rateLimited
+        case .httpError(let status, _) where status == 408 || status == 504 || status >= 500:
+            code = .network
+        case .invalidResponse, .httpError: code = .unexpected
+        }
+        return ProductFailure(code: code)
     }
 }
 

@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-18T13:55:37Z",
+      "lines": [
+        "Provider and background-task failures now explain safe next steps without exposing technical response details."
+      ]
+    },
+    {
       "shipped_at": "2026-07-18T13:27:16Z",
       "lines": [
         "Workflow Diagnostics now shows every background task with safe details and only actions that can actually run."

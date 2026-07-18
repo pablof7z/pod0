@@ -280,7 +280,7 @@ struct SubscriptionsListView: View {
             opmlURL = url
         } catch {
             Self.logger.error("OPML export write failed: \(error, privacy: .public)")
-            exportError = error.localizedDescription
+            exportError = "Pod0 couldn't prepare the subscription export. Try again."
             Haptics.error()
         }
     }

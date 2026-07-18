@@ -242,7 +242,7 @@ struct VoiceNoteRecordingSheet: View {
         do {
             try await stt.start(modelID: store.state.settings.elevenLabsSTTModel)
         } catch {
-            startError = error.localizedDescription
+            startError = UserFacingFailurePresenter.make(error: error, canRetry: true).message
         }
     }
 

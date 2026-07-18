@@ -230,9 +230,7 @@ final class ChapterArtifactsJobExecutor: JobExecutor {
                 leaseToken: context.leaseToken
             )
             return .succeeded(outputVersion: manifestHash)
-        } catch {
-            throw JobFailure(classification: .transient, message: error.localizedDescription)
-        }
+        } catch { throw JobFailure.classify(error) }
     }
 }
 
@@ -369,8 +367,10 @@ final class ScheduledAgentRunJobExecutor: JobExecutor {
         } else {
             await session.send(payload.prompt, source: .scheduledTask)
         }
-        if case .failed(let message) = session.phase {
-            throw JobFailure(classification: .transient, message: message)
+        if case .failed(let failure) = session.phase {
+            throw JobFailure(classification: failure.code.jobErrorClass,
+                message: failure.diagnosticSummary
+            )
         }
         guard let occurrenceID = context.job.occurrenceID,
               history.conversation(occurrenceID: occurrenceID)?.hasCompletedScheduledOutput == true else {

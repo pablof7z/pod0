@@ -44,8 +44,18 @@ final class WorkflowJobActionTests: XCTestCase {
             projection(state: .blocked, errorClass: .unsafeToRetry).allowedActions,
             [.cancel]
         )
+        XCTAssertEqual(
+            projection(state: .blocked, errorClass: .unsupportedFormat).allowedActions,
+            [.cancel]
+        )
         XCTAssertTrue(
             projection(state: .failedPermanent, errorClass: .unsafeToRetry).allowedActions.isEmpty
+        )
+        XCTAssertTrue(
+            projection(state: .failedPermanent, errorClass: .unsupportedFormat).allowedActions.isEmpty
+        )
+        XCTAssertTrue(
+            projection(state: .failedPermanent, errorClass: .invalidInput).allowedActions.isEmpty
         )
     }
 

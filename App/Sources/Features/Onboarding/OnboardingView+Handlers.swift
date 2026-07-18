@@ -51,7 +51,7 @@ extension OnboardingView {
         } catch BYOKConnectError.cancelled {
             // user cancelled — no error shown
         } catch {
-            apiKeyError = error.localizedDescription
+            apiKeyError = UserFacingFailurePresenter.make(error: error, canRetry: true).message
             Haptics.error()
         }
     }

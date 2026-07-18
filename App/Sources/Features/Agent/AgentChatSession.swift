@@ -17,7 +17,7 @@ final class AgentChatSession {
     enum Phase: Equatable {
         case idle
         case sending
-        case failed(String)
+        case failed(ProductFailure)
     }
 
     /// Auto-resume threshold. If the most recent conversation was updated

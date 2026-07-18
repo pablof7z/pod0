@@ -83,6 +83,7 @@ actor ElevenLabsScribeClient {
                 return "Transcription took too long. Try again — the second attempt usually completes faster."
             }
         }
+
     }
 
     private static let logger = Logger.app("ElevenLabsScribeClient")
@@ -174,8 +175,7 @@ actor ElevenLabsScribeClient {
         do {
             raw = try Self.decoder.decode(ScribeRawResult.self, from: data)
         } catch {
-            let preview = String(data: data.prefix(500), encoding: .utf8) ?? "<binary>"
-            Self.logger.error("Scribe decode failed: \(String(describing: error), privacy: .public) body=\(preview, privacy: .public)")
+            Self.logger.error("Scribe response decode failed: \(String(describing: error), privacy: .private)")
             throw ScribeError.decoding("Could not decode /speech-to-text response: \(error)")
         }
 

@@ -204,7 +204,7 @@ final class EpisodeDownloadService {
         case .failure(let error as JobFailure):
             throw error
         case .failure(let error):
-            throw JobFailure(classification: .transient, message: error.localizedDescription)
+            throw JobFailure.classify(error)
         }
     }
 

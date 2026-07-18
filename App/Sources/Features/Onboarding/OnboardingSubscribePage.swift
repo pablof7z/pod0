@@ -234,9 +234,9 @@ struct OnboardingSubscribePage: View {
             Haptics.warning()
         } catch {
             Self.logger.error(
-                "Unexpected error subscribing to \(suggestion.title, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                "Unexpected subscription failure for \(suggestion.title, privacy: .public)"
             )
-            errorMessage = error.localizedDescription
+            errorMessage = UserFacingFailurePresenter.make(error: error, canRetry: true).message
             Haptics.warning()
         }
     }
@@ -261,9 +261,9 @@ struct OnboardingSubscribePage: View {
             Haptics.warning()
         } catch {
             Self.logger.error(
-                "Unexpected error subscribing to typed URL \(trimmed, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                "Unexpected subscription failure for typed URL"
             )
-            errorMessage = error.localizedDescription
+            errorMessage = UserFacingFailurePresenter.make(error: error, canRetry: true).message
             Haptics.warning()
         }
     }

@@ -62,7 +62,7 @@ final class PodcastSearchViewModel {
         } catch {
             guard activeTranscriptQuery == trimmed, query.trimmed == trimmed else { return }
             transcriptResults = []
-            transcriptError = error.localizedDescription
+            transcriptError = UserFacingFailurePresenter.make(error: error, canRetry: true).message
         }
     }
 }

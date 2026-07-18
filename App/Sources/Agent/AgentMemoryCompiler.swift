@@ -58,7 +58,7 @@ struct AgentMemoryCompiler {
                 onPartialContent: { _ in }
             )
         } catch {
-            Self.logger.error("compile chat call failed: \(error.localizedDescription, privacy: .public). Keeping previous compiled memory.")
+            Self.logger.error("compile chat failed: \(ProductFailure.classify(error).diagnosticSummary, privacy: .public)")
             return
         }
 

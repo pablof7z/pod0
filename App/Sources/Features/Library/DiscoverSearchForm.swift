@@ -355,9 +355,9 @@ struct DiscoverSearchForm: View {
         } catch {
             guard !Task.isCancelled else { return }
             Self.logger.error(
-                "iTunes search failed for term \(term, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                "iTunes search failed for term \(term, privacy: .public)"
             )
-            self.searchError = error.localizedDescription
+            self.searchError = UserFacingFailurePresenter.make(error: error, canRetry: true).message
             results = []
         }
     }
@@ -416,9 +416,9 @@ struct DiscoverSearchForm: View {
             Haptics.warning()
         } catch {
             Self.logger.error(
-                "Unexpected error subscribing to \(result.collectionName, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                "Unexpected subscription failure for \(result.collectionName, privacy: .public)"
             )
-            rowErrors[result.collectionId] = error.localizedDescription
+            rowErrors[result.collectionId] = UserFacingFailurePresenter.make(error: error, canRetry: true).message
             Haptics.warning()
         }
     }

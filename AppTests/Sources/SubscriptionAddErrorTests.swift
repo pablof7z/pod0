@@ -37,12 +37,13 @@ final class SubscriptionAddErrorTests: XCTestCase {
         )
     }
 
-    func testTransportIncludesUnderlyingMessage() {
+    func testTransportHidesUnderlyingMessageBehindActionableCopy() {
         let error = SubscriptionService.AddError.transport("network unreachable")
         XCTAssertEqual(
             error.errorDescription,
-            "Couldn't reach the feed: network unreachable"
+            "Couldn't reach the feed. Check your connection and try again."
         )
+        XCTAssertFalse(error.errorDescription?.contains("network unreachable") == true)
     }
 
     func testHTTP404PromptsUserToCheckURL() {
@@ -109,16 +110,13 @@ final class SubscriptionAddErrorTests: XCTestCase {
         )
     }
 
-    func testParseSurfacesUnderlyingMessageAsIs() {
-        // `.parse` payloads come from `RSSParser.ParseError.errorDescription`,
-        // which already speaks in full user-facing sentences. The error
-        // surface deliberately doesn't add a "Couldn't read this feed:"
-        // prefix to avoid double-narrating the failure.
+    func testParseHidesParserInternalsBehindSafeCopy() {
         let error = SubscriptionService.AddError.parse("malformed XML at line 42")
         XCTAssertEqual(
             error.errorDescription,
-            "malformed XML at line 42"
+            "Pod0 couldn't read a podcast feed at that address."
         )
+        XCTAssertFalse(error.errorDescription?.contains("line 42") == true)
     }
 
     // MARK: - Equatable contract

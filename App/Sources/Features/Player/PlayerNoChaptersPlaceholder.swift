@@ -75,7 +75,7 @@ struct PlayerNoChaptersPlaceholder: View {
         guard let episode else { return "Use the scrubber to navigate this episode." }
         if let job = workflowJob(for: episode) {
             if job.state == .blocked || job.state == .failedPermanent {
-                return job.lastErrorMessage ?? "Chapter preparation needs attention."
+                return WorkflowPresentationCopy.failureDetail(for: job)
             }
             if job.state.isActive {
                 return job.kind == .chapterArtifacts

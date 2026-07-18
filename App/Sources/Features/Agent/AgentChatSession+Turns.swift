@@ -71,7 +71,7 @@ extension AgentChatSession {
     /// both `messages` and `rawMessages` from the original turn.
     func regenerateSend(_ text: String, source: AgentRunSource) async {
         guard selectedProviderHasCredential() else {
-            phase = .failed(missingCredentialMessage())
+            phase = .failed(ProductFailure(code: .missingCredential))
             return
         }
 
@@ -130,7 +130,7 @@ extension AgentChatSession {
         guard !trimmed.isEmpty else { return }
 
         guard selectedProviderHasCredential() else {
-            phase = .failed(missingCredentialMessage())
+            phase = .failed(ProductFailure(code: .missingCredential))
             return
         }
 
@@ -208,6 +208,7 @@ extension AgentChatSession {
                 persistCurrentConversation()
                 return
             } catch {
+                let failure = ProductFailure.classify(error)
                 preservePartialContentIfNeeded()
                 collector.appendTurn(
                     turnNumber: turnNumber,
@@ -215,11 +216,11 @@ extension AgentChatSession {
                     apiResponse: nil,
                     toolDispatches: []
                 )
-                collector.finish(outcome: .failed, failureReason: error.localizedDescription)
+                collector.finish(outcome: .failed, failureReason: failure.diagnosticSummary)
                 resetStreamingState()
-                let msg = "Couldn't reach the agent. \(error.localizedDescription)"
-                messages.append(ChatMessage(role: .error, text: msg))
-                phase = .failed(msg)
+                let copy = UserFacingFailurePresenter.make(failure: failure, canRetry: true)
+                messages.append(ChatMessage(role: .error, text: copy.message))
+                phase = .failed(failure)
                 persistCurrentConversation()
                 return
             }
@@ -335,7 +336,8 @@ extension AgentChatSession {
         resetStreamingState()
         let limitMsg = "The agent reached its turn limit. Try a simpler request or start a new conversation."
         messages.append(ChatMessage(role: .error, text: limitMsg))
-        phase = .failed(limitMsg)
+        lastFailedMessage = nil
+        phase = .failed(ProductFailure(code: .unexpected))
         persistCurrentConversation()
     }
 
@@ -402,11 +404,6 @@ extension AgentChatSession {
     func selectedProviderHasCredential() -> Bool {
         let reference = LLMModelReference(storedID: store.state.settings.agentInitialModel)
         return LLMProviderCredentialResolver.hasAPIKey(for: reference.provider)
-    }
-
-    func missingCredentialMessage() -> String {
-        let reference = LLMModelReference(storedID: store.state.settings.agentInitialModel)
-        return LLMProviderCredentialResolver.missingCredentialMessage(for: reference.provider)
     }
 
     /// Saves any non-empty partial streaming content as an assistant message

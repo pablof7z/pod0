@@ -120,7 +120,7 @@
       "migration_issues": [59, 60],
       "deletion_target": "Delete Swift cloud provider orchestration after workflow-kind cutover.",
       "priority": "high",
-      "includes": ["App/Sources/Transcript/AssemblyAITranscriptClient.swift", "App/Sources/Transcript/ElevenLabsScribeClient.swift", "App/Sources/Transcript/OpenRouterWhisperClient.swift"]
+      "includes": ["App/Sources/Transcript/AssemblyAITranscriptClient.swift", "App/Sources/Transcript/ElevenLabsScribeClient.swift", "App/Sources/Transcript/OpenRouterWhisperClient.swift", "App/Sources/Transcript/TranscriptProviderFailureMapping.swift"]
     },
     {
       "id": "native-apple-transcription",

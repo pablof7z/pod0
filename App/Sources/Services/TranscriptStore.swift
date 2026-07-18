@@ -134,7 +134,7 @@ final class TranscriptStore: @unchecked Sendable {
         let staged = stagedFileURL(for: episodeID, leaseToken: leaseToken)
         guard let data = verifiedData(at: staged, episodeID: episodeID),
               ArtifactRepository.hash(data) == contentHash else {
-            throw JobFailure(classification: .unexpected, message: "Staged transcript failed verification")
+            throw JobFailure(classification: .corruptArtifact, message: "Staged transcript failed verification")
         }
         let destination = contentFileURL(for: episodeID, contentHash: contentHash)
         try FileManager.default.createDirectory(

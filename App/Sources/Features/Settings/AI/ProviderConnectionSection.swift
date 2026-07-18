@@ -249,7 +249,7 @@ struct ProviderConnectionSection: View {
         } catch BYOKConnectError.cancelled {
             Haptics.warning()
         } catch {
-            credentialError = error.localizedDescription
+            credentialError = UserFacingFailurePresenter.make(error: error).message
             Haptics.error()
         }
     }
@@ -294,7 +294,7 @@ struct ProviderConnectionSection: View {
             validationResult = try await validation.run()
             Haptics.success()
         } catch {
-            credentialError = error.localizedDescription
+            credentialError = UserFacingFailurePresenter.make(error: error, canRetry: true, canOpenProviders: true).message
             Haptics.warning()
         }
     }

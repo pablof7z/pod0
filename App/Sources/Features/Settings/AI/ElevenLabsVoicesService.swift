@@ -31,7 +31,7 @@ struct ElevenLabsVoice: Identifiable, Hashable, Sendable {
     }
 }
 
-enum ElevenLabsVoicesError: LocalizedError {
+enum ElevenLabsVoicesError: LocalizedError, ProductFailureConvertible {
     case missingAPIKey
     case invalidResponse
     case unauthorized
@@ -48,6 +48,17 @@ enum ElevenLabsVoicesError: LocalizedError {
         case .decoding(let m):  return "Could not decode voices: \(m)"
         case .transport(let m): return m
         }
+    }
+
+    var productFailure: ProductFailure {
+        let code: ProductFailureCode
+        switch self {
+        case .missingAPIKey, .unauthorized: code = .missingCredential
+        case .transport: code = .network
+        case .server(let status) where status == 429: code = .rateLimited
+        case .invalidResponse, .server, .decoding: code = .unexpected
+        }
+        return ProductFailure(code: code)
     }
 }
 

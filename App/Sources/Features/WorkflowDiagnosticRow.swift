@@ -22,16 +22,9 @@ enum WorkflowDiagnosticPresenter {
     }
 
     static func errorTitle(_ errorClass: JobErrorClass) -> String {
-        switch errorClass {
-        case .transient: "Temporary failure"
-        case .rateLimited: "Provider rate limit"
-        case .missingCredential: "Missing credential"
-        case .missingDependency: "Missing dependency"
-        case .unsafeToRetry: "Unsafe to retry automatically"
-        case .invalidInput: "Invalid input"
-        case .cancelled: "Cancelled"
-        case .unexpected: "Unexpected failure"
-        }
+        UserFacingFailurePresenter.make(
+            failure: ProductFailure(code: errorClass.productFailureCode)
+        ).title
     }
 
     static func kindTitle(_ kind: WorkJobKind) -> String {

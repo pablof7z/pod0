@@ -46,17 +46,67 @@ enum WorkJobState: String, CaseIterable, Codable, Sendable {
 enum JobErrorClass: String, CaseIterable, Codable, Sendable {
     case transient
     case rateLimited
+    case offline
+    case network
     case missingCredential
     case missingDependency
+    case unsupportedFormat
     case unsafeToRetry
+    case corruptArtifact
     case invalidInput
     case cancelled
     case unexpected
 }
 
+extension JobErrorClass {
+    var productFailureCode: ProductFailureCode {
+        switch self {
+        case .transient, .unexpected: .unexpected
+        case .rateLimited: .rateLimited
+        case .offline: .offline
+        case .network: .network
+        case .missingCredential: .missingCredential
+        case .missingDependency: .missingDependency
+        case .unsupportedFormat: .unsupportedFormat
+        case .unsafeToRetry: .providerRecovery
+        case .corruptArtifact: .corruptArtifact
+        case .invalidInput: .invalidInput
+        case .cancelled: .cancelled
+        }
+    }
+}
+
+extension ProductFailureCode {
+    var jobErrorClass: JobErrorClass {
+        switch self {
+        case .missingCredential: .missingCredential
+        case .permissionDenied: .missingDependency
+        case .rateLimited: .rateLimited
+        case .offline: .offline
+        case .network: .network
+        case .unsupportedFormat: .unsupportedFormat
+        case .providerRecovery: .unsafeToRetry
+        case .corruptArtifact: .corruptArtifact
+        case .cancelled: .cancelled
+        case .invalidInput: .invalidInput
+        case .missingDependency: .missingDependency
+        case .unexpected: .unexpected
+        }
+    }
+}
+
 struct JobFailure: Error, Codable, Sendable, Equatable {
     let classification: JobErrorClass
     let message: String
+
+    static func classify(_ error: Error) -> JobFailure {
+        if let failure = error as? JobFailure { return failure }
+        let productFailure = ProductFailure.classify(error)
+        return JobFailure(
+            classification: productFailure.code.jobErrorClass,
+            message: productFailure.diagnosticSummary
+        )
+    }
 }
 
 struct DesiredJob: Sendable, Equatable {

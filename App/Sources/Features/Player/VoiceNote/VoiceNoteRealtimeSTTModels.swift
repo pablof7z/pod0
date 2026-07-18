@@ -23,10 +23,6 @@ struct VNRealtimeEvent: Decodable {
     var message: String?
     var detail: String?
 
-    var errorMessage: String {
-        error ?? message ?? detail ?? "Realtime transcription failed."
-    }
-
     enum CodingKeys: String, CodingKey {
         case messageType = "message_type"
         case text, error, message, detail

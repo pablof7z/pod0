@@ -60,7 +60,6 @@ enum AgentOpenRouterClient {
     private enum NetworkConstants {
         static let openRouterURL = URL(string: "https://openrouter.ai/api/v1/chat/completions")!
         static let requestTimeout: TimeInterval = 60
-        static let maxErrorBodyBytes: Int = 512
     }
 
     /// Shared decoder. Streaming SSE chunks call into `OpenRouterUsagePayload`
@@ -115,18 +114,7 @@ enum AgentOpenRouterClient {
             throw AgentError.malformedResponse
         }
         guard (200..<300).contains(http.statusCode) else {
-            // Collect the error body so the developer (and user) sees a helpful
-            // message instead of a bare status code. OpenRouter returns JSON of
-            // the form {"error":{"message":"…","code":…}}; we try to extract
-            // that human-readable message and fall back to the raw body snippet.
-            var bodyChunks: [String] = []
-            for try await line in bytes.lines {
-                bodyChunks.append(line)
-                if bodyChunks.joined().count > NetworkConstants.maxErrorBodyBytes { break }
-            }
-            let rawBody = bodyChunks.joined()
-            let detail = extractErrorMessage(from: rawBody, statusCode: http.statusCode)
-            throw AgentError.httpError(detail)
+            throw AgentError.http(status: http.statusCode)
         }
 
         var accumulator = StreamAccumulator()
@@ -195,43 +183,6 @@ enum AgentOpenRouterClient {
         return result
     }
 
-    /// Extracts a human-readable error message from an API error body.
-    ///
-    /// OpenRouter (and many OpenAI-compatible APIs) return errors as:
-    /// `{"error":{"message":"…","code":…}}` or `{"error":"…"}`.
-    /// Falls back to a trimmed body snippet or a bare status-code string when
-    /// the body cannot be parsed or is empty.
-    static func extractErrorMessage(from body: String, statusCode: Int) -> String {
-        let trimmed = body.trimmed
-        guard !trimmed.isEmpty,
-              let data = trimmed.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else {
-            // No parseable JSON — surface a brief raw snippet if available.
-            let snippet = trimmed.prefix(80)
-            return snippet.isEmpty
-                ? "HTTP \(statusCode)"
-                : "HTTP \(statusCode): \(snippet)"
-        }
-
-        // {"error": {"message": "…"}}
-        if let errorObj = json["error"] as? [String: Any],
-           let message = errorObj["message"] as? String {
-            return "HTTP \(statusCode): \(message)"
-        }
-        // {"error": "…"}
-        if let message = json["error"] as? String {
-            return "HTTP \(statusCode): \(message)"
-        }
-        // {"message": "…"}
-        if let message = json["message"] as? String {
-            return "HTTP \(statusCode): \(message)"
-        }
-
-        // JSON present but no recognised shape — fall back to snippet.
-        let snippet = trimmed.prefix(80)
-        return "HTTP \(statusCode): \(snippet)"
-    }
 }
 
 // MARK: - Supporting types
@@ -258,14 +209,30 @@ struct AgentResult: @unchecked Sendable {
     }
 }
 
-enum AgentError: LocalizedError {
-    case httpError(String)
+enum AgentError: ProductFailureConvertible {
+    case missingCredential
+    case invalidInput
+    case http(status: Int)
     case malformedResponse
 
-    var errorDescription: String? {
+    var productFailure: ProductFailure {
+        let code: ProductFailureCode
         switch self {
-        case .httpError(let detail): detail
-        case .malformedResponse: "Malformed response from API"
+        case .missingCredential:
+            code = .missingCredential
+        case .invalidInput:
+            code = .invalidInput
+        case .http(let status) where status == 401 || status == 403:
+            code = .missingCredential
+        case .http(let status) where status == 429:
+            code = .rateLimited
+        case .http(let status) where status == 415 || status == 422:
+            code = .unsupportedFormat
+        case .http(let status) where status == 408 || status == 504 || status >= 500:
+            code = .network
+        case .http, .malformedResponse:
+            code = .unexpected
         }
+        return ProductFailure(code: code)
     }
 }

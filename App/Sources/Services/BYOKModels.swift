@@ -155,7 +155,7 @@ struct BYOKTokenErrorResponse: Decodable {
 
 // MARK: - Errors
 
-enum BYOKConnectError: LocalizedError {
+enum BYOKConnectError: LocalizedError, ProductFailureConvertible {
     case accessDenied
     case authenticationFailed
     case cancelled
@@ -203,6 +203,22 @@ enum BYOKConnectError: LocalizedError {
         case .unexpectedProvider:
             "BYOK returned a credential for the wrong provider."
         }
+    }
+
+    var productFailure: ProductFailure {
+        let code: ProductFailureCode
+        switch self {
+        case .cancelled, .accessDenied:
+            code = .cancelled
+        case .tokenExchangeFailed:
+            code = .network
+        case .authenticationFailed, .invalidAuthorizationURL, .invalidCallback,
+             .invalidTokenResponse, .missingCode, .noProviderKeysReturned,
+             .randomGenerationFailed, .serverRejectedToken, .stateMismatch,
+             .unexpectedProvider:
+            code = .unexpected
+        }
+        return ProductFailure(code: code)
     }
 }
 
