@@ -139,6 +139,17 @@ extension VectorIndex {
         )
     }
 
+    func selectedEpisodeIDs(artifactKind: String) async throws -> Set<UUID> {
+        try await ensureSchema()
+        let rows = try await db.query(
+            "SELECT DISTINCT episode_id FROM chunks_meta WHERE artifact_kind=? AND selected=1",
+            params: [artifactKind]
+        )
+        return Set(rows.compactMap { row in
+            (row["episode_id"] as? String).flatMap(UUID.init(uuidString:))
+        })
+    }
+
     private func deleteArtifactRows(
         episodeID: UUID,
         generation: String,

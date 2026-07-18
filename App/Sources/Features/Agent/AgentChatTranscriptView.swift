@@ -18,6 +18,7 @@ struct AgentChatTranscriptView: View {
     var onRegenerate: (() -> Void)? = nil
 
     @Environment(AppStateStore.self) private var store
+    @Environment(PlaybackState.self) private var playback
     @State private var isAtBottom = true
 
     var body: some View {
@@ -93,7 +94,8 @@ struct AgentChatTranscriptView: View {
                     batchFirstSummary: batchSummary(for: msg),
                     batchUndoneCount: batchUndoneCount(for: msg),
                     onRetry: retryCallback(for: msg, isLast: index == session.messages.count - 1),
-                    onRegenerate: regenerateCallback(for: msg, isLast: index == session.messages.count - 1)
+                    onRegenerate: regenerateCallback(for: msg, isLast: index == session.messages.count - 1),
+                    onOpenRecallEvidence: openRecallEvidence
                 )
                 .id(msg.id)
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
@@ -154,10 +156,16 @@ struct AgentChatTranscriptView: View {
     /// provided by the parent view.
     private func regenerateCallback(for msg: ChatMessage, isLast: Bool) -> (() -> Void)? {
         guard case .assistant = msg.role,
+              msg.recallAnswer == nil,
               isLast,
               session.canRegenerate,
               let onRegenerate else { return nil }
         return onRegenerate
+    }
+
+    private func openRecallEvidence(_ evidence: RecallEvidence) {
+        Haptics.selection()
+        _ = RecallPlaybackHandoff.open(evidence, store: store, playback: playback)
     }
 
     // MARK: - Batch summary helpers

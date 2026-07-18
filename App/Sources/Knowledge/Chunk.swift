@@ -65,6 +65,11 @@ enum ChunkScope: Sendable, Hashable, Codable {
     case episode(UUID)
     /// Only chunks attributed to a specific speaker (diarized).
     case speaker(UUID)
+    /// Selected transcript artifacts only. These scopes deliberately exclude
+    /// episode-metadata chunks from recall and direct-quote queries.
+    case transcripts
+    case transcriptsForPodcast(UUID)
+    case transcriptsForEpisode(UUID)
 }
 
 /// A retrieval result: one chunk plus the score that earned it the slot, plus

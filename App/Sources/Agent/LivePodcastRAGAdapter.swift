@@ -42,7 +42,38 @@ struct LivePodcastRAGAdapter: PodcastAgentRAGSearchProtocol {
             scope: chunkScope,
             options: opts
         )
-        return matches.map(Self.makeTranscriptHit)
+        var hits: [TranscriptHit] = []
+        hits.reserveCapacity(matches.count)
+        for match in matches {
+            let receipt = try? await RAGService.shared.index.selectedReceipt(
+                episodeID: match.chunk.episodeID,
+                artifactKind: VectorIndex.semanticArtifactKind
+            )
+            let source = await transcriptSource(episodeID: match.chunk.episodeID)
+            hits.append(Self.makeTranscriptHit(
+                match,
+                artifactVersion: receipt?.generation ?? "legacy",
+                provenance: source
+            ))
+        }
+        return hits
+    }
+
+    func transcriptCorpusReadiness() async -> TranscriptCorpusReadiness {
+        guard let episodes = await store?.state.episodes else { return .unavailable }
+        let readyEpisodeIDs = Set(episodes.compactMap { episode -> UUID? in
+            if case .ready = episode.transcriptState { return episode.id }
+            return nil
+        })
+        guard !readyEpisodeIDs.isEmpty else { return .transcriptMissing }
+        do {
+            let indexed = try await RAGService.shared.index.selectedEpisodeIDs(
+                artifactKind: VectorIndex.semanticArtifactKind
+            )
+            return readyEpisodeIDs.isSubset(of: indexed) ? .ready : .indexing
+        } catch {
+            return .unavailable
+        }
     }
 
     func findSimilarEpisodes(seedEpisodeID: EpisodeID, k: Int) async throws -> [EpisodeHit] {
@@ -116,17 +147,34 @@ struct LivePodcastRAGAdapter: PodcastAgentRAGSearchProtocol {
     /// whole library.
     @MainActor
     static func chunkScope(transcriptScope: String?, store: AppStateStore?) -> ChunkScope? {
-        guard let raw = transcriptScope, let uuid = UUID(uuidString: raw) else { return nil }
-        if store?.episode(id: uuid) != nil { return .episode(uuid) }
-        if store?.state.subscriptions.contains(where: { $0.id == uuid }) == true {
-            return .podcast(uuid)
+        guard let raw = transcriptScope, let uuid = UUID(uuidString: raw) else {
+            return .transcripts
         }
-        return .episode(uuid)
+        if store?.episode(id: uuid) != nil { return .transcriptsForEpisode(uuid) }
+        if store?.state.subscriptions.contains(where: { $0.id == uuid }) == true {
+            return .transcriptsForPodcast(uuid)
+        }
+        return .transcriptsForEpisode(uuid)
     }
 
-    static func makeTranscriptHit(_ match: ChunkMatch) -> TranscriptHit {
+    @MainActor
+    private func transcriptSource(episodeID: UUID) -> String? {
+        guard let episode = store?.episode(id: episodeID),
+              case .ready(let source) = episode.transcriptState else { return nil }
+        return source.rawValue
+    }
+
+    static func makeTranscriptHit(
+        _ match: ChunkMatch,
+        artifactVersion: String? = nil,
+        provenance: String? = nil
+    ) -> TranscriptHit {
         TranscriptHit(
+            chunkID: match.chunk.id.uuidString,
             episodeID: match.chunk.episodeID.uuidString,
+            podcastID: match.chunk.podcastID.uuidString,
+            artifactVersion: artifactVersion,
+            provenance: provenance,
             startSeconds: TimeInterval(match.chunk.startMS) / 1000.0,
             endSeconds: TimeInterval(match.chunk.endMS) / 1000.0,
             speaker: nil,

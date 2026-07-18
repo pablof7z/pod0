@@ -194,7 +194,8 @@
       "excludes": [
         "App/Sources/Features/Player/PlaybackState+AudioCallbacks.swift",
         "App/Sources/Features/Player/PlaybackState+AudioSession.swift",
-        "App/Sources/Features/Player/PlaybackState+SleepTimer.swift"
+        "App/Sources/Features/Player/PlaybackState+SleepTimer.swift",
+        "App/Sources/Features/Agent/AgentChatSession+Recall.swift"
       ]
     },
     {
@@ -202,13 +203,13 @@
       "classification": "temporary_swift",
       "current_owner": "Swift product-proof controllers",
       "target_owner": "Shared knowledge/workflow policy after interaction validation",
-      "reason": "Auto-snip interaction policy is still being validated and is isolated behind current feature/domain boundaries.",
+      "reason": "Auto-snip and transcript-grounded recall interaction policy are still being validated and isolated behind typed feature/domain boundaries.",
       "boundary": "Commit only through typed store/library interfaces; no new independent durable store.",
       "persisted_state": "Clip records through AppStateStore; controller state is transient.",
-      "migration_issues": [59, 60],
+      "migration_issues": [59, 60, 69],
       "deletion_target": "Replace controller policy during clip/workflow vertical slices; retain native capture UI.",
       "priority": "next",
-      "includes": ["App/Sources/Features/Player/AutoSnip/AutoSnipController.swift"]
+      "includes": ["App/Sources/Features/Player/AutoSnip/AutoSnipController.swift", "App/Sources/Features/Recall/", "App/Sources/Features/Agent/AgentChatSession+Recall.swift"]
     },
     {
       "id": "native-feature-presentation",
@@ -220,7 +221,7 @@
       "persisted_state": "Transient presentation only; current exceptions are tracked by shared/temporary entries.",
       "priority": "keep_native",
       "includes": ["App/Sources/Features/"],
-      "excludes": ["App/Sources/Features/Player/PlaybackState", "App/Sources/Features/Player/PlaybackSessionPolicy.swift", "App/Sources/Features/Player/PlaybackTypes.swift", "App/Sources/Features/Player/AutoSnip/AutoSnipController.swift", "App/Sources/Features/Agent/AgentChatSession", "App/Sources/Features/Agent/AgentLLMClient.swift", "App/Sources/Features/Agent/AgentOllamaClient.swift", "App/Sources/Features/Agent/AgentOpenRouterClient.swift", "App/Sources/Features/Agent/AgentChatTitleGenerator.swift", "App/Sources/Features/Agent/ChatConversation.swift", "App/Sources/Features/Agent/ChatMessage.swift"]
+      "excludes": ["App/Sources/Features/Player/PlaybackState", "App/Sources/Features/Player/PlaybackSessionPolicy.swift", "App/Sources/Features/Player/PlaybackTypes.swift", "App/Sources/Features/Player/AutoSnip/AutoSnipController.swift", "App/Sources/Features/Recall/", "App/Sources/Features/Agent/AgentChatSession", "App/Sources/Features/Agent/AgentLLMClient.swift", "App/Sources/Features/Agent/AgentOllamaClient.swift", "App/Sources/Features/Agent/AgentOpenRouterClient.swift", "App/Sources/Features/Agent/AgentChatTitleGenerator.swift", "App/Sources/Features/Agent/ChatConversation.swift", "App/Sources/Features/Agent/ChatMessage.swift"]
     },
     {
       "id": "native-platform-services",

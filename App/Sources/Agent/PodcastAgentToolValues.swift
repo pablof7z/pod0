@@ -100,7 +100,11 @@ public struct EpisodeHit: Sendable, Equatable {
 
 /// A transcript chunk hit returned by `query_transcripts`.
 public struct TranscriptHit: Sendable, Equatable {
+    public let chunkID: String?
     public let episodeID: EpisodeID
+    public let podcastID: PodcastID?
+    public let artifactVersion: String?
+    public let provenance: String?
     public let startSeconds: Double
     public let endSeconds: Double
     public let speaker: String?
@@ -108,20 +112,35 @@ public struct TranscriptHit: Sendable, Equatable {
     public let score: Double?
 
     public init(
+        chunkID: String? = nil,
         episodeID: EpisodeID,
+        podcastID: PodcastID? = nil,
+        artifactVersion: String? = nil,
+        provenance: String? = nil,
         startSeconds: Double,
         endSeconds: Double,
         speaker: String? = nil,
         text: String,
         score: Double? = nil
     ) {
+        self.chunkID = chunkID
         self.episodeID = episodeID
+        self.podcastID = podcastID
+        self.artifactVersion = artifactVersion
+        self.provenance = provenance
         self.startSeconds = startSeconds
         self.endSeconds = endSeconds
         self.speaker = speaker
         self.text = text
         self.score = score
     }
+}
+
+public enum TranscriptCorpusReadiness: String, Sendable, Equatable {
+    case ready
+    case indexing
+    case transcriptMissing
+    case unavailable
 }
 
 // MARK: - Composer / summarizer / external lookup

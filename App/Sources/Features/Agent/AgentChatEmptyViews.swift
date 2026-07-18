@@ -77,6 +77,7 @@ struct AgentChatWelcomeView: View {
     /// Suggestions for users with subscriptions but nothing in progress —
     /// agent can survey the queue via `list_recent_unplayed` and `list_subscriptions`.
     private static let subscribedSuggestions: [String] = [
+        "What did I hear about building better habits?",
         "What's new in my library?",
         "Catch me up on this week's episodes",
         "What should I listen to next?",

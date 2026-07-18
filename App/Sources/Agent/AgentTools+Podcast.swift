@@ -251,17 +251,7 @@ extension AgentTools {
         let limit = clampedLimit(args["limit"], default: podcastTranscriptDefaultLimit, max: podcastSearchMaxLimit)
         do {
             let hits = try await deps.rag.queryTranscripts(query: query, scope: scope, limit: limit)
-            let rows = hits.map { hit -> [String: Any] in
-                var row: [String: Any] = [
-                    "episode_id": hit.episodeID,
-                    "start_seconds": hit.startSeconds,
-                    "end_seconds": hit.endSeconds,
-                    "text": hit.text,
-                ]
-                if let speaker = hit.speaker { row["speaker"] = speaker }
-                if let s = hit.score { row["score"] = s }
-                return row
-            }
+            let rows = hits.map(serializeTranscriptHit)
             return toolSuccess([
                 "query": query,
                 "total_found": rows.count,

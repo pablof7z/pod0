@@ -19,22 +19,6 @@ import Foundation
 // Value-type result envelopes (`EpisodeHit`, etc.) live in
 // `PodcastAgentToolValues.swift`.
 
-// MARK: - Search & retrieval
-
-/// RAG search across transcripts (lane 4).
-public protocol PodcastAgentRAGSearchProtocol: Sendable {
-    /// Semantic + keyword episode discovery. `scope` is an optional podcast ID
-    /// to constrain the search. Limit defaults to 10.
-    func searchEpisodes(query: String, scope: PodcastID?, limit: Int) async throws -> [EpisodeHit]
-
-    /// Semantic transcript chunk lookup. `scope` may be an `EpisodeID` (single
-    /// episode), a `PodcastID` (whole podcast), or `nil` (everything).
-    func queryTranscripts(query: String, scope: String?, limit: Int) async throws -> [TranscriptHit]
-
-    /// Find episodes semantically similar to a seed episode.
-    func findSimilarEpisodes(seedEpisodeID: EpisodeID, k: Int) async throws -> [EpisodeHit]
-}
-
 // MARK: - Composer / summarizer / fetcher
 
 /// Summarization for an individual episode (lane 5/8).
@@ -302,4 +286,3 @@ struct PodcastAgentToolDeps: Sendable {
         )
     }
 }
-

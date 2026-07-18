@@ -14,7 +14,7 @@
   "baseline_issue": 68,
   "baseline_reason": "Existing 300-500 line source is visible soft-limit debt and may not grow; a decrease must ratchet the recorded ceiling down.",
   "soft_baseline": {
-    "App/Sources/Knowledge/VectorIndex.swift": 497,
+    "App/Sources/Knowledge/VectorIndex.swift": 483,
     "App/Sources/State/Persistence.swift": 485,
     "App/Sources/Features/Player/PlaybackState.swift": 472,
     "App/Sources/Agent/AgentTTSComposer.swift": 480,
@@ -40,7 +40,7 @@
     "App/Sources/Features/Player/MiniPlayerView.swift": 409,
     "App/Sources/Workflows/WorkflowExecutors.swift": 405,
     "App/Sources/State/AppStateStore+Episodes.swift": 404,
-    "App/Sources/Agent/AgentTools+Podcast.swift": 403,
+    "App/Sources/Agent/AgentTools+Podcast.swift": 393,
     "AppTests/Sources/PersistenceDurabilityTests.swift": 397,
     "App/Sources/Services/AgentPicksService.swift": 396,
     "App/Sources/Voice/AudioConversationManager.swift": 392,
@@ -73,8 +73,6 @@
     "App/Sources/Features/Settings/AI/ProviderConnectionSection.swift": 312,
     "App/Sources/Features/Player/VoiceNote/VoiceNoteRecordingSheet.swift": 311,
     "App/Sources/Features/Settings/SubscriptionsListView.swift": 308,
-    "App/Sources/Features/Agent/AgentChatBubble.swift": 308,
-    "App/Sources/Agent/PodcastAgentToolDeps.swift": 305,
     "AppTests/Sources/ScribeRequestEncodingTests.swift": 303,
     "AppTests/Sources/AgentToolsInventoryTests.swift": 301,
     "App/Sources/Services/AgentPicksPrompt.swift": 300

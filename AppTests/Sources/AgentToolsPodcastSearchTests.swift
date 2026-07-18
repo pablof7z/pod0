@@ -54,7 +54,12 @@ final class AgentToolsPodcastSearchTests: XCTestCase {
 
     func testQueryTranscriptsReturnsChunksWithTimestamps() async throws {
         let deps = makeDeps(rag: MockRAG(transcriptsResult: [
-            TranscriptHit(episodeID: "ep1", startSeconds: 47.0, endSeconds: 60.0, speaker: "Tim", text: "Zone 2 is sustained..."),
+            TranscriptHit(
+                chunkID: "chunk-1", episodeID: "ep1", podcastID: "podcast-1",
+                artifactVersion: "transcript-v3", provenance: "publisher",
+                startSeconds: 47.0, endSeconds: 60.0,
+                speaker: "Tim", text: "Zone 2 is sustained..."
+            ),
         ]))
         let json = await AgentTools.dispatchPodcast(
             name: AgentTools.PodcastNames.queryTranscripts,
@@ -66,6 +71,10 @@ final class AgentToolsPodcastSearchTests: XCTestCase {
         XCTAssertEqual(rows?.count, 1)
         XCTAssertEqual(rows?.first?["speaker"] as? String, "Tim")
         XCTAssertEqual(rows?.first?["start_seconds"] as? Double, 47.0)
+        XCTAssertEqual(rows?.first?["chunk_id"] as? String, "chunk-1")
+        XCTAssertEqual(rows?.first?["podcast_id"] as? String, "podcast-1")
+        XCTAssertEqual(rows?.first?["artifact_version"] as? String, "transcript-v3")
+        XCTAssertEqual(rows?.first?["provenance"] as? String, "publisher")
     }
 
     // MARK: - perplexity_search

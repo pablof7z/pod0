@@ -131,6 +131,49 @@ final class RAGSearchTests: XCTestCase {
         XCTAssertEqual(afterSelection.first?.chunk.text, "Stamp postal generation two")
     }
 
+    func testTranscriptScopeExcludesSelectedEpisodeMetadataArtifacts() async throws {
+        let transcriptEpisodeID = UUID()
+        let metadataEpisodeID = UUID()
+        let podcastID = UUID()
+        let embedder = KeywordEmbeddingsClient()
+        let store = try VectorIndex(embedder: embedder, inMemory: true, dimensions: 4)
+        let transcript = try await store.stageArtifact(
+            chunks: [Chunk(
+                episodeID: transcriptEpisodeID,
+                podcastID: podcastID,
+                text: "Keto insulin transcript evidence",
+                startMS: 47_000,
+                endMS: 60_000
+            )],
+            episodeID: transcriptEpisodeID,
+            generation: "transcript-v3",
+            artifactKind: VectorIndex.semanticArtifactKind
+        )
+        let metadata = try await store.stageArtifact(
+            chunks: [Chunk(
+                episodeID: metadataEpisodeID,
+                podcastID: podcastID,
+                text: "Keto insulin episode metadata only",
+                startMS: 0,
+                endMS: 0
+            )],
+            episodeID: metadataEpisodeID,
+            generation: "metadata-v1",
+            artifactKind: "episode-metadata"
+        )
+        try await store.selectArtifact(episodeID: transcriptEpisodeID, receipt: transcript)
+        try await store.selectArtifact(episodeID: metadataEpisodeID, receipt: metadata)
+
+        let rag = RAGSearch(store: store, embedder: embedder, reranker: nil)
+        let matches = try await rag.search(
+            query: "keto insulin",
+            scope: .transcripts,
+            options: .init(k: 5, hybrid: true, rerank: false)
+        )
+
+        XCTAssertEqual(matches.map(\.chunk.episodeID), [transcriptEpisodeID])
+    }
+
     func testSettingsAwareRerankerSkipsBaseClientWhenDisabled() async throws {
         let base = CountingReranker(order: [2, 1, 0])
         let reranker = SettingsAwareRerankerClient(base: base, isEnabled: { false })

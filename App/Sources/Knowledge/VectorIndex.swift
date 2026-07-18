@@ -445,24 +445,10 @@ actor VectorIndex: VectorStore {
         var sql =
             "SELECT chunk_id, episode_id, podcast_id, speaker_id, start_ms, end_ms, text FROM chunks_meta WHERE selected=1 AND chunk_id IN (\(placeholders))"
         if let scope {
-            switch scope {
-            case .all:
-                break
-            case let .podcast(pid):
-                sql += " AND podcast_id = ?"
-                params.append(pid.uuidString)
-            case let .episodes(ids):
-                guard !ids.isEmpty else { return [:] }
-                let episodePlaceholders = Array(repeating: "?", count: ids.count).joined(separator: ",")
-                sql += " AND episode_id IN (\(episodePlaceholders))"
-                params.append(contentsOf: ids.map(\.uuidString))
-            case let .episode(eid):
-                sql += " AND episode_id = ?"
-                params.append(eid.uuidString)
-            case let .speaker(sid):
-                sql += " AND speaker_id = ?"
-                params.append(sid.uuidString)
-            }
+            let filter = Self.metadataFilter(for: scope)
+            guard !filter.matchesNothing else { return [:] }
+            sql += filter.sql
+            params.append(contentsOf: filter.params)
         }
         let rows = try await db.query(sql, params: params)
         var out: [String: Chunk] = [:]

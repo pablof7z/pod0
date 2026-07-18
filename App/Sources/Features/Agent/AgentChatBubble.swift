@@ -73,6 +73,7 @@ struct AgentChatBubble: View {
     /// Called when the user requests regeneration of the last assistant response.
     /// When `nil`, no Regenerate action appears in the context menu.
     var onRegenerate: (() -> Void)? = nil
+    var onOpenRecallEvidence: (RecallEvidence) -> Void = { _ in }
 
     // MARK: - Pluralization helpers
 
@@ -127,38 +128,11 @@ struct AgentChatBubble: View {
     }
 
     private var assistantBubble: some View {
-        HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
-            AgentAvatarView()
-            VStack(alignment: .leading, spacing: 3) {
-                MarkdownView(text: message.text)
-                    .padding(.horizontal, Layout.bubblePaddingH)
-                    .padding(.vertical, Layout.bubblePaddingV)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .glassEffect(.regular, in: .rect(cornerRadius: Layout.bubbleCornerRadius))
-                    .contextMenu {
-                        Button {
-                            UIPasteboard.general.string = message.text
-                            Haptics.selection()
-                        } label: {
-                            Label("Copy", systemImage: "doc.on.doc")
-                        }
-                        if let onRegenerate {
-                            Divider()
-                            Button {
-                                Haptics.selection()
-                                onRegenerate()
-                            } label: {
-                                Label("Regenerate Response", systemImage: "arrow.clockwise")
-                            }
-                        }
-                    }
-                Text(message.timestamp, style: .time)
-                    .font(AppTheme.Typography.caption2)
-                    .foregroundStyle(.tertiary)
-                    .padding(.leading, Layout.bubblePaddingH)
-            }
-            Spacer(minLength: 0)
-        }
+        AgentAssistantMessageView(
+            message: message,
+            onRegenerate: onRegenerate,
+            onOpenEvidence: onOpenRecallEvidence
+        )
     }
 
     private func toolBatchRow(batchID: UUID, count: Int) -> some View {

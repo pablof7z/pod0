@@ -18,12 +18,20 @@ struct ChatMessage: Identifiable, Equatable, Codable {
     let role: Role
     let text: String
     let timestamp: Date
+    let recallAnswer: RecallAnswer?
 
-    init(id: UUID = UUID(), role: Role, text: String, timestamp: Date = Date()) {
+    init(
+        id: UUID = UUID(),
+        role: Role,
+        text: String,
+        timestamp: Date = Date(),
+        recallAnswer: RecallAnswer? = nil
+    ) {
         self.id = id
         self.role = role
         self.text = text
         self.timestamp = timestamp
+        self.recallAnswer = recallAnswer
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -35,6 +43,7 @@ struct ChatMessage: Identifiable, Equatable, Codable {
         case skillDisplayName
         case text
         case timestamp
+        case recallAnswer
     }
 
     private enum RoleType: String, Codable {
@@ -50,6 +59,7 @@ struct ChatMessage: Identifiable, Equatable, Codable {
         self.id = try c.decode(UUID.self, forKey: .id)
         self.text = try c.decode(String.self, forKey: .text)
         self.timestamp = try c.decode(Date.self, forKey: .timestamp)
+        self.recallAnswer = try c.decodeIfPresent(RecallAnswer.self, forKey: .recallAnswer)
         let type = try c.decode(RoleType.self, forKey: .roleType)
         switch type {
         case .user:
@@ -74,6 +84,7 @@ struct ChatMessage: Identifiable, Equatable, Codable {
         try c.encode(id, forKey: .id)
         try c.encode(text, forKey: .text)
         try c.encode(timestamp, forKey: .timestamp)
+        try c.encodeIfPresent(recallAnswer, forKey: .recallAnswer)
         switch role {
         case .user:
             try c.encode(RoleType.user, forKey: .roleType)

@@ -337,7 +337,7 @@ struct AgentChatView: View {
         draft = ""
         didSendInSession = true
         Haptics.light()
-        session.startSend(text)
+        RecallFeature.start(text, in: session)
     }
 
     private var background: LinearGradient {
