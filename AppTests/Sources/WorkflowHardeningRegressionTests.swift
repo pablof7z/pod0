@@ -49,8 +49,7 @@ final class WorkflowRepairRegressionTests: XCTestCase {
     }
 
     private func assertRepairConverges(after damage: Damage) throws {
-        var episode = makeEpisode(guid: "repair-\(UUID().uuidString)")
-        episode.requestedTranscriptProvider = .appleNative
+        let episode = makeEpisode(guid: "repair-\(UUID().uuidString)")
         appStore.upsertEpisodes([episode], forPodcast: episode.podcastID)
 
         let desired = try XCTUnwrap(DesiredStatePlanner().plan(.init(
@@ -104,6 +103,7 @@ final class WorkflowRepairRegressionTests: XCTestCase {
             artifacts: artifacts
         )
         _ = try reconciler.reconcile()
+        XCTAssertEqual(appStore.episode(id: episode.id)?.transcriptState, .some(.ready(source: .onDevice)))
         let validTerminal = try XCTUnwrap(
             jobs.job(idempotencyKey: desired.idempotencyKey)
         )
@@ -120,6 +120,7 @@ final class WorkflowRepairRegressionTests: XCTestCase {
         }
 
         XCTAssertEqual(try reconciler.reconcile().ensured, 1)
+        XCTAssertEqual(appStore.episode(id: episode.id)?.transcriptState, .some(.none))
         let pendingRepair = try XCTUnwrap(
             jobs.job(idempotencyKey: desired.idempotencyKey)
         )

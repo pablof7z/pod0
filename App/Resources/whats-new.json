@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-18T11:31:05Z",
+      "lines": [
+        "Generated episodes and saved transcripts now verify their files before appearing ready, and repair automatically if files are damaged."
+      ]
+    },
+    {
       "shipped_at": "2026-07-18T11:27:49Z",
       "lines": [
         "Deleted episodes can be downloaded again, and feed refreshes now keep new-episode alerts to a sensible maximum."

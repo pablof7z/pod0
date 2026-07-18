@@ -22,7 +22,7 @@ struct Reconciler {
             episodes: appStore.state.episodes,
             settings: appStore.state.settings,
             artifacts: try artifacts.all(),
-            transcriptDesiredEpisodeIDs: transcriptDesiredIDs(),
+            transcriptDesiredEpisodeIDs: try transcriptDesiredIDs(),
             scheduledTasks: appStore.scheduledTasks,
             now: now()
         ))
@@ -159,7 +159,7 @@ struct Reconciler {
         }
     }
 
-    private func transcriptDesiredIDs() -> Set<UUID> {
+    private func transcriptDesiredIDs() throws -> Set<UUID> {
         let episodes = appStore.state.episodes
         var ids = Set(episodes.compactMap { episode -> UUID? in
             if case .downloaded = episode.downloadState { return episode.id }
@@ -172,6 +172,9 @@ struct Reconciler {
             openRouterKey: TranscriptIngestService.shared.resolvedOpenRouterKey(),
             assemblyAIKey: TranscriptIngestService.shared.resolvedAssemblyAIKey()
         ).map(\.id))
+        ids.formUnion(try artifacts.all().compactMap { artifact in
+            artifact.kind == .transcript ? artifact.subjectID : nil
+        })
         return ids
     }
 
@@ -187,6 +190,10 @@ struct Reconciler {
                 if existing.inputVersion != audioVersion || existing.integrity != .available {
                     try artifacts.markIntegrity(
                         kind: .transcript, subjectID: episode.id, integrity: .stale
+                    )
+                    _ = appStore.applyTranscriptEvent(
+                        .artifactInvalidated(inputVersion: audioVersion),
+                        episodeID: episode.id
                     )
                 } else {
                     _ = appStore.applyTranscriptEvent(.artifactAdopted(.init(
@@ -232,6 +239,10 @@ struct Reconciler {
             } else if existing != nil {
                 try artifacts.markIntegrity(
                     kind: .transcript, subjectID: episode.id, integrity: .corrupt
+                )
+                _ = appStore.applyTranscriptEvent(
+                    .artifactInvalidated(inputVersion: audioVersion),
+                    episodeID: episode.id
                 )
             }
 

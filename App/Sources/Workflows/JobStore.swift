@@ -5,11 +5,22 @@ struct JobStore: Sendable {
     let fileURL: URL
 
     @discardableResult
-    func ensureJobs(_ desired: [DesiredJob]) throws -> Int {
+    func ensureJobs(
+        _ desired: [DesiredJob],
+        afterEach: (Int) throws -> Void = { _ in }
+    ) throws -> Int {
         try withDatabase { db in
-            let before = sqlite3_total_changes(db)
-            try Self.ensureJobs(desired, in: db)
-            return Int(sqlite3_total_changes(db) - before)
+            try WorkflowSQLite.execute("BEGIN IMMEDIATE TRANSACTION", db)
+            do {
+                let before = sqlite3_total_changes(db)
+                try Self.ensureJobs(desired, in: db, afterEach: afterEach)
+                let inserted = Int(sqlite3_total_changes(db) - before)
+                try WorkflowSQLite.execute("COMMIT TRANSACTION", db)
+                return inserted
+            } catch {
+                try? WorkflowSQLite.execute("ROLLBACK TRANSACTION", db)
+                throw error
+            }
         }
     }
 
