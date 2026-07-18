@@ -183,30 +183,11 @@ struct EpisodeRowContextMenu<Route: Hashable>: View {
 
     @ViewBuilder
     private var downloadButton: some View {
-        if EpisodeDownloadService.shared.progress[episode.id] != nil {
-            Button {
-                Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.cancel(episodeID: episode.id)
-            } label: {
-                Label("Cancel download", systemImage: "xmark.circle")
-            }
-        } else {
-            switch episode.downloadState {
-            case .notDownloaded:
-            Button {
-                Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
-            } label: {
-                Label("Download", systemImage: "arrow.down.circle")
-            }
-            case .downloaded:
+        if case .downloaded = episode.downloadState {
             // Match the trailing-swipe behavior — remove immediately. The
             // detail view's `EpisodeDetailActionsMenu` keeps the confirmation
             // dialog because it's hosted on a real `Menu` parent. Inside
-            // `.contextMenu` the dialog modifier orphans (the menu items don't
-            // land in the visible hierarchy), so we drop it here for parity.
+            // `.contextMenu` the dialog modifier orphans, so remove directly.
             Button(role: .destructive) {
                 Haptics.warning()
                 EpisodeDownloadService.shared.attach(appStore: store)
@@ -214,8 +195,44 @@ struct EpisodeRowContextMenu<Route: Hashable>: View {
             } label: {
                 Label("Remove download", systemImage: "trash")
             }
+        } else if EpisodeDownloadService.shared.progress[episode.id] != nil || downloadIsActive {
+            Button {
+                Haptics.light()
+                EpisodeDownloadService.shared.attach(appStore: store)
+                EpisodeDownloadService.shared.cancel(episodeID: episode.id)
+            } label: {
+                Label("Cancel download", systemImage: "xmark.circle")
+            }
+        } else if downloadNeedsAttention {
+            Button {
+                Haptics.light()
+                EpisodeDownloadService.shared.attach(appStore: store)
+                EpisodeDownloadService.shared.download(episodeID: episode.id)
+            } label: {
+                Label("Retry download", systemImage: "arrow.clockwise")
+            }
+        } else {
+            Button {
+                Haptics.light()
+                EpisodeDownloadService.shared.attach(appStore: store)
+                EpisodeDownloadService.shared.download(episodeID: episode.id)
+            } label: {
+                Label("Download", systemImage: "arrow.down.circle")
             }
         }
+    }
+
+    private var downloadJobState: WorkJobState? {
+        WorkflowRuntime.shared.latestJob(kind: .download, subjectID: episode.id)?.state
+    }
+
+    private var downloadIsActive: Bool {
+        downloadJobState == .pending || downloadJobState == .leased
+            || downloadJobState == .running || downloadJobState == .retryScheduled
+    }
+
+    private var downloadNeedsAttention: Bool {
+        downloadJobState == .blocked || downloadJobState == .failedPermanent
     }
 
     // MARK: - Mutations

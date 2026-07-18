@@ -105,9 +105,9 @@ struct DownloadsManagerRow: View {
                     Label("Retry Download", systemImage: "arrow.clockwise")
                 }
                 Button {
-                    onAction(.clearFailed, row)
+                    onAction(.dismissFailure, row)
                 } label: {
-                    Label("Clear Failed State", systemImage: "xmark.circle")
+                    Label("Dismiss", systemImage: "xmark.circle")
                 }
             case .downloaded:
                 Button(role: .destructive) {

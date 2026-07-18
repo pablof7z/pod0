@@ -143,6 +143,18 @@ final class WorkflowRuntime {
         }
     }
 
+    func dismissDownloadFailure(episodeID: UUID) {
+        do {
+            try jobStore?.dismissJobsNeedingAttention(
+                kind: .download,
+                subjectID: episodeID
+            )
+            wake()
+        } catch {
+            Self.logger.error("Unable to dismiss download failure: \(error, privacy: .public)")
+        }
+    }
+
     func latestJob(kind: WorkJobKind, subjectID: UUID) -> WorkJob? {
         guard let jobs = try? jobStore?.allJobs() else { return nil }
         return jobs.last { $0.kind == kind && $0.subjectID == subjectID }

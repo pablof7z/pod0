@@ -220,14 +220,10 @@ struct DownloadsManagerView: View {
             downloadService.download(episodeID: row.id)
         case .cancel:
             Haptics.light()
-            if row.status.isQueued {
-                store.setEpisodeDownloadState(row.id, state: .notDownloaded)
-            } else {
-                downloadService.cancel(episodeID: row.id)
-            }
-        case .clearFailed:
+            downloadService.cancel(episodeID: row.id)
+        case .dismissFailure:
             Haptics.light()
-            store.setEpisodeDownloadState(row.id, state: .notDownloaded)
+            WorkflowRuntime.shared.dismissDownloadFailure(episodeID: row.id)
         case .delete:
             Haptics.warning()
             downloadService.delete(episodeID: row.id)
@@ -237,11 +233,7 @@ struct DownloadsManagerView: View {
     private func cancelActiveDownloads() {
         downloadService.attach(appStore: store)
         for row in activeRows {
-            if row.status.isQueued {
-                store.setEpisodeDownloadState(row.id, state: .notDownloaded)
-            } else {
-                downloadService.cancel(episodeID: row.id)
-            }
+            downloadService.cancel(episodeID: row.id)
         }
     }
 

@@ -32,6 +32,7 @@ final class FeedDiscoveryWorkflowTests: XCTestCase {
                 notificationsEnabled: true
             )]
             $0.episodes = episodes
+            $0.settings.notifyOnNewEpisodes = true
         }
         let occurrence = "discovery:test-batch"
         let payload = FeedDiscoveryPayload(
@@ -130,6 +131,93 @@ final class FeedDiscoveryWorkflowTests: XCTestCase {
             ),
             occurrence
         )
+    }
+
+    func testGlobalNotificationTogglePreventsDiscoveryFromCreatingDeliveryJobs() async throws {
+        let made = AppStateTestSupport.makeIsolatedStore()
+        defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
+        let podcast = Podcast(id: UUID(), title: "Muted")
+        let episode = Episode(
+            podcastID: podcast.id, guid: "muted", title: "Muted episode",
+            pubDate: Date(), enclosureURL: URL(string: "https://example.com/muted.mp3")!
+        )
+        made.store.mutateState {
+            $0.podcasts = [podcast]
+            $0.subscriptions = [PodcastSubscription(
+                podcastID: podcast.id,
+                notificationsEnabled: true
+            )]
+            $0.episodes = [episode]
+            $0.settings.notifyOnNewEpisodes = false
+        }
+        let jobs = JobStore(fileURL: made.store.persistence.episodeStore.fileURL)
+        let occurrence = "discovery:muted"
+        let payload = FeedDiscoveryPayload(
+            podcastID: podcast.id,
+            occurrenceID: occurrence,
+            discoveredAt: Date(),
+            episodes: [.init(
+                episodeID: episode.id,
+                inputVersion: DesiredStatePlanner.audioVersion(episode),
+                pubDate: episode.pubDate,
+                title: episode.title
+            )],
+            autoDownloadPolicy: nil,
+            notificationsEnabled: true,
+            policyVersion: "feed-policy-v1"
+        )
+        let job = workJob(
+            kind: .feedDiscovery,
+            subjectID: podcast.id,
+            occurrenceID: occurrence,
+            payload: try workflowData(payload)
+        )
+
+        _ = try await FeedDiscoveryJobExecutor(
+            store: made.store,
+            jobStore: jobs
+        ).run(JobAttemptContext(job: job, leaseToken: UUID(), deadline: nil))
+
+        XCTAssertTrue(try jobs.allJobs().filter {
+            $0.kind == .newEpisodeNotification
+        }.isEmpty)
+    }
+
+    func testGlobalNotificationTogglePreventsFreshDeliveryAtExecutorBoundary() async throws {
+        let made = AppStateTestSupport.makeIsolatedStore()
+        defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
+        let podcast = Podcast(id: UUID(), title: "Muted")
+        let episode = Episode(
+            podcastID: podcast.id, guid: "fresh-muted", title: "Fresh muted episode",
+            pubDate: Date(), enclosureURL: URL(string: "https://example.com/fresh.mp3")!
+        )
+        made.store.mutateState {
+            $0.podcasts = [podcast]
+            $0.subscriptions = [PodcastSubscription(
+                podcastID: podcast.id,
+                notificationsEnabled: true
+            )]
+            $0.episodes = [episode]
+            $0.settings.notifyOnNewEpisodes = false
+        }
+        let occurrence = "notification:fresh-muted"
+        let payload = NotificationJobPayload(
+            discoveredAt: Date(),
+            podcastID: podcast.id,
+            episodeTitle: episode.title
+        )
+        let job = workJob(
+            kind: .newEpisodeNotification,
+            subjectID: episode.id,
+            occurrenceID: occurrence,
+            payload: try workflowData(payload)
+        )
+
+        let outcome = try await NewEpisodeNotificationJobExecutor(
+            store: made.store
+        ).run(JobAttemptContext(job: job, leaseToken: UUID(), deadline: nil))
+
+        XCTAssertEqual(outcome, .obsolete)
     }
 
     private func workflowData<T: Encodable>(_ value: T) throws -> Data {

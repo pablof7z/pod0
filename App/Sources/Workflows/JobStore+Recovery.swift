@@ -244,4 +244,31 @@ extension JobStore {
             try WorkflowSQLite.stepDone(statement, db)
         }
     }
+
+    /// Hides terminal work the user has explicitly dismissed. Unlike changing
+    /// the episode's stable artifact projection, this updates the authoritative
+    /// lifecycle row. A later explicit retry can re-arm the same canonical job.
+    func dismissJobsNeedingAttention(
+        kind: WorkJobKind,
+        subjectID: UUID,
+        now: Date = Date()
+    ) throws {
+        try withDatabase { db in
+            let statement = try WorkflowSQLite.prepare(
+                """
+                UPDATE jobs SET state='cancelled',lease_token=NULL,lease_owner=NULL,
+                    lease_expires_at=NULL,last_error_class='cancelled',
+                    last_error_message='Dismissed by user',updated_at=?
+                WHERE kind=? AND subject_id=?
+                  AND state IN ('blocked','failedPermanent')
+                """,
+                db: db
+            )
+            defer { sqlite3_finalize(statement) }
+            try WorkflowSQLite.bind(now, 1, statement, db)
+            try WorkflowSQLite.bind(kind.rawValue, 2, statement, db)
+            try WorkflowSQLite.bind(subjectID.uuidString, 3, statement, db)
+            try WorkflowSQLite.stepDone(statement, db)
+        }
+    }
 }

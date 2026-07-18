@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-18T11:00:24Z",
+      "lines": [
+        "Cancelled downloads now stop reliably, and turning off new-episode alerts also clears pending notifications."
+      ]
+    },
+    {
       "shipped_at": "2026-07-18T10:37:59Z",
       "lines": [
         "Removed the last inactive Nostr controls; podcast artwork uploads still work as before."

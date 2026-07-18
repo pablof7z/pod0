@@ -265,6 +265,49 @@ final class WorkflowReconcilerTests: XCTestCase {
         )
     }
 
+    func testGlobalNotificationToggleObsoletesPendingDeliveryPermanently() throws {
+        var settings = appStore.state.settings
+        settings.notifyOnNewEpisodes = true
+        appStore.updateSettings(settings)
+        let occurrence = DesiredJob(
+            idempotencyKey: "notification:toggle-off",
+            kind: .newEpisodeNotification,
+            subjectID: UUID(),
+            inputVersion: "v1",
+            occurrenceID: "notification:toggle-off",
+            resourceClass: .notification
+        )
+        _ = try jobs.ensureJob(occurrence)
+        let reconciler = Reconciler(
+            appStore: appStore,
+            jobStore: jobs,
+            artifacts: artifacts
+        )
+
+        XCTAssertEqual(try reconciler.reconcile().obsoletedJobs, 0)
+        XCTAssertEqual(
+            try jobs.job(idempotencyKey: occurrence.idempotencyKey)?.state,
+            .pending
+        )
+
+        settings.notifyOnNewEpisodes = false
+        appStore.updateSettings(settings)
+
+        XCTAssertEqual(try reconciler.reconcile().obsoletedJobs, 1)
+        XCTAssertEqual(
+            try jobs.job(idempotencyKey: occurrence.idempotencyKey)?.state,
+            .obsolete
+        )
+
+        settings.notifyOnNewEpisodes = true
+        appStore.updateSettings(settings)
+        XCTAssertEqual(try reconciler.reconcile().obsoletedJobs, 0)
+        XCTAssertEqual(
+            try jobs.job(idempotencyKey: occurrence.idempotencyKey)?.state,
+            .obsolete
+        )
+    }
+
     func testPolicyDisableObsoletesOnlyAutomaticDownloadOrigins() throws {
         let podcast = Podcast(
             id: UUID(),

@@ -72,32 +72,9 @@ struct EpisodeRowDownloadSwipeAction: View {
     let store: AppStateStore
 
     var body: some View {
-        if EpisodeDownloadService.shared.progress[episode.id] != nil {
-            Button {
-                Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.cancel(episodeID: episode.id)
-            } label: {
-                Label("Cancel", systemImage: "xmark.circle")
-            }
-            .tint(AppTheme.Tint.warning)
-        } else {
-            switch episode.downloadState {
-            case .notDownloaded:
-            Button {
-                Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
-            } label: {
-                Label("Download", systemImage: "arrow.down.circle")
-            }
-            .tint(.blue)
-            case .downloaded:
-            // Not `role: .destructive` — that paints the swipe button red and
-            // makes it visually identical to the existing "Remove" (mark-played)
-            // action that sits next to it. Removing the local audio file just
-            // frees storage; the episode and its progress survive. A neutral
-            // gray tint signals "secondary cleanup" instead of "destroy data".
+        if case .downloaded = episode.downloadState {
+            // A neutral tint distinguishes freeing local storage from the
+            // destructive adjacent action that marks the episode played.
             Button {
                 Haptics.light()
                 EpisodeDownloadService.shared.attach(appStore: store)
@@ -106,7 +83,46 @@ struct EpisodeRowDownloadSwipeAction: View {
                 Label("Free up", systemImage: "internaldrive")
             }
             .tint(.gray)
+        } else if EpisodeDownloadService.shared.progress[episode.id] != nil || downloadIsActive {
+            Button {
+                Haptics.light()
+                EpisodeDownloadService.shared.attach(appStore: store)
+                EpisodeDownloadService.shared.cancel(episodeID: episode.id)
+            } label: {
+                Label("Cancel", systemImage: "xmark.circle")
             }
+            .tint(AppTheme.Tint.warning)
+        } else if downloadNeedsAttention {
+            Button {
+                Haptics.light()
+                EpisodeDownloadService.shared.attach(appStore: store)
+                EpisodeDownloadService.shared.download(episodeID: episode.id)
+            } label: {
+                Label("Retry", systemImage: "arrow.clockwise")
+            }
+            .tint(AppTheme.Tint.warning)
+        } else {
+            Button {
+                Haptics.light()
+                EpisodeDownloadService.shared.attach(appStore: store)
+                EpisodeDownloadService.shared.download(episodeID: episode.id)
+            } label: {
+                Label("Download", systemImage: "arrow.down.circle")
+            }
+            .tint(.blue)
         }
+    }
+
+    private var downloadJobState: WorkJobState? {
+        WorkflowRuntime.shared.latestJob(kind: .download, subjectID: episode.id)?.state
+    }
+
+    private var downloadIsActive: Bool {
+        downloadJobState == .pending || downloadJobState == .leased
+            || downloadJobState == .running || downloadJobState == .retryScheduled
+    }
+
+    private var downloadNeedsAttention: Bool {
+        downloadJobState == .blocked || downloadJobState == .failedPermanent
     }
 }

@@ -49,6 +49,7 @@ final class FeedDiscoveryJobExecutor: JobExecutor {
         }
 
         if payload.notificationsEnabled,
+           store.state.settings.notifyOnNewEpisodes,
            store.subscription(podcastID: payload.podcastID)?.notificationsEnabled == true {
             for input in sorted {
                 let occurrence = "notification:\(payload.occurrenceID):\(input.episodeID.uuidString)"
@@ -304,6 +305,7 @@ final class NewEpisodeNotificationJobExecutor: JobExecutor {
         guard Date().timeIntervalSince(payload.discoveredAt) <= 24 * 60 * 60 else { return .obsolete }
         guard let episode = store.episode(id: context.job.subjectID),
               let podcast = store.podcast(id: episode.podcastID) else { return .obsolete }
+        guard store.state.settings.notifyOnNewEpisodes else { return .obsolete }
         guard store.subscription(podcastID: episode.podcastID)?.notificationsEnabled == true else {
             return .obsolete
         }

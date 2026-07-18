@@ -38,6 +38,7 @@ struct Reconciler {
         }
 
         report.obsoletedJobs += try obsoleteDisabledAutomaticDownloads()
+        report.obsoletedJobs += try obsoleteDisabledNotifications()
         report.obsoletedJobs += try obsoleteStaleDownloadInputs()
 
         let desiredKeys = Set(desired.map(\.idempotencyKey))
@@ -102,6 +103,21 @@ struct Reconciler {
                 jobID: job.id,
                 episodeID: job.subjectID
             )
+            count += 1
+        }
+        return count
+    }
+
+    /// Notification occurrences are authoritative history, but an undelivered
+    /// occurrence must still honor the current global choice. Once disabled,
+    /// terminally obsolete pending delivery so a later re-enable cannot surface
+    /// a stale alert.
+    private func obsoleteDisabledNotifications() throws -> Int {
+        guard !appStore.state.settings.notifyOnNewEpisodes else { return 0 }
+        var count = 0
+        for job in try jobStore.allJobs()
+            where job.kind == .newEpisodeNotification && job.state.isActive {
+            try jobStore.updateActiveTerminal(id: job.id, state: .obsolete)
             count += 1
         }
         return count
