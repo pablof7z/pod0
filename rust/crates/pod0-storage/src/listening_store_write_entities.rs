@@ -5,6 +5,7 @@ use rusqlite::{Transaction, params};
 
 use crate::StorageError;
 use crate::import_model::InspectedLegacySource;
+use crate::library_feed_codec;
 use crate::listening_db_codec::{
     auto_download, bool_value, completion, download, i64_value, podcast_kind, transcript,
     transcript_source,
@@ -93,6 +94,14 @@ pub(crate) fn insert_episodes(
     let mut statement = transaction.prepare(
         "INSERT INTO pod0_episodes(episode_id,podcast_id,publisher_guid,title,description,published_at_ms,duration_ms,enclosure_url,enclosure_mime_type,image_url,resume_position_ms,completion_code,completion_cause_code,completion_cause_wire_code,is_starred,download_code,download_wire_code,download_ref_version,download_ref_key,download_byte_count,transcript_code,transcript_wire_code,transcript_ref_version,transcript_ref_key,transcript_source_code,transcript_source_wire_code,legacy_payload,source_import_id) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28)",
     ).map_err(|error| StorageError::sqlite("prepare episode import", error))?;
+    let mut metadata_statement = transaction
+        .prepare(
+            "INSERT INTO pod0_episode_feed_metadata(episode_id,publisher_transcript_url,\
+         publisher_transcript_media_type,publisher_transcript_format_code,\
+         publisher_transcript_format_wire_code,chapters_url,persons_json,sound_bites_json) \
+         VALUES(?1,?2,?3,?4,?5,?6,?7,?8)",
+        )
+        .map_err(|error| StorageError::sqlite("prepare episode feed metadata import", error))?;
     for (episode, payload) in source
         .snapshot
         .episodes
@@ -165,6 +174,19 @@ pub(crate) fn insert_episodes(
                 import_id.into_bytes().as_slice(),
             ])
             .map_err(|error| StorageError::sqlite("insert episode", error))?;
+        let metadata = library_feed_codec::encode(&episode.feed_metadata)?;
+        metadata_statement
+            .execute(params![
+                episode.episode_id.into_bytes().as_slice(),
+                metadata.transcript_url,
+                metadata.transcript_media_type,
+                metadata.transcript_format_code,
+                metadata.transcript_format_wire_code,
+                metadata.chapters_url,
+                metadata.persons_json,
+                metadata.sound_bites_json,
+            ])
+            .map_err(|error| StorageError::sqlite("insert episode feed metadata", error))?;
     }
     Ok(())
 }

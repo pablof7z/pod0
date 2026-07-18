@@ -30,31 +30,43 @@ import java.nio.CharBuffer
 import java.nio.charset.CodingErrorAction
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.ConcurrentHashMap
+import uniffi.pod0_domain.AutoDownloadPolicy
 import uniffi.pod0_domain.CancellationId
 import uniffi.pod0_domain.CommandId
 import uniffi.pod0_domain.DomainEventId
 import uniffi.pod0_domain.EpisodeId
+import uniffi.pod0_domain.EpisodeRecord
+import uniffi.pod0_domain.FfiConverterTypeAutoDownloadPolicy
 import uniffi.pod0_domain.FfiConverterTypeCancellationId
 import uniffi.pod0_domain.FfiConverterTypeCommandId
 import uniffi.pod0_domain.FfiConverterTypeDomainEventId
 import uniffi.pod0_domain.FfiConverterTypeEpisodeId
+import uniffi.pod0_domain.FfiConverterTypeEpisodeRecord
 import uniffi.pod0_domain.FfiConverterTypeHostRequestId
 import uniffi.pod0_domain.FfiConverterTypePlaybackRatePermille
 import uniffi.pod0_domain.FfiConverterTypePodcastId
+import uniffi.pod0_domain.FfiConverterTypePodcastRecord
+import uniffi.pod0_domain.FfiConverterTypePodcastSubscriptionRecord
 import uniffi.pod0_domain.FfiConverterTypeStateRevision
 import uniffi.pod0_domain.FfiConverterTypeUnixTimestampMilliseconds
 import uniffi.pod0_domain.HostRequestId
 import uniffi.pod0_domain.PlaybackRatePermille
 import uniffi.pod0_domain.PodcastId
+import uniffi.pod0_domain.PodcastRecord
+import uniffi.pod0_domain.PodcastSubscriptionRecord
 import uniffi.pod0_domain.StateRevision
 import uniffi.pod0_domain.UnixTimestampMilliseconds
+import uniffi.pod0_domain.RustBuffer as RustBufferAutoDownloadPolicy
 import uniffi.pod0_domain.RustBuffer as RustBufferCancellationId
 import uniffi.pod0_domain.RustBuffer as RustBufferCommandId
 import uniffi.pod0_domain.RustBuffer as RustBufferDomainEventId
 import uniffi.pod0_domain.RustBuffer as RustBufferEpisodeId
+import uniffi.pod0_domain.RustBuffer as RustBufferEpisodeRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferHostRequestId
 import uniffi.pod0_domain.RustBuffer as RustBufferPlaybackRatePermille
 import uniffi.pod0_domain.RustBuffer as RustBufferPodcastId
+import uniffi.pod0_domain.RustBuffer as RustBufferPodcastRecord
+import uniffi.pod0_domain.RustBuffer as RustBufferPodcastSubscriptionRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferStateRevision
 import uniffi.pod0_domain.RustBuffer as RustBufferUnixTimestampMilliseconds
 
@@ -1248,6 +1260,54 @@ public object FfiConverterTypeDomainEventEnvelope: FfiConverterRustBuffer<Domain
 
 
 
+data class EpisodeDetailProjection (
+    val `episode`: EpisodeRecord?
+    ,
+    val `podcast`: PodcastRecord?
+    ,
+    val `subscription`: PodcastSubscriptionRecord?
+    ,
+    val `operations`: List<OperationProjection>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEpisodeDetailProjection: FfiConverterRustBuffer<EpisodeDetailProjection> {
+    override fun read(buf: ByteBuffer): EpisodeDetailProjection {
+        return EpisodeDetailProjection(
+            FfiConverterOptionalTypeEpisodeRecord.read(buf),
+            FfiConverterOptionalTypePodcastRecord.read(buf),
+            FfiConverterOptionalTypePodcastSubscriptionRecord.read(buf),
+            FfiConverterSequenceTypeOperationProjection.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EpisodeDetailProjection) = (
+            FfiConverterOptionalTypeEpisodeRecord.allocationSize(value.`episode`) +
+            FfiConverterOptionalTypePodcastRecord.allocationSize(value.`podcast`) +
+            FfiConverterOptionalTypePodcastSubscriptionRecord.allocationSize(value.`subscription`) +
+            FfiConverterSequenceTypeOperationProjection.allocationSize(value.`operations`)
+    )
+
+    override fun write(value: EpisodeDetailProjection, buf: ByteBuffer) {
+            FfiConverterOptionalTypeEpisodeRecord.write(value.`episode`, buf)
+            FfiConverterOptionalTypePodcastRecord.write(value.`podcast`, buf)
+            FfiConverterOptionalTypePodcastSubscriptionRecord.write(value.`subscription`, buf)
+            FfiConverterSequenceTypeOperationProjection.write(value.`operations`, buf)
+    }
+}
+
+
+
 data class EpisodeSummary (
     val `episodeId`: EpisodeId
     ,
@@ -1423,9 +1483,11 @@ public object FfiConverterTypeHostRequestEnvelope: FfiConverterRustBuffer<HostRe
 
 
 data class LibraryProjection (
-    val `podcasts`: List<PodcastSummary>
+    val `podcasts`: List<PodcastRecord>
     ,
-    val `episodes`: List<EpisodeSummary>
+    val `subscriptions`: List<PodcastSubscriptionRecord>
+    ,
+    val `episodes`: List<EpisodeRecord>
     ,
     val `operations`: List<OperationProjection>
     ,
@@ -1446,23 +1508,26 @@ data class LibraryProjection (
 public object FfiConverterTypeLibraryProjection: FfiConverterRustBuffer<LibraryProjection> {
     override fun read(buf: ByteBuffer): LibraryProjection {
         return LibraryProjection(
-            FfiConverterSequenceTypePodcastSummary.read(buf),
-            FfiConverterSequenceTypeEpisodeSummary.read(buf),
+            FfiConverterSequenceTypePodcastRecord.read(buf),
+            FfiConverterSequenceTypePodcastSubscriptionRecord.read(buf),
+            FfiConverterSequenceTypeEpisodeRecord.read(buf),
             FfiConverterSequenceTypeOperationProjection.read(buf),
             FfiConverterBoolean.read(buf),
         )
     }
 
     override fun allocationSize(value: LibraryProjection) = (
-            FfiConverterSequenceTypePodcastSummary.allocationSize(value.`podcasts`) +
-            FfiConverterSequenceTypeEpisodeSummary.allocationSize(value.`episodes`) +
+            FfiConverterSequenceTypePodcastRecord.allocationSize(value.`podcasts`) +
+            FfiConverterSequenceTypePodcastSubscriptionRecord.allocationSize(value.`subscriptions`) +
+            FfiConverterSequenceTypeEpisodeRecord.allocationSize(value.`episodes`) +
             FfiConverterSequenceTypeOperationProjection.allocationSize(value.`operations`) +
             FfiConverterBoolean.allocationSize(value.`hasMore`)
     )
 
     override fun write(value: LibraryProjection, buf: ByteBuffer) {
-            FfiConverterSequenceTypePodcastSummary.write(value.`podcasts`, buf)
-            FfiConverterSequenceTypeEpisodeSummary.write(value.`episodes`, buf)
+            FfiConverterSequenceTypePodcastRecord.write(value.`podcasts`, buf)
+            FfiConverterSequenceTypePodcastSubscriptionRecord.write(value.`subscriptions`, buf)
+            FfiConverterSequenceTypeEpisodeRecord.write(value.`episodes`, buf)
             FfiConverterSequenceTypeOperationProjection.write(value.`operations`, buf)
             FfiConverterBoolean.write(value.`hasMore`, buf)
     }
@@ -1478,6 +1543,8 @@ data class OperationProjection (
     val `stage`: OperationStage
     ,
     val `failure`: CoreFailure?
+    ,
+    val `result`: OperationResult?
 
 ){
 
@@ -1498,6 +1565,7 @@ public object FfiConverterTypeOperationProjection: FfiConverterRustBuffer<Operat
             FfiConverterTypeCancellationId.read(buf),
             FfiConverterTypeOperationStage.read(buf),
             FfiConverterOptionalTypeCoreFailure.read(buf),
+            FfiConverterOptionalTypeOperationResult.read(buf),
         )
     }
 
@@ -1505,7 +1573,8 @@ public object FfiConverterTypeOperationProjection: FfiConverterRustBuffer<Operat
             FfiConverterTypeCommandId.allocationSize(value.`commandId`) +
             FfiConverterTypeCancellationId.allocationSize(value.`cancellationId`) +
             FfiConverterTypeOperationStage.allocationSize(value.`stage`) +
-            FfiConverterOptionalTypeCoreFailure.allocationSize(value.`failure`)
+            FfiConverterOptionalTypeCoreFailure.allocationSize(value.`failure`) +
+            FfiConverterOptionalTypeOperationResult.allocationSize(value.`result`)
     )
 
     override fun write(value: OperationProjection, buf: ByteBuffer) {
@@ -1513,6 +1582,7 @@ public object FfiConverterTypeOperationProjection: FfiConverterRustBuffer<Operat
             FfiConverterTypeCancellationId.write(value.`cancellationId`, buf)
             FfiConverterTypeOperationStage.write(value.`stage`, buf)
             FfiConverterOptionalTypeCoreFailure.write(value.`failure`, buf)
+            FfiConverterOptionalTypeOperationResult.write(value.`result`, buf)
     }
 }
 
@@ -1672,6 +1742,59 @@ public object FfiConverterTypePlaybackProjection: FfiConverterRustBuffer<Playbac
 
 
 
+data class PodcastDetailProjection (
+    val `podcast`: PodcastRecord?
+    ,
+    val `subscription`: PodcastSubscriptionRecord?
+    ,
+    val `episodes`: List<EpisodeRecord>
+    ,
+    val `operations`: List<OperationProjection>
+    ,
+    val `hasMore`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePodcastDetailProjection: FfiConverterRustBuffer<PodcastDetailProjection> {
+    override fun read(buf: ByteBuffer): PodcastDetailProjection {
+        return PodcastDetailProjection(
+            FfiConverterOptionalTypePodcastRecord.read(buf),
+            FfiConverterOptionalTypePodcastSubscriptionRecord.read(buf),
+            FfiConverterSequenceTypeEpisodeRecord.read(buf),
+            FfiConverterSequenceTypeOperationProjection.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PodcastDetailProjection) = (
+            FfiConverterOptionalTypePodcastRecord.allocationSize(value.`podcast`) +
+            FfiConverterOptionalTypePodcastSubscriptionRecord.allocationSize(value.`subscription`) +
+            FfiConverterSequenceTypeEpisodeRecord.allocationSize(value.`episodes`) +
+            FfiConverterSequenceTypeOperationProjection.allocationSize(value.`operations`) +
+            FfiConverterBoolean.allocationSize(value.`hasMore`)
+    )
+
+    override fun write(value: PodcastDetailProjection, buf: ByteBuffer) {
+            FfiConverterOptionalTypePodcastRecord.write(value.`podcast`, buf)
+            FfiConverterOptionalTypePodcastSubscriptionRecord.write(value.`subscription`, buf)
+            FfiConverterSequenceTypeEpisodeRecord.write(value.`episodes`, buf)
+            FfiConverterSequenceTypeOperationProjection.write(value.`operations`, buf)
+            FfiConverterBoolean.write(value.`hasMore`, buf)
+    }
+}
+
+
+
 data class PodcastSummary (
     val `podcastId`: PodcastId
     ,
@@ -1761,6 +1884,8 @@ public object FfiConverterTypeProjectionEnvelope: FfiConverterRustBuffer<Project
 data class ProjectionRequest (
     val `scope`: ProjectionScope
     ,
+    val `offset`: kotlin.UInt
+    ,
     val `maxItems`: kotlin.UShort
 
 ){
@@ -1779,17 +1904,20 @@ public object FfiConverterTypeProjectionRequest: FfiConverterRustBuffer<Projecti
     override fun read(buf: ByteBuffer): ProjectionRequest {
         return ProjectionRequest(
             FfiConverterTypeProjectionScope.read(buf),
+            FfiConverterUInt.read(buf),
             FfiConverterUShort.read(buf),
         )
     }
 
     override fun allocationSize(value: ProjectionRequest) = (
             FfiConverterTypeProjectionScope.allocationSize(value.`scope`) +
+            FfiConverterUInt.allocationSize(value.`offset`) +
             FfiConverterUShort.allocationSize(value.`maxItems`)
     )
 
     override fun write(value: ProjectionRequest, buf: ByteBuffer) {
             FfiConverterTypeProjectionScope.write(value.`scope`, buf)
+            FfiConverterUInt.write(value.`offset`, buf)
             FfiConverterUShort.write(value.`maxItems`, buf)
     }
 }
@@ -1845,8 +1973,70 @@ sealed class ApplicationCommand {
         companion object
     }
 
+    data class EnsurePodcast(
+        val `feedUrl`: kotlin.String) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class RefreshPodcast(
+        val `podcastId`: uniffi.pod0_domain.PodcastId) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class HydratePodcastMetadata(
+        val `podcastId`: uniffi.pod0_domain.PodcastId) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class UpsertExternalEpisode(
+        val `podcastId`: uniffi.pod0_domain.PodcastId,
+        val `feedUrl`: kotlin.String?,
+        val `podcastTitle`: kotlin.String,
+        val `audioUrl`: kotlin.String,
+        val `title`: kotlin.String,
+        val `imageUrl`: kotlin.String?,
+        val `durationMilliseconds`: kotlin.ULong?) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
     data class Unsubscribe(
         val `podcastId`: uniffi.pod0_domain.PodcastId) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetSubscriptionNotifications(
+        val `podcastId`: uniffi.pod0_domain.PodcastId,
+        val `enabled`: kotlin.Boolean) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetSubscriptionAutoDownload(
+        val `podcastId`: uniffi.pod0_domain.PodcastId,
+        val `policy`: uniffi.pod0_domain.AutoDownloadPolicy) : ApplicationCommand()
 
     {
 
@@ -1900,16 +2090,42 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
             1 -> ApplicationCommand.SubscribeToFeed(
                 FfiConverterString.read(buf),
                 )
-            2 -> ApplicationCommand.Unsubscribe(
+            2 -> ApplicationCommand.EnsurePodcast(
+                FfiConverterString.read(buf),
+                )
+            3 -> ApplicationCommand.RefreshPodcast(
                 FfiConverterTypePodcastId.read(buf),
                 )
-            3 -> ApplicationCommand.RequestPlayback(
+            4 -> ApplicationCommand.HydratePodcastMetadata(
+                FfiConverterTypePodcastId.read(buf),
+                )
+            5 -> ApplicationCommand.UpsertExternalEpisode(
+                FfiConverterTypePodcastId.read(buf),
+                FfiConverterOptionalString.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                FfiConverterOptionalULong.read(buf),
+                )
+            6 -> ApplicationCommand.Unsubscribe(
+                FfiConverterTypePodcastId.read(buf),
+                )
+            7 -> ApplicationCommand.SetSubscriptionNotifications(
+                FfiConverterTypePodcastId.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            8 -> ApplicationCommand.SetSubscriptionAutoDownload(
+                FfiConverterTypePodcastId.read(buf),
+                FfiConverterTypeAutoDownloadPolicy.read(buf),
+                )
+            9 -> ApplicationCommand.RequestPlayback(
                 FfiConverterTypeEpisodeId.read(buf),
                 )
-            4 -> ApplicationCommand.CancelOperation(
+            10 -> ApplicationCommand.CancelOperation(
                 FfiConverterTypeCancellationId.read(buf),
                 )
-            5 -> ApplicationCommand.Unsupported(
+            11 -> ApplicationCommand.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -1924,11 +2140,61 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 + FfiConverterString.allocationSize(value.`feedUrl`)
             )
         }
+        is ApplicationCommand.EnsurePodcast -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`feedUrl`)
+            )
+        }
+        is ApplicationCommand.RefreshPodcast -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+            )
+        }
+        is ApplicationCommand.HydratePodcastMetadata -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+            )
+        }
+        is ApplicationCommand.UpsertExternalEpisode -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+                + FfiConverterOptionalString.allocationSize(value.`feedUrl`)
+                + FfiConverterString.allocationSize(value.`podcastTitle`)
+                + FfiConverterString.allocationSize(value.`audioUrl`)
+                + FfiConverterString.allocationSize(value.`title`)
+                + FfiConverterOptionalString.allocationSize(value.`imageUrl`)
+                + FfiConverterOptionalULong.allocationSize(value.`durationMilliseconds`)
+            )
+        }
         is ApplicationCommand.Unsubscribe -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
                 + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+            )
+        }
+        is ApplicationCommand.SetSubscriptionNotifications -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+                + FfiConverterBoolean.allocationSize(value.`enabled`)
+            )
+        }
+        is ApplicationCommand.SetSubscriptionAutoDownload -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+                + FfiConverterTypeAutoDownloadPolicy.allocationSize(value.`policy`)
             )
         }
         is ApplicationCommand.RequestPlayback -> {
@@ -1961,23 +2227,61 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterString.write(value.`feedUrl`, buf)
                 Unit
             }
-            is ApplicationCommand.Unsubscribe -> {
+            is ApplicationCommand.EnsurePodcast -> {
                 buf.putInt(2)
+                FfiConverterString.write(value.`feedUrl`, buf)
+                Unit
+            }
+            is ApplicationCommand.RefreshPodcast -> {
+                buf.putInt(3)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
                 Unit
             }
+            is ApplicationCommand.HydratePodcastMetadata -> {
+                buf.putInt(4)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                Unit
+            }
+            is ApplicationCommand.UpsertExternalEpisode -> {
+                buf.putInt(5)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                FfiConverterOptionalString.write(value.`feedUrl`, buf)
+                FfiConverterString.write(value.`podcastTitle`, buf)
+                FfiConverterString.write(value.`audioUrl`, buf)
+                FfiConverterString.write(value.`title`, buf)
+                FfiConverterOptionalString.write(value.`imageUrl`, buf)
+                FfiConverterOptionalULong.write(value.`durationMilliseconds`, buf)
+                Unit
+            }
+            is ApplicationCommand.Unsubscribe -> {
+                buf.putInt(6)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                Unit
+            }
+            is ApplicationCommand.SetSubscriptionNotifications -> {
+                buf.putInt(7)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                FfiConverterBoolean.write(value.`enabled`, buf)
+                Unit
+            }
+            is ApplicationCommand.SetSubscriptionAutoDownload -> {
+                buf.putInt(8)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                FfiConverterTypeAutoDownloadPolicy.write(value.`policy`, buf)
+                Unit
+            }
             is ApplicationCommand.RequestPlayback -> {
-                buf.putInt(3)
+                buf.putInt(9)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
             is ApplicationCommand.CancelOperation -> {
-                buf.putInt(4)
+                buf.putInt(10)
                 FfiConverterTypeCancellationId.write(value.`cancellationId`, buf)
                 Unit
             }
             is ApplicationCommand.Unsupported -> {
-                buf.putInt(5)
+                buf.putInt(11)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -1992,6 +2296,18 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
 sealed class CoreFailureCode {
 
     object InvalidCommand : CoreFailureCode()
+
+
+    object InvalidFeedUrl : CoreFailureCode()
+
+
+    object FeedMalformed : CoreFailureCode()
+
+
+    object AlreadySubscribed : CoreFailureCode()
+
+
+    object StorageUnavailable : CoreFailureCode()
 
 
     object RevisionConflict : CoreFailureCode()
@@ -2035,12 +2351,16 @@ public object FfiConverterTypeCoreFailureCode : FfiConverterRustBuffer<CoreFailu
     override fun read(buf: ByteBuffer): CoreFailureCode {
         return when(buf.getInt()) {
             1 -> CoreFailureCode.InvalidCommand
-            2 -> CoreFailureCode.RevisionConflict
-            3 -> CoreFailureCode.NotFound
-            4 -> CoreFailureCode.HostUnavailable
-            5 -> CoreFailureCode.HostRejected
-            6 -> CoreFailureCode.Cancelled
-            7 -> CoreFailureCode.Unsupported(
+            2 -> CoreFailureCode.InvalidFeedUrl
+            3 -> CoreFailureCode.FeedMalformed
+            4 -> CoreFailureCode.AlreadySubscribed
+            5 -> CoreFailureCode.StorageUnavailable
+            6 -> CoreFailureCode.RevisionConflict
+            7 -> CoreFailureCode.NotFound
+            8 -> CoreFailureCode.HostUnavailable
+            9 -> CoreFailureCode.HostRejected
+            10 -> CoreFailureCode.Cancelled
+            11 -> CoreFailureCode.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -2049,6 +2369,30 @@ public object FfiConverterTypeCoreFailureCode : FfiConverterRustBuffer<CoreFailu
 
     override fun allocationSize(value: CoreFailureCode): ULong = when(value) {
         is CoreFailureCode.InvalidCommand -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CoreFailureCode.InvalidFeedUrl -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CoreFailureCode.FeedMalformed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CoreFailureCode.AlreadySubscribed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CoreFailureCode.StorageUnavailable -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
@@ -2099,28 +2443,44 @@ public object FfiConverterTypeCoreFailureCode : FfiConverterRustBuffer<CoreFailu
                 buf.putInt(1)
                 Unit
             }
-            is CoreFailureCode.RevisionConflict -> {
+            is CoreFailureCode.InvalidFeedUrl -> {
                 buf.putInt(2)
                 Unit
             }
-            is CoreFailureCode.NotFound -> {
+            is CoreFailureCode.FeedMalformed -> {
                 buf.putInt(3)
                 Unit
             }
-            is CoreFailureCode.HostUnavailable -> {
+            is CoreFailureCode.AlreadySubscribed -> {
                 buf.putInt(4)
                 Unit
             }
-            is CoreFailureCode.HostRejected -> {
+            is CoreFailureCode.StorageUnavailable -> {
                 buf.putInt(5)
                 Unit
             }
-            is CoreFailureCode.Cancelled -> {
+            is CoreFailureCode.RevisionConflict -> {
                 buf.putInt(6)
                 Unit
             }
-            is CoreFailureCode.Unsupported -> {
+            is CoreFailureCode.NotFound -> {
                 buf.putInt(7)
+                Unit
+            }
+            is CoreFailureCode.HostUnavailable -> {
+                buf.putInt(8)
+                Unit
+            }
+            is CoreFailureCode.HostRejected -> {
+                buf.putInt(9)
+                Unit
+            }
+            is CoreFailureCode.Cancelled -> {
+                buf.putInt(10)
+                Unit
+            }
+            is CoreFailureCode.Unsupported -> {
+                buf.putInt(11)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -3119,6 +3479,165 @@ public object FfiConverterTypeNativeTimerMode : FfiConverterRustBuffer<NativeTim
 
 
 
+sealed class OperationResult {
+
+    data class Podcast(
+        val `podcastId`: uniffi.pod0_domain.PodcastId) : OperationResult()
+
+    {
+
+
+        companion object
+    }
+
+    data class ExternalEpisode(
+        val `podcastId`: uniffi.pod0_domain.PodcastId,
+        val `episodeId`: uniffi.pod0_domain.EpisodeId) : OperationResult()
+
+    {
+
+
+        companion object
+    }
+
+    data class RemovedPodcast(
+        val `podcastId`: uniffi.pod0_domain.PodcastId) : OperationResult()
+
+    {
+
+
+        companion object
+    }
+
+    data class PreferencesUpdated(
+        val `podcastId`: uniffi.pod0_domain.PodcastId) : OperationResult()
+
+    {
+
+
+        companion object
+    }
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : OperationResult()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<OperationResult>{
+    override fun read(buf: ByteBuffer): OperationResult {
+        return when(buf.getInt()) {
+            1 -> OperationResult.Podcast(
+                FfiConverterTypePodcastId.read(buf),
+                )
+            2 -> OperationResult.ExternalEpisode(
+                FfiConverterTypePodcastId.read(buf),
+                FfiConverterTypeEpisodeId.read(buf),
+                )
+            3 -> OperationResult.RemovedPodcast(
+                FfiConverterTypePodcastId.read(buf),
+                )
+            4 -> OperationResult.PreferencesUpdated(
+                FfiConverterTypePodcastId.read(buf),
+                )
+            5 -> OperationResult.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: OperationResult): ULong = when(value) {
+        is OperationResult.Podcast -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+            )
+        }
+        is OperationResult.ExternalEpisode -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+            )
+        }
+        is OperationResult.RemovedPodcast -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+            )
+        }
+        is OperationResult.PreferencesUpdated -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+            )
+        }
+        is OperationResult.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: OperationResult, buf: ByteBuffer) {
+        when(value) {
+            is OperationResult.Podcast -> {
+                buf.putInt(1)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                Unit
+            }
+            is OperationResult.ExternalEpisode -> {
+                buf.putInt(2)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                Unit
+            }
+            is OperationResult.RemovedPodcast -> {
+                buf.putInt(3)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                Unit
+            }
+            is OperationResult.PreferencesUpdated -> {
+                buf.putInt(4)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                Unit
+            }
+            is OperationResult.Unsupported -> {
+                buf.putInt(5)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 sealed class OperationStage {
 
     object Accepted : OperationStage()
@@ -4057,6 +4576,24 @@ sealed class Projection {
         companion object
     }
 
+    data class PodcastDetail(
+        val `value`: uniffi.pod0_application.PodcastDetailProjection) : Projection()
+
+    {
+
+
+        companion object
+    }
+
+    data class EpisodeDetail(
+        val `value`: uniffi.pod0_application.EpisodeDetailProjection) : Projection()
+
+    {
+
+
+        companion object
+    }
+
     data class Playback(
         val `value`: uniffi.pod0_application.PlaybackProjection) : Projection()
 
@@ -4094,10 +4631,16 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
             1 -> Projection.Library(
                 FfiConverterTypeLibraryProjection.read(buf),
                 )
-            2 -> Projection.Playback(
+            2 -> Projection.PodcastDetail(
+                FfiConverterTypePodcastDetailProjection.read(buf),
+                )
+            3 -> Projection.EpisodeDetail(
+                FfiConverterTypeEpisodeDetailProjection.read(buf),
+                )
+            4 -> Projection.Playback(
                 FfiConverterTypePlaybackProjection.read(buf),
                 )
-            3 -> Projection.Unsupported(
+            5 -> Projection.Unsupported(
                 FfiConverterTypeUnsupportedProjection.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -4110,6 +4653,20 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
             (
                 4UL
                 + FfiConverterTypeLibraryProjection.allocationSize(value.`value`)
+            )
+        }
+        is Projection.PodcastDetail -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePodcastDetailProjection.allocationSize(value.`value`)
+            )
+        }
+        is Projection.EpisodeDetail -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeDetailProjection.allocationSize(value.`value`)
             )
         }
         is Projection.Playback -> {
@@ -4135,13 +4692,23 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
                 FfiConverterTypeLibraryProjection.write(value.`value`, buf)
                 Unit
             }
-            is Projection.Playback -> {
+            is Projection.PodcastDetail -> {
                 buf.putInt(2)
+                FfiConverterTypePodcastDetailProjection.write(value.`value`, buf)
+                Unit
+            }
+            is Projection.EpisodeDetail -> {
+                buf.putInt(3)
+                FfiConverterTypeEpisodeDetailProjection.write(value.`value`, buf)
+                Unit
+            }
+            is Projection.Playback -> {
+                buf.putInt(4)
                 FfiConverterTypePlaybackProjection.write(value.`value`, buf)
                 Unit
             }
             is Projection.Unsupported -> {
-                buf.putInt(3)
+                buf.putInt(5)
                 FfiConverterTypeUnsupportedProjection.write(value.`value`, buf)
                 Unit
             }
@@ -4157,6 +4724,24 @@ sealed class ProjectionScope {
 
     object Library : ProjectionScope()
 
+
+    data class PodcastDetail(
+        val `podcastId`: uniffi.pod0_domain.PodcastId) : ProjectionScope()
+
+    {
+
+
+        companion object
+    }
+
+    data class EpisodeDetail(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId) : ProjectionScope()
+
+    {
+
+
+        companion object
+    }
 
     object Playback : ProjectionScope()
 
@@ -4187,8 +4772,14 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
     override fun read(buf: ByteBuffer): ProjectionScope {
         return when(buf.getInt()) {
             1 -> ProjectionScope.Library
-            2 -> ProjectionScope.Playback
-            3 -> ProjectionScope.Unsupported(
+            2 -> ProjectionScope.PodcastDetail(
+                FfiConverterTypePodcastId.read(buf),
+                )
+            3 -> ProjectionScope.EpisodeDetail(
+                FfiConverterTypeEpisodeId.read(buf),
+                )
+            4 -> ProjectionScope.Playback
+            5 -> ProjectionScope.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -4200,6 +4791,20 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
+            )
+        }
+        is ProjectionScope.PodcastDetail -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+            )
+        }
+        is ProjectionScope.EpisodeDetail -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
             )
         }
         is ProjectionScope.Playback -> {
@@ -4223,12 +4828,22 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
                 buf.putInt(1)
                 Unit
             }
-            is ProjectionScope.Playback -> {
+            is ProjectionScope.PodcastDetail -> {
                 buf.putInt(2)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                Unit
+            }
+            is ProjectionScope.EpisodeDetail -> {
+                buf.putInt(3)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                Unit
+            }
+            is ProjectionScope.Playback -> {
+                buf.putInt(4)
                 Unit
             }
             is ProjectionScope.Unsupported -> {
-                buf.putInt(3)
+                buf.putInt(5)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -4620,6 +5235,102 @@ public object FfiConverterOptionalTypeEpisodeId: FfiConverterRustBuffer<EpisodeI
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeEpisodeRecord: FfiConverterRustBuffer<EpisodeRecord?> {
+    override fun read(buf: ByteBuffer): EpisodeRecord? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeEpisodeRecord.read(buf)
+    }
+
+    override fun allocationSize(value: EpisodeRecord?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeEpisodeRecord.allocationSize(value)
+        }
+    }
+
+    override fun write(value: EpisodeRecord?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeEpisodeRecord.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypePodcastRecord: FfiConverterRustBuffer<PodcastRecord?> {
+    override fun read(buf: ByteBuffer): PodcastRecord? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypePodcastRecord.read(buf)
+    }
+
+    override fun allocationSize(value: PodcastRecord?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypePodcastRecord.allocationSize(value)
+        }
+    }
+
+    override fun write(value: PodcastRecord?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypePodcastRecord.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypePodcastSubscriptionRecord: FfiConverterRustBuffer<PodcastSubscriptionRecord?> {
+    override fun read(buf: ByteBuffer): PodcastSubscriptionRecord? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypePodcastSubscriptionRecord.read(buf)
+    }
+
+    override fun allocationSize(value: PodcastSubscriptionRecord?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypePodcastSubscriptionRecord.allocationSize(value)
+        }
+    }
+
+    override fun write(value: PodcastSubscriptionRecord?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypePodcastSubscriptionRecord.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeStateRevision: FfiConverterRustBuffer<StateRevision?> {
     override fun read(buf: ByteBuffer): StateRevision? {
         if (buf.get().toInt() == 0) {
@@ -4684,24 +5395,28 @@ public object FfiConverterOptionalTypeUnixTimestampMilliseconds: FfiConverterRus
 /**
  * @suppress
  */
-public object FfiConverterSequenceTypeEpisodeSummary: FfiConverterRustBuffer<List<EpisodeSummary>> {
-    override fun read(buf: ByteBuffer): List<EpisodeSummary> {
-        val len = buf.getInt()
-        return List<EpisodeSummary>(len) {
-            FfiConverterTypeEpisodeSummary.read(buf)
+public object FfiConverterOptionalTypeOperationResult: FfiConverterRustBuffer<OperationResult?> {
+    override fun read(buf: ByteBuffer): OperationResult? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeOperationResult.read(buf)
+    }
+
+    override fun allocationSize(value: OperationResult?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeOperationResult.allocationSize(value)
         }
     }
 
-    override fun allocationSize(value: List<EpisodeSummary>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeEpisodeSummary.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<EpisodeSummary>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeEpisodeSummary.write(it, buf)
+    override fun write(value: OperationResult?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeOperationResult.write(value, buf)
         }
     }
 }
@@ -4740,34 +5455,6 @@ public object FfiConverterSequenceTypeOperationProjection: FfiConverterRustBuffe
 /**
  * @suppress
  */
-public object FfiConverterSequenceTypePodcastSummary: FfiConverterRustBuffer<List<PodcastSummary>> {
-    override fun read(buf: ByteBuffer): List<PodcastSummary> {
-        val len = buf.getInt()
-        return List<PodcastSummary>(len) {
-            FfiConverterTypePodcastSummary.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<PodcastSummary>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypePodcastSummary.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<PodcastSummary>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypePodcastSummary.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
 public object FfiConverterSequenceTypeEpisodeId: FfiConverterRustBuffer<List<EpisodeId>> {
     override fun read(buf: ByteBuffer): List<EpisodeId> {
         val len = buf.getInt()
@@ -4786,6 +5473,90 @@ public object FfiConverterSequenceTypeEpisodeId: FfiConverterRustBuffer<List<Epi
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeEpisodeId.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeEpisodeRecord: FfiConverterRustBuffer<List<EpisodeRecord>> {
+    override fun read(buf: ByteBuffer): List<EpisodeRecord> {
+        val len = buf.getInt()
+        return List<EpisodeRecord>(len) {
+            FfiConverterTypeEpisodeRecord.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<EpisodeRecord>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeEpisodeRecord.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<EpisodeRecord>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeEpisodeRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypePodcastRecord: FfiConverterRustBuffer<List<PodcastRecord>> {
+    override fun read(buf: ByteBuffer): List<PodcastRecord> {
+        val len = buf.getInt()
+        return List<PodcastRecord>(len) {
+            FfiConverterTypePodcastRecord.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<PodcastRecord>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypePodcastRecord.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<PodcastRecord>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypePodcastRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypePodcastSubscriptionRecord: FfiConverterRustBuffer<List<PodcastSubscriptionRecord>> {
+    override fun read(buf: ByteBuffer): List<PodcastSubscriptionRecord> {
+        val len = buf.getInt()
+        return List<PodcastSubscriptionRecord>(len) {
+            FfiConverterTypePodcastSubscriptionRecord.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<PodcastSubscriptionRecord>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypePodcastSubscriptionRecord.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<PodcastSubscriptionRecord>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypePodcastSubscriptionRecord.write(it, buf)
         }
     }
 }

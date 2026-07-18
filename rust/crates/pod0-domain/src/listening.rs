@@ -141,10 +141,53 @@ pub struct EpisodeRecord {
     pub enclosure_url: String,
     pub enclosure_mime_type: Option<String>,
     pub image_url: Option<String>,
+    pub feed_metadata: EpisodeFeedMetadata,
     pub listening: EpisodeListeningState,
     pub is_starred: bool,
     pub download: DownloadArtifactStatus,
     pub transcript: TranscriptArtifactStatus,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum PublisherTranscriptFormat {
+    Json,
+    WebVtt,
+    SubRip,
+    Html,
+    PlainText,
+    Unknown,
+    Unsupported { wire_code: u32 },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct PublisherTranscriptReference {
+    pub url: String,
+    pub media_type: Option<String>,
+    pub format: PublisherTranscriptFormat,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct PodcastPersonRecord {
+    pub name: String,
+    pub role: Option<String>,
+    pub group: Option<String>,
+    pub image_url: Option<String>,
+    pub link_url: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct PodcastSoundBiteRecord {
+    pub start_milliseconds: u64,
+    pub duration_milliseconds: u64,
+    pub title: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, uniffi::Record)]
+pub struct EpisodeFeedMetadata {
+    pub publisher_transcript: Option<PublisherTranscriptReference>,
+    pub chapters_url: Option<String>,
+    pub persons: Vec<PodcastPersonRecord>,
+    pub sound_bites: Vec<PodcastSoundBiteRecord>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]

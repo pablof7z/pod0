@@ -46,6 +46,13 @@ extension AppStateStore {
     /// existing row matched by id or feedURL. Returns the persisted podcast.
     @discardableResult
     func upsertPodcast(_ incoming: Podcast) -> Podcast {
+        if isSharedLibraryAuthoritative,
+           !isApplyingSharedLibraryProjection,
+           incoming.kind == .rss {
+            return podcast(id: incoming.id)
+                ?? incoming.feedURL.flatMap { podcast(feedURL: $0) }
+                ?? incoming
+        }
         if let idx = state.podcasts.firstIndex(where: { $0.id == incoming.id }) {
             let value = merged(state.podcasts[idx], with: incoming)
             mutateState { $0.podcasts[idx] = value }
@@ -68,6 +75,11 @@ extension AppStateStore {
     /// write the new HTTP cache (etag / lastModified) and any drifted
     /// metadata (title, imageURL).
     func updatePodcast(_ updated: Podcast) {
+        if isSharedLibraryAuthoritative,
+           !isApplyingSharedLibraryProjection,
+           updated.kind == .rss {
+            return
+        }
         guard let idx = state.podcasts.firstIndex(where: { $0.id == updated.id }) else { return }
         mutateState { $0.podcasts[idx] = updated }
     }

@@ -1,8 +1,9 @@
 use std::path::Path;
 
 use pod0_storage::{
-    LegacyBackupEvidence, LegacyImportPlan, LegacySourceKind, ListeningImportClock,
-    ListeningImportReport, ListeningImporter, StorageError,
+    CURRENT_SCHEMA_VERSION, CoreStoreMigrator, LegacyBackupEvidence, LegacyImportPlan,
+    LegacySourceKind, ListeningImportClock, ListeningImportReport, ListeningImporter,
+    MigrationClock, StorageError,
 };
 
 use crate::{CommandId, ListeningDomainSnapshot};
@@ -46,6 +47,14 @@ pub struct LegacyListeningImportReport {
 pub struct LegacyListeningImportVerification {
     pub report: LegacyListeningImportReport,
     pub snapshot: ListeningDomainSnapshot,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct SharedListeningStorePreparation {
+    pub from_version: u32,
+    pub to_version: u32,
+    pub applied_versions: Vec<u32>,
+    pub resumed_from_journal: bool,
 }
 
 #[derive(Debug, uniffi::Error)]
@@ -125,8 +134,47 @@ pub fn read_staged_legacy_listening_import(
         .map_err(Into::into)
 }
 
+#[uniffi::export]
+pub fn commit_staged_legacy_listening_import(
+    target_path: String,
+    observed_at_milliseconds: i64,
+) -> Result<bool, LegacyListeningMigrationError> {
+    pod0_storage::commit_listening_cutover(Path::new(&target_path), observed_at_milliseconds)
+        .map_err(Into::into)
+}
+
+#[allow(clippy::too_many_arguments)]
+#[uniffi::export]
+pub fn prepare_shared_listening_store(
+    target_path: String,
+    schema_backup_path: String,
+    migration_id: CommandId,
+    observed_at_milliseconds: i64,
+) -> Result<SharedListeningStorePreparation, LegacyListeningMigrationError> {
+    CoreStoreMigrator::new(FixedClock(observed_at_milliseconds))
+        .migrate(
+            Path::new(&target_path),
+            CURRENT_SCHEMA_VERSION,
+            Path::new(&schema_backup_path),
+            migration_id,
+        )
+        .map(|report| SharedListeningStorePreparation {
+            from_version: report.from_version,
+            to_version: report.to_version,
+            applied_versions: report.applied_versions,
+            resumed_from_journal: report.resumed_from_journal,
+        })
+        .map_err(Into::into)
+}
+
 struct FixedClock(i64);
 impl ListeningImportClock for FixedClock {
+    fn now_milliseconds(&self) -> i64 {
+        self.0
+    }
+}
+
+impl MigrationClock for FixedClock {
     fn now_milliseconds(&self) -> i64 {
         self.0
     }
@@ -200,10 +248,10 @@ impl From<StorageError> for LegacyListeningMigrationError {
         match value {
             StorageError::SourceChanged => Self::SourceChanged,
             StorageError::BackupConflict => Self::BackupConflict,
-            StorageError::ImportConflict | StorageError::CutoverAlreadyAuthoritative => {
-                Self::ImportConflict
-            }
-            StorageError::ImportNotFound => Self::ImportNotFound,
+            StorageError::ImportConflict
+            | StorageError::CutoverAlreadyAuthoritative
+            | StorageError::CommandConflict => Self::ImportConflict,
+            StorageError::ImportNotFound | StorageError::EntityNotFound => Self::ImportNotFound,
             StorageError::Interrupted => Self::Interrupted,
             StorageError::UnsupportedLegacySource
             | StorageError::InvalidLegacyRecord { .. }
@@ -213,6 +261,7 @@ impl From<StorageError> for LegacyListeningMigrationError {
             | StorageError::NewerSchema { .. }
             | StorageError::ForeignDatabase
             | StorageError::CorruptSchema { .. }
+            | StorageError::CutoverNotAuthoritative
             | StorageError::FailedMigration { .. } => Self::TargetBlocked,
             StorageError::Io { .. } | StorageError::Sqlite { .. } => Self::StorageUnavailable,
         }

@@ -202,6 +202,7 @@ fn unsubscribe_is_explicit_and_handles_are_not_reused() {
     let mut registry = SubscriptionRegistry::default();
     let request = ProjectionRequest {
         scope: ProjectionScope::Library,
+        offset: 0,
         max_items: 40,
     };
     let first = registry.subscribe(request);

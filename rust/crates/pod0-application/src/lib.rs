@@ -5,14 +5,23 @@ use pod0_domain::{CommandId, UnixTimestampMilliseconds};
 uniffi::setup_scaffolding!();
 
 mod contract;
+mod contract_projection;
 mod contract_state;
 #[cfg(test)]
 mod contract_state_tests;
 mod effects;
+mod feed;
+mod feed_parser;
+mod feed_parser_reader;
+mod feed_parser_values;
+#[cfg(test)]
+mod feed_tests;
 
 pub use contract::*;
+pub use contract_projection::*;
 pub use contract_state::*;
 pub use effects::*;
+pub use feed::*;
 
 pub const CORE_SCHEMA_VERSION: u32 = 1;
 

@@ -373,7 +373,6 @@ struct OPMLImportContent: View {
         var errors: [OPMLImportRowError] = []
         var imported = 0
         var skipped = 0
-        var fetched: [SubscriptionImportPayload] = []
         let service = SubscriptionService(store: store)
         withAnimation { phase = .progress(completed: 0, total: total, errors: errors) }
         for (index, entry) in entries.enumerated() {
@@ -382,8 +381,8 @@ struct OPMLImportContent: View {
                 continue
             }
             do {
-                if let payload = try await service.fetchForAdoption(opmlEntry: entry) {
-                    fetched.append(payload)
+                if try await service.adopt(opmlEntry: entry) != nil {
+                    imported += 1
                 } else {
                     skipped += 1
                 }
@@ -404,9 +403,6 @@ struct OPMLImportContent: View {
                 phase = .progress(completed: index + 1, total: total, errors: errors)
             }
         }
-        let result = store.addSubscriptions(fetched)
-        imported = result.imported
-        skipped += result.skipped
         Haptics.success()
         withAnimation {
             phase = .done(imported: imported, skipped: skipped, errors: errors)

@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 
 // MARK: - User follow state (`PodcastSubscription`)
 
@@ -32,6 +33,7 @@ extension AppStateStore {
     /// exist (call `upsertPodcast` or `ensurePodcast(feedURL:)` first).
     @discardableResult
     func addSubscription(podcastID: UUID) -> Bool {
+        guard !isSharedLibraryAuthoritative else { return false }
         let isFirst = state.subscriptions.isEmpty
         guard state.podcasts.contains(where: { $0.id == podcastID }) else { return false }
         guard !state.subscriptions.contains(where: { $0.podcastID == podcastID }) else { return false }
@@ -44,6 +46,7 @@ extension AppStateStore {
     /// the OPML import path which materializes the row inline.
     @discardableResult
     func addSubscription(_ subscription: PodcastSubscription) -> Bool {
+        guard !isSharedLibraryAuthoritative else { return false }
         let isFirst = state.subscriptions.isEmpty
         guard state.podcasts.contains(where: { $0.id == subscription.podcastID }) else { return false }
         guard !state.subscriptions.contains(where: { $0.podcastID == subscription.podcastID }) else { return false }
@@ -57,6 +60,9 @@ extension AppStateStore {
     /// are skipped — call refresh on them instead.
     @discardableResult
     func addSubscriptions(_ payloads: [SubscriptionImportPayload]) -> SubscriptionImportResult {
+        guard !isSharedLibraryAuthoritative else {
+            return SubscriptionImportResult(imported: 0, skipped: payloads.count)
+        }
         let isFirst = state.subscriptions.isEmpty
         guard !payloads.isEmpty else {
             return SubscriptionImportResult(imported: 0, skipped: 0)
@@ -142,6 +148,30 @@ extension AppStateStore {
     /// destructive action on followed podcasts and by the swipe-to-delete
     /// on the all-podcasts list for podcasts the user never followed.
     func deletePodcast(podcastID: UUID) {
+        if isSharedLibraryAuthoritative,
+           podcast(id: podcastID)?.kind == .rss {
+            Task { @MainActor [weak self] in
+                try? await self?.deletePodcastAndWait(podcastID: podcastID)
+            }
+            return
+        }
+        deleteSwiftPodcast(podcastID: podcastID)
+    }
+
+    /// Executes an RSS deletion through the authoritative core and returns
+    /// only after the resulting projection has replaced the Swift read model.
+    func deletePodcastAndWait(podcastID: UUID) async throws {
+        if isSharedLibraryAuthoritative {
+            guard let sharedLibrary else { throw SharedLibraryError.unavailable }
+            _ = try await sharedLibrary.execute(.unsubscribe(
+                podcastId: PodcastId(uuid: podcastID)
+            ))
+            return
+        }
+        deleteSwiftPodcast(podcastID: podcastID)
+    }
+
+    private func deleteSwiftPodcast(podcastID: UUID) {
         var next = state
         next.subscriptions.removeAll { $0.podcastID == podcastID }
         next.podcasts.removeAll { $0.id == podcastID }
@@ -154,14 +184,59 @@ extension AppStateStore {
 
     /// Toggles new-episode notifications for a subscribed podcast.
     func setSubscriptionNotificationsEnabled(_ podcastID: UUID, enabled: Bool) {
+        if isSharedLibraryAuthoritative {
+            Task { @MainActor [weak self] in
+                try? await self?.setSubscriptionNotificationsAndWait(
+                    podcastID,
+                    enabled: enabled
+                )
+            }
+            return
+        }
         guard let idx = state.subscriptions.firstIndex(where: { $0.podcastID == podcastID }) else { return }
         mutateState { $0.subscriptions[idx].notificationsEnabled = enabled }
     }
 
+    func setSubscriptionNotificationsAndWait(_ podcastID: UUID, enabled: Bool) async throws {
+        if isSharedLibraryAuthoritative {
+            guard let sharedLibrary else { throw SharedLibraryError.unavailable }
+            _ = try await sharedLibrary.execute(.setSubscriptionNotifications(
+                podcastId: PodcastId(uuid: podcastID),
+                enabled: enabled
+            ))
+            return
+        }
+        setSubscriptionNotificationsEnabled(podcastID, enabled: enabled)
+    }
+
     /// Replaces the per-podcast auto-download policy.
     func setSubscriptionAutoDownload(_ podcastID: UUID, policy: AutoDownloadPolicy) {
+        if isSharedLibraryAuthoritative {
+            Task { @MainActor [weak self] in
+                try? await self?.setSubscriptionAutoDownloadAndWait(
+                    podcastID,
+                    policy: policy
+                )
+            }
+            return
+        }
         guard let idx = state.subscriptions.firstIndex(where: { $0.podcastID == podcastID }) else { return }
         mutateState { $0.subscriptions[idx].autoDownload = policy }
+    }
+
+    func setSubscriptionAutoDownloadAndWait(
+        _ podcastID: UUID,
+        policy: AutoDownloadPolicy
+    ) async throws {
+        if isSharedLibraryAuthoritative {
+            guard let sharedLibrary else { throw SharedLibraryError.unavailable }
+            _ = try await sharedLibrary.execute(.setSubscriptionAutoDownload(
+                podcastId: PodcastId(uuid: podcastID),
+                policy: policy.coreValue
+            ))
+            return
+        }
+        setSubscriptionAutoDownload(podcastID, policy: policy)
     }
 
     static func feedURLKey(_ url: URL) -> String {

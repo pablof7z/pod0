@@ -78,6 +78,11 @@ extension AppStateStore {
         notificationDiscoveredAt: Date? = nil
     ) -> [UUID] {
         guard !incoming.isEmpty else { return [] }
+        if isSharedLibraryAuthoritative,
+           !isApplyingSharedLibraryProjection,
+           podcast(id: podcastID)?.kind == .rss {
+            return []
+        }
         var updated = state.episodes
         let existingByGUID = Dictionary(
             updated.enumerated()
@@ -111,42 +116,13 @@ extension AppStateStore {
                 newlyInserted.append(episode.id)
             }
         }
-        let discoveredAt = notificationDiscoveredAt ?? Date()
-        let inputs = newlyInserted.compactMap { id -> FeedDiscoveryPayload.EpisodeInput? in
-            guard let episode = updated.first(where: { $0.id == id }) else { return nil }
-            return .init(
-                episodeID: id,
-                inputVersion: DesiredStatePlanner.audioVersion(episode),
-                pubDate: episode.pubDate,
-                title: episode.title
-            )
-        }.sorted { $0.episodeID.uuidString < $1.episodeID.uuidString }
-        let batchVersion = ArtifactRepository.version(parts: inputs.flatMap {
-            [$0.episodeID.uuidString, $0.inputVersion]
-        })
-        let occurrence = "discovery:\(podcastID.uuidString):\(batchVersion)"
-        let policy = evaluateAutoDownload ? effectiveAutoDownload(forPodcast: podcastID) : nil
-        let discoveryPayload = FeedDiscoveryPayload(
+        let occurrenceJobs = feedDiscoveryJobs(
             podcastID: podcastID,
-            occurrenceID: occurrence,
-            discoveredAt: discoveredAt,
-            episodes: inputs,
-            autoDownloadPolicy: policy,
-            notificationsEnabled: notificationDiscoveredAt != nil,
-            policyVersion: "feed-policy-v1"
+            episodeIDs: newlyInserted,
+            episodes: updated,
+            evaluateAutoDownload: evaluateAutoDownload,
+            notificationDiscoveredAt: notificationDiscoveredAt
         )
-        let recordsDiscovery = evaluateAutoDownload || notificationDiscoveredAt != nil
-        let occurrenceJobs = inputs.isEmpty || !recordsDiscovery ? [] : [DesiredJob(
-            idempotencyKey: occurrence,
-            kind: .feedDiscovery,
-            subjectID: podcastID,
-            inputVersion: batchVersion,
-            occurrenceID: occurrence,
-            payload: try? Self.workflowEncoder.encode(discoveryPayload),
-            priority: 40,
-            resourceClass: .planning,
-            maxAttempts: 8
-        )]
         performMutationBatch {
             mutateState(ensuring: occurrenceJobs) { $0.episodes = updated }
             // The didSet fingerprint catches count changes but misses pure
@@ -229,27 +205,6 @@ extension AppStateStore {
         }
     }
 
-    /// Flips the user-set "starred" flag for an episode.
-    func toggleEpisodeStarred(_ id: UUID) {
-        guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
-        var episodes = state.episodes
-        episodes[idx].isStarred.toggle()
-        performMutationBatch {
-            mutateState { $0.episodes = episodes }
-        }
-    }
-
-    /// Sets the user-set "starred" flag explicitly.
-    func setEpisodeStarred(_ id: UUID, _ starred: Bool) {
-        guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
-        guard state.episodes[idx].isStarred != starred else { return }
-        var episodes = state.episodes
-        episodes[idx].isStarred = starred
-        performMutationBatch {
-            mutateState { $0.episodes = episodes }
-        }
-    }
-
     /// Updates stable local-file evidence. Active/retry/failure lifecycle is
     /// owned exclusively by JobStore.
     @discardableResult
@@ -327,78 +282,4 @@ extension AppStateStore {
         }
     }
 
-    /// Upserts a single episode attached to a known podcast. Used by the
-    /// agent's `play_external_episode` path. Re-entrant: replaying the
-    /// same audio URL under the same podcast returns the existing record
-    /// with its persisted `playbackPosition` intact. `imageURL` and
-    /// `duration` are refreshed when they change.
-    ///
-    /// The caller is responsible for ensuring `podcastID` references an
-    /// existing `Podcast` row (use `upsertPodcast` or `Podcast.unknownID`
-    /// when no feed metadata is available).
-    @discardableResult
-    func upsertEpisode(
-        podcastID: UUID,
-        audioURL: URL,
-        title: String,
-        imageURL: URL?,
-        duration: TimeInterval?
-    ) -> Episode {
-        let guid = audioURL.absoluteString
-        if let idx = state.episodes.firstIndex(where: {
-            $0.podcastID == podcastID && $0.guid == guid
-        }) {
-            var updated = state.episodes[idx]
-            var changed = false
-            if let imageURL, updated.imageURL != imageURL { updated.imageURL = imageURL; changed = true }
-            if let duration, updated.duration != duration { updated.duration = duration; changed = true }
-            if changed { mutateState { $0.episodes[idx] = updated } }
-            return state.episodes[idx]
-        }
-        let episode = Episode(
-            podcastID: podcastID,
-            guid: guid,
-            title: title,
-            pubDate: Date(),
-            duration: duration,
-            enclosureURL: audioURL,
-            imageURL: imageURL
-        )
-        performMutationBatch {
-            mutateState { $0.episodes.append(episode) }
-            invalidateEpisodeProjections()
-        }
-        WorkflowRuntime.shared.wake()
-        return episode
-    }
-
-    /// Records the most-recently-loaded episode so the mini-player can be
-    /// restored after an app restart. No-op when the value is unchanged.
-    func setLastPlayedEpisode(_ id: UUID) {
-        guard state.lastPlayedEpisodeID != id else { return }
-        mutateState { $0.lastPlayedEpisodeID = id }
-    }
-
-    /// Applies the stable projection of a verified chapter artifact. No-op
-    /// when an empty result would overwrite real chapter data.
-    func setEpisodeChapters(_ id: UUID, chapters: [Episode.Chapter]) {
-        guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
-        if chapters.isEmpty, let existing = state.episodes[idx].chapters, !existing.isEmpty {
-            return
-        }
-        let projected = chapters.isEmpty ? nil : chapters
-        guard state.episodes[idx].chapters != projected else { return }
-        var episodes = state.episodes
-        episodes[idx].chapters = projected
-        mutateState { $0.episodes = episodes }
-    }
-}
-
-private extension AppStateStore {
-    static let workflowEncoder: JSONEncoder = {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.sortedKeys]
-        return encoder
-    }()
 }

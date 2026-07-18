@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 import os.log
 
 /// Coordinates `FeedClient` fetches with `AppStateStore` writes.
@@ -86,6 +87,10 @@ struct SubscriptionService {
     /// metadata for episodes the user hasn't followed.
     @discardableResult
     func ensurePodcast(feedURLString: String) async throws -> Podcast {
+        if store.isSharedLibraryAuthoritative {
+            let result = try await executeShared(.ensurePodcast(feedUrl: feedURLString))
+            return try resolvedPodcast(from: result)
+        }
         let trimmed = feedURLString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = normalizedURL(from: trimmed) else {
             throw AddError.invalidURL
@@ -138,6 +143,14 @@ struct SubscriptionService {
     /// can surface a friendly "you're already subscribed" notice).
     @discardableResult
     func addSubscription(feedURLString: String) async throws -> Podcast {
+        if store.isSharedLibraryAuthoritative {
+            let result = try await executeShared(.subscribeToFeed(feedUrl: feedURLString))
+            let podcast = try resolvedPodcast(from: result)
+            if store.state.subscriptions.count == 1 {
+                store.recordProductSignal(.init(name: .firstSubscription, outcome: .created))
+            }
+            return podcast
+        }
         let trimmed = feedURLString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = normalizedURL(from: trimmed) else {
             throw AddError.invalidURL
@@ -205,6 +218,14 @@ struct SubscriptionService {
     /// errors.
     @discardableResult
     func adopt(opmlEntry seed: Podcast) async throws -> Podcast? {
+        if store.isSharedLibraryAuthoritative {
+            guard let feedURL = seed.feedURL else { return nil }
+            do {
+                return try await addSubscription(feedURLString: feedURL.absoluteString)
+            } catch AddError.alreadySubscribed {
+                return nil
+            }
+        }
         guard let payload = try await fetchForAdoption(opmlEntry: seed) else { return nil }
         let result = store.addSubscriptions([payload])
         return result.imported == 1 ? payload.podcast : nil
@@ -259,31 +280,4 @@ struct SubscriptionService {
         }
     }
 
-    // MARK: - Helpers
-
-    private func normalizedURL(from input: String) -> URL? {
-        guard !input.isEmpty else { return nil }
-        let candidate = input.contains("://") ? input : "https://\(input)"
-        guard let url = URL(string: candidate),
-              let scheme = url.scheme?.lowercased(),
-              scheme == "http" || scheme == "https",
-              url.host?.isEmpty == false
-        else { return nil }
-        return url
-    }
-
-    private func map(_ error: FeedClient.FeedFetchError) -> AddError {
-        switch error {
-        case .transport(let underlying):
-            return .transport(underlying)
-        case .http(let status):
-            return .http(status)
-        case .parse(let parseError):
-            let message = parseError.errorDescription
-                ?? (parseError as NSError).localizedDescription
-            return .parse(message)
-        case .missingFeedURL:
-            return .invalidURL
-        }
-    }
 }

@@ -96,6 +96,7 @@ pub(crate) fn golden_snapshot() -> ListeningDomainSnapshot {
             enclosure_url: values["episode_enclosure_url"].to_owned(),
             enclosure_mime_type: Some(values["episode_enclosure_mime"].to_owned()),
             image_url: Some(values["episode_image_url"].to_owned()),
+            feed_metadata: EpisodeFeedMetadata::default(),
             listening: EpisodeListeningState {
                 resume_position_milliseconds: number(&values, "episode_resume_position_ms"),
                 completion: CompletionStatus::InProgress,

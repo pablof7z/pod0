@@ -40,7 +40,10 @@ enum AppStateTestSupport {
     static func makeIsolatedStore(
         fileURL: URL = AppStateTestSupport.uniqueTempFileURL(),
         reset: Bool = true,
-        productSignals: any ProductSignalSink = DiscardingProductSignalSink.shared
+        productSignals: any ProductSignalSink = DiscardingProductSignalSink.shared,
+        sharedLibraryMode: AppStateStore.SharedLibraryMode = .disabled,
+        sharedFeedHost: (any CoreFeedHosting)? = nil,
+        startPeriodicSubscriptionRefresh: Bool = false
     ) -> (store: AppStateStore, fileURL: URL) {
         if reset {
             // Belt-and-suspenders: clear anything a previous (crashed) test
@@ -48,7 +51,13 @@ enum AppStateTestSupport {
             try? FileManager.default.removeItem(at: fileURL)
         }
         let persistence = Persistence(fileURL: fileURL)
-        let store = AppStateStore(persistence: persistence, productSignals: productSignals)
+        let store = AppStateStore(
+            persistence: persistence,
+            productSignals: productSignals,
+            sharedLibraryMode: sharedLibraryMode,
+            sharedFeedHost: sharedFeedHost,
+            startPeriodicSubscriptionRefresh: startPeriodicSubscriptionRefresh
+        )
         return (store, fileURL)
     }
 

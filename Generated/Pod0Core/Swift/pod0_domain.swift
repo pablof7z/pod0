@@ -871,6 +871,68 @@ public func FfiConverterTypeDomainEventId_lower(_ value: DomainEventId) -> RustB
 }
 
 
+public struct EpisodeFeedMetadata: Equatable, Hashable {
+    public let publisherTranscript: PublisherTranscriptReference?
+    public let chaptersUrl: String?
+    public let persons: [PodcastPersonRecord]
+    public let soundBites: [PodcastSoundBiteRecord]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(publisherTranscript: PublisherTranscriptReference?, chaptersUrl: String?, persons: [PodcastPersonRecord], soundBites: [PodcastSoundBiteRecord]) {
+        self.publisherTranscript = publisherTranscript
+        self.chaptersUrl = chaptersUrl
+        self.persons = persons
+        self.soundBites = soundBites
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension EpisodeFeedMetadata: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEpisodeFeedMetadata: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EpisodeFeedMetadata {
+        return
+            try EpisodeFeedMetadata(
+                publisherTranscript: FfiConverterOptionTypePublisherTranscriptReference.read(from: &buf),
+                chaptersUrl: FfiConverterOptionString.read(from: &buf),
+                persons: FfiConverterSequenceTypePodcastPersonRecord.read(from: &buf),
+                soundBites: FfiConverterSequenceTypePodcastSoundBiteRecord.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: EpisodeFeedMetadata, into buf: inout [UInt8]) {
+        FfiConverterOptionTypePublisherTranscriptReference.write(value.publisherTranscript, into: &buf)
+        FfiConverterOptionString.write(value.chaptersUrl, into: &buf)
+        FfiConverterSequenceTypePodcastPersonRecord.write(value.persons, into: &buf)
+        FfiConverterSequenceTypePodcastSoundBiteRecord.write(value.soundBites, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpisodeFeedMetadata_lift(_ buf: RustBuffer) throws -> EpisodeFeedMetadata {
+    return try FfiConverterTypeEpisodeFeedMetadata.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpisodeFeedMetadata_lower(_ value: EpisodeFeedMetadata) -> RustBuffer {
+    return FfiConverterTypeEpisodeFeedMetadata.lower(value)
+}
+
+
 public struct EpisodeId: Equatable, Hashable {
     public let high: UInt64
     public let low: UInt64
@@ -1052,6 +1114,7 @@ public struct EpisodeRecord: Equatable, Hashable {
     public let enclosureUrl: String
     public let enclosureMimeType: String?
     public let imageUrl: String?
+    public let feedMetadata: EpisodeFeedMetadata
     public let listening: EpisodeListeningState
     public let isStarred: Bool
     public let download: DownloadArtifactStatus
@@ -1063,7 +1126,7 @@ public struct EpisodeRecord: Equatable, Hashable {
         /**
          * Publisher GUID or the deterministic Swift `synth::` fallback. Exact,
          * case-sensitive matching is scoped to the parent podcast.
-         */publisherGuid: String, title: String, description: String, publishedAt: UnixTimestampMilliseconds, durationMilliseconds: UInt64?, enclosureUrl: String, enclosureMimeType: String?, imageUrl: String?, listening: EpisodeListeningState, isStarred: Bool, download: DownloadArtifactStatus, transcript: TranscriptArtifactStatus) {
+         */publisherGuid: String, title: String, description: String, publishedAt: UnixTimestampMilliseconds, durationMilliseconds: UInt64?, enclosureUrl: String, enclosureMimeType: String?, imageUrl: String?, feedMetadata: EpisodeFeedMetadata, listening: EpisodeListeningState, isStarred: Bool, download: DownloadArtifactStatus, transcript: TranscriptArtifactStatus) {
         self.episodeId = episodeId
         self.podcastId = podcastId
         self.publisherGuid = publisherGuid
@@ -1074,6 +1137,7 @@ public struct EpisodeRecord: Equatable, Hashable {
         self.enclosureUrl = enclosureUrl
         self.enclosureMimeType = enclosureMimeType
         self.imageUrl = imageUrl
+        self.feedMetadata = feedMetadata
         self.listening = listening
         self.isStarred = isStarred
         self.download = download
@@ -1106,6 +1170,7 @@ public struct FfiConverterTypeEpisodeRecord: FfiConverterRustBuffer {
                 enclosureUrl: FfiConverterString.read(from: &buf),
                 enclosureMimeType: FfiConverterOptionString.read(from: &buf),
                 imageUrl: FfiConverterOptionString.read(from: &buf),
+                feedMetadata: FfiConverterTypeEpisodeFeedMetadata.read(from: &buf),
                 listening: FfiConverterTypeEpisodeListeningState.read(from: &buf),
                 isStarred: FfiConverterBool.read(from: &buf),
                 download: FfiConverterTypeDownloadArtifactStatus.read(from: &buf),
@@ -1124,6 +1189,7 @@ public struct FfiConverterTypeEpisodeRecord: FfiConverterRustBuffer {
         FfiConverterString.write(value.enclosureUrl, into: &buf)
         FfiConverterOptionString.write(value.enclosureMimeType, into: &buf)
         FfiConverterOptionString.write(value.imageUrl, into: &buf)
+        FfiConverterTypeEpisodeFeedMetadata.write(value.feedMetadata, into: &buf)
         FfiConverterTypeEpisodeListeningState.write(value.listening, into: &buf)
         FfiConverterBool.write(value.isStarred, into: &buf)
         FfiConverterTypeDownloadArtifactStatus.write(value.download, into: &buf)
@@ -1611,6 +1677,72 @@ public func FfiConverterTypePodcastIdentityRecord_lower(_ value: PodcastIdentity
 }
 
 
+public struct PodcastPersonRecord: Equatable, Hashable {
+    public let name: String
+    public let role: String?
+    public let group: String?
+    public let imageUrl: String?
+    public let linkUrl: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(name: String, role: String?, group: String?, imageUrl: String?, linkUrl: String?) {
+        self.name = name
+        self.role = role
+        self.group = group
+        self.imageUrl = imageUrl
+        self.linkUrl = linkUrl
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PodcastPersonRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePodcastPersonRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PodcastPersonRecord {
+        return
+            try PodcastPersonRecord(
+                name: FfiConverterString.read(from: &buf),
+                role: FfiConverterOptionString.read(from: &buf),
+                group: FfiConverterOptionString.read(from: &buf),
+                imageUrl: FfiConverterOptionString.read(from: &buf),
+                linkUrl: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PodcastPersonRecord, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.role, into: &buf)
+        FfiConverterOptionString.write(value.group, into: &buf)
+        FfiConverterOptionString.write(value.imageUrl, into: &buf)
+        FfiConverterOptionString.write(value.linkUrl, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePodcastPersonRecord_lift(_ buf: RustBuffer) throws -> PodcastPersonRecord {
+    return try FfiConverterTypePodcastPersonRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePodcastPersonRecord_lower(_ value: PodcastPersonRecord) -> RustBuffer {
+    return FfiConverterTypePodcastPersonRecord.lower(value)
+}
+
+
 public struct PodcastRecord: Equatable, Hashable {
     public let podcastId: PodcastId
     public let kind: PodcastKind
@@ -1713,6 +1845,64 @@ public func FfiConverterTypePodcastRecord_lower(_ value: PodcastRecord) -> RustB
 }
 
 
+public struct PodcastSoundBiteRecord: Equatable, Hashable {
+    public let startMilliseconds: UInt64
+    public let durationMilliseconds: UInt64
+    public let title: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(startMilliseconds: UInt64, durationMilliseconds: UInt64, title: String?) {
+        self.startMilliseconds = startMilliseconds
+        self.durationMilliseconds = durationMilliseconds
+        self.title = title
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PodcastSoundBiteRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePodcastSoundBiteRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PodcastSoundBiteRecord {
+        return
+            try PodcastSoundBiteRecord(
+                startMilliseconds: FfiConverterUInt64.read(from: &buf),
+                durationMilliseconds: FfiConverterUInt64.read(from: &buf),
+                title: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PodcastSoundBiteRecord, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.startMilliseconds, into: &buf)
+        FfiConverterUInt64.write(value.durationMilliseconds, into: &buf)
+        FfiConverterOptionString.write(value.title, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePodcastSoundBiteRecord_lift(_ buf: RustBuffer) throws -> PodcastSoundBiteRecord {
+    return try FfiConverterTypePodcastSoundBiteRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePodcastSoundBiteRecord_lower(_ value: PodcastSoundBiteRecord) -> RustBuffer {
+    return FfiConverterTypePodcastSoundBiteRecord.lower(value)
+}
+
+
 public struct PodcastSubscriptionRecord: Equatable, Hashable {
     public let podcastId: PodcastId
     public let subscribedAt: UnixTimestampMilliseconds
@@ -1776,6 +1966,64 @@ public func FfiConverterTypePodcastSubscriptionRecord_lift(_ buf: RustBuffer) th
 #endif
 public func FfiConverterTypePodcastSubscriptionRecord_lower(_ value: PodcastSubscriptionRecord) -> RustBuffer {
     return FfiConverterTypePodcastSubscriptionRecord.lower(value)
+}
+
+
+public struct PublisherTranscriptReference: Equatable, Hashable {
+    public let url: String
+    public let mediaType: String?
+    public let format: PublisherTranscriptFormat
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(url: String, mediaType: String?, format: PublisherTranscriptFormat) {
+        self.url = url
+        self.mediaType = mediaType
+        self.format = format
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PublisherTranscriptReference: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePublisherTranscriptReference: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PublisherTranscriptReference {
+        return
+            try PublisherTranscriptReference(
+                url: FfiConverterString.read(from: &buf),
+                mediaType: FfiConverterOptionString.read(from: &buf),
+                format: FfiConverterTypePublisherTranscriptFormat.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PublisherTranscriptReference, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.url, into: &buf)
+        FfiConverterOptionString.write(value.mediaType, into: &buf)
+        FfiConverterTypePublisherTranscriptFormat.write(value.format, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublisherTranscriptReference_lift(_ buf: RustBuffer) throws -> PublisherTranscriptReference {
+    return try FfiConverterTypePublisherTranscriptReference.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublisherTranscriptReference_lower(_ value: PublisherTranscriptReference) -> RustBuffer {
+    return FfiConverterTypePublisherTranscriptReference.lower(value)
 }
 
 
@@ -2881,6 +3129,110 @@ public func FfiConverterTypePodcastKind_lower(_ value: PodcastKind) -> RustBuffe
 
 
 
+public enum PublisherTranscriptFormat: Equatable, Hashable {
+
+    case json
+    case webVtt
+    case subRip
+    case html
+    case plainText
+    case unknown
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PublisherTranscriptFormat: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePublisherTranscriptFormat: FfiConverterRustBuffer {
+    typealias SwiftType = PublisherTranscriptFormat
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PublisherTranscriptFormat {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .json
+
+        case 2: return .webVtt
+
+        case 3: return .subRip
+
+        case 4: return .html
+
+        case 5: return .plainText
+
+        case 6: return .unknown
+
+        case 7: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: PublisherTranscriptFormat, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .json:
+            writeInt(&buf, Int32(1))
+
+
+        case .webVtt:
+            writeInt(&buf, Int32(2))
+
+
+        case .subRip:
+            writeInt(&buf, Int32(3))
+
+
+        case .html:
+            writeInt(&buf, Int32(4))
+
+
+        case .plainText:
+            writeInt(&buf, Int32(5))
+
+
+        case .unknown:
+            writeInt(&buf, Int32(6))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(7))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublisherTranscriptFormat_lift(_ buf: RustBuffer) throws -> PublisherTranscriptFormat {
+    return try FfiConverterTypePublisherTranscriptFormat.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublisherTranscriptFormat_lower(_ value: PublisherTranscriptFormat) -> RustBuffer {
+    return FfiConverterTypePublisherTranscriptFormat.lower(value)
+}
+
+
+
+
 public enum TranscriptArtifactStatus: Equatable, Hashable {
 
     case unavailable
@@ -3234,6 +3586,30 @@ fileprivate struct FfiConverterOptionTypePodcastId: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypePublisherTranscriptReference: FfiConverterRustBuffer {
+    typealias SwiftType = PublisherTranscriptReference?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypePublisherTranscriptReference.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypePublisherTranscriptReference.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeUnixTimestampMilliseconds: FfiConverterRustBuffer {
     typealias SwiftType = UnixTimestampMilliseconds?
 
@@ -3358,6 +3734,31 @@ fileprivate struct FfiConverterSequenceTypePodcastIdentityRecord: FfiConverterRu
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypePodcastPersonRecord: FfiConverterRustBuffer {
+    typealias SwiftType = [PodcastPersonRecord]
+
+    public static func write(_ value: [PodcastPersonRecord], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypePodcastPersonRecord.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [PodcastPersonRecord] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [PodcastPersonRecord]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypePodcastPersonRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypePodcastRecord: FfiConverterRustBuffer {
     typealias SwiftType = [PodcastRecord]
 
@@ -3375,6 +3776,31 @@ fileprivate struct FfiConverterSequenceTypePodcastRecord: FfiConverterRustBuffer
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypePodcastRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypePodcastSoundBiteRecord: FfiConverterRustBuffer {
+    typealias SwiftType = [PodcastSoundBiteRecord]
+
+    public static func write(_ value: [PodcastSoundBiteRecord], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypePodcastSoundBiteRecord.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [PodcastSoundBiteRecord] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [PodcastSoundBiteRecord]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypePodcastSoundBiteRecord.read(from: &buf))
         }
         return seq
     }

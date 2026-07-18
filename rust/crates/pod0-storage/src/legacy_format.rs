@@ -119,6 +119,16 @@ pub(crate) struct RawEpisode {
     pub(crate) enclosure_mime_type: Option<String>,
     #[serde(rename = "imageURL")]
     pub(crate) image_url: Option<String>,
+    #[serde(rename = "publisherTranscriptURL")]
+    pub(crate) publisher_transcript_url: Option<String>,
+    #[serde(rename = "publisherTranscriptType")]
+    pub(crate) publisher_transcript_type: Option<String>,
+    #[serde(rename = "chaptersURL")]
+    pub(crate) chapters_url: Option<String>,
+    #[serde(default)]
+    pub(crate) persons: Vec<RawPodcastPerson>,
+    #[serde(rename = "soundBites", default)]
+    pub(crate) sound_bites: Vec<RawPodcastSoundBite>,
     #[serde(rename = "playbackPosition", default)]
     pub(crate) playback_position: f64,
     #[serde(default)]
@@ -129,6 +139,25 @@ pub(crate) struct RawEpisode {
     pub(crate) download_state: Option<Value>,
     #[serde(rename = "transcriptState")]
     pub(crate) transcript_state: Option<Value>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct RawPodcastPerson {
+    pub(crate) name: String,
+    pub(crate) role: Option<String>,
+    pub(crate) group: Option<String>,
+    #[serde(rename = "imageURL")]
+    pub(crate) image_url: Option<String>,
+    #[serde(rename = "linkURL")]
+    pub(crate) link_url: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct RawPodcastSoundBite {
+    #[serde(rename = "startTime")]
+    pub(crate) start_time: f64,
+    pub(crate) duration: f64,
+    pub(crate) title: Option<String>,
 }
 
 #[derive(Clone, Deserialize)]

@@ -202,6 +202,12 @@ final class Pod0ListeningDomainBindingTests: XCTestCase {
                 enclosureUrl: episode.enclosureURL.absoluteString,
                 enclosureMimeType: episode.enclosureMimeType,
                 imageUrl: episode.imageURL?.absoluteString,
+                feedMetadata: EpisodeFeedMetadata(
+                    publisherTranscript: nil,
+                    chaptersUrl: nil,
+                    persons: [],
+                    soundBites: []
+                ),
                 listening: EpisodeListeningState(
                     resumePositionMilliseconds: UInt64(durationMilliseconds(episode.playbackPosition)),
                     completion: .inProgress

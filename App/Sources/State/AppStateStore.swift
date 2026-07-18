@@ -9,8 +9,17 @@ import os.log
 @Observable
 final class AppStateStore {
 
-    nonisolated private static let logger = Logger.app("AppStateStore")
+    enum SharedLibraryMode: Sendable {
+        case automatic
+        case disabled
+    }
+
+    nonisolated static let logger = Logger.app("AppStateStore")
     let productSignals: any ProductSignalSink
+    @ObservationIgnored private(set) var sharedLibrary: SharedLibraryClient?
+    @ObservationIgnored private(set) var isSharedLibraryAuthoritative = false
+    @ObservationIgnored private(set) var sharedLibraryUnavailableReason: String?
+    @ObservationIgnored var isApplyingSharedLibraryProjection = false
     /// Chapter the user long-pressed in `PlayerChaptersScrollView`. Drained
     /// by `AgentChatSession.init` and prefilled into the composer; cleared
     /// by the same call so a later sheet re-open starts blank. Carries no
@@ -139,8 +148,13 @@ final class AppStateStore {
     /// position.
     var lastPositionFlush: Date?
 
-    init(persistence: Persistence = .shared,
-         productSignals: any ProductSignalSink = DiscardingProductSignalSink.shared) {
+    init(
+        persistence: Persistence = .shared,
+        productSignals: any ProductSignalSink = DiscardingProductSignalSink.shared,
+        sharedLibraryMode: SharedLibraryMode = .automatic,
+        sharedFeedHost: (any CoreFeedHosting)? = nil,
+        startPeriodicSubscriptionRefresh: Bool = true
+    ) {
         self.persistence = persistence
         self.productSignals = productSignals
         var loadedState: AppState
@@ -168,10 +182,36 @@ final class AppStateStore {
             loadedState.podcasts.removeAll { legacyExternalPodcastIDs.contains($0.id) }
             loadedState.subscriptions.removeAll { legacyExternalPodcastIDs.contains($0.podcastID) }
         }
+        if sharedLibraryMode == .automatic,
+           !FileManager.default.fileExists(atPath: persistence.sharedCoreStoreURL.path) {
+            let nextGeneration = loadedState.persistenceGeneration == .max
+                ? UInt64.max
+                : loadedState.persistenceGeneration + 1
+            let importRevision = max(nextGeneration, 1)
+            loadedState.persistenceGeneration = importRevision
+            _ = persistence.write(loadedState, revision: importRevision)
+        }
         // Start iCloud KV sync before assigning state so that the first
         // push (triggered by the `didSet` below) reflects the merged values.
         iCloudSettingsSync.shared.start(mergingInto: &loadedState.settings)
         self.state = loadedState
+        if sharedLibraryMode == .automatic {
+            let feedHost: any CoreFeedHosting = sharedFeedHost ?? CoreFeedHost()
+            switch SharedLibraryBootstrap.run(
+                persistence: persistence,
+                feedHost: feedHost
+            ) {
+            case .ready(let client):
+                sharedLibrary = client
+                isSharedLibraryAuthoritative = true
+                client.attach(store: self)
+            case .legacySwift:
+                break
+            case .authoritativeUnavailable(let reason):
+                isSharedLibraryAuthoritative = true
+                sharedLibraryUnavailableReason = reason
+            }
+        }
         // The `state.didSet` above doesn't fire from inside `init` until all
         // stored properties are initialised, and even then it skips the very
         // first assignment in init. Build the projections by hand from the
@@ -215,75 +255,14 @@ final class AppStateStore {
         // Kick off the foreground subscription-refresh loop. The service
         // itself owns the polling task + lifecycle observers, so this call
         // is idempotent and we never have to clean up from here.
-        SubscriptionRefreshService.shared.startPeriodicRefresh(store: self)
+        if startPeriodicSubscriptionRefresh {
+            SubscriptionRefreshService.shared.startPeriodicRefresh(store: self)
+        }
         // Subscribe to app-backgrounding so the position cache is flushed
         // to disk before iOS can suspend or kill the process. Token is
         // retained on `self` so the observer outlives the init call but
         // dies with the store. See `AppStateStore+PositionDebounce.swift`.
         backgroundObservers = registerBackgroundFlushObservers()
-    }
-
-    /// One-time removal of the deleted Wiki feature's on-disk page store
-    /// (`Application Support/podcastr/wiki/`). The feature is gone and
-    /// nothing reads or writes that directory anymore, so any pages left
-    /// over from a prior install are pure disk waste. Safe to no-op if the
-    /// directory doesn't exist (fresh installs, or a device that already
-    /// ran this cleanup).
-    private static func cleanupOrphanedWikiFilesIfNeeded() {
-        let flagKey = "cleanup.wikiFilesRemoved.v1"
-        guard !UserDefaults.standard.bool(forKey: flagKey) else { return }
-        defer { UserDefaults.standard.set(true, forKey: flagKey) }
-        let fm = FileManager.default
-        guard let base = try? fm.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: false
-        ) else { return }
-        let wikiDir = base
-            .appendingPathComponent("podcastr", isDirectory: true)
-            .appendingPathComponent("wiki", isDirectory: true)
-        try? fm.removeItem(at: wikiDir)
-    }
-
-    /// Pulls the latest iCloud values into `state.settings`.
-    /// Called when `iCloudSettingsSync` reports an external change.
-    private func applyExternalSettingsChange() {
-        let sync = iCloudSettingsSync.shared
-        sync.isApplyingRemoteChange = true
-        defer { sync.isApplyingRemoteChange = false }
-        var updated = state.settings
-        sync.merge(from: NSUbiquitousKeyValueStore.default, into: &updated)
-        guard updated != state.settings else { return }
-        Self.logger.info("iCloudSettingsSync: applying remote settings update")
-        // Assign directly (bypassing updateSettings) to avoid a redundant push.
-        state.settings = updated
-    }
-
-    private static func migrateLegacyOpenRouterSecretIfNeeded(
-        in state: inout AppState,
-        persistence: Persistence
-    ) {
-        let legacyKey = state.settings.legacyOpenRouterAPIKey.trimmedOrEmpty
-        guard !legacyKey.isEmpty else {
-            state.settings.legacyOpenRouterAPIKey = nil
-            return
-        }
-
-        do {
-            try OpenRouterCredentialStore.saveAPIKey(legacyKey)
-            state.settings.markOpenRouterManual()
-        } catch {
-            logger.error("Failed to migrate legacy OpenRouter key to keychain: \(error, privacy: .public)")
-            state.settings.clearOpenRouterCredential()
-        }
-        persistence.save(state)
-    }
-
-    // MARK: - Settings
-
-    func updateSettings(_ settings: Settings) {
-        state.settings = settings
     }
 
     deinit {

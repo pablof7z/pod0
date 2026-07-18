@@ -295,12 +295,10 @@ final class Persistence: Sendable {
         return AppState()
     }
 
-    /// Wipes the persisted `AppState` file. Intended for the "Erase all
-    /// data" code path and for test cleanup. Idempotent — missing files
-    /// are not an error.
     func reset() {
         try? FileManager.default.removeItem(at: fileURL)
         episodeStore.reset()
+        removeSharedCoreArtifacts()
         episodeSnapshot.withLock { $0 = nil }
         revision.withLock { $0 = 0 }
         lastWrittenRevision.withLock { $0 = 0 }

@@ -22,9 +22,11 @@ pod0-application = { path = "crates/pod0-application", version = "=0.1.0" }
 pod0-storage = { path = "crates/pod0-storage", version = "=0.1.0" }
 nmp = { git = "https://github.com/pablof7z/nmp.git", rev = "f3495f09c8a3f90f3b31a28313f572c09fbdb369", version = "=0.1.0" }
 rusqlite = { version = "=0.39.0", default-features = false, features = ["backup", "bundled"] }
+quick-xml = { version = "=0.41.0" }
 serde = { version = "=1.0.228", features = ["derive"] }
 serde_json = { version = "=1.0.150" }
 sha2 = { version = "=0.10.9" }
 tempfile = { version = "=3.27.0" }
 time = { version = "=0.3.47", features = ["parsing"] }
 uniffi = { version = "=0.32.0" }
+url = { version = "=2.5.7" }

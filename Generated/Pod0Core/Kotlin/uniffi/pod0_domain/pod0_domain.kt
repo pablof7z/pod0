@@ -1304,6 +1304,54 @@ public object FfiConverterTypeDomainEventId: FfiConverterRustBuffer<DomainEventI
 
 
 
+data class EpisodeFeedMetadata (
+    val `publisherTranscript`: PublisherTranscriptReference?
+    ,
+    val `chaptersUrl`: kotlin.String?
+    ,
+    val `persons`: List<PodcastPersonRecord>
+    ,
+    val `soundBites`: List<PodcastSoundBiteRecord>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEpisodeFeedMetadata: FfiConverterRustBuffer<EpisodeFeedMetadata> {
+    override fun read(buf: ByteBuffer): EpisodeFeedMetadata {
+        return EpisodeFeedMetadata(
+            FfiConverterOptionalTypePublisherTranscriptReference.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceTypePodcastPersonRecord.read(buf),
+            FfiConverterSequenceTypePodcastSoundBiteRecord.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EpisodeFeedMetadata) = (
+            FfiConverterOptionalTypePublisherTranscriptReference.allocationSize(value.`publisherTranscript`) +
+            FfiConverterOptionalString.allocationSize(value.`chaptersUrl`) +
+            FfiConverterSequenceTypePodcastPersonRecord.allocationSize(value.`persons`) +
+            FfiConverterSequenceTypePodcastSoundBiteRecord.allocationSize(value.`soundBites`)
+    )
+
+    override fun write(value: EpisodeFeedMetadata, buf: ByteBuffer) {
+            FfiConverterOptionalTypePublisherTranscriptReference.write(value.`publisherTranscript`, buf)
+            FfiConverterOptionalString.write(value.`chaptersUrl`, buf)
+            FfiConverterSequenceTypePodcastPersonRecord.write(value.`persons`, buf)
+            FfiConverterSequenceTypePodcastSoundBiteRecord.write(value.`soundBites`, buf)
+    }
+}
+
+
+
 data class EpisodeId (
     val `high`: kotlin.ULong
     ,
@@ -1448,6 +1496,8 @@ data class EpisodeRecord (
     ,
     val `imageUrl`: kotlin.String?
     ,
+    val `feedMetadata`: EpisodeFeedMetadata
+    ,
     val `listening`: EpisodeListeningState
     ,
     val `isStarred`: kotlin.Boolean
@@ -1481,6 +1531,7 @@ public object FfiConverterTypeEpisodeRecord: FfiConverterRustBuffer<EpisodeRecor
             FfiConverterString.read(buf),
             FfiConverterOptionalString.read(buf),
             FfiConverterOptionalString.read(buf),
+            FfiConverterTypeEpisodeFeedMetadata.read(buf),
             FfiConverterTypeEpisodeListeningState.read(buf),
             FfiConverterBoolean.read(buf),
             FfiConverterTypeDownloadArtifactStatus.read(buf),
@@ -1499,6 +1550,7 @@ public object FfiConverterTypeEpisodeRecord: FfiConverterRustBuffer<EpisodeRecor
             FfiConverterString.allocationSize(value.`enclosureUrl`) +
             FfiConverterOptionalString.allocationSize(value.`enclosureMimeType`) +
             FfiConverterOptionalString.allocationSize(value.`imageUrl`) +
+            FfiConverterTypeEpisodeFeedMetadata.allocationSize(value.`feedMetadata`) +
             FfiConverterTypeEpisodeListeningState.allocationSize(value.`listening`) +
             FfiConverterBoolean.allocationSize(value.`isStarred`) +
             FfiConverterTypeDownloadArtifactStatus.allocationSize(value.`download`) +
@@ -1516,6 +1568,7 @@ public object FfiConverterTypeEpisodeRecord: FfiConverterRustBuffer<EpisodeRecor
             FfiConverterString.write(value.`enclosureUrl`, buf)
             FfiConverterOptionalString.write(value.`enclosureMimeType`, buf)
             FfiConverterOptionalString.write(value.`imageUrl`, buf)
+            FfiConverterTypeEpisodeFeedMetadata.write(value.`feedMetadata`, buf)
             FfiConverterTypeEpisodeListeningState.write(value.`listening`, buf)
             FfiConverterBoolean.write(value.`isStarred`, buf)
             FfiConverterTypeDownloadArtifactStatus.write(value.`download`, buf)
@@ -1867,6 +1920,59 @@ public object FfiConverterTypePodcastIdentityRecord: FfiConverterRustBuffer<Podc
 
 
 
+data class PodcastPersonRecord (
+    val `name`: kotlin.String
+    ,
+    val `role`: kotlin.String?
+    ,
+    val `group`: kotlin.String?
+    ,
+    val `imageUrl`: kotlin.String?
+    ,
+    val `linkUrl`: kotlin.String?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePodcastPersonRecord: FfiConverterRustBuffer<PodcastPersonRecord> {
+    override fun read(buf: ByteBuffer): PodcastPersonRecord {
+        return PodcastPersonRecord(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PodcastPersonRecord) = (
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterOptionalString.allocationSize(value.`role`) +
+            FfiConverterOptionalString.allocationSize(value.`group`) +
+            FfiConverterOptionalString.allocationSize(value.`imageUrl`) +
+            FfiConverterOptionalString.allocationSize(value.`linkUrl`)
+    )
+
+    override fun write(value: PodcastPersonRecord, buf: ByteBuffer) {
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterOptionalString.write(value.`role`, buf)
+            FfiConverterOptionalString.write(value.`group`, buf)
+            FfiConverterOptionalString.write(value.`imageUrl`, buf)
+            FfiConverterOptionalString.write(value.`linkUrl`, buf)
+    }
+}
+
+
+
 data class PodcastRecord (
     val `podcastId`: PodcastId
     ,
@@ -1965,6 +2071,49 @@ public object FfiConverterTypePodcastRecord: FfiConverterRustBuffer<PodcastRecor
 
 
 
+data class PodcastSoundBiteRecord (
+    val `startMilliseconds`: kotlin.ULong
+    ,
+    val `durationMilliseconds`: kotlin.ULong
+    ,
+    val `title`: kotlin.String?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePodcastSoundBiteRecord: FfiConverterRustBuffer<PodcastSoundBiteRecord> {
+    override fun read(buf: ByteBuffer): PodcastSoundBiteRecord {
+        return PodcastSoundBiteRecord(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PodcastSoundBiteRecord) = (
+            FfiConverterULong.allocationSize(value.`startMilliseconds`) +
+            FfiConverterULong.allocationSize(value.`durationMilliseconds`) +
+            FfiConverterOptionalString.allocationSize(value.`title`)
+    )
+
+    override fun write(value: PodcastSoundBiteRecord, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`startMilliseconds`, buf)
+            FfiConverterULong.write(value.`durationMilliseconds`, buf)
+            FfiConverterOptionalString.write(value.`title`, buf)
+    }
+}
+
+
+
 data class PodcastSubscriptionRecord (
     val `podcastId`: PodcastId
     ,
@@ -2013,6 +2162,49 @@ public object FfiConverterTypePodcastSubscriptionRecord: FfiConverterRustBuffer<
             FfiConverterTypeAutoDownloadPolicy.write(value.`autoDownload`, buf)
             FfiConverterBoolean.write(value.`notificationsEnabled`, buf)
             FfiConverterOptionalTypePlaybackRatePermille.write(value.`defaultPlaybackRate`, buf)
+    }
+}
+
+
+
+data class PublisherTranscriptReference (
+    val `url`: kotlin.String
+    ,
+    val `mediaType`: kotlin.String?
+    ,
+    val `format`: PublisherTranscriptFormat
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePublisherTranscriptReference: FfiConverterRustBuffer<PublisherTranscriptReference> {
+    override fun read(buf: ByteBuffer): PublisherTranscriptReference {
+        return PublisherTranscriptReference(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypePublisherTranscriptFormat.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PublisherTranscriptReference) = (
+            FfiConverterString.allocationSize(value.`url`) +
+            FfiConverterOptionalString.allocationSize(value.`mediaType`) +
+            FfiConverterTypePublisherTranscriptFormat.allocationSize(value.`format`)
+    )
+
+    override fun write(value: PublisherTranscriptReference, buf: ByteBuffer) {
+            FfiConverterString.write(value.`url`, buf)
+            FfiConverterOptionalString.write(value.`mediaType`, buf)
+            FfiConverterTypePublisherTranscriptFormat.write(value.`format`, buf)
     }
 }
 
@@ -3331,6 +3523,149 @@ public object FfiConverterTypePodcastKind : FfiConverterRustBuffer<PodcastKind>{
 
 
 
+sealed class PublisherTranscriptFormat {
+
+    object Json : PublisherTranscriptFormat()
+
+
+    object WebVtt : PublisherTranscriptFormat()
+
+
+    object SubRip : PublisherTranscriptFormat()
+
+
+    object Html : PublisherTranscriptFormat()
+
+
+    object PlainText : PublisherTranscriptFormat()
+
+
+    object Unknown : PublisherTranscriptFormat()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : PublisherTranscriptFormat()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePublisherTranscriptFormat : FfiConverterRustBuffer<PublisherTranscriptFormat>{
+    override fun read(buf: ByteBuffer): PublisherTranscriptFormat {
+        return when(buf.getInt()) {
+            1 -> PublisherTranscriptFormat.Json
+            2 -> PublisherTranscriptFormat.WebVtt
+            3 -> PublisherTranscriptFormat.SubRip
+            4 -> PublisherTranscriptFormat.Html
+            5 -> PublisherTranscriptFormat.PlainText
+            6 -> PublisherTranscriptFormat.Unknown
+            7 -> PublisherTranscriptFormat.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: PublisherTranscriptFormat): ULong = when(value) {
+        is PublisherTranscriptFormat.Json -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PublisherTranscriptFormat.WebVtt -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PublisherTranscriptFormat.SubRip -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PublisherTranscriptFormat.Html -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PublisherTranscriptFormat.PlainText -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PublisherTranscriptFormat.Unknown -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PublisherTranscriptFormat.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: PublisherTranscriptFormat, buf: ByteBuffer) {
+        when(value) {
+            is PublisherTranscriptFormat.Json -> {
+                buf.putInt(1)
+                Unit
+            }
+            is PublisherTranscriptFormat.WebVtt -> {
+                buf.putInt(2)
+                Unit
+            }
+            is PublisherTranscriptFormat.SubRip -> {
+                buf.putInt(3)
+                Unit
+            }
+            is PublisherTranscriptFormat.Html -> {
+                buf.putInt(4)
+                Unit
+            }
+            is PublisherTranscriptFormat.PlainText -> {
+                buf.putInt(5)
+                Unit
+            }
+            is PublisherTranscriptFormat.Unknown -> {
+                buf.putInt(6)
+                Unit
+            }
+            is PublisherTranscriptFormat.Unsupported -> {
+                buf.putInt(7)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 sealed class TranscriptArtifactStatus {
 
     object Unavailable : TranscriptArtifactStatus()
@@ -3803,6 +4138,38 @@ public object FfiConverterOptionalTypePodcastId: FfiConverterRustBuffer<PodcastI
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypePublisherTranscriptReference: FfiConverterRustBuffer<PublisherTranscriptReference?> {
+    override fun read(buf: ByteBuffer): PublisherTranscriptReference? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypePublisherTranscriptReference.read(buf)
+    }
+
+    override fun allocationSize(value: PublisherTranscriptReference?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypePublisherTranscriptReference.allocationSize(value)
+        }
+    }
+
+    override fun write(value: PublisherTranscriptReference?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypePublisherTranscriptReference.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeUnixTimestampMilliseconds: FfiConverterRustBuffer<UnixTimestampMilliseconds?> {
     override fun read(buf: ByteBuffer): UnixTimestampMilliseconds? {
         if (buf.get().toInt() == 0) {
@@ -3947,6 +4314,34 @@ public object FfiConverterSequenceTypePodcastIdentityRecord: FfiConverterRustBuf
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypePodcastPersonRecord: FfiConverterRustBuffer<List<PodcastPersonRecord>> {
+    override fun read(buf: ByteBuffer): List<PodcastPersonRecord> {
+        val len = buf.getInt()
+        return List<PodcastPersonRecord>(len) {
+            FfiConverterTypePodcastPersonRecord.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<PodcastPersonRecord>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypePodcastPersonRecord.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<PodcastPersonRecord>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypePodcastPersonRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypePodcastRecord: FfiConverterRustBuffer<List<PodcastRecord>> {
     override fun read(buf: ByteBuffer): List<PodcastRecord> {
         val len = buf.getInt()
@@ -3965,6 +4360,34 @@ public object FfiConverterSequenceTypePodcastRecord: FfiConverterRustBuffer<List
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypePodcastRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypePodcastSoundBiteRecord: FfiConverterRustBuffer<List<PodcastSoundBiteRecord>> {
+    override fun read(buf: ByteBuffer): List<PodcastSoundBiteRecord> {
+        val len = buf.getInt()
+        return List<PodcastSoundBiteRecord>(len) {
+            FfiConverterTypePodcastSoundBiteRecord.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<PodcastSoundBiteRecord>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypePodcastSoundBiteRecord.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<PodcastSoundBiteRecord>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypePodcastSoundBiteRecord.write(it, buf)
         }
     }
 }

@@ -41,4 +41,29 @@ extension Persistence {
             .deletingLastPathComponent()
             .appendingPathComponent("\(baseName).episodes.sqlite", isDirectory: false)
     }
+
+    var sharedCoreStoreURL: URL {
+        fileURL.deletingPathExtension().appendingPathExtension("core.sqlite")
+    }
+
+    var sharedCoreSchemaBackupURL: URL {
+        sharedCoreStoreURL.appendingPathExtension("schema-backup")
+    }
+
+    var legacyListeningBackupURL: URL {
+        episodeStore.fileURL.appendingPathExtension("listening-backup")
+    }
+
+    func removeSharedCoreArtifacts() {
+        let core = sharedCoreStoreURL
+        for url in [
+            core,
+            URL(fileURLWithPath: core.path + "-wal"),
+            URL(fileURLWithPath: core.path + "-shm"),
+            sharedCoreSchemaBackupURL,
+            legacyListeningBackupURL
+        ] {
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
 }

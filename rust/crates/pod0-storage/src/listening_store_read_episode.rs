@@ -5,11 +5,22 @@ use pod0_domain::{
 use rusqlite::{Connection, Row};
 
 use crate::StorageError;
+use crate::library_feed_codec;
 use crate::listening_db_codec::{corrupt, decode_completion, decode_transcript_source};
 
 pub(crate) fn read_episodes(connection: &Connection) -> Result<Vec<EpisodeRecord>, StorageError> {
     let mut statement = connection.prepare(
-        "SELECT episode_id,podcast_id,publisher_guid,title,description,published_at_ms,duration_ms,enclosure_url,enclosure_mime_type,image_url,resume_position_ms,completion_code,completion_cause_code,completion_cause_wire_code,is_starred,download_code,download_wire_code,download_ref_version,download_ref_key,download_byte_count,transcript_code,transcript_wire_code,transcript_ref_version,transcript_ref_key,transcript_source_code,transcript_source_wire_code FROM pod0_episodes ORDER BY rowid",
+        "SELECT e.episode_id,e.podcast_id,e.publisher_guid,e.title,e.description,e.published_at_ms,\
+         e.duration_ms,e.enclosure_url,e.enclosure_mime_type,e.image_url,e.resume_position_ms,\
+         e.completion_code,e.completion_cause_code,e.completion_cause_wire_code,e.is_starred,\
+         e.download_code,e.download_wire_code,e.download_ref_version,e.download_ref_key,\
+         e.download_byte_count,e.transcript_code,e.transcript_wire_code,e.transcript_ref_version,\
+         e.transcript_ref_key,e.transcript_source_code,e.transcript_source_wire_code,\
+         m.publisher_transcript_url,m.publisher_transcript_media_type,\
+         m.publisher_transcript_format_code,m.publisher_transcript_format_wire_code,\
+         m.chapters_url,m.persons_json,m.sound_bites_json \
+         FROM pod0_episodes e LEFT JOIN pod0_episode_feed_metadata m ON m.episode_id=e.episode_id \
+         ORDER BY e.rowid",
     ).map_err(|error| StorageError::sqlite("prepare episode projection", error))?;
     let mut rows = statement
         .query([])
@@ -36,6 +47,15 @@ fn episode_from_row(row: &Row<'_>) -> Result<EpisodeRecord, StorageError> {
         enclosure_url: row.get(7)?,
         enclosure_mime_type: row.get(8)?,
         image_url: row.get(9)?,
+        feed_metadata: library_feed_codec::decode(
+            row.get(26)?,
+            row.get(27)?,
+            row.get(28)?,
+            row.get(29)?,
+            row.get(30)?,
+            row.get(31)?,
+            row.get(32)?,
+        )?,
         listening: EpisodeListeningState {
             resume_position_milliseconds: unsigned(row.get(10)?, "resume position")?,
             completion: decode_completion(row.get(11)?, row.get(12)?, row.get(13)?)?,

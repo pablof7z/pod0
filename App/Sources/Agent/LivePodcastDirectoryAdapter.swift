@@ -201,21 +201,22 @@ final class LivePodcastSubscribeAdapter: PodcastSubscribeProtocol, @unchecked Se
         // Snapshot pre-delete state so we can report what was removed. The
         // sentinel "Unknown" row is deliberately rejected — deleting it would
         // orphan every external play.
-        return try await MainActor.run {
+        let snapshot = try await MainActor.run {
             guard uuid != Podcast.unknownID else {
                 throw DirectoryError.parseError("Cannot delete the Unknown podcast sentinel.")
             }
             let podcast = store.podcast(id: uuid)
             let wasSubscribed = store.subscription(podcastID: uuid) != nil
             let episodes = store.episodes(forPodcast: uuid).count
-            store.deletePodcast(podcastID: uuid)
-            return PodcastDeleteResult(
-                podcastID: podcastID,
-                title: podcast?.title,
-                wasSubscribed: wasSubscribed,
-                episodesDeleted: episodes
-            )
+            return (podcast?.title, wasSubscribed, episodes)
         }
+        try await store.deletePodcastAndWait(podcastID: uuid)
+        return PodcastDeleteResult(
+            podcastID: podcastID,
+            title: snapshot.0,
+            wasSubscribed: snapshot.1,
+            episodesDeleted: snapshot.2
+        )
     }
 }
 

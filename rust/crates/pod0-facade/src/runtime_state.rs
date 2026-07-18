@@ -2,152 +2,110 @@ use std::collections::{BTreeMap, VecDeque};
 use std::sync::Arc;
 
 use pod0_application::{
-    ApplicationCommand, CommandEnvelope, CommandLedger, CommandRegistration, CoreFailure,
-    CoreFailureCode, HostFailureCode, HostObservation, HostObservationEnvelope, HostRequest,
-    HostRequestEnvelope, HostRequestLedger, LibraryProjection, MAX_FEED_RESPONSE_BYTES,
-    MAX_OPERATION_ITEMS, ObservationAcceptance, OperationProjection, OperationStage,
-    PlaybackProjection, Projection, ProjectionEnvelope, ProjectionRequest, ProjectionScope,
-    Retryability, SubscriptionRegistry, UnsupportedProjection, UserAction,
+    Clock, CommandEnvelope, CommandLedger, CommandRegistration, CoreFailure, CoreFailureCode,
+    HostRequestEnvelope, HostRequestLedger, OperationProjection, OperationResult, OperationStage,
+    Retryability, SubscriptionRegistry, UserAction,
 };
-use pod0_domain::{CommandId, HostRequestId, StateRevision, SubscriptionId};
+use pod0_domain::{
+    CommandId, FeedIdentityV1, ListeningDomainSnapshot, PodcastId, StateRevision, SubscriptionId,
+};
+use pod0_storage::LibraryStore;
 
 use crate::ProjectionSubscriber;
+use crate::runtime_clock::SystemClock;
 
-#[derive(Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum FeedIntent {
+    Subscribe,
+    Ensure,
+    Refresh,
+    Metadata,
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct PendingFeed {
+    pub command_id: CommandId,
+    pub fingerprint: String,
+    pub intent: FeedIntent,
+    pub feed_identity: FeedIdentityV1,
+    pub podcast_id: PodcastId,
+}
+
 pub(super) struct FacadeState {
-    revision: StateRevision,
-    commands: CommandLedger,
-    host_requests: HostRequestLedger,
+    clock: Arc<dyn Clock>,
+    pub(super) revision: StateRevision,
+    pub(super) listening: ListeningDomainSnapshot,
+    pub(super) store: Option<LibraryStore>,
+    pub(super) commands: CommandLedger,
+    pub(super) host_requests: HostRequestLedger,
     pub(super) host_queue: VecDeque<HostRequestEnvelope>,
-    operations: Vec<OperationProjection>,
+    pub(super) pending_feeds: BTreeMap<pod0_domain::HostRequestId, PendingFeed>,
+    pub(super) operations: Vec<OperationProjection>,
     pub(super) subscriptions: SubscriptionRegistry,
     pub(super) subscribers: BTreeMap<SubscriptionId, Arc<dyn ProjectionSubscriber>>,
 }
 
+impl Default for FacadeState {
+    fn default() -> Self {
+        Self {
+            clock: Arc::new(SystemClock),
+            revision: StateRevision::INITIAL,
+            listening: empty_listening_snapshot(),
+            store: None,
+            commands: CommandLedger::default(),
+            host_requests: HostRequestLedger::default(),
+            host_queue: VecDeque::new(),
+            pending_feeds: BTreeMap::new(),
+            operations: Vec::new(),
+            subscriptions: SubscriptionRegistry::default(),
+            subscribers: BTreeMap::new(),
+        }
+    }
+}
+
 impl FacadeState {
+    #[cfg(test)]
+    pub(super) fn with_clock(clock: Arc<dyn Clock>) -> Self {
+        Self {
+            clock,
+            ..Self::default()
+        }
+    }
+
+    pub(super) fn now(&self) -> pod0_domain::UnixTimestampMilliseconds {
+        self.clock.now()
+    }
+
+    pub(super) fn open(store: LibraryStore) -> Result<Self, pod0_storage::StorageError> {
+        let listening = store.snapshot()?;
+        Ok(Self {
+            revision: listening.playback.revision,
+            listening,
+            store: Some(store),
+            ..Self::default()
+        })
+    }
+
     pub(super) fn dispatch(&mut self, envelope: CommandEnvelope) -> bool {
         match self.commands.register(envelope.clone(), self.revision) {
             CommandRegistration::Accepted => self.accept_command(envelope),
-            CommandRegistration::StaleRevision => self.reject_stale_command(envelope),
+            CommandRegistration::StaleRevision => {
+                self.advance_revision();
+                self.operations.push(OperationProjection {
+                    command_id: envelope.command_id,
+                    cancellation_id: envelope.cancellation_id,
+                    stage: OperationStage::Failed,
+                    failure: Some(failure(CoreFailureCode::RevisionConflict)),
+                    result: None,
+                });
+                self.trim_operations();
+                true
+            }
             CommandRegistration::Duplicate | CommandRegistration::ConflictingReuse => false,
         }
     }
 
-    fn accept_command(&mut self, envelope: CommandEnvelope) -> bool {
-        self.advance_revision();
-        self.operations.push(OperationProjection {
-            command_id: envelope.command_id,
-            cancellation_id: envelope.cancellation_id,
-            stage: OperationStage::Accepted,
-            failure: None,
-        });
-        match envelope.command {
-            ApplicationCommand::SubscribeToFeed { feed_url } => {
-                let request = HostRequestEnvelope {
-                    request_id: HostRequestId::from_parts(
-                        envelope.command_id.high,
-                        envelope.command_id.low,
-                    ),
-                    command_id: envelope.command_id,
-                    cancellation_id: envelope.cancellation_id,
-                    issued_revision: self.revision,
-                    deadline_at: None,
-                    request: HostRequest::FetchFeed {
-                        feed_url,
-                        entity_tag: None,
-                        last_modified: None,
-                        maximum_response_bytes: MAX_FEED_RESPONSE_BYTES,
-                    },
-                };
-                if self.host_requests.register(request.clone()) {
-                    self.host_queue.push_back(request);
-                    self.finish(envelope.command_id, OperationStage::Running, None);
-                } else {
-                    self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
-                }
-            }
-            ApplicationCommand::CancelOperation { cancellation_id } => {
-                self.host_requests.cancel(cancellation_id);
-                self.host_queue
-                    .retain(|request| request.cancellation_id != cancellation_id);
-                for operation in &mut self.operations {
-                    if operation.cancellation_id == cancellation_id
-                        && !operation.stage.is_terminal()
-                    {
-                        operation.stage = OperationStage::Cancelled;
-                        operation.failure = Some(failure(CoreFailureCode::Cancelled));
-                    }
-                }
-                self.finish(envelope.command_id, OperationStage::Succeeded, None);
-            }
-            ApplicationCommand::Unsubscribe { .. } | ApplicationCommand::RequestPlayback { .. } => {
-                self.fail(envelope.command_id, CoreFailureCode::NotFound);
-            }
-            ApplicationCommand::Unsupported { wire_code } => {
-                self.fail(
-                    envelope.command_id,
-                    CoreFailureCode::Unsupported { wire_code },
-                );
-            }
-        }
-        self.operations.truncate_from_start(MAX_OPERATION_ITEMS);
-        true
-    }
-
-    fn reject_stale_command(&mut self, envelope: CommandEnvelope) -> bool {
-        self.advance_revision();
-        self.operations.push(OperationProjection {
-            command_id: envelope.command_id,
-            cancellation_id: envelope.cancellation_id,
-            stage: OperationStage::Failed,
-            failure: Some(failure(CoreFailureCode::RevisionConflict)),
-        });
-        self.operations.truncate_from_start(MAX_OPERATION_ITEMS);
-        true
-    }
-
-    pub(super) fn record_host_observation(&mut self, observation: HostObservationEnvelope) -> bool {
-        let command_id = self.host_requests.command_id(observation.request_id);
-        let is_playback_stream = self
-            .host_requests
-            .is_playback_observation_stream(observation.request_id);
-        if self.host_requests.accept_observation(&observation) != ObservationAcceptance::Accepted {
-            return false;
-        }
-        let Some(command_id) = command_id else {
-            return false;
-        };
-        self.advance_revision();
-        match observation.observation {
-            HostObservation::Failed { code, .. } => {
-                let failure_code = match code {
-                    HostFailureCode::PermissionDenied => CoreFailureCode::HostRejected,
-                    _ => CoreFailureCode::HostUnavailable,
-                };
-                self.fail(command_id, failure_code);
-            }
-            HostObservation::Cancelled => self.finish(
-                command_id,
-                OperationStage::Cancelled,
-                Some(failure(CoreFailureCode::Cancelled)),
-            ),
-            HostObservation::FeedBytesFetched { .. } | HostObservation::FeedNotModified { .. } => {
-                self.fail(command_id, CoreFailureCode::Unsupported { wire_code: 1 });
-            }
-            HostObservation::PlaybackObserved { .. } if is_playback_stream => {
-                self.finish(command_id, OperationStage::Running, None);
-            }
-            HostObservation::PlaybackObserved { .. } => {
-                self.finish(command_id, OperationStage::Succeeded, None);
-            }
-            HostObservation::Unsupported { wire_code } => {
-                self.fail(command_id, CoreFailureCode::Unsupported { wire_code });
-            }
-        }
-        true
-    }
-
-    fn advance_revision(&mut self) {
+    pub(super) fn advance_revision(&mut self) {
         self.revision = StateRevision::new(
             self.revision
                 .value
@@ -156,15 +114,36 @@ impl FacadeState {
         );
     }
 
-    fn fail(&mut self, command_id: CommandId, code: CoreFailureCode) {
-        self.finish(command_id, OperationStage::Failed, Some(failure(code)));
+    pub(super) fn begin(&mut self, envelope: &CommandEnvelope) {
+        self.advance_revision();
+        self.operations.push(OperationProjection {
+            command_id: envelope.command_id,
+            cancellation_id: envelope.cancellation_id,
+            stage: OperationStage::Accepted,
+            failure: None,
+            result: None,
+        });
     }
 
-    fn finish(
+    pub(super) fn fail(&mut self, command_id: CommandId, code: CoreFailureCode) {
+        self.finish(
+            command_id,
+            OperationStage::Failed,
+            Some(failure(code)),
+            None,
+        );
+    }
+
+    pub(super) fn succeed(&mut self, command_id: CommandId, result: Option<OperationResult>) {
+        self.finish(command_id, OperationStage::Succeeded, None, result);
+    }
+
+    pub(super) fn finish(
         &mut self,
         command_id: CommandId,
         stage: OperationStage,
         operation_failure: Option<CoreFailure>,
+        result: Option<OperationResult>,
     ) {
         if let Some(operation) = self
             .operations
@@ -174,74 +153,57 @@ impl FacadeState {
         {
             operation.stage = stage;
             operation.failure = operation_failure;
+            operation.result = result;
         }
     }
 
-    pub(super) fn snapshot(&self, request: ProjectionRequest) -> ProjectionEnvelope {
-        let item_limit = request.bounded_max_items();
-        let projection = match request.scope {
-            ProjectionScope::Library => {
-                let mut value = LibraryProjection {
-                    podcasts: Vec::new(),
-                    episodes: Vec::new(),
-                    operations: self.operations.clone(),
-                    has_more: false,
-                };
-                value.enforce_bounds(item_limit);
-                Projection::Library { value }
-            }
-            ProjectionScope::Playback => {
-                let mut value = PlaybackProjection {
-                    current: None,
-                    queue: Vec::new(),
-                    operations: self.operations.clone(),
-                };
-                value.enforce_bounds(item_limit);
-                Projection::Playback { value }
-            }
-            ProjectionScope::Unsupported { wire_code } => Projection::Unsupported {
-                value: UnsupportedProjection {
-                    wire_code,
-                    message: "unsupported projection scope".to_owned(),
-                },
-            },
-        };
-        ProjectionEnvelope {
-            contract_version: pod0_application::FACADE_CONTRACT_VERSION,
-            state_revision: self.revision,
-            projection,
+    pub(super) fn reload_listening(&mut self) -> Result<(), pod0_storage::StorageError> {
+        if let Some(store) = &self.store {
+            self.listening = store.snapshot()?;
         }
+        Ok(())
     }
 
-    pub(super) fn deliveries(&self) -> Vec<(Arc<dyn ProjectionSubscriber>, ProjectionEnvelope)> {
-        self.subscribers
-            .iter()
-            .filter_map(|(id, subscriber)| {
-                self.subscriptions
-                    .request(*id)
-                    .map(|request| (Arc::clone(subscriber), self.snapshot(request)))
-            })
-            .collect()
+    pub(super) fn trim_operations(&mut self) {
+        if self.operations.len() > pod0_application::MAX_OPERATION_ITEMS {
+            let excess = self.operations.len() - pod0_application::MAX_OPERATION_ITEMS;
+            self.operations.drain(..excess);
+        }
     }
 }
 
-fn failure(code: CoreFailureCode) -> CoreFailure {
+pub(super) fn failure(code: CoreFailureCode) -> CoreFailure {
+    let (retryability, user_action) = match code {
+        CoreFailureCode::HostUnavailable | CoreFailureCode::StorageUnavailable => {
+            (Retryability::Automatic, UserAction::Retry)
+        }
+        CoreFailureCode::InvalidFeedUrl | CoreFailureCode::FeedMalformed => {
+            (Retryability::AfterUserAction, UserAction::ReviewPermissions)
+        }
+        _ => (Retryability::Never, UserAction::None),
+    };
     CoreFailure {
         code,
         safe_detail: None,
-        retryability: Retryability::Never,
-        user_action: UserAction::None,
+        retryability,
+        user_action,
     }
 }
 
-trait TruncateFromStart<T> {
-    fn truncate_from_start(&mut self, maximum_count: usize);
-}
-
-impl<T> TruncateFromStart<T> for Vec<T> {
-    fn truncate_from_start(&mut self, maximum_count: usize) {
-        if self.len() > maximum_count {
-            self.drain(..self.len() - maximum_count);
-        }
+fn empty_listening_snapshot() -> ListeningDomainSnapshot {
+    use pod0_domain::{ListeningPlaybackPolicy, PlaybackRatePermille, PlaybackSleepMode};
+    ListeningDomainSnapshot {
+        podcasts: Vec::new(),
+        subscriptions: Vec::new(),
+        episodes: Vec::new(),
+        playback: ListeningPlaybackPolicy {
+            active_episode_id: None,
+            queue: Vec::new(),
+            rate: PlaybackRatePermille { value: 1_000 },
+            sleep_mode: PlaybackSleepMode::Off,
+            auto_mark_played_at_natural_end: true,
+            auto_play_next: true,
+            revision: StateRevision::INITIAL,
+        },
     }
 }

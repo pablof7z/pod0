@@ -1,0 +1,141 @@
+use pod0_domain::{
+    CommandId, EpisodeId, FeedIdentityV1, PodcastId, PodcastKind, PodcastRecord, StateRevision,
+    UnixTimestampMilliseconds,
+};
+use rusqlite::{OptionalExtension, Transaction, params};
+
+use crate::StorageError;
+use crate::library_store::{LibraryStore, command_was_applied, finish_command, source_import_id};
+use crate::library_store_feed::{episode_id, resolve_podcast_id, upsert_podcast};
+use crate::listening_db_codec::i64_value;
+
+impl LibraryStore {
+    #[allow(clippy::too_many_arguments)]
+    pub fn upsert_external_episode(
+        &self,
+        command_id: CommandId,
+        command_fingerprint: &str,
+        requested_podcast_id: PodcastId,
+        feed_identity: Option<FeedIdentityV1>,
+        podcast_title: &str,
+        audio_url: &str,
+        title: &str,
+        image_url: Option<&str>,
+        duration_milliseconds: Option<u64>,
+        observed_at_ms: i64,
+    ) -> Result<(StateRevision, PodcastId, EpisodeId), StorageError> {
+        self.write(|transaction| {
+            let podcast_id = ensure_external_parent(
+                transaction,
+                requested_podcast_id,
+                feed_identity,
+                podcast_title,
+                observed_at_ms,
+            )?;
+            if let Some(revision) =
+                command_was_applied(transaction, command_id, command_fingerprint)?
+            {
+                let episode_id = find_episode_id(transaction, podcast_id, audio_url)?;
+                return Ok((revision, podcast_id, episode_id));
+            }
+            let origin = source_import_id(transaction)?;
+            let proposed_episode_id = episode_id(podcast_id, audio_url);
+            transaction.execute(
+                "INSERT INTO pod0_episodes(episode_id,podcast_id,publisher_guid,title,description,\
+                 published_at_ms,duration_ms,enclosure_url,enclosure_mime_type,image_url,\
+                 resume_position_ms,completion_code,is_starred,download_code,transcript_code,\
+                 legacy_payload,source_import_id) \
+                 VALUES(?1,?2,?3,?4,'',?5,?6,?3,NULL,?7,0,1,0,1,1,x'7b7d',?8) \
+                 ON CONFLICT(podcast_id,publisher_guid) DO UPDATE SET \
+                 title=CASE WHEN excluded.title='' THEN pod0_episodes.title ELSE excluded.title END,\
+                 duration_ms=COALESCE(excluded.duration_ms,pod0_episodes.duration_ms),\
+                 image_url=COALESCE(excluded.image_url,pod0_episodes.image_url),\
+                 enclosure_url=excluded.enclosure_url",
+                params![
+                    proposed_episode_id.into_bytes().as_slice(),
+                    podcast_id.into_bytes().as_slice(),
+                    audio_url,
+                    title,
+                    observed_at_ms,
+                    duration_milliseconds
+                        .map(|value| i64_value(value, "external episode duration"))
+                        .transpose()?,
+                    image_url,
+                    origin,
+                ],
+            ).map_err(|error| StorageError::sqlite("upsert external episode", error))?;
+            let actual_episode_id = find_episode_id(transaction, podcast_id, audio_url)?;
+            transaction.execute(
+                "INSERT INTO pod0_episode_feed_metadata(episode_id,persons_json,sound_bites_json) \
+                 VALUES(?1,'[]','[]') ON CONFLICT(episode_id) DO NOTHING",
+                [actual_episode_id.into_bytes().as_slice()],
+            ).map_err(|error| StorageError::sqlite("initialize external episode metadata", error))?;
+            let revision =
+                finish_command(transaction, command_id, command_fingerprint, observed_at_ms)?;
+            Ok((revision, podcast_id, actual_episode_id))
+        })
+    }
+}
+
+fn ensure_external_parent(
+    transaction: &Transaction<'_>,
+    requested_id: PodcastId,
+    feed_identity: Option<FeedIdentityV1>,
+    title: &str,
+    observed_at_ms: i64,
+) -> Result<PodcastId, StorageError> {
+    let requested_exists: Option<i64> = transaction
+        .query_row(
+            "SELECT 1 FROM pod0_podcasts WHERE podcast_id=?1",
+            [requested_id.into_bytes().as_slice()],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|error| StorageError::sqlite("find external episode parent", error))?;
+    if requested_exists.is_some() {
+        return Ok(requested_id);
+    }
+
+    let Some(feed_identity) = feed_identity else {
+        return Err(StorageError::EntityNotFound);
+    };
+    let placeholder = PodcastRecord {
+        podcast_id: requested_id,
+        kind: PodcastKind::Rss,
+        feed_identity: Some(feed_identity),
+        title: title.to_owned(),
+        author: String::new(),
+        image_url: None,
+        description: String::new(),
+        language: None,
+        categories: Vec::new(),
+        discovered_at: UnixTimestampMilliseconds::new(observed_at_ms),
+        title_is_placeholder: true,
+        last_refreshed_at: None,
+        etag: None,
+        last_modified: None,
+    };
+    let resolved = resolve_podcast_id(transaction, &placeholder)?;
+    if resolved == requested_id {
+        upsert_podcast(transaction, &placeholder)?;
+    }
+    Ok(resolved)
+}
+
+fn find_episode_id(
+    transaction: &Transaction<'_>,
+    podcast_id: PodcastId,
+    guid: &str,
+) -> Result<EpisodeId, StorageError> {
+    let bytes: Vec<u8> = transaction
+        .query_row(
+            "SELECT episode_id FROM pod0_episodes WHERE podcast_id=?1 AND publisher_guid=?2",
+            params![podcast_id.into_bytes().as_slice(), guid],
+            |row| row.get(0),
+        )
+        .map_err(|error| StorageError::sqlite("resolve external episode identity", error))?;
+    let bytes: [u8; 16] = bytes.try_into().map_err(|_| StorageError::CorruptSchema {
+        detail: "external episode identity is malformed",
+    })?;
+    Ok(EpisodeId::from_bytes(bytes))
+}

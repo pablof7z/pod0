@@ -9,11 +9,11 @@ pub use pod0_application::{
     KernelProbeProjection, LibraryProjection, MAX_FEED_RESPONSE_BYTES, MAX_HOST_REQUEST_BATCH,
     MAX_OPERATION_ITEMS, MAX_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, MAX_PROJECTION_ITEMS,
     MIN_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, NativeTimerMode, OperationProjection,
-    OperationStage, PlaybackAudioRoute, PlaybackHostState, PlaybackInterruption, PlaybackItem,
-    PlaybackLifecycleObservation, PlaybackPolicyState, PlaybackProjection, PlaybackStopReason,
-    PlaybackTransitionCue, PodcastSummary, Projection, ProjectionEnvelope, ProjectionRequest,
-    ProjectionScope, Retryability, UnsupportedProjection, UserAction, bounded_host_request_count,
-    bounded_playback_observation_interval,
+    OperationResult, OperationStage, PlaybackAudioRoute, PlaybackHostState, PlaybackInterruption,
+    PlaybackItem, PlaybackLifecycleObservation, PlaybackPolicyState, PlaybackProjection,
+    PlaybackStopReason, PlaybackTransitionCue, PodcastSummary, Projection, ProjectionEnvelope,
+    ProjectionRequest, ProjectionScope, Retryability, UnsupportedProjection, UserAction,
+    bounded_host_request_count, bounded_playback_observation_interval,
 };
 use pod0_application::{Clock, KernelApplication};
 pub use pod0_domain::{
@@ -33,45 +33,29 @@ uniffi::setup_scaffolding!();
 
 mod listening_migration;
 mod runtime;
+mod runtime_clock;
+mod runtime_command_fingerprint;
+mod runtime_commands;
+mod runtime_feed_commands;
+mod runtime_observations;
+mod runtime_projection;
 mod runtime_state;
 #[cfg(test)]
 mod runtime_tests;
 pub use listening_migration::{
     LegacyListeningBackupEvidence, LegacyListeningImportPlan, LegacyListeningImportReport,
     LegacyListeningImportVerification, LegacyListeningMigrationError, LegacyListeningSourceKind,
-    inspect_legacy_listening_source, read_staged_legacy_listening_import,
-    stage_legacy_listening_import,
+    SharedListeningStorePreparation, commit_staged_legacy_listening_import,
+    inspect_legacy_listening_source, prepare_shared_listening_store,
+    read_staged_legacy_listening_import, stage_legacy_listening_import,
 };
-pub use runtime::Pod0Facade;
-
-#[derive(Debug, uniffi::Error)]
-pub enum ProjectionDeliveryError {
-    CallbackFailed { safe_message: String },
-    UnexpectedCallback,
-}
-
-impl std::fmt::Display for ProjectionDeliveryError {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::CallbackFailed { safe_message } => formatter.write_str(safe_message),
-            Self::UnexpectedCallback => formatter.write_str("projection callback failed"),
-        }
-    }
-}
-
-impl std::error::Error for ProjectionDeliveryError {}
-
-impl From<uniffi::UnexpectedUniFFICallbackError> for ProjectionDeliveryError {
-    fn from(_: uniffi::UnexpectedUniFFICallbackError) -> Self {
-        Self::UnexpectedCallback
-    }
-}
+pub use runtime::{FacadeOpenError, Pod0Facade};
 
 /// Event-driven projection delivery. The generated Swift and Kotlin callback
 /// interfaces derive from this single app-owned surface.
 #[uniffi::export(with_foreign)]
 pub trait ProjectionSubscriber: Send + Sync {
-    fn receive(&self, projection: ProjectionEnvelope) -> Result<(), ProjectionDeliveryError>;
+    fn receive(&self, projection: ProjectionEnvelope);
 }
 
 /// Shape of the one native/core API. Dispatch and host observation methods do

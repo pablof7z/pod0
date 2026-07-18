@@ -719,7 +719,11 @@ internal object IntegrityCheckingUniffiLib {
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
     }
+    external fun uniffi_pod0_facade_checksum_func_commit_staged_legacy_listening_import(
+    ): Int
     external fun uniffi_pod0_facade_checksum_func_inspect_legacy_listening_source(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_prepare_shared_listening_store(
     ): Int
     external fun uniffi_pod0_facade_checksum_func_read_staged_legacy_listening_import(
     ): Int
@@ -740,6 +744,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_pod0_facade_checksum_method_pod0facade_unsubscribe(
     ): Int
     external fun uniffi_pod0_facade_checksum_constructor_pod0facade_new(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_constructor_pod0facade_open(
     ): Int
     external fun ffi_pod0_facade_uniffi_contract_version(
     ): Int
@@ -776,6 +782,8 @@ internal object UniffiLib {
     ): Unit
     external fun uniffi_pod0_facade_fn_constructor_pod0facade_new(uniffi_out_err: UniffiRustCallStatus,
     ): Long
+    external fun uniffi_pod0_facade_fn_constructor_pod0facade_open(`storePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): Long
     external fun uniffi_pod0_facade_fn_method_pod0facade_dispatch(`ptr`: Long,`command`: RustBufferCommandEnvelope.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
     external fun uniffi_pod0_facade_fn_method_pod0facade_next_host_requests(`ptr`: Long,`maximumCount`: Short,uniffi_out_err: UniffiRustCallStatus,
@@ -788,7 +796,11 @@ internal object UniffiLib {
     ): RustBufferSubscriptionId.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_unsubscribe(`ptr`: Long,`subscriptionId`: RustBufferSubscriptionId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
+    external fun uniffi_pod0_facade_fn_func_commit_staged_legacy_listening_import(`targetPath`: RustBuffer.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): Byte
     external fun uniffi_pod0_facade_fn_func_inspect_legacy_listening_source(`sourcePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_prepare_shared_listening_store(`targetPath`: RustBuffer.ByValue,`schemaBackupPath`: RustBuffer.ByValue,`migrationId`: RustBufferCommandId.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_read_staged_legacy_listening_import(`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
@@ -913,7 +925,13 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_pod0_facade_checksum_func_commit_staged_legacy_listening_import() != 20149) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pod0_facade_checksum_func_inspect_legacy_listening_source() != 2539) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_prepare_shared_listening_store() != 17755) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_read_staged_legacy_listening_import() != 31272) {
@@ -922,7 +940,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_pod0_facade_checksum_func_stage_legacy_listening_import() != 21059) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_projectionsubscriber_receive() != 9631) {
+    if (lib.uniffi_pod0_facade_checksum_method_projectionsubscriber_receive() != 23861) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_dispatch() != 36474) {
@@ -934,16 +952,19 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation() != 12873) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 60469) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 17086) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_subscribe() != 36240) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_subscribe() != 52155) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_unsubscribe() != 29741) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_constructor_pod0facade_new() != 63792) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_constructor_pod0facade_open() != 22335) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -1620,11 +1641,22 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
 
 
 
+    companion object {
 
-    /**
-     * @suppress
-     */
-    companion object
+    @Throws(FacadeOpenException::class) fun `open`(`storePath`: kotlin.String): Pod0Facade {
+            return FfiConverterTypePod0Facade.lift(
+    uniffiRustCallWithError(FacadeOpenException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_constructor_pod0facade_open(
+
+
+        FfiConverterString.lower(`storePath`),_status)
+}
+    )
+    }
+
+
+
+    }
 
 }
 
@@ -1864,11 +1896,10 @@ open class ProjectionSubscriberImpl: Disposable, AutoCloseable, ProjectionSubscr
         }
     }
 
-
-    @Throws(ProjectionDeliveryException::class)override fun `receive`(`projection`: ProjectionEnvelope)
+    override fun `receive`(`projection`: ProjectionEnvelope)
         =
     callWithHandle {
-    uniffiRustCallWithError(ProjectionDeliveryException) { _status ->
+    uniffiRustCall() { _status ->
     UniffiLib.uniffi_pod0_facade_fn_method_projectionsubscriber_receive(
         it,
 
@@ -1905,12 +1936,7 @@ internal object uniffiCallbackInterfaceProjectionSubscriber {
                 )
             }
             val writeReturn = { _: Unit -> Unit }
-            uniffiTraitInterfaceCallWithError(
-                uniffiCallStatus,
-                makeCall,
-                writeReturn,
-                { e: ProjectionDeliveryException -> FfiConverterTypeProjectionDeliveryError.lower(e) }
-            )
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
 
@@ -2186,6 +2212,140 @@ public object FfiConverterTypeLegacyListeningImportVerification: FfiConverterRus
 
 
 
+data class SharedListeningStorePreparation (
+    val `fromVersion`: kotlin.UInt
+    ,
+    val `toVersion`: kotlin.UInt
+    ,
+    val `appliedVersions`: List<kotlin.UInt>
+    ,
+    val `resumedFromJournal`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSharedListeningStorePreparation: FfiConverterRustBuffer<SharedListeningStorePreparation> {
+    override fun read(buf: ByteBuffer): SharedListeningStorePreparation {
+        return SharedListeningStorePreparation(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterSequenceUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SharedListeningStorePreparation) = (
+            FfiConverterUInt.allocationSize(value.`fromVersion`) +
+            FfiConverterUInt.allocationSize(value.`toVersion`) +
+            FfiConverterSequenceUInt.allocationSize(value.`appliedVersions`) +
+            FfiConverterBoolean.allocationSize(value.`resumedFromJournal`)
+    )
+
+    override fun write(value: SharedListeningStorePreparation, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`fromVersion`, buf)
+            FfiConverterUInt.write(value.`toVersion`, buf)
+            FfiConverterSequenceUInt.write(value.`appliedVersions`, buf)
+            FfiConverterBoolean.write(value.`resumedFromJournal`, buf)
+    }
+}
+
+
+
+
+
+sealed class FacadeOpenException: kotlin.Exception() {
+
+    class NotAuthoritative(
+        ) : FacadeOpenException() {
+        override val message
+            get() = ""
+    }
+
+    class SchemaBlocked(
+        ) : FacadeOpenException() {
+        override val message
+            get() = ""
+    }
+
+    class StorageUnavailable(
+        ) : FacadeOpenException() {
+        override val message
+            get() = ""
+    }
+
+
+
+
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<FacadeOpenException> {
+        override fun lift(error_buf: RustBuffer.ByValue): FacadeOpenException = FfiConverterTypeFacadeOpenError.lift(error_buf)
+    }
+
+
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFacadeOpenError : FfiConverterRustBuffer<FacadeOpenException> {
+    override fun read(buf: ByteBuffer): FacadeOpenException {
+
+
+        return when(buf.getInt()) {
+            1 -> FacadeOpenException.NotAuthoritative()
+            2 -> FacadeOpenException.SchemaBlocked()
+            3 -> FacadeOpenException.StorageUnavailable()
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: FacadeOpenException): ULong {
+        return when(value) {
+            is FacadeOpenException.NotAuthoritative -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is FacadeOpenException.SchemaBlocked -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is FacadeOpenException.StorageUnavailable -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: FacadeOpenException, buf: ByteBuffer) {
+        when(value) {
+            is FacadeOpenException.NotAuthoritative -> {
+                buf.putInt(1)
+                Unit
+            }
+            is FacadeOpenException.SchemaBlocked -> {
+                buf.putInt(2)
+                Unit
+            }
+            is FacadeOpenException.StorageUnavailable -> {
+                buf.putInt(3)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
 
 
 sealed class LegacyListeningMigrationException: kotlin.Exception() {
@@ -2384,78 +2544,29 @@ public object FfiConverterTypeLegacyListeningSourceKind: FfiConverterRustBuffer<
 
 
 
-
-sealed class ProjectionDeliveryException: kotlin.Exception() {
-
-    class CallbackFailed(
-
-        val `safeMessage`: kotlin.String
-        ) : ProjectionDeliveryException() {
-        override val message
-            get() = "safeMessage=${ `safeMessage` }"
-    }
-
-    class UnexpectedCallback(
-        ) : ProjectionDeliveryException() {
-        override val message
-            get() = ""
-    }
-
-
-
-
-
-    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<ProjectionDeliveryException> {
-        override fun lift(error_buf: RustBuffer.ByValue): ProjectionDeliveryException = FfiConverterTypeProjectionDeliveryError.lift(error_buf)
-    }
-
-
-}
-
 /**
  * @suppress
  */
-public object FfiConverterTypeProjectionDeliveryError : FfiConverterRustBuffer<ProjectionDeliveryException> {
-    override fun read(buf: ByteBuffer): ProjectionDeliveryException {
-
-
-        return when(buf.getInt()) {
-            1 -> ProjectionDeliveryException.CallbackFailed(
-                FfiConverterString.read(buf),
-                )
-            2 -> ProjectionDeliveryException.UnexpectedCallback()
-            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+public object FfiConverterSequenceUInt: FfiConverterRustBuffer<List<kotlin.UInt>> {
+    override fun read(buf: ByteBuffer): List<kotlin.UInt> {
+        val len = buf.getInt()
+        return List<kotlin.UInt>(len) {
+            FfiConverterUInt.read(buf)
         }
     }
 
-    override fun allocationSize(value: ProjectionDeliveryException): ULong {
-        return when(value) {
-            is ProjectionDeliveryException.CallbackFailed -> (
-                // Add the size for the Int that specifies the variant plus the size needed for all fields
-                4UL
-                + FfiConverterString.allocationSize(value.`safeMessage`)
-            )
-            is ProjectionDeliveryException.UnexpectedCallback -> (
-                // Add the size for the Int that specifies the variant plus the size needed for all fields
-                4UL
-            )
+    override fun allocationSize(value: List<kotlin.UInt>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterUInt.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.UInt>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterUInt.write(it, buf)
         }
     }
-
-    override fun write(value: ProjectionDeliveryException, buf: ByteBuffer) {
-        when(value) {
-            is ProjectionDeliveryException.CallbackFailed -> {
-                buf.putInt(1)
-                FfiConverterString.write(value.`safeMessage`, buf)
-                Unit
-            }
-            is ProjectionDeliveryException.UnexpectedCallback -> {
-                buf.putInt(2)
-                Unit
-            }
-        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
-    }
-
 }
 
 
@@ -2501,6 +2612,19 @@ public object FfiConverterSequenceTypeHostRequestEnvelope: FfiConverterRustBuffe
 
 
 
+    @Throws(LegacyListeningMigrationException::class) fun `commitStagedLegacyListeningImport`(`targetPath`: kotlin.String, `observedAtMilliseconds`: kotlin.Long): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    uniffiRustCallWithError(LegacyListeningMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_commit_staged_legacy_listening_import(
+
+
+        FfiConverterString.lower(`targetPath`),
+        FfiConverterLong.lower(`observedAtMilliseconds`),_status)
+}
+    )
+    }
+
+
     @Throws(LegacyListeningMigrationException::class) fun `inspectLegacyListeningSource`(`sourcePath`: kotlin.String): LegacyListeningImportPlan {
             return FfiConverterTypeLegacyListeningImportPlan.lift(
     uniffiRustCallWithError(LegacyListeningMigrationException) { _status ->
@@ -2508,6 +2632,21 @@ public object FfiConverterSequenceTypeHostRequestEnvelope: FfiConverterRustBuffe
 
 
         FfiConverterString.lower(`sourcePath`),_status)
+}
+    )
+    }
+
+
+    @Throws(LegacyListeningMigrationException::class) fun `prepareSharedListeningStore`(`targetPath`: kotlin.String, `schemaBackupPath`: kotlin.String, `migrationId`: CommandId, `observedAtMilliseconds`: kotlin.Long): SharedListeningStorePreparation {
+            return FfiConverterTypeSharedListeningStorePreparation.lift(
+    uniffiRustCallWithError(LegacyListeningMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_prepare_shared_listening_store(
+
+
+        FfiConverterString.lower(`targetPath`),
+        FfiConverterString.lower(`schemaBackupPath`),
+        FfiConverterTypeCommandId.lower(`migrationId`),
+        FfiConverterLong.lower(`observedAtMilliseconds`),_status)
 }
     )
     }

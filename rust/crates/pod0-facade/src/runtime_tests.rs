@@ -2,6 +2,15 @@ use std::sync::Mutex;
 
 use crate::*;
 
+#[derive(Clone, Copy)]
+struct FixedClock(i64);
+
+impl pod0_application::Clock for FixedClock {
+    fn now(&self) -> UnixTimestampMilliseconds {
+        UnixTimestampMilliseconds::new(self.0)
+    }
+}
+
 #[derive(Default)]
 struct RecordingSubscriber {
     projections: Mutex<Vec<ProjectionEnvelope>>,
@@ -17,12 +26,11 @@ impl RecordingSubscriber {
 }
 
 impl ProjectionSubscriber for RecordingSubscriber {
-    fn receive(&self, projection: ProjectionEnvelope) -> Result<(), ProjectionDeliveryError> {
+    fn receive(&self, projection: ProjectionEnvelope) {
         self.projections
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .push(projection);
-        Ok(())
     }
 }
 
@@ -38,8 +46,33 @@ fn command(command_id: u64, cancellation_id: u64, payload: ApplicationCommand) -
 fn library_request() -> ProjectionRequest {
     ProjectionRequest {
         scope: ProjectionScope::Library,
+        offset: 0,
         max_items: 20,
     }
+}
+
+#[test]
+fn command_deadlines_are_deterministic_from_the_injected_kernel_clock() {
+    let first = Pod0Facade::with_clock(std::sync::Arc::new(FixedClock(1_000)));
+    let second = Pod0Facade::with_clock(std::sync::Arc::new(FixedClock(1_000)));
+    let envelope = command(
+        1,
+        10,
+        ApplicationCommand::SubscribeToFeed {
+            feed_url: "https://example.test/feed".to_owned(),
+        },
+    );
+
+    first.dispatch(envelope.clone());
+    second.dispatch(envelope);
+
+    let first_request = first.next_host_requests(1).pop().unwrap();
+    let second_request = second.next_host_requests(1).pop().unwrap();
+    assert_eq!(first_request, second_request);
+    assert_eq!(
+        first_request.deadline_at,
+        Some(UnixTimestampMilliseconds::new(31_000))
+    );
 }
 
 #[test]

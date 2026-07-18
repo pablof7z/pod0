@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 import UIKit
 import os.log
 
@@ -58,6 +59,25 @@ final class SubscriptionRefreshService {
     /// `lastRefreshedAt`; an updated feed upserts every parsed episode and
     /// writes the new cache headers back via `updatePodcast`.
     func refresh(_ podcastID: UUID, store: AppStateStore) async throws {
+        if store.isSharedLibraryAuthoritative {
+            guard let sharedLibrary = store.sharedLibrary else {
+                throw SharedLibraryError.unavailable
+            }
+            let priorIDs = Set(store.episodes(forPodcast: podcastID).map(\.id))
+            let firstEverFetch = priorIDs.isEmpty
+            _ = try await sharedLibrary.execute(.refreshPodcast(
+                podcastId: PodcastId(uuid: podcastID)
+            ))
+            let insertedIDs = store.episodes(forPodcast: podcastID)
+                .map(\.id)
+                .filter { !priorIDs.contains($0) }
+            store.recordSharedFeedDiscovery(
+                podcastID: podcastID,
+                episodeIDs: insertedIDs,
+                notificationDiscoveredAt: firstEverFetch ? nil : Date()
+            )
+            return
+        }
         guard let podcast = store.podcast(id: podcastID),
               podcast.feedURL != nil else {
             return
@@ -84,6 +104,30 @@ final class SubscriptionRefreshService {
         let podcasts = store.sortedFollowedPodcastsByRecency.filter { $0.feedURL != nil }
         guard !podcasts.isEmpty else { return }
         let bounded = max(1, maxConcurrent)
+        if store.isSharedLibraryAuthoritative {
+            var index = 0
+            while index < podcasts.count {
+                let upper = min(index + bounded, podcasts.count)
+                let identifiers = podcasts[index..<upper].map(\.id)
+                let tasks = identifiers.map { podcastID in
+                    Task { @MainActor [weak self, weak store] in
+                        guard let self, let store else { return }
+                        do {
+                            try await self.refresh(podcastID, store: store)
+                        } catch {
+                            Self.logger.notice(
+                                "shared refresh failed for \(podcastID, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                            )
+                        }
+                    }
+                }
+                for task in tasks {
+                    await task.value
+                }
+                index = upper
+            }
+            return
+        }
         let client = self.client
 
         var index = 0

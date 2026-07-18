@@ -5,7 +5,7 @@ use pod0_domain::CommandId;
 
 pub const APPLICATION_ID: i64 = 0x504F_4430;
 pub const MIN_SUPPORTED_SCHEMA_VERSION: u32 = 0;
-pub const CURRENT_SCHEMA_VERSION: u32 = 4;
+pub const CURRENT_SCHEMA_VERSION: u32 = 5;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AccessMode {
@@ -120,6 +120,9 @@ pub enum StorageError {
     ImportConflict,
     ImportNotFound,
     CutoverAlreadyAuthoritative,
+    CutoverNotAuthoritative,
+    CommandConflict,
+    EntityNotFound,
     Interrupted,
 }
 
@@ -142,6 +145,9 @@ impl StorageError {
             Self::ImportConflict => "listening_import_conflict",
             Self::ImportNotFound => "listening_import_not_found",
             Self::CutoverAlreadyAuthoritative => "listening_already_authoritative",
+            Self::CutoverNotAuthoritative => "listening_not_authoritative",
+            Self::CommandConflict => "library_command_conflict",
+            Self::EntityNotFound => "library_entity_not_found",
             Self::Interrupted => "migration_interrupted",
         }
     }

@@ -16,10 +16,10 @@ final class Pod0CoreBindingTests: XCTestCase {
         XCTAssertEqual(fixture["schema_component"], "kernel")
         XCTAssertEqual(UInt32(fixture["stored_version"] ?? ""), 2)
         XCTAssertEqual(UInt32(fixture["supported_min"] ?? ""), 0)
-        XCTAssertEqual(UInt32(fixture["supported_max"] ?? ""), 4)
+        XCTAssertEqual(UInt32(fixture["supported_max"] ?? ""), 5)
         XCTAssertEqual(fixture["access_mode"], "migration_only")
         XCTAssertEqual(fixture["migration_state"], "required")
-        XCTAssertEqual(UInt32(fixture["target_version"] ?? ""), 4)
+        XCTAssertEqual(UInt32(fixture["target_version"] ?? ""), 5)
         XCTAssertEqual(UInt64(fixture["store_id_high"] ?? ""), 10)
         XCTAssertEqual(UInt64(fixture["store_id_low"] ?? ""), 11)
         XCTAssertEqual(UInt64(fixture["command_id_high"] ?? ""), 1)
@@ -34,7 +34,7 @@ final class Pod0CoreBindingTests: XCTestCase {
     func testGeneratedFacadeRoundTripsCommandsProjectionsAndSubscriptionLifecycle() throws {
         let facade = Pod0Facade()
         let subscriber = RecordingCoreSubscriber()
-        let request = ProjectionRequest(scope: .library, maxItems: 20)
+        let request = ProjectionRequest(scope: .library, offset: 0, maxItems: 20)
         let handle = facade.subscribe(request: request, subscriber: subscriber)
 
         XCTAssertEqual(subscriber.revisions, [0])
@@ -50,7 +50,7 @@ final class Pod0CoreBindingTests: XCTestCase {
 
         XCTAssertEqual(subscriber.revisions, [0, 1])
         let projection = facade.snapshot(request: request)
-        XCTAssertEqual(projection.contractVersion, 2)
+        XCTAssertEqual(projection.contractVersion, 3)
         guard case let .library(value) = projection.projection else {
             return XCTFail("Expected a bounded library projection")
         }
@@ -58,7 +58,7 @@ final class Pod0CoreBindingTests: XCTestCase {
         let unsupportedOperation = value.operations[0]
         XCTAssertEqual(unsupportedOperation.commandId, CommandId(high: 0, low: 1))
         XCTAssertEqual(unsupportedOperation.cancellationId, CancellationId(high: 0, low: 2))
-        XCTAssertEqual(unsupportedOperation.stage, .failed)
+        XCTAssertTrue(unsupportedOperation.stage == OperationStage.failed)
         XCTAssertEqual(unsupportedOperation.failure?.code, .unsupported(wireCode: 77))
         XCTAssertNil(unsupportedOperation.failure?.safeDetail)
 
@@ -84,11 +84,14 @@ final class Pod0CoreBindingTests: XCTestCase {
         guard case let .library(cancelledValue) = cancelledProjection.projection else {
             return XCTFail("Expected a library projection after cancellation")
         }
-        XCTAssertTrue(cancelledValue.operations.contains { operation in
-            operation.commandId == CommandId(high: 0, low: 3)
-                && operation.stage == .cancelled
-                && operation.failure?.code == .cancelled
-        })
+        let cancelledCommandID = CommandId(high: 0, low: 3)
+        let includesCancelledOperation = cancelledValue.operations.contains { operation in
+            let commandMatches = operation.commandId == cancelledCommandID
+            let stageMatches = operation.stage == OperationStage.cancelled
+            let failureMatches = operation.failure?.code == CoreFailureCode.cancelled
+            return commandMatches && stageMatches && failureMatches
+        }
+        XCTAssertTrue(includesCancelledOperation)
 
         facade.unsubscribe(subscriptionId: handle)
         facade.dispatch(
@@ -126,7 +129,7 @@ private final class RecordingCoreSubscriber: ProjectionSubscriber, @unchecked Se
         lock.withLock { storedRevisions }
     }
 
-    func receive(projection: ProjectionEnvelope) throws {
+    func receive(projection: ProjectionEnvelope) {
         lock.withLock {
             storedRevisions.append(projection.stateRevision.value)
         }

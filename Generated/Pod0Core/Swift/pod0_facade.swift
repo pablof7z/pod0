@@ -679,6 +679,15 @@ public convenience init() {
     }
 
 
+public static func `open`(storePath: String)throws  -> Pod0Facade  {
+    return try  FfiConverterTypePod0Facade_lift(try rustCallWithError(FfiConverterTypeFacadeOpenError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_constructor_pod0facade_open(
+        FfiConverterString.lower(storePath),uniffiCallStatus
+    )
+})
+}
+
 
 
 open func dispatch(command: CommandEnvelope)  {try! rustCall() {
@@ -795,7 +804,7 @@ public func FfiConverterTypePod0Facade_lower(_ value: Pod0Facade) -> UInt64 {
  */
 public protocol ProjectionSubscriber: AnyObject, Sendable {
 
-    func receive(projection: ProjectionEnvelope) throws
+    func receive(projection: ProjectionEnvelope)
 
 }
 /**
@@ -855,7 +864,7 @@ open class ProjectionSubscriberImpl: ProjectionSubscriber, @unchecked Sendable {
 
 
 
-open func receive(projection: ProjectionEnvelope)throws   {try rustCallWithError(FfiConverterTypeProjectionDeliveryError_lift) {
+open func receive(projection: ProjectionEnvelope)  {try! rustCall() {
         uniffiCallStatus in
     uniffi_pod0_facade_fn_method_projectionsubscriber_receive(
             self.uniffiCloneHandle(),
@@ -903,18 +912,17 @@ fileprivate struct UniffiCallbackInterfaceProjectionSubscriber {
                 guard let uniffiObj = try? FfiConverterTypeProjectionSubscriber.handleMap.get(handle: uniffiHandle) else {
                     throw UniffiInternalError.unexpectedStaleHandle
                 }
-                return try uniffiObj.receive(
+                return uniffiObj.receive(
                      projection: try FfiConverterTypeProjectionEnvelope_lift(projection)
                 )
             }
 
 
             let writeReturn = { () }
-            uniffiTraitInterfaceCallWithError(
+            uniffiTraitInterfaceCall(
                 callStatus: uniffiCallStatus,
                 makeCall: makeCall,
-                writeReturn: writeReturn,
-                lowerError: FfiConverterTypeProjectionDeliveryError_lower
+                writeReturn: writeReturn
             )
         }
     )
@@ -1254,6 +1262,151 @@ public func FfiConverterTypeLegacyListeningImportVerification_lower(_ value: Leg
 }
 
 
+public struct SharedListeningStorePreparation: Equatable, Hashable {
+    public let fromVersion: UInt32
+    public let toVersion: UInt32
+    public let appliedVersions: [UInt32]
+    public let resumedFromJournal: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(fromVersion: UInt32, toVersion: UInt32, appliedVersions: [UInt32], resumedFromJournal: Bool) {
+        self.fromVersion = fromVersion
+        self.toVersion = toVersion
+        self.appliedVersions = appliedVersions
+        self.resumedFromJournal = resumedFromJournal
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension SharedListeningStorePreparation: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSharedListeningStorePreparation: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SharedListeningStorePreparation {
+        return
+            try SharedListeningStorePreparation(
+                fromVersion: FfiConverterUInt32.read(from: &buf),
+                toVersion: FfiConverterUInt32.read(from: &buf),
+                appliedVersions: FfiConverterSequenceUInt32.read(from: &buf),
+                resumedFromJournal: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SharedListeningStorePreparation, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.fromVersion, into: &buf)
+        FfiConverterUInt32.write(value.toVersion, into: &buf)
+        FfiConverterSequenceUInt32.write(value.appliedVersions, into: &buf)
+        FfiConverterBool.write(value.resumedFromJournal, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSharedListeningStorePreparation_lift(_ buf: RustBuffer) throws -> SharedListeningStorePreparation {
+    return try FfiConverterTypeSharedListeningStorePreparation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSharedListeningStorePreparation_lower(_ value: SharedListeningStorePreparation) -> RustBuffer {
+    return FfiConverterTypeSharedListeningStorePreparation.lower(value)
+}
+
+
+public
+enum FacadeOpenError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+
+
+
+    case NotAuthoritative
+    case SchemaBlocked
+    case StorageUnavailable
+
+
+
+
+
+
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+
+}
+
+#if compiler(>=6)
+extension FacadeOpenError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFacadeOpenError: FfiConverterRustBuffer {
+    typealias SwiftType = FacadeOpenError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FacadeOpenError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+
+
+
+        case 1: return .NotAuthoritative
+        case 2: return .SchemaBlocked
+        case 3: return .StorageUnavailable
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FacadeOpenError, into buf: inout [UInt8]) {
+        switch value {
+
+
+
+
+
+        case .NotAuthoritative:
+            writeInt(&buf, Int32(1))
+
+
+        case .SchemaBlocked:
+            writeInt(&buf, Int32(2))
+
+
+        case .StorageUnavailable:
+            writeInt(&buf, Int32(3))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFacadeOpenError_lift(_ buf: RustBuffer) throws -> FacadeOpenError {
+    return try FfiConverterTypeFacadeOpenError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFacadeOpenError_lower(_ value: FacadeOpenError) -> RustBuffer {
+    return FfiConverterTypeFacadeOpenError.lower(value)
+}
+
+
 public
 enum LegacyListeningMigrationError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
@@ -1432,85 +1585,29 @@ public func FfiConverterTypeLegacyListeningSourceKind_lower(_ value: LegacyListe
 }
 
 
-
-public
-enum ProjectionDeliveryError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
-
-
-
-    case CallbackFailed(safeMessage: String
-    )
-    case UnexpectedCallback
-
-
-
-
-
-
-    public var errorDescription: String? {
-        String(reflecting: self)
-    }
-
-}
-
-#if compiler(>=6)
-extension ProjectionDeliveryError: Sendable {}
-#endif
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public struct FfiConverterTypeProjectionDeliveryError: FfiConverterRustBuffer {
-    typealias SwiftType = ProjectionDeliveryError
+fileprivate struct FfiConverterSequenceUInt32: FfiConverterRustBuffer {
+    typealias SwiftType = [UInt32]
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ProjectionDeliveryError {
-        let variant: Int32 = try readInt(&buf)
-        switch variant {
-
-
-
-
-        case 1: return .CallbackFailed(
-            safeMessage: try FfiConverterString.read(from: &buf)
-            )
-        case 2: return .UnexpectedCallback
-
-         default: throw UniffiInternalError.unexpectedEnumCase
+    public static func write(_ value: [UInt32], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterUInt32.write(item, into: &buf)
         }
     }
 
-    public static func write(_ value: ProjectionDeliveryError, into buf: inout [UInt8]) {
-        switch value {
-
-
-
-
-
-        case let .CallbackFailed(safeMessage):
-            writeInt(&buf, Int32(1))
-            FfiConverterString.write(safeMessage, into: &buf)
-
-
-        case .UnexpectedCallback:
-            writeInt(&buf, Int32(2))
-
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UInt32] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UInt32]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterUInt32.read(from: &buf))
         }
+        return seq
     }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeProjectionDeliveryError_lift(_ buf: RustBuffer) throws -> ProjectionDeliveryError {
-    return try FfiConverterTypeProjectionDeliveryError.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeProjectionDeliveryError_lower(_ value: ProjectionDeliveryError) -> RustBuffer {
-    return FfiConverterTypeProjectionDeliveryError.lower(value)
 }
 
 #if swift(>=5.8)
@@ -1537,11 +1634,31 @@ fileprivate struct FfiConverterSequenceTypeHostRequestEnvelope: FfiConverterRust
         return seq
     }
 }
+public func commitStagedLegacyListeningImport(targetPath: String, observedAtMilliseconds: Int64)throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeLegacyListeningMigrationError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_commit_staged_legacy_listening_import(
+        FfiConverterString.lower(targetPath),
+        FfiConverterInt64.lower(observedAtMilliseconds),uniffiCallStatus
+    )
+})
+}
 public func inspectLegacyListeningSource(sourcePath: String)throws  -> LegacyListeningImportPlan  {
     return try  FfiConverterTypeLegacyListeningImportPlan_lift(try rustCallWithError(FfiConverterTypeLegacyListeningMigrationError_lift) {
         uniffiCallStatus in
     uniffi_pod0_facade_fn_func_inspect_legacy_listening_source(
         FfiConverterString.lower(sourcePath),uniffiCallStatus
+    )
+})
+}
+public func prepareSharedListeningStore(targetPath: String, schemaBackupPath: String, migrationId: CommandId, observedAtMilliseconds: Int64)throws  -> SharedListeningStorePreparation  {
+    return try  FfiConverterTypeSharedListeningStorePreparation_lift(try rustCallWithError(FfiConverterTypeLegacyListeningMigrationError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_prepare_shared_listening_store(
+        FfiConverterString.lower(targetPath),
+        FfiConverterString.lower(schemaBackupPath),
+        FfiConverterTypeCommandId_lower(migrationId),
+        FfiConverterInt64.lower(observedAtMilliseconds),uniffiCallStatus
     )
 })
 }
@@ -1585,7 +1702,13 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if (uniffi_pod0_facade_checksum_func_commit_staged_legacy_listening_import() != 20149) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_pod0_facade_checksum_func_inspect_legacy_listening_source() != 2539) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_prepare_shared_listening_store() != 17755) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_read_staged_legacy_listening_import() != 31272) {
@@ -1594,7 +1717,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_pod0_facade_checksum_func_stage_legacy_listening_import() != 21059) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_projectionsubscriber_receive() != 9631) {
+    if (uniffi_pod0_facade_checksum_method_projectionsubscriber_receive() != 23861) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_dispatch() != 36474) {
@@ -1606,16 +1729,19 @@ private let initializationResult: InitializationResult = {
     if (uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation() != 12873) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 60469) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 17086) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_subscribe() != 36240) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_subscribe() != 52155) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_unsubscribe() != 29741) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_constructor_pod0facade_new() != 63792) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_constructor_pod0facade_open() != 22335) {
         return InitializationResult.apiChecksumMismatch
     }
 

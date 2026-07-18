@@ -1,6 +1,8 @@
 use pod0_domain::{
-    ArtifactReference, CompletionCause, CompletionStatus, DownloadArtifactStatus, EpisodeId,
-    EpisodeListeningState, EpisodeRecord, PodcastId, TranscriptArtifactStatus, TranscriptSource,
+    ArtifactReference, CompletionCause, CompletionStatus, DownloadArtifactStatus,
+    EpisodeFeedMetadata, EpisodeId, EpisodeListeningState, EpisodeRecord, PodcastId,
+    PodcastPersonRecord, PodcastSoundBiteRecord, PublisherTranscriptFormat,
+    PublisherTranscriptReference, TranscriptArtifactStatus, TranscriptSource,
     UnixTimestampMilliseconds,
 };
 use serde_json::Value;
@@ -45,6 +47,7 @@ fn episode(payload: &[u8], index: u32) -> Result<EpisodeRecord, StorageError> {
     } else {
         CompletionStatus::InProgress
     };
+    let feed_metadata = feed_metadata(&raw, index)?;
     Ok(EpisodeRecord {
         episode_id: EpisodeId::from_bytes(episode_bytes),
         podcast_id: PodcastId::from_bytes(uuid_bytes(parent, "episode", index)?),
@@ -65,6 +68,7 @@ fn episode(payload: &[u8], index: u32) -> Result<EpisodeRecord, StorageError> {
         enclosure_url: raw.enclosure_url,
         enclosure_mime_type: raw.enclosure_mime_type,
         image_url: raw.image_url,
+        feed_metadata,
         listening: EpisodeListeningState {
             resume_position_milliseconds: position,
             completion,
@@ -73,6 +77,62 @@ fn episode(payload: &[u8], index: u32) -> Result<EpisodeRecord, StorageError> {
         download: download(raw.download_state.as_ref(), &episode_bytes, index)?,
         transcript: transcript(raw.transcript_state.as_ref(), &episode_bytes, index)?,
     })
+}
+
+fn feed_metadata(raw: &RawEpisode, index: u32) -> Result<EpisodeFeedMetadata, StorageError> {
+    let publisher_transcript =
+        raw.publisher_transcript_url
+            .as_ref()
+            .map(|url| PublisherTranscriptReference {
+                url: url.clone(),
+                media_type: None,
+                format: transcript_format(raw.publisher_transcript_type.as_deref()),
+            });
+    let persons = raw
+        .persons
+        .iter()
+        .filter(|person| !person.name.trim().is_empty())
+        .map(|person| PodcastPersonRecord {
+            name: person.name.clone(),
+            role: person.role.clone(),
+            group: person.group.clone(),
+            image_url: person.image_url.clone(),
+            link_url: person.link_url.clone(),
+        })
+        .collect();
+    let sound_bites = raw
+        .sound_bites
+        .iter()
+        .map(|sound_bite| {
+            Ok(PodcastSoundBiteRecord {
+                start_milliseconds: legacy_seconds(sound_bite.start_time, index)?,
+                duration_milliseconds: legacy_seconds(sound_bite.duration, index)?,
+                title: sound_bite.title.clone(),
+            })
+        })
+        .collect::<Result<_, StorageError>>()?;
+    Ok(EpisodeFeedMetadata {
+        publisher_transcript,
+        chapters_url: raw.chapters_url.clone(),
+        persons,
+        sound_bites,
+    })
+}
+
+fn legacy_seconds(value: f64, index: u32) -> Result<u64, StorageError> {
+    u64::try_from(finite_milliseconds(value, "episode", index)?).map_err(|_| invalid_episode(index))
+}
+
+fn transcript_format(value: Option<&str>) -> PublisherTranscriptFormat {
+    match value {
+        Some("json") => PublisherTranscriptFormat::Json,
+        Some("vtt") => PublisherTranscriptFormat::WebVtt,
+        Some("srt") => PublisherTranscriptFormat::SubRip,
+        Some("html") => PublisherTranscriptFormat::Html,
+        Some("text") => PublisherTranscriptFormat::PlainText,
+        Some(_) => PublisherTranscriptFormat::Unknown,
+        None => PublisherTranscriptFormat::Unknown,
+    }
 }
 
 fn download(
