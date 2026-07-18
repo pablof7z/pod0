@@ -105,9 +105,7 @@ state.
 Architecture checks:
 
 ```bash
-python3 scripts/check_architecture_ownership.py
-python3 scripts/check_ui_storage_boundary.py --self-test
-python3 scripts/check_ui_storage_boundary.py
+python3 scripts/check_architecture.py --self-test
 ```
 
 iOS tests:
