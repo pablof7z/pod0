@@ -30,6 +30,9 @@ extension PlaybackState {
         engine.onSleepTimerFire = { [weak self] in
             self?.pause()
         }
+        engine.onAudioSessionEvent = { [weak self] event in
+            self?.handleAudioSessionEvent(event)
+        }
     }
 
     func setRate(_ newRate: Double) {

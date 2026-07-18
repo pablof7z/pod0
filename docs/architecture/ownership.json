@@ -31,7 +31,13 @@
       "boundary": "Execute typed playback/audio requests and return bounded raw observations.",
       "persisted_state": "None; durable playback policy belongs to the shared core.",
       "priority": "keep_native",
-      "includes": ["App/Sources/Audio/"]
+      "includes": [
+        "App/Sources/Audio/",
+        "App/Sources/Features/Player/PlaybackSessionPolicy.swift",
+        "App/Sources/Features/Player/PlaybackState+AudioCallbacks.swift",
+        "App/Sources/Features/Player/PlaybackState+AudioSession.swift",
+        "App/Sources/Features/Player/PlaybackState+SleepTimer.swift"
+      ]
     },
     {
       "id": "native-design-and-voice",
@@ -184,7 +190,12 @@
       "migration_issues": [58, 60, 78, 80, 81, 82, 83],
       "deletion_target": "Delete policy from PlaybackState/AgentChatSession while retaining thin native view/capability adapters.",
       "priority": "highest",
-      "includes": ["App/Sources/Features/Player/PlaybackState", "App/Sources/Features/Player/PlaybackTypes.swift", "App/Sources/Features/Agent/AgentChatSession", "App/Sources/Features/Agent/AgentLLMClient.swift", "App/Sources/Features/Agent/AgentOllamaClient.swift", "App/Sources/Features/Agent/AgentOpenRouterClient.swift", "App/Sources/Features/Agent/AgentChatTitleGenerator.swift", "App/Sources/Features/Agent/ChatConversation.swift", "App/Sources/Features/Agent/ChatMessage.swift"]
+      "includes": ["App/Sources/Features/Player/PlaybackState", "App/Sources/Features/Player/PlaybackTypes.swift", "App/Sources/Features/Agent/AgentChatSession", "App/Sources/Features/Agent/AgentLLMClient.swift", "App/Sources/Features/Agent/AgentOllamaClient.swift", "App/Sources/Features/Agent/AgentOpenRouterClient.swift", "App/Sources/Features/Agent/AgentChatTitleGenerator.swift", "App/Sources/Features/Agent/ChatConversation.swift", "App/Sources/Features/Agent/ChatMessage.swift"],
+      "excludes": [
+        "App/Sources/Features/Player/PlaybackState+AudioCallbacks.swift",
+        "App/Sources/Features/Player/PlaybackState+AudioSession.swift",
+        "App/Sources/Features/Player/PlaybackState+SleepTimer.swift"
+      ]
     },
     {
       "id": "temporary-product-proof-controllers",
@@ -209,7 +220,7 @@
       "persisted_state": "Transient presentation only; current exceptions are tracked by shared/temporary entries.",
       "priority": "keep_native",
       "includes": ["App/Sources/Features/"],
-      "excludes": ["App/Sources/Features/Player/PlaybackState", "App/Sources/Features/Player/PlaybackTypes.swift", "App/Sources/Features/Player/AutoSnip/AutoSnipController.swift", "App/Sources/Features/Agent/AgentChatSession", "App/Sources/Features/Agent/AgentLLMClient.swift", "App/Sources/Features/Agent/AgentOllamaClient.swift", "App/Sources/Features/Agent/AgentOpenRouterClient.swift", "App/Sources/Features/Agent/AgentChatTitleGenerator.swift", "App/Sources/Features/Agent/ChatConversation.swift", "App/Sources/Features/Agent/ChatMessage.swift"]
+      "excludes": ["App/Sources/Features/Player/PlaybackState", "App/Sources/Features/Player/PlaybackSessionPolicy.swift", "App/Sources/Features/Player/PlaybackTypes.swift", "App/Sources/Features/Player/AutoSnip/AutoSnipController.swift", "App/Sources/Features/Agent/AgentChatSession", "App/Sources/Features/Agent/AgentLLMClient.swift", "App/Sources/Features/Agent/AgentOllamaClient.swift", "App/Sources/Features/Agent/AgentOpenRouterClient.swift", "App/Sources/Features/Agent/AgentChatTitleGenerator.swift", "App/Sources/Features/Agent/ChatConversation.swift", "App/Sources/Features/Agent/ChatMessage.swift"]
     },
     {
       "id": "native-platform-services",

@@ -30,37 +30,6 @@ final class PlaybackState {
 
     var sleepTimer: PlaybackSleepTimer = .off
 
-    /// Live label for the sleep-timer action chip. Renders the live countdown
-    /// when armed in duration mode so the chip reads "29:42" and ticks down
-    /// — was previously stuck on the static preset string ("30 min") for the
-    /// entire armed window. Read from a SwiftUI view body so @Observable
-    /// dependency tracking picks up the engine's per-tick phase changes.
-    var sleepTimerChipLabel: String {
-        switch engine.sleepTimer.phase {
-        case .idle:
-            return "Sleep"
-        case .armed(let remaining), .fading(let remaining):
-            return Self.formatRemaining(remaining)
-        case .armedEndOfEpisode:
-            return "End"
-        case .fired:
-            return "Sleep"
-        }
-    }
-
-    /// `mm:ss` for under an hour, `h:mm:ss` otherwise. Negative / zero values
-    /// floor to "0:00" so a brief race during the fade-to-fire transition
-    /// doesn't print "-1".
-    private static func formatRemaining(_ seconds: TimeInterval) -> String {
-        let total = max(0, Int(seconds.rounded(.up)))
-        let h = total / 3600
-        let m = (total % 3600) / 60
-        let s = total % 60
-        return h > 0
-            ? String(format: "%d:%02d:%02d", h, m, s)
-            : String(format: "%d:%02d", m, s)
-    }
-
     /// Up Next queue — ordered list of `QueueItem` values. Each item may carry
     /// optional `startSeconds`/`endSeconds` bounds for agent-curated segment
     /// playback. Full-episode items use `nil` for both fields.
@@ -202,7 +171,7 @@ final class PlaybackState {
     // MARK: - Internal
 
     /// Drives the 1-second persistence + end-detection loop.
-    private var persistenceTask: Task<Void, Never>?
+    var persistenceTask: Task<Void, Never>?
     /// Prevents `onEpisodeFinished` from firing twice for the same playthrough.
     private var didFireFinishedFor: UUID?
     /// Most recent App-Group snapshot write. Used to throttle position-only
@@ -214,6 +183,10 @@ final class PlaybackState {
     /// same episode sees ads skipped again. Not persisted — purely
     /// throttling state for the 1-second tick loop.
     var skippedAdSegmentIDs: Set<UUID> = []
+    var sessionPolicy = PlaybackSessionPolicy()
+    var playbackRequested = false
+    var lastHostObservation: PlaybackObservation?
+    var onHostObservation: (PlaybackObservation) -> Void = { _ in }
 
     // MARK: - Init
 
@@ -249,6 +222,8 @@ final class PlaybackState {
             // episode should re-skip the same ads; a brand-new episode
             // starts with an empty set.
             skippedAdSegmentIDs = []
+            playbackRequested = false
+            sessionPolicy.invalidateResumeIntent()
         } else {
             // Same-id reload (Play/Resume tap, deep-link, chapter-row).
             // Clear the finished-flag so a user replaying an already-
@@ -312,9 +287,21 @@ final class PlaybackState {
     }
 
     func play() {
-        guard episode != nil else { return }
+        guard let episode else { return }
+        sessionPolicy.invalidateResumeIntent()
+        playbackRequested = true
         Haptics.medium()
+        if case .failed = engine.state {
+            let resume = max(engine.currentTime, episode.playbackPosition)
+            engine.load(episode)
+            if resume > 0 { engine.seek(to: resume) }
+        }
         engine.play()
+        if case .failed = engine.state {
+            playbackRequested = false
+            writeNowPlayingSnapshot(force: true)
+            return
+        }
         startPersistenceLoop()
         // Force-write the snapshot so the widget's play/pause glyph
         // flips immediately — the throttled persistence-loop write would
@@ -323,6 +310,8 @@ final class PlaybackState {
     }
 
     func pause() {
+        playbackRequested = false
+        sessionPolicy.invalidateResumeIntent()
         Haptics.soft()
         let pausedEpisodeID = episode?.id
         if engine.didReachNaturalEnd {
@@ -434,7 +423,7 @@ final class PlaybackState {
     /// Polls `engine.currentTime` once per second and forwards to the persistence
     /// closure. A separate path detects end-of-episode so the store can flip
     /// `played = true` without subscribing to the engine's internal observer.
-    private func startPersistenceLoop() {
+    func startPersistenceLoop() {
         persistenceTask?.cancel()
         persistenceTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
@@ -471,6 +460,7 @@ final class PlaybackState {
         writeNowPlayingSnapshot(force: false)
 
         if engine.didReachNaturalEnd {
+            playbackRequested = false
             didFireFinishedFor = episode.id
             if autoMarkPlayedOnFinish {
                 onEpisodeFinished(episode.id)

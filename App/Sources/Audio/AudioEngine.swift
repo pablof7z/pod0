@@ -6,16 +6,6 @@ import MediaPlayer
 import os.log
 import UIKit
 
-// MARK: - EngineError
-
-/// `Error`-conforming + `Equatable` so the engine's `State` enum can stay
-/// `Equatable` for SwiftUI diffing.
-struct EngineError: Error, Equatable, Sendable, CustomStringConvertible {
-    let message: String
-    init(_ message: String) { self.message = message }
-    var description: String { message }
-}
-
 // MARK: - AudioEngine
 
 /// Wraps a single `AVPlayer`, exposes an `@Observable` playback state, and
@@ -136,7 +126,12 @@ final class AudioEngine {
     var bufferEmptyObservation: NSKeyValueObservation?
     var bufferLikelyToKeepUpObservation: NSKeyValueObservation?
     var endObserver: NSObjectProtocol?
+    var audioSessionObserver: PlaybackAudioSessionObserver?
     var fadeBaseVolume: Float = 1.0
+
+    /// Typed host lifecycle events. PlaybackState owns the pause/resume and
+    /// persistence policy so system and in-app commands share one boundary.
+    var onAudioSessionEvent: (PlaybackAudioSessionEvent) -> Void = { _ in }
 
     /// Per-effect multiplier that composes into `player.volume` via
     /// `applyEffectiveVolume`. Sleep timer drives `sleepFadeMultiplier`.
@@ -149,6 +144,7 @@ final class AudioEngine {
         onSleepTimerFire = { [weak self] in self?.pause() }
         configureSleepTimerHooks()
         nowPlaying.setSkipIntervals(forward: skipForwardSeconds, backward: skipBackwardSeconds)
+        configureAudioSessionObserver()
     }
 
     // Note: no `deinit` cleanup. Under Swift 6 strict concurrency, `deinit` is
@@ -221,8 +217,9 @@ final class AudioEngine {
         do {
             try AudioSessionCoordinator.shared.activate(.podcastPlayback)
         } catch {
-            logger.error("Failed to activate audio session: \(error, privacy: .public)")
-            state = .failed(EngineError("Could not activate audio session: \(error.localizedDescription)"))
+            let engineError = EngineError(error)
+            logger.error("Audio session activation failed: \(engineError.description, privacy: .public)")
+            state = .failed(engineError)
             return
         }
         applyEffectiveVolume()

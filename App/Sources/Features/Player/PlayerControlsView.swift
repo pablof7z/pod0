@@ -18,6 +18,15 @@ struct PlayerControlsView: View {
     @Binding var showVoiceNoteSheet: Bool
 
     var body: some View {
+        VStack(spacing: AppTheme.Spacing.sm) {
+            if let failure = state.playbackFailure {
+                PlaybackFailureBanner(failure: failure) { state.play() }
+            }
+            controls
+        }
+    }
+
+    private var controls: some View {
         HStack(alignment: .center, spacing: AppTheme.Spacing.sm) {
             // Right actions: voice note + auto-snip (left side of transport)
             actionChip(glyph: "mic", accessibilityName: "Voice note") {

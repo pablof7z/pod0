@@ -100,6 +100,13 @@ final class AudioSessionCoordinator {
         mode = .idle
     }
 
+    /// Media-server reset invalidates the configuration represented by
+    /// `mode`. Mark it idle without touching the already-reset session so the
+    /// next playback request performs a full category + activation sequence.
+    func invalidateAfterMediaServicesReset() {
+        mode = .idle
+    }
+
     // MARK: - Voice mode high-level state
 
     /// Coarse-grained session state used by the conversational voice layer.

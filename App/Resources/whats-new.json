@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-18T14:10:54Z",
+      "lines": [
+        "Playback now pauses safely for interruptions and disconnected headphones, preserves your place, and explains connection failures with a retry."
+      ]
+    },
+    {
       "shipped_at": "2026-07-18T13:55:37Z",
       "lines": [
         "Provider and background-task failures now explain safe next steps without exposing technical response details."

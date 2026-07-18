@@ -47,17 +47,26 @@ extension AudioEngine {
 
     func installItemObservers(for item: AVPlayerItem) {
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
-            Task { @MainActor in self?.handleItemStatusChange(item) }
+            Task { @MainActor in
+                guard let self, self.player.currentItem === item else { return }
+                self.handleItemStatusChange(item)
+            }
         }
         bufferEmptyObservation = item.observe(\.isPlaybackBufferEmpty, options: [.new]) { [weak self] item, _ in
             Task { @MainActor in
-                guard let self, item.isPlaybackBufferEmpty else { return }
+                guard let self,
+                      self.player.currentItem === item,
+                      item.isPlaybackBufferEmpty
+                else { return }
                 if self.state == .playing { self.setState(.buffering) }
             }
         }
         bufferLikelyToKeepUpObservation = item.observe(\.isPlaybackLikelyToKeepUp, options: [.new]) { [weak self] item, _ in
             Task { @MainActor in
-                guard let self, item.isPlaybackLikelyToKeepUp else { return }
+                guard let self,
+                      self.player.currentItem === item,
+                      item.isPlaybackLikelyToKeepUp
+                else { return }
                 if self.state == .buffering { self.setState(.playing) }
             }
         }
@@ -68,8 +77,11 @@ extension AudioEngine {
             forName: AVPlayerItem.didPlayToEndTimeNotification,
             object: item,
             queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in self?.handleEndOfItem() }
+        ) { [weak self, weak item] _ in
+            Task { @MainActor in
+                guard let self, let item, self.player.currentItem === item else { return }
+                self.handleEndOfItem(item)
+            }
         }
     }
 
@@ -98,8 +110,7 @@ extension AudioEngine {
             if case .loading = state { setState(.paused) }
             publishNowPlaying()
         case .failed:
-            let msg = item.error?.localizedDescription ?? "Playback failed"
-            setState(.failed(EngineError(msg)))
+            setState(.failed(EngineError(item.error)))
         default:
             break
         }
@@ -120,7 +131,8 @@ extension AudioEngine {
         }
     }
 
-    func handleEndOfItem() {
+    func handleEndOfItem(_ item: AVPlayerItem) {
+        guard player.currentItem === item else { return }
         setCurrentTime(duration)
         didReachNaturalEnd = true
         publishNowPlayingElapsed()
