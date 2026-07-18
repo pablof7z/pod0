@@ -1,0 +1,20 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/pod0-domain",
+    "crates/pod0-application",
+    "crates/pod0-nmp",
+    "crates/pod0-facade",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+license = "MIT"
+publish = false
+
+[workspace.dependencies]
+pod0-domain = { path = "crates/pod0-domain", version = "=0.1.0" }
+pod0-application = { path = "crates/pod0-application", version = "=0.1.0" }
+nmp = { git = "https://github.com/pablof7z/nmp.git", rev = "f3495f09c8a3f90f3b31a28313f572c09fbdb369", version = "=0.1.0" }

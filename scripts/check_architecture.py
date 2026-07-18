@@ -29,6 +29,7 @@ def main() -> int:
         (scripts / "check_ui_storage_boundary.py", True),
         (scripts / "check_file_lengths.py", True),
         (scripts / "check_nmp_domain_boundary.py", True),
+        (scripts / "check_rust_dependency_policy.py", True),
     ]
     failed = False
     for script, has_self_test in checks:

@@ -11,3 +11,4 @@ DerivedDevice/
 *.ipa
 *.dSYM.zip
 *.dSYM
+rust/target/
