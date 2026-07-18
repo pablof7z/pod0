@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-18T11:06:21Z",
+      "lines": [
+        "Interrupted or damaged transcripts and chapters now repair themselves without getting stuck or repeatedly saving in the background."
+      ]
+    },
+    {
       "shipped_at": "2026-07-18T11:00:24Z",
       "lines": [
         "Cancelled downloads now stop reliably, and turning off new-episode alerts also clears pending notifications."

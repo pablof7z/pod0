@@ -58,8 +58,16 @@ final class PersistenceDurabilityTests: XCTestCase {
         first.settings.hasCompletedOnboarding = false
         var second = first
         second.settings.hasCompletedOnboarding = true
+        let occurrence = DesiredJob(
+            idempotencyKey: "scheduled:reversed-save",
+            kind: .scheduledAgentRun,
+            subjectID: UUID(),
+            inputVersion: "scheduled:reversed-save",
+            occurrenceID: "scheduled:reversed-save",
+            resourceClass: .scheduledAgent
+        )
 
-        let firstRevision = persistence.save(first)
+        let firstRevision = persistence.save(first, ensuring: [occurrence])
         XCTAssertEqual(firstRevision, 1)
         while !(await gate.hasEntered) { await Task.yield() }
         let secondRevision = persistence.save(second)
@@ -67,11 +75,27 @@ final class PersistenceDurabilityTests: XCTestCase {
         let wroteSecond = await persistence.waitUntilWritten(secondRevision)
         XCTAssertTrue(wroteSecond)
         await gate.release()
-        try await Task.sleep(for: .milliseconds(20))
+        let jobStore = JobStore(fileURL: Persistence.episodeStoreURL(for: url))
+        var persistedOccurrence: WorkJob?
+        for _ in 0..<100 where persistedOccurrence == nil {
+            persistedOccurrence = try jobStore.job(
+                idempotencyKey: occurrence.idempotencyKey
+            )
+            if persistedOccurrence == nil {
+                try await Task.sleep(for: .milliseconds(5))
+            }
+        }
 
         let loaded = try Persistence(fileURL: url).load()
         XCTAssertTrue(loaded.settings.hasCompletedOnboarding)
         XCTAssertEqual(loaded.persistenceGeneration, secondRevision)
+        XCTAssertEqual(persistedOccurrence?.state, .pending)
+        XCTAssertEqual(
+            try jobStore.allJobs().filter {
+                $0.idempotencyKey == occurrence.idempotencyKey
+            }.count,
+            1
+        )
     }
 
     func testBackgroundFlushAwaitsAuthoritativeRevision() async throws {

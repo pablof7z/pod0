@@ -8,6 +8,7 @@ actor PersistenceBackgroundWriter {
     }
 
     private var pending: PendingSnapshot?
+    private var latestAcceptedSnapshot: PendingSnapshot?
     private var isDraining = false
     private var lastAcceptedRevision: UInt64 = 0
     private var lastWrittenRevision: UInt64 = 0
@@ -21,13 +22,26 @@ actor PersistenceBackgroundWriter {
         jobs: [DesiredJob],
         persistence: Persistence
     ) {
-        guard revision > lastAcceptedRevision else { return }
-        lastAcceptedRevision = revision
         for job in jobs { uncommittedJobs[job.idempotencyKey] = job }
+        if revision > lastAcceptedRevision {
+            lastAcceptedRevision = revision
+            latestAcceptedSnapshot = PendingSnapshot(
+                revision: revision,
+                state: state,
+                jobs: []
+            )
+        } else if jobs.isEmpty {
+            return
+        }
+        guard let latestAcceptedSnapshot else { return }
         let mergedJobs = uncommittedJobs.values.sorted {
             $0.idempotencyKey < $1.idempotencyKey
         }
-        pending = PendingSnapshot(revision: revision, state: state, jobs: mergedJobs)
+        pending = PendingSnapshot(
+            revision: latestAcceptedSnapshot.revision,
+            state: latestAcceptedSnapshot.state,
+            jobs: mergedJobs
+        )
         guard !isDraining else { return }
         isDraining = true
         Task { await drain(persistence: persistence) }

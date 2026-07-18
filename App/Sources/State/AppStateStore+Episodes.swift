@@ -387,8 +387,10 @@ extension AppStateStore {
         if chapters.isEmpty, let existing = state.episodes[idx].chapters, !existing.isEmpty {
             return
         }
+        let projected = chapters.isEmpty ? nil : chapters
+        guard state.episodes[idx].chapters != projected else { return }
         var episodes = state.episodes
-        episodes[idx].chapters = chapters.isEmpty ? nil : chapters
+        episodes[idx].chapters = projected
         mutateState { $0.episodes = episodes }
     }
 }

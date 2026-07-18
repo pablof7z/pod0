@@ -27,6 +27,7 @@ struct Reconciler {
             now: now()
         ))
         report.ensured = try jobStore.ensureJobs(desired)
+        report.ensured += try jobStore.rearmSucceededRepairs(desired, now: now())
         let jobsByKey = Dictionary(
             uniqueKeysWithValues: try jobStore.allJobs().map { ($0.idempotencyKey, $0) }
         )

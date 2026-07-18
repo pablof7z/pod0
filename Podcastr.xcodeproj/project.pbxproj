@@ -321,6 +321,8 @@
 		90B2454BB9FAFF299B0C8821 /* BackgroundOpportunityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40BC9C3032D52C27E6D7B12A /* BackgroundOpportunityTests.swift */; };
 		916C3EF963BE3EAF8C30F6CC /* AutoDownloadPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98DAEDC159EB12D823A8DDE6 /* AutoDownloadPolicy.swift */; };
 		9233C00D5F2FB69038566D40 /* PersistenceDurabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A29ADBE2A4052A77C0BA411 /* PersistenceDurabilityTests.swift */; };
+		E31A00000000000000000001 /* WorkflowHardeningRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E31A00000000000000000002 /* WorkflowHardeningRegressionTests.swift */; };
+		E31A00000000000000000003 /* DerivedProjectionConvergenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E31A00000000000000000004 /* DerivedProjectionConvergenceTests.swift */; };
 		9267704A5863B2C0A60A1FA0 /* PlayerSpeedSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B03EB912BE98A4069F55105 /* PlayerSpeedSheet.swift */; };
 		92C9DBDDB22405495C072D71 /* EpisodeDetailActionsMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F7D32A4C6A04F62070DE1B /* EpisodeDetailActionsMenu.swift */; };
 		934EFAE6F73139B79C117D40 /* WorkflowReconcilerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4D0D9CFFFC9AFACCEBE0BA1 /* WorkflowReconcilerTests.swift */; };
@@ -1066,6 +1068,8 @@
 		D41965CC3F4A90D6B2C95AC3 /* AgentTools+PodcastActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AgentTools+PodcastActions.swift"; sourceTree = "<group>"; };
 		D49683E5F74E9AF459761FDB /* RAGService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAGService.swift; sourceTree = "<group>"; };
 		D4D0D9CFFFC9AFACCEBE0BA1 /* WorkflowReconcilerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowReconcilerTests.swift; sourceTree = "<group>"; };
+		E31A00000000000000000002 /* WorkflowHardeningRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowHardeningRegressionTests.swift; sourceTree = "<group>"; };
+		E31A00000000000000000004 /* DerivedProjectionConvergenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DerivedProjectionConvergenceTests.swift; sourceTree = "<group>"; };
 		D4F8B87E49AE8CE274362E96 /* EpisodeAuditEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeAuditEvent.swift; sourceTree = "<group>"; };
 		D5B3D200FFBFC6759CF54614 /* PlaybackState+Chapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlaybackState+Chapters.swift"; sourceTree = "<group>"; };
 		D5F13F2BBC4FECC8B7B3D4BF /* AgentToolSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentToolSchema.swift; sourceTree = "<group>"; };
@@ -1814,6 +1818,8 @@
 				8B23D6259BBB5DC5ECF273D4 /* VTTParserTests.swift */,
 				DE8C3FF9B6198A0AA6C3A16E /* WhatsNewServiceTests.swift */,
 				D4D0D9CFFFC9AFACCEBE0BA1 /* WorkflowReconcilerTests.swift */,
+				E31A00000000000000000004 /* DerivedProjectionConvergenceTests.swift */,
+				E31A00000000000000000002 /* WorkflowHardeningRegressionTests.swift */,
 				05EB07DEA0DEFAC7F143B2A2 /* WorkflowStateTransitionTests.swift */,
 			);
 			path = Sources;
@@ -2816,6 +2822,8 @@
 				8F6C7ACA9A78C7AB02DADBF7 /* VTTParserTests.swift in Sources */,
 				84C1F2E7E12E30068AE3CAE2 /* WhatsNewServiceTests.swift in Sources */,
 				934EFAE6F73139B79C117D40 /* WorkflowReconcilerTests.swift in Sources */,
+				E31A00000000000000000003 /* DerivedProjectionConvergenceTests.swift in Sources */,
+				E31A00000000000000000001 /* WorkflowHardeningRegressionTests.swift in Sources */,
 				EAB2D79BCD6B9B0F7E10BB9D /* WorkflowStateTransitionTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

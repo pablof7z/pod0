@@ -103,6 +103,47 @@ extension JobStore {
         }
     }
 
+    /// Re-arms derivable work whose previously selected output no longer
+    /// satisfies desired state. The canonical row remains the lineage anchor:
+    /// attempts are retained, a fresh attempt budget is added, and any old
+    /// lease or provider identity is fenced before the repair becomes runnable.
+    @discardableResult
+    func rearmSucceededRepairs(
+        _ desired: [DesiredJob],
+        now: Date = Date()
+    ) throws -> Int {
+        try withDatabase { db in
+            let statement = try WorkflowSQLite.prepare(
+                """
+                UPDATE jobs SET state='pending', max_attempts=max_attempts+?,
+                    not_before=?, lease_token=NULL, lease_owner=NULL,
+                    lease_expires_at=NULL, external_provider=NULL,
+                    external_operation_id=NULL, external_operation_state=NULL,
+                    last_error_class=NULL, last_error_message=NULL, updated_at=?
+                WHERE idempotency_key=? AND kind=? AND subject_id=?
+                  AND input_version=? AND occurrence_id IS NULL
+                  AND state='succeeded'
+                """,
+                db: db
+            )
+            defer { sqlite3_finalize(statement) }
+            let before = sqlite3_total_changes(db)
+            for job in desired where job.occurrenceID == nil {
+                try WorkflowSQLite.bind(Int64(job.maxAttempts), 1, statement, db)
+                try WorkflowSQLite.bind(now, 2, statement, db)
+                try WorkflowSQLite.bind(now, 3, statement, db)
+                try WorkflowSQLite.bind(job.idempotencyKey, 4, statement, db)
+                try WorkflowSQLite.bind(job.kind.rawValue, 5, statement, db)
+                try WorkflowSQLite.bind(job.subjectID.uuidString, 6, statement, db)
+                try WorkflowSQLite.bind(job.inputVersion, 7, statement, db)
+                try WorkflowSQLite.stepDone(statement, db)
+                sqlite3_reset(statement)
+                sqlite3_clear_bindings(statement)
+            }
+            return Int(sqlite3_total_changes(db) - before)
+        }
+    }
+
     func obsoleteActiveJobs(notIn keys: Set<String>, derivableOnly: Bool = true) throws {
         let jobs = try allJobs().filter { $0.state.isActive }
         for job in jobs where !keys.contains(job.idempotencyKey) {
