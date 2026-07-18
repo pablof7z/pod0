@@ -12,6 +12,7 @@ NMP_REVISION = "f3495f09c8a3f90f3b31a28313f572c09fbdb369"
 NMP_GIT = "https://github.com/pablof7z/nmp.git"
 ALLOWED_NMP_MANIFEST = "crates/pod0-nmp/Cargo.toml"
 UNIFFI_VERSION = "0.32.0"
+RUSQLITE_VERSION = "0.39.0"
 SECURITY_HOLD_ADVISORIES = {"RUSTSEC-2026-0118", "RUSTSEC-2026-0119"}
 SECURITY_HOLD_ISSUE = "https://github.com/pablof7z/pod0/issues/85"
 
@@ -64,6 +65,11 @@ def validate(root: Path) -> list[str]:
     expected_uniffi = f'uniffi = {{ version = "={UNIFFI_VERSION}" }}'
     if expected_uniffi not in workspace_text:
         errors.append(f"workspace UniFFI dependency must equal {expected_uniffi!r}")
+    expected_rusqlite = f'rusqlite = {{ version = "={RUSQLITE_VERSION}"'
+    if expected_rusqlite not in workspace_text:
+        errors.append(
+            f"workspace rusqlite dependency must begin with {expected_rusqlite!r}"
+        )
 
     lock = rust / "Cargo.lock"
     if not lock.exists():

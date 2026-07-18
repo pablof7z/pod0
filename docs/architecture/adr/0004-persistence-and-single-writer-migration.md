@@ -13,6 +13,14 @@ persistence generation, workflow jobs, schema metadata, and artifact metadata.
 Legacy JSON is migration input only. Rust must not share write ownership of
 these Codable payloads with Swift.
 
+## Implementation status
+
+The app-core schema mechanism now exists in `pod0-storage`: sequential locked
+SQL versions, transactional forward migration, a restart journal, verified
+SQLite backups, staged/authoritative domain markers, and read-only blocked
+states. It contains no imported user records and is not consumed by the iOS
+facade yet. Swift remains the sole writer until the first vertical slice.
+
 ## Decision
 
 Each migrated domain is stored in a Rust-owned SQLite schema in an app-core

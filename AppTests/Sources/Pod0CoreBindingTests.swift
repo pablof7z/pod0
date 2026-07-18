@@ -3,6 +3,34 @@ import Pod0Core
 import XCTest
 
 final class Pod0CoreBindingTests: XCTestCase {
+    func testSwiftAndKotlinSchemaCompatibilityFixture() throws {
+        let fixtureURL = try XCTUnwrap(
+            Bundle(for: Self.self).url(
+                forResource: "schema-status-v1",
+                withExtension: "properties"
+            )
+        )
+        let fixture = try decodeProperties(at: fixtureURL)
+
+        XCTAssertEqual(fixture["fixture_version"], "1")
+        XCTAssertEqual(fixture["schema_component"], "kernel")
+        XCTAssertEqual(UInt32(fixture["stored_version"] ?? ""), 2)
+        XCTAssertEqual(UInt32(fixture["supported_min"] ?? ""), 0)
+        XCTAssertEqual(UInt32(fixture["supported_max"] ?? ""), 3)
+        XCTAssertEqual(fixture["access_mode"], "migration_only")
+        XCTAssertEqual(fixture["migration_state"], "required")
+        XCTAssertEqual(UInt32(fixture["target_version"] ?? ""), 3)
+        XCTAssertEqual(UInt64(fixture["store_id_high"] ?? ""), 10)
+        XCTAssertEqual(UInt64(fixture["store_id_low"] ?? ""), 11)
+        XCTAssertEqual(UInt64(fixture["command_id_high"] ?? ""), 1)
+        XCTAssertEqual(UInt64(fixture["command_id_low"] ?? ""), 2)
+        XCTAssertEqual(UInt64(fixture["state_revision"] ?? ""), 42)
+        XCTAssertEqual(fixture["operation_stage"], "failed")
+        XCTAssertEqual(fixture["error_kind"], "unsupported")
+        XCTAssertEqual(UInt32(fixture["error_wire_code"] ?? ""), 9_001)
+        XCTAssertEqual(fixture["optional_safe_detail"], "null")
+    }
+
     func testGeneratedFacadeRoundTripsCommandsProjectionsAndSubscriptionLifecycle() throws {
         let facade = Pod0Facade()
         let subscriber = RecordingCoreSubscriber()
@@ -71,6 +99,21 @@ final class Pod0CoreBindingTests: XCTestCase {
             )
         )
         XCTAssertEqual(subscriber.revisions, [0, 1, 2, 3])
+    }
+
+    private func decodeProperties(at url: URL) throws -> [String: String] {
+        try String(contentsOf: url, encoding: .utf8)
+            .split(whereSeparator: \.isNewline)
+            .filter { !$0.isEmpty && !$0.hasPrefix("#") }
+            .reduce(into: [:]) { result, line in
+                let parts = line.split(
+                    separator: "=",
+                    maxSplits: 1,
+                    omittingEmptySubsequences: false
+                )
+                guard parts.count == 2 else { return }
+                result[String(parts[0])] = String(parts[1])
+            }
     }
 }
 

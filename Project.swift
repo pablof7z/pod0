@@ -146,6 +146,7 @@ let project = Project(
             bundleId: "\(appBundleID).tests",
             deploymentTargets: deploymentTarget,
             sources: ["AppTests/Sources/**"],
+            resources: ["Fixtures/CoreSchema/**"],
             dependencies: [
                 .target(name: appName),
                 .target(name: coreBindingsName),

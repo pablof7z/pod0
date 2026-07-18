@@ -6,6 +6,8 @@
     "App/Sources",
     "App/Widget/Sources",
     "AppTests/Sources",
+    "BindingsSmoke",
+    "rust/crates",
     "scripts",
     "ci_scripts"
   ],

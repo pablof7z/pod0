@@ -12,6 +12,10 @@ import and cutover. The permanent operating rule is:
 - `pod0-application` owns deterministic commands, policy, projections, and
   capability contracts. Time and every other nondeterministic input enter
   through an explicit interface.
+- `pod0-storage` owns versioned app-core SQLite schemas, transactional
+  migrations, verified backups, recovery state, and domain cutover markers.
+  Its current schema is infrastructure-only and imports no Swift records. See
+  [`SCHEMA_MIGRATIONS.md`](SCHEMA_MIGRATIONS.md).
 - `pod0-nmp` is the only crate allowed to depend directly on generic NMP. It
   adapts NMP's public Rust facade; Pod0 nouns never enter NMP crates.
 - `pod0-facade` is the one app-owned native/core boundary. Its typed
@@ -40,6 +44,8 @@ From the repository root:
 The script uses the exact toolchain in `rust-toolchain.toml`, the committed
 lockfile, formatting and Clippy gates, workspace tests, the dependency-boundary
 checker, `cargo-deny` license/source/advisory policy, and `cargo-audit`.
+It also verifies that shipped SQL migration files match their sequential
+schema version and SHA-256 lock.
 
 Regenerate or verify the language bindings with:
 

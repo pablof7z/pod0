@@ -23,12 +23,12 @@ product/repository name used by the architecture and roadmap.
   tests.
 
 Master also contains the additive Pod0 Rust kernel, one typed UniFFI facade,
-generated Swift and Kotlin bindings, and deterministic Apple packaging. The
-facade is linked into iOS for compile/runtime qualification but owns no user
-data yet; Swift remains authoritative until the first complete vertical-slice
-cutover. There is no Android application. Generic NMP is pinned behind the
-Pod0 adapter and is not linked into the facade while security issue #85 is
-open.
+generated Swift and Kotlin bindings, deterministic Apple packaging, and the
+versioned app-core SQLite migration/backup mechanism. The facade is linked into
+iOS for compile/runtime qualification but Rust owns no user data yet; Swift
+remains authoritative until the first complete vertical-slice cutover. There
+is no Android application. Generic NMP is pinned behind the Pod0 adapter and is
+not linked into the facade while security issue #85 is open.
 
 ## Architecture
 
