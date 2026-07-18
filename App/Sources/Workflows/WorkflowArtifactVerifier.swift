@@ -4,10 +4,16 @@ import Foundation
 final class WorkflowArtifactVerifier: JobPostconditionVerifier {
     private let appStore: AppStateStore
     private let artifacts: ArtifactRepository
+    private let fileVerifier: ArtifactVerificationExecutor
 
-    init(appStore: AppStateStore, artifacts: ArtifactRepository) {
+    init(
+        appStore: AppStateStore,
+        artifacts: ArtifactRepository,
+        fileVerifier: ArtifactVerificationExecutor = .shared
+    ) {
         self.appStore = appStore
         self.artifacts = artifacts
+        self.fileVerifier = fileVerifier
     }
 
     func verifyAndCommit(
@@ -22,13 +28,12 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
         case .feedDiscovery:
             records = [record(.feedDiscovery, job: job, output: outputVersion, hash: outputVersion)]
         case .transcriptIngest:
-            guard let data = TranscriptStore.shared.verifiedStagedData(
-                episodeID: job.subjectID, leaseToken: leaseToken
-            ),
-                  ArtifactRepository.hash(data) == outputVersion,
-                  let transcript = try? Self.decoder.decode(Transcript.self, from: data),
-                  transcript.episodeID == job.subjectID else { return false }
-            let selectedURL = try TranscriptStore.shared.promoteStaged(
+            guard let transcript = await fileVerifier.verifiedStagedTranscript(
+                episodeID: job.subjectID,
+                leaseToken: leaseToken,
+                expectedHash: outputVersion
+            ) else { return false }
+            let selectedURL = try await fileVerifier.promoteTranscript(
                 episodeID: job.subjectID,
                 leaseToken: leaseToken,
                 contentHash: outputVersion
@@ -40,7 +45,7 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
                 origin: Self.projectedSource(transcript.source).rawValue
             )]
         case .transcriptIndex:
-            guard TranscriptStore.shared.verifiedData(episodeID: job.subjectID) != nil,
+            guard await fileVerifier.verifiedTranscript(episodeID: job.subjectID) != nil,
                   let receiptData = Data(base64Encoded: outputVersion),
                   let receipt = try? Self.decoder.decode(
                     VectorArtifactReceipt.self, from: receiptData
@@ -77,15 +82,14 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
                 schemaVersion: receipt.schemaVersion
             )]
         case .publisherChapters:
-            guard let verified = DerivedArtifactStagingStore.shared.verifiedChapters(
+            guard let verified = await fileVerifier.verifiedChapters(
                 episodeID: job.subjectID,
                 inputVersion: job.inputVersion,
                 leaseToken: leaseToken,
                 manifestHash: outputVersion
             ), verified.output.chapterOrigin == .publisher else { return false }
-            let locations = try DerivedArtifactStagingStore.shared.promote(
-                verified,
-                episodeID: job.subjectID
+            let locations = try await fileVerifier.promoteChapters(
+                verified, episodeID: job.subjectID
             )
             records = [record(
                 .chapters,
@@ -99,13 +103,13 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
                 )
             )]
         case .chapterArtifacts:
-            guard let verified = DerivedArtifactStagingStore.shared.verifiedChapters(
+            guard let verified = await fileVerifier.verifiedChapters(
                 episodeID: job.subjectID,
                 inputVersion: job.inputVersion,
                 leaseToken: leaseToken,
                 manifestHash: outputVersion
             ) else { return false }
-            let locations = try DerivedArtifactStagingStore.shared.promote(
+            let locations = try await fileVerifier.promoteChapters(
                 verified, episodeID: job.subjectID
             )
             let chapterOrigin: String
@@ -151,19 +155,23 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
                selected.inputVersion == job.inputVersion,
                selected.contentHash == outputVersion,
                let location = selected.location,
-               let data = try? Data(
-                contentsOf: URL(fileURLWithPath: location),
-                options: .mappedIfSafe
-               ), ArtifactRepository.hash(data) == selected.contentHash {
+               await fileVerifier.verify(.init(
+                artifactID: "download:\(job.subjectID.uuidString)",
+                location: URL(fileURLWithPath: location),
+                expectedHash: selected.contentHash,
+                expectedSize: nil,
+                schemaVersion: selected.schemaVersion,
+                cancellationID: leaseToken
+               )).isAvailable {
                 records = [selected]
             } else {
-                guard let staged = EpisodeDownloadStore.shared.verifiedStagedOutput(
+                guard let staged = await fileVerifier.verifiedStagedDownload(
                     episodeID: job.subjectID,
                     jobID: job.id,
                     inputVersion: job.inputVersion,
                     contentHash: outputVersion
                 ) else { return false }
-                let url = try EpisodeDownloadStore.shared.promote(staged, episode: episode)
+                let url = try await fileVerifier.promoteDownload(staged, episode: episode)
                 records = [record(
                     .downloadFile, job: job, output: staged.contentHash,
                     hash: staged.contentHash, location: url.path, origin: "urlSession"
@@ -179,7 +187,7 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
                 episodeID: job.subjectID, receipt: receipt
             )
         }
-        for record in records { applyStableProjection(for: record, job: job) }
+        for record in records { await applyStableProjection(for: record, job: job) }
         return true
     }
 
@@ -203,7 +211,7 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
         }
     }
 
-    private func applyStableProjection(for record: ArtifactRecord, job: WorkJob) {
+    private func applyStableProjection(for record: ArtifactRecord, job: WorkJob) async {
         switch record.kind {
         case .transcript:
             guard let location = record.location else { return }
@@ -226,13 +234,13 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
             )), episodeID: record.subjectID)
         case .chapters:
             guard let location = record.location,
-                  let chapters = DerivedArtifactStagingStore.shared.loadChapters(
+                  let chapters = await fileVerifier.loadChapters(
                     at: URL(fileURLWithPath: location)
                   ) else { return }
             appStore.setEpisodeChapters(record.subjectID, chapters: chapters)
         case .adSegments:
             guard let location = record.location,
-                  let ads = DerivedArtifactStagingStore.shared.loadAds(
+                  let ads = await fileVerifier.loadAds(
                     at: URL(fileURLWithPath: location)
                   ) else { return }
             appStore.setEpisodeAdSegments(record.subjectID, segments: ads)

@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-18T15:06:33Z",
+      "lines": [
+        "Large downloads and artifact checks now finish without freezing the app."
+      ]
+    },
+    {
       "shipped_at": "2026-07-18T14:47:02Z",
       "lines": [
         "Ask what you heard and Pod0 now answers from your transcripts with playable episode citations."

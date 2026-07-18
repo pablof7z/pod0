@@ -171,21 +171,8 @@ final class EpisodeDownloadService {
               let episode = store.episode(id: episodeID) else {
             throw JobFailure(classification: .invalidInput, message: "Episode no longer exists")
         }
-        if case .downloaded = episode.downloadState,
-           EpisodeDownloadStore.shared.exists(for: episode),
-           let data = try? Data(
-               contentsOf: EpisodeDownloadStore.shared.localFileURL(for: episode),
-               options: .mappedIfSafe
-           ) {
-            return ArtifactRepository.hash(data)
-        }
-        if let staged = EpisodeDownloadStore.shared.verifiedStagedOutput(
-            episodeID: episodeID,
-            jobID: context.job.id,
-            inputVersion: context.job.inputVersion
-        ) {
-            return staged.contentHash
-        }
+        if let hash = await verifiedExistingDownloadHash(episode, context: context) { return hash }
+        if let hash = await verifiedStagedDownloadHash(context: context) { return hash }
         if episodeIDToTask[episodeID] == nil {
             terminalResults[episodeID] = nil
             try startTransfer(
@@ -198,9 +185,14 @@ final class EpisodeDownloadService {
         }
         let result = await waitForDownload(episodeID: episodeID, waiterID: context.job.id)
         switch result {
-        case .success(let url):
-            let data = try Data(contentsOf: url, options: .mappedIfSafe)
-            return ArtifactRepository.hash(data)
+        case .success:
+            guard let hash = await verifiedStagedDownloadHash(context: context) else {
+                throw JobFailure(
+                    classification: .corruptArtifact,
+                    message: "Downloaded file failed staged verification"
+                )
+            }
+            return hash
         case .failure(let error as JobFailure):
             throw error
         case .failure(let error):

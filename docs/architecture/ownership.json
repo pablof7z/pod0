@@ -100,7 +100,21 @@
       "migration_issues": [48, 51, 52, 60],
       "deletion_target": "Delete each Swift workflow-kind owner after drain/import/cutover and recovery proof.",
       "priority": "high",
-      "includes": ["App/Sources/Workflows/"]
+      "includes": ["App/Sources/Workflows/"],
+      "excludes": ["App/Sources/Workflows/ArtifactVerificationExecutor.swift"]
+    },
+    {
+      "id": "temporary-workflow-verification-executor",
+      "classification": "temporary_swift",
+      "current_owner": "Swift bounded artifact verification executor",
+      "target_owner": "Pod0 Rust workflow and artifact application layer",
+      "reason": "Issue #48 removes visible main-actor stalls without delaying product proof; the typed request/result boundary is explicitly temporary until the workflow slice migrates.",
+      "boundary": "Native callers submit typed file evidence requests; only verified typed results may reach fenced workflow commits.",
+      "persisted_state": "None; exact immutable file identities are cached in memory only.",
+      "migration_issues": [60],
+      "deletion_target": "Delete the Swift executor when #60 moves artifact verification and recovery into the shared Rust workflow owner.",
+      "priority": "high",
+      "includes": ["App/Sources/Workflows/ArtifactVerificationExecutor.swift"]
     },
     {
       "id": "shared-transcript-model-and-normalization",

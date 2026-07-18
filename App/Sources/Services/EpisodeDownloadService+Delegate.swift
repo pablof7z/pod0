@@ -139,7 +139,7 @@ final class DownloadCoordinator: NSObject, URLSessionDownloadDelegate, @unchecke
                 )
                 return
             }
-            service.handleFinished(
+            await service.handleFinished(
                 episodeID: episodeID,
                 jobID: jobID,
                 inputVersion: inputVersion,
@@ -245,7 +245,7 @@ extension EpisodeDownloadService {
         jobID: UUID,
         inputVersion: String,
         interim: URL
-    ) {
+    ) async {
         guard let store = appStore,
               let episode = store.episode(id: episodeID) else {
             try? FileManager.default.removeItem(at: interim)
@@ -253,7 +253,7 @@ extension EpisodeDownloadService {
         }
         let staged: StagedDownloadOutput
         do {
-            staged = try EpisodeDownloadStore.shared.stage(
+            staged = try await ArtifactVerificationExecutor.shared.stageDownload(
                 interim,
                 episode: episode,
                 jobID: jobID,

@@ -26,7 +26,7 @@
     "App/Sources/Audio/AudioEngine.swift": 452,
     "AppTests/Sources/AppStateStorePerformanceTests.swift": 443,
     "App/Sources/Transcript/ElevenLabsScribeClient.swift": 443,
-    "App/Sources/Services/EpisodeDownloadService.swift": 442,
+    "App/Sources/Services/EpisodeDownloadService.swift": 434,
     "App/Sources/Podcast/Episode.swift": 439,
     "AppTests/Sources/WorkflowReconcilerTests.swift": 435,
     "App/Sources/Features/Agent/AgentChatSession+Turns.swift": 429,
