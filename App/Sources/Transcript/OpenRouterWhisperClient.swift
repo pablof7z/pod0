@@ -52,7 +52,7 @@ actor OpenRouterWhisperClient {
     }
 
     private static let logger = Logger.app("OpenRouterWhisperClient")
-    nonisolated(unsafe) private static let decoder = JSONDecoder()
+    private static let decoder = JSONDecoder()
 
     /// 10 minutes — large audio files can take several minutes server-side.
     static let requestTimeout: TimeInterval = 600

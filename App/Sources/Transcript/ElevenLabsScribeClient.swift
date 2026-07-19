@@ -91,7 +91,7 @@ actor ElevenLabsScribeClient {
     /// Shared decoder for the synchronous `/v1/speech-to-text`
     /// response. Reentrant for `decode` after construction; one per
     /// transcribed episode is plenty.
-    nonisolated(unsafe) private static let decoder = JSONDecoder()
+    private static let decoder = JSONDecoder()
 
     /// 10 minutes — Scribe is synchronous and a 60-minute episode can take
     /// several minutes to transcribe server-side. The default URLRequest

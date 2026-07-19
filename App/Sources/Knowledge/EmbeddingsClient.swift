@@ -38,8 +38,8 @@ struct OpenRouterEmbeddingsClient: EmbeddingsClient {
     /// dozens of batches — that's a lot of Foundation allocator
     /// pressure on an already-network-bound path. Both types are
     /// reentrant for `encode` / `decode` after construction.
-    nonisolated(unsafe) private static let encoder = JSONEncoder()
-    nonisolated(unsafe) private static let decoder = JSONDecoder()
+    private static let encoder = JSONEncoder()
+    private static let decoder = JSONDecoder()
 
     private let apiKeyProvider: @Sendable () throws -> String?
     private let model: String

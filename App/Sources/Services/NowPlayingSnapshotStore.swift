@@ -46,7 +46,7 @@ enum NowPlayingSnapshotStore {
     /// produces roughly 720 writes; minting a fresh `JSONEncoder` each
     /// time was wasted Foundation allocation. The encoder is reentrant
     /// for `encode` after construction.
-    nonisolated(unsafe) private static let encoder = JSONEncoder()
+    private static let encoder = JSONEncoder()
 
     /// App Group identifier — must match `Project.swift`'s `appGroupID` and the
     /// entitlements on both targets. Hard-coded here (rather than read from

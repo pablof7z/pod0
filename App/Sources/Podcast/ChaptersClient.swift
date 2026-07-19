@@ -51,7 +51,7 @@ struct ChaptersClient: Sendable {
     }
 
     /// Shared decoder for the small Podcasting 2.0 JSON payload.
-    nonisolated(unsafe) private static let decoder = JSONDecoder()
+    private static let decoder = JSONDecoder()
 
     /// Decode a Podcasting 2.0 chapters JSON payload into `Episode.Chapter`
     /// values. Permissive: accepts integer or floating-point timestamps,

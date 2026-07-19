@@ -24,15 +24,10 @@ struct HomeThreadedTodayPill: View {
                 Image(systemName: "link.circle.fill")
                     .font(.body.weight(.semibold))
                     .foregroundStyle(AppTheme.Tint.agentSurface)
-                (
-                    Text("\(active.unplayedEpisodeCount) episodes touch on ")
-                        .foregroundStyle(.primary)
-                    + Text(active.topic.displayName)
-                        .foregroundStyle(.primary)
-                        .fontWeight(.semibold)
-                    + Text(" — tap to thread")
-                        .foregroundStyle(.secondary)
+                Text(
+                    "\(active.unplayedEpisodeCount) episodes touch on \(Text(active.topic.displayName).fontWeight(.semibold))\(Text(" — tap to thread").foregroundStyle(.secondary))"
                 )
+                .foregroundStyle(.primary)
                 .font(AppTheme.Typography.subheadline)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
