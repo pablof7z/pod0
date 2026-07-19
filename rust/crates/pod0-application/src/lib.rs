@@ -17,6 +17,17 @@ mod feed_parser_reader;
 mod feed_parser_values;
 #[cfg(test)]
 mod feed_tests;
+mod knowledge;
+mod knowledge_chunking;
+mod knowledge_chunking_policy;
+#[cfg(test)]
+mod knowledge_chunking_tests;
+mod knowledge_identity;
+mod knowledge_ranking;
+#[cfg(test)]
+mod knowledge_ranking_tests;
+#[cfg(test)]
+mod knowledge_test_fixture;
 
 pub use contract::*;
 pub use contract_playback_projection::*;
@@ -24,6 +35,9 @@ pub use contract_projection::*;
 pub use contract_state::*;
 pub use effects::*;
 pub use feed::*;
+pub use knowledge::*;
+pub use knowledge_chunking::*;
+pub use knowledge_ranking::*;
 
 pub const CORE_SCHEMA_VERSION: u32 = 1;
 

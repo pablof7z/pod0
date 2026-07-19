@@ -6,6 +6,7 @@ REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 OUTPUT_ROOT="$REPO_ROOT/.build/pod0core/Pod0CoreFFI.xcframework"
 TEMP_ROOT=$(mktemp -d /tmp/pod0-core-apple.XXXXXX)
 TARGETS=(aarch64-apple-ios aarch64-apple-ios-sim)
+APPLE_IOS_DEPLOYMENT_TARGET=26.0
 
 cleanup() {
   case "$TEMP_ROOT" in
@@ -15,6 +16,7 @@ cleanup() {
 trap cleanup EXIT
 
 cd "$REPO_ROOT/rust"
+export IPHONEOS_DEPLOYMENT_TARGET="$APPLE_IOS_DEPLOYMENT_TARGET"
 for target in "${TARGETS[@]}"; do
   rustup target add --toolchain 1.93.0 "$target"
   cargo rustc -p pod0-facade --release --locked --target "$target" --crate-type staticlib

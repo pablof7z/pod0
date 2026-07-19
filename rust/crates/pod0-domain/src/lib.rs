@@ -3,8 +3,8 @@
 uniffi::setup_scaffolding!();
 
 macro_rules! opaque_id {
-    ($name:ident) => {
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, uniffi::Record)]
+    ($name:ident $(, $extra:path)*) => {
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash $(, $extra)*)]
         pub struct $name {
             pub high: u64,
             pub low: u64,
@@ -55,20 +55,26 @@ macro_rules! opaque_id {
 
 // Opaque identities cross the native/core boundary as two unsigned 64-bit
 // words. Their meaning remains domain-specific rather than stringly typed.
-opaque_id!(CommandId);
-opaque_id!(CancellationId);
-opaque_id!(SubscriptionId);
-opaque_id!(HostRequestId);
-opaque_id!(DomainEventId);
-opaque_id!(PodcastId);
-opaque_id!(EpisodeId);
-opaque_id!(QueueEntryId);
+opaque_id!(CommandId, uniffi::Record);
+opaque_id!(CancellationId, uniffi::Record);
+opaque_id!(SubscriptionId, uniffi::Record);
+opaque_id!(HostRequestId, uniffi::Record);
+opaque_id!(DomainEventId, uniffi::Record);
+opaque_id!(PodcastId, uniffi::Record);
+opaque_id!(EpisodeId, uniffi::Record);
+opaque_id!(QueueEntryId, uniffi::Record);
+opaque_id!(SpeakerId);
+opaque_id!(TranscriptVersionId);
+opaque_id!(TranscriptSegmentId);
+opaque_id!(EvidenceSpanId);
 
+mod knowledge;
 mod listening;
 mod listening_error;
 mod listening_policy;
 mod playback_policy;
 
+pub use knowledge::*;
 pub use listening::*;
 pub use listening_error::*;
 pub use listening_policy::*;
