@@ -270,6 +270,13 @@ impl From<StorageError> for LegacyListeningMigrationError {
             | StorageError::RevisionConflict
             | StorageError::InvalidNote
             | StorageError::InvalidClip
+            | StorageError::InvalidTranscriptArtifact
+            | StorageError::TranscriptCommandConflict
+            | StorageError::TranscriptNotFound
+            | StorageError::TranscriptRevisionConflict
+            | StorageError::TranscriptImportConflict
+            | StorageError::TranscriptImportNotFound
+            | StorageError::NewerLegacyTranscriptSchema { .. }
             | StorageError::FailedMigration { .. }
             | StorageError::EvidenceCommandConflict
             | StorageError::EvidenceNotFound

@@ -1,8 +1,9 @@
 # Pod0 shared Rust kernel
 
-This workspace is the additive shared-product kernel. It owns no user data yet;
-the Swift application remains authoritative until a complete vertical-slice
-import and cutover. The permanent operating rule is:
+This workspace is Pod0's shared-product kernel. Migrated listening, playback,
+evidence, notes, and clips use its durable stores; other domains remain native
+or staged until their complete vertical-slice cutover. The permanent operating
+rule is:
 
 > Native executes platform primitives; Rust owns durable product decisions.
 
@@ -27,13 +28,12 @@ No crate may depend on NMP mechanism crates such as `nmp-engine`, `nmp-store`,
 or `nmp-ffi`. Pod0 will not import NMP's generated Swift/Kotlin bindings as a
 second bridge; the app-owned facade composes NMP inside Rust.
 
-The bootstrap runtime is deliberately non-durable. Its serialized in-memory
-writer proves crate direction, typed commands/projections/host effects,
-subscription lifecycle, cancellation, and binding shape. Issue #78 adds the
-validated target listening types and identity rules documented in
-[`LISTENING_DOMAIN_V1.md`](LISTENING_DOMAIN_V1.md), but does not cut over the
-runtime or user data. Dispatch still performs no I/O or long-running work;
-issues #79–#82 implement and cut over the first durable vertical slice.
+The app-owned facade is the typed single-writer boundary used by the migrated
+listening, playback, evidence, note, clip, and recall slices. Its dispatch path
+remains fire-and-forget; durable work reports through bounded state projections
+and typed host requests. Full-transcript contract and storage support are
+additive until the transcript importer and native adapter complete their staged
+single-writer cutover.
 
 ## Reproducible checks
 

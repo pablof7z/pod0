@@ -25,6 +25,11 @@ mod legacy_format;
 mod legacy_note_format;
 mod legacy_note_source;
 mod legacy_source;
+mod legacy_transcript_db;
+mod legacy_transcript_db_schema;
+mod legacy_transcript_format;
+mod legacy_transcript_source;
+mod legacy_transcript_transform;
 mod legacy_transform;
 mod library_feed_codec;
 mod library_store;
@@ -64,6 +69,16 @@ mod schema_introspection;
 mod schema_library;
 mod schema_notes;
 mod schema_transcripts;
+mod transcript_backup_atomic;
+mod transcript_import;
+mod transcript_import_commit;
+mod transcript_import_digest;
+mod transcript_import_discard;
+mod transcript_import_model;
+mod transcript_import_store_read;
+mod transcript_import_store_write;
+mod transcript_import_verification;
+mod transcript_legacy_backup;
 mod transcript_store;
 mod transcript_store_codec;
 mod transcript_store_model;
@@ -94,6 +109,7 @@ pub use import_model::{
 pub use legacy_clip_source::inspect_legacy_clip_source;
 pub use legacy_note_source::inspect_legacy_note_source;
 pub use legacy_source::inspect_legacy_listening_source;
+pub use legacy_transcript_source::inspect_legacy_transcript_source;
 pub use library_store::{LibraryStore, commit_listening_cutover};
 pub use library_store_playback::{
     PlaybackMutation, PlaybackMutationResult, PlaybackQueuePlacement,
@@ -112,6 +128,13 @@ pub use note_import_model::{
 };
 pub use note_import_store::{commit_note_cutover, read_note_import};
 pub use note_store_model::NoteCollectionSnapshot;
+pub use transcript_import::{TranscriptImportClock, TranscriptImporter};
+pub use transcript_import_model::{
+    LegacyTranscriptSourceKind, TranscriptBackupEvidence, TranscriptImportEntrySummary,
+    TranscriptImportPlan, TranscriptImportReport, TranscriptImportState,
+    TranscriptImportVerification,
+};
+pub use transcript_import_store_read::{read_transcript_import, read_transcript_import_entries};
 pub use transcript_store::TranscriptStore;
 pub use transcript_store_model::{
     MAX_TRANSCRIPT_PROJECTION_ITEMS, StoredTranscriptSegment, StoredTranscriptSpeaker,
@@ -153,6 +176,18 @@ mod note_import_tests;
 mod recovery_test_support;
 #[cfg(test)]
 mod recovery_tests;
+#[cfg(test)]
+mod transcript_import_evidence_tests;
+#[cfg(test)]
+mod transcript_import_failure_tests;
+#[cfg(test)]
+mod transcript_import_recovery_tests;
+#[cfg(test)]
+mod transcript_import_supersession_tests;
+#[cfg(test)]
+mod transcript_import_test_support;
+#[cfg(test)]
+mod transcript_import_tests;
 #[cfg(test)]
 mod transcript_store_recovery_tests;
 #[cfg(test)]

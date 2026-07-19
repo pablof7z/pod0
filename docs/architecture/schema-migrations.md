@@ -38,6 +38,13 @@ the canonical semantic fields after the documented nearest-millisecond
 conversion, plus a verified immutable backup of the original JSON bytes. Swift
 transcript and segment UUIDs and the distinction between absent and empty word
 arrays are legacy serialization details, not durable product identity.
+Backups are verified before same-directory no-clobber atomic publication, so a
+process death can leave an ignorable temporary file but never a partial final
+backup. Inspection retains only bounded identities and digests; staging
+rehydrates one artifact at a time and rechecks the selection database and files
+immediately before commit. While the cutover remains staged, a newer Swift
+selection may supersede only a prior import-owned selection. It cannot overwrite
+a Rust runtime-owned selection or an authoritative transcript cutover.
 
 Listening, note, and clip importers read the Swift source without mutation,
 verify an online SQLite or copied JSON backup, stage rows in one target

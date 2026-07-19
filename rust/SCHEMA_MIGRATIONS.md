@@ -1,11 +1,10 @@
 # Rust core schema and recovery contract
 
-`pod0-storage` owns the app-core SQLite schema mechanism and the durable
-listening data that has completed its Swift-to-Rust cutover. Transcript evidence
-artifacts are Rust-owned once staged, but no native recall surface consumes them
-until the typed recall facade and iOS cutover land. A domain remains Swift-owned
+`pod0-storage` owns the app-core SQLite schema mechanism and the durable domains
+that have completed their Swift-to-Rust cutovers. A domain remains Swift-owned
 until its importer, parity check, cutover marker, and obsolete-writer deletion
-land together.
+land together. Full transcript artifacts may be staged and verified in the core,
+but Swift transcript JSON remains authoritative until the transcript cutover.
 
 ## Version contract
 
@@ -25,7 +24,11 @@ Later versions add complete domain slices rather than generic storage:
 4. bounded listening-data import and parity evidence;
 5. Rust-authoritative library and subscription state;
 6. playback, queue, and resume state;
-7. versioned transcript documents and staged/verified evidence generations.
+7. versioned transcript documents and staged/verified evidence generations;
+8. durable notes, tombstones, provenance, and staged import state;
+9. durable clips with immutable transcript/evidence references; and
+10. canonical full transcript artifacts, speakers, words, selections, command
+    receipts, and staged two-source legacy import evidence.
 
 Evidence generation writes are transactional. A complete artifact is staged,
 reread, and integrity-checked before commit; verification is a separate durable
@@ -68,6 +71,17 @@ The backup is reopened read-only, must carry the Pod0 application ID and source
 schema version and store identity, and must pass `PRAGMA quick_check`. Existing
 backup paths are never overwritten; only a matching verified backup from the
 same store may be reused after interruption.
+
+Legacy transcript import coordinates the selected artifact row in the Swift
+SQLite store with its external JSON payload. Database backups use SQLite's
+online backup API. JSON and database backups are written to a same-directory
+temporary file, verified against the inspected identities and digests, and
+published atomically without clobbering an existing content/generation-qualified
+path. Inspection retains bounded identities and digests rather than every full
+artifact; staging rehydrates and verifies one artifact at a time. The importer
+rechecks both sources immediately before stage and selection commits. A newer
+Swift selection can supersede only an earlier import-owned selection while the
+cutover remains staged; runtime-owned or authoritative selections fail closed.
 
 Restore is intentionally limited to a new destination path. Tests verify the
 restored store before it can replace anything. Before a domain's first
