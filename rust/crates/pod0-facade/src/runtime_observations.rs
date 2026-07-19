@@ -9,9 +9,9 @@ use crate::runtime_state::{FacadeState, FeedIntent, PendingFeed, failure};
 impl FacadeState {
     pub(super) fn record_host_observation(&mut self, observation: HostObservationEnvelope) -> bool {
         let command_id = self.host_requests.command_id(observation.request_id);
-        let is_playback_stream = self
+        let is_playback_request = self
             .host_requests
-            .is_playback_observation_stream(observation.request_id);
+            .is_playback_request(observation.request_id);
         if self.host_requests.accept_observation(&observation) != ObservationAcceptance::Accepted {
             return false;
         }
@@ -27,6 +27,10 @@ impl FacadeState {
             );
         } else {
             match observation.observation {
+                HostObservation::Failed { code, .. } if is_playback_request => {
+                    let _ = code;
+                    self.playback_host_failed(command_id);
+                }
                 HostObservation::Failed { code, .. } => self.fail(command_id, host_failure(code)),
                 HostObservation::Cancelled => self.finish(
                     command_id,
@@ -34,10 +38,18 @@ impl FacadeState {
                     Some(failure(CoreFailureCode::Cancelled)),
                     None,
                 ),
-                HostObservation::PlaybackObserved { .. } if is_playback_stream => {
-                    self.finish(command_id, OperationStage::Running, None, None)
+                HostObservation::PlaybackObserved { value } if is_playback_request => {
+                    self.accept_playback_observation(
+                        observation.request_id,
+                        observation.cancellation_id,
+                        observation.sequence_number,
+                        observation.observed_at.value,
+                        value,
+                    );
                 }
-                HostObservation::PlaybackObserved { .. } => self.succeed(command_id, None),
+                HostObservation::PlaybackObserved { .. } => {
+                    self.fail(command_id, CoreFailureCode::InvalidCommand)
+                }
                 HostObservation::FeedBytesFetched { .. }
                 | HostObservation::FeedNotModified { .. } => {
                     self.fail(command_id, CoreFailureCode::InvalidCommand)

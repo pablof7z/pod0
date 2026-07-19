@@ -91,9 +91,8 @@ extension EpisodeRecord {
             },
             publisherTranscriptType: feedMetadata.publisherTranscript?.format.swiftValue,
             chaptersURL: feedMetadata.chaptersUrl.flatMap(URL.init(string:)),
-            playbackPosition: adjunct?.playbackPosition
-                ?? Double(listening.resumePositionMilliseconds) / 1_000,
-            played: adjunct?.played ?? completed,
+            playbackPosition: Double(listening.resumePositionMilliseconds) / 1_000,
+            played: completed,
             isStarred: adjunct?.isStarred ?? isStarred,
             downloadState: adjunct?.downloadState ?? .notDownloaded,
             transcriptState: adjunct?.transcriptState ?? .none,

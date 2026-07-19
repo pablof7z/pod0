@@ -57,9 +57,13 @@ final class SharedLibraryVerticalSliceTests: XCTestCase {
         var stale = AppState()
         var stalePodcast = podcast
         stalePodcast.title = "STALE SWIFT TITLE"
+        var staleEpisode = episode
+        staleEpisode.playbackPosition = 444
+        staleEpisode.played = true
+        staleEpisode.isStarred = false
         stale.podcasts = [stalePodcast]
         stale.subscriptions = [PodcastSubscription(podcastID: podcast.id)]
-        stale.episodes = []
+        stale.episodes = [staleEpisode]
         XCTAssertTrue(persistence.write(stale, revision: 10_000))
 
         let relaunched = AppStateStore(
@@ -71,6 +75,8 @@ final class SharedLibraryVerticalSliceTests: XCTestCase {
         XCTAssertTrue(relaunched.isSharedLibraryAuthoritative)
         XCTAssertEqual(relaunched.podcast(id: podcast.id)?.title, "Migrated Show")
         XCTAssertEqual(relaunched.episode(id: episode.id)?.playbackPosition, 33)
+        XCTAssertEqual(relaunched.episode(id: episode.id)?.played, false)
+        XCTAssertEqual(relaunched.episode(id: episode.id)?.isStarred, false)
         XCTAssertEqual(relaunched.subscription(podcastID: podcast.id)?.notificationsEnabled, false)
 
         var rejectedPodcastWrite = try XCTUnwrap(relaunched.podcast(id: podcast.id))

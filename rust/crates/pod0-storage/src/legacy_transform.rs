@@ -54,6 +54,8 @@ pub(crate) fn transform_source(
         episodes,
         playback: ListeningPlaybackPolicy {
             active_episode_id,
+            active_segment: None,
+            active_label: None,
             queue: Vec::new(),
             rate: playback_rate(
                 raw.settings.default_playback_rate.unwrap_or(1.0),

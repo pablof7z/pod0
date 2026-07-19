@@ -150,7 +150,9 @@ final class CorePlaybackHost: CorePlaybackHosting {
     }
 
     private func emitObservation() {
-        observationSink(currentObservation())
+        let observation = currentObservation()
+        interruption = .none
+        observationSink(observation)
     }
 
     private func currentObservation() -> PlaybackLifecycleObservation {
@@ -184,12 +186,13 @@ final class CorePlaybackHost: CorePlaybackHosting {
         case .interruptionEnded(let shouldResume, let route):
             self.route = route.coreRoute
             interruption = shouldResume ? .endedShouldResume : .endedShouldRemainPaused
-        case .routeChanged(_, _, let current):
+        case .routeChanged(let reason, _, let current):
             route = current.coreRoute
-            interruption = .none
+            interruption = reason == .oldDeviceUnavailable ? .routeLost : .none
         case .mediaServicesWereReset(let route):
             self.route = route.coreRoute
-            interruption = .none
+            AudioSessionCoordinator.shared.invalidateAfterMediaServicesReset()
+            interruption = .mediaServicesReset
         }
         emitObservation()
     }

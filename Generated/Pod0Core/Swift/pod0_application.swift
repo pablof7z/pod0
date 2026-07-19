@@ -1193,18 +1193,86 @@ public func FfiConverterTypeOperationProjection_lower(_ value: OperationProjecti
 }
 
 
+public struct PlaybackAllowedActions: Equatable, Hashable {
+    public let canPlay: Bool
+    public let canPause: Bool
+    public let canSeek: Bool
+    public let canAdvance: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(canPlay: Bool, canPause: Bool, canSeek: Bool, canAdvance: Bool) {
+        self.canPlay = canPlay
+        self.canPause = canPause
+        self.canSeek = canSeek
+        self.canAdvance = canAdvance
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PlaybackAllowedActions: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePlaybackAllowedActions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PlaybackAllowedActions {
+        return
+            try PlaybackAllowedActions(
+                canPlay: FfiConverterBool.read(from: &buf),
+                canPause: FfiConverterBool.read(from: &buf),
+                canSeek: FfiConverterBool.read(from: &buf),
+                canAdvance: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PlaybackAllowedActions, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.canPlay, into: &buf)
+        FfiConverterBool.write(value.canPause, into: &buf)
+        FfiConverterBool.write(value.canSeek, into: &buf)
+        FfiConverterBool.write(value.canAdvance, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlaybackAllowedActions_lift(_ buf: RustBuffer) throws -> PlaybackAllowedActions {
+    return try FfiConverterTypePlaybackAllowedActions.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlaybackAllowedActions_lower(_ value: PlaybackAllowedActions) -> RustBuffer {
+    return FfiConverterTypePlaybackAllowedActions.lower(value)
+}
+
+
 public struct PlaybackItem: Equatable, Hashable {
     public let episodeId: EpisodeId
     public let title: String
     public let durableResumePositionMilliseconds: UInt64
+    public let segment: PlaybackSegment?
+    public let label: String?
+    public let completed: Bool
     public let policyState: PlaybackPolicyState
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(episodeId: EpisodeId, title: String, durableResumePositionMilliseconds: UInt64, policyState: PlaybackPolicyState) {
+    public init(episodeId: EpisodeId, title: String, durableResumePositionMilliseconds: UInt64, segment: PlaybackSegment?, label: String?, completed: Bool, policyState: PlaybackPolicyState) {
         self.episodeId = episodeId
         self.title = title
         self.durableResumePositionMilliseconds = durableResumePositionMilliseconds
+        self.segment = segment
+        self.label = label
+        self.completed = completed
         self.policyState = policyState
     }
 
@@ -1227,6 +1295,9 @@ public struct FfiConverterTypePlaybackItem: FfiConverterRustBuffer {
                 episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
                 title: FfiConverterString.read(from: &buf),
                 durableResumePositionMilliseconds: FfiConverterUInt64.read(from: &buf),
+                segment: FfiConverterOptionTypePlaybackSegment.read(from: &buf),
+                label: FfiConverterOptionString.read(from: &buf),
+                completed: FfiConverterBool.read(from: &buf),
                 policyState: FfiConverterTypePlaybackPolicyState.read(from: &buf)
         )
     }
@@ -1235,6 +1306,9 @@ public struct FfiConverterTypePlaybackItem: FfiConverterRustBuffer {
         FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
         FfiConverterString.write(value.title, into: &buf)
         FfiConverterUInt64.write(value.durableResumePositionMilliseconds, into: &buf)
+        FfiConverterOptionTypePlaybackSegment.write(value.segment, into: &buf)
+        FfiConverterOptionString.write(value.label, into: &buf)
+        FfiConverterBool.write(value.completed, into: &buf)
         FfiConverterTypePlaybackPolicyState.write(value.policyState, into: &buf)
     }
 }
@@ -1331,14 +1405,26 @@ public func FfiConverterTypePlaybackLifecycleObservation_lower(_ value: Playback
 
 public struct PlaybackProjection: Equatable, Hashable {
     public let current: PlaybackItem?
-    public let queue: [EpisodeId]
+    public let queue: [QueueEntry]
+    public let rate: PlaybackRatePermille
+    public let sleepMode: PlaybackSleepMode
+    public let autoMarkPlayedAtNaturalEnd: Bool
+    public let autoPlayNext: Bool
+    public let allowedActions: PlaybackAllowedActions
+    public let hostState: PlaybackHostState
     public let operations: [OperationProjection]
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(current: PlaybackItem?, queue: [EpisodeId], operations: [OperationProjection]) {
+    public init(current: PlaybackItem?, queue: [QueueEntry], rate: PlaybackRatePermille, sleepMode: PlaybackSleepMode, autoMarkPlayedAtNaturalEnd: Bool, autoPlayNext: Bool, allowedActions: PlaybackAllowedActions, hostState: PlaybackHostState, operations: [OperationProjection]) {
         self.current = current
         self.queue = queue
+        self.rate = rate
+        self.sleepMode = sleepMode
+        self.autoMarkPlayedAtNaturalEnd = autoMarkPlayedAtNaturalEnd
+        self.autoPlayNext = autoPlayNext
+        self.allowedActions = allowedActions
+        self.hostState = hostState
         self.operations = operations
     }
 
@@ -1359,14 +1445,26 @@ public struct FfiConverterTypePlaybackProjection: FfiConverterRustBuffer {
         return
             try PlaybackProjection(
                 current: FfiConverterOptionTypePlaybackItem.read(from: &buf),
-                queue: FfiConverterSequenceTypeEpisodeId.read(from: &buf),
+                queue: FfiConverterSequenceTypeQueueEntry.read(from: &buf),
+                rate: FfiConverterTypePlaybackRatePermille.read(from: &buf),
+                sleepMode: FfiConverterTypePlaybackSleepMode.read(from: &buf),
+                autoMarkPlayedAtNaturalEnd: FfiConverterBool.read(from: &buf),
+                autoPlayNext: FfiConverterBool.read(from: &buf),
+                allowedActions: FfiConverterTypePlaybackAllowedActions.read(from: &buf),
+                hostState: FfiConverterTypePlaybackHostState.read(from: &buf),
                 operations: FfiConverterSequenceTypeOperationProjection.read(from: &buf)
         )
     }
 
     public static func write(_ value: PlaybackProjection, into buf: inout [UInt8]) {
         FfiConverterOptionTypePlaybackItem.write(value.current, into: &buf)
-        FfiConverterSequenceTypeEpisodeId.write(value.queue, into: &buf)
+        FfiConverterSequenceTypeQueueEntry.write(value.queue, into: &buf)
+        FfiConverterTypePlaybackRatePermille.write(value.rate, into: &buf)
+        FfiConverterTypePlaybackSleepMode.write(value.sleepMode, into: &buf)
+        FfiConverterBool.write(value.autoMarkPlayedAtNaturalEnd, into: &buf)
+        FfiConverterBool.write(value.autoPlayNext, into: &buf)
+        FfiConverterTypePlaybackAllowedActions.write(value.allowedActions, into: &buf)
+        FfiConverterTypePlaybackHostState.write(value.hostState, into: &buf)
         FfiConverterSequenceTypeOperationProjection.write(value.operations, into: &buf)
     }
 }
@@ -1702,6 +1800,8 @@ public enum ApplicationCommand: Equatable, Hashable {
     )
     case requestPlayback(episodeId: EpisodeId
     )
+    case playback(command: PlaybackCommand
+    )
     case cancelOperation(cancellationId: CancellationId
     )
     case unsupported(wireCode: UInt32
@@ -1754,10 +1854,13 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
         case 9: return .requestPlayback(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
         )
 
-        case 10: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        case 10: return .playback(command: try FfiConverterTypePlaybackCommand.read(from: &buf)
         )
 
-        case 11: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 11: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        )
+
+        case 12: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -1821,13 +1924,18 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
 
 
-        case let .cancelOperation(cancellationId):
+        case let .playback(command):
             writeInt(&buf, Int32(10))
+            FfiConverterTypePlaybackCommand.write(command, into: &buf)
+
+
+        case let .cancelOperation(cancellationId):
+            writeInt(&buf, Int32(11))
             FfiConverterTypeCancellationId.write(cancellationId, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(11))
+            writeInt(&buf, Int32(12))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -2592,6 +2700,9 @@ public enum OperationResult: Equatable, Hashable {
     )
     case preferencesUpdated(podcastId: PodcastId
     )
+    case playbackUpdated(episodeId: EpisodeId?
+    )
+    case queueUpdated
     case unsupported(wireCode: UInt32
     )
 
@@ -2627,7 +2738,12 @@ public struct FfiConverterTypeOperationResult: FfiConverterRustBuffer {
         case 4: return .preferencesUpdated(podcastId: try FfiConverterTypePodcastId.read(from: &buf)
         )
 
-        case 5: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 5: return .playbackUpdated(episodeId: try FfiConverterOptionTypeEpisodeId.read(from: &buf)
+        )
+
+        case 6: return .queueUpdated
+
+        case 7: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -2659,8 +2775,17 @@ public struct FfiConverterTypeOperationResult: FfiConverterRustBuffer {
             FfiConverterTypePodcastId.write(podcastId, into: &buf)
 
 
-        case let .unsupported(wireCode):
+        case let .playbackUpdated(episodeId):
             writeInt(&buf, Int32(5))
+            FfiConverterOptionTypeEpisodeId.write(episodeId, into: &buf)
+
+
+        case .queueUpdated:
+            writeInt(&buf, Int32(6))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(7))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -2900,6 +3025,226 @@ public func FfiConverterTypePlaybackAudioRoute_lower(_ value: PlaybackAudioRoute
 
 
 
+public enum PlaybackCommand: Equatable, Hashable {
+
+    case select(episodeId: EpisodeId, segment: PlaybackSegment?, label: String?
+    )
+    case restore
+    case play
+    case pause
+    case seek(positionMilliseconds: UInt64
+    )
+    case enqueue(entry: QueueEntry, placement: QueuePlacement
+    )
+    case removeQueueEntry(queueEntryId: QueueEntryId
+    )
+    case removeEpisodeFromQueue(episodeId: EpisodeId
+    )
+    case replaceQueueOrder(queueEntryIds: [QueueEntryId]
+    )
+    case clearQueue
+    case advanceQueue
+    case setRate(rate: PlaybackRatePermille
+    )
+    case setSleepTimer(mode: PlaybackSleepMode
+    )
+    case setPreferences(autoMarkPlayedAtNaturalEnd: Bool, autoPlayNext: Bool
+    )
+    case setCompletion(episodeId: EpisodeId, completion: CompletionStatus
+    )
+    case resetProgress(episodeId: EpisodeId
+    )
+    case checkpoint(episodeId: EpisodeId, positionMilliseconds: UInt64
+    )
+    case nativeTimerFired
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PlaybackCommand: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePlaybackCommand: FfiConverterRustBuffer {
+    typealias SwiftType = PlaybackCommand
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PlaybackCommand {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .select(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), segment: try FfiConverterOptionTypePlaybackSegment.read(from: &buf), label: try FfiConverterOptionString.read(from: &buf)
+        )
+
+        case 2: return .restore
+
+        case 3: return .play
+
+        case 4: return .pause
+
+        case 5: return .seek(positionMilliseconds: try FfiConverterUInt64.read(from: &buf)
+        )
+
+        case 6: return .enqueue(entry: try FfiConverterTypeQueueEntry.read(from: &buf), placement: try FfiConverterTypeQueuePlacement.read(from: &buf)
+        )
+
+        case 7: return .removeQueueEntry(queueEntryId: try FfiConverterTypeQueueEntryId.read(from: &buf)
+        )
+
+        case 8: return .removeEpisodeFromQueue(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
+        )
+
+        case 9: return .replaceQueueOrder(queueEntryIds: try FfiConverterSequenceTypeQueueEntryId.read(from: &buf)
+        )
+
+        case 10: return .clearQueue
+
+        case 11: return .advanceQueue
+
+        case 12: return .setRate(rate: try FfiConverterTypePlaybackRatePermille.read(from: &buf)
+        )
+
+        case 13: return .setSleepTimer(mode: try FfiConverterTypePlaybackSleepMode.read(from: &buf)
+        )
+
+        case 14: return .setPreferences(autoMarkPlayedAtNaturalEnd: try FfiConverterBool.read(from: &buf), autoPlayNext: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 15: return .setCompletion(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), completion: try FfiConverterTypeCompletionStatus.read(from: &buf)
+        )
+
+        case 16: return .resetProgress(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
+        )
+
+        case 17: return .checkpoint(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), positionMilliseconds: try FfiConverterUInt64.read(from: &buf)
+        )
+
+        case 18: return .nativeTimerFired
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: PlaybackCommand, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .select(episodeId,segment,label):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterOptionTypePlaybackSegment.write(segment, into: &buf)
+            FfiConverterOptionString.write(label, into: &buf)
+
+
+        case .restore:
+            writeInt(&buf, Int32(2))
+
+
+        case .play:
+            writeInt(&buf, Int32(3))
+
+
+        case .pause:
+            writeInt(&buf, Int32(4))
+
+
+        case let .seek(positionMilliseconds):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt64.write(positionMilliseconds, into: &buf)
+
+
+        case let .enqueue(entry,placement):
+            writeInt(&buf, Int32(6))
+            FfiConverterTypeQueueEntry.write(entry, into: &buf)
+            FfiConverterTypeQueuePlacement.write(placement, into: &buf)
+
+
+        case let .removeQueueEntry(queueEntryId):
+            writeInt(&buf, Int32(7))
+            FfiConverterTypeQueueEntryId.write(queueEntryId, into: &buf)
+
+
+        case let .removeEpisodeFromQueue(episodeId):
+            writeInt(&buf, Int32(8))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+
+
+        case let .replaceQueueOrder(queueEntryIds):
+            writeInt(&buf, Int32(9))
+            FfiConverterSequenceTypeQueueEntryId.write(queueEntryIds, into: &buf)
+
+
+        case .clearQueue:
+            writeInt(&buf, Int32(10))
+
+
+        case .advanceQueue:
+            writeInt(&buf, Int32(11))
+
+
+        case let .setRate(rate):
+            writeInt(&buf, Int32(12))
+            FfiConverterTypePlaybackRatePermille.write(rate, into: &buf)
+
+
+        case let .setSleepTimer(mode):
+            writeInt(&buf, Int32(13))
+            FfiConverterTypePlaybackSleepMode.write(mode, into: &buf)
+
+
+        case let .setPreferences(autoMarkPlayedAtNaturalEnd,autoPlayNext):
+            writeInt(&buf, Int32(14))
+            FfiConverterBool.write(autoMarkPlayedAtNaturalEnd, into: &buf)
+            FfiConverterBool.write(autoPlayNext, into: &buf)
+
+
+        case let .setCompletion(episodeId,completion):
+            writeInt(&buf, Int32(15))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeCompletionStatus.write(completion, into: &buf)
+
+
+        case let .resetProgress(episodeId):
+            writeInt(&buf, Int32(16))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+
+
+        case let .checkpoint(episodeId,positionMilliseconds):
+            writeInt(&buf, Int32(17))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterUInt64.write(positionMilliseconds, into: &buf)
+
+
+        case .nativeTimerFired:
+            writeInt(&buf, Int32(18))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlaybackCommand_lift(_ buf: RustBuffer) throws -> PlaybackCommand {
+    return try FfiConverterTypePlaybackCommand.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlaybackCommand_lower(_ value: PlaybackCommand) -> RustBuffer {
+    return FfiConverterTypePlaybackCommand.lower(value)
+}
+
+
+
+
 public enum PlaybackHostState: Equatable, Hashable {
 
     case idle
@@ -3017,6 +3362,8 @@ public enum PlaybackInterruption: Equatable, Hashable {
     case began
     case endedShouldResume
     case endedShouldRemainPaused
+    case routeLost
+    case mediaServicesReset
     case unsupported(wireCode: UInt32
     )
 
@@ -3048,7 +3395,11 @@ public struct FfiConverterTypePlaybackInterruption: FfiConverterRustBuffer {
 
         case 4: return .endedShouldRemainPaused
 
-        case 5: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 5: return .routeLost
+
+        case 6: return .mediaServicesReset
+
+        case 7: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -3075,8 +3426,16 @@ public struct FfiConverterTypePlaybackInterruption: FfiConverterRustBuffer {
             writeInt(&buf, Int32(4))
 
 
-        case let .unsupported(wireCode):
+        case .routeLost:
             writeInt(&buf, Int32(5))
+
+
+        case .mediaServicesReset:
+            writeInt(&buf, Int32(6))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(7))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -3108,6 +3467,7 @@ public enum PlaybackPolicyState: Equatable, Hashable {
     case playing
     case paused
     case completed
+    case failed
     case unsupported(wireCode: UInt32
     )
 
@@ -3141,7 +3501,9 @@ public struct FfiConverterTypePlaybackPolicyState: FfiConverterRustBuffer {
 
         case 5: return .completed
 
-        case 6: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 6: return .failed
+
+        case 7: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -3172,8 +3534,12 @@ public struct FfiConverterTypePlaybackPolicyState: FfiConverterRustBuffer {
             writeInt(&buf, Int32(5))
 
 
-        case let .unsupported(wireCode):
+        case .failed:
             writeInt(&buf, Int32(6))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(7))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -3572,6 +3938,82 @@ public func FfiConverterTypeProjectionScope_lower(_ value: ProjectionScope) -> R
 
 
 
+public enum QueuePlacement: Equatable, Hashable {
+
+    case back
+    case next
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension QueuePlacement: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeQueuePlacement: FfiConverterRustBuffer {
+    typealias SwiftType = QueuePlacement
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> QueuePlacement {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .back
+
+        case 2: return .next
+
+        case 3: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: QueuePlacement, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .back:
+            writeInt(&buf, Int32(1))
+
+
+        case .next:
+            writeInt(&buf, Int32(2))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeQueuePlacement_lift(_ buf: RustBuffer) throws -> QueuePlacement {
+    return try FfiConverterTypeQueuePlacement.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeQueuePlacement_lower(_ value: QueuePlacement) -> RustBuffer {
+    return FfiConverterTypeQueuePlacement.lower(value)
+}
+
+
+
+
 public enum Retryability: Equatable, Hashable {
 
     case never
@@ -3890,6 +4332,30 @@ fileprivate struct FfiConverterOptionTypeEpisodeRecord: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypePlaybackSegment: FfiConverterRustBuffer {
+    typealias SwiftType = PlaybackSegment?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypePlaybackSegment.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypePlaybackSegment.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypePodcastRecord: FfiConverterRustBuffer {
     typealias SwiftType = PodcastRecord?
 
@@ -4035,31 +4501,6 @@ fileprivate struct FfiConverterSequenceTypeOperationProjection: FfiConverterRust
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-fileprivate struct FfiConverterSequenceTypeEpisodeId: FfiConverterRustBuffer {
-    typealias SwiftType = [EpisodeId]
-
-    public static func write(_ value: [EpisodeId], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for item in value {
-            FfiConverterTypeEpisodeId.write(item, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [EpisodeId] {
-        let len: Int32 = try readInt(&buf)
-        var seq = [EpisodeId]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try FfiConverterTypeEpisodeId.read(from: &buf))
-        }
-        return seq
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
 fileprivate struct FfiConverterSequenceTypeEpisodeRecord: FfiConverterRustBuffer {
     typealias SwiftType = [EpisodeRecord]
 
@@ -4127,6 +4568,56 @@ fileprivate struct FfiConverterSequenceTypePodcastSubscriptionRecord: FfiConvert
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypePodcastSubscriptionRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeQueueEntry: FfiConverterRustBuffer {
+    typealias SwiftType = [QueueEntry]
+
+    public static func write(_ value: [QueueEntry], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeQueueEntry.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [QueueEntry] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [QueueEntry]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeQueueEntry.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeQueueEntryId: FfiConverterRustBuffer {
+    typealias SwiftType = [QueueEntryId]
+
+    public static func write(_ value: [QueueEntryId], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeQueueEntryId.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [QueueEntryId] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [QueueEntryId]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeQueueEntryId.read(from: &buf))
         }
         return seq
     }

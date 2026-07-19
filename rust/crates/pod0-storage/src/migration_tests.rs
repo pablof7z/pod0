@@ -61,7 +61,7 @@ fn fresh_store_migrates_transactionally_to_current() {
     let report = fixture.migrate_to(CURRENT_SCHEMA_VERSION, 1).unwrap();
 
     assert_eq!(report.from_version, 0);
-    assert_eq!(report.applied_versions, vec![1, 2, 3, 4, 5]);
+    assert_eq!(report.applied_versions, vec![1, 2, 3, 4, 5, 6]);
     assert!(report.backup.is_none());
     assert_eq!(
         fixture.migrator.inspect(&fixture.store).migration_state,

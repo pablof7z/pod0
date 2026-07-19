@@ -22,6 +22,6 @@ extension PlaybackState {
             time >= ad.start && time < ad.end && !skippedAdSegmentIDs.contains(ad.id)
         }) else { return }
         skippedAdSegmentIDs.insert(segment.id)
-        engine.seek(to: segment.end)
+        seek(to: segment.end)
     }
 }

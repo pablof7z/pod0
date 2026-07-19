@@ -25,6 +25,7 @@ extension AppStateStore {
     /// Records the most-recently-loaded episode so the mini-player can be
     /// restored after an app restart. No-op when the value is unchanged.
     func setLastPlayedEpisode(_ id: UUID) {
+        guard !isSharedLibraryAuthoritative else { return }
         guard state.lastPlayedEpisodeID != id else { return }
         mutateState { $0.lastPlayedEpisodeID = id }
     }

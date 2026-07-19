@@ -9,11 +9,12 @@ pub use pod0_application::{
     KernelProbeProjection, LibraryProjection, MAX_FEED_RESPONSE_BYTES, MAX_HOST_REQUEST_BATCH,
     MAX_OPERATION_ITEMS, MAX_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, MAX_PROJECTION_ITEMS,
     MIN_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, NativeTimerMode, OperationProjection,
-    OperationResult, OperationStage, PlaybackAudioRoute, PlaybackHostState, PlaybackInterruption,
-    PlaybackItem, PlaybackLifecycleObservation, PlaybackPolicyState, PlaybackProjection,
-    PlaybackStopReason, PlaybackTransitionCue, PodcastSummary, Projection, ProjectionEnvelope,
-    ProjectionRequest, ProjectionScope, Retryability, UnsupportedProjection, UserAction,
-    bounded_host_request_count, bounded_playback_observation_interval,
+    OperationResult, OperationStage, PlaybackAllowedActions, PlaybackAudioRoute, PlaybackCommand,
+    PlaybackHostState, PlaybackInterruption, PlaybackItem, PlaybackLifecycleObservation,
+    PlaybackPolicyState, PlaybackProjection, PlaybackStopReason, PlaybackTransitionCue,
+    PodcastSummary, Projection, ProjectionEnvelope, ProjectionRequest, ProjectionScope,
+    QueuePlacement, Retryability, UnsupportedProjection, UserAction, bounded_host_request_count,
+    bounded_playback_observation_interval,
 };
 use pod0_application::{Clock, KernelApplication};
 pub use pod0_domain::{
@@ -38,6 +39,19 @@ mod runtime_command_fingerprint;
 mod runtime_commands;
 mod runtime_feed_commands;
 mod runtime_observations;
+mod runtime_playback_actions;
+mod runtime_playback_commands;
+mod runtime_playback_host;
+mod runtime_playback_observations;
+#[cfg(test)]
+mod runtime_playback_race_tests;
+#[cfg(test)]
+mod runtime_playback_recovery_tests;
+#[cfg(test)]
+mod runtime_playback_test_support;
+#[cfg(test)]
+mod runtime_playback_tests;
+mod runtime_playback_transitions;
 mod runtime_projection;
 mod runtime_state;
 #[cfg(test)]

@@ -129,6 +129,9 @@ impl FacadeState {
             ApplicationCommand::RequestPlayback { .. } => {
                 self.fail(envelope.command_id, CoreFailureCode::NotFound)
             }
+            ApplicationCommand::Playback { command } => {
+                self.accept_playback_command(&envelope, &fingerprint, command)
+            }
             ApplicationCommand::Unsupported { wire_code } => self.fail(
                 envelope.command_id,
                 CoreFailureCode::Unsupported { wire_code },

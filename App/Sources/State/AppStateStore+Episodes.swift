@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 
 // MARK: - Episodes
 
@@ -139,71 +140,6 @@ extension AppStateStore {
     // an eager-first / 5-second-trailing / 30-second-cap schedule. This is
     // the file's single highest-frequency caller; routing it through the
     // cache is the entire point of that companion file.
-
-    /// Marks the episode as fully played (sets `played = true`, zeroes the
-    /// position so a re-play starts from the top).
-    ///
-    /// **Flushes the position cache before mutating.** Without the flush,
-    /// a cached non-zero position for `id` would still be in
-    /// `positionCache`; clearing the cache *after* the played-true write
-    /// is fine, but if the app crashed between the flush and the
-    /// played=true save, the user would lose both the played flag *and*
-    /// the actual end-position. Flushing first means the worst case is
-    /// "played=false but position correct" — recoverable next time the
-    /// user opens the episode.
-    func markEpisodePlayed(_ id: UUID) {
-        flushPendingPositions()
-        guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
-        let wasDownloaded: Bool
-        if case .downloaded = state.episodes[idx].downloadState { wasDownloaded = true }
-        else { wasDownloaded = false }
-        var episodes = state.episodes
-        episodes[idx].played = true
-        episodes[idx].playbackPosition = 0
-        // The cache entry for this episode (if any) is now stale — we
-        // just persisted position=0 deliberately. Drop it so the next
-        // tick (e.g. a stray engine observer firing post-end) doesn't
-        // resurrect a non-zero position on its first eager save.
-        performMutationBatch {
-            mutateState { $0.episodes = episodes }
-            positionCache.removeValue(forKey: id)
-            // Cached unplayed counts + in-progress feed must drop this episode.
-            invalidateEpisodeProjections()
-        }
-        // Honour the user's "Delete after played" setting. Runs after the
-        // mutation batch so the played=true write is on disk before the
-        // download service flips downloadState back to .notDownloaded.
-        if wasDownloaded, state.settings.autoDeleteDownloadsAfterPlayed {
-            EpisodeDownloadService.shared.delete(episodeID: id)
-        }
-    }
-
-    /// Clears the playback position so the episode drops out of the "Continue
-    /// Listening" list without marking it played. The episode stays in the
-    /// library and can be started fresh from the show detail page.
-    func resetEpisodeProgress(_ id: UUID) {
-        flushPendingPositions()
-        guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
-        var episodes = state.episodes
-        episodes[idx].playbackPosition = 0
-        performMutationBatch {
-            mutateState { $0.episodes = episodes }
-            positionCache.removeValue(forKey: id)
-            invalidateEpisodeProjections()
-        }
-    }
-
-    /// Reverts an accidental "mark played".
-    func markEpisodeUnplayed(_ id: UUID) {
-        guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
-        var episodes = state.episodes
-        episodes[idx].played = false
-        performMutationBatch {
-            mutateState { $0.episodes = episodes }
-            // Cached unplayed counts + recent feed must re-include this episode.
-            invalidateEpisodeProjections()
-        }
-    }
 
     /// Updates stable local-file evidence. Active/retry/failure lifecycle is
     /// owned exclusively by JobStore.

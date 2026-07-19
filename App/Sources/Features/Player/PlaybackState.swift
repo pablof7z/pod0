@@ -7,12 +7,9 @@ import SwiftUI
 
 /// Real, observable wrapper around `AudioEngine` that the Player UI binds to.
 ///
-/// Owns a single `AudioEngine` instance and republishes its state through
-/// `@Observable` properties so SwiftUI re-renders on changes. Also: throttles
-/// a 1-second persistence mirror, detects end-of-episode, and adapts the
-/// engine's `SleepTimer.Mode` to the UI's preset enum. Persistence wires via
-/// closures (`onPersistPosition`, `onEpisodeFinished`) so the type stays
-/// testable without holding an `AppStateStore` reference directly.
+/// Owns one `AudioEngine`, renders shared playback projections, and routes
+/// semantic controls to Rust. The explicitly disabled/pre-cutover path retains
+/// its characterized Swift persistence callbacks until cleanup issue #83.
 @MainActor
 @Observable
 final class PlaybackState {
@@ -40,9 +37,9 @@ final class PlaybackState {
     var queue: [QueueItem] = []
 
     /// When the currently-playing item is a bounded segment, this holds the
-    /// episode-relative end boundary in seconds. `tickPersistence` watches this
-    /// and calls `onSegmentFinished` when the playhead crosses it, then clears
-    /// it. `nil` for full-episode items (natural-end detection applies instead).
+    /// episode-relative end boundary in seconds for presentation. Rust owns
+    /// segment completion in shared mode; the legacy loop reads this only in
+    /// explicitly disabled/pre-cutover mode.
     var currentSegmentEndTime: Double? = nil
 
     /// Back-navigation stack populated by `navigationalSeek(to:)`.
@@ -76,7 +73,7 @@ final class PlaybackState {
     /// updates the UI.
     var rate: PlaybackRate {
         get { PlaybackRate.bestFit(for: engine.rate) }
-        set { engine.setRate(newValue.rawValue) }
+        set { setRate(newValue) }
     }
 
     // MARK: - Persistence hooks (wired by RootView at .onAppear time)
@@ -170,7 +167,7 @@ final class PlaybackState {
     /// Drives the 1-second persistence + end-detection loop.
     var persistenceTask: Task<Void, Never>?
     /// Prevents `onEpisodeFinished` from firing twice for the same playthrough.
-    private var didFireFinishedFor: UUID?
+    var didFireFinishedFor: UUID?
     /// Most recent App-Group snapshot write. Used to throttle position-only
     /// updates to once every 5 seconds — the widget's timeline refresh
     /// granularity makes finer writes wasted I/O.
@@ -184,289 +181,12 @@ final class PlaybackState {
     var playbackRequested = false
     var lastHostObservation: PlaybackLifecycleObservation?
     var onHostObservation: (PlaybackLifecycleObservation) -> Void = { _ in }
+    @ObservationIgnored weak var sharedCore: SharedLibraryClient?
     // MARK: - Init
 
     init(engine: AudioEngine = AudioEngine(), productSignals: any ProductSignalSink = DiscardingProductSignalSink.shared) {
         self.engine = engine
         self.productSignals = productSignals
         configureAudioEngineCallbacks()
-    }
-
-    // MARK: - Episode lifecycle
-
-    /// Replace the current item with `newEpisode`. Resumes from the persisted
-    /// `playbackPosition` when present. Caller must follow with `play()` to
-    /// actually start audio — matches the engine's deliberate two-step flow.
-    ///
-    /// **Idempotent.** When `newEpisode.id` matches the currently-loaded
-    /// episode, skip the `engine.load` reload — it would replace the
-    /// `AVPlayerItem` and interrupt in-flight playback for a caller that
-    /// just wanted "make sure this is loaded" semantics (the EpisodeDetail
-    /// hero "Play/Resume" button, chapter-row taps, deep-links). The
-    /// metadata refresh + snapshot write still run so any post-hydrate
-    /// changes (chapters, title) flush to the widget.
-    func setEpisode(_ newEpisode: Episode) {
-        let isSameEpisode = (episode?.id == newEpisode.id)
-        if !isSameEpisode {
-            // Drain any cached position for the previous episode before
-            // we steal the persistence loop — otherwise the outgoing
-            // playhead would only land on disk at the next 30s eager-cap
-            // tick, by which time the user may have force-quit.
-            onFlushPositions()
-            didFireFinishedFor = nil
-            lastSnapshotWrite = nil
-            // Skipped-ad set is per-episode-session. Replaying the same
-            // episode should re-skip the same ads; a brand-new episode
-            // starts with an empty set.
-            skippedAdSegmentIDs = []
-            playbackRequested = false
-            sessionPolicy.invalidateResumeIntent()
-        } else {
-            // Same-id reload (Play/Resume tap, deep-link, chapter-row).
-            // Clear the finished-flag so a user replaying an already-
-            // finished episode resumes producing position writes — without
-            // this, `tickPersistence` returns immediately on the
-            // `didFireFinishedFor` guard and the new playthrough is
-            // entirely lost on force-quit.
-            didFireFinishedFor = nil
-        }
-        episode = newEpisode
-        // Refresh the local ad-segments cache from the newly-loaded episode
-        // so the 1-second auto-skip loop has the right list. On same-episode
-        // reloads we still refresh — detection may have completed since the
-        // previous `setEpisode` call and added segments to the model.
-        adSegments = newEpisode.adSegments ?? []
-        if !isSameEpisode {
-            engine.load(newEpisode)
-            if newEpisode.playbackPosition > 0 {
-                engine.seek(to: newEpisode.playbackPosition)
-                recordResumeAttempt(expectedPosition: newEpisode.playbackPosition)
-            }
-        } else {
-            engine.refreshMetadata(for: newEpisode)
-            if engine.didReachNaturalEnd {
-                let resume = newEpisode.playbackPosition
-                let target = resume > 0 && resume < max(0, duration - 5) ? resume : 0
-                engine.seek(to: target)
-            }
-        }
-        // Episode change is the one event that always justifies a snapshot
-        // write — title and artwork just changed, so the widget would
-        // otherwise show stale metadata until the next 5-second tick. For
-        // same-episode calls we still want the refresh in case chapter
-        // hydration or feed-refresh updated the metadata while playback
-        // was rolling.
-        writeNowPlayingSnapshot(force: true)
-        if !isSameEpisode {
-            startPersistenceLoop()
-            // Kick off the background download → transcription → chapters
-            // pipeline for any episode the user streams that isn't yet on
-            // disk. Gated on `!isSameEpisode` because same-episode reloads
-            // (Play/Resume taps, deep-link replays, chapter-row taps) fire
-            // on every gesture and would otherwise spam the queue. The
-            // durable idempotency key absorbs duplicate intent elsewhere.
-            switch newEpisode.downloadState {
-            case .notDownloaded:
-                onEnsureDownloadEnqueued(newEpisode.id)
-            case .downloaded:
-                break
-            }
-        }
-    }
-
-    // MARK: - Imperative methods (binding contract for the player UI)
-
-    func togglePlayPause() {
-        if isPlaying {
-            pause()
-        } else {
-            play()
-        }
-    }
-
-    func play() {
-        guard let episode else { return }
-        sessionPolicy.invalidateResumeIntent()
-        playbackRequested = true
-        Haptics.medium()
-        if case .failed = engine.state {
-            let resume = max(engine.currentTime, episode.playbackPosition)
-            engine.load(episode)
-            if resume > 0 { engine.seek(to: resume) }
-        }
-        engine.play()
-        if case .failed = engine.state {
-            recordPlaybackSignal(name: .playStarted, outcome: .failed)
-            playbackRequested = false
-            writeNowPlayingSnapshot(force: true)
-            return
-        }
-        recordPlaybackSignal(name: .playStarted, outcome: .succeeded)
-        startPersistenceLoop()
-        // Force-write the snapshot so the widget's play/pause glyph
-        // flips immediately — the throttled persistence-loop write would
-        // otherwise lag up to 5s.
-        writeNowPlayingSnapshot(force: true)
-    }
-
-    func pause() {
-        playbackRequested = false
-        sessionPolicy.invalidateResumeIntent()
-        Haptics.soft()
-        let pausedEpisodeID = episode?.id
-        if engine.didReachNaturalEnd {
-            tickPersistence()
-        }
-        guard episode?.id == pausedEpisodeID else { return }
-        engine.pause()
-        // Stop the 1-second persistence + snapshot loop while paused —
-        // otherwise it keeps re-writing the same `currentTime` and
-        // bouncing widget timelines for nothing, and races with the
-        // pause flush below in pathological force-quit windows.
-        // `play()` restarts the loop.
-        persistenceTask?.cancel()
-        persistenceTask = nil
-        // Pause is a "the user is done for now" signal — drain the
-        // position cache so the playhead survives a force-quit-after-
-        // pause cycle. Cheap when the cache is empty.
-        onFlushPositions()
-        // Same reasoning as `play()` — keep the widget's glyph in sync
-        // with the engine state without waiting on the next tick.
-        writeNowPlayingSnapshot(force: true)
-    }
-
-    func seek(to time: TimeInterval) {
-        engine.seek(to: time)
-        Haptics.selection()
-        persistAndFlushAfterUserSeek()
-    }
-
-    /// `seekSnapping` was a transcript-snap behaviour in the mock. With the
-    /// transcript stubbed (lane-3 pending) it now just delegates to `seek`.
-    func seekSnapping(to time: TimeInterval) {
-        seek(to: time)
-    }
-
-    /// Skip backwards. Pass `nil` (the default) to honour the user's configured
-    /// `skipBackwardSeconds` from `Settings`. Pass an explicit value when a UI
-    /// gesture wants a specific delta (e.g. transcript chapter rewind).
-    func skipBackward(_ seconds: TimeInterval? = nil) {
-        engine.skip(back: seconds)
-        persistAndFlushAfterUserSeek()
-    }
-
-    /// Skip forward. Pass `nil` (the default) to honour the user's configured
-    /// `skipForwardSeconds` from `Settings`.
-    func skipForward(_ seconds: TimeInterval? = nil) {
-        engine.skip(forward: seconds)
-        persistAndFlushAfterUserSeek()
-    }
-
-    /// Persists the post-seek position immediately and drains the cache.
-    ///
-    /// Without this, a user who scrubs / skips and then force-quits within
-    /// the 30s position-debounce window resumes from the **pre-seek**
-    /// position — the engine moved the playhead but the cache hadn't been
-    /// touched yet (`tickPersistence` runs on a 1s timer). A user-initiated
-    /// position change is the most explicit "remember where I am" signal we
-    /// get; treat it like pause and flush eagerly.
-    func persistAndFlushAfterUserSeek() {
-        guard let episode else { return }
-        let time = engine.currentTime
-        if time > 0 {
-            onPersistPosition(episode.id, time)
-        }
-        onFlushPositions()
-    }
-
-    func setRate(_ newRate: PlaybackRate) {
-        engine.setRate(newRate.rawValue)
-        Haptics.selection()
-    }
-
-    /// Effective skip intervals (read from the engine so the lock-screen and
-    /// in-app transport always agree). Surfaced for the player UI to render
-    /// the right `gobackward.NN` / `goforward.NN` glyph and the matching
-    /// accessibility label.
-    var skipForwardSeconds: Int { Int(engine.skipForwardSeconds) }
-    var skipBackwardSeconds: Int { Int(engine.skipBackwardSeconds) }
-
-    /// Push live `Settings` values into the engine. Called by `RootView` on
-    /// `.onAppear` and again whenever `state.settings` changes so a Settings
-    /// edit takes effect immediately on the lock-screen and the in-app transport.
-    func applyPreferences(from settings: Settings) {
-        engine.skipForwardSeconds = Double(max(1, settings.skipForwardSeconds))
-        engine.skipBackwardSeconds = Double(max(1, settings.skipBackwardSeconds))
-        // Default rate only takes effect for items that haven't been started.
-        // Once the user nudges the speed sheet we don't want to clobber their
-        // choice on every settings change, so we only reset when the engine is
-        // still at its baseline rate.
-        if engine.episode == nil {
-            engine.setRate(settings.defaultPlaybackRate)
-        }
-        // Mirror the user's auto-skip-ads preference. The 1-second
-        // persistence loop reads `autoSkipAdsEnabled` directly so a Settings
-        // edit takes effect on the next tick — no need to re-open the player.
-        autoSkipAdsEnabled = settings.autoSkipAds
-        headphoneDoubleTapAction = settings.headphoneDoubleTapAction
-        headphoneTripleTapAction = settings.headphoneTripleTapAction
-    }
-
-    func setSleepTimer(_ timer: PlaybackSleepTimer) {
-        sleepTimer = timer
-        engine.setSleepTimer(timer.engineMode)
-        Haptics.selection()
-    }
-
-    // MARK: - Persistence loop
-
-    /// Polls `engine.currentTime` once per second and forwards to the persistence
-    /// closure. A separate path detects end-of-episode so the store can flip
-    /// `played = true` without subscribing to the engine's internal observer.
-    func startPersistenceLoop() {
-        persistenceTask?.cancel()
-        persistenceTask = Task { @MainActor [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(1))
-                guard let self else { return }
-                self.tickPersistence()
-            }
-        }
-    }
-
-    private func tickPersistence() {
-        guard let episode else { return }
-        // Once the episode is marked finished, stop touching its position —
-        // otherwise we'd persist `currentTime == duration` right back over the
-        // store-side reset that `markEpisodePlayed` performed.
-        guard didFireFinishedFor != episode.id else { return }
-
-        let time = engine.currentTime
-        if time > 0 {
-            onPersistPosition(episode.id, time)
-        }
-
-        // Segment end detection — checked before natural-end so a bounded
-        // agent segment transitions cleanly without marking the episode played.
-        // `currentSegmentEndTime` is cleared first to prevent re-firing on the
-        // next tick if `onSegmentFinished` is slow to advance the queue.
-        if let segEnd = currentSegmentEndTime, time >= segEnd {
-            currentSegmentEndTime = nil
-            onSegmentFinished()
-            return
-        }
-
-        applyAutoSkipAdsIfNeeded(at: time)
-        writeNowPlayingSnapshot(force: false)
-
-        if engine.didReachNaturalEnd {
-            playbackRequested = false
-            didFireFinishedFor = episode.id
-            if autoMarkPlayedOnFinish {
-                onEpisodeFinished(episode.id)
-            } else {
-                onFlushPositions()
-            }
-        }
     }
 }

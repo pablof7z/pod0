@@ -12,6 +12,10 @@ mod library_store;
 mod library_store_commands;
 mod library_store_external;
 mod library_store_feed;
+mod library_store_playback;
+mod library_store_playback_apply;
+mod library_store_playback_queue;
+mod library_store_playback_support;
 mod listening_db_codec;
 mod listening_import;
 mod listening_store;
@@ -33,6 +37,9 @@ pub use import_model::{
 };
 pub use legacy_source::inspect_legacy_listening_source;
 pub use library_store::{LibraryStore, commit_listening_cutover};
+pub use library_store_playback::{
+    PlaybackMutation, PlaybackMutationResult, PlaybackQueuePlacement,
+};
 pub use listening_import::{ListeningImportClock, ListeningImporter};
 pub use listening_store::read_listening_import;
 pub use migration::{CoreStoreMigrator, MigrationClock};
@@ -41,6 +48,8 @@ pub use model::{
     MIN_SUPPORTED_SCHEMA_VERSION, MigrationReport, MigrationState, SchemaStatus, StorageError,
 };
 
+#[cfg(test)]
+mod library_store_playback_tests;
 #[cfg(test)]
 mod library_store_tests;
 #[cfg(test)]

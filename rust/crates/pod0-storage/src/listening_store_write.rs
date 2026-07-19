@@ -133,7 +133,9 @@ fn insert_playback(
         .execute(
             "INSERT INTO pod0_playback_state(singleton,active_episode_id,playback_rate_permille,\
          sleep_mode_code,sleep_duration_ms,sleep_wire_code,auto_mark_played_at_natural_end,\
-         auto_play_next,state_revision,source_import_id) VALUES(1,?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+         auto_play_next,state_revision,source_import_id,active_segment_start_ms,\
+         active_segment_end_ms,active_segment_label) \
+         VALUES(1,?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
             params![
                 playback
                     .active_episode_id
@@ -146,6 +148,17 @@ fn insert_playback(
                 bool_value(playback.auto_play_next),
                 i64_value(playback.revision.value, "playback revision")?,
                 import_id.into_bytes().as_slice(),
+                playback
+                    .active_segment
+                    .and_then(|segment| segment.start_position_milliseconds)
+                    .map(|value| i64_value(value, "active segment start"))
+                    .transpose()?,
+                playback
+                    .active_segment
+                    .and_then(|segment| segment.end_position_milliseconds)
+                    .map(|value| i64_value(value, "active segment end"))
+                    .transpose()?,
+                playback.active_label,
             ],
         )
         .map_err(|error| StorageError::sqlite("insert playback state", error))?;

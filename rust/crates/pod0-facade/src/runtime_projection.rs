@@ -1,9 +1,11 @@
 use std::sync::Arc;
 
 use pod0_application::{
-    EpisodeDetailProjection, LibraryProjection, PlaybackProjection, PodcastDetailProjection,
-    Projection, ProjectionEnvelope, ProjectionRequest, ProjectionScope, UnsupportedProjection,
+    EpisodeDetailProjection, LibraryProjection, PlaybackAllowedActions, PlaybackItem,
+    PlaybackProjection, PodcastDetailProjection, Projection, ProjectionEnvelope, ProjectionRequest,
+    ProjectionScope, UnsupportedProjection,
 };
+use pod0_domain::CompletionStatus;
 
 use crate::ProjectionSubscriber;
 use crate::runtime_state::FacadeState;
@@ -84,15 +86,47 @@ impl FacadeState {
                 }
             }
             ProjectionScope::Playback => {
+                let active = self
+                    .listening
+                    .playback
+                    .active_episode_id
+                    .and_then(|episode_id| {
+                        self.listening
+                            .episodes
+                            .iter()
+                            .find(|episode| episode.episode_id == episode_id)
+                    });
+                let has_active = active.is_some();
                 let mut value = PlaybackProjection {
-                    current: None,
-                    queue: self
+                    current: active.map(|episode| PlaybackItem {
+                        episode_id: episode.episode_id,
+                        title: episode.title.clone(),
+                        durable_resume_position_milliseconds: episode
+                            .listening
+                            .resume_position_milliseconds,
+                        segment: self.listening.playback.active_segment,
+                        label: self.listening.playback.active_label.clone(),
+                        completed: matches!(
+                            episode.listening.completion,
+                            CompletionStatus::Completed { .. }
+                        ),
+                        policy_state: self.playback.policy_state,
+                    }),
+                    queue: self.listening.playback.queue.clone(),
+                    rate: self.listening.playback.rate,
+                    sleep_mode: self.listening.playback.sleep_mode,
+                    auto_mark_played_at_natural_end: self
                         .listening
                         .playback
-                        .queue
-                        .iter()
-                        .map(|entry| entry.episode_id)
-                        .collect(),
+                        .auto_mark_played_at_natural_end,
+                    auto_play_next: self.listening.playback.auto_play_next,
+                    allowed_actions: PlaybackAllowedActions {
+                        can_play: has_active && !self.playback.desired_playing,
+                        can_pause: has_active && self.playback.desired_playing,
+                        can_seek: has_active,
+                        can_advance: !self.listening.playback.queue.is_empty(),
+                    },
+                    host_state: self.playback.host_state,
                     operations: self.operations.clone(),
                 };
                 value.enforce_bounds(item_limit);

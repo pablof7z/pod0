@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-19T01:06:04Z",
+      "lines": [
+        "Playback queues, speed, and listening position now restore reliably after relaunch."
+      ]
+    },
+    {
       "shipped_at": "2026-07-18T15:32:46Z",
       "lines": [
         "Product Signals in Settings now lets you inspect, delete, or manually export private on-device usage signals."

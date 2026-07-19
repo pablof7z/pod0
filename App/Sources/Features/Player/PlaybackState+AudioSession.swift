@@ -11,6 +11,9 @@ extension PlaybackState {
         _ event: PlaybackAudioSessionEvent,
         observedAt _: Date = Date()
     ) {
+        // In production the typed CorePlaybackHost reports this raw platform
+        // event to Rust, which alone decides pause/rebuild/resume policy.
+        guard sharedCore == nil else { return }
         let action = sessionPolicy.handle(
             event,
             episodeID: episode?.id,

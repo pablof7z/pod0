@@ -1,8 +1,9 @@
 # Listening domain v1
 
-Issue #78 freezes the target listening semantics used by the first Rust-backed
-iOS slice. It changes no user-data authority: Swift remains the only writer
-until the import, cutover, and cleanup issues (#79–#82) complete.
+Issue #78 froze the target listening semantics used by the first Rust-backed
+iOS slice. The import and library/playback cutovers (#79, #81, #82) now make
+Rust authoritative for these facts; #83 removes the disabled pre-cutover Swift
+implementations while preserving the read-only importer.
 
 ## Identity
 
@@ -34,7 +35,9 @@ until the import, cutover, and cleanup issues (#79–#82) complete.
   Whole-episode admission deduplication remains a command-policy concern for
   the vertical-slice reducer.
 - Sleep modes are off, positive duration, end of episode, or an explicit
-  forward-compatible unsupported code.
+  forward-compatible unsupported code. Active timers are session-scoped and
+  clear to off when the facade reopens; queue, resume, rate, and preferences
+  remain durable.
 
 ## Artifact boundary
 

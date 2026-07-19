@@ -6,6 +6,7 @@ extension RootView {
     /// closures reference the live `store` and `playbackState` values that
     /// exist at the point the root view first appears.
     func setupPlaybackHandlers() {
+        store.sharedLibrary?.attachPlayback(playbackState, store: store)
         playbackState.productSignals = store.productSignals
         playbackState.onPersistPosition = { [store] id, position in
             store.setEpisodePlaybackPosition(id, position: position)
@@ -80,7 +81,8 @@ extension RootView {
         // an app restart. Loads the episode in a paused state — the user taps
         // play to resume. Only runs when no deep-link or shortcut has already
         // loaded an episode.
-        if playbackState.episode == nil,
+        if playbackState.sharedCore == nil,
+           playbackState.episode == nil,
            let lastID = store.state.lastPlayedEpisodeID,
            let episode = store.episode(id: lastID) {
             playbackState.setEpisode(episode)

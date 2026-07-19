@@ -69,8 +69,9 @@ Playback uses typed load/play/pause/seek/rate/timer requests. A long-lived
 coalesces position-only updates to `500...5000 ms`; its sequence remains open
 until explicit cancellation. AVFoundation route names and errors are mapped to
 the bounded generated vocabulary. UI playhead animation never uses this stream.
-This expansion replaces the bootstrap playback variants and advances the
-facade contract to version 2 before any durable domain cutover.
+This expansion began with contract version 2. The current version 4 surface
+adds Rust-owned playback commands and projections for selection, queue, resume,
+completion, rate, bounded segments, preferences, and session sleep timers.
 
 ## Compatibility rules
 
@@ -88,14 +89,14 @@ facade contract to version 2 before any durable domain cutover.
   state, native framework objects, and high-frequency animation state never
   appear in projections.
 
-## Current bootstrap limitation
+## Current authority
 
-The contract types, idempotency/sequence ledger, host-observation correlation,
-bounds, subscription lifecycle, cancellable URLSession and AVFoundation host
-adapters, Swift runtime bridge, and Kotlin runtime bridge are implemented and
-tested. The current serialized writer is an in-memory
-qualification scaffold: it performs no I/O and is not a durable authority. No
-product domain has cut over. Swift remains the source of truth until the
-complete first listening slice imports data, enables the durable Rust actor,
-verifies parity, and deletes the replaced Swift ownership. The NMP adapter
-remains isolated by the security hold in issue #85.
+The facade opens the versioned authoritative Rust `LibraryStore`. Podcast,
+subscription, episode listening, active playback, queue, resume, completion,
+rate, playback preferences, and sleep mode are durable Rust-owned state. The
+Swift shell imports the legacy listening snapshot once, renders bounded
+library/playback projections, executes URLSession and AVFoundation requests,
+and cannot commit migrated facts after cutover. Swift still owns unmigrated
+transcript, download, workflow, knowledge, agent, and presentation state until
+their complete vertical slices land. The NMP adapter remains isolated by the
+security hold in issue #85.

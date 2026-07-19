@@ -18,11 +18,12 @@ these Codable payloads with Swift.
 The app-core schema mechanism now exists in `pod0-storage`: sequential locked
 SQL versions, transactional forward migration, a restart journal, verified
 SQLite backups, staged/authoritative domain markers, and read-only blocked
-states. Schema v4 adds normalized listening tables and a one-shot importer for
-the current Swift SQLite store plus pre-SQLite legacy JSON. Swift, Kotlin, and
-Rust tests inspect, stage, and read back the same typed projection. The importer
-can only write a `staged` marker; Swift remains the sole writer until the first
-vertical-slice cutover.
+states. Schema v6 contains normalized listening and playback-runtime tables
+plus a one-shot importer for the current Swift SQLite store and pre-SQLite
+legacy JSON. Swift, Kotlin, and Rust tests inspect, stage, cut over, mutate, and
+read back the same typed projections. The committed listening marker permits
+only the Rust facade to write migrated library and playback facts; Swift is a
+projection adapter after cutover.
 
 ## Decision
 

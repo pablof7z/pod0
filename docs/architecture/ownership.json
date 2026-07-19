@@ -48,7 +48,10 @@
       "boundary": "Use generated facade types directly; do not mirror durable models or make product decisions in the adapter.",
       "persisted_state": "None.",
       "priority": "keep_native",
-      "includes": ["App/Sources/Core/"]
+      "includes": [
+        "App/Sources/Core/",
+        "App/Sources/Features/Player/PlaybackState+SharedCore.swift"
+      ]
     },
     {
       "id": "native-design-and-voice",
@@ -230,6 +233,7 @@
       "excludes": [
         "App/Sources/Features/Player/PlaybackState+AudioCallbacks.swift",
         "App/Sources/Features/Player/PlaybackState+AudioSession.swift",
+        "App/Sources/Features/Player/PlaybackState+SharedCore.swift",
         "App/Sources/Features/Player/PlaybackState+SleepTimer.swift",
         "App/Sources/Features/Agent/AgentChatSession+Recall.swift"
       ]

@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 
 // MARK: - Audio callbacks
 
@@ -28,7 +29,12 @@ extension PlaybackState {
         engine.setNowPlayingCallbacks(callbacks)
 
         engine.onSleepTimerFire = { [weak self] in
-            self?.pause()
+            guard let self else { return }
+            if let sharedCore = self.sharedCore {
+                sharedCore.dispatchPlayback(.nativeTimerFired)
+            } else {
+                self.pause()
+            }
         }
         engine.onAudioSessionEvent = { [weak self] event in
             self?.handleAudioSessionEvent(event)
@@ -43,6 +49,12 @@ extension PlaybackState {
     }
 
     func setRate(_ newRate: Double) {
-        engine.setRate(newRate)
+        if let sharedCore {
+            sharedCore.dispatchPlayback(.setRate(rate: PlaybackRatePermille(
+                value: UInt16(clamping: Int((newRate * 1_000).rounded()))
+            )))
+        } else {
+            engine.setRate(newRate)
+        }
     }
 }

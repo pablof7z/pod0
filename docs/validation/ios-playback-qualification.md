@@ -4,15 +4,16 @@ Issue: #70
 
 Ownership: Native by design
 
-Durable policy owner today: temporary Swift `PlaybackState` / `AppStateStore`
+Durable policy owner today: Pod0 Rust listening slice (#58, #81, #82)
 
-Target durable policy owner: Pod0 Rust listening slice (#58, #81)
+Native executor: Swift `AudioEngine` / AVFoundation through `CorePlaybackHost`
 
 ## Loss budget
 
 - Continuous playback may lose at most 30 seconds after an ungraceful process death.
-- Pause, seek, interruption, route loss, background, and termination boundaries
-  persist the latest observed playhead and request an ordered storage flush.
+- First position, pause, seek, interruption, route loss, segment end, and
+  natural end persist the latest observed playhead. Continuous observations
+  commit at most every 30 seconds.
 - Relaunch restores the stable episode identity and its latest durable position.
 
 ## Automated qualification matrix
@@ -28,18 +29,39 @@ Target durable policy owner: Pod0 Rust listening slice (#58, #81)
 | Headphone/Bluetooth route loss pauses and clears auto-resume intent | `PlaybackLifecycleQualificationTests` | Automated policy; device check pending |
 | Stale item-end callback cannot finish a replacement queue item | `PlaybackLifecycleQualificationTests` | Automated |
 | Queue ordering and auto-play-next remain deterministic | `PlaybackQueueTests`, `PlaybackAutoPlayNextTests` | Automated |
+| Shared queue identity, same-episode selection, and adjacent segment transitions remain deterministic | Rust `runtime_playback_recovery_tests`, `SharedPlaybackMappingTests` | Automated |
 | Completion and mark-played do not resurrect a stale position | `EpisodePlayedStateTests`, `AppTests` | Automated |
+| Pre-seek end callbacks and replaced-episode observations cannot overwrite newer shared state | Rust `runtime_playback_race_tests` | Automated |
 | Sleep-timer pause travels through the same flush boundary | `PlaybackStateAudioCallbackTests`, `PlaybackSleepTimerLabelTests` | Automated |
+| Shared queue/resume/rate survive facade relaunch while the session timer clears | Rust `restart_restores_queue_resume_rate_and_clears_session_timer`, `SharedPlaybackVerticalSliceTests` | Automated |
 | Now Playing seek/pause uses the same persistence side effects | `PlaybackStateAudioCallbackTests` | Automated |
 | Underlying offline playback failures become safe retry guidance | `PlaybackLifecycleQualificationTests` | Automated |
 | Audio route/interruption with real wired and Bluetooth hardware | Physical-device checklist below | Pending hardware |
 
+## Latest automated evidence
+
+Validated on 2026-07-19 against an iPhone 17 Pro simulator running iOS 26.5:
+
+- The complete `Podcastr` scheme passed 664 tests with zero failures or skips.
+- The app built, installed, launched, and rendered onboarding without a crash or
+  shared-store bootstrap error.
+- The locked Rust workspace passed formatting, Clippy with warnings denied,
+  all 62 unit tests, dependency/facade/schema policies, license/source checks,
+  and the configured security audit.
+- Generated Swift and Kotlin bindings matched facade metadata; the Kotlin/JNA
+  runtime smoke passed.
+- The core built for Apple device and simulator, Android API 23 ARM64, and
+  Android API 23 x86_64.
+
+No physical device was attached for this run, so wired/Bluetooth route evidence
+remains explicitly open rather than being inferred from simulator coverage.
+
 ## Typed native boundary
 
 `PlaybackAudioSessionObserver` converts AVAudioSession notifications into
-`PlaybackAudioSessionEvent`. `PlaybackSessionPolicy` deterministically reduces
-those inputs to `pauseAndPersist`, `resume`, or `none`. After each boundary,
-the host emits this bounded projection:
+`PlaybackAudioSessionEvent`. `CorePlaybackHost` reports the raw route and
+interruption facts; the Rust playback policy decides pause, resume, checkpoint,
+reload, queue advance, and completion. The host emits this bounded observation:
 
 ```text
 PlaybackObservation {
@@ -55,8 +77,19 @@ PlaybackObservation {
 ```
 
 AVFoundation port objects, localized errors, URLs, and notification payloads do
-not leave the native adapter. A future Rust playback policy can consume the
-same stable observation without importing Apple concepts.
+not leave the native adapter. The player animates its playhead from AVPlayer
+locally; the host stream is coalesced to at most one position observation per
+second, and Rust writes no more than the first sample, each 30-second cap, and
+semantic boundaries.
+
+## Sleep-timer lifecycle
+
+`Off`, bounded duration, and end-of-episode are platform-neutral Rust modes.
+Duration and end-of-episode timers are session-scoped: Rust stores the active
+mode while the process lives, asks the native host to arm or cancel the OS
+timer, and clears the mode to `Off` when the facade reopens. Relaunch never
+re-arms an expired or ambiguously interrupted timer. Queue, resume position,
+rate, and playback preferences remain durable across the same restart.
 
 ## Physical-device checklist
 

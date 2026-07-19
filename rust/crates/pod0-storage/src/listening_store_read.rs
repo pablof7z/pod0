@@ -130,20 +130,24 @@ fn read_subscriptions(
 fn read_playback(connection: &Connection) -> Result<ListeningPlaybackPolicy, StorageError> {
     let playback = connection
         .query_row(
-            "SELECT active_episode_id,playback_rate_permille,sleep_mode_code,sleep_duration_ms,\
+            "SELECT active_episode_id,active_segment_start_ms,active_segment_end_ms,\
+         active_segment_label,playback_rate_permille,sleep_mode_code,sleep_duration_ms,\
          sleep_wire_code,auto_mark_played_at_natural_end,auto_play_next,state_revision \
          FROM pod0_playback_state WHERE singleton=1",
             [],
             |row| {
                 Ok(StoredPlayback {
                     active_episode_id: row.get(0)?,
-                    rate: row.get(1)?,
-                    sleep_code: row.get(2)?,
-                    sleep_duration: row.get(3)?,
-                    sleep_wire: row.get(4)?,
-                    auto_mark_played: row.get(5)?,
-                    auto_play_next: row.get(6)?,
-                    revision: row.get(7)?,
+                    active_segment_start: row.get(1)?,
+                    active_segment_end: row.get(2)?,
+                    active_label: row.get(3)?,
+                    rate: row.get(4)?,
+                    sleep_code: row.get(5)?,
+                    sleep_duration: row.get(6)?,
+                    sleep_wire: row.get(7)?,
+                    auto_mark_played: row.get(8)?,
+                    auto_play_next: row.get(9)?,
+                    revision: row.get(10)?,
                 })
             },
         )
@@ -153,6 +157,8 @@ fn read_playback(connection: &Connection) -> Result<ListeningPlaybackPolicy, Sto
             .active_episode_id
             .map(|bytes: Vec<u8>| id_from_bytes(bytes).map(EpisodeId::from_bytes))
             .transpose()?,
+        active_segment: decode_segment(playback.active_segment_start, playback.active_segment_end)?,
+        active_label: playback.active_label,
         queue: read_queue(connection)?,
         rate: PlaybackRatePermille {
             value: playback.rate,
@@ -170,6 +176,9 @@ fn read_playback(connection: &Connection) -> Result<ListeningPlaybackPolicy, Sto
 
 struct StoredPlayback {
     active_episode_id: Option<Vec<u8>>,
+    active_segment_start: Option<i64>,
+    active_segment_end: Option<i64>,
+    active_label: Option<String>,
     rate: u16,
     sleep_code: i64,
     sleep_duration: Option<i64>,
@@ -177,6 +186,22 @@ struct StoredPlayback {
     auto_mark_played: i64,
     auto_play_next: i64,
     revision: i64,
+}
+
+fn decode_segment(
+    start: Option<i64>,
+    end: Option<i64>,
+) -> Result<Option<PlaybackSegment>, StorageError> {
+    let start = optional_unsigned(start, "active segment start")?;
+    let end = optional_unsigned(end, "active segment end")?;
+    Ok(if start.is_some() || end.is_some() {
+        Some(PlaybackSegment {
+            start_position_milliseconds: start,
+            end_position_milliseconds: end,
+        })
+    } else {
+        None
+    })
 }
 
 fn read_queue(connection: &Connection) -> Result<Vec<QueueEntry>, StorageError> {

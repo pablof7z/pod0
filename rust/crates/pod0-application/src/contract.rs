@@ -1,8 +1,10 @@
 use pod0_domain::{
-    AutoDownloadPolicy, CancellationId, CommandId, EpisodeId, PodcastId, StateRevision,
+    AutoDownloadPolicy, CancellationId, CommandId, CompletionStatus, EpisodeId,
+    PlaybackRatePermille, PlaybackSegment, PlaybackSleepMode, PodcastId, QueueEntry, QueueEntryId,
+    StateRevision,
 };
 
-pub const FACADE_CONTRACT_VERSION: u32 = 3;
+pub const FACADE_CONTRACT_VERSION: u32 = 4;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -52,10 +54,72 @@ pub enum ApplicationCommand {
     RequestPlayback {
         episode_id: EpisodeId,
     },
+    Playback {
+        command: PlaybackCommand,
+    },
     CancelOperation {
         cancellation_id: CancellationId,
     },
     Unsupported {
         wire_code: u32,
     },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum PlaybackCommand {
+    Select {
+        episode_id: EpisodeId,
+        segment: Option<PlaybackSegment>,
+        label: Option<String>,
+    },
+    Restore,
+    Play,
+    Pause,
+    Seek {
+        position_milliseconds: u64,
+    },
+    Enqueue {
+        entry: QueueEntry,
+        placement: QueuePlacement,
+    },
+    RemoveQueueEntry {
+        queue_entry_id: QueueEntryId,
+    },
+    RemoveEpisodeFromQueue {
+        episode_id: EpisodeId,
+    },
+    ReplaceQueueOrder {
+        queue_entry_ids: Vec<QueueEntryId>,
+    },
+    ClearQueue,
+    AdvanceQueue,
+    SetRate {
+        rate: PlaybackRatePermille,
+    },
+    SetSleepTimer {
+        mode: PlaybackSleepMode,
+    },
+    SetPreferences {
+        auto_mark_played_at_natural_end: bool,
+        auto_play_next: bool,
+    },
+    SetCompletion {
+        episode_id: EpisodeId,
+        completion: CompletionStatus,
+    },
+    ResetProgress {
+        episode_id: EpisodeId,
+    },
+    Checkpoint {
+        episode_id: EpisodeId,
+        position_milliseconds: u64,
+    },
+    NativeTimerFired,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum QueuePlacement {
+    Back,
+    Next,
+    Unsupported { wire_code: u32 },
 }

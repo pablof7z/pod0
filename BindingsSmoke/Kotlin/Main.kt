@@ -19,10 +19,10 @@ fun main(args: Array<String>) {
     check(fixture["schema_component"] == "kernel")
     check(fixture["stored_version"]?.toUInt() == 2u)
     check(fixture["supported_min"]?.toUInt() == 0u)
-    check(fixture["supported_max"]?.toUInt() == 5u)
+    check(fixture["supported_max"]?.toUInt() == 6u)
     check(fixture["access_mode"] == "migration_only")
     check(fixture["migration_state"] == "required")
-    check(fixture["target_version"]?.toUInt() == 5u)
+    check(fixture["target_version"]?.toUInt() == 6u)
     check(fixture["store_id_high"]?.toULong() == 10UL)
     check(fixture["store_id_low"]?.toULong() == 11UL)
     check(fixture["command_id_high"]?.toULong() == 1UL)
@@ -55,7 +55,7 @@ fun main(args: Array<String>) {
         check(subscriber.revisions == listOf(0UL, 1UL))
 
         val projection = facade.snapshot(request).projection
-        check(facade.snapshot(request).contractVersion == 3u)
+        check(facade.snapshot(request).contractVersion == 4u)
         check(projection is Projection.Library)
         val unsupportedOperation = projection.value.operations.single()
         check(unsupportedOperation.commandId == CommandId(0UL, 1UL))
@@ -263,13 +263,21 @@ private fun qualifyListeningDomain(fixture: Map<String, String>) {
             ),
         ),
         playback = ListeningPlaybackPolicy(
-            episodeId,
-            queue,
-            PlaybackRatePermille(fixture.getValue("playback_rate_permille").toUShort()),
-            PlaybackSleepMode.Duration(fixture.getValue("sleep_duration_ms").toULong()),
-            fixture.getValue("auto_mark_played_at_natural_end").toBooleanStrict(),
-            fixture.getValue("auto_play_next").toBooleanStrict(),
-            StateRevision(fixture.getValue("state_revision").toULong()),
+            activeEpisodeId = episodeId,
+            activeSegment = null,
+            activeLabel = null,
+            queue = queue,
+            rate = PlaybackRatePermille(
+                fixture.getValue("playback_rate_permille").toUShort()
+            ),
+            sleepMode = PlaybackSleepMode.Duration(
+                fixture.getValue("sleep_duration_ms").toULong()
+            ),
+            autoMarkPlayedAtNaturalEnd = fixture
+                .getValue("auto_mark_played_at_natural_end")
+                .toBooleanStrict(),
+            autoPlayNext = fixture.getValue("auto_play_next").toBooleanStrict(),
+            revision = StateRevision(fixture.getValue("state_revision").toULong()),
         ),
     )
     check(validateListeningSnapshot(snapshot) == snapshot)

@@ -24,7 +24,8 @@ enum PlaybackAudioSessionEvent: Equatable, Sendable {
 }
 
 /// Converts process-wide AVAudioSession notifications into bounded typed host
-/// events. PlaybackState owns the user-facing pause/resume policy.
+/// events. The Rust playback policy owns shared-mode pause/resume decisions;
+/// PlaybackState retains only the pre-cutover fallback path.
 @MainActor
 final class PlaybackAudioSessionObserver {
     private let notificationCenter: NotificationCenter

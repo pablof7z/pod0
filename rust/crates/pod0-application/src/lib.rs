@@ -5,6 +5,7 @@ use pod0_domain::{CommandId, UnixTimestampMilliseconds};
 uniffi::setup_scaffolding!();
 
 mod contract;
+mod contract_playback_projection;
 mod contract_projection;
 mod contract_state;
 #[cfg(test)]
@@ -18,6 +19,7 @@ mod feed_parser_values;
 mod feed_tests;
 
 pub use contract::*;
+pub use contract_playback_projection::*;
 pub use contract_projection::*;
 pub use contract_state::*;
 pub use effects::*;

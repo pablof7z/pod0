@@ -1709,6 +1709,10 @@ public object FfiConverterTypeListeningDomainSnapshot: FfiConverterRustBuffer<Li
 data class ListeningPlaybackPolicy (
     val `activeEpisodeId`: EpisodeId?
     ,
+    val `activeSegment`: PlaybackSegment?
+    ,
+    val `activeLabel`: kotlin.String?
+    ,
     val `queue`: List<QueueEntry>
     ,
     val `rate`: PlaybackRatePermille
@@ -1737,6 +1741,8 @@ public object FfiConverterTypeListeningPlaybackPolicy: FfiConverterRustBuffer<Li
     override fun read(buf: ByteBuffer): ListeningPlaybackPolicy {
         return ListeningPlaybackPolicy(
             FfiConverterOptionalTypeEpisodeId.read(buf),
+            FfiConverterOptionalTypePlaybackSegment.read(buf),
+            FfiConverterOptionalString.read(buf),
             FfiConverterSequenceTypeQueueEntry.read(buf),
             FfiConverterTypePlaybackRatePermille.read(buf),
             FfiConverterTypePlaybackSleepMode.read(buf),
@@ -1748,6 +1754,8 @@ public object FfiConverterTypeListeningPlaybackPolicy: FfiConverterRustBuffer<Li
 
     override fun allocationSize(value: ListeningPlaybackPolicy) = (
             FfiConverterOptionalTypeEpisodeId.allocationSize(value.`activeEpisodeId`) +
+            FfiConverterOptionalTypePlaybackSegment.allocationSize(value.`activeSegment`) +
+            FfiConverterOptionalString.allocationSize(value.`activeLabel`) +
             FfiConverterSequenceTypeQueueEntry.allocationSize(value.`queue`) +
             FfiConverterTypePlaybackRatePermille.allocationSize(value.`rate`) +
             FfiConverterTypePlaybackSleepMode.allocationSize(value.`sleepMode`) +
@@ -1758,6 +1766,8 @@ public object FfiConverterTypeListeningPlaybackPolicy: FfiConverterRustBuffer<Li
 
     override fun write(value: ListeningPlaybackPolicy, buf: ByteBuffer) {
             FfiConverterOptionalTypeEpisodeId.write(value.`activeEpisodeId`, buf)
+            FfiConverterOptionalTypePlaybackSegment.write(value.`activeSegment`, buf)
+            FfiConverterOptionalString.write(value.`activeLabel`, buf)
             FfiConverterSequenceTypeQueueEntry.write(value.`queue`, buf)
             FfiConverterTypePlaybackRatePermille.write(value.`rate`, buf)
             FfiConverterTypePlaybackSleepMode.write(value.`sleepMode`, buf)

@@ -72,6 +72,17 @@ final class CorePlaybackHostTests: XCTestCase {
         XCTAssertEqual(observations.last?.episodeId, episodeID)
         XCTAssertEqual(observations.last?.route, .bluetooth)
         XCTAssertEqual(observations.last?.interruption, .began)
+
+        engine.onHostAudioSessionEvent(.routeChanged(
+            reason: .oldDeviceUnavailable,
+            previous: .bluetooth,
+            current: .builtIn
+        ))
+        XCTAssertEqual(observations.last?.route, .builtIn)
+        XCTAssertEqual(observations.last?.interruption, .routeLost)
+
+        engine.onHostAudioSessionEvent(.mediaServicesWereReset(route: .builtIn))
+        XCTAssertEqual(observations.last?.interruption, .mediaServicesReset)
     }
 
     func testStaleEpisodeAndUnsupportedTimerFailWithoutExecutingMediaEffects() {

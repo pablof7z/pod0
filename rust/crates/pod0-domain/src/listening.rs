@@ -217,6 +217,8 @@ pub enum PlaybackSleepMode {
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct ListeningPlaybackPolicy {
     pub active_episode_id: Option<EpisodeId>,
+    pub active_segment: Option<PlaybackSegment>,
+    pub active_label: Option<String>,
     pub queue: Vec<QueueEntry>,
     pub rate: PlaybackRatePermille,
     pub sleep_mode: PlaybackSleepMode,

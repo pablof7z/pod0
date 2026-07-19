@@ -9,6 +9,7 @@ const MIGRATION_2: &str = include_str!("../../../schema/migrations/0002_migratio
 const MIGRATION_3: &str = include_str!("../../../schema/migrations/0003_domain_cutovers.sql");
 const MIGRATION_4: &str = include_str!("../../../schema/migrations/0004_listening_import.sql");
 const MIGRATION_5: &str = include_str!("../../../schema/migrations/0005_library_runtime.sql");
+const MIGRATION_6: &str = include_str!("../../../schema/migrations/0006_playback_runtime.sql");
 
 pub(crate) fn migration_sql(version: u32) -> Option<&'static str> {
     match version {
@@ -17,6 +18,7 @@ pub(crate) fn migration_sql(version: u32) -> Option<&'static str> {
         3 => Some(MIGRATION_3),
         4 => Some(MIGRATION_4),
         5 => Some(MIGRATION_5),
+        6 => Some(MIGRATION_6),
         _ => None,
     }
 }
@@ -228,22 +230,27 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
                 "transcript_wire_code",
             ],
         )?;
-        require_columns(
-            connection,
-            "pod0_playback_state",
-            &[
-                "active_episode_id",
-                "auto_mark_played_at_natural_end",
-                "auto_play_next",
-                "playback_rate_permille",
-                "singleton",
-                "sleep_duration_ms",
-                "sleep_mode_code",
-                "sleep_wire_code",
-                "source_import_id",
-                "state_revision",
-            ],
-        )?;
+        let mut playback_columns = vec![
+            "active_episode_id",
+            "auto_mark_played_at_natural_end",
+            "auto_play_next",
+            "playback_rate_permille",
+            "singleton",
+            "sleep_duration_ms",
+            "sleep_mode_code",
+            "sleep_wire_code",
+            "source_import_id",
+            "state_revision",
+        ];
+        if version >= 6 {
+            playback_columns.extend([
+                "active_segment_end_ms",
+                "active_segment_label",
+                "active_segment_start_ms",
+                "last_position_committed_at_ms",
+            ]);
+        }
+        require_columns(connection, "pod0_playback_state", &playback_columns)?;
         require_columns(
             connection,
             "pod0_queue_entries",

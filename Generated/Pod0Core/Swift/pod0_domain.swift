@@ -1389,6 +1389,8 @@ public func FfiConverterTypeListeningDomainSnapshot_lower(_ value: ListeningDoma
 
 public struct ListeningPlaybackPolicy: Equatable, Hashable {
     public let activeEpisodeId: EpisodeId?
+    public let activeSegment: PlaybackSegment?
+    public let activeLabel: String?
     public let queue: [QueueEntry]
     public let rate: PlaybackRatePermille
     public let sleepMode: PlaybackSleepMode
@@ -1398,8 +1400,10 @@ public struct ListeningPlaybackPolicy: Equatable, Hashable {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(activeEpisodeId: EpisodeId?, queue: [QueueEntry], rate: PlaybackRatePermille, sleepMode: PlaybackSleepMode, autoMarkPlayedAtNaturalEnd: Bool, autoPlayNext: Bool, revision: StateRevision) {
+    public init(activeEpisodeId: EpisodeId?, activeSegment: PlaybackSegment?, activeLabel: String?, queue: [QueueEntry], rate: PlaybackRatePermille, sleepMode: PlaybackSleepMode, autoMarkPlayedAtNaturalEnd: Bool, autoPlayNext: Bool, revision: StateRevision) {
         self.activeEpisodeId = activeEpisodeId
+        self.activeSegment = activeSegment
+        self.activeLabel = activeLabel
         self.queue = queue
         self.rate = rate
         self.sleepMode = sleepMode
@@ -1425,6 +1429,8 @@ public struct FfiConverterTypeListeningPlaybackPolicy: FfiConverterRustBuffer {
         return
             try ListeningPlaybackPolicy(
                 activeEpisodeId: FfiConverterOptionTypeEpisodeId.read(from: &buf),
+                activeSegment: FfiConverterOptionTypePlaybackSegment.read(from: &buf),
+                activeLabel: FfiConverterOptionString.read(from: &buf),
                 queue: FfiConverterSequenceTypeQueueEntry.read(from: &buf),
                 rate: FfiConverterTypePlaybackRatePermille.read(from: &buf),
                 sleepMode: FfiConverterTypePlaybackSleepMode.read(from: &buf),
@@ -1436,6 +1442,8 @@ public struct FfiConverterTypeListeningPlaybackPolicy: FfiConverterRustBuffer {
 
     public static func write(_ value: ListeningPlaybackPolicy, into buf: inout [UInt8]) {
         FfiConverterOptionTypeEpisodeId.write(value.activeEpisodeId, into: &buf)
+        FfiConverterOptionTypePlaybackSegment.write(value.activeSegment, into: &buf)
+        FfiConverterOptionString.write(value.activeLabel, into: &buf)
         FfiConverterSequenceTypeQueueEntry.write(value.queue, into: &buf)
         FfiConverterTypePlaybackRatePermille.write(value.rate, into: &buf)
         FfiConverterTypePlaybackSleepMode.write(value.sleepMode, into: &buf)

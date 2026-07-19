@@ -3,7 +3,7 @@ use pod0_domain::{
     PodcastSubscriptionRecord, StateRevision,
 };
 
-use crate::{MAX_OPERATION_ITEMS, MAX_PROJECTION_ITEMS};
+use crate::{MAX_OPERATION_ITEMS, MAX_PROJECTION_ITEMS, PlaybackProjection};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum ProjectionScope {
@@ -135,39 +135,6 @@ pub struct EpisodeSummary {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
-pub struct PlaybackProjection {
-    pub current: Option<PlaybackItem>,
-    pub queue: Vec<EpisodeId>,
-    pub operations: Vec<OperationProjection>,
-}
-
-impl PlaybackProjection {
-    pub fn enforce_bounds(&mut self, requested_items: usize) {
-        self.queue
-            .truncate(requested_items.clamp(1, usize::from(MAX_PROJECTION_ITEMS)));
-        self.operations.truncate(MAX_OPERATION_ITEMS);
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
-pub struct PlaybackItem {
-    pub episode_id: EpisodeId,
-    pub title: String,
-    pub durable_resume_position_milliseconds: u64,
-    pub policy_state: PlaybackPolicyState,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum PlaybackPolicyState {
-    Idle,
-    AwaitingHost,
-    Playing,
-    Paused,
-    Completed,
-    Unsupported { wire_code: u32 },
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct OperationProjection {
     pub command_id: CommandId,
     pub cancellation_id: CancellationId,
@@ -191,6 +158,10 @@ pub enum OperationResult {
     PreferencesUpdated {
         podcast_id: PodcastId,
     },
+    PlaybackUpdated {
+        episode_id: Option<EpisodeId>,
+    },
+    QueueUpdated,
     Unsupported {
         wire_code: u32,
     },

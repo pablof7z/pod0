@@ -16,10 +16,10 @@ final class Pod0CoreBindingTests: XCTestCase {
         XCTAssertEqual(fixture["schema_component"], "kernel")
         XCTAssertEqual(UInt32(fixture["stored_version"] ?? ""), 2)
         XCTAssertEqual(UInt32(fixture["supported_min"] ?? ""), 0)
-        XCTAssertEqual(UInt32(fixture["supported_max"] ?? ""), 5)
+        XCTAssertEqual(UInt32(fixture["supported_max"] ?? ""), 6)
         XCTAssertEqual(fixture["access_mode"], "migration_only")
         XCTAssertEqual(fixture["migration_state"], "required")
-        XCTAssertEqual(UInt32(fixture["target_version"] ?? ""), 5)
+        XCTAssertEqual(UInt32(fixture["target_version"] ?? ""), 6)
         XCTAssertEqual(UInt64(fixture["store_id_high"] ?? ""), 10)
         XCTAssertEqual(UInt64(fixture["store_id_low"] ?? ""), 11)
         XCTAssertEqual(UInt64(fixture["command_id_high"] ?? ""), 1)
@@ -50,7 +50,7 @@ final class Pod0CoreBindingTests: XCTestCase {
 
         XCTAssertEqual(subscriber.revisions, [0, 1])
         let projection = facade.snapshot(request: request)
-        XCTAssertEqual(projection.contractVersion, 3)
+        XCTAssertEqual(projection.contractVersion, 4)
         guard case let .library(value) = projection.projection else {
             return XCTFail("Expected a bounded library projection")
         }

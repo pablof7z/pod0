@@ -33,40 +33,55 @@ import java.util.concurrent.ConcurrentHashMap
 import uniffi.pod0_domain.AutoDownloadPolicy
 import uniffi.pod0_domain.CancellationId
 import uniffi.pod0_domain.CommandId
+import uniffi.pod0_domain.CompletionStatus
 import uniffi.pod0_domain.DomainEventId
 import uniffi.pod0_domain.EpisodeId
 import uniffi.pod0_domain.EpisodeRecord
 import uniffi.pod0_domain.FfiConverterTypeAutoDownloadPolicy
 import uniffi.pod0_domain.FfiConverterTypeCancellationId
 import uniffi.pod0_domain.FfiConverterTypeCommandId
+import uniffi.pod0_domain.FfiConverterTypeCompletionStatus
 import uniffi.pod0_domain.FfiConverterTypeDomainEventId
 import uniffi.pod0_domain.FfiConverterTypeEpisodeId
 import uniffi.pod0_domain.FfiConverterTypeEpisodeRecord
 import uniffi.pod0_domain.FfiConverterTypeHostRequestId
 import uniffi.pod0_domain.FfiConverterTypePlaybackRatePermille
+import uniffi.pod0_domain.FfiConverterTypePlaybackSegment
+import uniffi.pod0_domain.FfiConverterTypePlaybackSleepMode
 import uniffi.pod0_domain.FfiConverterTypePodcastId
 import uniffi.pod0_domain.FfiConverterTypePodcastRecord
 import uniffi.pod0_domain.FfiConverterTypePodcastSubscriptionRecord
+import uniffi.pod0_domain.FfiConverterTypeQueueEntry
+import uniffi.pod0_domain.FfiConverterTypeQueueEntryId
 import uniffi.pod0_domain.FfiConverterTypeStateRevision
 import uniffi.pod0_domain.FfiConverterTypeUnixTimestampMilliseconds
 import uniffi.pod0_domain.HostRequestId
 import uniffi.pod0_domain.PlaybackRatePermille
+import uniffi.pod0_domain.PlaybackSegment
+import uniffi.pod0_domain.PlaybackSleepMode
 import uniffi.pod0_domain.PodcastId
 import uniffi.pod0_domain.PodcastRecord
 import uniffi.pod0_domain.PodcastSubscriptionRecord
+import uniffi.pod0_domain.QueueEntry
+import uniffi.pod0_domain.QueueEntryId
 import uniffi.pod0_domain.StateRevision
 import uniffi.pod0_domain.UnixTimestampMilliseconds
 import uniffi.pod0_domain.RustBuffer as RustBufferAutoDownloadPolicy
 import uniffi.pod0_domain.RustBuffer as RustBufferCancellationId
 import uniffi.pod0_domain.RustBuffer as RustBufferCommandId
+import uniffi.pod0_domain.RustBuffer as RustBufferCompletionStatus
 import uniffi.pod0_domain.RustBuffer as RustBufferDomainEventId
 import uniffi.pod0_domain.RustBuffer as RustBufferEpisodeId
 import uniffi.pod0_domain.RustBuffer as RustBufferEpisodeRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferHostRequestId
 import uniffi.pod0_domain.RustBuffer as RustBufferPlaybackRatePermille
+import uniffi.pod0_domain.RustBuffer as RustBufferPlaybackSegment
+import uniffi.pod0_domain.RustBuffer as RustBufferPlaybackSleepMode
 import uniffi.pod0_domain.RustBuffer as RustBufferPodcastId
 import uniffi.pod0_domain.RustBuffer as RustBufferPodcastRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferPodcastSubscriptionRecord
+import uniffi.pod0_domain.RustBuffer as RustBufferQueueEntry
+import uniffi.pod0_domain.RustBuffer as RustBufferQueueEntryId
 import uniffi.pod0_domain.RustBuffer as RustBufferStateRevision
 import uniffi.pod0_domain.RustBuffer as RustBufferUnixTimestampMilliseconds
 
@@ -1588,12 +1603,66 @@ public object FfiConverterTypeOperationProjection: FfiConverterRustBuffer<Operat
 
 
 
+data class PlaybackAllowedActions (
+    val `canPlay`: kotlin.Boolean
+    ,
+    val `canPause`: kotlin.Boolean
+    ,
+    val `canSeek`: kotlin.Boolean
+    ,
+    val `canAdvance`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePlaybackAllowedActions: FfiConverterRustBuffer<PlaybackAllowedActions> {
+    override fun read(buf: ByteBuffer): PlaybackAllowedActions {
+        return PlaybackAllowedActions(
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PlaybackAllowedActions) = (
+            FfiConverterBoolean.allocationSize(value.`canPlay`) +
+            FfiConverterBoolean.allocationSize(value.`canPause`) +
+            FfiConverterBoolean.allocationSize(value.`canSeek`) +
+            FfiConverterBoolean.allocationSize(value.`canAdvance`)
+    )
+
+    override fun write(value: PlaybackAllowedActions, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`canPlay`, buf)
+            FfiConverterBoolean.write(value.`canPause`, buf)
+            FfiConverterBoolean.write(value.`canSeek`, buf)
+            FfiConverterBoolean.write(value.`canAdvance`, buf)
+    }
+}
+
+
+
 data class PlaybackItem (
     val `episodeId`: EpisodeId
     ,
     val `title`: kotlin.String
     ,
     val `durableResumePositionMilliseconds`: kotlin.ULong
+    ,
+    val `segment`: PlaybackSegment?
+    ,
+    val `label`: kotlin.String?
+    ,
+    val `completed`: kotlin.Boolean
     ,
     val `policyState`: PlaybackPolicyState
 
@@ -1615,6 +1684,9 @@ public object FfiConverterTypePlaybackItem: FfiConverterRustBuffer<PlaybackItem>
             FfiConverterTypeEpisodeId.read(buf),
             FfiConverterString.read(buf),
             FfiConverterULong.read(buf),
+            FfiConverterOptionalTypePlaybackSegment.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
             FfiConverterTypePlaybackPolicyState.read(buf),
         )
     }
@@ -1623,6 +1695,9 @@ public object FfiConverterTypePlaybackItem: FfiConverterRustBuffer<PlaybackItem>
             FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
             FfiConverterString.allocationSize(value.`title`) +
             FfiConverterULong.allocationSize(value.`durableResumePositionMilliseconds`) +
+            FfiConverterOptionalTypePlaybackSegment.allocationSize(value.`segment`) +
+            FfiConverterOptionalString.allocationSize(value.`label`) +
+            FfiConverterBoolean.allocationSize(value.`completed`) +
             FfiConverterTypePlaybackPolicyState.allocationSize(value.`policyState`)
     )
 
@@ -1630,6 +1705,9 @@ public object FfiConverterTypePlaybackItem: FfiConverterRustBuffer<PlaybackItem>
             FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
             FfiConverterString.write(value.`title`, buf)
             FfiConverterULong.write(value.`durableResumePositionMilliseconds`, buf)
+            FfiConverterOptionalTypePlaybackSegment.write(value.`segment`, buf)
+            FfiConverterOptionalString.write(value.`label`, buf)
+            FfiConverterBoolean.write(value.`completed`, buf)
             FfiConverterTypePlaybackPolicyState.write(value.`policyState`, buf)
     }
 }
@@ -1702,7 +1780,19 @@ public object FfiConverterTypePlaybackLifecycleObservation: FfiConverterRustBuff
 data class PlaybackProjection (
     val `current`: PlaybackItem?
     ,
-    val `queue`: List<EpisodeId>
+    val `queue`: List<QueueEntry>
+    ,
+    val `rate`: PlaybackRatePermille
+    ,
+    val `sleepMode`: PlaybackSleepMode
+    ,
+    val `autoMarkPlayedAtNaturalEnd`: kotlin.Boolean
+    ,
+    val `autoPlayNext`: kotlin.Boolean
+    ,
+    val `allowedActions`: PlaybackAllowedActions
+    ,
+    val `hostState`: PlaybackHostState
     ,
     val `operations`: List<OperationProjection>
 
@@ -1722,20 +1812,38 @@ public object FfiConverterTypePlaybackProjection: FfiConverterRustBuffer<Playbac
     override fun read(buf: ByteBuffer): PlaybackProjection {
         return PlaybackProjection(
             FfiConverterOptionalTypePlaybackItem.read(buf),
-            FfiConverterSequenceTypeEpisodeId.read(buf),
+            FfiConverterSequenceTypeQueueEntry.read(buf),
+            FfiConverterTypePlaybackRatePermille.read(buf),
+            FfiConverterTypePlaybackSleepMode.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterTypePlaybackAllowedActions.read(buf),
+            FfiConverterTypePlaybackHostState.read(buf),
             FfiConverterSequenceTypeOperationProjection.read(buf),
         )
     }
 
     override fun allocationSize(value: PlaybackProjection) = (
             FfiConverterOptionalTypePlaybackItem.allocationSize(value.`current`) +
-            FfiConverterSequenceTypeEpisodeId.allocationSize(value.`queue`) +
+            FfiConverterSequenceTypeQueueEntry.allocationSize(value.`queue`) +
+            FfiConverterTypePlaybackRatePermille.allocationSize(value.`rate`) +
+            FfiConverterTypePlaybackSleepMode.allocationSize(value.`sleepMode`) +
+            FfiConverterBoolean.allocationSize(value.`autoMarkPlayedAtNaturalEnd`) +
+            FfiConverterBoolean.allocationSize(value.`autoPlayNext`) +
+            FfiConverterTypePlaybackAllowedActions.allocationSize(value.`allowedActions`) +
+            FfiConverterTypePlaybackHostState.allocationSize(value.`hostState`) +
             FfiConverterSequenceTypeOperationProjection.allocationSize(value.`operations`)
     )
 
     override fun write(value: PlaybackProjection, buf: ByteBuffer) {
             FfiConverterOptionalTypePlaybackItem.write(value.`current`, buf)
-            FfiConverterSequenceTypeEpisodeId.write(value.`queue`, buf)
+            FfiConverterSequenceTypeQueueEntry.write(value.`queue`, buf)
+            FfiConverterTypePlaybackRatePermille.write(value.`rate`, buf)
+            FfiConverterTypePlaybackSleepMode.write(value.`sleepMode`, buf)
+            FfiConverterBoolean.write(value.`autoMarkPlayedAtNaturalEnd`, buf)
+            FfiConverterBoolean.write(value.`autoPlayNext`, buf)
+            FfiConverterTypePlaybackAllowedActions.write(value.`allowedActions`, buf)
+            FfiConverterTypePlaybackHostState.write(value.`hostState`, buf)
             FfiConverterSequenceTypeOperationProjection.write(value.`operations`, buf)
     }
 }
@@ -2053,6 +2161,15 @@ sealed class ApplicationCommand {
         companion object
     }
 
+    data class Playback(
+        val `command`: uniffi.pod0_application.PlaybackCommand) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
     data class CancelOperation(
         val `cancellationId`: uniffi.pod0_domain.CancellationId) : ApplicationCommand()
 
@@ -2122,10 +2239,13 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
             9 -> ApplicationCommand.RequestPlayback(
                 FfiConverterTypeEpisodeId.read(buf),
                 )
-            10 -> ApplicationCommand.CancelOperation(
+            10 -> ApplicationCommand.Playback(
+                FfiConverterTypePlaybackCommand.read(buf),
+                )
+            11 -> ApplicationCommand.CancelOperation(
                 FfiConverterTypeCancellationId.read(buf),
                 )
-            11 -> ApplicationCommand.Unsupported(
+            12 -> ApplicationCommand.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -2204,6 +2324,13 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
             )
         }
+        is ApplicationCommand.Playback -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePlaybackCommand.allocationSize(value.`command`)
+            )
+        }
         is ApplicationCommand.CancelOperation -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -2275,13 +2402,18 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
-            is ApplicationCommand.CancelOperation -> {
+            is ApplicationCommand.Playback -> {
                 buf.putInt(10)
+                FfiConverterTypePlaybackCommand.write(value.`command`, buf)
+                Unit
+            }
+            is ApplicationCommand.CancelOperation -> {
+                buf.putInt(11)
                 FfiConverterTypeCancellationId.write(value.`cancellationId`, buf)
                 Unit
             }
             is ApplicationCommand.Unsupported -> {
-                buf.putInt(11)
+                buf.putInt(12)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -3518,6 +3650,18 @@ sealed class OperationResult {
         companion object
     }
 
+    data class PlaybackUpdated(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId?) : OperationResult()
+
+    {
+
+
+        companion object
+    }
+
+    object QueueUpdated : OperationResult()
+
+
     data class Unsupported(
         val `wireCode`: kotlin.UInt) : OperationResult()
 
@@ -3556,7 +3700,11 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
             4 -> OperationResult.PreferencesUpdated(
                 FfiConverterTypePodcastId.read(buf),
                 )
-            5 -> OperationResult.Unsupported(
+            5 -> OperationResult.PlaybackUpdated(
+                FfiConverterOptionalTypeEpisodeId.read(buf),
+                )
+            6 -> OperationResult.QueueUpdated
+            7 -> OperationResult.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -3593,6 +3741,19 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
             )
         }
+        is OperationResult.PlaybackUpdated -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterOptionalTypeEpisodeId.allocationSize(value.`episodeId`)
+            )
+        }
+        is OperationResult.QueueUpdated -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
         is OperationResult.Unsupported -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -3625,8 +3786,17 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
                 Unit
             }
-            is OperationResult.Unsupported -> {
+            is OperationResult.PlaybackUpdated -> {
                 buf.putInt(5)
+                FfiConverterOptionalTypeEpisodeId.write(value.`episodeId`, buf)
+                Unit
+            }
+            is OperationResult.QueueUpdated -> {
+                buf.putInt(6)
+                Unit
+            }
+            is OperationResult.Unsupported -> {
+                buf.putInt(7)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -3938,6 +4108,437 @@ public object FfiConverterTypePlaybackAudioRoute : FfiConverterRustBuffer<Playba
 
 
 
+sealed class PlaybackCommand {
+
+    data class Select(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `segment`: uniffi.pod0_domain.PlaybackSegment?,
+        val `label`: kotlin.String?) : PlaybackCommand()
+
+    {
+
+
+        companion object
+    }
+
+    object Restore : PlaybackCommand()
+
+
+    object Play : PlaybackCommand()
+
+
+    object Pause : PlaybackCommand()
+
+
+    data class Seek(
+        val `positionMilliseconds`: kotlin.ULong) : PlaybackCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class Enqueue(
+        val `entry`: uniffi.pod0_domain.QueueEntry,
+        val `placement`: uniffi.pod0_application.QueuePlacement) : PlaybackCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class RemoveQueueEntry(
+        val `queueEntryId`: uniffi.pod0_domain.QueueEntryId) : PlaybackCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class RemoveEpisodeFromQueue(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId) : PlaybackCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class ReplaceQueueOrder(
+        val `queueEntryIds`: List<uniffi.pod0_domain.QueueEntryId>) : PlaybackCommand()
+
+    {
+
+
+        companion object
+    }
+
+    object ClearQueue : PlaybackCommand()
+
+
+    object AdvanceQueue : PlaybackCommand()
+
+
+    data class SetRate(
+        val `rate`: uniffi.pod0_domain.PlaybackRatePermille) : PlaybackCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetSleepTimer(
+        val `mode`: uniffi.pod0_domain.PlaybackSleepMode) : PlaybackCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetPreferences(
+        val `autoMarkPlayedAtNaturalEnd`: kotlin.Boolean,
+        val `autoPlayNext`: kotlin.Boolean) : PlaybackCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetCompletion(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `completion`: uniffi.pod0_domain.CompletionStatus) : PlaybackCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class ResetProgress(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId) : PlaybackCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class Checkpoint(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `positionMilliseconds`: kotlin.ULong) : PlaybackCommand()
+
+    {
+
+
+        companion object
+    }
+
+    object NativeTimerFired : PlaybackCommand()
+
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePlaybackCommand : FfiConverterRustBuffer<PlaybackCommand>{
+    override fun read(buf: ByteBuffer): PlaybackCommand {
+        return when(buf.getInt()) {
+            1 -> PlaybackCommand.Select(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterOptionalTypePlaybackSegment.read(buf),
+                FfiConverterOptionalString.read(buf),
+                )
+            2 -> PlaybackCommand.Restore
+            3 -> PlaybackCommand.Play
+            4 -> PlaybackCommand.Pause
+            5 -> PlaybackCommand.Seek(
+                FfiConverterULong.read(buf),
+                )
+            6 -> PlaybackCommand.Enqueue(
+                FfiConverterTypeQueueEntry.read(buf),
+                FfiConverterTypeQueuePlacement.read(buf),
+                )
+            7 -> PlaybackCommand.RemoveQueueEntry(
+                FfiConverterTypeQueueEntryId.read(buf),
+                )
+            8 -> PlaybackCommand.RemoveEpisodeFromQueue(
+                FfiConverterTypeEpisodeId.read(buf),
+                )
+            9 -> PlaybackCommand.ReplaceQueueOrder(
+                FfiConverterSequenceTypeQueueEntryId.read(buf),
+                )
+            10 -> PlaybackCommand.ClearQueue
+            11 -> PlaybackCommand.AdvanceQueue
+            12 -> PlaybackCommand.SetRate(
+                FfiConverterTypePlaybackRatePermille.read(buf),
+                )
+            13 -> PlaybackCommand.SetSleepTimer(
+                FfiConverterTypePlaybackSleepMode.read(buf),
+                )
+            14 -> PlaybackCommand.SetPreferences(
+                FfiConverterBoolean.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            15 -> PlaybackCommand.SetCompletion(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeCompletionStatus.read(buf),
+                )
+            16 -> PlaybackCommand.ResetProgress(
+                FfiConverterTypeEpisodeId.read(buf),
+                )
+            17 -> PlaybackCommand.Checkpoint(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterULong.read(buf),
+                )
+            18 -> PlaybackCommand.NativeTimerFired
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: PlaybackCommand): ULong = when(value) {
+        is PlaybackCommand.Select -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterOptionalTypePlaybackSegment.allocationSize(value.`segment`)
+                + FfiConverterOptionalString.allocationSize(value.`label`)
+            )
+        }
+        is PlaybackCommand.Restore -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PlaybackCommand.Play -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PlaybackCommand.Pause -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PlaybackCommand.Seek -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterULong.allocationSize(value.`positionMilliseconds`)
+            )
+        }
+        is PlaybackCommand.Enqueue -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeQueueEntry.allocationSize(value.`entry`)
+                + FfiConverterTypeQueuePlacement.allocationSize(value.`placement`)
+            )
+        }
+        is PlaybackCommand.RemoveQueueEntry -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeQueueEntryId.allocationSize(value.`queueEntryId`)
+            )
+        }
+        is PlaybackCommand.RemoveEpisodeFromQueue -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+            )
+        }
+        is PlaybackCommand.ReplaceQueueOrder -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterSequenceTypeQueueEntryId.allocationSize(value.`queueEntryIds`)
+            )
+        }
+        is PlaybackCommand.ClearQueue -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PlaybackCommand.AdvanceQueue -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PlaybackCommand.SetRate -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePlaybackRatePermille.allocationSize(value.`rate`)
+            )
+        }
+        is PlaybackCommand.SetSleepTimer -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePlaybackSleepMode.allocationSize(value.`mode`)
+            )
+        }
+        is PlaybackCommand.SetPreferences -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterBoolean.allocationSize(value.`autoMarkPlayedAtNaturalEnd`)
+                + FfiConverterBoolean.allocationSize(value.`autoPlayNext`)
+            )
+        }
+        is PlaybackCommand.SetCompletion -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeCompletionStatus.allocationSize(value.`completion`)
+            )
+        }
+        is PlaybackCommand.ResetProgress -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+            )
+        }
+        is PlaybackCommand.Checkpoint -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterULong.allocationSize(value.`positionMilliseconds`)
+            )
+        }
+        is PlaybackCommand.NativeTimerFired -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: PlaybackCommand, buf: ByteBuffer) {
+        when(value) {
+            is PlaybackCommand.Select -> {
+                buf.putInt(1)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterOptionalTypePlaybackSegment.write(value.`segment`, buf)
+                FfiConverterOptionalString.write(value.`label`, buf)
+                Unit
+            }
+            is PlaybackCommand.Restore -> {
+                buf.putInt(2)
+                Unit
+            }
+            is PlaybackCommand.Play -> {
+                buf.putInt(3)
+                Unit
+            }
+            is PlaybackCommand.Pause -> {
+                buf.putInt(4)
+                Unit
+            }
+            is PlaybackCommand.Seek -> {
+                buf.putInt(5)
+                FfiConverterULong.write(value.`positionMilliseconds`, buf)
+                Unit
+            }
+            is PlaybackCommand.Enqueue -> {
+                buf.putInt(6)
+                FfiConverterTypeQueueEntry.write(value.`entry`, buf)
+                FfiConverterTypeQueuePlacement.write(value.`placement`, buf)
+                Unit
+            }
+            is PlaybackCommand.RemoveQueueEntry -> {
+                buf.putInt(7)
+                FfiConverterTypeQueueEntryId.write(value.`queueEntryId`, buf)
+                Unit
+            }
+            is PlaybackCommand.RemoveEpisodeFromQueue -> {
+                buf.putInt(8)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                Unit
+            }
+            is PlaybackCommand.ReplaceQueueOrder -> {
+                buf.putInt(9)
+                FfiConverterSequenceTypeQueueEntryId.write(value.`queueEntryIds`, buf)
+                Unit
+            }
+            is PlaybackCommand.ClearQueue -> {
+                buf.putInt(10)
+                Unit
+            }
+            is PlaybackCommand.AdvanceQueue -> {
+                buf.putInt(11)
+                Unit
+            }
+            is PlaybackCommand.SetRate -> {
+                buf.putInt(12)
+                FfiConverterTypePlaybackRatePermille.write(value.`rate`, buf)
+                Unit
+            }
+            is PlaybackCommand.SetSleepTimer -> {
+                buf.putInt(13)
+                FfiConverterTypePlaybackSleepMode.write(value.`mode`, buf)
+                Unit
+            }
+            is PlaybackCommand.SetPreferences -> {
+                buf.putInt(14)
+                FfiConverterBoolean.write(value.`autoMarkPlayedAtNaturalEnd`, buf)
+                FfiConverterBoolean.write(value.`autoPlayNext`, buf)
+                Unit
+            }
+            is PlaybackCommand.SetCompletion -> {
+                buf.putInt(15)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeCompletionStatus.write(value.`completion`, buf)
+                Unit
+            }
+            is PlaybackCommand.ResetProgress -> {
+                buf.putInt(16)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                Unit
+            }
+            is PlaybackCommand.Checkpoint -> {
+                buf.putInt(17)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterULong.write(value.`positionMilliseconds`, buf)
+                Unit
+            }
+            is PlaybackCommand.NativeTimerFired -> {
+                buf.putInt(18)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 sealed class PlaybackHostState {
 
     object Idle : PlaybackHostState()
@@ -4109,6 +4710,12 @@ sealed class PlaybackInterruption {
     object EndedShouldRemainPaused : PlaybackInterruption()
 
 
+    object RouteLost : PlaybackInterruption()
+
+
+    object MediaServicesReset : PlaybackInterruption()
+
+
     data class Unsupported(
         val `wireCode`: kotlin.UInt) : PlaybackInterruption()
 
@@ -4138,7 +4745,9 @@ public object FfiConverterTypePlaybackInterruption : FfiConverterRustBuffer<Play
             2 -> PlaybackInterruption.Began
             3 -> PlaybackInterruption.EndedShouldResume
             4 -> PlaybackInterruption.EndedShouldRemainPaused
-            5 -> PlaybackInterruption.Unsupported(
+            5 -> PlaybackInterruption.RouteLost
+            6 -> PlaybackInterruption.MediaServicesReset
+            7 -> PlaybackInterruption.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -4165,6 +4774,18 @@ public object FfiConverterTypePlaybackInterruption : FfiConverterRustBuffer<Play
             )
         }
         is PlaybackInterruption.EndedShouldRemainPaused -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PlaybackInterruption.RouteLost -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PlaybackInterruption.MediaServicesReset -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
@@ -4197,8 +4818,16 @@ public object FfiConverterTypePlaybackInterruption : FfiConverterRustBuffer<Play
                 buf.putInt(4)
                 Unit
             }
-            is PlaybackInterruption.Unsupported -> {
+            is PlaybackInterruption.RouteLost -> {
                 buf.putInt(5)
+                Unit
+            }
+            is PlaybackInterruption.MediaServicesReset -> {
+                buf.putInt(6)
+                Unit
+            }
+            is PlaybackInterruption.Unsupported -> {
+                buf.putInt(7)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -4225,6 +4854,9 @@ sealed class PlaybackPolicyState {
 
 
     object Completed : PlaybackPolicyState()
+
+
+    object Failed : PlaybackPolicyState()
 
 
     data class Unsupported(
@@ -4257,7 +4889,8 @@ public object FfiConverterTypePlaybackPolicyState : FfiConverterRustBuffer<Playb
             3 -> PlaybackPolicyState.Playing
             4 -> PlaybackPolicyState.Paused
             5 -> PlaybackPolicyState.Completed
-            6 -> PlaybackPolicyState.Unsupported(
+            6 -> PlaybackPolicyState.Failed
+            7 -> PlaybackPolicyState.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -4295,6 +4928,12 @@ public object FfiConverterTypePlaybackPolicyState : FfiConverterRustBuffer<Playb
                 4UL
             )
         }
+        is PlaybackPolicyState.Failed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
         is PlaybackPolicyState.Unsupported -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -4326,8 +4965,12 @@ public object FfiConverterTypePlaybackPolicyState : FfiConverterRustBuffer<Playb
                 buf.putInt(5)
                 Unit
             }
-            is PlaybackPolicyState.Unsupported -> {
+            is PlaybackPolicyState.Failed -> {
                 buf.putInt(6)
+                Unit
+            }
+            is PlaybackPolicyState.Unsupported -> {
+                buf.putInt(7)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -4855,6 +5498,93 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
 
 
 
+sealed class QueuePlacement {
+
+    object Back : QueuePlacement()
+
+
+    object Next : QueuePlacement()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : QueuePlacement()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeQueuePlacement : FfiConverterRustBuffer<QueuePlacement>{
+    override fun read(buf: ByteBuffer): QueuePlacement {
+        return when(buf.getInt()) {
+            1 -> QueuePlacement.Back
+            2 -> QueuePlacement.Next
+            3 -> QueuePlacement.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: QueuePlacement): ULong = when(value) {
+        is QueuePlacement.Back -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is QueuePlacement.Next -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is QueuePlacement.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: QueuePlacement, buf: ByteBuffer) {
+        when(value) {
+            is QueuePlacement.Back -> {
+                buf.putInt(1)
+                Unit
+            }
+            is QueuePlacement.Next -> {
+                buf.putInt(2)
+                Unit
+            }
+            is QueuePlacement.Unsupported -> {
+                buf.putInt(3)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 sealed class Retryability {
 
     object Never : Retryability()
@@ -5267,6 +5997,38 @@ public object FfiConverterOptionalTypeEpisodeRecord: FfiConverterRustBuffer<Epis
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypePlaybackSegment: FfiConverterRustBuffer<PlaybackSegment?> {
+    override fun read(buf: ByteBuffer): PlaybackSegment? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypePlaybackSegment.read(buf)
+    }
+
+    override fun allocationSize(value: PlaybackSegment?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypePlaybackSegment.allocationSize(value)
+        }
+    }
+
+    override fun write(value: PlaybackSegment?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypePlaybackSegment.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypePodcastRecord: FfiConverterRustBuffer<PodcastRecord?> {
     override fun read(buf: ByteBuffer): PodcastRecord? {
         if (buf.get().toInt() == 0) {
@@ -5455,34 +6217,6 @@ public object FfiConverterSequenceTypeOperationProjection: FfiConverterRustBuffe
 /**
  * @suppress
  */
-public object FfiConverterSequenceTypeEpisodeId: FfiConverterRustBuffer<List<EpisodeId>> {
-    override fun read(buf: ByteBuffer): List<EpisodeId> {
-        val len = buf.getInt()
-        return List<EpisodeId>(len) {
-            FfiConverterTypeEpisodeId.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<EpisodeId>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeEpisodeId.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<EpisodeId>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeEpisodeId.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
 public object FfiConverterSequenceTypeEpisodeRecord: FfiConverterRustBuffer<List<EpisodeRecord>> {
     override fun read(buf: ByteBuffer): List<EpisodeRecord> {
         val len = buf.getInt()
@@ -5557,6 +6291,62 @@ public object FfiConverterSequenceTypePodcastSubscriptionRecord: FfiConverterRus
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypePodcastSubscriptionRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeQueueEntry: FfiConverterRustBuffer<List<QueueEntry>> {
+    override fun read(buf: ByteBuffer): List<QueueEntry> {
+        val len = buf.getInt()
+        return List<QueueEntry>(len) {
+            FfiConverterTypeQueueEntry.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<QueueEntry>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeQueueEntry.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<QueueEntry>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeQueueEntry.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeQueueEntryId: FfiConverterRustBuffer<List<QueueEntryId>> {
+    override fun read(buf: ByteBuffer): List<QueueEntryId> {
+        val len = buf.getInt()
+        return List<QueueEntryId>(len) {
+            FfiConverterTypeQueueEntryId.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<QueueEntryId>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeQueueEntryId.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<QueueEntryId>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeQueueEntryId.write(it, buf)
         }
     }
 }

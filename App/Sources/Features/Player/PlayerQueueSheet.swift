@@ -191,12 +191,9 @@ struct PlayerQueueSheet: View {
     private func play(item: QueueItem, episode: Episode) {
         Haptics.medium()
         state.removeFromQueue(itemID: item.id)
-        state.currentSegmentEndTime = item.endSeconds
-        state.setEpisode(episode)
-        if let start = item.startSeconds {
-            state.engine.seek(to: start)
+        state.enqueueSegments([item], playNow: true) { id in
+            id == episode.id ? episode : store.episode(id: id)
         }
-        state.play()
         dismiss()
     }
 

@@ -95,6 +95,13 @@ impl HostRequestLedger {
     }
 
     #[must_use]
+    pub fn is_playback_request(&self, request_id: HostRequestId) -> bool {
+        self.requests.get(&request_id).is_some_and(|request| {
+            !matches!(request.envelope.request, HostRequest::FetchFeed { .. })
+        })
+    }
+
+    #[must_use]
     pub fn register(&mut self, request: HostRequestEnvelope) -> bool {
         if self.requests.contains_key(&request.request_id) {
             return false;

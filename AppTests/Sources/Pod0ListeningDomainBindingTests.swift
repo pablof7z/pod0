@@ -224,6 +224,8 @@ final class Pod0ListeningDomainBindingTests: XCTestCase {
             )],
             playback: ListeningPlaybackPolicy(
                 activeEpisodeId: episodeID,
+                activeSegment: nil,
+                activeLabel: nil,
                 queue: [
                     Pod0Core.QueueEntry(
                         queueEntryId: queueID("queue_whole_id"),

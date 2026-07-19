@@ -204,6 +204,8 @@ pub enum PlaybackInterruption {
     Began,
     EndedShouldResume,
     EndedShouldRemainPaused,
+    RouteLost,
+    MediaServicesReset,
     Unsupported { wire_code: u32 },
 }
 

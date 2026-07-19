@@ -8,25 +8,30 @@ index](architecture/README.md).
 
 Pod0 is a Swift 6/Tuist iOS+iPadOS application with a widget. `rust/` is an
 additive Pod0-owned domain/application/facade workspace with a typed UniFFI
-surface, deterministic bootstrap tests, and an exact generic NMP pin. Generated
+surface, deterministic policy tests, and an exact generic NMP pin. Generated
 Swift and Kotlin APIs derive from the same Rust metadata. The Swift API is
 linked into iOS as `Pod0Core` and has a runtime smoke test; the Kotlin API has a
 JVM compile/runtime smoke test. `pod0-storage` now provides versioned,
 transactional core-schema migrations, verified backup/restore-to-staging, a
 restart journal, typed read-only failure states, and a verified staged import of
-the current Swift listening library. Cancellable native host adapters now
+the current Swift listening library. The Rust store is authoritative for
+podcasts, subscriptions, episode listening facts, active playback, queue,
+resume, completion, rate, playback preferences, and session sleep mode.
+Cancellable native host adapters now
 execute typed feed requests through URLSession and playback requests through
 AVFoundation, returning correlated bounded observations through the generated
-contract. The bootstrap facade is in-memory and the import marker is not
-authoritative, so Swift remains the live writer. There is no Android project.
-The NMP adapter remains isolated from the facade while the security hold in
-issue #85 is active.
+contract. Swift renders shared library/playback projections and retains adjunct
+state only for domains that have not migrated. There is no Android product
+project. The NMP adapter remains isolated from the facade while the security
+hold in issue #85 is active.
 
 ### Application state
 
-`AppStateStore` is the current `@MainActor @Observable` application-state owner.
-Views and agent adapters call typed domain methods on the store; direct
-`mutateState` calls outside `App/Sources/State` are rejected by tests.
+`AppStateStore` is the `@MainActor @Observable` owner for unmigrated Swift
+domains and a projection adapter for the migrated listening slice. Views and
+agent adapters call typed methods; migrated library/playback methods dispatch
+to the shared facade, and direct `mutateState` calls outside
+`App/Sources/State` are rejected by tests.
 
 `AppState` currently contains podcasts, subscriptions, episodes, notes, clips,
 settings, agent memory/activity, categories, threading records, scheduled tasks,
@@ -35,8 +40,9 @@ cross-platform schema.
 
 ### Persistence topology
 
-`Persistence` is SQLite-authoritative. Normal reads and writes do not compare a
-JSON store.
+`pod0-core.sqlite` is authoritative for the migrated listening slice.
+`Persistence` remains SQLite-authoritative for unmigrated and adjunct Swift
+state. Normal reads and writes do not compare a JSON store.
 
 - `persistence_metadata` stores a JSON-encoded `AppState` metadata snapshot
   without the episode array plus a monotonic generation.
@@ -50,10 +56,10 @@ JSON store.
 - Keychain stores provider secrets. iCloud KVS carries selected non-secret
   settings. The widget reads a bounded app-group snapshot.
 
-State writes use monotonic revisions and a serialized background writer.
-Lifecycle suspension flushes the required revision. Episode position writes are
-debounced and bounded so playback does not rewrite the complete metadata
-snapshot every second.
+Swift state writes use monotonic revisions and a serialized background writer.
+Shared playback observations are coalesced to one second and Rust commits the
+first position, semantic boundaries, and a maximum 30-second cadence without
+rewriting the Swift metadata snapshot.
 
 ### Durable workflows
 

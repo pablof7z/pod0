@@ -73,6 +73,10 @@ extension AppStateStore {
     /// we skip the bookkeeping entirely so the engine's coalesced ticks
     /// don't double-touch the cache.
     func setEpisodePlaybackPosition(_ id: UUID, position: TimeInterval) {
+        // Production position observations are committed by the Rust facade
+        // directly to the shared SQLite row. The legacy JSON debounce remains
+        // only for explicitly-disabled test and fallback stores.
+        guard !isSharedLibraryAuthoritative else { return }
         guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else {
             // Episode is gone (rare: removed mid-tick). Drop the cached entry
             // so it can't resurrect the record on the next flush.
@@ -121,6 +125,11 @@ extension AppStateStore {
     func flushPendingPositions() {
         positionFlushTask?.cancel()
         positionFlushTask = nil
+        if isSharedLibraryAuthoritative {
+            positionCache.removeAll(keepingCapacity: true)
+            lastPositionFlush = Date()
+            return
+        }
 
         guard !positionCache.isEmpty else {
             // Even with nothing pending, refresh `lastPositionFlush` so the

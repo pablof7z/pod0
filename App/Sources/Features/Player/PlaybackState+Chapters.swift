@@ -15,9 +15,7 @@ extension PlaybackState {
     /// after playback starts).
     func seekToNextChapter(in navigable: [Episode.Chapter]) {
         guard let next = Self.nextChapter(after: currentTime, in: navigable) else { return }
-        engine.seek(to: next.startTime)
-        Haptics.selection()
-        persistAndFlushAfterUserSeek()
+        seek(to: next.startTime)
     }
 
     /// Jump to the previous chapter's `startTime`, applying the iOS Music
@@ -31,9 +29,7 @@ extension PlaybackState {
             in: navigable,
             restartThreshold: Self.previousChapterRestartThreshold
         ) else { return }
-        engine.seek(to: target.startTime)
-        Haptics.selection()
-        persistAndFlushAfterUserSeek()
+        seek(to: target.startTime)
     }
 
     /// Pure helper: chapter strictly after `playhead`, or nil when there

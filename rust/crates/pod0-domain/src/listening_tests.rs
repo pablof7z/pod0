@@ -113,6 +113,8 @@ pub(crate) fn golden_snapshot() -> ListeningDomainSnapshot {
         }],
         playback: ListeningPlaybackPolicy {
             active_episode_id: Some(episode_id),
+            active_segment: None,
+            active_label: None,
             queue: vec![
                 QueueEntry {
                     queue_entry_id: queue_id("queue_whole_id"),

@@ -187,7 +187,7 @@ final class LivePlaybackHostAdapter: PlaybackHostProtocol, @unchecked Sendable {
                 return nil
             }
             let clamped = min(max(rate, 0.5), 3.0)
-            playback.engine.setRate(clamped)
+            playback.setRate(clamped)
             logger.info("setPlaybackRate: \(clamped)")
             return clamped
         }

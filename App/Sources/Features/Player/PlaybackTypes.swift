@@ -24,12 +24,13 @@ struct QueueItem: Identifiable, Equatable, Sendable {
     let label: String?
 
     init(
+        id: UUID = UUID(),
         episodeID: UUID,
         startSeconds: Double? = nil,
         endSeconds: Double? = nil,
         label: String? = nil
     ) {
-        self.id = UUID()
+        self.id = id
         self.episodeID = episodeID
         self.startSeconds = startSeconds
         self.endSeconds = endSeconds

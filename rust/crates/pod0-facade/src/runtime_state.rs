@@ -4,10 +4,12 @@ use std::sync::Arc;
 use pod0_application::{
     Clock, CommandEnvelope, CommandLedger, CommandRegistration, CoreFailure, CoreFailureCode,
     HostRequestEnvelope, HostRequestLedger, OperationProjection, OperationResult, OperationStage,
-    Retryability, SubscriptionRegistry, UserAction,
+    PlaybackHostState, PlaybackLifecycleObservation, PlaybackPolicyState, Retryability,
+    SubscriptionRegistry, UserAction,
 };
 use pod0_domain::{
-    CommandId, FeedIdentityV1, ListeningDomainSnapshot, PodcastId, StateRevision, SubscriptionId,
+    CommandId, EpisodeId, FeedIdentityV1, HostRequestId, ListeningDomainSnapshot, PodcastId,
+    StateRevision, SubscriptionId,
 };
 use pod0_storage::LibraryStore;
 
@@ -31,6 +33,37 @@ pub(super) struct PendingFeed {
     pub podcast_id: PodcastId,
 }
 
+#[derive(Clone, Debug)]
+pub(super) struct PlaybackRuntime {
+    pub(super) policy_state: PlaybackPolicyState,
+    pub(super) host_state: PlaybackHostState,
+    pub(super) desired_playing: bool,
+    pub(super) media_episode_id: Option<EpisodeId>,
+    pub(super) interrupted_episode_id: Option<EpisodeId>,
+    pub(super) observation_request_id: Option<HostRequestId>,
+    pub(super) last_observation: Option<PlaybackLifecycleObservation>,
+    pub(super) last_position_commit_at_ms: Option<i64>,
+    pub(super) position_command_fence_at_ms: Option<i64>,
+    pub(super) timer_fired: bool,
+}
+
+impl Default for PlaybackRuntime {
+    fn default() -> Self {
+        Self {
+            policy_state: PlaybackPolicyState::Idle,
+            host_state: PlaybackHostState::Idle,
+            desired_playing: false,
+            media_episode_id: None,
+            interrupted_episode_id: None,
+            observation_request_id: None,
+            last_observation: None,
+            last_position_commit_at_ms: None,
+            position_command_fence_at_ms: None,
+            timer_fired: false,
+        }
+    }
+}
+
 pub(super) struct FacadeState {
     clock: Arc<dyn Clock>,
     pub(super) revision: StateRevision,
@@ -40,6 +73,7 @@ pub(super) struct FacadeState {
     pub(super) host_requests: HostRequestLedger,
     pub(super) host_queue: VecDeque<HostRequestEnvelope>,
     pub(super) pending_feeds: BTreeMap<pod0_domain::HostRequestId, PendingFeed>,
+    pub(super) playback: PlaybackRuntime,
     pub(super) operations: Vec<OperationProjection>,
     pub(super) subscriptions: SubscriptionRegistry,
     pub(super) subscribers: BTreeMap<SubscriptionId, Arc<dyn ProjectionSubscriber>>,
@@ -56,6 +90,7 @@ impl Default for FacadeState {
             host_requests: HostRequestLedger::default(),
             host_queue: VecDeque::new(),
             pending_feeds: BTreeMap::new(),
+            playback: PlaybackRuntime::default(),
             operations: Vec::new(),
             subscriptions: SubscriptionRegistry::default(),
             subscribers: BTreeMap::new(),
@@ -77,11 +112,21 @@ impl FacadeState {
     }
 
     pub(super) fn open(store: LibraryStore) -> Result<Self, pod0_storage::StorageError> {
+        let _ = store.clear_session_sleep_timer()?;
         let listening = store.snapshot()?;
+        let playback = PlaybackRuntime {
+            policy_state: if listening.playback.active_episode_id.is_some() {
+                PlaybackPolicyState::Paused
+            } else {
+                PlaybackPolicyState::Idle
+            },
+            ..PlaybackRuntime::default()
+        };
         Ok(Self {
             revision: listening.playback.revision,
             listening,
             store: Some(store),
+            playback,
             ..Self::default()
         })
     }
@@ -159,7 +204,10 @@ impl FacadeState {
 
     pub(super) fn reload_listening(&mut self) -> Result<(), pod0_storage::StorageError> {
         if let Some(store) = &self.store {
-            self.listening = store.snapshot()?;
+            let listening = store.snapshot()?;
+            self.revision =
+                StateRevision::new(self.revision.value.max(listening.playback.revision.value));
+            self.listening = listening;
         }
         Ok(())
     }
@@ -198,6 +246,8 @@ fn empty_listening_snapshot() -> ListeningDomainSnapshot {
         episodes: Vec::new(),
         playback: ListeningPlaybackPolicy {
             active_episode_id: None,
+            active_segment: None,
+            active_label: None,
             queue: Vec::new(),
             rate: PlaybackRatePermille { value: 1_000 },
             sleep_mode: PlaybackSleepMode::Off,

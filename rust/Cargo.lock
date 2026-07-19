@@ -1424,6 +1424,7 @@ dependencies = [
  "pod0-domain",
  "pod0-storage",
  "sha2",
+ "tempfile",
  "uniffi",
 ]
 

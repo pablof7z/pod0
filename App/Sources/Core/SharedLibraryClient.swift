@@ -9,29 +9,41 @@ final class SharedLibraryClient {
 
     private let facade: Pod0Facade
     private let dispatcher: Pod0NativeHostDispatcher
+    private let deferredPlaybackHost: DeferredPlaybackHost
     private var subscriber: SharedLibrarySubscriber?
-    private var subscriptionID: SubscriptionId?
+    private var librarySubscriptionID: SubscriptionId?
+    private var playbackSubscriptionID: SubscriptionId?
     private var waiters: [CommandId: Waiter] = [:]
-    private var lastRevision: UInt64 = 0
+    private var lastLibraryRevision: UInt64 = 0
+    private var lastPlaybackRevision: UInt64 = 0
     private weak var store: AppStateStore?
+    private weak var playbackState: PlaybackState?
     private var cachedSnapshot: SharedLibrarySnapshot?
+    private var cachedPlayback: PlaybackProjection?
+    private var playbackHostAttached = false
 
     init(facade: Pod0Facade, feedHost: any CoreFeedHosting) {
         self.facade = facade
+        let playbackHost = DeferredPlaybackHost()
+        self.deferredPlaybackHost = playbackHost
         self.dispatcher = Pod0NativeHostDispatcher(
             feedHost: feedHost,
-            playbackHost: LibraryOnlyPlaybackHost()
+            playbackHost: playbackHost
         )
     }
 
     func start() {
-        guard subscriptionID == nil else { return }
+        guard librarySubscriptionID == nil else { return }
         let subscriber = SharedLibrarySubscriber { [weak self] projection in
             Task { @MainActor [weak self] in self?.receive(projection) }
         }
         self.subscriber = subscriber
-        subscriptionID = facade.subscribe(
+        librarySubscriptionID = facade.subscribe(
             request: ProjectionRequest(scope: .library, offset: 0, maxItems: 200),
+            subscriber: subscriber
+        )
+        playbackSubscriptionID = facade.subscribe(
+            request: ProjectionRequest(scope: .playback, offset: 0, maxItems: 200),
             subscriber: subscriber
         )
     }
@@ -41,6 +53,34 @@ final class SharedLibraryClient {
         let snapshot = loadAllPages()
         cachedSnapshot = snapshot
         store.applySharedLibrary(snapshot)
+    }
+
+    func attachPlayback(_ playback: PlaybackState, store: AppStateStore) {
+        self.playbackState = playback
+        playback.attachSharedCore(self)
+        if !playbackHostAttached {
+            deferredPlaybackHost.attach(CorePlaybackHost(
+                engine: playback.engine,
+                resolveEpisode: { [weak store] id in store?.episode(id: id) }
+            ))
+            playbackHostAttached = true
+        }
+        if let cachedPlayback {
+            playback.applySharedPlayback(cachedPlayback) { [weak store] id in
+                store?.episode(id: id)
+            }
+        }
+        dispatchPlayback(.restore)
+    }
+
+    func dispatchPlayback(_ command: PlaybackCommand) {
+        facade.dispatch(command: CommandEnvelope(
+            commandId: CommandId(uuid: UUID()),
+            cancellationId: CancellationId(uuid: UUID()),
+            expectedRevision: nil,
+            command: .playback(command: command)
+        ))
+        dispatcher.executePendingRequests(from: facade)
     }
 
     func execute(_ command: ApplicationCommand) async throws -> OperationResult? {
@@ -76,12 +116,35 @@ final class SharedLibraryClient {
     }
 
     private func receive(_ envelope: ProjectionEnvelope) {
-        guard envelope.stateRevision.value >= lastRevision else { return }
-        lastRevision = envelope.stateRevision.value
+        switch envelope.projection {
+        case .library:
+            receiveLibrary(envelope)
+        case .playback(let projection):
+            receivePlayback(projection, revision: envelope.stateRevision.value)
+        case .podcastDetail, .episodeDetail, .unsupported:
+            break
+        }
+    }
+
+    private func receiveLibrary(_ envelope: ProjectionEnvelope) {
+        guard envelope.stateRevision.value >= lastLibraryRevision else { return }
+        lastLibraryRevision = envelope.stateRevision.value
         let snapshot = loadAllPages()
         cachedSnapshot = snapshot
         store?.applySharedLibrary(snapshot)
         resolveWaiters(snapshot.operations)
+        dispatcher.executePendingRequests(from: facade)
+    }
+
+    private func receivePlayback(_ projection: PlaybackProjection, revision: UInt64) {
+        guard revision >= lastPlaybackRevision else { return }
+        lastPlaybackRevision = revision
+        cachedPlayback = projection
+        if let playbackState {
+            playbackState.applySharedPlayback(projection) { [weak store] id in
+                store?.episode(id: id)
+            }
+        }
         dispatcher.executePendingRequests(from: facade)
     }
 
@@ -177,13 +240,4 @@ private final class SharedLibrarySubscriber: ProjectionSubscriber, @unchecked Se
     func receive(projection: ProjectionEnvelope) {
         delivery(projection)
     }
-}
-
-@MainActor
-private final class LibraryOnlyPlaybackHost: CorePlaybackHosting {
-    func execute(_ request: HostRequest) -> HostObservation {
-        .failed(code: .mediaUnavailable, safeDetail: "Playback host is not attached")
-    }
-
-    func installObservationSink(_ sink: @escaping (PlaybackLifecycleObservation) -> Void) {}
 }
