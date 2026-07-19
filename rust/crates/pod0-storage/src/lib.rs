@@ -63,6 +63,7 @@ mod schema_evidence;
 mod schema_introspection;
 mod schema_library;
 mod schema_notes;
+mod schema_transcripts;
 
 pub use backup::{restore_backup_to_new_store, verify_backup};
 pub use clip_import::{ClipImportClock, ClipImporter};

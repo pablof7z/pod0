@@ -23,12 +23,21 @@ Current versions:
 - v8: staged/authoritative notes, revisioned tombstones, and provenance.
 - v9: staged/authoritative clips, exact millisecond bounds, frozen transcript
   text, revisioned tombstones, and immutable selected evidence.
+- v10: full canonical transcript artifacts, raw segment overlays, speakers,
+  words, optimistic selections, replay receipts, and staged two-source legacy
+  import evidence. Existing evidence documents and normalized segment rows
+  remain the sole semantic transcript representation.
 
 Facade contract version 11 adds the canonical full-transcript artifact and
-bounded projections without changing the SQLite schema. It deliberately does
-not claim transcript authority or write a second artifact. Issue #95 adds the
-next locked schema and staged importer; issue #97 performs the single-writer
-cutover and deletes Swift transcript persistence authority.
+bounded projections. Schema v10 persists that contract without claiming iOS
+authority: Swift remains the writer until the staged import has been verified
+and issue #97 performs the single-writer cutover.
+
+Legacy transcript import defines lossless preservation as exact retention of
+the canonical semantic fields after the documented nearest-millisecond
+conversion, plus a verified immutable backup of the original JSON bytes. Swift
+transcript and segment UUIDs and the distinction between absent and empty word
+arrays are legacy serialization details, not durable product identity.
 
 Listening, note, and clip importers read the Swift source without mutation,
 verify an online SQLite or copied JSON backup, stage rows in one target

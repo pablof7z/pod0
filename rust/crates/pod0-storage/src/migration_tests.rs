@@ -61,7 +61,7 @@ fn fresh_store_migrates_transactionally_to_current() {
     let report = fixture.migrate_to(CURRENT_SCHEMA_VERSION, 1).unwrap();
 
     assert_eq!(report.from_version, 0);
-    assert_eq!(report.applied_versions, vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    assert_eq!(report.applied_versions, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     assert!(report.backup.is_none());
     assert_eq!(
         fixture.migrator.inspect(&fixture.store).migration_state,
@@ -104,6 +104,27 @@ fn evidence_schema_upgrade_is_one_step_and_cannot_be_downgraded() {
             requested: 6,
         })
     );
+}
+
+#[test]
+fn transcript_artifact_schema_upgrade_is_one_step_and_preserves_v9_backup() {
+    let fixture = Fixture::new();
+    fixture.migrate_to(9, 1).unwrap();
+
+    let report = fixture.migrate_to(10, 2).unwrap();
+
+    assert_eq!(report.applied_versions, [10]);
+    assert_eq!(report.backup.unwrap().schema_version, 9);
+    let connection = rusqlite::Connection::open(&fixture.store).unwrap();
+    let state: (i64, i64, Option<Vec<u8>>) = connection
+        .query_row(
+            "SELECT singleton,collection_revision,source_import_id \
+             FROM pod0_transcript_state",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .unwrap();
+    assert_eq!(state, (1, 0, None));
 }
 
 #[test]

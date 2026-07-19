@@ -13,6 +13,7 @@ const MIGRATION_6: &str = include_str!("../../../schema/migrations/0006_playback
 const MIGRATION_7: &str = include_str!("../../../schema/migrations/0007_evidence_artifacts.sql");
 const MIGRATION_8: &str = include_str!("../../../schema/migrations/0008_notes.sql");
 const MIGRATION_9: &str = include_str!("../../../schema/migrations/0009_clips.sql");
+const MIGRATION_10: &str = include_str!("../../../schema/migrations/0010_transcript_artifacts.sql");
 
 pub(crate) fn migration_sql(version: u32) -> Option<&'static str> {
     match version {
@@ -25,6 +26,7 @@ pub(crate) fn migration_sql(version: u32) -> Option<&'static str> {
         7 => Some(MIGRATION_7),
         8 => Some(MIGRATION_8),
         9 => Some(MIGRATION_9),
+        10 => Some(MIGRATION_10),
         _ => None,
     }
 }
@@ -282,6 +284,9 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
     }
     if version >= 9 {
         crate::schema_clips::validate_clips_schema(connection)?;
+    }
+    if version >= 10 {
+        crate::schema_transcripts::validate_transcripts_schema(connection)?;
     }
     Ok(())
 }
