@@ -48,6 +48,7 @@ final class Persistence: Sendable {
     private let lastWrittenRevision = OSAllocatedUnfairLock<UInt64>(initialState: 0)
     private let episodeSnapshot = OSAllocatedUnfairLock<EpisodeSQLiteSnapshot?>(initialState: nil)
     private let lastEpisodeWriteSummaryLock = OSAllocatedUnfairLock<EpisodeWriteSummary>(initialState: .none)
+    let sharedNoteAuthority = OSAllocatedUnfairLock<Bool>(initialState: false)
 
     /// Successful disk-write count used by persistence regression tests.
     private let saveCounter = OSAllocatedUnfairLock<Int>(initialState: 0)
@@ -180,7 +181,7 @@ final class Persistence: Sendable {
         state.persistenceGeneration = writeRevision
         let metadata: Data
         do {
-            metadata = try Self.encoder.encode(Self.metadataState(from: state))
+            metadata = try Self.encoder.encode(metadataState(from: state))
         } catch {
             Self.logger.error("Persistence.save: encode failed: \(error, privacy: .public)")
             return false
@@ -302,6 +303,7 @@ final class Persistence: Sendable {
         episodeSnapshot.withLock { $0 = nil }
         revision.withLock { $0 = 0 }
         lastWrittenRevision.withLock { $0 = 0 }
+        sharedNoteAuthority.withLock { $0 = false }
         resetEpisodeWriteSummary()
     }
 
@@ -470,14 +472,9 @@ final class Persistence: Sendable {
     }
 
     private func writeMetadataSnapshot(_ state: AppState) throws {
-        let data = try Self.encoder.encode(Self.metadataState(from: state))
+        let data = try Self.encoder.encode(metadataState(from: state))
         try ensureParentDirectoryExists()
         try data.write(to: fileURL, options: [.atomic])
     }
 
-    private static func metadataState(from state: AppState) -> AppState {
-        var metadata = state
-        metadata.episodes = []
-        return metadata
-    }
 }

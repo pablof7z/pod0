@@ -5,7 +5,7 @@ use pod0_domain::CommandId;
 
 pub const APPLICATION_ID: i64 = 0x504F_4430;
 pub const MIN_SUPPORTED_SCHEMA_VERSION: u32 = 0;
-pub const CURRENT_SCHEMA_VERSION: u32 = 7;
+pub const CURRENT_SCHEMA_VERSION: u32 = 8;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AccessMode {
@@ -123,6 +123,8 @@ pub enum StorageError {
     CutoverNotAuthoritative,
     CommandConflict,
     EntityNotFound,
+    RevisionConflict,
+    InvalidNote,
     EvidenceCommandConflict,
     EvidenceNotFound,
     EvidenceNotVerified,
@@ -158,6 +160,8 @@ impl StorageError {
             Self::CutoverNotAuthoritative => "listening_not_authoritative",
             Self::CommandConflict => "library_command_conflict",
             Self::EntityNotFound => "library_entity_not_found",
+            Self::RevisionConflict => "revision_conflict",
+            Self::InvalidNote => "invalid_note",
             Self::EvidenceCommandConflict => "evidence_command_conflict",
             Self::EvidenceNotFound => "evidence_not_found",
             Self::EvidenceNotVerified => "evidence_not_verified",

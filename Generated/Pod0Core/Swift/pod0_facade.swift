@@ -1262,6 +1262,262 @@ public func FfiConverterTypeLegacyListeningImportVerification_lower(_ value: Leg
 }
 
 
+public struct LegacyNoteBackupEvidence: Equatable, Hashable {
+    public let sourceKind: LegacyListeningSourceKind
+    public let sourceHash: String
+    public let sourceGeneration: UInt64
+    public let byteCount: UInt64
+    public let reusedExisting: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceKind: LegacyListeningSourceKind, sourceHash: String, sourceGeneration: UInt64, byteCount: UInt64, reusedExisting: Bool) {
+        self.sourceKind = sourceKind
+        self.sourceHash = sourceHash
+        self.sourceGeneration = sourceGeneration
+        self.byteCount = byteCount
+        self.reusedExisting = reusedExisting
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyNoteBackupEvidence: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyNoteBackupEvidence: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyNoteBackupEvidence {
+        return
+            try LegacyNoteBackupEvidence(
+                sourceKind: FfiConverterTypeLegacyListeningSourceKind.read(from: &buf),
+                sourceHash: FfiConverterString.read(from: &buf),
+                sourceGeneration: FfiConverterUInt64.read(from: &buf),
+                byteCount: FfiConverterUInt64.read(from: &buf),
+                reusedExisting: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyNoteBackupEvidence, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyListeningSourceKind.write(value.sourceKind, into: &buf)
+        FfiConverterString.write(value.sourceHash, into: &buf)
+        FfiConverterUInt64.write(value.sourceGeneration, into: &buf)
+        FfiConverterUInt64.write(value.byteCount, into: &buf)
+        FfiConverterBool.write(value.reusedExisting, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyNoteBackupEvidence_lift(_ buf: RustBuffer) throws -> LegacyNoteBackupEvidence {
+    return try FfiConverterTypeLegacyNoteBackupEvidence.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyNoteBackupEvidence_lower(_ value: LegacyNoteBackupEvidence) -> RustBuffer {
+    return FfiConverterTypeLegacyNoteBackupEvidence.lower(value)
+}
+
+
+public struct LegacyNoteImportPlan: Equatable, Hashable {
+    public let sourceKind: LegacyListeningSourceKind
+    public let sourceHash: String
+    public let sourceGeneration: UInt64
+    public let noteCount: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceKind: LegacyListeningSourceKind, sourceHash: String, sourceGeneration: UInt64, noteCount: UInt32) {
+        self.sourceKind = sourceKind
+        self.sourceHash = sourceHash
+        self.sourceGeneration = sourceGeneration
+        self.noteCount = noteCount
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyNoteImportPlan: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyNoteImportPlan: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyNoteImportPlan {
+        return
+            try LegacyNoteImportPlan(
+                sourceKind: FfiConverterTypeLegacyListeningSourceKind.read(from: &buf),
+                sourceHash: FfiConverterString.read(from: &buf),
+                sourceGeneration: FfiConverterUInt64.read(from: &buf),
+                noteCount: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyNoteImportPlan, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyListeningSourceKind.write(value.sourceKind, into: &buf)
+        FfiConverterString.write(value.sourceHash, into: &buf)
+        FfiConverterUInt64.write(value.sourceGeneration, into: &buf)
+        FfiConverterUInt32.write(value.noteCount, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyNoteImportPlan_lift(_ buf: RustBuffer) throws -> LegacyNoteImportPlan {
+    return try FfiConverterTypeLegacyNoteImportPlan.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyNoteImportPlan_lower(_ value: LegacyNoteImportPlan) -> RustBuffer {
+    return FfiConverterTypeLegacyNoteImportPlan.lower(value)
+}
+
+
+public struct LegacyNoteImportReport: Equatable, Hashable {
+    public let importId: CommandId
+    public let plan: LegacyNoteImportPlan
+    public let targetRevision: StateRevision
+    public let backup: LegacyNoteBackupEvidence
+    public let staged: Bool
+    public let reusedExisting: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(importId: CommandId, plan: LegacyNoteImportPlan, targetRevision: StateRevision, backup: LegacyNoteBackupEvidence, staged: Bool, reusedExisting: Bool) {
+        self.importId = importId
+        self.plan = plan
+        self.targetRevision = targetRevision
+        self.backup = backup
+        self.staged = staged
+        self.reusedExisting = reusedExisting
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyNoteImportReport: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyNoteImportReport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyNoteImportReport {
+        return
+            try LegacyNoteImportReport(
+                importId: FfiConverterTypeCommandId.read(from: &buf),
+                plan: FfiConverterTypeLegacyNoteImportPlan.read(from: &buf),
+                targetRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                backup: FfiConverterTypeLegacyNoteBackupEvidence.read(from: &buf),
+                staged: FfiConverterBool.read(from: &buf),
+                reusedExisting: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyNoteImportReport, into buf: inout [UInt8]) {
+        FfiConverterTypeCommandId.write(value.importId, into: &buf)
+        FfiConverterTypeLegacyNoteImportPlan.write(value.plan, into: &buf)
+        FfiConverterTypeStateRevision.write(value.targetRevision, into: &buf)
+        FfiConverterTypeLegacyNoteBackupEvidence.write(value.backup, into: &buf)
+        FfiConverterBool.write(value.staged, into: &buf)
+        FfiConverterBool.write(value.reusedExisting, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyNoteImportReport_lift(_ buf: RustBuffer) throws -> LegacyNoteImportReport {
+    return try FfiConverterTypeLegacyNoteImportReport.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyNoteImportReport_lower(_ value: LegacyNoteImportReport) -> RustBuffer {
+    return FfiConverterTypeLegacyNoteImportReport.lower(value)
+}
+
+
+public struct LegacyNoteImportVerification: Equatable, Hashable {
+    public let report: LegacyNoteImportReport
+    public let collectionRevision: StateRevision
+    public let notes: [NoteRecord]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(report: LegacyNoteImportReport, collectionRevision: StateRevision, notes: [NoteRecord]) {
+        self.report = report
+        self.collectionRevision = collectionRevision
+        self.notes = notes
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyNoteImportVerification: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyNoteImportVerification: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyNoteImportVerification {
+        return
+            try LegacyNoteImportVerification(
+                report: FfiConverterTypeLegacyNoteImportReport.read(from: &buf),
+                collectionRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                notes: FfiConverterSequenceTypeNoteRecord.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyNoteImportVerification, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyNoteImportReport.write(value.report, into: &buf)
+        FfiConverterTypeStateRevision.write(value.collectionRevision, into: &buf)
+        FfiConverterSequenceTypeNoteRecord.write(value.notes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyNoteImportVerification_lift(_ buf: RustBuffer) throws -> LegacyNoteImportVerification {
+    return try FfiConverterTypeLegacyNoteImportVerification.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyNoteImportVerification_lower(_ value: LegacyNoteImportVerification) -> RustBuffer {
+    return FfiConverterTypeLegacyNoteImportVerification.lower(value)
+}
+
+
 public struct SharedListeningStorePreparation: Equatable, Hashable {
     public let fromVersion: UInt32
     public let toVersion: UInt32
@@ -1585,6 +1841,119 @@ public func FfiConverterTypeLegacyListeningSourceKind_lower(_ value: LegacyListe
 }
 
 
+
+public
+enum LegacyNoteMigrationError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+
+
+
+    case SourceChanged
+    case SourceInvalid
+    case BackupConflict
+    case ImportConflict
+    case ImportNotFound
+    case TargetBlocked
+    case Interrupted
+    case StorageUnavailable
+
+
+
+
+
+
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+
+}
+
+#if compiler(>=6)
+extension LegacyNoteMigrationError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyNoteMigrationError: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyNoteMigrationError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyNoteMigrationError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+
+
+
+        case 1: return .SourceChanged
+        case 2: return .SourceInvalid
+        case 3: return .BackupConflict
+        case 4: return .ImportConflict
+        case 5: return .ImportNotFound
+        case 6: return .TargetBlocked
+        case 7: return .Interrupted
+        case 8: return .StorageUnavailable
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyNoteMigrationError, into buf: inout [UInt8]) {
+        switch value {
+
+
+
+
+
+        case .SourceChanged:
+            writeInt(&buf, Int32(1))
+
+
+        case .SourceInvalid:
+            writeInt(&buf, Int32(2))
+
+
+        case .BackupConflict:
+            writeInt(&buf, Int32(3))
+
+
+        case .ImportConflict:
+            writeInt(&buf, Int32(4))
+
+
+        case .ImportNotFound:
+            writeInt(&buf, Int32(5))
+
+
+        case .TargetBlocked:
+            writeInt(&buf, Int32(6))
+
+
+        case .Interrupted:
+            writeInt(&buf, Int32(7))
+
+
+        case .StorageUnavailable:
+            writeInt(&buf, Int32(8))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyNoteMigrationError_lift(_ buf: RustBuffer) throws -> LegacyNoteMigrationError {
+    return try FfiConverterTypeLegacyNoteMigrationError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyNoteMigrationError_lower(_ value: LegacyNoteMigrationError) -> RustBuffer {
+    return FfiConverterTypeLegacyNoteMigrationError.lower(value)
+}
+
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -1630,6 +1999,31 @@ fileprivate struct FfiConverterSequenceTypeHostRequestEnvelope: FfiConverterRust
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeHostRequestEnvelope.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer {
+    typealias SwiftType = [NoteRecord]
+
+    public static func write(_ value: [NoteRecord], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeNoteRecord.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [NoteRecord] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [NoteRecord]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeNoteRecord.read(from: &buf))
         }
         return seq
     }
@@ -1686,6 +2080,47 @@ public func stageLegacyListeningImport(sourcePath: String, sourceBackupPath: Str
     )
 })
 }
+public func commitStagedLegacyNoteImport(targetPath: String, observedAtMilliseconds: Int64)throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeLegacyNoteMigrationError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_commit_staged_legacy_note_import(
+        FfiConverterString.lower(targetPath),
+        FfiConverterInt64.lower(observedAtMilliseconds),uniffiCallStatus
+    )
+})
+}
+public func inspectLegacyNoteSource(sourcePath: String)throws  -> LegacyNoteImportPlan  {
+    return try  FfiConverterTypeLegacyNoteImportPlan_lift(try rustCallWithError(FfiConverterTypeLegacyNoteMigrationError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_inspect_legacy_note_source(
+        FfiConverterString.lower(sourcePath),uniffiCallStatus
+    )
+})
+}
+public func readStagedLegacyNoteImport(targetPath: String, importId: CommandId)throws  -> LegacyNoteImportVerification  {
+    return try  FfiConverterTypeLegacyNoteImportVerification_lift(try rustCallWithError(FfiConverterTypeLegacyNoteMigrationError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_read_staged_legacy_note_import(
+        FfiConverterString.lower(targetPath),
+        FfiConverterTypeCommandId_lower(importId),uniffiCallStatus
+    )
+})
+}
+public func stageLegacyNoteImport(sourcePath: String, sourceBackupPath: String, targetPath: String, targetSchemaBackupPath: String, expectedPlan: LegacyNoteImportPlan, importId: CommandId, targetStoreId: CommandId, observedAtMilliseconds: Int64)throws  -> LegacyNoteImportReport  {
+    return try  FfiConverterTypeLegacyNoteImportReport_lift(try rustCallWithError(FfiConverterTypeLegacyNoteMigrationError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_stage_legacy_note_import(
+        FfiConverterString.lower(sourcePath),
+        FfiConverterString.lower(sourceBackupPath),
+        FfiConverterString.lower(targetPath),
+        FfiConverterString.lower(targetSchemaBackupPath),
+        FfiConverterTypeLegacyNoteImportPlan_lower(expectedPlan),
+        FfiConverterTypeCommandId_lower(importId),
+        FfiConverterTypeCommandId_lower(targetStoreId),
+        FfiConverterInt64.lower(observedAtMilliseconds),uniffiCallStatus
+    )
+})
+}
 
 private enum InitializationResult {
     case ok
@@ -1715,6 +2150,18 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_stage_legacy_listening_import() != 21059) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_commit_staged_legacy_note_import() != 26478) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_inspect_legacy_note_source() != 49964) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_read_staged_legacy_note_import() != 44491) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_stage_legacy_note_import() != 14097) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_projectionsubscriber_receive() != 23861) {

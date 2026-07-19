@@ -3,6 +3,7 @@ use rusqlite::{OptionalExtension, params};
 
 use crate::StorageError;
 use crate::library_store::{LibraryStore, command_was_applied, finish_command};
+use crate::library_store_note_support::finish_note_command;
 use crate::listening_db_codec::{auto_download, bool_value};
 
 impl LibraryStore {
@@ -48,6 +49,9 @@ impl LibraryStore {
             transaction
                 .execute("DELETE FROM pod0_queue_entries", [])
                 .map_err(|error| StorageError::sqlite("reset listening queue", error))?;
+            transaction
+                .execute("DELETE FROM pod0_notes", [])
+                .map_err(|error| StorageError::sqlite("reset notes", error))?;
             transaction.execute(
                 "UPDATE pod0_playback_state SET active_episode_id=NULL,playback_rate_permille=1000,\
                  sleep_mode_code=1,sleep_duration_ms=NULL,sleep_wire_code=NULL,\
@@ -71,7 +75,7 @@ impl LibraryStore {
             transaction
                 .execute("DELETE FROM pod0_library_commands", [])
                 .map_err(|error| StorageError::sqlite("reset command receipts", error))?;
-            finish_command(transaction, command_id, command_fingerprint, observed_at_ms)
+            finish_note_command(transaction, command_id, command_fingerprint, observed_at_ms)
         })
     }
 

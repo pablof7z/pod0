@@ -1955,6 +1955,206 @@ public object FfiConverterTypeListeningPlaybackPolicy: FfiConverterRustBuffer<Li
 
 
 /**
+ * Immutable provenance captured from the selected, verified evidence
+ * generation at note creation. Later transcript rebuilds never retarget it.
+ */
+data class NoteEvidenceReference (
+    val `generationId`: EvidenceGenerationId
+    ,
+    val `transcriptVersionId`: TranscriptVersionId
+    ,
+    val `transcriptContentDigest`: ContentDigest
+    ,
+    val `spanId`: EvidenceSpanId
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeNoteEvidenceReference: FfiConverterRustBuffer<NoteEvidenceReference> {
+    override fun read(buf: ByteBuffer): NoteEvidenceReference {
+        return NoteEvidenceReference(
+            FfiConverterTypeEvidenceGenerationId.read(buf),
+            FfiConverterTypeTranscriptVersionId.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeEvidenceSpanId.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: NoteEvidenceReference) = (
+            FfiConverterTypeEvidenceGenerationId.allocationSize(value.`generationId`) +
+            FfiConverterTypeTranscriptVersionId.allocationSize(value.`transcriptVersionId`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`transcriptContentDigest`) +
+            FfiConverterTypeEvidenceSpanId.allocationSize(value.`spanId`)
+    )
+
+    override fun write(value: NoteEvidenceReference, buf: ByteBuffer) {
+            FfiConverterTypeEvidenceGenerationId.write(value.`generationId`, buf)
+            FfiConverterTypeTranscriptVersionId.write(value.`transcriptVersionId`, buf)
+            FfiConverterTypeContentDigest.write(value.`transcriptContentDigest`, buf)
+            FfiConverterTypeEvidenceSpanId.write(value.`spanId`, buf)
+    }
+}
+
+
+
+data class NoteId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeNoteId: FfiConverterRustBuffer<NoteId> {
+    override fun read(buf: ByteBuffer): NoteId {
+        return NoteId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: NoteId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: NoteId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+/**
+ * Durable note state owned by the Pod0 kernel. Native shells may map this to
+ * presentation values but must not persist or mutate an independent copy.
+ */
+data class NoteRecord (
+    val `noteId`: NoteId
+    ,
+    val `revision`: NoteRevision
+    ,
+    val `text`: kotlin.String
+    ,
+    val `kind`: NoteKind
+    ,
+    val `author`: NoteAuthor
+    ,
+    val `target`: NoteTarget?
+    ,
+    val `createdAt`: UnixTimestampMilliseconds
+    ,
+    val `deleted`: kotlin.Boolean
+    ,
+    val `evidence`: NoteEvidenceReference?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeNoteRecord: FfiConverterRustBuffer<NoteRecord> {
+    override fun read(buf: ByteBuffer): NoteRecord {
+        return NoteRecord(
+            FfiConverterTypeNoteId.read(buf),
+            FfiConverterTypeNoteRevision.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeNoteKind.read(buf),
+            FfiConverterTypeNoteAuthor.read(buf),
+            FfiConverterOptionalTypeNoteTarget.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalTypeNoteEvidenceReference.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: NoteRecord) = (
+            FfiConverterTypeNoteId.allocationSize(value.`noteId`) +
+            FfiConverterTypeNoteRevision.allocationSize(value.`revision`) +
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterTypeNoteKind.allocationSize(value.`kind`) +
+            FfiConverterTypeNoteAuthor.allocationSize(value.`author`) +
+            FfiConverterOptionalTypeNoteTarget.allocationSize(value.`target`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`createdAt`) +
+            FfiConverterBoolean.allocationSize(value.`deleted`) +
+            FfiConverterOptionalTypeNoteEvidenceReference.allocationSize(value.`evidence`)
+    )
+
+    override fun write(value: NoteRecord, buf: ByteBuffer) {
+            FfiConverterTypeNoteId.write(value.`noteId`, buf)
+            FfiConverterTypeNoteRevision.write(value.`revision`, buf)
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterTypeNoteKind.write(value.`kind`, buf)
+            FfiConverterTypeNoteAuthor.write(value.`author`, buf)
+            FfiConverterOptionalTypeNoteTarget.write(value.`target`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`createdAt`, buf)
+            FfiConverterBoolean.write(value.`deleted`, buf)
+            FfiConverterOptionalTypeNoteEvidenceReference.write(value.`evidence`, buf)
+    }
+}
+
+
+
+data class NoteRevision (
+    val `value`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeNoteRevision: FfiConverterRustBuffer<NoteRevision> {
+    override fun read(buf: ByteBuffer): NoteRevision {
+        return NoteRevision(
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: NoteRevision) = (
+            FfiConverterULong.allocationSize(value.`value`)
+    )
+
+    override fun write(value: NoteRevision, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`value`, buf)
+    }
+}
+
+
+
+/**
  * Integer thousandths avoid platform floating-point drift at the boundary.
  * 1.7x is represented as 1700.
  */
@@ -3626,6 +3826,305 @@ public object FfiConverterTypeListeningDomainError : FfiConverterRustBuffer<List
 
 
 
+sealed class NoteAuthor {
+
+    object User : NoteAuthor()
+
+
+    object Agent : NoteAuthor()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : NoteAuthor()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeNoteAuthor : FfiConverterRustBuffer<NoteAuthor>{
+    override fun read(buf: ByteBuffer): NoteAuthor {
+        return when(buf.getInt()) {
+            1 -> NoteAuthor.User
+            2 -> NoteAuthor.Agent
+            3 -> NoteAuthor.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: NoteAuthor): ULong = when(value) {
+        is NoteAuthor.User -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is NoteAuthor.Agent -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is NoteAuthor.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: NoteAuthor, buf: ByteBuffer) {
+        when(value) {
+            is NoteAuthor.User -> {
+                buf.putInt(1)
+                Unit
+            }
+            is NoteAuthor.Agent -> {
+                buf.putInt(2)
+                Unit
+            }
+            is NoteAuthor.Unsupported -> {
+                buf.putInt(3)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class NoteKind {
+
+    object Free : NoteKind()
+
+
+    object Reflection : NoteKind()
+
+
+    object SystemEvent : NoteKind()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : NoteKind()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeNoteKind : FfiConverterRustBuffer<NoteKind>{
+    override fun read(buf: ByteBuffer): NoteKind {
+        return when(buf.getInt()) {
+            1 -> NoteKind.Free
+            2 -> NoteKind.Reflection
+            3 -> NoteKind.SystemEvent
+            4 -> NoteKind.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: NoteKind): ULong = when(value) {
+        is NoteKind.Free -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is NoteKind.Reflection -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is NoteKind.SystemEvent -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is NoteKind.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: NoteKind, buf: ByteBuffer) {
+        when(value) {
+            is NoteKind.Free -> {
+                buf.putInt(1)
+                Unit
+            }
+            is NoteKind.Reflection -> {
+                buf.putInt(2)
+                Unit
+            }
+            is NoteKind.SystemEvent -> {
+                buf.putInt(3)
+                Unit
+            }
+            is NoteKind.Unsupported -> {
+                buf.putInt(4)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class NoteTarget {
+
+    data class Note(
+        val `noteId`: uniffi.pod0_domain.NoteId) : NoteTarget()
+
+    {
+
+
+        companion object
+    }
+
+    data class Episode(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `positionMilliseconds`: kotlin.ULong) : NoteTarget()
+
+    {
+
+
+        companion object
+    }
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : NoteTarget()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeNoteTarget : FfiConverterRustBuffer<NoteTarget>{
+    override fun read(buf: ByteBuffer): NoteTarget {
+        return when(buf.getInt()) {
+            1 -> NoteTarget.Note(
+                FfiConverterTypeNoteId.read(buf),
+                )
+            2 -> NoteTarget.Episode(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterULong.read(buf),
+                )
+            3 -> NoteTarget.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: NoteTarget): ULong = when(value) {
+        is NoteTarget.Note -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeNoteId.allocationSize(value.`noteId`)
+            )
+        }
+        is NoteTarget.Episode -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterULong.allocationSize(value.`positionMilliseconds`)
+            )
+        }
+        is NoteTarget.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: NoteTarget, buf: ByteBuffer) {
+        when(value) {
+            is NoteTarget.Note -> {
+                buf.putInt(1)
+                FfiConverterTypeNoteId.write(value.`noteId`, buf)
+                Unit
+            }
+            is NoteTarget.Episode -> {
+                buf.putInt(2)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterULong.write(value.`positionMilliseconds`, buf)
+                Unit
+            }
+            is NoteTarget.Unsupported -> {
+                buf.putInt(3)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 sealed class PlaybackSleepMode {
 
     object Off : PlaybackSleepMode()
@@ -4426,6 +4925,38 @@ public object FfiConverterOptionalTypeFeedIdentityV1: FfiConverterRustBuffer<Fee
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeNoteEvidenceReference: FfiConverterRustBuffer<NoteEvidenceReference?> {
+    override fun read(buf: ByteBuffer): NoteEvidenceReference? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeNoteEvidenceReference.read(buf)
+    }
+
+    override fun allocationSize(value: NoteEvidenceReference?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeNoteEvidenceReference.allocationSize(value)
+        }
+    }
+
+    override fun write(value: NoteEvidenceReference?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeNoteEvidenceReference.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypePlaybackRatePermille: FfiConverterRustBuffer<PlaybackRatePermille?> {
     override fun read(buf: ByteBuffer): PlaybackRatePermille? {
         if (buf.get().toInt() == 0) {
@@ -4576,6 +5107,38 @@ public object FfiConverterOptionalTypeUnixTimestampMilliseconds: FfiConverterRus
         } else {
             buf.put(1)
             FfiConverterTypeUnixTimestampMilliseconds.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeNoteTarget: FfiConverterRustBuffer<NoteTarget?> {
+    override fun read(buf: ByteBuffer): NoteTarget? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeNoteTarget.read(buf)
+    }
+
+    override fun allocationSize(value: NoteTarget?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeNoteTarget.allocationSize(value)
+        }
+    }
+
+    override fun write(value: NoteTarget?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeNoteTarget.write(value, buf)
         }
     }
 }

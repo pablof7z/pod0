@@ -70,6 +70,7 @@ pub(super) struct FacadeState {
     clock: Arc<dyn Clock>,
     pub(super) revision: StateRevision,
     pub(super) listening: ListeningDomainSnapshot,
+    pub(super) notes: pod0_storage::NoteCollectionSnapshot,
     pub(super) store: Option<LibraryStore>,
     pub(super) evidence_store: Option<EvidenceStore>,
     pub(super) commands: CommandLedger,
@@ -91,6 +92,10 @@ impl Default for FacadeState {
             clock: Arc::new(SystemClock),
             revision: StateRevision::INITIAL,
             listening: empty_listening_snapshot(),
+            notes: pod0_storage::NoteCollectionSnapshot {
+                revision: StateRevision::INITIAL,
+                notes: Vec::new(),
+            },
             store: None,
             evidence_store: None,
             commands: CommandLedger::default(),
@@ -127,6 +132,7 @@ impl FacadeState {
     ) -> Result<Self, pod0_storage::StorageError> {
         let _ = store.clear_session_sleep_timer()?;
         let listening = store.snapshot()?;
+        let notes = store.note_snapshot()?;
         let playback = PlaybackRuntime {
             policy_state: if listening.playback.active_episode_id.is_some() {
                 PlaybackPolicyState::Paused
@@ -136,8 +142,11 @@ impl FacadeState {
             ..PlaybackRuntime::default()
         };
         Ok(Self {
-            revision: listening.playback.revision,
+            revision: StateRevision::new(
+                listening.playback.revision.value.max(notes.revision.value),
+            ),
             listening,
+            notes,
             store: Some(store),
             evidence_store: Some(evidence_store),
             playback,

@@ -16,4 +16,11 @@ extension AppStateStore {
             invalidateEpisodeProjections()
         }
     }
+
+    /// Replaces the native read model from a bounded Rust projection. This is
+    /// the only production assignment to `AppState.notes`; Persistence strips
+    /// it from metadata once shared note authority is active.
+    func applySharedNotes(_ projection: SharedNoteSnapshot) {
+        mutateState { $0.notes = projection.notes }
+    }
 }

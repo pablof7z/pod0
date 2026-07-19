@@ -1369,6 +1369,72 @@ public func FfiConverterTypeLibraryProjection_lower(_ value: LibraryProjection) 
 }
 
 
+public struct NotesProjection: Equatable, Hashable {
+    public let scope: NoteProjectionScope
+    public let collectionRevision: StateRevision
+    public let notes: [NoteRecord]
+    public let operations: [OperationProjection]
+    public let hasMore: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(scope: NoteProjectionScope, collectionRevision: StateRevision, notes: [NoteRecord], operations: [OperationProjection], hasMore: Bool) {
+        self.scope = scope
+        self.collectionRevision = collectionRevision
+        self.notes = notes
+        self.operations = operations
+        self.hasMore = hasMore
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension NotesProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNotesProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NotesProjection {
+        return
+            try NotesProjection(
+                scope: FfiConverterTypeNoteProjectionScope.read(from: &buf),
+                collectionRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                notes: FfiConverterSequenceTypeNoteRecord.read(from: &buf),
+                operations: FfiConverterSequenceTypeOperationProjection.read(from: &buf),
+                hasMore: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NotesProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeNoteProjectionScope.write(value.scope, into: &buf)
+        FfiConverterTypeStateRevision.write(value.collectionRevision, into: &buf)
+        FfiConverterSequenceTypeNoteRecord.write(value.notes, into: &buf)
+        FfiConverterSequenceTypeOperationProjection.write(value.operations, into: &buf)
+        FfiConverterBool.write(value.hasMore, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNotesProjection_lift(_ buf: RustBuffer) throws -> NotesProjection {
+    return try FfiConverterTypeNotesProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNotesProjection_lower(_ value: NotesProjection) -> RustBuffer {
+    return FfiConverterTypeNotesProjection.lower(value)
+}
+
+
 public struct OperationProjection: Equatable, Hashable {
     public let commandId: CommandId
     public let cancellationId: CancellationId
@@ -2817,6 +2883,14 @@ public enum ApplicationCommand: Equatable, Hashable {
     )
     case rebuildTranscriptEvidence(input: TranscriptEvidenceInput, policy: EvidenceChunkPolicy
     )
+    case createNote(text: String, kind: NoteKind, author: NoteAuthor, target: NoteTarget?
+    )
+    case updateNote(noteId: NoteId, expectedNoteRevision: NoteRevision, text: String, kind: NoteKind, target: NoteTarget?
+    )
+    case setNoteDeleted(noteId: NoteId, expectedNoteRevision: NoteRevision, deleted: Bool
+    )
+    case clearNotes(expectedCollectionRevision: StateRevision
+    )
     case cancelOperation(cancellationId: CancellationId
     )
     case unsupported(wireCode: UInt32
@@ -2886,10 +2960,22 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
         case 15: return .rebuildTranscriptEvidence(input: try FfiConverterTypeTranscriptEvidenceInput.read(from: &buf), policy: try FfiConverterTypeEvidenceChunkPolicy.read(from: &buf)
         )
 
-        case 16: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        case 16: return .createNote(text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), author: try FfiConverterTypeNoteAuthor.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
         )
 
-        case 17: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 17: return .updateNote(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
+        )
+
+        case 18: return .setNoteDeleted(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 19: return .clearNotes(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        )
+
+        case 20: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        )
+
+        case 21: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -2978,13 +3064,42 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
             FfiConverterTypeEvidenceChunkPolicy.write(policy, into: &buf)
 
 
-        case let .cancelOperation(cancellationId):
+        case let .createNote(text,kind,author,target):
             writeInt(&buf, Int32(16))
+            FfiConverterString.write(text, into: &buf)
+            FfiConverterTypeNoteKind.write(kind, into: &buf)
+            FfiConverterTypeNoteAuthor.write(author, into: &buf)
+            FfiConverterOptionTypeNoteTarget.write(target, into: &buf)
+
+
+        case let .updateNote(noteId,expectedNoteRevision,text,kind,target):
+            writeInt(&buf, Int32(17))
+            FfiConverterTypeNoteId.write(noteId, into: &buf)
+            FfiConverterTypeNoteRevision.write(expectedNoteRevision, into: &buf)
+            FfiConverterString.write(text, into: &buf)
+            FfiConverterTypeNoteKind.write(kind, into: &buf)
+            FfiConverterOptionTypeNoteTarget.write(target, into: &buf)
+
+
+        case let .setNoteDeleted(noteId,expectedNoteRevision,deleted):
+            writeInt(&buf, Int32(18))
+            FfiConverterTypeNoteId.write(noteId, into: &buf)
+            FfiConverterTypeNoteRevision.write(expectedNoteRevision, into: &buf)
+            FfiConverterBool.write(deleted, into: &buf)
+
+
+        case let .clearNotes(expectedCollectionRevision):
+            writeInt(&buf, Int32(19))
+            FfiConverterTypeStateRevision.write(expectedCollectionRevision, into: &buf)
+
+
+        case let .cancelOperation(cancellationId):
+            writeInt(&buf, Int32(20))
             FfiConverterTypeCancellationId.write(cancellationId, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(17))
+            writeInt(&buf, Int32(21))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -3018,6 +3133,7 @@ public enum CoreFailureCode: Equatable, Hashable {
     case storageUnavailable
     case revisionConflict
     case notFound
+    case invalidNote
     case hostUnavailable
     case hostRejected
     case cancelled
@@ -3058,13 +3174,15 @@ public struct FfiConverterTypeCoreFailureCode: FfiConverterRustBuffer {
 
         case 7: return .notFound
 
-        case 8: return .hostUnavailable
+        case 8: return .invalidNote
 
-        case 9: return .hostRejected
+        case 9: return .hostUnavailable
 
-        case 10: return .cancelled
+        case 10: return .hostRejected
 
-        case 11: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 11: return .cancelled
+
+        case 12: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -3103,20 +3221,24 @@ public struct FfiConverterTypeCoreFailureCode: FfiConverterRustBuffer {
             writeInt(&buf, Int32(7))
 
 
-        case .hostUnavailable:
+        case .invalidNote:
             writeInt(&buf, Int32(8))
 
 
-        case .hostRejected:
+        case .hostUnavailable:
             writeInt(&buf, Int32(9))
 
 
-        case .cancelled:
+        case .hostRejected:
             writeInt(&buf, Int32(10))
 
 
-        case let .unsupported(wireCode):
+        case .cancelled:
             writeInt(&buf, Int32(11))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(12))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -3922,6 +4044,92 @@ public func FfiConverterTypeNativeTimerMode_lower(_ value: NativeTimerMode) -> R
 
 
 
+public enum NoteProjectionScope: Equatable, Hashable {
+
+    case all
+    case active
+    case episode(episodeId: EpisodeId
+    )
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension NoteProjectionScope: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNoteProjectionScope: FfiConverterRustBuffer {
+    typealias SwiftType = NoteProjectionScope
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NoteProjectionScope {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .all
+
+        case 2: return .active
+
+        case 3: return .episode(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
+        )
+
+        case 4: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: NoteProjectionScope, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .all:
+            writeInt(&buf, Int32(1))
+
+
+        case .active:
+            writeInt(&buf, Int32(2))
+
+
+        case let .episode(episodeId):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteProjectionScope_lift(_ buf: RustBuffer) throws -> NoteProjectionScope {
+    return try FfiConverterTypeNoteProjectionScope.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteProjectionScope_lower(_ value: NoteProjectionScope) -> RustBuffer {
+    return FfiConverterTypeNoteProjectionScope.lower(value)
+}
+
+
+
+
 public enum OperationResult: Equatable, Hashable {
 
     case podcast(podcastId: PodcastId
@@ -3942,6 +4150,11 @@ public enum OperationResult: Equatable, Hashable {
     )
     case evidenceRebuilt(episodeId: EpisodeId, generationId: EvidenceGenerationId, spanCount: UInt32
     )
+    case noteCreated(noteId: NoteId
+    )
+    case noteUpdated(noteId: NoteId
+    )
+    case notesCleared
     case unsupported(wireCode: UInt32
     )
 
@@ -3993,7 +4206,15 @@ public struct FfiConverterTypeOperationResult: FfiConverterRustBuffer {
         case 10: return .evidenceRebuilt(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), generationId: try FfiConverterTypeEvidenceGenerationId.read(from: &buf), spanCount: try FfiConverterUInt32.read(from: &buf)
         )
 
-        case 11: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 11: return .noteCreated(noteId: try FfiConverterTypeNoteId.read(from: &buf)
+        )
+
+        case 12: return .noteUpdated(noteId: try FfiConverterTypeNoteId.read(from: &buf)
+        )
+
+        case 13: return .notesCleared
+
+        case 14: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -4056,8 +4277,22 @@ public struct FfiConverterTypeOperationResult: FfiConverterRustBuffer {
             FfiConverterUInt32.write(spanCount, into: &buf)
 
 
-        case let .unsupported(wireCode):
+        case let .noteCreated(noteId):
             writeInt(&buf, Int32(11))
+            FfiConverterTypeNoteId.write(noteId, into: &buf)
+
+
+        case let .noteUpdated(noteId):
+            writeInt(&buf, Int32(12))
+            FfiConverterTypeNoteId.write(noteId, into: &buf)
+
+
+        case .notesCleared:
+            writeInt(&buf, Int32(13))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(14))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -5026,6 +5261,8 @@ public enum Projection: Equatable, Hashable {
     )
     case evidenceIndex(value: EvidenceIndexProjection
     )
+    case notes(value: NotesProjection
+    )
     case unsupported(value: UnsupportedProjection
     )
 
@@ -5067,7 +5304,10 @@ public struct FfiConverterTypeProjection: FfiConverterRustBuffer {
         case 6: return .evidenceIndex(value: try FfiConverterTypeEvidenceIndexProjection.read(from: &buf)
         )
 
-        case 7: return .unsupported(value: try FfiConverterTypeUnsupportedProjection.read(from: &buf)
+        case 7: return .notes(value: try FfiConverterTypeNotesProjection.read(from: &buf)
+        )
+
+        case 8: return .unsupported(value: try FfiConverterTypeUnsupportedProjection.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -5108,8 +5348,13 @@ public struct FfiConverterTypeProjection: FfiConverterRustBuffer {
             FfiConverterTypeEvidenceIndexProjection.write(value, into: &buf)
 
 
-        case let .unsupported(value):
+        case let .notes(value):
             writeInt(&buf, Int32(7))
+            FfiConverterTypeNotesProjection.write(value, into: &buf)
+
+
+        case let .unsupported(value):
+            writeInt(&buf, Int32(8))
             FfiConverterTypeUnsupportedProjection.write(value, into: &buf)
 
         }
@@ -5145,6 +5390,8 @@ public enum ProjectionScope: Equatable, Hashable {
     case recall(queryId: RecallQueryId
     )
     case evidenceIndex(episodeId: EpisodeId
+    )
+    case notes(scope: NoteProjectionScope
     )
     case unsupported(wireCode: UInt32
     )
@@ -5185,7 +5432,10 @@ public struct FfiConverterTypeProjectionScope: FfiConverterRustBuffer {
         case 6: return .evidenceIndex(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
         )
 
-        case 7: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 7: return .notes(scope: try FfiConverterTypeNoteProjectionScope.read(from: &buf)
+        )
+
+        case 8: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -5224,8 +5474,13 @@ public struct FfiConverterTypeProjectionScope: FfiConverterRustBuffer {
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
 
 
-        case let .unsupported(wireCode):
+        case let .notes(scope):
             writeInt(&buf, Int32(7))
+            FfiConverterTypeNoteProjectionScope.write(scope, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(8))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -6253,6 +6508,30 @@ fileprivate struct FfiConverterOptionTypeOperationResult: FfiConverterRustBuffer
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeNoteTarget: FfiConverterRustBuffer {
+    typealias SwiftType = NoteTarget?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeNoteTarget.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeNoteTarget.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceInt32: FfiConverterRustBuffer {
     typealias SwiftType = [Int32]
 
@@ -6495,6 +6774,31 @@ fileprivate struct FfiConverterSequenceTypeEpisodeRecord: FfiConverterRustBuffer
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeEpisodeRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer {
+    typealias SwiftType = [NoteRecord]
+
+    public static func write(_ value: [NoteRecord], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeNoteRecord.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [NoteRecord] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [NoteRecord]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeNoteRecord.read(from: &buf))
         }
         return seq
     }

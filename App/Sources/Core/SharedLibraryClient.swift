@@ -14,14 +14,17 @@ final class SharedLibraryClient {
     private var subscriber: SharedLibrarySubscriber?
     private var librarySubscriptionID: SubscriptionId?
     private var playbackSubscriptionID: SubscriptionId?
+    private var notesSubscriptionID: SubscriptionId?
     private var waiters: [CommandId: Waiter] = [:]
     private var lastLibraryRevision: UInt64 = 0
     private var lastPlaybackRevision: UInt64 = 0
+    var lastNotesRevision: UInt64 = 0
     weak var store: AppStateStore?
     private weak var playbackState: PlaybackState?
     private var cachedSnapshot: SharedLibrarySnapshot?
     private var cachedPlayback: PlaybackProjection?
     private var cachedPlaybackRevision: UInt64 = 0
+    var cachedNotes: SharedNoteSnapshot?
     private var playbackHostAttached = false
     var evidenceRebuildTask: Task<Void, Never>?
     var evidenceUpdateTasks: [UUID: Task<Void, Never>] = [:]
@@ -56,6 +59,10 @@ final class SharedLibraryClient {
             request: ProjectionRequest(scope: .playback, offset: 0, maxItems: 200),
             subscriber: subscriber
         )
+        notesSubscriptionID = facade.subscribe(
+            request: ProjectionRequest(scope: .notes(scope: .all), offset: 0, maxItems: 200),
+            subscriber: subscriber
+        )
     }
 
     func attach(store: AppStateStore) {
@@ -63,6 +70,9 @@ final class SharedLibraryClient {
         let snapshot = loadAllPages()
         cachedSnapshot = snapshot
         store.applySharedLibrary(snapshot)
+        let notes = loadNotePages(scope: .all)
+        cachedNotes = notes
+        store.applySharedNotes(notes)
     }
 
     func attachPlayback(_ playback: PlaybackState, store: AppStateStore) {
@@ -142,6 +152,8 @@ final class SharedLibraryClient {
             receiveLibrary(envelope)
         case .playback(let projection):
             receivePlayback(projection, revision: envelope.stateRevision.value)
+        case .notes:
+            receiveNotes(revision: envelope.stateRevision.value)
         case .podcastDetail, .episodeDetail, .recall, .evidenceIndex, .unsupported:
             break
         }
@@ -202,7 +214,7 @@ final class SharedLibraryClient {
         )
     }
 
-    private func resolveWaiters(_ operations: [OperationProjection]) {
+    func resolveWaiters(_ operations: [OperationProjection]) {
         for operation in operations {
             guard let waiter = waiters.removeValue(forKey: operation.commandId) else { continue }
             switch operation.stage {
@@ -225,51 +237,15 @@ final class SharedLibraryClient {
         dispatcher.shutdown()
         if let librarySubscriptionID { facade.unsubscribe(subscriptionId: librarySubscriptionID) }
         if let playbackSubscriptionID { facade.unsubscribe(subscriptionId: playbackSubscriptionID) }
+        if let notesSubscriptionID { facade.unsubscribe(subscriptionId: notesSubscriptionID) }
         librarySubscriptionID = nil
         playbackSubscriptionID = nil
+        notesSubscriptionID = nil
         subscriber = nil
         for waiter in waiters.values {
             waiter.continuation.resume(throwing: SharedLibraryError.cancelled)
         }
         waiters.removeAll()
-    }
-}
-
-struct SharedLibrarySnapshot {
-    let podcasts: [PodcastRecord]
-    let subscriptions: [PodcastSubscriptionRecord]
-    let episodes: [EpisodeRecord]
-    let operations: [OperationProjection]
-}
-
-enum SharedLibraryError: Error, LocalizedError, Equatable {
-    case invalidURL
-    case malformedFeed
-    case alreadySubscribed
-    case notFound
-    case unavailable
-    case cancelled
-
-    init(_ code: CoreFailureCode?) {
-        self = switch code {
-        case .invalidFeedUrl: .invalidURL
-        case .feedMalformed: .malformedFeed
-        case .alreadySubscribed: .alreadySubscribed
-        case .notFound: .notFound
-        case .cancelled: .cancelled
-        default: .unavailable
-        }
-    }
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidURL: "That doesn't look like a valid feed URL."
-        case .malformedFeed: "Pod0 couldn't read a podcast feed at that address."
-        case .alreadySubscribed: "You're already subscribed to this podcast."
-        case .notFound: "That podcast is no longer in your library."
-        case .unavailable: "Your library is temporarily unavailable."
-        case .cancelled: "The library request was cancelled."
-        }
     }
 }
 

@@ -44,8 +44,12 @@ import uniffi.pod0_application.ProjectionRequest
 import uniffi.pod0_domain.CommandId
 import uniffi.pod0_domain.FfiConverterTypeCommandId
 import uniffi.pod0_domain.FfiConverterTypeListeningDomainSnapshot
+import uniffi.pod0_domain.FfiConverterTypeNoteRecord
+import uniffi.pod0_domain.FfiConverterTypeStateRevision
 import uniffi.pod0_domain.FfiConverterTypeSubscriptionId
 import uniffi.pod0_domain.ListeningDomainSnapshot
+import uniffi.pod0_domain.NoteRecord
+import uniffi.pod0_domain.StateRevision
 import uniffi.pod0_domain.SubscriptionId
 import uniffi.pod0_application.RustBuffer as RustBufferCommandEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferHostObservationEnvelope
@@ -54,6 +58,8 @@ import uniffi.pod0_application.RustBuffer as RustBufferProjectionEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionRequest
 import uniffi.pod0_domain.RustBuffer as RustBufferCommandId
 import uniffi.pod0_domain.RustBuffer as RustBufferListeningDomainSnapshot
+import uniffi.pod0_domain.RustBuffer as RustBufferNoteRecord
+import uniffi.pod0_domain.RustBuffer as RustBufferStateRevision
 import uniffi.pod0_domain.RustBuffer as RustBufferSubscriptionId
 
 // This is a helper for safely working with byte buffers returned from the Rust code.
@@ -729,6 +735,14 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_func_stage_legacy_listening_import(
     ): Int
+    external fun uniffi_pod0_facade_checksum_func_commit_staged_legacy_note_import(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_inspect_legacy_note_source(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_read_staged_legacy_note_import(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_stage_legacy_note_import(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_projectionsubscriber_receive(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_dispatch(
@@ -805,6 +819,14 @@ internal object UniffiLib {
     external fun uniffi_pod0_facade_fn_func_read_staged_legacy_listening_import(`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_stage_legacy_listening_import(`sourcePath`: RustBuffer.ByValue,`sourceBackupPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`targetSchemaBackupPath`: RustBuffer.ByValue,`expectedPlan`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,`targetStoreId`: RustBufferCommandId.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_commit_staged_legacy_note_import(`targetPath`: RustBuffer.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): Byte
+    external fun uniffi_pod0_facade_fn_func_inspect_legacy_note_source(`sourcePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_read_staged_legacy_note_import(`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_stage_legacy_note_import(`sourcePath`: RustBuffer.ByValue,`sourceBackupPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`targetSchemaBackupPath`: RustBuffer.ByValue,`expectedPlan`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,`targetStoreId`: RustBufferCommandId.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun ffi_pod0_facade_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
@@ -938,6 +960,18 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_stage_legacy_listening_import() != 21059) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_commit_staged_legacy_note_import() != 26478) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_inspect_legacy_note_source() != 49964) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_read_staged_legacy_note_import() != 44491) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_stage_legacy_note_import() != 14097) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_projectionsubscriber_receive() != 23861) {
@@ -2212,6 +2246,208 @@ public object FfiConverterTypeLegacyListeningImportVerification: FfiConverterRus
 
 
 
+data class LegacyNoteBackupEvidence (
+    val `sourceKind`: LegacyListeningSourceKind
+    ,
+    val `sourceHash`: kotlin.String
+    ,
+    val `sourceGeneration`: kotlin.ULong
+    ,
+    val `byteCount`: kotlin.ULong
+    ,
+    val `reusedExisting`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyNoteBackupEvidence: FfiConverterRustBuffer<LegacyNoteBackupEvidence> {
+    override fun read(buf: ByteBuffer): LegacyNoteBackupEvidence {
+        return LegacyNoteBackupEvidence(
+            FfiConverterTypeLegacyListeningSourceKind.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyNoteBackupEvidence) = (
+            FfiConverterTypeLegacyListeningSourceKind.allocationSize(value.`sourceKind`) +
+            FfiConverterString.allocationSize(value.`sourceHash`) +
+            FfiConverterULong.allocationSize(value.`sourceGeneration`) +
+            FfiConverterULong.allocationSize(value.`byteCount`) +
+            FfiConverterBoolean.allocationSize(value.`reusedExisting`)
+    )
+
+    override fun write(value: LegacyNoteBackupEvidence, buf: ByteBuffer) {
+            FfiConverterTypeLegacyListeningSourceKind.write(value.`sourceKind`, buf)
+            FfiConverterString.write(value.`sourceHash`, buf)
+            FfiConverterULong.write(value.`sourceGeneration`, buf)
+            FfiConverterULong.write(value.`byteCount`, buf)
+            FfiConverterBoolean.write(value.`reusedExisting`, buf)
+    }
+}
+
+
+
+data class LegacyNoteImportPlan (
+    val `sourceKind`: LegacyListeningSourceKind
+    ,
+    val `sourceHash`: kotlin.String
+    ,
+    val `sourceGeneration`: kotlin.ULong
+    ,
+    val `noteCount`: kotlin.UInt
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyNoteImportPlan: FfiConverterRustBuffer<LegacyNoteImportPlan> {
+    override fun read(buf: ByteBuffer): LegacyNoteImportPlan {
+        return LegacyNoteImportPlan(
+            FfiConverterTypeLegacyListeningSourceKind.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyNoteImportPlan) = (
+            FfiConverterTypeLegacyListeningSourceKind.allocationSize(value.`sourceKind`) +
+            FfiConverterString.allocationSize(value.`sourceHash`) +
+            FfiConverterULong.allocationSize(value.`sourceGeneration`) +
+            FfiConverterUInt.allocationSize(value.`noteCount`)
+    )
+
+    override fun write(value: LegacyNoteImportPlan, buf: ByteBuffer) {
+            FfiConverterTypeLegacyListeningSourceKind.write(value.`sourceKind`, buf)
+            FfiConverterString.write(value.`sourceHash`, buf)
+            FfiConverterULong.write(value.`sourceGeneration`, buf)
+            FfiConverterUInt.write(value.`noteCount`, buf)
+    }
+}
+
+
+
+data class LegacyNoteImportReport (
+    val `importId`: CommandId
+    ,
+    val `plan`: LegacyNoteImportPlan
+    ,
+    val `targetRevision`: StateRevision
+    ,
+    val `backup`: LegacyNoteBackupEvidence
+    ,
+    val `staged`: kotlin.Boolean
+    ,
+    val `reusedExisting`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyNoteImportReport: FfiConverterRustBuffer<LegacyNoteImportReport> {
+    override fun read(buf: ByteBuffer): LegacyNoteImportReport {
+        return LegacyNoteImportReport(
+            FfiConverterTypeCommandId.read(buf),
+            FfiConverterTypeLegacyNoteImportPlan.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterTypeLegacyNoteBackupEvidence.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyNoteImportReport) = (
+            FfiConverterTypeCommandId.allocationSize(value.`importId`) +
+            FfiConverterTypeLegacyNoteImportPlan.allocationSize(value.`plan`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`targetRevision`) +
+            FfiConverterTypeLegacyNoteBackupEvidence.allocationSize(value.`backup`) +
+            FfiConverterBoolean.allocationSize(value.`staged`) +
+            FfiConverterBoolean.allocationSize(value.`reusedExisting`)
+    )
+
+    override fun write(value: LegacyNoteImportReport, buf: ByteBuffer) {
+            FfiConverterTypeCommandId.write(value.`importId`, buf)
+            FfiConverterTypeLegacyNoteImportPlan.write(value.`plan`, buf)
+            FfiConverterTypeStateRevision.write(value.`targetRevision`, buf)
+            FfiConverterTypeLegacyNoteBackupEvidence.write(value.`backup`, buf)
+            FfiConverterBoolean.write(value.`staged`, buf)
+            FfiConverterBoolean.write(value.`reusedExisting`, buf)
+    }
+}
+
+
+
+data class LegacyNoteImportVerification (
+    val `report`: LegacyNoteImportReport
+    ,
+    val `collectionRevision`: StateRevision
+    ,
+    val `notes`: List<NoteRecord>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyNoteImportVerification: FfiConverterRustBuffer<LegacyNoteImportVerification> {
+    override fun read(buf: ByteBuffer): LegacyNoteImportVerification {
+        return LegacyNoteImportVerification(
+            FfiConverterTypeLegacyNoteImportReport.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterSequenceTypeNoteRecord.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyNoteImportVerification) = (
+            FfiConverterTypeLegacyNoteImportReport.allocationSize(value.`report`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`collectionRevision`) +
+            FfiConverterSequenceTypeNoteRecord.allocationSize(value.`notes`)
+    )
+
+    override fun write(value: LegacyNoteImportVerification, buf: ByteBuffer) {
+            FfiConverterTypeLegacyNoteImportReport.write(value.`report`, buf)
+            FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
+            FfiConverterSequenceTypeNoteRecord.write(value.`notes`, buf)
+    }
+}
+
+
+
 data class SharedListeningStorePreparation (
     val `fromVersion`: kotlin.UInt
     ,
@@ -2544,6 +2780,167 @@ public object FfiConverterTypeLegacyListeningSourceKind: FfiConverterRustBuffer<
 
 
 
+
+sealed class LegacyNoteMigrationException: kotlin.Exception() {
+
+    class SourceChanged(
+        ) : LegacyNoteMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class SourceInvalid(
+        ) : LegacyNoteMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class BackupConflict(
+        ) : LegacyNoteMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class ImportConflict(
+        ) : LegacyNoteMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class ImportNotFound(
+        ) : LegacyNoteMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class TargetBlocked(
+        ) : LegacyNoteMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class Interrupted(
+        ) : LegacyNoteMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class StorageUnavailable(
+        ) : LegacyNoteMigrationException() {
+        override val message
+            get() = ""
+    }
+
+
+
+
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<LegacyNoteMigrationException> {
+        override fun lift(error_buf: RustBuffer.ByValue): LegacyNoteMigrationException = FfiConverterTypeLegacyNoteMigrationError.lift(error_buf)
+    }
+
+
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyNoteMigrationError : FfiConverterRustBuffer<LegacyNoteMigrationException> {
+    override fun read(buf: ByteBuffer): LegacyNoteMigrationException {
+
+
+        return when(buf.getInt()) {
+            1 -> LegacyNoteMigrationException.SourceChanged()
+            2 -> LegacyNoteMigrationException.SourceInvalid()
+            3 -> LegacyNoteMigrationException.BackupConflict()
+            4 -> LegacyNoteMigrationException.ImportConflict()
+            5 -> LegacyNoteMigrationException.ImportNotFound()
+            6 -> LegacyNoteMigrationException.TargetBlocked()
+            7 -> LegacyNoteMigrationException.Interrupted()
+            8 -> LegacyNoteMigrationException.StorageUnavailable()
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: LegacyNoteMigrationException): ULong {
+        return when(value) {
+            is LegacyNoteMigrationException.SourceChanged -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyNoteMigrationException.SourceInvalid -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyNoteMigrationException.BackupConflict -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyNoteMigrationException.ImportConflict -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyNoteMigrationException.ImportNotFound -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyNoteMigrationException.TargetBlocked -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyNoteMigrationException.Interrupted -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyNoteMigrationException.StorageUnavailable -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: LegacyNoteMigrationException, buf: ByteBuffer) {
+        when(value) {
+            is LegacyNoteMigrationException.SourceChanged -> {
+                buf.putInt(1)
+                Unit
+            }
+            is LegacyNoteMigrationException.SourceInvalid -> {
+                buf.putInt(2)
+                Unit
+            }
+            is LegacyNoteMigrationException.BackupConflict -> {
+                buf.putInt(3)
+                Unit
+            }
+            is LegacyNoteMigrationException.ImportConflict -> {
+                buf.putInt(4)
+                Unit
+            }
+            is LegacyNoteMigrationException.ImportNotFound -> {
+                buf.putInt(5)
+                Unit
+            }
+            is LegacyNoteMigrationException.TargetBlocked -> {
+                buf.putInt(6)
+                Unit
+            }
+            is LegacyNoteMigrationException.Interrupted -> {
+                buf.putInt(7)
+                Unit
+            }
+            is LegacyNoteMigrationException.StorageUnavailable -> {
+                buf.putInt(8)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+
 /**
  * @suppress
  */
@@ -2596,6 +2993,38 @@ public object FfiConverterSequenceTypeHostRequestEnvelope: FfiConverterRustBuffe
         }
     }
 }
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<NoteRecord>> {
+    override fun read(buf: ByteBuffer): List<NoteRecord> {
+        val len = buf.getInt()
+        return List<NoteRecord>(len) {
+            FfiConverterTypeNoteRecord.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<NoteRecord>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeNoteRecord.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<NoteRecord>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeNoteRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
 
 
 
@@ -2676,6 +3105,63 @@ public object FfiConverterSequenceTypeHostRequestEnvelope: FfiConverterRustBuffe
         FfiConverterString.lower(`targetPath`),
         FfiConverterString.lower(`targetSchemaBackupPath`),
         FfiConverterTypeLegacyListeningImportPlan.lower(`expectedPlan`),
+        FfiConverterTypeCommandId.lower(`importId`),
+        FfiConverterTypeCommandId.lower(`targetStoreId`),
+        FfiConverterLong.lower(`observedAtMilliseconds`),_status)
+}
+    )
+    }
+
+
+    @Throws(LegacyNoteMigrationException::class) fun `commitStagedLegacyNoteImport`(`targetPath`: kotlin.String, `observedAtMilliseconds`: kotlin.Long): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    uniffiRustCallWithError(LegacyNoteMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_commit_staged_legacy_note_import(
+
+
+        FfiConverterString.lower(`targetPath`),
+        FfiConverterLong.lower(`observedAtMilliseconds`),_status)
+}
+    )
+    }
+
+
+    @Throws(LegacyNoteMigrationException::class) fun `inspectLegacyNoteSource`(`sourcePath`: kotlin.String): LegacyNoteImportPlan {
+            return FfiConverterTypeLegacyNoteImportPlan.lift(
+    uniffiRustCallWithError(LegacyNoteMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_inspect_legacy_note_source(
+
+
+        FfiConverterString.lower(`sourcePath`),_status)
+}
+    )
+    }
+
+
+    @Throws(LegacyNoteMigrationException::class) fun `readStagedLegacyNoteImport`(`targetPath`: kotlin.String, `importId`: CommandId): LegacyNoteImportVerification {
+            return FfiConverterTypeLegacyNoteImportVerification.lift(
+    uniffiRustCallWithError(LegacyNoteMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_read_staged_legacy_note_import(
+
+
+        FfiConverterString.lower(`targetPath`),
+        FfiConverterTypeCommandId.lower(`importId`),_status)
+}
+    )
+    }
+
+
+    @Throws(LegacyNoteMigrationException::class) fun `stageLegacyNoteImport`(`sourcePath`: kotlin.String, `sourceBackupPath`: kotlin.String, `targetPath`: kotlin.String, `targetSchemaBackupPath`: kotlin.String, `expectedPlan`: LegacyNoteImportPlan, `importId`: CommandId, `targetStoreId`: CommandId, `observedAtMilliseconds`: kotlin.Long): LegacyNoteImportReport {
+            return FfiConverterTypeLegacyNoteImportReport.lift(
+    uniffiRustCallWithError(LegacyNoteMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_stage_legacy_note_import(
+
+
+        FfiConverterString.lower(`sourcePath`),
+        FfiConverterString.lower(`sourceBackupPath`),
+        FfiConverterString.lower(`targetPath`),
+        FfiConverterString.lower(`targetSchemaBackupPath`),
+        FfiConverterTypeLegacyNoteImportPlan.lower(`expectedPlan`),
         FfiConverterTypeCommandId.lower(`importId`),
         FfiConverterTypeCommandId.lower(`targetStoreId`),
         FfiConverterLong.lower(`observedAtMilliseconds`),_status)

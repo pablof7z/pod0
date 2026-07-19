@@ -54,6 +54,10 @@ extension Persistence {
         episodeStore.fileURL.appendingPathExtension("listening-backup")
     }
 
+    var legacyNotesBackupURL: URL {
+        episodeStore.fileURL.appendingPathExtension("notes-backup")
+    }
+
     func removeSharedCoreArtifacts() {
         let core = sharedCoreStoreURL
         for url in [
@@ -61,7 +65,8 @@ extension Persistence {
             URL(fileURLWithPath: core.path + "-wal"),
             URL(fileURLWithPath: core.path + "-shm"),
             sharedCoreSchemaBackupURL,
-            legacyListeningBackupURL
+            legacyListeningBackupURL,
+            legacyNotesBackupURL
         ] {
             try? FileManager.default.removeItem(at: url)
         }

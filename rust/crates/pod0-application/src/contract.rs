@@ -1,12 +1,12 @@
 use pod0_domain::{
-    AutoDownloadPolicy, CancellationId, CommandId, CompletionStatus, EpisodeId,
-    PlaybackRatePermille, PlaybackSegment, PlaybackSleepMode, PodcastId, QueueEntry, QueueEntryId,
-    StateRevision, UnixTimestampMilliseconds,
+    AutoDownloadPolicy, CancellationId, CommandId, CompletionStatus, EpisodeId, NoteAuthor, NoteId,
+    NoteKind, NoteRevision, NoteTarget, PlaybackRatePermille, PlaybackSegment, PlaybackSleepMode,
+    PodcastId, QueueEntry, QueueEntryId, StateRevision, UnixTimestampMilliseconds,
 };
 
 use crate::{EvidenceChunkPolicy, RecallQuery, TranscriptEvidenceInput};
 
-pub const FACADE_CONTRACT_VERSION: u32 = 8;
+pub const FACADE_CONTRACT_VERSION: u32 = 9;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -94,6 +94,27 @@ pub enum ApplicationCommand {
     RebuildTranscriptEvidence {
         input: TranscriptEvidenceInput,
         policy: EvidenceChunkPolicy,
+    },
+    CreateNote {
+        text: String,
+        kind: NoteKind,
+        author: NoteAuthor,
+        target: Option<NoteTarget>,
+    },
+    UpdateNote {
+        note_id: NoteId,
+        expected_note_revision: NoteRevision,
+        text: String,
+        kind: NoteKind,
+        target: Option<NoteTarget>,
+    },
+    SetNoteDeleted {
+        note_id: NoteId,
+        expected_note_revision: NoteRevision,
+        deleted: bool,
+    },
+    ClearNotes {
+        expected_collection_revision: StateRevision,
     },
     CancelOperation {
         cancellation_id: CancellationId,

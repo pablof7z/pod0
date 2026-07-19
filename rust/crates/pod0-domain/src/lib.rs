@@ -69,6 +69,7 @@ opaque_id!(TranscriptVersionId, uniffi::Record);
 opaque_id!(TranscriptSegmentId, uniffi::Record);
 opaque_id!(EvidenceSpanId, uniffi::Record);
 opaque_id!(EvidenceGenerationId, uniffi::Record);
+opaque_id!(NoteId, uniffi::Record);
 
 mod knowledge;
 mod knowledge_artifact;
@@ -77,6 +78,7 @@ mod knowledge_identity;
 mod listening;
 mod listening_error;
 mod listening_policy;
+mod notes;
 mod playback_policy;
 
 pub use knowledge::*;
@@ -84,6 +86,7 @@ pub use knowledge_identity::*;
 pub use listening::*;
 pub use listening_error::*;
 pub use listening_policy::*;
+pub use notes::*;
 pub use playback_policy::*;
 
 #[cfg(test)]

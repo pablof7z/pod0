@@ -53,6 +53,12 @@ import uniffi.pod0_domain.FfiConverterTypeEvidenceChunkPolicy
 import uniffi.pod0_domain.FfiConverterTypeEvidenceGenerationId
 import uniffi.pod0_domain.FfiConverterTypeEvidenceSpanId
 import uniffi.pod0_domain.FfiConverterTypeHostRequestId
+import uniffi.pod0_domain.FfiConverterTypeNoteAuthor
+import uniffi.pod0_domain.FfiConverterTypeNoteId
+import uniffi.pod0_domain.FfiConverterTypeNoteKind
+import uniffi.pod0_domain.FfiConverterTypeNoteRecord
+import uniffi.pod0_domain.FfiConverterTypeNoteRevision
+import uniffi.pod0_domain.FfiConverterTypeNoteTarget
 import uniffi.pod0_domain.FfiConverterTypePlaybackRatePermille
 import uniffi.pod0_domain.FfiConverterTypePlaybackSegment
 import uniffi.pod0_domain.FfiConverterTypePlaybackSleepMode
@@ -70,6 +76,12 @@ import uniffi.pod0_domain.FfiConverterTypeTranscriptSource
 import uniffi.pod0_domain.FfiConverterTypeTranscriptVersionId
 import uniffi.pod0_domain.FfiConverterTypeUnixTimestampMilliseconds
 import uniffi.pod0_domain.HostRequestId
+import uniffi.pod0_domain.NoteAuthor
+import uniffi.pod0_domain.NoteId
+import uniffi.pod0_domain.NoteKind
+import uniffi.pod0_domain.NoteRecord
+import uniffi.pod0_domain.NoteRevision
+import uniffi.pod0_domain.NoteTarget
 import uniffi.pod0_domain.PlaybackRatePermille
 import uniffi.pod0_domain.PlaybackSegment
 import uniffi.pod0_domain.PlaybackSleepMode
@@ -98,6 +110,12 @@ import uniffi.pod0_domain.RustBuffer as RustBufferEvidenceChunkPolicy
 import uniffi.pod0_domain.RustBuffer as RustBufferEvidenceGenerationId
 import uniffi.pod0_domain.RustBuffer as RustBufferEvidenceSpanId
 import uniffi.pod0_domain.RustBuffer as RustBufferHostRequestId
+import uniffi.pod0_domain.RustBuffer as RustBufferNoteAuthor
+import uniffi.pod0_domain.RustBuffer as RustBufferNoteId
+import uniffi.pod0_domain.RustBuffer as RustBufferNoteKind
+import uniffi.pod0_domain.RustBuffer as RustBufferNoteRecord
+import uniffi.pod0_domain.RustBuffer as RustBufferNoteRevision
+import uniffi.pod0_domain.RustBuffer as RustBufferNoteTarget
 import uniffi.pod0_domain.RustBuffer as RustBufferPlaybackRatePermille
 import uniffi.pod0_domain.RustBuffer as RustBufferPlaybackSegment
 import uniffi.pod0_domain.RustBuffer as RustBufferPlaybackSleepMode
@@ -1797,6 +1815,59 @@ public object FfiConverterTypeLibraryProjection: FfiConverterRustBuffer<LibraryP
 
 
 
+data class NotesProjection (
+    val `scope`: NoteProjectionScope
+    ,
+    val `collectionRevision`: StateRevision
+    ,
+    val `notes`: List<NoteRecord>
+    ,
+    val `operations`: List<OperationProjection>
+    ,
+    val `hasMore`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeNotesProjection: FfiConverterRustBuffer<NotesProjection> {
+    override fun read(buf: ByteBuffer): NotesProjection {
+        return NotesProjection(
+            FfiConverterTypeNoteProjectionScope.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterSequenceTypeNoteRecord.read(buf),
+            FfiConverterSequenceTypeOperationProjection.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: NotesProjection) = (
+            FfiConverterTypeNoteProjectionScope.allocationSize(value.`scope`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`collectionRevision`) +
+            FfiConverterSequenceTypeNoteRecord.allocationSize(value.`notes`) +
+            FfiConverterSequenceTypeOperationProjection.allocationSize(value.`operations`) +
+            FfiConverterBoolean.allocationSize(value.`hasMore`)
+    )
+
+    override fun write(value: NotesProjection, buf: ByteBuffer) {
+            FfiConverterTypeNoteProjectionScope.write(value.`scope`, buf)
+            FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
+            FfiConverterSequenceTypeNoteRecord.write(value.`notes`, buf)
+            FfiConverterSequenceTypeOperationProjection.write(value.`operations`, buf)
+            FfiConverterBoolean.write(value.`hasMore`, buf)
+    }
+}
+
+
+
 data class OperationProjection (
     val `commandId`: CommandId
     ,
@@ -3066,6 +3137,51 @@ sealed class ApplicationCommand {
         companion object
     }
 
+    data class CreateNote(
+        val `text`: kotlin.String,
+        val `kind`: uniffi.pod0_domain.NoteKind,
+        val `author`: uniffi.pod0_domain.NoteAuthor,
+        val `target`: uniffi.pod0_domain.NoteTarget?) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class UpdateNote(
+        val `noteId`: uniffi.pod0_domain.NoteId,
+        val `expectedNoteRevision`: uniffi.pod0_domain.NoteRevision,
+        val `text`: kotlin.String,
+        val `kind`: uniffi.pod0_domain.NoteKind,
+        val `target`: uniffi.pod0_domain.NoteTarget?) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetNoteDeleted(
+        val `noteId`: uniffi.pod0_domain.NoteId,
+        val `expectedNoteRevision`: uniffi.pod0_domain.NoteRevision,
+        val `deleted`: kotlin.Boolean) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class ClearNotes(
+        val `expectedCollectionRevision`: uniffi.pod0_domain.StateRevision) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
     data class CancelOperation(
         val `cancellationId`: uniffi.pod0_domain.CancellationId) : ApplicationCommand()
 
@@ -3147,10 +3263,31 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeTranscriptEvidenceInput.read(buf),
                 FfiConverterTypeEvidenceChunkPolicy.read(buf),
                 )
-            16 -> ApplicationCommand.CancelOperation(
+            16 -> ApplicationCommand.CreateNote(
+                FfiConverterString.read(buf),
+                FfiConverterTypeNoteKind.read(buf),
+                FfiConverterTypeNoteAuthor.read(buf),
+                FfiConverterOptionalTypeNoteTarget.read(buf),
+                )
+            17 -> ApplicationCommand.UpdateNote(
+                FfiConverterTypeNoteId.read(buf),
+                FfiConverterTypeNoteRevision.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterTypeNoteKind.read(buf),
+                FfiConverterOptionalTypeNoteTarget.read(buf),
+                )
+            18 -> ApplicationCommand.SetNoteDeleted(
+                FfiConverterTypeNoteId.read(buf),
+                FfiConverterTypeNoteRevision.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            19 -> ApplicationCommand.ClearNotes(
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            20 -> ApplicationCommand.CancelOperation(
                 FfiConverterTypeCancellationId.read(buf),
                 )
-            17 -> ApplicationCommand.Unsupported(
+            21 -> ApplicationCommand.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -3266,6 +3403,43 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 + FfiConverterTypeEvidenceChunkPolicy.allocationSize(value.`policy`)
             )
         }
+        is ApplicationCommand.CreateNote -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`text`)
+                + FfiConverterTypeNoteKind.allocationSize(value.`kind`)
+                + FfiConverterTypeNoteAuthor.allocationSize(value.`author`)
+                + FfiConverterOptionalTypeNoteTarget.allocationSize(value.`target`)
+            )
+        }
+        is ApplicationCommand.UpdateNote -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeNoteId.allocationSize(value.`noteId`)
+                + FfiConverterTypeNoteRevision.allocationSize(value.`expectedNoteRevision`)
+                + FfiConverterString.allocationSize(value.`text`)
+                + FfiConverterTypeNoteKind.allocationSize(value.`kind`)
+                + FfiConverterOptionalTypeNoteTarget.allocationSize(value.`target`)
+            )
+        }
+        is ApplicationCommand.SetNoteDeleted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeNoteId.allocationSize(value.`noteId`)
+                + FfiConverterTypeNoteRevision.allocationSize(value.`expectedNoteRevision`)
+                + FfiConverterBoolean.allocationSize(value.`deleted`)
+            )
+        }
+        is ApplicationCommand.ClearNotes -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeStateRevision.allocationSize(value.`expectedCollectionRevision`)
+            )
+        }
         is ApplicationCommand.CancelOperation -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -3362,13 +3536,42 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeEvidenceChunkPolicy.write(value.`policy`, buf)
                 Unit
             }
-            is ApplicationCommand.CancelOperation -> {
+            is ApplicationCommand.CreateNote -> {
                 buf.putInt(16)
+                FfiConverterString.write(value.`text`, buf)
+                FfiConverterTypeNoteKind.write(value.`kind`, buf)
+                FfiConverterTypeNoteAuthor.write(value.`author`, buf)
+                FfiConverterOptionalTypeNoteTarget.write(value.`target`, buf)
+                Unit
+            }
+            is ApplicationCommand.UpdateNote -> {
+                buf.putInt(17)
+                FfiConverterTypeNoteId.write(value.`noteId`, buf)
+                FfiConverterTypeNoteRevision.write(value.`expectedNoteRevision`, buf)
+                FfiConverterString.write(value.`text`, buf)
+                FfiConverterTypeNoteKind.write(value.`kind`, buf)
+                FfiConverterOptionalTypeNoteTarget.write(value.`target`, buf)
+                Unit
+            }
+            is ApplicationCommand.SetNoteDeleted -> {
+                buf.putInt(18)
+                FfiConverterTypeNoteId.write(value.`noteId`, buf)
+                FfiConverterTypeNoteRevision.write(value.`expectedNoteRevision`, buf)
+                FfiConverterBoolean.write(value.`deleted`, buf)
+                Unit
+            }
+            is ApplicationCommand.ClearNotes -> {
+                buf.putInt(19)
+                FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
+                Unit
+            }
+            is ApplicationCommand.CancelOperation -> {
+                buf.putInt(20)
                 FfiConverterTypeCancellationId.write(value.`cancellationId`, buf)
                 Unit
             }
             is ApplicationCommand.Unsupported -> {
-                buf.putInt(17)
+                buf.putInt(21)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -3401,6 +3604,9 @@ sealed class CoreFailureCode {
 
 
     object NotFound : CoreFailureCode()
+
+
+    object InvalidNote : CoreFailureCode()
 
 
     object HostUnavailable : CoreFailureCode()
@@ -3444,10 +3650,11 @@ public object FfiConverterTypeCoreFailureCode : FfiConverterRustBuffer<CoreFailu
             5 -> CoreFailureCode.StorageUnavailable
             6 -> CoreFailureCode.RevisionConflict
             7 -> CoreFailureCode.NotFound
-            8 -> CoreFailureCode.HostUnavailable
-            9 -> CoreFailureCode.HostRejected
-            10 -> CoreFailureCode.Cancelled
-            11 -> CoreFailureCode.Unsupported(
+            8 -> CoreFailureCode.InvalidNote
+            9 -> CoreFailureCode.HostUnavailable
+            10 -> CoreFailureCode.HostRejected
+            11 -> CoreFailureCode.Cancelled
+            12 -> CoreFailureCode.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -3492,6 +3699,12 @@ public object FfiConverterTypeCoreFailureCode : FfiConverterRustBuffer<CoreFailu
             )
         }
         is CoreFailureCode.NotFound -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CoreFailureCode.InvalidNote -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
@@ -3554,20 +3767,24 @@ public object FfiConverterTypeCoreFailureCode : FfiConverterRustBuffer<CoreFailu
                 buf.putInt(7)
                 Unit
             }
-            is CoreFailureCode.HostUnavailable -> {
+            is CoreFailureCode.InvalidNote -> {
                 buf.putInt(8)
                 Unit
             }
-            is CoreFailureCode.HostRejected -> {
+            is CoreFailureCode.HostUnavailable -> {
                 buf.putInt(9)
                 Unit
             }
-            is CoreFailureCode.Cancelled -> {
+            is CoreFailureCode.HostRejected -> {
                 buf.putInt(10)
                 Unit
             }
-            is CoreFailureCode.Unsupported -> {
+            is CoreFailureCode.Cancelled -> {
                 buf.putInt(11)
+                Unit
+            }
+            is CoreFailureCode.Unsupported -> {
+                buf.putInt(12)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -4887,6 +5104,117 @@ public object FfiConverterTypeNativeTimerMode : FfiConverterRustBuffer<NativeTim
 
 
 
+sealed class NoteProjectionScope {
+
+    object All : NoteProjectionScope()
+
+
+    object Active : NoteProjectionScope()
+
+
+    data class Episode(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId) : NoteProjectionScope()
+
+    {
+
+
+        companion object
+    }
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : NoteProjectionScope()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeNoteProjectionScope : FfiConverterRustBuffer<NoteProjectionScope>{
+    override fun read(buf: ByteBuffer): NoteProjectionScope {
+        return when(buf.getInt()) {
+            1 -> NoteProjectionScope.All
+            2 -> NoteProjectionScope.Active
+            3 -> NoteProjectionScope.Episode(
+                FfiConverterTypeEpisodeId.read(buf),
+                )
+            4 -> NoteProjectionScope.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: NoteProjectionScope): ULong = when(value) {
+        is NoteProjectionScope.All -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is NoteProjectionScope.Active -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is NoteProjectionScope.Episode -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+            )
+        }
+        is NoteProjectionScope.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: NoteProjectionScope, buf: ByteBuffer) {
+        when(value) {
+            is NoteProjectionScope.All -> {
+                buf.putInt(1)
+                Unit
+            }
+            is NoteProjectionScope.Active -> {
+                buf.putInt(2)
+                Unit
+            }
+            is NoteProjectionScope.Episode -> {
+                buf.putInt(3)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                Unit
+            }
+            is NoteProjectionScope.Unsupported -> {
+                buf.putInt(4)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 sealed class OperationResult {
 
     data class Podcast(
@@ -4971,6 +5299,27 @@ sealed class OperationResult {
         companion object
     }
 
+    data class NoteCreated(
+        val `noteId`: uniffi.pod0_domain.NoteId) : OperationResult()
+
+    {
+
+
+        companion object
+    }
+
+    data class NoteUpdated(
+        val `noteId`: uniffi.pod0_domain.NoteId) : OperationResult()
+
+    {
+
+
+        companion object
+    }
+
+    object NotesCleared : OperationResult()
+
+
     data class Unsupported(
         val `wireCode`: kotlin.UInt) : OperationResult()
 
@@ -5026,7 +5375,14 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 FfiConverterTypeEvidenceGenerationId.read(buf),
                 FfiConverterUInt.read(buf),
                 )
-            11 -> OperationResult.Unsupported(
+            11 -> OperationResult.NoteCreated(
+                FfiConverterTypeNoteId.read(buf),
+                )
+            12 -> OperationResult.NoteUpdated(
+                FfiConverterTypeNoteId.read(buf),
+                )
+            13 -> OperationResult.NotesCleared
+            14 -> OperationResult.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -5106,6 +5462,26 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 + FfiConverterUInt.allocationSize(value.`spanCount`)
             )
         }
+        is OperationResult.NoteCreated -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeNoteId.allocationSize(value.`noteId`)
+            )
+        }
+        is OperationResult.NoteUpdated -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeNoteId.allocationSize(value.`noteId`)
+            )
+        }
+        is OperationResult.NotesCleared -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
         is OperationResult.Unsupported -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -5169,8 +5545,22 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 FfiConverterUInt.write(value.`spanCount`, buf)
                 Unit
             }
-            is OperationResult.Unsupported -> {
+            is OperationResult.NoteCreated -> {
                 buf.putInt(11)
+                FfiConverterTypeNoteId.write(value.`noteId`, buf)
+                Unit
+            }
+            is OperationResult.NoteUpdated -> {
+                buf.putInt(12)
+                FfiConverterTypeNoteId.write(value.`noteId`, buf)
+                Unit
+            }
+            is OperationResult.NotesCleared -> {
+                buf.putInt(13)
+                Unit
+            }
+            is OperationResult.Unsupported -> {
+                buf.putInt(14)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -6638,6 +7028,15 @@ sealed class Projection {
         companion object
     }
 
+    data class Notes(
+        val `value`: uniffi.pod0_application.NotesProjection) : Projection()
+
+    {
+
+
+        companion object
+    }
+
     data class Unsupported(
         val `value`: uniffi.pod0_application.UnsupportedProjection) : Projection()
 
@@ -6681,7 +7080,10 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
             6 -> Projection.EvidenceIndex(
                 FfiConverterTypeEvidenceIndexProjection.read(buf),
                 )
-            7 -> Projection.Unsupported(
+            7 -> Projection.Notes(
+                FfiConverterTypeNotesProjection.read(buf),
+                )
+            8 -> Projection.Unsupported(
                 FfiConverterTypeUnsupportedProjection.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -6731,6 +7133,13 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
                 + FfiConverterTypeEvidenceIndexProjection.allocationSize(value.`value`)
             )
         }
+        is Projection.Notes -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeNotesProjection.allocationSize(value.`value`)
+            )
+        }
         is Projection.Unsupported -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -6772,8 +7181,13 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
                 FfiConverterTypeEvidenceIndexProjection.write(value.`value`, buf)
                 Unit
             }
-            is Projection.Unsupported -> {
+            is Projection.Notes -> {
                 buf.putInt(7)
+                FfiConverterTypeNotesProjection.write(value.`value`, buf)
+                Unit
+            }
+            is Projection.Unsupported -> {
+                buf.putInt(8)
                 FfiConverterTypeUnsupportedProjection.write(value.`value`, buf)
                 Unit
             }
@@ -6829,6 +7243,15 @@ sealed class ProjectionScope {
         companion object
     }
 
+    data class Notes(
+        val `scope`: uniffi.pod0_application.NoteProjectionScope) : ProjectionScope()
+
+    {
+
+
+        companion object
+    }
+
     data class Unsupported(
         val `wireCode`: kotlin.UInt) : ProjectionScope()
 
@@ -6868,7 +7291,10 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
             6 -> ProjectionScope.EvidenceIndex(
                 FfiConverterTypeEpisodeId.read(buf),
                 )
-            7 -> ProjectionScope.Unsupported(
+            7 -> ProjectionScope.Notes(
+                FfiConverterTypeNoteProjectionScope.read(buf),
+                )
+            8 -> ProjectionScope.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -6916,6 +7342,13 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
                 + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
             )
         }
+        is ProjectionScope.Notes -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeNoteProjectionScope.allocationSize(value.`scope`)
+            )
+        }
         is ProjectionScope.Unsupported -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -6955,8 +7388,13 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
-            is ProjectionScope.Unsupported -> {
+            is ProjectionScope.Notes -> {
                 buf.putInt(7)
+                FfiConverterTypeNoteProjectionScope.write(value.`scope`, buf)
+                Unit
+            }
+            is ProjectionScope.Unsupported -> {
+                buf.putInt(8)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -8310,6 +8748,38 @@ public object FfiConverterOptionalTypeOperationResult: FfiConverterRustBuffer<Op
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeNoteTarget: FfiConverterRustBuffer<NoteTarget?> {
+    override fun read(buf: ByteBuffer): NoteTarget? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeNoteTarget.read(buf)
+    }
+
+    override fun allocationSize(value: NoteTarget?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeNoteTarget.allocationSize(value)
+        }
+    }
+
+    override fun write(value: NoteTarget?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeNoteTarget.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceInt: FfiConverterRustBuffer<List<kotlin.Int>> {
     override fun read(buf: ByteBuffer): List<kotlin.Int> {
         val len = buf.getInt()
@@ -8580,6 +9050,34 @@ public object FfiConverterSequenceTypeEpisodeRecord: FfiConverterRustBuffer<List
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeEpisodeRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<NoteRecord>> {
+    override fun read(buf: ByteBuffer): List<NoteRecord> {
+        val len = buf.getInt()
+        return List<NoteRecord>(len) {
+            FfiConverterTypeNoteRecord.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<NoteRecord>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeNoteRecord.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<NoteRecord>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeNoteRecord.write(it, buf)
         }
     }
 }

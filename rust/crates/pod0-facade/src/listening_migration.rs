@@ -262,6 +262,8 @@ impl From<StorageError> for LegacyListeningMigrationError {
             | StorageError::ForeignDatabase
             | StorageError::CorruptSchema { .. }
             | StorageError::CutoverNotAuthoritative
+            | StorageError::RevisionConflict
+            | StorageError::InvalidNote
             | StorageError::FailedMigration { .. }
             | StorageError::EvidenceCommandConflict
             | StorageError::EvidenceNotFound

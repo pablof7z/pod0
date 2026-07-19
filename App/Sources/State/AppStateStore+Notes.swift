@@ -8,58 +8,91 @@ extension AppStateStore {
     /// Existing call-sites (`AgentNotesView`, `FriendDetailView`) hit this
     /// signature unchanged.
     @discardableResult
-    func addNote(text: String, kind: NoteKind = .free, target: Anchor? = nil) -> Note {
-        return addNote(text: text, kind: kind, target: target, author: .user)
+    func addNote(text: String, kind: NoteKind = .free, target: Anchor? = nil) -> Note? {
+        addNote(text: text, kind: kind, target: target, author: .user)
     }
 
     /// Author-aware overload. The agent-tool path passes `author: .agent`
-    /// so the note is appended locally without going through publish.
+    /// so the shared core records the correct author without going through publish.
     @discardableResult
-    func addNote(text: String, kind: NoteKind = .free, target: Anchor? = nil, author: NoteAuthor) -> Note {
-        let note = Note(text: text, kind: kind, target: target, author: author)
-        mutateState { $0.notes.append(note) }
-        if author == .user {
-            recordProductSignal(.once(name: .noteCreated, subjectID: note.id, outcome: .created))
+    func addNote(
+        text: String,
+        kind: NoteKind = .free,
+        target: Anchor? = nil,
+        author: NoteAuthor
+    ) -> Note? {
+        do {
+            guard let sharedLibrary else { throw SharedLibraryError.unavailable }
+            let note = try sharedLibrary.createNote(
+                text: text,
+                kind: kind,
+                target: target,
+                author: author
+            )
+            if author == .user {
+                recordProductSignal(.once(
+                    name: .noteCreated,
+                    subjectID: note.id,
+                    outcome: .created
+                ))
+            }
+            return note
+        } catch {
+            Self.logger.error("Shared note creation failed: \(error.localizedDescription, privacy: .public)")
+            return nil
         }
-        return note
     }
 
     /// All non-deleted notes anchored to a specific episode, sorted by
     /// position ascending so the chapter rail can interleave them naturally.
     func notes(forEpisode episodeID: UUID) -> [Note] {
-        state.notes
-            .filter { note in
-                guard !note.deleted,
-                      case .episode(let id, _) = note.target else { return false }
-                return id == episodeID
-            }
-            .sorted {
-                guard case .episode(_, let a) = $0.target,
-                      case .episode(_, let b) = $1.target else { return false }
-                return a < b
-            }
+        sharedLibrary?.notes(forEpisode: episodeID) ?? []
     }
 
-    func deleteNote(_ id: UUID) {
-        guard let idx = state.notes.firstIndex(where: { $0.id == id }) else { return }
-        mutateState { $0.notes[idx].deleted = true }
+    @discardableResult
+    func deleteNote(_ id: UUID) -> Bool {
+        setNoteDeleted(id, deleted: true)
     }
 
-    func restoreNote(_ id: UUID) {
-        guard let idx = state.notes.firstIndex(where: { $0.id == id }) else { return }
-        mutateState { $0.notes[idx].deleted = false }
+    @discardableResult
+    func restoreNote(_ id: UUID) -> Bool {
+        setNoteDeleted(id, deleted: false)
     }
 
-    func updateNote(_ note: Note) {
-        guard let idx = state.notes.firstIndex(where: { $0.id == note.id }) else { return }
-        mutateState { $0.notes[idx] = note }
-    }
-
-    func clearAllNotes() {
-        var updated = state.notes
-        for idx in updated.indices where !updated[idx].deleted {
-            updated[idx].deleted = true
+    @discardableResult
+    func updateNote(_ note: Note) -> Bool {
+        do {
+            guard let sharedLibrary else { throw SharedLibraryError.unavailable }
+            try sharedLibrary.updateNote(note)
+            return true
+        } catch {
+            Self.logger.error("Shared note update failed: \(error.localizedDescription, privacy: .public)")
+            return false
         }
-        mutateState { $0.notes = updated }
+    }
+
+    @discardableResult
+    func clearAllNotes() -> Bool {
+        do {
+            guard let sharedLibrary else { throw SharedLibraryError.unavailable }
+            try sharedLibrary.clearNotes()
+            return true
+        } catch {
+            Self.logger.error("Shared note clear failed: \(error.localizedDescription, privacy: .public)")
+            return false
+        }
+    }
+
+    private func setNoteDeleted(_ id: UUID, deleted: Bool) -> Bool {
+        do {
+            guard let note = state.notes.first(where: { $0.id == id }),
+                  let sharedLibrary
+            else { throw SharedLibraryError.notFound }
+            try sharedLibrary.setNoteDeleted(note, deleted: deleted)
+            return true
+        } catch {
+            Self.logger.error("Shared note deletion change failed: \(error.localizedDescription, privacy: .public)")
+            return false
+        }
     }
 }

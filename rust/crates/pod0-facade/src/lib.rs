@@ -12,15 +12,15 @@ pub use pod0_application::{
     MAX_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, MAX_PROJECTION_ITEMS, MAX_RECALL_CANDIDATES,
     MAX_RECALL_EMBEDDING_DIMENSIONS, MAX_RECALL_EVIDENCE, MAX_RECALL_EXCERPT_BYTES,
     MAX_RECALL_QUERY_BYTES, MIN_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, NativeTimerMode,
-    OperationProjection, OperationResult, OperationStage, PlaybackAllowedActions,
-    PlaybackAudioRoute, PlaybackCommand, PlaybackHostState, PlaybackInterruption, PlaybackItem,
-    PlaybackLifecycleObservation, PlaybackPolicyState, PlaybackProjection, PlaybackStopReason,
-    PlaybackTransitionCue, PodcastSummary, Projection, ProjectionEnvelope, ProjectionRequest,
-    ProjectionScope, QueuePlacement, RecallCandidateObservation, RecallEmbeddingVector,
-    RecallEvidenceProjection, RecallPhase, RecallQuery, RecallRerankDocument,
-    RecallRerankObservation, RecallResultProjection, RecallScope, RecallScoreProjection,
-    RecallStage, Retryability, TranscriptEvidenceInput, TranscriptSegmentInput,
-    UnsupportedProjection, UserAction, bounded_host_request_count,
+    NoteProjectionScope, NotesProjection, OperationProjection, OperationResult, OperationStage,
+    PlaybackAllowedActions, PlaybackAudioRoute, PlaybackCommand, PlaybackHostState,
+    PlaybackInterruption, PlaybackItem, PlaybackLifecycleObservation, PlaybackPolicyState,
+    PlaybackProjection, PlaybackStopReason, PlaybackTransitionCue, PodcastSummary, Projection,
+    ProjectionEnvelope, ProjectionRequest, ProjectionScope, QueuePlacement,
+    RecallCandidateObservation, RecallEmbeddingVector, RecallEvidenceProjection, RecallPhase,
+    RecallQuery, RecallRerankDocument, RecallRerankObservation, RecallResultProjection,
+    RecallScope, RecallScoreProjection, RecallStage, Retryability, TranscriptEvidenceInput,
+    TranscriptSegmentInput, UnsupportedProjection, UserAction, bounded_host_request_count,
     bounded_playback_observation_interval,
 };
 use pod0_application::{Clock, KernelApplication};
@@ -30,6 +30,7 @@ pub use pod0_domain::{
     EpisodeId, EpisodeIdentityRecord, EpisodeIdentityResolution, EpisodeListeningState,
     EpisodeRecord, EvidenceChunkPolicy, EvidenceGenerationId, EvidenceSpanId, FeedIdentityV1,
     HostRequestId, ListeningDomainError, ListeningDomainSnapshot, ListeningPlaybackPolicy,
+    NoteAuthor, NoteEvidenceReference, NoteId, NoteKind, NoteRecord, NoteRevision, NoteTarget,
     PlaybackRatePermille, PlaybackSegment, PlaybackSleepMode, PodcastId, PodcastIdentityRecord,
     PodcastIdentityResolution, PodcastKind, PodcastRecord, PodcastSubscriptionRecord, QueueEntry,
     QueueEntryId, RecallQueryId, SpeakerId, StateRevision, SubscriptionId,
@@ -42,6 +43,7 @@ pub use pod0_domain::{
 uniffi::setup_scaffolding!();
 
 mod listening_migration;
+mod note_migration;
 mod runtime;
 mod runtime_clock;
 mod runtime_command_fingerprint;
@@ -53,6 +55,9 @@ mod runtime_evidence_state;
 #[cfg(test)]
 mod runtime_evidence_tests;
 mod runtime_feed_commands;
+mod runtime_note_commands;
+#[cfg(test)]
+mod runtime_note_tests;
 mod runtime_observations;
 mod runtime_playback_actions;
 mod runtime_playback_commands;
@@ -85,6 +90,11 @@ pub use listening_migration::{
     SharedListeningStorePreparation, commit_staged_legacy_listening_import,
     inspect_legacy_listening_source, prepare_shared_listening_store,
     read_staged_legacy_listening_import, stage_legacy_listening_import,
+};
+pub use note_migration::{
+    LegacyNoteBackupEvidence, LegacyNoteImportPlan, LegacyNoteImportReport,
+    LegacyNoteImportVerification, LegacyNoteMigrationError, commit_staged_legacy_note_import,
+    inspect_legacy_note_source, read_staged_legacy_note_import, stage_legacy_note_import,
 };
 pub use runtime::{FacadeOpenError, Pod0Facade};
 

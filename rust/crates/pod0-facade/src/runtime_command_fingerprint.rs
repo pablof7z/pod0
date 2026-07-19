@@ -2,7 +2,7 @@ use pod0_application::{ApplicationCommand, RecallScope};
 use sha2::{Digest, Sha256};
 
 use crate::runtime_command_fingerprint_values::{
-    hash_evidence_input, hash_optional, hash_playback, hash_policy,
+    hash_evidence_input, hash_note_target, hash_optional, hash_playback, hash_policy,
 };
 
 pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
@@ -122,6 +122,50 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
         ApplicationCommand::RebuildTranscriptEvidence { input, policy } => {
             hash_evidence_input(&mut hash, input, *policy);
         }
+        ApplicationCommand::CreateNote {
+            text,
+            kind,
+            author,
+            target,
+        } => {
+            hash.update(b"create-note\0");
+            hash.update(text.as_bytes());
+            hash.update([0]);
+            hash_note_kind(&mut hash, *kind);
+            hash_note_author(&mut hash, *author);
+            hash_note_target(&mut hash, *target);
+        }
+        ApplicationCommand::UpdateNote {
+            note_id,
+            expected_note_revision,
+            text,
+            kind,
+            target,
+        } => {
+            hash.update(b"update-note\0");
+            hash.update(note_id.into_bytes());
+            hash.update(expected_note_revision.value.to_be_bytes());
+            hash.update(text.as_bytes());
+            hash.update([0]);
+            hash_note_kind(&mut hash, *kind);
+            hash_note_target(&mut hash, *target);
+        }
+        ApplicationCommand::SetNoteDeleted {
+            note_id,
+            expected_note_revision,
+            deleted,
+        } => {
+            hash.update(b"delete-note\0");
+            hash.update(note_id.into_bytes());
+            hash.update(expected_note_revision.value.to_be_bytes());
+            hash.update([u8::from(*deleted)]);
+        }
+        ApplicationCommand::ClearNotes {
+            expected_collection_revision,
+        } => {
+            hash.update(b"clear-notes\0");
+            hash.update(expected_collection_revision.value.to_be_bytes());
+        }
         ApplicationCommand::CancelOperation { cancellation_id } => {
             hash.update(b"cancel\0");
             hash.update(cancellation_id.into_bytes());
@@ -135,4 +179,27 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect()
+}
+
+fn hash_note_kind(hash: &mut Sha256, value: pod0_domain::NoteKind) {
+    match value {
+        pod0_domain::NoteKind::Free => hash.update([1]),
+        pod0_domain::NoteKind::Reflection => hash.update([2]),
+        pod0_domain::NoteKind::SystemEvent => hash.update([3]),
+        pod0_domain::NoteKind::Unsupported { wire_code } => {
+            hash.update([255]);
+            hash.update(wire_code.to_be_bytes());
+        }
+    }
+}
+
+fn hash_note_author(hash: &mut Sha256, value: pod0_domain::NoteAuthor) {
+    match value {
+        pod0_domain::NoteAuthor::User => hash.update([1]),
+        pod0_domain::NoteAuthor::Agent => hash.update([2]),
+        pod0_domain::NoteAuthor::Unsupported { wire_code } => {
+            hash.update([255]);
+            hash.update(wire_code.to_be_bytes());
+        }
+    }
 }

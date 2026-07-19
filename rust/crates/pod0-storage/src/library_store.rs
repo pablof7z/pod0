@@ -27,6 +27,19 @@ impl LibraryStore {
         read_snapshot(&connection)
     }
 
+    pub fn note_snapshot(&self) -> Result<crate::NoteCollectionSnapshot, StorageError> {
+        let connection = open_current(&self.path, true)?;
+        require_authoritative(&connection)?;
+        crate::note_store_read::require_notes_authoritative(&connection)?;
+        crate::note_store_read::read_note_snapshot(&connection)
+    }
+
+    pub fn require_notes_authoritative(&self) -> Result<(), StorageError> {
+        let connection = open_current(&self.path, true)?;
+        require_authoritative(&connection)?;
+        crate::note_store_read::require_notes_authoritative(&connection)
+    }
+
     pub(crate) fn write<T>(
         &self,
         operation: impl FnOnce(&Transaction<'_>) -> Result<T, StorageError>,

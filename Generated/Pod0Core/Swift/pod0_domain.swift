@@ -1705,6 +1705,262 @@ public func FfiConverterTypeListeningPlaybackPolicy_lower(_ value: ListeningPlay
 
 
 /**
+ * Immutable provenance captured from the selected, verified evidence
+ * generation at note creation. Later transcript rebuilds never retarget it.
+ */
+public struct NoteEvidenceReference: Equatable, Hashable {
+    public let generationId: EvidenceGenerationId
+    public let transcriptVersionId: TranscriptVersionId
+    public let transcriptContentDigest: ContentDigest
+    public let spanId: EvidenceSpanId
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(generationId: EvidenceGenerationId, transcriptVersionId: TranscriptVersionId, transcriptContentDigest: ContentDigest, spanId: EvidenceSpanId) {
+        self.generationId = generationId
+        self.transcriptVersionId = transcriptVersionId
+        self.transcriptContentDigest = transcriptContentDigest
+        self.spanId = spanId
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension NoteEvidenceReference: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNoteEvidenceReference: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NoteEvidenceReference {
+        return
+            try NoteEvidenceReference(
+                generationId: FfiConverterTypeEvidenceGenerationId.read(from: &buf),
+                transcriptVersionId: FfiConverterTypeTranscriptVersionId.read(from: &buf),
+                transcriptContentDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                spanId: FfiConverterTypeEvidenceSpanId.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NoteEvidenceReference, into buf: inout [UInt8]) {
+        FfiConverterTypeEvidenceGenerationId.write(value.generationId, into: &buf)
+        FfiConverterTypeTranscriptVersionId.write(value.transcriptVersionId, into: &buf)
+        FfiConverterTypeContentDigest.write(value.transcriptContentDigest, into: &buf)
+        FfiConverterTypeEvidenceSpanId.write(value.spanId, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteEvidenceReference_lift(_ buf: RustBuffer) throws -> NoteEvidenceReference {
+    return try FfiConverterTypeNoteEvidenceReference.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteEvidenceReference_lower(_ value: NoteEvidenceReference) -> RustBuffer {
+    return FfiConverterTypeNoteEvidenceReference.lower(value)
+}
+
+
+public struct NoteId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension NoteId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNoteId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NoteId {
+        return
+            try NoteId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NoteId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteId_lift(_ buf: RustBuffer) throws -> NoteId {
+    return try FfiConverterTypeNoteId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteId_lower(_ value: NoteId) -> RustBuffer {
+    return FfiConverterTypeNoteId.lower(value)
+}
+
+
+/**
+ * Durable note state owned by the Pod0 kernel. Native shells may map this to
+ * presentation values but must not persist or mutate an independent copy.
+ */
+public struct NoteRecord: Equatable, Hashable {
+    public let noteId: NoteId
+    public let revision: NoteRevision
+    public let text: String
+    public let kind: NoteKind
+    public let author: NoteAuthor
+    public let target: NoteTarget?
+    public let createdAt: UnixTimestampMilliseconds
+    public let deleted: Bool
+    public let evidence: NoteEvidenceReference?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(noteId: NoteId, revision: NoteRevision, text: String, kind: NoteKind, author: NoteAuthor, target: NoteTarget?, createdAt: UnixTimestampMilliseconds, deleted: Bool, evidence: NoteEvidenceReference?) {
+        self.noteId = noteId
+        self.revision = revision
+        self.text = text
+        self.kind = kind
+        self.author = author
+        self.target = target
+        self.createdAt = createdAt
+        self.deleted = deleted
+        self.evidence = evidence
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension NoteRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNoteRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NoteRecord {
+        return
+            try NoteRecord(
+                noteId: FfiConverterTypeNoteId.read(from: &buf),
+                revision: FfiConverterTypeNoteRevision.read(from: &buf),
+                text: FfiConverterString.read(from: &buf),
+                kind: FfiConverterTypeNoteKind.read(from: &buf),
+                author: FfiConverterTypeNoteAuthor.read(from: &buf),
+                target: FfiConverterOptionTypeNoteTarget.read(from: &buf),
+                createdAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                deleted: FfiConverterBool.read(from: &buf),
+                evidence: FfiConverterOptionTypeNoteEvidenceReference.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NoteRecord, into buf: inout [UInt8]) {
+        FfiConverterTypeNoteId.write(value.noteId, into: &buf)
+        FfiConverterTypeNoteRevision.write(value.revision, into: &buf)
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterTypeNoteKind.write(value.kind, into: &buf)
+        FfiConverterTypeNoteAuthor.write(value.author, into: &buf)
+        FfiConverterOptionTypeNoteTarget.write(value.target, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.createdAt, into: &buf)
+        FfiConverterBool.write(value.deleted, into: &buf)
+        FfiConverterOptionTypeNoteEvidenceReference.write(value.evidence, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteRecord_lift(_ buf: RustBuffer) throws -> NoteRecord {
+    return try FfiConverterTypeNoteRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteRecord_lower(_ value: NoteRecord) -> RustBuffer {
+    return FfiConverterTypeNoteRecord.lower(value)
+}
+
+
+public struct NoteRevision: Equatable, Hashable {
+    public let value: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(value: UInt64) {
+        self.value = value
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension NoteRevision: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNoteRevision: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NoteRevision {
+        return
+            try NoteRevision(
+                value: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NoteRevision, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.value, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteRevision_lift(_ buf: RustBuffer) throws -> NoteRevision {
+    return try FfiConverterTypeNoteRevision.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteRevision_lower(_ value: NoteRevision) -> RustBuffer {
+    return FfiConverterTypeNoteRevision.lower(value)
+}
+
+
+/**
  * Integer thousandths avoid platform floating-point drift at the boundary.
  * 1.7x is represented as 1700.
  */
@@ -3416,6 +3672,248 @@ public func FfiConverterTypeListeningDomainError_lower(_ value: ListeningDomainE
 
 
 
+public enum NoteAuthor: Equatable, Hashable {
+
+    case user
+    case agent
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension NoteAuthor: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNoteAuthor: FfiConverterRustBuffer {
+    typealias SwiftType = NoteAuthor
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NoteAuthor {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .user
+
+        case 2: return .agent
+
+        case 3: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: NoteAuthor, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .user:
+            writeInt(&buf, Int32(1))
+
+
+        case .agent:
+            writeInt(&buf, Int32(2))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteAuthor_lift(_ buf: RustBuffer) throws -> NoteAuthor {
+    return try FfiConverterTypeNoteAuthor.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteAuthor_lower(_ value: NoteAuthor) -> RustBuffer {
+    return FfiConverterTypeNoteAuthor.lower(value)
+}
+
+
+
+
+public enum NoteKind: Equatable, Hashable {
+
+    case free
+    case reflection
+    case systemEvent
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension NoteKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNoteKind: FfiConverterRustBuffer {
+    typealias SwiftType = NoteKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NoteKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .free
+
+        case 2: return .reflection
+
+        case 3: return .systemEvent
+
+        case 4: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: NoteKind, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .free:
+            writeInt(&buf, Int32(1))
+
+
+        case .reflection:
+            writeInt(&buf, Int32(2))
+
+
+        case .systemEvent:
+            writeInt(&buf, Int32(3))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteKind_lift(_ buf: RustBuffer) throws -> NoteKind {
+    return try FfiConverterTypeNoteKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteKind_lower(_ value: NoteKind) -> RustBuffer {
+    return FfiConverterTypeNoteKind.lower(value)
+}
+
+
+
+
+public enum NoteTarget: Equatable, Hashable {
+
+    case note(noteId: NoteId
+    )
+    case episode(episodeId: EpisodeId, positionMilliseconds: UInt64
+    )
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension NoteTarget: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNoteTarget: FfiConverterRustBuffer {
+    typealias SwiftType = NoteTarget
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NoteTarget {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .note(noteId: try FfiConverterTypeNoteId.read(from: &buf)
+        )
+
+        case 2: return .episode(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), positionMilliseconds: try FfiConverterUInt64.read(from: &buf)
+        )
+
+        case 3: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: NoteTarget, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .note(noteId):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeNoteId.write(noteId, into: &buf)
+
+
+        case let .episode(episodeId,positionMilliseconds):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterUInt64.write(positionMilliseconds, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteTarget_lift(_ buf: RustBuffer) throws -> NoteTarget {
+    return try FfiConverterTypeNoteTarget.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteTarget_lower(_ value: NoteTarget) -> RustBuffer {
+    return FfiConverterTypeNoteTarget.lower(value)
+}
+
+
+
+
 public enum PlaybackSleepMode: Equatable, Hashable {
 
     case off
@@ -4035,6 +4533,30 @@ fileprivate struct FfiConverterOptionTypeFeedIdentityV1: FfiConverterRustBuffer 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeNoteEvidenceReference: FfiConverterRustBuffer {
+    typealias SwiftType = NoteEvidenceReference?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeNoteEvidenceReference.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeNoteEvidenceReference.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypePlaybackRatePermille: FfiConverterRustBuffer {
     typealias SwiftType = PlaybackRatePermille?
 
@@ -4147,6 +4669,30 @@ fileprivate struct FfiConverterOptionTypeUnixTimestampMilliseconds: FfiConverter
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeNoteTarget: FfiConverterRustBuffer {
+    typealias SwiftType = NoteTarget?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeNoteTarget.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeNoteTarget.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }

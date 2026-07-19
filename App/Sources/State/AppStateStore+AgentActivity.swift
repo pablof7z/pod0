@@ -110,7 +110,7 @@ extension AppStateStore {
         guard !state.agentActivity[idx].undone else { return }
         switch state.agentActivity[idx].kind {
         case .noteCreated(let noteID):
-            deleteNote(noteID)
+            guard deleteNote(noteID) else { return }
         case .memoryRecorded(let memoryID):
             deleteAgentMemory(memoryID)
         }

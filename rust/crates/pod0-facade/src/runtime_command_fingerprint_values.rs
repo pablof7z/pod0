@@ -5,6 +5,28 @@ use pod0_domain::{
 };
 use sha2::{Digest, Sha256};
 
+pub(super) fn hash_note_target(hash: &mut Sha256, value: Option<pod0_domain::NoteTarget>) {
+    match value {
+        None => hash.update([0]),
+        Some(pod0_domain::NoteTarget::Note { note_id }) => {
+            hash.update([1]);
+            hash.update(note_id.into_bytes());
+        }
+        Some(pod0_domain::NoteTarget::Episode {
+            episode_id,
+            position_milliseconds,
+        }) => {
+            hash.update([2]);
+            hash.update(episode_id.into_bytes());
+            hash.update(position_milliseconds.to_be_bytes());
+        }
+        Some(pod0_domain::NoteTarget::Unsupported { wire_code }) => {
+            hash.update([255]);
+            hash.update(wire_code.to_be_bytes());
+        }
+    }
+}
+
 pub(super) fn hash_playback(hash: &mut Sha256, command: &PlaybackCommand) {
     match command {
         PlaybackCommand::Select {

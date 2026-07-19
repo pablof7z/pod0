@@ -188,6 +188,41 @@ impl FacadeState {
             ApplicationCommand::RebuildTranscriptEvidence { input, policy } => {
                 self.rebuild_transcript_evidence(&envelope, input, policy);
             }
+            ApplicationCommand::CreateNote {
+                text,
+                kind,
+                author,
+                target,
+            } => self.create_note(&envelope, &fingerprint, &text, kind, author, target),
+            ApplicationCommand::UpdateNote {
+                note_id,
+                expected_note_revision,
+                text,
+                kind,
+                target,
+            } => self.update_note(
+                &envelope,
+                &fingerprint,
+                note_id,
+                expected_note_revision,
+                &text,
+                kind,
+                target,
+            ),
+            ApplicationCommand::SetNoteDeleted {
+                note_id,
+                expected_note_revision,
+                deleted,
+            } => self.set_note_deleted(
+                &envelope,
+                &fingerprint,
+                note_id,
+                expected_note_revision,
+                deleted,
+            ),
+            ApplicationCommand::ClearNotes {
+                expected_collection_revision,
+            } => self.clear_notes(&envelope, &fingerprint, expected_collection_revision),
             ApplicationCommand::Unsupported { wire_code } => self.fail(
                 envelope.command_id,
                 CoreFailureCode::Unsupported { wire_code },
@@ -204,7 +239,7 @@ impl FacadeState {
         operation_result: OperationResult,
     ) {
         match result {
-            Ok(_) => match self.reload_listening() {
+            Ok(_) => match self.reload_listening().and_then(|()| self.reload_notes()) {
                 Ok(()) => self.succeed(command_id, Some(operation_result)),
                 Err(error) => self.fail(command_id, storage_failure(error)),
             },
@@ -217,6 +252,8 @@ pub(super) fn storage_failure(error: pod0_storage::StorageError) -> CoreFailureC
     match error {
         pod0_storage::StorageError::EntityNotFound => CoreFailureCode::NotFound,
         pod0_storage::StorageError::CommandConflict => CoreFailureCode::InvalidCommand,
+        pod0_storage::StorageError::RevisionConflict => CoreFailureCode::RevisionConflict,
+        pod0_storage::StorageError::InvalidNote => CoreFailureCode::InvalidNote,
         _ => CoreFailureCode::StorageUnavailable,
     }
 }

@@ -84,12 +84,12 @@
     {
       "id": "shared-domain-models",
       "classification": "shared_rust_now",
-      "current_owner": "Swift Codable domain records",
+      "current_owner": "Rust owns migrated listening and note records; Swift retains presentation mappings and unmigrated Codable domains",
       "target_owner": "Pod0 Rust domain crate",
       "reason": "Durable identities, settings, notes, clips, memory, and agent facts are cross-platform product state.",
       "boundary": "Stable IDs, versioned schemas, commands, and bounded projections.",
-      "persisted_state": "AppState metadata JSON inside authoritative SQLite.",
-      "migration_issues": [58, 59, 60, 78, 79, 81, 82, 83],
+      "persisted_state": "Rust SQLite for migrated listening and notes; AppState metadata for unmigrated domains only.",
+      "migration_issues": [58, 59, 60, 78, 79, 81, 82, 83, 92],
       "deletion_target": "Remove migrated Swift records and Codable ownership after each vertical-slice cutover.",
       "priority": "high",
       "includes": ["App/Sources/Domain/"]
@@ -110,12 +110,12 @@
     {
       "id": "shared-state-and-persistence",
       "classification": "shared_rust_now",
-      "current_owner": "Swift AppStateStore and SQLite/Codable persistence",
+      "current_owner": "Rust is the listening and notes writer; Swift AppStateStore persists unmigrated domains and caches native projections",
       "target_owner": "Rust application actor and versioned Rust SQLite schemas",
       "reason": "Durable application state and mutation policy require one cross-platform writer.",
       "boundary": "Swift renders projections and dispatches commands; importer reads legacy Swift state once.",
-      "persisted_state": "AppState metadata, episode rows, persistence generation, and native projection snapshots.",
-      "migration_issues": [64, 75, 79, 81, 82, 83],
+      "persisted_state": "Rust listening/note tables plus AppState metadata for unmigrated domains; migrated projections are stripped from Swift persistence.",
+      "migration_issues": [64, 75, 79, 81, 82, 83, 92],
       "deletion_target": "Delete migrated AppState fields/mutation methods; retain only supported read-only import and native projection adapters.",
       "priority": "highest",
       "includes": ["App/Sources/State/"]

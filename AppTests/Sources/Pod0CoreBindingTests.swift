@@ -16,10 +16,10 @@ final class Pod0CoreBindingTests: XCTestCase {
         XCTAssertEqual(fixture["schema_component"], "kernel")
         XCTAssertEqual(UInt32(fixture["stored_version"] ?? ""), 2)
         XCTAssertEqual(UInt32(fixture["supported_min"] ?? ""), 0)
-        XCTAssertEqual(UInt32(fixture["supported_max"] ?? ""), 7)
+        XCTAssertEqual(UInt32(fixture["supported_max"] ?? ""), 8)
         XCTAssertEqual(fixture["access_mode"], "migration_only")
         XCTAssertEqual(fixture["migration_state"], "required")
-        XCTAssertEqual(UInt32(fixture["target_version"] ?? ""), 7)
+        XCTAssertEqual(UInt32(fixture["target_version"] ?? ""), 8)
         XCTAssertEqual(UInt64(fixture["store_id_high"] ?? ""), 10)
         XCTAssertEqual(UInt64(fixture["store_id_low"] ?? ""), 11)
         XCTAssertEqual(UInt64(fixture["command_id_high"] ?? ""), 1)
@@ -50,7 +50,7 @@ final class Pod0CoreBindingTests: XCTestCase {
 
         XCTAssertEqual(subscriber.revisions, [0, 1])
         let projection = facade.snapshot(request: request)
-        XCTAssertEqual(projection.contractVersion, 8)
+        XCTAssertEqual(projection.contractVersion, 9)
         guard case let .library(value) = projection.projection else {
             return XCTFail("Expected a bounded library projection")
         }
@@ -190,13 +190,74 @@ final class Pod0CoreBindingTests: XCTestCase {
             operation: nil
         )
 
-        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 8)
+        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 9)
         XCTAssertEqual(projection.stage, .ready)
         XCTAssertEqual(projection.evidence.first?.excerpt, fixture["excerpt"])
         XCTAssertEqual(
             projection.evidence.first?.score.totalRrfUnits,
             projection.evidence.first.map { $0.score.vectorRrfUnits + $0.score.lexicalRrfUnits }
         )
+    }
+
+    func testSwiftDecodesNoteProjectionGoldenFixture() throws {
+        let fixtureURL = try XCTUnwrap(Bundle(for: Self.self).url(
+            forResource: "note-projection-v1",
+            withExtension: "properties"
+        ))
+        let fixture = try decodeProperties(at: fixtureURL)
+        func number(_ key: String) throws -> UInt64 {
+            try XCTUnwrap(UInt64(fixture[key] ?? ""), "Missing numeric fixture value: \(key)")
+        }
+        let note = NoteRecord(
+            noteId: NoteId(high: try number("note_id_high"), low: try number("note_id_low")),
+            revision: NoteRevision(value: try number("note_revision")),
+            text: try XCTUnwrap(fixture["text"]),
+            kind: .reflection,
+            author: .user,
+            target: .episode(
+                episodeId: EpisodeId(
+                    high: try number("episode_id_high"),
+                    low: try number("episode_id_low")
+                ),
+                positionMilliseconds: try number("position_milliseconds")
+            ),
+            createdAt: UnixTimestampMilliseconds(value: Int64(try number("created_at_milliseconds"))),
+            deleted: false,
+            evidence: NoteEvidenceReference(
+                generationId: EvidenceGenerationId(
+                    high: try number("generation_id_high"),
+                    low: try number("generation_id_low")
+                ),
+                transcriptVersionId: TranscriptVersionId(
+                    high: try number("transcript_version_id_high"),
+                    low: try number("transcript_version_id_low")
+                ),
+                transcriptContentDigest: ContentDigest(
+                    word0: try number("content_digest_word_0"),
+                    word1: try number("content_digest_word_1"),
+                    word2: try number("content_digest_word_2"),
+                    word3: try number("content_digest_word_3")
+                ),
+                spanId: EvidenceSpanId(
+                    high: try number("span_id_high"),
+                    low: try number("span_id_low")
+                )
+            )
+        )
+        let projection = NotesProjection(
+            scope: .episode(episodeId: EpisodeId(
+                high: try number("episode_id_high"),
+                low: try number("episode_id_low")
+            )),
+            collectionRevision: StateRevision(value: try number("collection_revision")),
+            notes: [note],
+            operations: [],
+            hasMore: false
+        )
+
+        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 9)
+        XCTAssertEqual(projection.notes.first?.text, fixture["text"])
+        XCTAssertEqual(projection.notes.first?.evidence?.spanId, note.evidence?.spanId)
     }
 
     private func decodeProperties(at url: URL) throws -> [String: String] {

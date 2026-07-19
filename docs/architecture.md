@@ -28,24 +28,24 @@ hold in issue #85 is active.
 ### Application state
 
 `AppStateStore` is the `@MainActor @Observable` owner for unmigrated Swift
-domains and a projection adapter for the migrated listening slice. Views and
+domains and a projection adapter for the migrated listening and notes slices. Views and
 agent adapters call typed methods; migrated library/playback methods dispatch
 to the shared facade, and direct `mutateState` calls outside
 `App/Sources/State` are rejected by tests.
 
-`AppState` currently contains podcasts, subscriptions, episodes, notes, clips,
+`AppState` currently contains replaceable podcast, episode, and note projections plus clips,
 settings, agent memory/activity, categories, threading records, scheduled tasks,
 and the last-played episode. This is migration input, not the final
 cross-platform schema.
 
 ### Persistence topology
 
-`pod0-core.sqlite` is authoritative for the migrated listening slice.
+`pod0-core.sqlite` is authoritative for the migrated listening and notes slices.
 `Persistence` remains SQLite-authoritative for unmigrated and adjunct Swift
 state. Normal reads and writes do not compare a JSON store.
 
 - `persistence_metadata` stores a JSON-encoded `AppState` metadata snapshot
-  without the episode array plus a monotonic generation.
+  without migrated episode or note authority plus a monotonic generation.
 - `episodes` stores one versioned JSON payload per episode with stable local ID
   and sort order.
 - Workflow schema metadata, jobs, and artifact records share the authoritative

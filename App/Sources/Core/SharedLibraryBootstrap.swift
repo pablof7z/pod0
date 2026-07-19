@@ -65,6 +65,44 @@ enum SharedLibraryBootstrap {
                     observedAtMilliseconds: observedAt
                 )
             }
+            do {
+                _ = try commitStagedLegacyNoteImport(
+                    targetPath: target.path,
+                    observedAtMilliseconds: observedAt
+                )
+            } catch LegacyNoteMigrationError.ImportNotFound {
+                let plan = try inspectLegacyNoteSource(
+                    sourcePath: persistence.episodeStore.fileURL.path
+                )
+                let importID = stableID(
+                    "pod0-note-import:\(plan.sourceHash):\(plan.sourceGeneration)"
+                )
+                let report = try stageLegacyNoteImport(
+                    sourcePath: persistence.episodeStore.fileURL.path,
+                    sourceBackupPath: persistence.legacyNotesBackupURL.path,
+                    targetPath: target.path,
+                    targetSchemaBackupPath: persistence.sharedCoreSchemaBackupURL.path,
+                    expectedPlan: plan,
+                    importId: importID,
+                    targetStoreId: storeID,
+                    observedAtMilliseconds: observedAt
+                )
+                let verification = try readStagedLegacyNoteImport(
+                    targetPath: target.path,
+                    importId: importID
+                )
+                guard report.staged,
+                      verification.report.plan == plan,
+                      verification.notes.count == Int(plan.noteCount)
+                else {
+                    throw SharedLibraryBootstrapError.verificationFailed
+                }
+                _ = try commitStagedLegacyNoteImport(
+                    targetPath: target.path,
+                    observedAtMilliseconds: observedAt
+                )
+            }
+            persistence.activateSharedNoteAuthority()
             let facade = try Pod0Facade.open(storePath: target.path)
             let client = SharedLibraryClient(facade: facade, feedHost: feedHost)
             client.start()

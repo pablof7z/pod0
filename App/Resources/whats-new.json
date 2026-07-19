@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-19T13:09:23Z",
+      "lines": [
+        "Notes and saved podcast moments now survive app restarts without losing their episode or transcript context."
+      ]
+    },
+    {
       "shipped_at": "2026-07-19T11:43:00Z",
       "lines": [
         "Recall answers now stay tied to the exact transcript source and playable moment, even after Pod0 restarts."

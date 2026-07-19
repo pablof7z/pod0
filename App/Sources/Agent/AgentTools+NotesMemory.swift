@@ -42,7 +42,14 @@ extension AgentTools {
 
         // Agent-authored: takes the no-publish branch in `addNote(...)` per
         // `identity-05-synthesis.md` §5.3.
-        let note = store.addNote(text: text, kind: kind, target: anchor, author: .agent)
+        guard let note = store.addNote(
+            text: text,
+            kind: kind,
+            target: anchor,
+            author: .agent
+        ) else {
+            return toolError("The note could not be saved")
+        }
         store.recordAgentActivity(
             AgentActivityEntry(
                 batchID: batchID,

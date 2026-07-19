@@ -13,29 +13,14 @@ private class RecordingSubscriber : ProjectionSubscriber {
 }
 
 fun main(args: Array<String>) {
-    check(args.size == 4)
+    check(args.size == 5)
     val fixture = decodeProperties(File(args[0]).readText())
-    check(fixture["fixture_version"] == "1")
-    check(fixture["schema_component"] == "kernel")
-    check(fixture["stored_version"]?.toUInt() == 2u)
-    check(fixture["supported_min"]?.toUInt() == 0u)
-    check(fixture["supported_max"]?.toUInt() == 7u)
-    check(fixture["access_mode"] == "migration_only")
-    check(fixture["migration_state"] == "required")
-    check(fixture["target_version"]?.toUInt() == 7u)
-    check(fixture["store_id_high"]?.toULong() == 10UL)
-    check(fixture["store_id_low"]?.toULong() == 11UL)
-    check(fixture["command_id_high"]?.toULong() == 1UL)
-    check(fixture["command_id_low"]?.toULong() == 2UL)
-    check(fixture["state_revision"]?.toULong() == 42UL)
-    check(fixture["operation_stage"] == "failed")
-    check(fixture["error_kind"] == "unsupported")
-    check(fixture["error_wire_code"]?.toUInt() == 9001u)
-    check(fixture["optional_safe_detail"] == "null")
+    qualifySchemaFixture(fixture)
 
     qualifyListeningDomain(decodeProperties(File(args[1]).readText()))
     qualifyListeningImport(File(args[2]))
     qualifyRecallProjection(decodeProperties(File(args[3]).readText()))
+    qualifyNoteProjection(decodeProperties(File(args[4]).readText()))
     qualifyNativeHostContract()
 
     val facade = Pod0Facade()
@@ -56,7 +41,7 @@ fun main(args: Array<String>) {
         check(subscriber.revisions == listOf(0UL, 1UL))
 
         val projection = facade.snapshot(request).projection
-        check(facade.snapshot(request).contractVersion == 8u)
+        check(facade.snapshot(request).contractVersion == 9u)
         check(projection is Projection.Library)
         val unsupportedOperation = projection.value.operations.single()
         check(unsupportedOperation.commandId == CommandId(0UL, 1UL))
@@ -132,6 +117,11 @@ private fun qualifyListeningImport(source: File) {
         check(imported.episodes.single().listening.completion == CompletionStatus.Completed(CompletionCause.LegacyPlayedFlag))
         check(imported.episodes.single().isStarred)
         check(imported.playback.activeEpisodeId == imported.episodes.single().episodeId)
+        check(!commitStagedLegacyListeningImport(
+            File(root, "core.sqlite").absolutePath,
+            1_721_322_000_001L,
+        ))
+        qualifyEmptyNoteImport(source, root)
     } finally {
         root.deleteRecursively()
     }

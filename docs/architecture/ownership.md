@@ -33,7 +33,7 @@ already migrated. `current_owner`, `target_owner`, `migration_issues`, and
 ## Migration priority
 
 1. Listening identity/state and playback policy: #78–#83.
-2. Transcript knowledge and evidence provenance: #59 and #69.
+2. Transcript knowledge, evidence provenance, and notes: #59, #69, and #92.
 3. Workflow, download, agent, artifact, and Nostr policy: #60.
 4. Native UI and platform capabilities remain native and converge on typed
    host/projection boundaries as their domains migrate.

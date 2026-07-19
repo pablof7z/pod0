@@ -1,11 +1,11 @@
 use pod0_domain::{
-    CancellationId, CommandId, EpisodeId, EpisodeRecord, PodcastId, PodcastRecord,
+    CancellationId, CommandId, EpisodeId, EpisodeRecord, NoteId, PodcastId, PodcastRecord,
     PodcastSubscriptionRecord, RecallQueryId, StateRevision,
 };
 
 use crate::{
-    EvidenceIndexProjection, MAX_OPERATION_ITEMS, MAX_PROJECTION_ITEMS, PlaybackProjection,
-    RecallResultProjection,
+    EvidenceIndexProjection, MAX_OPERATION_ITEMS, MAX_PROJECTION_ITEMS, NoteProjectionScope,
+    NotesProjection, PlaybackProjection, RecallResultProjection,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
@@ -16,6 +16,7 @@ pub enum ProjectionScope {
     Playback,
     Recall { query_id: RecallQueryId },
     EvidenceIndex { episode_id: EpisodeId },
+    Notes { scope: NoteProjectionScope },
     Unsupported { wire_code: u32 },
 }
 
@@ -57,6 +58,7 @@ pub enum Projection {
     Playback { value: PlaybackProjection },
     Recall { value: RecallResultProjection },
     EvidenceIndex { value: EvidenceIndexProjection },
+    Notes { value: NotesProjection },
     Unsupported { value: UnsupportedProjection },
 }
 
@@ -182,6 +184,13 @@ pub enum OperationResult {
         generation_id: pod0_domain::EvidenceGenerationId,
         span_count: u32,
     },
+    NoteCreated {
+        note_id: NoteId,
+    },
+    NoteUpdated {
+        note_id: NoteId,
+    },
+    NotesCleared,
     Unsupported {
         wire_code: u32,
     },
@@ -225,6 +234,7 @@ pub enum CoreFailureCode {
     StorageUnavailable,
     RevisionConflict,
     NotFound,
+    InvalidNote,
     HostUnavailable,
     HostRejected,
     Cancelled,

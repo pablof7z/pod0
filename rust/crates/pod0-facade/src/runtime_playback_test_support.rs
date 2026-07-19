@@ -53,6 +53,24 @@ impl PlaybackFixture {
             1_800_000_000_001,
         )
         .unwrap();
+        let note_plan = inspect_legacy_note_source(source.to_string_lossy().into_owned()).unwrap();
+        stage_legacy_note_import(
+            source.to_string_lossy().into_owned(),
+            directory
+                .path()
+                .join("legacy-notes.backup.json")
+                .to_string_lossy()
+                .into_owned(),
+            target.to_string_lossy().into_owned(),
+            schema_backup.to_string_lossy().into_owned(),
+            note_plan,
+            CommandId::from_parts(9, 3),
+            CommandId::from_parts(9, 2),
+            1_800_000_000_002,
+        )
+        .unwrap();
+        commit_staged_legacy_note_import(target.to_string_lossy().into_owned(), 1_800_000_000_003)
+            .unwrap();
         let facade = Pod0Facade::open(target.to_string_lossy().into_owned()).unwrap();
         let Projection::Library { value } = facade.snapshot(library_request()).projection else {
             panic!("expected library projection");

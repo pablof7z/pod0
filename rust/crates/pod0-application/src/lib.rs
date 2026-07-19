@@ -29,6 +29,7 @@ mod knowledge_ranking;
 mod knowledge_ranking_tests;
 #[cfg(test)]
 mod knowledge_test_fixture;
+mod note_contract;
 mod recall_contract;
 
 pub use contract::*;
@@ -41,6 +42,7 @@ pub use feed::*;
 pub use knowledge::*;
 pub use knowledge_chunking::*;
 pub use knowledge_ranking::*;
+pub use note_contract::*;
 pub use recall_contract::*;
 
 pub const CORE_SCHEMA_VERSION: u32 = 1;
