@@ -27,12 +27,20 @@ Current versions:
   words, optimistic selections, replay receipts, and staged two-source legacy
   import evidence. Existing evidence documents and normalized segment rows
   remain the sole semantic transcript representation.
+- v11: visible-library membership is separated from retained podcast and
+  episode records so unsubscribe cannot cascade-delete transcript, evidence,
+  note, or clip history.
+- v12: legacy transcript imports preserve every available historical artifact,
+  including orphaned episodes, while retaining exactly one selected artifact
+  per selected episode. Import accounting separates total artifacts from
+  selected artifacts.
 
 Facade contract version 12 adds the canonical full-transcript application
 command, typed receipt/failures, and bounded runtime projections. Schema v10
-persists imported and runtime-observed artifacts without claiming iOS
-authority: Swift remains the product writer through #96, and issue #97 performs
-the single-writer cutover and deletes the temporary shadow path.
+persists imported and runtime-observed artifacts. Issue #97 makes that store
+authoritative by committing verified legacy selections, synchronized episode
+readiness, the listening revision, and the transcript cutover marker in one
+transaction before the facade opens.
 
 Legacy transcript import defines lossless preservation as exact retention of
 the canonical semantic fields after the documented nearest-millisecond
@@ -43,9 +51,10 @@ Backups are verified before same-directory no-clobber atomic publication, so a
 process death can leave an ignorable temporary file but never a partial final
 backup. Inspection retains only bounded identities and digests; staging
 rehydrates one artifact at a time and rechecks the selection database and files
-immediately before commit. While the cutover remains staged, a newer Swift
-selection may supersede only a prior import-owned selection. It cannot overwrite
-a Rust runtime-owned selection or an authoritative transcript cutover.
+immediately before commit. While the cutover remains staged, the verified
+legacy selection may supersede a pre-authority import or shadow selection so
+the last authoritative Swift state is preserved. Once the marker is
+authoritative, every later legacy source or import attempt fails closed.
 
 Listening, note, and clip importers read the Swift source without mutation,
 verify an online SQLite or copied JSON backup, stage rows in one target
@@ -65,3 +74,6 @@ Rollback before authority is established means discarding the staged target
 and retaining the verified Swift source/backup. Rollback after authority is a
 separate, explicitly tested export operation; the old Swift writer must not be
 silently re-enabled.
+
+Operational recovery and rollback procedures are defined in the
+[transcript authority migration runbook](transcript-migration-runbook.md).

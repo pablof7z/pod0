@@ -51,8 +51,7 @@ final class AutoSnipController {
     var playback: PlaybackState?
     /// Live state-store handle. Same wiring story as `playback`.
     var store: AppStateStore?
-    /// Temporary #96 boundary; #97 installs the shared projection reader.
-    var transcriptReader: any TranscriptReading = TranscriptStore.shared
+    var transcriptReader: any TranscriptReading = UnavailableTranscriptReader.shared
 
     // MARK: - UI surface
 
@@ -92,6 +91,7 @@ final class AutoSnipController {
     func attach(playback: PlaybackState, store: AppStateStore) {
         self.playback = playback
         self.store = store
+        self.transcriptReader = store.transcriptReader
         wireRemoteCommandIfNeeded()
     }
 

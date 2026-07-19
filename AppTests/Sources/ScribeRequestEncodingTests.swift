@@ -213,7 +213,7 @@ final class ScribeRequestEncodingTests: XCTestCase {
                 languageHint: nil
             )
             XCTFail("Expected throw on 401")
-        } catch let ElevenLabsScribeClient.ScribeError.http(status, _) {
+        } catch let ElevenLabsScribeClient.ScribeError.http(status) {
             XCTAssertEqual(status, 401)
         } catch {
             XCTFail("Expected ScribeError.http, got \(error)")

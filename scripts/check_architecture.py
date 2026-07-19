@@ -35,7 +35,7 @@ def main() -> int:
         (scripts / "check_rust_schema_policy.py", True),
         (scripts / "check_recall_single_writer.py", True),
         (scripts / "check_recall_privacy.py", True),
-        (scripts / "check_transcript_shadow_privacy.py", True),
+        (scripts / "check_transcript_single_writer.py", True),
     ]
     failed = False
     for script, has_self_test in checks:

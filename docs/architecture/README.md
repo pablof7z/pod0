@@ -23,6 +23,7 @@ The operating rule is:
 - [Native UI to durable-state boundary](ui-storage-boundary.md)
 - [Architecture CI ratchets](ci-ratchets.md)
 - [App-core schema migration policy](schema-migrations.md)
+- [Transcript authority migration runbook](transcript-migration-runbook.md)
 - [Product-proof metric dictionary](../validation/product-proof-metrics.md)
 - [Cross-platform-sensitive PR checklist](../../.github/pull_request_template.md)
 - [Ownership inventory issue](https://github.com/pablof7z/pod0/issues/64)

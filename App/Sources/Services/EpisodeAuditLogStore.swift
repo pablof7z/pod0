@@ -6,7 +6,7 @@ import os.log
 /// Append-only per-episode audit log persisted as JSON.
 ///
 /// Files live under `$applicationSupport/podcastr/audit/<episodeID>.json` —
-/// same `Application Support` shape as `TranscriptStore` and
+/// the same per-episode `Application Support` shape as other artifact stores and
 /// `EpisodeDownloadStore` so a single fallback to `temporaryDirectory` covers
 /// every persistence path when the container is unavailable.
 ///
@@ -40,7 +40,7 @@ final class EpisodeAuditLogStore {
 
     // MARK: State
 
-    /// Where the per-episode JSON files live. Mirrors `TranscriptStore`'s
+    /// Where the per-episode JSON files live. Uses the standard artifact-store
     /// directory bootstrapping so the same Application Support container is
     /// shared by every persistence path.
     let rootURL: URL

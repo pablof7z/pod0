@@ -75,7 +75,8 @@ fn read_podcasts(connection: &Connection) -> Result<Vec<PodcastRecord>, StorageE
     let mut statement = connection.prepare(
         "SELECT podcast_id,kind_code,kind_wire_code,feed_url,feed_key_v1,title,author,image_url,\
          description,language,categories_json,discovered_at_ms,title_is_placeholder,\
-         last_refreshed_at_ms,etag,last_modified FROM pod0_podcasts ORDER BY rowid",
+         last_refreshed_at_ms,etag,last_modified FROM pod0_podcasts \
+         WHERE library_visible=1 ORDER BY rowid",
     ).map_err(|error| StorageError::sqlite("prepare podcast projection", error))?;
     collect_rows(&mut statement, "read podcast projection", |row| {
         let categories: String = row.get(10)?;

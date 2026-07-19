@@ -17,11 +17,11 @@ symbols and exact-file exceptions. Every exception has an owning GitHub issue
 and deletion target. A new exception is architecture work and must not be added
 solely to make CI green.
 
-The current exceptions expose real migration seams rather than approved final
-architecture: direct `TranscriptStore` and `ChatHistoryStore` use. Issues #59
-and #60 remove them through observable projections and typed commands. Recall
-and search no longer carry exceptions: they consume the typed shared-core
-projection, and UI access to `RecallCapabilityService` is prohibited.
+The current exceptions expose a real migration seam rather than approved final
+architecture: direct `ChatHistoryStore` use. Issue #60 removes it through
+observable projections and typed commands. Transcript, recall, and search no
+longer carry exceptions: they consume typed shared-core projections, and UI
+access to their capability stores is prohibited.
 
 Generated UniFFI bindings are not presentation code and will live outside the
 scanned feature roots. Hand-authored native adapters remain subject to the

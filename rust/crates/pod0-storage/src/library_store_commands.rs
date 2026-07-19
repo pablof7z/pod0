@@ -160,29 +160,16 @@ impl LibraryStore {
             ).map_err(|error| StorageError::sqlite("clear removed active episode", error))?;
             transaction
                 .execute(
-                    "DELETE FROM pod0_episode_feed_metadata WHERE episode_id IN \
-                 (SELECT episode_id FROM pod0_episodes WHERE podcast_id=?1)",
-                    [podcast_id.into_bytes().as_slice()],
-                )
-                .map_err(|error| StorageError::sqlite("remove episode feed metadata", error))?;
-            transaction
-                .execute(
-                    "DELETE FROM pod0_episodes WHERE podcast_id=?1",
-                    [podcast_id.into_bytes().as_slice()],
-                )
-                .map_err(|error| StorageError::sqlite("remove podcast episodes", error))?;
-            transaction
-                .execute(
                     "DELETE FROM pod0_subscriptions WHERE podcast_id=?1",
                     [podcast_id.into_bytes().as_slice()],
                 )
                 .map_err(|error| StorageError::sqlite("remove subscription", error))?;
             transaction
                 .execute(
-                    "DELETE FROM pod0_podcasts WHERE podcast_id=?1",
+                    "UPDATE pod0_podcasts SET library_visible=0 WHERE podcast_id=?1",
                     [podcast_id.into_bytes().as_slice()],
                 )
-                .map_err(|error| StorageError::sqlite("remove podcast", error))?;
+                .map_err(|error| StorageError::sqlite("hide unsubscribed podcast", error))?;
             let revision =
                 finish_command(transaction, command_id, command_fingerprint, observed_at_ms)?;
             set_clip_revision(transaction, revision)?;

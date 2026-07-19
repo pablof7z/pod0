@@ -4,6 +4,7 @@ use pod0_domain::{CommandId, StateRevision};
 use rusqlite::{OptionalExtension, TransactionBehavior, params};
 
 use crate::StorageError;
+use crate::legacy_transcript_db::orphan_transcript_podcast_id;
 use crate::legacy_transcript_source::load_inspected_transcript_artifact;
 use crate::migration_db::configure;
 use crate::transcript_import_model::{
@@ -64,7 +65,7 @@ where
     )?;
     for (offset, entry) in source.entries.iter().enumerate() {
         let index = u32::try_from(offset).map_err(|_| StorageError::ImportLimitExceeded {
-            entity: "selected transcripts",
+            entity: "transcript artifacts",
         })?;
         let artifact = load_inspected_transcript_artifact(entry, index)?;
         stage_entry(&transaction, import_id, entry, &artifact, staged_at_ms)?;
@@ -109,8 +110,8 @@ fn insert_import(
         .execute(
             "INSERT INTO pod0_transcript_imports(import_id,source_kind,source_schema_version,\
              source_generation,source_selection_digest,source_database_digest,backup_database_digest,\
-             backup_database_byte_count,selected_count,target_revision,state,staged_at_ms) \
-             VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,'staged',?11)",
+             backup_database_byte_count,artifact_count,selected_count,target_revision,state,staged_at_ms) \
+             VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,'staged',?12)",
             params![
                 import_id.into_bytes().as_slice(), source.plan.source_kind.code(),
                 source.plan.source_kind.schema_version(),
@@ -119,8 +120,10 @@ fn insert_import(
                 source.plan.source_database_digest.into_bytes().as_slice(),
                 backup.database_digest.into_bytes().as_slice(),
                 to_i64(backup.database_byte_count, "transcript database backup bytes")?,
+                source.plan.artifact_count,
                 source.plan.selected_count,
-                to_i64(target_revision.value, "transcript target revision")?, staged_at_ms,
+                to_i64(target_revision.value, "transcript target revision")?,
+                staged_at_ms,
             ],
         )
         .map_err(|error| StorageError::sqlite("record transcript import", error))?;
@@ -134,6 +137,9 @@ fn stage_entry(
     artifact: &pod0_domain::TranscriptArtifact,
     staged_at_ms: i64,
 ) -> Result<(), StorageError> {
+    if entry.is_orphan {
+        ensure_orphan_parent(transaction, artifact, staged_at_ms)?;
+    }
     require_episode_parent(transaction, artifact)?;
     ensure_semantic_document(transaction, artifact)?;
     insert_or_validate_artifact(transaction, artifact, Some(import_id), staged_at_ms)?;
@@ -141,9 +147,10 @@ fn stage_entry(
         .execute(
             "INSERT INTO pod0_transcript_import_entries(import_id,episode_id,legacy_row_id,\
              legacy_schema_version,legacy_input_version,legacy_output_version,legacy_origin,\
-             legacy_integrity,legacy_verified_at_ms,selected_row_digest,selected_file_digest,\
-             backup_file_digest,backup_file_byte_count,artifact_id,transcript_version_id) \
-             VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)",
+             legacy_integrity,legacy_verified_at_ms,is_selected,selected_row_digest,\
+             selected_file_digest,backup_file_digest,backup_file_byte_count,artifact_id,\
+             transcript_version_id) \
+             VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16)",
             params![
                 import_id.into_bytes().as_slice(),
                 entry.episode_id.into_bytes().as_slice(),
@@ -154,6 +161,7 @@ fn stage_entry(
                 entry.legacy_origin.as_deref().unwrap_or("unknown"),
                 entry.legacy_integrity,
                 entry.legacy_verified_at_ms,
+                entry.is_selected,
                 entry.selected_row_digest.into_bytes().as_slice(),
                 entry.selected_file_digest.into_bytes().as_slice(),
                 entry.selected_file_digest.into_bytes().as_slice(),
@@ -167,6 +175,70 @@ fn stage_entry(
         )
         .map_err(|error| StorageError::sqlite("record transcript import entry", error))?;
     Ok(())
+}
+
+fn ensure_orphan_parent(
+    transaction: &rusqlite::Transaction<'_>,
+    artifact: &pod0_domain::TranscriptArtifact,
+    observed_at_ms: i64,
+) -> Result<(), StorageError> {
+    if artifact.podcast_id != orphan_transcript_podcast_id() {
+        return Err(StorageError::InvalidTranscriptArtifact);
+    }
+    let source_import_id: Vec<u8> = transaction
+        .query_row(
+            "SELECT import_id FROM pod0_listening_imports ORDER BY verified_at_ms DESC LIMIT 1",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|error| StorageError::sqlite("read orphan listening import", error))?;
+    transaction
+        .execute(
+            "INSERT OR IGNORE INTO pod0_podcasts(podcast_id,kind_code,kind_wire_code,feed_url,\
+             feed_key_v1,title,author,image_url,description,language,categories_json,\
+             discovered_at_ms,title_is_placeholder,last_refreshed_at_ms,etag,last_modified,\
+             source_import_id,library_visible) VALUES(?1,2,NULL,NULL,NULL,'Recovered transcripts',\
+             '',NULL,'Transcripts retained after their library episode disappeared.',NULL,'[]',\
+             ?2,1,NULL,NULL,NULL,?3,0)",
+            params![
+                artifact.podcast_id.into_bytes().as_slice(),
+                observed_at_ms,
+                source_import_id.as_slice(),
+            ],
+        )
+        .map_err(|error| StorageError::sqlite("create orphan transcript podcast", error))?;
+    let episode_key = hex_id(artifact.episode_id.into_bytes());
+    transaction
+        .execute(
+            "INSERT OR IGNORE INTO pod0_episodes(episode_id,podcast_id,publisher_guid,title,\
+             description,published_at_ms,duration_ms,enclosure_url,enclosure_mime_type,image_url,\
+             resume_position_ms,completion_code,completion_cause_code,completion_cause_wire_code,\
+             is_starred,download_code,download_wire_code,download_ref_version,download_ref_key,\
+             download_byte_count,transcript_code,transcript_wire_code,transcript_ref_version,\
+             transcript_ref_key,transcript_source_code,transcript_source_wire_code,legacy_payload,\
+             source_import_id) VALUES(?1,?2,?3,'Recovered transcript','',0,NULL,?4,NULL,NULL,0,1,\
+             NULL,NULL,0,1,NULL,NULL,NULL,NULL,1,NULL,NULL,NULL,NULL,NULL,X'7B7D',?5)",
+            params![
+                artifact.episode_id.into_bytes().as_slice(),
+                artifact.podcast_id.into_bytes().as_slice(),
+                format!("orphan-transcript:{episode_key}"),
+                format!("pod0-orphan-transcript://{episode_key}"),
+                source_import_id.as_slice(),
+            ],
+        )
+        .map_err(|error| StorageError::sqlite("create orphan transcript episode", error))?;
+    transaction
+        .execute(
+            "INSERT OR IGNORE INTO pod0_episode_feed_metadata(episode_id,persons_json,\
+             sound_bites_json) VALUES(?1,'[]','[]')",
+            [artifact.episode_id.into_bytes().as_slice()],
+        )
+        .map_err(|error| StorageError::sqlite("create orphan transcript metadata", error))?;
+    Ok(())
+}
+
+fn hex_id(bytes: [u8; 16]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
 fn next_target_revision(

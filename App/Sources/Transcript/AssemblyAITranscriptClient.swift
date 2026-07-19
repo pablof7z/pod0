@@ -38,9 +38,9 @@ actor AssemblyAITranscriptClient {
         case missingAPIKey
         case invalidAudioURL
         case invalidResponse
-        case http(status: Int, body: String?)
-        case decoding(String)
-        case remoteError(String)
+        case http(status: Int)
+        case decoding
+        case remoteError
         case cancelled
         case timedOut
 
@@ -54,20 +54,20 @@ actor AssemblyAITranscriptClient {
                 return "Couldn't find the episode audio to transcribe."
             case .invalidResponse:
                 return "AssemblyAI returned an unexpected response. Try again in a moment."
-            case .http(let status, _) where status == 401 || status == 403:
+            case .http(let status) where status == 401 || status == 403:
                 return "AssemblyAI rejected your API key. Update it in Settings > Intelligence > Providers."
-            case .http(let status, _) where status == 422:
+            case .http(let status) where status == 422:
                 return "AssemblyAI couldn't process the audio (file format or URL not accepted)."
-            case .http(let status, _) where status == 429:
+            case .http(let status) where status == 429:
                 return "AssemblyAI rate-limited the request. Wait a minute and retry."
-            case .http(let status, _) where status >= 500:
+            case .http(let status) where status >= 500:
                 return "AssemblyAI is having trouble (\(status)). Retry in a few minutes."
-            case .http(let status, _):
+            case .http(let status):
                 return "AssemblyAI returned an unexpected error (\(status))."
             case .decoding:
                 return "AssemblyAI returned a transcript shape we couldn't read."
-            case .remoteError(let message):
-                return "AssemblyAI couldn't transcribe this episode: \(message)"
+            case .remoteError:
+                return "AssemblyAI couldn't transcribe this episode."
             case .cancelled:
                 return "Transcription cancelled."
             case .timedOut:
@@ -181,8 +181,8 @@ actor AssemblyAITranscriptClient {
         do {
             payload = try Self.decoder.decode(AssemblyAITranscriptPayload.self, from: data)
         } catch {
-            Self.logger.error("AssemblyAI submit decode failed: \(String(describing: error), privacy: .private)")
-            throw TranscribeError.decoding("Could not decode /v2/transcript submit response: \(error)")
+            Self.logger.error("AssemblyAI submit response could not be decoded")
+            throw TranscribeError.decoding
         }
 
         guard let id = payload.id else {
@@ -245,8 +245,8 @@ actor AssemblyAITranscriptClient {
             do {
                 payload = try Self.decoder.decode(AssemblyAITranscriptPayload.self, from: data)
             } catch {
-                Self.logger.error("AssemblyAI poll decode failed: \(String(describing: error), privacy: .private)")
-                throw TranscribeError.decoding("Could not decode /v2/transcript poll response: \(error)")
+                Self.logger.error("AssemblyAI poll response could not be decoded")
+                throw TranscribeError.decoding
             }
 
             switch payload.status {
@@ -273,7 +273,7 @@ actor AssemblyAITranscriptClient {
             case "error":
                 let message = payload.error ?? "AssemblyAI returned status=error without a message."
                 Self.logger.error("poll attempt \(attempt, privacy: .public): error - \(message, privacy: .public)")
-                throw TranscribeError.remoteError(message)
+                throw TranscribeError.remoteError
             default:
                 // queued / processing / nil / unexpected - keep polling.
                 break
@@ -290,7 +290,7 @@ actor AssemblyAITranscriptClient {
     static func assertOK(response: URLResponse, data: Data) throws {
         guard let http = response as? HTTPURLResponse else { throw TranscribeError.invalidResponse }
         guard (200..<300).contains(http.statusCode) else {
-            throw TranscribeError.http(status: http.statusCode, body: String(data: data, encoding: .utf8))
+            throw TranscribeError.http(status: http.statusCode)
         }
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 import os.log
 
 // MARK: - TranscriptIngestService
@@ -28,7 +29,6 @@ final class TranscriptIngestService {
     private let whisper: OpenRouterWhisperClient
     private let assemblyAI: AssemblyAITranscriptClient
     private let appleSTT: AppleNativeSTTClient
-    let store: TranscriptStore
     private let elevenLabsKey: @Sendable () -> String?
     private let openRouterKey: @Sendable () -> String?
     private let assemblyAIKey: @Sendable () -> String?
@@ -41,7 +41,6 @@ final class TranscriptIngestService {
         whisper: OpenRouterWhisperClient = OpenRouterWhisperClient(),
         assemblyAI: AssemblyAITranscriptClient = AssemblyAITranscriptClient(),
         appleSTT: AppleNativeSTTClient = AppleNativeSTTClient(),
-        store: TranscriptStore = .shared,
         elevenLabsKey: @escaping @Sendable () -> String? = {
             (try? ElevenLabsCredentialStore.apiKey()).flatMap { $0.isEmpty ? nil : $0 }
         },
@@ -57,7 +56,6 @@ final class TranscriptIngestService {
         self.whisper = whisper
         self.assemblyAI = assemblyAI
         self.appleSTT = appleSTT
-        self.store = store
         self.elevenLabsKey = elevenLabsKey
         self.openRouterKey = openRouterKey
         self.assemblyAIKey = assemblyAIKey
@@ -104,13 +102,16 @@ final class TranscriptIngestService {
                     episodeID: episode.id,
                     language: "en-US"
                 )
-                return try persistJobTranscript(
+                return try await persistJobTranscript(
                     transcript, context: context
                 )
             } catch is CancellationError {
                 throw JobFailure(classification: .cancelled, message: "Publisher fetch cancelled")
             } catch {
-                Self.logger.notice("Publisher transcript unavailable; falling back: \(error, privacy: .public)")
+                let failure = ProductFailure.classify(error)
+                Self.logger.notice(
+                    "Publisher transcript unavailable; falling back: \(failure.code.rawValue, privacy: .public)"
+                )
             }
         }
 
@@ -227,56 +228,37 @@ final class TranscriptIngestService {
         } catch is CancellationError {
             throw JobFailure(classification: .cancelled, message: "Transcription cancelled")
         } catch { throw JobFailure.classify(error) }
-        return try persistJobTranscript(transcript, context: context)
-    }
-
-    /// Once a resumable paid provider identity exists it is authoritative.
-    /// Retrying the publisher fallback first could overwrite that identity
-    /// and turn a safe poll into a duplicate provider submission after a kill.
-    nonisolated static func shouldAttemptPublisher(
-        userInitiated: Bool,
-        externalProvider: String?,
-        externalOperationID: String?
-    ) -> Bool {
-        guard !userInitiated else { return false }
-        return (externalProvider == nil && externalOperationID == nil)
-            || externalProvider == "publisherTranscript"
-    }
-
-    /// Resolves durable provider evidence without ever laundering a
-    /// mismatched or half-recorded submission into a fresh paid request.
-    nonisolated static func resumableExternalOperationID(
-        expectedProvider: String,
-        recordedProvider: String?,
-        recordedID: String?
-    ) throws -> String? {
-        if recordedProvider == nil, recordedID == nil { return nil }
-        if recordedProvider == "publisherTranscript" { return nil }
-        guard recordedProvider == expectedProvider,
-              let recordedID,
-              !recordedID.isBlank else {
-            throw JobFailure(
-                classification: .unsafeToRetry,
-                message: "Recorded provider identity does not match the transcript executor."
-            )
-        }
-        return recordedID
-    }
-
-    nonisolated private static func externalProviderName(for provider: STTProvider) -> String {
-        switch provider {
-        case .assemblyAI: "assemblyAI"
-        case .elevenLabsScribe: "elevenLabsScribe"
-        case .openRouterWhisper: "openRouterWhisper"
-        case .appleNative: "appleNative"
-        }
+        return try await persistJobTranscript(transcript, context: context)
     }
 
     private func persistJobTranscript(
         _ transcript: Transcript,
         context: JobAttemptContext
-    ) throws -> String {
-        try store.stage(transcript, context: context)
+    ) async throws -> String {
+        guard let episode = appStore?.episode(id: transcript.episodeID),
+              let sharedLibrary = appStore?.sharedLibrary else {
+            throw JobFailure(
+                classification: .missingDependency,
+                message: "Shared transcript core is unavailable."
+            )
+        }
+        let payload = try Self.transcriptEncoder.encode(transcript)
+        let result = try await sharedLibrary.submitTranscriptObservationOffMain(
+            transcript,
+            context: TranscriptObservationContext(
+                podcastID: episode.podcastID,
+                sourceRevision: context.job.inputVersion,
+                sourcePayloadDigest: ArtifactRepository.hash(payload),
+                provider: TranscriptObservationMapper.defaultProvider(for: transcript.source)
+            ),
+            commandID: CommandId(uuid: context.job.id),
+            cancellationID: CancellationId(uuid: context.leaseToken)
+        )
+        let receipt = try SharedTranscriptWorkflowReceipt(
+            summary: result.summary,
+            inputVersion: context.job.inputVersion
+        )
+        return try Self.transcriptEncoder.encode(receipt).base64EncodedString()
     }
 
     // MARK: - Helpers
@@ -285,4 +267,11 @@ final class TranscriptIngestService {
         if case .ready = state { return true }
         return false
     }
+
+    private static let transcriptEncoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.sortedKeys]
+        return encoder
+    }()
 }

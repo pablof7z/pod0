@@ -73,21 +73,19 @@ fun qualifyEmptyClipImport(source: File, root: File) {
         1_721_322_000_005L,
     ))
 
-    val facade = Pod0Facade.open(coreStore)
-    try {
-        val clips = facade.snapshot(ProjectionRequest(
-            ProjectionScope.Clips(ClipProjectionScope.All),
-            0u,
-            20u.toUShort(),
-        )).projection
-        check(clips is Projection.Clips && clips.value.clips.isEmpty())
-        val notes = facade.snapshot(ProjectionRequest(
-            ProjectionScope.Notes(NoteProjectionScope.All),
-            0u,
-            20u.toUShort(),
-        )).projection
-        check(notes is Projection.Notes && notes.value.notes.isEmpty())
-    } finally {
-        facade.destroy()
-    }
+}
+
+fun qualifyEmptyKnowledgeRuntime(facade: Pod0Facade) {
+    val clips = facade.snapshot(ProjectionRequest(
+        ProjectionScope.Clips(ClipProjectionScope.All),
+        0u,
+        20u.toUShort(),
+    )).projection
+    check(clips is Projection.Clips && clips.value.clips.isEmpty())
+    val notes = facade.snapshot(ProjectionRequest(
+        ProjectionScope.Notes(NoteProjectionScope.All),
+        0u,
+        20u.toUShort(),
+    )).projection
+    check(notes is Projection.Notes && notes.value.notes.isEmpty())
 }

@@ -220,8 +220,8 @@ final class ChapterArtifactsJobExecutor: JobExecutor {
         guard store.episode(id: context.job.subjectID) != nil else { return .obsolete }
         do {
             let output = try await AIChapterCompiler.shared.compile(
-                episodeID: context.job.subjectID,
-                store: store
+                episodeID: context.job.subjectID, store: store,
+                transcriptReader: store.transcriptReader
             )
             let manifestHash = try DerivedArtifactStagingStore.shared.stageChapters(
                 output,

@@ -36,6 +36,9 @@ const ARTIFACT_COLUMNS_V1: &[&str] = &[
 pub(crate) fn source_kind(
     connection: &Connection,
 ) -> Result<LegacyTranscriptSourceKind, StorageError> {
+    if !table_exists(connection, "artifacts")? {
+        return Ok(LegacyTranscriptSourceKind::ArtifactSqliteV1);
+    }
     let columns = columns(connection, "artifacts")?;
     let v0 = names(ARTIFACT_COLUMNS_V0);
     let v1 = names(ARTIFACT_COLUMNS_V1);

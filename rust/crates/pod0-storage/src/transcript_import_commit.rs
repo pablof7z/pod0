@@ -6,6 +6,9 @@ use rusqlite::{OptionalExtension, Transaction, TransactionBehavior, params};
 use crate::StorageError;
 use crate::legacy_transcript_source::inspect_transcript_source;
 use crate::migration_db::configure;
+use crate::transcript_authority::{
+    advance_listening_revision, synchronize_episode_transcript_readiness,
+};
 use crate::transcript_import_discard::discard_transcript_import_with_diagnostic;
 use crate::transcript_import_model::{
     StoredTranscriptImportEntry, TranscriptImportReport, TranscriptImportState,
@@ -119,9 +122,20 @@ where
         return Err(StorageError::TranscriptImportConflict);
     }
     require_reserved_revision(&transaction, current.target_revision.value)?;
-    for entry in &entries {
+    for entry in entries.iter().filter(|entry| entry.is_selected) {
         commit_selection(&transaction, import_id, entry, committed_at_ms)?;
     }
+    transaction
+        .execute(
+            "DELETE FROM pod0_transcript_selection WHERE source_import_id IS NULL \
+             OR source_import_id<>?1",
+            [import_id.into_bytes().as_slice()],
+        )
+        .map_err(|error| {
+            StorageError::sqlite("remove pre-authority transcript selections", error)
+        })?;
+    synchronize_episode_transcript_readiness(&transaction)?;
+    let _ = advance_listening_revision(&transaction)?;
     transaction
         .execute(
             "UPDATE pod0_transcript_state SET collection_revision=?1,source_import_id=?2 \
@@ -144,7 +158,8 @@ where
     }
     let marker_changed = transaction
         .execute(
-            "UPDATE pod0_domain_cutovers SET committed_at_ms=?1 WHERE domain='transcripts' \
+            "UPDATE pod0_domain_cutovers SET state='authoritative',committed_at_ms=?1 \
+             WHERE domain='transcripts' \
              AND state='staged' AND source_generation=?2 AND core_revision=?3",
             params![
                 committed_at_ms,
@@ -193,7 +208,7 @@ fn commit_selection(
         Some((selected_id, revision, _)) if artifact_id(&selected_id)? == entry.artifact_id => {
             revision
         }
-        Some((_, revision, Some(_))) if cutover_is_staged(transaction)? => revision
+        Some((_, revision, _)) if cutover_is_staged(transaction)? => revision
             .checked_add(1)
             .ok_or(StorageError::TranscriptImportConflict)?,
         Some(_) => return Err(StorageError::TranscriptImportConflict),

@@ -51,7 +51,7 @@ impl LibraryStore {
                  ON CONFLICT(podcast_id) DO UPDATE SET title=excluded.title,author=excluded.author,\
                  image_url=excluded.image_url,description=excluded.description,\
                  language=excluded.language,categories_json=excluded.categories_json,\
-                 title_is_placeholder=0",
+                 title_is_placeholder=0,library_visible=1",
                 params![
                     podcast.podcast_id.into_bytes().as_slice(),
                     podcast.title,
@@ -159,6 +159,12 @@ fn ensure_external_parent(
         .optional()
         .map_err(|error| StorageError::sqlite("find external episode parent", error))?;
     if requested_exists.is_some() {
+        transaction
+            .execute(
+                "UPDATE pod0_podcasts SET library_visible=1 WHERE podcast_id=?1",
+                [requested_id.into_bytes().as_slice()],
+            )
+            .map_err(|error| StorageError::sqlite("restore external episode parent", error))?;
         return Ok(requested_id);
     }
 
@@ -186,6 +192,13 @@ fn ensure_external_parent(
     let resolved = resolve_podcast_id(transaction, &placeholder)?;
     if resolved == requested_id {
         upsert_podcast(transaction, &placeholder)?;
+    } else {
+        transaction
+            .execute(
+                "UPDATE pod0_podcasts SET library_visible=1 WHERE podcast_id=?1",
+                [resolved.into_bytes().as_slice()],
+            )
+            .map_err(|error| StorageError::sqlite("restore resolved episode parent", error))?;
     }
     Ok(resolved)
 }

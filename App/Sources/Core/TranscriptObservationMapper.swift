@@ -13,8 +13,8 @@ struct TranscriptObservationContext: Sendable, Equatable {
     let provider: String?
 }
 
-/// Temporary native observation adapter for #96. It is removed or narrowed
-/// to a native capability DTO when Rust becomes authoritative in #97.
+/// Maps raw native/provider observations into the typed Rust command contract.
+/// It owns no durable state or transcript-selection policy.
 enum TranscriptObservationMapper {
     static func map(
         _ transcript: Transcript,

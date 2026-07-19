@@ -15,6 +15,9 @@ final class AppStateStore {
     let productSignals: any ProductSignalSink
     @ObservationIgnored private(set) var sharedLibrary: SharedLibraryClient?
     @ObservationIgnored private(set) var sharedLibraryUnavailableReason: String?
+    var transcriptReader: any TranscriptReading {
+        sharedLibrary?.authoritativeTranscriptReader ?? UnavailableTranscriptReader.shared
+    }
     /// Chapter the user long-pressed in `PlayerChaptersScrollView`. Drained
     /// by `AgentChatSession.init` and prefilled into the composer; cleared
     /// by the same call so a later sheet re-open starts blank. Carries no
@@ -159,7 +162,7 @@ final class AppStateStore {
         case .ready(let client):
             sharedLibrary = client
             client.attach(store: self)
-        case .authoritativeUnavailable(let reason):
+        case .authoritativeUnavailable(let reason, _):
             sharedLibraryUnavailableReason = reason
         }
         // The `state.didSet` above doesn't fire from inside `init` until all

@@ -50,11 +50,10 @@ final class UserFacingFailureTests: XCTestCase {
     }
 
     func testTypedProviderFailuresMapWithoutRenderingRawBodiesOrInternals() {
-        let raw = "SECRET body /private/file token=request-id"
         let cases: [(Error, ProductFailureCode)] = [
-            (ElevenLabsScribeClient.ScribeError.http(status: 401, body: raw), .missingCredential),
-            (ElevenLabsScribeClient.ScribeError.http(status: 429, body: raw), .rateLimited),
-            (AssemblyAITranscriptClient.TranscribeError.http(status: 422, body: raw), .unsupportedFormat),
+            (ElevenLabsScribeClient.ScribeError.http(status: 401), .missingCredential),
+            (ElevenLabsScribeClient.ScribeError.http(status: 429), .rateLimited),
+            (AssemblyAITranscriptClient.TranscribeError.http(status: 422), .unsupportedFormat),
             (OpenRouterWhisperClient.WhisperError.timedOut, .network),
             (URLError(.notConnectedToInternet), .offline),
             (CancellationError(), .cancelled),

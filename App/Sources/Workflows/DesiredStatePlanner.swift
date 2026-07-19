@@ -69,11 +69,19 @@ struct FeedDiscoveryPayload: Codable, Sendable, Equatable {
     let policyVersion: String
 }
 
+struct TranscriptWorkflowSnapshot: Sendable, Equatable {
+    let episodeID: UUID
+    let sourceRevision: String
+    let contentDigest: String
+    let selectionRevision: UInt64
+}
+
 struct DesiredStatePlanner: Sendable {
     struct Input: Sendable {
         let episodes: [Episode]
         let settings: Settings
         let artifacts: [ArtifactRecord]
+        let transcripts: [TranscriptWorkflowSnapshot]
         let transcriptDesiredEpisodeIDs: Set<UUID>
         let scheduledTasks: [AgentScheduledTask]
         let now: Date
@@ -84,12 +92,15 @@ struct DesiredStatePlanner: Sendable {
             input.artifacts.map { (ArtifactKey(kind: $0.kind, subjectID: $0.subjectID), $0) },
             uniquingKeysWith: { _, newest in newest }
         )
+        let transcripts = Dictionary(
+            uniqueKeysWithValues: input.transcripts.map { ($0.episodeID, $0) }
+        )
         var jobs: [DesiredJob] = []
         for episode in input.episodes {
             let audioVersion = Self.audioVersion(episode)
-            let transcript = artifacts[ArtifactKey(kind: .transcript, subjectID: episode.id)]
+            let transcript = transcripts[episode.id]
             if input.transcriptDesiredEpisodeIDs.contains(episode.id),
-               !Self.isCurrent(transcript, inputVersion: audioVersion) {
+               transcript?.sourceRevision != audioVersion {
                 let provider = episode.requestedTranscriptProvider ?? input.settings.sttProvider
                 let payload = TranscriptJobPayload(
                     provider: provider,
@@ -129,7 +140,7 @@ struct DesiredStatePlanner: Sendable {
                 ))
             }
 
-            guard let transcript, transcript.integrity == .available else { continue }
+            guard let transcript, transcript.sourceRevision == audioVersion else { continue }
             let indexVersion = Self.indexInputVersion(transcript, settings: input.settings)
             let semantic = artifacts[ArtifactKey(kind: .semanticIndex, subjectID: episode.id)]
             if !Self.isCurrent(semantic, inputVersion: indexVersion) {
@@ -242,16 +253,22 @@ struct DesiredStatePlanner: Sendable {
         }
     }
 
-    private static func indexInputVersion(_ transcript: ArtifactRecord, settings: Settings) -> String {
+    private static func indexInputVersion(
+        _ transcript: TranscriptWorkflowSnapshot,
+        settings: Settings
+    ) -> String {
         ArtifactRepository.version(parts: [
-            transcript.contentHash, settings.embeddingsModel,
+            transcript.contentDigest, settings.embeddingsModel,
             "rust-evidence-v1", "core-recall-index-v1",
         ])
     }
 
-    private static func compilerInputVersion(_ transcript: ArtifactRecord, settings: Settings) -> String {
+    private static func compilerInputVersion(
+        _ transcript: TranscriptWorkflowSnapshot,
+        settings: Settings
+    ) -> String {
         ArtifactRepository.version(parts: [
-            transcript.contentHash, settings.chapterCompilationModel, "chapter-prompt-v1",
+            transcript.contentDigest, settings.chapterCompilationModel, "chapter-prompt-v1",
         ])
     }
 

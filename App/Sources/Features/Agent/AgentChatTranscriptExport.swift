@@ -36,7 +36,7 @@ enum AgentChatTranscriptExport {
             try markdown.write(to: url, atomically: true, encoding: .utf8)
             return url
         } catch {
-            logger.error("AgentChatTranscriptExport: failed to write tmp file: \(error, privacy: .public)")
+            logger.error("AgentChatTranscriptExport: failed to write temporary file")
             return nil
         }
     }

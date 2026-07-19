@@ -11,8 +11,8 @@ import os.log
 //   .speech   — text → ElevenLabs TTS → temp mp3 → stitched in
 //   .snippet  — existing episode clip → time-trimmed via ComposedAudioStitcher
 //
-// After stitching, a `Transcript` is built from the turn text and saved to
-// `TranscriptStore`. Chapters are synthesised directly from the turn structure
+// After stitching, a `Transcript` observation is committed to the shared core.
+// Chapters are synthesised directly from the turn structure
 // (consecutive speech turns collapse into a single chapter; each snippet turn
 // gets its own chapter with the source episode's artwork and `sourceEpisodeID`).
 // `adSegments` is set to `[]` so `AIChapterCompiler` skips re-processing.

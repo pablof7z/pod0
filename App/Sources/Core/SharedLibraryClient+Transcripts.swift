@@ -1,20 +1,46 @@
 import Foundation
 import Pod0Core
-import os.log
 
-struct SharedTranscriptShadowResult: Sendable, Equatable {
+struct SharedTranscriptCommitResult: Sendable, Equatable {
     let receipt: TranscriptCommitReceipt
-    let mismatches: Set<TranscriptShadowMismatch>
+    let summary: TranscriptSummaryProjection
 }
 
-private let sharedTranscriptShadowLogger = Logger.app("SharedTranscriptShadow")
+struct SharedTranscriptWorkflowReceipt: Codable, Sendable, Equatable {
+    static let currentSchemaVersion = 1
+
+    let schemaVersion: Int
+    let episodeID: UUID
+    let inputVersion: String
+    let artifactID: String
+    let transcriptVersionID: String
+    let transcriptContentDigest: String
+    let artifactIntegrityDigest: String
+    let selectionRevision: UInt64
+
+    init(summary: TranscriptSummaryProjection, inputVersion: String) throws {
+        guard let episodeID = summary.episodeId.uuid else {
+            throw SharedLibraryError.unavailable
+        }
+        self.schemaVersion = Self.currentSchemaVersion
+        self.episodeID = episodeID
+        self.inputVersion = inputVersion
+        self.artifactID = summary.artifactId.stableString
+        self.transcriptVersionID = summary.transcriptVersionId.stableString
+        self.transcriptContentDigest = summary.transcriptContentDigest.stableString
+        self.artifactIntegrityDigest = summary.artifactIntegrityDigest.stableString
+        self.selectionRevision = summary.selectionRevision.value
+    }
+}
 
 extension SharedLibraryClient {
     nonisolated func submitTranscriptObservation(
         _ transcript: Transcript,
         context: TranscriptObservationContext,
+        commandID: CommandId = CommandId(uuid: UUID()),
+        cancellationID: CancellationId = CancellationId(uuid: UUID()),
         expectedSelectionRevision explicitRevision: StateRevision? = nil
-    ) throws -> SharedTranscriptShadowResult {
+    ) throws -> SharedTranscriptCommitResult {
         try Task.checkCancellation()
         let artifact = try TranscriptObservationMapper.map(transcript, context: context)
         let currentProjection = try transcriptProjection(
@@ -26,7 +52,6 @@ extension SharedLibraryClient {
         let expectedRevision = explicitRevision
             ?? currentProjection.summary?.selectionRevision
             ?? StateRevision(value: 0)
-        let commandID = CommandId(uuid: UUID())
         let request = TranscriptCommitRequest(
             commandId: commandID,
             expectedSelectionRevision: expectedRevision,
@@ -45,7 +70,7 @@ extension SharedLibraryClient {
         try Task.checkCancellation()
         facade.dispatch(command: CommandEnvelope(
             commandId: commandID,
-            cancellationId: CancellationId(uuid: UUID()),
+            cancellationId: cancellationID,
             expectedRevision: nil,
             command: .commitTranscript(
                 expectedSelectionRevision: expectedRevision,
@@ -69,34 +94,72 @@ extension SharedLibraryClient {
             throw SharedLibraryError.unavailable
         }
         guard case .transcriptCommitted(let receipt) = operation.result,
-              receipt == qualifiedReceipt,
-              committedProjection.summary?.selectionRevision == receipt.selectionRevision,
-              let candidate = try SharedTranscriptReader(facade: facade)
-                .loadThrowing(episodeID: transcript.episodeID),
-              let summary = committedProjection.summary
+              receipt.commandId == qualifiedReceipt.commandId,
+              receipt.artifactId == qualifiedReceipt.artifactId,
+              receipt.transcriptVersionId == qualifiedReceipt.transcriptVersionId,
+              receipt.transcriptContentDigest == qualifiedReceipt.transcriptContentDigest,
+              receipt.artifactIntegrityDigest == qualifiedReceipt.artifactIntegrityDigest,
+              receipt.speakerCount == qualifiedReceipt.speakerCount,
+              receipt.segmentCount == qualifiedReceipt.segmentCount,
+              receipt.wordCount == qualifiedReceipt.wordCount,
+              let summary = committedProjection.summary,
+              summary.selectionRevision.value >= receipt.selectionRevision.value,
+              summary.artifactId == receipt.artifactId
         else { throw SharedLibraryError.unavailable }
-
-        let mismatches = SharedTranscriptShadowComparator.compare(
-            authoritative: transcript,
-            podcastID: context.podcastID,
-            context: context,
-            summary: summary,
-            candidate: candidate
-        )
-        logShadowResult(
-            episodeID: transcript.episodeID,
-            receipt: receipt,
-            mismatches: mismatches
-        )
-        return SharedTranscriptShadowResult(receipt: receipt, mismatches: mismatches)
+        return SharedTranscriptCommitResult(receipt: receipt, summary: summary)
     }
 
     nonisolated func submitTranscriptObservationOffMain(
         _ transcript: Transcript,
-        context: TranscriptObservationContext
-    ) async throws -> SharedTranscriptShadowResult {
+        context: TranscriptObservationContext,
+        commandID: CommandId,
+        cancellationID: CancellationId
+    ) async throws -> SharedTranscriptCommitResult {
         await Task.yield()
-        return try submitTranscriptObservation(transcript, context: context)
+        return try submitTranscriptObservation(
+            transcript,
+            context: context,
+            commandID: commandID,
+            cancellationID: cancellationID
+        )
+    }
+
+    nonisolated func verifyTranscriptWorkflowReceipt(
+        _ receipt: SharedTranscriptWorkflowReceipt
+    ) -> Bool {
+        guard receipt.schemaVersion == SharedTranscriptWorkflowReceipt.currentSchemaVersion,
+              let projection = try? transcriptProjection(
+                episodeID: receipt.episodeID,
+                scope: .summary,
+                offset: 0,
+                maxItems: 1
+              ),
+              let summary = projection.summary
+        else { return false }
+        return summary.artifactId.stableString == receipt.artifactID
+            && summary.transcriptVersionId.stableString == receipt.transcriptVersionID
+            && summary.transcriptContentDigest.stableString == receipt.transcriptContentDigest
+            && summary.artifactIntegrityDigest.stableString == receipt.artifactIntegrityDigest
+            && summary.selectionRevision.value == receipt.selectionRevision
+    }
+
+    nonisolated func transcriptWorkflowSnapshots(
+        episodeIDs: [UUID]
+    ) -> [TranscriptWorkflowSnapshot] {
+        episodeIDs.compactMap { episodeID in
+            guard let projection = try? transcriptProjection(
+                episodeID: episodeID,
+                scope: .summary,
+                offset: 0,
+                maxItems: 1
+            ), let summary = projection.summary else { return nil }
+            return TranscriptWorkflowSnapshot(
+                episodeID: episodeID,
+                sourceRevision: summary.sourceRevision,
+                contentDigest: summary.transcriptContentDigest.stableString,
+                selectionRevision: summary.selectionRevision.value
+            )
+        }
     }
 
     nonisolated private func transcriptProjection(
@@ -118,56 +181,5 @@ extension SharedLibraryClient {
         }
         if let failure = projection.failure { throw SharedLibraryError(failure.code) }
         return projection
-    }
-
-    nonisolated private func logShadowResult(
-        episodeID: UUID,
-        receipt: TranscriptCommitReceipt,
-        mismatches: Set<TranscriptShadowMismatch>
-    ) {
-        let categories = mismatches.map(\.rawValue).sorted().joined(separator: ",")
-        if mismatches.isEmpty {
-            sharedTranscriptShadowLogger.debug(
-                "transcript shadow matched episode=\(episodeID, privacy: .public) artifact=\(receipt.artifactId.stableString, privacy: .public) digest=\(receipt.transcriptContentDigest.stableString, privacy: .public)"
-            )
-        } else {
-            sharedTranscriptShadowLogger.notice(
-                "transcript shadow mismatch episode=\(episodeID, privacy: .public) artifact=\(receipt.artifactId.stableString, privacy: .public) digest=\(receipt.transcriptContentDigest.stableString, privacy: .public) categories=\(categories, privacy: .public)"
-            )
-        }
-    }
-}
-
-@MainActor
-enum SharedTranscriptShadowObserver {
-    private static let logger = Logger.app("SharedTranscriptShadow")
-
-    static func observe(
-        transcript: Transcript,
-        podcastID: UUID,
-        sourceRevision: String,
-        sourcePayloadDigest: String,
-        provider: String?,
-        client: SharedLibraryClient?
-    ) async {
-        guard let client else {
-            logger.notice("transcript shadow core unavailable; Swift authority retained")
-            return
-        }
-        do {
-            _ = try await client.submitTranscriptObservationOffMain(
-                transcript,
-                context: TranscriptObservationContext(
-                    podcastID: podcastID,
-                    sourceRevision: sourceRevision,
-                    sourcePayloadDigest: sourcePayloadDigest,
-                    provider: provider
-                )
-            )
-        } catch is CancellationError {
-            logger.notice("transcript shadow commit cancelled before dispatch")
-        } catch {
-            logger.notice("transcript shadow commit deferred; Swift authority retained")
-        }
     }
 }

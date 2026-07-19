@@ -1,5 +1,4 @@
 use crate::runtime_playback_test_support::PlaybackFixture;
-use crate::runtime_recall_test_support::{RecallFixture, evidence_input, evidence_policy};
 use crate::*;
 
 fn request(scope: NoteProjectionScope) -> ProjectionRequest {
@@ -193,93 +192,4 @@ fn note_validation_and_command_replay_have_typed_deterministic_outcomes() {
         operation(&replayed, 11).result,
         Some(OperationResult::NoteCreated { .. })
     ));
-}
-
-#[test]
-fn note_evidence_is_captured_from_the_selected_generation_and_never_retargeted() {
-    let fixture = RecallFixture::new(true);
-    let target = Some(NoteTarget::Episode {
-        episode_id: fixture.base.episode_id,
-        position_milliseconds: 15_000,
-    });
-    fixture.base.facade.dispatch(envelope(
-        20,
-        ApplicationCommand::CreateNote {
-            text: "Evidence one".to_owned(),
-            kind: NoteKind::Free,
-            author: NoteAuthor::User,
-            target,
-        },
-    ));
-    let first = notes(&fixture.base.facade, NoteProjectionScope::All).notes[0].clone();
-    let first_evidence = first.evidence.expect("selected span should be attached");
-    assert_eq!(first_evidence.generation_id, fixture.artifact.generation_id);
-    assert!(fixture.artifact.spans.iter().any(|span| {
-        span.span_id == first_evidence.span_id
-            && span.start_milliseconds <= 15_000
-            && span.end_milliseconds > 15_000
-    }));
-
-    let mut next_input = evidence_input(&fixture.base);
-    next_input.source_revision = "recall-fixture-v2".to_owned();
-    next_input.source_payload_digest = ContentDigest::from_bytes([0x77; 32]);
-    next_input.segments[0].text.push_str(" Updated.");
-    let next_artifact =
-        pod0_application::build_evidence_artifact(&next_input, evidence_policy()).unwrap();
-    let evidence_store = pod0_storage::EvidenceStore::open(&fixture.base.target).unwrap();
-    evidence_store
-        .stage_artifact(
-            CommandId::from_parts(70, 1),
-            &next_artifact,
-            1_800_000_001_000,
-        )
-        .unwrap();
-    evidence_store
-        .verify_generation(
-            CommandId::from_parts(70, 2),
-            next_artifact.generation_id,
-            1_800_000_001_001,
-        )
-        .unwrap();
-    evidence_store
-        .select_generation(
-            CommandId::from_parts(70, 3),
-            fixture.base.episode_id,
-            next_artifact.generation_id,
-            1_800_000_001_002,
-        )
-        .unwrap();
-
-    fixture.base.facade.dispatch(envelope(
-        21,
-        ApplicationCommand::UpdateNote {
-            note_id: first.note_id,
-            expected_note_revision: first.revision,
-            text: "Evidence one, edited".to_owned(),
-            kind: first.kind,
-            target,
-        },
-    ));
-    let updated = notes(&fixture.base.facade, NoteProjectionScope::All).notes[0].clone();
-    assert_eq!(updated.evidence, Some(first_evidence));
-
-    fixture.base.facade.dispatch(envelope(
-        22,
-        ApplicationCommand::CreateNote {
-            text: "Evidence two".to_owned(),
-            kind: NoteKind::Free,
-            author: NoteAuthor::User,
-            target,
-        },
-    ));
-    let projected = notes(&fixture.base.facade, NoteProjectionScope::All);
-    let second = projected
-        .notes
-        .iter()
-        .find(|note| note.text == "Evidence two")
-        .unwrap();
-    assert_eq!(
-        second.evidence.map(|value| value.generation_id),
-        Some(next_artifact.generation_id)
-    );
 }

@@ -4,7 +4,11 @@ extension Persistence {
     /// Prevents a legacy metadata write from racing a staged shared-core
     /// verification and its single-writer cutover marker.
     func withSharedArtifactMigrationLock<T>(_ body: () throws -> T) rethrows -> T {
-        try writeLock.withLock(body)
+        try writeLock.withLock {
+            WorkflowSQLite.databaseLock.lock()
+            defer { WorkflowSQLite.databaseLock.unlock() }
+            return try body()
+        }
     }
 
     /// After verified cutover, AppState clips are an in-memory projection only.

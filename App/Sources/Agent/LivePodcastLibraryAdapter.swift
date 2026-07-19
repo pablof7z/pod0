@@ -12,7 +12,7 @@ final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendab
         downloadService: EpisodeDownloadService,
         transcriptService: TranscriptIngestService,
         refreshService: SubscriptionRefreshService,
-        transcriptReader: any TranscriptReading = TranscriptStore.shared
+        transcriptReader: any TranscriptReading
     ) {
         self.store = store
         self.downloadService = downloadService

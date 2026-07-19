@@ -48,15 +48,15 @@ actor ElevenLabsScribeClient {
         case missingAPIKey
         case invalidResponse
         case invalidAudioURL
-        case http(status: Int, body: String?)
-        case decoding(String)
+        case http(status: Int)
+        case decoding
         case cancelled
         case timedOut
 
         /// User-facing copy. These messages land directly in the
         /// `TranscribingInProgressView` "Failed" panel — without
         /// `LocalizedError` the user would see raw Swift case names like
-        /// `http(status: 401, body: Optional("..."))`.
+        /// `http(status: 401)`.
         var errorDescription: String? {
             switch self {
             case .missingAPIKey:
@@ -65,15 +65,15 @@ actor ElevenLabsScribeClient {
                 return "ElevenLabs returned an unexpected response. Try again in a moment."
             case .invalidAudioURL:
                 return "Couldn't find the episode audio to transcribe."
-            case .http(let status, _) where status == 401 || status == 403:
+            case .http(let status) where status == 401 || status == 403:
                 return "ElevenLabs rejected your API key. Update it in Settings → Intelligence → Providers."
-            case .http(let status, _) where status == 422:
+            case .http(let status) where status == 422:
                 return "ElevenLabs couldn't process the audio (file format or URL not accepted)."
-            case .http(let status, _) where status == 429:
+            case .http(let status) where status == 429:
                 return "ElevenLabs rate-limited the request. Wait a minute and retry."
-            case .http(let status, _) where status >= 500:
+            case .http(let status) where status >= 500:
                 return "ElevenLabs is having trouble (\(status)). Retry in a few minutes."
-            case .http(let status, _):
+            case .http(let status):
                 return "ElevenLabs returned an unexpected error (\(status))."
             case .decoding:
                 return "ElevenLabs returned a transcript shape we couldn't read."
@@ -175,8 +175,8 @@ actor ElevenLabsScribeClient {
         do {
             raw = try Self.decoder.decode(ScribeRawResult.self, from: data)
         } catch {
-            Self.logger.error("Scribe response decode failed: \(String(describing: error), privacy: .private)")
-            throw ScribeError.decoding("Could not decode /speech-to-text response: \(error)")
+            Self.logger.error("Scribe response could not be decoded")
+            throw ScribeError.decoding
         }
 
         // Scribe's response has no cost or `audio_duration` field. Approximate
@@ -228,9 +228,7 @@ actor ElevenLabsScribeClient {
             do {
                 raw = try Self.decoder.decode(ScribeRawResult.self, from: data)
             } catch {
-                throw ScribeError.decoding(
-                    "Could not decode recovered transcript \(job.requestID): \(error)"
-                )
+                throw ScribeError.decoding
             }
         }
         return Transcript.fromScribeRaw(raw, episodeID: job.episodeID, languageHint: job.languageHint)
@@ -335,7 +333,7 @@ actor ElevenLabsScribeClient {
     static func assertOK(response: URLResponse, data: Data) throws {
         guard let http = response as? HTTPURLResponse else { throw ScribeError.invalidResponse }
         guard (200..<300).contains(http.statusCode) else {
-            throw ScribeError.http(status: http.statusCode, body: String(data: data, encoding: .utf8))
+            throw ScribeError.http(status: http.statusCode)
         }
     }
 }

@@ -61,7 +61,10 @@ fn fresh_store_migrates_transactionally_to_current() {
     let report = fixture.migrate_to(CURRENT_SCHEMA_VERSION, 1).unwrap();
 
     assert_eq!(report.from_version, 0);
-    assert_eq!(report.applied_versions, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    assert_eq!(
+        report.applied_versions,
+        vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    );
     assert!(report.backup.is_none());
     assert_eq!(
         fixture.migrator.inspect(&fixture.store).migration_state,
@@ -125,6 +128,27 @@ fn transcript_artifact_schema_upgrade_is_one_step_and_preserves_v9_backup() {
         )
         .unwrap();
     assert_eq!(state, (1, 0, None));
+}
+
+#[test]
+fn retained_library_artifact_upgrade_is_one_step_and_preserves_v10_backup() {
+    let fixture = Fixture::new();
+    fixture.migrate_to(10, 1).unwrap();
+
+    let report = fixture.migrate_to(11, 2).unwrap();
+
+    assert_eq!(report.applied_versions, [11]);
+    assert_eq!(report.backup.unwrap().schema_version, 10);
+    let connection = rusqlite::Connection::open(&fixture.store).unwrap();
+    let visible: i64 = connection
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('pod0_podcasts') \
+             WHERE name='library_visible'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(visible, 1);
 }
 
 #[test]

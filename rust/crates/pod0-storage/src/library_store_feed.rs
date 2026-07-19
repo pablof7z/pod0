@@ -103,7 +103,8 @@ pub(crate) fn upsert_podcast(
          title_is_placeholder=excluded.title_is_placeholder,\
          last_refreshed_at_ms=COALESCE(excluded.last_refreshed_at_ms,pod0_podcasts.last_refreshed_at_ms),\
          etag=COALESCE(excluded.etag,pod0_podcasts.etag),\
-         last_modified=COALESCE(excluded.last_modified,pod0_podcasts.last_modified)",
+         last_modified=COALESCE(excluded.last_modified,pod0_podcasts.last_modified),\
+         library_visible=1",
         params![podcast.podcast_id.into_bytes().as_slice(), kind, kind_wire,
             feed.map(|value| value.source_url.as_str()),
             feed.map(|value| value.comparison_key.as_str()), podcast.title, podcast.author,

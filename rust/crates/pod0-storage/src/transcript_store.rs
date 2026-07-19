@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior};
 
 use crate::migration_db::{configure, open_connection, user_version, validate_open_database};
+use crate::transcript_authority::require_transcript_authoritative;
 use crate::{CURRENT_SCHEMA_VERSION, StorageError};
 
 #[derive(Clone, Debug)]
@@ -14,6 +15,15 @@ impl TranscriptStore {
     pub fn open(path: &Path) -> Result<Self, StorageError> {
         let connection = open_current(path, true)?;
         require_valid_foreign_keys(&connection)?;
+        Ok(Self {
+            path: path.to_owned(),
+        })
+    }
+
+    pub fn open_authoritative(path: &Path) -> Result<Self, StorageError> {
+        let connection = open_current(path, true)?;
+        require_valid_foreign_keys(&connection)?;
+        require_transcript_authoritative(&connection)?;
         Ok(Self {
             path: path.to_owned(),
         })
@@ -42,6 +52,11 @@ impl TranscriptStore {
             .map_err(|error| StorageError::sqlite("commit transcript command", error))?;
         Ok(output)
     }
+}
+
+pub fn transcript_store_is_authoritative(path: &Path) -> Result<bool, StorageError> {
+    let connection = open_current(path, true)?;
+    crate::transcript_authority::transcript_is_authoritative(&connection)
 }
 
 fn open_current(path: &Path, read_only: bool) -> Result<Connection, StorageError> {

@@ -141,24 +141,24 @@ final class DerivedArtifactFencingTests: XCTestCase {
         let subject = UUID()
         let repository = ArtifactRepository(fileURL: databaseURL)
         let first = ArtifactRecord(
-            kind: .transcript,
+            kind: .semanticIndex,
             subjectID: subject,
             inputVersion: "audio-v1",
-            outputVersion: "transcript-v1",
+            outputVersion: "index-v1",
             contentHash: "hash-v1",
-            location: "/tmp/transcript-v1.json",
+            location: "/tmp/index-v1.sqlite",
             origin: "test",
             schemaVersion: 1,
             integrity: .available,
             verifiedAt: Date(timeIntervalSince1970: 1_000)
         )
         let second = ArtifactRecord(
-            kind: .transcript,
+            kind: .semanticIndex,
             subjectID: subject,
             inputVersion: "audio-v2",
-            outputVersion: "transcript-v2",
+            outputVersion: "index-v2",
             contentHash: "hash-v2",
-            location: "/tmp/transcript-v2.json",
+            location: "/tmp/index-v2.sqlite",
             origin: "test",
             schemaVersion: 1,
             integrity: .available,
@@ -169,11 +169,11 @@ final class DerivedArtifactFencingTests: XCTestCase {
         try repository.adopt(second)
 
         XCTAssertEqual(
-            try repository.current(kind: .transcript, subjectID: subject)?.outputVersion,
-            "transcript-v2"
+            try repository.current(kind: .semanticIndex, subjectID: subject)?.outputVersion,
+            "index-v2"
         )
-        let history = try repository.history(kind: .transcript, subjectID: subject)
-        XCTAssertEqual(history.map(\.outputVersion), ["transcript-v2", "transcript-v1"])
+        let history = try repository.history(kind: .semanticIndex, subjectID: subject)
+        XCTAssertEqual(history.map(\.outputVersion), ["index-v2", "index-v1"])
         XCTAssertEqual(history.map(\.integrity), [.available, .stale])
     }
 
@@ -181,24 +181,24 @@ final class DerivedArtifactFencingTests: XCTestCase {
         enum InjectedFailure: Error { case stop }
         let subject = UUID()
         let first = ArtifactRecord(
-            kind: .transcript,
+            kind: .semanticIndex,
             subjectID: subject,
             inputVersion: "audio-v1",
-            outputVersion: "transcript-v1",
+            outputVersion: "index-v1",
             contentHash: "hash-v1",
-            location: "/tmp/transcript-v1.json",
+            location: "/tmp/index-v1.sqlite",
             origin: "publisher",
             schemaVersion: 1,
             integrity: .available,
             verifiedAt: Date(timeIntervalSince1970: 1_000)
         )
         let second = ArtifactRecord(
-            kind: .transcript,
+            kind: .semanticIndex,
             subjectID: subject,
             inputVersion: "audio-v2",
-            outputVersion: "transcript-v2",
+            outputVersion: "index-v2",
             contentHash: "hash-v2",
-            location: "/tmp/transcript-v2.json",
+            location: "/tmp/index-v2.sqlite",
             origin: "scribe",
             schemaVersion: 1,
             integrity: .available,
@@ -213,7 +213,7 @@ final class DerivedArtifactFencingTests: XCTestCase {
         XCTAssertThrowsError(try failing.adopt(second))
         XCTAssertEqual(
             try ArtifactRepository(fileURL: databaseURL).current(
-                kind: .transcript,
+                kind: .semanticIndex,
                 subjectID: subject
             ),
             first

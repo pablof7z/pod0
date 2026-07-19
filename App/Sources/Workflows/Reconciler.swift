@@ -22,6 +22,7 @@ struct Reconciler {
             episodes: appStore.state.episodes,
             settings: appStore.state.settings,
             artifacts: try artifacts.all(),
+            transcripts: transcriptSnapshots(),
             transcriptDesiredEpisodeIDs: try transcriptDesiredIDs(),
             scheduledTasks: appStore.scheduledTasks,
             now: now()
@@ -161,10 +162,14 @@ struct Reconciler {
             openRouterKey: TranscriptIngestService.shared.resolvedOpenRouterKey(),
             assemblyAIKey: TranscriptIngestService.shared.resolvedAssemblyAIKey()
         ).map(\.id))
-        ids.formUnion(try artifacts.all().compactMap { artifact in
-            artifact.kind == .transcript ? artifact.subjectID : nil
-        })
+        ids.formUnion(transcriptSnapshots().map(\.episodeID))
         return ids
+    }
+
+    private func transcriptSnapshots() -> [TranscriptWorkflowSnapshot] {
+        appStore.sharedLibrary?.transcriptWorkflowSnapshots(
+            episodeIDs: appStore.state.episodes.map(\.id)
+        ) ?? []
     }
 
     private func prerequisitesAreAvailable(for job: WorkJob) -> Bool {

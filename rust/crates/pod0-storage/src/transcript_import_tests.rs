@@ -95,15 +95,9 @@ fn selected_transcript_is_backed_up_staged_verified_committed_and_reopened_lossl
     assert_eq!(artifact.segments[0].words[1].end_milliseconds, 48_100);
     assert!(artifact.segments[1].words.is_empty());
     assert_eq!(artifact.provenance.provider, None);
-    assert_eq!(
-        artifact.source_revision,
-        format!(
-            "selected-json-sha256:{}",
-            hex(artifact.provenance.source_payload_digest)
-        )
-    );
+    assert_eq!(artifact.source_revision, "input-v1");
     artifact.verify_integrity().unwrap();
-    assert_eq!(cutover_state(&fixture), Some("staged".to_owned()));
+    assert_eq!(cutover_state(&fixture), Some("authoritative".to_owned()));
     let replayed_commit = fixture.commit(command(10)).unwrap();
     assert_eq!(replayed_commit.plan, committed.plan);
     assert_eq!(replayed_commit.target_revision, committed.target_revision);
@@ -161,14 +155,7 @@ fn already_current_shared_artifact_is_adopted_without_duplicate_selection() {
         inspect_transcript_source(&fixture.import.source, &fixture.transcript_root).unwrap();
     let legacy_artifact = load_inspected_transcript_artifact(&inspected.entries[0], 0).unwrap();
     let store = TranscriptStore::open(&fixture.import.target).unwrap();
-    store
-        .commit_and_select(
-            command(12),
-            pod0_domain::StateRevision::INITIAL,
-            artifact_input(&legacy_artifact),
-            1_800_000_000_000,
-        )
-        .unwrap();
+    seed_pre_authority_selection(&fixture.import.target, artifact_input(&legacy_artifact));
 
     let staged = fixture.stage(command(13)).unwrap();
     assert_eq!(staged.target_revision.value, 2);
@@ -186,6 +173,46 @@ fn already_current_shared_artifact_is_adopted_without_duplicate_selection() {
     assert_eq!(
         store.selected_artifact(legacy_artifact.episode_id).unwrap(),
         Some(legacy_artifact)
+    );
+}
+
+#[test]
+fn verified_legacy_import_supersedes_a_different_shadow_selection_atomically() {
+    let fixture = TranscriptImportFixture::current();
+    let shadow = seed_pre_authority_selection(
+        &fixture.import.target,
+        crate::transcript_store_test_support::input("shadow-selected-observation"),
+    );
+    let episode_id = shadow.episode_id;
+
+    let staged = fixture.stage(command(14)).unwrap();
+    assert_eq!(staged.target_revision.value, 2);
+    fixture.verify(command(14)).unwrap();
+    fixture.commit(command(14)).unwrap();
+
+    let store = TranscriptStore::open_authoritative(&fixture.import.target).unwrap();
+    let selected = store.selected_artifact(episode_id).unwrap().unwrap();
+    assert_ne!(selected.artifact_id, shadow.artifact_id);
+    assert_eq!(selected.segments[0].text, "Small habits become durable");
+    assert_eq!(
+        store
+            .selected_summary(episode_id)
+            .unwrap()
+            .unwrap()
+            .selection_revision
+            .value,
+        2
+    );
+    assert_eq!(
+        Connection::open(&fixture.import.target)
+            .unwrap()
+            .query_row(
+                "SELECT COUNT(*) FROM pod0_transcript_artifacts",
+                [],
+                |row| { row.get::<_, u32>(0) }
+            )
+            .unwrap(),
+        2
     );
 }
 
@@ -233,14 +260,6 @@ fn cutover_state(fixture: &TranscriptImportFixture) -> Option<String> {
             |row| row.get(0),
         )
         .ok()
-}
-
-fn hex(value: pod0_domain::ContentDigest) -> String {
-    value
-        .into_bytes()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
 }
 
 fn artifact_input(

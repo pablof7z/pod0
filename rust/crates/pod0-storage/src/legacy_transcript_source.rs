@@ -1,4 +1,3 @@
-use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -16,7 +15,7 @@ use crate::transcript_import_model::{
 
 const MAX_SELECTED_TRANSCRIPT_BYTES: u64 = 64 * 1_024 * 1_024;
 const MAX_TOTAL_TRANSCRIPT_BYTES: u64 = 4 * 1_024 * 1_024 * 1_024;
-const MAX_SELECTED_TRANSCRIPTS: usize = 50_000;
+const MAX_TRANSCRIPT_ARTIFACTS: usize = 50_000;
 
 pub fn inspect_legacy_transcript_source(
     database_path: &Path,
@@ -30,17 +29,21 @@ pub(crate) fn inspect_transcript_source(
     transcript_root: &Path,
 ) -> Result<InspectedTranscriptSource, StorageError> {
     let database = inspect_legacy_transcript_database(database_path)?;
-    if database.rows.len() > MAX_SELECTED_TRANSCRIPTS {
+    let available = database
+        .rows
+        .iter()
+        .filter(|row| row.integrity == "available")
+        .collect::<Vec<_>>();
+    if available.len() > MAX_TRANSCRIPT_ARTIFACTS {
         return Err(StorageError::ImportLimitExceeded {
-            entity: "selected transcripts",
+            entity: "transcript artifacts",
         });
     }
     let mut total_bytes = 0_u64;
-    let mut transcript_ids = BTreeSet::new();
-    let mut entries = Vec::with_capacity(database.rows.len());
-    for (offset, row) in database.rows.iter().enumerate() {
+    let mut entries = Vec::with_capacity(available.len());
+    for (offset, row) in available.into_iter().enumerate() {
         let index = u32::try_from(offset).map_err(|_| StorageError::ImportLimitExceeded {
-            entity: "selected transcripts",
+            entity: "transcript artifacts",
         })?;
         let path = selected_path(row, transcript_root, index)?;
         let bytes = read_selected_file(&path, index)?;
@@ -63,15 +66,20 @@ pub(crate) fn inspect_transcript_source(
         }
         let raw: RawTranscript = serde_json::from_slice(&bytes)
             .map_err(|_| invalid(index, "selected transcript JSON is not recognized"))?;
-        let transcript_id = uuid_bytes(&raw.id, "transcript", index)?;
-        if !transcript_ids.insert(transcript_id) {
-            return Err(invalid(index, "transcript identity is duplicated"));
-        }
-        let artifact =
-            transform_transcript(raw, row.episode_id, row.podcast_id, file_digest, index)?;
+        let _ = uuid_bytes(&raw.id, "transcript", index)?;
+        let artifact = transform_transcript(
+            raw,
+            row.episode_id,
+            row.podcast_id,
+            &row.input_version,
+            file_digest,
+            index,
+        )?;
         entries.push(InspectedTranscriptEntry {
             episode_id: row.episode_id,
             podcast_id: row.podcast_id,
+            is_orphan: row.is_orphan,
+            is_selected: row.is_selected,
             legacy_row_id: row.row_id,
             legacy_schema_version: row.artifact_schema_version,
             legacy_input_version: row.input_version.clone(),
@@ -90,17 +98,22 @@ pub(crate) fn inspect_transcript_source(
         });
     }
     let source_selection_digest = selection_digest(database.database_digest, &entries);
+    let artifact_count =
+        u32::try_from(entries.len()).map_err(|_| StorageError::ImportLimitExceeded {
+            entity: "transcript artifacts",
+        })?;
+    let selected_count = u32::try_from(entries.iter().filter(|entry| entry.is_selected).count())
+        .map_err(|_| StorageError::ImportLimitExceeded {
+            entity: "selected transcripts",
+        })?;
     Ok(InspectedTranscriptSource {
         plan: TranscriptImportPlan {
             source_kind: database.source_kind,
             source_generation: database.source_generation,
             source_database_digest: database.database_digest,
             source_selection_digest,
-            selected_count: u32::try_from(entries.len()).map_err(|_| {
-                StorageError::ImportLimitExceeded {
-                    entity: "selected transcripts",
-                }
-            })?,
+            artifact_count,
+            selected_count,
         },
         entries,
     })
@@ -142,6 +155,7 @@ pub(crate) fn load_inspected_transcript_artifact(
         raw,
         entry.episode_id,
         entry.podcast_id,
+        &entry.legacy_input_version,
         entry.selected_file_digest,
         index,
     )?;

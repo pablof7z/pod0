@@ -53,6 +53,8 @@ mod note_migration;
 mod runtime;
 mod runtime_clip_commands;
 #[cfg(test)]
+mod runtime_clip_evidence_tests;
+#[cfg(test)]
 mod runtime_clip_replay_tests;
 #[cfg(test)]
 mod runtime_clip_tests;
@@ -67,6 +69,8 @@ mod runtime_evidence_state;
 mod runtime_evidence_tests;
 mod runtime_feed_commands;
 mod runtime_note_commands;
+#[cfg(test)]
+mod runtime_note_evidence_tests;
 #[cfg(test)]
 mod runtime_note_tests;
 mod runtime_observations;
@@ -100,6 +104,8 @@ mod runtime_transcript_commands;
 mod runtime_transcript_projection;
 #[cfg(test)]
 mod runtime_transcript_tests;
+mod transcript_migration;
+mod transcript_migration_mapping;
 pub use clip_migration::{
     LegacyClipBackupEvidence, LegacyClipImportPlan, LegacyClipImportReport,
     LegacyClipImportVerification, LegacyClipMigrationError, commit_staged_legacy_clip_import,
@@ -119,6 +125,16 @@ pub use note_migration::{
     inspect_legacy_note_source, read_staged_legacy_note_import, stage_legacy_note_import,
 };
 pub use runtime::{FacadeOpenError, Pod0Facade};
+pub use transcript_migration::{
+    LegacyTranscriptBackupEvidence, LegacyTranscriptImportPlan, LegacyTranscriptImportReport,
+    LegacyTranscriptImportState, LegacyTranscriptImportVerification,
+    LegacyTranscriptMigrationError, LegacyTranscriptRollbackExportReport,
+    LegacyTranscriptSourceKind, commit_staged_legacy_transcript_import,
+    discard_staged_legacy_transcript_import, export_legacy_transcript_rollback,
+    inspect_legacy_transcript_source, read_active_legacy_transcript_import,
+    shared_transcript_store_is_authoritative, stage_legacy_transcript_import,
+    verify_staged_legacy_transcript_import,
+};
 
 /// Event-driven projection delivery. The generated Swift and Kotlin callback
 /// interfaces derive from this single app-owned surface.

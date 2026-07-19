@@ -11,12 +11,12 @@ use crate::legacy_format::{finite_milliseconds, timestamp_milliseconds, uuid_byt
 use crate::legacy_transcript_format::{
     RawTranscript, RawTranscriptSegment, RawTranscriptSpeaker, RawTranscriptWord,
 };
-use crate::transcript_import_digest::hex_digest;
 
 pub(crate) fn transform_transcript(
     raw: RawTranscript,
     expected_episode_id: EpisodeId,
     podcast_id: PodcastId,
+    source_revision: &str,
     file_digest: ContentDigest,
     index: u32,
 ) -> Result<TranscriptArtifact, StorageError> {
@@ -42,7 +42,7 @@ pub(crate) fn transform_transcript(
     TranscriptArtifact::seal(TranscriptArtifactInput {
         episode_id,
         podcast_id,
-        source_revision: format!("selected-json-sha256:{}", hex_digest(file_digest)),
+        source_revision: source_revision.to_owned(),
         source,
         provider: None,
         source_payload_digest: file_digest,

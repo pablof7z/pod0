@@ -7,6 +7,12 @@ extension AppStateStore {
         let projectedEpisodes = projection.episodes.compactMap { record in
             record.episodeId.uuid.flatMap { record.swiftValue(preserving: existingEpisodes[$0]) }
         }
+        let newlyReadyTranscriptIDs = projectedEpisodes.compactMap { episode -> UUID? in
+            guard Self.isTranscriptReady(episode.transcriptState),
+                  !Self.isTranscriptReady(existingEpisodes[episode.id]?.transcriptState)
+            else { return nil }
+            return episode.id
+        }
         performMutationBatch {
             mutateState {
                 $0.podcasts = projectedPodcasts
@@ -14,6 +20,13 @@ extension AppStateStore {
                 $0.episodes = projectedEpisodes
             }
             invalidateEpisodeProjections()
+        }
+        for episodeID in newlyReadyTranscriptIDs {
+            recordProductSignal(.once(
+                name: .transcriptReady,
+                subjectID: episodeID,
+                outcome: .ready
+            ))
         }
     }
 
@@ -27,5 +40,10 @@ extension AppStateStore {
     /// The sole production assignment to the replaceable native clip read model.
     func applySharedClips(_ projection: SharedClipSnapshot) {
         mutateState { $0.clips = projection.clips }
+    }
+
+    private static func isTranscriptReady(_ state: TranscriptState?) -> Bool {
+        guard case .ready = state else { return false }
+        return true
     }
 }

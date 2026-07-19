@@ -71,16 +71,19 @@ impl<C: TranscriptImportClock> TranscriptImporter<C> {
         if inspected.plan != *expected_plan {
             return Err(StorageError::SourceChanged);
         }
-        let backup = create_or_reuse_transcript_backups(
-            source_database_path,
-            legacy_backup_root,
-            &inspected,
-        )?;
         CoreStoreMigrator::new(ClockRef(&self.clock)).migrate(
             target_path,
             CURRENT_SCHEMA_VERSION,
             target_schema_backup_path,
             target_store_id,
+        )?;
+        if crate::transcript_store_is_authoritative(target_path)? {
+            return Err(StorageError::CutoverAlreadyAuthoritative);
+        }
+        let backup = create_or_reuse_transcript_backups(
+            source_database_path,
+            legacy_backup_root,
+            &inspected,
         )?;
         let current = inspect_transcript_source(source_database_path, transcript_root)?;
         if current != inspected {

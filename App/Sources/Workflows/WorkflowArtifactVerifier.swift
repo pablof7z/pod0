@@ -28,25 +28,23 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
         case .feedDiscovery:
             records = [record(.feedDiscovery, job: job, output: outputVersion, hash: outputVersion)]
         case .transcriptIngest:
-            guard let transcript = await fileVerifier.verifiedStagedTranscript(
-                episodeID: job.subjectID,
-                leaseToken: leaseToken,
-                expectedHash: outputVersion
-            ) else { return false }
-            let selectedURL = try await fileVerifier.promoteTranscript(
-                episodeID: job.subjectID,
-                leaseToken: leaseToken,
-                contentHash: outputVersion
+            guard let receiptData = Data(base64Encoded: outputVersion),
+                  let receipt = try? Self.decoder.decode(
+                    SharedTranscriptWorkflowReceipt.self,
+                    from: receiptData
+                  ),
+                  receipt.episodeID == job.subjectID,
+                  receipt.inputVersion == job.inputVersion,
+                  appStore.sharedLibrary?.verifyTranscriptWorkflowReceipt(receipt) == true
+            else { return false }
+            try artifacts.completeWithoutArtifact(
+                outputVersion: outputVersion,
+                completingJobID: job.id,
+                leaseToken: leaseToken
             )
-            records = [record(
-                .transcript, job: job, output: outputVersion,
-                hash: outputVersion,
-                location: selectedURL.path,
-                origin: Self.projectedSource(transcript.source).rawValue
-            )]
+            return true
         case .transcriptIndex:
-            guard await fileVerifier.verifiedTranscript(episodeID: job.subjectID) != nil,
-                  let receiptData = Data(base64Encoded: outputVersion),
+            guard let receiptData = Data(base64Encoded: outputVersion),
                   let receipt = try? Self.decoder.decode(
                     SharedEvidenceReceipt.self, from: receiptData
                   ),
@@ -175,6 +173,9 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
                 episodes: appStore.state.episodes,
                 settings: appStore.state.settings,
                 artifacts: try artifacts.all(),
+                transcripts: appStore.sharedLibrary?.transcriptWorkflowSnapshots(
+                    episodeIDs: appStore.state.episodes.map(\.id)
+                ) ?? [],
                 transcriptDesiredEpisodeIDs: Set(appStore.state.episodes.map(\.id)),
                 scheduledTasks: appStore.scheduledTasks,
                 now: Date()
@@ -187,27 +188,6 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
 
     private func applyStableProjection(for record: ArtifactRecord, job: WorkJob) async {
         switch record.kind {
-        case .transcript:
-            guard let location = record.location,
-                  let data = await fileVerifier.verifiedTranscript(episodeID: record.subjectID),
-                  ArtifactRepository.hash(data) == record.contentHash,
-                  let transcript = try? Self.decoder.decode(Transcript.self, from: data),
-                  let episode = appStore.episode(id: record.subjectID)
-            else { return }
-            await SharedTranscriptShadowObserver.observe(
-                transcript: transcript,
-                podcastID: episode.podcastID,
-                sourceRevision: record.inputVersion,
-                sourcePayloadDigest: record.contentHash,
-                provider: TranscriptObservationMapper.defaultProvider(for: transcript.source),
-                client: appStore.sharedLibrary
-            )
-            _ = appStore.applyTranscriptEvent(.artifactCommitted(.init(
-                inputVersion: record.inputVersion,
-                contentHash: record.contentHash,
-                fileURL: URL(fileURLWithPath: location),
-                source: TranscriptState.Source(rawValue: record.origin ?? "") ?? .other
-            )), episodeID: record.subjectID)
         case .downloadFile:
             guard let location = record.location,
                   let attributes = try? FileManager.default.attributesOfItem(atPath: location),
@@ -266,15 +246,4 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
         return decoder
     }()
 
-    private static func projectedSource(
-        _ source: TranscriptSource
-    ) -> TranscriptState.Source {
-        switch source {
-        case .publisher: .publisher
-        case .scribeV1: .scribe
-        case .whisper: .whisper
-        case .onDevice: .onDevice
-        case .assemblyAI: .assemblyAI
-        }
-    }
 }

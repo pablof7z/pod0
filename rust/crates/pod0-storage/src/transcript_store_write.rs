@@ -5,6 +5,10 @@ use pod0_domain::{
 use rusqlite::{OptionalExtension, Transaction, params};
 
 use crate::StorageError;
+use crate::transcript_authority::{
+    advance_listening_revision, require_transcript_authoritative, set_episode_transcript_available,
+    set_transcript_cutover_revision,
+};
 use crate::transcript_store::TranscriptStore;
 use crate::transcript_store_codec::{
     artifact_error, artifact_id, digest, episode_id, optional_artifact_id, revision, version_id,
@@ -58,7 +62,8 @@ impl TranscriptStore {
             .map_err(|_| StorageError::TranscriptRevisionConflict)?;
 
         self.write(|transaction| {
-            if let Some(receipt) = replay(transaction, command_id, fingerprint)? {
+            require_transcript_authoritative(transaction)?;
+            if let Some(receipt) = replay(transaction, command_id, fingerprint, &artifact)? {
                 return Ok(receipt);
             }
             require_episode_parent(transaction, &artifact)?;
@@ -89,6 +94,9 @@ impl TranscriptStore {
                 )
                 .map_err(|error| StorageError::sqlite("select transcript artifact", error))?;
             advance_collection_revision(transaction)?;
+            set_episode_transcript_available(transaction, &artifact)?;
+            let _ = advance_listening_revision(transaction)?;
+            set_transcript_cutover_revision(transaction, resulting_revision)?;
             let receipt = receipt(
                 command_id,
                 fingerprint,
@@ -165,7 +173,8 @@ fn advance_collection_revision(transaction: &Transaction<'_>) -> Result<(), Stor
 fn replay(
     transaction: &Transaction<'_>,
     command_id: CommandId,
-    expected_fingerprint: pod0_domain::ContentDigest,
+    requested_fingerprint: pod0_domain::ContentDigest,
+    requested_artifact: &TranscriptArtifact,
 ) -> Result<Option<TranscriptCommitStorageReceipt>, StorageError> {
     let row = transaction
         .query_row(
@@ -195,7 +204,7 @@ fn replay(
     let stored_artifact_id = artifact_id(&row.3)?;
     let stored_version_id = version_id(&row.4)?;
     let stored_expected = revision(row.5)?;
-    if row.0 != 1 || fingerprint != expected_fingerprint {
+    if row.0 != 1 {
         return Err(StorageError::TranscriptCommandConflict);
     }
     let artifact = read_artifact_by_id(transaction, stored_artifact_id)?
@@ -205,6 +214,9 @@ fn replay(
         || transcript_command_fingerprint(stored_expected, &artifact) != fingerprint
     {
         return Err(StorageError::InvalidTranscriptArtifact);
+    }
+    if fingerprint != requested_fingerprint || artifact != *requested_artifact {
+        return Err(StorageError::TranscriptCommandConflict);
     }
     let already_selected = match row.8 {
         0 => false,

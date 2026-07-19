@@ -13,7 +13,6 @@
     {"id": "artifact-repository-access", "regex": "\\bArtifactRepository\\b"},
     {"id": "episode-sqlite-access", "regex": "\\bEpisodeSQLiteStore\\b"},
     {"id": "persistence-access", "regex": "\\bPersistence\\b"},
-    {"id": "transcript-store-access", "regex": "\\bTranscriptStore\\b"},
     {"id": "chat-history-store-access", "regex": "\\bChatHistoryStore\\b"},
     {"id": "recall-capability-access", "regex": "\\bRecallCapabilityService\\b"},
     {"id": "vector-index-access", "regex": "\\bVectorIndex\\b"},
@@ -35,20 +34,6 @@
       "issues": [60],
       "reason": "Current native history view receives the temporary Swift repository directly.",
       "deletion_target": "Consume a bounded shared conversation-history projection."
-    },
-    {
-      "file": "App/Sources/Features/Player/AutoSnip/AutoSnipController.swift",
-      "rules": ["transcript-store-access"],
-      "issues": [59, 60],
-      "reason": "Temporary product-proof controller reads transcript artifacts to choose a span before committing the clip through the shared core.",
-      "deletion_target": "Request a typed transcript-span projection when transcript state migrates; retain the existing typed Rust clip commit."
-    },
-    {
-      "file": "App/Sources/Features/EpisodeDetail/EpisodeDetailView.swift",
-      "rules": ["transcript-store-access"],
-      "issues": [59, 60],
-      "reason": "Current detail screen reads the temporary Swift transcript artifact store.",
-      "deletion_target": "Render a bounded transcript projection from the shared core."
     }
   ]
 }

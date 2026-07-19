@@ -5,7 +5,7 @@ import XCTest
 
 @MainActor
 final class CoreRecallVerticalSliceTests: XCTestCase {
-    func testPreparedTranscriptRebuildSurvivesRestartWithoutChangingSelectedFile() async throws {
+    func testPreparedTranscriptRebuildSurvivesRestartWithoutConsultingLegacyFile() async throws {
         let root = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("pod0-recall-slice-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -53,12 +53,21 @@ final class CoreRecallVerticalSliceTests: XCTestCase {
             feedHost: VerticalSliceFeedHost()
         ) else { return XCTFail("Expected an authoritative shared store") }
         await attachRecall(to: first, index: index, embedder: embedder)
+        let committed = try first.submitTranscriptObservation(
+            transcript,
+            context: TranscriptObservationContext(
+                podcastID: podcastID,
+                sourceRevision: "audio-v1",
+                sourcePayloadDigest: ArtifactRepository.hash(selectedData),
+                provider: "publisher-feed"
+            )
+        )
         let firstResult: SharedEvidenceReceipt
         do {
             firstResult = try await first.rebuildTranscriptEvidence(
                 transcript: transcript,
-                podcastID: podcastID,
-                selectedData: selectedData
+                summary: committed.summary,
+                inputVersion: "audio-v1"
             )
         } catch {
             let operation = libraryOperations(first.facade).last
@@ -108,10 +117,13 @@ final class CoreRecallVerticalSliceTests: XCTestCase {
             index: index,
             embedder: embedder
         )
+        let reopenedSummary = try XCTUnwrap(
+            try SharedTranscriptReader(facade: reopenedFacade).summary(episodeID: episodeID)
+        )
         _ = try await reopened.rebuildTranscriptEvidence(
             transcript: transcript,
-            podcastID: podcastID,
-            selectedData: selectedData
+            summary: reopenedSummary,
+            inputVersion: "audio-v1"
         )
         let reopenedRecall = await reopened.recall(
             query: "selected transcript",

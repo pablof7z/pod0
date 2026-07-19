@@ -11,14 +11,10 @@ fn stale_target_revision_is_discarded_and_can_be_restaged_safely() {
     fixture.stage(command(46)).unwrap();
     fixture.verify(command(46)).unwrap();
     let store = TranscriptStore::open(&fixture.import.target).unwrap();
-    let replacement = store
-        .commit_and_select(
-            command(47),
-            pod0_domain::StateRevision::INITIAL,
-            replacement_input("concurrent-shared-selection"),
-            1_800_000_000_001,
-        )
-        .unwrap();
+    let replacement = seed_pre_authority_selection(
+        &fixture.import.target,
+        replacement_input("concurrent-shared-selection"),
+    );
 
     assert_eq!(
         fixture.commit(command(46)),
@@ -45,7 +41,7 @@ fn stale_target_revision_is_discarded_and_can_be_restaged_safely() {
 }
 
 #[test]
-fn newer_swift_selection_supersedes_prior_import_before_authority_cutover() {
+fn authoritative_cutover_rejects_a_later_legacy_swift_selection() {
     let fixture = TranscriptImportFixture::current();
     let first_plan = fixture.plan();
     fixture.stage(command(49)).unwrap();
@@ -61,13 +57,13 @@ fn newer_swift_selection_supersedes_prior_import_before_authority_cutover() {
         first_plan.source_selection_digest,
         second_plan.source_selection_digest
     );
-    let staged = fixture.stage(command(50)).unwrap();
-    assert_eq!(staged.target_revision.value, 2);
-    fixture.verify(command(50)).unwrap();
-    fixture.commit(command(50)).unwrap();
+    assert_eq!(
+        fixture.stage(command(50)),
+        Err(StorageError::CutoverAlreadyAuthoritative)
+    );
     let second = store.selected_artifact(episode_id).unwrap().unwrap();
-    assert_ne!(second.artifact_id, first.artifact_id);
-    assert_eq!(second.segments[0].text, "a newer Swift-selected transcript");
+    assert_eq!(second.artifact_id, first.artifact_id);
+    assert_ne!(second.segments[0].text, "a newer Swift-selected transcript");
     assert_eq!(
         store
             .selected_summary(episode_id)
@@ -75,7 +71,7 @@ fn newer_swift_selection_supersedes_prior_import_before_authority_cutover() {
             .unwrap()
             .selection_revision
             .value,
-        2
+        1
     );
     assert_eq!(
         Connection::open(&fixture.import.target)
@@ -86,7 +82,7 @@ fn newer_swift_selection_supersedes_prior_import_before_authority_cutover() {
                 |row| { row.get::<_, u32>(0) }
             )
             .unwrap(),
-        2
+        1
     );
     assert_eq!(
         read_transcript_import(&fixture.import.target, command(49))
@@ -97,5 +93,6 @@ fn newer_swift_selection_supersedes_prior_import_before_authority_cutover() {
     let first_backup = database_backup_path(&fixture.backup_root, &first_plan);
     let second_backup = database_backup_path(&fixture.backup_root, &second_plan);
     assert_ne!(first_backup, second_backup);
-    assert!(first_backup.exists() && second_backup.exists());
+    assert!(first_backup.exists());
+    assert!(!second_backup.exists());
 }

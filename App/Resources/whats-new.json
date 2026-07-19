@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-19T22:47:31Z",
+      "lines": [
+        "Transcripts now survive app updates and relaunches with their full history, saved notes, clips, and exact playback context intact."
+      ]
+    },
+    {
       "shipped_at": "2026-07-19T14:13:40Z",
       "lines": [
         "Saved clips now keep their exact timestamps, transcript words, and source after Pod0 relaunches."

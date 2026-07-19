@@ -90,7 +90,7 @@ fn verify_inner(
     let report = read_import_report(&connection, import_id, true)?
         .ok_or(StorageError::TranscriptImportNotFound)?;
     Ok(TranscriptImportVerification {
-        verified_artifact_count: report.plan.selected_count,
+        verified_artifact_count: report.plan.artifact_count,
         verified_segment_count: segments,
         verified_word_count: words,
         report,

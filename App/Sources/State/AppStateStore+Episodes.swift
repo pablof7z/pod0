@@ -88,44 +88,4 @@ extension AppStateStore {
         }
     }
 
-    /// Updates the episode's transcript ingestion lifecycle.
-    @discardableResult
-    func setEpisodeTranscriptState(
-        _ id: UUID,
-        state newState: TranscriptState
-    ) -> EpisodeTransitionResult {
-        guard let episode = episode(id: id) else {
-            return rejectEpisodeTransition("Episode does not exist")
-        }
-        let inputVersion = DesiredStatePlanner.audioVersion(episode)
-        switch newState {
-        case .none:
-            return applyTranscriptEvent(
-                .artifactInvalidated(inputVersion: inputVersion), episodeID: id
-            )
-        case .ready(let source):
-            let selected = try? ArtifactRepository(
-                fileURL: persistence.episodeStore.fileURL
-            ).current(kind: .transcript, subjectID: id)
-            guard let selected,
-                  selected.integrity == .available,
-                  selected.inputVersion == inputVersion,
-                  let location = selected.location else {
-                return rejectEpisodeTransition(
-                    "Transcript state requires current selected artifact evidence"
-                )
-            }
-            let url = URL(fileURLWithPath: location)
-            guard let data = TranscriptStore.shared.verifiedData(at: url, episodeID: id),
-                  ArtifactRepository.hash(data) == selected.contentHash else {
-                return rejectEpisodeTransition("Transcript artifact is not verified")
-            }
-            return applyTranscriptEvent(.artifactCommitted(.init(
-                inputVersion: selected.inputVersion,
-                contentHash: selected.contentHash,
-                fileURL: url, source: source
-            )), episodeID: id)
-        }
-    }
-
 }

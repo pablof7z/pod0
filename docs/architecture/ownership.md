@@ -34,8 +34,9 @@ already migrated. `current_owner`, `target_owner`, `migration_issues`, and
 
 1. Listening identity/state and playback policy: #78–#83.
 2. Transcript knowledge, evidence provenance, notes, and clips: #59, #69,
-   #92–#97. The version-12 full-transcript command/projection path is
-   shadow-only through #96; #97 is the required Swift authority deletion point.
+   #92–#97. The version-12 transcript command/projection path and Rust store are
+   authoritative after #97; remaining work migrates derived knowledge policy,
+   not transcript selection back to Swift.
 3. Workflow, download, agent, artifact, and Nostr policy: #60.
 4. Native UI and platform capabilities remain native and converge on typed
    host/projection boundaries as their domains migrate.

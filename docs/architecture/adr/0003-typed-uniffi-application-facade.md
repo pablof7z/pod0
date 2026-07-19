@@ -22,8 +22,9 @@ separately bounded summary/speaker/segment/word runtime projections. A
 pure, bounded contract projection lets both bindings prove IDs, limits,
 unknown-value handling, and conversion fixtures before dispatch. Invalid
 fixture input is represented as rejected projection state, never an exception.
-Through #96 the runtime selection is shadow evidence only; #97 changes
-authority and removes the Swift durable writer.
+Issue #97 atomically activates Rust transcript authority after verified legacy
+import and removes the Swift durable writer and shadow path. Swift provider
+adapters now submit typed observations and read bounded Rust projections.
 
 ## Decision
 

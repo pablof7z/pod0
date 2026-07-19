@@ -61,7 +61,7 @@ final class AIChapterCompiler {
     /// transcript is `.ready` and (b) the episode doesn't already have
     /// cached `adSegments`. No-op otherwise. When publisher chapters already
     /// exist, the boundaries are kept and only summaries + ads are merged in.
-    func compile(episodeID: UUID, store: AppStateStore, transcriptReader: any TranscriptReading = TranscriptStore.shared) async throws -> ChapterCompilationOutput {
+    func compile(episodeID: UUID, store: AppStateStore, transcriptReader: any TranscriptReading) async throws -> ChapterCompilationOutput {
         guard let episode = store.episode(id: episodeID) else {
             throw JobFailure(classification: .invalidInput, message: "Episode no longer exists")
         }
@@ -93,7 +93,7 @@ final class AIChapterCompiler {
             apiKey = resolved
         } catch {
             Self.logger.error(
-                "compileIfNeeded(\(episodeID, privacy: .public)): credential resolve failed: \(String(describing: error), privacy: .public)"
+                "compileIfNeeded(\(episodeID, privacy: .public)): credential resolve failed: \(ProductFailure.classify(error).code.rawValue, privacy: .public)"
             )
             throw error
         }

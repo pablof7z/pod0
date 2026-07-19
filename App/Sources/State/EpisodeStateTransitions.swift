@@ -22,19 +22,6 @@ enum DownloadDomainEvent: Equatable, Sendable {
     case userRemoved
 }
 
-struct TranscriptArtifactEvidence: Equatable, Sendable {
-    let inputVersion: String
-    let contentHash: String
-    let fileURL: URL
-    let source: TranscriptState.Source
-}
-
-enum TranscriptDomainEvent: Equatable, Sendable {
-    case artifactCommitted(TranscriptArtifactEvidence)
-    case artifactAdopted(TranscriptArtifactEvidence)
-    case artifactInvalidated(inputVersion: String)
-}
-
 extension AppStateStore {
     @discardableResult
     func applyDownloadEvent(
@@ -74,51 +61,6 @@ extension AppStateStore {
         performMutationBatch {
             mutateState { $0.episodes = episodes }
             invalidateEpisodeProjections()
-        }
-        return .applied
-    }
-
-    @discardableResult
-    func applyTranscriptEvent(
-        _ event: TranscriptDomainEvent,
-        episodeID: UUID
-    ) -> EpisodeTransitionResult {
-        guard let index = state.episodes.firstIndex(where: { $0.id == episodeID }) else {
-            return rejectEpisodeTransition("Episode does not exist")
-        }
-        let episode = state.episodes[index]
-        let next: TranscriptState
-        switch event {
-        case .artifactCommitted(let evidence), .artifactAdopted(let evidence):
-            guard evidence.inputVersion == DesiredStatePlanner.audioVersion(episode) else {
-                return .stale
-            }
-            guard let data = TranscriptStore.shared.verifiedData(
-                at: evidence.fileURL, episodeID: episodeID
-            ), ArtifactRepository.hash(data) == evidence.contentHash else {
-                return rejectEpisodeTransition(
-                    "Transcript evidence is missing, unparseable, or corrupt"
-                )
-            }
-            next = .ready(source: evidence.source)
-        case .artifactInvalidated(let inputVersion):
-            guard inputVersion == DesiredStatePlanner.audioVersion(episode) else { return .stale }
-            next = .none
-        }
-        guard episode.transcriptState != next else { return .noOp }
-        var episodes = state.episodes
-        episodes[index].transcriptState = next
-        performMutationBatch {
-            mutateState { $0.episodes = episodes }
-            invalidateEpisodeProjections()
-        }
-        if case .ready = next {
-            recordProductSignal(.once(
-                name: .transcriptReady,
-                subjectID: episodeID,
-                outcome: .ready,
-                domainRevision: state.persistenceGeneration
-            ))
         }
         return .applied
     }

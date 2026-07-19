@@ -27,7 +27,7 @@ actor AppleNativeSTTClient {
         case unavailable
         case notAuthorized
         case requiresLocalFile
-        case audioFileUnreadable(String)
+        case audioFileUnreadable
         case modelUnavailableForLocale(String)
         case noResults
 
@@ -39,8 +39,8 @@ actor AppleNativeSTTClient {
                 return "Speech recognition permission is required for on-device transcription. Allow access in Settings → Privacy & Security → Speech Recognition."
             case .requiresLocalFile:
                 return "On-device transcription requires a downloaded episode. Download the episode first, then try again."
-            case .audioFileUnreadable(let detail):
-                return "Could not read the audio file: \(detail)"
+            case .audioFileUnreadable:
+                return "Could not read the audio file."
             case .modelUnavailableForLocale(let locale):
                 return "No on-device speech model is available for \(locale). The model may need to be downloaded — check Settings → General → Language & Region, or switch to ElevenLabs Scribe."
             case .noResults:
@@ -93,7 +93,7 @@ actor AppleNativeSTTClient {
         do {
             audioFile = try AVAudioFile(forReading: audioFileURL)
         } catch {
-            throw STTError.audioFileUnreadable(error.localizedDescription)
+            throw STTError.audioFileUnreadable
         }
 
         // Initialize the analyzer with the transcriber module only — do NOT

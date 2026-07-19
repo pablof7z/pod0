@@ -19,7 +19,7 @@ struct LiveEpisodeSummarizerAdapter: EpisodeSummarizerProtocol {
 
     init(
         store: AppStateStore,
-        transcriptReader: any TranscriptReading = TranscriptStore.shared
+        transcriptReader: any TranscriptReading
     ) {
         self.store = store
         self.transcriptReader = transcriptReader
@@ -76,7 +76,7 @@ struct LiveEpisodeSummarizerAdapter: EpisodeSummarizerProtocol {
     static func episodeBodyText(
         uuid: UUID,
         fallback: String,
-        transcriptReader: any TranscriptReading = TranscriptStore.shared
+        transcriptReader: any TranscriptReading
     ) async -> String {
         if let transcript = transcriptReader.load(episodeID: uuid) {
             let joined = transcript.segments.map(\.text).joined(separator: " ")

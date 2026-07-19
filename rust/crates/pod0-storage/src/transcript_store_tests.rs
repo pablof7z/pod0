@@ -3,7 +3,7 @@ use pod0_domain::{StateRevision, TranscriptArtifact};
 use rusqlite::Connection;
 
 use crate::transcript_store_test_support::*;
-use crate::{StorageError, TranscriptStore};
+use crate::{LibraryStore, StorageError, TranscriptStore};
 
 #[test]
 fn commit_reopens_losslessly_and_all_projections_are_bounded() {
@@ -154,6 +154,15 @@ fn command_replay_is_stable_after_later_selection_and_conflicts_fail_closed() {
     );
     assert_eq!(
         fixture.store.commit_and_select(
+            command(20),
+            StateRevision::new(2),
+            input("transcript-v1"),
+            1_800_000_000_022
+        ),
+        Err(StorageError::TranscriptCommandConflict)
+    );
+    assert_eq!(
+        fixture.store.commit_and_select(
             command(22),
             StateRevision::INITIAL,
             input("stale"),
@@ -170,6 +179,70 @@ fn command_replay_is_stable_after_later_selection_and_conflicts_fail_closed() {
             .selection_revision,
         StateRevision::new(2)
     );
+}
+
+#[test]
+fn unsubscribe_hides_library_but_preserves_selected_and_historical_transcripts() {
+    let fixture = TranscriptFixture::new();
+    let episode_id = input("selected").episode_id;
+    let podcast_id = input("selected").podcast_id;
+    let first = fixture
+        .store
+        .commit_and_select(
+            command(30),
+            StateRevision::INITIAL,
+            input("historical"),
+            1_800_000_000_030,
+        )
+        .unwrap();
+    let selected = fixture
+        .store
+        .commit_and_select(
+            command(31),
+            first.selection_revision,
+            input("selected"),
+            1_800_000_000_031,
+        )
+        .unwrap();
+
+    let library = LibraryStore::open_authoritative(&fixture.import.target).unwrap();
+    library
+        .unsubscribe(command(32), &"3".repeat(64), podcast_id, 1_800_000_000_032)
+        .unwrap();
+
+    let projection = library.snapshot().unwrap();
+    assert!(projection.podcasts.is_empty());
+    assert!(projection.subscriptions.is_empty());
+    assert!(projection.episodes.is_empty());
+    let reopened = TranscriptStore::open_authoritative(&fixture.import.target).unwrap();
+    assert_eq!(
+        reopened
+            .selected_summary(episode_id)
+            .unwrap()
+            .unwrap()
+            .artifact_id,
+        selected.artifact_id
+    );
+    let connection = Connection::open(&fixture.import.target).unwrap();
+    assert_eq!(table_count(&connection, "pod0_transcript_documents"), 2);
+    assert_eq!(table_count(&connection, "pod0_transcript_artifacts"), 2);
+    assert_eq!(table_count(&connection, "pod0_transcript_selection"), 1);
+    let hidden: i64 = connection
+        .query_row(
+            "SELECT library_visible FROM pod0_podcasts WHERE podcast_id=?1",
+            [podcast_id.into_bytes().as_slice()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(hidden, 0);
+}
+
+fn table_count(connection: &Connection, table: &str) -> i64 {
+    connection
+        .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+            row.get(0)
+        })
+        .unwrap()
 }
 
 fn second_artifact_episode() -> pod0_domain::EpisodeId {

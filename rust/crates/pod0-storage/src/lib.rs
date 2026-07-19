@@ -69,6 +69,7 @@ mod schema_introspection;
 mod schema_library;
 mod schema_notes;
 mod schema_transcripts;
+mod transcript_authority;
 mod transcript_backup_atomic;
 mod transcript_import;
 mod transcript_import_commit;
@@ -79,6 +80,8 @@ mod transcript_import_store_read;
 mod transcript_import_store_write;
 mod transcript_import_verification;
 mod transcript_legacy_backup;
+mod transcript_rollback_export;
+mod transcript_rollback_format;
 mod transcript_store;
 mod transcript_store_codec;
 mod transcript_store_model;
@@ -134,8 +137,13 @@ pub use transcript_import_model::{
     TranscriptImportPlan, TranscriptImportReport, TranscriptImportState,
     TranscriptImportVerification,
 };
-pub use transcript_import_store_read::{read_transcript_import, read_transcript_import_entries};
-pub use transcript_store::TranscriptStore;
+pub use transcript_import_store_read::{
+    read_active_transcript_import, read_transcript_import, read_transcript_import_entries,
+};
+pub use transcript_rollback_export::{
+    TranscriptRollbackExportReport, export_transcript_rollback_bundle,
+};
+pub use transcript_store::{TranscriptStore, transcript_store_is_authoritative};
 pub use transcript_store_model::{
     MAX_TRANSCRIPT_PROJECTION_ITEMS, StoredTranscriptSegment, StoredTranscriptSpeaker,
     StoredTranscriptWord, TranscriptCommitStorageReceipt, TranscriptPage,
@@ -171,15 +179,21 @@ mod listening_import_tests;
 #[cfg(test)]
 mod migration_tests;
 #[cfg(test)]
+mod migration_transcript_history_tests;
+#[cfg(test)]
 mod note_import_tests;
 #[cfg(test)]
 mod recovery_test_support;
 #[cfg(test)]
 mod recovery_tests;
 #[cfg(test)]
+mod transcript_import_empty_tests;
+#[cfg(test)]
 mod transcript_import_evidence_tests;
 #[cfg(test)]
 mod transcript_import_failure_tests;
+#[cfg(test)]
+mod transcript_import_history_tests;
 #[cfg(test)]
 mod transcript_import_recovery_tests;
 #[cfg(test)]
@@ -188,6 +202,8 @@ mod transcript_import_supersession_tests;
 mod transcript_import_test_support;
 #[cfg(test)]
 mod transcript_import_tests;
+#[cfg(test)]
+mod transcript_rollback_export_tests;
 #[cfg(test)]
 mod transcript_store_recovery_tests;
 #[cfg(test)]

@@ -8,7 +8,7 @@ final class DesiredStatePlannerTests: XCTestCase {
         var settings = Settings()
         let planner = DesiredStatePlanner()
         let input = DesiredStatePlanner.Input(
-            episodes: [episode], settings: settings, artifacts: [],
+            episodes: [episode], settings: settings, artifacts: [], transcripts: [],
             transcriptDesiredEpisodeIDs: [episode.id], scheduledTasks: [], now: Date()
         )
 
@@ -16,12 +16,14 @@ final class DesiredStatePlannerTests: XCTestCase {
         XCTAssertEqual(first, planner.plan(input))
         XCTAssertEqual(Set(first.map(\.kind)), [.transcriptIngest])
 
-        let transcript = artifact(
-            kind: .transcript, subject: episode.id,
-            input: DesiredStatePlanner.audioVersion(episode), output: "transcript-hash"
+        let transcript = TranscriptWorkflowSnapshot(
+            episodeID: episode.id,
+            sourceRevision: DesiredStatePlanner.audioVersion(episode),
+            contentDigest: "transcript-hash",
+            selectionRevision: 1
         )
         let withTranscript = planner.plan(.init(
-            episodes: [episode], settings: settings, artifacts: [transcript],
+            episodes: [episode], settings: settings, artifacts: [], transcripts: [transcript],
             transcriptDesiredEpisodeIDs: [episode.id], scheduledTasks: [], now: input.now
         ))
         XCTAssertEqual(
@@ -32,19 +34,18 @@ final class DesiredStatePlannerTests: XCTestCase {
         let indexJob = try XCTUnwrap(withTranscript.first { $0.kind == .transcriptIndex })
         let chapterJob = try XCTUnwrap(withTranscript.first { $0.kind == .chapterArtifacts })
         let completeArtifacts = [
-            transcript,
             artifact(kind: .semanticIndex, subject: episode.id, input: indexJob.inputVersion),
             artifact(kind: .chapters, subject: episode.id, input: chapterJob.inputVersion),
             artifact(kind: .adSegments, subject: episode.id, input: chapterJob.inputVersion),
         ]
         XCTAssertTrue(planner.plan(.init(
-            episodes: [episode], settings: settings, artifacts: completeArtifacts,
+            episodes: [episode], settings: settings, artifacts: completeArtifacts, transcripts: [transcript],
             transcriptDesiredEpisodeIDs: [episode.id], scheduledTasks: [], now: input.now
         )).isEmpty)
 
         settings.embeddingsModel = "openai/text-embedding-3-small"
         let modelChanged = planner.plan(.init(
-            episodes: [episode], settings: settings, artifacts: completeArtifacts,
+            episodes: [episode], settings: settings, artifacts: completeArtifacts, transcripts: [transcript],
             transcriptDesiredEpisodeIDs: [episode.id], scheduledTasks: [], now: input.now
         ))
         XCTAssertEqual(Set(modelChanged.map(\.kind)), [.transcriptIndex])
@@ -55,13 +56,13 @@ final class DesiredStatePlannerTests: XCTestCase {
         let planner = DesiredStatePlanner()
         let settings = Settings()
         let desired = planner.plan(.init(
-            episodes: [episode], settings: settings, artifacts: [],
+            episodes: [episode], settings: settings, artifacts: [], transcripts: [],
             transcriptDesiredEpisodeIDs: [episode.id], scheduledTasks: [], now: Date()
         ))
         XCTAssertTrue(desired.contains { $0.kind == .transcriptIngest })
 
         let disabled = planner.plan(.init(
-            episodes: [episode], settings: settings, artifacts: [],
+            episodes: [episode], settings: settings, artifacts: [], transcripts: [],
             transcriptDesiredEpisodeIDs: [], scheduledTasks: [], now: Date()
         ))
         XCTAssertFalse(disabled.contains { $0.kind == .transcriptIngest })
@@ -69,7 +70,7 @@ final class DesiredStatePlannerTests: XCTestCase {
         let oldKey = desired.first { $0.kind == .transcriptIngest }?.idempotencyKey
         episode.enclosureURL = URL(string: "https://example.com/replaced.mp3")!
         let changed = planner.plan(.init(
-            episodes: [episode], settings: settings, artifacts: [],
+            episodes: [episode], settings: settings, artifacts: [], transcripts: [],
             transcriptDesiredEpisodeIDs: [episode.id], scheduledTasks: [], now: Date()
         ))
         XCTAssertNotEqual(oldKey, changed.first { $0.kind == .transcriptIngest }?.idempotencyKey)
@@ -89,7 +90,7 @@ final class DesiredStatePlannerTests: XCTestCase {
         let settings = Settings()
         let planner = DesiredStatePlanner()
         let first = try XCTUnwrap(planner.plan(.init(
-            episodes: [], settings: settings, artifacts: [],
+            episodes: [], settings: settings, artifacts: [], transcripts: [],
             transcriptDesiredEpisodeIDs: [], scheduledTasks: [task], now: due
         )).first)
         let firstPayload = try XCTUnwrap(first.payload)
@@ -97,7 +98,7 @@ final class DesiredStatePlannerTests: XCTestCase {
         task.prompt = "Edited prompt"
         task.nextRunAt = due.addingTimeInterval(3_600)
         let edited = try XCTUnwrap(planner.plan(.init(
-            episodes: [], settings: settings, artifacts: [],
+            episodes: [], settings: settings, artifacts: [], transcripts: [],
             transcriptDesiredEpisodeIDs: [], scheduledTasks: [task],
             now: due.addingTimeInterval(3_600)
         )).first)
@@ -123,7 +124,7 @@ final class DesiredStatePlannerTests: XCTestCase {
         let first = planner.plan(.init(
             episodes: [episode],
             settings: settings,
-            artifacts: [],
+            artifacts: [], transcripts: [],
             transcriptDesiredEpisodeIDs: [],
             scheduledTasks: [],
             now: Date()
@@ -153,7 +154,7 @@ final class DesiredStatePlannerTests: XCTestCase {
         let current = planner.plan(.init(
             episodes: [episode],
             settings: settings,
-            artifacts: [artifact],
+            artifacts: [artifact], transcripts: [],
             transcriptDesiredEpisodeIDs: [],
             scheduledTasks: [],
             now: Date()
@@ -164,7 +165,7 @@ final class DesiredStatePlannerTests: XCTestCase {
         let changed = planner.plan(.init(
             episodes: [episode],
             settings: settings,
-            artifacts: [artifact],
+            artifacts: [artifact], transcripts: [],
             transcriptDesiredEpisodeIDs: [],
             scheduledTasks: [],
             now: Date()
@@ -244,7 +245,6 @@ final class WorkflowReconcilerTests: XCTestCase {
         XCTAssertEqual(try reconciler.reconcile().ensured, 1)
         XCTAssertEqual(try jobs.allJobs().map(\.kind), [.publisherChapters])
     }
-
     func testReconcilerNeverInventsOrObsoletesAuthoritativeOccurrence() throws {
         let occurrence = DesiredJob(
             idempotencyKey: "notification:authoritative", kind: .newEpisodeNotification,

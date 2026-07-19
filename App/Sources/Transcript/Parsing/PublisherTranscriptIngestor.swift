@@ -1,5 +1,4 @@
 import Foundation
-import os.log
 
 // MARK: - PublisherTranscriptIngestor
 
@@ -15,12 +14,6 @@ import os.log
 /// Anything else (HTML, plain text) returns `Error.unsupported` — those need
 /// the cloud transcription path.
 struct PublisherTranscriptIngestor: Sendable {
-
-    enum Error: Swift.Error, Sendable {
-        case unsupported(mime: String?, url: URL)
-        case fetchFailed(URL, underlying: String)
-        case parseFailed(URL, underlying: String)
-    }
 
     /// Pluggable fetch — overridable for tests so we don't hit the network.
     let fetch: @Sendable (URL) async throws -> (Data, String?)
@@ -61,14 +54,11 @@ struct PublisherTranscriptIngestor: Sendable {
         episodeID: UUID,
         language: String = "en-US"
     ) async throws -> Transcript {
-        let logger = Logger.app("PublisherTranscriptIngestor")
-        logger.debug("Fetching publisher transcript: \(url.absoluteString, privacy: .public)")
-
         let (data, responseMime): (Data, String?)
         do {
             (data, responseMime) = try await fetch(url)
         } catch {
-            throw Error.fetchFailed(url, underlying: String(describing: error))
+            throw ProductFailure.classify(error)
         }
 
         let kind = TranscriptFormat.detect(
@@ -83,28 +73,28 @@ struct PublisherTranscriptIngestor: Sendable {
             do {
                 return try PodcastingTranscriptJSONParser.parse(data, episodeID: episodeID, language: language)
             } catch {
-                throw Error.parseFailed(url, underlying: String(describing: error))
+                throw ProductFailure(code: .corruptArtifact)
             }
         case .vtt:
             guard let text = String(data: data, encoding: .utf8) else {
-                throw Error.parseFailed(url, underlying: "VTT body was not UTF-8")
+                throw ProductFailure(code: .corruptArtifact)
             }
             do {
                 return try VTTParser.parse(text, episodeID: episodeID, language: language)
             } catch {
-                throw Error.parseFailed(url, underlying: String(describing: error))
+                throw ProductFailure(code: .corruptArtifact)
             }
         case .srt:
             guard let text = String(data: data, encoding: .utf8) else {
-                throw Error.parseFailed(url, underlying: "SRT body was not UTF-8")
+                throw ProductFailure(code: .corruptArtifact)
             }
             do {
                 return try SRTParser.parse(text, episodeID: episodeID, language: language)
             } catch {
-                throw Error.parseFailed(url, underlying: String(describing: error))
+                throw ProductFailure(code: .corruptArtifact)
             }
         case .unsupported:
-            throw Error.unsupported(mime: mimeHint ?? responseMime, url: url)
+            throw ProductFailure(code: .unsupportedFormat)
         }
     }
 }

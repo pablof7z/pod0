@@ -74,7 +74,8 @@ impl Pod0Facade {
             .require_notes_authoritative()
             .map_err(FacadeOpenError::from)?;
         let evidence_store = EvidenceStore::open(path).map_err(FacadeOpenError::from)?;
-        let transcript_store = TranscriptStore::open(path).map_err(FacadeOpenError::from)?;
+        let transcript_store =
+            TranscriptStore::open_authoritative(path).map_err(FacadeOpenError::from)?;
         let state = FacadeState::open(store, evidence_store, transcript_store)
             .map_err(FacadeOpenError::from)?;
         Ok(Arc::new(Self {

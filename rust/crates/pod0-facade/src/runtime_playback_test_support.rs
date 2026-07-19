@@ -1,7 +1,13 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use rusqlite::Connection;
+
 use crate::*;
+
+#[path = "runtime_playback_observation_test_support.rs"]
+mod observations;
+pub(super) use observations::*;
 
 pub(super) struct PlaybackFixture {
     _directory: tempfile::TempDir,
@@ -93,17 +99,78 @@ impl PlaybackFixture {
             1_800_000_000_005,
         )
         .unwrap();
+        let transcript_source = directory.path().join("legacy-transcripts.sqlite");
+        Connection::open(&transcript_source)
+            .unwrap()
+            .execute_batch(
+                "CREATE TABLE artifacts(\
+                 id INTEGER PRIMARY KEY AUTOINCREMENT,kind TEXT NOT NULL,subject_id TEXT NOT NULL,\
+                 input_version TEXT NOT NULL,output_version TEXT NOT NULL,content_hash TEXT NOT NULL,\
+                 location TEXT,origin TEXT,schema_version INTEGER NOT NULL,integrity TEXT NOT NULL,\
+                 verified_at REAL NOT NULL,selected INTEGER NOT NULL,\
+                 UNIQUE(kind,subject_id,input_version,output_version));\
+                 CREATE TABLE workflow_schema_versions(component TEXT PRIMARY KEY,version INTEGER NOT NULL);\
+                 INSERT INTO workflow_schema_versions VALUES('artifacts',1);",
+            )
+            .unwrap();
+        let transcript_root = directory.path().join("legacy-transcript-artifacts");
+        let transcript_backup = directory.path().join("legacy-transcript-backups");
+        std::fs::create_dir_all(&transcript_root).unwrap();
+        let transcript_plan = inspect_legacy_transcript_source(
+            transcript_source.to_string_lossy().into_owned(),
+            transcript_root.to_string_lossy().into_owned(),
+        )
+        .unwrap();
+        stage_legacy_transcript_import(
+            transcript_source.to_string_lossy().into_owned(),
+            transcript_root.to_string_lossy().into_owned(),
+            transcript_backup.to_string_lossy().into_owned(),
+            target.to_string_lossy().into_owned(),
+            schema_backup.to_string_lossy().into_owned(),
+            transcript_plan,
+            CommandId::from_parts(9, 5),
+            CommandId::from_parts(9, 2),
+            1_800_000_000_006,
+        )
+        .unwrap();
+        verify_staged_legacy_transcript_import(
+            target.to_string_lossy().into_owned(),
+            transcript_backup.to_string_lossy().into_owned(),
+            CommandId::from_parts(9, 5),
+            1_800_000_000_007,
+        )
+        .unwrap();
+        commit_staged_legacy_transcript_import(
+            transcript_source.to_string_lossy().into_owned(),
+            transcript_root.to_string_lossy().into_owned(),
+            target.to_string_lossy().into_owned(),
+            CommandId::from_parts(9, 5),
+            1_800_000_000_008,
+        )
+        .unwrap();
         let facade = Pod0Facade::open(target.to_string_lossy().into_owned()).unwrap();
         let Projection::Library { value } = facade.snapshot(library_request()).projection else {
             panic!("expected library projection");
         };
-        Self {
+        let fixture = Self {
             _directory: directory,
             target,
             episode_id: value.episodes[0].episode_id,
             podcast_id: value.podcasts[0].podcast_id,
             facade,
+        };
+        if transcript_available {
+            fixture.facade.dispatch(CommandEnvelope {
+                command_id: CommandId::from_parts(9, 6),
+                cancellation_id: CancellationId::from_parts(9, 7),
+                expected_revision: None,
+                command: ApplicationCommand::CommitTranscript {
+                    expected_selection_revision: StateRevision::INITIAL,
+                    artifact: transcript_input(&fixture),
+                },
+            });
         }
+        fixture
     }
 
     pub(super) fn dispatch(&self, id: u64, command: PlaybackCommand) {
@@ -112,6 +179,27 @@ impl PlaybackFixture {
 
     pub(super) fn playback(&self) -> PlaybackProjection {
         playback(&self.facade)
+    }
+}
+
+fn transcript_input(fixture: &PlaybackFixture) -> TranscriptArtifactInput {
+    TranscriptArtifactInput {
+        episode_id: fixture.episode_id,
+        podcast_id: fixture.podcast_id,
+        source_revision: "fixture-transcript-v1".to_owned(),
+        source: TranscriptSource::Publisher,
+        provider: Some("fixture".to_owned()),
+        source_payload_digest: ContentDigest::from_bytes([0x45; 32]),
+        language: "en-US".to_owned(),
+        generated_at: UnixTimestampMilliseconds::new(1_800_000_000_009),
+        speakers: Vec::new(),
+        segments: vec![TranscriptArtifactSegmentInput {
+            text: "Fixture transcript evidence".to_owned(),
+            start_milliseconds: 0,
+            end_milliseconds: 1_000,
+            speaker_id: None,
+            words: Vec::new(),
+        }],
     }
 }
 
@@ -161,67 +249,4 @@ pub(super) fn add_external_episode(fixture: &PlaybackFixture, id: u64) -> Episod
         .find(|episode| episode.episode_id != fixture.episode_id)
         .unwrap()
         .episode_id
-}
-
-pub(super) fn record_playback(
-    facade: &Pod0Facade,
-    stream: &HostRequestEnvelope,
-    sequence_number: u64,
-    observed_at: i64,
-    position: u64,
-    ended: bool,
-    interruption: PlaybackInterruption,
-) {
-    record_observation(
-        facade,
-        stream,
-        sequence_number,
-        observed_at,
-        PlaybackLifecycleObservation {
-            episode_id: playback(facade).current.map(|item| item.episode_id),
-            state: if ended {
-                PlaybackHostState::Paused
-            } else {
-                PlaybackHostState::Playing
-            },
-            position_milliseconds: position,
-            duration_milliseconds: 120_500,
-            route: PlaybackAudioRoute::BuiltIn,
-            interruption,
-            ended,
-        },
-    );
-}
-
-pub(super) fn record_observation(
-    facade: &Pod0Facade,
-    request: &HostRequestEnvelope,
-    sequence_number: u64,
-    observed_at: i64,
-    value: PlaybackLifecycleObservation,
-) {
-    facade.record_host_observation(HostObservationEnvelope {
-        request_id: request.request_id,
-        cancellation_id: request.cancellation_id,
-        observed_request_revision: request.issued_revision,
-        sequence_number,
-        observed_at: UnixTimestampMilliseconds::new(observed_at),
-        observation: HostObservation::PlaybackObserved { value },
-    });
-}
-
-pub(super) fn library_request() -> ProjectionRequest {
-    ProjectionRequest {
-        scope: ProjectionScope::Library,
-        offset: 0,
-        max_items: 200,
-    }
-}
-
-pub(super) fn playback_request() -> ProjectionRequest {
-    ProjectionRequest {
-        scope: ProjectionScope::Playback,
-        offset: 0,
-        max_items: 200,
-    }
 }

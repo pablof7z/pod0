@@ -14,8 +14,8 @@ struct SharedTranscriptSegment: Sendable, Equatable {
     let wordCount: UInt32
 }
 
-/// Reads only bounded typed projections. `load` exists for the temporary #96
-/// read protocol; #97 should move consumers to the page APIs where practical.
+/// Native projection adapter over the Rust-authoritative transcript store.
+/// `load` reconstructs the existing presentation model from bounded pages.
 final class SharedTranscriptReader: TranscriptReading, @unchecked Sendable {
     static let maximumPageSize: UInt16 = 200
 

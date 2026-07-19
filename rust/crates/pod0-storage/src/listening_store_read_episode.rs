@@ -19,7 +19,9 @@ pub(crate) fn read_episodes(connection: &Connection) -> Result<Vec<EpisodeRecord
          m.publisher_transcript_url,m.publisher_transcript_media_type,\
          m.publisher_transcript_format_code,m.publisher_transcript_format_wire_code,\
          m.chapters_url,m.persons_json,m.sound_bites_json \
-         FROM pod0_episodes e LEFT JOIN pod0_episode_feed_metadata m ON m.episode_id=e.episode_id \
+         FROM pod0_episodes e JOIN pod0_podcasts p ON p.podcast_id=e.podcast_id \
+         LEFT JOIN pod0_episode_feed_metadata m ON m.episode_id=e.episode_id \
+         WHERE p.library_visible=1 \
          ORDER BY e.rowid",
     ).map_err(|error| StorageError::sqlite("prepare episode projection", error))?;
     let mut rows = statement

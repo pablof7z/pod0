@@ -67,6 +67,56 @@ final class ProductSignalInstrumentationTests: XCTestCase {
         XCTAssertEqual(captured.first?.outcome, .succeeded)
     }
 
+    func testTranscriptReadyObservesRustProjectionExactlyOnce() async throws {
+        let sink = RecordingProductSignalSink()
+        let made = AppStateTestSupport.makeIsolatedStore(productSignals: sink)
+        defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
+        let episode = try await made.store.upsertExternalEpisodeAndWait(
+            podcastID: Podcast.unknownID,
+            feedURL: nil,
+            podcastTitle: "Unknown Podcast",
+            audioURL: URL(string: "https://signals.example/transcript.mp3")!,
+            title: "Transcript signal",
+            imageURL: nil,
+            duration: 60
+        )
+        let client = try XCTUnwrap(made.store.sharedLibrary)
+        let transcript = Transcript(
+            episodeID: episode.id,
+            language: "en-US",
+            source: .publisher,
+            segments: [.init(start: 0, end: 1, text: "Rust is authoritative.")]
+        )
+        let context = TranscriptObservationContext(
+            podcastID: episode.podcastID,
+            sourceRevision: DesiredStatePlanner.audioVersion(episode),
+            sourcePayloadDigest: String(repeating: "ab", count: 32),
+            provider: "product-signal-test"
+        )
+
+        _ = try client.submitTranscriptObservation(transcript, context: context)
+        let first = await waitForCount(1, sink: sink)
+        XCTAssertEqual(first.filter { $0.name == .transcriptReady }.count, 1)
+
+        let envelope = client.facade.snapshot(request: ProjectionRequest(
+            scope: .library,
+            offset: 0,
+            maxItems: 200
+        ))
+        guard case .library(let page) = envelope.projection else {
+            return XCTFail("Expected library projection")
+        }
+        made.store.applySharedLibrary(SharedLibrarySnapshot(
+            podcasts: page.podcasts,
+            subscriptions: page.subscriptions,
+            episodes: page.episodes,
+            operations: page.operations
+        ))
+        try await Task.sleep(for: .milliseconds(20))
+        let replayed = await sink.captured()
+        XCTAssertEqual(replayed.filter { $0.name == .transcriptReady }.count, 1)
+    }
+
     func testPlaybackResumeAndTypedFailureAreObserved() async throws {
         let sink = RecordingProductSignalSink()
         let fixture = makePlaybackFixture(position: 42, sink: sink)

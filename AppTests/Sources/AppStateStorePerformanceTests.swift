@@ -10,7 +10,6 @@ final class AppStateStorePerformanceTests: XCTestCase {
     private var fileURL: URL!
     var store: AppStateStore!
     var downloadEvidenceURLs: [URL] = []
-    var transcriptEvidenceIDs: [UUID] = []
 
     override func setUp() async throws {
         try await super.setUp()
@@ -18,7 +17,6 @@ final class AppStateStorePerformanceTests: XCTestCase {
         fileURL = made.fileURL
         store = made.store
         downloadEvidenceURLs = []
-        transcriptEvidenceIDs = []
     }
 
     override func tearDown() async throws {
@@ -27,9 +25,6 @@ final class AppStateStorePerformanceTests: XCTestCase {
         }
         for url in downloadEvidenceURLs {
             try? FileManager.default.removeItem(at: url)
-        }
-        for episodeID in transcriptEvidenceIDs {
-            TranscriptStore.shared.delete(episodeID: episodeID)
         }
         store = nil
         fileURL = nil
@@ -149,18 +144,21 @@ final class AppStateStorePerformanceTests: XCTestCase {
         XCTAssertFalse(store.hasDownloadedEpisode(forPodcast: sub.id))
     }
 
-    func testSetTranscriptStateUpdatesHasTranscribedSet() throws {
+    func testCommittedTranscriptUpdatesHasTranscribedSet() async throws {
         let sub = addSubscription(title: "Transcript")
-        let ep = makeEpisode(podcastID: sub.id, guid: "t1")
-        store.installEpisodeFixtures([ep], forPodcast: sub.id)
+        let ep = try await store.upsertExternalEpisodeAndWait(
+            podcastID: sub.id,
+            feedURL: sub.feedURL,
+            podcastTitle: sub.title,
+            audioURL: URL(string: "https://example.com/t1.mp3")!,
+            title: "Episode t1",
+            imageURL: nil,
+            duration: 60
+        )
         XCTAssertFalse(store.hasTranscribedEpisode(forPodcast: sub.id))
 
         try installTranscriptEvidence(for: ep, source: .scribeV1)
-        store.setEpisodeTranscriptState(ep.id, state: .ready(source: .scribe))
         XCTAssertTrue(store.hasTranscribedEpisode(forPodcast: sub.id))
-
-        store.setEpisodeTranscriptState(ep.id, state: .none)
-        XCTAssertFalse(store.hasTranscribedEpisode(forPodcast: sub.id))
     }
 
     func testEpisodesForSubscriptionStaysSortedNewestFirst() {

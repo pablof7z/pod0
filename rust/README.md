@@ -1,9 +1,9 @@
 # Pod0 shared Rust kernel
 
 This workspace is Pod0's shared-product kernel. Migrated listening, playback,
-evidence, notes, and clips use its durable stores; other domains remain native
-or staged until their complete vertical-slice cutover. The permanent operating
-rule is:
+transcript, evidence, note, and clip slices use its durable stores; other
+domains remain native or staged until their complete vertical-slice cutover.
+The permanent operating rule is:
 
 > Native executes platform primitives; Rust owns durable product decisions.
 
@@ -29,11 +29,11 @@ or `nmp-ffi`. Pod0 will not import NMP's generated Swift/Kotlin bindings as a
 second bridge; the app-owned facade composes NMP inside Rust.
 
 The app-owned facade is the typed single-writer boundary used by the migrated
-listening, playback, evidence, note, clip, and recall slices. Its dispatch path
-remains fire-and-forget; durable work reports through bounded state projections
-and typed host requests. Full-transcript contract and storage support are
-additive until the transcript importer and native adapter complete their staged
-single-writer cutover.
+listening, playback, transcript, evidence, note, clip, and recall slices. Its
+dispatch path remains fire-and-forget; durable work reports through bounded
+state projections and typed host requests. The transcript store becomes
+authoritative only after its verified legacy import commits the selection,
+episode readiness, listening revision, and cutover marker atomically.
 
 ## Reproducible checks
 

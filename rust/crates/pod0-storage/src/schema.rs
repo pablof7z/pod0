@@ -14,6 +14,10 @@ const MIGRATION_7: &str = include_str!("../../../schema/migrations/0007_evidence
 const MIGRATION_8: &str = include_str!("../../../schema/migrations/0008_notes.sql");
 const MIGRATION_9: &str = include_str!("../../../schema/migrations/0009_clips.sql");
 const MIGRATION_10: &str = include_str!("../../../schema/migrations/0010_transcript_artifacts.sql");
+const MIGRATION_11: &str =
+    include_str!("../../../schema/migrations/0011_retained_library_artifacts.sql");
+const MIGRATION_12: &str =
+    include_str!("../../../schema/migrations/0012_complete_transcript_history.sql");
 
 pub(crate) fn migration_sql(version: u32) -> Option<&'static str> {
     match version {
@@ -27,6 +31,8 @@ pub(crate) fn migration_sql(version: u32) -> Option<&'static str> {
         8 => Some(MIGRATION_8),
         9 => Some(MIGRATION_9),
         10 => Some(MIGRATION_10),
+        11 => Some(MIGRATION_11),
+        12 => Some(MIGRATION_12),
         _ => None,
     }
 }
@@ -166,29 +172,29 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
                 "verified_at_ms",
             ],
         )?;
-        require_columns(
-            connection,
-            "pod0_podcasts",
-            &[
-                "author",
-                "categories_json",
-                "description",
-                "discovered_at_ms",
-                "etag",
-                "feed_key_v1",
-                "feed_url",
-                "image_url",
-                "kind_code",
-                "kind_wire_code",
-                "language",
-                "last_modified",
-                "last_refreshed_at_ms",
-                "podcast_id",
-                "source_import_id",
-                "title",
-                "title_is_placeholder",
-            ],
-        )?;
+        let mut podcast_columns = vec![
+            "author",
+            "categories_json",
+            "description",
+            "discovered_at_ms",
+            "etag",
+            "feed_key_v1",
+            "feed_url",
+            "image_url",
+            "kind_code",
+            "kind_wire_code",
+            "language",
+            "last_modified",
+            "last_refreshed_at_ms",
+            "podcast_id",
+            "source_import_id",
+            "title",
+            "title_is_placeholder",
+        ];
+        if version >= 11 {
+            podcast_columns.push("library_visible");
+        }
+        require_columns(connection, "pod0_podcasts", &podcast_columns)?;
         require_columns(
             connection,
             "pod0_subscriptions",
@@ -286,7 +292,7 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
         crate::schema_clips::validate_clips_schema(connection)?;
     }
     if version >= 10 {
-        crate::schema_transcripts::validate_transcripts_schema(connection)?;
+        crate::schema_transcripts::validate_transcripts_schema(connection, version)?;
     }
     Ok(())
 }

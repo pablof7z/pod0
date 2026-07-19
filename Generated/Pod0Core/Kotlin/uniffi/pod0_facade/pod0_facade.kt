@@ -49,8 +49,10 @@ import uniffi.pod0_application.TranscriptContractProjection
 import uniffi.pod0_application.TranscriptProjectionScope
 import uniffi.pod0_domain.ClipRecord
 import uniffi.pod0_domain.CommandId
+import uniffi.pod0_domain.ContentDigest
 import uniffi.pod0_domain.FfiConverterTypeClipRecord
 import uniffi.pod0_domain.FfiConverterTypeCommandId
+import uniffi.pod0_domain.FfiConverterTypeContentDigest
 import uniffi.pod0_domain.FfiConverterTypeListeningDomainSnapshot
 import uniffi.pod0_domain.FfiConverterTypeNoteRecord
 import uniffi.pod0_domain.FfiConverterTypeStateRevision
@@ -69,6 +71,7 @@ import uniffi.pod0_application.RustBuffer as RustBufferTranscriptContractProject
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptProjectionScope
 import uniffi.pod0_domain.RustBuffer as RustBufferClipRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferCommandId
+import uniffi.pod0_domain.RustBuffer as RustBufferContentDigest
 import uniffi.pod0_domain.RustBuffer as RustBufferListeningDomainSnapshot
 import uniffi.pod0_domain.RustBuffer as RustBufferNoteRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferStateRevision
@@ -767,6 +770,22 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_func_stage_legacy_note_import(
     ): Int
+    external fun uniffi_pod0_facade_checksum_func_commit_staged_legacy_transcript_import(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_discard_staged_legacy_transcript_import(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_export_legacy_transcript_rollback(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_inspect_legacy_transcript_source(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_read_active_legacy_transcript_import(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_shared_transcript_store_is_authoritative(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_stage_legacy_transcript_import(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_verify_staged_legacy_transcript_import(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_projectionsubscriber_receive(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_dispatch(
@@ -863,6 +882,22 @@ internal object UniffiLib {
     external fun uniffi_pod0_facade_fn_func_read_staged_legacy_note_import(`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_stage_legacy_note_import(`sourcePath`: RustBuffer.ByValue,`sourceBackupPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`targetSchemaBackupPath`: RustBuffer.ByValue,`expectedPlan`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,`targetStoreId`: RustBufferCommandId.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_commit_staged_legacy_transcript_import(`sourceDatabasePath`: RustBuffer.ByValue,`transcriptRootPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_discard_staged_legacy_transcript_import(`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_export_legacy_transcript_rollback(`targetPath`: RustBuffer.ByValue,`exportRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_inspect_legacy_transcript_source(`sourceDatabasePath`: RustBuffer.ByValue,`transcriptRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_read_active_legacy_transcript_import(`targetPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_shared_transcript_store_is_authoritative(`targetPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): Byte
+    external fun uniffi_pod0_facade_fn_func_stage_legacy_transcript_import(`sourceDatabasePath`: RustBuffer.ByValue,`transcriptRootPath`: RustBuffer.ByValue,`legacyBackupRootPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`targetSchemaBackupPath`: RustBuffer.ByValue,`expectedPlan`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,`targetStoreId`: RustBufferCommandId.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_verify_staged_legacy_transcript_import(`targetPath`: RustBuffer.ByValue,`legacyBackupRootPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun ffi_pod0_facade_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
@@ -1026,6 +1061,30 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_stage_legacy_note_import() != 14097) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_commit_staged_legacy_transcript_import() != 8416) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_discard_staged_legacy_transcript_import() != 19496) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_export_legacy_transcript_rollback() != 42897) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_inspect_legacy_transcript_source() != 64324) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_read_active_legacy_transcript_import() != 64696) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_shared_transcript_store_is_authoritative() != 1008) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_stage_legacy_transcript_import() != 8915) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_verify_staged_legacy_transcript_import() != 46313) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_projectionsubscriber_receive() != 23861) {
@@ -2704,6 +2763,291 @@ public object FfiConverterTypeLegacyNoteImportVerification: FfiConverterRustBuff
 
 
 
+data class LegacyTranscriptBackupEvidence (
+    val `databaseDigest`: ContentDigest
+    ,
+    val `databaseByteCount`: kotlin.ULong
+    ,
+    val `artifactCount`: kotlin.UInt
+    ,
+    val `artifactByteCount`: kotlin.ULong
+    ,
+    val `reusedDatabase`: kotlin.Boolean
+    ,
+    val `reusedArtifacts`: kotlin.UInt
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyTranscriptBackupEvidence: FfiConverterRustBuffer<LegacyTranscriptBackupEvidence> {
+    override fun read(buf: ByteBuffer): LegacyTranscriptBackupEvidence {
+        return LegacyTranscriptBackupEvidence(
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyTranscriptBackupEvidence) = (
+            FfiConverterTypeContentDigest.allocationSize(value.`databaseDigest`) +
+            FfiConverterULong.allocationSize(value.`databaseByteCount`) +
+            FfiConverterUInt.allocationSize(value.`artifactCount`) +
+            FfiConverterULong.allocationSize(value.`artifactByteCount`) +
+            FfiConverterBoolean.allocationSize(value.`reusedDatabase`) +
+            FfiConverterUInt.allocationSize(value.`reusedArtifacts`)
+    )
+
+    override fun write(value: LegacyTranscriptBackupEvidence, buf: ByteBuffer) {
+            FfiConverterTypeContentDigest.write(value.`databaseDigest`, buf)
+            FfiConverterULong.write(value.`databaseByteCount`, buf)
+            FfiConverterUInt.write(value.`artifactCount`, buf)
+            FfiConverterULong.write(value.`artifactByteCount`, buf)
+            FfiConverterBoolean.write(value.`reusedDatabase`, buf)
+            FfiConverterUInt.write(value.`reusedArtifacts`, buf)
+    }
+}
+
+
+
+data class LegacyTranscriptImportPlan (
+    val `sourceKind`: LegacyTranscriptSourceKind
+    ,
+    val `sourceGeneration`: kotlin.ULong
+    ,
+    val `sourceDatabaseDigest`: ContentDigest
+    ,
+    val `sourceSelectionDigest`: ContentDigest
+    ,
+    val `artifactCount`: kotlin.UInt
+    ,
+    val `selectedCount`: kotlin.UInt
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyTranscriptImportPlan: FfiConverterRustBuffer<LegacyTranscriptImportPlan> {
+    override fun read(buf: ByteBuffer): LegacyTranscriptImportPlan {
+        return LegacyTranscriptImportPlan(
+            FfiConverterTypeLegacyTranscriptSourceKind.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyTranscriptImportPlan) = (
+            FfiConverterTypeLegacyTranscriptSourceKind.allocationSize(value.`sourceKind`) +
+            FfiConverterULong.allocationSize(value.`sourceGeneration`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`sourceDatabaseDigest`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`sourceSelectionDigest`) +
+            FfiConverterUInt.allocationSize(value.`artifactCount`) +
+            FfiConverterUInt.allocationSize(value.`selectedCount`)
+    )
+
+    override fun write(value: LegacyTranscriptImportPlan, buf: ByteBuffer) {
+            FfiConverterTypeLegacyTranscriptSourceKind.write(value.`sourceKind`, buf)
+            FfiConverterULong.write(value.`sourceGeneration`, buf)
+            FfiConverterTypeContentDigest.write(value.`sourceDatabaseDigest`, buf)
+            FfiConverterTypeContentDigest.write(value.`sourceSelectionDigest`, buf)
+            FfiConverterUInt.write(value.`artifactCount`, buf)
+            FfiConverterUInt.write(value.`selectedCount`, buf)
+    }
+}
+
+
+
+data class LegacyTranscriptImportReport (
+    val `importId`: CommandId
+    ,
+    val `plan`: LegacyTranscriptImportPlan
+    ,
+    val `targetRevision`: StateRevision
+    ,
+    val `backup`: LegacyTranscriptBackupEvidence
+    ,
+    val `state`: LegacyTranscriptImportState
+    ,
+    val `diagnosticCode`: kotlin.String?
+    ,
+    val `reusedExisting`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyTranscriptImportReport: FfiConverterRustBuffer<LegacyTranscriptImportReport> {
+    override fun read(buf: ByteBuffer): LegacyTranscriptImportReport {
+        return LegacyTranscriptImportReport(
+            FfiConverterTypeCommandId.read(buf),
+            FfiConverterTypeLegacyTranscriptImportPlan.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterTypeLegacyTranscriptBackupEvidence.read(buf),
+            FfiConverterTypeLegacyTranscriptImportState.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyTranscriptImportReport) = (
+            FfiConverterTypeCommandId.allocationSize(value.`importId`) +
+            FfiConverterTypeLegacyTranscriptImportPlan.allocationSize(value.`plan`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`targetRevision`) +
+            FfiConverterTypeLegacyTranscriptBackupEvidence.allocationSize(value.`backup`) +
+            FfiConverterTypeLegacyTranscriptImportState.allocationSize(value.`state`) +
+            FfiConverterOptionalString.allocationSize(value.`diagnosticCode`) +
+            FfiConverterBoolean.allocationSize(value.`reusedExisting`)
+    )
+
+    override fun write(value: LegacyTranscriptImportReport, buf: ByteBuffer) {
+            FfiConverterTypeCommandId.write(value.`importId`, buf)
+            FfiConverterTypeLegacyTranscriptImportPlan.write(value.`plan`, buf)
+            FfiConverterTypeStateRevision.write(value.`targetRevision`, buf)
+            FfiConverterTypeLegacyTranscriptBackupEvidence.write(value.`backup`, buf)
+            FfiConverterTypeLegacyTranscriptImportState.write(value.`state`, buf)
+            FfiConverterOptionalString.write(value.`diagnosticCode`, buf)
+            FfiConverterBoolean.write(value.`reusedExisting`, buf)
+    }
+}
+
+
+
+data class LegacyTranscriptImportVerification (
+    val `report`: LegacyTranscriptImportReport
+    ,
+    val `verifiedArtifactCount`: kotlin.UInt
+    ,
+    val `verifiedSegmentCount`: kotlin.ULong
+    ,
+    val `verifiedWordCount`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyTranscriptImportVerification: FfiConverterRustBuffer<LegacyTranscriptImportVerification> {
+    override fun read(buf: ByteBuffer): LegacyTranscriptImportVerification {
+        return LegacyTranscriptImportVerification(
+            FfiConverterTypeLegacyTranscriptImportReport.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyTranscriptImportVerification) = (
+            FfiConverterTypeLegacyTranscriptImportReport.allocationSize(value.`report`) +
+            FfiConverterUInt.allocationSize(value.`verifiedArtifactCount`) +
+            FfiConverterULong.allocationSize(value.`verifiedSegmentCount`) +
+            FfiConverterULong.allocationSize(value.`verifiedWordCount`)
+    )
+
+    override fun write(value: LegacyTranscriptImportVerification, buf: ByteBuffer) {
+            FfiConverterTypeLegacyTranscriptImportReport.write(value.`report`, buf)
+            FfiConverterUInt.write(value.`verifiedArtifactCount`, buf)
+            FfiConverterULong.write(value.`verifiedSegmentCount`, buf)
+            FfiConverterULong.write(value.`verifiedWordCount`, buf)
+    }
+}
+
+
+
+data class LegacyTranscriptRollbackExportReport (
+    val `bundlePath`: kotlin.String
+    ,
+    val `coreSchemaVersion`: kotlin.UInt
+    ,
+    val `transcriptRevision`: kotlin.ULong
+    ,
+    val `artifactCount`: kotlin.UInt
+    ,
+    val `selectedCount`: kotlin.UInt
+    ,
+    val `reusedExisting`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyTranscriptRollbackExportReport: FfiConverterRustBuffer<LegacyTranscriptRollbackExportReport> {
+    override fun read(buf: ByteBuffer): LegacyTranscriptRollbackExportReport {
+        return LegacyTranscriptRollbackExportReport(
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyTranscriptRollbackExportReport) = (
+            FfiConverterString.allocationSize(value.`bundlePath`) +
+            FfiConverterUInt.allocationSize(value.`coreSchemaVersion`) +
+            FfiConverterULong.allocationSize(value.`transcriptRevision`) +
+            FfiConverterUInt.allocationSize(value.`artifactCount`) +
+            FfiConverterUInt.allocationSize(value.`selectedCount`) +
+            FfiConverterBoolean.allocationSize(value.`reusedExisting`)
+    )
+
+    override fun write(value: LegacyTranscriptRollbackExportReport, buf: ByteBuffer) {
+            FfiConverterString.write(value.`bundlePath`, buf)
+            FfiConverterUInt.write(value.`coreSchemaVersion`, buf)
+            FfiConverterULong.write(value.`transcriptRevision`, buf)
+            FfiConverterUInt.write(value.`artifactCount`, buf)
+            FfiConverterUInt.write(value.`selectedCount`, buf)
+            FfiConverterBoolean.write(value.`reusedExisting`, buf)
+    }
+}
+
+
+
 data class SharedListeningStorePreparation (
     val `fromVersion`: kotlin.UInt
     ,
@@ -3358,6 +3702,321 @@ public object FfiConverterTypeLegacyNoteMigrationError : FfiConverterRustBuffer<
 
 
 
+enum class LegacyTranscriptImportState {
+
+    STAGED,
+    VERIFIED,
+    COMMITTED,
+    CORRUPT,
+    DISCARDED;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyTranscriptImportState: FfiConverterRustBuffer<LegacyTranscriptImportState> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyTranscriptImportState.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyTranscriptImportState) = 4UL
+
+    override fun write(value: LegacyTranscriptImportState, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+
+sealed class LegacyTranscriptMigrationException: kotlin.Exception() {
+
+    class SourceChanged(
+        ) : LegacyTranscriptMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class SourceInvalid(
+        ) : LegacyTranscriptMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class BackupConflict(
+        ) : LegacyTranscriptMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class ImportConflict(
+        ) : LegacyTranscriptMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class ImportNotFound(
+        ) : LegacyTranscriptMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class AlreadyAuthoritative(
+        ) : LegacyTranscriptMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class TargetBlocked(
+        ) : LegacyTranscriptMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class Interrupted(
+        ) : LegacyTranscriptMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class StorageUnavailable(
+        ) : LegacyTranscriptMigrationException() {
+        override val message
+            get() = ""
+    }
+
+
+
+
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<LegacyTranscriptMigrationException> {
+        override fun lift(error_buf: RustBuffer.ByValue): LegacyTranscriptMigrationException = FfiConverterTypeLegacyTranscriptMigrationError.lift(error_buf)
+    }
+
+
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyTranscriptMigrationError : FfiConverterRustBuffer<LegacyTranscriptMigrationException> {
+    override fun read(buf: ByteBuffer): LegacyTranscriptMigrationException {
+
+
+        return when(buf.getInt()) {
+            1 -> LegacyTranscriptMigrationException.SourceChanged()
+            2 -> LegacyTranscriptMigrationException.SourceInvalid()
+            3 -> LegacyTranscriptMigrationException.BackupConflict()
+            4 -> LegacyTranscriptMigrationException.ImportConflict()
+            5 -> LegacyTranscriptMigrationException.ImportNotFound()
+            6 -> LegacyTranscriptMigrationException.AlreadyAuthoritative()
+            7 -> LegacyTranscriptMigrationException.TargetBlocked()
+            8 -> LegacyTranscriptMigrationException.Interrupted()
+            9 -> LegacyTranscriptMigrationException.StorageUnavailable()
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: LegacyTranscriptMigrationException): ULong {
+        return when(value) {
+            is LegacyTranscriptMigrationException.SourceChanged -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyTranscriptMigrationException.SourceInvalid -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyTranscriptMigrationException.BackupConflict -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyTranscriptMigrationException.ImportConflict -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyTranscriptMigrationException.ImportNotFound -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyTranscriptMigrationException.AlreadyAuthoritative -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyTranscriptMigrationException.TargetBlocked -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyTranscriptMigrationException.Interrupted -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyTranscriptMigrationException.StorageUnavailable -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: LegacyTranscriptMigrationException, buf: ByteBuffer) {
+        when(value) {
+            is LegacyTranscriptMigrationException.SourceChanged -> {
+                buf.putInt(1)
+                Unit
+            }
+            is LegacyTranscriptMigrationException.SourceInvalid -> {
+                buf.putInt(2)
+                Unit
+            }
+            is LegacyTranscriptMigrationException.BackupConflict -> {
+                buf.putInt(3)
+                Unit
+            }
+            is LegacyTranscriptMigrationException.ImportConflict -> {
+                buf.putInt(4)
+                Unit
+            }
+            is LegacyTranscriptMigrationException.ImportNotFound -> {
+                buf.putInt(5)
+                Unit
+            }
+            is LegacyTranscriptMigrationException.AlreadyAuthoritative -> {
+                buf.putInt(6)
+                Unit
+            }
+            is LegacyTranscriptMigrationException.TargetBlocked -> {
+                buf.putInt(7)
+                Unit
+            }
+            is LegacyTranscriptMigrationException.Interrupted -> {
+                buf.putInt(8)
+                Unit
+            }
+            is LegacyTranscriptMigrationException.StorageUnavailable -> {
+                buf.putInt(9)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+
+enum class LegacyTranscriptSourceKind {
+
+    ARTIFACT_SQLITE_V0,
+    ARTIFACT_SQLITE_V1;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyTranscriptSourceKind: FfiConverterRustBuffer<LegacyTranscriptSourceKind> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyTranscriptSourceKind.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyTranscriptSourceKind) = 4UL
+
+    override fun write(value: LegacyTranscriptSourceKind, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?> {
+    override fun read(buf: ByteBuffer): kotlin.String? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterString.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.String?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterString.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.String?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterString.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeLegacyTranscriptImportReport: FfiConverterRustBuffer<LegacyTranscriptImportReport?> {
+    override fun read(buf: ByteBuffer): LegacyTranscriptImportReport? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeLegacyTranscriptImportReport.read(buf)
+    }
+
+    override fun allocationSize(value: LegacyTranscriptImportReport?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeLegacyTranscriptImportReport.allocationSize(value)
+        }
+    }
+
+    override fun write(value: LegacyTranscriptImportReport?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeLegacyTranscriptImportReport.write(value, buf)
+        }
+    }
+}
+
+
+
+
 /**
  * @suppress
  */
@@ -3466,6 +4125,8 @@ public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<No
         }
     }
 }
+
+
 
 
 
@@ -3704,6 +4365,121 @@ public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<No
         FfiConverterTypeLegacyNoteImportPlan.lower(`expectedPlan`),
         FfiConverterTypeCommandId.lower(`importId`),
         FfiConverterTypeCommandId.lower(`targetStoreId`),
+        FfiConverterLong.lower(`observedAtMilliseconds`),_status)
+}
+    )
+    }
+
+
+    @Throws(LegacyTranscriptMigrationException::class) fun `commitStagedLegacyTranscriptImport`(`sourceDatabasePath`: kotlin.String, `transcriptRootPath`: kotlin.String, `targetPath`: kotlin.String, `importId`: CommandId, `observedAtMilliseconds`: kotlin.Long): LegacyTranscriptImportReport {
+            return FfiConverterTypeLegacyTranscriptImportReport.lift(
+    uniffiRustCallWithError(LegacyTranscriptMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_commit_staged_legacy_transcript_import(
+
+
+        FfiConverterString.lower(`sourceDatabasePath`),
+        FfiConverterString.lower(`transcriptRootPath`),
+        FfiConverterString.lower(`targetPath`),
+        FfiConverterTypeCommandId.lower(`importId`),
+        FfiConverterLong.lower(`observedAtMilliseconds`),_status)
+}
+    )
+    }
+
+
+    @Throws(LegacyTranscriptMigrationException::class) fun `discardStagedLegacyTranscriptImport`(`targetPath`: kotlin.String, `importId`: CommandId, `observedAtMilliseconds`: kotlin.Long): LegacyTranscriptImportReport {
+            return FfiConverterTypeLegacyTranscriptImportReport.lift(
+    uniffiRustCallWithError(LegacyTranscriptMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_discard_staged_legacy_transcript_import(
+
+
+        FfiConverterString.lower(`targetPath`),
+        FfiConverterTypeCommandId.lower(`importId`),
+        FfiConverterLong.lower(`observedAtMilliseconds`),_status)
+}
+    )
+    }
+
+
+    @Throws(LegacyTranscriptMigrationException::class) fun `exportLegacyTranscriptRollback`(`targetPath`: kotlin.String, `exportRootPath`: kotlin.String): LegacyTranscriptRollbackExportReport {
+            return FfiConverterTypeLegacyTranscriptRollbackExportReport.lift(
+    uniffiRustCallWithError(LegacyTranscriptMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_export_legacy_transcript_rollback(
+
+
+        FfiConverterString.lower(`targetPath`),
+        FfiConverterString.lower(`exportRootPath`),_status)
+}
+    )
+    }
+
+
+    @Throws(LegacyTranscriptMigrationException::class) fun `inspectLegacyTranscriptSource`(`sourceDatabasePath`: kotlin.String, `transcriptRootPath`: kotlin.String): LegacyTranscriptImportPlan {
+            return FfiConverterTypeLegacyTranscriptImportPlan.lift(
+    uniffiRustCallWithError(LegacyTranscriptMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_inspect_legacy_transcript_source(
+
+
+        FfiConverterString.lower(`sourceDatabasePath`),
+        FfiConverterString.lower(`transcriptRootPath`),_status)
+}
+    )
+    }
+
+
+    @Throws(LegacyTranscriptMigrationException::class) fun `readActiveLegacyTranscriptImport`(`targetPath`: kotlin.String): LegacyTranscriptImportReport? {
+            return FfiConverterOptionalTypeLegacyTranscriptImportReport.lift(
+    uniffiRustCallWithError(LegacyTranscriptMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_read_active_legacy_transcript_import(
+
+
+        FfiConverterString.lower(`targetPath`),_status)
+}
+    )
+    }
+
+
+    @Throws(LegacyTranscriptMigrationException::class) fun `sharedTranscriptStoreIsAuthoritative`(`targetPath`: kotlin.String): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    uniffiRustCallWithError(LegacyTranscriptMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_shared_transcript_store_is_authoritative(
+
+
+        FfiConverterString.lower(`targetPath`),_status)
+}
+    )
+    }
+
+
+    @Throws(LegacyTranscriptMigrationException::class) fun `stageLegacyTranscriptImport`(`sourceDatabasePath`: kotlin.String, `transcriptRootPath`: kotlin.String, `legacyBackupRootPath`: kotlin.String, `targetPath`: kotlin.String, `targetSchemaBackupPath`: kotlin.String, `expectedPlan`: LegacyTranscriptImportPlan, `importId`: CommandId, `targetStoreId`: CommandId, `observedAtMilliseconds`: kotlin.Long): LegacyTranscriptImportReport {
+            return FfiConverterTypeLegacyTranscriptImportReport.lift(
+    uniffiRustCallWithError(LegacyTranscriptMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_stage_legacy_transcript_import(
+
+
+        FfiConverterString.lower(`sourceDatabasePath`),
+        FfiConverterString.lower(`transcriptRootPath`),
+        FfiConverterString.lower(`legacyBackupRootPath`),
+        FfiConverterString.lower(`targetPath`),
+        FfiConverterString.lower(`targetSchemaBackupPath`),
+        FfiConverterTypeLegacyTranscriptImportPlan.lower(`expectedPlan`),
+        FfiConverterTypeCommandId.lower(`importId`),
+        FfiConverterTypeCommandId.lower(`targetStoreId`),
+        FfiConverterLong.lower(`observedAtMilliseconds`),_status)
+}
+    )
+    }
+
+
+    @Throws(LegacyTranscriptMigrationException::class) fun `verifyStagedLegacyTranscriptImport`(`targetPath`: kotlin.String, `legacyBackupRootPath`: kotlin.String, `importId`: CommandId, `observedAtMilliseconds`: kotlin.Long): LegacyTranscriptImportVerification {
+            return FfiConverterTypeLegacyTranscriptImportVerification.lift(
+    uniffiRustCallWithError(LegacyTranscriptMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_verify_staged_legacy_transcript_import(
+
+
+        FfiConverterString.lower(`targetPath`),
+        FfiConverterString.lower(`legacyBackupRootPath`),
+        FfiConverterTypeCommandId.lower(`importId`),
         FfiConverterLong.lower(`observedAtMilliseconds`),_status)
 }
     )

@@ -66,7 +66,7 @@ pub(crate) fn create_or_reuse_transcript_backups(
     Ok(TranscriptBackupEvidence {
         database_digest,
         database_byte_count,
-        artifact_count: source.plan.selected_count,
+        artifact_count: source.plan.artifact_count,
         artifact_byte_count,
         reused_database,
         reused_artifacts,
@@ -156,7 +156,12 @@ fn verify_database_backup(path: &Path, plan: &TranscriptImportPlan) -> Result<()
     if database.source_kind != plan.source_kind
         || database.source_generation != plan.source_generation
         || database.database_digest != plan.source_database_digest
-        || database.rows.len() as u32 != plan.selected_count
+        || database
+            .rows
+            .iter()
+            .filter(|row| row.integrity == "available")
+            .count() as u32
+            != plan.artifact_count
     {
         return Err(StorageError::BackupConflict);
     }

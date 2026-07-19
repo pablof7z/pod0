@@ -15,10 +15,10 @@ actor OpenRouterWhisperClient {
     enum WhisperError: Swift.Error, LocalizedError, Sendable {
         case missingAPIKey
         case invalidAudioURL
-        case downloadFailed(String)
+        case downloadFailed
         case invalidResponse
-        case http(status: Int, body: String?)
-        case decoding(String)
+        case http(status: Int)
+        case decoding
         case cancelled
         case timedOut
 
@@ -28,17 +28,17 @@ actor OpenRouterWhisperClient {
                 return "Add an OpenRouter API key in Settings → Intelligence → Providers to transcribe with Whisper."
             case .invalidAudioURL:
                 return "Couldn't find the episode audio to transcribe."
-            case .downloadFailed(let msg):
-                return "Couldn't download audio for transcription: \(msg)"
+            case .downloadFailed:
+                return "Couldn't download audio for transcription."
             case .invalidResponse:
                 return "OpenRouter returned an unexpected response. Try again in a moment."
-            case .http(let status, _) where status == 401 || status == 403:
+            case .http(let status) where status == 401 || status == 403:
                 return "OpenRouter rejected your API key. Update it in Settings → Intelligence → Providers."
-            case .http(let status, _) where status == 429:
+            case .http(let status) where status == 429:
                 return "OpenRouter rate-limited the request. Wait a minute and retry."
-            case .http(let status, _) where status >= 500:
+            case .http(let status) where status >= 500:
                 return "OpenRouter is having trouble (\(status)). Retry in a few minutes."
-            case .http(let status, _):
+            case .http(let status):
                 return "OpenRouter returned an error (\(status))."
             case .decoding:
                 return "OpenRouter returned a transcript shape we couldn't read."
@@ -117,17 +117,16 @@ actor OpenRouterWhisperClient {
         try Task.checkCancellation()
         guard let http = response as? HTTPURLResponse else { throw WhisperError.invalidResponse }
         guard (200..<300).contains(http.statusCode) else {
-            let body = String(data: data, encoding: .utf8)
             Self.logger.error("Whisper request failed with HTTP \(http.statusCode, privacy: .public)")
-            throw WhisperError.http(status: http.statusCode, body: body)
+            throw WhisperError.http(status: http.statusCode)
         }
 
         let raw: WhisperVerboseResponse
         do {
             raw = try Self.decoder.decode(WhisperVerboseResponse.self, from: data)
         } catch {
-            Self.logger.error("Whisper response decode failed: \(String(describing: error), privacy: .private)")
-            throw WhisperError.decoding("Could not decode transcription response: \(error)")
+            Self.logger.error("Whisper response could not be decoded")
+            throw WhisperError.decoding
         }
 
         // OpenRouter Whisper response has no `cost` field; the gateway strips
@@ -168,7 +167,7 @@ actor OpenRouterWhisperClient {
         } catch is CancellationError {
             throw WhisperError.cancelled
         } catch {
-            throw WhisperError.downloadFailed(error.localizedDescription)
+            throw WhisperError.downloadFailed
         }
         let ext = audioURL.pathExtension.isEmpty ? "mp3" : audioURL.pathExtension
         let stableURL = FileManager.default.temporaryDirectory
@@ -177,7 +176,7 @@ actor OpenRouterWhisperClient {
         do {
             try FileManager.default.moveItem(at: tempURL, to: stableURL)
         } catch {
-            throw WhisperError.downloadFailed("Could not stage temp file: \(error.localizedDescription)")
+            throw WhisperError.downloadFailed
         }
         return stableURL
     }

@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 import Pod0Core
 import os.log
@@ -39,16 +38,16 @@ extension SharedLibraryClient {
 
     func rebuildTranscriptEvidence(
         transcript: Transcript,
-        podcastID: UUID,
-        selectedData: Data,
+        summary: TranscriptSummaryProjection,
         inputVersion: String = "startup-rebuild"
     ) async throws -> SharedEvidenceReceipt {
+        guard summary.episodeId.uuid == transcript.episodeID else {
+            throw SharedLibraryError.unavailable
+        }
         guard rebuildingEvidenceEpisodeIDs.insert(transcript.episodeID).inserted else {
             throw SharedLibraryError.unavailable
         }
         defer { rebuildingEvidenceEpisodeIDs.remove(transcript.episodeID) }
-        let digestBytes = Array(SHA256.hash(data: selectedData))
-        let digestHex = digestBytes.map { String(format: "%02x", $0) }.joined()
         let segments = try transcript.segments.map { segment in
             TranscriptSegmentInput(
                 text: segment.text,
@@ -60,16 +59,11 @@ extension SharedLibraryClient {
         let result = try await execute(.rebuildTranscriptEvidence(
             input: TranscriptEvidenceInput(
                 episodeId: EpisodeId(uuid: transcript.episodeID),
-                podcastId: PodcastId(uuid: podcastID),
-                sourceRevision: "selected-json-sha256:\(digestHex)",
-                source: Self.coreSource(transcript.source),
-                provider: nil,
-                sourcePayloadDigest: ContentDigest(
-                    word0: Self.digestWord(digestBytes, at: 0),
-                    word1: Self.digestWord(digestBytes, at: 8),
-                    word2: Self.digestWord(digestBytes, at: 16),
-                    word3: Self.digestWord(digestBytes, at: 24)
-                ),
+                podcastId: summary.podcastId,
+                sourceRevision: summary.sourceRevision,
+                source: summary.source,
+                provider: summary.provider,
+                sourcePayloadDigest: summary.sourcePayloadDigest,
                 segments: segments
             ),
             policy: EvidenceChunkPolicy(
@@ -85,7 +79,8 @@ extension SharedLibraryClient {
               projection.stage == .ready,
               projection.generationId == generationID,
               projection.totalSpans == spanCount,
-              let digest = projection.transcriptContentDigest else {
+              let digest = projection.transcriptContentDigest,
+              digest == summary.transcriptContentDigest else {
             throw SharedLibraryError.unavailable
         }
         return SharedEvidenceReceipt(
@@ -110,31 +105,6 @@ extension SharedLibraryClient {
         return true
     }
 
-    func scheduleTranscriptEvidenceRebuild(
-        transcript: Transcript,
-        podcastID: UUID,
-        selectedData: Data
-    ) {
-        guard evidenceUpdateTasks[transcript.episodeID] == nil else { return }
-        let episodeID = transcript.episodeID
-        evidenceUpdateTasks[episodeID] = Task { @MainActor [weak self] in
-            defer { self?.evidenceUpdateTasks.removeValue(forKey: episodeID) }
-            do {
-                _ = try await self?.rebuildTranscriptEvidence(
-                    transcript: transcript,
-                    podcastID: podcastID,
-                    selectedData: selectedData
-                )
-            } catch is CancellationError {
-                return
-            } catch {
-                Self.evidenceLogger.notice(
-                    "recall evidence update deferred for one episode"
-                )
-            }
-        }
-    }
-
     private func rebuildExistingEvidence(in store: AppStateStore) async {
         let episodes = store.state.episodes
             .filter { if case .ready = $0.transcriptState { true } else { false } }
@@ -142,14 +112,15 @@ extension SharedLibraryClient {
         for episode in episodes {
             guard !Task.isCancelled,
                   let transcript = authoritativeTranscriptReader.load(episodeID: episode.id),
-                  let data = TranscriptStore.shared.verifiedData(episodeID: episode.id) else {
+                  let summary = try? authoritativeTranscriptReader.summary(
+                    episodeID: episode.id
+                  ) else {
                 continue
             }
             do {
                 _ = try await rebuildTranscriptEvidence(
                     transcript: transcript,
-                    podcastID: episode.podcastID,
-                    selectedData: data
+                    summary: summary
                 )
             } catch is CancellationError {
                 return
@@ -167,20 +138,6 @@ extension SharedLibraryClient {
             throw SharedLibraryError.unavailable
         }
         return UInt64(value.rounded())
-    }
-
-    private static func coreSource(_ source: TranscriptSource) -> Pod0Core.TranscriptSource {
-        switch source {
-        case .publisher: .publisher
-        case .scribeV1: .scribe
-        case .whisper: .whisper
-        case .onDevice: .onDevice
-        case .assemblyAI: .assemblyAi
-        }
-    }
-
-    private static func digestWord(_ bytes: [UInt8], at offset: Int) -> UInt64 {
-        bytes[offset..<(offset + 8)].reduce(0) { ($0 << 8) | UInt64($1) }
     }
 
     private func evidenceIndex(episodeID: EpisodeId) -> EvidenceIndexProjection? {

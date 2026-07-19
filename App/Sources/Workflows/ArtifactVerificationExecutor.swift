@@ -177,41 +177,6 @@ actor ArtifactVerificationExecutor {
         return url
     }
 
-    func verifiedStagedTranscript(
-        episodeID: UUID,
-        leaseToken: UUID,
-        expectedHash: String
-    ) -> Transcript? {
-        guard !Task.isCancelled else { return nil }
-        guard let data = TranscriptStore.shared.verifiedStagedData(
-            episodeID: episodeID, leaseToken: leaseToken
-        ), !Task.isCancelled,
-              ArtifactRepository.hash(data) == expectedHash,
-              !Task.isCancelled else { return nil }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        guard let transcript = try? decoder.decode(Transcript.self, from: data),
-              transcript.episodeID == episodeID else { return nil }
-        return transcript
-    }
-
-    func verifiedTranscript(episodeID: UUID) -> Data? {
-        guard !Task.isCancelled else { return nil }
-        let data = TranscriptStore.shared.verifiedData(episodeID: episodeID)
-        return Task.isCancelled ? nil : data
-    }
-
-    func promoteTranscript(
-        episodeID: UUID,
-        leaseToken: UUID,
-        contentHash: String
-    ) throws -> URL {
-        try Task.checkCancellation()
-        return try TranscriptStore.shared.promoteStaged(
-            episodeID: episodeID, leaseToken: leaseToken, contentHash: contentHash
-        )
-    }
-
     func verifiedChapters(
         episodeID: UUID,
         inputVersion: String,

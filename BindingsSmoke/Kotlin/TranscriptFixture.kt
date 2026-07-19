@@ -106,6 +106,43 @@ fun qualifyTranscriptContract(fixture: Map<String, String>) {
     check(wordProjection.words.last().endMilliseconds == number("segment_1_word_2_end_milliseconds"))
 }
 
+fun qualifyEmptyTranscriptImport(coreStore: File, root: File) {
+    val transcriptRoot = File(root, "transcripts").apply { mkdirs() }
+    val backupRoot = File(root, "transcript-backups")
+    val importId = CommandId(0UL, 5UL)
+    val plan = inspectLegacyTranscriptSource(coreStore.absolutePath, transcriptRoot.absolutePath)
+    check(plan.artifactCount == 0u && plan.selectedCount == 0u)
+    val staged = stageLegacyTranscriptImport(
+        coreStore.absolutePath,
+        transcriptRoot.absolutePath,
+        backupRoot.absolutePath,
+        coreStore.absolutePath,
+        File(root, "core.backup.sqlite").absolutePath,
+        plan,
+        importId,
+        CommandId(0UL, 2UL),
+        1_721_322_000_006L,
+    )
+    check(staged.state == LegacyTranscriptImportState.STAGED)
+    val verified = verifyStagedLegacyTranscriptImport(
+        coreStore.absolutePath,
+        backupRoot.absolutePath,
+        importId,
+        1_721_322_000_007L,
+    )
+    check(verified.report.state == LegacyTranscriptImportState.VERIFIED)
+    check(verified.verifiedArtifactCount == 0u)
+    val committed = commitStagedLegacyTranscriptImport(
+        coreStore.absolutePath,
+        transcriptRoot.absolutePath,
+        coreStore.absolutePath,
+        importId,
+        1_721_322_000_008L,
+    )
+    check(committed.state == LegacyTranscriptImportState.COMMITTED)
+    check(sharedTranscriptStoreIsAuthoritative(coreStore.absolutePath))
+}
+
 fun qualifyTranscriptRuntime(coreStore: File, podcastId: PodcastId, episodeId: EpisodeId) {
     val speakerId = SpeakerId(91UL, 92UL)
     val artifact = TranscriptArtifactInput(
@@ -141,6 +178,7 @@ fun qualifyTranscriptRuntime(coreStore: File, podcastId: PodcastId, episodeId: E
     val commandId = CommandId(0UL, 41UL)
     val facade = Pod0Facade.open(coreStore.absolutePath)
     try {
+        qualifyEmptyKnowledgeRuntime(facade)
         facade.dispatch(CommandEnvelope(
             commandId,
             CancellationId(0UL, 42UL),

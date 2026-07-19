@@ -3,29 +3,32 @@ use rusqlite::Connection;
 use crate::StorageError;
 use crate::schema_introspection::require_columns;
 
-pub(crate) fn validate_transcripts_schema(connection: &Connection) -> Result<(), StorageError> {
-    require_columns(
-        connection,
-        "pod0_transcript_imports",
-        &[
-            "backup_database_byte_count",
-            "backup_database_digest",
-            "committed_at_ms",
-            "diagnostic_code",
-            "discarded_at_ms",
-            "import_id",
-            "selected_count",
-            "source_database_digest",
-            "source_generation",
-            "source_kind",
-            "source_schema_version",
-            "source_selection_digest",
-            "staged_at_ms",
-            "state",
-            "target_revision",
-            "verified_at_ms",
-        ],
-    )?;
+pub(crate) fn validate_transcripts_schema(
+    connection: &Connection,
+    version: u32,
+) -> Result<(), StorageError> {
+    let mut import_columns = vec![
+        "backup_database_byte_count",
+        "backup_database_digest",
+        "committed_at_ms",
+        "diagnostic_code",
+        "discarded_at_ms",
+        "import_id",
+        "selected_count",
+        "source_database_digest",
+        "source_generation",
+        "source_kind",
+        "source_schema_version",
+        "source_selection_digest",
+        "staged_at_ms",
+        "state",
+        "target_revision",
+        "verified_at_ms",
+    ];
+    if version >= 12 {
+        import_columns.push("artifact_count");
+    }
+    require_columns(connection, "pod0_transcript_imports", &import_columns)?;
     require_columns(
         connection,
         "pod0_transcript_artifacts",
@@ -80,27 +83,27 @@ pub(crate) fn validate_transcripts_schema(connection: &Connection) -> Result<(),
             "transcript_version_id",
         ],
     )?;
-    require_columns(
-        connection,
-        "pod0_transcript_import_entries",
-        &[
-            "artifact_id",
-            "backup_file_byte_count",
-            "backup_file_digest",
-            "episode_id",
-            "import_id",
-            "legacy_input_version",
-            "legacy_integrity",
-            "legacy_origin",
-            "legacy_output_version",
-            "legacy_row_id",
-            "legacy_schema_version",
-            "legacy_verified_at_ms",
-            "selected_file_digest",
-            "selected_row_digest",
-            "transcript_version_id",
-        ],
-    )?;
+    let mut entry_columns = vec![
+        "artifact_id",
+        "backup_file_byte_count",
+        "backup_file_digest",
+        "episode_id",
+        "import_id",
+        "legacy_input_version",
+        "legacy_integrity",
+        "legacy_origin",
+        "legacy_output_version",
+        "legacy_row_id",
+        "legacy_schema_version",
+        "legacy_verified_at_ms",
+        "selected_file_digest",
+        "selected_row_digest",
+        "transcript_version_id",
+    ];
+    if version >= 12 {
+        entry_columns.push("is_selected");
+    }
+    require_columns(connection, "pod0_transcript_import_entries", &entry_columns)?;
     require_columns(
         connection,
         "pod0_transcript_selection",

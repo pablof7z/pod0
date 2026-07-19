@@ -95,7 +95,7 @@ extension EpisodeRecord {
             played: completed,
             isStarred: isStarred,
             downloadState: adjunct?.downloadState ?? .notDownloaded,
-            transcriptState: adjunct?.transcriptState ?? .none,
+            transcriptState: transcript.swiftValue,
             requestedTranscriptProvider: adjunct?.requestedTranscriptProvider,
             adSegments: adjunct?.adSegments,
             generationSource: adjunct?.generationSource
@@ -135,6 +135,30 @@ extension EpisodeRecord {
                 duration: duration,
                 title: soundBite.title
             )
+        }
+    }
+}
+
+private extension TranscriptArtifactStatus {
+    var swiftValue: TranscriptState {
+        switch self {
+        case .unavailable, .unsupported:
+            .none
+        case .available(_, let source):
+            .ready(source: source.swiftValue)
+        }
+    }
+}
+
+private extension Pod0Core.TranscriptSource {
+    var swiftValue: TranscriptState.Source {
+        switch self {
+        case .publisher: .publisher
+        case .scribe: .scribe
+        case .whisper: .whisper
+        case .onDevice: .onDevice
+        case .assemblyAi: .assemblyAI
+        case .other, .unsupported: .other
         }
     }
 }

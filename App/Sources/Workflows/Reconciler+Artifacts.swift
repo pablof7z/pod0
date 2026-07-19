@@ -5,70 +5,6 @@ extension Reconciler {
         var adopted = 0
         for episode in appStore.state.episodes {
             let audioVersion = DesiredStatePlanner.audioVersion(episode)
-            let existing = try artifacts.current(kind: .transcript, subjectID: episode.id)
-            if let existing, let location = existing.location,
-               let data = TranscriptStore.shared.verifiedData(
-                at: URL(fileURLWithPath: location), episodeID: episode.id
-               ), ArtifactRepository.hash(data) == existing.contentHash {
-                if existing.inputVersion != audioVersion || existing.integrity != .available {
-                    try artifacts.markIntegrity(
-                        kind: .transcript, subjectID: episode.id, integrity: .stale
-                    )
-                    _ = appStore.applyTranscriptEvent(
-                        .artifactInvalidated(inputVersion: audioVersion),
-                        episodeID: episode.id
-                    )
-                } else {
-                    _ = appStore.applyTranscriptEvent(.artifactAdopted(.init(
-                        inputVersion: existing.inputVersion,
-                        contentHash: existing.contentHash,
-                        fileURL: URL(fileURLWithPath: location),
-                        source: TranscriptState.Source(rawValue: existing.origin ?? "") ?? .other
-                    )), episodeID: episode.id)
-                }
-            } else if let staged = TranscriptStore.shared.recoverableStagedOutput(
-                episodeID: episode.id, inputVersion: audioVersion
-            ) {
-                let url = try TranscriptStore.shared.promoteStaged(
-                    episodeID: episode.id,
-                    leaseToken: staged.leaseToken,
-                    contentHash: staged.contentHash
-                )
-                try adoptTranscript(
-                    episode: episode, inputVersion: audioVersion,
-                    hash: staged.contentHash,
-                    location: url.path,
-                    origin: transcriptOrigin(at: url, episodeID: episode.id)
-                )
-                adopted += 1
-            } else if let data = TranscriptStore.shared.verifiedData(
-                at: TranscriptStore.shared.fileURL(for: episode.id), episodeID: episode.id
-            ) {
-                let hash = ArtifactRepository.hash(data)
-                let url = TranscriptStore.shared.contentFileURL(
-                    for: episode.id, contentHash: hash
-                )
-                try FileManager.default.createDirectory(
-                    at: url.deletingLastPathComponent(), withIntermediateDirectories: true
-                )
-                if !FileManager.default.fileExists(atPath: url.path) {
-                    try data.write(to: url, options: .withoutOverwriting)
-                }
-                try adoptTranscript(
-                    episode: episode, inputVersion: audioVersion,
-                    hash: hash, location: url.path, origin: transcriptOrigin(episode)
-                )
-                adopted += 1
-            } else if existing != nil {
-                try artifacts.markIntegrity(
-                    kind: .transcript, subjectID: episode.id, integrity: .corrupt
-                )
-                _ = appStore.applyTranscriptEvent(
-                    .artifactInvalidated(inputVersion: audioVersion),
-                    episodeID: episode.id
-                )
-            }
-
             adopted += try reconcileDownloadArtifact(
                 episode: episode,
                 inputVersion: audioVersion
@@ -231,46 +167,4 @@ extension Reconciler {
         }
     }
 
-    private func adoptTranscript(
-        episode: Episode,
-        inputVersion: String,
-        hash: String,
-        location: String,
-        origin: String
-    ) throws {
-        try artifacts.adopt(ArtifactRecord(
-            kind: .transcript, subjectID: episode.id,
-            inputVersion: inputVersion, outputVersion: hash,
-            contentHash: hash, location: location, origin: origin,
-            schemaVersion: 1, integrity: .available, verifiedAt: now()
-        ))
-        _ = appStore.applyTranscriptEvent(.artifactAdopted(.init(
-            inputVersion: inputVersion,
-            contentHash: hash,
-            fileURL: URL(fileURLWithPath: location),
-            source: TranscriptState.Source(rawValue: origin) ?? .other
-        )), episodeID: episode.id)
-    }
-
-    private func transcriptOrigin(_ episode: Episode) -> String {
-        if case .ready(let source) = episode.transcriptState { return source.rawValue }
-        return "adopted"
-    }
-
-    private func transcriptOrigin(at url: URL, episodeID: UUID) -> String {
-        guard let data = TranscriptStore.shared.verifiedData(
-            at: url,
-            episodeID: episodeID
-        ),
-              let transcript = try? Self.decoder.decode(Transcript.self, from: data) else {
-            return TranscriptState.Source.other.rawValue
-        }
-        return switch transcript.source {
-        case .publisher: TranscriptState.Source.publisher.rawValue
-        case .scribeV1: TranscriptState.Source.scribe.rawValue
-        case .whisper: TranscriptState.Source.whisper.rawValue
-        case .onDevice: TranscriptState.Source.onDevice.rawValue
-        case .assemblyAI: TranscriptState.Source.assemblyAI.rawValue
-        }
-    }
 }

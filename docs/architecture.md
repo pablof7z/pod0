@@ -11,24 +11,26 @@ additive Pod0-owned domain/application/facade workspace with a typed UniFFI
 surface, deterministic policy tests, and an exact generic NMP pin. Generated
 Swift and Kotlin APIs derive from the same Rust metadata. The Swift API is
 linked into iOS as `Pod0Core` and has a runtime smoke test; the Kotlin API has a
-JVM compile/runtime smoke test. `pod0-storage` now provides versioned,
+JVM compile/runtime smoke test. `pod0-storage` provides versioned,
 transactional core-schema migrations, verified backup/restore-to-staging, a
 restart journal, typed read-only failure states, and verified staged imports of
-the current Swift listening library, notes, and clips. The Rust store is authoritative for
-podcasts, subscriptions, episode listening facts, active playback, queue,
-resume, completion, rate, playback preferences, session sleep mode, notes, and
-saved clips with immutable transcript provenance.
+the legacy Swift listening library, notes, clips, and selected transcripts. The
+Rust store is authoritative for podcasts, subscriptions, episode listening
+facts, active playback, queue, resume, completion, rate, playback preferences,
+session sleep mode, notes, saved clips with immutable transcript provenance,
+and selected canonical transcripts.
 The facade contract is now version 12 and includes an additive canonical
 transcript-artifact contract: exact integer milliseconds, full word and speaker
 records, deterministic semantic/version/artifact identities, unknown-source
 preservation, replay fingerprints, and separately bounded summary, speaker,
 segment, and word projections. Its pure contract projection represents invalid
-input as rejection state rather than an FFI exception. Issue #95 imports and
-preserves legacy selections, while the version-12 application facade accepts
-typed native transcript observations into non-authoritative Rust shadow
-storage. Swift transcript JSON and readiness remain authoritative through #96;
-issue #97 performs the required atomic authority cutover and deletes the shadow
-and legacy ownership paths.
+input as rejection state rather than an FFI exception. At startup the iOS shell
+verifies and stages the issue #95 legacy transcript import, commits selected
+artifacts and the authority marker in one Rust transaction, and only then opens
+the application facade. The version-12 facade accepts typed native transcript
+observations and exposes bounded transcript projections. The issue #97 cutover
+removed Swift transcript persistence, readiness mutation, workflow artifact
+ownership, and the temporary shadow path.
 Cancellable native host adapters now
 execute typed feed requests through URLSession and playback requests through
 AVFoundation, returning correlated bounded observations through the generated
@@ -52,7 +54,8 @@ cross-platform schema.
 
 ### Persistence topology
 
-`pod0-core.sqlite` is authoritative for the migrated listening, notes, and clips slices.
+`pod0-core.sqlite` is authoritative for the migrated listening, notes, clips,
+and selected-transcript slices.
 `Persistence` remains SQLite-authoritative for unmigrated and adjunct Swift
 state. Normal reads and writes do not compare a JSON store.
 
@@ -62,11 +65,11 @@ state. Normal reads and writes do not compare a JSON store.
   and sort order.
 - Workflow schema metadata, jobs, and artifact records share the authoritative
   SQLite transaction boundary where atomic state/job creation is required.
-- Transcript, download, staged artifact, and vector-index files are derived or
-  independently versioned artifacts under application support. Selected full
-  transcript JSON is still Swift-owned migration input. The version-12 Rust
-  transcript selection is explicitly shadow-only until #97 and is compared
-  through bounded projections without becoming an application read authority.
+- Download, staged workflow artifact, and vector-index files are derived or
+  independently versioned artifacts under application support. Legacy full
+  transcript JSON is read only during verified one-time migration and retained
+  in an immutable backup; normal reads and writes use Rust-owned canonical
+  transcript artifacts and selections.
 - Legacy JSON is imported once and is never a concurrent authority.
 - Keychain stores provider secrets. iCloud KVS carries selected non-secret
   settings. The widget reads a bounded app-group snapshot.
@@ -141,9 +144,9 @@ Swift and Kotlin bindings. CI rejects drift from Rust metadata.
   Only the resulting integer milliseconds may be persisted or fingerprinted.
   Version 12 commits accepted observations through the application command and
   reads them back through bounded summary/speaker/segment/word projections.
-  Swift remains the selected-transcript authority until #97, and shadow
-  diagnostics contain only mismatch categories, stable IDs, counts, and
-  digests—never transcript text.
+  Swift maps native/provider observations into this command and reconstructs
+  presentation values from these projections; it owns neither the selection
+  nor a durable transcript copy.
 - Open views receive bounded, revisioned, screen-shaped projections.
 - Operation failure and cancellation appear in projection state, not thrown
   per-operation FFI results.
@@ -174,8 +177,9 @@ dependency graph is in the [roadmap](../Plans/2026-07-18-ios-first-rust-nmp-road
 - `scripts/check_architecture_ownership.py` covers every production Swift file.
 - `scripts/check_ui_storage_boundary.py` rejects new presentation-to-repository
   access and tracks exact temporary exceptions with deletion issues.
-- `scripts/check_transcript_shadow_privacy.py` rejects transcript payloads in
-  shadow diagnostics.
+- `scripts/check_transcript_single_writer.py` rejects any reintroduced Swift
+  transcript store, shadow path, readiness mutator, or workflow artifact writer
+  and requires the typed Rust commit/read/migration seams.
 - `AppStateMutationBoundaryTests` rejects direct production `mutateState` use
   outside the State domain.
 - The pull-request template requires an ownership declaration for

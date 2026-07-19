@@ -1,12 +1,15 @@
 import Foundation
 
-/// Migration-safe transcript read boundary.
-///
-/// Swift JSON remains authoritative through #96. Issue #97 replaces the
-/// default implementation with shared-core projections and deletes the
-/// legacy durable reader.
+/// Native transcript read boundary backed by bounded shared-core projections.
 protocol TranscriptReading: Sendable {
     func load(episodeID: UUID) -> Transcript?
 }
 
-extension TranscriptStore: TranscriptReading {}
+struct UnavailableTranscriptReader: TranscriptReading {
+    static let shared = UnavailableTranscriptReader()
+
+    func load(episodeID: UUID) -> Transcript? {
+        _ = episodeID
+        return nil
+    }
+}

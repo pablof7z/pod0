@@ -5,6 +5,28 @@ import XCTest
 
 @MainActor
 final class SharedTranscriptVerticalSliceTests: XCTestCase {
+    func testNativeEpisodeEncodingOmitsRustOwnedTranscriptReadiness() throws {
+        var episode = Episode(
+            podcastID: UUID(),
+            guid: "projection-only-readiness",
+            title: "Projection only",
+            pubDate: Date(timeIntervalSince1970: 1_700_000_000),
+            enclosureURL: URL(string: "https://example.com/projection.mp3")!
+        )
+        episode.transcriptState = .ready(source: .publisher)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let encoded = try encoder.encode(episode)
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any]
+        )
+
+        XCTAssertNil(object["transcriptState"])
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        XCTAssertEqual(try decoder.decode(Episode.self, from: encoded).transcriptState, .none)
+    }
+
     func testTypedSubmissionPagesAndRelaunchProjection() throws {
         let made = makeStore()
         defer { dispose(made) }
@@ -13,8 +35,8 @@ final class SharedTranscriptVerticalSliceTests: XCTestCase {
         let context = makeContext(podcastID: made.podcastID)
 
         let result = try client.submitTranscriptObservation(transcript, context: context)
-        XCTAssertTrue(result.mismatches.isEmpty)
         XCTAssertEqual(result.receipt.selectionRevision.value, 1)
+        XCTAssertEqual(result.summary.artifactId, result.receipt.artifactId)
 
         let reader = SharedTranscriptReader(facade: client.facade)
         let firstPage = try reader.segmentsPage(
@@ -88,6 +110,43 @@ final class SharedTranscriptVerticalSliceTests: XCTestCase {
         XCTAssertFalse(second.hasMore)
     }
 
+    func testIdenticalObservationAlwaysUsesTypedCommandAndReplaysAfterRelaunch() throws {
+        let made = makeStore()
+        defer { dispose(made) }
+        let client = try XCTUnwrap(made.store.sharedLibrary)
+        let transcript = makeTranscript(episodeID: made.episodeID)
+        let context = makeContext(podcastID: made.podcastID)
+        let first = try client.submitTranscriptObservation(transcript, context: context)
+        let replayCommand = CommandId(uuid: UUID())
+
+        let second = try client.submitTranscriptObservation(
+            transcript,
+            context: context,
+            commandID: replayCommand
+        )
+        XCTAssertEqual(second.summary.selectionRevision, second.receipt.selectionRevision)
+        XCTAssertEqual(
+            second.receipt.selectionRevision.value,
+            first.receipt.selectionRevision.value + 1
+        )
+
+        let reopenedFacade = try Pod0Facade.open(
+            storePath: made.store.persistence.sharedCoreStoreURL.path
+        )
+        let reopened = SharedLibraryClient(
+            facade: reopenedFacade,
+            feedHost: QueuedCoreFeedHost([])
+        )
+        let replayed = try reopened.submitTranscriptObservation(
+            transcript,
+            context: context,
+            commandID: replayCommand,
+            expectedSelectionRevision: first.receipt.selectionRevision
+        )
+        XCTAssertEqual(replayed.receipt, second.receipt)
+        XCTAssertEqual(replayed.summary.selectionRevision, second.summary.selectionRevision)
+    }
+
     func testStaleRevisionIsTypedAndNeverBlindlyRetried() throws {
         let made = makeStore()
         defer { dispose(made) }
@@ -95,9 +154,15 @@ final class SharedTranscriptVerticalSliceTests: XCTestCase {
         let transcript = makeTranscript(episodeID: made.episodeID)
         let context = makeContext(podcastID: made.podcastID)
         let first = try client.submitTranscriptObservation(transcript, context: context)
+        let replacement = Transcript(
+            episodeID: made.episodeID,
+            language: "en",
+            source: .publisher,
+            segments: [Segment(start: 0, end: 1, text: "Replacement")]
+        )
 
         XCTAssertThrowsError(try client.submitTranscriptObservation(
-            transcript,
+            replacement,
             context: context,
             expectedSelectionRevision: StateRevision(value: 0)
         )) { error in
@@ -129,63 +194,6 @@ final class SharedTranscriptVerticalSliceTests: XCTestCase {
         XCTAssertTrue(cancelled)
         XCTAssertNil(try SharedTranscriptReader(facade: client.facade)
             .summary(episodeID: transcript.episodeID))
-    }
-
-    func testUnavailableCoreLeavesSwiftAuthorityReadable() async throws {
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "transcript-fallback-\(UUID().uuidString)", isDirectory: true
-        )
-        defer { try? FileManager.default.removeItem(at: root) }
-        let legacy = try TranscriptStore(rootDirectory: root)
-        let transcript = makeTranscript(episodeID: UUID())
-        try legacy.save(transcript)
-
-        await SharedTranscriptShadowObserver.observe(
-            transcript: transcript,
-            podcastID: UUID(),
-            sourceRevision: "audio-v1",
-            sourcePayloadDigest: makeContext(podcastID: UUID()).sourcePayloadDigest,
-            provider: nil,
-            client: nil
-        )
-
-        let restored = try XCTUnwrap(legacy.load(episodeID: transcript.episodeID))
-        XCTAssertEqual(restored.id, transcript.id)
-        XCTAssertEqual(restored.source, transcript.source)
-        XCTAssertEqual(restored.segments, transcript.segments)
-    }
-
-    func testShadowComparatorClassifiesMismatchWithoutPayloadValues() throws {
-        let made = makeStore()
-        defer { dispose(made) }
-        let client = try XCTUnwrap(made.store.sharedLibrary)
-        let authoritative = makeTranscript(episodeID: made.episodeID)
-        let context = makeContext(podcastID: made.podcastID)
-        _ = try client.submitTranscriptObservation(authoritative, context: context)
-        let reader = SharedTranscriptReader(facade: client.facade)
-        let summary = try XCTUnwrap(reader.summary(episodeID: authoritative.episodeID))
-        let changed = Transcript(
-            episodeID: UUID(),
-            language: "fr",
-            source: .whisper,
-            segments: [Segment(
-                start: 9,
-                end: 10,
-                speakerID: UUID(),
-                text: "Different",
-                words: [Word(start: 9, end: 10, text: "Changed")]
-            )],
-            speakers: [Speaker(label: "changed")],
-            generatedAt: authoritative.generatedAt.addingTimeInterval(1)
-        )
-        let mismatches = SharedTranscriptShadowComparator.compare(
-            authoritative: authoritative,
-            podcastID: made.podcastID,
-            context: context,
-            summary: summary,
-            candidate: changed
-        )
-        XCTAssertEqual(mismatches, Set(TranscriptShadowMismatch.allCases))
     }
 
     private func makeTranscript(episodeID: UUID) -> Transcript {

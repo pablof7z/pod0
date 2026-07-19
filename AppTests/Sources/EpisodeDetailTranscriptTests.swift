@@ -1,78 +1,35 @@
 import XCTest
 @testable import Podcastr
 
-/// Covers `EpisodeDetailView.readyTranscript(for:store:)` — the bridge from
-/// the in-memory `Episode.transcriptState` to the on-disk `TranscriptStore`.
-///
-/// Each test spins up an isolated `TranscriptStore` rooted in a unique temp
-/// directory so they don't trample the app's real Application Support state
-/// or each other.
 @MainActor
 final class EpisodeDetailTranscriptTests: XCTestCase {
-
-    // MARK: - Fixtures
-
-    private var tempDir: URL!
-    private var store: TranscriptStore!
-
-    override func setUpWithError() throws {
-        try super.setUpWithError()
-        tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("readyTranscriptTests-\(UUID().uuidString)", isDirectory: true)
-        store = try TranscriptStore(rootDirectory: tempDir)
-    }
-
-    override func tearDownWithError() throws {
-        if let tempDir {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
-        store = nil
-        tempDir = nil
-        try super.tearDownWithError()
-    }
-
-    // MARK: - Tests
-
-    /// Happy path: state is `.ready` and the transcript exists on disk —
-    /// `readyTranscript` returns the persisted transcript verbatim.
-    func testReadyTranscriptReturnsPersistedTranscriptWhenStateIsReady() throws {
+    func testReadyTranscriptReturnsSharedProjectionWhenStateIsReady() {
         let episode = makeEpisode(state: .ready(source: .publisher))
-        let saved = makeTranscript(episodeID: episode.id)
-        try store.save(saved)
+        let transcript = makeTranscript(episodeID: episode.id)
+        let reader = StubTranscriptReader(values: [episode.id: transcript])
 
-        let resolved = EpisodeDetailView.readyTranscript(for: episode, store: store)
+        let resolved = EpisodeDetailView.readyTranscript(for: episode, store: reader)
 
-        XCTAssertNotNil(resolved, "Expected the persisted transcript to load when state is .ready")
-        XCTAssertEqual(resolved?.id, saved.id)
-        XCTAssertEqual(resolved?.episodeID, episode.id)
-        XCTAssertEqual(resolved?.segments.count, saved.segments.count)
-        XCTAssertEqual(resolved?.segments.first?.text, saved.segments.first?.text)
+        XCTAssertEqual(resolved?.id, transcript.id)
+        XCTAssertEqual(resolved?.segments.first?.text, "Hello and welcome.")
     }
 
-    /// Defensive path: state claims `.ready` but the on-disk file is missing
-    /// (user wiped Application Support, store init failed, etc.) —
-    /// `readyTranscript` must return `nil` so the UI falls back to the
-    /// in-progress / empty surface rather than crashing or rendering empty
-    /// chrome.
-    func testReadyTranscriptReturnsNilWhenStateIsReadyButFileMissing() {
+    func testReadyTranscriptReturnsNilWhenProjectionIsUnavailable() {
         let episode = makeEpisode(state: .ready(source: .scribe))
-
-        let resolved = EpisodeDetailView.readyTranscript(for: episode, store: store)
-
-        XCTAssertNil(resolved)
+        XCTAssertNil(EpisodeDetailView.readyTranscript(
+            for: episode,
+            store: StubTranscriptReader(values: [:])
+        ))
     }
 
-    /// Stable evidence gate: a file alone is not selected transcript evidence.
-    func testReadyTranscriptReturnsNilWhenTranscriptIsNotSelected() throws {
+    func testTranscriptProjectionIsNotReadUntilCoreReportsReady() {
         let episode = makeEpisode(state: .none)
-        try store.save(makeTranscript(episodeID: episode.id))
-
-        let resolved = EpisodeDetailView.readyTranscript(for: episode, store: store)
-
-        XCTAssertNil(resolved)
+        let transcript = makeTranscript(episodeID: episode.id)
+        XCTAssertNil(EpisodeDetailView.readyTranscript(
+            for: episode,
+            store: StubTranscriptReader(values: [episode.id: transcript])
+        ))
     }
-
-    // MARK: - Helpers
 
     private func makeEpisode(state: TranscriptState) -> Episode {
         Episode(
@@ -93,9 +50,17 @@ final class EpisodeDetailTranscriptTests: XCTestCase {
             source: .publisher,
             segments: [
                 Segment(start: 0, end: 4, speakerID: speaker.id, text: "Hello and welcome."),
-                Segment(start: 4, end: 9, speakerID: speaker.id, text: "Today we're talking about transcripts.")
+                Segment(start: 4, end: 9, speakerID: speaker.id, text: "Shared projections win."),
             ],
             speakers: [speaker]
         )
+    }
+}
+
+private struct StubTranscriptReader: TranscriptReading {
+    let values: [UUID: Transcript]
+
+    func load(episodeID: UUID) -> Transcript? {
+        values[episodeID]
     }
 }

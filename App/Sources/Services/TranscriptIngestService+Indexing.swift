@@ -11,25 +11,22 @@ extension TranscriptIngestService {
               let episode = appStore.episode(id: episodeID) else {
             throw JobFailure(classification: .invalidInput, message: "Episode no longer exists")
         }
-        let transcriptReader: any TranscriptReading = store
         guard case .ready = episode.transcriptState,
-              let transcript = transcriptReader.load(episodeID: episodeID) else {
+              let sharedLibrary = appStore.sharedLibrary,
+              let transcript = sharedLibrary.authoritativeTranscriptReader.load(
+                episodeID: episodeID
+              ),
+              let summary = try sharedLibrary.authoritativeTranscriptReader.summary(
+                episodeID: episodeID
+              ) else {
             throw JobFailure(
                 classification: .missingDependency,
                 message: "Transcript is not available for indexing."
             )
         }
-        guard let selectedData = store.verifiedData(episodeID: episodeID),
-              let sharedLibrary = appStore.sharedLibrary else {
-            throw JobFailure(
-                classification: .missingDependency,
-                message: "Shared evidence storage is unavailable."
-            )
-        }
         let receipt = try await sharedLibrary.rebuildTranscriptEvidence(
             transcript: transcript,
-            podcastID: episode.podcastID,
-            selectedData: selectedData,
+            summary: summary,
             inputVersion: generation
         )
         Self.logger.info(

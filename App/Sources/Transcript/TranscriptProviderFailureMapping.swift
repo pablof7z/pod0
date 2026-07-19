@@ -7,13 +7,13 @@ extension OpenRouterWhisperClient.WhisperError: ProductFailureConvertible {
         case .missingAPIKey: code = .missingCredential
         case .invalidAudioURL: code = .invalidInput
         case .downloadFailed, .timedOut: code = .network
-        case .http(let status, _) where status == 401 || status == 403:
+        case .http(let status) where status == 401 || status == 403:
             code = .missingCredential
-        case .http(let status, _) where status == 415 || status == 422:
+        case .http(let status) where status == 415 || status == 422:
             code = .unsupportedFormat
-        case .http(let status, _) where status == 429:
+        case .http(let status) where status == 429:
             code = .rateLimited
-        case .http(let status, _) where status == 408 || status == 504 || status >= 500:
+        case .http(let status) where status == 408 || status == 504 || status >= 500:
             code = .network
         case .cancelled: code = .cancelled
         case .invalidResponse, .http, .decoding: code = .unexpected
@@ -28,13 +28,13 @@ extension ElevenLabsScribeClient.ScribeError: ProductFailureConvertible {
         switch self {
         case .missingAPIKey: code = .missingCredential
         case .invalidAudioURL: code = .invalidInput
-        case .http(let status, _) where status == 401 || status == 403:
+        case .http(let status) where status == 401 || status == 403:
             code = .missingCredential
-        case .http(let status, _) where status == 415 || status == 422:
+        case .http(let status) where status == 415 || status == 422:
             code = .unsupportedFormat
-        case .http(let status, _) where status == 429:
+        case .http(let status) where status == 429:
             code = .rateLimited
-        case .http(let status, _) where status == 408 || status == 504 || status >= 500:
+        case .http(let status) where status == 408 || status == 504 || status >= 500:
             code = .network
         case .cancelled: code = .cancelled
         case .timedOut: code = .network
@@ -50,13 +50,13 @@ extension AssemblyAITranscriptClient.TranscribeError: ProductFailureConvertible 
         switch self {
         case .missingAPIKey: code = .missingCredential
         case .invalidAudioURL: code = .invalidInput
-        case .http(let status, _) where status == 401 || status == 403:
+        case .http(let status) where status == 401 || status == 403:
             code = .missingCredential
-        case .http(let status, _) where status == 415 || status == 422:
+        case .http(let status) where status == 415 || status == 422:
             code = .unsupportedFormat
-        case .http(let status, _) where status == 429:
+        case .http(let status) where status == 429:
             code = .rateLimited
-        case .http(let status, _) where status == 408 || status == 504 || status >= 500:
+        case .http(let status) where status == 408 || status == 504 || status >= 500:
             code = .network
         case .cancelled: code = .cancelled
         case .timedOut: code = .network

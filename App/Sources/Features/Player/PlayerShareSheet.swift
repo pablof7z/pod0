@@ -146,7 +146,10 @@ struct PlayerShareSheet: View {
     /// works — same defensive path the previous implementation took, just
     /// preceded by an LLM round-trip when possible.
     private func captureAndShareQuote() {
-        guard let transcript = EpisodeDetailView.readyTranscript(for: episode),
+        guard let transcript = EpisodeDetailView.readyTranscript(
+            for: episode,
+            store: store.transcriptReader
+        ),
               store.podcast(id: episode.podcastID) != nil else {
             Haptics.error()
             return

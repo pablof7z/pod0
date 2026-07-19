@@ -125,6 +125,7 @@ private fun qualifyListeningImport(source: File) {
         ))
         qualifyEmptyNoteImport(source, root)
         qualifyEmptyClipImport(source, root)
+        qualifyEmptyTranscriptImport(File(root, "core.sqlite"), root)
         qualifyTranscriptRuntime(
             File(root, "core.sqlite"),
             imported.podcasts.single().podcastId,

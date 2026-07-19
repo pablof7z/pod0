@@ -34,36 +34,18 @@ extension AppStateStorePerformanceTests {
             episodeID: episode.id,
             language: "en-US",
             source: source,
-            segments: []
+            segments: [.init(start: 0, end: 1, text: "Performance fixture")]
         )
-        try TranscriptStore.shared.save(transcript)
-        let url = TranscriptStore.shared.fileURL(for: episode.id)
-        let data = try XCTUnwrap(TranscriptStore.shared.verifiedData(
-            at: url,
-            episodeID: episode.id
-        ))
-        let projectedSource: TranscriptState.Source = switch source {
-        case .publisher: .publisher
-        case .scribeV1: .scribe
-        case .whisper: .whisper
-        case .onDevice: .onDevice
-        case .assemblyAI: .assemblyAI
-        }
-        let hash = ArtifactRepository.hash(data)
-        try ArtifactRepository(fileURL: store.persistence.episodeStore.fileURL).adopt(
-            ArtifactRecord(
-                kind: .transcript,
-                subjectID: episode.id,
-                inputVersion: DesiredStatePlanner.audioVersion(episode),
-                outputVersion: hash,
-                contentHash: hash,
-                location: url.path,
-                origin: projectedSource.rawValue,
-                schemaVersion: 1,
-                integrity: .available,
-                verifiedAt: Date()
+        let client = try XCTUnwrap(store.sharedLibrary)
+        _ = try client.submitTranscriptObservation(
+            transcript,
+            context: TranscriptObservationContext(
+                podcastID: episode.podcastID,
+                sourceRevision: DesiredStatePlanner.audioVersion(episode),
+                sourcePayloadDigest: ArtifactRepository.hash(Data("performance-fixture".utf8)),
+                provider: nil
             )
         )
-        transcriptEvidenceIDs.append(episode.id)
+        client.attach(store: store)
     }
 }

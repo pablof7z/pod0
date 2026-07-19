@@ -21,7 +21,7 @@ final class EpisodeDownloadStore: @unchecked Sendable {
             return try EpisodeDownloadStore()
         } catch {
             // Fall back to the temporary directory so the app keeps running
-            // even if Application Support is unavailable. Mirrors TranscriptStore.
+            // even if Application Support is unavailable.
             let tmp = FileManager.default.temporaryDirectory
                 .appendingPathComponent("podcastr-downloads", isDirectory: true)
             // swiftlint:disable:next force_try

@@ -1,8 +1,8 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use pod0_domain::{ContentDigest, EpisodeId, PodcastId};
-use rusqlite::{Connection, OpenFlags};
+use rusqlite::{Connection, OpenFlags, OptionalExtension};
 
 use crate::backup::verify_connection;
 use crate::legacy_format::{finite_milliseconds, uuid_bytes};
@@ -17,6 +17,8 @@ pub(crate) struct LegacyTranscriptRow {
     pub(crate) row_id: u64,
     pub(crate) episode_id: EpisodeId,
     pub(crate) podcast_id: PodcastId,
+    pub(crate) is_orphan: bool,
+    pub(crate) is_selected: bool,
     pub(crate) subject: String,
     pub(crate) input_version: String,
     pub(crate) output_version: String,
@@ -52,9 +54,12 @@ pub(crate) fn inspect_legacy_transcript_database(
     let source_kind = source_kind(&connection)?;
     validate_recorded_schema(&connection, source_kind)?;
     let source_generation = source_generation(&connection)?;
-    let mut rows = selected_rows(&connection, source_kind)?;
+    let mut rows = transcript_rows(&connection, source_kind)?;
     attach_parents_and_digests(&connection, &mut rows)?;
-    rows.sort_by_key(|row| row.episode_id);
+    // Winner selection is computed while reading the legacy priority order.
+    // Digests and staged rows then use a stable identity order so verification
+    // is independent of query-planner ordering for equally-timed history.
+    rows.sort_by_key(|row| (row.episode_id, row.row_id));
     let database_digest = database_digest(source_kind, source_generation, &rows);
     Ok(LegacyTranscriptDatabase {
         source_kind,
@@ -64,17 +69,27 @@ pub(crate) fn inspect_legacy_transcript_database(
     })
 }
 
-fn selected_rows(
+fn transcript_rows(
     connection: &Connection,
     source_kind: LegacyTranscriptSourceKind,
 ) -> Result<Vec<LegacyTranscriptRow>, StorageError> {
-    let selected_clause = match source_kind {
-        LegacyTranscriptSourceKind::ArtifactSqliteV0 => "",
-        LegacyTranscriptSourceKind::ArtifactSqliteV1 => " AND selected=1",
+    let has_artifacts: bool = connection
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE type='table' AND name='artifacts')",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|error| StorageError::sqlite("inspect legacy transcript selections", error))?;
+    if !has_artifacts {
+        return Ok(Vec::new());
+    }
+    let selected_value = match source_kind {
+        LegacyTranscriptSourceKind::ArtifactSqliteV0 => "NULL",
+        LegacyTranscriptSourceKind::ArtifactSqliteV1 => "selected",
     };
     let sql = format!(
         "SELECT id,subject_id,input_version,output_version,content_hash,location,origin,\
-         schema_version,integrity,verified_at FROM artifacts WHERE kind='transcript'{selected_clause} \
+         schema_version,integrity,verified_at,{selected_value} FROM artifacts WHERE kind='transcript' \
          ORDER BY subject_id,CASE integrity WHEN 'available' THEN 0 ELSE 1 END,\
          verified_at DESC,id DESC"
     );
@@ -94,11 +109,13 @@ fn selected_rows(
                 row.get::<_, i64>(7)?,
                 row.get::<_, String>(8)?,
                 row.get::<_, f64>(9)?,
+                row.get::<_, Option<i64>>(10)?,
             ))
         })
         .map_err(|error| StorageError::sqlite("read legacy transcript selections", error))?;
     let mut identities = BTreeSet::new();
-    let mut chosen = BTreeMap::new();
+    let mut selected_episodes = BTreeSet::new();
+    let mut decoded = Vec::new();
     for (offset, row) in rows.enumerate() {
         let row =
             row.map_err(|error| StorageError::sqlite("decode legacy transcript selection", error))?;
@@ -110,17 +127,20 @@ fn selected_rows(
             return Err(invalid(index, "artifact identity is duplicated"));
         }
         let episode_id = EpisodeId::from_bytes(uuid_bytes(&row.1, "transcript episode", index)?);
-        if source_kind == LegacyTranscriptSourceKind::ArtifactSqliteV1
-            && chosen.contains_key(&episode_id)
-        {
-            return Err(invalid(index, "multiple transcript artifacts are selected"));
-        }
-        if source_kind == LegacyTranscriptSourceKind::ArtifactSqliteV0
-            && chosen.contains_key(&episode_id)
-        {
-            continue;
-        }
-        if row.8 != "available" {
+        let is_selected = match (source_kind, row.10) {
+            (LegacyTranscriptSourceKind::ArtifactSqliteV0, None) => {
+                row.8 == "available" && selected_episodes.insert(episode_id)
+            }
+            (LegacyTranscriptSourceKind::ArtifactSqliteV1, Some(0)) => false,
+            (LegacyTranscriptSourceKind::ArtifactSqliteV1, Some(1)) => {
+                if !selected_episodes.insert(episode_id) {
+                    return Err(invalid(index, "multiple transcript artifacts are selected"));
+                }
+                true
+            }
+            _ => return Err(invalid(index, "artifact selection flag is invalid")),
+        };
+        if is_selected && row.8 != "available" {
             return Err(invalid(index, "selected transcript is not available"));
         }
         let schema_version =
@@ -134,27 +154,26 @@ fn selected_rows(
         if schema_version != 1 {
             return Err(invalid(index, "artifact schema is unsupported"));
         }
-        chosen.insert(
+        decoded.push(LegacyTranscriptRow {
+            row_id: u64::try_from(row.0)
+                .map_err(|_| invalid(index, "artifact row identity is invalid"))?,
             episode_id,
-            LegacyTranscriptRow {
-                row_id: u64::try_from(row.0)
-                    .map_err(|_| invalid(index, "artifact row identity is invalid"))?,
-                episode_id,
-                podcast_id: PodcastId::from_parts(0, 0),
-                subject: row.1,
-                input_version: bounded(row.2, 1_024, index, "input version")?,
-                output_version: bounded(row.3, 1_024, index, "output version")?,
-                content_hash: row.4,
-                location: row.5,
-                origin: optional_bounded(row.6, 128, index, "origin")?,
-                artifact_schema_version: schema_version,
-                integrity: row.8,
-                verified_at_ms: finite_milliseconds(row.9, "transcript selection", index)?,
-                row_digest: ContentDigest::default(),
-            },
-        );
+            podcast_id: PodcastId::from_parts(0, 0),
+            is_orphan: false,
+            is_selected,
+            subject: row.1,
+            input_version: bounded(row.2, 1_024, index, "input version")?,
+            output_version: bounded(row.3, 1_024, index, "output version")?,
+            content_hash: row.4,
+            location: row.5,
+            origin: optional_bounded(row.6, 128, index, "origin")?,
+            artifact_schema_version: schema_version,
+            integrity: row.8,
+            verified_at_ms: finite_milliseconds(row.9, "transcript selection", index)?,
+            row_digest: ContentDigest::default(),
+        });
     }
-    Ok(chosen.into_values().collect())
+    Ok(decoded)
 }
 
 fn attach_parents_and_digests(
@@ -162,20 +181,26 @@ fn attach_parents_and_digests(
     rows: &mut [LegacyTranscriptRow],
 ) -> Result<(), StorageError> {
     for (offset, row) in rows.iter_mut().enumerate() {
-        let parent: String = connection
+        let parent: Option<String> = connection
             .query_row(
                 "SELECT subscription_id FROM episodes WHERE id=?1",
                 [&row.subject],
                 |value| value.get(0),
             )
+            .optional()
             .map_err(|error| {
                 StorageError::sqlite("read legacy transcript episode parent", error)
             })?;
-        row.podcast_id = PodcastId::from_bytes(uuid_bytes(
-            &parent,
-            "transcript podcast",
-            u32::try_from(offset).unwrap_or(u32::MAX),
-        )?);
+        if let Some(parent) = parent {
+            row.podcast_id = PodcastId::from_bytes(uuid_bytes(
+                &parent,
+                "transcript podcast",
+                u32::try_from(offset).unwrap_or(u32::MAX),
+            )?);
+        } else {
+            row.podcast_id = orphan_transcript_podcast_id();
+            row.is_orphan = true;
+        }
         row.row_digest = row_digest(row);
     }
     Ok(())
@@ -186,6 +211,8 @@ fn row_digest(row: &LegacyTranscriptRow) -> ContentDigest {
     hash.u64(row.row_id);
     hash.bytes(&row.episode_id.into_bytes());
     hash.bytes(&row.podcast_id.into_bytes());
+    hash.u32(u32::from(row.is_orphan));
+    hash.u32(u32::from(row.is_selected));
     hash.text(&row.input_version);
     hash.text(&row.output_version);
     hash.text(&row.content_hash);
@@ -195,6 +222,13 @@ fn row_digest(row: &LegacyTranscriptRow) -> ContentDigest {
     hash.text(&row.integrity);
     hash.i64(row.verified_at_ms);
     hash.finish()
+}
+
+pub(crate) const fn orphan_transcript_podcast_id() -> PodcastId {
+    PodcastId::from_bytes([
+        0x86, 0x36, 0x3c, 0xd2, 0x4b, 0x10, 0xa8, 0x8f, 0x98, 0x73, 0x54, 0x58, 0x4e, 0xbb, 0xed,
+        0x99,
+    ])
 }
 
 fn database_digest(

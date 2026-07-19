@@ -8,7 +8,7 @@ final class SharedLibraryClient {
     }
 
     nonisolated let facade: Pod0Facade
-    let authoritativeTranscriptReader: any TranscriptReading
+    let authoritativeTranscriptReader: SharedTranscriptReader
     private let dispatcher: Pod0NativeHostDispatcher
     private let deferredPlaybackHost: DeferredPlaybackHost
     let deferredRecallHost: DeferredRecallHost
@@ -38,11 +38,10 @@ final class SharedLibraryClient {
 
     init(
         facade: Pod0Facade,
-        feedHost: any CoreFeedHosting,
-        authoritativeTranscriptReader: any TranscriptReading = TranscriptStore.shared
+        feedHost: any CoreFeedHosting
     ) {
         self.facade = facade
-        self.authoritativeTranscriptReader = authoritativeTranscriptReader
+        self.authoritativeTranscriptReader = SharedTranscriptReader(facade: facade)
         let playbackHost = DeferredPlaybackHost()
         let recallHost = DeferredRecallHost()
         self.deferredPlaybackHost = playbackHost

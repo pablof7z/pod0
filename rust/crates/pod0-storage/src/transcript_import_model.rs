@@ -63,6 +63,7 @@ pub struct TranscriptImportPlan {
     pub source_generation: u64,
     pub source_database_digest: ContentDigest,
     pub source_selection_digest: ContentDigest,
+    pub artifact_count: u32,
     pub selected_count: u32,
 }
 
@@ -90,6 +91,7 @@ pub struct TranscriptImportReport {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TranscriptImportEntrySummary {
     pub episode_id: EpisodeId,
+    pub is_selected: bool,
     pub selected_row_digest: ContentDigest,
     pub selected_file_digest: ContentDigest,
     pub artifact_id: TranscriptArtifactId,
@@ -115,6 +117,8 @@ pub(crate) struct InspectedTranscriptSource {
 pub(crate) struct InspectedTranscriptEntry {
     pub(crate) episode_id: EpisodeId,
     pub(crate) podcast_id: PodcastId,
+    pub(crate) is_orphan: bool,
+    pub(crate) is_selected: bool,
     pub(crate) legacy_row_id: u64,
     pub(crate) legacy_schema_version: u32,
     pub(crate) legacy_input_version: String,
@@ -135,6 +139,7 @@ pub(crate) struct InspectedTranscriptEntry {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct StoredTranscriptImportEntry {
     pub(crate) episode_id: EpisodeId,
+    pub(crate) is_selected: bool,
     pub(crate) legacy_row_id: u64,
     pub(crate) selected_row_digest: ContentDigest,
     pub(crate) selected_file_digest: ContentDigest,

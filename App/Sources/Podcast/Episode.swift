@@ -198,7 +198,7 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         try c.encode(played, forKey: .played)
         try c.encode(isStarred, forKey: .isStarred)
         try c.encode(downloadState, forKey: .downloadState)
-        try c.encode(transcriptState, forKey: .transcriptState)
+        // Rust owns durable readiness; decode the legacy key but never re-encode it.
         try c.encodeIfPresent(requestedTranscriptProvider, forKey: .requestedTranscriptProvider)
         try c.encodeIfPresent(adSegments, forKey: .adSegments)
         try c.encodeIfPresent(generationSource, forKey: .generationSource)

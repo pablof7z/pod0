@@ -25,23 +25,32 @@ impl FacadeState {
                 )
             });
         match result {
-            Ok(receipt) => self.succeed(
-                envelope.command_id,
-                Some(OperationResult::TranscriptCommitted {
-                    receipt: TranscriptCommitReceipt {
-                        command_id: receipt.command_id,
-                        artifact_id: receipt.artifact_id,
-                        transcript_version_id: receipt.transcript_version_id,
-                        transcript_content_digest: receipt.transcript_content_digest,
-                        artifact_integrity_digest: receipt.artifact_integrity_digest,
-                        command_fingerprint: receipt.command_fingerprint,
-                        selection_revision: receipt.selection_revision,
-                        speaker_count: receipt.speaker_count,
-                        segment_count: receipt.segment_count,
-                        word_count: receipt.word_count,
-                    },
-                }),
-            ),
+            Ok(receipt) => {
+                if self.reload_listening().is_err() {
+                    self.fail(
+                        envelope.command_id,
+                        pod0_application::CoreFailureCode::StorageUnavailable,
+                    );
+                    return;
+                }
+                self.succeed(
+                    envelope.command_id,
+                    Some(OperationResult::TranscriptCommitted {
+                        receipt: TranscriptCommitReceipt {
+                            command_id: receipt.command_id,
+                            artifact_id: receipt.artifact_id,
+                            transcript_version_id: receipt.transcript_version_id,
+                            transcript_content_digest: receipt.transcript_content_digest,
+                            artifact_integrity_digest: receipt.artifact_integrity_digest,
+                            command_fingerprint: receipt.command_fingerprint,
+                            selection_revision: receipt.selection_revision,
+                            speaker_count: receipt.speaker_count,
+                            segment_count: receipt.segment_count,
+                            word_count: receipt.word_count,
+                        },
+                    }),
+                )
+            }
             Err(error) => self.fail(envelope.command_id, storage_failure(error)),
         }
     }
