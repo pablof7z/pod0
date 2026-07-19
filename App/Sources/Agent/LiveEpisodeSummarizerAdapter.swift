@@ -15,9 +15,14 @@ import Foundation
 struct LiveEpisodeSummarizerAdapter: EpisodeSummarizerProtocol {
 
     weak var store: AppStateStore?
+    let transcriptReader: any TranscriptReading
 
-    init(store: AppStateStore) {
+    init(
+        store: AppStateStore,
+        transcriptReader: any TranscriptReading = TranscriptStore.shared
+    ) {
         self.store = store
+        self.transcriptReader = transcriptReader
     }
 
     func summarizeEpisode(episodeID: EpisodeID, length: String?) async throws -> EpisodeSummary {
@@ -25,7 +30,11 @@ struct LiveEpisodeSummarizerAdapter: EpisodeSummarizerProtocol {
               let episode = await store?.episode(id: uuid) else {
             return EpisodeSummary(episodeID: episodeID, summary: "", source: .unavailable)
         }
-        let body = await Self.episodeBodyText(uuid: uuid, fallback: episode.description)
+        let body = await Self.episodeBodyText(
+            uuid: uuid,
+            fallback: episode.description,
+            transcriptReader: transcriptReader
+        )
         guard !body.isEmpty else {
             return EpisodeSummary(
                 episodeID: episodeID,
@@ -64,8 +73,12 @@ struct LiveEpisodeSummarizerAdapter: EpisodeSummarizerProtocol {
     /// Pulls the full episode body either from the parsed transcript text or,
     /// when no transcript exists, from the publisher's show notes. Capped at
     /// 16k chars to keep the prompt budget sane.
-    static func episodeBodyText(uuid: UUID, fallback: String) async -> String {
-        if let transcript = TranscriptStore.shared.load(episodeID: uuid) {
+    static func episodeBodyText(
+        uuid: UUID,
+        fallback: String,
+        transcriptReader: any TranscriptReading = TranscriptStore.shared
+    ) async -> String {
+        if let transcript = transcriptReader.load(episodeID: uuid) {
             let joined = transcript.segments.map(\.text).joined(separator: " ")
             return String(joined.prefix(16_000))
         }

@@ -103,8 +103,8 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
 
         // 5. Persist transcript, chapters, and set adSegments = [] so
         //    AIChapterCompiler skips this already-structured episode.
-        try await MainActor.run {
-            try commitGeneratedTranscript(committedTranscript, for: episode)
+        try await commitGeneratedTranscript(committedTranscript, for: episode)
+        await MainActor.run {
             store.setEpisodeChapters(episode.id, chapters: chapters)
             store.setEpisodeAdSegments(episode.id, segments: [])
         }

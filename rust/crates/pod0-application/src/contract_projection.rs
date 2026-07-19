@@ -4,22 +4,41 @@ use pod0_domain::{
 };
 
 use crate::{
-    ClipProjectionScope, ClipsProjection, EvidenceIndexProjection, MAX_OPERATION_ITEMS,
-    MAX_PROJECTION_ITEMS, NoteProjectionScope, NotesProjection, PlaybackProjection,
-    RecallResultProjection,
+    ClipProjectionScope, ClipsProjection, CoreFailure, EvidenceIndexProjection,
+    MAX_OPERATION_ITEMS, MAX_PROJECTION_ITEMS, NoteProjectionScope, NotesProjection,
+    PlaybackProjection, RecallResultProjection, TranscriptCommitReceipt, TranscriptProjection,
+    TranscriptProjectionScope,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum ProjectionScope {
     Library,
-    PodcastDetail { podcast_id: PodcastId },
-    EpisodeDetail { episode_id: EpisodeId },
+    PodcastDetail {
+        podcast_id: PodcastId,
+    },
+    EpisodeDetail {
+        episode_id: EpisodeId,
+    },
     Playback,
-    Recall { query_id: RecallQueryId },
-    EvidenceIndex { episode_id: EpisodeId },
-    Notes { scope: NoteProjectionScope },
-    Clips { scope: ClipProjectionScope },
-    Unsupported { wire_code: u32 },
+    Recall {
+        query_id: RecallQueryId,
+    },
+    EvidenceIndex {
+        episode_id: EpisodeId,
+    },
+    Transcript {
+        episode_id: EpisodeId,
+        scope: TranscriptProjectionScope,
+    },
+    Notes {
+        scope: NoteProjectionScope,
+    },
+    Clips {
+        scope: ClipProjectionScope,
+    },
+    Unsupported {
+        wire_code: u32,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]
@@ -60,6 +79,7 @@ pub enum Projection {
     Playback { value: PlaybackProjection },
     Recall { value: RecallResultProjection },
     EvidenceIndex { value: EvidenceIndexProjection },
+    Transcript { value: TranscriptProjection },
     Notes { value: NotesProjection },
     Clips { value: ClipsProjection },
     Unsupported { value: UnsupportedProjection },
@@ -187,6 +207,9 @@ pub enum OperationResult {
         generation_id: pod0_domain::EvidenceGenerationId,
         span_count: u32,
     },
+    TranscriptCommitted {
+        receipt: TranscriptCommitReceipt,
+    },
     NoteCreated {
         note_id: NoteId,
     },
@@ -231,46 +254,4 @@ impl OperationStage {
             Self::Failed | Self::Cancelled | Self::Succeeded | Self::Unsupported { .. }
         )
     }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
-pub struct CoreFailure {
-    pub code: CoreFailureCode,
-    pub safe_detail: Option<String>,
-    pub retryability: Retryability,
-    pub user_action: UserAction,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum CoreFailureCode {
-    InvalidCommand,
-    InvalidFeedUrl,
-    FeedMalformed,
-    AlreadySubscribed,
-    StorageUnavailable,
-    RevisionConflict,
-    NotFound,
-    InvalidNote,
-    InvalidClip,
-    HostUnavailable,
-    HostRejected,
-    Cancelled,
-    Unsupported { wire_code: u32 },
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum Retryability {
-    Never,
-    Automatic,
-    AfterUserAction,
-    Unsupported { wire_code: u32 },
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum UserAction {
-    None,
-    Retry,
-    CheckConnection,
-    ReviewPermissions,
-    Unsupported { wire_code: u32 },
 }

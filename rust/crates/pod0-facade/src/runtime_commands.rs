@@ -187,6 +187,10 @@ impl FacadeState {
             ApplicationCommand::RebuildTranscriptEvidence { input, policy } => {
                 self.rebuild_transcript_evidence(&envelope, input, policy);
             }
+            ApplicationCommand::CommitTranscript {
+                expected_selection_revision,
+                artifact,
+            } => self.commit_transcript(&envelope, expected_selection_revision, artifact),
             ApplicationCommand::CreateNote {
                 text,
                 kind,

@@ -176,7 +176,7 @@ struct EpisodeDetailView: View {
     /// substrate for RAG, clip composer, and the agent's tool layer.
     static func readyTranscript(
         for episode: Episode,
-        store: TranscriptStore = .shared
+        store: any TranscriptReading = TranscriptStore.shared
     ) -> Transcript? {
         guard case .ready = episode.transcriptState else { return nil }
         return store.load(episodeID: episode.id)

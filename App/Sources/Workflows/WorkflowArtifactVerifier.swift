@@ -188,7 +188,20 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
     private func applyStableProjection(for record: ArtifactRecord, job: WorkJob) async {
         switch record.kind {
         case .transcript:
-            guard let location = record.location else { return }
+            guard let location = record.location,
+                  let data = await fileVerifier.verifiedTranscript(episodeID: record.subjectID),
+                  ArtifactRepository.hash(data) == record.contentHash,
+                  let transcript = try? Self.decoder.decode(Transcript.self, from: data),
+                  let episode = appStore.episode(id: record.subjectID)
+            else { return }
+            await SharedTranscriptShadowObserver.observe(
+                transcript: transcript,
+                podcastID: episode.podcastID,
+                sourceRevision: record.inputVersion,
+                sourcePayloadDigest: record.contentHash,
+                provider: TranscriptObservationMapper.defaultProvider(for: transcript.source),
+                client: appStore.sharedLibrary
+            )
             _ = appStore.applyTranscriptEvent(.artifactCommitted(.init(
                 inputVersion: record.inputVersion,
                 contentHash: record.contentHash,

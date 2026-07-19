@@ -11,8 +11,9 @@ extension TranscriptIngestService {
               let episode = appStore.episode(id: episodeID) else {
             throw JobFailure(classification: .invalidInput, message: "Episode no longer exists")
         }
+        let transcriptReader: any TranscriptReading = store
         guard case .ready = episode.transcriptState,
-              let transcript = store.load(episodeID: episodeID) else {
+              let transcript = transcriptReader.load(episodeID: episodeID) else {
             throw JobFailure(
                 classification: .missingDependency,
                 message: "Transcript is not available for indexing."

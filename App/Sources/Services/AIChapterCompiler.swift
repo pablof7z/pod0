@@ -61,7 +61,7 @@ final class AIChapterCompiler {
     /// transcript is `.ready` and (b) the episode doesn't already have
     /// cached `adSegments`. No-op otherwise. When publisher chapters already
     /// exist, the boundaries are kept and only summaries + ads are merged in.
-    func compile(episodeID: UUID, store: AppStateStore) async throws -> ChapterCompilationOutput {
+    func compile(episodeID: UUID, store: AppStateStore, transcriptReader: any TranscriptReading = TranscriptStore.shared) async throws -> ChapterCompilationOutput {
         guard let episode = store.episode(id: episodeID) else {
             throw JobFailure(classification: .invalidInput, message: "Episode no longer exists")
         }
@@ -74,7 +74,7 @@ final class AIChapterCompiler {
         inFlight.insert(episodeID)
         defer { inFlight.remove(episodeID) }
 
-        guard let transcript = TranscriptStore.shared.load(episodeID: episodeID) else {
+        guard let transcript = transcriptReader.load(episodeID: episodeID) else {
             Self.logger.notice(
                 "compileIfNeeded(\(episodeID, privacy: .public)): transcript file missing"
             )

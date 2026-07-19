@@ -1,6 +1,7 @@
 import uniffi.pod0_application.*
 import uniffi.pod0_domain.*
 import uniffi.pod0_facade.*
+import java.io.File
 
 fun qualifyTranscriptContract(fixture: Map<String, String>) {
     fun number(key: String) = fixture.getValue(key).toULong()
@@ -70,7 +71,7 @@ fun qualifyTranscriptContract(fixture: Map<String, String>) {
     val expectedArtifactId = id("expected_artifact_id")
     val expectedVersionId = id("expected_transcript_version_id")
     check(fixture["fixture_version"] == "1")
-    check(fixture["contract_version"]?.toUInt() == 11u)
+    check(fixture["contract_version"]?.toUInt() == 12u)
     check(fixture["unknown_future_field"] == "ignored-by-v1-readers")
     check(receipt.artifactId == TranscriptArtifactId(expectedArtifactId.first, expectedArtifactId.second))
     check(receipt.transcriptVersionId == TranscriptVersionId(expectedVersionId.first, expectedVersionId.second))
@@ -103,4 +104,141 @@ fun qualifyTranscriptContract(fixture: Map<String, String>) {
     check(qualifiedWords is TranscriptContractProjection.Qualified)
     val wordProjection = qualifiedWords.transcript
     check(wordProjection.words.last().endMilliseconds == number("segment_1_word_2_end_milliseconds"))
+}
+
+fun qualifyTranscriptRuntime(coreStore: File, podcastId: PodcastId, episodeId: EpisodeId) {
+    val speakerId = SpeakerId(91UL, 92UL)
+    val artifact = TranscriptArtifactInput(
+        episodeId,
+        podcastId,
+        "kotlin-runtime-v1",
+        TranscriptSource.Scribe,
+        "elevenLabsScribe",
+        ContentDigest(1UL, 2UL, 3UL, 4UL),
+        "en-US",
+        UnixTimestampMilliseconds(1_721_322_000_100L),
+        listOf(TranscriptArtifactSpeakerInput(speakerId, "host", "Ada")),
+        listOf(
+            TranscriptArtifactSegmentInput(
+                "Hello Kotlin",
+                0UL,
+                1_000UL,
+                speakerId,
+                listOf(
+                    TranscriptArtifactWordInput("Hello", 0UL, 400UL),
+                    TranscriptArtifactWordInput("Kotlin", 400UL, 1_000UL),
+                ),
+            ),
+            TranscriptArtifactSegmentInput(
+                "Bounded projection",
+                900UL,
+                1_800UL,
+                speakerId,
+                emptyList(),
+            ),
+        ),
+    )
+    val commandId = CommandId(0UL, 41UL)
+    val facade = Pod0Facade.open(coreStore.absolutePath)
+    try {
+        facade.dispatch(CommandEnvelope(
+            commandId,
+            CancellationId(0UL, 42UL),
+            null,
+            ApplicationCommand.CommitTranscript(StateRevision(0UL), artifact),
+        ))
+        val summary = transcriptProjection(
+            facade,
+            episodeId,
+            TranscriptProjectionScope.Summary,
+            0u,
+            1u.toUShort(),
+        )
+        check(summary.summary?.selectionRevision == StateRevision(1UL))
+        val operation = summary.operations.single { it.commandId == commandId }
+        check(operation.stage is OperationStage.Succeeded)
+        val result = operation.result
+        check(result is OperationResult.TranscriptCommitted)
+        check(result.receipt.segmentCount == 2u)
+        check(result.receipt.wordCount == 2UL)
+
+        val firstPage = transcriptProjection(
+            facade,
+            episodeId,
+            TranscriptProjectionScope.Segments,
+            0u,
+            1u.toUShort(),
+        )
+        check(firstPage.segments.single().text == "Hello Kotlin")
+        check(firstPage.hasMore)
+        val segmentId = firstPage.segments.single().segmentId
+        val exact = transcriptProjection(
+            facade,
+            episodeId,
+            TranscriptProjectionScope.Segment(segmentId),
+            0u,
+            1u.toUShort(),
+        )
+        check(exact.segments.single().segmentId == segmentId)
+        val words = transcriptProjection(
+            facade,
+            episodeId,
+            TranscriptProjectionScope.Words(segmentId),
+            0u,
+            1u.toUShort(),
+        )
+        check(words.words.single().text == "Hello")
+        check(words.hasMore)
+
+        val staleId = CommandId(0UL, 43UL)
+        facade.dispatch(CommandEnvelope(
+            staleId,
+            CancellationId(0UL, 44UL),
+            null,
+            ApplicationCommand.CommitTranscript(StateRevision(0UL), artifact),
+        ))
+        val stale = transcriptProjection(
+            facade,
+            episodeId,
+            TranscriptProjectionScope.Summary,
+            0u,
+            1u.toUShort(),
+        ).operations.single { it.commandId == staleId }
+        check(stale.stage is OperationStage.Failed)
+        check(stale.failure?.code is CoreFailureCode.RevisionConflict)
+    } finally {
+        facade.destroy()
+    }
+
+    val reopened = Pod0Facade.open(coreStore.absolutePath)
+    try {
+        val restored = transcriptProjection(
+            reopened,
+            episodeId,
+            TranscriptProjectionScope.Summary,
+            0u,
+            1u.toUShort(),
+        )
+        check(restored.summary?.selectionRevision == StateRevision(1UL))
+        check(restored.summary.sourceRevision == "kotlin-runtime-v1")
+    } finally {
+        reopened.destroy()
+    }
+}
+
+private fun transcriptProjection(
+    facade: Pod0Facade,
+    episodeId: EpisodeId,
+    scope: TranscriptProjectionScope,
+    offset: UInt,
+    maxItems: UShort,
+): TranscriptProjection {
+    val projection = facade.snapshot(ProjectionRequest(
+        ProjectionScope.Transcript(episodeId, scope),
+        offset,
+        maxItems,
+    )).projection
+    check(projection is Projection.Transcript)
+    check(projection.value.failure == null)
+    return projection.value
 }

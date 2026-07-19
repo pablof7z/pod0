@@ -16,12 +16,14 @@ by both Swift and Kotlin.
 
 The generated Swift/Kotlin APIs and durable Rust runtime now own the migrated
 listening, notes, clips, and recall/evidence slices. CI regenerates both
-languages to detect drift. Contract version 11 adds a canonical full-transcript
-artifact plus separately bounded summary/speaker/segment/word projections. A
+languages to detect drift. Contract version 12 adds a canonical full-transcript
+artifact, an application commit command with typed receipt/failure state, and
+separately bounded summary/speaker/segment/word runtime projections. A
 pure, bounded contract projection lets both bindings prove IDs, limits,
-unknown-value handling, and conversion fixtures before storage cutover; it
-neither dispatches an application operation nor writes durable state. Invalid
+unknown-value handling, and conversion fixtures before dispatch. Invalid
 fixture input is represented as rejected projection state, never an exception.
+Through #96 the runtime selection is shadow evidence only; #97 changes
+authority and removes the Swift durable writer.
 
 ## Decision
 

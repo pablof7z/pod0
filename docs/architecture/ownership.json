@@ -54,6 +54,31 @@
         "App/Sources/Features/Player/PlaybackState+Queue.swift",
         "App/Sources/Features/Player/PlaybackState+SharedCore.swift",
         "App/Sources/Features/Player/PlaybackTypes.swift"
+      ],
+      "excludes": [
+        "App/Sources/Core/SharedLibraryClient+Transcripts.swift",
+        "App/Sources/Core/SharedTranscriptReader.swift",
+        "App/Sources/Core/SharedTranscriptShadowComparator.swift",
+        "App/Sources/Core/TranscriptObservationMapper.swift"
+      ]
+    },
+    {
+      "id": "temporary-transcript-shadow-adapter",
+      "classification": "temporary_swift",
+      "current_owner": "Swift typed producer adapter, bounded candidate reader, and privacy-safe shadow comparator",
+      "target_owner": "Rust authoritative transcript application slice plus native provider capability adapters",
+      "reason": "Issue #96 proves real iOS provider shapes and bounded projections before changing authority; retaining the shadow path after parity would create a second source of truth.",
+      "boundary": "Map native observations once into generated types, dispatch one typed command, and compare bounded projections without logging transcript payload text.",
+      "persisted_state": "No new Swift format; Rust observations are non-authoritative shadow evidence while selected Swift JSON remains authoritative.",
+      "migration_issues": [96, 97],
+      "deletion_target": "Issue #97 deletes shadow comparison, fallback authority routing, and Swift durable transcript reads/writes while retaining only native capability execution and typed projection mapping.",
+      "priority": "highest",
+      "includes": [
+        "App/Sources/Core/SharedLibraryClient+Transcripts.swift",
+        "App/Sources/Core/SharedTranscriptReader.swift",
+        "App/Sources/Core/SharedTranscriptShadowComparator.swift",
+        "App/Sources/Core/TranscriptObservationMapper.swift",
+        "App/Sources/Transcript/TranscriptReading.swift"
       ]
     },
     {
@@ -150,11 +175,11 @@
     {
       "id": "shared-transcript-model-and-normalization",
       "classification": "shared_rust_now",
-      "current_owner": "Rust canonical transcript contract and evidence identities; Swift selected transcript JSON, readiness, and parsers",
+      "current_owner": "Rust canonical transcript contract, imported artifacts, and typed shadow selections; Swift selected transcript JSON, readiness, and parsers",
       "target_owner": "Pod0 Rust transcript/knowledge domain",
       "reason": "Normalized segments, speakers, timestamps, chapters, and provenance are durable evidence.",
       "boundary": "Provider/native capabilities return raw typed payloads; Rust normalizes and versions artifacts.",
-      "persisted_state": "Swift selected transcript files and workflow metadata remain authoritative until #97; Rust persists evidence-oriented transcript versions only until #95.",
+      "persisted_state": "Swift selected transcript files and workflow metadata remain authoritative until #97; Rust persists imported and runtime-observed shadow versions through #96.",
       "migration_issues": [59, 69, 94, 95, 96, 97],
       "deletion_target": "Delete Swift normalized model/parser ownership after Rust fixture parity and import.",
       "priority": "high",

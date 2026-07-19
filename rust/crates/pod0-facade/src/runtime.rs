@@ -5,7 +5,7 @@ use pod0_application::{
     ProjectionRequest, bounded_host_request_count,
 };
 use pod0_domain::SubscriptionId;
-use pod0_storage::{EvidenceStore, LibraryStore};
+use pod0_storage::{EvidenceStore, LibraryStore, TranscriptStore};
 use std::path::Path;
 
 use crate::runtime_state::FacadeState;
@@ -74,7 +74,9 @@ impl Pod0Facade {
             .require_notes_authoritative()
             .map_err(FacadeOpenError::from)?;
         let evidence_store = EvidenceStore::open(path).map_err(FacadeOpenError::from)?;
-        let state = FacadeState::open(store, evidence_store).map_err(FacadeOpenError::from)?;
+        let transcript_store = TranscriptStore::open(path).map_err(FacadeOpenError::from)?;
+        let state = FacadeState::open(store, evidence_store, transcript_store)
+            .map_err(FacadeOpenError::from)?;
         Ok(Arc::new(Self {
             state: Mutex::new(state),
         }))

@@ -98,7 +98,9 @@ extension Persistence {
             urls.append(contentsOf: entries.filter { $0.lastPathComponent.hasPrefix(prefix) })
         }
         for url in urls {
-            try? FileManager.default.removeItem(at: url)
+            if FileManager.default.fileExists(atPath: url.path) {
+                try? FileManager.default.removeItem(at: url)
+            }
         }
     }
 }

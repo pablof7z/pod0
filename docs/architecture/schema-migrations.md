@@ -28,10 +28,11 @@ Current versions:
   import evidence. Existing evidence documents and normalized segment rows
   remain the sole semantic transcript representation.
 
-Facade contract version 11 adds the canonical full-transcript artifact and
-bounded projections. Schema v10 persists that contract without claiming iOS
-authority: Swift remains the writer until the staged import has been verified
-and issue #97 performs the single-writer cutover.
+Facade contract version 12 adds the canonical full-transcript application
+command, typed receipt/failures, and bounded runtime projections. Schema v10
+persists imported and runtime-observed artifacts without claiming iOS
+authority: Swift remains the product writer through #96, and issue #97 performs
+the single-writer cutover and deletes the temporary shadow path.
 
 Legacy transcript import defines lossless preservation as exact retention of
 the canonical semantic fields after the documented nearest-millisecond

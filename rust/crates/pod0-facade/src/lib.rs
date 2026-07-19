@@ -96,6 +96,10 @@ mod runtime_state;
 mod runtime_storage_commands;
 #[cfg(test)]
 mod runtime_tests;
+mod runtime_transcript_commands;
+mod runtime_transcript_projection;
+#[cfg(test)]
+mod runtime_transcript_tests;
 pub use clip_migration::{
     LegacyClipBackupEvidence, LegacyClipImportPlan, LegacyClipImportReport,
     LegacyClipImportVerification, LegacyClipMigrationError, commit_staged_legacy_clip_import,

@@ -5,17 +5,20 @@ final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendab
     private let downloadService: EpisodeDownloadService
     private let transcriptService: TranscriptIngestService
     private let refreshService: SubscriptionRefreshService
+    private let transcriptReader: any TranscriptReading
 
     init(
         store: AppStateStore,
         downloadService: EpisodeDownloadService,
         transcriptService: TranscriptIngestService,
-        refreshService: SubscriptionRefreshService
+        refreshService: SubscriptionRefreshService,
+        transcriptReader: any TranscriptReading = TranscriptStore.shared
     ) {
         self.store = store
         self.downloadService = downloadService
         self.transcriptService = transcriptService
         self.refreshService = refreshService
+        self.transcriptReader = transcriptReader
     }
 
     func markEpisodePlayed(episodeID: EpisodeID) async throws -> EpisodeMutationResult {
@@ -115,7 +118,7 @@ final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendab
         if let supplied = transcriptText, !supplied.isEmpty {
             resolvedText = supplied
         } else {
-            resolvedText = Self.extractTranscriptText(
+            resolvedText = extractTranscriptText(
                 episodeID: uuid,
                 startSeconds: startSeconds,
                 endSeconds: endSeconds
@@ -167,12 +170,12 @@ final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendab
         )
     }
 
-    private static func extractTranscriptText(
+    private func extractTranscriptText(
         episodeID: UUID,
         startSeconds: Double,
         endSeconds: Double
     ) -> String {
-        guard let transcript = TranscriptStore.shared.load(episodeID: episodeID) else { return "" }
+        guard let transcript = transcriptReader.load(episodeID: episodeID) else { return "" }
         let matching = transcript.segments.filter { $0.end > startSeconds && $0.start < endSeconds }
         return matching.map(\.text).joined(separator: " ")
     }

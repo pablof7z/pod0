@@ -6,6 +6,7 @@ uniffi::setup_scaffolding!();
 
 mod clip_contract;
 mod contract;
+mod contract_failure;
 mod contract_playback_projection;
 mod contract_projection;
 #[cfg(test)]
@@ -43,6 +44,7 @@ mod transcript_projection;
 
 pub use clip_contract::*;
 pub use contract::*;
+pub use contract_failure::*;
 pub use contract_playback_projection::*;
 pub use contract_projection::*;
 pub use contract_state::*;

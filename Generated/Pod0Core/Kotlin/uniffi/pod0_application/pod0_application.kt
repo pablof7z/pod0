@@ -3121,6 +3121,8 @@ data class TranscriptProjection (
     ,
     val `operations`: List<OperationProjection>
     ,
+    val `failure`: CoreFailure?
+    ,
     val `hasMore`: kotlin.Boolean
 
 ){
@@ -3144,6 +3146,7 @@ public object FfiConverterTypeTranscriptProjection: FfiConverterRustBuffer<Trans
             FfiConverterSequenceTypeTranscriptSegmentProjection.read(buf),
             FfiConverterSequenceTypeTranscriptWordProjection.read(buf),
             FfiConverterSequenceTypeOperationProjection.read(buf),
+            FfiConverterOptionalTypeCoreFailure.read(buf),
             FfiConverterBoolean.read(buf),
         )
     }
@@ -3155,6 +3158,7 @@ public object FfiConverterTypeTranscriptProjection: FfiConverterRustBuffer<Trans
             FfiConverterSequenceTypeTranscriptSegmentProjection.allocationSize(value.`segments`) +
             FfiConverterSequenceTypeTranscriptWordProjection.allocationSize(value.`words`) +
             FfiConverterSequenceTypeOperationProjection.allocationSize(value.`operations`) +
+            FfiConverterOptionalTypeCoreFailure.allocationSize(value.`failure`) +
             FfiConverterBoolean.allocationSize(value.`hasMore`)
     )
 
@@ -3165,6 +3169,7 @@ public object FfiConverterTypeTranscriptProjection: FfiConverterRustBuffer<Trans
             FfiConverterSequenceTypeTranscriptSegmentProjection.write(value.`segments`, buf)
             FfiConverterSequenceTypeTranscriptWordProjection.write(value.`words`, buf)
             FfiConverterSequenceTypeOperationProjection.write(value.`operations`, buf)
+            FfiConverterOptionalTypeCoreFailure.write(value.`failure`, buf)
             FfiConverterBoolean.write(value.`hasMore`, buf)
     }
 }
@@ -3334,6 +3339,8 @@ data class TranscriptSummaryProjection (
     ,
     val `podcastId`: PodcastId
     ,
+    val `sourceRevision`: kotlin.String
+    ,
     val `source`: TranscriptSource
     ,
     val `provider`: kotlin.String?
@@ -3375,6 +3382,7 @@ public object FfiConverterTypeTranscriptSummaryProjection: FfiConverterRustBuffe
             FfiConverterTypeTranscriptVersionId.read(buf),
             FfiConverterTypeEpisodeId.read(buf),
             FfiConverterTypePodcastId.read(buf),
+            FfiConverterString.read(buf),
             FfiConverterTypeTranscriptSource.read(buf),
             FfiConverterOptionalString.read(buf),
             FfiConverterTypeContentDigest.read(buf),
@@ -3394,6 +3402,7 @@ public object FfiConverterTypeTranscriptSummaryProjection: FfiConverterRustBuffe
             FfiConverterTypeTranscriptVersionId.allocationSize(value.`transcriptVersionId`) +
             FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
             FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterString.allocationSize(value.`sourceRevision`) +
             FfiConverterTypeTranscriptSource.allocationSize(value.`source`) +
             FfiConverterOptionalString.allocationSize(value.`provider`) +
             FfiConverterTypeContentDigest.allocationSize(value.`sourcePayloadDigest`) +
@@ -3412,6 +3421,7 @@ public object FfiConverterTypeTranscriptSummaryProjection: FfiConverterRustBuffe
             FfiConverterTypeTranscriptVersionId.write(value.`transcriptVersionId`, buf)
             FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
             FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterString.write(value.`sourceRevision`, buf)
             FfiConverterTypeTranscriptSource.write(value.`source`, buf)
             FfiConverterOptionalString.write(value.`provider`, buf)
             FfiConverterTypeContentDigest.write(value.`sourcePayloadDigest`, buf)
@@ -3654,6 +3664,16 @@ sealed class ApplicationCommand {
         companion object
     }
 
+    data class CommitTranscript(
+        val `expectedSelectionRevision`: uniffi.pod0_domain.StateRevision,
+        val `artifact`: uniffi.pod0_domain.TranscriptArtifactInput) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
     data class CreateNote(
         val `text`: kotlin.String,
         val `kind`: uniffi.pod0_domain.NoteKind,
@@ -3832,28 +3852,32 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeTranscriptEvidenceInput.read(buf),
                 FfiConverterTypeEvidenceChunkPolicy.read(buf),
                 )
-            16 -> ApplicationCommand.CreateNote(
+            16 -> ApplicationCommand.CommitTranscript(
+                FfiConverterTypeStateRevision.read(buf),
+                FfiConverterTypeTranscriptArtifactInput.read(buf),
+                )
+            17 -> ApplicationCommand.CreateNote(
                 FfiConverterString.read(buf),
                 FfiConverterTypeNoteKind.read(buf),
                 FfiConverterTypeNoteAuthor.read(buf),
                 FfiConverterOptionalTypeNoteTarget.read(buf),
                 )
-            17 -> ApplicationCommand.UpdateNote(
+            18 -> ApplicationCommand.UpdateNote(
                 FfiConverterTypeNoteId.read(buf),
                 FfiConverterTypeNoteRevision.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterTypeNoteKind.read(buf),
                 FfiConverterOptionalTypeNoteTarget.read(buf),
                 )
-            18 -> ApplicationCommand.SetNoteDeleted(
+            19 -> ApplicationCommand.SetNoteDeleted(
                 FfiConverterTypeNoteId.read(buf),
                 FfiConverterTypeNoteRevision.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            19 -> ApplicationCommand.ClearNotes(
+            20 -> ApplicationCommand.ClearNotes(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            20 -> ApplicationCommand.CreateClip(
+            21 -> ApplicationCommand.CreateClip(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypePodcastId.read(buf),
@@ -3864,7 +3888,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterString.read(buf),
                 FfiConverterTypeClipSource.read(buf),
                 )
-            21 -> ApplicationCommand.UpdateClip(
+            22 -> ApplicationCommand.UpdateClip(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterULong.read(buf),
@@ -3873,18 +3897,18 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterOptionalTypeSpeakerId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            22 -> ApplicationCommand.SetClipDeleted(
+            23 -> ApplicationCommand.SetClipDeleted(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            23 -> ApplicationCommand.ClearClips(
+            24 -> ApplicationCommand.ClearClips(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            24 -> ApplicationCommand.CancelOperation(
+            25 -> ApplicationCommand.CancelOperation(
                 FfiConverterTypeCancellationId.read(buf),
                 )
-            25 -> ApplicationCommand.Unsupported(
+            26 -> ApplicationCommand.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -3998,6 +4022,14 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 4UL
                 + FfiConverterTypeTranscriptEvidenceInput.allocationSize(value.`input`)
                 + FfiConverterTypeEvidenceChunkPolicy.allocationSize(value.`policy`)
+            )
+        }
+        is ApplicationCommand.CommitTranscript -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeStateRevision.allocationSize(value.`expectedSelectionRevision`)
+                + FfiConverterTypeTranscriptArtifactInput.allocationSize(value.`artifact`)
             )
         }
         is ApplicationCommand.CreateNote -> {
@@ -4177,8 +4209,14 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeEvidenceChunkPolicy.write(value.`policy`, buf)
                 Unit
             }
-            is ApplicationCommand.CreateNote -> {
+            is ApplicationCommand.CommitTranscript -> {
                 buf.putInt(16)
+                FfiConverterTypeStateRevision.write(value.`expectedSelectionRevision`, buf)
+                FfiConverterTypeTranscriptArtifactInput.write(value.`artifact`, buf)
+                Unit
+            }
+            is ApplicationCommand.CreateNote -> {
+                buf.putInt(17)
                 FfiConverterString.write(value.`text`, buf)
                 FfiConverterTypeNoteKind.write(value.`kind`, buf)
                 FfiConverterTypeNoteAuthor.write(value.`author`, buf)
@@ -4186,7 +4224,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.UpdateNote -> {
-                buf.putInt(17)
+                buf.putInt(18)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 FfiConverterTypeNoteRevision.write(value.`expectedNoteRevision`, buf)
                 FfiConverterString.write(value.`text`, buf)
@@ -4195,19 +4233,19 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.SetNoteDeleted -> {
-                buf.putInt(18)
+                buf.putInt(19)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 FfiConverterTypeNoteRevision.write(value.`expectedNoteRevision`, buf)
                 FfiConverterBoolean.write(value.`deleted`, buf)
                 Unit
             }
             is ApplicationCommand.ClearNotes -> {
-                buf.putInt(19)
+                buf.putInt(20)
                 FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CreateClip -> {
-                buf.putInt(20)
+                buf.putInt(21)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
@@ -4220,7 +4258,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.UpdateClip -> {
-                buf.putInt(21)
+                buf.putInt(22)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`expectedClipRevision`, buf)
                 FfiConverterULong.write(value.`startMilliseconds`, buf)
@@ -4231,24 +4269,24 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.SetClipDeleted -> {
-                buf.putInt(22)
+                buf.putInt(23)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`expectedClipRevision`, buf)
                 FfiConverterBoolean.write(value.`deleted`, buf)
                 Unit
             }
             is ApplicationCommand.ClearClips -> {
-                buf.putInt(23)
+                buf.putInt(24)
                 FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CancelOperation -> {
-                buf.putInt(24)
+                buf.putInt(25)
                 FfiConverterTypeCancellationId.write(value.`cancellationId`, buf)
                 Unit
             }
             is ApplicationCommand.Unsupported -> {
-                buf.putInt(25)
+                buf.putInt(26)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -4424,6 +4462,9 @@ sealed class CoreFailureCode {
     object InvalidClip : CoreFailureCode()
 
 
+    object InvalidTranscript : CoreFailureCode()
+
+
     object HostUnavailable : CoreFailureCode()
 
 
@@ -4467,10 +4508,11 @@ public object FfiConverterTypeCoreFailureCode : FfiConverterRustBuffer<CoreFailu
             7 -> CoreFailureCode.NotFound
             8 -> CoreFailureCode.InvalidNote
             9 -> CoreFailureCode.InvalidClip
-            10 -> CoreFailureCode.HostUnavailable
-            11 -> CoreFailureCode.HostRejected
-            12 -> CoreFailureCode.Cancelled
-            13 -> CoreFailureCode.Unsupported(
+            10 -> CoreFailureCode.InvalidTranscript
+            11 -> CoreFailureCode.HostUnavailable
+            12 -> CoreFailureCode.HostRejected
+            13 -> CoreFailureCode.Cancelled
+            14 -> CoreFailureCode.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -4527,6 +4569,12 @@ public object FfiConverterTypeCoreFailureCode : FfiConverterRustBuffer<CoreFailu
             )
         }
         is CoreFailureCode.InvalidClip -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CoreFailureCode.InvalidTranscript -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
@@ -4597,20 +4645,24 @@ public object FfiConverterTypeCoreFailureCode : FfiConverterRustBuffer<CoreFailu
                 buf.putInt(9)
                 Unit
             }
-            is CoreFailureCode.HostUnavailable -> {
+            is CoreFailureCode.InvalidTranscript -> {
                 buf.putInt(10)
                 Unit
             }
-            is CoreFailureCode.HostRejected -> {
+            is CoreFailureCode.HostUnavailable -> {
                 buf.putInt(11)
                 Unit
             }
-            is CoreFailureCode.Cancelled -> {
+            is CoreFailureCode.HostRejected -> {
                 buf.putInt(12)
                 Unit
             }
-            is CoreFailureCode.Unsupported -> {
+            is CoreFailureCode.Cancelled -> {
                 buf.putInt(13)
+                Unit
+            }
+            is CoreFailureCode.Unsupported -> {
+                buf.putInt(14)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -6189,6 +6241,15 @@ sealed class OperationResult {
         companion object
     }
 
+    data class TranscriptCommitted(
+        val `receipt`: uniffi.pod0_application.TranscriptCommitReceipt) : OperationResult()
+
+    {
+
+
+        companion object
+    }
+
     data class NoteCreated(
         val `noteId`: uniffi.pod0_domain.NoteId) : OperationResult()
 
@@ -6296,27 +6357,30 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 FfiConverterTypeEvidenceGenerationId.read(buf),
                 FfiConverterUInt.read(buf),
                 )
-            11 -> OperationResult.NoteCreated(
+            11 -> OperationResult.TranscriptCommitted(
+                FfiConverterTypeTranscriptCommitReceipt.read(buf),
+                )
+            12 -> OperationResult.NoteCreated(
                 FfiConverterTypeNoteId.read(buf),
                 )
-            12 -> OperationResult.NoteUpdated(
+            13 -> OperationResult.NoteUpdated(
                 FfiConverterTypeNoteId.read(buf),
                 )
-            13 -> OperationResult.NotesCleared
-            14 -> OperationResult.ClipCreated(
+            14 -> OperationResult.NotesCleared
+            15 -> OperationResult.ClipCreated(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            15 -> OperationResult.ClipUpdated(
+            16 -> OperationResult.ClipUpdated(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            16 -> OperationResult.ClipsCleared(
+            17 -> OperationResult.ClipsCleared(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            17 -> OperationResult.Unsupported(
+            18 -> OperationResult.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -6394,6 +6458,13 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
                 + FfiConverterTypeEvidenceGenerationId.allocationSize(value.`generationId`)
                 + FfiConverterUInt.allocationSize(value.`spanCount`)
+            )
+        }
+        is OperationResult.TranscriptCommitted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeTranscriptCommitReceipt.allocationSize(value.`receipt`)
             )
         }
         is OperationResult.NoteCreated -> {
@@ -6504,41 +6575,46 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 FfiConverterUInt.write(value.`spanCount`, buf)
                 Unit
             }
-            is OperationResult.NoteCreated -> {
+            is OperationResult.TranscriptCommitted -> {
                 buf.putInt(11)
-                FfiConverterTypeNoteId.write(value.`noteId`, buf)
+                FfiConverterTypeTranscriptCommitReceipt.write(value.`receipt`, buf)
                 Unit
             }
-            is OperationResult.NoteUpdated -> {
+            is OperationResult.NoteCreated -> {
                 buf.putInt(12)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 Unit
             }
-            is OperationResult.NotesCleared -> {
+            is OperationResult.NoteUpdated -> {
                 buf.putInt(13)
+                FfiConverterTypeNoteId.write(value.`noteId`, buf)
+                Unit
+            }
+            is OperationResult.NotesCleared -> {
+                buf.putInt(14)
                 Unit
             }
             is OperationResult.ClipCreated -> {
-                buf.putInt(14)
-                FfiConverterTypeClipId.write(value.`clipId`, buf)
-                FfiConverterTypeClipRevision.write(value.`clipRevision`, buf)
-                FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
-                Unit
-            }
-            is OperationResult.ClipUpdated -> {
                 buf.putInt(15)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`clipRevision`, buf)
                 FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
                 Unit
             }
-            is OperationResult.ClipsCleared -> {
+            is OperationResult.ClipUpdated -> {
                 buf.putInt(16)
+                FfiConverterTypeClipId.write(value.`clipId`, buf)
+                FfiConverterTypeClipRevision.write(value.`clipRevision`, buf)
+                FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
+                Unit
+            }
+            is OperationResult.ClipsCleared -> {
+                buf.putInt(17)
                 FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
                 Unit
             }
             is OperationResult.Unsupported -> {
-                buf.putInt(17)
+                buf.putInt(18)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -8006,6 +8082,15 @@ sealed class Projection {
         companion object
     }
 
+    data class Transcript(
+        val `value`: uniffi.pod0_application.TranscriptProjection) : Projection()
+
+    {
+
+
+        companion object
+    }
+
     data class Notes(
         val `value`: uniffi.pod0_application.NotesProjection) : Projection()
 
@@ -8067,13 +8152,16 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
             6 -> Projection.EvidenceIndex(
                 FfiConverterTypeEvidenceIndexProjection.read(buf),
                 )
-            7 -> Projection.Notes(
+            7 -> Projection.Transcript(
+                FfiConverterTypeTranscriptProjection.read(buf),
+                )
+            8 -> Projection.Notes(
                 FfiConverterTypeNotesProjection.read(buf),
                 )
-            8 -> Projection.Clips(
+            9 -> Projection.Clips(
                 FfiConverterTypeClipsProjection.read(buf),
                 )
-            9 -> Projection.Unsupported(
+            10 -> Projection.Unsupported(
                 FfiConverterTypeUnsupportedProjection.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -8121,6 +8209,13 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
             (
                 4UL
                 + FfiConverterTypeEvidenceIndexProjection.allocationSize(value.`value`)
+            )
+        }
+        is Projection.Transcript -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeTranscriptProjection.allocationSize(value.`value`)
             )
         }
         is Projection.Notes -> {
@@ -8178,18 +8273,23 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
                 FfiConverterTypeEvidenceIndexProjection.write(value.`value`, buf)
                 Unit
             }
-            is Projection.Notes -> {
+            is Projection.Transcript -> {
                 buf.putInt(7)
+                FfiConverterTypeTranscriptProjection.write(value.`value`, buf)
+                Unit
+            }
+            is Projection.Notes -> {
+                buf.putInt(8)
                 FfiConverterTypeNotesProjection.write(value.`value`, buf)
                 Unit
             }
             is Projection.Clips -> {
-                buf.putInt(8)
+                buf.putInt(9)
                 FfiConverterTypeClipsProjection.write(value.`value`, buf)
                 Unit
             }
             is Projection.Unsupported -> {
-                buf.putInt(9)
+                buf.putInt(10)
                 FfiConverterTypeUnsupportedProjection.write(value.`value`, buf)
                 Unit
             }
@@ -8238,6 +8338,16 @@ sealed class ProjectionScope {
 
     data class EvidenceIndex(
         val `episodeId`: uniffi.pod0_domain.EpisodeId) : ProjectionScope()
+
+    {
+
+
+        companion object
+    }
+
+    data class Transcript(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `scope`: uniffi.pod0_application.TranscriptProjectionScope) : ProjectionScope()
 
     {
 
@@ -8302,13 +8412,17 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
             6 -> ProjectionScope.EvidenceIndex(
                 FfiConverterTypeEpisodeId.read(buf),
                 )
-            7 -> ProjectionScope.Notes(
+            7 -> ProjectionScope.Transcript(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeTranscriptProjectionScope.read(buf),
+                )
+            8 -> ProjectionScope.Notes(
                 FfiConverterTypeNoteProjectionScope.read(buf),
                 )
-            8 -> ProjectionScope.Clips(
+            9 -> ProjectionScope.Clips(
                 FfiConverterTypeClipProjectionScope.read(buf),
                 )
-            9 -> ProjectionScope.Unsupported(
+            10 -> ProjectionScope.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -8354,6 +8468,14 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
             (
                 4UL
                 + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+            )
+        }
+        is ProjectionScope.Transcript -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeTranscriptProjectionScope.allocationSize(value.`scope`)
             )
         }
         is ProjectionScope.Notes -> {
@@ -8409,18 +8531,24 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
-            is ProjectionScope.Notes -> {
+            is ProjectionScope.Transcript -> {
                 buf.putInt(7)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeTranscriptProjectionScope.write(value.`scope`, buf)
+                Unit
+            }
+            is ProjectionScope.Notes -> {
+                buf.putInt(8)
                 FfiConverterTypeNoteProjectionScope.write(value.`scope`, buf)
                 Unit
             }
             is ProjectionScope.Clips -> {
-                buf.putInt(8)
+                buf.putInt(9)
                 FfiConverterTypeClipProjectionScope.write(value.`scope`, buf)
                 Unit
             }
             is ProjectionScope.Unsupported -> {
-                buf.putInt(9)
+                buf.putInt(10)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }

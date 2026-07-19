@@ -7,7 +7,8 @@ final class SharedLibraryClient {
         let continuation: CheckedContinuation<OperationResult?, Error>
     }
 
-    let facade: Pod0Facade
+    nonisolated let facade: Pod0Facade
+    let authoritativeTranscriptReader: any TranscriptReading
     private let dispatcher: Pod0NativeHostDispatcher
     private let deferredPlaybackHost: DeferredPlaybackHost
     let deferredRecallHost: DeferredRecallHost
@@ -35,8 +36,13 @@ final class SharedLibraryClient {
     var rebuildingEvidenceEpisodeIDs: Set<UUID> = []
     var recallHostAttached = false
 
-    init(facade: Pod0Facade, feedHost: any CoreFeedHosting) {
+    init(
+        facade: Pod0Facade,
+        feedHost: any CoreFeedHosting,
+        authoritativeTranscriptReader: any TranscriptReading = TranscriptStore.shared
+    ) {
         self.facade = facade
+        self.authoritativeTranscriptReader = authoritativeTranscriptReader
         let playbackHost = DeferredPlaybackHost()
         let recallHost = DeferredRecallHost()
         self.deferredPlaybackHost = playbackHost
@@ -166,7 +172,7 @@ final class SharedLibraryClient {
             receiveNotes(revision: envelope.stateRevision.value)
         case .clips:
             receiveClips(revision: envelope.stateRevision.value)
-        case .podcastDetail, .episodeDetail, .recall, .evidenceIndex, .unsupported:
+        case .podcastDetail, .episodeDetail, .recall, .evidenceIndex, .transcript, .unsupported:
             break
         }
     }

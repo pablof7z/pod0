@@ -11,7 +11,7 @@ use pod0_domain::{
     CommandId, EpisodeId, FeedIdentityV1, HostRequestId, ListeningDomainSnapshot, PodcastId,
     RecallQueryId, StateRevision, SubscriptionId,
 };
-use pod0_storage::{EvidenceStore, LibraryStore};
+use pod0_storage::{EvidenceStore, LibraryStore, TranscriptStore};
 
 use crate::ProjectionSubscriber;
 use crate::runtime_clock::SystemClock;
@@ -74,6 +74,7 @@ pub(super) struct FacadeState {
     pub(super) clips: pod0_storage::ClipCollectionSnapshot,
     pub(super) store: Option<LibraryStore>,
     pub(super) evidence_store: Option<EvidenceStore>,
+    pub(super) transcript_store: Option<TranscriptStore>,
     pub(super) commands: CommandLedger,
     pub(super) host_requests: HostRequestLedger,
     pub(super) host_queue: VecDeque<HostRequestEnvelope>,
@@ -103,6 +104,7 @@ impl Default for FacadeState {
             },
             store: None,
             evidence_store: None,
+            transcript_store: None,
             commands: CommandLedger::default(),
             host_requests: HostRequestLedger::default(),
             host_queue: VecDeque::new(),
@@ -134,6 +136,7 @@ impl FacadeState {
     pub(super) fn open(
         store: LibraryStore,
         evidence_store: EvidenceStore,
+        transcript_store: TranscriptStore,
     ) -> Result<Self, pod0_storage::StorageError> {
         let _ = store.clear_session_sleep_timer()?;
         let listening = store.snapshot()?;
@@ -161,6 +164,7 @@ impl FacadeState {
             clips,
             store: Some(store),
             evidence_store: Some(evidence_store),
+            transcript_store: Some(transcript_store),
             playback,
             ..Self::default()
         })

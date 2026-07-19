@@ -8,7 +8,7 @@ extension AgentTTSComposer {
     func commitGeneratedTranscript(
         _ transcript: Transcript,
         for episode: Episode
-    ) throws {
+    ) async throws {
         guard let store else { throw AgentTTSError.storeUnavailable }
         try TranscriptStore.shared.save(transcript)
         let url = TranscriptStore.shared.fileURL(for: episode.id)
@@ -37,6 +37,14 @@ extension AgentTTSComposer {
             integrity: .available,
             verifiedAt: Date()
         ))
+        await SharedTranscriptShadowObserver.observe(
+            transcript: transcript,
+            podcastID: episode.podcastID,
+            sourceRevision: inputVersion,
+            sourcePayloadDigest: hash,
+            provider: "pod0AgentComposer",
+            client: store.sharedLibrary
+        )
         let result = store.applyTranscriptEvent(.artifactCommitted(.init(
             inputVersion: inputVersion,
             contentHash: hash,

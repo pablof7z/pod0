@@ -44,6 +44,7 @@ pub fn project_transcript_artifact(
         transcript_version_id: artifact.transcript_version_id,
         episode_id: artifact.episode_id,
         podcast_id: artifact.podcast_id,
+        source_revision: artifact.source_revision.clone(),
         source: artifact.provenance.source,
         provider: artifact.provenance.provider.clone(),
         source_payload_digest: artifact.provenance.source_payload_digest,
@@ -104,6 +105,7 @@ pub fn project_transcript_artifact(
         segments,
         words,
         operations: Vec::new(),
+        failure: None,
         has_more: false,
     }
 }

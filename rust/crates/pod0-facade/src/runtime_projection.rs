@@ -165,6 +165,14 @@ impl FacadeState {
             ProjectionScope::EvidenceIndex { episode_id } => Projection::EvidenceIndex {
                 value: self.evidence_index_projection(episode_id, offset, item_limit),
             },
+            ProjectionScope::Transcript { episode_id, scope } => Projection::Transcript {
+                value: self.transcript_projection(
+                    episode_id,
+                    scope,
+                    request.offset,
+                    request.max_items,
+                ),
+            },
             ProjectionScope::Notes { scope } => {
                 let mut notes = self.notes.notes.clone();
                 match scope {

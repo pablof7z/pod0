@@ -136,14 +136,15 @@ extension SharedLibraryClient {
     }
 
     private func rebuildExistingEvidence(in store: AppStateStore) async {
-        let transcriptStore = TranscriptStore.shared
         let episodes = store.state.episodes
             .filter { if case .ready = $0.transcriptState { true } else { false } }
             .sorted { $0.id.uuidString < $1.id.uuidString }
         for episode in episodes {
             guard !Task.isCancelled,
-                  let transcript = transcriptStore.load(episodeID: episode.id),
-                  let data = transcriptStore.verifiedData(episodeID: episode.id) else { continue }
+                  let transcript = authoritativeTranscriptReader.load(episodeID: episode.id),
+                  let data = TranscriptStore.shared.verifiedData(episodeID: episode.id) else {
+                continue
+            }
             do {
                 _ = try await rebuildTranscriptEvidence(
                     transcript: transcript,

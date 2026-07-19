@@ -84,11 +84,30 @@ extension TranscriptVersionId {
     var stableString: String { coreIdentifier(high: high, low: low) }
 }
 
+extension TranscriptArtifactId {
+    var uuid: UUID? { UUID(coreHigh: high, low: low) }
+    var stableString: String { coreIdentifier(high: high, low: low) }
+}
+
 extension TranscriptSegmentId {
+    var uuid: UUID? { UUID(coreHigh: high, low: low) }
     var stableString: String { coreIdentifier(high: high, low: low) }
 }
 
 extension ContentDigest {
+    init?(hexadecimal: String) {
+        guard hexadecimal.count == 64,
+              hexadecimal.utf8.allSatisfy({ byte in
+                  (48...57).contains(byte) || (65...70).contains(byte) || (97...102).contains(byte)
+              }),
+              let word0 = UInt64(hexadecimal.prefix(16), radix: 16),
+              let word1 = UInt64(hexadecimal.dropFirst(16).prefix(16), radix: 16),
+              let word2 = UInt64(hexadecimal.dropFirst(32).prefix(16), radix: 16),
+              let word3 = UInt64(hexadecimal.suffix(16), radix: 16)
+        else { return nil }
+        self.init(word0: word0, word1: word1, word2: word2, word3: word3)
+    }
+
     var stableString: String {
         String(format: "%016llx%016llx%016llx%016llx", word0, word1, word2, word3)
     }

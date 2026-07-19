@@ -2,12 +2,12 @@ use pod0_domain::{
     AutoDownloadPolicy, CancellationId, ClipId, ClipRevision, ClipSource, CommandId,
     CompletionStatus, EpisodeId, NoteAuthor, NoteId, NoteKind, NoteRevision, NoteTarget,
     PlaybackRatePermille, PlaybackSegment, PlaybackSleepMode, PodcastId, QueueEntry, QueueEntryId,
-    SpeakerId, StateRevision, UnixTimestampMilliseconds,
+    SpeakerId, StateRevision, TranscriptArtifactInput, UnixTimestampMilliseconds,
 };
 
 use crate::{EvidenceChunkPolicy, RecallQuery, TranscriptEvidenceInput};
 
-pub const FACADE_CONTRACT_VERSION: u32 = 11;
+pub const FACADE_CONTRACT_VERSION: u32 = 12;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -95,6 +95,10 @@ pub enum ApplicationCommand {
     RebuildTranscriptEvidence {
         input: TranscriptEvidenceInput,
         policy: EvidenceChunkPolicy,
+    },
+    CommitTranscript {
+        expected_selection_revision: StateRevision,
+        artifact: TranscriptArtifactInput,
     },
     CreateNote {
         text: String,

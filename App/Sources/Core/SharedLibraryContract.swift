@@ -17,6 +17,7 @@ enum SharedLibraryError: Error, LocalizedError, Equatable {
     case cancelled
     case invalidNote
     case invalidClip
+    case invalidTranscript
     case revisionConflict
 
     init(_ code: CoreFailureCode?) {
@@ -28,6 +29,7 @@ enum SharedLibraryError: Error, LocalizedError, Equatable {
         case .cancelled: .cancelled
         case .invalidNote: .invalidNote
         case .invalidClip: .invalidClip
+        case .invalidTranscript: .invalidTranscript
         case .revisionConflict: .revisionConflict
         default: .unavailable
         }
@@ -43,6 +45,7 @@ enum SharedLibraryError: Error, LocalizedError, Equatable {
         case .cancelled: "The library request was cancelled."
         case .invalidNote: "The note is empty or contains an invalid anchor."
         case .invalidClip: "That clip has invalid timestamps or transcript context."
+        case .invalidTranscript: "That transcript contains invalid timing or provenance."
         case .revisionConflict: "That item changed before this edit could be saved."
         }
     }

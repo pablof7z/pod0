@@ -50,7 +50,7 @@ final class Pod0CoreBindingTests: XCTestCase {
 
         XCTAssertEqual(subscriber.revisions, [0, 1])
         let projection = facade.snapshot(request: request)
-        XCTAssertEqual(projection.contractVersion, 11)
+        XCTAssertEqual(projection.contractVersion, 12)
         guard case let .library(value) = projection.projection else {
             return XCTFail("Expected a bounded library projection")
         }
@@ -190,7 +190,7 @@ final class Pod0CoreBindingTests: XCTestCase {
             operation: nil
         )
 
-        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 11)
+        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 12)
         XCTAssertEqual(projection.stage, .ready)
         XCTAssertEqual(projection.evidence.first?.excerpt, fixture["excerpt"])
         XCTAssertEqual(
@@ -255,7 +255,7 @@ final class Pod0CoreBindingTests: XCTestCase {
             hasMore: false
         )
 
-        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 11)
+        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 12)
         XCTAssertEqual(projection.notes.first?.text, fixture["text"])
         XCTAssertEqual(projection.notes.first?.evidence?.spanId, note.evidence?.spanId)
     }

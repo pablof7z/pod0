@@ -51,6 +51,8 @@ final class AutoSnipController {
     var playback: PlaybackState?
     /// Live state-store handle. Same wiring story as `playback`.
     var store: AppStateStore?
+    /// Temporary #96 boundary; #97 installs the shared projection reader.
+    var transcriptReader: any TranscriptReading = TranscriptStore.shared
 
     // MARK: - UI surface
 
@@ -201,7 +203,7 @@ final class AutoSnipController {
         modelID: String,
         store: AppStateStore
     ) async {
-        guard let transcript = TranscriptStore.shared.load(episodeID: episodeID) else {
+        guard let transcript = transcriptReader.load(episodeID: episodeID) else {
             Self.logger.debug("refine: no transcript yet for \(episodeID, privacy: .public)")
             return
         }
@@ -252,7 +254,7 @@ final class AutoSnipController {
         endSeconds: TimeInterval,
         atSeconds: TimeInterval
     ) -> (String?, UUID?) {
-        guard let transcript = TranscriptStore.shared.load(episodeID: episodeID) else {
+        guard let transcript = transcriptReader.load(episodeID: episodeID) else {
             return (nil, nil)
         }
         // Overlapping segments: any segment that intersects the window.

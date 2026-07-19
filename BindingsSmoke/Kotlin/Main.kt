@@ -43,7 +43,7 @@ fun main(args: Array<String>) {
         check(subscriber.revisions == listOf(0UL, 1UL))
 
         val projection = facade.snapshot(request).projection
-        check(facade.snapshot(request).contractVersion == 11u)
+        check(facade.snapshot(request).contractVersion == 12u)
         check(projection is Projection.Library)
         val unsupportedOperation = projection.value.operations.single()
         check(unsupportedOperation.commandId == CommandId(0UL, 1UL))
@@ -125,6 +125,11 @@ private fun qualifyListeningImport(source: File) {
         ))
         qualifyEmptyNoteImport(source, root)
         qualifyEmptyClipImport(source, root)
+        qualifyTranscriptRuntime(
+            File(root, "core.sqlite"),
+            imported.podcasts.single().podcastId,
+            imported.episodes.single().episodeId,
+        )
     } finally {
         root.deleteRecursively()
     }

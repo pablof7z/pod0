@@ -5,7 +5,7 @@ use pod0_domain::{
     transcript_command_fingerprint,
 };
 
-use crate::OperationProjection;
+use crate::{CoreFailure, OperationProjection};
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct TranscriptCommitRequest {
@@ -44,6 +44,7 @@ pub struct TranscriptSummaryProjection {
     pub transcript_version_id: TranscriptVersionId,
     pub episode_id: EpisodeId,
     pub podcast_id: PodcastId,
+    pub source_revision: String,
     pub source: TranscriptSource,
     pub provider: Option<String>,
     pub source_payload_digest: ContentDigest,
@@ -92,6 +93,7 @@ pub struct TranscriptProjection {
     pub segments: Vec<TranscriptSegmentProjection>,
     pub words: Vec<TranscriptWordProjection>,
     pub operations: Vec<OperationProjection>,
+    pub failure: Option<CoreFailure>,
     pub has_more: bool,
 }
 
